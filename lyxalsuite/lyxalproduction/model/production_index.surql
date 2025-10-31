@@ -1,0 +1,19 @@
+-- Indexes for lyxalproduction
+
+DEFINE INDEX idx_employee_userAccount ON employee FIELDS userAccount;
+DEFINE INDEX idx_manuf_order_productionOrder ON manuf_order FIELDS productionOrder;
+DEFINE INDEX idx_operation_order_manufOrder ON operation_order FIELDS manufOrder;
+DEFINE INDEX idx_operation_order_workCenter ON operation_order FIELDS workCenter;
+DEFINE INDEX idx_operation_order_employee ON operation_order FIELDS employee;
+DEFINE INDEX idx_timesheet_line_employee ON timesheet_line FIELDS employee;
+DEFINE INDEX idx_timesheet_line_operationOrder ON timesheet_line FIELDS operationOrder;
+DEFINE INDEX idx_production_order_project ON production_order FIELDS project;
+DEFINE INDEX idx_production_order_saleOrderLine ON production_order FIELDS saleOrderLine;
+DEFINE INDEX idx_project_task_project ON project_task FIELDS project;
+DEFINE INDEX idx_project_task_productionOrder ON project_task FIELDS productionOrder;
+DEFINE INDEX idx_sale_order_line_product ON sale_order_line FIELDS product;
+DEFINE INDEX idx_sale_order_line_project ON sale_order_line FIELDS project;
+DEFINE INDEX idx_sale_order_line_details_orderLine ON sale_order_line_details FIELDS saleOrderLine;
+DEFINE INDEX idx_sale_order_line_details_productionOrder ON sale_order_line_details FIELDS productionOrder;
+DEFINE INDEX idx_invoicing_project_project ON invoicing_project FIELDS project;
+DEFINE INDEX idx_manuf_order_invoicingProject ON manuf_order FIELDS invoicingProject;
