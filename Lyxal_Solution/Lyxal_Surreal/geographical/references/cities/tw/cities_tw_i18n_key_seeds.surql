@@ -1,0 +1,37 @@
+-- Clés i18n pour les villes du pays: TW --
+
+CREATE i18n_key:i18n_city_tw_109003_name SET description = 'Nom pour la ville \'Changhua\'';
+CREATE i18n_key:i18n_city_tw_109038_name SET description = 'Nom pour la ville \'Yuanlin\'';
+CREATE i18n_key:i18n_city_tw_109004_name SET description = 'Nom pour la ville \'Chiayi\'';
+CREATE i18n_key:i18n_city_tw_109005_name SET description = 'Nom pour la ville \'Chiayi County\'';
+CREATE i18n_key:i18n_city_tw_109026_name SET description = 'Nom pour la ville \'Pizitou\'';
+CREATE i18n_key:i18n_city_tw_109010_name SET description = 'Nom pour la ville \'Hsinchu\'';
+CREATE i18n_key:i18n_city_tw_109011_name SET description = 'Nom pour la ville \'Hsinchu County\'';
+CREATE i18n_key:i18n_city_tw_109012_name SET description = 'Nom pour la ville \'Hualien\'';
+CREATE i18n_key:i18n_city_tw_109016_name SET description = 'Nom pour la ville \'Kaohsiung\'';
+CREATE i18n_key:i18n_city_tw_109014_name SET description = 'Nom pour la ville \'Jincheng\'';
+CREATE i18n_key:i18n_city_tw_109017_name SET description = 'Nom pour la ville \'Kinmen County\'';
+CREATE i18n_key:i18n_city_tw_109018_name SET description = 'Nom pour la ville \'Lienchiang\'';
+CREATE i18n_key:i18n_city_tw_109022_name SET description = 'Nom pour la ville \'Nangan\'';
+CREATE i18n_key:i18n_city_tw_109021_name SET description = 'Nom pour la ville \'Miaoli\'';
+CREATE i18n_key:i18n_city_tw_109019_name SET description = 'Nom pour la ville \'Lugu\'';
+CREATE i18n_key:i18n_city_tw_109023_name SET description = 'Nom pour la ville \'Nantou\'';
+CREATE i18n_key:i18n_city_tw_109027_name SET description = 'Nom pour la ville \'Puli\'';
+CREATE i18n_key:i18n_city_tw_109041_name SET description = 'Nom pour la ville \'Zhongxing New Village\'';
+CREATE i18n_key:i18n_city_tw_109020_name SET description = 'Nom pour la ville \'Magong\'';
+CREATE i18n_key:i18n_city_tw_109024_name SET description = 'Nom pour la ville \'Penghu County\'';
+CREATE i18n_key:i18n_city_tw_109007_name SET description = 'Nom pour la ville \'Donggang\'';
+CREATE i18n_key:i18n_city_tw_109009_name SET description = 'Nom pour la ville \'Hengchun\'';
+CREATE i18n_key:i18n_city_tw_109025_name SET description = 'Nom pour la ville \'Pingtung\'';
+CREATE i18n_key:i18n_city_tw_109028_name SET description = 'Nom pour la ville \'Taichung\'';
+CREATE i18n_key:i18n_city_tw_109030_name SET description = 'Nom pour la ville \'Tainan\'';
+CREATE i18n_key:i18n_city_tw_109039_name SET description = 'Nom pour la ville \'Yujing\'';
+CREATE i18n_key:i18n_city_tw_109002_name SET description = 'Nom pour la ville \'Banqiao\'';
+CREATE i18n_key:i18n_city_tw_109015_name SET description = 'Nom pour la ville \'Jiufen\'';
+CREATE i18n_key:i18n_city_tw_109031_name SET description = 'Nom pour la ville \'Taipei\'';
+CREATE i18n_key:i18n_city_tw_109033_name SET description = 'Nom pour la ville \'Taitung\'';
+CREATE i18n_key:i18n_city_tw_109006_name SET description = 'Nom pour la ville \'Daxi\'';
+CREATE i18n_key:i18n_city_tw_109035_name SET description = 'Nom pour la ville \'Taoyuan\'';
+CREATE i18n_key:i18n_city_tw_109037_name SET description = 'Nom pour la ville \'Yilan\'';
+CREATE i18n_key:i18n_city_tw_109008_name SET description = 'Nom pour la ville \'Douliu\'';
+CREATE i18n_key:i18n_city_tw_109040_name SET description = 'Nom pour la ville \'Yunlin\'';

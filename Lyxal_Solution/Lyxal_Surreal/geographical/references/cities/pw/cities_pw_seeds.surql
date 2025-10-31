@@ -1,0 +1,17 @@
+-- Seeds pour les villes du pays: PW --
+
+CREATE base_city:pw_89709 SET state = base_state:pw_002, key.name = i18n_key:i18n_city_pw_89709_name, native = 'Nzchemiaangel', location = (134.47678000, 7.44613000), timezone = base_timezone:asia_tokyo, wikiDataId = 'Q3001462';
+CREATE base_city:pw_89712 SET state = base_state:pw_004, key.name = i18n_key:i18n_city_pw_89712_name, native = 'Ngetkib', location = (134.51484000, 7.36451000), timezone = base_timezone:asia_tokyo, wikiDataId = 'Q3001462';
+CREATE base_city:pw_89700 SET state = base_state:pw_010, key.name = i18n_key:i18n_city_pw_89700_name, native = 'Angaur State', location = (134.12997000, 6.90601000), timezone = base_timezone:asia_tokyo, wikiDataId = 'Q275862';
+CREATE base_city:pw_89714 SET state = base_state:pw_050, key.name = i18n_key:i18n_city_pw_89714_name, native = 'Tobi Village', location = (131.12168000, 3.00488000), timezone = base_timezone:asia_tokyo, wikiDataId = 'Q2868400';
+CREATE base_city:pw_89702 SET state = base_state:pw_100, key.name = i18n_key:i18n_city_pw_89702_name, native = 'Kayael', location = (134.71725000, 8.08228000), timezone = base_timezone:asia_tokyo, wikiDataId = 'Q2640394';
+CREATE base_city:pw_89704 SET state = base_state:pw_150, key.name = i18n_key:i18n_city_pw_89704_name, native = 'Increase', location = (134.47326000, 7.33978000), timezone = base_timezone:asia_tokyo, wikiDataId = 'Q527748';
+CREATE base_city:pw_89706 SET state = base_state:pw_212, key.name = i18n_key:i18n_city_pw_89706_name, native = 'Melekeok Village', location = (134.63671000, 7.49567000), timezone = base_timezone:asia_tokyo, wikiDataId = 'Q154002';
+CREATE base_city:pw_89715 SET state = base_state:pw_214, key.name = i18n_key:i18n_city_pw_89715_name, native = 'ULIMANG', location = (134.64208000, 7.62416000), timezone = base_timezone:asia_tokyo, wikiDataId = 'Q3481073';
+CREATE base_city:pw_89707 SET state = base_state:pw_218, key.name = i18n_key:i18n_city_pw_89707_name, native = 'Crowd', location = (134.63054000, 7.69570000), timezone = base_timezone:asia_tokyo, wikiDataId = 'Q3001462';
+CREATE base_city:pw_89708 SET state = base_state:pw_222, key.name = i18n_key:i18n_city_pw_89708_name, native = 'Kerdown', location = (134.57440000, 7.60986000), timezone = base_timezone:asia_tokyo, wikiDataId = 'Q3001462';
+CREATE base_city:pw_89710 SET state = base_state:pw_226, key.name = i18n_key:i18n_city_pw_89710_name, native = 'Ngchesa Hamlet', location = (134.60991000, 7.46932000), timezone = base_timezone:asia_tokyo, wikiDataId = 'Q3001462';
+CREATE base_city:pw_89701 SET state = base_state:pw_227, key.name = i18n_key:i18n_city_pw_89701_name, native = 'Imeong Hamlet', location = (134.52713000, 7.53134000), timezone = base_timezone:asia_tokyo, wikiDataId = 'Q2640394';
+CREATE base_city:pw_89711 SET state = base_state:pw_228, key.name = i18n_key:i18n_city_pw_89711_name, native = 'Point', location = (134.63612000, 7.55456000), timezone = base_timezone:asia_tokyo, wikiDataId = 'Q3001462';
+CREATE base_city:pw_89703 SET state = base_state:pw_350, key.name = i18n_key:i18n_city_pw_89703_name, native = 'Kloulklubed', location = (134.25561000, 7.04192000), timezone = base_timezone:asia_tokyo, wikiDataId = 'Q2560228';
+CREATE base_city:pw_89713 SET state = base_state:pw_370, key.name = i18n_key:i18n_city_pw_89713_name, native = 'Sonsorol Village', location = (132.21943000, 5.32608000), timezone = base_timezone:asia_tokyo, wikiDataId = 'Q2868400';

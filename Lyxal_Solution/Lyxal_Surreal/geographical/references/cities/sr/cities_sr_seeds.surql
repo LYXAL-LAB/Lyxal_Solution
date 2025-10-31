@@ -1,0 +1,15 @@
+-- Seeds pour les villes du pays: SR --
+
+CREATE base_city:sr_104822 SET state = base_state:sr_br, key.name = i18n_key:i18n_city_sr_104822_name, native = 'Brocopondo', location = (-54.98043000, 5.05594000), timezone = base_timezone:america_sao_paulo, wikiDataId = 'Q926060';
+CREATE base_city:sr_104823 SET state = base_state:sr_br, key.name = i18n_key:i18n_city_sr_104823_name, native = 'Bruinsweg', location = (-55.15333000, 5.00435000), timezone = base_timezone:america_sao_paulo, wikiDataId = 'Q926060';
+CREATE base_city:sr_104826 SET state = base_state:sr_cm, key.name = i18n_key:i18n_city_sr_104826_name, native = 'Mariënburg', location = (-55.04322000, 5.87722000), timezone = base_timezone:america_sao_paulo, wikiDataId = 'Q908006';
+CREATE base_city:sr_104828 SET state = base_state:sr_cm, key.name = i18n_key:i18n_city_sr_104828_name, native = 'Nieuw Amsterdam', location = (-55.08871000, 5.88573000), timezone = base_timezone:america_sao_paulo, wikiDataId = 'Q24226';
+CREATE base_city:sr_104832 SET state = base_state:sr_cr, key.name = i18n_key:i18n_city_sr_104832_name, native = 'Totness', location = (-56.32572000, 5.87618000), timezone = base_timezone:america_sao_paulo, wikiDataId = 'Q3001';
+CREATE base_city:sr_104821 SET state = base_state:sr_ma, key.name = i18n_key:i18n_city_sr_104821_name, native = 'Bij', location = (-54.05522000, 5.49788000), timezone = base_timezone:america_sao_paulo, wikiDataId = 'Q580016';
+CREATE base_city:sr_104827 SET state = base_state:sr_ma, key.name = i18n_key:i18n_city_sr_104827_name, native = 'Moengo', location = (-54.40121000, 5.61411000), timezone = base_timezone:america_sao_paulo, wikiDataId = 'Q24226';
+CREATE base_city:sr_104829 SET state = base_state:sr_ni, key.name = i18n_key:i18n_city_sr_104829_name, native = 'Nieuw Nickerie', location = (-56.97297000, 5.92606000), timezone = base_timezone:america_sao_paulo, wikiDataId = 'Q738313';
+CREATE base_city:sr_104833 SET state = base_state:sr_ni, key.name = i18n_key:i18n_city_sr_104833_name, native = 'Waggen', location = (-56.66523000, 5.76010000), timezone = base_timezone:america_sao_paulo, wikiDataId = 'Q24224';
+CREATE base_city:sr_104830 SET state = base_state:sr_pr, key.name = i18n_key:i18n_city_sr_104830_name, native = 'Onverwacht', location = (-55.19462000, 5.58983000), timezone = base_timezone:america_sao_paulo, wikiDataId = 'Q1861566';
+CREATE base_city:sr_104831 SET state = base_state:sr_pm, key.name = i18n_key:i18n_city_sr_104831_name, native = 'Paramaribo', location = (-55.16682000, 5.86638000), timezone = base_timezone:america_sao_paulo, wikiDataId = 'Q3001';
+CREATE base_city:sr_104824 SET state = base_state:sr_sa, key.name = i18n_key:i18n_city_sr_104824_name, native = 'Groningen', location = (-55.46667000, 5.80000000), timezone = base_timezone:america_sao_paulo, wikiDataId = 'Q508935';
+CREATE base_city:sr_104825 SET state = base_state:sr_wa, key.name = i18n_key:i18n_city_sr_104825_name, native = 'Lelie', location = (-55.23333000, 5.70000000), timezone = base_timezone:america_sao_paulo, wikiDataId = 'Q935545';

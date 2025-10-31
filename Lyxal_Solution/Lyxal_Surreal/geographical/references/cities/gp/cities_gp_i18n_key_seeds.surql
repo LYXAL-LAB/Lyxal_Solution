@@ -1,0 +1,34 @@
+-- Clés i18n pour les villes du pays: GP --
+
+CREATE i18n_key:i18n_city_gp_154948_name SET description = 'Nom pour la ville \'Baie-Mahault\'';
+CREATE i18n_key:i18n_city_gp_154949_name SET description = 'Nom pour la ville \'Baillif\'';
+CREATE i18n_key:i18n_city_gp_154950_name SET description = 'Nom pour la ville \'Basse-Terre\'';
+CREATE i18n_key:i18n_city_gp_154951_name SET description = 'Nom pour la ville \'Bouillante\'';
+CREATE i18n_key:i18n_city_gp_154952_name SET description = 'Nom pour la ville \'Capesterre-Belle-Eau\'';
+CREATE i18n_key:i18n_city_gp_154953_name SET description = 'Nom pour la ville \'Deshaies\'';
+CREATE i18n_key:i18n_city_gp_154954_name SET description = 'Nom pour la ville \'Gourbeyre\'';
+CREATE i18n_key:i18n_city_gp_154955_name SET description = 'Nom pour la ville \'Goyave\'';
+CREATE i18n_key:i18n_city_gp_154956_name SET description = 'Nom pour la ville \'Lamentin\'';
+CREATE i18n_key:i18n_city_gp_154957_name SET description = 'Nom pour la ville \'Petit-Bourg\'';
+CREATE i18n_key:i18n_city_gp_154958_name SET description = 'Nom pour la ville \'Pointe-Noire\'';
+CREATE i18n_key:i18n_city_gp_154959_name SET description = 'Nom pour la ville \'Saint-Claude\'';
+CREATE i18n_key:i18n_city_gp_154960_name SET description = 'Nom pour la ville \'Sainte-Rose\'';
+CREATE i18n_key:i18n_city_gp_154961_name SET description = 'Nom pour la ville \'Terre-de-Bas\'';
+CREATE i18n_key:i18n_city_gp_154962_name SET description = 'Nom pour la ville \'Terre-de-Haut\'';
+CREATE i18n_key:i18n_city_gp_154963_name SET description = 'Nom pour la ville \'Trois-Rivières\'';
+CREATE i18n_key:i18n_city_gp_154964_name SET description = 'Nom pour la ville \'Vieux-Fort\'';
+CREATE i18n_key:i18n_city_gp_154965_name SET description = 'Nom pour la ville \'Vieux-Habitants\'';
+CREATE i18n_key:i18n_city_gp_154967_name SET description = 'Nom pour la ville \'Anse-Bertrand\'';
+CREATE i18n_key:i18n_city_gp_154968_name SET description = 'Nom pour la ville \'Capesterre-de-Marie-Galante\'';
+CREATE i18n_key:i18n_city_gp_154971_name SET description = 'Nom pour la ville \'Grand-Bourg\'';
+CREATE i18n_key:i18n_city_gp_154969_name SET description = 'Nom pour la ville \'La Désirade\'';
+CREATE i18n_key:i18n_city_gp_154970_name SET description = 'Nom pour la ville \'Le Gosier\'';
+CREATE i18n_key:i18n_city_gp_154973_name SET description = 'Nom pour la ville \'Le Moule\'';
+CREATE i18n_key:i18n_city_gp_154966_name SET description = 'Nom pour la ville \'Les Abymes\'';
+CREATE i18n_key:i18n_city_gp_154972_name SET description = 'Nom pour la ville \'Morne-à-l\\'Eau\'';
+CREATE i18n_key:i18n_city_gp_154974_name SET description = 'Nom pour la ville \'Petit-Canal\'';
+CREATE i18n_key:i18n_city_gp_154975_name SET description = 'Nom pour la ville \'Pointe-à-Pitre\'';
+CREATE i18n_key:i18n_city_gp_154976_name SET description = 'Nom pour la ville \'Port-Louis\'';
+CREATE i18n_key:i18n_city_gp_154977_name SET description = 'Nom pour la ville \'Saint-François\'';
+CREATE i18n_key:i18n_city_gp_154978_name SET description = 'Nom pour la ville \'Saint-Louis\'';
+CREATE i18n_key:i18n_city_gp_154979_name SET description = 'Nom pour la ville \'Sainte-Anne\'';

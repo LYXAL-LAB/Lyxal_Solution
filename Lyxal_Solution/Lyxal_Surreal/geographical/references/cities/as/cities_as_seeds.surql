@@ -1,0 +1,16 @@
+-- Seeds pour les villes du pays: AS --
+
+CREATE base_city:as_154920 SET state = base_state:as_02, key.name = i18n_key:i18n_city_as_154920_name, native = 'Strong', location = (-170.80691440, -14.30616430), timezone = base_timezone:pacific_pago_pago, wikiDataId = 'Q3688257';
+CREATE base_city:as_154921 SET state = base_state:as_02, key.name = i18n_key:i18n_city_as_154921_name, native = 'IPTATES', location = (-170.74187670, -14.25216850), timezone = base_timezone:pacific_pago_pago, wikiDataId = 'Q3688363';
+CREATE base_city:as_154924 SET state = base_state:as_02, key.name = i18n_key:i18n_city_as_154924_name, native = 'Off', location = (-170.61763370, -14.29995700), timezone = base_timezone:pacific_pago_pago, wikiDataId = 'Q3688580';
+CREATE base_city:as_154923 SET state = base_state:as_02, key.name = i18n_key:i18n_city_as_154923_name, native = 'Your', location = (-170.71442630, -14.27710880), timezone = base_timezone:pacific_pago_pago, wikiDataId = 'Q3688661';
+CREATE base_city:as_154922 SET state = base_state:as_02, key.name = i18n_key:i18n_city_as_154922_name, native = 'Sublocamations', location = (-170.76301810, -14.25578040), timezone = base_timezone:pacific_pago_pago, wikiDataId = 'Q3688712';
+CREATE base_city:as_154928 SET state = base_state:as_03, key.name = i18n_key:i18n_city_as_154928_name, native = 'Resolution', location = (-169.54907370, -14.20385490), timezone = base_timezone:pacific_pago_pago, wikiDataId = 'Q3688174';
+CREATE base_city:as_154929 SET state = base_state:as_03, key.name = i18n_key:i18n_city_as_154929_name, native = 'Fijipe', location = (-169.51690440, -14.20386340), timezone = base_timezone:pacific_pago_pago, wikiDataId = 'Q3688179';
+CREATE base_city:as_154925 SET state = base_state:as_03, key.name = i18n_key:i18n_city_as_154925_name, native = 'Clothing', location = (-169.71939120, -14.17135950), timezone = base_timezone:pacific_pago_pago, wikiDataId = 'Q3688471';
+CREATE base_city:as_154926 SET state = base_state:as_03, key.name = i18n_key:i18n_city_as_154926_name, native = 'Ti', location = (-169.63981240, -14.17422270), timezone = base_timezone:pacific_pago_pago, wikiDataId = 'Q3688476';
+CREATE base_city:as_154927 SET state = base_state:as_03, key.name = i18n_key:i18n_city_as_154927_name, native = 'Acquire', location = (-169.55101650, -14.24215010), timezone = base_timezone:pacific_pago_pago, wikiDataId = 'Q21847427';
+CREATE base_city:as_154916 SET state = base_state:as_01, key.name = i18n_key:i18n_city_as_154916_name, native = 'Leala', location = (-170.90849930, -14.32261520), timezone = base_timezone:pacific_pago_pago, wikiDataId = 'Q3688321';
+CREATE base_city:as_154917 SET state = base_state:as_01, key.name = i18n_key:i18n_city_as_154917_name, native = 'Twice', location = (-170.80459320, -14.29581640), timezone = base_timezone:pacific_pago_pago, wikiDataId = 'Q3688323';
+CREATE base_city:as_154918 SET state = base_state:as_01, key.name = i18n_key:i18n_city_as_154918_name, native = 'Tulaai', location = (-170.81033120, -14.37923540), timezone = base_timezone:pacific_pago_pago, wikiDataId = 'Q3688697';
+CREATE base_city:as_154919 SET state = base_state:as_01, key.name = i18n_key:i18n_city_as_154919_name, native = 'Living', location = (-170.75583320, -14.35876890), timezone = base_timezone:pacific_pago_pago, wikiDataId = 'Q3688698';

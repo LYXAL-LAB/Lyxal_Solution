@@ -1,0 +1,23 @@
+-- Seeds pour les villes du pays: MV --
+
+CREATE base_city:mv_67929 SET state = base_state:mv_01, key.name = i18n_key:i18n_city_mv_67929_name, native = 'ހިޓާއޫއޫ', location = (73.08333000, -0.60000000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q2060910';
+CREATE base_city:mv_67937 SET state = base_state:mv_01, key.name = i18n_key:i18n_city_mv_67937_name, native = 'މީޑްހޫ', location = (73.23333000, -0.58333000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q2599649';
+CREATE base_city:mv_67931 SET state = base_state:mv_17, key.name = i18n_key:i18n_city_mv_67931_name, native = 'ކުޑަހުވައްދޫ', location = (72.89437000, 2.67075000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q2339256';
+CREATE base_city:mv_67943 SET state = base_state:mv_27, key.name = i18n_key:i18n_city_mv_67943_name, native = 'ވިލިގިލީ', location = (73.43296000, 0.75906000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q2390425';
+CREATE base_city:mv_67940 SET state = base_state:mv_28, key.name = i18n_key:i18n_city_mv_67940_name, native = 'ތިންދުދޫ', location = (72.99969000, 0.53060000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q2147686';
+CREATE base_city:mv_67927 SET state = base_state:mv_29, key.name = i18n_key:i18n_city_mv_67927_name, native = 'ފުވައްމުލައް', location = (73.42403000, -0.29878000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q2060910';
+CREATE base_city:mv_67923 SET state = base_state:mv_07, key.name = i18n_key:i18n_city_mv_67923_name, native = 'މޮޑެއާ', location = (73.11402000, 6.88744000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q641130';
+CREATE base_city:mv_67932 SET state = base_state:mv_23, key.name = i18n_key:i18n_city_mv_67932_name, native = 'ކުލް.', location = (73.06998000, 6.62207000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q3185775';
+CREATE base_city:mv_67928 SET state = base_state:mv_26, key.name = i18n_key:i18n_city_mv_67928_name, native = 'ގުރައިދުދޫ', location = (73.46623000, 3.90045000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q2060910';
+CREATE base_city:mv_67930 SET state = base_state:mv_26, key.name = i18n_key:i18n_city_mv_67930_name, native = 'ހުލްހޫމަލޭ', location = (73.54008000, 4.21169000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q1636296';
+CREATE base_city:mv_67933 SET state = base_state:mv_26, key.name = i18n_key:i18n_city_mv_67933_name, native = 'މާފުޝީ', location = (73.49070000, 3.94231000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q3185775';
+CREATE base_city:mv_67935 SET state = base_state:mv_26, key.name = i18n_key:i18n_city_mv_67935_name, native = 'ފިރިހެން', location = (73.50916000, 4.17521000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q9347';
+CREATE base_city:mv_67925 SET state = base_state:mv_05, key.name = i18n_key:i18n_city_mv_67925_name, native = 'ފޯއެނޫއޯ', location = (73.50257000, 1.83243000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q4043243';
+CREATE base_city:mv_67939 SET state = base_state:mv_03, key.name = i18n_key:i18n_city_mv_67939_name, native = 'ނައިފާރ', location = (73.36571000, 5.44438000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q2295035';
+CREATE base_city:mv_67938 SET state = base_state:mv_12, key.name = i18n_key:i18n_city_mv_67938_name, native = 'އަނެއްކާ', location = (73.56667000, 2.91667000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q2599649';
+CREATE base_city:mv_67936 SET state = base_state:mv_25, key.name = i18n_key:i18n_city_mv_67936_name, native = 'މަނާދޫ', location = (73.41360000, 5.76687000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q2599649';
+CREATE base_city:mv_67941 SET state = base_state:mv_13, key.name = i18n_key:i18n_city_mv_67941_name, native = 'އުގޯބާ', location = (73.03017000, 5.66812000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q2147686';
+CREATE base_city:mv_67926 SET state = base_state:mv_24, key.name = i18n_key:i18n_city_mv_67926_name, native = 'ފުނަދުދޫ', location = (73.29013000, 6.15091000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q4175766';
+CREATE base_city:mv_67934 SET state = base_state:mv_sc, key.name = i18n_key:i18n_city_mv_67934_name, native = 'މަހިބަދޫ', location = (72.96893000, 3.75713000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q3185775';
+CREATE base_city:mv_67942 SET state = base_state:mv_08, key.name = i18n_key:i18n_city_mv_67942_name, native = 'ވެއިމަންޑޫ', location = (73.09556000, 2.18772000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q2390425';
+CREATE base_city:mv_67924 SET state = base_state:mv_04, key.name = i18n_key:i18n_city_mv_67924_name, native = 'ފެލިދޫ', location = (73.54699000, 3.47182000), timezone = base_timezone:asia_karachi, wikiDataId = 'Q4043243';

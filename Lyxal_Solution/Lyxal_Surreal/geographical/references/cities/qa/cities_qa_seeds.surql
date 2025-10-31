@@ -1,0 +1,17 @@
+-- Seeds pour les villes du pays: QA --
+
+CREATE base_city:qa_89856 SET state = base_state:qa_kh, key.name = i18n_key:i18n_city_qa_89856_name, native = 'الغويرية', location = (51.24567000, 25.82882000), timezone = base_timezone:europe_moscow, wikiDataId = 'Q2475423';
+CREATE base_city:qa_89858 SET state = base_state:qa_kh, key.name = i18n_key:i18n_city_qa_89858_name, native = 'الخور', location = (51.50583000, 25.68389000), timezone = base_timezone:europe_moscow, wikiDataId = 'Q1156471';
+CREATE base_city:qa_89861 SET state = base_state:qa_ra, key.name = i18n_key:i18n_city_qa_89861_name, native = 'الريان', location = (51.42444000, 25.29194000), timezone = base_timezone:europe_moscow, wikiDataId = 'Q31876054';
+CREATE base_city:qa_89869 SET state = base_state:qa_ra, key.name = i18n_key:i18n_city_qa_89869_name, native = 'أم باب', location = (50.80722000, 25.21417000), timezone = base_timezone:europe_moscow, wikiDataId = 'Q3296219';
+CREATE base_city:qa_89859 SET state = base_state:qa_wa, key.name = i18n_key:i18n_city_qa_89859_name, native = 'الوكرة', location = (51.60337000, 25.17151000), timezone = base_timezone:europe_moscow, wikiDataId = 'Q1156471';
+CREATE base_city:qa_89860 SET state = base_state:qa_wa, key.name = i18n_key:i18n_city_qa_89860_name, native = 'الوكير', location = (51.53718000, 25.15107000), timezone = base_timezone:europe_moscow, wikiDataId = 'Q31876054';
+CREATE base_city:qa_89868 SET state = base_state:qa_wa, key.name = i18n_key:i18n_city_qa_89868_name, native = 'مساعيد', location = (51.55067000, 24.99226000), timezone = base_timezone:europe_moscow, wikiDataId = 'Q1069900';
+CREATE base_city:qa_89857 SET state = base_state:qa_sh, key.name = i18n_key:i18n_city_qa_89857_name, native = 'الجميلية', location = (51.09108000, 25.61068000), timezone = base_timezone:europe_moscow, wikiDataId = 'Q1147593';
+CREATE base_city:qa_89863 SET state = base_state:qa_sh, key.name = i18n_key:i18n_city_qa_89863_name, native = 'آش شيحانية', location = (51.22264000, 25.37088000), timezone = base_timezone:europe_moscow, wikiDataId = 'Q3298589';
+CREATE base_city:qa_89865 SET state = base_state:qa_sh, key.name = i18n_key:i18n_city_qa_89865_name, native = 'دخان', location = (50.78227000, 25.42485000), timezone = base_timezone:europe_moscow, wikiDataId = 'Q3296633';
+CREATE base_city:qa_89864 SET state = base_state:qa_da, key.name = i18n_key:i18n_city_qa_89864_name, native = 'الدوحة', location = (51.53096000, 25.28545000), timezone = base_timezone:europe_moscow, wikiDataId = 'Q3861';
+CREATE base_city:qa_89862 SET state = base_state:qa_ms, key.name = i18n_key:i18n_city_qa_89862_name, native = 'الرويس', location = (51.21493000, 26.13978000), timezone = base_timezone:europe_moscow, wikiDataId = 'Q3298589';
+CREATE base_city:qa_89866 SET state = base_state:qa_ms, key.name = i18n_key:i18n_city_qa_89866_name, native = 'فويريت', location = (51.36971000, 26.02565000), timezone = base_timezone:europe_moscow, wikiDataId = 'Q3296633';
+CREATE base_city:qa_89867 SET state = base_state:qa_ms, key.name = i18n_key:i18n_city_qa_89867_name, native = 'مدينة الشمال', location = (51.20090000, 26.12933000), timezone = base_timezone:europe_moscow, wikiDataId = 'Q310872';
+CREATE base_city:qa_89870 SET state = base_state:qa_us, key.name = i18n_key:i18n_city_qa_89870_name, native = 'أم صلاح محمد', location = (51.40647000, 25.41524000), timezone = base_timezone:europe_moscow, wikiDataId = 'Q3298627';

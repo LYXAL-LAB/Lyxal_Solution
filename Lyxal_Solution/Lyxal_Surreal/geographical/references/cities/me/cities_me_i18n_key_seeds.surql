@@ -1,0 +1,36 @@
+-- Clés i18n pour les villes du pays: ME --
+
+CREATE i18n_key:i18n_city_me_67343_name SET description = 'Nom pour la ville \'Andrijevica\'';
+CREATE i18n_key:i18n_city_me_67344_name SET description = 'Nom pour la ville \'Bar\'';
+CREATE i18n_key:i18n_city_me_67369_name SET description = 'Nom pour la ville \'Stari Bar\'';
+CREATE i18n_key:i18n_city_me_67375_name SET description = 'Nom pour la ville \'Šušanj\'';
+CREATE i18n_key:i18n_city_me_67370_name SET description = 'Nom pour la ville \'Sutomore\'';
+CREATE i18n_key:i18n_city_me_67345_name SET description = 'Nom pour la ville \'Berane\'';
+CREATE i18n_key:i18n_city_me_67346_name SET description = 'Nom pour la ville \'Bijelo Polje\'';
+CREATE i18n_key:i18n_city_me_67347_name SET description = 'Nom pour la ville \'Budva\'';
+CREATE i18n_key:i18n_city_me_67360_name SET description = 'Nom pour la ville \'Petrovac na Moru\'';
+CREATE i18n_key:i18n_city_me_67349_name SET description = 'Nom pour la ville \'Danilovgrad\'';
+CREATE i18n_key:i18n_city_me_67368_name SET description = 'Nom pour la ville \'Spuž\'';
+CREATE i18n_key:i18n_city_me_67353_name SET description = 'Nom pour la ville \'Gusinje\'';
+CREATE i18n_key:i18n_city_me_67354_name SET description = 'Nom pour la ville \'Kolašin\'';
+CREATE i18n_key:i18n_city_me_67350_name SET description = 'Nom pour la ville \'Dobrota\'';
+CREATE i18n_key:i18n_city_me_67355_name SET description = 'Nom pour la ville \'Kotor\'';
+CREATE i18n_key:i18n_city_me_67365_name SET description = 'Nom pour la ville \'Prčanj\'';
+CREATE i18n_key:i18n_city_me_67366_name SET description = 'Nom pour la ville \'Risan\'';
+CREATE i18n_key:i18n_city_me_67358_name SET description = 'Nom pour la ville \'Mojkovac\'';
+CREATE i18n_key:i18n_city_me_67359_name SET description = 'Nom pour la ville \'Nikšić\'';
+CREATE i18n_key:i18n_city_me_67348_name SET description = 'Nom pour la ville \'Cetinje\'';
+CREATE i18n_key:i18n_city_me_67361_name SET description = 'Nom pour la ville \'Plav\'';
+CREATE i18n_key:i18n_city_me_67362_name SET description = 'Nom pour la ville \'Pljevlja\'';
+CREATE i18n_key:i18n_city_me_67363_name SET description = 'Nom pour la ville \'Plužine\'';
+CREATE i18n_key:i18n_city_me_67351_name SET description = 'Nom pour la ville \'Golubovci\'';
+CREATE i18n_key:i18n_city_me_67352_name SET description = 'Nom pour la ville \'Goričani\'';
+CREATE i18n_key:i18n_city_me_67356_name SET description = 'Nom pour la ville \'Mataguži\'';
+CREATE i18n_key:i18n_city_me_67357_name SET description = 'Nom pour la ville \'Mojanovići\'';
+CREATE i18n_key:i18n_city_me_67364_name SET description = 'Nom pour la ville \'Podgorica\'';
+CREATE i18n_key:i18n_city_me_67372_name SET description = 'Nom pour la ville \'Tuzi\'';
+CREATE i18n_key:i18n_city_me_67367_name SET description = 'Nom pour la ville \'Rožaje\'';
+CREATE i18n_key:i18n_city_me_67374_name SET description = 'Nom pour la ville \'Šavnik\'';
+CREATE i18n_key:i18n_city_me_67371_name SET description = 'Nom pour la ville \'Tivat\'';
+CREATE i18n_key:i18n_city_me_67373_name SET description = 'Nom pour la ville \'Ulcinj\'';
+CREATE i18n_key:i18n_city_me_67376_name SET description = 'Nom pour la ville \'Žabljak\'';

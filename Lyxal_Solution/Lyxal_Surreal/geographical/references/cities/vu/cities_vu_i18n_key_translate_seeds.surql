@@ -1,0 +1,37 @@
+-- Traductions pour les villes du pays: VU --
+
+RELATE i18n_key:i18n_city_vu_130637_name->i18n_translation->i18n_language:de SET text = 'Lakatoro';
+RELATE i18n_key:i18n_city_vu_130637_name->i18n_translation->i18n_language:es SET text = 'Lakatoro';
+RELATE i18n_key:i18n_city_vu_130637_name->i18n_translation->i18n_language:fr SET text = 'Lakatoro';
+RELATE i18n_key:i18n_city_vu_130637_name->i18n_translation->i18n_language:it SET text = 'Lakatoro';
+RELATE i18n_key:i18n_city_vu_130637_name->i18n_translation->i18n_language:en SET text = 'Lakatoro';
+RELATE i18n_key:i18n_city_vu_130639_name->i18n_translation->i18n_language:de SET text = 'Norsup';
+RELATE i18n_key:i18n_city_vu_130639_name->i18n_translation->i18n_language:es SET text = 'Norsup';
+RELATE i18n_key:i18n_city_vu_130639_name->i18n_translation->i18n_language:fr SET text = 'Norsup';
+RELATE i18n_key:i18n_city_vu_130639_name->i18n_translation->i18n_language:it SET text = 'Norsup';
+RELATE i18n_key:i18n_city_vu_130639_name->i18n_translation->i18n_language:en SET text = 'Norsup';
+RELATE i18n_key:i18n_city_vu_130638_name->i18n_translation->i18n_language:de SET text = 'Luganville';
+RELATE i18n_key:i18n_city_vu_130638_name->i18n_translation->i18n_language:es SET text = 'Luganville';
+RELATE i18n_key:i18n_city_vu_130638_name->i18n_translation->i18n_language:fr SET text = 'Luganville';
+RELATE i18n_key:i18n_city_vu_130638_name->i18n_translation->i18n_language:it SET text = 'Luganville';
+RELATE i18n_key:i18n_city_vu_130638_name->i18n_translation->i18n_language:en SET text = 'Luganville';
+RELATE i18n_key:i18n_city_vu_130640_name->i18n_translation->i18n_language:de SET text = 'Port-Olry';
+RELATE i18n_key:i18n_city_vu_130640_name->i18n_translation->i18n_language:es SET text = 'Puerto Olry';
+RELATE i18n_key:i18n_city_vu_130640_name->i18n_translation->i18n_language:fr SET text = 'Port-Olry';
+RELATE i18n_key:i18n_city_vu_130640_name->i18n_translation->i18n_language:it SET text = 'Port-Olry';
+RELATE i18n_key:i18n_city_vu_130640_name->i18n_translation->i18n_language:en SET text = 'Port-Olry';
+RELATE i18n_key:i18n_city_vu_130641_name->i18n_translation->i18n_language:de SET text = 'Port Vila';
+RELATE i18n_key:i18n_city_vu_130641_name->i18n_translation->i18n_language:es SET text = 'Port Vila';
+RELATE i18n_key:i18n_city_vu_130641_name->i18n_translation->i18n_language:fr SET text = 'Port-Vila';
+RELATE i18n_key:i18n_city_vu_130641_name->i18n_translation->i18n_language:it SET text = 'Port-Vila';
+RELATE i18n_key:i18n_city_vu_130641_name->i18n_translation->i18n_language:en SET text = 'Port-Vila';
+RELATE i18n_key:i18n_city_vu_130636_name->i18n_translation->i18n_language:de SET text = 'Isangel';
+RELATE i18n_key:i18n_city_vu_130636_name->i18n_translation->i18n_language:es SET text = 'Isangel';
+RELATE i18n_key:i18n_city_vu_130636_name->i18n_translation->i18n_language:fr SET text = 'Isangel';
+RELATE i18n_key:i18n_city_vu_130636_name->i18n_translation->i18n_language:it SET text = 'Isangel';
+RELATE i18n_key:i18n_city_vu_130636_name->i18n_translation->i18n_language:en SET text = 'Isangel';
+RELATE i18n_key:i18n_city_vu_130642_name->i18n_translation->i18n_language:de SET text = 'Sola';
+RELATE i18n_key:i18n_city_vu_130642_name->i18n_translation->i18n_language:es SET text = 'Sola';
+RELATE i18n_key:i18n_city_vu_130642_name->i18n_translation->i18n_language:fr SET text = 'Sola';
+RELATE i18n_key:i18n_city_vu_130642_name->i18n_translation->i18n_language:it SET text = 'Sola';
+RELATE i18n_key:i18n_city_vu_130642_name->i18n_translation->i18n_language:en SET text = 'Sola';

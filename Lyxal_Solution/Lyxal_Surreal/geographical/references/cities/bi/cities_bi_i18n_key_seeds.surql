@@ -1,0 +1,19 @@
+-- Clés i18n pour les villes du pays: BI --
+
+CREATE i18n_key:i18n_city_bi_9762_name SET description = 'Nom pour la ville \'Bubanza\'';
+CREATE i18n_key:i18n_city_bi_9763_name SET description = 'Nom pour la ville \'Bujumbura\'';
+CREATE i18n_key:i18n_city_bi_9764_name SET description = 'Nom pour la ville \'Bururi\'';
+CREATE i18n_key:i18n_city_bi_9765_name SET description = 'Nom pour la ville \'Cankuzo\'';
+CREATE i18n_key:i18n_city_bi_9766_name SET description = 'Nom pour la ville \'Cibitoke\'';
+CREATE i18n_key:i18n_city_bi_9767_name SET description = 'Nom pour la ville \'Gitega\'';
+CREATE i18n_key:i18n_city_bi_9768_name SET description = 'Nom pour la ville \'Karuzi\'';
+CREATE i18n_key:i18n_city_bi_9769_name SET description = 'Nom pour la ville \'Kayanza\'';
+CREATE i18n_key:i18n_city_bi_9770_name SET description = 'Nom pour la ville \'Kirundo\'';
+CREATE i18n_key:i18n_city_bi_9771_name SET description = 'Nom pour la ville \'Makamba\'';
+CREATE i18n_key:i18n_city_bi_9772_name SET description = 'Nom pour la ville \'Muramvya\'';
+CREATE i18n_key:i18n_city_bi_9773_name SET description = 'Nom pour la ville \'Muyinga\'';
+CREATE i18n_key:i18n_city_bi_9774_name SET description = 'Nom pour la ville \'Mwaro\'';
+CREATE i18n_key:i18n_city_bi_9775_name SET description = 'Nom pour la ville \'Ngozi\'';
+CREATE i18n_key:i18n_city_bi_9776_name SET description = 'Nom pour la ville \'Rumonge\'';
+CREATE i18n_key:i18n_city_bi_9777_name SET description = 'Nom pour la ville \'Rutana\'';
+CREATE i18n_key:i18n_city_bi_9778_name SET description = 'Nom pour la ville \'Ruyigi\'';

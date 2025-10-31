@@ -1,0 +1,15 @@
+-- Seeds pour les villes du pays: KN --
+
+CREATE base_city:kn_65176 SET state = base_state:kn_01, key.name = i18n_key:i18n_city_kn_65176_name, native = 'Nicola Town', location = (-62.75318000, 17.37956000), timezone = base_timezone:america_caracas, wikiDataId = 'Q3394454';
+CREATE base_city:kn_65178 SET state = base_state:kn_02, key.name = i18n_key:i18n_city_kn_65178_name, native = 'Sandy Point Town', location = (-62.84858000, 17.35908000), timezone = base_timezone:america_caracas, wikiDataId = 'Q1972542';
+CREATE base_city:kn_65172 SET state = base_state:kn_04, key.name = i18n_key:i18n_city_kn_65172_name, native = 'Market Shop', location = (-62.57267000, 17.13218000), timezone = base_timezone:america_caracas, wikiDataId = 'Q3398739';
+CREATE base_city:kn_65175 SET state = base_state:kn_05, key.name = i18n_key:i18n_city_kn_65175_name, native = 'Newcastle', location = (-62.58333000, 17.20000000), timezone = base_timezone:america_caracas, wikiDataId = 'Q2835379';
+CREATE base_city:kn_65170 SET state = base_state:kn_06, key.name = i18n_key:i18n_city_kn_65170_name, native = 'Dieppe Bay Town', location = (-62.81390000, 17.41473000), timezone = base_timezone:america_caracas, wikiDataId = 'Q1010810';
+CREATE base_city:kn_65171 SET state = base_state:kn_07, key.name = i18n_key:i18n_city_kn_65171_name, native = 'Fig Tree', location = (-62.60265000, 17.12623000), timezone = base_timezone:america_caracas, wikiDataId = 'Q3395177';
+CREATE base_city:kn_65167 SET state = base_state:kn_08, key.name = i18n_key:i18n_city_kn_65167_name, native = 'Cayon', location = (-62.73333000, 17.35000000), timezone = base_timezone:america_caracas, wikiDataId = 'Q3316336';
+CREATE base_city:kn_65177 SET state = base_state:kn_09, key.name = i18n_key:i18n_city_kn_65177_name, native = 'Saint Paul’s', location = (-62.83562000, 17.40605000), timezone = base_timezone:america_caracas, wikiDataId = 'Q4490232';
+CREATE base_city:kn_65168 SET state = base_state:kn_10, key.name = i18n_key:i18n_city_kn_65168_name, native = 'Charlestown', location = (-62.61667000, 17.13333000), timezone = base_timezone:america_caracas, wikiDataId = 'Q992311';
+CREATE base_city:kn_65174 SET state = base_state:kn_11, key.name = i18n_key:i18n_city_kn_65174_name, native = 'Monkey Hill', location = (-62.72914000, 17.32327000), timezone = base_timezone:america_caracas, wikiDataId = 'Q3395174';
+CREATE base_city:kn_65169 SET state = base_state:kn_12, key.name = i18n_key:i18n_city_kn_65169_name, native = 'Cotton Ground', location = (-62.61667000, 17.16667000), timezone = base_timezone:america_caracas, wikiDataId = 'Q3394446';
+CREATE base_city:kn_65173 SET state = base_state:kn_13, key.name = i18n_key:i18n_city_kn_65173_name, native = 'Middle Island', location = (-62.81055000, 17.32590000), timezone = base_timezone:america_caracas, wikiDataId = 'Q3394074';
+CREATE base_city:kn_65179 SET state = base_state:kn_15, key.name = i18n_key:i18n_city_kn_65179_name, native = 'Trinity', location = (-62.77584000, 17.30037000), timezone = base_timezone:america_caracas, wikiDataId = 'Q3398703';

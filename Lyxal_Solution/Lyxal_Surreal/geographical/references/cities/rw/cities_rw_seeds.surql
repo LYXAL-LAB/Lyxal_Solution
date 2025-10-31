@@ -1,0 +1,14 @@
+-- Seeds pour les villes du pays: RW --
+
+CREATE base_city:rw_102798 SET state = base_state:rw_02, key.name = i18n_key:i18n_city_rw_102798_name, native = 'Kibungo', location = (30.54270000, -2.15970000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q992776';
+CREATE base_city:rw_102803 SET state = base_state:rw_02, key.name = i18n_key:i18n_city_rw_102803_name, native = 'Rwamagana', location = (30.43470000, -1.94870000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q246139';
+CREATE base_city:rw_102800 SET state = base_state:rw_01, key.name = i18n_key:i18n_city_rw_102800_name, native = 'Kigali', location = (30.05885000, -1.94995000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q3859';
+CREATE base_city:rw_102793 SET state = base_state:rw_03, key.name = i18n_key:i18n_city_rw_102793_name, native = 'Byumba', location = (30.06750000, -1.57630000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q391747';
+CREATE base_city:rw_102801 SET state = base_state:rw_03, key.name = i18n_key:i18n_city_rw_102801_name, native = 'Musanze', location = (29.63497000, -1.49984000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q246145';
+CREATE base_city:rw_102792 SET state = base_state:rw_05, key.name = i18n_key:i18n_city_rw_102792_name, native = 'Butare', location = (29.73944000, -2.59667000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q16654643';
+CREATE base_city:rw_102795 SET state = base_state:rw_05, key.name = i18n_key:i18n_city_rw_102795_name, native = 'Kiko Bagatikuru Gatolika', location = (29.80610000, -1.93653000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q782857';
+CREATE base_city:rw_102797 SET state = base_state:rw_05, key.name = i18n_key:i18n_city_rw_102797_name, native = 'Gitarama', location = (29.75667000, -2.07444000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q668180';
+CREATE base_city:rw_102802 SET state = base_state:rw_05, key.name = i18n_key:i18n_city_rw_102802_name, native = 'NZEGA', location = (29.55640000, -2.47900000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q246145';
+CREATE base_city:rw_102794 SET state = base_state:rw_04, key.name = i18n_key:i18n_city_rw_102794_name, native = 'Cyangugu', location = (28.90750000, -2.48460000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q782857';
+CREATE base_city:rw_102796 SET state = base_state:rw_04, key.name = i18n_key:i18n_city_rw_102796_name, native = 'Gisenyi', location = (29.25639000, -1.70278000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q830631';
+CREATE base_city:rw_102799 SET state = base_state:rw_04, key.name = i18n_key:i18n_city_rw_102799_name, native = 'Kibuye', location = (29.34778000, -2.06028000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q617032';

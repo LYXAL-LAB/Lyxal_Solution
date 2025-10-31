@@ -1,0 +1,23 @@
+# Dépendances et builds
+node_modules/
+dist/
+build/
+coverage/
+
+# Repos ou archives externes
+n8n-master/
+axelor-open-suite/
+lucide-main/
+
+# Fichiers volumineux et temporaires
+*.log
+*.json
+*.xlsx
+*.zip
+*.rar
+*.7z
+*.tmp
+
+# Environnements
+.env
+.DS_Store

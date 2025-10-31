@@ -1,0 +1,36 @@
+-- Clés i18n pour les villes du pays: SZ --
+
+CREATE i18n_key:i18n_city_sz_105084_name SET description = 'Nom pour la ville \'Bulembu\'';
+CREATE i18n_key:i18n_city_sz_105087_name SET description = 'Nom pour la ville \'Hhukwini\'';
+CREATE i18n_key:i18n_city_sz_105093_name SET description = 'Nom pour la ville \'Lobamba\'';
+CREATE i18n_key:i18n_city_sz_105099_name SET description = 'Nom pour la ville \'Mbabane\'';
+CREATE i18n_key:i18n_city_sz_105105_name SET description = 'Nom pour la ville \'Nkhaba\'';
+CREATE i18n_key:i18n_city_sz_105109_name SET description = 'Nom pour la ville \'Piggs Peak\'';
+CREATE i18n_key:i18n_city_sz_105083_name SET description = 'Nom pour la ville \'Big Bend\'';
+CREATE i18n_key:i18n_city_sz_105085_name SET description = 'Nom pour la ville \'Dvokodvweni Inkhundla\'';
+CREATE i18n_key:i18n_city_sz_105094_name SET description = 'Nom pour la ville \'Lomashasha\'';
+CREATE i18n_key:i18n_city_sz_105101_name SET description = 'Nom pour la ville \'Mhlume\'';
+CREATE i18n_key:i18n_city_sz_105107_name SET description = 'Nom pour la ville \'Nsoko\'';
+CREATE i18n_key:i18n_city_sz_105112_name SET description = 'Nom pour la ville \'Siteki\'';
+CREATE i18n_key:i18n_city_sz_105113_name SET description = 'Nom pour la ville \'Tshaneni\'';
+CREATE i18n_key:i18n_city_sz_105114_name SET description = 'Nom pour la ville \'Vuvulane\'';
+CREATE i18n_key:i18n_city_sz_105082_name SET description = 'Nom pour la ville \'Bhunya\'';
+CREATE i18n_key:i18n_city_sz_105086_name SET description = 'Nom pour la ville \'Ekukhanyeni\'';
+CREATE i18n_key:i18n_city_sz_105091_name SET description = 'Nom pour la ville \'Kwaluseni\'';
+CREATE i18n_key:i18n_city_sz_105095_name SET description = 'Nom pour la ville \'Malkerns\'';
+CREATE i18n_key:i18n_city_sz_105096_name SET description = 'Nom pour la ville \'Manzini\'';
+CREATE i18n_key:i18n_city_sz_105097_name SET description = 'Nom pour la ville \'Manzini South\'';
+CREATE i18n_key:i18n_city_sz_105100_name SET description = 'Nom pour la ville \'Mhlambanyatsi\'';
+CREATE i18n_key:i18n_city_sz_105103_name SET description = 'Nom pour la ville \'Ngwempisi\'';
+CREATE i18n_key:i18n_city_sz_105108_name SET description = 'Nom pour la ville \'Ntondozi\'';
+CREATE i18n_key:i18n_city_sz_105110_name SET description = 'Nom pour la ville \'Sidvokodvo\'';
+CREATE i18n_key:i18n_city_sz_105088_name SET description = 'Nom pour la ville \'Hlatikulu\'';
+CREATE i18n_key:i18n_city_sz_105089_name SET description = 'Nom pour la ville \'Hluti\'';
+CREATE i18n_key:i18n_city_sz_105090_name SET description = 'Nom pour la ville \'Kubuta\'';
+CREATE i18n_key:i18n_city_sz_105092_name SET description = 'Nom pour la ville \'Lavumisa\'';
+CREATE i18n_key:i18n_city_sz_105098_name SET description = 'Nom pour la ville \'Matsanjeni\'';
+CREATE i18n_key:i18n_city_sz_105102_name SET description = 'Nom pour la ville \'Ngudzeni\'';
+CREATE i18n_key:i18n_city_sz_105104_name SET description = 'Nom pour la ville \'Nhlangano\'';
+CREATE i18n_key:i18n_city_sz_105106_name SET description = 'Nom pour la ville \'Nkwene\'';
+CREATE i18n_key:i18n_city_sz_105111_name SET description = 'Nom pour la ville \'Sigwe Inkhundla\'';
+CREATE i18n_key:i18n_city_sz_105115_name SET description = 'Nom pour la ville \'Zombodze Ikhundla\'';

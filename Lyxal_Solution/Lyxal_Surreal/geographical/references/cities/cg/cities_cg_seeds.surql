@@ -1,0 +1,19 @@
+-- Seeds pour les villes du pays: CG --
+
+CREATE base_city:cg_17345 SET state = base_state:cg_11, key.name = i18n_key:i18n_city_cg_17345_name, native = 'Kayes', location = (13.28608000, -4.20493000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q6271177';
+CREATE base_city:cg_17348 SET state = base_state:cg_11, key.name = i18n_key:i18n_city_cg_17348_name, native = 'Mode', location = (13.55000000, -4.15361000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q1971302';
+CREATE base_city:cg_17339 SET state = base_state:cg_bzv, key.name = i18n_key:i18n_city_cg_17339_name, native = 'Brazzaville', location = (15.28318000, -4.26613000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q3844';
+CREATE base_city:cg_17349 SET state = base_state:cg_8, key.name = i18n_key:i18n_city_cg_17349_name, native = 'Makouua', location = (15.63333000, 0.00694000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q1667693';
+CREATE base_city:cg_17352 SET state = base_state:cg_8, key.name = i18n_key:i18n_city_cg_17352_name, native = 'Owando', location = (15.89988000, -0.48193000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q1201732';
+CREATE base_city:cg_17342 SET state = base_state:cg_15, key.name = i18n_key:i18n_city_cg_17342_name, native = 'Héros', location = (14.82056000, -0.87250000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q2362433';
+CREATE base_city:cg_17354 SET state = base_state:cg_2, key.name = i18n_key:i18n_city_cg_17354_name, native = 'Siti', location = (13.34985000, -3.68192000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q223920';
+CREATE base_city:cg_17344 SET state = base_state:cg_7, key.name = i18n_key:i18n_city_cg_17344_name, native = 'Louer', location = (18.05981000, 1.61804000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q1142926';
+CREATE base_city:cg_17341 SET state = base_state:cg_9, key.name = i18n_key:i18n_city_cg_17341_name, native = 'Dolisie', location = (12.66664000, -4.19834000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q246554';
+CREATE base_city:cg_17350 SET state = base_state:cg_9, key.name = i18n_key:i18n_city_cg_17350_name, native = 'Mossendjo', location = (12.70423000, -2.94968000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q3307130';
+CREATE base_city:cg_17340 SET state = base_state:cg_14, key.name = i18n_key:i18n_city_cg_17340_name, native = 'Djambala', location = (14.75333000, -2.54472000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q2490824';
+CREATE base_city:cg_17343 SET state = base_state:cg_14, key.name = i18n_key:i18n_city_cg_17343_name, native = 'Gamboma', location = (15.86444000, -1.87639000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q22624469';
+CREATE base_city:cg_17347 SET state = base_state:cg_16, key.name = i18n_key:i18n_city_cg_17347_name, native = 'Loandjili', location = (11.85778000, -4.75611000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q22643954';
+CREATE base_city:cg_17353 SET state = base_state:cg_16, key.name = i18n_key:i18n_city_cg_17353_name, native = 'Pointe-Noire', location = (11.86352000, -4.77609000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q223920';
+CREATE base_city:cg_17346 SET state = base_state:cg_12, key.name = i18n_key:i18n_city_cg_17346_name, native = 'Kinkala', location = (14.76444000, -4.36139000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q667652';
+CREATE base_city:cg_17351 SET state = base_state:cg_13, key.name = i18n_key:i18n_city_cg_17351_name, native = 'Ouésso', location = (16.05167000, 1.61361000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q627885';
+CREATE base_city:cg_17355 SET state = base_state:cg_13, key.name = i18n_key:i18n_city_cg_17355_name, native = 'Sémbé', location = (14.58056000, 1.64806000), timezone = base_timezone:africa_lagos, wikiDataId = 'Q223920';

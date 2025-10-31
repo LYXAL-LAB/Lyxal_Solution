@@ -1,0 +1,32 @@
+-- Clés i18n pour les villes du pays: AE --
+
+CREATE i18n_key:i18n_city_ae_12_name SET description = 'Nom pour la ville \'Abu Dhabi\'';
+CREATE i18n_key:i18n_city_ae_16_name SET description = 'Nom pour la ville \'Al Ain City\'';
+CREATE i18n_key:i18n_city_ae_19_name SET description = 'Nom pour la ville \'Al Dhafra\'';
+CREATE i18n_key:i18n_city_ae_26_name SET description = 'Nom pour la ville \'Bani Yas City\'';
+CREATE i18n_key:i18n_city_ae_11_name SET description = 'Nom pour la ville \'Ghayathi\'';
+CREATE i18n_key:i18n_city_ae_34_name SET description = 'Nom pour la ville \'Khalifa City\'';
+CREATE i18n_key:i18n_city_ae_17_name SET description = 'Nom pour la ville \'Liwa Oasis\'';
+CREATE i18n_key:i18n_city_ae_41_name SET description = 'Nom pour la ville \'Mussafah\'';
+CREATE i18n_key:i18n_city_ae_42_name SET description = 'Nom pour la ville \'Muzayri‘\'';
+CREATE i18n_key:i18n_city_ae_25_name SET description = 'Nom pour la ville \'Ruwais\'';
+CREATE i18n_key:i18n_city_ae_49_name SET description = 'Nom pour la ville \'Zayed City\'';
+CREATE i18n_key:i18n_city_ae_14_name SET description = 'Nom pour la ville \'Ajman\'';
+CREATE i18n_key:i18n_city_ae_37_name SET description = 'Nom pour la ville \'Manama\'';
+CREATE i18n_key:i18n_city_ae_38_name SET description = 'Nom pour la ville \'Masfut\'';
+CREATE i18n_key:i18n_city_ae_32_name SET description = 'Nom pour la ville \'Dubai\'';
+CREATE i18n_key:i18n_city_ae_28_name SET description = 'Nom pour la ville \'Dibba Al Fujairah Municipality\'';
+CREATE i18n_key:i18n_city_ae_30_name SET description = 'Nom pour la ville \'Dibba Al-Fujairah\'';
+CREATE i18n_key:i18n_city_ae_31_name SET description = 'Nom pour la ville \'Dibba Al-Hisn\'';
+CREATE i18n_key:i18n_city_ae_20_name SET description = 'Nom pour la ville \'Fujairah\'';
+CREATE i18n_key:i18n_city_ae_43_name SET description = 'Nom pour la ville \'Ras Al Khaimah\'';
+CREATE i18n_key:i18n_city_ae_18_name SET description = 'Nom pour la ville \'Al Batayih\'';
+CREATE i18n_key:i18n_city_ae_13_name SET description = 'Nom pour la ville \'Al Dhaid\'';
+CREATE i18n_key:i18n_city_ae_22_name SET description = 'Nom pour la ville \'Al Hamriyah\'';
+CREATE i18n_key:i18n_city_ae_23_name SET description = 'Nom pour la ville \'Al Madam\'';
+CREATE i18n_key:i18n_city_ae_33_name SET description = 'Nom pour la ville \'Kalba\'';
+CREATE i18n_key:i18n_city_ae_36_name SET description = 'Nom pour la ville \'Khor Fakkan\'';
+CREATE i18n_key:i18n_city_ae_39_name SET description = 'Nom pour la ville \'Milehah\'';
+CREATE i18n_key:i18n_city_ae_40_name SET description = 'Nom pour la ville \'Murbaḩ\'';
+CREATE i18n_key:i18n_city_ae_46_name SET description = 'Nom pour la ville \'Sharjah\'';
+CREATE i18n_key:i18n_city_ae_47_name SET description = 'Nom pour la ville \'Umm AL Quwain\'';

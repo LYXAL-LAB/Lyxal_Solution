@@ -1,0 +1,19 @@
+-- Seeds pour les villes du pays: BI --
+
+CREATE base_city:bi_9762 SET state = base_state:bi_bb, key.name = i18n_key:i18n_city_bi_9762_name, native = 'Bubanza', location = (29.39100000, -3.08040000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q2020432';
+CREATE base_city:bi_9763 SET state = base_state:bi_bm, key.name = i18n_key:i18n_city_bi_9763_name, native = 'Bujumbura', location = (29.36142000, -3.38193000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q3854';
+CREATE base_city:bi_9764 SET state = base_state:bi_br, key.name = i18n_key:i18n_city_bi_9764_name, native = 'Bururi', location = (29.62438000, -3.94877000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q992247';
+CREATE base_city:bi_9765 SET state = base_state:bi_ca, key.name = i18n_key:i18n_city_bi_9765_name, native = 'Faire du chauffeur', location = (30.55280000, -3.21860000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q2669640';
+CREATE base_city:bi_9766 SET state = base_state:bi_ci, key.name = i18n_key:i18n_city_bi_9766_name, native = 'Cibitoke', location = (29.12480000, -2.88690000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q746329';
+CREATE base_city:bi_9767 SET state = base_state:bi_gi, key.name = i18n_key:i18n_city_bi_9767_name, native = 'Gitega', location = (29.92463000, -3.42708000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q746329';
+CREATE base_city:bi_9768 SET state = base_state:bi_kr, key.name = i18n_key:i18n_city_bi_9768_name, native = 'Karuzi', location = (30.16278000, -3.10139000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q684152';
+CREATE base_city:bi_9769 SET state = base_state:bi_ky, key.name = i18n_key:i18n_city_bi_9769_name, native = 'Kayanza', location = (29.62930000, -2.92210000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q2305839';
+CREATE base_city:bi_9770 SET state = base_state:bi_ki, key.name = i18n_key:i18n_city_bi_9770_name, native = 'Kirundo', location = (30.09590000, -2.58450000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q2640808';
+CREATE base_city:bi_9771 SET state = base_state:bi_ma, key.name = i18n_key:i18n_city_bi_9771_name, native = 'Makamba', location = (29.80400000, -4.13480000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q1286083';
+CREATE base_city:bi_9772 SET state = base_state:bi_mu, key.name = i18n_key:i18n_city_bi_9772_name, native = 'Muramvya', location = (29.60790000, -3.26820000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q557529';
+CREATE base_city:bi_9773 SET state = base_state:bi_my, key.name = i18n_key:i18n_city_bi_9773_name, native = 'Muyinga', location = (30.34140000, -2.84510000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q2006076';
+CREATE base_city:bi_9774 SET state = base_state:bi_mw, key.name = i18n_key:i18n_city_bi_9774_name, native = 'Mwaro', location = (29.70334000, -3.51128000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q2458075';
+CREATE base_city:bi_9775 SET state = base_state:bi_ng, key.name = i18n_key:i18n_city_bi_9775_name, native = 'Ngozi', location = (29.83060000, -2.90750000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q929689';
+CREATE base_city:bi_9776 SET state = base_state:bi_rm, key.name = i18n_key:i18n_city_bi_9776_name, native = 'Rumange', location = (29.43860000, -3.97360000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q3110231';
+CREATE base_city:bi_9777 SET state = base_state:bi_rt, key.name = i18n_key:i18n_city_bi_9777_name, native = 'Rutana', location = (29.99200000, -3.92790000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q246069';
+CREATE base_city:bi_9778 SET state = base_state:bi_ry, key.name = i18n_key:i18n_city_bi_9778_name, native = 'Ruyigi', location = (30.24861000, -3.47639000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q1018116';
