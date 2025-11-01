@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Home from './pages/website/Home';
 import SignIn from './pages/website/SignIn';
 import App from './App';
+import { StudioTestPage } from './pages/test/StudioTestPage';
 
 const AppRouter: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<string>(window.location.pathname);
@@ -26,6 +27,8 @@ const AppRouter: React.FC = () => {
         return <SignIn />;
       case '/app':
         return <App />;
+      case '/test':
+        return <StudioTestPage />;
       case '/':
       default:
         return <Home onNavigate={navigate} />;
