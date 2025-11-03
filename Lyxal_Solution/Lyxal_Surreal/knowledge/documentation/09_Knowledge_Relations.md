@@ -7,7 +7,7 @@ Ce fichier documente les **tables relationnelles** qui assurent les liens entre 
 - les **domaines** (`knowledge_domain`)
 - les **topics** (`knowledge_topic`)
 - les **contenus** (`knowledge_content`)
-- les **mots-clés** (`knowledge_keyword`)
+- les **mots-clés** (strings via tables relationnelles)
 
 Ces relations permettent :
 
@@ -46,19 +46,20 @@ Associe des mots-clés globaux à un domaine.
 
 Exemples :
 
-Domaine SURREAL_DB → keywords : PERMISSIONS, RELATION, ASSERT
+Domaine SURREAL_DB → keywords : "permissions", "relation", "assert"
 
-Domaine BUSINESS → keywords : CRM, LEADS, PIPELINE
+Domaine BUSINESS → keywords : "crm", "leads", "pipeline"
 
 Exemple de liaison
 
 RELATE knowledge_domain:SURREAL_DB
-    ->knowledge_domain_keyword->knowledge_keyword:ASSERT;
+    ->knowledge_domain_keyword->knowledge_keyword:assert;
 
-Requête : récupérer les mots-clés d’un domaine
+Requête : récupérer les mots-clés d'un domaine
 
-SELECT ->knowledge_domain_keyword->identity.code AS keywords
-FROM knowledge_domain:BUSINESS;
+SELECT out AS keyword
+FROM knowledge_domain_keyword
+WHERE in = knowledge_domain:BUSINESS;
 
 📍 2. knowledge_topic_keyword
 
@@ -69,20 +70,20 @@ Permet un filtrage précis par besoin.
 
 Exemples :
 
-Topic DEFINE_FIELD → keywords : ASSERT, TYPE, CONSTRAINT
+Topic DEFINE_FIELD → keywords : "assert", "type", "constraint"
 
-Topic SELECT_FULLTEXT → keywords : FULLTEXT, SEARCH, BM25
+Topic SELECT_FULLTEXT → keywords : "fulltext", "search", "bm25"
 
 Exemple de liaison
 
 RELATE knowledge_topic:DEFINE_FIELD
-    ->knowledge_topic_keyword->knowledge_keyword:TYPE;
+    ->knowledge_topic_keyword->knowledge_keyword:type;
 
-Requête : trouver les topics proches d’un mot-clé
+Requête : trouver les topics proches d'un mot-clé
 
 SELECT in AS topic
 FROM knowledge_topic_keyword
-WHERE out = knowledge_keyword:ASSERT;
+WHERE out = knowledge_keyword:assert;
 
 📎 3. (Optionnel futur) knowledge_content_keyword
 

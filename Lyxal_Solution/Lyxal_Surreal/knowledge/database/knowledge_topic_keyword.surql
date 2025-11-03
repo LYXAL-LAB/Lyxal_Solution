@@ -3,7 +3,7 @@
 -- Module : knowledge
 -- TABLE : knowledge_topic_keyword (TYPE RELATION)
 -- Description : Relation entre topics et mots-clés libres avec recherche full-text
--- Dépendances : knowledge_topic
+-- Dépendances : knowledge_topic, knowledge_keyword, knowledge_keywords_analyzer
 -- Auteur : Équipe Lyxal (via AI Assistant)
 -- Date : 2025
 -- ============================================================================
@@ -25,20 +25,18 @@ DEFINE FIELD IF NOT EXISTS in ON knowledge_topic_keyword
     COMMENT 'Topic possédant ce mot-clé - Supprimé automatiquement si le topic est supprimé';
 
 DEFINE FIELD IF NOT EXISTS out ON knowledge_topic_keyword
-    TYPE string
-    ASSERT $value != NONE 
-        AND $value != "" 
-        AND string::len($value) > 0
-        AND string::len($value) <= 100
-    COMMENT 'Mot-clé libre (normalisé en lowercase pour cohérence) - Max 100 caractères';
+    TYPE record<knowledge_keyword>
+    REFERENCE ON DELETE CASCADE
+    ASSERT $value != NONE
+    COMMENT 'Mot-clé référencé - Supprimé automatiquement si le mot-clé est supprimé';
 
 -- ============================================================================
 -- INDEXES
 -- ============================================================================
 
 DEFINE INDEX idx_keyword_text ON knowledge_topic_keyword 
-    FIELDS out 
-    FULLTEXT ANALYZER knowledge_keywords_analyzer BM25 HIGHLIGHTS
+    FIELDS out.identity.value 
+    SEARCH ANALYZER knowledge_keywords_analyzer
     COMMENT 'Index full-text pour recherche dans les mots-clés avec ranking BM25 et highlighting';
 
 DEFINE INDEX idx_keyword_topic ON knowledge_topic_keyword 

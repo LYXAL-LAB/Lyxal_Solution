@@ -57,7 +57,7 @@ DEFINE FIELD IF NOT EXISTS ui ON TABLE knowledge_domain
 
     DEFINE FIELD IF NOT EXISTS ui.icon ON TABLE knowledge_domain
         TYPE option<record<icon>>
-        REFERENCE ON DELETE SET NULL
+        REFERENCE ON DELETE UNSET
         COMMENT 'Icône associée au domaine (emoji ou pictogramme via table icon)';
 
 -- ============================================================================

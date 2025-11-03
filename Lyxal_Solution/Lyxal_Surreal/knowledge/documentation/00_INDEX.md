@@ -12,6 +12,8 @@ Il définit comment les connaissances sont structurées, stockées, enrichies, u
 | **01_Knowledge_Overview.md** | Vision, objectifs, architecture du Knowledge System |
 | **02_Knowledge_Domain.md** | Documentation de la table `knowledge_domain` |
 | **03_Knowledge_Domain_Keyword.md** | Table relation : mots-clés par domaine |
+| **04_Knowledge_Category.md** | Documentation de la table `knowledge_category` (catégories principales) |
+| **04_Knowledge_Sub_Category.md** | Documentation de la table `knowledge_sub_category` (sous-catégories optionnelles) |
 | **04_Knowledge_Topic.md** | Documentation de la table `knowledge_topic` |
 | **05_Knowledge_Topic_Keyword.md** | Table relation : mots-clés par topic |
 | **06_Knowledge_Content_Type.md** | Référentiel des types de contenus de connaissance |
@@ -20,8 +22,13 @@ Il définit comment les connaissances sont structurées, stockées, enrichies, u
 | **09_How_AI_Should_Use_Knowledge.md** | Instructions d’utilisation spéciales pour IA |
 | **10_Useful_Queries.md** | Requêtes essentielles pour exploiter le Knowledge System |
 | **11_Conventions_and_Rules.md** | Règles internes Lyxal (naming, standards, quality) |
-| **12_Roadmap_Evolution.md** | Roadmap d’évolution du Knowledge System |
-| **13_Auto_Learning_Foundation.md** | Base du futur module d’auto-apprentissage IA |
+| **12_Roadmap_Evolution.md** | Roadmap d'évolution du Knowledge System |
+| **13_Auto_Learning_Foundation.md** | Base du futur module d'auto-apprentissage IA |
+| **16_SurrealDB_Arrays_Objects_Syntax.md** | Syntaxe SurrealDB : Arrays d'objets avec wildcard `*` (essentiel pour création de données) |
+| **17_Knowledge_Creation_Patterns.md** | Guide complet de patterns de création : bonnes pratiques, checklist, exemples |
+| **18_Coherence_Verification_Report.md** | Rapport de vérification de cohérence : schémas, références, index, contraintes |
+| **19_Test_Report.md** | Rapport de tests : validation CREATE, index, relations, structure i18n |
+| **SCHEMA_Knowledge_System.md** | Schéma de référence unifié : toutes les tables, champs, types, relations, index |
 
 ---
 

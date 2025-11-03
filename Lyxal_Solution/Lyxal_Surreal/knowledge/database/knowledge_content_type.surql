@@ -3,7 +3,7 @@
 -- Module : knowledge
 -- TABLE : knowledge_content_type
 -- Description : Référentiel dynamique des types de contenus de connaissance
---               (ex: SYNTAX_SURREAL, EXAMPLE_CORRECT_SURREAL, PATTERN_AI, TIP_UI)
+--               (ex: SYNTAX, RULE, EXAMPLE_CORRECT, EXAMPLE_INCORRECT, PATTERN, TIP, REFERENCE)
 --               Optimisé IA (auto-apprentissage, scoring, recommandation)
 --
 -- Auteur : Équipe Lyxal (via IA Assistant)
@@ -29,7 +29,7 @@ DEFINE FIELD IF NOT EXISTS identity ON TABLE knowledge_content_type
             AND $value != ""
             AND string::len($value) > 1
             AND string::uppercase($value) = $value
-        COMMENT 'Code unique du type au format UPPER_SNAKE_CASE (ex: SYNTAX_SURREAL, PATTERN_AI)';
+        COMMENT 'Code unique du type au format UPPER_SNAKE_CASE (ex: SYNTAX, RULE, EXAMPLE_CORRECT, PATTERN)';
 
     DEFINE FIELD IF NOT EXISTS identity.label_key ON TABLE knowledge_content_type
         TYPE record<i18n_key>

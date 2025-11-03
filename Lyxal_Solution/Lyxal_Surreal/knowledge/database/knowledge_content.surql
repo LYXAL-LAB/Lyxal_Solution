@@ -5,7 +5,7 @@
 -- Description : Contenu de connaissance universel (multi-formats) pour chaque topic
 -- Compatible Humain + IA (U3-FLEX)
 --
--- Dépendances : knowledge_topic, tag, url
+-- Dépendances : knowledge_topic, knowledge_content_type, tag, url, i18n_key
 -- Auteur : Équipe Lyxal (via IA)
 -- Date : 2025
 -- ============================================================================
@@ -44,13 +44,15 @@ DEFINE FIELD IF NOT EXISTS identity ON TABLE knowledge_content
         REFERENCE ON DELETE REJECT
         COMMENT 'Type de contenu lié au référentiel dynamique knowledge_content_type';
 
-    DEFINE FIELD IF NOT EXISTS identity.title ON TABLE knowledge_content
-        TYPE option<string>
-        COMMENT 'Titre court du contenu (optionnel)';
+    DEFINE FIELD IF NOT EXISTS identity.title_key ON TABLE knowledge_content
+        TYPE option<record<i18n_key>>
+        REFERENCE ON DELETE REJECT
+        COMMENT 'Clé i18n : titre court du contenu (optionnel)';
 
-    DEFINE FIELD IF NOT EXISTS identity.description ON TABLE knowledge_content
-        TYPE option<string>
-        COMMENT 'Description courte du contenu (optionnel)';
+    DEFINE FIELD IF NOT EXISTS identity.description_key ON TABLE knowledge_content
+        TYPE option<record<i18n_key>>
+        REFERENCE ON DELETE REJECT
+        COMMENT 'Clé i18n : description courte du contenu (optionnel)';
 
 -- ============================================================================
 -- CONTENT : Contenu U3-FLEX (multi-format, tout optionnel)
@@ -61,26 +63,28 @@ DEFINE FIELD IF NOT EXISTS content ON TABLE knowledge_content
     COMMENT 'Bloc principal du contenu (texte, code, exemples, média, etc.)';
 
     -- Contenu texte principal (lisible humain + IA)
-    DEFINE FIELD IF NOT EXISTS content.text ON TABLE knowledge_content
-        TYPE option<string>
-        COMMENT 'Contenu textuel principal (explication lisible + structurée)';
+    DEFINE FIELD IF NOT EXISTS content.text_key ON TABLE knowledge_content
+        TYPE option<record<i18n_key>>
+        REFERENCE ON DELETE REJECT
+        COMMENT 'Clé i18n : contenu textuel principal (explication lisible + structurée)';
 
     -- Multi-code blocks (plusieurs langages possibles)
     DEFINE FIELD IF NOT EXISTS content.code ON TABLE knowledge_content
         TYPE option<array<object>>
         COMMENT 'Liste de blocs de code (multi-langage)';
 
-        DEFINE FIELD IF NOT EXISTS content.code.language ON TABLE knowledge_content
+        DEFINE FIELD IF NOT EXISTS content.code.*.language ON TABLE knowledge_content
             TYPE string
             COMMENT 'Langage du code (ex: "surql", "js", "json")';
 
-        DEFINE FIELD IF NOT EXISTS content.code.value ON TABLE knowledge_content
+        DEFINE FIELD IF NOT EXISTS content.code.*.value ON TABLE knowledge_content
             TYPE string
             COMMENT 'Code source';
 
-        DEFINE FIELD IF NOT EXISTS content.code.explanation ON TABLE knowledge_content
-            TYPE option<string>
-            COMMENT 'Explication du code (optionnelle)';
+        DEFINE FIELD IF NOT EXISTS content.code.*.explanation_key ON TABLE knowledge_content
+            TYPE option<record<i18n_key>>
+            REFERENCE ON DELETE REJECT
+            COMMENT 'Clé i18n : explication du code (optionnelle)';
 
     -- Prompt optimisé IA
     DEFINE FIELD IF NOT EXISTS content.prompt ON TABLE knowledge_content
@@ -92,10 +96,11 @@ DEFINE FIELD IF NOT EXISTS content ON TABLE knowledge_content
         TYPE option<object>
         COMMENT 'Contenu structuré JSON (schéma, données, config, etc.)';
 
-    -- Contexte, do/don’t, quand utiliser
-    DEFINE FIELD IF NOT EXISTS content.context ON TABLE knowledge_content
-        TYPE option<string>
-        COMMENT 'Contexte d\'utilisation, bonnes pratiques, do/don\'t, use cases';
+    -- Contexte, do/don't, quand utiliser
+    DEFINE FIELD IF NOT EXISTS content.context_key ON TABLE knowledge_content
+        TYPE option<record<i18n_key>>
+        REFERENCE ON DELETE REJECT
+        COMMENT 'Clé i18n : contexte d\'utilisation, bonnes pratiques, do/don\'t, use cases';
 
     -- Exemples corrects et incorrects
     DEFINE FIELD IF NOT EXISTS content.examples ON TABLE knowledge_content
@@ -106,11 +111,12 @@ DEFINE FIELD IF NOT EXISTS content ON TABLE knowledge_content
             TYPE option<array<object>>
             COMMENT 'Liste d\'exemples corrects';
 
-            DEFINE FIELD IF NOT EXISTS content.examples.correct.text ON TABLE knowledge_content
-                TYPE option<string>
-                COMMENT 'Explication de l\'exemple correct';
+            DEFINE FIELD IF NOT EXISTS content.examples.correct.*.text_key ON TABLE knowledge_content
+                TYPE option<record<i18n_key>>
+                REFERENCE ON DELETE REJECT
+                COMMENT 'Clé i18n : explication de l\'exemple correct';
 
-            DEFINE FIELD IF NOT EXISTS content.examples.correct.code ON TABLE knowledge_content
+            DEFINE FIELD IF NOT EXISTS content.examples.correct.*.code ON TABLE knowledge_content
                 TYPE option<string>
                 COMMENT 'Code correct (si applicable)';
 
@@ -118,11 +124,12 @@ DEFINE FIELD IF NOT EXISTS content ON TABLE knowledge_content
             TYPE option<array<object>>
             COMMENT 'Liste d\'exemples incorrects';
 
-            DEFINE FIELD IF NOT EXISTS content.examples.incorrect.text ON TABLE knowledge_content
-                TYPE option<string>
-                COMMENT 'Pourquoi cet exemple est incorrect';
+            DEFINE FIELD IF NOT EXISTS content.examples.incorrect.*.text_key ON TABLE knowledge_content
+                TYPE option<record<i18n_key>>
+                REFERENCE ON DELETE REJECT
+                COMMENT 'Clé i18n : pourquoi cet exemple est incorrect';
 
-            DEFINE FIELD IF NOT EXISTS content.examples.incorrect.code ON TABLE knowledge_content
+            DEFINE FIELD IF NOT EXISTS content.examples.incorrect.*.code ON TABLE knowledge_content
                 TYPE option<string>
                 COMMENT 'Code incorrect (si applicable)';
 
@@ -161,6 +168,34 @@ DEFINE FIELD IF NOT EXISTS metadata ON TABLE knowledge_content
         TYPE string
         DEFAULT "1.0.0"
         COMMENT 'Version fonctionnelle du contenu';
+
+    DEFINE FIELD IF NOT EXISTS metadata.quality_score ON TABLE knowledge_content
+        TYPE number
+        DEFAULT 0.5
+        ASSERT $value >= 0 AND $value <= 1
+        COMMENT 'Score de qualité du contenu (0 = faible qualité, 1 = excellente qualité). Utilisé par l\'IA pour filtrer et prioriser les contenus selon leur qualité. Valeur par défaut : 0.5 (qualité moyenne)';
+
+    -- ============================================================================
+    -- ANALYTICS : Métriques d'usage pour optimiser le système
+    -- ============================================================================
+
+    DEFINE FIELD IF NOT EXISTS metadata.analytics ON TABLE knowledge_content
+        TYPE object
+        COMMENT 'Métriques d\'usage et analytics pour optimiser le système';
+
+        DEFINE FIELD IF NOT EXISTS metadata.analytics.view_count ON TABLE knowledge_content
+            TYPE int
+            DEFAULT 0
+            COMMENT 'Nombre total de consultations/vues du contenu (humain + IA)';
+
+        DEFINE FIELD IF NOT EXISTS metadata.analytics.last_viewed ON TABLE knowledge_content
+            TYPE option<datetime>
+            COMMENT 'Date et heure de la dernière consultation du contenu';
+
+        DEFINE FIELD IF NOT EXISTS metadata.analytics.ai_usage_count ON TABLE knowledge_content
+            TYPE int
+            DEFAULT 0
+            COMMENT 'Nombre d\'utilisations spécifiques par des IA/agents IA';
 
 -- ============================================================================
 -- INDEXES

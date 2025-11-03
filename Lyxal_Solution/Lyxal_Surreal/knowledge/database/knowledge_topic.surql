@@ -1,9 +1,9 @@
 -- ============================================================================
--- Fichier : studio/database/knowledge/knowledge_topic.surql
+-- Fichier : knowledge/database/knowledge_topic.surql
 -- Module : knowledge
 -- TABLE : knowledge_topic
 -- Description : Sujets de connaissance (ex: DEFINE FIELD, DEFINE TABLE, etc.)
--- Dépendances : knowledge_domain, knowledge_category, knowledge_sub_category, knowledge_tag, knowledge_topic_keyword (relation)
+-- Dépendances : knowledge_domain, knowledge_category, knowledge_sub_category, tag, knowledge_topic_keyword (relation)
 -- Auteur : Équipe Lyxal (via AI Assistant)
 -- Date : 2025
 -- ============================================================================
@@ -38,8 +38,8 @@ DEFINE FIELD IF NOT EXISTS sub_category ON TABLE knowledge_topic
     COMMENT 'Sous-catégorie optionnelle du topic';
 
 DEFINE FIELD IF NOT EXISTS tags ON TABLE knowledge_topic
-    TYPE option<array<record<knowledge_tag>>>
-    COMMENT 'Tags associés au topic (référentiel structuré)';
+    TYPE option<array<record<tag>>>
+    COMMENT 'Tags associés au topic (référentiel structuré global tag)';
 
 -- NOTE: Les mots-clés libres sont gérés via la table relationnelle knowledge_topic_keyword
 
