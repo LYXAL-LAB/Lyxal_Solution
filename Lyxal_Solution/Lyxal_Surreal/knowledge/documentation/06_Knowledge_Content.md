@@ -128,6 +128,30 @@ Un topic = plusieurs contenus de nature différente (exemples, explications, cod
 - **Type** : `option<array<record<url>>>`
 - **Rôle** : Médias associés : images, PDF, vidéos, etc. via table `url`
 
+#### `content.references` - Références vers autres contenus
+- **Type** : `option<array<record<knowledge_content>>>`
+- **Rôle** : Références rapides vers d'autres contenus de connaissance liés
+- **Note** : Pour des relations structurées avec types spécifiques (prerequisite, dependency, etc.), utiliser la table `knowledge_content_relation`
+
+**Exemple** :
+```surql
+-- Ajouter des références à un contenu
+UPDATE knowledge_content:define-field-basics SET
+    content.references = [
+        knowledge_content:define-table-basics,
+        knowledge_content:define-field-advanced
+    ]
+WHERE id = knowledge_content:define-field-basics;
+
+-- Récupérer un contenu avec ses références
+SELECT 
+    id,
+    identity.slug,
+    content.references.*.identity.slug AS referenced_slugs
+FROM knowledge_content:define-field-basics
+FETCH content.references;
+```
+
 ---
 
 ### 🏷️ `tags` - Catégorisation
@@ -191,6 +215,53 @@ LIMIT 10;
 
 ---
 
+### 📚 Métadonnées d'entraînement IA (`metadata.training`)
+
+Les métadonnées d'entraînement permettent de gérer l'export de contenus pour le fine-tuning de modèles IA spécialisés.
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `metadata.training.included_in_training` | `bool` | Ce contenu est inclus dans les datasets d'entraînement IA (défaut: `false`) |
+| `metadata.training.training_versions` | `array<string>` | Versions de datasets où ce contenu a été utilisé (ex: `["v1.0", "v1.1"]`, défaut: `[]`) |
+| `metadata.training.training_weight` | `number` | Poids d'entraînement (1.0 = normal, 2.0 = double poids, 0.5 = demi-poids, défaut: `1.0`) |
+| `metadata.training.last_training_date` | `option<datetime>` | Date de la dernière utilisation dans un dataset d'entraînement |
+
+**Utilisation de `metadata.training`** :
+- **Export sélectif** : Filtrer uniquement les contenus marqués `included_in_training = true`
+- **Versioning** : Tracker quelles versions de datasets ont utilisé chaque contenu
+- **Pondération** : Utiliser `training_weight` pour donner plus d'importance à certains contenus (ex: exemples validés = 2.0, contenus génériques = 0.5)
+- **Suivi** : Enregistrer `last_training_date` pour savoir quand un contenu a été utilisé pour la dernière fois
+
+**Exemple de gestion des métadonnées d'entraînement** :
+```surql
+-- Marquer un contenu pour inclusion dans les datasets d'entraînement
+UPDATE knowledge_content:content_slug SET
+    metadata.training.included_in_training = true,
+    metadata.training.training_weight = 1.5
+WHERE id = knowledge_content:content_slug;
+
+-- Enregistrer qu'un contenu a été utilisé dans une version de dataset
+UPDATE knowledge_content:content_slug SET
+    metadata.training.training_versions = array::append(metadata.training.training_versions, "v1.0"),
+    metadata.training.last_training_date = time::now()
+WHERE id = knowledge_content:content_slug;
+
+-- Requête : Contenus éligibles pour entraînement (haute qualité + marqués pour entraînement)
+SELECT 
+    identity.slug,
+    identity.content_type->identity.code AS type,
+    metadata.quality_score,
+    metadata.training.training_weight,
+    metadata.training.training_versions
+FROM knowledge_content
+WHERE metadata.is_active = true
+    AND metadata.quality_score >= 0.7
+    AND metadata.training.included_in_training = true
+ORDER BY metadata.training.training_weight DESC, metadata.quality_score DESC;
+```
+
+---
+
 ## 🔍 Index
 
 | Index | Champs | Type | Rôle |
@@ -199,6 +270,7 @@ LIMIT 10;
 | `idx_content_type` | `identity.content_type` | Normal | Filtrage par type de contenu |
 | `idx_content_slug` | `identity.slug` | UNIQUE | Navigation UI/URL |
 | `idx_content_active` | `metadata.is_active` | Normal | Filtrage des contenus actifs |
+| `idx_content_training` | `metadata.training.included_in_training` | Normal | Filtrage pour export entraînement |
 
 ---
 
@@ -307,6 +379,10 @@ CREATE knowledge_content SET
     content.media = [
         url:guide_image_1,
         url:guide_pdf_1
+    ],
+    content.references = [
+        knowledge_content:define-table-basics,
+        knowledge_content:define-field-types
     ],
     tags = [tag:surreal, tag:definition],
     metadata.is_active = true,

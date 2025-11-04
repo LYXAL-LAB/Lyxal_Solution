@@ -28,6 +28,7 @@
 -- | • ETag automatique (UUID v7) pour détecter les changements
 -- | • Events pour régénération automatique de l'ETag et updated_at
 -- | • Support WebSocket via LIVE SELECT pour mise à jour UI en temps réel
+-- |   (voir: integrations/documentation/webhook/WEBSOCKET_CREDENTIALS.md)
 -- |
 -- =============================================================================================
 
@@ -87,11 +88,10 @@ DEFINE FIELD IF NOT EXISTS presentation.icon ON transmission_method
     REFERENCE ON DELETE REJECT
     COMMENT 'Icône représentative de la méthode.';
 
-DEFINE FIELD IF NOT EXISTS presentation.color_daisy ON transmission_method 
-    TYPE string
-    ASSERT $value IN ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error']
-    DEFAULT 'neutral'
-    COMMENT 'Classe de couleur DaisyUI (ex: success, warning, error).';
+DEFINE FIELD IF NOT EXISTS presentation.color_type ON transmission_method 
+    TYPE record<theme_color_type>
+    REFERENCE ON DELETE REJECT
+    COMMENT 'Type de couleur pour les tags/badges dans l\'UI (référence vers theme_color_type: primary, error, warning, etc.).';
 
 DEFINE FIELD IF NOT EXISTS presentation.display_order ON transmission_method 
     TYPE int
@@ -163,14 +163,15 @@ DEFINE FIELD IF NOT EXISTS metadata ON transmission_method
     COMMENT 'Métadonnées additionnelles pour extensions futures.';
 
 DEFINE FIELD IF NOT EXISTS etag ON transmission_method 
-    TYPE string
-    DEFAULT rand::uuid::v7()
+    TYPE uuid
+    READONLY
+    DEFAULT ALWAYS rand::uuid::v7()
     COMMENT 'ETag pour la détection de changements et synchronisation temps réel.';
 
 DEFINE FIELD IF NOT EXISTS created_at ON transmission_method 
     TYPE datetime
     READONLY
-    DEFAULT  time::now()
+    DEFAULT time::now()
     COMMENT 'Date de création.';
 
 DEFINE FIELD IF NOT EXISTS updated_at ON transmission_method 
@@ -191,72 +192,6 @@ DEFINE INDEX IF NOT EXISTS transmission_method_slug_idx ON transmission_method F
 
 DEFINE INDEX IF NOT EXISTS transmission_method_active_idx ON transmission_method FIELDS is_active
     COMMENT 'Filtrage rapide des méthodes actives.';
--- =====================================================
--- REQUÊTES UTILES POUR IA
--- =====================================================
-
--- Recommander une méthode selon le contexte
-/*
--- IA: Recommander pour un token sensible
-SELECT * FROM transmission_method 
-WHERE security_level >= 4 
-  AND is_active = true
-ORDER BY is_recommended DESC, security_level DESC;
-
--- IA: Vérifier si la méthode est adaptée
-SELECT 
-    name,
-    security_level,
-    security_concerns,
-    best_use_cases,
-    avoid_use_cases
-FROM transmission_method:query;
-
--- IA: Comparer deux méthodes
-SELECT 
-    name,
-    security_level,
-    security_concerns.length AS concern_count,
-    best_use_cases.length AS best_cases_count
-FROM transmission_method
-WHERE name IN ['header', 'query']
-ORDER BY security_level DESC;
-*/
-
--- =====================================================
--- REQUÊTES POUR UI DRIVEN
--- =====================================================
-
--- Générer un selector radio/dropdown
-/*
-SELECT 
-    id,
-    name,
-    display_name_i18n.*,
-    description_i18n.*,
-    icon.*,
-    ui_variant,
-    tooltip_i18n.*,
-    security_level,
-    is_recommended
-FROM transmission_method
-WHERE is_active = true
-ORDER BY display_order ASC;
-*/
-
--- Afficher des badges de sécurité
-/*
-SELECT 
-    name,
-    security_level,
-    CASE 
-        WHEN security_level >= 4 THEN 'Secure'
-        WHEN security_level >= 3 THEN 'Moderate'
-        ELSE 'Caution'
-    END AS security_badge
-FROM transmission_method
-WHERE is_active = true;
-*/
 
 -- =====================================================
 -- NOTES D'IMPLÉMENTATION
@@ -275,7 +210,7 @@ WHERE is_active = true;
 --    - Label depuis display_name_i18n
 --    - Icon depuis icon
 --    - Tooltip depuis tooltip_i18n
---    - Badge de couleur depuis ui_variant
+--    - Badge de couleur depuis color_type
 --    - Badge "Recommended" si is_recommended = true
 --
 -- Intégrité référentielle :

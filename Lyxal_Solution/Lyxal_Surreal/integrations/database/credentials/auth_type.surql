@@ -25,6 +25,7 @@
 -- | • ETag automatique (UUID v7) pour détecter les changements
 -- | • Events pour régénération automatique de l'ETag et updated_at
 -- | • Support WebSocket via LIVE SELECT pour mise à jour UI en temps réel
+-- |   (voir: integrations/documentation/webhook/WEBSOCKET_CREDENTIALS.md)
 -- | • Optimistic locking pour éviter les conflits de mise à jour
 -- |
 -- =============================================================================================
@@ -65,13 +66,11 @@ DEFINE FIELD IF NOT EXISTS identity ON auth_type
 DEFINE FIELD IF NOT EXISTS identity.display_name_i18n ON auth_type 
     TYPE record<i18n_key>
     REFERENCE ON DELETE REJECT
-    VALUE type::record('i18n_key', $value)
     COMMENT 'Clé i18n pour le nom affiché multilingue.';
 
 DEFINE FIELD IF NOT EXISTS identity.description_i18n ON auth_type 
     TYPE record<i18n_key>
     REFERENCE ON DELETE REJECT
-    VALUE type::record('i18n_key', $value)
     COMMENT 'Clé i18n pour la description multilingue.';
 
 -- =====================================================
@@ -83,20 +82,15 @@ DEFINE FIELD IF NOT EXISTS presentation ON auth_type
     COMMENT 'Éléments de présentation pour l\'interface utilisateur.';
 
 DEFINE FIELD IF NOT EXISTS presentation.icon ON auth_type 
-    TYPE record<url>
+    TYPE record<icon>
     REFERENCE ON DELETE REJECT
-    VALUE type::record('url', $value)
-    COMMENT 'URL de l\'icône : https://icons.lyxal.b-cdn.net/lucide/key.svg';
+    COMMENT 'Icône représentative du type d\'authentification.';
 
-DEFINE FIELD IF NOT EXISTS presentation.color ON auth_type 
-    TYPE string
-    ASSERT string::starts_with($value, '#') AND string::len($value) = 7
-    COMMENT 'Couleur hexadécimale (ex: #4285F4).';
-
-DEFINE FIELD IF NOT EXISTS presentation.color_daisy ON auth_type 
-    TYPE string
-    ASSERT $value IN ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error']
-    COMMENT 'Classe de couleur DaisyUI (ex: primary, secondary, accent, neutral, info, success, warning, error).';
+DEFINE FIELD IF NOT EXISTS presentation.color_type ON auth_type 
+    TYPE record<theme_color_type>
+    REFERENCE ON DELETE REJECT
+    COMMENT 'Type de couleur pour les tags/badges dans l\'UI 
+    (référence vers theme_color_type: primary, error, warning, etc.).';
 
 DEFINE FIELD IF NOT EXISTS presentation.tooltip ON auth_type 
     TYPE record<i18n_key>
@@ -264,205 +258,6 @@ DEFINE INDEX IF NOT EXISTS auth_type_active_idx ON auth_type FIELDS is_active
 -- Note: Les index sur sous-champs d'objets ne sont pas supportés par SurrealDB
 -- C'est pourquoi name, slug et is_active restent à plat pour permettre l'indexation
 
--- =====================================================
--- EXEMPLES D'UTILISATION
--- =====================================================
-
--- EXEMPLE 1: Insertion d'un type complet (avec i18n et références)
--- Note: etag et updated_at sont générés automatiquement par les EVENTs
-/*
-CREATE auth_type:oauth2 SET
-    name = "oauth2",
-    slug = "oauth2",
-    is_active = true,
-    identity = {
-        display_name_i18n: i18n_key:auth_type_oauth2_name,
-        description_i18n: i18n_key:auth_type_oauth2_description
-    },
-    presentation = {
-        icon: icon:shield_check,
-        color: "#4285F4",
-        color_daisy: "primary",
-        tooltip: i18n_key:auth_type_oauth2_tooltip,
-        display_order: 1
-    },
-    quality = {
-        security_level: 5,
-        popularity_score: 95,
-        implementation_complexity: 4
-    },
-    config = {
-        schema: {
-            fields: ["auth_url", "token_url", "scope"],
-            required: ["auth_url", "token_url"]
-        },
-        template: {
-            grant_type: "authorization_code"
-        },
-        credential_fields_template: [
-            {name: "client_id", display_name: "Client ID", type: "string", is_secret: false},
-            {name: "client_secret", display_name: "Client Secret", type: "string", is_secret: true}
-        ]
-    },
-    http = {
-        typical_headers: { "Authorization": "Bearer {access_token}" },
-        transmission_method: transmission_method:header
-    },
-    behavior = {
-        supports_refresh: true,
-        requires_user_interaction: true,
-        typical_validity_duration: 3600
-    },
-    documentation = {
-        url: url:oauth2_official_doc,
-        example_providers: [provider:google, provider:facebook, provider:github],
-        use_cases_i18n: [
-            i18n_key:auth_type_oauth2_usecase_user_auth,
-            i18n_key:auth_type_oauth2_usecase_third_party
-        ],
-        advantages_i18n: [
-            i18n_key:auth_type_oauth2_advantage_secure,
-            i18n_key:auth_type_oauth2_advantage_standard
-        ],
-        disadvantages_i18n: [
-            i18n_key:auth_type_oauth2_disadvantage_complex
-        ]
-    };
-
--- Retourne automatiquement:
--- {
---   id: auth_type:oauth2,
---   name: "oauth2",
---   ...
---   etag: "01928abc-def0-7890-1234-567890abcdef",  // ✨ Généré automatiquement
---   created_at: "2025-10-28T14:30:00Z",
---   updated_at: "2025-10-28T14:30:00Z"
--- }
-*/
-
--- EXEMPLE 2: Requête UI - Récupérer présentation avec traductions
-/*
-SELECT 
-    name,
-    identity.display_name_i18n.*,
-    identity.description_i18n.*,
-    presentation,
-    quality.security_level,
-    quality.popularity_score
-FROM auth_type 
-WHERE is_active = true
-ORDER BY presentation.display_order ASC, quality.popularity_score DESC;
-*/
-
--- EXEMPLE 3: Requête IA - Documentation complète avec providers
-/*
-SELECT 
-    name,
-    identity,
-    documentation.url.*,
-    documentation.example_providers.*.name AS provider_names,
-    documentation.use_cases_i18n.*,
-    documentation.advantages_i18n.*,
-    documentation.disadvantages_i18n.*,
-    quality,
-    behavior
-FROM auth_type
-WHERE name = "oauth2";
-*/
-
--- EXEMPLE 4: Requête développeur - Configuration technique avec métadonnées
-/*
-SELECT 
-    name,
-    config,
-    http.typical_headers,
-    http.transmission_method.*,  -- Récupère toutes les métadonnées de transmission_method
-    behavior
-FROM auth_type
-WHERE quality.implementation_complexity <= 2;
-*/
-
--- EXEMPLE 4b: IA récupère les recommandations de sécurité
-/*
-SELECT 
-    name,
-    identity.display_name_i18n.* AS display_name,
-    http.transmission_method.identity.display_name_i18n.* AS method_name,
-    http.transmission_method.quality.security_level AS method_security,
-    http.transmission_method.quality.security_concerns_i18n.* AS method_concerns,
-    quality.security_level AS auth_security
-FROM auth_type:oauth2;
-
--- Retourne:
--- {
---   name: "oauth2",
---   display_name: { fr: "OAuth 2.0", en: "OAuth 2.0", ... },
---   method_name: { fr: "En-tête HTTP", en: "HTTP Header", ... },
---   method_security: 4,
---   method_concerns: [{ fr: "Peut être modifié...", en: "Can be modified...", ... }],
---   auth_security: 5
--- }
--- L'IA peut maintenant raisonner: "OAuth2 est très sécurisé (5) et utilise headers (4)"
-*/
-
--- EXEMPLE 5: Requête avec JOIN pour récupérer les traductions complètes
-/*
-SELECT 
-    auth_type.*,
-    identity.description_i18n.translations AS description_translations,
-    presentation.tooltip.translations AS tooltip_translations
-FROM auth_type
-WHERE is_active = true;
-*/
-
--- EXEMPLE 6: Utilisation de l'ETag pour détecter les changements
-/*
--- Récupérer avec ETag
-SELECT *, etag FROM auth_type:oauth2;
--- Retourne: { ..., etag: "01928abc-def0-7890-1234-567890abcdef" }
-
--- Vérifier si changé avant mise à jour
-LET $current = SELECT etag FROM auth_type:oauth2;
-IF $current.etag = $client_etag {
-    -- Pas de changement, on peut utiliser le cache
-    RETURN { cached: true };
-} ELSE {
-    -- Changement détecté, renvoyer les nouvelles données
-    RETURN SELECT * FROM auth_type:oauth2;
-};
-*/
-
--- =====================================================
--- WEBSOCKET : Écoute des changements en temps réel
--- =====================================================
---
--- Côté serveur (SurrealDB) :
--- LIVE SELECT * FROM auth_type WHERE is_active = true;
---
--- Côté client (JavaScript) :
--- ws.on('message', (data) => {
---   if (data.action === 'CREATE' || data.action === 'UPDATE') {
---     console.log('Auth type modifié:', data.result);
---     console.log('Nouveau ETag:', data.result.etag);
---     // Mettre à jour le cache local et l'UI
---     updateCache(data.result);
---     refreshUI(data.result);
---   }
--- });
---
--- Flow de mise à jour :
--- 1. Client A écoute les changements via LIVE SELECT
--- 2. Client B modifie auth_type:oauth2
--- 3. EVENT génère un nouvel ETag automatiquement
--- 4. Client A reçoit la notification avec le nouvel ETag
--- 5. Client A met à jour son UI en temps réel
---
--- Avantages :
--- • Détection instantanée des changements
--- • Évite les conflits de mise à jour (optimistic locking)
--- • Cache intelligent côté client
--- • Synchronisation multi-utilisateurs
---
 -- =====================================================
 -- NOTES D'IMPLÉMENTATION
 -- =====================================================

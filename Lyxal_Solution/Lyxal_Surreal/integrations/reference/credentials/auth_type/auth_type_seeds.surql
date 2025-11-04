@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : auth_type_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > auth_type
@@ -42,8 +42,7 @@ CREATE auth_type:oauth2 SET
     -- Presentation (UI)
     presentation = {
         icon: icon:shield_check,
-        color: "#4285F4",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip: i18n_key:auth_type_oauth2_tooltip,
         display_order: 1
     },
@@ -124,8 +123,7 @@ CREATE auth_type:oauth1 SET
     
     presentation = {
         icon: icon:shield,
-        color: "#F4B400",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip: i18n_key:auth_type_oauth1_tooltip,
         display_order: 7
     },
@@ -196,8 +194,7 @@ CREATE auth_type:api_key SET
     
     presentation = {
         icon: icon:key,
-        color: "#34A853",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip: i18n_key:auth_type_api_key_tooltip,
         display_order: 2
     },
@@ -267,8 +264,7 @@ CREATE auth_type:basic_auth SET
     
     presentation = {
         icon: icon:lock_open,
-        color: "#EA4335",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip: i18n_key:auth_type_basic_auth_tooltip,
         display_order: 6
     },
@@ -336,8 +332,7 @@ CREATE auth_type:bearer_token SET
     
     presentation = {
         icon: icon:badge_check,
-        color: "#4285F4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip: i18n_key:auth_type_bearer_token_tooltip,
         display_order: 3
     },
@@ -407,8 +402,7 @@ CREATE auth_type:digest_auth SET
     
     presentation = {
         icon: icon:fingerprint,
-        color: "#9AA0A6",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip: i18n_key:auth_type_digest_auth_tooltip,
         display_order: 8
     },
@@ -550,8 +544,7 @@ CREATE auth_type:query_auth SET
     
     presentation = {
         icon: icon:link,
-        color: "#EA4335",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip: i18n_key:auth_type_query_auth_tooltip,
         display_order: 9
     },
@@ -619,8 +612,7 @@ CREATE auth_type:custom SET
     
     presentation = {
         icon: icon:code,
-        color: "#9AA0A6",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip: i18n_key:auth_type_custom_tooltip,
         display_order: 10
     },

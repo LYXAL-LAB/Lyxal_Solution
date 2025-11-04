@@ -74,9 +74,9 @@ DEFINE FIELD presentation ON service TYPE object
 DEFINE FIELD presentation.icon ON service TYPE option<record<logo_brand>>
     COMMENT "Référence au logo du service dans la table logo_brand";
 
-DEFINE FIELD presentation.color ON service TYPE option<string>
-    COMMENT "Couleur principale du service en hexadécimal (ex: '#34A853' pour Google Sheets)"
-    ASSERT $value == NONE OR string::starts_with($value, '#');
+DEFINE FIELD presentation.color_type ON service TYPE option<record<theme_color_type>>
+    COMMENT "Type de couleur pour les tags/badges dans l'UI (référence vers theme_color_type: primary, error, warning, etc.)"
+    REFERENCE ON DELETE REJECT;
 
 DEFINE FIELD presentation.display_order ON service TYPE int DEFAULT 0
     COMMENT "Ordre d'affichage dans les listes (0 = plus haut)";

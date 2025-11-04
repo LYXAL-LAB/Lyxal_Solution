@@ -89,6 +89,13 @@ DEFINE FUNCTION fn::knowledge_search_keywords_for_ai(
         FROM $results_raw
     );
     
+    -- Tracking automatique : incrémenter les compteurs pour le meilleur contenu de chaque résultat (utilisation IA)
+    FOR $result_item IN $results {
+        IF $result_item.best_content != NONE AND $result_item.best_content.id != NONE {
+            LET $track_result = (SELECT * FROM fn::knowledge_track_content_access($result_item.best_content.id, true));
+        };
+    };
+    
     RETURN {
         success: true,
         results: $results,

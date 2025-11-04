@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch5_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:github_api SET
     
     presentation = {
         icon: icon:github,
-        color: "#181717",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_github_api_tooltip,
         display_order: 400
     },
@@ -74,8 +73,7 @@ CREATE credential_type:github_oauth2_api SET
     
     presentation = {
         icon: icon:github,
-        color: "#181717",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_github_oauth2_api_tooltip,
         display_order: 401
     },
@@ -119,8 +117,7 @@ CREATE credential_type:gitlab_api SET
     
     presentation = {
         icon: icon:gitlab,
-        color: "#FC6D26",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_gitlab_api_tooltip,
         display_order: 402
     },
@@ -178,8 +175,7 @@ CREATE credential_type:gitlab_oauth2_api SET
     
     presentation = {
         icon: icon:gitlab,
-        color: "#FC6D26",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_gitlab_oauth2_api_tooltip,
         display_order: 403
     },
@@ -234,8 +230,7 @@ CREATE credential_type:jira_software_cloud_api SET
     
     presentation = {
         icon: icon:jira,
-        color: "#0052CC",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_jira_software_cloud_api_tooltip,
         display_order: 410
     },
@@ -300,8 +295,7 @@ CREATE credential_type:jira_software_server_api SET
     
     presentation = {
         icon: icon:jira,
-        color: "#0052CC",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_jira_software_server_api_tooltip,
         display_order: 411
     },
@@ -366,8 +360,7 @@ CREATE credential_type:jira_software_server_pat_api SET
     
     presentation = {
         icon: icon:jira,
-        color: "#0052CC",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_jira_software_server_pat_api_tooltip,
         display_order: 412
     },
@@ -425,8 +418,7 @@ CREATE credential_type:bitbucket_api SET
     
     presentation = {
         icon: icon:bitbucket,
-        color: "#0052CC",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_bitbucket_api_tooltip,
         display_order: 420
     },
@@ -481,8 +473,7 @@ CREATE credential_type:bitbucket_access_token_api SET
     
     presentation = {
         icon: icon:bitbucket,
-        color: "#0052CC",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_bitbucket_access_token_api_tooltip,
         display_order: 421
     },
@@ -529,8 +520,7 @@ CREATE credential_type:jenkins_api SET
     
     presentation = {
         icon: icon:jenkins,
-        color: "#D24939",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_jenkins_api_tooltip,
         display_order: 430
     },
@@ -595,8 +585,7 @@ CREATE credential_type:circleci_api SET
     
     presentation = {
         icon: icon:circleci,
-        color: "#343434",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_circleci_api_tooltip,
         display_order: 431
     },
@@ -643,8 +632,7 @@ CREATE credential_type:travis_ci_api SET
     
     presentation = {
         icon: icon:travis_ci,
-        color: "#3EAAAF",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_travis_ci_api_tooltip,
         display_order: 432
     },

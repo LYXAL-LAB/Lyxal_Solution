@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch19_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:airtop_api SET
     
     presentation = {
         icon: icon:airtop,
-        color: "#4A90E2",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_airtop_api_tooltip,
         display_order: 1080
     },
@@ -75,8 +74,7 @@ CREATE credential_type:alien_vault_api SET
     
     presentation = {
         icon: icon:alienvault,
-        color: "#FF6B35",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_alien_vault_api_tooltip,
         display_order: 1081
     },
@@ -177,8 +175,7 @@ CREATE credential_type:azure_storage_shared_key_api SET
     
     presentation = {
         icon: icon:azure,
-        color: "#0078D4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_azure_storage_shared_key_api_tooltip,
         display_order: 1083
     },
@@ -280,8 +277,7 @@ CREATE credential_type:bannerbear_api SET
     
     presentation = {
         icon: icon:bannerbear,
-        color: "#FF6B6B",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_bannerbear_api_tooltip,
         display_order: 1085
     },
@@ -330,8 +326,7 @@ CREATE credential_type:beeminder_api SET
     
     presentation = {
         icon: icon:beeminder,
-        color: "#FFA500",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_beeminder_api_tooltip,
         display_order: 1086
     },
@@ -425,8 +420,7 @@ CREATE credential_type:bitly_api SET
     
     presentation = {
         icon: icon:bitly,
-        color: "#EE6123",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_bitly_api_tooltip,
         display_order: 1088
     },
@@ -520,8 +514,7 @@ CREATE credential_type:bitwarden_api SET
     
     presentation = {
         icon: icon:bitwarden,
-        color: "#175DDC",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_bitwarden_api_tooltip,
         display_order: 1090
     },

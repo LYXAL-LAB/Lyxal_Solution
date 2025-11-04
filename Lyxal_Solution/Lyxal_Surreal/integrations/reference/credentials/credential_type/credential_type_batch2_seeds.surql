@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch2_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -27,8 +27,7 @@ CREATE credential_type:google_sheets_oauth2_api SET
     
     presentation = {
         icon: icon:google_sheets,
-        color: "#34A853",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_google_sheets_oauth2_api_tooltip,
         display_order: 100
     },
@@ -73,8 +72,7 @@ CREATE credential_type:google_drive_oauth2_api SET
     
     presentation = {
         icon: icon:google_drive,
-        color: "#4285F4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_google_drive_oauth2_api_tooltip,
         display_order: 101
     },
@@ -119,8 +117,7 @@ CREATE credential_type:google_calendar_oauth2_api SET
     
     presentation = {
         icon: icon:google_calendar,
-        color: "#EA4335",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_google_calendar_oauth2_api_tooltip,
         display_order: 102
     },
@@ -165,8 +162,7 @@ CREATE credential_type:google_docs_oauth2_api SET
     
     presentation = {
         icon: icon:google_docs,
-        color: "#4285F4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_google_docs_oauth2_api_tooltip,
         display_order: 103
     },
@@ -211,8 +207,7 @@ CREATE credential_type:google_slides_oauth2_api SET
     
     presentation = {
         icon: icon:google_slides,
-        color: "#F4B400",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_google_slides_oauth2_api_tooltip,
         display_order: 104
     },
@@ -257,8 +252,7 @@ CREATE credential_type:google_contacts_oauth2_api SET
     
     presentation = {
         icon: icon:google_contacts,
-        color: "#34A853",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_google_contacts_oauth2_api_tooltip,
         display_order: 105
     },
@@ -303,8 +297,7 @@ CREATE credential_type:google_tasks_oauth2_api SET
     
     presentation = {
         icon: icon:google_tasks,
-        color: "#4285F4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_google_tasks_oauth2_api_tooltip,
         display_order: 106
     },
@@ -349,8 +342,7 @@ CREATE credential_type:google_oauth2_api SET
     
     presentation = {
         icon: icon:google,
-        color: "#4285F4",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_google_oauth2_api_tooltip,
         display_order: 107
     },
@@ -420,8 +412,7 @@ CREATE credential_type:google_api SET
     
     presentation = {
         icon: icon:google_cloud,
-        color: "#4285F4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_google_api_tooltip,
         display_order: 108
     },
@@ -478,8 +469,7 @@ CREATE credential_type:google_analytics_oauth2_api SET
     
     presentation = {
         icon: icon:google_analytics,
-        color: "#F4B400",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_google_analytics_oauth2_api_tooltip,
         display_order: 110
     },
@@ -524,8 +514,7 @@ CREATE credential_type:google_ads_oauth2_api SET
     
     presentation = {
         icon: icon:google_ads,
-        color: "#34A853",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_google_ads_oauth2_api_tooltip,
         display_order: 111
     },
@@ -570,8 +559,7 @@ CREATE credential_type:google_chat_oauth2_api SET
     
     presentation = {
         icon: icon:google_chat,
-        color: "#34A853",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_google_chat_oauth2_api_tooltip,
         display_order: 112
     },
@@ -617,8 +605,7 @@ CREATE credential_type:google_translate_oauth2_api SET
     
     presentation = {
         icon: icon:google_translate,
-        color: "#4285F4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_google_translate_oauth2_api_tooltip,
         display_order: 113
     },
@@ -663,8 +650,7 @@ CREATE credential_type:google_business_profile_oauth2_api SET
     
     presentation = {
         icon: icon:google_business,
-        color: "#EA4335",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_google_business_profile_oauth2_api_tooltip,
         display_order: 114
     },
@@ -710,8 +696,7 @@ CREATE credential_type:google_sheets_trigger_oauth2_api SET
     
     presentation = {
         icon: icon:google_sheets,
-        color: "#34A853",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_google_sheets_trigger_oauth2_api_tooltip,
         display_order: 115
     },
@@ -757,8 +742,7 @@ CREATE credential_type:google_bigquery_oauth2_api SET
     
     presentation = {
         icon: icon:google_bigquery,
-        color: "#4285F4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_google_bigquery_oauth2_api_tooltip,
         display_order: 120
     },
@@ -804,8 +788,7 @@ CREATE credential_type:google_cloud_storage_oauth2_api SET
     
     presentation = {
         icon: icon:google_cloud_storage,
-        color: "#34A853",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_google_cloud_storage_oauth2_api_tooltip,
         display_order: 121
     },
@@ -851,8 +834,7 @@ CREATE credential_type:google_cloud_natural_language_oauth2_api SET
     
     presentation = {
         icon: icon:google_cloud,
-        color: "#4285F4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_google_cloud_natural_language_oauth2_api_tooltip,
         display_order: 122
     },
@@ -898,8 +880,7 @@ CREATE credential_type:google_perspective_oauth2_api SET
     
     presentation = {
         icon: icon:google_perspective,
-        color: "#EA4335",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_google_perspective_oauth2_api_tooltip,
         display_order: 123
     },
@@ -945,8 +926,7 @@ CREATE credential_type:google_firebase_cloud_firestore_oauth2_api SET
     
     presentation = {
         icon: icon:firebase,
-        color: "#F4B400",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_google_firebase_cloud_firestore_oauth2_api_tooltip,
         display_order: 130
     },
@@ -992,8 +972,7 @@ CREATE credential_type:google_firebase_realtime_database_oauth2_api SET
     
     presentation = {
         icon: icon:firebase,
-        color: "#F4B400",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_google_firebase_realtime_database_oauth2_api_tooltip,
         display_order: 131
     },
@@ -1039,8 +1018,7 @@ CREATE credential_type:google_books_oauth2_api SET
     
     presentation = {
         icon: icon:google_books,
-        color: "#4285F4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_google_books_oauth2_api_tooltip,
         display_order: 140
     },

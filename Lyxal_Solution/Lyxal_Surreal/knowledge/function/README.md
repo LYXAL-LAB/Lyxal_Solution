@@ -338,11 +338,44 @@ Le dossier `enrichment/` contient des fonctions pour enrichir automatiquement le
 
 ---
 
+## 📊 Fonctions Analytics et Métriques (Sous-dossier `analytics/`)
+
+Le dossier `analytics/` contient des fonctions pour analyser les métriques d'usage et générer des statistiques pour le dashboard :
+
+- `fn::knowledge_analytics_get_global_stats()` - Statistiques globales du système
+- `fn::knowledge_analytics_get_domain_stats()` - Statistiques détaillées par domaine
+- `fn::knowledge_analytics_get_topic_stats()` - Statistiques détaillées par topic
+- `fn::knowledge_analytics_get_top_contents()` - Top contenus les plus consultés avec filtres
+- `fn::knowledge_analytics_get_unused_contents()` - Contenus jamais consultés (potentiellement obsolètes)
+
+**Note** : Ces fonctions permettent de créer un dashboard complet avec vue d'ensemble, analyse par domaine/topic, identification des contenus populaires et obsolètes (v2 – IA-Ready).
+
+📚 **Documentation complète** : Voir `analytics/README.md`
+
+---
+
+## 🎓 Fonctions d'Export pour Entraînement IA (Sous-dossier `training/`)
+
+Le dossier `training/` contient des fonctions pour exporter les contenus de connaissance au format structuré pour l'entraînement de modèles IA :
+
+- `fn::knowledge_export_domain_for_training()` - Exporte les contenus d'un domaine pour entraînement (format JSONL-ready)
+- `fn::knowledge_export_create_dataset()` - Crée un export avec versioning automatique et tracking
+- `fn::knowledge_export_list_datasets()` - Liste les exports avec filtres optionnels
+- `fn::knowledge_export_auto_version()` - Génère automatiquement la prochaine version pour un domaine
+
+**Note** : Ces fonctions permettent de générer des datasets structurés pour fine-tuning de modèles IA spécialisés, avec filtrage par qualité, pondération, versioning automatique et tracking complet (v3 – Self-Learning).
+
+📚 **Documentation complète** : Voir `training/README.md`
+
+---
+
 ## 📚 Références
 
 - **Fonctions de tracking** : `tracking/README.md`
 - **Fonctions de détection de gaps** : `gap_detection/README.md`
 - **Fonctions d'enrichissement** : `enrichment/README.md`
+- **Fonctions analytics** : `analytics/README.md`
+- **Fonctions d'export entraînement** : `training/README.md`
 - **Guide d'utilisation IA** : `📄 09_How_AI_Should_Use_Knowledge.md`
 - **Requêtes utiles** : `📄 10_Useful_Queries.md`
 - **Schéma complet** : `SCHEMA_Knowledge_System.md`

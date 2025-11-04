@@ -90,10 +90,10 @@ DEFINE FIELD IF NOT EXISTS presentation.icon ON error_mapping
     VALUE {IF $value !=NONE {type::record('icon',$value)} ELSE {NONE }}
     COMMENT 'Icône à afficher (ex: alert-circle, lock, server)';
 
-DEFINE FIELD IF NOT EXISTS presentation.color ON error_mapping 
-    TYPE option<string>
-    ASSERT $value == NONE OR string::starts_with($value, '#')
-    COMMENT 'Couleur de l\'erreur (hexadécimale)';
+DEFINE FIELD IF NOT EXISTS presentation.color_type ON error_mapping 
+    TYPE option<record<theme_color_type>>
+    REFERENCE ON DELETE REJECT
+    COMMENT 'Type de couleur pour les tags/badges dans l\'UI (référence vers theme_color_type: primary, error, warning, etc.).';
 
 -- ==================================================
 -- GROUPE: CONFIG

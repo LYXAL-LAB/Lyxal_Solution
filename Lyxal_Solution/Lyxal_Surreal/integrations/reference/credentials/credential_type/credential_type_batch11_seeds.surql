@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch11_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:drift_api SET
     
     presentation = {
         icon: icon:drift,
-        color: "#2D3E50",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_drift_api_tooltip,
         display_order: 870
     },
@@ -73,8 +72,7 @@ CREATE credential_type:drift_oauth2_api SET
     
     presentation = {
         icon: icon:drift,
-        color: "#2D3E50",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_drift_oauth2_api_tooltip,
         display_order: 871
     },
@@ -116,8 +114,7 @@ CREATE credential_type:freshdesk_api SET
     
     presentation = {
         icon: icon:freshdesk,
-        color: "#27AE60",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_freshdesk_api_tooltip,
         display_order: 880
     },
@@ -173,8 +170,7 @@ CREATE credential_type:helpscout_oauth2_api SET
     
     presentation = {
         icon: icon:helpscout,
-        color: "#1292EE",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_helpscout_oauth2_api_tooltip,
         display_order: 881
     },
@@ -216,8 +212,7 @@ CREATE credential_type:intercom_api SET
     
     presentation = {
         icon: icon:intercom,
-        color: "#1F8DED",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_intercom_api_tooltip,
         display_order: 890
     },
@@ -264,8 +259,7 @@ CREATE credential_type:segment_api SET
     
     presentation = {
         icon: icon:segment,
-        color: "#52BD94",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_segment_api_tooltip,
         display_order: 891
     },
@@ -313,8 +307,7 @@ CREATE credential_type:zendesk_api SET
     
     presentation = {
         icon: icon:zendesk,
-        color: "#03363D",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_zendesk_api_tooltip,
         display_order: 900
     },
@@ -376,8 +369,7 @@ CREATE credential_type:zendesk_oauth2_api SET
     
     presentation = {
         icon: icon:zendesk,
-        color: "#03363D",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_zendesk_oauth2_api_tooltip,
         display_order: 901
     },
@@ -429,8 +421,7 @@ CREATE credential_type:mailgun_api SET
     
     presentation = {
         icon: icon:mailgun,
-        color: "#F06B66",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_mailgun_api_tooltip,
         display_order: 910
     },
@@ -490,8 +481,7 @@ CREATE credential_type:postmark_api SET
     
     presentation = {
         icon: icon:postmark,
-        color: "#FFCC00",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_postmark_api_tooltip,
         display_order: 911
     },
@@ -539,8 +529,7 @@ CREATE credential_type:sendgrid_api SET
     
     presentation = {
         icon: icon:sendgrid,
-        color: "#1A82E2",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_sendgrid_api_tooltip,
         display_order: 912
     },

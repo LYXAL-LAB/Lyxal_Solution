@@ -138,6 +138,11 @@ DEFINE FIELD IF NOT EXISTS content ON TABLE knowledge_content
         TYPE option<array<record<url>>>
         COMMENT 'Médias associés : images, pdf, vidéos, etc. via record<url>';
 
+    -- Références vers d'autres contenus
+    DEFINE FIELD IF NOT EXISTS content.references ON TABLE knowledge_content
+        TYPE option<array<record<knowledge_content>>>
+        COMMENT 'Références rapides vers d\'autres contenus de connaissance liés (pour relations simples). Pour relations structurées avec types spécifiques, utiliser la table knowledge_content_relation';
+
 -- ============================================================================
 -- CATEGORIZATION : Tags (référentiel structuré)
 -- ============================================================================
@@ -197,6 +202,34 @@ DEFINE FIELD IF NOT EXISTS metadata ON TABLE knowledge_content
             DEFAULT 0
             COMMENT 'Nombre d\'utilisations spécifiques par des IA/agents IA';
 
+    -- ============================================================================
+    -- TRAINING : Métadonnées d'entraînement IA pour export et fine-tuning
+    -- ============================================================================
+
+    DEFINE FIELD IF NOT EXISTS metadata.training ON TABLE knowledge_content
+        TYPE object
+        COMMENT 'Métadonnées d\'entraînement IA pour export et fine-tuning de modèles spécialisés';
+
+        DEFINE FIELD IF NOT EXISTS metadata.training.included_in_training ON TABLE knowledge_content
+            TYPE bool
+            DEFAULT false
+            COMMENT 'Ce contenu est inclus dans les datasets d\'entraînement IA';
+
+        DEFINE FIELD IF NOT EXISTS metadata.training.training_versions ON TABLE knowledge_content
+            TYPE array<string>
+            DEFAULT []
+            COMMENT 'Versions de datasets d\'entraînement où ce contenu a été utilisé (ex: ["v1.0", "v1.1"])';
+
+        DEFINE FIELD IF NOT EXISTS metadata.training.training_weight ON TABLE knowledge_content
+            TYPE number
+            DEFAULT 1.0
+            ASSERT $value >= 0 AND $value <= 2
+            COMMENT 'Poids d\'entraînement (1.0 = normal, 2.0 = double poids, 0.5 = demi-poids). Permet de pondérer l\'importance du contenu dans les datasets';
+
+        DEFINE FIELD IF NOT EXISTS metadata.training.last_training_date ON TABLE knowledge_content
+            TYPE option<datetime>
+            COMMENT 'Date de la dernière utilisation de ce contenu dans un dataset d\'entraînement';
+
 -- ============================================================================
 -- INDEXES
 -- ============================================================================
@@ -216,3 +249,7 @@ DEFINE INDEX idx_content_slug ON knowledge_content
 DEFINE INDEX idx_content_active ON knowledge_content 
     FIELDS metadata.is_active
     COMMENT 'Index sur le statut actif';
+
+DEFINE INDEX idx_content_training ON knowledge_content 
+    FIELDS metadata.training.included_in_training
+    COMMENT 'Index sur l\'inclusion dans les datasets d\'entraînement';

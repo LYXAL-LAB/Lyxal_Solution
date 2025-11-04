@@ -94,6 +94,12 @@ DEFINE FUNCTION fn::knowledge_get_topic_bundle_for_ai(
         FROM $contents_sorted
         FETCH identity.content_type
     );
+    
+    -- Tracking automatique : incrémenter les compteurs pour chaque contenu retourné (utilisation IA)
+    FOR $content_item IN $contents {
+        LET $track_result = (SELECT * FROM fn::knowledge_track_content_access($content_item.id, true));
+    };
+    
     RETURN {
         success: true,
         topic: {

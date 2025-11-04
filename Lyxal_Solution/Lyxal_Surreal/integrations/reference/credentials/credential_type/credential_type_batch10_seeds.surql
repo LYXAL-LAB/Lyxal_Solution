@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch10_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:airtable_api SET
     
     presentation = {
         icon: icon:airtable,
-        color: "#18BFFF",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_airtable_api_tooltip,
         display_order: 800
     },
@@ -117,8 +116,7 @@ CREATE credential_type:airtable_token_api SET
     
     presentation = {
         icon: icon:airtable,
-        color: "#18BFFF",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_airtable_token_api_tooltip,
         display_order: 802
     },
@@ -166,8 +164,7 @@ CREATE credential_type:asana_api SET
     
     presentation = {
         icon: icon:asana,
-        color: "#F06A6A",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_asana_api_tooltip,
         display_order: 810
     },
@@ -212,8 +209,7 @@ CREATE credential_type:asana_oauth2_api SET
     
     presentation = {
         icon: icon:asana,
-        color: "#F06A6A",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_asana_oauth2_api_tooltip,
         display_order: 811
     },
@@ -301,8 +297,7 @@ CREATE credential_type:clickup_oauth2_api SET
     
     presentation = {
         icon: icon:clickup,
-        color: "#7B68EE",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_clickup_oauth2_api_tooltip,
         display_order: 821
     },
@@ -344,8 +339,7 @@ CREATE credential_type:monday_com_api SET
     
     presentation = {
         icon: icon:monday,
-        color: "#FF3D57",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_monday_com_api_tooltip,
         display_order: 830
     },
@@ -392,8 +386,7 @@ CREATE credential_type:monday_com_oauth2_api SET
     
     presentation = {
         icon: icon:monday,
-        color: "#FF3D57",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_monday_com_oauth2_api_tooltip,
         display_order: 831
     },
@@ -435,8 +428,7 @@ CREATE credential_type:notion_api SET
     
     presentation = {
         icon: icon:notion,
-        color: "#000000",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_notion_api_tooltip,
         display_order: 840
     },
@@ -483,8 +475,7 @@ CREATE credential_type:notion_oauth2_api SET
     
     presentation = {
         icon: icon:notion,
-        color: "#000000",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_notion_oauth2_api_tooltip,
         display_order: 841
     },
@@ -528,8 +519,7 @@ CREATE credential_type:todoist_api SET
     
     presentation = {
         icon: icon:todoist,
-        color: "#E44332",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_todoist_api_tooltip,
         display_order: 850
     },
@@ -574,8 +564,7 @@ CREATE credential_type:todoist_oauth2_api SET
     
     presentation = {
         icon: icon:todoist,
-        color: "#E44332",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_todoist_oauth2_api_tooltip,
         display_order: 851
     },
@@ -617,8 +606,7 @@ CREATE credential_type:trello_api SET
     
     presentation = {
         icon: icon:trello,
-        color: "#0079BF",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_trello_api_tooltip,
         display_order: 860
     },

@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch17_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:splunk_api SET
     
     presentation = {
         icon: icon:splunk,
-        color: "#000000",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_splunk_api_tooltip,
         display_order: 1040
     },
@@ -144,8 +143,7 @@ CREATE credential_type:pagerduty_api SET
     
     presentation = {
         icon: icon:pagerduty,
-        color: "#06AC38",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_pagerduty_api_tooltip,
         display_order: 1042
     },
@@ -195,8 +193,7 @@ CREATE credential_type:pagerduty_oauth2_api SET
     
     presentation = {
         icon: icon:pagerduty,
-        color: "#06AC38",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_pagerduty_oauth2_api_tooltip,
         display_order: 1043
     },
@@ -240,8 +237,7 @@ CREATE credential_type:openweathermap_api SET
     
     presentation = {
         icon: icon:openweathermap,
-        color: "#EB6E4B",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_openweathermap_api_tooltip,
         display_order: 1044
     },
@@ -290,8 +286,7 @@ CREATE credential_type:nasa_api SET
     
     presentation = {
         icon: icon:nasa,
-        color: "#0B3D91",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_nasa_api_tooltip,
         display_order: 1045
     },
@@ -341,8 +336,7 @@ CREATE credential_type:hunter_api SET
     
     presentation = {
         icon: icon:hunter,
-        color: "#FF6633",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_hunter_api_tooltip,
         display_order: 1046
     },
@@ -392,8 +386,7 @@ CREATE credential_type:clearbit_api SET
     
     presentation = {
         icon: icon:clearbit,
-        color: "#2C84FF",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_clearbit_api_tooltip,
         display_order: 1047
     },
@@ -443,8 +436,7 @@ CREATE credential_type:raindrop_oauth2_api SET
     
     presentation = {
         icon: icon:raindrop,
-        color: "#2F8CEE",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_raindrop_oauth2_api_tooltip,
         display_order: 1048
     },
@@ -490,8 +482,7 @@ CREATE credential_type:thehive_api SET
     
     presentation = {
         icon: icon:thehive,
-        color: "#F0AA00",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_thehive_api_tooltip,
         display_order: 1049
     },

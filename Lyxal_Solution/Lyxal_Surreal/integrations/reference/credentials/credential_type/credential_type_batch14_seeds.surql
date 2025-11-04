@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch14_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:baserow_api SET
     
     presentation = {
         icon: icon:baserow,
-        color: "#4C8BF5",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_baserow_api_tooltip,
         display_order: 980
     },
@@ -92,8 +91,7 @@ CREATE credential_type:nocodb SET
     
     presentation = {
         icon: icon:nocodb,
-        color: "#FF6600",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_nocodb_tooltip,
         display_order: 981
     },
@@ -152,8 +150,7 @@ CREATE credential_type:nocodb_api_token SET
     
     presentation = {
         icon: icon:nocodb,
-        color: "#FF6600",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_nocodb_api_token_tooltip,
         display_order: 982
     },
@@ -211,8 +208,7 @@ CREATE credential_type:grafana_api SET
     
     presentation = {
         icon: icon:grafana,
-        color: "#F46800",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_grafana_api_tooltip,
         display_order: 983
     },
@@ -270,8 +266,7 @@ CREATE credential_type:metabase_api SET
     
     presentation = {
         icon: icon:metabase,
-        color: "#509EE3",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_metabase_api_tooltip,
         display_order: 984
     },
@@ -337,8 +332,7 @@ CREATE credential_type:posthog_api SET
     
     presentation = {
         icon: icon:posthog,
-        color: "#1D4AFF",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_posthog_api_tooltip,
         display_order: 985
     },
@@ -397,8 +391,7 @@ CREATE credential_type:coda_api SET
     
     presentation = {
         icon: icon:coda,
-        color: "#F46A54",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_coda_api_tooltip,
         display_order: 986
     },
@@ -447,8 +440,7 @@ CREATE credential_type:gong_api SET
     
     presentation = {
         icon: icon:gong,
-        color: "#FF4F1F",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_gong_api_tooltip,
         display_order: 987
     },
@@ -514,8 +506,7 @@ CREATE credential_type:gong_oauth2_api SET
     
     presentation = {
         icon: icon:gong,
-        color: "#FF4F1F",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_gong_oauth2_api_tooltip,
         display_order: 988
     },
@@ -569,8 +560,7 @@ CREATE credential_type:okta_api SET
     
     presentation = {
         icon: icon:okta,
-        color: "#007DC1",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_okta_api_tooltip,
         display_order: 989
     },
@@ -629,8 +619,7 @@ CREATE credential_type:auth0_management_api SET
     
     presentation = {
         icon: icon:auth0,
-        color: "#EB5424",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_auth0_management_api_tooltip,
         display_order: 990
     },

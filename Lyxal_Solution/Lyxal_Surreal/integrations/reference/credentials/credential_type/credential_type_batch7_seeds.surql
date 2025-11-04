@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch7_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:mysql SET
     
     presentation = {
         icon: icon:mysql,
-        color: "#00758F",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_mysql_tooltip,
         display_order: 600
     },
@@ -108,8 +107,7 @@ CREATE credential_type:postgres SET
     
     presentation = {
         icon: icon:postgres,
-        color: "#336791",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_postgres_tooltip,
         display_order: 601
     },
@@ -192,8 +190,7 @@ CREATE credential_type:mongodb SET
     
     presentation = {
         icon: icon:mongodb,
-        color: "#13AA52",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_mongodb_tooltip,
         display_order: 602
     },
@@ -243,8 +240,7 @@ CREATE credential_type:redis SET
     
     presentation = {
         icon: icon:redis,
-        color: "#DC382D",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_redis_tooltip,
         display_order: 603
     },
@@ -319,8 +315,7 @@ CREATE credential_type:elasticsearch_api SET
     
     presentation = {
         icon: icon:elasticsearch,
-        color: "#005571",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_elasticsearch_api_tooltip,
         display_order: 610
     },
@@ -385,8 +380,7 @@ CREATE credential_type:kafka SET
     
     presentation = {
         icon: icon:kafka,
-        color: "#000000",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_kafka_tooltip,
         display_order: 620
     },
@@ -475,8 +469,7 @@ CREATE credential_type:rabbitmq SET
     
     presentation = {
         icon: icon:rabbitmq,
-        color: "#FF6600",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_rabbitmq_tooltip,
         display_order: 621
     },
@@ -658,8 +651,7 @@ CREATE credential_type:amqp SET
     
     presentation = {
         icon: icon:amqp,
-        color: "#DD344C",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_amqp_tooltip,
         display_order: 623
     },
@@ -892,8 +884,7 @@ CREATE credential_type:timescaledb SET
     
     presentation = {
         icon: icon:timescaledb,
-        color: "#FDB515",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_timescaledb_tooltip,
         display_order: 632
     },

@@ -80,9 +80,9 @@ DEFINE FIELD presentation ON tool TYPE object
 DEFINE FIELD presentation.icon ON tool TYPE option<record<icon>>
     COMMENT "Icône représentant le tool (ex: ➕ pour create, 📄 pour get, 🗑️ pour delete)";
 
-DEFINE FIELD presentation.color ON tool TYPE option<string>
-    COMMENT "Couleur principale du tool en hexadécimal (ex: '#4CAF50' pour create, '#F44336' pour delete)"
-    ASSERT $value == NONE OR string::starts_with($value, '#');
+DEFINE FIELD presentation.color_type ON tool TYPE option<record<theme_color_type>>
+    COMMENT "Type de couleur pour les tags/badges dans l'UI (référence vers theme_color_type: primary, error, warning, etc.)"
+    REFERENCE ON DELETE REJECT;
 
 DEFINE FIELD presentation.display_order ON tool TYPE int DEFAULT 0
     COMMENT "Ordre d'affichage dans les listes (0 = plus haut)";
@@ -553,7 +553,7 @@ SELECT
     identity.slug,
     identity.display_name_i18n.* AS display_name,
     resource_id.*,
-    presentation.color,
+    presentation.color_type,
     config.request.method,
     config.request.endpoint
 FROM tool

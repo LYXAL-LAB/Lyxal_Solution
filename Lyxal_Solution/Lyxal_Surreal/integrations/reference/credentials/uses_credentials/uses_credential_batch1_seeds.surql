@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : uses_credential_batch1_seeds.surql
 -- | Module : integrations > reference > credentials > uses_credential
@@ -21,7 +21,7 @@ RELATE service:airtable->uses_credential->credential_type:airtable_api SET
     presentation = {
         display_order: 2,
         is_recommended: false,
-        badge_color: "warning",
+        badge_color_type: theme_color_type:warning,
         custom_label_i18n: i18n_key:uses_cred_airtable_api_label
     },
     config = {
@@ -36,7 +36,7 @@ RELATE service:airtable->uses_credential->credential_type:airtable_oauth2_api SE
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         custom_description_i18n: i18n_key:uses_cred_airtable_oauth2_desc,
@@ -51,7 +51,7 @@ RELATE service:airtable->uses_credential->credential_type:airtable_token_api SET
     presentation = {
         display_order: 3,
         is_recommended: false,
-        badge_color: "neutral"
+        badge_color_type: theme_color_type:neutral
     },
     config = {
         setup_complexity: "easy",
@@ -68,7 +68,7 @@ RELATE service:asana->uses_credential->credential_type:asana_oauth2_api SET
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         custom_description_i18n: i18n_key:uses_cred_asana_oauth2_desc,
@@ -82,7 +82,7 @@ RELATE service:asana->uses_credential->credential_type:asana_api SET
     presentation = {
         display_order: 2,
         is_recommended: false,
-        badge_color: "warning",
+        badge_color_type: theme_color_type:warning,
         custom_label_i18n: i18n_key:uses_cred_asana_token_label
     },
     config = {
@@ -101,7 +101,7 @@ RELATE service:clickup->uses_credential->credential_type:clickup_oauth2_api SET
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -114,7 +114,7 @@ RELATE service:clickup->uses_credential->credential_type:clickup_api SET
     presentation = {
         display_order: 2,
         is_recommended: false,
-        badge_color: "neutral"
+        badge_color_type: theme_color_type:neutral
     },
     config = {
         setup_complexity: "easy",
@@ -131,7 +131,7 @@ RELATE service:monday_com->uses_credential->credential_type:monday_com_oauth2_ap
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -144,7 +144,7 @@ RELATE service:monday_com->uses_credential->credential_type:monday_com_api SET
     presentation = {
         display_order: 2,
         is_recommended: false,
-        badge_color: "neutral"
+        badge_color_type: theme_color_type:neutral
     },
     config = {
         setup_complexity: "easy",
@@ -161,7 +161,7 @@ RELATE service:notion->uses_credential->credential_type:notion_oauth2_api SET
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -174,7 +174,7 @@ RELATE service:notion->uses_credential->credential_type:notion_api SET
     presentation = {
         display_order: 2,
         is_recommended: false,
-        badge_color: "neutral"
+        badge_color_type: theme_color_type:neutral
     },
     config = {
         setup_complexity: "easy",
@@ -191,7 +191,7 @@ RELATE service:todoist->uses_credential->credential_type:todoist_oauth2_api SET
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -204,7 +204,7 @@ RELATE service:todoist->uses_credential->credential_type:todoist_api SET
     presentation = {
         display_order: 2,
         is_recommended: false,
-        badge_color: "neutral"
+        badge_color_type: theme_color_type:neutral
     },
     config = {
         setup_complexity: "easy",
@@ -221,7 +221,7 @@ RELATE service:trello->uses_credential->credential_type:trello_api SET
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -238,7 +238,7 @@ RELATE service:drift->uses_credential->credential_type:drift_oauth2_api SET
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -251,7 +251,7 @@ RELATE service:drift->uses_credential->credential_type:drift_api SET
     presentation = {
         display_order: 2,
         is_recommended: false,
-        badge_color: "neutral"
+        badge_color_type: theme_color_type:neutral
     },
     config = {
         setup_complexity: "easy",
@@ -268,7 +268,7 @@ RELATE service:freshdesk->uses_credential->credential_type:freshdesk_api SET
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -285,7 +285,7 @@ RELATE service:helpscout->uses_credential->credential_type:helpscout_oauth2_api 
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -302,7 +302,7 @@ RELATE service:intercom->uses_credential->credential_type:intercom_api SET
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -319,7 +319,7 @@ RELATE service:segment->uses_credential->credential_type:segment_api SET
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -336,7 +336,7 @@ RELATE service:zendesk->uses_credential->credential_type:zendesk_oauth2_api SET
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -349,7 +349,7 @@ RELATE service:zendesk->uses_credential->credential_type:zendesk_api SET
     presentation = {
         display_order: 2,
         is_recommended: false,
-        badge_color: "neutral"
+        badge_color_type: theme_color_type:neutral
     },
     config = {
         setup_complexity: "easy",
@@ -366,7 +366,7 @@ RELATE service:mailgun->uses_credential->credential_type:mailgun_api SET
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -383,7 +383,7 @@ RELATE service:postmark->uses_credential->credential_type:postmark_api SET
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -400,7 +400,7 @@ RELATE service:sendgrid->uses_credential->credential_type:sendgrid_api SET
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -417,7 +417,7 @@ RELATE service:typeform->uses_credential->credential_type:typeform_oauth2_api SE
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -430,7 +430,7 @@ RELATE service:typeform->uses_credential->credential_type:typeform_api SET
     presentation = {
         display_order: 2,
         is_recommended: false,
-        badge_color: "neutral"
+        badge_color_type: theme_color_type:neutral
     },
     config = {
         setup_complexity: "easy",
@@ -447,7 +447,7 @@ RELATE service:surveymonkey->uses_credential->credential_type:surveymonkey_oauth
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",
@@ -460,7 +460,7 @@ RELATE service:surveymonkey->uses_credential->credential_type:surveymonkey_api S
     presentation = {
         display_order: 2,
         is_recommended: false,
-        badge_color: "neutral"
+        badge_color_type: theme_color_type:neutral
     },
     config = {
         setup_complexity: "easy",
@@ -477,7 +477,7 @@ RELATE service:jotform->uses_credential->credential_type:jotform_api SET
     presentation = {
         display_order: 1,
         is_recommended: true,
-        badge_color: "primary"
+        badge_color_type: theme_color_type:primary
     },
     config = {
         setup_complexity: "easy",

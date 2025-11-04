@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch16_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:xero_oauth2_api SET
     
     presentation = {
         icon: icon:xero,
-        color: "#13B5EA",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_xero_oauth2_api_tooltip,
         display_order: 1020
     },
@@ -71,8 +70,7 @@ CREATE credential_type:quickbooks_oauth2_api SET
     
     presentation = {
         icon: icon:quickbooks,
-        color: "#2CA01C",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_quickbooks_oauth2_api_tooltip,
         display_order: 1021
     },
@@ -131,8 +129,7 @@ CREATE credential_type:invoice_ninja_api SET
     
     presentation = {
         icon: icon:invoice_ninja,
-        color: "#2F7DC3",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_invoice_ninja_api_tooltip,
         display_order: 1022
     },
@@ -197,8 +194,7 @@ CREATE credential_type:profitwell_api SET
     
     presentation = {
         icon: icon:profitwell,
-        color: "#FF6E42",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_profitwell_api_tooltip,
         display_order: 1023
     },
@@ -246,8 +242,7 @@ CREATE credential_type:wise_api SET
     
     presentation = {
         icon: icon:wise,
-        color: "#9FE870",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_wise_api_tooltip,
         display_order: 1024
     },
@@ -317,8 +312,7 @@ CREATE credential_type:harvest_api SET
     
     presentation = {
         icon: icon:harvest,
-        color: "#F96302",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_harvest_api_tooltip,
         display_order: 1025
     },
@@ -367,8 +361,7 @@ CREATE credential_type:harvest_oauth2_api SET
     
     presentation = {
         icon: icon:harvest,
-        color: "#F96302",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_harvest_oauth2_api_tooltip,
         display_order: 1026
     },
@@ -412,8 +405,7 @@ CREATE credential_type:clockify_api SET
     
     presentation = {
         icon: icon:clockify,
-        color: "#03A9F4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_clockify_api_tooltip,
         display_order: 1027
     },
@@ -462,8 +454,7 @@ CREATE credential_type:toggl_api SET
     
     presentation = {
         icon: icon:toggl,
-        color: "#E01B22",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_toggl_api_tooltip,
         display_order: 1028
     },
@@ -519,8 +510,7 @@ CREATE credential_type:bamboohr_api SET
     
     presentation = {
         icon: icon:bamboohr,
-        color: "#73C41D",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_bamboohr_api_tooltip,
         display_order: 1029
     },
@@ -576,8 +566,7 @@ CREATE credential_type:workable_api SET
     
     presentation = {
         icon: icon:workable,
-        color: "#31B3E7",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_workable_api_tooltip,
         display_order: 1030
     },

@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch18_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:brevo_api SET
     
     presentation = {
         icon: icon:brevo,
-        color: "#0091F7",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_brevo_api_tooltip,
         display_order: 1060
     },
@@ -77,8 +76,7 @@ CREATE credential_type:getresponse_api SET
     
     presentation = {
         icon: icon:getresponse,
-        color: "#00BAFF",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_getresponse_api_tooltip,
         display_order: 1061
     },
@@ -172,8 +170,7 @@ CREATE credential_type:mailerlite_api SET
     
     presentation = {
         icon: icon:mailerlite,
-        color: "#09C269",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_mailerlite_api_tooltip,
         display_order: 1063
     },
@@ -231,8 +228,7 @@ CREATE credential_type:convertkit_api SET
     
     presentation = {
         icon: icon:convertkit,
-        color: "#FB6970",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_convertkit_api_tooltip,
         display_order: 1064
     },
@@ -281,8 +277,7 @@ CREATE credential_type:automizy_api SET
     
     presentation = {
         icon: icon:automizy,
-        color: "#FF6B00",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_automizy_api_tooltip,
         display_order: 1065
     },
@@ -331,8 +326,7 @@ CREATE credential_type:customer_io_api SET
     
     presentation = {
         icon: icon:customer_io,
-        color: "#2C83F6",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_customer_io_api_tooltip,
         display_order: 1066
     },
@@ -410,8 +404,7 @@ CREATE credential_type:egoi_api SET
     
     presentation = {
         icon: icon:egoi,
-        color: "#FE5000",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_egoi_api_tooltip,
         display_order: 1067
     },
@@ -460,8 +453,7 @@ CREATE credential_type:sendy_api SET
     
     presentation = {
         icon: icon:sendy,
-        color: "#3F97F6",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_sendy_api_tooltip,
         display_order: 1068
     },
@@ -519,8 +511,7 @@ CREATE credential_type:lemlist_api SET
     
     presentation = {
         icon: icon:lemlist,
-        color: "#FF4081",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_lemlist_api_tooltip,
         display_order: 1069
     },
@@ -569,8 +560,7 @@ CREATE credential_type:smtp SET
     
     presentation = {
         icon: icon:smtp,
-        color: "#2E7D32",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_smtp_tooltip,
         display_order: 1070
     },

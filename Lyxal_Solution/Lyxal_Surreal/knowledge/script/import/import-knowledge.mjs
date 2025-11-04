@@ -79,6 +79,7 @@ async function main() {
     //    - knowledge_content (dépend de knowledge_topic, knowledge_content_type)
     //    - knowledge_domain_keyword (dépend de knowledge_domain, knowledge_keyword, knowledge_keywords_analyzer)
     //    - knowledge_topic_keyword (dépend de knowledge_topic, knowledge_keyword, knowledge_keywords_analyzer)
+    //    - knowledge_dataset_export (dépend de knowledge_domain)
     // 3. function/ (fonctions API pour requêtes optimisées IA - dépendent de toutes les tables)
 
     const analyzerFiles = [];
@@ -107,9 +108,10 @@ async function main() {
         'knowledge_sub_category.surql', // dépend de knowledge_category
       ];
       
-      // Niveau 3 : Tables dépendant du niveau 2
+      // Niveau 3 : Tables dépendant du niveau 2 ou niveau 1
       const level3Patterns = [
         'knowledge_topic.surql', // dépend de knowledge_domain, knowledge_category, knowledge_sub_category
+        'knowledge_dataset_export.surql', // dépend de knowledge_domain
       ];
       
       // Niveau 4 : Tables dépendant du niveau 3
@@ -126,6 +128,7 @@ async function main() {
       
       // Niveau 6 : Relations dépendant des tables précédentes
       const level6Patterns = [
+        'knowledge_content_relation.surql', // dépend de knowledge_content
         'knowledge_domain_keyword.surql', // dépend de knowledge_domain, knowledge_keywords_analyzer
         'knowledge_topic_keyword.surql', // dépend de knowledge_topic, knowledge_keywords_analyzer
       ];

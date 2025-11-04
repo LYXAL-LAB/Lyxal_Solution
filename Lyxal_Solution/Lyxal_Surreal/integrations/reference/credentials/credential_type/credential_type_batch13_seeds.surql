@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch13_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:openai_api SET
     
     presentation = {
         icon: icon:openai,
-        color: "#10A37F",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_openai_api_tooltip,
         display_order: 960
     },
@@ -93,8 +92,7 @@ CREATE credential_type:perplexity_api SET
     
     presentation = {
         icon: icon:perplexity,
-        color: "#1FB8CD",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_perplexity_api_tooltip,
         display_order: 961
     },
@@ -142,8 +140,7 @@ CREATE credential_type:deepl_api SET
     
     presentation = {
         icon: icon:deepl,
-        color: "#0F2B46",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_deepl_api_tooltip,
         display_order: 962
     },
@@ -270,8 +267,7 @@ CREATE credential_type:linear_api SET
     
     presentation = {
         icon: icon:linear,
-        color: "#5E6AD2",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_linear_api_tooltip,
         display_order: 964
     },
@@ -320,8 +316,7 @@ CREATE credential_type:linear_oauth2_api SET
     
     presentation = {
         icon: icon:linear,
-        color: "#5E6AD2",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_linear_oauth2_api_tooltip,
         display_order: 965
     },
@@ -365,8 +360,7 @@ CREATE credential_type:figma_api SET
     
     presentation = {
         icon: icon:figma,
-        color: "#F24E1E",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_figma_api_tooltip,
         display_order: 966
     },
@@ -415,8 +409,7 @@ CREATE credential_type:miro_oauth2_api SET
     
     presentation = {
         icon: icon:miro,
-        color: "#FFD02F",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_miro_oauth2_api_tooltip,
         display_order: 967
     },
@@ -461,8 +454,7 @@ CREATE credential_type:n8n_api SET
     
     presentation = {
         icon: icon:n8n,
-        color: "#EA4B71",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_n8n_api_tooltip,
         display_order: 968
     },
@@ -519,8 +511,7 @@ CREATE credential_type:ghost_admin_api SET
     
     presentation = {
         icon: icon:ghost,
-        color: "#15171A",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_ghost_admin_api_tooltip,
         display_order: 969
     },
@@ -578,8 +569,7 @@ CREATE credential_type:ghost_content_api SET
     
     presentation = {
         icon: icon:ghost,
-        color: "#15171A",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_ghost_content_api_tooltip,
         display_order: 970
     },

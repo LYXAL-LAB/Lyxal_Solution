@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : transmission_method.surql (SEED DATA)
 -- | Module : integrations > reference > credentials
@@ -36,7 +36,7 @@ CREATE transmission_method:header SET
     -- Presentation (UI)
     presentation = {
         icon: icon:shield_check,
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         display_order: 1,
         tooltip_i18n: i18n_key:transmission_method_header_tooltip
     },
@@ -92,7 +92,7 @@ CREATE transmission_method:body SET
     -- Presentation (UI)
     presentation = {
         icon: icon:file_json,
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         display_order: 2,
         tooltip_i18n: i18n_key:transmission_method_body_tooltip
     },
@@ -148,7 +148,7 @@ CREATE transmission_method:query SET
     -- Presentation (UI)
     presentation = {
         icon: icon:link,
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         display_order: 3,
         tooltip_i18n: i18n_key:transmission_method_query_warning
     },
@@ -209,7 +209,7 @@ CREATE transmission_method:custom SET
     -- Presentation (UI)
     presentation = {
         icon: icon:code,
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         display_order: 4,
         tooltip_i18n: i18n_key:transmission_method_custom_tooltip
     },

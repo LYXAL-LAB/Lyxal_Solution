@@ -74,9 +74,9 @@ DEFINE FIELD presentation ON resource TYPE object
 DEFINE FIELD presentation.icon ON resource TYPE option<record<icon>>
     COMMENT "Icône représentant la ressource (ex: 🔔 pour notification, 📄 pour document)";
 
-DEFINE FIELD presentation.color ON resource TYPE option<string>
-    COMMENT "Couleur principale de la ressource en hexadécimal (ex: '#4A90E2' pour messages)"
-    ASSERT $value == NONE OR string::starts_with($value, '#');
+DEFINE FIELD presentation.color_type ON resource TYPE option<record<theme_color_type>>
+    COMMENT "Type de couleur pour les tags/badges dans l'UI (référence vers theme_color_type: primary, error, warning, etc.)"
+    REFERENCE ON DELETE REJECT;
 
 DEFINE FIELD presentation.display_order ON resource TYPE int DEFAULT 0
     COMMENT "Ordre d'affichage dans les listes (0 = plus haut)";

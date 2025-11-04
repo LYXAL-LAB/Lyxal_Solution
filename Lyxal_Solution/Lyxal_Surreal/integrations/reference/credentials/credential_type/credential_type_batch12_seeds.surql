@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch12_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:typeform_api SET
     
     presentation = {
         icon: icon:typeform,
-        color: "#262627",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_typeform_api_tooltip,
         display_order: 920
     },
@@ -73,8 +72,7 @@ CREATE credential_type:typeform_oauth2_api SET
     
     presentation = {
         icon: icon:typeform,
-        color: "#262627",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_typeform_oauth2_api_tooltip,
         display_order: 921
     },
@@ -116,8 +114,7 @@ CREATE credential_type:surveymonkey_api SET
     
     presentation = {
         icon: icon:surveymonkey,
-        color: "#00BF6F",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_surveymonkey_api_tooltip,
         display_order: 922
     },
@@ -164,8 +161,7 @@ CREATE credential_type:surveymonkey_oauth2_api SET
     
     presentation = {
         icon: icon:surveymonkey,
-        color: "#00BF6F",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_surveymonkey_oauth2_api_tooltip,
         display_order: 923
     },
@@ -207,8 +203,7 @@ CREATE credential_type:jotform_api SET
     
     presentation = {
         icon: icon:jotform,
-        color: "#FF6100",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_jotform_api_tooltip,
         display_order: 924
     },
@@ -270,8 +265,7 @@ CREATE credential_type:formstack_api SET
     
     presentation = {
         icon: icon:formstack,
-        color: "#00A2E2",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_formstack_api_tooltip,
         display_order: 925
     },
@@ -318,8 +312,7 @@ CREATE credential_type:formstack_oauth2_api SET
     
     presentation = {
         icon: icon:formstack,
-        color: "#00A2E2",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_formstack_oauth2_api_tooltip,
         display_order: 926
     },
@@ -361,8 +354,7 @@ CREATE credential_type:calendly_api SET
     
     presentation = {
         icon: icon:calendly,
-        color: "#006BFF",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_calendly_api_tooltip,
         display_order: 930
     },
@@ -409,8 +401,7 @@ CREATE credential_type:calendly_oauth2_api SET
     
     presentation = {
         icon: icon:calendly,
-        color: "#006BFF",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_calendly_oauth2_api_tooltip,
         display_order: 931
     },
@@ -509,8 +500,7 @@ CREATE credential_type:acuity_scheduling_oauth2_api SET
     
     presentation = {
         icon: icon:acuity_scheduling,
-        color: "#00C4CC",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_acuity_scheduling_oauth2_api_tooltip,
         display_order: 933
     },

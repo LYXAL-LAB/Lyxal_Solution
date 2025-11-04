@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch1_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -28,8 +28,7 @@ CREATE credential_type:http_basic_auth SET
     
     presentation = {
         icon: icon:lock_open,
-        color: "#EA4335",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_http_basic_auth_tooltip,
         display_order: 20
     },
@@ -85,8 +84,7 @@ CREATE credential_type:http_bearer_auth SET
     
     presentation = {
         icon: icon:badge_check,
-        color: "#4285F4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_http_bearer_auth_tooltip,
         display_order: 10
     },
@@ -134,8 +132,7 @@ CREATE credential_type:http_custom_auth SET
     
     presentation = {
         icon: icon:code,
-        color: "#9AA0A6",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_http_custom_auth_tooltip,
         display_order: 40
     },
@@ -201,8 +198,7 @@ CREATE credential_type:http_digest_auth SET
     
     presentation = {
         icon: icon:fingerprint,
-        color: "#9AA0A6",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_http_digest_auth_tooltip,
         display_order: 50
     },
@@ -315,8 +311,7 @@ CREATE credential_type:http_query_auth SET
     
     presentation = {
         icon: icon:link,
-        color: "#EA4335",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_http_query_auth_tooltip,
         display_order: 60
     },
@@ -373,8 +368,7 @@ CREATE credential_type:http_ssl_auth SET
     
     presentation = {
         icon: icon:shield_check,
-        color: "#34A853",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_http_ssl_auth_tooltip,
         display_order: 35
     },
@@ -446,8 +440,7 @@ CREATE credential_type:oauth1_api SET
     
     presentation = {
         icon: icon:shield,
-        color: "#F4B400",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_oauth1_api_tooltip,
         display_order: 2
     },
@@ -530,8 +523,7 @@ CREATE credential_type:oauth2_api SET
     
     presentation = {
         icon: icon:shield_check,
-        color: "#4285F4",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_oauth2_api_tooltip,
         display_order: 1
     },

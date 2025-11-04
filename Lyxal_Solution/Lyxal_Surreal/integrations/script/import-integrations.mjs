@@ -15,7 +15,7 @@ const DEFAULTS = {
   USER: 'admin',
   PASS: 'admin',
   NS: 'Lyxal_Solution',
-  DB: 'Labs',
+  DB: 'Developpement',
   ROOT: path.resolve(__dirname, '..'), // Parent de 'script' = 'integrations'
 };
 

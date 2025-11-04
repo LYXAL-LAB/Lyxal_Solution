@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch8_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:aws SET
     
     presentation = {
         icon: icon:aws,
-        color: "#FF9900",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_aws_tooltip,
         display_order: 650
     },
@@ -92,8 +91,7 @@ CREATE credential_type:s3 SET
     
     presentation = {
         icon: icon:s3,
-        color: "#569A31",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_s3_tooltip,
         display_order: 651
     },
@@ -158,8 +156,7 @@ CREATE credential_type:cloudflare_api SET
     
     presentation = {
         icon: icon:cloudflare,
-        color: "#F38020",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_cloudflare_api_tooltip,
         display_order: 660
     },
@@ -256,8 +253,7 @@ CREATE credential_type:supabase_api SET
     
     presentation = {
         icon: icon:supabase,
-        color: "#3ECF8E",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_supabase_api_tooltip,
         display_order: 662
     },
@@ -314,8 +310,7 @@ CREATE credential_type:dropbox_api SET
     
     presentation = {
         icon: icon:dropbox,
-        color: "#0061FF",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_dropbox_api_tooltip,
         display_order: 670
     },
@@ -364,8 +359,7 @@ CREATE credential_type:dropbox_oauth2_api SET
     
     presentation = {
         icon: icon:dropbox,
-        color: "#0061FF",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_dropbox_oauth2_api_tooltip,
         display_order: 671
     },
@@ -409,8 +403,7 @@ CREATE credential_type:box_oauth2_api SET
     
     presentation = {
         icon: icon:box,
-        color: "#0061D5",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_box_oauth2_api_tooltip,
         display_order: 672
     },
@@ -454,8 +447,7 @@ CREATE credential_type:ftp SET
     
     presentation = {
         icon: icon:ftp,
-        color: "#00758F",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_ftp_tooltip,
         display_order: 680
     },
@@ -529,8 +521,7 @@ CREATE credential_type:sftp SET
     
     presentation = {
         icon: icon:sftp,
-        color: "#00897B",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_sftp_tooltip,
         display_order: 681
     },
@@ -612,8 +603,7 @@ CREATE credential_type:ssh_password SET
     
     presentation = {
         icon: icon:ssh,
-        color: "#000000",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_ssh_password_tooltip,
         display_order: 682
     },
@@ -687,8 +677,7 @@ CREATE credential_type:ssh_private_key SET
     
     presentation = {
         icon: icon:ssh,
-        color: "#000000",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_ssh_private_key_tooltip,
         display_order: 683
     },
@@ -771,8 +760,7 @@ CREATE credential_type:webflow_api SET
     
     presentation = {
         icon: icon:webflow,
-        color: "#4353FF",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_webflow_api_tooltip,
         display_order: 690
     },
@@ -928,8 +916,7 @@ CREATE credential_type:wordpress_api SET
     
     presentation = {
         icon: icon:wordpress,
-        color: "#21759B",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_wordpress_api_tooltip,
         display_order: 701
     },
@@ -994,8 +981,7 @@ CREATE credential_type:kobotoolbox_api SET
     
     presentation = {
         icon: icon:kobotoolbox,
-        color: "#0D47A1",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_kobotoolbox_api_tooltip,
         display_order: 710
     },

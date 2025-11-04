@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch4_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -119,8 +119,7 @@ CREATE credential_type:discord_bot_api SET
     
     presentation = {
         icon: icon:discord,
-        color: "#5865F2",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_discord_bot_api_tooltip,
         display_order: 302
     },
@@ -167,8 +166,7 @@ CREATE credential_type:discord_oauth2_api SET
     
     presentation = {
         icon: icon:discord,
-        color: "#5865F2",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_discord_oauth2_api_tooltip,
         display_order: 303
     },
@@ -260,8 +258,7 @@ CREATE credential_type:telegram_api SET
     
     presentation = {
         icon: icon:telegram,
-        color: "#26A5E4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_telegram_api_tooltip,
         display_order: 305
     },
@@ -309,8 +306,7 @@ CREATE credential_type:twilio_api SET
     
     presentation = {
         icon: icon:twilio,
-        color: "#F22F46",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_twilio_api_tooltip,
         display_order: 310
     },
@@ -365,8 +361,7 @@ CREATE credential_type:whatsapp_api SET
     
     presentation = {
         icon: icon:whatsapp,
-        color: "#25D366",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_whatsapp_api_tooltip,
         display_order: 311
     },
@@ -422,8 +417,7 @@ CREATE credential_type:whatsapp_trigger_api SET
     
     presentation = {
         icon: icon:whatsapp,
-        color: "#25D366",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_whatsapp_trigger_api_tooltip,
         display_order: 312
     },
@@ -487,8 +481,7 @@ CREATE credential_type:mattermost_api SET
     
     presentation = {
         icon: icon:mattermost,
-        color: "#0058CC",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_mattermost_api_tooltip,
         display_order: 320
     },
@@ -545,8 +538,7 @@ CREATE credential_type:rocketchat_api SET
     
     presentation = {
         icon: icon:rocketchat,
-        color: "#F5455C",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_rocketchat_api_tooltip,
         display_order: 321
     },
@@ -611,8 +603,7 @@ CREATE credential_type:matrix_api SET
     
     presentation = {
         icon: icon:matrix,
-        color: "#0DBD8B",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_matrix_api_tooltip,
         display_order: 322
     },
@@ -670,8 +661,7 @@ CREATE credential_type:twist_oauth2_api SET
     
     presentation = {
         icon: icon:twist,
-        color: "#2F80ED",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_twist_oauth2_api_tooltip,
         display_order: 323
     },

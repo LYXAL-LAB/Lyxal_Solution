@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch15_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:contentful_api SET
     
     presentation = {
         icon: icon:contentful,
-        color: "#2478CC",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_contentful_api_tooltip,
         display_order: 1000
     },
@@ -91,8 +90,7 @@ CREATE credential_type:strapi_api SET
     
     presentation = {
         icon: icon:strapi,
-        color: "#4945FF",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_strapi_api_tooltip,
         display_order: 1001
     },
@@ -243,8 +241,7 @@ CREATE credential_type:storyblok_content_api SET
     
     presentation = {
         icon: icon:storyblok,
-        color: "#09B3AF",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_storyblok_content_api_tooltip,
         display_order: 1003
     },
@@ -293,8 +290,7 @@ CREATE credential_type:storyblok_management_api SET
     
     presentation = {
         icon: icon:storyblok,
-        color: "#09B3AF",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_storyblok_management_api_tooltip,
         display_order: 1004
     },
@@ -418,8 +414,7 @@ CREATE credential_type:erpnext_api SET
     
     presentation = {
         icon: icon:erpnext,
-        color: "#0089FF",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_erpnext_api_tooltip,
         display_order: 1006
     },
@@ -507,8 +502,7 @@ CREATE credential_type:grist_api SET
     
     presentation = {
         icon: icon:grist,
-        color: "#16B378",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_grist_api_tooltip,
         display_order: 1007
     },
@@ -587,8 +581,7 @@ CREATE credential_type:seatable_api SET
     
     presentation = {
         icon: icon:seatable,
-        color: "#FF8000",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_seatable_api_tooltip,
         display_order: 1008
     },
@@ -667,8 +660,7 @@ CREATE credential_type:quickbase_api SET
     
     presentation = {
         icon: icon:quickbase,
-        color: "#009FD9",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_quickbase_api_tooltip,
         display_order: 1009
     },
@@ -725,8 +717,7 @@ CREATE credential_type:stackby_api SET
     
     presentation = {
         icon: icon:stackby,
-        color: "#F05537",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_stackby_api_tooltip,
         display_order: 1010
     },

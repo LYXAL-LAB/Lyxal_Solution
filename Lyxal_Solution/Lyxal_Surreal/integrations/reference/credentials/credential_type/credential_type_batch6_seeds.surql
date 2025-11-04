@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch6_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:hubspot_api SET
     
     presentation = {
         icon: icon:hubspot,
-        color: "#FF7A59",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_hubspot_api_tooltip,
         display_order: 500
     },
@@ -74,8 +73,7 @@ CREATE credential_type:hubspot_app_token SET
     
     presentation = {
         icon: icon:hubspot,
-        color: "#FF7A59",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_hubspot_app_token_tooltip,
         display_order: 501
     },
@@ -171,8 +169,7 @@ CREATE credential_type:hubspot_oauth2_api SET
     
     presentation = {
         icon: icon:hubspot,
-        color: "#FF7A59",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_hubspot_oauth2_api_tooltip,
         display_order: 503
     },
@@ -216,8 +213,7 @@ CREATE credential_type:salesforce_jwt_api SET
     
     presentation = {
         icon: icon:salesforce,
-        color: "#00A1E0",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_salesforce_jwt_api_tooltip,
         display_order: 510
     },
@@ -286,8 +282,7 @@ CREATE credential_type:salesforce_oauth2_api SET
     
     presentation = {
         icon: icon:salesforce,
-        color: "#00A1E0",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_salesforce_oauth2_api_tooltip,
         display_order: 511
     },
@@ -345,8 +340,7 @@ CREATE credential_type:stripe_api SET
     
     presentation = {
         icon: icon:stripe,
-        color: "#635BFF",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_stripe_api_tooltip,
         display_order: 520
     },
@@ -393,8 +387,7 @@ CREATE credential_type:shopify_api SET
     
     presentation = {
         icon: icon:shopify,
-        color: "#96BF48",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_shopify_api_tooltip,
         display_order: 530
     },
@@ -467,8 +460,7 @@ CREATE credential_type:shopify_access_token_api SET
     
     presentation = {
         icon: icon:shopify,
-        color: "#96BF48",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_shopify_access_token_api_tooltip,
         display_order: 531
     },
@@ -524,8 +516,7 @@ CREATE credential_type:shopify_oauth2_api SET
     
     presentation = {
         icon: icon:shopify,
-        color: "#96BF48",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_shopify_oauth2_api_tooltip,
         display_order: 532
     },
@@ -579,8 +570,7 @@ CREATE credential_type:pipedrive_api SET
     
     presentation = {
         icon: icon:pipedrive,
-        color: "#000000",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_pipedrive_api_tooltip,
         display_order: 540
     },
@@ -625,8 +615,7 @@ CREATE credential_type:pipedrive_oauth2_api SET
     
     presentation = {
         icon: icon:pipedrive,
-        color: "#000000",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_pipedrive_oauth2_api_tooltip,
         display_order: 541
     },
@@ -668,8 +657,7 @@ CREATE credential_type:zoho_oauth2_api SET
     
     presentation = {
         icon: icon:zoho,
-        color: "#C8252E",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_zoho_oauth2_api_tooltip,
         display_order: 550
     },
@@ -713,8 +701,7 @@ CREATE credential_type:copper_api SET
     
     presentation = {
         icon: icon:copper,
-        color: "#EC7357",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_copper_api_tooltip,
         display_order: 560
     },
@@ -769,8 +756,7 @@ CREATE credential_type:activecampaign_api SET
     
     presentation = {
         icon: icon:activecampaign,
-        color: "#356AE6",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_activecampaign_api_tooltip,
         display_order: 570
     },
@@ -824,8 +810,7 @@ CREATE credential_type:mailchimp_api SET
     
     presentation = {
         icon: icon:mailchimp,
-        color: "#FFE01B",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_mailchimp_api_tooltip,
         display_order: 580
     },
@@ -872,8 +857,7 @@ CREATE credential_type:mailchimp_oauth2_api SET
     
     presentation = {
         icon: icon:mailchimp,
-        color: "#FFE01B",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_mailchimp_oauth2_api_tooltip,
         display_order: 581
     },

@@ -1,18 +1,34 @@
-# 🔐 Credentials - Structure de Base de Données
+# 🔐 Module Credentials - Documentation Complète
 
-Ce dossier contient toutes les tables liées au système d'authentification et de gestion des credentials pour le module d'intégration.
+## 📋 Vue d'ensemble
+
+Ce module gère l'authentification et les credentials pour toutes les intégrations. Il suit une architecture similaire à n8n avec chiffrement automatique directement dans SurrealDB.
 
 ---
 
 ## 📂 Structure des Fichiers
 
-```
-credentials/
-├── README.md                    # Ce fichier
-├── auth_type.surql              # Types d'authentification (OAuth2, API Key, etc.)
-├── credential_type.surql        # Types de credentials spécifiques aux providers
-└── uses_credential.surql        # Relation service <-> credential_type
-```
+### Tables (`database/credentials/`)
+- `auth_type.surql` - Types d'authentification génériques (OAuth2, API Key, etc.)
+- `credential_type.surql` - Types de credentials spécifiques par provider
+- `transmission_method.surql` - Méthodes de transmission HTTP (header, query, body)
+- `uses_credential.surql` - Relation service ↔ credential_type
+- `user_service_credential.surql` - Credentials réels des utilisateurs (chiffrés)
+- `credential_encryption_config.surql` - Configuration du chiffrement
+
+### Seeds (`reference/credentials/`)
+- `auth_type/` - Seeds pour auth_type
+- `credential_type/` - Seeds pour credential_type (108 fichiers)
+- `transmission_method/` - Seeds pour transmission_method
+- `uses_credentials/` - Seeds pour les relations (14 batches)
+
+### Fonctions (`resources/credentials/`)
+- `auth_type/` - 5 fonctions pour auth_type
+- `credential_type/` - 9 fonctions pour credential_type
+- `transmission_method/` - 5 fonctions pour transmission_method
+- `uses_credential/` - 7 fonctions pour uses_credential
+- `user_service_credential/` - 8 fonctions pour user_service_credential
+- `fn_encrypt_decrypt_credentials.surql` - Fonctions de chiffrement/déchiffrement
 
 ---
 
@@ -21,29 +37,36 @@ credentials/
 ### Hiérarchie des Tables
 
 ```
-auth_type (Référentiel des types d'auth)
+auth_type (Référentiel)
     ↓ utilisé par
-credential_type (Configuration spécifique par provider)
+credential_type (Configuration par provider)
     ↓ lié par
 uses_credential (Relation)
     ↓ à
 service (Service qui utilise le credential)
+    ↓ utilisé par
+user_service_credential (Credentials réels des utilisateurs)
 ```
 
 ### Schéma Relationnel
 
 ```mermaid
-graph LR
+graph TB
     A[auth_type<br/>oauth2, apiKey, etc.] --> B[credential_type<br/>Google OAuth2, Stripe API]
     C[provider<br/>Google, Stripe] --> B
-    B --> D[uses_credential]
+    B --> D[uses_credential<br/>Relation]
     E[service<br/>Google Sheets] --> D
+    D --> F[user_service_credential<br/>Credentials utilisateurs]
+    G[user<br/>Utilisateurs] --> F
+    H[credential_encryption_config<br/>Clé de chiffrement] --> F
     
     style A fill:#f7dc6f
     style B fill:#85c1e2
     style C fill:#ff6b6b
     style D fill:#98d8c8
     style E fill:#4ecdc4
+    style F fill:#95a5a6
+    style H fill:#e74c3c
 ```
 
 ---
@@ -57,43 +80,24 @@ graph LR
 **Types disponibles** :
 - `oauth2` - OAuth 2.0 (le plus populaire)
 - `oauth1` - OAuth 1.0a (legacy)
-- `apiKey` - Clé API simple
-- `basicAuth` - Basic Authentication
-- `bearerToken` - Token Bearer
-- `digestAuth` - Digest Authentication
-- `headerAuth` - Header personnalisé
-- `queryAuth` - Query parameters
+- `api_key` - Clé API simple
+- `basic_auth` - Basic Authentication
+- `bearer_token` - Token Bearer
+- `digest_auth` - Digest Authentication
+- `header_auth` - Header personnalisé
+- `query_auth` - Query parameters
 - `custom` - Authentification personnalisée
 
-**Champs clés** :
-```surql
-{
-    name: "oauth2",
-    display_name: "OAuth 2.0",
-    description: "...",
-    security_level: 5,        // 1-5
-    popularity_score: 95,     // 0-100
-    config_schema: {...},     // Schéma de config attendu
-    supports_refresh: true,
-    requires_user_interaction: true
-}
-```
+**Structure** :
+- **Champs à plat** : `name`, `slug`, `is_active`
+- **Groupés** : `identity`, `presentation`, `quality`, `config`, `http`, `behavior`, `documentation`
 
-**Avantages d'une table dédiée** :
-- ✅ Ajout de nouveaux types sans modifier le schéma
-- ✅ Métadonnées riches (description, sécurité, popularité)
-- ✅ Configuration validée par type
-- ✅ Activation/désactivation sans suppression
-- ✅ Documentation intégrée
-
-**Exemple de requête** :
-```surql
--- Types recommandés (popularité > 70)
-SELECT * FROM auth_type 
-WHERE popularity_score >= 70 
-  AND is_active = true
-ORDER BY popularity_score DESC;
-```
+**Fonctions disponibles** :
+- `fn::get_list_auth_type($langue_id, $user_id, $parent_run_id)`
+- `fn::get_auth_type_for_ai($auth_type_id, $langue_id)`
+- `fn::get_auth_type_config($auth_type_id, $langue_id)`
+- `fn::get_auth_type_security($auth_type_id, $langue_id)`
+- `fn::get_auth_type_with_etag($auth_type_id)`
 
 ---
 
@@ -101,69 +105,59 @@ ORDER BY popularity_score DESC;
 
 **Objectif** : Configuration spécifique des credentials pour chaque provider/service.
 
-**Champs clés** :
-```surql
-{
-    name: "googleSheetsOAuth2Api",
-    display_name: "Google Sheets OAuth2 API",
-    slug: "google-sheets-oauth2",
-    auth_type_id: auth_type:oauth2,        // Référence vers auth_type
-    provider_id: provider:google,           // Référence vers provider
-    oauth2_config: {                        // Config OAuth2 spécifique
-        auth_url: "...",
-        token_url: "...",
-        scope: "..."
-    },
-    required_fields: [                      // Champs requis
-        {name: "client_id", ...},
-        {name: "client_secret", ...}
-    ]
-}
-```
+**Structure** :
+- **Champs à plat** : `name`, `slug`, `is_active`, `auth_type`, `provider`
+- **Groupés** : `identity`, `presentation`, `config`, `documentation`
 
 **Relations** :
-- `auth_type_id` → `auth_type` (type d'authentification)
-- `provider_id` → `provider` (fournisseur, optionnel)
+- `auth_type` → `auth_type` (type d'authentification)
+- `provider` → `provider` (fournisseur, optionnel)
 
-**Configuration par type d'auth** :
-
-| auth_type | Configuration | Champs requis |
-|-----------|---------------|---------------|
-| `oauth2` | `oauth2_config` | client_id, client_secret |
-| `oauth1` | `oauth1_config` | consumer_key, consumer_secret |
-| `apiKey` | - | api_key |
-| `basicAuth` | - | username, password |
-| `bearerToken` | - | token |
-
-**Exemple de requête** :
-```surql
--- Credentials OAuth2 avec détails du type
-SELECT 
-    credential_type.*,
-    auth_type.display_name AS auth_type_name,
-    auth_type.security_level
-FROM credential_type
-INNER JOIN auth_type ON credential_type.auth_type_id = auth_type.id
-WHERE auth_type_id = auth_type:oauth2;
-```
+**Fonctions disponibles** :
+- `fn::get_list_credential_type($langue_id)`
+- `fn::get_credential_type_for_ai($credential_type_id, $langue_id)`
+- `fn::get_credential_type_config($credential_type_id, $langue_id, $provider_id)`
+- `fn::get_credential_type_by_provider($provider_id, $langue_id)`
+- `fn::get_credential_type_generic($langue_id)`
+- `fn::get_credential_type_security($langue_id)`
+- `fn::get_credential_type_by_auth_type($auth_type_id)`
+- `fn::get_credential_type_stats()`
+- `fn::get_credential_type_with_etag($credential_type_id)`
 
 ---
 
-### 3. `uses_credential` - Relation Service ↔ Credential
+### 3. `transmission_method` - Méthodes de Transmission
+
+**Objectif** : Définit comment les credentials sont transmis via HTTP (header, query, body, custom).
+
+**Méthodes disponibles** :
+- `header` - Dans les headers HTTP (recommandé)
+- `query` - Dans les paramètres de requête URL
+- `body` - Dans le corps de la requête
+- `custom` - Méthode personnalisée
+
+**Structure** :
+- **Champs à plat** : `name`, `slug`, `is_active`
+- **Groupés** : `identity`, `presentation`, `quality`, `config`
+
+**Fonctions disponibles** :
+- `fn::get_list_transmission_method($langue_id)`
+- `fn::get_transmission_method_for_ai($method_id, $langue_id)`
+- `fn::get_transmission_method_security($langue_id)`
+- `fn::get_transmission_method_recommended($langue_id, $include_all)`
+- `fn::get_transmission_method_with_etag($method_id)`
+
+---
+
+### 4. `uses_credential` - Relation Service ↔ Credential
 
 **Objectif** : Lie un service à un ou plusieurs types de credentials qu'il peut utiliser.
 
-**Champs clés** :
-```surql
-{
-    in: service:google_sheets,              // Service
-    out: credential_type:google_oauth2,     // Credential type
-    is_required: true,                      // Obligatoire ?
-    is_recommended: true,                   // Recommandé ?
-    display_order: 1,                       // Ordre d'affichage
-    display_conditions: {...}               // Conditions d'affichage
-}
-```
+**Type** : `TYPE RELATION SCHEMAFULL`
+
+**Structure** :
+- **Relation** : `in` (service) → `out` (credential_type)
+- **Champs** : `is_required`, `presentation`, `config`, `documentation`
 
 **Cas d'usage** :
 
@@ -178,275 +172,220 @@ service:google_sheets -> uses_credential -> credential_type:google_oauth2 (recom
                       -> uses_credential -> credential_type:google_service_account (alternatif)
 ```
 
-**Exemple de requête** :
-```surql
--- Tous les credentials d'un service
-SELECT 
-    credential_type.*,
-    uses_credential.is_required,
-    uses_credential.is_recommended,
-    auth_type.display_name AS auth_type_name
-FROM uses_credential
-INNER JOIN credential_type ON uses_credential.out = credential_type.id
-INNER JOIN auth_type ON credential_type.auth_type_id = auth_type.id
-WHERE uses_credential.in = service:google_sheets
-ORDER BY uses_credential.display_order;
-```
+**Fonctions disponibles** :
+- `fn::get_service_credentials($service_id, $langue_id)`
+- `fn::get_service_recommended_credential($service_id, $langue_id)`
+- `fn::get_services_by_credential_type($credential_type_id, $langue_id)`
+- `fn::get_credential_type_stats()`
+- `fn::get_service_credentials_full($service_id, $langue_id)`
+- `fn::get_credentials_by_complexity($complexity, $service_id, $langue_id)`
+- `fn::get_uses_credential_with_etag($relation_id)`
 
 ---
 
-## 🎯 Cas d'Usage
+### 5. `user_service_credential` - Credentials Utilisateurs
 
-### Use Case 1 : Ajouter un nouveau type d'authentification
+**Objectif** : Stocke les credentials réels des utilisateurs pour chaque service. **Chiffrement automatique** (comme n8n).
 
-**Scénario** : Vous devez supporter un nouveau type d'auth (ex: SAML)
+**Structure** :
+- **Champs à plat** : `user_id`, `service_id`, `credential_type_id`, `is_active`, `expires_at`, `etag`
+- **Groupés** : `identity`, `credentials` (chiffré), `metadata`
 
-```surql
--- 1. Créer le type d'auth
-CREATE auth_type:saml SET
-    name = "saml",
-    display_name = "SAML 2.0",
-    slug = "saml",
-    description = "Security Assertion Markup Language for SSO",
-    security_level = 5,
-    popularity_score = 60,
-    is_active = true;
+**Types de credentials supportés** :
+- `credentials.oauth2` - OAuth2 tokens (access_token, refresh_token)
+- `credentials.api_key` - Clés API
+- `credentials.basic_auth` - Username/Password
+- `credentials.custom` - Types personnalisés
 
--- 2. Créer un credential type qui l'utilise
-CREATE credential_type SET
-    name = "oktaSaml",
-    display_name = "Okta SAML",
-    slug = "okta-saml",
-    auth_type_id = auth_type:saml,
-    provider_id = provider:okta,
-    required_fields = [
-        {name: "entity_id", display_name: "Entity ID", type: "string"},
-        {name: "certificate", display_name: "X.509 Certificate", type: "text"}
-    ];
-```
+**Fonctions disponibles** :
+- `fn::create_user_service_credential(...)` - Crée avec chiffrement automatique
+- `fn::update_user_service_credential(...)` - Met à jour avec chiffrement automatique
+- `fn::delete_user_service_credential($credential_id, $hard_delete)`
+- `fn::get_user_service_credential($user_id, $service_id, $langue_id)` - Sans données sensibles
+- `fn::get_user_service_credential_decrypted($credential_id)` - Avec données déchiffrées
+- `fn::get_user_credentials($user_id, $include_inactive, $langue_id)`
+- `fn::get_expired_credentials($refresh_buffer_hours, $user_id)`
+- `fn::get_user_service_credential_with_etag($credential_id)`
 
 ---
 
-### Use Case 2 : Configurer un service avec plusieurs credentials
+### 6. `credential_encryption_config` - Configuration Chiffrement
 
-**Scénario** : Google Sheets supporte OAuth2 et Service Account
+**Objectif** : Stocke la configuration de chiffrement pour les credentials (comme n8n).
+
+**Champs** :
+- `is_active` - Configuration active
+- `algorithm` - Algorithme (`aes256`, `aes128`)
+- `encryption_key` - Clé de chiffrement (minimum 32 caractères)
+- `key_version` - Version de la clé (pour rotation)
+
+**Fonctions de chiffrement** :
+- `fn::encrypt_credential_value($plaintext)` - Chiffre une valeur
+- `fn::decrypt_credential_value($encrypted_data, $key_version)` - Déchiffre une valeur
+- `fn::encrypt_credentials_object($credentials)` - Chiffre un objet complet
+- `fn::decrypt_credentials_object($encrypted_credentials)` - Déchiffre un objet complet
+
+---
+
+## 🔐 Chiffrement Automatique
+
+Le système utilise un chiffrement automatique directement dans SurrealDB, similaire à n8n.
+
+**Voir** : [ENCRYPTION_GUIDE.md](./ENCRYPTION_GUIDE.md) pour la documentation complète.
+
+### Flux de chiffrement
+
+1. **Création** : `fn::create_user_service_credential` chiffre automatiquement avant stockage
+2. **Mise à jour** : `fn::update_user_service_credential` chiffre automatiquement avant stockage
+3. **Récupération** : `fn::get_user_service_credential_decrypted` déchiffre automatiquement
+
+### Champs chiffrés automatiquement
+
+- ✅ `credentials.oauth2.access_token`
+- ✅ `credentials.oauth2.refresh_token`
+- ✅ `credentials.api_key.key`
+- ✅ `credentials.basic_auth.username`
+- ✅ `credentials.basic_auth.password`
+- ✅ Tous les champs de `credentials.custom`
+
+---
+
+## 🔄 WebSocket et Temps Réel
+
+Toutes les tables supportent les mises à jour en temps réel via WebSocket.
+
+**Voir** : `../webhook/WEBSOCKET_CREDENTIALS.md` pour la documentation complète.
+
+**Fonctionnalités** :
+- ETag automatique (UUID v7) pour détecter les changements
+- Support WebSocket via `LIVE SELECT`
+- Optimistic locking pour éviter les conflits
+
+---
+
+## 📚 Seeds et Données de Référence
+
+### Structure des Seeds
+
+```
+reference/credentials/
+├── auth_type/
+│   ├── auth_type_seeds.surql
+│   ├── auth_type_i18n_keys.surql
+│   └── auth_type_i18n_translations.surql
+├── credential_type/
+│   └── [108 fichiers batch]
+├── transmission_method/
+│   ├── transmission_method_seeds.surql
+│   ├── transmission_method_i18n_keys.surql
+│   └── transmission_method_i18n_translations.surql
+└── uses_credentials/
+    ├── uses_credential_batch1_seeds.surql à batch14_seeds.surql
+    ├── uses_credential_i18n_keys.surql
+    └── uses_credential_i18n_translations.surql
+```
+
+### Statistiques
+
+- **auth_type** : 9 types d'authentification
+- **credential_type** : 419 types de credentials (108 batches)
+- **transmission_method** : 4 méthodes de transmission
+- **uses_credential** : 419 relations (14 batches)
+
+### Seeds `uses_credential`
+
+**Format des relations** :
 
 ```surql
--- OAuth2 (recommandé pour utilisateurs)
-RELATE service:google_sheets->uses_credential->credential_type:google_oauth2 SET
+RELATE service:airtable->uses_credential->credential_type:airtable_oauth2_api SET
     is_required = true,
-    is_recommended = true,
-    display_order = 1,
-    custom_description = "Recommended for most users";
-
--- Service Account (pour automation serveur)
-RELATE service:google_sheets->uses_credential->credential_type:google_service_account SET
-    is_required = false,
-    is_recommended = false,
-    display_order = 2,
-    custom_label = "Service Account (Advanced)",
-    custom_description = "For server-to-server automation";
-```
-
----
-
-### Use Case 3 : Récupérer la configuration complète pour un formulaire
-
-**Scénario** : Afficher un formulaire de configuration de credentials
-
-```surql
-SELECT {
-    credential_type: credential_type.*,
-    auth_type: (SELECT * FROM auth_type WHERE id = credential_type.auth_type_id)[0],
-    provider: (SELECT * FROM provider WHERE id = credential_type.provider_id)[0],
-    required_fields: credential_type.required_fields,
-    config_schema: auth_type.config_schema,
-    security_info: {
-        level: auth_type.security_level,
-        complexity: auth_type.implementation_complexity,
-        advantages: auth_type.advantages,
-        disadvantages: auth_type.disadvantages
-    }
-} FROM credential_type
-INNER JOIN auth_type ON credential_type.auth_type_id = auth_type.id
-WHERE credential_type.slug = "google-sheets-oauth2";
-```
-
----
-
-## 📈 Statistiques et Analyse
-
-### Popularité des types d'auth
-
-```surql
-SELECT 
-    auth_type.display_name,
-    auth_type.popularity_score,
-    count() AS credential_count
-FROM credential_type
-INNER JOIN auth_type ON credential_type.auth_type_id = auth_type.id
-GROUP BY auth_type.id, auth_type.display_name, auth_type.popularity_score
-ORDER BY credential_count DESC;
-```
-
-### Services par niveau de sécurité
-
-```surql
-SELECT 
-    auth_type.security_level,
-    auth_type.display_name AS auth_type,
-    count() AS service_count
-FROM uses_credential
-INNER JOIN credential_type ON uses_credential.out = credential_type.id
-INNER JOIN auth_type ON credential_type.auth_type_id = auth_type.id
-GROUP BY auth_type.security_level, auth_type.display_name
-ORDER BY auth_type.security_level DESC;
-```
-
-### Credentials les plus utilisés
-
-```surql
-SELECT 
-    credential_type.display_name,
-    count() AS service_count
-FROM uses_credential
-INNER JOIN credential_type ON uses_credential.out = credential_type.id
-GROUP BY credential_type.id, credential_type.display_name
-ORDER BY service_count DESC
-LIMIT 10;
-```
-
----
-
-## 🔍 Validation et Maintenance
-
-### Vérifier l'intégrité
-
-```surql
--- Credentials avec auth_type invalide
-SELECT * FROM credential_type 
-WHERE auth_type_id NOT IN (SELECT id FROM auth_type);
-
--- Relations orphelines
-SELECT * FROM uses_credential 
-WHERE in NOT IN (SELECT id FROM service)
-   OR out NOT IN (SELECT id FROM credential_type);
-
--- Services sans credentials
-SELECT * FROM service 
-WHERE id NOT IN (
-    SELECT DISTINCT in FROM uses_credential
-);
-```
-
-### Nettoyer les données
-
-```surql
--- Désactiver un type d'auth obsolète
-UPDATE auth_type:oauth1 SET is_active = false;
-
--- Supprimer une relation inutilisée
-DELETE uses_credential 
-WHERE in = service:old_service 
-  AND out = credential_type:deprecated_credential;
-```
-
----
-
-## 🎨 Patterns de Configuration
-
-### Pattern 1 : Credential Unique
-
-Un service utilise un seul type de credential.
-
-**Exemple** : Stripe → API Key
-
-```surql
-service:stripe -> uses_credential -> credential_type:stripe_api
-```
-
-### Pattern 2 : Credentials Multiples avec Recommandation
-
-Un service supporte plusieurs credentials avec un recommandé.
-
-**Exemple** : Google Sheets → OAuth2 (recommandé) + Service Account
-
-```surql
-service:google_sheets -> uses_credential (recommended) -> credential_type:google_oauth2
-                      -> uses_credential (advanced) -> credential_type:google_service_account
-```
-
-### Pattern 3 : Credentials Conditionnels
-
-Différents credentials selon le contexte (plan, version, etc.)
-
-```surql
-RELATE service:premium_api->uses_credential->credential_type:oauth2 SET
-    display_conditions = {
-        show: {
-            plan: ["premium", "enterprise"]
-        }
+    presentation = {
+        display_order: 1,
+        is_recommended: true,
+        badge_color_type: theme_color_type:primary
+    },
+    config = {
+        custom_description_i18n: i18n_key:uses_cred_airtable_oauth2_desc,
+        scopes_required: ["data.records:read", "data.records:write"],
+        setup_complexity: "easy",
+        estimated_setup_time: 5,
+        use_case: "standard"
     };
 ```
 
----
+**Champs principaux** :
+- `is_required` : `true` = obligatoire, `false` = optionnel
+- `presentation.display_order` : Ordre d'affichage (plus petit = premier)
+- `presentation.is_recommended` : Badge "Recommandé" dans l'UI
+- `presentation.badge_color_type` : Référence vers `theme_color_type` (primary, neutral, warning, error)
+- `config.setup_complexity` : `easy`, `medium`, `hard`
+- `config.estimated_setup_time` : Temps en minutes
+- `config.use_case` : `standard`, `automation`, `serverless`, `development`, `production`
 
-## 🚀 Ordre d'Import
-
-Pour importer correctement les tables, respectez cet ordre :
+**Import des seeds** :
 
 ```bash
-# 1. Auth types (indépendant)
-surreal import auth_type.surql
-
-# 2. Credential types (dépend de auth_type et provider)
-surreal import credential_type.surql
-
-# 3. Relations (dépend de service et credential_type)
-surreal import uses_credential.surql
+# Importer tous les batches uses_credential
+for i in {1..14}; do
+  surreal import --conn http://localhost:8000 \
+    --user root --pass root \
+    --ns lyxal --db lyxal \
+    uses_credential_batch${i}_seeds.surql
+done
 ```
 
 ---
 
-## 📚 Ressources Complémentaires
+## 🚀 Utilisation
 
-- **Schéma complet** : `../schema/integration_schema.surql`
-- **Documentation** : `../schema/INTEGRATION_ARCHITECTURE.md`
-- **Exemples** : Voir les sections commentées dans chaque fichier
+### Créer une credential (chiffrement automatique)
+
+```surql
+LET $result = fn::create_user_service_credential(
+    $user_id: 'user123',
+    $service_id: 'service:google_sheets',
+    $credential_type_id: 'credential_type:google_sheets_oauth2',
+    $identity_name: 'Mon compte Google Sheets',
+    $credentials: {
+        oauth2: {
+            access_token: 'ya29.a0AfH6SMB...',
+            refresh_token: '1//0gX...',
+            token_type: 'Bearer',
+            expires_at: <datetime>'2024-12-31T23:59:59Z',
+            scope: 'read:user write:message'
+        }
+    }
+);
+```
+
+### Récupérer les credentials d'un service
+
+```surql
+LET $credentials = fn::get_service_credentials(
+    $service_id: 'service:google_sheets',
+    $langue_id: 'fr'
+);
+```
+
+### Récupérer une credential déchiffrée (pour utilisation)
+
+```surql
+LET $credential = fn::get_user_service_credential_decrypted(
+    $credential_id: 'user_service_credential:123'
+);
+
+-- Utiliser le token déchiffré
+LET $access_token = $credential.credential.credentials.oauth2.access_token;
+```
 
 ---
 
-## ✅ Avantages de cette Architecture
+## 📖 Documentation Complémentaire
 
-### 1. Flexibilité
-- Ajout de nouveaux types d'auth sans migration
-- Configuration spécifique par provider
-- Multiple credentials par service
-
-### 2. Richesse des Métadonnées
-- Niveau de sécurité
-- Complexité d'implémentation
-- Popularité
-- Avantages/Inconvénients documentés
-
-### 3. Validation
-- Schémas de configuration par type
-- Champs requis définis
-- Templates pré-remplis
-
-### 4. Évolutivité
-- Désactivation sans suppression
-- Versioning possible
-- Conditions d'affichage
-
-### 5. Documentation Intégrée
-- Description détaillée
-- Exemples de providers
-- Cas d'usage
-- URLs de documentation
+- **[ENCRYPTION_GUIDE.md](./ENCRYPTION_GUIDE.md)** - Guide complet du chiffrement automatique
+- **[../webhook/WEBSOCKET_CREDENTIALS.md](../webhook/WEBSOCKET_CREDENTIALS.md)** - Documentation WebSocket et temps réel
 
 ---
 
-**Dernière mise à jour** : 2025-10-28  
-**Version** : 1.0.0
-
+**Dernière mise à jour** : 2025-01-27  
+**Version** : 2.0

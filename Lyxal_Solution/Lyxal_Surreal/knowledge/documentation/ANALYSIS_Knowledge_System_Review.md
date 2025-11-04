@@ -2118,7 +2118,17 @@ Un système de connaissance prêt pour l'implémentation, avec une documentation
   - [x] ✅ Documentation des fonctions créée (`function/gap_detection/README.md`)
   - [x] ✅ Schéma de référence mis à jour
   - [x] ✅ Script d'import mis à jour (niveau 5, dépend de domain/topic/content)
-- [ ] **Tâche 23** : Créer processus d'enrichissement automatique
+- [x] ✅ **Tâche 23** : Créer processus d'enrichissement automatique
+  - [x] ✅ Table `knowledge_content_proposal` créée avec tous les champs (gap, topic, content_type, identity, content U3-FLEX, generation, review, metadata)
+  - [x] ✅ **3 fonctions d'enrichissement créées** dans `function/enrichment/`
+    - [x] ✅ `fn::knowledge_enrich_propose_content()` - Propose un nouveau contenu basé sur un gap
+    - [x] ✅ `fn::knowledge_enrich_approve_proposal()` - Approuve une proposition et la transforme en contenu réel
+    - [x] ✅ `fn::knowledge_enrich_process_gaps()` - Traite automatiquement les gaps pour générer des propositions
+  - [x] ✅ Documentation complète créée (`12_Knowledge_Content_Proposal.md`)
+  - [x] ✅ Documentation des fonctions créée (`function/enrichment/README.md`)
+  - [x] ✅ Workflow complet documenté (détection → enregistrement → traitement → approbation)
+  - [x] ✅ Schéma de référence mis à jour
+  - [x] ✅ Script d'import mis à jour (niveau 5, dépend de gap/topic/content_type)
 
 ---
 
@@ -2126,20 +2136,42 @@ Un système de connaissance prêt pour l'implémentation, avec une documentation
 
 #### Export pour entraînement
 
-- [ ] **Tâche 24** : Ajouter métadonnées d'entraînement dans `knowledge_content`
-  - [ ] Champ `metadata.training.included_in_training`
-  - [ ] Champ `metadata.training.training_versions`
-  - [ ] Champ `metadata.training.training_weight`
+- [x] ✅ **Tâche 24** : Ajouter métadonnées d'entraînement dans `knowledge_content`
+  - [x] ✅ Champ `metadata.training.included_in_training` (bool, défaut false)
+  - [x] ✅ Champ `metadata.training.training_versions` (array<string>, défaut [])
+  - [x] ✅ Champ `metadata.training.training_weight` (number, défaut 1.0, assertion 0-2)
+  - [x] ✅ Champ `metadata.training.last_training_date` (option<datetime>)
+  - [x] ✅ Index `idx_content_training` créé pour filtrage rapide
+  - [x] ✅ Documentation complète dans `06_Knowledge_Content.md`
+  - [x] ✅ Schéma de référence mis à jour (`SCHEMA_Knowledge_System.md`)
+  - [x] ✅ Exemples d'utilisation ajoutés (marquage, versioning, requêtes)
   
-- [ ] **Tâche 25** : Créer fonction d'export par domaine
-  - [ ] Fonction SurrealDB `export_domain_for_training()`
-  - [ ] Format JSONL structuré
-  - [ ] Filtrage par qualité et pondération
+- [x] ✅ **Tâche 25** : Créer fonction d'export par domaine
+  - [x] ✅ Fonction SurrealDB `fn::knowledge_export_domain_for_training()` créée
+  - [x] ✅ Format JSONL-ready structuré avec tous les champs nécessaires
+  - [x] ✅ Filtrage par qualité (`min_quality_score`, défaut: 0.7)
+  - [x] ✅ Filtrage par métadonnées d'entraînement (`include_only_marked`)
+  - [x] ✅ Pondération des contenus (`training_weight` dans métadonnées)
+  - [x] ✅ Tri par poids d'entraînement et qualité
+  - [x] ✅ Statistiques d'export (total, qualité moyenne, poids moyen)
+  - [x] ✅ Versioning des datasets (`dataset_version`)
+  - [x] ✅ Documentation complète créée (`function/training/README.md`)
+  - [x] ✅ Exemples de conversion JSONL (JavaScript, Python)
+  - [x] ✅ Workflow d'export documenté (préparation → export → mise à jour)
   
-- [ ] **Tâche 26** : Créer pipeline d'export automatique
-  - [ ] Export périodique des datasets
-  - [ ] Versioning des datasets
-  - [ ] Tracking de provenance
+- [x] ✅ **Tâche 26** : Créer pipeline d'export automatique
+  - [x] ✅ Table `knowledge_dataset_export` créée pour tracking complet
+  - [x] ✅ Champs identité (version, name, description)
+  - [x] ✅ Champs export (paramètres et statistiques)
+  - [x] ✅ Champs provenance (créateur, type, fichier, hash)
+  - [x] ✅ Champs métadonnées (dates, statut, expiration, notes)
+  - [x] ✅ 6 index créés pour requêtes optimisées
+  - [x] ✅ Fonction `fn::knowledge_export_create_dataset()` créée (versioning automatique)
+  - [x] ✅ Fonction `fn::knowledge_export_list_datasets()` créée (listing avec filtres)
+  - [x] ✅ Fonction `fn::knowledge_export_auto_version()` créée (génération de version)
+  - [x] ✅ Documentation complète créée (`13_Knowledge_Dataset_Export.md`)
+  - [x] ✅ Scripts d'automatisation documentés (export périodique, déclenché par événement)
+  - [x] ✅ Workflow complet documenté (création → génération → sauvegarde → tracking)
 
 #### Entraînement pilote
 
@@ -2157,12 +2189,12 @@ Un système de connaissance prêt pour l'implémentation, avec une documentation
   - [x] ✅ Assertion 0-1
   - [x] ✅ Documenter son utilisation
   
-- [ ] **Tâche 18** : Ajouter métadonnées d'entraînement dans `knowledge_content`
-  - [ ] Créer bloc `metadata.training`
-  - [ ] Champ `included_in_training` (bool)
-  - [ ] Champ `training_versions` (array<string>)
-  - [ ] Champ `training_weight` (number 0-2)
-  - [ ] Documenter leur utilisation
+- [x] ✅ **Tâche 18** : Ajouter métadonnées d'entraînement dans `knowledge_content` (DÉJÀ TERMINÉE comme Tâche 24 ligne 2139)
+  - [x] ✅ Créer bloc `metadata.training`
+  - [x] ✅ Champ `included_in_training` (bool)
+  - [x] ✅ Champ `training_versions` (array<string>)
+  - [x] ✅ Champ `training_weight` (number 0-2)
+  - [x] ✅ Documenter leur utilisation
   
 - [x] ✅ **Tâche 21** (Feedback) : Créer table `knowledge_feedback`
   - [x] ✅ Table complète avec tous les champs (`content`, `feedback_type`, `score`, `comment`, `source`, `metadata`)
@@ -2183,18 +2215,37 @@ Un système de connaissance prêt pour l'implémentation, avec une documentation
   - [x] ✅ Champ `last_viewed` (datetime optionnel)
   - [x] ✅ Champ `ai_usage_count` (int, défaut 0)
   - [x] ✅ Documentation complète avec exemples de tracking et requêtes
-  - [ ] Système de tracking automatique (optionnel - peut être ajouté plus tard via fonctions helper)
+  - [x] ✅ **4 fonctions de tracking créées** dans `function/tracking/`
+    - [x] ✅ `fn::knowledge_track_content_view()` - Incrémente view_count
+    - [x] ✅ `fn::knowledge_track_ai_usage()` - Incrémente ai_usage_count
+    - [x] ✅ `fn::knowledge_track_content_access()` - Fonction combinée
+    - [x] ✅ `fn::knowledge_track_get_analytics()` - Récupère les métriques
+  - [x] ✅ **Intégration automatique dans fonctions IA**
+    - [x] ✅ `fn::knowledge_get_topic_bundle_for_ai()` - Track tous les contenus retournés
+    - [x] ✅ `fn::knowledge_get_best_content_for_ai()` - Track le contenu retourné
+    - [x] ✅ `fn::knowledge_get_content_by_type_for_ai()` - Track tous les contenus retournés
+    - [x] ✅ `fn::knowledge_search_keywords_for_ai()` - Track les meilleurs contenus des résultats
+    - [x] ✅ Tracking automatique avec `is_ai_usage = true` pour tous les contenus retournés
 
 #### Relations et graphe (Priorité MOYENNE 🟢)
 
-- [ ] **Tâche 21** : Créer table `knowledge_content_relation`
-  - [ ] TYPE RELATION avec types définis
-  - [ ] Types : prerequisite, dependency, reference, related
-  - [ ] Documenter les cas d'usage
+- [x] ✅ **Tâche 21** : Créer table `knowledge_content_relation`
+  - [x] ✅ TYPE RELATION avec types définis
+  - [x] ✅ Types : prerequisite, dependency, reference, related
+  - [x] ✅ Champs : relation_type, description, priority, metadata
+  - [x] ✅ 4 index créés pour requêtes optimisées (type, actif, in/out composite, priority)
+  - [x] ✅ Documentation complète créée (`14_Knowledge_Content_Relation.md`)
+  - [x] ✅ Exemples d'utilisation (RELATE) avec tous les types
+  - [x] ✅ Requêtes pour navigation et graphe de relations
+  - [x] ✅ Schéma de référence mis à jour
+  - [x] ✅ Script d'import mis à jour (niveau 6, dépend de knowledge_content)
   
-- [ ] **Tâche 22** : Ajouter champ `content.references` dans `knowledge_content`
-  - [ ] Array de records vers `knowledge_content`
-  - [ ] Documenter son utilisation
+- [x] ✅ **Tâche 22** : Ajouter champ `content.references` dans `knowledge_content`
+  - [x] ✅ Array de records vers `knowledge_content` ajouté
+  - [x] ✅ Documentation dans `06_Knowledge_Content.md` (section content.references)
+  - [x] ✅ Exemples d'utilisation (ajout, récupération avec FETCH)
+  - [x] ✅ Note sur différence avec `knowledge_content_relation` (relations simples vs structurées)
+  - [x] ✅ Exemple complet mis à jour avec références
 
 ---
 
@@ -2202,35 +2253,35 @@ Un système de connaissance prêt pour l'implémentation, avec une documentation
 
 #### Features v2 – IA-Ready
 
-- [ ] **Tâche 23** : Créer API de requête optimisée IA
-- [ ] **Tâche 24** : Créer analytics & métriques de base (dashboard)
+- [x] ✅ **Tâche 18** : Créer API de requête optimisée IA (DÉJÀ TERMINÉE dans Phase 5)
+- [x] ✅ **Tâche 24** : Créer analytics & métriques de base (dashboard)
+  - [x] ✅ **5 fonctions analytics créées** dans `function/analytics/`
+    - [x] ✅ `fn::knowledge_analytics_get_global_stats()` - Statistiques globales du système
+    - [x] ✅ `fn::knowledge_analytics_get_domain_stats()` - Statistiques par domaine
+    - [x] ✅ `fn::knowledge_analytics_get_topic_stats()` - Statistiques par topic
+    - [x] ✅ `fn::knowledge_analytics_get_top_contents()` - Top contenus les plus consultés
+    - [x] ✅ `fn::knowledge_analytics_get_unused_contents()` - Contenus jamais consultés
+  - [x] ✅ Documentation complète créée (`function/analytics/README.md`)
+  - [x] ✅ Exemples de dashboard et cas d'usage documentés
+  - [x] ✅ Format de réponse structuré pour affichage dashboard
+  - [x] ✅ Filtres flexibles (domaine, topic, type, qualité)
 
 #### Fondations v3 – Self-Learning
 
-- [ ] **Tâche 25** : Implémenter détection de gaps
-- [ ] **Tâche 26** : Créer processus d'enrichissement automatique
+- [x] ✅ **Tâche 22** : Implémenter détection de gaps (DÉJÀ TERMINÉE dans Phase 5)
+- [x] ✅ **Tâche 23** : Créer processus d'enrichissement automatique (DÉJÀ TERMINÉE dans Phase 5)
 
 ---
 
 ### Phase 7 : Entraînement IA (Optionnel - Semaines 10+)
 
-#### Export pour entraînement
-
-- [ ] **Tâche 27** : Créer fonction d'export par domaine
-  - [ ] Fonction SurrealDB `export_domain_for_training()`
-  - [ ] Format JSONL structuré
-  - [ ] Filtrage par qualité et pondération
-  
-- [ ] **Tâche 28** : Créer pipeline d'export automatique
-  - [ ] Export périodique des datasets
-  - [ ] Versioning des datasets
-  - [ ] Tracking de provenance
+> ⚠️ **Note** : Les tâches d'export (27-28) ont été déplacées et complétées dans Phase 6 (voir lignes 2149-2174).
 
 #### Entraînement pilote
 
-- [ ] **Tâche 29** : Premier fine-tuning test (domaine SurrealDB)
-- [ ] **Tâche 30** : Validation qualité modèle généré
-- [ ] **Tâche 31** : Comparaison avec modèles génériques
+- [ ] **Tâche 27** : Premier fine-tuning test (domaine SurrealDB)
+- [ ] **Tâche 28** : Validation qualité modèle généré
+- [ ] **Tâche 29** : Comparaison avec modèles génériques
 
 ---
 

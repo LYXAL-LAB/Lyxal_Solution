@@ -23,6 +23,9 @@ Il liste toutes les tables, champs, types, contraintes, index et relations en un
 | `knowledge_content` | NORMAL | Contenus de connaissance (niveau 4) | `knowledge_topic`, `knowledge_content_type`, `tag`, `url`, `i18n_key` |
 | `knowledge_feedback` | NORMAL | Feedback sur les contenus (amélioration continue) | `knowledge_content` |
 | `knowledge_gap` | NORMAL | Gaps détectés dans le système (détection de lacunes) | `knowledge_domain`, `knowledge_topic`, `knowledge_content` |
+| `knowledge_content_proposal` | NORMAL | Propositions de contenus générées par IA | `knowledge_gap`, `knowledge_topic`, `knowledge_content_type` |
+| `knowledge_dataset_export` | NORMAL | Tracking des exports de datasets d'entraînement | `knowledge_domain` |
+| `knowledge_content_relation` | RELATION | Relations entre contenus (prerequisite, dependency, etc.) | `knowledge_content` |
 | `knowledge_domain_keyword` | RELATION | Relations domaines ↔ keywords | `knowledge_domain`, `knowledge_keyword` |
 | `knowledge_topic_keyword` | RELATION | Relations topics ↔ keywords | `knowledge_topic`, `knowledge_keyword` |
 
@@ -253,6 +256,7 @@ Il liste toutes les tables, champs, types, contraintes, index et relations en un
 | `content.examples.incorrect.*.text_key` | `option<record<i18n_key>>` | OPTIONAL, ON DELETE REJECT | - | Explication |
 | `content.examples.incorrect.*.code` | `option<string>` | OPTIONAL | - | Code incorrect |
 | `content.media` | `option<array<record<url>>>` | OPTIONAL | - | Médias associés |
+| `content.references` | `option<array<record<knowledge_content>>>` | OPTIONAL | - | Références vers d'autres contenus liés |
 | `tags` | `option<array<record<tag>>>` | OPTIONAL | - | Tags structurés |
 | `metadata.priority` | `int` | DEFAULT | `0` | Priorité d'affichage |
 | `metadata.is_active` | `bool` | DEFAULT | `true` | Contenu actif |
@@ -261,6 +265,10 @@ Il liste toutes les tables, champs, types, contraintes, index et relations en un
 | `metadata.analytics.view_count` | `int` | DEFAULT | `0` | Nombre total de consultations/vues (humain + IA) |
 | `metadata.analytics.last_viewed` | `option<datetime>` | OPTIONAL | - | Date et heure de la dernière consultation |
 | `metadata.analytics.ai_usage_count` | `int` | DEFAULT | `0` | Nombre d'utilisations spécifiques par des IA/agents IA |
+| `metadata.training.included_in_training` | `bool` | DEFAULT | `false` | Ce contenu est inclus dans les datasets d'entraînement IA |
+| `metadata.training.training_versions` | `array<string>` | DEFAULT | `[]` | Versions de datasets où ce contenu a été utilisé (ex: ["v1.0", "v1.1"]) |
+| `metadata.training.training_weight` | `number` | DEFAULT, 0-2 | `1.0` | Poids d'entraînement (1.0 = normal, 2.0 = double poids, 0.5 = demi-poids) |
+| `metadata.training.last_training_date` | `option<datetime>` | OPTIONAL | - | Date de la dernière utilisation dans un dataset d'entraînement |
 
 > ⚠️ **Syntaxe arrays d'objets** : Utiliser le wildcard `*` pour définir les champs dans les arrays d'objets (voir `16_SurrealDB_Arrays_Objects_Syntax.md`)
 
@@ -270,6 +278,7 @@ Il liste toutes les tables, champs, types, contraintes, index et relations en un
 - `idx_content_type` sur `identity.content_type`
 - `idx_content_slug` UNIQUE sur `identity.slug`
 - `idx_content_active` sur `metadata.is_active`
+- `idx_content_training` sur `metadata.training.included_in_training`
 
 ---
 
@@ -401,6 +410,33 @@ Il liste toutes les tables, champs, types, contraintes, index et relations en un
 
 ---
 
+## 12. `knowledge_content_relation` (RELATION)
+
+**Type** : `RELATION`  
+**Rôle** : Relations structurées entre contenus de connaissance
+
+### Champs
+
+| Champ | Type | Contrainte | Description |
+|-------|------|------------|-------------|
+| `relation_type` | `string` | REQUIRED, IN ["prerequisite", "dependency", "reference", "related"] | Type de relation |
+| `description` | `option<string>` | OPTIONAL | Description de la relation |
+| `priority` | `int` | DEFAULT | `0` | Ordre de priorité pour navigation |
+| `metadata.is_active` | `bool` | DEFAULT | `true` | Relation active |
+| `metadata.created_at` | `datetime` | DEFAULT | `time::now()` | Date de création |
+| `metadata.created_by` | `option<string>` | OPTIONAL | Identifiant créateur |
+
+### Index
+
+- `idx_relation_type` sur `relation_type`
+- `idx_relation_active` sur `metadata.is_active`
+- `idx_relation_in_out` COMPOSITE sur `in, out`
+- `idx_relation_priority` sur `priority`
+
+> 📚 **Documentation complète** : Voir `14_Knowledge_Content_Relation.md`
+
+---
+
 ## 🔗 Relations et Contraintes
 
 ### Relations CASCADE (suppression automatique)
@@ -455,6 +491,10 @@ knowledge_content_type (1)
 knowledge_keyword (1)
     ├─→ knowledge_domain_keyword (∞) [CASCADE]
     └─→ knowledge_topic_keyword (∞) [CASCADE]
+
+knowledge_content (1)
+    ├─→ knowledge_content_relation (∞) [via RELATE]
+    └─→ knowledge_content (∞) [via content.references]
 ```
 
 ---

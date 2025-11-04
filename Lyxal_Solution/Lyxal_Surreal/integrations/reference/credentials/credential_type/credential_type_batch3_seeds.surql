@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch3_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -27,8 +27,7 @@ CREATE credential_type:microsoft_excel_oauth2_api SET
     
     presentation = {
         icon: icon:microsoft_excel,
-        color: "#107C41",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_microsoft_excel_oauth2_api_tooltip,
         display_order: 200
     },
@@ -74,8 +73,7 @@ CREATE credential_type:microsoft_teams_oauth2_api SET
     
     presentation = {
         icon: icon:microsoft_teams,
-        color: "#5B5FC7",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_microsoft_teams_oauth2_api_tooltip,
         display_order: 201
     },
@@ -121,8 +119,7 @@ CREATE credential_type:microsoft_outlook_oauth2_api SET
     
     presentation = {
         icon: icon:microsoft_outlook,
-        color: "#0078D4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_microsoft_outlook_oauth2_api_tooltip,
         display_order: 202
     },
@@ -168,8 +165,7 @@ CREATE credential_type:microsoft_onedrive_oauth2_api SET
     
     presentation = {
         icon: icon:microsoft_onedrive,
-        color: "#0078D4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_microsoft_onedrive_oauth2_api_tooltip,
         display_order: 203
     },
@@ -215,8 +211,7 @@ CREATE credential_type:microsoft_sharepoint_oauth2_api SET
     
     presentation = {
         icon: icon:microsoft_sharepoint,
-        color: "#0078D4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_microsoft_sharepoint_oauth2_api_tooltip,
         display_order: 204
     },
@@ -262,8 +257,7 @@ CREATE credential_type:microsoft_todo_oauth2_api SET
     
     presentation = {
         icon: icon:microsoft_todo,
-        color: "#2564CF",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_microsoft_todo_oauth2_api_tooltip,
         display_order: 205
     },
@@ -309,8 +303,7 @@ CREATE credential_type:microsoft_oauth2_api SET
     
     presentation = {
         icon: icon:microsoft,
-        color: "#0078D4",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_microsoft_oauth2_api_tooltip,
         display_order: 206
     },
@@ -446,8 +439,7 @@ CREATE credential_type:microsoft_entra_oauth2_api SET
     
     presentation = {
         icon: icon:microsoft_entra,
-        color: "#0078D4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_microsoft_entra_oauth2_api_tooltip,
         display_order: 211
     },
@@ -494,8 +486,7 @@ CREATE credential_type:microsoft_graph_security_oauth2_api SET
     
     presentation = {
         icon: icon:microsoft_security,
-        color: "#EA4335",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_microsoft_graph_security_oauth2_api_tooltip,
         display_order: 212
     },
@@ -542,8 +533,7 @@ CREATE credential_type:microsoft_azure_monitor_oauth2_api SET
     
     presentation = {
         icon: icon:azure_monitor,
-        color: "#0078D4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_microsoft_azure_monitor_oauth2_api_tooltip,
         display_order: 220
     },
@@ -589,8 +579,7 @@ CREATE credential_type:microsoft_azure_cosmos_db_shared_key_api SET
     
     presentation = {
         icon: icon:azure_cosmos_db,
-        color: "#0078D4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_microsoft_azure_cosmos_db_shared_key_api_tooltip,
         display_order: 221
     },
@@ -648,8 +637,7 @@ CREATE credential_type:microsoft_sql SET
     
     presentation = {
         icon: icon:microsoft_sql_server,
-        color: "#CC2927",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_microsoft_sql_tooltip,
         display_order: 222
     },

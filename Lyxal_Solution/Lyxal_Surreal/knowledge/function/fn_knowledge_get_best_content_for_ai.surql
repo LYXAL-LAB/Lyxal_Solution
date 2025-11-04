@@ -73,6 +73,10 @@ DEFINE FUNCTION fn::knowledge_get_best_content_for_ai(
         FROM $best_content_raw
         FETCH identity.content_type
     )[0];
+    
+    -- Tracking automatique : incrémenter les compteurs pour le contenu retourné (utilisation IA)
+    LET $track_result = (SELECT * FROM fn::knowledge_track_content_access($best_content_id, true));
+    
     RETURN {
         success: true,
         topic: {

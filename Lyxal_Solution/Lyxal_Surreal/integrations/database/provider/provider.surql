@@ -89,16 +89,10 @@ DEFINE FIELD IF NOT EXISTS presentation.logo_dark ON provider
     REFERENCE ON DELETE REJECT
     COMMENT 'Logo du provider en thème sombre (référence vers logo_brand).';
 
-DEFINE FIELD IF NOT EXISTS presentation.color ON provider 
-    TYPE string
-    ASSERT string::starts_with($value, '#') AND string::len($value) = 7
-    COMMENT 'Couleur hexadécimale du brand (ex: #4285F4 pour Google).';
-
-DEFINE FIELD IF NOT EXISTS presentation.color_daisy ON provider 
-    TYPE string
-    ASSERT $value IN ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error']
-    DEFAULT 'neutral'
-    COMMENT 'Classe de couleur DaisyUI pour l\'UI.';
+DEFINE FIELD IF NOT EXISTS presentation.color_type ON provider 
+    TYPE record<theme_color_type>
+    REFERENCE ON DELETE REJECT
+    COMMENT 'Type de couleur pour les tags/badges dans l\'UI (référence vers theme_color_type: primary, error, warning, etc.).';
 
 DEFINE FIELD IF NOT EXISTS presentation.tooltip_i18n ON provider 
     TYPE option<record<i18n_key>>
@@ -315,8 +309,7 @@ CREATE provider:google SET
     presentation = {
         logo_light: logo_brand:google_light,
         logo_dark: logo_brand:google_dark,
-        color: "#4285F4",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:provider_google_tooltip,
         display_order: 1
     },
@@ -376,8 +369,7 @@ CREATE provider:stripe SET
     presentation = {
         logo_light: logo_brand:stripe_light,
         logo_dark: logo_brand:stripe_dark,
-        color: "#635BFF",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:provider_stripe_tooltip,
         display_order: 2
     },
@@ -455,7 +447,7 @@ WHERE name = "google";
 SELECT 
     name,
     identity.display_name_i18n.*,
-    presentation.color,
+    presentation.color_type,
     config.capabilities.supports_oauth2
 FROM provider
 WHERE config.capabilities.supports_oauth2 = true

@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch20_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:action_network_api SET
     
     presentation = {
         icon: icon:actionnetwork,
-        color: "#00A0DC",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_action_network_api_tooltip,
         display_order: 1100
     },
@@ -134,8 +133,7 @@ CREATE credential_type:affinity_api SET
     
     presentation = {
         icon: icon:affinity,
-        color: "#3B5998",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_affinity_api_tooltip,
         display_order: 1102
     },
@@ -184,8 +182,7 @@ CREATE credential_type:agile_crm_api SET
     
     presentation = {
         icon: icon:agilecrm,
-        color: "#46A850",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_agile_crm_api_tooltip,
         display_order: 1103
     },
@@ -251,8 +248,7 @@ CREATE credential_type:autopilot_api SET
     
     presentation = {
         icon: icon:autopilot,
-        color: "#FF6B00",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_autopilot_api_tooltip,
         display_order: 1104
     },
@@ -301,8 +297,7 @@ CREATE credential_type:bamboo_hr_api SET
     
     presentation = {
         icon: icon:bamboohr,
-        color: "#73C41D",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_bamboo_hr_api_tooltip,
         display_order: 1105
     },
@@ -409,8 +404,7 @@ CREATE credential_type:bubble_api SET
     
     presentation = {
         icon: icon:bubble,
-        color: "#1450DC",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_bubble_api_tooltip,
         display_order: 1107
     },
@@ -501,8 +495,7 @@ CREATE credential_type:cal_api SET
     
     presentation = {
         icon: icon:cal,
-        color: "#292929",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_cal_api_tooltip,
         display_order: 1108
     },
@@ -560,8 +553,7 @@ CREATE credential_type:carbon_black_api SET
     
     presentation = {
         icon: icon:vmware,
-        color: "#607078",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_carbon_black_api_tooltip,
         display_order: 1109
     },
@@ -619,8 +611,7 @@ CREATE credential_type:chargebee_api SET
     
     presentation = {
         icon: icon:chargebee,
-        color: "#FF7C33",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_chargebee_api_tooltip,
         display_order: 1110
     },

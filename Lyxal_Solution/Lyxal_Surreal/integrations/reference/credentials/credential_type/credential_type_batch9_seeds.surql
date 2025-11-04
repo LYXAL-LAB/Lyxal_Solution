@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch9_seeds.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -25,8 +25,7 @@ CREATE credential_type:twitter_oauth1_api SET
     
     presentation = {
         icon: icon:twitter,
-        color: "#000000",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_twitter_oauth1_api_tooltip,
         display_order: 720
     },
@@ -70,8 +69,7 @@ CREATE credential_type:twitter_oauth2_api SET
     
     presentation = {
         icon: icon:twitter,
-        color: "#000000",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_twitter_oauth2_api_tooltip,
         display_order: 721
     },
@@ -116,8 +114,7 @@ CREATE credential_type:linkedin_oauth2_api SET
     
     presentation = {
         icon: icon:linkedin,
-        color: "#0A66C2",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_linkedin_oauth2_api_tooltip,
         display_order: 730
     },
@@ -206,8 +203,7 @@ CREATE credential_type:facebook_graph_api SET
     
     presentation = {
         icon: icon:facebook,
-        color: "#1877F2",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_facebook_graph_api_tooltip,
         display_order: 740
     },
@@ -353,8 +349,7 @@ CREATE credential_type:reddit_oauth2_api SET
     
     presentation = {
         icon: icon:reddit,
-        color: "#FF4500",
-        color_daisy: "warning",
+        color_type: theme_color_type:warning,
         tooltip_i18n: i18n_key:credential_type_reddit_oauth2_api_tooltip,
         display_order: 750
     },
@@ -398,8 +393,7 @@ CREATE credential_type:youtube_oauth2_api SET
     
     presentation = {
         icon: icon:youtube,
-        color: "#FF0000",
-        color_daisy: "error",
+        color_type: theme_color_type:error,
         tooltip_i18n: i18n_key:credential_type_youtube_oauth2_api_tooltip,
         display_order: 760
     },
@@ -444,8 +438,7 @@ CREATE credential_type:discourse_api SET
     
     presentation = {
         icon: icon:discourse,
-        color: "#000000",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_discourse_api_tooltip,
         display_order: 770
     },
@@ -510,8 +503,7 @@ CREATE credential_type:disqus_api SET
     
     presentation = {
         icon: icon:disqus,
-        color: "#2E9FFF",
-        color_daisy: "info",
+        color_type: theme_color_type:info,
         tooltip_i18n: i18n_key:credential_type_disqus_api_tooltip,
         display_order: 771
     },
@@ -559,8 +551,7 @@ CREATE credential_type:medium_api SET
     
     presentation = {
         icon: icon:medium,
-        color: "#000000",
-        color_daisy: "neutral",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_medium_api_tooltip,
         display_order: 780
     },
@@ -608,8 +599,7 @@ CREATE credential_type:medium_oauth2_api SET
     
     presentation = {
         icon: icon:medium,
-        color: "#000000",
-        color_daisy: "primary",
+        color_type: theme_color_type:primary,
         tooltip_i18n: i18n_key:credential_type_medium_oauth2_api_tooltip,
         display_order: 781
     },
@@ -653,8 +643,7 @@ CREATE credential_type:spotify_oauth2_api SET
     
     presentation = {
         icon: icon:spotify,
-        color: "#1DB954",
-        color_daisy: "success",
+        color_type: theme_color_type:success,
         tooltip_i18n: i18n_key:credential_type_spotify_oauth2_api_tooltip,
         display_order: 790
     },
