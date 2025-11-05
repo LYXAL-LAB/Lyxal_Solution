@@ -39,6 +39,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_list_transmission_method(
                 WHERE in = presentation.tooltip_i18n AND out = $langue_record
             )[0] AS tooltip_translated,
             presentation,
+            presentation.display_order,
             quality.security_level,
             config.is_recommended,
             config.requires_https

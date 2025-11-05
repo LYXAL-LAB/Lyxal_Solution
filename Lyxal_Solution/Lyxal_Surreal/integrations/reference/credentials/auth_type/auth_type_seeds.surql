@@ -473,8 +473,7 @@ CREATE auth_type:header_auth SET
     
     presentation = {
         icon: icon:settings,
-        color: "#9AA0A6",
-        color_daisy: "accent",
+        color_type: theme_color_type:accent,
         tooltip: i18n_key:auth_type_header_auth_tooltip,
         display_order: 5
     },

@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch5_i18n_translations.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -235,24 +235,6 @@ RELATE i18n_key:credential_type_jenkins_api_tooltip->translation->language:es SE
 -- =====================================================
 -- CIRCLECI API
 -- =====================================================
-
-RELATE i18n_key:credential_type_circleci_api_name->translation->language:fr SET text = "CircleCI API";
-RELATE i18n_key:credential_type_circleci_api_name->translation->language:en SET text = "CircleCI API";
-RELATE i18n_key:credential_type_circleci_api_name->translation->language:it SET text = "CircleCI API";
-RELATE i18n_key:credential_type_circleci_api_name->translation->language:de SET text = "CircleCI API";
-RELATE i18n_key:credential_type_circleci_api_name->translation->language:es SET text = "CircleCI API";
-
-RELATE i18n_key:credential_type_circleci_api_description->translation->language:fr SET text = "Authentification par token pour CircleCI API. Plateforme CI/CD cloud pour automatiser builds, tests et déploiements.";
-RELATE i18n_key:credential_type_circleci_api_description->translation->language:en SET text = "Token-based authentication for CircleCI API. Cloud CI/CD platform for automating builds, tests, and deployments.";
-RELATE i18n_key:credential_type_circleci_api_description->translation->language:it SET text = "Autenticazione basata su token per CircleCI API. Piattaforma CI/CD cloud per automatizzare build, test e deployment.";
-RELATE i18n_key:credential_type_circleci_api_description->translation->language:de SET text = "Token-basierte Authentifizierung für CircleCI API. Cloud-CI/CD-Plattform zur Automatisierung von Builds, Tests und Bereitstellungen.";
-RELATE i18n_key:credential_type_circleci_api_description->translation->language:es SET text = "Autenticación basada en token para CircleCI API. Plataforma CI/CD cloud para automatizar builds, tests y despliegues.";
-
-RELATE i18n_key:credential_type_circleci_api_tooltip->translation->language:fr SET text = "Pour CI/CD cloud et automatisation builds";
-RELATE i18n_key:credential_type_circleci_api_tooltip->translation->language:en SET text = "For cloud CI/CD and build automation";
-RELATE i18n_key:credential_type_circleci_api_tooltip->translation->language:it SET text = "Per CI/CD cloud e automazione build";
-RELATE i18n_key:credential_type_circleci_api_tooltip->translation->language:de SET text = "Für Cloud-CI/CD und Build-Automatisierung";
-RELATE i18n_key:credential_type_circleci_api_tooltip->translation->language:es SET text = "Para CI/CD cloud y automatización builds";
 
 -- =====================================================
 -- TRAVIS CI API

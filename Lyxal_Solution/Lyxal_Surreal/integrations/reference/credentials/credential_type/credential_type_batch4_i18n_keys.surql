@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch4_i18n_keys.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -106,26 +106,20 @@ CREATE i18n_key:credential_type_twilio_api_tooltip SET
 -- WHATSAPP API (3 clés)
 -- =====================================================
 
-CREATE i18n_key:credential_type_whatsapp_api_name SET
     description = "Nom affiché du credential type WhatsApp Business API";
 
-CREATE i18n_key:credential_type_whatsapp_api_description SET
     description = "Description complète de WhatsApp Business API pour credentials";
 
-CREATE i18n_key:credential_type_whatsapp_api_tooltip SET
     description = "Tooltip d'aide pour WhatsApp Business API credentials";
 
 -- =====================================================
 -- WHATSAPP TRIGGER API (3 clés)
 -- =====================================================
 
-CREATE i18n_key:credential_type_whatsapp_trigger_api_name SET
     description = "Nom affiché du credential type WhatsApp Trigger";
 
-CREATE i18n_key:credential_type_whatsapp_trigger_api_description SET
     description = "Description complète de WhatsApp Trigger pour credentials";
 
-CREATE i18n_key:credential_type_whatsapp_trigger_api_tooltip SET
     description = "Tooltip d'aide pour WhatsApp Trigger credentials";
 
 -- =====================================================

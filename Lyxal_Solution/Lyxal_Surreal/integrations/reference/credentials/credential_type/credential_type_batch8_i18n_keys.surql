@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch8_i18n_keys.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -223,13 +223,10 @@ CREATE i18n_key:credential_type_wordpress_api_tooltip SET
 -- KOBOTOOLBOX API (3 clés)
 -- =====================================================
 
-CREATE i18n_key:credential_type_kobotoolbox_api_name SET
     description = "Nom affiché du credential type KoBoToolbox";
 
-CREATE i18n_key:credential_type_kobotoolbox_api_description SET
     description = "Description complète de KoBoToolbox pour credentials";
 
-CREATE i18n_key:credential_type_kobotoolbox_api_tooltip SET
     description = "Tooltip d'aide pour KoBoToolbox credentials";
 
 -- =============================================================================================

@@ -35,9 +35,9 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_auth_type_security(
     )[0];
     
     -- 4. Vérifier si l'auth_type existe
-    IF $auth_type == NONE THEN
+    IF $auth_type == NONE {
         RETURN { success: false, error: 'auth_type_not_found', auth_type_id: $auth_type_id };
-    END;
+    };
     
     -- 5. Récupérer les informations de transmission_method
     LET $transmission_method = (
@@ -53,15 +53,15 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_auth_type_security(
     )[0];
     
     -- 6. Traduire les préoccupations de sécurité si disponibles
-    LET $method_security_concerns_translated = IF $transmission_method.quality.security_concerns_i18n != NONE THEN
+    LET $method_security_concerns_translated = IF $transmission_method.quality.security_concerns_i18n != NONE {
         (SELECT VALUE (
             SELECT VALUE text 
             FROM translation 
             WHERE in = VALUE AND out = $langue_record
         )[0] FROM $transmission_method.quality.security_concerns_i18n)
-    ELSE
+    } ELSE {
         []
-    END;
+    };
     
     -- 7. Construire la réponse pour l'IA
     RETURN {
@@ -76,13 +76,13 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_auth_type_security(
                 method_name: $transmission_method.display_name_translated,
                 method_security_concerns: $method_security_concerns_translated
             },
-            recommendation: IF $auth_type.quality.security_level >= 4 AND $transmission_method.quality.security_level >= 4 THEN
+            recommendation: IF $auth_type.quality.security_level >= 4 AND $transmission_method.quality.security_level >= 4 {
                 "highly_secure"
-            ELSE IF $auth_type.quality.security_level >= 3 AND $transmission_method.quality.security_level >= 3 THEN
+            } ELSE IF $auth_type.quality.security_level >= 3 AND $transmission_method.quality.security_level >= 3 {
                 "secure"
-            ELSE
+            } ELSE {
                 "moderate_security"
-            END
+            }
         }
     };
 }

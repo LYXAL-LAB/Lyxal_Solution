@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch20_i18n_translations.surql (I18N TRANSLATIONS)
 -- | Module : integrations > reference > credentials > credential_type
@@ -106,23 +106,6 @@ RELATE i18n_key:credential_type_autopilot_api_tooltip->translation->language:de 
 RELATE i18n_key:credential_type_autopilot_api_tooltip->translation->language:es SET text = "Para Autopilot automatización";
 
 -- BAMBOOHR API
-RELATE i18n_key:credential_type_bamboo_hr_api_name->translation->language:fr SET text = "BambooHR API";
-RELATE i18n_key:credential_type_bamboo_hr_api_name->translation->language:en SET text = "BambooHR API";
-RELATE i18n_key:credential_type_bamboo_hr_api_name->translation->language:it SET text = "BambooHR API";
-RELATE i18n_key:credential_type_bamboo_hr_api_name->translation->language:de SET text = "BambooHR API";
-RELATE i18n_key:credential_type_bamboo_hr_api_name->translation->language:es SET text = "BambooHR API";
-
-RELATE i18n_key:credential_type_bamboo_hr_api_description->translation->language:fr SET text = "Authentification pour BambooHR. Système de gestion RH et base de données employés très populaire.";
-RELATE i18n_key:credential_type_bamboo_hr_api_description->translation->language:en SET text = "Authentication for BambooHR. Very popular HR management system and employee database.";
-RELATE i18n_key:credential_type_bamboo_hr_api_description->translation->language:it SET text = "Autenticazione per BambooHR. Sistema di gestione HR e database dipendenti molto popolare.";
-RELATE i18n_key:credential_type_bamboo_hr_api_description->translation->language:de SET text = "Authentifizierung für BambooHR. Sehr beliebtes HR-Management-System und Mitarbeiterdatenbank.";
-RELATE i18n_key:credential_type_bamboo_hr_api_description->translation->language:es SET text = "Autenticación para BambooHR. Sistema de gestión de RRHH y base de datos de empleados muy popular.";
-
-RELATE i18n_key:credential_type_bamboo_hr_api_tooltip->translation->language:fr SET text = "Pour BambooHR gestion RH";
-RELATE i18n_key:credential_type_bamboo_hr_api_tooltip->translation->language:en SET text = "For BambooHR HR management";
-RELATE i18n_key:credential_type_bamboo_hr_api_tooltip->translation->language:it SET text = "Per BambooHR gestione HR";
-RELATE i18n_key:credential_type_bamboo_hr_api_tooltip->translation->language:de SET text = "Für BambooHR HR-Management";
-RELATE i18n_key:credential_type_bamboo_hr_api_tooltip->translation->language:es SET text = "Para BambooHR gestión RRHH";
 
 -- BRANDFETCH API
 RELATE i18n_key:credential_type_brandfetch_api_name->translation->language:fr SET text = "Brandfetch API";

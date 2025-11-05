@@ -166,13 +166,7 @@ CREATE credential_type:strapi_token_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_strapi_token_api_name,
         description_i18n: i18n_key:credential_type_strapi_token_api_description
-    },
-    
-    presentation = {
-        icon: icon:strapi,
-        color: "#4945FF",
-        color_daisy: "secondary",
-        tooltip_i18n: i18n_key:credential_type_strapi_token_api_tooltip,
+    }, presentation = { icon: icon:strapi_token_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_strapi_token_api_tooltip,
         display_order: 1002
     },
     
@@ -334,13 +328,7 @@ CREATE credential_type:odoo_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_odoo_api_name,
         description_i18n: i18n_key:credential_type_odoo_api_description
-    },
-    
-    presentation = {
-        icon: icon:odoo,
-        color: "#714B67",
-        color_daisy: "secondary",
-        tooltip_i18n: i18n_key:credential_type_odoo_api_tooltip,
+    }, presentation = { icon: icon:odoo_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_odoo_api_tooltip,
         display_order: 1005
     },
     

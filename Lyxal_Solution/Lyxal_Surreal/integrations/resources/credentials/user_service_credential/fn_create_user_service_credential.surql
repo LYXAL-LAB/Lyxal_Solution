@@ -27,14 +27,14 @@ DEFINE FUNCTION IF NOT EXISTS fn::create_user_service_credential(
     -- 2. Chiffrer automatiquement les credentials (comme n8n)
     LET $encryption_result = fn::encrypt_credentials_object($credentials);
     
-    IF $encryption_result.success != true THEN
+    IF $encryption_result.success != true {
         RETURN {
             success: false,
             error: 'encryption_failed',
             message: $encryption_result.error,
             details: $encryption_result
         };
-    END;
+    };
     
     LET $encrypted_credentials = $encryption_result.encrypted_credentials;
     
@@ -47,11 +47,11 @@ DEFINE FUNCTION IF NOT EXISTS fn::create_user_service_credential(
             is_active = $is_active OR true,
             identity = {
                 name: $identity_name,
-                description_i18n: IF $identity_description_i18n != NONE THEN 
+                description_i18n: IF $identity_description_i18n != NONE     { 
                     type::thing('i18n_key', $identity_description_i18n) 
-                ELSE 
+                } ELSE {
                     NONE 
-                END
+                }
             },
             credentials = $encrypted_credentials,
             expires_at = $expires_at,
@@ -66,13 +66,13 @@ DEFINE FUNCTION IF NOT EXISTS fn::create_user_service_credential(
     )[0];
     
     -- 4. Vérifier si la création a réussi
-    IF $credential == NONE THEN
+    IF $credential == NONE {
         RETURN { 
             success: false, 
             error: 'creation_failed', 
             message: 'Failed to create credential' 
         };
-    END;
+    };
     
     -- 5. Retourner le résultat (sans données sensibles pour sécurité)
     RETURN {

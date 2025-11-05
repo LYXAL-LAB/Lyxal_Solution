@@ -39,47 +39,47 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_auth_type_for_ai(
     )[0];
     
     -- 4. Vérifier si l'auth_type existe
-    IF $auth_type == NONE THEN
+    IF $auth_type == NONE {
         RETURN { success: false, error: 'auth_type_not_found', auth_type_id: $auth_type_id };
-    END;
+    };
     
     -- 5. Traduire les tableaux i18n (use_cases, advantages, disadvantages)
-    LET $use_cases_translated = IF $auth_type.documentation.use_cases_i18n != NONE THEN
+    LET $use_cases_translated = IF $auth_type.documentation.use_cases_i18n != NONE {
         (SELECT VALUE (
             SELECT VALUE text 
             FROM translation 
             WHERE in = VALUE AND out = $langue_record
         )[0] FROM $auth_type.documentation.use_cases_i18n)
-    ELSE
+    } ELSE {
         []
-    END;
+    };
     
-    LET $advantages_translated = IF $auth_type.documentation.advantages_i18n != NONE THEN
+    LET $advantages_translated = IF $auth_type.documentation.advantages_i18n != NONE {
         (SELECT VALUE (
             SELECT VALUE text 
             FROM translation 
             WHERE in = VALUE AND out = $langue_record
         )[0] FROM $auth_type.documentation.advantages_i18n)
-    ELSE
+    } ELSE {
         []
-    END;
+    };
     
-    LET $disadvantages_translated = IF $auth_type.documentation.disadvantages_i18n != NONE THEN
+    LET $disadvantages_translated = IF $auth_type.documentation.disadvantages_i18n != NONE {
         (SELECT VALUE (
             SELECT VALUE text 
             FROM translation 
             WHERE in = VALUE AND out = $langue_record
         )[0] FROM $auth_type.documentation.disadvantages_i18n)
-    ELSE
+    } ELSE {
         []
-    END;
+    };
     
     -- 6. Récupérer les noms des providers exemples
-    LET $provider_names = IF $auth_type.documentation.example_providers != NONE THEN
+    LET $provider_names = IF $auth_type.documentation.example_providers != NONE {
         (SELECT VALUE name FROM $auth_type.documentation.example_providers)
-    ELSE
+    } ELSE {
         []
-    END;
+    };
     
     -- 7. Construire la réponse pour l'IA
     RETURN {

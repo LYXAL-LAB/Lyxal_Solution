@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch7_i18n_keys.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -15,13 +15,10 @@
 -- MYSQL (3 clés)
 -- =====================================================
 
-CREATE i18n_key:credential_type_mysql_name SET
     description = "Nom affiché du credential type MySQL";
 
-CREATE i18n_key:credential_type_mysql_description SET
     description = "Description complète de MySQL pour credentials";
 
-CREATE i18n_key:credential_type_mysql_tooltip SET
     description = "Tooltip d'aide pour MySQL credentials";
 
 -- =====================================================
@@ -41,13 +38,10 @@ CREATE i18n_key:credential_type_postgres_tooltip SET
 -- MONGODB (3 clés)
 -- =====================================================
 
-CREATE i18n_key:credential_type_mongodb_name SET
     description = "Nom affiché du credential type MongoDB";
 
-CREATE i18n_key:credential_type_mongodb_description SET
     description = "Description complète de MongoDB pour credentials";
 
-CREATE i18n_key:credential_type_mongodb_tooltip SET
     description = "Tooltip d'aide pour MongoDB credentials";
 
 -- =====================================================
@@ -93,13 +87,10 @@ CREATE i18n_key:credential_type_kafka_tooltip SET
 -- RABBITMQ (3 clés)
 -- =====================================================
 
-CREATE i18n_key:credential_type_rabbitmq_name SET
     description = "Nom affiché du credential type RabbitMQ";
 
-CREATE i18n_key:credential_type_rabbitmq_description SET
     description = "Description complète de RabbitMQ pour credentials";
 
-CREATE i18n_key:credential_type_rabbitmq_tooltip SET
     description = "Tooltip d'aide pour RabbitMQ credentials";
 
 -- =====================================================
@@ -132,39 +123,30 @@ CREATE i18n_key:credential_type_amqp_tooltip SET
 -- CRATEDB (3 clés)
 -- =====================================================
 
-CREATE i18n_key:credential_type_cratedb_name SET
     description = "Nom affiché du credential type CrateDB";
 
-CREATE i18n_key:credential_type_cratedb_description SET
     description = "Description complète de CrateDB pour credentials";
 
-CREATE i18n_key:credential_type_cratedb_tooltip SET
     description = "Tooltip d'aide pour CrateDB credentials";
 
 -- =====================================================
 -- QUESTDB (3 clés)
 -- =====================================================
 
-CREATE i18n_key:credential_type_questdb_name SET
     description = "Nom affiché du credential type QuestDB";
 
-CREATE i18n_key:credential_type_questdb_description SET
     description = "Description complète de QuestDB pour credentials";
 
-CREATE i18n_key:credential_type_questdb_tooltip SET
     description = "Tooltip d'aide pour QuestDB credentials";
 
 -- =====================================================
 -- TIMESCALEDB (3 clés)
 -- =====================================================
 
-CREATE i18n_key:credential_type_timescaledb_name SET
     description = "Nom affiché du credential type TimescaleDB";
 
-CREATE i18n_key:credential_type_timescaledb_description SET
     description = "Description complète de TimescaleDB pour credentials";
 
-CREATE i18n_key:credential_type_timescaledb_tooltip SET
     description = "Tooltip d'aide pour TimescaleDB credentials";
 
 -- =============================================================================================

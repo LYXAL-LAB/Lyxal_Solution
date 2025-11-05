@@ -25,21 +25,22 @@ DEFINE FUNCTION IF NOT EXISTS fn::update_user_service_credential(
     LET $credential_record = type::thing('user_service_credential', $credential_id);
     
     -- 2. Vérifier l'ETag pour optimistic locking (si fourni)
-    IF $client_etag != NONE THEN
+
+    IF $current_etag != NONE AND $current_etag != $client_etag {
+        RETURN {
+            success: false,
+            error: 'etag_mismatch',
+            message: 'Credential has been modified by another user. Please refresh and try again.',
+            current_etag: $current_etag
+        };
+    };
+    
+    IF $client_etag != NONE {
         LET $current_etag = (
             SELECT VALUE etag
             FROM $credential_record
         )[0];
-        
-        IF $current_etag != NONE AND $current_etag != $client_etag THEN
-            RETURN {
-                success: false,
-                error: 'etag_mismatch',
-                message: 'Credential has been modified by another user. Please refresh and try again.',
-                current_etag: $current_etag
-            };
-        END;
-    END;
+    };
     
     -- 3. Vérifier si la credential existe
     LET $exists = (
@@ -47,34 +48,28 @@ DEFINE FUNCTION IF NOT EXISTS fn::update_user_service_credential(
         FROM $credential_record
     )[0];
     
-    IF $exists == NONE THEN
+    IF $exists == NONE {
         RETURN {
             success: false,
             error: 'credential_not_found',
             credential_id: $credential_id
         };
-    END;
+    };
     
     -- 4. Chiffrer automatiquement les credentials si fournis (comme n8n)
-    LET $encrypted_credentials = IF $credentials != NONE THEN
-        (LET $encryption_result = fn::encrypt_credentials_object($credentials);
-         IF $encryption_result.success != true THEN
-             RETURN {
-                 success: false,
-                 error: 'encryption_failed',
-                 message: $encryption_result.error,
-                 details: $encryption_result
-             };
-         END;
-         $encryption_result.encrypted_credentials)
-    ELSE
-        NONE
-    END;
-    
-    -- 5. Si erreur de chiffrement, retourner immédiatement
-    IF $encrypted_credentials != NONE AND type::is::object($encrypted_credentials) == false THEN
-        RETURN $encrypted_credentials;
-    END;
+    LET $encrypted_credentials = NONE;
+    IF $credentials != NONE {
+        LET $encryption_result = fn::encrypt_credentials_object($credentials);
+        IF $encryption_result.success != true {
+            RETURN {
+                success: false,
+                error: 'encryption_failed',
+                message: $encryption_result.error,
+                details: $encryption_result
+            };
+        };
+        LET $encrypted_credentials = $encryption_result.encrypted_credentials;
+    };
     
     -- 6. Mettre à jour la credential
     LET $updated = (
@@ -94,13 +89,13 @@ DEFINE FUNCTION IF NOT EXISTS fn::update_user_service_credential(
         RETURN AFTER
     )[0];
     
-    IF $updated == NONE THEN
+    IF $updated == NONE {
         RETURN {
             success: false,
             error: 'update_failed',
             message: 'Failed to update credential'
         };
-    END;
+    };
     
     -- 7. Retourner le résultat (sans données sensibles pour sécurité)
     RETURN {

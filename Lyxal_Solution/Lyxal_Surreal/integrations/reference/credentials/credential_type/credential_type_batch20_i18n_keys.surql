@@ -24,10 +24,6 @@ CREATE i18n_key:credential_type_autopilot_api_name SET description = "Nom affich
 CREATE i18n_key:credential_type_autopilot_api_description SET description = "Description complète de Autopilot API pour credentials";
 CREATE i18n_key:credential_type_autopilot_api_tooltip SET description = "Tooltip d'aide pour Autopilot API credentials";
 
-CREATE i18n_key:credential_type_bamboo_hr_api_name SET description = "Nom affiché du credential type BambooHR API";
-CREATE i18n_key:credential_type_bamboo_hr_api_description SET description = "Description complète de BambooHR API pour credentials";
-CREATE i18n_key:credential_type_bamboo_hr_api_tooltip SET description = "Tooltip d'aide pour BambooHR API credentials";
-
 CREATE i18n_key:credential_type_brandfetch_api_name SET description = "Nom affiché du credential type Brandfetch API";
 CREATE i18n_key:credential_type_brandfetch_api_description SET description = "Description complète de Brandfetch API pour credentials";
 CREATE i18n_key:credential_type_brandfetch_api_tooltip SET description = "Tooltip d'aide pour Brandfetch API credentials";

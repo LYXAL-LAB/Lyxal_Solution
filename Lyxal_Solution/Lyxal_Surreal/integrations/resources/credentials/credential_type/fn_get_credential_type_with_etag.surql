@@ -25,12 +25,12 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_credential_type_with_etag(
     )[0];
     
     -- 3. Vérifier si le credential_type existe
-    IF $current_etag == NONE THEN
+    IF $current_etag == NONE {
         RETURN { success: false, error: 'credential_type_not_found', credential_type_id: $credential_type_id };
-    END;
+    };
     
     -- 4. Comparer avec l'ETag client
-    IF $client_etag != NONE AND $current_etag == $client_etag THEN
+    IF $client_etag != NONE AND $current_etag == $client_etag {
         -- Pas de changement, on peut utiliser le cache
         RETURN {
             success: true,
@@ -38,7 +38,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_credential_type_with_etag(
             etag: $current_etag,
             message: 'No changes detected, use cached data'
         };
-    END;
+    };
     
     -- 5. Changement détecté, renvoyer les nouvelles données
     LET $credential_type = (
@@ -46,9 +46,9 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_credential_type_with_etag(
         FROM $credential_type_record
     )[0];
     
-    IF $credential_type == NONE THEN
+    IF $credential_type == NONE {
         RETURN { success: false, error: 'credential_type_not_found', credential_type_id: $credential_type_id };
-    END;
+    };
     
     RETURN {
         success: true,

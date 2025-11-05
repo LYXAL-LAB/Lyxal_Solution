@@ -42,7 +42,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_expired_credentials(
             credentials.oauth2.expires_at AS oauth2_token_expires_at,
             metadata.last_refreshed_at
         FROM user_service_credential
-        WHERE expires_at < time::now() + duration::from_minutes($buffer_minutes)
+        WHERE expires_at < time::now() + duration::mins($buffer_minutes)
             AND is_active = true 
             AND credentials.oauth2 IS NOT NONE
             AND ($user_id == NONE OR user_id = type::thing('user', $user_id))

@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch9_i18n_keys.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -41,26 +41,20 @@ CREATE i18n_key:credential_type_twitter_oauth2_api_tooltip SET
 -- LINKEDIN OAUTH2 API (3 clés)
 -- =====================================================
 
-CREATE i18n_key:credential_type_linkedin_oauth2_api_name SET
     description = "Nom affiché du credential type LinkedIn OAuth2";
 
-CREATE i18n_key:credential_type_linkedin_oauth2_api_description SET
     description = "Description complète de LinkedIn OAuth2 pour credentials";
 
-CREATE i18n_key:credential_type_linkedin_oauth2_api_tooltip SET
     description = "Tooltip d'aide pour LinkedIn OAuth2 credentials";
 
 -- =====================================================
 -- LINKEDIN COMMUNITY MANAGEMENT OAUTH2 API (3 clés)
 -- =====================================================
 
-CREATE i18n_key:credential_type_linkedin_community_management_oauth2_api_name SET
     description = "Nom affiché du credential type LinkedIn Community Management";
 
-CREATE i18n_key:credential_type_linkedin_community_management_oauth2_api_description SET
     description = "Description complète de LinkedIn Community Management pour credentials";
 
-CREATE i18n_key:credential_type_linkedin_community_management_oauth2_api_tooltip SET
     description = "Tooltip d'aide pour LinkedIn Community Management credentials";
 
 -- =====================================================

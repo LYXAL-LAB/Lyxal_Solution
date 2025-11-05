@@ -29,6 +29,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_credential_type_by_auth_type(
                 WHERE in = identity.display_name_i18n AND out = $langue_record
             )[0] AS display_name_translated,
             presentation,
+            presentation.display_order,
             config,
             -- Métriques de qualité de l'auth_type
             auth_type.quality.security_level,

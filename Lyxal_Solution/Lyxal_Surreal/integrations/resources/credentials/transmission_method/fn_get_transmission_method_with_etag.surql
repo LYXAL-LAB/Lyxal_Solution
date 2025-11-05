@@ -25,12 +25,12 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_transmission_method_with_etag(
     )[0];
     
     -- 3. Vérifier si la transmission_method existe
-    IF $current_etag == NONE THEN
+    IF $current_etag == NONE {
         RETURN { success: false, error: 'transmission_method_not_found', transmission_method_id: $transmission_method_id };
-    END;
+    };
     
     -- 4. Comparer avec l'ETag client
-    IF $client_etag != NONE AND $current_etag == $client_etag THEN
+    IF $client_etag != NONE AND $current_etag == $client_etag {
         -- Pas de changement, on peut utiliser le cache
         RETURN {
             success: true,
@@ -38,7 +38,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_transmission_method_with_etag(
             etag: $current_etag,
             message: 'No changes detected, use cached data'
         };
-    END;
+    };
     
     -- 5. Changement détecté, renvoyer les nouvelles données
     LET $transmission_method = (
@@ -46,9 +46,9 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_transmission_method_with_etag(
         FROM $transmission_method_record
     )[0];
     
-    IF $transmission_method == NONE THEN
+    IF $transmission_method == NONE {
         RETURN { success: false, error: 'transmission_method_not_found', transmission_method_id: $transmission_method_id };
-    END;
+    };
     
     RETURN {
         success: true,

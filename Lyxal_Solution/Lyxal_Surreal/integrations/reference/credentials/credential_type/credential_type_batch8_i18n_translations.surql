@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch8_i18n_translations.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -367,24 +367,6 @@ RELATE i18n_key:credential_type_wordpress_api_tooltip->translation->language:es 
 -- =====================================================
 -- KOBOTOOLBOX API
 -- =====================================================
-
-RELATE i18n_key:credential_type_kobotoolbox_api_name->translation->language:fr SET text = "KoBoToolbox API";
-RELATE i18n_key:credential_type_kobotoolbox_api_name->translation->language:en SET text = "KoBoToolbox API";
-RELATE i18n_key:credential_type_kobotoolbox_api_name->translation->language:it SET text = "KoBoToolbox API";
-RELATE i18n_key:credential_type_kobotoolbox_api_name->translation->language:de SET text = "KoBoToolbox API";
-RELATE i18n_key:credential_type_kobotoolbox_api_name->translation->language:es SET text = "KoBoToolbox API";
-
-RELATE i18n_key:credential_type_kobotoolbox_api_description->translation->language:fr SET text = "Authentification pour KoBoToolbox. Plateforme collecte données terrain pour enquêtes humanitaires et recherche en zones difficiles.";
-RELATE i18n_key:credential_type_kobotoolbox_api_description->translation->language:en SET text = "Authentication for KoBoToolbox. Field data collection platform for humanitarian surveys and research in challenging areas.";
-RELATE i18n_key:credential_type_kobotoolbox_api_description->translation->language:it SET text = "Autenticazione per KoBoToolbox. Piattaforma raccolta dati campo per sondaggi umanitari e ricerca in aree difficili.";
-RELATE i18n_key:credential_type_kobotoolbox_api_description->translation->language:de SET text = "Authentifizierung für KoBoToolbox. Felddatenerhebungsplattform für humanitäre Umfragen und Forschung in herausfordernden Gebieten.";
-RELATE i18n_key:credential_type_kobotoolbox_api_description->translation->language:es SET text = "Autenticación para KoBoToolbox. Plataforma recolección datos campo para encuestas humanitarias e investigación en áreas difíciles.";
-
-RELATE i18n_key:credential_type_kobotoolbox_api_tooltip->translation->language:fr SET text = "Pour collecte données terrain et enquêtes";
-RELATE i18n_key:credential_type_kobotoolbox_api_tooltip->translation->language:en SET text = "For field data collection and surveys";
-RELATE i18n_key:credential_type_kobotoolbox_api_tooltip->translation->language:it SET text = "Per raccolta dati campo e sondaggi";
-RELATE i18n_key:credential_type_kobotoolbox_api_tooltip->translation->language:de SET text = "Für Felddatenerhebung und Umfragen";
-RELATE i18n_key:credential_type_kobotoolbox_api_tooltip->translation->language:es SET text = "Para recolección datos campo y encuestas";
 
 -- =============================================================================================
 

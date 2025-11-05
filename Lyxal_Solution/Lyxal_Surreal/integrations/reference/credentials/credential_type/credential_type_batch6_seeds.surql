@@ -117,13 +117,7 @@ CREATE credential_type:hubspot_developer_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_hubspot_developer_api_name,
         description_i18n: i18n_key:credential_type_hubspot_developer_api_description
-    },
-    
-    presentation = {
-        icon: icon:hubspot,
-        color: "#FF7A59",
-        color_daisy: "accent",
-        tooltip_i18n: i18n_key:credential_type_hubspot_developer_api_tooltip,
+    }, presentation = { icon: icon:hubspot_developer_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_hubspot_developer_api_tooltip,
         display_order: 502
     },
     

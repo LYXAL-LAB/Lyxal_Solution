@@ -99,93 +99,12 @@ CREATE credential_type:twitter_oauth2_api SET
     };
 
 -- =====================================================
--- 3. LINKEDIN OAUTH2 API (display_order: 730) ✨ TRÈS POPULAIRE
+-- 3. LINKEDIN OAUTH2 API - DOUBLON SUPPRIMÉ (déjà défini dans batch26 avec name = "linkedInOAuth2Api")
 -- =====================================================
 
-CREATE credential_type:linkedin_oauth2_api SET
-    name = "linkedInOAuth2Api",
-    slug = "linkedin-oauth2-api",
-    is_active = true,
-    
-    identity = {
-        display_name_i18n: i18n_key:credential_type_linkedin_oauth2_api_name,
-        description_i18n: i18n_key:credential_type_linkedin_oauth2_api_description
-    },
-    
-    presentation = {
-        icon: icon:linkedin,
-        color_type: theme_color_type:info,
-        tooltip_i18n: i18n_key:credential_type_linkedin_oauth2_api_tooltip,
-        display_order: 730
-    },
-    
-    auth_type = auth_type:oauth2,
-    provider = provider:linkedin,
-    
-    config = {
-        oauth2: {
-            grant_type: "authorization_code",
-            access_token_url: "https://www.linkedin.com/oauth/v2/accessToken",
-            authorization_url: "https://www.linkedin.com/oauth/v2/authorization",
-            authentication_method: "body",
-            scope: "r_liteprofile r_emailaddress w_member_social"
-        },
-        oauth1: NONE,
-        required_fields: [],
-        metadata: {
-            professional_network: true
-        }
-    },
-    
-    documentation = {
-        url: url:linkedin_docs,
-        use_cases_i18n: NONE
-    };
-
 -- =====================================================
--- 4. LINKEDIN COMMUNITY MANAGEMENT OAUTH2 API (display_order: 731)
+-- 4. LINKEDIN COMMUNITY MANAGEMENT OAUTH2 API - DOUBLON SUPPRIMÉ (déjà défini dans la base avec name = "linkedInCommunityManagementOAuth2Api")
 -- =====================================================
-
-CREATE credential_type:linkedin_community_management_oauth2_api SET
-    name = "linkedInCommunityManagementOAuth2Api",
-    slug = "linkedin-community-management-oauth2-api",
-    is_active = true,
-    
-    identity = {
-        display_name_i18n: i18n_key:credential_type_linkedin_community_management_oauth2_api_name,
-        description_i18n: i18n_key:credential_type_linkedin_community_management_oauth2_api_description
-    },
-    
-    presentation = {
-        icon: icon:linkedin,
-        color: "#0A66C2",
-        color_daisy: "accent",
-        tooltip_i18n: i18n_key:credential_type_linkedin_community_management_oauth2_api_tooltip,
-        display_order: 731
-    },
-    
-    auth_type = auth_type:oauth2,
-    provider = provider:linkedin,
-    
-    config = {
-        oauth2: {
-            grant_type: "authorization_code",
-            access_token_url: "https://www.linkedin.com/oauth/v2/accessToken",
-            authorization_url: "https://www.linkedin.com/oauth/v2/authorization",
-            authentication_method: "body",
-            scope: "w_organization_social r_organization_social rw_organization_admin"
-        },
-        oauth1: NONE,
-        required_fields: [],
-        metadata: {
-            for_organizations: true
-        }
-    },
-    
-    documentation = {
-        url: url:linkedin_community_docs,
-        use_cases_i18n: NONE
-    };
 
 -- =====================================================
 -- 5. FACEBOOK GRAPH API (display_order: 740) ✨ TRÈS POPULAIRE
@@ -244,13 +163,7 @@ CREATE credential_type:facebook_graph_app_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_facebook_graph_app_api_name,
         description_i18n: i18n_key:credential_type_facebook_graph_app_api_description
-    },
-    
-    presentation = {
-        icon: icon:facebook,
-        color: "#1877F2",
-        color_daisy: "secondary",
-        tooltip_i18n: i18n_key:credential_type_facebook_graph_app_api_tooltip,
+    }, presentation = { icon: icon:facebook_graph_app_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_facebook_graph_app_api_tooltip,
         display_order: 741
     },
     
@@ -300,13 +213,7 @@ CREATE credential_type:facebook_lead_ads_oauth2_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_facebook_lead_ads_oauth2_api_name,
         description_i18n: i18n_key:credential_type_facebook_lead_ads_oauth2_api_description
-    },
-    
-    presentation = {
-        icon: icon:facebook,
-        color: "#1877F2",
-        color_daisy: "accent",
-        tooltip_i18n: i18n_key:credential_type_facebook_lead_ads_oauth2_api_tooltip,
+    }, presentation = { icon: icon:facebook_lead_ads_oauth2_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_facebook_lead_ads_oauth2_api_tooltip,
         display_order: 742
     },
     

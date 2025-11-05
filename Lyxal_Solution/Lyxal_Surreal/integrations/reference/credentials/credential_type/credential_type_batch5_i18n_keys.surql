@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch5_i18n_keys.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -145,13 +145,10 @@ CREATE i18n_key:credential_type_jenkins_api_tooltip SET
 -- CIRCLECI API (3 clés)
 -- =====================================================
 
-CREATE i18n_key:credential_type_circleci_api_name SET
     description = "Nom affiché du credential type CircleCI API";
 
-CREATE i18n_key:credential_type_circleci_api_description SET
     description = "Description complète de CircleCI API pour credentials";
 
-CREATE i18n_key:credential_type_circleci_api_tooltip SET
     description = "Tooltip d'aide pour CircleCI API credentials";
 
 -- =====================================================

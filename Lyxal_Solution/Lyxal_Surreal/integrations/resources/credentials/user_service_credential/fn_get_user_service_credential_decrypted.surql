@@ -21,25 +21,25 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_user_service_credential_decrypted(
     )[0];
     
     -- 3. Vérifier que la credential existe
-    IF $credential == NONE THEN
+    IF $credential == NONE {
         RETURN {
             success: false,
             error: 'credential_not_found',
             credential_id: $credential_id
         };
-    END;
+    };
     
     -- 4. Déchiffrer automatiquement les credentials (comme n8n)
     LET $decryption_result = fn::decrypt_credentials_object($credential.credentials);
     
-    IF $decryption_result.success != true THEN
+    IF $decryption_result.success != true {
         RETURN {
             success: false,
             error: 'decryption_failed',
             message: $decryption_result.error,
             details: $decryption_result
         };
-    END;
+    };
     
     LET $decrypted_credentials = $decryption_result.decrypted_credentials;
     

@@ -22,6 +22,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_services_by_credential_type(
             id,
             in AS service_id,
             service.* AS service_full,
+            service.presentation.display_order AS service_display_order,
             out AS credential_type_id,
             is_required,
             presentation.is_recommended,

@@ -439,13 +439,7 @@ CREATE credential_type:acuity_scheduling_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_acuity_scheduling_api_name,
         description_i18n: i18n_key:credential_type_acuity_scheduling_api_description
-    },
-    
-    presentation = {
-        icon: icon:acuity_scheduling,
-        color: "#00C4CC",
-        color_daisy: "accent",
-        tooltip_i18n: i18n_key:credential_type_acuity_scheduling_api_tooltip,
+    }, presentation = { icon: icon:acuity_scheduling_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_acuity_scheduling_api_tooltip,
         display_order: 932
     },
     

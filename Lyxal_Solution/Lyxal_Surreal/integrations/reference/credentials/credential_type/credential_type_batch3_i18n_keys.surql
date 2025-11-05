@@ -1,4 +1,4 @@
--- =============================================================================================
+﻿-- =============================================================================================
 -- |
 -- | Fichier : credential_type_batch3_i18n_keys.surql (SEED DATA)
 -- | Module : integrations > reference > credentials > credential_type
@@ -54,39 +54,30 @@ CREATE i18n_key:credential_type_microsoft_outlook_oauth2_api_tooltip SET
 -- MICROSOFT ONEDRIVE OAUTH2 API (3 clés)
 -- =====================================================
 
-CREATE i18n_key:credential_type_microsoft_onedrive_oauth2_api_name SET
     description = "Nom affiché du credential type Microsoft OneDrive OAuth2";
 
-CREATE i18n_key:credential_type_microsoft_onedrive_oauth2_api_description SET
     description = "Description complète de Microsoft OneDrive OAuth2 pour credentials";
 
-CREATE i18n_key:credential_type_microsoft_onedrive_oauth2_api_tooltip SET
     description = "Tooltip d'aide pour Microsoft OneDrive OAuth2 credentials";
 
 -- =====================================================
 -- MICROSOFT SHAREPOINT OAUTH2 API (3 clés)
 -- =====================================================
 
-CREATE i18n_key:credential_type_microsoft_sharepoint_oauth2_api_name SET
     description = "Nom affiché du credential type Microsoft SharePoint OAuth2";
 
-CREATE i18n_key:credential_type_microsoft_sharepoint_oauth2_api_description SET
     description = "Description complète de Microsoft SharePoint OAuth2 pour credentials";
 
-CREATE i18n_key:credential_type_microsoft_sharepoint_oauth2_api_tooltip SET
     description = "Tooltip d'aide pour Microsoft SharePoint OAuth2 credentials";
 
 -- =====================================================
 -- MICROSOFT TODO OAUTH2 API (3 clés)
 -- =====================================================
 
-CREATE i18n_key:credential_type_microsoft_todo_oauth2_api_name SET
     description = "Nom affiché du credential type Microsoft To Do OAuth2";
 
-CREATE i18n_key:credential_type_microsoft_todo_oauth2_api_description SET
     description = "Description complète de Microsoft To Do OAuth2 pour credentials";
 
-CREATE i18n_key:credential_type_microsoft_todo_oauth2_api_tooltip SET
     description = "Tooltip d'aide pour Microsoft To Do OAuth2 credentials";
 
 -- =====================================================

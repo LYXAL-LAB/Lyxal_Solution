@@ -120,13 +120,7 @@ CREATE credential_type:api_template_io_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_api_template_io_api_name,
         description_i18n: i18n_key:credential_type_api_template_io_api_description
-    },
-    
-    presentation = {
-        icon: icon:apitemplateio,
-        color: "#6C63FF",
-        color_daisy: "secondary",
-        tooltip_i18n: i18n_key:credential_type_api_template_io_api_tooltip,
+    }, presentation = { icon: icon:api_template_io_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_api_template_io_api_tooltip,
         display_order: 1082
     },
     
@@ -228,13 +222,7 @@ CREATE credential_type:azure_storage_oauth2_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_azure_storage_oauth2_api_name,
         description_i18n: i18n_key:credential_type_azure_storage_oauth2_api_description
-    },
-    
-    presentation = {
-        icon: icon:azure,
-        color: "#0078D4",
-        color_daisy: "accent",
-        tooltip_i18n: i18n_key:credential_type_azure_storage_oauth2_api_tooltip,
+    }, presentation = { icon: icon:azure_storage_oauth2_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_azure_storage_oauth2_api_tooltip,
         display_order: 1084
     },
     
@@ -371,13 +359,7 @@ CREATE credential_type:beeminder_oauth2_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_beeminder_oauth2_api_name,
         description_i18n: i18n_key:credential_type_beeminder_oauth2_api_description
-    },
-    
-    presentation = {
-        icon: icon:beeminder,
-        color: "#FFA500",
-        color_daisy: "accent",
-        tooltip_i18n: i18n_key:credential_type_beeminder_oauth2_api_tooltip,
+    }, presentation = { icon: icon:beeminder_oauth2_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_beeminder_oauth2_api_tooltip,
         display_order: 1087
     },
     
@@ -465,13 +447,7 @@ CREATE credential_type:bitly_oauth2_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_bitly_oauth2_api_name,
         description_i18n: i18n_key:credential_type_bitly_oauth2_api_description
-    },
-    
-    presentation = {
-        icon: icon:bitly,
-        color: "#EE6123",
-        color_daisy: "accent",
-        tooltip_i18n: i18n_key:credential_type_bitly_oauth2_api_tooltip,
+    }, presentation = { icon: icon:bitly_oauth2_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_bitly_oauth2_api_tooltip,
         display_order: 1089
     },
     

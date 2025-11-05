@@ -1,11 +1,5 @@
 ﻿-- Batch 33 I18N KEYS (33)
 
-CREATE i18n_key:credential_type_survey_monkey_api_name SET description = "SURVEY MONKEY API";
-CREATE i18n_key:credential_type_survey_monkey_api_description SET description = "SURVEY MONKEY API";
-CREATE i18n_key:credential_type_survey_monkey_api_tooltip SET description = "SURVEY MONKEY API";
-CREATE i18n_key:credential_type_survey_monkey_oauth2_api_name SET description = "SURVEY MONKEY OAUTH2 API";
-CREATE i18n_key:credential_type_survey_monkey_oauth2_api_description SET description = "SURVEY MONKEY OAUTH2 API";
-CREATE i18n_key:credential_type_survey_monkey_oauth2_api_tooltip SET description = "SURVEY MONKEY OAUTH2 API";
 CREATE i18n_key:credential_type_syncro_msp_api_name SET description = "SYNCRO MSP API";
 CREATE i18n_key:credential_type_syncro_msp_api_description SET description = "SYNCRO MSP API";
 CREATE i18n_key:credential_type_syncro_msp_api_tooltip SET description = "SYNCRO MSP API";

@@ -25,12 +25,12 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_uses_credential_with_etag(
     )[0];
     
     -- 3. Vérifier si la relation existe
-    IF $current_etag == NONE THEN
+    IF $current_etag == NONE {
         RETURN { success: false, error: 'uses_credential_not_found', uses_credential_id: $uses_credential_id };
-    END;
+    };
     
     -- 4. Comparer avec l'ETag client
-    IF $client_etag != NONE AND $current_etag == $client_etag THEN
+    IF $client_etag != NONE AND $current_etag == $client_etag {
         -- Pas de changement, on peut utiliser le cache
         RETURN {
             success: true,
@@ -38,7 +38,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_uses_credential_with_etag(
             etag: $current_etag,
             message: 'No changes detected, use cached data'
         };
-    END;
+    };
     
     -- 5. Changement détecté, renvoyer les nouvelles données
     LET $uses_credential = (
@@ -46,9 +46,9 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_uses_credential_with_etag(
         FROM $uses_credential_record
     )[0];
     
-    IF $uses_credential == NONE THEN
+    IF $uses_credential == NONE {
         RETURN { success: false, error: 'uses_credential_not_found', uses_credential_id: $uses_credential_id };
-    END;
+    };
     
     RETURN {
         success: true,

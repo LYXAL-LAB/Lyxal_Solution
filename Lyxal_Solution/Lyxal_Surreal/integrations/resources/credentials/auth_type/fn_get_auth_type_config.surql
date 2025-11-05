@@ -16,14 +16,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_auth_type_config(
     -- 1. Convertir la langue en record
     LET $langue_record = type::thing('language', $langue_id);
     
-    -- 2. Construire la condition WHERE
-    LET $where_condition = IF $complexity_max != NONE THEN
-        "WHERE is_active = true AND quality.implementation_complexity <= " + string::from($complexity_max)
-    ELSE
-        "WHERE is_active = true"
-    END;
-    
-    -- 3. Récupérer les auth_type avec configuration technique
+    -- 2. Récupérer les auth_type avec configuration technique
     LET $auth_types = (
         SELECT 
             name,
@@ -51,8 +44,6 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_auth_type_config(
         WHERE is_active = true AND ($complexity_max == NONE OR quality.implementation_complexity <= $complexity_max)
         ORDER BY quality.implementation_complexity ASC, quality.security_level DESC
     );
-    
-    -- 4. Retourner la liste
     RETURN $auth_types;
 }
 COMMENT 'Récupère la configuration technique des auth_type pour développeurs, optionnellement filtrée par complexité d\'implémentation.'

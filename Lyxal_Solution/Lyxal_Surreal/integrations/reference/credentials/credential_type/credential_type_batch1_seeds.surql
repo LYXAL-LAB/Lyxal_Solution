@@ -251,11 +251,9 @@ CREATE credential_type:http_header_auth SET
         display_name_i18n: i18n_key:credential_type_http_header_auth_name,
         description_i18n: i18n_key:credential_type_http_header_auth_description
     },
-    
     presentation = {
         icon: icon:settings,
-        color: "#9AA0A6",
-        color_daisy: "accent",
+        color_type: theme_color_type:neutral,
         tooltip_i18n: i18n_key:credential_type_http_header_auth_tooltip,
         display_order: 30
     },

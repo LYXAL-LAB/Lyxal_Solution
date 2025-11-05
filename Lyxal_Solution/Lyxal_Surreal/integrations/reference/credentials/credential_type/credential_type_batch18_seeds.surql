@@ -97,7 +97,7 @@ CREATE credential_type:getresponse_api SET
                 description: "GetResponse API key"
             }
         ],
-        metadata = {
+        metadata: {
             email_marketing: true,
             marketing_automation: true,
             custom_header: "X-Auth-Token: api-key"
@@ -121,13 +121,7 @@ CREATE credential_type:getresponse_oauth2_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_getresponse_oauth2_api_name,
         description_i18n: i18n_key:credential_type_getresponse_oauth2_api_description
-    },
-    
-    presentation = {
-        icon: icon:getresponse,
-        color: "#00BAFF",
-        color_daisy: "accent",
-        tooltip_i18n: i18n_key:credential_type_getresponse_oauth2_api_tooltip,
+    }, presentation = { icon: icon:getresponse_oauth2_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_getresponse_oauth2_api_tooltip,
         display_order: 1062
     },
     

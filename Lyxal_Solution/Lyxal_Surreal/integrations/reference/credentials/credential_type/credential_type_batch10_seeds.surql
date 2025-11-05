@@ -71,11 +71,7 @@ CREATE credential_type:airtable_oauth2_api SET
         description_i18n: i18n_key:credential_type_airtable_oauth2_api_description
     },
     
-    presentation = {
-        icon: icon:airtable,
-        color: "#18BFFF",
-        color_daisy: "accent",
-        tooltip_i18n: i18n_key:credential_type_airtable_oauth2_api_tooltip,
+    presentation = { icon: icon:airtable_oauth2_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_airtable_oauth2_api_tooltip,
         display_order: 801
     },
     
@@ -247,13 +243,7 @@ CREATE credential_type:clickup_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_clickup_api_name,
         description_i18n: i18n_key:credential_type_clickup_api_description
-    },
-    
-    presentation = {
-        icon: icon:clickup,
-        color: "#7B68EE",
-        color_daisy: "secondary",
-        tooltip_i18n: i18n_key:credential_type_clickup_api_tooltip,
+    }, presentation = { icon: icon:clickup_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_clickup_api_tooltip,
         display_order: 820
     },
     

@@ -39,9 +39,9 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_credential_type_for_ai(
     )[0];
     
     -- 4. Vérifier si le credential_type existe
-    IF $credential_type == NONE THEN
+    IF $credential_type == NONE {
         RETURN { success: false, error: 'credential_type_not_found', credential_type_id: $credential_type_id };
-    END;
+    };
     
     -- 5. Récupérer les métriques de qualité de l'auth_type
     LET $auth_type_quality = (
@@ -53,15 +53,15 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_credential_type_for_ai(
     )[0];
     
     -- 6. Traduire les use_cases si disponibles
-    LET $use_cases_translated = IF $credential_type.documentation.use_cases_i18n != NONE THEN
+    LET $use_cases_translated = IF $credential_type.documentation.use_cases_i18n != NONE {
         (SELECT VALUE (
             SELECT VALUE text 
             FROM translation 
             WHERE in = VALUE AND out = $langue_record
         )[0] FROM $credential_type.documentation.use_cases_i18n)
-    ELSE
+    } ELSE {
         []
-    END;
+    };
     
     -- 7. Construire la réponse pour l'IA
     RETURN {

@@ -123,16 +123,9 @@ async function main() {
       const infoDb = await db.query('INFO FOR DB;');
       const tables = Object.keys(infoDb?.[0]?.result?.tables || {});
       const integrationTables = tables.filter(t => 
-        t.includes('provider') || 
-        t.includes('service') || 
-        t.includes('resource') || 
-        t.includes('tool') || 
-        t.includes('parameter') ||
         t.includes('credential') ||
-        t.includes('error_mapping') ||
-        t.includes('response_mapping') ||
-        t.includes('webhook_config') ||
-        t.includes('i18n_key')
+        t.includes('auth_type') ||
+        t.includes('transmission_method')
       );
       console.log(`   Tables totales: ${tables.length}`);
       console.log(`   Tables integrations existantes: ${integrationTables.length}`);
@@ -145,109 +138,75 @@ async function main() {
     console.log();
     
     // ========================================================================
-    // 4. COLLECTE DES FICHIERS À IMPORTER
+    // 4. COLLECTE DES FICHIERS À IMPORTER (CREDENTIALS UNIQUEMENT)
     // ========================================================================
-    console.log('📁 Collecte des fichiers .surql...');
+    console.log('📁 Collecte des fichiers .surql (CREDENTIALS uniquement)...');
     
     const integrationsRoot = CONFIG.root;
-    const databaseDir = path.join(integrationsRoot, 'database');
-    const referenceDir = path.join(integrationsRoot, 'reference');
+    const databaseCredentialsDir = path.join(integrationsRoot, 'database', 'credentials');
+    const referenceCredentialsDir = path.join(integrationsRoot, 'reference', 'credentials');
+    const resourcesCredentialsDir = path.join(integrationsRoot, 'resources', 'credentials');
     
     console.log(`   Racine: ${integrationsRoot}`);
     
-    // Ordre d'import: database (schemas) puis reference (seeds)
-    const databaseSubOrder = [
-      'credentials',      // auth_type, credential_type, etc.
-      'provider',         // providers
-      'service',          // services
-      'resource',         // resources
-      'tool',             // tools
-      'parameter',        // parameters
-      'error_mapping',    // error mappings
-      'response_mapping', // response mappings (si schéma créé)
-      'webhook_config',   // webhook config (si schéma créé)
-    ];
-    
+    // ========================================================================
+    // 4.1. DATABASE/CREDENTIALS (Tables)
+    // ========================================================================
+    console.log('\n   📊 Tables (database/credentials):');
     const databaseFiles = [];
-    for (const sub of databaseSubOrder) {
-      const subdir = path.join(databaseDir, sub);
-      try {
-        const files = await listSurqlFiles(subdir);
-        if (files.length > 0) {
-          console.log(`   ✓ ${sub}: ${files.length} fichier(s)`);
-        }
-        databaseFiles.push(...files);
-      } catch (e) {
-        // Sous-dossier absent: ignorer
-      }
-    }
-    
-    // Ask user if they want to import seeds (can be very large)
-    const importSeeds = process.env.IMPORT_SEEDS === 'true' || process.argv.includes('--seeds');
-    
-    let referenceFiles = [];
-    if (importSeeds) {
-      console.log('\n   📦 Import des SEEDS activé (peut être long)...');
-      
-      // Ordre des seeds
-      const referenceSubOrder = [
-        'credentials',
-        'Provider',         // Note: majuscule dans le nom du dossier
-        'service',
-        'resource',
-        'tool',
-        'parameter',
-        'error_mapping',
-        'response_mapping',
-        'webhook_config',
-      ];
-      
-      for (const sub of referenceSubOrder) {
-        const subdir = path.join(referenceDir, sub);
-        try {
-          const files = await listSurqlFiles(subdir, false); // Inclure les seeds
-          // Filtrer pour ne garder que les fichiers _seeds.surql et _i18n*.surql
-          const seedFiles = files.filter(f => 
-            f.includes('_seeds.surql') || 
-            f.includes('_i18n_keys.surql') || 
-            f.includes('_i18n_translations.surql')
-          );
-          if (seedFiles.length > 0) {
-            console.log(`   ✓ ${sub}: ${seedFiles.length} fichier(s) de seeds`);
-          }
-          referenceFiles.push(...seedFiles);
-        } catch (e) {
-          // Sous-dossier absent: ignorer
-        }
-      }
-    } else {
-      console.log('\n   ⏭️  Import des SEEDS désactivé (schemas uniquement)');
-      console.log('      Pour importer les seeds: IMPORT_SEEDS=true ou --seeds');
-    }
-    
-    // Fichiers à la racine de integrations (le cas échéant)
     try {
-      const rootEntries = await fs.readdir(integrationsRoot, { withFileTypes: true });
-      const rootFiles = rootEntries
-        .filter(e => e.isFile() && e.name.endsWith('.surql'))
-        .filter(e => !EXCLUDE_FILES.has(e.name))
-        .map(e => path.join(integrationsRoot, e.name))
-        .sort((a, b) => a.localeCompare(b));
-      
-      if (rootFiles.length > 0) {
-        console.log(`   ✓ Racine: ${rootFiles.length} fichier(s)`);
-        // Ajouter les fonctions (fn_execute_tool.surql, etc.) au début
-        databaseFiles.unshift(...rootFiles);
+      const files = await listSurqlFiles(databaseCredentialsDir);
+      if (files.length > 0) {
+        console.log(`   ✓ ${files.length} fichier(s)`);
+        databaseFiles.push(...files);
       }
     } catch (e) {
-      // Pas de fichiers racine: ignorer
+      console.warn(`   ⚠️  Erreur: ${e?.message || e}`);
     }
     
-    const allFiles = [...databaseFiles, ...referenceFiles];
+    // ========================================================================
+    // 4.2. REFERENCE/CREDENTIALS (Seeds)
+    // ========================================================================
+    console.log('\n   📦 Seeds (reference/credentials):');
+    const referenceFiles = [];
+    try {
+      const files = await listSurqlFiles(referenceCredentialsDir, false); // Inclure les seeds
+      // Filtrer pour ne garder que les fichiers _seeds.surql et _i18n*.surql
+      const seedFiles = files.filter(f => 
+        f.includes('_seeds.surql') || 
+        f.includes('_i18n_keys.surql') || 
+        f.includes('_i18n_translations.surql')
+      );
+      if (seedFiles.length > 0) {
+        console.log(`   ✓ ${seedFiles.length} fichier(s) de seeds`);
+        referenceFiles.push(...seedFiles);
+      }
+    } catch (e) {
+      console.warn(`   ⚠️  Erreur: ${e?.message || e}`);
+    }
+    
+    // ========================================================================
+    // 4.3. RESOURCES/CREDENTIALS (Fonctions)
+    // ========================================================================
+    console.log('\n   ⚙️  Fonctions (resources/credentials):');
+    const resourceFiles = [];
+    try {
+      const files = await listSurqlFiles(resourcesCredentialsDir);
+      if (files.length > 0) {
+        console.log(`   ✓ ${files.length} fichier(s)`);
+        resourceFiles.push(...files);
+      }
+    } catch (e) {
+      console.warn(`   ⚠️  Erreur: ${e?.message || e}`);
+    }
+    
+    // Ordre d'import: database (tables) -> reference (seeds) -> resources (fonctions)
+    const allFiles = [...databaseFiles, ...referenceFiles, ...resourceFiles];
     
     console.log(`\n   📊 Total: ${allFiles.length} fichier(s) à importer`);
-    console.log(`      - Schemas: ${databaseFiles.length}`);
-    console.log(`      - Seeds:   ${referenceFiles.length}\n`);
+    console.log(`      - Tables:   ${databaseFiles.length}`);
+    console.log(`      - Seeds:    ${referenceFiles.length}`);
+    console.log(`      - Fonctions: ${resourceFiles.length}\n`);
     
     if (allFiles.length === 0) {
       console.log('   ⚠️  Aucun fichier à importer. Vérifiez le chemin.');
@@ -267,7 +226,13 @@ async function main() {
     
     for (const file of allFiles) {
       try {
-        const sql = await fs.readFile(file, 'utf8');
+        let sql = await fs.readFile(file, 'utf8');
+        
+        // Supprimer le BOM UTF-8 si présent
+        if (sql.charCodeAt(0) === 0xFEFF) {
+          sql = sql.slice(1);
+        }
+        
         const fileName = path.basename(file);
         const fileDir = path.basename(path.dirname(file));
         
@@ -314,16 +279,9 @@ async function main() {
       const infoDb = await db.query('INFO FOR DB;');
       const tables = Object.keys(infoDb?.[0]?.result?.tables || {});
       const integrationTables = tables.filter(t => 
-        t.includes('provider') || 
-        t.includes('service') || 
-        t.includes('resource') || 
-        t.includes('tool') || 
-        t.includes('parameter') ||
         t.includes('credential') ||
-        t.includes('error_mapping') ||
-        t.includes('response_mapping') ||
-        t.includes('webhook_config') ||
-        t.includes('i18n_key')
+        t.includes('auth_type') ||
+        t.includes('transmission_method')
       );
       
       console.log(`   Tables totales: ${tables.length}`);
@@ -382,4 +340,3 @@ async function main() {
 }
 
 main();
-

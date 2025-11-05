@@ -1,35 +1,5 @@
 ﻿-- Batch 33 I18N TRANSLATIONS (165)
 
-RELATE i18n_key:credential_type_survey_monkey_api_name->translation->language:fr SET text = "SURVEY MONKEY API";
-RELATE i18n_key:credential_type_survey_monkey_api_name->translation->language:en SET text = "SURVEY MONKEY API";
-RELATE i18n_key:credential_type_survey_monkey_api_name->translation->language:it SET text = "SURVEY MONKEY API";
-RELATE i18n_key:credential_type_survey_monkey_api_name->translation->language:de SET text = "SURVEY MONKEY API";
-RELATE i18n_key:credential_type_survey_monkey_api_name->translation->language:es SET text = "SURVEY MONKEY API";
-RELATE i18n_key:credential_type_survey_monkey_api_description->translation->language:fr SET text = "Auth for SURVEY MONKEY API";
-RELATE i18n_key:credential_type_survey_monkey_api_description->translation->language:en SET text = "Auth for SURVEY MONKEY API";
-RELATE i18n_key:credential_type_survey_monkey_api_description->translation->language:it SET text = "Auth for SURVEY MONKEY API";
-RELATE i18n_key:credential_type_survey_monkey_api_description->translation->language:de SET text = "Auth for SURVEY MONKEY API";
-RELATE i18n_key:credential_type_survey_monkey_api_description->translation->language:es SET text = "Auth for SURVEY MONKEY API";
-RELATE i18n_key:credential_type_survey_monkey_api_tooltip->translation->language:fr SET text = "Pour SURVEY MONKEY API";
-RELATE i18n_key:credential_type_survey_monkey_api_tooltip->translation->language:en SET text = "For SURVEY MONKEY API";
-RELATE i18n_key:credential_type_survey_monkey_api_tooltip->translation->language:it SET text = "Per SURVEY MONKEY API";
-RELATE i18n_key:credential_type_survey_monkey_api_tooltip->translation->language:de SET text = "Für SURVEY MONKEY API";
-RELATE i18n_key:credential_type_survey_monkey_api_tooltip->translation->language:es SET text = "Para SURVEY MONKEY API";
-RELATE i18n_key:credential_type_survey_monkey_oauth2_api_name->translation->language:fr SET text = "SURVEY MONKEY OAUTH2 API";
-RELATE i18n_key:credential_type_survey_monkey_oauth2_api_name->translation->language:en SET text = "SURVEY MONKEY OAUTH2 API";
-RELATE i18n_key:credential_type_survey_monkey_oauth2_api_name->translation->language:it SET text = "SURVEY MONKEY OAUTH2 API";
-RELATE i18n_key:credential_type_survey_monkey_oauth2_api_name->translation->language:de SET text = "SURVEY MONKEY OAUTH2 API";
-RELATE i18n_key:credential_type_survey_monkey_oauth2_api_name->translation->language:es SET text = "SURVEY MONKEY OAUTH2 API";
-RELATE i18n_key:credential_type_survey_monkey_oauth2_api_description->translation->language:fr SET text = "Auth for SURVEY MONKEY OAUTH2 API";
-RELATE i18n_key:credential_type_survey_monkey_oauth2_api_description->translation->language:en SET text = "Auth for SURVEY MONKEY OAUTH2 API";
-RELATE i18n_key:credential_type_survey_monkey_oauth2_api_description->translation->language:it SET text = "Auth for SURVEY MONKEY OAUTH2 API";
-RELATE i18n_key:credential_type_survey_monkey_oauth2_api_description->translation->language:de SET text = "Auth for SURVEY MONKEY OAUTH2 API";
-RELATE i18n_key:credential_type_survey_monkey_oauth2_api_description->translation->language:es SET text = "Auth for SURVEY MONKEY OAUTH2 API";
-RELATE i18n_key:credential_type_survey_monkey_oauth2_api_tooltip->translation->language:fr SET text = "Pour SURVEY MONKEY OAUTH2 API";
-RELATE i18n_key:credential_type_survey_monkey_oauth2_api_tooltip->translation->language:en SET text = "For SURVEY MONKEY OAUTH2 API";
-RELATE i18n_key:credential_type_survey_monkey_oauth2_api_tooltip->translation->language:it SET text = "Per SURVEY MONKEY OAUTH2 API";
-RELATE i18n_key:credential_type_survey_monkey_oauth2_api_tooltip->translation->language:de SET text = "Für SURVEY MONKEY OAUTH2 API";
-RELATE i18n_key:credential_type_survey_monkey_oauth2_api_tooltip->translation->language:es SET text = "Para SURVEY MONKEY OAUTH2 API";
 RELATE i18n_key:credential_type_syncro_msp_api_name->translation->language:fr SET text = "SYNCRO MSP API";
 RELATE i18n_key:credential_type_syncro_msp_api_name->translation->language:en SET text = "SYNCRO MSP API";
 RELATE i18n_key:credential_type_syncro_msp_api_name->translation->language:it SET text = "SYNCRO MSP API";

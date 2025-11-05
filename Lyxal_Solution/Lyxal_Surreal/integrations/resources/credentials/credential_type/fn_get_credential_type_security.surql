@@ -38,6 +38,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_credential_type_security(
                 WHERE in = identity.description_i18n AND out = $langue_record
             )[0] AS description_translated,
             presentation,
+            presentation.display_order,
             -- Sécurité de l'auth_type
             auth_type.quality.security_level AS auth_security_level,
             -- Nom de l'auth_type traduit

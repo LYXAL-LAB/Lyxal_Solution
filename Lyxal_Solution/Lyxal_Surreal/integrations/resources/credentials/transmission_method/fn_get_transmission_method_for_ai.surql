@@ -39,42 +39,42 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_transmission_method_for_ai(
     )[0];
     
     -- 4. Vérifier si la transmission_method existe
-    IF $transmission_method == NONE THEN
+    IF $transmission_method == NONE {
         RETURN { success: false, error: 'transmission_method_not_found', transmission_method_id: $transmission_method_id };
-    END;
+    };
     
     -- 5. Traduire les security_concerns si disponibles
-    LET $security_concerns_translated = IF $transmission_method.quality.security_concerns_i18n != NONE THEN
+    LET $security_concerns_translated = IF $transmission_method.quality.security_concerns_i18n != NONE {
         (SELECT VALUE (
             SELECT VALUE text 
             FROM translation 
             WHERE in = VALUE AND out = $langue_record
         )[0] FROM $transmission_method.quality.security_concerns_i18n)
-    ELSE
+    } ELSE {
         []
-    END;
+    };
     
     -- 6. Traduire les best_use_cases si disponibles
-    LET $best_use_cases_translated = IF $transmission_method.quality.best_use_cases_i18n != NONE THEN
+    LET $best_use_cases_translated = IF $transmission_method.quality.best_use_cases_i18n != NONE {
         (SELECT VALUE (
             SELECT VALUE text 
             FROM translation 
             WHERE in = VALUE AND out = $langue_record
         )[0] FROM $transmission_method.quality.best_use_cases_i18n)
-    ELSE
+    } ELSE {
         []
-    END;
+    };
     
     -- 7. Traduire les avoid_use_cases si disponibles
-    LET $avoid_use_cases_translated = IF $transmission_method.quality.avoid_use_cases_i18n != NONE THEN
+    LET $avoid_use_cases_translated = IF $transmission_method.quality.avoid_use_cases_i18n != NONE {
         (SELECT VALUE (
             SELECT VALUE text 
             FROM translation 
             WHERE in = VALUE AND out = $langue_record
         )[0] FROM $transmission_method.quality.avoid_use_cases_i18n)
-    ELSE
+    } ELSE {
         []
-    END;
+    };
     
     -- 8. Construire la réponse pour l'IA
     RETURN {

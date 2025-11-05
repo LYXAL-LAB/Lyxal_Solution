@@ -37,6 +37,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_transmission_method_security(
                 WHERE in = identity.description_i18n AND out = $langue_record
             )[0] AS description_translated,
             presentation,
+            presentation.display_order,
             quality.security_level,
             quality.security_concerns_i18n,
             quality.best_use_cases_i18n,

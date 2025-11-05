@@ -15,9 +15,9 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_credentials_by_complexity(
     LET $langue_record = type::thing('language', $langue_id);
     
     -- 2. Valider la complexité
-    IF $complexity NOT IN ['easy', 'medium', 'hard'] THEN
+    IF $complexity NOT IN ['easy', 'medium', 'hard'] {
         RETURN { success: false, error: 'invalid_complexity', complexity: $complexity };
-    END;
+    };
     
     -- 3. Récupérer les credentials filtrés par complexité
     LET $credentials = (

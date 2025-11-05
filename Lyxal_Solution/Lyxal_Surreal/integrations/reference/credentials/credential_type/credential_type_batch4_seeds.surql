@@ -21,13 +21,7 @@ CREATE credential_type:slack_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_slack_api_name,
         description_i18n: i18n_key:credential_type_slack_api_description
-    },
-    
-    presentation = {
-        icon: icon:slack,
-        color: "#4A154B",
-        color_daisy: "secondary",
-        tooltip_i18n: i18n_key:credential_type_slack_api_tooltip,
+    }, presentation = { icon: icon:slack_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_slack_api_tooltip,
         display_order: 300
     },
     
@@ -70,13 +64,7 @@ CREATE credential_type:slack_oauth2_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_slack_oauth2_api_name,
         description_i18n: i18n_key:credential_type_slack_oauth2_api_description
-    },
-    
-    presentation = {
-        icon: icon:slack,
-        color: "#4A154B",
-        color_daisy: "secondary",
-        tooltip_i18n: i18n_key:credential_type_slack_oauth2_api_tooltip,
+    }, presentation = { icon: icon:slack_oauth2_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_slack_oauth2_api_tooltip,
         display_order: 301
     },
     
@@ -204,13 +192,7 @@ CREATE credential_type:discord_webhook_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_discord_webhook_api_name,
         description_i18n: i18n_key:credential_type_discord_webhook_api_description
-    },
-    
-    presentation = {
-        icon: icon:discord,
-        color: "#5865F2",
-        color_daisy: "accent",
-        tooltip_i18n: i18n_key:credential_type_discord_webhook_api_tooltip,
+    }, presentation = { icon: icon:discord_webhook_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_discord_webhook_api_tooltip,
         display_order: 304
     },
     
@@ -346,124 +328,12 @@ CREATE credential_type:twilio_api SET
     };
 
 -- =====================================================
--- 8. WHATSAPP API (display_order: 311) ✨ TRÈS POPULAIRE
+-- 8. WHATSAPP API - DOUBLON SUPPRIMÉ (déjà défini ailleurs avec name = "whatsAppApi")
 -- =====================================================
 
-CREATE credential_type:whatsapp_api SET
-    name = "whatsAppApi",
-    slug = "whatsapp-api",
-    is_active = true,
-    
-    identity = {
-        display_name_i18n: i18n_key:credential_type_whatsapp_api_name,
-        description_i18n: i18n_key:credential_type_whatsapp_api_description
-    },
-    
-    presentation = {
-        icon: icon:whatsapp,
-        color_type: theme_color_type:success,
-        tooltip_i18n: i18n_key:credential_type_whatsapp_api_tooltip,
-        display_order: 311
-    },
-    
-    auth_type = auth_type:bearer_token,
-    provider = provider:whatsapp,
-    
-    config = {
-        oauth2: NONE,
-        oauth1: NONE,
-        required_fields: [
-            {
-                name: "accessToken",
-                display_name: "Access Token",
-                type: "string",
-                is_secret: true,
-                required: true,
-                description: "WhatsApp Business API access token"
-            },
-            {
-                name: "phoneNumberId",
-                display_name: "Phone Number ID",
-                type: "string",
-                is_secret: false,
-                required: true,
-                description: "WhatsApp Business phone number ID"
-            }
-        ],
-        metadata: {
-            api_provider: "Meta (Facebook)",
-            requires_business_account: true
-        }
-    },
-    
-    documentation = {
-        url: url:whatsapp_business_api_docs,
-        use_cases_i18n: NONE
-    };
-
 -- =====================================================
--- 9. WHATSAPP TRIGGER API (display_order: 312)
+-- 9. WHATSAPP TRIGGER API - DOUBLON SUPPRIMÉ (déjà défini dans la base avec name = "whatsAppTriggerApi")
 -- =====================================================
-
-CREATE credential_type:whatsapp_trigger_api SET
-    name = "whatsAppTriggerApi",
-    slug = "whatsapp-trigger-api",
-    is_active = true,
-    
-    identity = {
-        display_name_i18n: i18n_key:credential_type_whatsapp_trigger_api_name,
-        description_i18n: i18n_key:credential_type_whatsapp_trigger_api_description
-    },
-    
-    presentation = {
-        icon: icon:whatsapp,
-        color_type: theme_color_type:success,
-        tooltip_i18n: i18n_key:credential_type_whatsapp_trigger_api_tooltip,
-        display_order: 312
-    },
-    
-    auth_type = auth_type:bearer_token,
-    provider = provider:whatsapp,
-    
-    config = {
-        oauth2: NONE,
-        oauth1: NONE,
-        required_fields: [
-            {
-                name: "accessToken",
-                display_name: "Access Token",
-                type: "string",
-                is_secret: true,
-                required: true,
-                description: "WhatsApp Business API access token"
-            },
-            {
-                name: "phoneNumberId",
-                display_name: "Phone Number ID",
-                type: "string",
-                is_secret: false,
-                required: true,
-                description: "WhatsApp Business phone number ID"
-            },
-            {
-                name: "graphApiToken",
-                display_name: "Graph API Token",
-                type: "string",
-                is_secret: true,
-                required: true,
-                description: "Meta Graph API token for webhook setup"
-            }
-        ],
-        metadata: {
-            api_provider: "Meta (Facebook)",
-            supports_webhooks: true
-        }
-    },
-    
-    documentation = {
-        url: url:whatsapp_webhook_docs,
-        use_cases_i18n: NONE
-    };
 
 -- =====================================================
 -- 10. MATTERMOST API (display_order: 320)

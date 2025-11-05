@@ -54,9 +54,9 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_service_recommended_credential(
     )[0];
     
     -- 4. Vérifier si un credential recommandé existe
-    IF $credential == NONE THEN
+    IF $credential == NONE {
         RETURN { success: false, error: 'no_recommended_credential', service_id: $service_id };
-    END;
+    };
     
     -- 5. Retourner le credential
     RETURN {

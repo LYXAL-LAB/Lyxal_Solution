@@ -71,13 +71,7 @@ CREATE credential_type:adalo_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_adalo_api_name,
         description_i18n: i18n_key:credential_type_adalo_api_description
-    },
-    
-    presentation = {
-        icon: icon:adalo,
-        color: "#623CE9",
-        color_daisy: "secondary",
-        tooltip_i18n: i18n_key:credential_type_adalo_api_tooltip,
+    }, presentation = { icon: icon:adalo_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_adalo_api_tooltip,
         display_order: 1101
     },
     
@@ -282,61 +276,8 @@ CREATE credential_type:autopilot_api SET
     };
 
 -- =====================================================
--- 6. BAMBOOHR API (display_order: 1105)
+-- 6. BAMBOOHR API - DOUBLON SUPPRIMÉ (déjà défini ailleurs avec name = "bambooHrApi")
 -- =====================================================
-
-CREATE credential_type:bamboo_hr_api SET
-    name = "bambooHrApi",
-    slug = "bamboo-hr-api",
-    is_active = true,
-    
-    identity = {
-        display_name_i18n: i18n_key:credential_type_bamboo_hr_api_name,
-        description_i18n: i18n_key:credential_type_bamboo_hr_api_description
-    },
-    
-    presentation = {
-        icon: icon:bamboohr,
-        color_type: theme_color_type:success,
-        tooltip_i18n: i18n_key:credential_type_bamboo_hr_api_tooltip,
-        display_order: 1105
-    },
-    
-    auth_type = auth_type:basic,
-    provider = provider:bamboohr,
-    
-    config = {
-        oauth2: NONE,
-        oauth1: NONE,
-        required_fields: [
-            {
-                name: "subdomain",
-                display_name: "Subdomain",
-                type: "string",
-                is_secret: false,
-                required: true,
-                description: "BambooHR subdomain"
-            },
-            {
-                name: "apiKey",
-                display_name: "API Key",
-                type: "string",
-                is_secret: true,
-                required: true,
-                description: "BambooHR API key"
-            }
-        ],
-        metadata: {
-            hr_management: true,
-            employee_database: true,
-            very_popular: true
-        }
-    },
-    
-    documentation = {
-        url: url:bamboohr_docs,
-        use_cases_i18n: NONE
-    };
 
 -- =====================================================
 -- 7. BRANDFETCH API (display_order: 1106)
@@ -350,13 +291,7 @@ CREATE credential_type:brandfetch_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_brandfetch_api_name,
         description_i18n: i18n_key:credential_type_brandfetch_api_description
-    },
-    
-    presentation = {
-        icon: icon:brandfetch,
-        color: "#FF4DA6",
-        color_daisy: "secondary",
-        tooltip_i18n: i18n_key:credential_type_brandfetch_api_tooltip,
+    }, presentation = { icon: icon:brandfetch_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_brandfetch_api_tooltip,
         display_order: 1106
     },
     

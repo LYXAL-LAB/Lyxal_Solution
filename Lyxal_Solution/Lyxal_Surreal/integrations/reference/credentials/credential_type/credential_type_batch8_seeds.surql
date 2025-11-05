@@ -200,13 +200,7 @@ CREATE credential_type:netlify_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_netlify_api_name,
         description_i18n: i18n_key:credential_type_netlify_api_description
-    },
-    
-    presentation = {
-        icon: icon:netlify,
-        color: "#00C7B7",
-        color_daisy: "accent",
-        tooltip_i18n: i18n_key:credential_type_netlify_api_tooltip,
+    }, presentation = { icon: icon:netlify_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_netlify_api_tooltip,
         display_order: 661
     },
     
@@ -803,13 +797,7 @@ CREATE credential_type:webflow_oauth2_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_webflow_oauth2_api_name,
         description_i18n: i18n_key:credential_type_webflow_oauth2_api_description
-    },
-    
-    presentation = {
-        icon: icon:webflow,
-        color: "#4353FF",
-        color_daisy: "accent",
-        tooltip_i18n: i18n_key:credential_type_webflow_oauth2_api_tooltip,
+    }, presentation = { icon: icon:webflow_oauth2_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_webflow_oauth2_api_tooltip,
         display_order: 691
     },
     
@@ -846,13 +834,7 @@ CREATE credential_type:woocommerce_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_woocommerce_api_name,
         description_i18n: i18n_key:credential_type_woocommerce_api_description
-    },
-    
-    presentation = {
-        icon: icon:woocommerce,
-        color: "#96588A",
-        color_daisy: "secondary",
-        tooltip_i18n: i18n_key:credential_type_woocommerce_api_tooltip,
+    }, presentation = { icon: icon:woocommerce_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_woocommerce_api_tooltip,
         display_order: 700
     },
     
@@ -966,62 +948,8 @@ CREATE credential_type:wordpress_api SET
     };
 
 -- =====================================================
--- 17. KOBOTOOLBOX API (display_order: 710)
+-- 17. KOBOTOOLBOX API - DOUBLON SUPPRIMÉ (déjà défini dans batch26 avec name = "koBoToolboxApi")
 -- =====================================================
-
-CREATE credential_type:kobotoolbox_api SET
-    name = "koBoToolboxApi",
-    slug = "kobotoolbox-api",
-    is_active = true,
-    
-    identity = {
-        display_name_i18n: i18n_key:credential_type_kobotoolbox_api_name,
-        description_i18n: i18n_key:credential_type_kobotoolbox_api_description
-    },
-    
-    presentation = {
-        icon: icon:kobotoolbox,
-        color_type: theme_color_type:primary,
-        tooltip_i18n: i18n_key:credential_type_kobotoolbox_api_tooltip,
-        display_order: 710
-    },
-    
-    auth_type = auth_type:bearer_token,
-    provider = provider:kobotoolbox,
-    
-    config = {
-        oauth2: NONE,
-        oauth1: NONE,
-        required_fields: [
-            {
-                name: "url",
-                display_name: "API URL",
-                type: "string",
-                is_secret: false,
-                required: true,
-                description: "KoBoToolbox server URL",
-                default: "https://kf.kobotoolbox.org",
-                placeholder: "https://kf.kobotoolbox.org"
-            },
-            {
-                name: "token",
-                display_name: "API Token",
-                type: "string",
-                is_secret: true,
-                required: true,
-                description: "KoBoToolbox API token"
-            }
-        ],
-        metadata: {
-            use_case: "humanitarian",
-            field_data: true
-        }
-    },
-    
-    documentation = {
-        url: url:kobotoolbox_docs,
-        use_cases_i18n: NONE
-    };
 
 -- =====================================================
 -- VÉRIFICATION

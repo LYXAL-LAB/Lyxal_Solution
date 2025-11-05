@@ -30,6 +30,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_credential_type_config(
             )[0] AS display_name_translated,
             auth_type.* AS auth_type_full,
             config,
+            presentation.display_order,
             documentation.url.* AS documentation_url
         FROM credential_type
         WHERE is_active = true 

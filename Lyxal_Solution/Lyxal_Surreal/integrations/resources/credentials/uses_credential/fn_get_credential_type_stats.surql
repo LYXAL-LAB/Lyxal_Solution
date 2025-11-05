@@ -33,7 +33,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_credential_type_stats(
     );
     
     -- 3. Services avec plusieurs options de credentials
-    LET $services_with_multiple_credentials = (
+    LET $all_services = (
         SELECT 
             in AS service_id,
             (
@@ -50,7 +50,11 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_credential_type_stats(
             }) AS credentials_details
         FROM uses_credential
         GROUP BY in
-        HAVING credential_count > 1
+    );
+    
+    LET $services_with_multiple_credentials = (
+        SELECT * FROM $all_services
+        WHERE credential_count > 1
         ORDER BY credential_count DESC
     );
     

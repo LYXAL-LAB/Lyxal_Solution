@@ -150,142 +150,16 @@ CREATE credential_type:microsoft_outlook_oauth2_api SET
     };
 
 -- =====================================================
--- 4. MICROSOFT ONEDRIVE OAUTH2 API (display_order: 203) ✨ TRÈS POPULAIRE
+-- 4. MICROSOFT ONEDRIVE OAUTH2 API - DOUBLON SUPPRIMÉ (déjà défini ailleurs avec name = "microsoftOneDriveOAuth2Api")
 -- =====================================================
 
-CREATE credential_type:microsoft_onedrive_oauth2_api SET
-    name = "microsoftOneDriveOAuth2Api",
-    slug = "microsoft-onedrive-oauth2-api",
-    is_active = true,
-    
-    identity = {
-        display_name_i18n: i18n_key:credential_type_microsoft_onedrive_oauth2_api_name,
-        description_i18n: i18n_key:credential_type_microsoft_onedrive_oauth2_api_description
-    },
-    
-    presentation = {
-        icon: icon:microsoft_onedrive,
-        color_type: theme_color_type:info,
-        tooltip_i18n: i18n_key:credential_type_microsoft_onedrive_oauth2_api_tooltip,
-        display_order: 203
-    },
-    
-    auth_type = auth_type:oauth2,
-    provider = provider:microsoft,
-    
-    config = {
-        oauth2: {
-            grant_type: "authorization_code",
-            access_token_url: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-            authorization_url: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
-            authentication_method: "body",
-            scope: "Files.ReadWrite.All offline_access"
-        },
-        oauth1: NONE,
-        required_fields: [],
-        metadata: {
-            extends: "microsoftOAuth2Api",
-            graph_api: true,
-            apis_required: ["Microsoft Graph API"]
-        }
-    },
-    
-    documentation = {
-        url: url:microsoft_onedrive_api_docs,
-        use_cases_i18n: NONE
-    };
-
 -- =====================================================
--- 5. MICROSOFT SHAREPOINT OAUTH2 API (display_order: 204)
+-- 5. MICROSOFT SHAREPOINT OAUTH2 API - DOUBLON SUPPRIMÉ (déjà défini dans la base avec name = "microsoftSharePointOAuth2Api")
 -- =====================================================
 
-CREATE credential_type:microsoft_sharepoint_oauth2_api SET
-    name = "microsoftSharePointOAuth2Api",
-    slug = "microsoft-sharepoint-oauth2-api",
-    is_active = true,
-    
-    identity = {
-        display_name_i18n: i18n_key:credential_type_microsoft_sharepoint_oauth2_api_name,
-        description_i18n: i18n_key:credential_type_microsoft_sharepoint_oauth2_api_description
-    },
-    
-    presentation = {
-        icon: icon:microsoft_sharepoint,
-        color_type: theme_color_type:info,
-        tooltip_i18n: i18n_key:credential_type_microsoft_sharepoint_oauth2_api_tooltip,
-        display_order: 204
-    },
-    
-    auth_type = auth_type:oauth2,
-    provider = provider:microsoft,
-    
-    config = {
-        oauth2: {
-            grant_type: "authorization_code",
-            access_token_url: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-            authorization_url: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
-            authentication_method: "body",
-            scope: "Sites.ReadWrite.All offline_access"
-        },
-        oauth1: NONE,
-        required_fields: [],
-        metadata: {
-            extends: "microsoftOAuth2Api",
-            graph_api: true,
-            apis_required: ["Microsoft Graph API"]
-        }
-    },
-    
-    documentation = {
-        url: url:microsoft_sharepoint_api_docs,
-        use_cases_i18n: NONE
-    };
-
 -- =====================================================
--- 6. MICROSOFT TODO OAUTH2 API (display_order: 205)
+-- 6. MICROSOFT TODO OAUTH2 API - DOUBLON SUPPRIMÉ (déjà défini dans la base avec name = "microsoftToDoOAuth2Api")
 -- =====================================================
-
-CREATE credential_type:microsoft_todo_oauth2_api SET
-    name = "microsoftToDoOAuth2Api",
-    slug = "microsoft-todo-oauth2-api",
-    is_active = true,
-    
-    identity = {
-        display_name_i18n: i18n_key:credential_type_microsoft_todo_oauth2_api_name,
-        description_i18n: i18n_key:credential_type_microsoft_todo_oauth2_api_description
-    },
-    
-    presentation = {
-        icon: icon:microsoft_todo,
-        color_type: theme_color_type:primary,
-        tooltip_i18n: i18n_key:credential_type_microsoft_todo_oauth2_api_tooltip,
-        display_order: 205
-    },
-    
-    auth_type = auth_type:oauth2,
-    provider = provider:microsoft,
-    
-    config = {
-        oauth2: {
-            grant_type: "authorization_code",
-            access_token_url: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-            authorization_url: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
-            authentication_method: "body",
-            scope: "Tasks.ReadWrite offline_access"
-        },
-        oauth1: NONE,
-        required_fields: [],
-        metadata: {
-            extends: "microsoftOAuth2Api",
-            graph_api: true,
-            apis_required: ["Microsoft Graph API"]
-        }
-    },
-    
-    documentation = {
-        url: url:microsoft_todo_api_docs,
-        use_cases_i18n: NONE
-    };
 
 -- =====================================================
 -- 7. MICROSOFT OAUTH2 API (GÉNÉRIQUE) (display_order: 206)
@@ -370,13 +244,7 @@ CREATE credential_type:microsoft_dynamics_oauth2_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_microsoft_dynamics_oauth2_api_name,
         description_i18n: i18n_key:credential_type_microsoft_dynamics_oauth2_api_description
-    },
-    
-    presentation = {
-        icon: icon:microsoft_dynamics,
-        color: "#002050",
-        color_daisy: "accent",
-        tooltip_i18n: i18n_key:credential_type_microsoft_dynamics_oauth2_api_tooltip,
+    }, presentation = { icon: icon:microsoft_dynamics_oauth2_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_microsoft_dynamics_oauth2_api_tooltip,
         display_order: 210
     },
     

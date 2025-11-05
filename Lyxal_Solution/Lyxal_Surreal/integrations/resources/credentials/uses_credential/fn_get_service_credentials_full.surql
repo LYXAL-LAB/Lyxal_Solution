@@ -39,9 +39,9 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_service_credentials_full(
     )[0];
     
     -- 4. Vérifier si le service existe
-    IF $service == NONE THEN
+    IF $service == NONE {
         RETURN { success: false, error: 'service_not_found', service_id: $service_id };
-    END;
+    };
     
     -- 5. Récupérer tous les credentials du service avec traductions
     LET $credentials = (

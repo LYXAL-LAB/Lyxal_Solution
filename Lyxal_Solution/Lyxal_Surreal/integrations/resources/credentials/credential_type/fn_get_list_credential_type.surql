@@ -39,6 +39,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_list_credential_type(
                 WHERE in = presentation.tooltip_i18n AND out = $langue_record
             )[0] AS tooltip_translated,
             presentation,
+            presentation.display_order,
             -- Nom du provider (si présent)
             provider.name AS provider_name,
             -- Nom de l'auth_type traduit

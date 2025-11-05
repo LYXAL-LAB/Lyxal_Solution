@@ -27,12 +27,12 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_user_service_credential_with_etag(
     )[0];
     
     -- 3. Vérifier si la credential existe
-    IF $current_etag == NONE THEN
+    IF $current_etag == NONE {
         RETURN { success: false, error: 'credential_not_found', credential_id: $credential_id };
-    END;
+    };
     
     -- 4. Comparer avec l'ETag client
-    IF $client_etag != NONE AND $current_etag == $client_etag THEN
+    IF $client_etag != NONE AND $current_etag == $client_etag {
         -- Pas de changement, on peut utiliser le cache
         RETURN {
             success: true,
@@ -40,7 +40,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_user_service_credential_with_etag(
             etag: $current_etag,
             message: 'No changes detected, use cached data'
         };
-    END;
+    };
     
     -- 5. Changement détecté, renvoyer les nouvelles données (sans credentials sensibles)
     LET $credential = (
@@ -63,9 +63,9 @@ DEFINE FUNCTION IF NOT EXISTS fn::get_user_service_credential_with_etag(
         FROM $credential_record
     )[0];
     
-    IF $credential == NONE THEN
+    IF $credential == NONE {
         RETURN { success: false, error: 'credential_not_found', credential_id: $credential_id };
-    END;
+    };
     
     RETURN {
         success: true,

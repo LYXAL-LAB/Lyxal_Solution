@@ -197,13 +197,7 @@ CREATE credential_type:datadog_api SET
     identity = {
         display_name_i18n: i18n_key:credential_type_datadog_api_name,
         description_i18n: i18n_key:credential_type_datadog_api_description
-    },
-    
-    presentation = {
-        icon: icon:datadog,
-        color: "#632CA6",
-        color_daisy: "secondary",
-        tooltip_i18n: i18n_key:credential_type_datadog_api_tooltip,
+    }, presentation = { icon: icon:datadog_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_datadog_api_tooltip,
         display_order: 963
     },
     
