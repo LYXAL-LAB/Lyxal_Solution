@@ -1,122 +1,123 @@
-# 📚 Index de Référence - Lyxal Studio Runtime
+# 📚 Guide Expert de Navigation - Lyxal Studio
 
-**Guide de navigation** : Ce document liste tous les fichiers de référence essentiels pour le développement du Lyxal Studio Runtime et indique **quand consulter chaque fichier**.
+**Guide de référence avancé** : Pour développeurs connaissant déjà la structure générale. Ce document fournit une **navigation experte** avec contextes d'usage précis, profils développeur, et check-lists détaillées.
+
+> **Différent de README.md** : README.md = vue d'ensemble produit | INDEX_REFERENCE.md = navigation experte
+
+**Profils couverts** :
+- 👨‍💻 **Développeurs Backend** (SurrealDB, schemas)
+- 🎨 **Développeurs Frontend** (React, parsers)
+- 📱 **Développeurs Mobile** (React Native, adaptation)
+- 🏗️ **Architectes** (vision globale, patterns)
+- 📋 **Product Managers** (fonctionnalités, ROI)
 
 ---
 
 ## 🎯 Fichiers Principaux (À Lire en Priorité)
 
-### 1. 📘 [AMELIORATIONS_RENDU.md](./runtime/AMELIORATIONS_RENDU.md) ⭐ **DÉMARRE ICI**
+### 1. ⚙️ [RUNTIME.md](./RUNTIME.md) ⭐ **DÉMARRE ICI**
 
-**Rôle** : Spécification technique complète du Runtime
-
-**Contenu** :
-- ✅ Architecture globale (préambule)
-- ✅ Pipeline modulaire (parser, resolver, etc.)
-- ✅ State management et bindings
-- ✅ ContextManager multi-source
-- ✅ Cache intelligent
-- ✅ Validation runtime
-- ✅ Optimisations performance
-- ✅ Structure des tests
-- ✅ Dépendances NPM
-- ✅ Convention de nomenclature
-- ✅ Roadmap en 4 phases
-
-**Quand le consulter** :
-- 🔴 **Avant de commencer** l'implémentation
-- 🔴 Pour comprendre l'architecture complète
-- 🔴 Pour voir les exemples de code
-- 🔴 Pour la roadmap et prioritisation
-
-**Temps de lecture** : ~45 minutes
-
----
-
-### 2. 🚀 [documentation/runtime/README_RUNTIME.md](./runtime/README_RUNTIME.md) ⭐ **GUIDE RAPIDE**
-
-**Rôle** : Guide de référence rapide pour le Runtime
+**Rôle** : Guide complet du Runtime Lyxal Studio
 
 **Contenu** :
-- ✅ Philosophie du Runtime
-- ✅ Pipeline global (schéma visuel)
-- ✅ Description des modules clés
-- ✅ Flux complet DB → DOM
-- ✅ Exemples d'utilisation
-- ✅ Architecture des fichiers
-- ✅ Démarrage rapide
+- ✅ Vue d'ensemble et philosophie Database-Driven
+- ✅ Pipeline complet (Parser → StructureRenderer → ActionHandler)
+- ✅ Architecture modulaire et composants clés
+- ✅ Système de rendu contrôlé depuis DB
+- ✅ Composants Database-Driven avec exemples
+- ✅ Démarrage et ordre d'implémentation en 4 phases
+- ✅ Tests, validation et dépannage
+- ✅ Ressources et liens externes
 
 **Quand le consulter** :
-- 🔴 **Première lecture** pour comprendre la vision
-- 🔴 Pour avoir une vue d'ensemble rapide
-- 🔴 Pour comprendre le pipeline
+- 🔴 **Avant tout développement** pour comprendre le Runtime
+- 🔴 Pour implémenter le moteur de rendu
+- 🔴 Pour comprendre le système Database-Driven
 - 🔴 Comme référence pendant le développement
 
-**Temps de lecture** : ~20 minutes
+**Temps de lecture** : ~60 minutes
 
 ---
 
-### 3. 🔧 [SYSTEME_RENDU.md](./runtime/SYSTEME_RENDU.md) ⭐ **SYSTÈME DE RENDU**
+### 2. 🎨 [ICONS.md](./ICONS.md) ⭐ **SYSTÈME D'ICÔNES**
 
-**Rôle** : Guide détaillé du système de rendu contrôlé
+**Rôle** : Système d'icônes 100% CDN Lyxal Studio
 
 **Contenu** :
-- ✅ Pourquoi un système contrôlé vs HTML brut
-- ✅ Architecture du système
-- ✅ Implémentation complète (ComponentParser)
-- ✅ StructureRenderer et StructureRenderer
-- ✅ ActionHandler
-- ✅ Exemples 100% DB-Driven
-- ✅ Principe fondamental : Tout est template JSON
+- ✅ Architecture 100% CDN (pas de bundle frontend)
+- ✅ 1640 icônes Lucide extraites automatiquement
+- ✅ 16 400 vraies traductions multilingues
+- ✅ Scripts Python d'extraction et génération
+- ✅ Intégration dans le Runtime et composants
+- ✅ Mapping catégories et URLs Bunny
 
 **Quand le consulter** :
-- 🔴 Pour comprendre **comment** le rendu fonctionne
-- 🔴 Avant d'implémenter le parser
-- 🔴 Pour voir les exemples de structures JSON
-- 🔴 Pour comprendre le principe "template JSON en DB"
+- 🔴 Pour comprendre le système d'icônes révolutionnaire
+- 🔴 Avant d'ajouter de nouvelles icônes
+- 🔴 Pour les traductions multilingues
+- 🔴 Pour l'intégration CDN Bunny
 
 **Temps de lecture** : ~35 minutes
 
 ---
 
-### 4. 🧩 [COMPOSANTS_DB.md](./runtime/COMPOSANTS_DB.md) ⭐ **COMPOSANTS DB**
+### 3. 🗄️ [DATABASE.md](./database/DATABASE.md) **SCHÉMAS DB**
 
-**Rôle** : Guide des composants pilotés par DB
+**Rôle** : Référence complète des structures de données
 
 **Contenu** :
-- ✅ Vision des composants Database-Driven
-- ✅ Architecture proposée (tables, structure)
-- ✅ Exemples de composants (button, card, input, table)
-- ✅ Moteur de rendu React
-- ✅ Utilisation dans les pages Studio
+- ✅ Schémas de toutes les tables SurrealDB
+- ✅ Relations et contraintes d'intégrité
+- ✅ Index et optimisations de performance
+- ✅ Fonctions SurrealDB (8 fonctions principales)
+- ✅ Exemples de seeds et configurations
 
 **Quand le consulter** :
-- 🔴 Pour comprendre la structure des composants DB
-- 🔴 Avant de créer des seeds de composants
-- 🔴 Pour voir des exemples complets de composants
+- 🔴 Pour créer/modifier les tables DB
+- 🔴 Quand on ajoute une nouvelle fonctionnalité
+- 🔴 Pour comprendre les relations entre tables
 
-**Temps de lecture** : ~30 minutes
+**Temps de lecture** : ~40 minutes
 
 ---
 
-### 5. 🗂️ [ORDRE_IMPLEMENTATION.md](./runtime/ORDRE_IMPLEMENTATION.md) ⭐ **PAR OÙ COMMENCER**
+### 4. 📱 [INTEGRATION.md](./integration/INTEGRATION.md) **INTÉGRATION REACT**
 
-**Rôle** : Guide d'ordre d'implémentation
+**Rôle** : Guide complet d'intégration React/Web + React Native
 
 **Contenu** :
-- ✅ Réponse : DB ou TypeScript en premier ?
-- ✅ Ordre recommandé (approche itérative)
-- ✅ Checklist de démarrage
-- ✅ Plan d'action concret (première semaine)
-- ✅ Justification de l'ordre
+- ✅ Architecture commune Web/Mobile
+- ✅ Hooks et context management
+- ✅ Gestion d'état et cache
+- ✅ Gestion des erreurs
+- ✅ Patterns de développement
 
 **Quand le consulter** :
-- 🔴 **Avant de commencer** le développement
-- 🔴 Pour savoir par quoi commencer
-- 🔴 Pour avoir un plan jour par jour
-- 🔴 Pour la checklist complète
+- 🔴 Pour intégrer Lyxal Studio dans une app React
+- 🔴 Pour comprendre l'architecture commune
+- 🔴 Pour les patterns de state management
 
-**Temps de lecture** : ~15 minutes
+**Temps de lecture** : ~35 minutes
+
+---
+
+### 5. 🎨 [DAISYUI.md](./daisyui/DAISYUI.md) **THÈMES DAISYUI**
+
+**Rôle** : Guide complet des thèmes et DaisyUI
+
+**Contenu** :
+- ✅ Intégration DaisyUI + Lyxal Studio
+- ✅ 33 thèmes prédéfinis et personnalisation
+- ✅ Application temps réel depuis DB
+- ✅ Variables CSS et dark mode
+- ✅ Bonnes pratiques de styling
+
+**Quand le consulter** :
+- 🔴 Pour comprendre le système de thèmes
+- 🔴 Pour créer/modifier des thèmes
+- 🔴 Pour l'intégration DaisyUI
+
+**Temps de lecture** : ~30 minutes
 
 ---
 
@@ -280,6 +281,30 @@
 - 🔴 Pour voir les statistiques et métriques
 
 **Temps de lecture** : ~30 minutes
+
+---
+
+### 13. 📊 [ANALYSE_MODULE.md](./ANALYSE_MODULE.md) - Analyse Complète du Module
+
+**Rôle** : Vue d'ensemble architecturale et fonctionnelle complète
+
+**Contenu** :
+- ✅ **Toutes les tables** (9 principales + 5 icon + 5 theme)
+- ✅ **Architecture complète** (stack, flux de données, philosophie 95% config)
+- ✅ **Fonctionnalités clés** (White-Label, menus dynamiques, pages DB-driven)
+- ✅ **Cas d'usage métier** avec ROI démontré
+- ✅ **Scripts Python** et structure des seeds
+- ✅ **Comparaison Web vs Mobile** détaillée
+
+**Quand le consulter** :
+- 🔴 **Avant tout développement** pour comprendre la vision complète
+- 🔴 Pour les **architectes** et **product managers**
+- 🔴 Quand on a besoin de la **big picture** du système
+- 🔴 Pour comprendre **pourquoi** les choix techniques ont été faits
+
+**Temps de lecture** : ~45 minutes
+
+**Complète** : `DATABASE.md` (schémas techniques) + `ARCHITECTURE.md` (patterns)
 
 ---
 
@@ -542,6 +567,82 @@
 │   ├── README_RUNTIME.md            → Guide rapide
 │   ├── AMELIORATIONS_RENDU.md      → Spécification complète
 │   └── SYSTEME_RENDU.md             → Comment ça fonctionne
+```
+
+---
+
+## 👥 Guides Spécialisés par Profil Développeur
+
+### 👨‍💻 **Développeurs Backend (SurrealDB)**
+```
+📋 Checklist Spécialisée :
+□ [DATABASE.md](./database/DATABASE.md) - Tous les schémas SurrealDB
+□ [ANALYSE_MODULE.md](./ANALYSE_MODULE.md) - Architecture des données
+□ [FUNCTIONS.md](./functions/FUNCTIONS.md) - Fonctions et requêtes
+□ [ORDRE_IMPLEMENTATION.md](./runtime/ORDRE_IMPLEMENTATION.md) - Setup DB
+
+🔧 Outils prioritaires :
+- Scripts Python dans `studio/script/`
+- Seeds dans `studio/reference/`
+- Schémas dans `studio/database/`
+```
+
+### 🎨 **Développeurs Frontend (React)**
+```
+📋 Checklist Spécialisée :
+□ [AMELIORATIONS_RENDU.md](./runtime/AMELIORATIONS_RENDU.md) - Pipeline complet
+□ [SYSTEME_RENDU.md](./runtime/SYSTEME_RENDU.md) - Parser TypeScript
+□ [COMPOSANTS_DB.md](./runtime/COMPONENTS_DB.md) - Composants DB-driven
+□ [INTEGRATION.md](./integration/INTEGRATION.md) - Hooks et context
+
+🔧 Outils prioritaires :
+- Composants dans `src/components/studio/`
+- Hooks dans `src/hooks/`
+- Context providers
+```
+
+### 📱 **Développeurs Mobile (React Native)**
+```
+📋 Checklist Spécialisée :
+□ [MOBILE.md](./mobile/MOBILE.md) - Guide React Native complet
+□ [INTEGRATION.md](./integration/INTEGRATION.md) - Base commune
+□ [AMELIORATIONS_RENDU.md](./runtime/AMELIORATIONS_RENDU.md) - Architecture
+□ [SYSTEME_RENDU.md](./runtime/SYSTEME_RENDU.md) - Adaptation mobile
+
+🔧 Outils prioritaires :
+- Composants `*.native.tsx`
+- Navigation React Navigation
+- APIs natives (Camera, GPS, etc.)
+```
+
+### 🏗️ **Architectes Système**
+```
+📋 Checklist Spécialisée :
+□ [ANALYSE_MODULE.md](./ANALYSE_MODULE.md) - Vision complète
+□ [ARCHITECTURE.md](./architecture/ARCHITECTURE.md) - Patterns détaillés
+□ [README.md](./README.md) - Vue d'ensemble produit
+□ [INDEX.md](./INDEX.md) - Vue d'ensemble documentaire
+
+🔧 Focus :
+- Cohérence architecturale
+- Évolutivité du système
+- Performance et scalabilité
+- Patterns de développement
+```
+
+### 📋 **Product Managers**
+```
+📋 Checklist Spécialisée :
+□ [ANALYSE_MODULE.md](./ANALYSE_MODULE.md) - Fonctionnalités & ROI
+□ [GUIDE.md](./guides/GUIDE.md) - Cas d'usage détaillés
+□ [README.md](./README.md) - Vue d'ensemble produit
+□ [MOBILE.md](./mobile/MOBILE.md) - Support multi-plateforme
+
+🔧 Focus :
+- Valeur métier ajoutée
+- Expérience utilisateur
+- Stratégie produit
+- Métriques et KPIs
 ```
 
 ---

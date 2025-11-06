@@ -8,6 +8,7 @@ coverage/
 n8n-master/
 axelor-open-suite/
 lucide-main/
+React-tailwind-components/
 
 # Temp & lourds
 *.log

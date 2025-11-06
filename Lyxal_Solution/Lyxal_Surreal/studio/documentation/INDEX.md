@@ -35,7 +35,7 @@ Bienvenue dans la documentation complète de **Lyxal Studio** ! 🎨📱
 
 ## 📖 Documentation Disponible
 
-### 1. **[README.md](./README.md)** - Vue d'Ensemble
+### 1. **[README.md](./README.md)** - Vue d'Ensemble Lyxal Studio
 - ✅ Vision et concept de Lyxal Studio
 - ✅ Cas d'usage principaux
 - ✅ **Multi-plateforme** (Web + Mobile)
@@ -150,7 +150,28 @@ Bienvenue dans la documentation complète de **Lyxal Studio** ! 🎨📱
 
 ---
 
-### 8. **[DAISYUI.md](./DAISYUI.md)** - Guide DaisyUI ⭐ NOUVEAU
+### 8. **[ANALYSE_MODULE.md](./ANALYSE_MODULE.md)** - Analyse Complète du Module Studio
+- ✅ Analyse détaillée de **TOUTES les tables** (9 principales + 5 icon + 5 theme)
+- ✅ **Architecture complète** (stack, flux de données, philosophie)
+- ✅ **Fonctionnalités clés** (White-Label, menus dynamiques, pages configurables)
+- ✅ **Cas d'usage métier** et ROI
+- ✅ **Scripts Python** et structure des seeds
+- ✅ **Comparaison Web vs Mobile**
+
+**Vue d'ensemble complète du module studio ! 📊**
+
+### 9. **[INDEX_REFERENCE.md](./INDEX_REFERENCE.md)** - Guide de Navigation Détaillé
+- ✅ **Parcours de lecture** organisés par priorité
+- ✅ **Références croisées** entre documents
+- ✅ **Temps de lecture** estimé pour chaque fichier
+- ✅ **Phases de développement** (préparation, SurrealDB, parser, etc.)
+- ✅ **Fichiers essentiels** clairement identifiés
+
+**Guide ultime pour naviguer dans la documentation ! 🧭**
+
+---
+
+### 10. **[DAISYUI.md](./DAISYUI.md)** - Guide DaisyUI ⭐ NOUVEAU
 - ✅ Pourquoi DaisyUI pour Lyxal Studio
 - ✅ Installation et configuration
 - ✅ Configuration SurrealDB (web_theme, daisy_custom)

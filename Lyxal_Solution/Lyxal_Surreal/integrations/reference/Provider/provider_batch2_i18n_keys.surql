@@ -1,35 +1,11 @@
 ﻿-- ===== BATCH 2 : I18N KEYS (90 keys) =====
 
-CREATE i18n_key:provider_carbonblack_name SET description = "carbonblack name";
-CREATE i18n_key:provider_carbonblack_description SET description = "carbonblack description";
-CREATE i18n_key:provider_carbonblack_tooltip SET description = "carbonblack tooltip";
-CREATE i18n_key:provider_chargebee_name SET description = "chargebee name";
-CREATE i18n_key:provider_chargebee_description SET description = "chargebee description";
-CREATE i18n_key:provider_chargebee_tooltip SET description = "chargebee tooltip";
-CREATE i18n_key:provider_circleci_name SET description = "circleci name";
-CREATE i18n_key:provider_circleci_description SET description = "circleci description";
-CREATE i18n_key:provider_circleci_tooltip SET description = "circleci tooltip";
-CREATE i18n_key:provider_cisco_name SET description = "cisco name";
-CREATE i18n_key:provider_cisco_description SET description = "cisco description";
-CREATE i18n_key:provider_cisco_tooltip SET description = "cisco tooltip";
-CREATE i18n_key:provider_citrix_name SET description = "citrix name";
-CREATE i18n_key:provider_citrix_description SET description = "citrix description";
-CREATE i18n_key:provider_citrix_tooltip SET description = "citrix tooltip";
-CREATE i18n_key:provider_clearbit_name SET description = "clearbit name";
-CREATE i18n_key:provider_clearbit_description SET description = "clearbit description";
-CREATE i18n_key:provider_clearbit_tooltip SET description = "clearbit tooltip";
-CREATE i18n_key:provider_clickup_name SET description = "clickup name";
-CREATE i18n_key:provider_clickup_description SET description = "clickup description";
-CREATE i18n_key:provider_clickup_tooltip SET description = "clickup tooltip";
-CREATE i18n_key:provider_clockify_name SET description = "clockify name";
-CREATE i18n_key:provider_clockify_description SET description = "clockify description";
-CREATE i18n_key:provider_clockify_tooltip SET description = "clockify tooltip";
-CREATE i18n_key:provider_cloudflare_name SET description = "cloudflare name";
-CREATE i18n_key:provider_cloudflare_description SET description = "cloudflare description";
-CREATE i18n_key:provider_cloudflare_tooltip SET description = "cloudflare tooltip";
-CREATE i18n_key:provider_cockpit_name SET description = "cockpit name";
-CREATE i18n_key:provider_cockpit_description SET description = "cockpit description";
-CREATE i18n_key:provider_cockpit_tooltip SET description = "cockpit tooltip";
+
+
+
+
+
+
 CREATE i18n_key:provider_coda_name SET description = "coda name";
 CREATE i18n_key:provider_coda_description SET description = "coda description";
 CREATE i18n_key:provider_coda_tooltip SET description = "coda tooltip";
