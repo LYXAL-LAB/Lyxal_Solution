@@ -1,0 +1,471 @@
+-- ============================================================================
+-- INDEX DES URLs À CRÉER - Frameworks CSS
+-- Description : Liste des URLs à créer pour les frameworks CSS supportés
+-- Statut : À créer après installation des ressources sur Bunny CDN
+-- Total : ~15 URLs (CDN, documentation, sources)
+-- ============================================================================
+
+-- ============================================================================
+-- TAILWIND CSS - URLs
+-- ============================================================================
+
+-- CDN CSS Tailwind
+-- CREATE url:tailwind_css_cdn SET
+--   value = "https://cdn.tailwindcss.com/3.4.0/tailwind.min.css",
+--   provider = "tailwind",
+--   type = "cdn",
+--   category = "css_framework",
+--   metadata = {
+--     framework = "tailwind",
+--     version = "3.4.0",
+--     integrity = "sha384-...",
+--     crossorigin = "anonymous"
+--   };
+
+-- Site officiel Tailwind
+-- CREATE url:tailwind_official SET
+--   value = "https://tailwindcss.com",
+--   provider = "tailwind",
+--   type = "official",
+--   category = "documentation",
+--   metadata = {
+--     framework = "tailwind",
+--     language = "en"
+--   };
+
+-- Documentation Tailwind
+-- CREATE url:tailwind_docs SET
+--   value = "https://tailwindcss.com/docs",
+--   provider = "tailwind",
+--   type = "documentation",
+--   category = "documentation",
+--   metadata = {
+--     framework = "tailwind",
+--     language = "en"
+--   };
+
+-- GitHub Tailwind
+-- CREATE url:tailwind_github SET
+--   value = "https://github.com/tailwindlabs/tailwindcss",
+--   provider = "github",
+--   type = "source",
+--   category = "source_code",
+--   metadata = {
+--     framework = "tailwind",
+--     platform = "github"
+--   };
+
+-- ============================================================================
+-- TAILWIND - Icônes (URLs Bunny CDN)
+-- ============================================================================
+
+-- Icône Tailwind Light - Original
+-- CREATE url:tailwind_icon_light_original SET
+--   value = "https://cdn.bunny.net/frameworks/tailwind/light/icon.svg",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "tailwind",
+--     theme = "light",
+--     format = "svg",
+--     optimized = true
+--   };
+
+-- Icône Tailwind Light - WebP
+-- CREATE url:tailwind_icon_light_webp SET
+--   value = "https://cdn.bunny.net/frameworks/tailwind/light/icon.webp",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "tailwind",
+--     theme = "light",
+--     format = "webp",
+--     optimized = true
+--   };
+
+-- Icône Tailwind Light - AVIF
+-- CREATE url:tailwind_icon_light_avif SET
+--   value = "https://cdn.bunny.net/frameworks/tailwind/light/icon.avif",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "tailwind",
+--     theme = "light",
+--     format = "avif",
+--     optimized = true
+--   };
+
+-- Icône Tailwind Dark - Original
+-- CREATE url:tailwind_icon_dark_original SET
+--   value = "https://cdn.bunny.net/frameworks/tailwind/dark/icon.svg",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "tailwind",
+--     theme = "dark",
+--     format = "svg",
+--     optimized = true
+--   };
+
+-- Icône Tailwind Dark - WebP
+-- CREATE url:tailwind_icon_dark_webp SET
+--   value = "https://cdn.bunny.net/frameworks/tailwind/dark/icon.webp",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "tailwind",
+--     theme = "dark",
+--     format = "webp",
+--     optimized = true
+--   };
+
+-- Icône Tailwind Dark - AVIF
+-- CREATE url:tailwind_icon_dark_avif SET
+--   value = "https://cdn.bunny.net/frameworks/tailwind/dark/icon.avif",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "tailwind",
+--     theme = "dark",
+--     format = "avif",
+--     optimized = true
+--   };
+
+-- ============================================================================
+-- BOOTSTRAP CSS - URLs
+-- ============================================================================
+
+-- CDN CSS Bootstrap
+-- CREATE url:bootstrap_css_cdn SET
+--   value = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
+--   provider = "jsdelivr",
+--   type = "cdn",
+--   category = "css_framework",
+--   metadata = {
+--     framework = "bootstrap",
+--     version = "5.3.0",
+--     integrity = "sha384-...",
+--     crossorigin = "anonymous"
+--   };
+
+-- CDN JS Bootstrap
+-- CREATE url:bootstrap_js_cdn SET
+--   value = "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js",
+--   provider = "jsdelivr",
+--   type = "cdn",
+--   category = "javascript_framework",
+--   metadata = {
+--     framework = "bootstrap",
+--     version = "5.3.0",
+--     integrity = "sha384-...",
+--     crossorigin = "anonymous"
+--   };
+
+-- Site officiel Bootstrap
+-- CREATE url:bootstrap_official SET
+--   value = "https://getbootstrap.com",
+--   provider = "bootstrap",
+--   type = "official",
+--   category = "documentation",
+--   metadata = {
+--     framework = "bootstrap",
+--     language = "en"
+--   };
+
+-- Documentation Bootstrap
+-- CREATE url:bootstrap_docs SET
+--   value = "https://getbootstrap.com/docs/5.3/getting-started/introduction/",
+--   provider = "bootstrap",
+--   type = "documentation",
+--   category = "documentation",
+--   metadata = {
+--     framework = "bootstrap",
+--     language = "en",
+--     version = "5.3"
+--   };
+
+-- GitHub Bootstrap
+-- CREATE url:bootstrap_github SET
+--   value = "https://github.com/twbs/bootstrap",
+--   provider = "github",
+--   type = "source",
+--   category = "source_code",
+--   metadata = {
+--     framework = "bootstrap",
+--     platform = "github"
+--   };
+
+-- ============================================================================
+-- BOOTSTRAP - Icônes (URLs Bunny CDN)
+-- ============================================================================
+
+-- Icône Bootstrap Light - Original
+-- CREATE url:bootstrap_icon_light_original SET
+--   value = "https://cdn.bunny.net/frameworks/bootstrap/light/icon.svg",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "bootstrap",
+--     theme = "light",
+--     format = "svg",
+--     optimized = true
+--   };
+
+-- Icône Bootstrap Light - WebP
+-- CREATE url:bootstrap_icon_light_webp SET
+--   value = "https://cdn.bunny.net/frameworks/bootstrap/light/icon.webp",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "bootstrap",
+--     theme = "light",
+--     format = "webp",
+--     optimized = true
+--   };
+
+-- Icône Bootstrap Light - AVIF
+-- CREATE url:bootstrap_icon_light_avif SET
+--   value = "https://cdn.bunny.net/frameworks/bootstrap/light/icon.avif",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "bootstrap",
+--     theme = "light",
+--     format = "avif",
+--     optimized = true
+--   };
+
+-- Icône Bootstrap Dark - Original
+-- CREATE url:bootstrap_icon_dark_original SET
+--   value = "https://cdn.bunny.net/frameworks/bootstrap/dark/icon.svg",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "bootstrap",
+--     theme = "dark",
+--     format = "svg",
+--     optimized = true
+--   };
+
+-- Icône Bootstrap Dark - WebP
+-- CREATE url:bootstrap_icon_dark_webp SET
+--   value = "https://cdn.bunny.net/frameworks/bootstrap/dark/icon.webp",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "bootstrap",
+--     theme = "dark",
+--     format = "webp",
+--     optimized = true
+--   };
+
+-- Icône Bootstrap Dark - AVIF
+-- CREATE url:bootstrap_icon_dark_avif SET
+--   value = "https://cdn.bunny.net/frameworks/bootstrap/dark/icon.avif",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "bootstrap",
+--     theme = "dark",
+--     format = "avif",
+--     optimized = true
+--   };
+
+-- ============================================================================
+-- MATERIAL DESIGN - URLs
+-- ============================================================================
+
+-- CDN CSS Material Design
+-- CREATE url:material_css_cdn SET
+--   value = "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined",
+--   provider = "google_fonts",
+--   type = "cdn",
+--   category = "css_framework",
+--   metadata = {
+--     framework = "material_design",
+--     type = "icons"
+--   };
+
+-- CDN JS Material Design
+-- CREATE url:material_js_cdn SET
+--   value = "https://unpkg.com/material-components-web@14.0.0/dist/material-components-web.min.js",
+--   provider = "unpkg",
+--   type = "cdn",
+--   category = "javascript_framework",
+--   metadata = {
+--     framework = "material_design",
+--     version = "14.0.0"
+--   };
+
+-- Police Roboto (requis pour Material Design)
+-- CREATE url:roboto_font SET
+--   value = "https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap",
+--   provider = "google_fonts",
+--   type = "font",
+--   category = "typography",
+--   metadata = {
+--     framework = "material_design",
+--     font_family = "Roboto"
+--   };
+
+-- Site officiel Material Design
+-- CREATE url:material_official SET
+--   value = "https://material.io/design",
+--   provider = "google",
+--   type = "official",
+--   category = "documentation",
+--   metadata = {
+--     framework = "material_design",
+--     language = "en"
+--   };
+
+-- Documentation Material Design
+-- CREATE url:material_docs SET
+--   value = "https://material.io/develop",
+--   provider = "google",
+--   type = "documentation",
+--   category = "documentation",
+--   metadata = {
+--     framework = "material_design",
+--     language = "en"
+--   };
+
+-- GitHub Material Components Web
+-- CREATE url:material_github SET
+--   value = "https://github.com/material-components/material-components-web",
+--   provider = "github",
+--   type = "source",
+--   category = "source_code",
+--   metadata = {
+--     framework = "material_design",
+--     platform = "github"
+--   };
+
+-- ============================================================================
+-- MATERIAL DESIGN - Icônes (URLs Bunny CDN)
+-- ============================================================================
+
+-- Icône Material Design Light - Original
+-- CREATE url:material_icon_light_original SET
+--   value = "https://cdn.bunny.net/frameworks/material/light/icon.svg",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "material_design",
+--     theme = "light",
+--     format = "svg",
+--     optimized = true
+--   };
+
+-- Icône Material Design Light - WebP
+-- CREATE url:material_icon_light_webp SET
+--   value = "https://cdn.bunny.net/frameworks/material/light/icon.webp",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "material_design",
+--     theme = "light",
+--     format = "webp",
+--     optimized = true
+--   };
+
+-- Icône Material Design Light - AVIF
+-- CREATE url:material_icon_light_avif SET
+--   value = "https://cdn.bunny.net/frameworks/material/light/icon.avif",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "material_design",
+--     theme = "light",
+--     format = "avif",
+--     optimized = true
+--   };
+
+-- Icône Material Design Dark - Original
+-- CREATE url:material_icon_dark_original SET
+--   value = "https://cdn.bunny.net/frameworks/material/dark/icon.svg",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "material_design",
+--     theme = "dark",
+--     format = "svg",
+--     optimized = true
+--   };
+
+-- Icône Material Design Dark - WebP
+-- CREATE url:material_icon_dark_webp SET
+--   value = "https://cdn.bunny.net/frameworks/material/dark/icon.webp",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "material_design",
+--     theme = "dark",
+--     format = "webp",
+--     optimized = true
+--   };
+
+-- Icône Material Design Dark - AVIF
+-- CREATE url:material_icon_dark_avif SET
+--   value = "https://cdn.bunny.net/frameworks/material/dark/icon.avif",
+--   provider = "bunny",
+--   type = "icon",
+--   category = "framework_icon",
+--   metadata = {
+--     framework = "material_design",
+--     theme = "dark",
+--     format = "avif",
+--     optimized = true
+--   };
+
+-- ============================================================================
+-- INSTRUCTIONS POUR LA CRÉATION
+-- ============================================================================
+
+-- 1. Configurer les CDN externes :
+--    - Tailwind : Utiliser tailwindcss.com CDN ou JSDelivr
+--    - Bootstrap : Utiliser JSDelivr ou CDN officiel
+--    - Material : Utiliser Google Fonts + Unpkg
+--
+-- 2. Uploader les icônes sur Bunny CDN :
+--    - Dossier : /frameworks/{framework}/{theme}/
+--    - Formats : .svg (original), .webp, .avif (optimisés)
+--    - Taille : 64x64px recommandée
+--
+-- 3. Créer les records URL dans l'ordre :
+--    - URLs CDN externes d'abord
+--    - URLs Bunny (icônes) ensuite
+--
+-- 4. Puis décommenter et exécuter les CREATE ci-dessus
+
+-- ============================================================================
+-- VÉRIFICATION APRÈS CRÉATION
+-- ============================================================================
+
+-- SELECT count() FROM url WHERE metadata.framework = "tailwind";
+-- -- Résultat attendu : ~8 URLs pour Tailwind
+
+-- SELECT value, provider, type FROM url
+-- WHERE category = "framework_icon";
+-- -- Résultat attendu : 6 URLs d'icônes Bunny
+
+-- SELECT value, provider FROM url
+-- WHERE category = "css_framework";
+-- -- Résultat attendu : 3 URLs CDN CSS (1 par framework)

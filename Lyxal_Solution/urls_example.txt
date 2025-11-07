@@ -1,0 +1,18 @@
+# Exemple de fichier d'URLs pour l'upload des SVGs vers lyxalsolution
+# Une URL par ligne
+# Les lignes commençant par # sont ignorées
+
+# Exemples d'URLs SVG Heroicons
+https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/academic-cap.svg
+https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/adjustments.svg
+https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/annotation.svg
+https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/archive.svg
+https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/arrow-circle-down.svg
+
+# Icônes supplémentaires
+https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/bell.svg
+https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/book-open.svg
+https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/briefcase.svg
+
+# Vous pouvez ajouter vos propres URLs ici
+# https://example.com/votre-svg.svg

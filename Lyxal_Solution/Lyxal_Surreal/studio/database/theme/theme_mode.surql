@@ -5,7 +5,7 @@
 -- ============================================================================
 
 DEFINE TABLE IF NOT EXISTS theme_mode TYPE NORMAL SCHEMAFULL
-COMMENT 'Modes de thème disponibles pour le système Lyxal'
+COMMENT 'Modes de thème pour l\'apparence de l\'interface (light, dark, auto, custom)'
 PERMISSIONS FOR SELECT FULL
 FOR CREATE,UPDATE,DELETE NONE;
 
@@ -38,20 +38,17 @@ DEFINE FIELD IF NOT EXISTS presentation ON TABLE theme_mode
     DEFINE FIELD IF NOT EXISTS presentation.name_i18n ON TABLE theme_mode
         TYPE record<i18n_key>
         REFERENCE ON DELETE REJECT
-        VALUE type::record('i18n_key', $value)
         COMMENT 'Nom du mode (i18n)';
 
     DEFINE FIELD IF NOT EXISTS presentation.description_i18n ON TABLE theme_mode
         TYPE option<record<i18n_key>>
         REFERENCE ON DELETE REJECT
-        VALUE {IF $value != NONE {type::record('i18n_key', $value)} ELSE {NONE}}
         COMMENT 'Description du mode (i18n)';
 
     DEFINE FIELD IF NOT EXISTS presentation.icon ON TABLE theme_mode
         TYPE option<record<icon>>
         REFERENCE ON DELETE REJECT
-        VALUE {IF $value != NONE {type::record('icon', $value)} ELSE {NONE}}
-        COMMENT 'Icône du mode : 🌞 (light), 🌙 (dark), 🔄 (auto), 🎨 (custom)';
+        COMMENT 'Icône représentative : ☀️, 🌙, 🔄, 🎨';
 
 -- ============================================================================
 -- BLOC CONFIG : Configuration du mode
@@ -61,19 +58,23 @@ DEFINE FIELD IF NOT EXISTS config ON TABLE theme_mode
     TYPE object
     COMMENT 'Bloc configuration : paramètres du mode';
 
-    DEFINE FIELD IF NOT EXISTS config.applies_to_system ON TABLE theme_mode
-        TYPE bool
-        DEFAULT true
-        COMMENT 'S\'applique au système (auto-detect) ou défini manuellement ?';
+    DEFINE FIELD IF NOT EXISTS config.css_class ON TABLE theme_mode
+        TYPE string
+        COMMENT 'Classe CSS appliquée : "light", "dark", "auto", "custom"';
 
     DEFINE FIELD IF NOT EXISTS config.media_query ON TABLE theme_mode
         TYPE option<string>
-        COMMENT 'Media query CSS : prefers-color-scheme: dark, etc.';
+        COMMENT 'Media query CSS pour le mode auto : "(prefers-color-scheme: dark)"';
+
+    DEFINE FIELD IF NOT EXISTS config.fallback_mode ON TABLE theme_mode
+        TYPE option<record<theme_mode>>
+        REFERENCE ON DELETE CASCADE
+        COMMENT 'Mode de fallback si auto ne peut pas être déterminé';
 
     DEFINE FIELD IF NOT EXISTS config.is_system_mode ON TABLE theme_mode
         TYPE bool
-        DEFAULT false
-        COMMENT 'Mode système (light, dark, auto) ou mode custom ?';
+        DEFAULT true
+        COMMENT 'Mode système (light, dark, auto) ou custom ?';
 
 -- ============================================================================
 -- BLOC STATUS : État du mode
@@ -86,32 +87,14 @@ DEFINE FIELD IF NOT EXISTS status ON TABLE theme_mode
     DEFINE FIELD IF NOT EXISTS status.is_active ON TABLE theme_mode
         TYPE bool
         DEFAULT true
-        COMMENT 'Mode actif (disponible pour sélection) ?';
+        COMMENT 'Mode actif dans le système ?';
 
     DEFINE FIELD IF NOT EXISTS status.is_default ON TABLE theme_mode
         TYPE bool
         DEFAULT false
-        COMMENT 'Mode par défaut du système ?';
+        COMMENT 'Mode par défaut ?';
 
-    DEFINE FIELD IF NOT EXISTS status.source ON TABLE theme_mode
-        TYPE string
-        ASSERT $value INSIDE ['system', 'custom']
-        DEFAULT 'system'
-        COMMENT 'Source du mode';
-
--- ============================================================================
--- BLOC METADATA : Métadonnées système
--- ============================================================================
-
-DEFINE FIELD IF NOT EXISTS metadata ON TABLE theme_mode
-    TYPE object
-    COMMENT 'Bloc métadonnées : informations système';
-
-    DEFINE FIELD IF NOT EXISTS metadata.notes ON TABLE theme_mode
-        TYPE option<string>
-        COMMENT 'Notes internes libres';
-
-    DEFINE FIELD IF NOT EXISTS metadata.order ON TABLE theme_mode
+    DEFINE FIELD IF NOT EXISTS status.order ON TABLE theme_mode
         TYPE option<int>
         DEFAULT 0
         COMMENT 'Ordre d\'affichage dans l\'interface';
@@ -120,21 +103,17 @@ DEFINE FIELD IF NOT EXISTS metadata ON TABLE theme_mode
 -- TIMESTAMPS & ETAG
 -- ============================================================================
 
-DEFINE FIELD IF NOT EXISTS timestamp ON TABLE theme_mode
-    TYPE object
-    COMMENT 'Dates de création et modification';
+DEFINE FIELD IF NOT EXISTS created_at ON TABLE theme_mode
+    TYPE datetime
+    READONLY
+    DEFAULT time::now()
+    COMMENT 'Date de création (readonly)';
 
-    DEFINE FIELD IF NOT EXISTS timestamp.created_at ON TABLE theme_mode
-        TYPE datetime
-        READONLY
-        DEFAULT time::now()
-        COMMENT 'Date de création (readonly)';
-
-    DEFINE FIELD IF NOT EXISTS timestamp.updated_at ON TABLE theme_mode
-        TYPE datetime
-        READONLY
-        DEFAULT ALWAYS time::now()
-        COMMENT 'Date de dernière modification (readonly)';
+DEFINE FIELD IF NOT EXISTS updated_at ON TABLE theme_mode
+    TYPE datetime
+    READONLY
+    DEFAULT ALWAYS time::now()
+    COMMENT 'Date de dernière modification (readonly)';
 
 DEFINE FIELD IF NOT EXISTS etag ON TABLE theme_mode
     TYPE uuid
@@ -162,11 +141,58 @@ DEFINE INDEX IF NOT EXISTS idx_theme_mode_default ON theme_mode
     FIELDS status.is_default
     COMMENT 'Index sur le mode par défaut';
 
-DEFINE INDEX IF NOT EXISTS idx_theme_mode_system ON theme_mode
-    FIELDS config.is_system_mode
-    COMMENT 'Index sur les modes système';
-
 DEFINE INDEX IF NOT EXISTS idx_theme_mode_order ON theme_mode
-    FIELDS metadata.order
+    FIELDS status.order
     COMMENT 'Index sur l\'ordre d\'affichage';
 
+-- ============================================================================
+-- EXEMPLES D'UTILISATION
+-- ============================================================================
+
+-- Mode light (système)
+-- CREATE theme_mode:light SET
+--   identity = { value = "light", slug = "light" },
+--   presentation = {
+--     name_i18n = i18n_key:theme_mode_light_name,
+--     icon = icon:sun
+--   },
+--   config = {
+--     css_class = "light",
+--     is_system_mode = true
+--   },
+--   status = {
+--     is_default = true,
+--     order = 1
+--   };
+
+-- Mode dark (système)
+-- CREATE theme_mode:dark SET
+--   identity = { value = "dark", slug = "dark" },
+--   presentation = {
+--     name_i18n = i18n_key:theme_mode_dark_name,
+--     icon = icon:moon
+--   },
+--   config = {
+--     css_class = "dark",
+--     is_system_mode = true
+--   },
+--   status = { order = 2 };
+
+-- Mode auto (système)
+-- CREATE theme_mode:auto SET
+--   identity = { value = "auto", slug = "auto" },
+--   presentation = {
+--     name_i18n = i18n_key:theme_mode_auto_name,
+--     icon = icon:rotate_cw
+--   },
+--   config = {
+--     css_class = "auto",
+--     media_query = "(prefers-color-scheme: dark)",
+--     fallback_mode = theme_mode:light,
+--     is_system_mode = true
+--   },
+--   status = { order = 3 };
+
+-- Requêtes typiques
+-- SELECT * FROM theme_mode WHERE status.is_active = true ORDER BY status.order;
+-- SELECT * FROM theme_mode WHERE config.is_system_mode = true;

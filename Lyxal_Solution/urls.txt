@@ -1,0 +1,6 @@
+# Fichier de test pour l'upload vers lyxalsolution
+# Quelques icônes SVG Heroicons pour tester
+
+https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/academic-cap.svg
+https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/adjustments.svg
+https://cdn.jsdelivr.net/npm/heroicons@1.0.6/outline/annotation.svg

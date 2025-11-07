@@ -38,26 +38,22 @@ DEFINE FIELD IF NOT EXISTS presentation ON TABLE css_framework
     DEFINE FIELD IF NOT EXISTS presentation.name_i18n ON TABLE css_framework
         TYPE record<i18n_key>
         REFERENCE ON DELETE REJECT
-        VALUE type::record('i18n_key', $value)
         COMMENT 'Nom du framework (i18n)';
 
     DEFINE FIELD IF NOT EXISTS presentation.description_i18n ON TABLE css_framework
         TYPE option<record<i18n_key>>
         REFERENCE ON DELETE REJECT
-        VALUE {IF $value != NONE {type::record('i18n_key', $value)} ELSE {NONE}}
         COMMENT 'Description du framework (i18n)';
 
-    DEFINE FIELD IF NOT EXISTS presentation.icon ON TABLE css_framework
+    DEFINE FIELD IF NOT EXISTS presentation.icon_light ON TABLE css_framework
         TYPE option<record<icon>>
         REFERENCE ON DELETE REJECT
-        VALUE {IF $value != NONE {type::record('icon', $value)} ELSE {NONE}}
-        COMMENT 'Icône du framework';
+        COMMENT 'Icône du framework pour thème clair';
 
-    DEFINE FIELD IF NOT EXISTS presentation.logo_url ON TABLE css_framework
-        TYPE option<record<url>>
+    DEFINE FIELD IF NOT EXISTS presentation.icon_dark ON TABLE css_framework
+        TYPE option<record<icon>>
         REFERENCE ON DELETE REJECT
-        VALUE {IF $value != NONE {type::record('url', $value)} ELSE {NONE}}
-        COMMENT 'Logo du framework';
+        COMMENT 'Icône du framework pour thème sombre';
 
 -- ============================================================================
 -- BLOC CONFIG : Configuration du framework
@@ -87,6 +83,22 @@ DEFINE FIELD IF NOT EXISTS config ON TABLE css_framework
         TYPE option<string>
         COMMENT 'Version du framework : 3.4.0, 5.3.0, etc.';
 
+    DEFINE FIELD IF NOT EXISTS config.dependencies ON TABLE css_framework
+        TYPE option<object>
+        COMMENT 'Dépendances CSS/JS requises par le framework';
+
+        DEFINE FIELD config.dependencies.css_urls ON TABLE css_framework
+            TYPE option<array<record<url>>>
+            COMMENT 'URLs des fichiers CSS à charger depuis la table url';
+
+        DEFINE FIELD config.dependencies.js_urls ON TABLE css_framework
+            TYPE option<array<record<url>>>
+            COMMENT 'URLs des fichiers JS à charger depuis la table url';
+
+        DEFINE FIELD config.dependencies.font_urls ON TABLE css_framework
+            TYPE option<array<record<url>>>
+            COMMENT 'URLs des polices à charger depuis la table url';
+
 -- ============================================================================
 -- BLOC DOCUMENTATION : Documentation du framework
 -- ============================================================================
@@ -98,19 +110,16 @@ DEFINE FIELD IF NOT EXISTS documentation ON TABLE css_framework
     DEFINE FIELD IF NOT EXISTS documentation.official_url ON TABLE css_framework
         TYPE option<record<url>>
         REFERENCE ON DELETE REJECT
-        VALUE {IF $value != NONE {type::record('url', $value)} ELSE {NONE}}
         COMMENT 'URL officielle du framework';
 
     DEFINE FIELD IF NOT EXISTS documentation.docs_url ON TABLE css_framework
         TYPE option<record<url>>
         REFERENCE ON DELETE REJECT
-        VALUE {IF $value != NONE {type::record('url', $value)} ELSE {NONE}}
         COMMENT 'URL de la documentation';
 
     DEFINE FIELD IF NOT EXISTS documentation.github_url ON TABLE css_framework
         TYPE option<record<url>>
         REFERENCE ON DELETE REJECT
-        VALUE {IF $value != NONE {type::record('url', $value)} ELSE {NONE}}
         COMMENT 'URL du repository GitHub';
 
 -- ============================================================================
@@ -153,6 +162,11 @@ DEFINE FIELD IF NOT EXISTS metadata ON TABLE css_framework
         TYPE option<int>
         DEFAULT 0
         COMMENT 'Ordre d\'affichage dans l\'interface';
+
+    DEFINE FIELD IF NOT EXISTS metadata.examples ON TABLE css_framework
+        FLEXIBLE
+        TYPE option<array<object>>
+        COMMENT 'Exemples d\'usage du framework : [{title, description, code}]';
 
 -- ============================================================================
 -- TIMESTAMPS & ETAG

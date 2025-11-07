@@ -38,25 +38,21 @@ DEFINE FIELD IF NOT EXISTS presentation ON TABLE theme
     DEFINE FIELD IF NOT EXISTS presentation.name_i18n ON TABLE theme
         TYPE record<i18n_key>
         REFERENCE ON DELETE REJECT
-        VALUE type::record('i18n_key', $value)
         COMMENT 'Nom du thème (i18n)';
 
     DEFINE FIELD IF NOT EXISTS presentation.description_i18n ON TABLE theme
         TYPE option<record<i18n_key>>
         REFERENCE ON DELETE REJECT
-        VALUE {IF $value != NONE {type::record('i18n_key', $value)} ELSE {NONE}}
         COMMENT 'Description du thème (i18n)';
 
     DEFINE FIELD IF NOT EXISTS presentation.icon ON TABLE theme
         TYPE option<record<icon>>
         REFERENCE ON DELETE REJECT
-        VALUE {IF $value != NONE {type::record('icon', $value)} ELSE {NONE}}
         COMMENT 'Icône du thème : 🌞, 🌙, 🎨';
 
     DEFINE FIELD IF NOT EXISTS presentation.preview_url ON TABLE theme
         TYPE option<record<url>>
         REFERENCE ON DELETE REJECT
-        VALUE {IF $value != NONE {type::record('url', $value)} ELSE {NONE}}
         COMMENT 'URL de prévisualisation du thème (screenshot, SVG)';
 
 -- ============================================================================
