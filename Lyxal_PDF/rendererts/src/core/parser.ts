@@ -1,6 +1,8 @@
 import { BaseStream, Stream } from './stream';
 import { Cmd, Dict, Name, Ref, EOF, isCmd, isName, XRef, isDict } from './primitives';
 import { FlateStream } from './flate_stream';
+import { Jbig2Stream } from './jbig2';
+import { JpxStream } from './jpx';
 
 // A '1' in this array means the character is white space. A '1' or
 // '2' means the character ends a name or command.
@@ -307,7 +309,7 @@ export class Parser {
         this.buf2 = this.lexer.getObj();
     }
 
-    makeStream(dict: Dict): any {
+    makeStream(dict: Dict, cipherTransform: any = null): any {
         const lexer = this.lexer;
         let stream = lexer.stream;
 
@@ -332,6 +334,10 @@ export class Parser {
         // Create raw stream
         let subStream = stream.makeSubStream(startPos, length, dict);
         
+        if (cipherTransform) {
+            subStream = cipherTransform.decryptStream(subStream);
+        }
+
         // Apply filters
         subStream = this.filter(subStream, dict);
         
@@ -351,6 +357,12 @@ export class Parser {
     makeFilter(stream: BaseStream, name: string, params: any): any {
         if (name === "FlateDecode" || name === "Fl") {
             return new FlateStream(stream, stream.length, params);
+        }
+        if (name === "JBIG2Decode") {
+            return new Jbig2Stream(stream instanceof Stream ? stream : new Stream(stream.getBytes(null)), params);
+        }
+        if (name === "JPXDecode") {
+            return new JpxStream(stream instanceof Stream ? stream : new Stream(stream.getBytes(null)), params);
         }
         return stream;
     }
@@ -384,13 +396,20 @@ export class Parser {
                     if (this.buf1 === EOF) throw new Error("End of file inside dict");
                     
                     if (isCmd(this.buf2, "stream") && this.allowStreams) {
-                        return this.makeStream(dict);
+                        return this.makeStream(dict, cipherTransform);
                     }
                     this.shift();
                     return dict;
                 default:
                     return buf1;
             }
+        }
+
+        if (typeof buf1 === 'string') {
+            if (cipherTransform) {
+                return cipherTransform.decryptString(buf1);
+            }
+            return buf1;
         }
 
         if (Number.isInteger(buf1)) {

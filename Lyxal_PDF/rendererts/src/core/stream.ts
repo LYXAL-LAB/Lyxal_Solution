@@ -89,5 +89,35 @@ export class Stream extends BaseStream {
     makeSubStream(start: number, length: number, dict: Dict | null = null): Stream {
         return new Stream(this.bytes.buffer as ArrayBuffer, start, length, dict);
     }
+
+    getUint16(): number {
+        const b1 = this.getByte();
+        const b2 = this.getByte();
+        return (b1 << 8) | b2;
+    }
+
+    getInt16(): number {
+        const b1 = this.getByte();
+        const b2 = this.getByte();
+        const val = (b1 << 8) | b2;
+        return val >= 32768 ? val - 65536 : val;
+    }
+
+    getUint32(): number {
+        const b1 = this.getByte();
+        const b2 = this.getByte();
+        const b3 = this.getByte();
+        const b4 = this.getByte();
+        // Use >>> 0 to ensure unsigned in JS
+        return ((b1 << 24) | (b2 << 16) | (b3 << 8) | b4) >>> 0;
+    }
+
+    getInt32(): number {
+        const b1 = this.getByte();
+        const b2 = this.getByte();
+        const b3 = this.getByte();
+        const b4 = this.getByte();
+        return (b1 << 24) | (b2 << 16) | (b3 << 8) | b4;
+    }
 }
 

@@ -1,6 +1,8 @@
 export const IDENTITY_MATRIX = [1, 0, 0, 1, 0, 0];
 
 export class Util {
+    static IDENTITY_MATRIX = IDENTITY_MATRIX;
+
     static transform(m1: number[], m2: number[]): number[] {
         return [
             m1[0] * m2[0] + m1[2] * m2[1],

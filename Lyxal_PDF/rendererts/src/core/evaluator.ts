@@ -72,6 +72,51 @@ export class Evaluator {
         return pattern;
     }
 
+    async handleShowText(text: any, opList: OperatorList) {
+        const font = this.state.textState.font;
+        if (!font) return;
+        
+        const glyphs: { char: string, width: number }[] = [];
+        
+        if (typeof text === 'string') {
+             for (let i = 0; i < text.length; i++) {
+                 const code = text.charCodeAt(i);
+                 const char = font.getChar(code);
+                 const width = font.getWidth(code); // PDF units
+                 
+                 // Apply font scaling?
+                 // Usually width is in 1000 units.
+                 // Actual width = width * fontSize / 1000
+                 const scaledWidth = width * this.state.textState.fontSize / 1000;
+                 
+                 glyphs.push({ char, width: scaledWidth });
+             }
+        } else if (Array.isArray(text)) {
+            for (const item of text) {
+                if (typeof item === 'string') {
+                     for (let i = 0; i < item.length; i++) {
+                         const code = item.charCodeAt(i);
+                         const char = font.getChar(code);
+                         const width = font.getWidth(code);
+                         const scaledWidth = width * this.state.textState.fontSize / 1000;
+                         glyphs.push({ char, width: scaledWidth });
+                     }
+                } else if (typeof item === 'number') {
+                    // Spacing adjustment (negative moves forward!)
+                    // value is in 1000 units of text space
+                    const adjustment = -item * this.state.textState.fontSize / 1000;
+                    // We can represent this as a glyph with empty char and width? 
+                    // Or attached to previous glyph?
+                    // For simplicity, let's push a space or handle it in renderer.
+                    // Better to keep structure flat:
+                    glyphs.push({ char: "", width: adjustment });
+                }
+            }
+        }
+        
+        opList.addOp(OPS.showText, [glyphs]);
+    }
+
     async getOperatorList(stream: Stream): Promise<OperatorList> {
         const opList = new OperatorList();
         const parser = new Parser(new Lexer(stream), null, false);
@@ -138,17 +183,11 @@ export class Evaluator {
                 // Text Showing
                 else if (cmd === 'Tj') {
                     const text = args.pop();
-                    const font = this.state.textState.font;
-                    
-                    if (font && typeof text === 'string') {
-                        let decoded = "";
-                        for (let i = 0; i < text.length; i++) {
-                            decoded += font.getChar(text.charCodeAt(i));
-                        }
-                        opList.addOp(OPS.showText, [decoded]);
-                    } else {
-                        opList.addOp(OPS.showText, [text]);
-                    }
+                    await this.handleShowText(text, opList);
+                }
+                else if (cmd === 'TJ') {
+                    const array = args.pop();
+                    await this.handleShowText(array, opList);
                 }
 
                 // Color Space

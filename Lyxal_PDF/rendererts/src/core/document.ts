@@ -2,6 +2,7 @@ import { Stream } from './stream';
 import { XRef } from './xref';
 import { Dict, Ref, Name } from './primitives';
 import { AnnotationFactory, Annotation } from './annotation';
+import { PDFForm } from './acroform';
 
 export class Page {
     pageIndex: number;
@@ -44,6 +45,7 @@ export class PDFDocument {
     xref: XRef;
     catalog: Dict | null = null;
     version: string | null = null;
+    form: PDFForm | null = null;
 
     constructor(stream: Stream) {
         this.stream = stream;
@@ -54,6 +56,15 @@ export class PDFDocument {
         this.checkHeader();
         this.xref.parse();
         this.catalog = this.xref.root;
+    }
+
+    async getForm(): Promise<PDFForm> {
+        if (this.form) return this.form;
+        if (!this.catalog) throw new Error("Catalog not parsed");
+        
+        this.form = new PDFForm(this.xref, this.catalog);
+        await this.form.parse();
+        return this.form;
     }
 
     checkHeader() {

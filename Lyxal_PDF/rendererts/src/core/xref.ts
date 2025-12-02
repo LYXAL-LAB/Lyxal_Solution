@@ -1,6 +1,7 @@
 import { Dict, Ref, XRef as IXRef, isCmd } from './primitives';
 import { BaseStream, Stream } from './stream';
 import { Parser, Lexer } from './parser';
+import { Decryptor } from './crypto';
 
 interface XRefEntry {
     offset: number;
@@ -15,6 +16,8 @@ export class XRef implements IXRef {
     private cache = new Map<number, any>();
     trailer: Dict | null = null;
     root: Dict | null = null;
+    encrypt: Dict | null = null;
+    decryptor: Decryptor | null = null;
     startXRefQueue: number[] = [];
     topDict: Dict | null = null;
 
@@ -31,6 +34,20 @@ export class XRef implements IXRef {
             this.trailer = this.topDict;
             if (!this.trailer) throw new Error("No trailer found");
             
+            const encrypt = this.trailer.get("Encrypt");
+            if (encrypt) {
+                 // We must fetch the encrypt dict without encryption!
+                 const encryptRef = encrypt instanceof Ref ? encrypt : null;
+                 const encryptDict = encryptRef ? this.fetch(encryptRef, true) : encrypt;
+                 
+                 this.encrypt = encryptDict;
+                 const idArray = this.trailer.get("ID");
+                 
+                 if (this.encrypt) {
+                     this.decryptor = new Decryptor(this.encrypt, idArray);
+                 }
+            }
+
             const root = this.trailer.get("Root");
             if (root instanceof Dict) {
                 this.root = root;
@@ -241,7 +258,15 @@ export class XRef implements IXRef {
                 throw new Error(`Bad XRef entry for ${ref}: found ${num} ${gen} ${cmd}`);
             }
 
-            const obj = parser.getObj();
+            let cipherTransform: any = null;
+            if (this.decryptor && !suppressEncryption) {
+                cipherTransform = {
+                    decryptString: (str: string) => this.decryptor!.decryptString(str, ref),
+                    decryptStream: (stream: any) => this.decryptor!.decryptStream(stream, ref)
+                };
+            }
+
+            const obj = parser.getObj(cipherTransform);
             
             if (obj instanceof Dict) {
                 obj.objId = ref.toString();

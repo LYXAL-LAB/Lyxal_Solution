@@ -54,9 +54,37 @@ export class PDFImage {
         
         // If 1 bit mask, we need to expand bits to bytes
         if (this.bpc === 1 && this.numComps === 1) {
-            // TODO: Implement bit expansion
-            // Placeholder: return empty
-            return new Uint8ClampedArray(this.width * this.height * 4);
+            const rgba = new Uint8ClampedArray(this.width * this.height * 4);
+            let bitPos = 0;
+            
+            for (let i = 0; i < this.width * this.height; i++) {
+                const byteIndex = Math.floor(bitPos / 8);
+                const bitIndex = 7 - (bitPos % 8);
+                
+                if (byteIndex >= bytes.length) break;
+                
+                const bit = (bytes[byteIndex] >> bitIndex) & 1;
+                const val = this.imageMask ? 0 : (bit * 255); // If mask, 1 is opaque? No, mask: 1 = paint, 0 = transparent usually handled by caller.
+                // But here we return RGBA.
+                // For ImageMask: 1 = clear (no paint), 0 = paint current color?
+                // Actually ImageMask is special.
+                // Let's assume standard grayscale image for now.
+                
+                const color = bit * 255;
+                rgba[i * 4] = color;
+                rgba[i * 4 + 1] = color;
+                rgba[i * 4 + 2] = color;
+                rgba[i * 4 + 3] = 255;
+                
+                bitPos++;
+                
+                // Align to byte boundary at end of row?
+                if ((i + 1) % this.width === 0) {
+                     // PDF image rows are byte-aligned
+                     bitPos = Math.ceil(bitPos / 8) * 8;
+                }
+            }
+            return rgba;
         }
 
         const rgba = new Uint8ClampedArray(this.width * this.height * 4);
