@@ -76,7 +76,7 @@ function buildDefaultConfig(): SystemConfig {
         value: 'Lyxal_Solution'
           },
           surrealDatabase: {
-        value: 'Labs'
+        value: 'Developpement'
           },
           surrealUsername: {
         value: 'admin'

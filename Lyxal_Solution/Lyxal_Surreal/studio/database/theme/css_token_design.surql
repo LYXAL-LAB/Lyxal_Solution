@@ -74,6 +74,20 @@ DEFINE FIELD IF NOT EXISTS is_default ON TABLE css_token_design
     COMMENT 'Token par défaut du système (valeur globale réutilisable dans tous les thèmes)';
 
 -- ============================================================================
+-- BLOC COMPONENT : Contexte composant (approche "riche et stricte")
+-- ============================================================================
+
+DEFINE FIELD IF NOT EXISTS component ON TABLE css_token_design
+    TYPE option<record<css_component>>
+    REFERENCE ON DELETE REJECT
+    COMMENT 'Référence vers le composant propriétaire (table css_component) - NONE pour tokens génériques';
+
+DEFINE FIELD IF NOT EXISTS property ON TABLE css_token_design
+    TYPE option<string>
+    ASSERT $value == NONE OR string::matches($value, '^[a-z-]+(?:-[a-z-]+)*$')
+    COMMENT 'Propriété CSS spécifique : background-color, border-radius, font-size, padding-x, etc. (NONE pour tokens génériques)';
+
+-- ============================================================================
 -- BLOC METADATA : Informations complémentaires
 -- ============================================================================
 
@@ -168,6 +182,18 @@ DEFINE INDEX IF NOT EXISTS idx_design_token_category_order ON css_token_design
     FIELDS category, metadata.order
     COMMENT 'Index sur catégorie et ordre (pour trier les tokens par catégorie)';
 
+DEFINE INDEX IF NOT EXISTS idx_design_token_component ON css_token_design
+    FIELDS component
+    COMMENT 'Index sur le composant propriétaire';
+
+DEFINE INDEX IF NOT EXISTS idx_design_token_component_property ON css_token_design
+    FIELDS component, property
+    COMMENT 'Index composite composant + propriété (optimisé pour requêtes par composant)';
+
+DEFINE INDEX IF NOT EXISTS idx_design_token_theme_component ON css_token_design
+    FIELDS theme, component
+    COMMENT 'Index composite thème + composant (pour variables par composant/thème)';
+
 -- ============================================================================
 -- EXEMPLES D'UTILISATION
 -- ============================================================================
@@ -243,3 +269,97 @@ DEFINE INDEX IF NOT EXISTS idx_design_token_category_order ON css_token_design
 
 -- Chercher un token spécifique par nom
 -- SELECT * FROM css_token_design WHERE identity.name = "--spacing-4" ORDER BY is_default DESC, theme;
+
+-- ============================================================================
+-- EXEMPLES APPROCHE "RICHE ET STRICTE" PAR COMPOSANT
+-- ============================================================================
+
+-- Tokens dédiés au composant Button (variables complètes par élément)
+-- CREATE css_token_design:button_primary_bg SET
+--   identity = { name = "--button-primary-bg", slug = "button-primary-bg" },
+--   category = css_token_category:component,
+--   subcategory = css_token_subcategory:button,
+--   component = css_component:button,
+--   property = "background-color",
+--   value = "45% 0.2 250",
+--   unit = "oklch_function",
+--   computed_value = "oklch(45% 0.2 250)",
+--   theme = theme:default,
+--   is_default = true,
+--   metadata = {
+--     description = "Couleur de fond des boutons primaires",
+--     order = 1,
+--     compatibility = [css_framework:tailwind, css_framework:bootstrap, css_framework:material]
+--   };
+
+-- CREATE css_token_design:button_primary_text SET
+--   identity = { name = "--button-primary-text", slug = "button-primary-text" },
+--   category = css_token_category:component,
+--   subcategory = css_token_subcategory:button,
+--   component = css_component:button,
+--   property = "color",
+--   value = "95% 0.05 250",
+--   unit = "oklch_function",
+--   computed_value = "oklch(95% 0.05 250)",
+--   theme = theme:default,
+--   is_default = true,
+--   metadata = {
+--     description = "Couleur du texte des boutons primaires",
+--     order = 2,
+--     compatibility = [css_framework:tailwind, css_framework:bootstrap, css_framework:material]
+--   };
+
+-- Tokens dédiés au composant Card
+-- CREATE css_token_design:card_background SET
+--   identity = { name = "--card-background", slug = "card-background" },
+--   category = css_token_category:component,
+--   subcategory = css_token_subcategory:card,
+--   component = css_component:card,
+--   property = "background-color",
+--   value = "100% 0 0",
+--   unit = "oklch_function",
+--   computed_value = "oklch(100% 0 0)",
+--   theme = theme:default,
+--   is_default = true,
+--   metadata = {
+--     description = "Couleur de fond des cartes",
+--     order = 1,
+--     compatibility = [css_framework:tailwind, css_framework:bootstrap, css_framework:material]
+--   };
+
+-- Tokens dédiés au composant Layout
+-- CREATE css_token_design:layout_container_max_width SET
+--   identity = { name = "--layout-container-max-width", slug = "layout-container-max-width" },
+--   category = css_token_category:layout,
+--   subcategory = css_token_subcategory:container,
+--   component = css_component:layout,
+--   property = "max-width",
+--   value = "1280",
+--   unit = "px",
+--   computed_value = "1280px",
+--   theme = theme:default,
+--   is_default = true,
+--   metadata = {
+--     description = "Largeur maximale du conteneur principal",
+--     order = 1,
+--     compatibility = [css_framework:tailwind, css_framework:bootstrap, css_framework:material]
+--   };
+
+-- Requêtes pour l'approche par composant
+-- Tous les tokens d'un composant spécifique
+-- SELECT * FROM css_token_design WHERE component = css_component:button ORDER BY metadata.order;
+
+-- Tokens d'un composant pour un thème spécifique (avec fallbacks)
+-- SELECT * FROM css_token_design WHERE component = css_component:button AND (theme = theme:corporate OR is_default = true);
+
+-- Tokens d'une propriété spécifique sur tous les composants
+-- SELECT * FROM css_token_design WHERE property = "background-color";
+
+-- Tokens d'un composant et d'une propriété
+-- SELECT * FROM css_token_design WHERE component = css_component:button AND property = "background-color";
+
+-- Tokens de tous les composants interactifs (avec jointure)
+-- SELECT css_token_design.*, css_component.identity.name as component_name
+-- FROM css_token_design
+-- WHERE component != NONE
+-- AND component.metadata.category = "interactive";

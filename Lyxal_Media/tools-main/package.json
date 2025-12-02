@@ -1,0 +1,28 @@
+{
+	"name": "Lyxal-tools",
+	"description": "Collection of functions for cleaning up and parsing SVG for Lyxal project",
+	"author": "Vjacheslav Trushkin",
+	"license": "MIT",
+	"private": true,
+	"type": "module",
+	"bugs": "https://github.com/Lyxal/tools/issues",
+	"homepage": "https://github.com/Lyxal/tools",
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/Lyxal/tools.git"
+	},
+	"workspaces": [
+		"@Lyxal/*",
+		"@debug/*",
+		"@Lyxal-demo/*"
+	],
+	"packageManager": "pnpm@10.23.0",
+	"scripts": {
+		"build": "pnpm recursive run build",
+		"test": "pnpm recursive run test",
+		"lint": "pnpm recursive run lint",
+		"build:tools": "pnpm recursive --filter \"./@Lyxal/tools\" run build",
+		"test:tools": "pnpm recursive --filter \"./@Lyxal/tools\" run test:ci",
+		"lint:tools": "pnpm recursive --filter \"./@Lyxal/tools\" run lint"
+	}
+}

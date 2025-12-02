@@ -1,0 +1,18 @@
+apiVersion: apiserver.config.k8s.io/v1
+kind: EncryptionConfiguration
+resources:
+  - resources:
+      - credentials
+      - runstates.obot.obot.ai
+      - users.obot.obot.ai
+      - identities.obot.obot.ai
+      - mcpoauthtokens.obot.obot.ai
+      - mcpauditlogs.obot.obot.ai
+    providers:
+      - kms:
+          apiVersion: v2
+          name: aws-kms
+          endpoint: unix:///tmp/aws-cred-socket.sock
+          timeout: 3s
+      - identity: {} # this fallback allows reading unencrypted secrets;
+        # for example, during initial migration

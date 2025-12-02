@@ -1,0 +1,23 @@
+{
+  "name": "@lyxal-pdf/pdf-fonts",
+  "version": "1.0.0",
+  "description": "Lyxal Optimized PDF Fonts & Metrics",
+  "main": "dist/index.js",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun && tsc --emitDeclarationOnly --declaration --outDir ./dist",
+    "generate:metrics": "bun run scripts/fonts/parse.ts",
+    "generate:encodings": "bun run scripts/encodings/parse.ts"
+  },
+  "dependencies": {
+    "@lyxal-compression/compression": "workspace:*"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "typescript": "^5.0.0"
+  }
+}

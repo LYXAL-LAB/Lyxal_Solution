@@ -1,0 +1,75 @@
+{
+  "name": "lyxal-base",
+  "version": "1.0.0",
+  "description": "🏗️ Module fondational IA-native - Base de données métier",
+  "category": "foundation",
+  "order": 1,
+  "required": true,
+  "database_files": [
+    "base_structure.surql",
+    "base_relations.surql",
+    "base_index.surql", 
+    "base_triggers.surql",
+    "base_reference_data.surql"
+  ],
+  "dependencies": [],
+  "verification": {
+    "tables": [
+      "country",
+      "currency", 
+      "unit",
+      "company",
+      "partner",
+      "product",
+      "account",
+      "address"
+    ],
+    "functions": [
+      "fn::calculate_data_quality",
+      "fn::calculate_ai_confidence",
+      "fn::calculate_risk_score",
+      "fn::generate_embeddings"
+    ],
+    "reference_data": [
+      {
+        "table": "country",
+        "min_count": 5
+      },
+      {
+        "table": "currency", 
+        "min_count": 4
+      },
+      {
+        "table": "unit",
+        "min_count": 5
+      },
+      {
+        "table": "language",
+        "min_count": 4
+      }
+    ]
+  },
+  "features": [
+    "ai-native-entities",
+    "intelligent-relationships", 
+    "automatic-scoring",
+    "predictive-analytics",
+    "real-time-optimization",
+    "advanced-search",
+    "vector-embeddings",
+    "multi-tenant-ready",
+    "performance-optimized"
+  ],
+  "statistics": {
+    "entities": 24,
+    "relations": 23,
+    "indexes": 200,
+    "triggers": 15,
+    "functions": 10,
+    "schema_size_kb": 181,
+    "schema_lines": 5537
+  },
+  "author": "LyxalSuite Team",
+  "license": "MIT",
+  "repository": "https://github.com/lyxalsuite/lyxalsuite.git"
+} 

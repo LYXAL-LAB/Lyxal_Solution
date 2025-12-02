@@ -1,0 +1,13 @@
+{
+	"$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
+	"extends": "./api-extractor.json",
+	"mainEntryPointFilePath": "lib/functions.d.ts",
+	"bundledPackages": [
+		"@lyxal-icon/core",
+		"@lyxal-icon/utils",
+		"lyxal-icon"
+	],
+	"dtsRollup": {
+		"trimmedFilePath": "<projectFolder>/dist/functions.d.ts"
+	}
+}

@@ -1,0 +1,10 @@
+{
+    "name": "lyxal-suite",
+    "private": true,
+    "scripts": {
+      "build:logic": "pnpm --filter @lyxal/logic-shared build && pnpm --filter @lyxal/logic-meta build && pnpm --filter @lyxal/logic-ui build && pnpm --filter @lyxal/logic-backend build && pnpm --filter @lyxal/logic-build build",
+      "build:meta": "pnpm --filter @lyxal/logic-build build:meta",
+      "build:all": "pnpm build:logic && pnpm build:meta"
+    }
+  }
+  

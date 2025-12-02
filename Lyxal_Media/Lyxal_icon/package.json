@@ -1,0 +1,22 @@
+{
+	"name": "lyxal-icon",
+	"type": "module",
+	"private": true,
+	"description": "Lyxal Icon - Core Tools and Utilities",
+	"workspaces": [
+		"packages/*"
+	],
+	"devDependencies": {
+		"typescript": "^5.9.3",
+		"eslint": "^9.39.1",
+		"prettier": "^3.6.2",
+		"rimraf": "^6.1.2",
+		"tsdown": "^0.16.7"
+	},
+	"scripts": {
+		"build": "bun run --filter \"packages/*\" build",
+		"test": "bun test",
+		"lint": "eslint .",
+		"clean": "rimraf node_modules packages/*/node_modules packages/*/dist"
+	}
+}

@@ -1,0 +1,101 @@
+import type { LyxalJSON } from '@Lyxal/types';
+import { rm, lstat, readFile } from 'node:fs/promises';
+import { exportJSONPackage } from '../../src/export/json-package.js';
+import { IconSet } from '../../src/icon-set/index.js';
+import { scanDirectory } from '../../src/misc/scan.js';
+import { getTypesVersion } from '../../src/export/helpers/types-version.js';
+
+// Check if file or directory exists
+async function exists(filename: string): Promise<boolean> {
+	try {
+		const stat = await lstat(filename);
+		return stat.isFile() || stat.isDirectory();
+	} catch {
+		return false;
+	}
+}
+
+describe('Exporting to JSON package', () => {
+	test('Few icons', async () => {
+		const lastModified = 12345;
+		const targetDir = 'cache/export-json-package-test';
+		const iconSet = new IconSet({
+			prefix: 'foo',
+			lastModified,
+			icons: {
+				maximize: {
+					body: '<g fill="currentColor"><path d="M3 3v10h10V3H3zm9 9H4V4h8v8z"/></g>',
+				},
+				minimize: {
+					body: '<g fill="currentColor"><path d="M14 8v1H3V8h11z"/></g>',
+				},
+			},
+			aliases: {
+				test: {
+					parent: 'maximize',
+				},
+			},
+			width: 24,
+			height: 24,
+		});
+
+		// Clean directory
+		try {
+			await rm(targetDir, {
+				recursive: true,
+				force: true,
+			});
+		} catch {
+			//
+		}
+		expect(await exists(targetDir)).toBe(false);
+
+		// Export icon set
+		await exportJSONPackage(iconSet, {
+			target: targetDir,
+			wildcardTypesVersion: false,
+		});
+
+		// Make sure directory exists and list files
+		expect(await exists(targetDir)).toBe(true);
+		const files = await scanDirectory(targetDir);
+		files.sort((a, b) => a.localeCompare(b));
+		expect(files).toEqual([
+			'chars.json',
+			'icons.json',
+			'index.d.ts',
+			'index.js',
+			'index.mjs',
+			'info.json',
+			'metadata.json',
+			'package.json',
+		]);
+
+		// Check contents of icons.json
+		// No metadata or characters to check
+		const actualData = JSON.parse(
+			await readFile(`${targetDir}/icons.json`, 'utf8')
+		) as LyxalJSON;
+		const expectedData = iconSet.export();
+		expect(actualData).toEqual(expectedData);
+
+		// Get types version
+		const typesVersion = await getTypesVersion();
+		expect(typesVersion).toMatch(/^\d+\.\d+\.\d+$/);
+
+		// Check package.json to make sure it uses wildcard
+		const packageContent = JSON.parse(
+			await readFile(`${targetDir}/package.json`, 'utf8')
+		) as Record<string, unknown>;
+		expect(packageContent['dependencies']).toEqual({
+			'@Lyxal/types': `^${typesVersion}`,
+		});
+
+		// Clean up
+		await rm(targetDir, {
+			recursive: true,
+			force: true,
+		});
+		expect(await exists(targetDir)).toBe(false);
+	});
+});

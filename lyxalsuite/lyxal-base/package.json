@@ -1,0 +1,139 @@
+{
+  "name": "@lyxalsuite/lyxal-base",
+  "version": "1.0.0",
+  "description": "LyxalSuite Base Module - SurrealDB IA-Native Foundation",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "keywords": [
+    "lyxalsuite",
+    "surrealdb",
+    "ai-native",
+    "erp",
+    "business",
+    "backend-as-database",
+    "graph-database",
+    "artificial-intelligence"
+  ],
+  "author": "LyxalSuite Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lyxalsuite/lyxalsuite.git",
+    "directory": "lyxalsuite/lyxal-base"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch scripts/deploy-database.ts",
+    "clean": "rimraf dist",
+    "type-check": "tsc --noEmit",
+    "db:deploy": "tsx scripts/deploy-database.ts",
+    "db:deploy:reset": "tsx scripts/deploy-database.ts --reset",
+    "db:deploy:verbose": "tsx scripts/deploy-database.ts --verbose",
+    "db:deploy:minimal": "tsx scripts/deploy-database.ts --skip-non-critical",
+    "db:verify": "tsx scripts/verify-database.ts",
+    "db:verify:full": "tsx scripts/verify-database.ts --all",
+    "db:verify:ai": "tsx scripts/verify-database.ts --ai",
+    "db:verify:perf": "tsx scripts/verify-database.ts --performance",
+    "db:reset": "tsx scripts/reset-database.ts",
+    "db:reset:confirm": "tsx scripts/reset-database.ts --confirm",
+    "db:reset:backup": "tsx scripts/reset-database.ts --backup",
+    "db:reset:tables": "tsx scripts/reset-database.ts --tables-only",
+    "db:setup": "npm run db:reset:confirm && npm run db:deploy && npm run db:verify",
+    "db:ci": "npm run db:deploy && npm run db:verify:full",
+    "surreal:info": "echo 'SurrealDB Cloud utilisé via variables d\\'environnement - voir README.md'",
+    "test": "jest --config ../.config/jest.config.base.js",
+    "test:watch": "jest --config ../.config/jest.config.base.js --watch",
+    "test:ui": "vitest --ui",
+    "test:coverage": "jest --config ../.config/jest.config.base.js --coverage",
+    "lint": "eslint . --config ../.config/eslint.config.base.js",
+    "lint:fix": "eslint . --config ../.config/eslint.config.base.js --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "docs:generate": "typedoc --out docs src",
+    "docs:serve": "http-server docs -p 8080",
+    "prebuild": "npm run clean && npm run lint && npm run type-check",
+    "prepublishOnly": "npm run build && npm test",
+    "postinstall": "echo '🚀 LyxalBase installé ! Utilisez: npm run db:setup pour initialiser'"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0"
+  },
+  "devDependencies": {
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.2",
+    "http-server": "^14.1.1",
+    "prettier": "^3.1.1",
+    "rimraf": "^5.0.5",
+    "tsx": "^4.7.0",
+    "typedoc": "^0.25.7",
+    "vitest": "^1.1.3",
+    "@vitest/ui": "^1.1.3",
+    "c8": "^9.0.0"
+  },
+  "peerDependencies": {
+    "node": ">=18.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "files": [
+    "dist/",
+    "database/",
+    "scripts/",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "packageManager": "npm@10.2.5",
+  "config": {
+    "surreal": {
+      "note": "Configuration via variables d'environnement uniquement",
+      "required_vars": [
+        "SURREAL_URL",
+        "SURREAL_USER",
+        "SURREAL_PASS",
+        "SURREAL_NS",
+        "SURREAL_DB"
+      ],
+      "example_url": "wss://your-instance.surreal.cloud/rpc"
+    }
+  },
+  "lyxalbase": {
+    "version": "1.0.0",
+    "entities": 24,
+    "relations": 23,
+    "ai_enabled": true,
+    "production_ready": true,
+    "database_files": [
+      "database/base_structure.surql",
+      "database/base_relations.surql",
+      "database/base_index.surql",
+      "database/base_triggers.surql",
+      "database/base_reference_data.surql"
+    ],
+    "deployment_order": [
+      "base_structure.surql",
+      "base_relations.surql",
+      "base_index.surql",
+      "base_triggers.surql",
+      "base_reference_data.surql"
+    ],
+    "features": [
+      "ai-native-entities",
+      "intelligent-relationships",
+      "automatic-scoring",
+      "predictive-analytics",
+      "real-time-optimization",
+      "advanced-search",
+      "vector-embeddings",
+      "multi-tenant-ready",
+      "performance-optimized",
+      "production-ready"
+    ]
+  }
+}

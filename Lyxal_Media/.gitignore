@@ -1,0 +1,19 @@
+# Ignorer les dépendances
+node_modules/
+
+# Ignorer les fichiers temporaires et les zips
+*.zip
+temp_*
+
+# Ignorer les dossiers de travail lourds (ne pas commiter 100k icones !)
+packs/
+normalized/
+
+# Ignorer les clés API locales
+.env
+.env.local
+
+# Optionnel : Ignorer aussi les métadonnées générées si on veut les régénérer en CI
+# metadata/icons.json
+# metadata/packs.json
+

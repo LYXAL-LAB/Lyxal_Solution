@@ -1,0 +1,9 @@
+{
+    "name": "@lyxal/logic-build",
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+      "build:meta": "node ./src/buildMeta.js"
+    }
+  }
+  

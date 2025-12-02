@@ -1,0 +1,60 @@
+{
+	"name": "@lyxal-icon/vue",
+	"description": "Lyxal icon component for Vue 3.",
+	"author": "Vjacheslav Trushkin",
+	"version": "5.0.0",
+	"license": "MIT",
+	"bugs": "https://github.com/Lyxal/Lyxal/issues",
+	"homepage": "https://Lyxal.design/",
+	"funding": "https://github.com/sponsors/cyberalien",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Lyxal/Lyxal.git",
+		"directory": "components/vue"
+	},
+	"scripts": {
+		"build": "node build",
+		"build:lib": "tsc -b",
+		"build:dist": "rollup -c rollup.config.mjs",
+		"prebuild:api": "api-extractor run --local --verbose --config api-extractor.offline.json",
+		"build:api": "api-extractor run --local --verbose --config api-extractor.Lyxal.json",
+		"test": "bun test"
+	},
+	"main": "dist/Lyxal.js",
+	"module": "dist/Lyxal.mjs",
+	"types": "dist/Lyxal.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/Lyxal.mjs",
+			"types": "./dist/Lyxal.d.ts",
+			"default": "./dist/Lyxal.js"
+		},
+		"./offline": {
+			"import": "./dist/offline.mjs",
+			"types": "./dist/offline.d.ts",
+			"default": "./dist/offline.js"
+		},
+		"./dist/offline": {
+			"import": "./dist/offline.mjs",
+			"types": "./dist/offline.d.ts",
+			"default": "./dist/offline.js"
+		}
+	},
+	"dependencies": {
+		"@lyxal-icon/types": "workspace:^",
+		"vue": "^3.5.13"
+	},
+	"devDependencies": {
+		"@lyxal-icon/core": "workspace:^",
+		"@lyxal-icon/utils": "workspace:^",
+		"@microsoft/api-extractor": "^7.55.1",
+		"@rollup/plugin-node-resolve": "^16.0.3",
+		"@types/jest": "^30.0.0",
+		"@vitejs/plugin-vue": "^6.0.2",
+		"rollup": "^4.53.3",
+		"vue": "^3.5.24"
+	},
+	"peerDependencies": {
+		"vue": ">=3.0.0"
+	}
+}

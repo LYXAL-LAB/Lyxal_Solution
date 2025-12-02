@@ -1,0 +1,50 @@
+{
+  "name": "lyxal-system",
+  "version": "1.0.0",
+  "description": "Lyxal System - Systeme de gestion de la plateforme Lyxal",
+  "main": "ui/index.ts",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --config ../.config/eslint.config.base.js",
+    "lint:fix": "eslint . --config ../.config/eslint.config.base.js --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "clsx": "^2.0.0",
+    "lucide-react": "^0.294.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.25.1",
+    "recharts": "^2.8.0",
+    "zustand": "^5.0.8"
+  },
+  "keywords": [
+    "lyxal",
+    "system",
+    "system-management",
+    "system-administration"
+  ],
+  "author": "LyxalSuite Team",
+  "license": "Propritaire",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LYXAL-LAB/Lyxal_Solution.git",
+    "directory": "Lyxal_System"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.13",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@vitejs/plugin-react": "^5.0.3",
+    "@vitest/ui": "^4.0.6",
+    "daisyui": "^5.1.13",
+    "jsdom": "^27.1.0",
+    "typescript": "^5.9.2",
+    "vitest": "^4.0.6"
+  }
+}

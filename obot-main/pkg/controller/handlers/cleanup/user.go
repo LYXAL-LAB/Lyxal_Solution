@@ -1,0 +1,167 @@
+package cleanup
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"slices"
+	"strconv"
+
+	"github.com/obot-platform/nah/pkg/router"
+	"github.com/obot-platform/obot/apiclient/types"
+	"github.com/obot-platform/obot/pkg/accesscontrolrule"
+	gclient "github.com/obot-platform/obot/pkg/gateway/client"
+	v1 "github.com/obot-platform/obot/pkg/storage/apis/obot.obot.ai/v1"
+	"github.com/obot-platform/obot/pkg/system"
+	"k8s.io/apimachinery/pkg/fields"
+	kclient "sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+type UserCleanup struct {
+	gatewayClient *gclient.Client
+	acrHelper     *accesscontrolrule.Helper
+}
+
+func NewUserCleanup(gatewayClient *gclient.Client, acrHelper *accesscontrolrule.Helper) *UserCleanup {
+	return &UserCleanup{
+		gatewayClient: gatewayClient,
+		acrHelper:     acrHelper,
+	}
+}
+
+func (u *UserCleanup) Cleanup(req router.Request, _ router.Response) error {
+	userDelete := req.Object.(*v1.UserDelete)
+	userID := strconv.FormatUint(uint64(userDelete.Spec.UserID), 10)
+
+	// Delete identities first so that the user can login again.
+	identities, err := u.gatewayClient.FindIdentitiesForUser(req.Ctx, userDelete.Spec.UserID)
+	if err != nil {
+		return err
+	}
+
+	if err = u.gatewayClient.DeleteSessionsForUser(req.Ctx, req.Client, identities, ""); err != nil {
+		if !errors.Is(err, gclient.LogoutAllErr{}) {
+			return err
+		}
+	}
+
+	for _, identity := range identities {
+		if err := u.gatewayClient.RemoveIdentity(req.Ctx, &identity); err != nil {
+			return err
+		}
+	}
+
+	var threads v1.ThreadList
+	if err := req.List(&threads, &kclient.ListOptions{
+		Namespace: req.Namespace,
+		FieldSelector: fields.SelectorFromSet(map[string]string{
+			"spec.userUID": userID,
+		}),
+	}); err != nil {
+		return err
+	}
+
+	for _, thread := range threads.Items {
+		if thread.Spec.Project {
+			if err := req.Delete(&thread); err != nil {
+				return err
+			}
+		}
+	}
+
+	var servers v1.MCPServerList
+	if err := req.List(&servers, &kclient.ListOptions{
+		Namespace: req.Namespace,
+		FieldSelector: fields.SelectorFromSet(map[string]string{
+			"spec.userID": userID,
+		}),
+	}); err != nil {
+		return err
+	}
+
+	for _, server := range servers.Items {
+		if err := kclient.IgnoreNotFound(req.Delete(&server)); err != nil {
+			return err
+		}
+	}
+
+	// DeleteRefs should handle cleaning up most of the user's MCPServerInstances.
+	// But there still might be MCPServerInstances pointing to multi-user servers that we need to delete.
+	var instances v1.MCPServerInstanceList
+	if err := req.List(&instances, &kclient.ListOptions{
+		Namespace: req.Namespace,
+		FieldSelector: fields.SelectorFromSet(map[string]string{
+			"spec.userID": userID,
+		}),
+	}); err != nil {
+		return err
+	}
+
+	for _, instance := range instances.Items {
+		if err := kclient.IgnoreNotFound(req.Delete(&instance)); err != nil {
+			return err
+		}
+	}
+
+	// Find the AccessControlRules that the user is on, and update them to remove the user.
+	acrs, err := u.acrHelper.GetAccessControlRulesForUser(req.Namespace, userID)
+	if err != nil {
+		return err
+	}
+	for _, acr := range acrs {
+		newSubjects := slices.Collect(func(yield func(types.Subject) bool) {
+			for _, subject := range acr.Spec.Manifest.Subjects {
+				if subject.ID != userID {
+					if !yield(subject) {
+						return
+					}
+				}
+			}
+		})
+		acr.Spec.Manifest.Subjects = newSubjects
+		if err := req.Client.Update(req.Ctx, &acr); err != nil {
+			return err
+		}
+	}
+
+	if err = deleteThreadAuthorizationsForUser(req.Ctx, req.Client, userID); err != nil {
+		return fmt.Errorf("failed to delete thread authorizations for user %d: %w", userDelete.Spec.UserID, err)
+	}
+
+	// Delete the user's PowerUserWorkspace if it exists
+	var workspaces v1.PowerUserWorkspaceList
+	if err := req.List(&workspaces, &kclient.ListOptions{
+		Namespace: system.DefaultNamespace,
+		FieldSelector: fields.SelectorFromSet(map[string]string{
+			"spec.userID": userID,
+		}),
+	}); err != nil {
+		return err
+	}
+
+	for _, workspace := range workspaces.Items {
+		if err := kclient.IgnoreNotFound(req.Delete(&workspace)); err != nil {
+			return err
+		}
+	}
+
+	// If everything is cleaned up successfully, then delete this object because we don't need it.
+	return req.Delete(userDelete)
+}
+
+func deleteThreadAuthorizationsForUser(ctx context.Context, storageClient kclient.Client, userID string) error {
+	var memberships v1.ThreadAuthorizationList
+	if err := storageClient.List(ctx, &memberships, kclient.MatchingFields{
+		"spec.userID": userID,
+	}); err != nil {
+		return err
+	}
+
+	for _, membership := range memberships.Items {
+		if err := storageClient.Delete(ctx, &membership); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

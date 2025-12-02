@@ -1,0 +1,68 @@
+{
+	"name": "lyxal-icon",
+	"description": "Icon web component that loads icon data on demand. Over 200,000 icons to choose from",
+	"author": "Vjacheslav Trushkin <cyberalien@gmail.com> (https://Lyxal.design)",
+	"version": "3.0.2",
+	"license": "MIT",
+	"main": "./dist/Lyxal-icon.cjs",
+	"types": "./dist/Lyxal-icon.d.ts",
+	"jsdelivr": "./dist/Lyxal-icon.min.js",
+	"unpkg": "./dist/Lyxal-icon.min.js",
+	"module": "./dist/Lyxal-icon.mjs",
+	"bugs": "https://github.com/Lyxal/Lyxal/issues",
+	"homepage": "https://Lyxal.design/",
+	"funding": "https://github.com/sponsors/cyberalien",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Lyxal/Lyxal.git",
+		"directory": "Lyxal-icon/icon"
+	},
+	"scripts": {
+		"clean": "rimraf lib dist tsconfig.tsbuildinfo",
+		"lint": "eslint src/**/*.ts",
+		"prebuild": "bun run lint && bun run clean",
+		"build": "node build",
+		"build:api": "api-extractor run --local --verbose",
+		"build:lib": "tsc -b",
+		"build:dist": "rollup -c rollup.config.mjs",
+		"test": "bun test"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/Lyxal-icon.d.ts",
+			"import": "./dist/Lyxal-icon.mjs",
+			"require": "./dist/Lyxal-icon.cjs",
+			"default": "./dist/Lyxal-icon.min.js"
+		},
+		"./dist/Lyxal": {
+			"types": "./dist/Lyxal-icon.d.ts",
+			"import": "./dist/Lyxal-icon.mjs",
+			"require": "./dist/Lyxal-icon.cjs",
+			"default": "./dist/Lyxal-icon.min.js"
+		},
+		"./dist/Lyxal.min": {
+			"types": "./dist/Lyxal-icon.d.ts",
+			"import": "./dist/Lyxal-icon.mjs",
+			"require": "./dist/Lyxal-icon.cjs",
+			"default": "./dist/Lyxal-icon.min.js"
+		},
+		"./*": "./*"
+	},
+	"dependencies": {
+		"@lyxal-icon/types": "workspace:^"
+	},
+	"devDependencies": {
+		"@lyxal-icon/core": "workspace:^",
+		"@lyxal-icon/utils": "workspace:^",
+		"@microsoft/api-extractor": "^7.55.1",
+		"@rollup/plugin-node-resolve": "^16.0.3",
+		"@rollup/plugin-replace": "^6.0.3",
+		"@rollup/plugin-terser": "^0.4.4",
+		"@types/jsdom": "^27.0.0",
+		"cross-env": "^10.1.0",
+		"jsdom": "^27.2.0",
+		"rimraf": "^6.1.2",
+		"rollup": "^4.53.3",
+		"ts-jest": "^29.4.5"
+	}
+}

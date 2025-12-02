@@ -1,0 +1,21 @@
+{
+	"name": "@Lyxal-demo/mdi",
+	"version": "1.0.0",
+	"private": true,
+	"description": "Example of importing Material Design using Lyxal Tools",
+	"license": "MIT",
+	"main": "lib/index.js",
+	"scripts": {
+		"build": "tsc -b",
+		"start": "node lib/index.js"
+	},
+	"type": "module",
+	"dependencies": {
+		"@Lyxal/tools": "workspace:^",
+		"@Lyxal/types": "^2.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "^24.10.1",
+		"typescript": "^5.9.3"
+	}
+}

@@ -1,0 +1,52 @@
+/* Lyxal PDF Viewer Theme */
+:root {
+  /* Lyxal Brand Colors */
+  --lyxal-primary: #0066CC;
+  --lyxal-dark: #1a1a1a;
+  --lyxal-darker: #0f0f0f;
+  --lyxal-light: #ffffff;
+  --lyxal-text: #e0e0e0;
+
+  /* Overrides for PDF.js Variables */
+  
+  /* Toolbar Background */
+  --toolbar-bg-color: var(--lyxal-dark);
+  --sidebar-toolbar-bg-color: var(--lyxal-darker);
+  
+  /* Icons & Text */
+  --main-color: var(--lyxal-text);
+  --toolbar-icon-bg-color: transparent;
+  
+  /* Borders */
+  --toolbar-border-color: #333;
+  --toolbar-box-shadow: 0 1px 0 var(--toolbar-border-color);
+
+  /* Body Background (behind the PDF page) */
+  --body-bg-color: #2a2a2a;
+
+  /* Buttons Hover */
+  --button-hover-color: rgba(255, 255, 255, 0.1);
+  --toggled-btn-bg-color: var(--lyxal-primary);
+  --toggled-btn-color: #fff;
+  
+  /* Progress Bar */
+  --progressBar-color: var(--lyxal-primary);
+  --progressBar-bg-color: #333;
+}
+
+/* Custom Lyxal Header */
+.toolbar {
+    border-bottom: 1px solid var(--toolbar-border-color);
+}
+
+/* Modern Scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+  background-color: var(--body-bg-color);
+}
+::-webkit-scrollbar-thumb {
+  background-color: #444;
+  border-radius: 5px;
+}
+

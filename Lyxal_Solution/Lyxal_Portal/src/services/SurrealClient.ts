@@ -34,19 +34,29 @@ class SurrealClientSingleton {
   }
 
   async query<T = unknown>(config: Config, sql: string): Promise<T> {
+    console.log(`[SurrealClient] 🔍 Executing query:`, sql.substring(0, 100) + (sql.length > 100 ? '...' : ''));
+    console.log(`[SurrealClient] 🔗 Connection:`, this.ns, this.dbName);
+
     const db = await this.ensureConnected(config);
+    console.log(`[SurrealClient] ✅ Connected to DB`);
+
     const res = await db.query(sql);
-    // logs de debug supprimés
+    console.log(`[SurrealClient] 📦 Raw response:`, res);
+
     // Normalisation: certains clients renvoient [{ result: [...] }], d'autres [[...]]
     let normalized: unknown = [];
     if (Array.isArray(res)) {
       const first = res[0] as any;
       if (first && typeof first === 'object' && 'result' in first) {
         normalized = (first as any).result ?? [];
+        console.log(`[SurrealClient] 🔄 Normalized from {result: ...} format`);
       } else if (Array.isArray(first)) {
         normalized = first;
+        console.log(`[SurrealClient] 🔄 Normalized from array format`);
       }
     }
+
+    console.log(`[SurrealClient] 📊 Final normalized result:`, normalized);
     return normalized as T;
   }
 }

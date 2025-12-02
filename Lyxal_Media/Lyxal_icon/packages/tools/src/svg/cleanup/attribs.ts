@@ -1,0 +1,62 @@
+import type { SVG } from '../../svg';
+import {
+	badAttributes,
+	badAttributePrefixes,
+	badSoftwareAttributes,
+	tagSpecificPresentationalAttributes,
+} from '../data/attributes';
+import { defsTag } from '../data/tags';
+import { parseSVG } from '../parse';
+
+/**
+ * Remove useless attributes
+ */
+export function removeBadAttributes(svg: SVG): void {
+	parseSVG(svg, (item) => {
+		const node = item.node;
+		const tagName = node.tag;
+		const attribs = node.attribs;
+
+		// Common tags
+		Object.keys(attribs).forEach((attr) => {
+			// Bad attributes, events
+			if (
+				attr.slice(0, 2) === 'on' ||
+				badAttributes.has(attr) ||
+				badSoftwareAttributes.has(attr) ||
+				badAttributePrefixes.has(attr.split('-').shift() as string)
+			) {
+				delete attribs[attr];
+				return;
+			}
+
+			// Attributes on <defs> aren't passed to child nodes, so remove everything)
+			if (
+				defsTag.has(tagName) &&
+				!tagSpecificPresentationalAttributes[tagName].has(attr)
+			) {
+				delete attribs[attr];
+				return;
+			}
+
+			// Check for namespace
+			const nsParts = attr.split(':');
+			if (nsParts.length > 1) {
+				const namespace = nsParts.shift();
+				const newAttr = nsParts.join(':');
+				switch (namespace) {
+					case 'xlink': {
+						// Deprecated: use without namespace
+						if (attribs[newAttr] === undefined) {
+							attribs[newAttr] = attribs[attr];
+						}
+						break;
+					}
+				}
+
+				// Remove all namespace attributes
+				delete attribs[attr];
+			}
+		});
+	});
+}

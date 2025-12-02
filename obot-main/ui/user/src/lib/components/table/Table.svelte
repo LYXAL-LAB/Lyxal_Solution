@@ -1,0 +1,661 @@
+<script lang="ts" generics="T extends { id: string | number }">
+	import {
+		ChevronDown,
+		ChevronsLeft,
+		ChevronsRight,
+		Square,
+		SquareCheck,
+		SquareMinus
+	} from 'lucide-svelte';
+	import { onMount, type Snippet } from 'svelte';
+	import { twMerge } from 'tailwind-merge';
+	import TableHeader from './TableHeader.svelte';
+	import { tooltip } from '$lib/actions/tooltip.svelte';
+	import DotDotDot from '../DotDotDot.svelte';
+
+	export type InitSort = { property: string; order: 'asc' | 'desc' };
+	export type InitSortFn = (property: string, order: 'asc' | 'desc') => void;
+
+	interface Props<T> {
+		actions?: Snippet<[T]>;
+		classes?: {
+			root?: string;
+			thead?: string;
+		};
+		headers?: { title: string; property: string }[];
+		headerClasses?: { property: string; class: string }[];
+		fields: string[];
+		data: T[];
+		onClickRow?: (row: T, isCtrlClick: boolean) => void;
+		onFilter?: (property: string, values: string[]) => void;
+		onClearAllFilters?: () => void;
+		onRenderColumn?: Snippet<[string, T]>;
+		onRenderSubrowContent?: Snippet<[T]>;
+		onSort?: InitSortFn;
+		setRowClasses?: (row: T) => string;
+		noDataMessage?: string;
+		pageSize?: number;
+		sortable?: string[];
+		filterable?: string[];
+		filters?: Record<string, (string | number)[]>;
+		initSort?: InitSort;
+		tableSelectActions?: Snippet<[Record<string, T>]>;
+		validateSelect?: (row: T) => boolean;
+		disabledSelectMessage?: string;
+	}
+
+	const {
+		actions,
+		classes,
+		headers,
+		headerClasses,
+		data,
+		fields,
+		onClickRow,
+		onClearAllFilters,
+		onFilter,
+		onRenderColumn,
+		onRenderSubrowContent,
+		onSort,
+		pageSize,
+		noDataMessage = 'No data',
+		setRowClasses,
+		sortable,
+		filterable,
+		initSort,
+		filters,
+		tableSelectActions,
+		validateSelect,
+		disabledSelectMessage
+	}: Props<T> = $props();
+
+	let page = $state(0);
+	let total = $state(data.length);
+
+	let sortableFields = $derived(new Set(sortable));
+	let filterableFields = $derived(new Set(filterable));
+	let sortedBy = $state<{ property: string; order: 'asc' | 'desc' } | undefined>(
+		initSort ? initSort : sortable?.[0] ? { property: sortable[0], order: 'asc' } : undefined
+	);
+	let filteredBy = $derived<Record<string, (string | number)[]> | undefined>(filters);
+	let filterValues = $derived.by(() => {
+		if (!filterable) return {};
+
+		return data.reduce(
+			(acc, item) => {
+				for (const property of filterable) {
+					if (!acc[property]) {
+						acc[property] = new Set();
+					}
+
+					const value = item[property as keyof T];
+					if (Array.isArray(value)) {
+						value.forEach((v) => {
+							if (typeof v === 'string' || typeof v === 'number') {
+								acc[property].add((typeof v === 'string' ? v : v.toString()).trim());
+							}
+						});
+					} else if (typeof value === 'string' || typeof value === 'number') {
+						acc[property].add((typeof value === 'string' ? value : value.toString()).trim());
+					}
+				}
+				return acc;
+			},
+			{} as Record<string, Set<string | number>>
+		);
+	});
+
+	let selected = $state<Record<string, T>>({});
+	let dataTableRef: HTMLTableElement | null = $state(null);
+	let headerScrollRef: HTMLDivElement | null = $state(null);
+	let bodyScrollRef: HTMLDivElement | null = $state(null);
+	let columnWidths = $state<number[]>([]);
+
+	let tableData = $derived.by(() => {
+		let updatedTableData = data;
+
+		if (sortedBy) {
+			updatedTableData = data.sort((a, b) => {
+				if (tableSelectActions && validateSelect && sortedBy?.property === 'selectable') {
+					const aSelectable = validateSelect(a);
+					const bSelectable = validateSelect(b);
+
+					// First sort by selectability (selectable items first)
+					if (aSelectable !== bSelectable) {
+						return aSelectable ? -1 : 1;
+					}
+				}
+
+				// Then sort by the specified property
+				let aValue = a[sortedBy!.property as keyof T];
+				let bValue = b[sortedBy!.property as keyof T];
+
+				if (sortedBy?.property === 'created') {
+					const aDate = new Date(aValue as string);
+					const bDate = new Date(bValue as string);
+					return sortedBy!.order === 'asc'
+						? aDate.getTime() - bDate.getTime()
+						: bDate.getTime() - aDate.getTime();
+				}
+
+				if (Array.isArray(aValue) && Array.isArray(bValue)) {
+					// use first value in array to sort
+					aValue = aValue[0];
+					bValue = bValue[0];
+				}
+
+				if (typeof aValue === 'number' && typeof bValue === 'number') {
+					return sortedBy!.order === 'asc' ? aValue - bValue : bValue - aValue;
+				}
+
+				if (typeof aValue === 'string' && typeof bValue === 'string') {
+					return sortedBy!.order === 'asc'
+						? aValue.localeCompare(bValue)
+						: bValue.localeCompare(aValue);
+				}
+
+				return 0;
+			});
+		}
+
+		updatedTableData =
+			filteredBy && Object.keys(filteredBy).length > 0
+				? updatedTableData.filter((d) =>
+						Object.keys(filteredBy || {}).every((property) => {
+							if (property === 'selectable') {
+								return validateSelect ? validateSelect(d) : true;
+							}
+
+							const value = d[property as keyof T];
+							if (Array.isArray(value)) {
+								return value.some((v) => filteredBy?.[property]?.includes(v.toString().trim()));
+							} else if (typeof value === 'string' || typeof value === 'number') {
+								return filteredBy?.[property]?.includes(value.toString().trim());
+							}
+							return false;
+						})
+					)
+				: updatedTableData;
+		return updatedTableData;
+	});
+
+	function handleSort(property: string) {
+		if (!sortable?.includes(property)) return;
+		if (!sortedBy || sortedBy.property !== property) {
+			sortedBy = { property, order: 'asc' };
+		} else {
+			sortedBy.order = sortedBy.order === 'asc' ? 'desc' : 'asc';
+		}
+
+		onSort?.(property, sortedBy.order);
+	}
+
+	function handleFilter(property: string, values: string[]) {
+		if (!filterable?.includes(property)) return;
+		if (values.length === 0) {
+			delete filteredBy?.[property];
+			filteredBy = { ...filteredBy };
+		} else {
+			filteredBy = {
+				...filteredBy,
+				[property]: values
+			};
+		}
+
+		onFilter?.(property, values);
+	}
+
+	let visibleItems = $derived(
+		pageSize ? tableData.slice(page * pageSize, (page + 1) * pageSize) : tableData
+	);
+
+	let totalSelectable = $derived(
+		visibleItems.filter((d) => (validateSelect ? validateSelect(d) : true)).length
+	);
+
+	export function clearSelectAll() {
+		selected = {};
+	}
+
+	function calculateConstrainedWidths(naturalWidths: number[], availableWidth: number): number[] {
+		const totalNaturalWidth = naturalWidths.reduce((sum, width) => sum + width, 0);
+
+		// If total width fits within available space, return natural widths
+		if (totalNaturalWidth <= availableWidth) {
+			return naturalWidths;
+		}
+
+		const minWidths = naturalWidths.map((width) => Math.max(width * 0.3, 100));
+		const totalMinWidth = minWidths.reduce((sum, width) => sum + width, 0);
+
+		if (totalMinWidth > availableWidth) {
+			return naturalWidths;
+		}
+
+		const excessWidth = totalNaturalWidth - availableWidth;
+		const reducibleWidth = totalNaturalWidth - totalMinWidth;
+		const scaleFactor = Math.max(0, (reducibleWidth - excessWidth) / reducibleWidth);
+
+		// scaling
+		return naturalWidths.map((width, index) => {
+			const scaledWidth = width * scaleFactor;
+			return Math.max(scaledWidth, minWidths[index]);
+		});
+	}
+
+	function measureColumnWidths() {
+		if (!dataTableRef) return;
+
+		// temp clear columnWidths to measure natural content width
+		const previousWidths = columnWidths;
+		columnWidths = [];
+
+		requestAnimationFrame(() => {
+			const firstRow = dataTableRef?.querySelector('tbody tr');
+
+			if (!firstRow) {
+				columnWidths = previousWidths;
+				return;
+			}
+
+			const cells = firstRow.querySelectorAll('td');
+			const naturalWidths: number[] = [];
+
+			cells.forEach((cell, index) => {
+				const contentDiv = cell.querySelector('div');
+				let width: number;
+
+				if (contentDiv) {
+					width = contentDiv.scrollWidth;
+				} else {
+					width = cell.getBoundingClientRect().width;
+				}
+
+				// accounting for header icons and cell padding
+				if (index > 0 && index <= fields.length) {
+					const fieldIndex = index - 1;
+					const property = fields[fieldIndex];
+
+					width += 32; // cell padding
+
+					// 12px for filter icon and gap
+					if (filterableFields.has(property)) {
+						width += 12;
+					}
+
+					// 20px for sort icon (sort + gap)
+					if (sortableFields.has(property)) {
+						width += 20;
+					}
+				}
+
+				naturalWidths.push(width);
+			});
+
+			// Get parent container width
+			const parentContainer = dataTableRef?.closest('.default-scrollbar-thin') as HTMLElement;
+			const availableWidth = parentContainer ? parentContainer.clientWidth : 0;
+
+			// Apply width constraints
+			columnWidths = calculateConstrainedWidths(naturalWidths, availableWidth);
+		});
+	}
+
+	onMount(() => {
+		// Find the closest scrollable container
+		const scrollableElement = dataTableRef?.closest('[class*="overflow-y-auto"]') as HTMLElement;
+
+		if (scrollableElement && tableSelectActions) {
+			window.addEventListener('resize', measureColumnWidths);
+
+			return () => {
+				window.removeEventListener('resize', measureColumnWidths);
+			};
+		}
+	});
+
+	onMount(() => {
+		if (!headerScrollRef || !bodyScrollRef) return;
+
+		const handleHeaderScroll = () => syncScroll(headerScrollRef!, bodyScrollRef!);
+		const handleBodyScroll = () => syncScroll(bodyScrollRef!, headerScrollRef!);
+
+		headerScrollRef.addEventListener('scroll', handleHeaderScroll);
+		bodyScrollRef.addEventListener('scroll', handleBodyScroll);
+
+		return () => {
+			headerScrollRef?.removeEventListener('scroll', handleHeaderScroll);
+			bodyScrollRef?.removeEventListener('scroll', handleBodyScroll);
+		};
+	});
+
+	let isScrolling = false;
+	function syncScroll(source: HTMLDivElement, target: HTMLDivElement) {
+		if (isScrolling) return;
+		isScrolling = true;
+		target.scrollLeft = source.scrollLeft;
+		requestAnimationFrame(() => {
+			isScrolling = false;
+		});
+	}
+
+	$effect(() => {
+		if (dataTableRef && tableData.length > 0 && tableSelectActions) {
+			// Use a small delay to ensure the table is fully rendered
+			setTimeout(() => {
+				measureColumnWidths();
+			}, 0);
+		}
+	});
+</script>
+
+<div>
+	{#if tableSelectActions}
+		<div
+			class={twMerge(
+				'dark:bg-surface1 bg-surface2 sticky top-0 left-0 z-40 w-full',
+				classes?.thead
+			)}
+		>
+			{#if Object.keys(selected).length > 0}
+				<div class="flex w-full items-center">
+					<div class="flex-shrink-0 p-2">
+						{@render selectAll()}
+					</div>
+					<div class="px-4 py-2 text-left text-sm font-semibold text-gray-500">
+						{Object.keys(selected).length} of {totalSelectable} selected
+					</div>
+					<div class="flex grow items-center justify-end">
+						{@render tableSelectActions(selected)}
+					</div>
+				</div>
+			{:else}
+				<div class="default-scrollbar-thin w-full overflow-x-auto" bind:this={headerScrollRef}>
+					<table class="w-full border-collapse" style="table-layout: fixed; width: 100%;">
+						{#if columnWidths.length > 0}
+							<colgroup>
+								<col style="width: {columnWidths[0] || 57}px;" />
+								{#each fields as fieldName, index (fieldName)}
+									<col
+										style="width: {columnWidths[index + 1]
+											? columnWidths[index + 1] + 'px'
+											: 'auto'};"
+									/>
+								{/each}
+								{#if actions}
+									<col style="width: {columnWidths[columnWidths.length - 1] || 80}px;" />
+								{/if}
+							</colgroup>
+						{/if}
+						{@render header()}
+					</table>
+				</div>
+			{/if}
+		</div>
+	{/if}
+	<div
+		class={twMerge(
+			'dark:bg-surface2 default-scrollbar-thin relative overflow-hidden overflow-x-auto rounded-md bg-white shadow-sm',
+			classes?.root
+		)}
+		bind:this={bodyScrollRef}
+	>
+		<table
+			class="w-full border-collapse"
+			bind:this={dataTableRef}
+			style={columnWidths.length > 0 ? 'table-layout: fixed; width: 100%;' : ''}
+		>
+			{#if columnWidths.length > 0}
+				<colgroup>
+					{#if tableSelectActions}
+						<col style="width: {columnWidths[0] || 57}px;" />
+					{/if}
+					{#each fields as fieldName, index (fieldName)}
+						<col
+							style="width: {columnWidths[tableSelectActions ? index + 1 : index]
+								? columnWidths[tableSelectActions ? index + 1 : index] + 'px'
+								: 'auto'};"
+						/>
+					{/each}
+					{#if actions}
+						<col style="width: {columnWidths[columnWidths.length - 1] || 80}px;" />
+					{/if}
+				</colgroup>
+			{/if}
+			{@render header(Boolean(tableSelectActions))}
+			{#if tableData.length > 0}
+				<tbody>
+					{#each visibleItems as d (sortedBy ? `${d.id}-${sortedBy.property}-${sortedBy.order}` : d.id)}
+						{@render row(d)}
+					{/each}
+				</tbody>
+			{/if}
+		</table>
+	</div>
+</div>
+{#if tableData.length === 0}
+	<div class="my-2 flex flex-col items-center justify-center gap-2">
+		{#if Object.keys(filteredBy || {}).length > 0}
+			<p class="text-sm font-light text-gray-400 dark:text-gray-600">No results found.</p>
+			<button
+				class="button text-sm"
+				onclick={() => {
+					filteredBy = undefined;
+					onClearAllFilters?.();
+				}}
+			>
+				Clear All Filters
+			</button>
+		{:else}
+			<p class="text-sm font-light text-gray-400 dark:text-gray-600">{noDataMessage}</p>
+		{/if}
+	</div>
+{/if}
+
+{#if pageSize && tableData.length > pageSize}
+	<div class="flex items-center justify-center gap-4">
+		<button
+			class="button-text flex items-center gap-1 text-xs"
+			disabled={page === 0}
+			onclick={() => page--}
+		>
+			<ChevronsLeft class="size-4" /> Previous
+		</button>
+
+		<p class="text-xs text-gray-500">
+			{page + 1} of {Math.ceil(total / pageSize)}
+		</p>
+
+		<button
+			class="button-text flex items-center gap-1 text-xs"
+			disabled={page === Math.floor(total / pageSize)}
+			onclick={() => page++}
+		>
+			Next <ChevronsRight class="size-4" />
+		</button>
+	</div>
+{/if}
+
+{#snippet selectAll()}
+	<div class="flex items-center gap-1">
+		<button
+			class="icon-button"
+			onclick={(e) => {
+				e.stopPropagation();
+				if (Object.keys(selected).length > 0) {
+					selected = {};
+				} else {
+					selected = visibleItems.reduce(
+						(acc, d) => {
+							const isSelectable = validateSelect ? validateSelect(d) : true;
+							if (isSelectable) {
+								acc[d.id] = d;
+							}
+							return acc;
+						},
+						{} as Record<string, T>
+					);
+				}
+			}}
+		>
+			{#if Object.keys(selected).length === totalSelectable && totalSelectable > 0}
+				<SquareCheck class="size-5" />
+			{:else if Object.keys(selected).length > 0}
+				<SquareMinus class="size-5" />
+			{:else}
+				<Square class="size-5" />
+			{/if}
+		</button>
+		{#if validateSelect}
+			<DotDotDot class="text-gray-500">
+				{#snippet icon()}
+					<ChevronDown class="size-4" />
+				{/snippet}
+
+				<div class="default-dialog flex min-w-max flex-col gap-1 p-2">
+					<button
+						class="menu-button"
+						onclick={() => {
+							sortedBy = {
+								property: 'selectable',
+								order: 'asc'
+							};
+							onSort?.('selectable', 'asc');
+						}}
+					>
+						Sort By Selectable Items
+					</button>
+					<button
+						class="menu-button"
+						onclick={async () => {
+							if (filteredBy?.['selectable']) {
+								delete filteredBy['selectable'];
+								filteredBy = { ...filteredBy };
+							} else {
+								filteredBy = {
+									...filteredBy,
+									selectable: ['true']
+								};
+							}
+							onFilter?.('selectable', ['true']);
+						}}
+					>
+						{#if filteredBy?.['selectable']}
+							Show All Items
+						{:else}
+							Show Only Selectable Items
+						{/if}
+					</button>
+				</div>
+			</DotDotDot>
+		{/if}
+	</div>
+{/snippet}
+
+{#snippet header(hidden?: boolean)}
+	<thead class={twMerge('dark:bg-surface1 bg-surface2', hidden && 'hidden', classes?.thead)}>
+		<tr>
+			{#if tableSelectActions}
+				<th class="w-4 p-2">
+					{@render selectAll()}
+				</th>
+			{/if}
+
+			{#each fields as property (property)}
+				{@const headerClass = headerClasses?.find((hc) => hc.property === property)?.class}
+				{@const headerTitle = headers?.find((h) => h.property === property)?.title}
+				<TableHeader
+					sortable={sortableFields.has(property)}
+					filterable={filterableFields.has(property)}
+					filterOptions={filterValues[property] ? Array.from(filterValues[property]) : []}
+					{headerClass}
+					{headerTitle}
+					{property}
+					onFilter={handleFilter}
+					onSort={handleSort}
+					activeSort={sortedBy?.property === property}
+					order={sortedBy?.order}
+					presetFilters={filteredBy?.[property]}
+				/>
+			{/each}
+			{#if actions}
+				{@const actionHeaderClass = headerClasses?.find((hc) => hc.property === 'actions')?.class}
+				<th
+					class={twMerge(
+						'text-md float-right w-auto px-4 py-2 text-left font-medium text-gray-500',
+						actionHeaderClass
+					)}
+				></th>
+			{/if}
+		</tr>
+	</thead>
+{/snippet}
+
+{#snippet row(d: T)}
+	<tr
+		class={twMerge(
+			'border-surface2 dark:border-surface2 border-t shadow-xs transition-colors duration-300',
+			onClickRow && ' hover:bg-surface1 dark:hover:bg-surface3 cursor-pointer',
+			setRowClasses?.(d)
+		)}
+		onclick={(e) => {
+			const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+			const isCtrlClick = isTouchDevice ? false : e.metaKey || e.ctrlKey;
+			onClickRow?.(d, isCtrlClick);
+		}}
+	>
+		{#if tableSelectActions}
+			{@const canSelect = validateSelect ? validateSelect(d) : true}
+			{#if canSelect}
+				<td class="p-2">
+					<button
+						class="button-icon"
+						onclick={(e) => {
+							e.stopPropagation();
+							if (selected[d.id]) {
+								delete selected[d.id];
+							} else {
+								selected[d.id] = d;
+							}
+						}}
+					>
+						{#if selected[d.id]}
+							<SquareCheck class="size-5" />
+						{:else}
+							<Square class="size-5" />
+						{/if}
+					</button>
+				</td>
+			{:else}
+				<td class="p-2" use:tooltip={disabledSelectMessage || 'This item is not selectable'}>
+					<button class="button-icon opacity-30" disabled>
+						<Square class="size-5" />
+					</button>
+				</td>
+			{/if}
+		{/if}
+		{#each fields as fieldName (fieldName)}
+			<td class="overflow-hidden text-sm font-light">
+				<div class="flex h-full min-h-12 w-full items-center px-4 py-2">
+					{#if onRenderColumn}
+						{@render onRenderColumn(fieldName, d)}
+					{:else}
+						{d[fieldName as keyof T]}
+					{/if}
+				</div>
+			</td>
+		{/each}
+		{#if actions}
+			<td class="flex justify-end px-4 py-2 text-sm font-light">
+				{@render actions(d)}
+			</td>
+		{/if}
+	</tr>
+	{#if onRenderSubrowContent}
+		<tr>
+			<td colspan={fields.length + (actions ? 1 : 0)}>
+				{@render onRenderSubrowContent(d)}
+			</td>
+		</tr>
+	{/if}
+{/snippet}

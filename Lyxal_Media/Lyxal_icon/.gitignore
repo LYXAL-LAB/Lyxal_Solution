@@ -1,0 +1,35 @@
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules
+
+# Bun
+bun.lockb
+.bun/
+
+# Package Manager Logs
+lerna-debug.log
+.pnpm-debug.log
+npm-debug.log
+yarn-error.log
+
+# Build Outputs
+dist/
+lib/
+*.tsbuildinfo
+
+# Debug
+debug/
+debug_packages/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Package Manager Stores
+.pnpm-store/

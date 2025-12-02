@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "surrealdb": {
+      "command": "node",
+      "args": ["C:\\Users\\Admin\\AppData\\Roaming\\npm\\node_modules\\surrealdb-mcp-server\\build\\index.js"],
+      "env": {
+        "SURREALDB_URL": "wss://lyxal-06bsd9k399ou7e5fa4tblm6b3g.aws-euw1.surreal.cloud",
+        "SURREALDB_NS": "lyxal_central_gateway",
+        "SURREALDB_DB": "main_gateway",
+        "SURREALDB_USER": "admin",
+        "SURREALDB_PASS": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,133 @@
+.pricing-card {
+  /* Structure de base */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  height: 100%; /* Pour que toutes les cartes aient la même hauteur dans une grille */
+  
+  /* Variables configurables par le thème */
+  --pc-bg: var(--color-base-100);
+  --pc-border: 1px solid color-mix(in srgb, var(--color-base-content) 20%, transparent);
+  --pc-radius: var(--radius-box, 1rem);
+  --pc-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  --pc-padding: 1.5rem;
+  
+  /* Application */
+  background-color: var(--pc-bg);
+  border: var(--pc-border);
+  border-radius: var(--pc-radius);
+  box-shadow: var(--pc-shadow);
+  
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Effet de survol */
+.pricing-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+/* --- Variante : Populaire --- */
+.pricing-card-popular {
+  --pc-border: 2px solid var(--color-primary);
+  --pc-bg: color-mix(in srgb, var(--color-primary) 3%, var(--color-base-100));
+  --pc-shadow: 0 10px 15px -3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+  z-index: 10; /* Passe au-dessus des autres si chevauchement */
+}
+
+/* --- Contenu Interne --- */
+
+.pricing-card-body {
+  padding: var(--pc-padding);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex: 1; /* Occupe tout l'espace vertical disponible */
+}
+
+.pricing-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pricing-card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-base-content);
+}
+
+.pricing-card-popular .pricing-card-title {
+  color: var(--color-primary);
+}
+
+.pricing-card-desc {
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--color-base-content) 70%, transparent);
+  min-height: 3em; /* Astuce pour aligner les prix */
+}
+
+.pricing-card-price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  margin-block: 1rem;
+}
+
+.pricing-card-amount {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--color-base-content);
+  line-height: 1;
+}
+
+.pricing-card-popular .pricing-card-amount {
+  color: var(--color-primary);
+}
+
+.pricing-card-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: auto; /* Pousse la liste vers le bas si le header est court */
+}
+
+.pricing-card-feature {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-base-content);
+}
+
+/* Icône check */
+.pricing-card-icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+/* Badge Populaire (Absolu) */
+.pricing-card-badge {
+  position: absolute;
+  top: -1px; /* Compense la bordure de la carte pour coller parfaitement */
+  right: -1px;
+  background-color: var(--color-primary);
+  color: var(--color-primary-content);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  
+  /* Arrondi spécifique : 
+     - Bas-Gauche : Arrondi pour le style
+     - Haut-Droit : Suit l'arrondi de la carte parent (--pc-radius) 
+  */
+  border-radius: 0 var(--pc-radius) 0 var(--pc-radius);
+  
+  /* Petit shadow pour le détacher */
+  box-shadow: -1px 1px 2px rgb(0 0 0 / 0.1);
+  z-index: 2;
+}
+

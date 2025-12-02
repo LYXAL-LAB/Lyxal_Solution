@@ -1,0 +1,578 @@
+{
+  "tags": [
+    {
+      "name": "My account",
+      "description": "Account routes provide functionality for managing user profile for the end user to interact directly with access tokens."
+    }
+  ],
+  "paths": {
+    "/api/my-account": {
+      "get": {
+        "operationId": "GetProfile",
+        "summary": "Get profile",
+        "description": "Get profile for the user.",
+        "responses": {
+          "200": {
+            "description": "The profile was retrieved successfully."
+          }
+        }
+      },
+      "patch": {
+        "operationId": "UpdateProfile",
+        "summary": "Update profile",
+        "description": "Update profile for the user, only the fields that are passed in will be updated.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "name": {
+                    "description": "The new name for the user."
+                  },
+                  "avatar": {
+                    "description": "The new avatar for the user, must be a URL."
+                  },
+                  "username": {
+                    "description": "The new username for the user, must be a valid username and unique."
+                  },
+                  "customData": {
+                    "description": "The new custom data for the user. This will completely replace the existing customData. Requires CustomData scope.",
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The profile was updated successfully."
+          },
+          "400": {
+            "description": "The request body is invalid."
+          },
+          "422": {
+            "description": "The username is already in use."
+          }
+        }
+      }
+    },
+    "/api/my-account/profile": {
+      "patch": {
+        "operationId": "UpdateOtherProfile",
+        "summary": "Update other profile",
+        "description": "Update other profile for the user, only the fields that are passed in will be updated, to update the address, the user must have the address scope.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "familyName": {
+                    "description": "The new family name for the user."
+                  },
+                  "givenName": {
+                    "description": "The new given name for the user."
+                  },
+                  "middleName": {
+                    "description": "The new middle name for the user."
+                  },
+                  "nickname": {
+                    "description": "The new nickname for the user."
+                  },
+                  "preferredUsername": {
+                    "description": "The new preferred username for the user."
+                  },
+                  "profile": {
+                    "description": "The new profile for the user."
+                  },
+                  "website": {
+                    "description": "The new website for the user."
+                  },
+                  "gender": {
+                    "description": "The new gender for the user."
+                  },
+                  "birthdate": {
+                    "description": "The new birthdate for the user."
+                  },
+                  "zoneinfo": {
+                    "description": "The new zoneinfo for the user."
+                  },
+                  "locale": {
+                    "description": "The new locale for the user."
+                  },
+                  "address": {
+                    "description": "The new address for the user."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The profile was updated successfully."
+          }
+        }
+      }
+    },
+    "/api/my-account/password": {
+      "post": {
+        "operationId": "UpdatePassword",
+        "summary": "Update password",
+        "description": "Update password for the user, a logto-verification-id in header is required for checking sensitive permissions.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "password": {
+                    "description": "The new password for the user."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "The password was updated successfully."
+          },
+          "403": {
+            "description": "Permission denied, the verification record is invalid."
+          }
+        }
+      }
+    },
+    "/api/my-account/mfa-settings": {
+      "get": {
+        "operationId": "GetMfaSettings",
+        "summary": "Get MFA settings",
+        "description": "Get MFA settings for the user. This endpoint requires the Identities scope. Returns current MFA configuration preferences.",
+        "responses": {
+          "200": {
+            "description": "The MFA settings were retrieved successfully."
+          },
+          "401": {
+            "description": "Permission denied, insufficient scope or MFA field not enabled."
+          }
+        }
+      },
+      "patch": {
+        "operationId": "UpdateMfaSettings",
+        "summary": "Update MFA settings",
+        "description": "Update MFA settings for the user. This endpoint requires identity verification and the Identities scope. Controls whether MFA verification is required during sign-in when the user has MFA configured.",
+        "responses": {
+          "200": {
+            "description": "The MFA settings were updated successfully."
+          },
+          "400": {
+            "description": "The request body is invalid."
+          },
+          "401": {
+            "description": "Permission denied, identity verification is required or insufficient scope."
+          }
+        }
+      }
+    },
+    "/api/my-account/logto-configs": {
+      "get": {
+        "operationId": "GetLogtoConfig",
+        "summary": "Get logto config",
+        "description": "Retrieve the exposed portion of the current user's logto config. This endpoint currently includes only the MFA skip state.",
+        "responses": {
+          "200": {
+            "description": "The exposed logto config fields were retrieved successfully."
+          },
+          "400": {
+            "description": "MFA is not available in the account center."
+          },
+          "401": {
+            "description": "Permission denied due to insufficient scope."
+          }
+        }
+      },
+      "patch": {
+        "operationId": "UpdateLogtoConfig",
+        "summary": "Update logto config",
+        "description": "Update the exposed portion of the current user's logto config. This endpoint currently allows updating only the MFA skip state.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "mfa": {
+                    "properties": {
+                      "skipped": {
+                        "description": "Set whether the user is marked as having skipped MFA binding."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The exposed logto_config fields were updated successfully."
+          },
+          "400": {
+            "description": "The request body is invalid."
+          },
+          "401": {
+            "description": "Permission denied due to insufficient scope."
+          }
+        }
+      }
+    },
+    "/api/my-account/primary-email": {
+      "post": {
+        "operationId": "UpdatePrimaryEmail",
+        "summary": "Update primary email",
+        "description": "Update primary email for the user, a logto-verification-id in header is required for checking sensitive permissions, and a new identifier verification record is required for the new email ownership verification.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "email": {
+                    "description": "The new email for the user."
+                  },
+                  "newIdentifierVerificationRecordId": {
+                    "description": "The identifier verification record ID for the new email ownership verification."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "The primary email was updated successfully."
+          },
+          "400": {
+            "description": "The new verification record is invalid."
+          },
+          "403": {
+            "description": "Permission denied, the verification record is invalid."
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DeletePrimaryEmail",
+        "summary": "Delete primary email",
+        "description": "Delete primary email for the user, a verification-record-id in header is required for checking sensitive permissions.",
+        "responses": {
+          "204": {
+            "description": "The primary email was deleted successfully."
+          }
+        }
+      }
+    },
+    "/api/my-account/primary-phone": {
+      "post": {
+        "operationId": "UpdatePrimaryPhone",
+        "summary": "Update primary phone",
+        "description": "Update primary phone for the user, a logto-verification-id in header is required for checking sensitive permissions, and a new identifier verification record is required for the new phone ownership verification.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "phone": {
+                    "description": "The new phone for the user."
+                  },
+                  "newIdentifierVerificationRecordId": {
+                    "description": "The identifier verification record ID for the new phone ownership verification."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "The primary phone was updated successfully."
+          },
+          "400": {
+            "description": "The new verification record is invalid."
+          },
+          "403": {
+            "description": "Permission denied, the verification record is invalid."
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DeletePrimaryPhone",
+        "summary": "Delete primary phone",
+        "description": "Delete primary phone for the user, a verification-record-id in header is required for checking sensitive permissions.",
+        "responses": {
+          "204": {
+            "description": "The primary phone was deleted successfully."
+          }
+        }
+      }
+    },
+    "/api/my-account/identities": {
+      "post": {
+        "operationId": "AddUserIdentities",
+        "summary": "Add a user identity",
+        "description": "Add an identity (social identity) to the user, a logto-verification-id in header is required for checking sensitive permissions, and a verification record for the social identity is required.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "newIdentifierVerificationRecordId": {
+                    "description": "The identifier verification record ID for the new social identity ownership verification."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "The identity was added successfully."
+          }
+        }
+      }
+    },
+    "/api/my-account/identities/{target}": {
+      "delete": {
+        "operationId": "DeleteIdentity",
+        "summary": "Delete a user identity",
+        "description": "Delete an identity (social identity) from the user, a logto-verification-id in header is required for checking sensitive permissions.",
+        "responses": {
+          "204": {
+            "description": "The identity was deleted successfully."
+          },
+          "400": {
+            "description": "The verification record is invalid."
+          },
+          "404": {
+            "description": "The identity does not exist."
+          }
+        }
+      }
+    },
+    "/api/my-account/mfa-verifications": {
+      "get": {
+        "operationId": "GetMfaVerifications",
+        "summary": "Get MFA verifications",
+        "description": "Get MFA verifications for the user.",
+        "responses": {
+          "200": {
+            "description": "The MFA verifications were retrieved successfully."
+          }
+        }
+      },
+      "post": {
+        "operationId": "AddMfaVerification",
+        "summary": "Add a MFA verification",
+        "description": "Add a MFA verification to the user, a logto-verification-id in header is required for checking sensitive permissions.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["WebAuthn"],
+                        "description": "The type of the MFA verification."
+                      },
+                      "newIdentifierVerificationRecordId": {
+                        "type": "string",
+                        "description": "The identifier verification record ID for the new WebAuthn registration verification."
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "The name of the MFA verification, if not provided, the name will be generated from user agent."
+                      }
+                    },
+                    "required": ["type", "newIdentifierVerificationRecordId"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["TOTP"],
+                        "description": "The type of the MFA verification, for TOTP, one user can only bind one TOTP factor."
+                      },
+                      "secret": {
+                        "type": "string",
+                        "description": "The TOTP secret for the MFA verification. Use the generate endpoint to create a secret, and verify the generated code with the user before binding to make sure the user has setup the secret in their authenticator app."
+                      }
+                    },
+                    "required": ["type", "secret"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["BackupCode"],
+                        "description": "The type of the MFA verification, for backup codes, one user can only bind one set of backup codes and requires at least one other MFA factor."
+                      },
+                      "codes": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Array of backup codes. Use the generate endpoint to create codes."
+                      }
+                    },
+                    "required": ["type", "codes"]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/my-account/mfa-verifications/totp-secret/generate": {
+      "post": {
+        "operationId": "GenerateTotpSecret",
+        "summary": "Generate a TOTP secret",
+        "description": "Generate a TOTP secret for the user.",
+        "responses": {
+          "200": {
+            "description": "The TOTP secret was generated successfully."
+          }
+        }
+      }
+    },
+    "/api/my-account/mfa-verifications/backup-codes/generate": {
+      "post": {
+        "operationId": "GenerateMyAccountBackupCodes",
+        "summary": "Generate backup codes",
+        "description": "Generate backup codes for the user.",
+        "responses": {
+          "200": {
+            "description": "The backup codes were generated successfully."
+          }
+        }
+      }
+    },
+    "/api/my-account/mfa-verifications/backup-codes": {
+      "get": {
+        "operationId": "GetBackupCodes",
+        "summary": "Get backup codes",
+        "description": "Get all backup codes for the user with their usage status. Requires identity verification.",
+        "responses": {
+          "200": {
+            "description": "The backup codes were retrieved successfully."
+          },
+          "401": {
+            "description": "Unauthorized or identity verification required."
+          },
+          "404": {
+            "description": "No backup codes found for the user."
+          }
+        }
+      }
+    },
+    "/api/my-account/mfa-verifications/{verificationId}/name": {
+      "patch": {
+        "operationId": "UpdateMfaVerificationName",
+        "summary": "Update a MFA verification name",
+        "description": "Update a MFA verification name, a logto-verification-id in header is required for checking sensitive permissions. Only WebAuthn is supported for now.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "name": {
+                    "description": "The name of the MFA verification."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The MFA verification name was updated successfully."
+          }
+        }
+      }
+    },
+    "/api/my-account/mfa-verifications/{verificationId}": {
+      "delete": {
+        "parameters": [
+          {
+            "name": "verificationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the MFA verification to delete."
+          }
+        ],
+        "operationId": "DeleteMfaVerification",
+        "summary": "Delete an MFA verification",
+        "description": "Delete an MFA verification, a logto-verification-id in header is required for checking sensitive permissions.",
+        "responses": {
+          "204": {
+            "description": "The MFA verification was deleted successfully."
+          }
+        }
+      }
+    },
+    "/api/my-account/identities/{target}/access-token": {
+      "get": {
+        "operationId": "GetSocialIdentityAccessToken",
+        "summary": "Retrieve the access token issued by a third-party social provider",
+        "description": "This API retrieves the access token issued by a third-party social provider for a given social target. \nAccess is only available if token storage is enabled for the corresponding social connector.\nWhen a user authenticates through a social provider, Logto automatically stores the provider’s tokens in an encrypted form.\nYou can use this API to securely retrieve the stored access token and use it to access third-party APIs on behalf of the user.",
+        "responses": {
+          "200": {
+            "description": "The access token was retrieved successfully."
+          },
+          "404": {
+            "description": "The social identity does not exist or the access token is not available."
+          },
+          "401": {
+            "description": "Permission denied, the access_token is expired and the offline_access scope is not granted or expired."
+          }
+        }
+      },
+      "put": {
+        "operationId": "UpdateSocialIdentityAccessTokenByVerificationId",
+        "summary": "Update the access token for a social identity by verification ID",
+        "description": "This API updates the token storage for a social identity by a given social verification ID. \nIt is used to fetch a new access token from the social provider and store it securely in Logto.",
+        "responses": {
+          "200": {
+            "description": "The token storage was updated successfully. The new access token is returned in the response body."
+          },
+          "422": {
+            "description": "The verification record is invalid; the social identity does not exist; or the access token is not available."
+          }
+        }
+      }
+    },
+    "/api/my-account/sso-identities/{connectorId}/access-token": {
+      "get": {
+        "operationId": "GetEnterpriseSsoIdentityAccessToken",
+        "summary": "Retrieve the access token issued by a third-party enterprise SSO provider",
+        "description": "This API retrieves the access token issued by a third-party enterprise SSO provider for a given SSO connector ID. \nAccess is only available if token storage is enabled for the corresponding connector.\nWhen a user authenticates through a SSO provider, Logto automatically stores the provider’s tokens in an encrypted form.\nYou can use this API to securely retrieve the stored access token and use it to access third-party APIs on behalf of the user.",
+        "responses": {
+          "200": {
+            "description": "The access token was retrieved successfully."
+          },
+          "404": {
+            "description": "The SSO connector does not exist or the access token is not available."
+          },
+          "401": {
+            "description": "Permission denied, the access_token is expired and the offline_access scope is not granted or expired."
+          }
+        }
+      }
+    }
+  }
+}

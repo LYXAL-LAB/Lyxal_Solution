@@ -1,0 +1,493 @@
+{
+  "app": {
+    "name": "Ackify"
+  },
+  "nav": {
+    "home": "Accueil",
+    "myConfirmations": "Mes confirmations",
+    "admin": "Admin",
+    "administration": "Administration",
+    "login": "Se connecter",
+    "logout": "Déconnexion",
+    "mobileMenu": "Menu mobile",
+    "mainNavigation": "Navigation principale"
+  },
+  "theme": {
+    "toggle": "Changer de thème"
+  },
+  "language": {
+    "select": "Sélectionner la langue",
+    "fr": "Français",
+    "en": "Anglais",
+    "es": "Espagnol",
+    "de": "Allemand",
+    "it": "Italien"
+  },
+  "auth": {
+    "user": {
+      "connectedAs": "Connecté en tant que"
+    },
+    "choice": {
+      "title": "Connexion à Ackify",
+      "subtitle": "Choisissez votre méthode d'authentification préférée",
+      "privacy": "Votre authentification est sécurisée et chiffrée"
+    },
+    "oauth": {
+      "title": "Connexion avec OAuth",
+      "description": "Utilisez votre compte entreprise",
+      "button": "Continuer avec OAuth",
+      "error": "Échec de la connexion OAuth"
+    },
+    "magiclink": {
+      "title": "Connexion par Email",
+      "description": "Nous vous enverrons un lien magique",
+      "email_label": "Adresse email",
+      "email_placeholder": "vous{'@'}exemple.com",
+      "button": "Envoyer le lien magique",
+      "sent": {
+        "title": "Consultez vos emails",
+        "message": "Nous vous avons envoyé un lien magique. Cliquez dessus pour vous connecter.",
+        "expire": "Le lien expire dans 15 minutes."
+      },
+      "error_invalid_email": "Veuillez entrer une adresse email valide",
+      "error_send": "Échec de l'envoi du lien magique"
+    }
+  },
+  "sign": {
+    "title": "Confirmation de Lecture",
+    "subtitle": "Certifiez votre lecture avec une confirmation cryptographique Ed25519",
+    "loading": {
+      "title": "Chargement du document...",
+      "description": "Veuillez patienter pendant que nous préparons le document pour la signature."
+    },
+    "noDocument": {
+      "title": "Aucun document spécifié",
+      "description": "Pour signer un document, ajoutez le paramètre {code} à l'URL",
+      "examples": "Exemples :"
+    },
+    "success": {
+      "title": "Lecture confirmée avec succès !",
+      "description": "Votre confirmation a été enregistrée de manière cryptographique et sécurisée."
+    },
+    "error": {
+      "title": "Une erreur est survenue",
+      "authRequired": "Vous devez être connecté pour créer un document.",
+      "loadFailed": "Échec du chargement du document",
+      "loginButton": "Se connecter"
+    },
+    "documentCreation": {
+      "restrictedToAdmins": "Seuls les administrateurs peuvent créer des documents."
+    },
+    "document": {
+      "title": "Document à confirmer",
+      "id": "ID"
+    },
+    "info": {
+      "description": "En confirmant la lecture de ce document, vous certifiez avoir pris connaissance de son contenu et acceptez de le valider de manière cryptographique et non répudiable.",
+      "recorded": "Votre confirmation sera enregistrée avec les informations suivantes :",
+      "email": "Votre adresse email",
+      "timestamp": "Horodatage précis de la confirmation",
+      "signature": "Confirmation cryptographique Ed25519",
+      "hash": "Hash SHA-256 du contenu"
+    },
+    "confirmations": {
+      "title": "Confirmations existantes",
+      "count": "{count} confirmation | {count} confirmations",
+      "recorded": "enregistrée | enregistrées"
+    },
+    "empty": {
+      "title": "Aucune confirmation pour le moment",
+      "description": "Soyez le premier à confirmer votre lecture de ce document"
+    },
+    "howItWorks": {
+      "title": "Comment ça fonctionne ?",
+      "subtitle": "Ackify vous permet de prouver cryptographiquement que vous avez lu un document",
+      "step1": {
+        "title": "1. Accédez au document",
+        "description": "Ajoutez {code} à l'adresse de cette page"
+      },
+      "step2": {
+        "title": "2. Authentifiez-vous",
+        "description": "Connectez-vous via OAuth2 pour confirmer votre identité"
+      },
+      "step3": {
+        "title": "3. Confirmez la lecture",
+        "description": "Votre confirmation est enregistrée avec une signature Ed25519"
+      },
+      "features": {
+        "crypto": {
+          "title": "Sécurité cryptographique",
+          "description": "Signatures Ed25519 non répudiables garantissant l'authenticité"
+        },
+        "instant": {
+          "title": "Instantané",
+          "description": "Confirmation en deux clics avec vérification cryptographique immédiate"
+        },
+        "timestamp": {
+          "title": "Horodatage précis",
+          "description": "Chaque confirmation est horodatée et chaînée pour garantir l'intégrité"
+        }
+      }
+    }
+  },
+  "signButton": {
+    "confirm": "Confirmer ma lecture",
+    "confirmAction": "Confirmer la lecture",
+    "alreadySigned": "Déjà confirmé",
+    "confirmed": "Lecture confirmée",
+    "mustLogin": "Se connecter pour confirmer",
+    "signing": "Confirmation en cours...",
+    "verified": "Vérifié",
+    "on": "Le",
+    "error": {
+      "title": "Échec de la confirmation",
+      "notAuthenticated": "Vous devez être connecté pour confirmer un document.",
+      "alreadySigned": "Vous avez déjà confirmé ce document.",
+      "generic": "Une erreur est survenue lors de la confirmation. Veuillez réessayer.",
+      "missingDocId": "Document ID manquant",
+      "authFailed": "Impossible de démarrer l'authentification"
+    }
+  },
+  "signatureList": {
+    "loading": "Chargement des confirmations...",
+    "email": "Email",
+    "date": "Date",
+    "signature": "Signature",
+    "confirmation": "Confirmation:",
+    "hash": "Hash",
+    "nonce": "Nonce",
+    "verificationStatus": "Statut de vérification",
+    "verified": "Vérifié",
+    "confirmed": "Confirmé",
+    "notVerified": "Non vérifié",
+    "showDetails": "Afficher les détails",
+    "hideDetails": "Masquer les détails",
+    "viewDetails": "Voir détails",
+    "verificationDetails": "Détails de vérification",
+    "copy": "Copier",
+    "copied": "Copié !",
+    "previousHash": "Hash précédent:",
+    "empty": "Aucune confirmation trouvée",
+    "documentDeleted": "Document supprimé",
+    "fields": {
+      "id": "ID:",
+      "document": "Document:",
+      "reader": "Lecteur:",
+      "date": "Date:",
+      "source": "Origine:",
+      "nonce": "Nonce:",
+      "hash": "Hash:"
+    }
+  },
+  "signatures": {
+    "title": "Mes confirmations de lecture",
+    "subtitle": "Liste de tous les documents dont vous avez confirmé la lecture cryptographiquement",
+    "loading": "Chargement de vos confirmations...",
+    "empty": {
+      "title": "Aucune confirmation pour le moment",
+      "description": "Vous n'avez pas encore confirmé de document. Commencez par confirmer un document pour le voir apparaître ici.",
+      "alternative": "Vous n'avez pas encore confirmé la lecture de documents"
+    },
+    "count": "{count} confirmation | {count} confirmations",
+    "results": "{count} résultat | {count} résultats",
+    "document": "Document",
+    "signedAt": "Confirmé le",
+    "viewDetails": "Voir les détails",
+    "deletedDocuments": "Documents supprimés",
+    "stats": {
+      "total": "Total",
+      "totalConfirmations": "Total confirmations",
+      "unique": "Uniques",
+      "uniqueDocuments": "Documents uniques",
+      "last": "Dernier",
+      "lastConfirmation": "Dernière confirmation",
+      "notAvailable": "N/A"
+    },
+    "allConfirmations": "Toutes mes confirmations",
+    "about": {
+      "title": "À propos des confirmations",
+      "description": "Chaque confirmation est enregistrée de manière cryptographique avec Ed25519 et chaînée pour garantir l'intégrité. Les confirmations sont non répudiables et horodatées de façon précise."
+    },
+    "search": "Rechercher...",
+    "error": {
+      "title": "Erreur de chargement des confirmations",
+      "description": "Impossible de charger vos confirmations. Veuillez réessayer."
+    }
+  },
+  "admin": {
+    "title": "Administration",
+    "subtitle": "Gérer les documents et les lecteurs attendus",
+    "loading": "Chargement des données...",
+    "dashboard": {
+      "title": "Tableau de bord",
+      "totalDocuments": "Documents totaux",
+      "totalSignatures": "Confirmations totales",
+      "recentActivity": "Activité récente",
+      "backToDashboard": "Retour au tableau de bord",
+      "stats": {
+        "documents": "Documents",
+        "readers": "Lecteurs",
+        "active": "Actifs",
+        "expected": "Attendus",
+        "signed": "Signés",
+        "pending": "En attente",
+        "completion": "Complétude"
+      }
+    },
+    "documents": {
+      "title": "Tous les documents",
+      "new": "Créer un nouveau document",
+      "newDescription": "Préparer la référence d'un document pour suivre les confirmations de lecture",
+      "search": "Rechercher...",
+      "searchPlaceholder": "Rechercher par ID, titre ou URL...",
+      "id": "ID du document",
+      "idLabel": "Document",
+      "idHelper": "Accepte les URLs, les chemins de fichiers ou les identifiants simples",
+      "idHelperShort": "Accepte les URLs, chemins ou identifiants",
+      "idPlaceholder": "URL, PATH ou ID du document",
+      "signatures": "Confirmations",
+      "created": "Créé",
+      "createdOn": "Créé le",
+      "by": "Par",
+      "url": "URL",
+      "document": "Document",
+      "actions": "Actions",
+      "view": "Voir",
+      "manage": "Gérer",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "empty": "Aucun document trouvé",
+      "noResults": "Aucun résultat",
+      "noDocuments": "Aucun document",
+      "tryAnotherSearch": "Essayez une autre recherche",
+      "willAppear": "Les documents apparaîtront ici une fois créés",
+      "totalCount": "{count} document au total | {count} documents au total",
+      "pagination": {
+        "page": "Page {current}/{total}",
+        "pageOf": "Page {current} sur {total}"
+      }
+    },
+    "webhooks": {
+      "title": "Webhooks",
+      "subtitle": "Configurer les notifications vers des applications tierces",
+      "manage": "Gérer les webhooks",
+      "new": "Nouveau webhook",
+      "edit": "Éditer",
+      "delete": "Supprimer",
+      "enable": "Activer",
+      "disable": "Désactiver",
+      "status": { "enabled": "Actif", "disabled": "Inactif" },
+      "confirmDelete": "Supprimer ce webhook ?",
+      "empty": "Aucun webhook",
+      "listTitle": "Liste des webhooks",
+      "listSubtitle": "Un webhook peut écouter plusieurs événements",
+      "columns": {
+        "title": "Nom",
+        "url": "URL",
+        "events": "Événements",
+        "status": "Statut",
+        "actions": "Actions"
+      },
+      "form": {
+        "title": "Paramètres du webhook",
+        "subtitle": "Renseignez l'URL, le secret et les événements",
+        "nameLabel": "Nom du webhook",
+        "namePlaceholder": "Webhook CRM",
+        "urlLabel": "URL de destination",
+        "secretLabel": "Secret HMAC",
+        "secretPlaceholder": "Saisissez un secret (requis)",
+        "secretKeep": "Laisser vide pour conserver",
+        "eventsLabel": "Événements à écouter",
+        "descriptionLabel": "Description (optionnel)",
+        "descriptionPlaceholder": "Note interne…",
+        "validation": "Veuillez compléter le nom, l'URL, le secret et au moins un événement."
+      },
+      "editTitle": "Éditer le webhook",
+      "events": {
+        "documentCreated": "Document créé",
+        "signatureCreated": "Signature créée",
+        "documentCompleted": "Document complété",
+        "reminderSent": "Rappel envoyé",
+        "reminderFailed": "Rappel échoué"
+      },
+      "eventsMap": {
+        "document.created": "Document créé",
+        "signature.created": "Signature créée",
+        "document.completed": "Document complété",
+        "reminder.sent": "Rappel envoyé",
+        "reminder.failed": "Rappel échoué"
+      }
+    },
+    "documentDetail": {
+      "title": "Document",
+      "metadata": "📄 Informations sur le document",
+      "metadataDescription": "Métadonnées et checksum du document",
+      "checksum": "Checksum",
+      "algorithm": "Algorithme",
+      "titleLabel": "Titre",
+      "titlePlaceholder": "Politique de sécurité 2025",
+      "urlLabel": "URL",
+      "urlPlaceholder": "https://example.com/doc.pdf",
+      "checksumLabel": "Checksum",
+      "checksumPlaceholder": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "algorithmLabel": "Algorithme",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Description du document...",
+      "signatures": "Confirmations",
+      "back": "Retour",
+      "expectedSigners": "Signataires attendus",
+      "addExpectedSigner": "Ajouter un signataire attendu",
+      "addSigners": "Ajouter des lecteurs attendus",
+      "addButton": "Ajouter",
+      "adding": "Ajout...",
+      "emailsLabel": "Emails (un par ligne)",
+      "emailsPlaceholder": "Marie Dupont <marie.dupont{'@'}example.com>\njean.martin{'@'}example.com\nSophie Bernard <sophie{'@'}example.com>",
+      "emailsHelper": "Formats acceptés : \"Nom Prénom <email{'@'}example.com>\" ou \"email{'@'}example.com\"",
+      "emailLabel": "Email *",
+      "emailPlaceholder": "email{'@'}example.com",
+      "nameLabel": "Nom",
+      "namePlaceholder": "Nom complet",
+      "reader": "Lecteur",
+      "readers": "✓ Lecteurs attendus",
+      "user": "Utilisateur",
+      "status": "Statut",
+      "statusConfirmed": "✓ Confirmé",
+      "statusPending": "⏳ En attente",
+      "confirmedOn": "Confirmé le",
+      "noExpectedSigners": "Aucun lecteur attendu",
+      "noSignatures": "Aucune confirmation",
+      "reminders": "📧 Relances par email",
+      "remindersDescription": "Envoyer des rappels aux lecteurs en attente de confirmation",
+      "remindersSent": "Relances envoyées",
+      "toRemind": "À relancer",
+      "lastReminder": "Dernière relance",
+      "sendReminder": "Envoyer une relance",
+      "sending": "Envoi...",
+      "sendReminders": "Envoyer les relances",
+      "sendToAll": "Envoyer à tous les lecteurs en attente ({count})",
+      "sendToSelected": "Envoyer uniquement aux sélectionnés ({count})",
+      "allContacted": "✓ Tous les lecteurs attendus ont été contactés ou ont confirmé",
+      "emailServiceDisabled": "⚠️ Le service d'envoi d'emails est actuellement désactivé. L'historique des rappels reste visible, mais l'envoi de nouveaux rappels n'est pas disponible.",
+      "unexpectedSignatures": "⚠ Confirmations de lecture complémentaires",
+      "unexpectedDescription": "Utilisateurs ayant confirmé mais non présents dans la liste des lecteurs attendus",
+      "createdBy": "Créé par {by} le {date}",
+      "saving": "Enregistrement...",
+      "deleting": "Suppression...",
+      "copiedToClipboard": "Copié dans le presse-papiers",
+      "metadataSaved": "Métadonnées enregistrées avec succès",
+      "signersAdded": "{count} lecteur(s) ajouté(s) avec succès",
+      "signerRemoved": "{email} retiré avec succès",
+      "remindersSentSuccess": "{count} relance(s) envoyée(s) avec succès",
+      "remindersSentPartial": "{sent} relance(s) envoyée(s), {failed} échec(s)",
+      "remindersSentGeneric": "Relances envoyées avec succès",
+      "confirmSendReminders": "Envoyer des relances à {count} lecteur(s) en attente de confirmation ?",
+      "confirmSendRemindersSelected": "Envoyer des relances à {count} lecteur(s) sélectionné(s) ?",
+      "confirmSendRemindersTitle": "📧 Envoyer des relances",
+      "removeSignerTitle": "⚠️ Retirer le lecteur attendu",
+      "removeSignerMessage": "Retirer {email} de la liste des lecteurs attendus ?",
+      "metadataWarning": {
+        "title": "⚠️ Attention : Invalidation des signatures",
+        "description": "Vous êtes sur le point de modifier des informations critiques du document (URL, checksum, algorithme ou description).",
+        "warning": "Cette modification entraînera l'invalidation de toutes les signatures existantes, car elles sont liées cryptographiquement au contenu actuel du document.",
+        "currentSignatures": "Signatures actuelles qui seront invalidées :",
+        "confirm": "Je comprends, continuer",
+        "cancel": "Annuler"
+      },
+      "dangerZone": "⚠️ Zone de danger",
+      "dangerZoneDescription": "Actions irréversibles sur ce document",
+      "deleteDocument": "Supprimer ce document",
+      "deleteDocumentDescription": "Cette action supprimera définitivement le document, ses métadonnées, les lecteurs attendus et toutes les confirmations associées.\nCette action est irréversible.",
+      "deleteWarning": "Cette action est irréversible !",
+      "deleteWillRemove": "La suppression de ce document entraînera la perte définitive de :",
+      "deleteItem1": "Toutes les métadonnées du document",
+      "deleteItem2": "La liste des lecteurs attendus",
+      "deleteItem3": "Toutes les confirmations cryptographiques",
+      "deleteItem4": "L'historique des relances",
+      "deleteConfirmTitle": "⚠️ Confirmer la suppression",
+      "deleteConfirmButton": "Supprimer définitivement",
+      "documentId": "Document ID:"
+    },
+    "documentForm": {
+      "title": "Référence du document",
+      "label": "Référence (URL, chemin ou ID)",
+      "placeholder": "URL, PATH ou RÉFÉRENCE du document à lire (optionnel)",
+      "submit": "Commencer",
+      "submitting": "Chargement...",
+      "creating": "Création en cours..."
+    }
+  },
+  "embed": {
+    "loading": "Chargement des informations de signature...",
+    "title": "Signature pour",
+    "document": "Document:",
+    "signedBy": "Signé par",
+    "on": "le",
+    "verified": "Vérifié",
+    "viewAll": "Voir toutes les confirmations",
+    "error": "Impossible de charger les informations de signature",
+    "sign": "Signer",
+    "signDocument": "Signer ce document",
+    "noSignatures": "Aucune signature pour ce document",
+    "confirmationsCount": "{count} confirmation(s)",
+    "poweredBy": "Powered by Ackify",
+    "missingDocId": "ID de document manquant"
+  },
+  "notFound": {
+    "title": "Page non trouvée",
+    "description": "La page que vous recherchez n'existe pas ou a été déplacée.",
+    "home": "Retour à l'accueil"
+  },
+  "footer": {
+    "description": "Solution open-source de confirmation cryptographique de lecture de documents avec signatures Ed25519 non répudiables.",
+    "navigation": {
+      "title": "Navigation"
+    },
+    "resources": {
+      "title": "Ressources",
+      "documentation": "Documentation",
+      "apiReference": "Référence API",
+      "support": "Support"
+    },
+    "legal": {
+      "title": "Légal",
+      "terms": "Conditions d'utilisation",
+      "privacy": "Politique de confidentialité",
+      "contact": "Contact"
+    },
+    "copyright": "Tous droits réservés.",
+    "license": "Licence AGPL-3.0-or-later",
+    "madeWith": "Fait avec",
+    "by": "par",
+    "links": {
+      "privacy": "Confidentialité",
+      "terms": "Conditions",
+      "contact": "Contact"
+    }
+  },
+  "toast": {
+    "success": "Succès",
+    "error": "Erreur",
+    "info": "Information",
+    "warning": "Avertissement"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "confirm": "Confirmer",
+    "yes": "Oui",
+    "no": "Non",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "sort": "Trier",
+    "actions": "Actions",
+    "details": "Détails",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "skipToContent": "Aller au contenu principal"
+  }
+}

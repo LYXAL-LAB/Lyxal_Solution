@@ -1,0 +1,77 @@
+.footer-root {
+  /* Dimensions et Espacements */
+  width: 100%;
+  
+  /* Flexbox pour centrer ou organiser le contenu si besoin, 
+     mais souvent le contenu interne gère sa propre grille */
+  display: block; 
+  
+  /* Variables de configuration par défaut */
+  --footer-bg: var(--color-base-100);       /* Fond */
+  --footer-color: var(--color-base-content);/* Texte */
+  --footer-py: 3rem;                        /* Padding vertical important */
+  --footer-px: 1.5rem;                      /* Padding horizontal */
+  --footer-border-top: 1px solid var(--color-base-200); /* Séparation */
+  
+  /* Application des variables */
+  background-color: var(--footer-bg);
+  color: var(--footer-color);
+  padding-block: var(--footer-py);
+  padding-inline: var(--footer-px);
+  border-top: var(--footer-border-top);
+  
+  /* Z-index pour passer au-dessus du contenu si fixé */
+  z-index: 40;
+}
+
+/* --- Variantes de Positionnement --- */
+
+/* Normal : En bas du flux (par défaut) */
+.footer-static {
+  margin-top: auto; /* Pousse le footer tout en bas si le contenu est court */
+  position: relative;
+}
+
+/* Sticky : Reste collé en bas de la fenêtre si le contenu est court, 
+   mais scroll avec la page si le contenu est long */
+.footer-sticky {
+  position: sticky;
+  bottom: 0;
+}
+
+/* Fixe : Toujours visible en bas de l'écran, par-dessus le contenu */
+.footer-fixed {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+}
+
+
+/* --- Variantes de Style --- */
+
+/* Footer par défaut */
+.footer-default {
+  /* Utilise les variables définies dans root */
+}
+
+/* Footer simple et compact */
+.footer-compact {
+  --footer-py: 1.5rem;
+  text-align: center;
+}
+
+/* Footer sombre inversé */
+.footer-dark {
+  --footer-bg: var(--color-neutral);
+  --footer-color: var(--color-neutral-content);
+  --footer-border-top: none;
+}
+
+/* Footer Glassmorphism (souvent utilisé avec Fixed) */
+.footer-glass {
+  --footer-bg: color-mix(in srgb, var(--color-base-100) 80%, transparent);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid color-mix(in srgb, var(--color-base-content) 10%, transparent);
+}

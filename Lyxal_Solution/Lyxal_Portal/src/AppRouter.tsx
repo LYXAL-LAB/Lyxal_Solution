@@ -3,6 +3,7 @@ import Home from './pages/website/Home';
 import SignIn from './pages/website/SignIn';
 import App from './App';
 import { StudioTestPage } from './pages/test/StudioTestPage';
+import CircularMenuDemoPage from './pages/CircularMenuDemoPage';
 
 const AppRouter: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<string>(window.location.pathname);
@@ -29,6 +30,8 @@ const AppRouter: React.FC = () => {
         return <App />;
       case '/test':
         return <StudioTestPage />;
+      case '/demo/circular-menu':
+        return <CircularMenuDemoPage />;
       case '/':
       default:
         return <Home onNavigate={navigate} />;

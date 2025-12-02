@@ -1,0 +1,15 @@
+apiVersion: obot.obot.ai/v1
+kind: AccessControlRule
+metadata:
+  name: acr1-everything
+  namespace: default
+spec:
+  mcpCatalogID: default
+  manifest:
+    displayName: Everything
+    resources:
+      - id: '*'
+        type: selector
+    subjects:
+      - id: '*'
+        type: selector

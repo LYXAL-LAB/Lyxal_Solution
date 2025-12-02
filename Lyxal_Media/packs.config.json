@@ -1,0 +1,38 @@
+{
+  "lucide": {
+    "url": "https://github.com/lucide-icons/lucide/archive/refs/heads/main.zip",
+    "filter": "icons/.*\\.svg$",
+    "transformName": "lowercase",
+    "license": "ISC",
+    "description": "Beautiful & consistent icon toolkit made by the community.",
+    "website": "https://lucide.dev",
+    "version": "0.469.0"
+  },
+  "tabler": {
+    "url": "https://github.com/tabler/tabler-icons/archive/refs/heads/master.zip",
+    "filter": "icons/outline/.*\\.svg$",
+    "transformName": "lowercase",
+    "license": "MIT",
+    "description": "Highly customizable open source SVG icons.",
+    "website": "https://tabler.io/icons",
+    "version": "3.2.0"
+  },
+  "heroicons": {
+    "url": "https://github.com/tailwindlabs/heroicons/archive/refs/heads/master.zip",
+    "filter": "src/24/outline/.*\\.svg$",
+    "transformName": "lowercase",
+    "license": "MIT",
+    "description": "Beautiful hand-crafted SVG icons, by the makers of Tailwind CSS.",
+    "website": "https://heroicons.com",
+    "version": "2.1.1"
+  },
+  "font-awesome": {
+    "url": "https://github.com/FortAwesome/Font-Awesome/archive/refs/heads/7.x.zip",
+    "filter": "icons/.*\\.svg$",
+    "transformName": "lowercase",
+    "license": "Other",
+    "description": "The iconic SVG, font, and CSS toolkit",
+    "website": "https://github.com/FortAwesome/Font-Awesome",
+    "version": "0.0.0"
+  }
+}

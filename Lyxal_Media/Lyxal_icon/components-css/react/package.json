@@ -1,0 +1,54 @@
+{
+	"name": "@lyxal-icon/css-react",
+	"description": "Lyxal fallback icon component for React.",
+	"author": "Vjacheslav Trushkin",
+	"type": "module",
+	"version": "1.0.0",
+	"license": "MIT",
+	"bugs": "https://github.com/Lyxal/Lyxal/issues",
+	"homepage": "https://Lyxal.design/",
+	"funding": "https://github.com/sponsors/cyberalien",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Lyxal/Lyxal.git",
+		"directory": "components-css/react"
+	},
+	"scripts": {
+		"lint": "eslint src/*.ts",
+		"prebuild": "bun run lint",
+		"build": "tsdown"
+	},
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"dependencies": {
+		"@lyxal-icon/types": "workspace:^"
+	},
+	"devDependencies": {
+		"@lyxal-icon/component-utils": "workspace:^",
+		"@lyxal-icon/fetch": "workspace:^",
+		"@lyxal-icon/utils": "workspace:^",
+		"@types/react": "^19.2.6",
+		"@types/react-dom": "^19.2.3",
+		"react": "^19.2.0"
+	},
+	"peerDependencies": {
+		"react": ">=18.0.0"
+	},
+	"exports": {
+		".": "./dist/index.js",
+		"./basic": "./dist/basic.js",
+		"./helpers/add": "./dist/helpers/add.js",
+		"./helpers/api": "./dist/helpers/api.js",
+		"./helpers/get-icon": "./dist/helpers/get-icon.js",
+		"./helpers/ids": "./dist/helpers/ids.js",
+		"./helpers/load-icon": "./dist/helpers/load-icon.js",
+		"./helpers/load-icons": "./dist/helpers/load-icons.js",
+		"./helpers/preload": "./dist/helpers/preload.js",
+		"./helpers/size": "./dist/helpers/size.js",
+		"./helpers/subscribe": "./dist/helpers/subscribe.js",
+		"./helpers/support": "./dist/helpers/support.js",
+		"./props": "./dist/props.js",
+		"./package.json": "./package.json"
+	}
+}

@@ -1,0 +1,10 @@
+{
+  "name": "lyxal-mcp-monorepo",
+  "version": "1.0.0",
+  "workspaces": [
+    "servers/*"
+  ],
+  "scripts": {
+    "start:surreal": "cd servers/surreal && bun start"
+  }
+}

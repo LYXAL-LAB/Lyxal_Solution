@@ -46,12 +46,109 @@
 - ✅ **Ajout frameworks = CREATE en DB**
 - ✅ **Modification mappings = UPDATE en DB**
 
+#### 🎨 **APPROCHE CSS : Variables "Riches et Strictes" par Composant**
+**Décision Architecturale** : Variables CSS dédiées et complètes pour chaque composant
+
+##### **Concept** 🔬
+- ✅ **Chaque composant** = son propre jeu de variables CSS complet
+- ✅ **Granularité maximale** : 20-50 variables par composant
+- ✅ **IA-powered** : Variables ajustables dynamiquement par l'IA
+- ✅ **Personnalisation pixel-perfect** : Chaque élément contrôlable indépendamment
+
+##### **Exemples par Composant** 🎯
+
+**Button Component** 🔘
+```css
+--button-primary-bg: oklch(45% 0.2 250);
+--button-primary-text: oklch(95% 0.05 250);
+--button-primary-border: oklch(40% 0.15 250);
+--button-primary-shadow: 0 2px 4px oklch(45% 0.2 250 / 0.2);
+--button-primary-hover-bg: oklch(50% 0.22 250);
+--button-primary-active-bg: oklch(40% 0.18 250);
+--button-primary-disabled-bg: oklch(95% 0.01 250);
+--button-primary-disabled-text: oklch(65% 0.05 250);
+--button-primary-font-size: 0.875rem;
+--button-primary-font-weight: 600;
+--button-primary-padding-x: 1rem;
+--button-primary-padding-y: 0.5rem;
+--button-primary-border-radius: 0.375rem;
+--button-primary-transition: all 0.2s ease;
+```
+
+**Card Component** 📄
+```css
+--card-background: oklch(100% 0 0);
+--card-border: oklch(90% 0.02 250);
+--card-border-radius: 0.5rem;
+--card-shadow: 0 1px 3px oklch(0% 0 0 / 0.1);
+--card-padding: 1.5rem;
+--card-hover-shadow: 0 4px 6px oklch(0% 0 0 / 0.1);
+--card-hover-transform: translateY(-2px);
+--card-title-font-size: 1.125rem;
+--card-title-font-weight: 600;
+--card-title-color: oklch(15% 0.05 250);
+--card-text-color: oklch(45% 0.05 250);
+--card-link-color: oklch(45% 0.2 250);
+```
+
+**Layout Component** 📐
+```css
+--layout-container-max-width: 1280px;
+--layout-container-padding-x: 1rem;
+--layout-grid-columns: 12;
+--layout-grid-gutter: 1.5rem;
+--layout-header-height: 4rem;
+--layout-sidebar-width: 16rem;
+--layout-breakpoint-sm: 640px;
+--layout-breakpoint-md: 768px;
+--layout-breakpoint-lg: 1024px;
+--layout-breakpoint-xl: 1280px;
+--layout-z-index-header: 1000;
+--layout-z-index-modal: 1050;
+```
+
+##### **Utilités Stratégiques** 🎯
+- ✅ **Personnalisation Pixel-Perfect** : Bouton rouge dans thème bleu
+- ✅ **IA Design Assistant** : Ajustements fins par élément
+- ✅ **Thèmes Composites** : Mélanger styles différents par composant
+- ✅ **A/B Testing Granulaire** : Tester variations spécifiques
+- ✅ **Accessibilité par Composant** : Ajustements spécialisés
+
+##### **Implémentation Technique** ⚙️
+```surql
+-- Variables organisées par composant
+CREATE css_token_design:button_primary_bg SET
+  identity = {
+    name = "--button-primary-bg",
+    slug = "button-primary-bg"
+  },
+  category = css_token_category:component,
+  subcategory = css_token_subcategory:button,
+  component = "button",           -- Nouveau champ
+  property = "background-color",  -- Nouveau champ
+  value = "45% 0.2 250",
+  unit = "oklch_function";
+```
+
+##### **Avantages Stratégiques** 🏆
+- ✅ **Flexibilité Maximale** : Chaque élément contrôlable indépendamment
+- ✅ **Performance Optimisée** : CSS lazy-loaded par composant
+- ✅ **Maintenance IA-Friendly** : IA ajuste composants isolément
+- ✅ **Évolutivité** : Nouveaux composants = nouvelles variables
+
+##### **Défis à Gérer** 🚫
+- ⚠️ **Volume Variables** : 50-100 variables × 20 composants = 2000 variables
+- ⚠️ **Maintenance** : Interface admin avec recherche/filtrage requise
+- ✅ **Solution** : Génération IA + organisation hiérarchique
+
 #### Tâches :
 - [x] **Inventaire Design Tokens** : Collecte complète des 85 variables CSS ✅ TERMINÉ
 - [x] **Architecture Variables Dynamiques** : Tables dynamiques css_token_category + css_token_subcategory ✅ CRÉÉES
 - [x] **Classification Design Tokens** : 5 catégories + 17 sous-catégories ✅ CRÉÉES
 - [x] **Table css_dictionary** : 47 éléments UI abstraits ✅ CRÉÉE
 - [x] **Design Tokens par défaut** : 61 tokens pour thème default ✅ CRÉÉS
+- [x] **Table css_component** : Normalisation des composants UI (23 composants de base) ✅ CRÉÉE
+- [x] **Design Tokens par Composant** : 37 tokens spécialisés avec records (14 button + 11 card + 12 layout) ✅ REFACTORISÉS
 - [ ] **Table css_framework_mapping** : Mappings élément ↔ framework
 - [ ] **Table css_theme_mapping** : Overrides par thème
 - [ ] **Fonction fn::resolve_css_classes()** : Résolution automatique

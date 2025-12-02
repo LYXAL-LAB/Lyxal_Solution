@@ -1,0 +1,35 @@
+name: ci
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+
+jobs:
+    ci:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v6
+            - run: corepack enable
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: latest
+                  cache: pnpm
+
+            - name: 📦 Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: 🚧 Build project
+              env:
+                  NODE_OPTIONS: '--max_old_space_size=4096'
+              run: pnpm build:tools
+
+            - name: 🧪 Test project
+              run: pnpm test:tools
+
+            - name: 📝 Lint
+              run: pnpm lint:tools

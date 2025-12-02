@@ -13,7 +13,6 @@ svg-logos/
 
 # Temp & lourds
 *.log
-*.json
 *.xlsx
 *.zip
 *.rar
@@ -24,3 +23,8 @@ svg-logos/
 .env
 .DS_Store
 Thumbs.db
+
+!package.json
+!tsconfig.json
+!*.app.json
+!*.node.json

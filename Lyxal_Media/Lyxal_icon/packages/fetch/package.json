@@ -1,0 +1,23 @@
+{
+	"name": "@lyxal-icon/fetch",
+	"description": "Fetch wrapper with built in redundancy",
+	"version": "0.0.1",
+	"author": "Lyxal Labs",
+	"license": "Proprietary",
+	"type": "module",
+	"main": "dist/index.js",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "tsdown",
+		"test": "bun test"
+	},
+	"bugs": "https://github.com/Lyxal/Lyxal/issues",
+	"homepage": "https://Lyxal.design/",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Lyxal/Lyxal.git",
+		"directory": "packages/fetch"
+	},
+	"devDependencies": {}
+}

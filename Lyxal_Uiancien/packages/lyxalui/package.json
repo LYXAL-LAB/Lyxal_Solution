@@ -1,0 +1,53 @@
+{
+  "type": "module",
+  "name": "Lyxal_Ui",
+  "version": "1.0.0",
+  "description": "Lyxal_Ui - The Tailwind CSS Component Library",
+  "author": "Lyxal Labs",
+  "license": "Proprietary",
+  "homepage": "https://lyxal.com",
+  "bugs": "https://github.com/lyxal-labs//issues",
+  "keywords": [
+    "Lyxal_Ui",
+    "tailwind",
+    "tailwindcss",
+    "react",
+    "css",
+    "ui",
+    "component",
+    "framework",
+    "front-end",
+    "theme",
+    "component library",
+    "css library"
+  ],
+  "main": "./index.ts",
+  "module": "./index.ts",
+  "browser": "./lyxal_ui.css",
+  "files": [
+    "base",
+    "colors",
+    "components",
+    "!components/*/class.json",
+    "functions/addPrefix.ts",
+    "functions/plugin.ts",
+    "functions/pluginOptionsHandler.ts",
+    "functions/themeOrder.ts",
+    "functions/variables.ts",
+    "theme",
+    "utilities",
+    "imports.ts",
+    "index.ts",
+    "chunks.css",
+    "lyxal_ui.css",
+    "themes.css"
+  ],
+  "commit-and-tag-version": {
+    "scripts": {
+      "postbump": "cd ../.. && bun run --bun bundle && git add --all packages/bundle/"
+    }
+  },
+  "scripts": {
+    "build": "bun build.ts"
+  }
+}

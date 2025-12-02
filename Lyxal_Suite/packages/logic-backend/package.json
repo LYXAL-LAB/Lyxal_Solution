@@ -1,0 +1,13 @@
+{
+    "name": "@lyxal/logic-backend",
+    "version": "0.1.0",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "dependencies": {
+    "@lyxal/logic-shared": "file:../logic-shared"
+    },
+    "scripts": {
+    "build": "npx tsc -p tsconfig.json"
+    }
+    }

@@ -58,5 +58,62 @@ surreal import --conn http://localhost:8000 --ns lyxal --db lyxal --file referen
 
 ---
 
+## 🎯 **Pages Disponibles**
+
+### **test_page** (Page de base)
+Démontre l'utilisation d'un composant simple (`test_button`) dans une page.
+
+### **circular_menu_demo** (Page avancée)
+Démontre le composant `circular_menu` avec 6 configurations différentes.
+
+---
+
+## 🚀 **Commandes d'importation pour circular_menu_demo**
+
+```bash
+# 1. Schéma studio_page (si pas déjà importé)
+surreal import --conn http://localhost:8000 --ns lyxal --db lyxal --file database/studio/studio_page.surql
+
+# 2. Clés i18n de la page
+surreal import --conn http://localhost:8000 --ns lyxal --db lyxal --file reference/studio/page/circular_menu_demo_i18n_keys.surql
+
+# 3. Traductions i18n de la page
+surreal import --conn http://localhost:8000 --ns lyxal --db lyxal --file reference/studio/page/circular_menu_demo_i18n_translations.surql
+
+# 4. Schéma studio_component (si pas déjà importé)
+surreal import --conn http://localhost:8000 --ns lyxal --db lyxal --file database/studio/studio_component.surql
+
+# 5. Clés i18n du composant
+surreal import --conn http://localhost:8000 --ns lyxal --db lyxal --file reference/studio/component/circular_menu_i18n_keys.surql
+
+# 6. Traductions i18n du composant
+surreal import --conn http://localhost:8000 --ns lyxal --db lyxal --file reference/studio/component/circular_menu_i18n_translations.surql
+
+# 7. Composant circular_menu
+surreal import --conn http://localhost:8000 --ns lyxal --db lyxal --file reference/studio/component/circular_menu.surql
+
+# 8. Page de démonstration
+surreal import --conn http://localhost:8000 --ns lyxal --db lyxal --file reference/studio/page/circular_menu_demo.surql
+```
+
+## 🧪 **Test de validation circular_menu_demo**
+
+```surql
+-- Vérifier que la page existe
+SELECT * FROM studio_page:circular_menu_demo;
+
+-- Vérifier les traductions de la page
+SELECT
+    ->title_i18n->translation->language.text AS title,
+    ->description_i18n->translation->language.text AS description
+FROM studio_page:circular_menu_demo
+WHERE language.code = 'fr';
+
+-- Vérifier que la page utilise bien circular_menu
+SELECT content_structure FROM studio_page:circular_menu_demo;
+```
+
+---
+
 **Suivez cet ordre pour garantir une importation sans erreur.**
 

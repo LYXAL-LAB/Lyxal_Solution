@@ -1,0 +1,14 @@
+const store = $state({
+	isMobile: false
+});
+
+if (typeof window !== 'undefined') {
+	const mediaQuery = window.matchMedia('(max-width: 768px)');
+	store.isMobile = mediaQuery.matches;
+
+	mediaQuery.addEventListener('change', (e) => {
+		store.isMobile = e.matches;
+	});
+}
+
+export default store;

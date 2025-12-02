@@ -1,0 +1,2097 @@
+﻿[
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ActionNetwork\\ActionNetwork.node.ts",
+        "Provider":  "ActionNetwork",
+        "Service":  "ActionNetwork"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ActiveCampaign\\ActiveCampaign.node.ts",
+        "Provider":  "ActiveCampaign",
+        "Service":  "ActiveCampaign"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Adalo\\Adalo.node.ts",
+        "Provider":  "Adalo",
+        "Service":  "Adalo"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Affinity\\Affinity.node.ts",
+        "Provider":  "Affinity",
+        "Service":  "Affinity"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\AgileCrm\\AgileCrm.node.ts",
+        "Provider":  "AgileCrm",
+        "Service":  "AgileCrm"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Airtable\\Airtable.node.ts",
+        "Provider":  "Airtable",
+        "Service":  "Airtable"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Airtable\\v1\\AirtableV1.node.ts",
+        "Provider":  "Airtable",
+        "Service":  "AirtableV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Airtable\\v2\\AirtableV2.node.ts",
+        "Provider":  "Airtable",
+        "Service":  "AirtableV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Airtop\\Airtop.node.ts",
+        "Provider":  "Airtop",
+        "Service":  "Airtop"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\AiTransform\\AiTransform.node.ts",
+        "Provider":  "AiTransform",
+        "Service":  "AiTransform"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Amqp\\Amqp.node.ts",
+        "Provider":  "Amqp",
+        "Service":  "Amqp"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ApiTemplateIo\\ApiTemplateIo.node.ts",
+        "Provider":  "ApiTemplateIo",
+        "Service":  "ApiTemplateIo"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Asana\\Asana.node.ts",
+        "Provider":  "Asana",
+        "Service":  "Asana"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Automizy\\Automizy.node.ts",
+        "Provider":  "Automizy",
+        "Service":  "Automizy"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Autopilot\\Autopilot.node.ts",
+        "Provider":  "Autopilot",
+        "Service":  "Autopilot"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\AwsLambda.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsLambda"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\AwsSns.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsSns"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\CertificateManager\\AwsCertificateManager.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsCertificateManager"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\Cognito\\AwsCognito.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsCognito"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\Comprehend\\AwsComprehend.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsComprehend"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\DynamoDB\\AwsDynamoDB.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsDynamoDB"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\ELB\\AwsElb.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsElb"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\IAM\\AwsIam.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsIam"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\Rekognition\\AwsRekognition.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsRekognition"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\S3\\AwsS3.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsS3"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\S3\\V1\\AwsS3V1.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsS3V1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\S3\\V2\\AwsS3V2.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsS3V2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\SES\\AwsSes.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsSes"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\SQS\\AwsSqs.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsSqs"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\Textract\\AwsTextract.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsTextract"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Aws\\Transcribe\\AwsTranscribe.node.ts",
+        "Provider":  "Aws",
+        "Service":  "AwsTranscribe"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\BambooHr\\BambooHr.node.ts",
+        "Provider":  "BambooHr",
+        "Service":  "BambooHr"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Bannerbear\\Bannerbear.node.ts",
+        "Provider":  "Bannerbear",
+        "Service":  "Bannerbear"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Baserow\\Baserow.node.ts",
+        "Provider":  "Baserow",
+        "Service":  "Baserow"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Beeminder\\Beeminder.node.ts",
+        "Provider":  "Beeminder",
+        "Service":  "Beeminder"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Bitly\\Bitly.node.ts",
+        "Provider":  "Bitly",
+        "Service":  "Bitly"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Bitwarden\\Bitwarden.node.ts",
+        "Provider":  "Bitwarden",
+        "Service":  "Bitwarden"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Box\\Box.node.ts",
+        "Provider":  "Box",
+        "Service":  "Box"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Brandfetch\\Brandfetch.node.ts",
+        "Provider":  "Brandfetch",
+        "Service":  "Brandfetch"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Brevo\\Brevo.node.ts",
+        "Provider":  "Brevo",
+        "Service":  "Brevo"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Bubble\\Bubble.node.ts",
+        "Provider":  "Bubble",
+        "Service":  "Bubble"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Chargebee\\Chargebee.node.ts",
+        "Provider":  "Chargebee",
+        "Service":  "Chargebee"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\CircleCi\\CircleCi.node.ts",
+        "Provider":  "CircleCi",
+        "Service":  "CircleCi"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Cisco\\Webex\\CiscoWebex.node.ts",
+        "Provider":  "Cisco",
+        "Service":  "CiscoWebex"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Clearbit\\Clearbit.node.ts",
+        "Provider":  "Clearbit",
+        "Service":  "Clearbit"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ClickUp\\ClickUp.node.ts",
+        "Provider":  "ClickUp",
+        "Service":  "ClickUp"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Clockify\\Clockify.node.ts",
+        "Provider":  "Clockify",
+        "Service":  "Clockify"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Cloudflare\\Cloudflare.node.ts",
+        "Provider":  "Cloudflare",
+        "Service":  "Cloudflare"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Cockpit\\Cockpit.node.ts",
+        "Provider":  "Cockpit",
+        "Service":  "Cockpit"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Coda\\Coda.node.ts",
+        "Provider":  "Coda",
+        "Service":  "Coda"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Code\\Code.node.ts",
+        "Provider":  "Code",
+        "Service":  "Code"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\CoinGecko\\CoinGecko.node.ts",
+        "Provider":  "CoinGecko",
+        "Service":  "CoinGecko"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\CompareDatasets\\CompareDatasets.node.ts",
+        "Provider":  "CompareDatasets",
+        "Service":  "CompareDatasets"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Compression\\Compression.node.ts",
+        "Provider":  "Compression",
+        "Service":  "Compression"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Contentful\\Contentful.node.ts",
+        "Provider":  "Contentful",
+        "Service":  "Contentful"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ConvertKit\\ConvertKit.node.ts",
+        "Provider":  "ConvertKit",
+        "Service":  "ConvertKit"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Copper\\Copper.node.ts",
+        "Provider":  "Copper",
+        "Service":  "Copper"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Cortex\\Cortex.node.ts",
+        "Provider":  "Cortex",
+        "Service":  "Cortex"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\CrateDb\\CrateDb.node.ts",
+        "Provider":  "CrateDb",
+        "Service":  "CrateDb"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Cron\\Cron.node.ts",
+        "Provider":  "Cron",
+        "Service":  "Cron"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\CrowdDev\\CrowdDev.node.ts",
+        "Provider":  "CrowdDev",
+        "Service":  "CrowdDev"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Crypto\\Crypto.node.ts",
+        "Provider":  "Crypto",
+        "Service":  "Crypto"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\CustomerIo\\CustomerIo.node.ts",
+        "Provider":  "CustomerIo",
+        "Service":  "CustomerIo"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\DataTable\\DataTable.node.ts",
+        "Provider":  "DataTable",
+        "Service":  "DataTable"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\DateTime\\DateTime.node.ts",
+        "Provider":  "DateTime",
+        "Service":  "DateTime"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\DateTime\\V1\\DateTimeV1.node.ts",
+        "Provider":  "DateTime",
+        "Service":  "DateTimeV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\DateTime\\V2\\DateTimeV2.node.ts",
+        "Provider":  "DateTime",
+        "Service":  "DateTimeV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\DebugHelper\\DebugHelper.node.ts",
+        "Provider":  "DebugHelper",
+        "Service":  "DebugHelper"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\DeepL\\DeepL.node.ts",
+        "Provider":  "DeepL",
+        "Service":  "DeepL"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Demio\\Demio.node.ts",
+        "Provider":  "Demio",
+        "Service":  "Demio"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Dhl\\Dhl.node.ts",
+        "Provider":  "Dhl",
+        "Service":  "Dhl"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Discord\\Discord.node.ts",
+        "Provider":  "Discord",
+        "Service":  "Discord"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Discord\\v1\\DiscordV1.node.ts",
+        "Provider":  "Discord",
+        "Service":  "DiscordV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Discord\\v2\\DiscordV2.node.ts",
+        "Provider":  "Discord",
+        "Service":  "DiscordV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Discourse\\Discourse.node.ts",
+        "Provider":  "Discourse",
+        "Service":  "Discourse"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Disqus\\Disqus.node.ts",
+        "Provider":  "Disqus",
+        "Service":  "Disqus"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Drift\\Drift.node.ts",
+        "Provider":  "Drift",
+        "Service":  "Drift"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Dropbox\\Dropbox.node.ts",
+        "Provider":  "Dropbox",
+        "Service":  "Dropbox"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Dropcontact\\Dropcontact.node.ts",
+        "Provider":  "Dropcontact",
+        "Service":  "Dropcontact"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\EditImage\\EditImage.node.ts",
+        "Provider":  "EditImage",
+        "Service":  "EditImage"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Egoi\\Egoi.node.ts",
+        "Provider":  "Egoi",
+        "Service":  "Egoi"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Elastic\\Elasticsearch\\Elasticsearch.node.ts",
+        "Provider":  "Elastic",
+        "Service":  "Elasticsearch"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Elastic\\ElasticSecurity\\ElasticSecurity.node.ts",
+        "Provider":  "Elastic",
+        "Service":  "ElasticSecurity"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\EmailReadImap\\EmailReadImap.node.ts",
+        "Provider":  "EmailReadImap",
+        "Service":  "EmailReadImap"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\EmailReadImap\\v1\\EmailReadImapV1.node.ts",
+        "Provider":  "EmailReadImap",
+        "Service":  "EmailReadImapV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\EmailReadImap\\v2\\EmailReadImapV2.node.ts",
+        "Provider":  "EmailReadImap",
+        "Service":  "EmailReadImapV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\EmailSend\\EmailSend.node.ts",
+        "Provider":  "EmailSend",
+        "Service":  "EmailSend"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\EmailSend\\v1\\EmailSendV1.node.ts",
+        "Provider":  "EmailSend",
+        "Service":  "EmailSendV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\EmailSend\\v2\\EmailSendV2.node.ts",
+        "Provider":  "EmailSend",
+        "Service":  "EmailSendV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Emelia\\Emelia.node.ts",
+        "Provider":  "Emelia",
+        "Service":  "Emelia"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ERPNext\\ERPNext.node.ts",
+        "Provider":  "ERPNext",
+        "Service":  "ERPNext"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Evaluation\\Evaluation\\Description.node.ts",
+        "Provider":  "Evaluation",
+        "Service":  "Description"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ExecuteCommand\\ExecuteCommand.node.ts",
+        "Provider":  "ExecuteCommand",
+        "Service":  "ExecuteCommand"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ExecuteWorkflow\\ExecuteWorkflow\\ExecuteWorkflow.node.ts",
+        "Provider":  "ExecuteWorkflow",
+        "Service":  "ExecuteWorkflow"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ExecutionData\\ExecutionData.node.ts",
+        "Provider":  "ExecutionData",
+        "Service":  "ExecutionData"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Facebook\\FacebookGraphApi.node.ts",
+        "Provider":  "Facebook",
+        "Service":  "FacebookGraphApi"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\FileMaker\\FileMaker.node.ts",
+        "Provider":  "FileMaker",
+        "Service":  "FileMaker"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Files\\ConvertToFile\\ConvertToFile.node.ts",
+        "Provider":  "Files",
+        "Service":  "ConvertToFile"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Files\\ExtractFromFile\\ExtractFromFile.node.ts",
+        "Provider":  "Files",
+        "Service":  "ExtractFromFile"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Files\\ReadWriteFile\\ReadWriteFile.node.ts",
+        "Provider":  "Files",
+        "Service":  "ReadWriteFile"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Filter\\Filter.node.ts",
+        "Provider":  "Filter",
+        "Service":  "Filter"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Filter\\V1\\FilterV1.node.ts",
+        "Provider":  "Filter",
+        "Service":  "FilterV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Filter\\V2\\FilterV2.node.ts",
+        "Provider":  "Filter",
+        "Service":  "FilterV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Flow\\Flow.node.ts",
+        "Provider":  "Flow",
+        "Service":  "Flow"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Form\\Form.node.ts",
+        "Provider":  "Form",
+        "Service":  "Form"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Freshdesk\\Freshdesk.node.ts",
+        "Provider":  "Freshdesk",
+        "Service":  "Freshdesk"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Freshservice\\Freshservice.node.ts",
+        "Provider":  "Freshservice",
+        "Service":  "Freshservice"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\FreshworksCrm\\FreshworksCrm.node.ts",
+        "Provider":  "FreshworksCrm",
+        "Service":  "FreshworksCrm"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Ftp\\Ftp.node.ts",
+        "Provider":  "Ftp",
+        "Service":  "Ftp"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Function\\Function.node.ts",
+        "Provider":  "Function",
+        "Service":  "Function"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\FunctionItem\\FunctionItem.node.ts",
+        "Provider":  "FunctionItem",
+        "Service":  "FunctionItem"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\GetResponse\\GetResponse.node.ts",
+        "Provider":  "GetResponse",
+        "Service":  "GetResponse"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Ghost\\Ghost.node.ts",
+        "Provider":  "Ghost",
+        "Service":  "Ghost"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Git\\Git.node.ts",
+        "Provider":  "Git",
+        "Service":  "Git"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Github\\Github.node.ts",
+        "Provider":  "Github",
+        "Service":  "Github"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Gitlab\\Gitlab.node.ts",
+        "Provider":  "Gitlab",
+        "Service":  "Gitlab"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Gong\\Gong.node.ts",
+        "Provider":  "Gong",
+        "Service":  "Gong"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Ads\\GoogleAds.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleAds"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Analytics\\GoogleAnalytics.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleAnalytics"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Analytics\\v1\\GoogleAnalyticsV1.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleAnalyticsV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Analytics\\v2\\GoogleAnalyticsV2.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleAnalyticsV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\BigQuery\\GoogleBigQuery.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleBigQuery"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\BigQuery\\v1\\GoogleBigQueryV1.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleBigQueryV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\BigQuery\\v2\\GoogleBigQueryV2.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleBigQueryV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Books\\GoogleBooks.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleBooks"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\BusinessProfile\\GoogleBusinessProfile.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleBusinessProfile"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Calendar\\GoogleCalendar.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleCalendar"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Chat\\GoogleChat.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleChat"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\CloudNaturalLanguage\\GoogleCloudNaturalLanguage.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleCloudNaturalLanguage"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\CloudStorage\\GoogleCloudStorage.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleCloudStorage"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Contacts\\GoogleContacts.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleContacts"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Docs\\GoogleDocs.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleDocs"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Drive\\GoogleDrive.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleDrive"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Drive\\v1\\GoogleDriveV1.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleDriveV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Drive\\v2\\GoogleDriveV2.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleDriveV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Firebase\\CloudFirestore\\GoogleFirebaseCloudFirestore.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleFirebaseCloudFirestore"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Firebase\\RealtimeDatabase\\GoogleFirebaseRealtimeDatabase.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleFirebaseRealtimeDatabase"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Gmail\\Gmail.node.ts",
+        "Provider":  "Google",
+        "Service":  "Gmail"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Gmail\\v1\\GmailV1.node.ts",
+        "Provider":  "Google",
+        "Service":  "GmailV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Gmail\\v2\\GmailV2.node.ts",
+        "Provider":  "Google",
+        "Service":  "GmailV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\GSuiteAdmin\\GSuiteAdmin.node.ts",
+        "Provider":  "Google",
+        "Service":  "GSuiteAdmin"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Perspective\\GooglePerspective.node.ts",
+        "Provider":  "Google",
+        "Service":  "GooglePerspective"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Sheet\\GoogleSheets.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleSheets"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Sheet\\v1\\GoogleSheetsV1.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleSheetsV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Sheet\\v2\\GoogleSheetsV2.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleSheetsV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Slides\\GoogleSlides.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleSlides"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Task\\GoogleTasks.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleTasks"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\Translate\\GoogleTranslate.node.ts",
+        "Provider":  "Google",
+        "Service":  "GoogleTranslate"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Google\\YouTube\\YouTube.node.ts",
+        "Provider":  "Google",
+        "Service":  "YouTube"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Gotify\\Gotify.node.ts",
+        "Provider":  "Gotify",
+        "Service":  "Gotify"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\GoToWebinar\\GoToWebinar.node.ts",
+        "Provider":  "GoToWebinar",
+        "Service":  "GoToWebinar"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Grafana\\Grafana.node.ts",
+        "Provider":  "Grafana",
+        "Service":  "Grafana"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\GraphQL\\GraphQL.node.ts",
+        "Provider":  "GraphQL",
+        "Service":  "GraphQL"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Grist\\Grist.node.ts",
+        "Provider":  "Grist",
+        "Service":  "Grist"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\HackerNews\\HackerNews.node.ts",
+        "Provider":  "HackerNews",
+        "Service":  "HackerNews"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\HaloPSA\\HaloPSA.node.ts",
+        "Provider":  "HaloPSA",
+        "Service":  "HaloPSA"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Harvest\\Harvest.node.ts",
+        "Provider":  "Harvest",
+        "Service":  "Harvest"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\HelpScout\\HelpScout.node.ts",
+        "Provider":  "HelpScout",
+        "Service":  "HelpScout"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\HighLevel\\HighLevel.node.ts",
+        "Provider":  "HighLevel",
+        "Service":  "HighLevel"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\HighLevel\\v1\\HighLevelV1.node.ts",
+        "Provider":  "HighLevel",
+        "Service":  "HighLevelV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\HighLevel\\v2\\HighLevelV2.node.ts",
+        "Provider":  "HighLevel",
+        "Service":  "HighLevelV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\HomeAssistant\\HomeAssistant.node.ts",
+        "Provider":  "HomeAssistant",
+        "Service":  "HomeAssistant"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Html\\Html.node.ts",
+        "Provider":  "Html",
+        "Service":  "Html"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\HtmlExtract\\HtmlExtract.node.ts",
+        "Provider":  "HtmlExtract",
+        "Service":  "HtmlExtract"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\HttpRequest\\HttpRequest.node.ts",
+        "Provider":  "HttpRequest",
+        "Service":  "HttpRequest"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\HttpRequest\\V1\\HttpRequestV1.node.ts",
+        "Provider":  "HttpRequest",
+        "Service":  "HttpRequestV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\HttpRequest\\V2\\HttpRequestV2.node.ts",
+        "Provider":  "HttpRequest",
+        "Service":  "HttpRequestV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\HttpRequest\\V3\\HttpRequestV3.node.ts",
+        "Provider":  "HttpRequest",
+        "Service":  "HttpRequestV3"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Hubspot\\Hubspot.node.ts",
+        "Provider":  "Hubspot",
+        "Service":  "Hubspot"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Hubspot\\V1\\HubspotV1.node.ts",
+        "Provider":  "Hubspot",
+        "Service":  "HubspotV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Hubspot\\V2\\HubspotV2.node.ts",
+        "Provider":  "Hubspot",
+        "Service":  "HubspotV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\HumanticAI\\HumanticAi.node.ts",
+        "Provider":  "HumanticAI",
+        "Service":  "HumanticAi"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Hunter\\Hunter.node.ts",
+        "Provider":  "Hunter",
+        "Service":  "Hunter"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ICalendar\\ICalendar.node.ts",
+        "Provider":  "ICalendar",
+        "Service":  "ICalendar"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\If\\If.node.ts",
+        "Provider":  "If",
+        "Service":  "If"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\If\\V1\\IfV1.node.ts",
+        "Provider":  "If",
+        "Service":  "IfV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\If\\V2\\IfV2.node.ts",
+        "Provider":  "If",
+        "Service":  "IfV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Intercom\\Intercom.node.ts",
+        "Provider":  "Intercom",
+        "Service":  "Intercom"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Interval\\Interval.node.ts",
+        "Provider":  "Interval",
+        "Service":  "Interval"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\InvoiceNinja\\InvoiceNinja.node.ts",
+        "Provider":  "InvoiceNinja",
+        "Service":  "InvoiceNinja"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ItemLists\\ItemLists.node.ts",
+        "Provider":  "ItemLists",
+        "Service":  "ItemLists"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ItemLists\\V1\\ItemListsV1.node.ts",
+        "Provider":  "ItemLists",
+        "Service":  "ItemListsV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ItemLists\\V2\\ItemListsV2.node.ts",
+        "Provider":  "ItemLists",
+        "Service":  "ItemListsV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ItemLists\\V3\\ItemListsV3.node.ts",
+        "Provider":  "ItemLists",
+        "Service":  "ItemListsV3"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Iterable\\Iterable.node.ts",
+        "Provider":  "Iterable",
+        "Service":  "Iterable"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Jenkins\\Jenkins.node.ts",
+        "Provider":  "Jenkins",
+        "Service":  "Jenkins"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\JinaAI\\JinaAi.node.ts",
+        "Provider":  "JinaAI",
+        "Service":  "JinaAi"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Jira\\Jira.node.ts",
+        "Provider":  "Jira",
+        "Service":  "Jira"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Jwt\\Jwt.node.ts",
+        "Provider":  "Jwt",
+        "Service":  "Jwt"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Kafka\\Kafka.node.ts",
+        "Provider":  "Kafka",
+        "Service":  "Kafka"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Keap\\Keap.node.ts",
+        "Provider":  "Keap",
+        "Service":  "Keap"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Kitemaker\\Kitemaker.node.ts",
+        "Provider":  "Kitemaker",
+        "Service":  "Kitemaker"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\KoBoToolbox\\KoBoToolbox.node.ts",
+        "Provider":  "KoBoToolbox",
+        "Service":  "KoBoToolbox"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Ldap\\Ldap.node.ts",
+        "Provider":  "Ldap",
+        "Service":  "Ldap"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Lemlist\\Lemlist.node.ts",
+        "Provider":  "Lemlist",
+        "Service":  "Lemlist"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Lemlist\\v1\\LemlistV1.node.ts",
+        "Provider":  "Lemlist",
+        "Service":  "LemlistV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Lemlist\\v2\\LemlistV2.node.ts",
+        "Provider":  "Lemlist",
+        "Service":  "LemlistV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Line\\Line.node.ts",
+        "Provider":  "Line",
+        "Service":  "Line"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Linear\\Linear.node.ts",
+        "Provider":  "Linear",
+        "Service":  "Linear"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\LingvaNex\\LingvaNex.node.ts",
+        "Provider":  "LingvaNex",
+        "Service":  "LingvaNex"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\LinkedIn\\LinkedIn.node.ts",
+        "Provider":  "LinkedIn",
+        "Service":  "LinkedIn"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\LoneScale\\LoneScale.node.ts",
+        "Provider":  "LoneScale",
+        "Service":  "LoneScale"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Magento\\Magento2.node.ts",
+        "Provider":  "Magento",
+        "Service":  "Magento2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Mailcheck\\Mailcheck.node.ts",
+        "Provider":  "Mailcheck",
+        "Service":  "Mailcheck"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Mailchimp\\Mailchimp.node.ts",
+        "Provider":  "Mailchimp",
+        "Service":  "Mailchimp"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\MailerLite\\MailerLite.node.ts",
+        "Provider":  "MailerLite",
+        "Service":  "MailerLite"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\MailerLite\\v1\\MailerLiteV1.node.ts",
+        "Provider":  "MailerLite",
+        "Service":  "MailerLiteV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\MailerLite\\v2\\MailerLiteV2.node.ts",
+        "Provider":  "MailerLite",
+        "Service":  "MailerLiteV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Mailgun\\Mailgun.node.ts",
+        "Provider":  "Mailgun",
+        "Service":  "Mailgun"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Mailjet\\Mailjet.node.ts",
+        "Provider":  "Mailjet",
+        "Service":  "Mailjet"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Mandrill\\Mandrill.node.ts",
+        "Provider":  "Mandrill",
+        "Service":  "Mandrill"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Markdown\\Markdown.node.ts",
+        "Provider":  "Markdown",
+        "Service":  "Markdown"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Marketstack\\Marketstack.node.ts",
+        "Provider":  "Marketstack",
+        "Service":  "Marketstack"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Matrix\\Matrix.node.ts",
+        "Provider":  "Matrix",
+        "Service":  "Matrix"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Mattermost\\Mattermost.node.ts",
+        "Provider":  "Mattermost",
+        "Service":  "Mattermost"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Mattermost\\v1\\MattermostV1.node.ts",
+        "Provider":  "Mattermost",
+        "Service":  "MattermostV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Mautic\\Mautic.node.ts",
+        "Provider":  "Mautic",
+        "Service":  "Mautic"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Medium\\Medium.node.ts",
+        "Provider":  "Medium",
+        "Service":  "Medium"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Merge\\Merge.node.ts",
+        "Provider":  "Merge",
+        "Service":  "Merge"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Merge\\v1\\MergeV1.node.ts",
+        "Provider":  "Merge",
+        "Service":  "MergeV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Merge\\v2\\MergeV2.node.ts",
+        "Provider":  "Merge",
+        "Service":  "MergeV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Merge\\v3\\MergeV3.node.ts",
+        "Provider":  "Merge",
+        "Service":  "MergeV3"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\MessageBird\\MessageBird.node.ts",
+        "Provider":  "MessageBird",
+        "Service":  "MessageBird"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Metabase\\Metabase.node.ts",
+        "Provider":  "Metabase",
+        "Service":  "Metabase"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\AzureCosmosDb\\AzureCosmosDb.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "AzureCosmosDb"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\Dynamics\\MicrosoftDynamicsCrm.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftDynamicsCrm"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\Entra\\MicrosoftEntra.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftEntra"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\Excel\\MicrosoftExcel.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftExcel"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\Excel\\v1\\MicrosoftExcelV1.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftExcelV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\Excel\\v2\\MicrosoftExcelV2.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftExcelV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\GraphSecurity\\MicrosoftGraphSecurity.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftGraphSecurity"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\OneDrive\\MicrosoftOneDrive.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftOneDrive"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\Outlook\\MicrosoftOutlook.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftOutlook"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\Outlook\\v1\\MicrosoftOutlookV1.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftOutlookV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\Outlook\\v2\\MicrosoftOutlookV2.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftOutlookV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\SharePoint\\MicrosoftSharePoint.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftSharePoint"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\Sql\\MicrosoftSql.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftSql"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\Storage\\AzureStorage.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "AzureStorage"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\Teams\\MicrosoftTeams.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftTeams"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\Teams\\v1\\MicrosoftTeamsV1.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftTeamsV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\Teams\\v2\\MicrosoftTeamsV2.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftTeamsV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Microsoft\\ToDo\\MicrosoftToDo.node.ts",
+        "Provider":  "Microsoft",
+        "Service":  "MicrosoftToDo"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Mindee\\Mindee.node.ts",
+        "Provider":  "Mindee",
+        "Service":  "Mindee"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Misp\\Misp.node.ts",
+        "Provider":  "Misp",
+        "Service":  "Misp"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\MistralAI\\MistralAi.node.ts",
+        "Provider":  "MistralAI",
+        "Service":  "MistralAi"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Mocean\\Mocean.node.ts",
+        "Provider":  "Mocean",
+        "Service":  "Mocean"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\MondayCom\\MondayCom.node.ts",
+        "Provider":  "MondayCom",
+        "Service":  "MondayCom"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\MongoDb\\MongoDb.node.ts",
+        "Provider":  "MongoDb",
+        "Service":  "MongoDb"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\MonicaCrm\\MonicaCrm.node.ts",
+        "Provider":  "MonicaCrm",
+        "Service":  "MonicaCrm"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\MoveBinaryData\\MoveBinaryData.node.ts",
+        "Provider":  "MoveBinaryData",
+        "Service":  "MoveBinaryData"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\MQTT\\Mqtt.node.ts",
+        "Provider":  "MQTT",
+        "Service":  "Mqtt"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Msg91\\Msg91.node.ts",
+        "Provider":  "Msg91",
+        "Service":  "Msg91"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\MySql\\MySql.node.ts",
+        "Provider":  "MySql",
+        "Service":  "MySql"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\MySql\\v1\\MySqlV1.node.ts",
+        "Provider":  "MySql",
+        "Service":  "MySqlV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\MySql\\v2\\MySqlV2.node.ts",
+        "Provider":  "MySql",
+        "Service":  "MySqlV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\N8n\\N8n.node.ts",
+        "Provider":  "N8n",
+        "Service":  "N8n"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\N8nTrainingCustomerDatastore\\N8nTrainingCustomerDatastore.node.ts",
+        "Provider":  "N8nTrainingCustomerDatastore",
+        "Service":  "N8nTrainingCustomerDatastore"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\N8nTrainingCustomerMessenger\\N8nTrainingCustomerMessenger.node.ts",
+        "Provider":  "N8nTrainingCustomerMessenger",
+        "Service":  "N8nTrainingCustomerMessenger"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Nasa\\Nasa.node.ts",
+        "Provider":  "Nasa",
+        "Service":  "Nasa"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Netlify\\Netlify.node.ts",
+        "Provider":  "Netlify",
+        "Service":  "Netlify"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Netscaler\\ADC\\NetscalerAdc.node.ts",
+        "Provider":  "Netscaler",
+        "Service":  "NetscalerAdc"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\NextCloud\\NextCloud.node.ts",
+        "Provider":  "NextCloud",
+        "Service":  "NextCloud"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\NocoDB\\NocoDB.node.ts",
+        "Provider":  "NocoDB",
+        "Service":  "NocoDB"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\NoOp\\NoOp.node.ts",
+        "Provider":  "NoOp",
+        "Service":  "NoOp"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Notion\\Notion.node.ts",
+        "Provider":  "Notion",
+        "Service":  "Notion"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Notion\\v1\\NotionV1.node.ts",
+        "Provider":  "Notion",
+        "Service":  "NotionV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Notion\\v2\\NotionV2.node.ts",
+        "Provider":  "Notion",
+        "Service":  "NotionV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Npm\\Npm.node.ts",
+        "Provider":  "Npm",
+        "Service":  "Npm"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Odoo\\Odoo.node.ts",
+        "Provider":  "Odoo",
+        "Service":  "Odoo"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Okta\\Okta.node.ts",
+        "Provider":  "Okta",
+        "Service":  "Okta"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\OneSimpleApi\\OneSimpleApi.node.ts",
+        "Provider":  "OneSimpleApi",
+        "Service":  "OneSimpleApi"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Onfleet\\Onfleet.node.ts",
+        "Provider":  "Onfleet",
+        "Service":  "Onfleet"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\OpenAi\\OpenAi.node.ts",
+        "Provider":  "OpenAi",
+        "Service":  "OpenAi"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\OpenThesaurus\\OpenThesaurus.node.ts",
+        "Provider":  "OpenThesaurus",
+        "Service":  "OpenThesaurus"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\OpenWeatherMap\\OpenWeatherMap.node.ts",
+        "Provider":  "OpenWeatherMap",
+        "Service":  "OpenWeatherMap"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Oracle\\Sql\\OracleSql.node.ts",
+        "Provider":  "Oracle",
+        "Service":  "OracleSql"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Orbit\\Orbit.node.ts",
+        "Provider":  "Orbit",
+        "Service":  "Orbit"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Oura\\Oura.node.ts",
+        "Provider":  "Oura",
+        "Service":  "Oura"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Paddle\\Paddle.node.ts",
+        "Provider":  "Paddle",
+        "Service":  "Paddle"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\PagerDuty\\PagerDuty.node.ts",
+        "Provider":  "PagerDuty",
+        "Service":  "PagerDuty"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\PayPal\\PayPal.node.ts",
+        "Provider":  "PayPal",
+        "Service":  "PayPal"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Peekalink\\Peekalink.node.ts",
+        "Provider":  "Peekalink",
+        "Service":  "Peekalink"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Perplexity\\Perplexity.node.ts",
+        "Provider":  "Perplexity",
+        "Service":  "Perplexity"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Phantombuster\\Phantombuster.node.ts",
+        "Provider":  "Phantombuster",
+        "Service":  "Phantombuster"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\PhilipsHue\\PhilipsHue.node.ts",
+        "Provider":  "PhilipsHue",
+        "Service":  "PhilipsHue"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Pipedrive\\Pipedrive.node.ts",
+        "Provider":  "Pipedrive",
+        "Service":  "Pipedrive"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Plivo\\Plivo.node.ts",
+        "Provider":  "Plivo",
+        "Service":  "Plivo"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\PostBin\\PostBin.node.ts",
+        "Provider":  "PostBin",
+        "Service":  "PostBin"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Postgres\\Postgres.node.ts",
+        "Provider":  "Postgres",
+        "Service":  "Postgres"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Postgres\\v1\\PostgresV1.node.ts",
+        "Provider":  "Postgres",
+        "Service":  "PostgresV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Postgres\\v2\\PostgresV2.node.ts",
+        "Provider":  "Postgres",
+        "Service":  "PostgresV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\PostHog\\PostHog.node.ts",
+        "Provider":  "PostHog",
+        "Service":  "PostHog"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ProfitWell\\ProfitWell.node.ts",
+        "Provider":  "ProfitWell",
+        "Service":  "ProfitWell"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Pushbullet\\Pushbullet.node.ts",
+        "Provider":  "Pushbullet",
+        "Service":  "Pushbullet"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Pushcut\\Pushcut.node.ts",
+        "Provider":  "Pushcut",
+        "Service":  "Pushcut"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Pushover\\Pushover.node.ts",
+        "Provider":  "Pushover",
+        "Service":  "Pushover"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\QuestDb\\QuestDb.node.ts",
+        "Provider":  "QuestDb",
+        "Service":  "QuestDb"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\QuickBase\\QuickBase.node.ts",
+        "Provider":  "QuickBase",
+        "Service":  "QuickBase"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\QuickBooks\\QuickBooks.node.ts",
+        "Provider":  "QuickBooks",
+        "Service":  "QuickBooks"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\QuickChart\\QuickChart.node.ts",
+        "Provider":  "QuickChart",
+        "Service":  "QuickChart"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\RabbitMQ\\RabbitMQ.node.ts",
+        "Provider":  "RabbitMQ",
+        "Service":  "RabbitMQ"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Raindrop\\Raindrop.node.ts",
+        "Provider":  "Raindrop",
+        "Service":  "Raindrop"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ReadBinaryFile\\ReadBinaryFile.node.ts",
+        "Provider":  "ReadBinaryFile",
+        "Service":  "ReadBinaryFile"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ReadBinaryFiles\\ReadBinaryFiles.node.ts",
+        "Provider":  "ReadBinaryFiles",
+        "Service":  "ReadBinaryFiles"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ReadPdf\\ReadPDF.node.ts",
+        "Provider":  "ReadPdf",
+        "Service":  "ReadPDF"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Reddit\\Reddit.node.ts",
+        "Provider":  "Reddit",
+        "Service":  "Reddit"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Redis\\Redis.node.ts",
+        "Provider":  "Redis",
+        "Service":  "Redis"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\RenameKeys\\RenameKeys.node.ts",
+        "Provider":  "RenameKeys",
+        "Service":  "RenameKeys"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\RespondToWebhook\\RespondToWebhook.node.ts",
+        "Provider":  "RespondToWebhook",
+        "Service":  "RespondToWebhook"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Rocketchat\\Rocketchat.node.ts",
+        "Provider":  "Rocketchat",
+        "Service":  "Rocketchat"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\RssFeedRead\\RssFeedRead.node.ts",
+        "Provider":  "RssFeedRead",
+        "Service":  "RssFeedRead"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Rundeck\\Rundeck.node.ts",
+        "Provider":  "Rundeck",
+        "Service":  "Rundeck"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\S3\\S3.node.ts",
+        "Provider":  "S3",
+        "Service":  "S3"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Salesforce\\Salesforce.node.ts",
+        "Provider":  "Salesforce",
+        "Service":  "Salesforce"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Salesmate\\Salesmate.node.ts",
+        "Provider":  "Salesmate",
+        "Service":  "Salesmate"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SeaTable\\SeaTable.node.ts",
+        "Provider":  "SeaTable",
+        "Service":  "SeaTable"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SeaTable\\v1\\SeaTable.node.ts",
+        "Provider":  "SeaTable",
+        "Service":  "SeaTable"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SeaTable\\v1\\SeaTableV1.node.ts",
+        "Provider":  "SeaTable",
+        "Service":  "SeaTableV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SeaTable\\v2\\SeaTableV2.node.ts",
+        "Provider":  "SeaTable",
+        "Service":  "SeaTableV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SeaTable\\v2\\actions\\SeaTable.node.ts",
+        "Provider":  "SeaTable",
+        "Service":  "SeaTable"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SecurityScorecard\\SecurityScorecard.node.ts",
+        "Provider":  "SecurityScorecard",
+        "Service":  "SecurityScorecard"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Segment\\Segment.node.ts",
+        "Provider":  "Segment",
+        "Service":  "Segment"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SendGrid\\SendGrid.node.ts",
+        "Provider":  "SendGrid",
+        "Service":  "SendGrid"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Sendy\\Sendy.node.ts",
+        "Provider":  "Sendy",
+        "Service":  "Sendy"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SentryIo\\SentryIo.node.ts",
+        "Provider":  "SentryIo",
+        "Service":  "SentryIo"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\ServiceNow\\ServiceNow.node.ts",
+        "Provider":  "ServiceNow",
+        "Service":  "ServiceNow"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Set\\Set.node.ts",
+        "Provider":  "Set",
+        "Service":  "Set"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Set\\v1\\SetV1.node.ts",
+        "Provider":  "Set",
+        "Service":  "SetV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Set\\v2\\SetV2.node.ts",
+        "Provider":  "Set",
+        "Service":  "SetV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Shopify\\Shopify.node.ts",
+        "Provider":  "Shopify",
+        "Service":  "Shopify"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Signl4\\Signl4.node.ts",
+        "Provider":  "Signl4",
+        "Service":  "Signl4"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Simulate\\Simulate.node.ts",
+        "Provider":  "Simulate",
+        "Service":  "Simulate"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Slack\\Slack.node.ts",
+        "Provider":  "Slack",
+        "Service":  "Slack"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Slack\\V1\\SlackV1.node.ts",
+        "Provider":  "Slack",
+        "Service":  "SlackV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Slack\\V2\\SlackV2.node.ts",
+        "Provider":  "Slack",
+        "Service":  "SlackV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Sms77\\Sms77.node.ts",
+        "Provider":  "Sms77",
+        "Service":  "Sms77"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Snowflake\\Snowflake.node.ts",
+        "Provider":  "Snowflake",
+        "Service":  "Snowflake"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SplitInBatches\\SplitInBatches.node.ts",
+        "Provider":  "SplitInBatches",
+        "Service":  "SplitInBatches"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SplitInBatches\\v1\\SplitInBatchesV1.node.ts",
+        "Provider":  "SplitInBatches",
+        "Service":  "SplitInBatchesV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SplitInBatches\\v2\\SplitInBatchesV2.node.ts",
+        "Provider":  "SplitInBatches",
+        "Service":  "SplitInBatchesV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SplitInBatches\\v3\\SplitInBatchesV3.node.ts",
+        "Provider":  "SplitInBatches",
+        "Service":  "SplitInBatchesV3"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Splunk\\Splunk.node.ts",
+        "Provider":  "Splunk",
+        "Service":  "Splunk"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Splunk\\v1\\SplunkV1.node.ts",
+        "Provider":  "Splunk",
+        "Service":  "SplunkV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Splunk\\v2\\SplunkV2.node.ts",
+        "Provider":  "Splunk",
+        "Service":  "SplunkV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Spontit\\Spontit.node.ts",
+        "Provider":  "Spontit",
+        "Service":  "Spontit"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Spotify\\Spotify.node.ts",
+        "Provider":  "Spotify",
+        "Service":  "Spotify"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SpreadsheetFile\\SpreadsheetFile.node.ts",
+        "Provider":  "SpreadsheetFile",
+        "Service":  "SpreadsheetFile"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SpreadsheetFile\\v1\\SpreadsheetFileV1.node.ts",
+        "Provider":  "SpreadsheetFile",
+        "Service":  "SpreadsheetFileV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SpreadsheetFile\\v2\\SpreadsheetFileV2.node.ts",
+        "Provider":  "SpreadsheetFile",
+        "Service":  "SpreadsheetFileV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Ssh\\Ssh.node.ts",
+        "Provider":  "Ssh",
+        "Service":  "Ssh"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Stackby\\Stackby.node.ts",
+        "Provider":  "Stackby",
+        "Service":  "Stackby"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Start\\Start.node.ts",
+        "Provider":  "Start",
+        "Service":  "Start"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\StickyNote\\StickyNote.node.ts",
+        "Provider":  "StickyNote",
+        "Service":  "StickyNote"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\StopAndError\\StopAndError.node.ts",
+        "Provider":  "StopAndError",
+        "Service":  "StopAndError"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Storyblok\\Storyblok.node.ts",
+        "Provider":  "Storyblok",
+        "Service":  "Storyblok"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Strapi\\Strapi.node.ts",
+        "Provider":  "Strapi",
+        "Service":  "Strapi"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Strava\\Strava.node.ts",
+        "Provider":  "Strava",
+        "Service":  "Strava"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Stripe\\Stripe.node.ts",
+        "Provider":  "Stripe",
+        "Service":  "Stripe"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Supabase\\Supabase.node.ts",
+        "Provider":  "Supabase",
+        "Service":  "Supabase"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Switch\\Switch.node.ts",
+        "Provider":  "Switch",
+        "Service":  "Switch"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Switch\\V1\\SwitchV1.node.ts",
+        "Provider":  "Switch",
+        "Service":  "SwitchV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Switch\\V2\\SwitchV2.node.ts",
+        "Provider":  "Switch",
+        "Service":  "SwitchV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Switch\\V3\\SwitchV3.node.ts",
+        "Provider":  "Switch",
+        "Service":  "SwitchV3"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SyncroMSP\\SyncroMsp.node.ts",
+        "Provider":  "SyncroMSP",
+        "Service":  "SyncroMsp"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\SyncroMSP\\v1\\SyncroMspV1.node.ts",
+        "Provider":  "SyncroMSP",
+        "Service":  "SyncroMspV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Taiga\\Taiga.node.ts",
+        "Provider":  "Taiga",
+        "Service":  "Taiga"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Tapfiliate\\Tapfiliate.node.ts",
+        "Provider":  "Tapfiliate",
+        "Service":  "Tapfiliate"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Telegram\\Telegram.node.ts",
+        "Provider":  "Telegram",
+        "Service":  "Telegram"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\TheHive\\TheHive.node.ts",
+        "Provider":  "TheHive",
+        "Service":  "TheHive"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\TheHiveProject\\TheHiveProject.node.ts",
+        "Provider":  "TheHiveProject",
+        "Service":  "TheHiveProject"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\TimescaleDb\\TimescaleDb.node.ts",
+        "Provider":  "TimescaleDb",
+        "Service":  "TimescaleDb"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Todoist\\Todoist.node.ts",
+        "Provider":  "Todoist",
+        "Service":  "Todoist"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Todoist\\v1\\TodoistV1.node.ts",
+        "Provider":  "Todoist",
+        "Service":  "TodoistV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Todoist\\v2\\TodoistV2.node.ts",
+        "Provider":  "Todoist",
+        "Service":  "TodoistV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Totp\\Totp.node.ts",
+        "Provider":  "Totp",
+        "Service":  "Totp"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Transform\\Aggregate\\Aggregate.node.ts",
+        "Provider":  "Transform",
+        "Service":  "Aggregate"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Transform\\Limit\\Limit.node.ts",
+        "Provider":  "Transform",
+        "Service":  "Limit"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Transform\\RemoveDuplicates\\RemoveDuplicates.node.ts",
+        "Provider":  "Transform",
+        "Service":  "RemoveDuplicates"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Transform\\RemoveDuplicates\\v1\\RemoveDuplicatesV1.node.ts",
+        "Provider":  "Transform",
+        "Service":  "RemoveDuplicatesV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Transform\\RemoveDuplicates\\v2\\RemoveDuplicatesV2.node.ts",
+        "Provider":  "Transform",
+        "Service":  "RemoveDuplicatesV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Transform\\Sort\\Sort.node.ts",
+        "Provider":  "Transform",
+        "Service":  "Sort"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Transform\\SplitOut\\SplitOut.node.ts",
+        "Provider":  "Transform",
+        "Service":  "SplitOut"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Transform\\Summarize\\Summarize.node.ts",
+        "Provider":  "Transform",
+        "Service":  "Summarize"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\TravisCi\\TravisCi.node.ts",
+        "Provider":  "TravisCi",
+        "Service":  "TravisCi"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Trello\\Trello.node.ts",
+        "Provider":  "Trello",
+        "Service":  "Trello"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Twake\\Twake.node.ts",
+        "Provider":  "Twake",
+        "Service":  "Twake"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Twilio\\Twilio.node.ts",
+        "Provider":  "Twilio",
+        "Service":  "Twilio"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Twist\\Twist.node.ts",
+        "Provider":  "Twist",
+        "Service":  "Twist"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Twitter\\Twitter.node.ts",
+        "Provider":  "Twitter",
+        "Service":  "Twitter"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Twitter\\V1\\TwitterV1.node.ts",
+        "Provider":  "Twitter",
+        "Service":  "TwitterV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Twitter\\V2\\TwitterV2.node.ts",
+        "Provider":  "Twitter",
+        "Service":  "TwitterV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\UnleashedSoftware\\UnleashedSoftware.node.ts",
+        "Provider":  "UnleashedSoftware",
+        "Service":  "UnleashedSoftware"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Uplead\\Uplead.node.ts",
+        "Provider":  "Uplead",
+        "Service":  "Uplead"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\UProc\\UProc.node.ts",
+        "Provider":  "UProc",
+        "Service":  "UProc"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\UptimeRobot\\UptimeRobot.node.ts",
+        "Provider":  "UptimeRobot",
+        "Service":  "UptimeRobot"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\UrlScanIo\\UrlScanIo.node.ts",
+        "Provider":  "UrlScanIo",
+        "Service":  "UrlScanIo"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Venafi\\Datacenter\\VenafiTlsProtectDatacenter.node.ts",
+        "Provider":  "Venafi",
+        "Service":  "VenafiTlsProtectDatacenter"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Venafi\\ProtectCloud\\VenafiTlsProtectCloud.node.ts",
+        "Provider":  "Venafi",
+        "Service":  "VenafiTlsProtectCloud"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Vero\\Vero.node.ts",
+        "Provider":  "Vero",
+        "Service":  "Vero"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Vonage\\Vonage.node.ts",
+        "Provider":  "Vonage",
+        "Service":  "Vonage"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Wait\\Wait.node.ts",
+        "Provider":  "Wait",
+        "Service":  "Wait"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Webflow\\Webflow.node.ts",
+        "Provider":  "Webflow",
+        "Service":  "Webflow"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Webflow\\V1\\WebflowV1.node.ts",
+        "Provider":  "Webflow",
+        "Service":  "WebflowV1"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Webflow\\V2\\WebflowV2.node.ts",
+        "Provider":  "Webflow",
+        "Service":  "WebflowV2"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Webhook\\Webhook.node.ts",
+        "Provider":  "Webhook",
+        "Service":  "Webhook"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Wekan\\Wekan.node.ts",
+        "Provider":  "Wekan",
+        "Service":  "Wekan"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\WhatsApp\\WhatsApp.node.ts",
+        "Provider":  "WhatsApp",
+        "Service":  "WhatsApp"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Wise\\Wise.node.ts",
+        "Provider":  "Wise",
+        "Service":  "Wise"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\WooCommerce\\WooCommerce.node.ts",
+        "Provider":  "WooCommerce",
+        "Service":  "WooCommerce"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Wordpress\\Wordpress.node.ts",
+        "Provider":  "Wordpress",
+        "Service":  "Wordpress"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\WriteBinaryFile\\WriteBinaryFile.node.ts",
+        "Provider":  "WriteBinaryFile",
+        "Service":  "WriteBinaryFile"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Xero\\Xero.node.ts",
+        "Provider":  "Xero",
+        "Service":  "Xero"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Xml\\Xml.node.ts",
+        "Provider":  "Xml",
+        "Service":  "Xml"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Yourls\\Yourls.node.ts",
+        "Provider":  "Yourls",
+        "Service":  "Yourls"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Zammad\\Zammad.node.ts",
+        "Provider":  "Zammad",
+        "Service":  "Zammad"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Zendesk\\Zendesk.node.ts",
+        "Provider":  "Zendesk",
+        "Service":  "Zendesk"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Zoho\\ZohoCrm.node.ts",
+        "Provider":  "Zoho",
+        "Service":  "ZohoCrm"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Zoom\\Zoom.node.ts",
+        "Provider":  "Zoom",
+        "Service":  "Zoom"
+    },
+    {
+        "NodeFile":  "C:\\Users\\Admin\\Desktop\\Lyxal_Solution\\n8n-master\\packages\\nodes-base\\nodes\\Zulip\\Zulip.node.ts",
+        "Provider":  "Zulip",
+        "Service":  "Zulip"
+    }
+]

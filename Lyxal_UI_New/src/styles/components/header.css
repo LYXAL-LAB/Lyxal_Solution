@@ -1,0 +1,75 @@
+.header-root {
+  /* Dimensions et Espacements */
+  width: 100%;
+  
+  /* Flexbox pour le contenu interne */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  
+  /* Variables de configuration par défaut */
+  --header-h: 4rem;           /* Hauteur minimale */
+  --header-bg: var(--color-base-100); /* Couleur de fond */
+  --header-px: 1.5rem;        /* Padding horizontal */
+  --header-py: 0.5rem;        /* Padding vertical */
+  --header-border: 1px solid var(--color-base-200); /* Bordure optionnelle */
+  --header-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);   /* Ombre légère */
+
+  /* Application des variables */
+  min-height: var(--header-h);
+  background-color: var(--header-bg);
+  padding-inline: var(--header-px);
+  padding-block: var(--header-py);
+  border-bottom: var(--header-border);
+  box-shadow: var(--header-shadow);
+  
+  /* Transition : On retire la transition sur bg/border pour éviter le lag au changement de thème */
+  /* transition: background-color 0.3s ease, border-color 0.3s ease, padding 0.3s ease; */
+  
+  /* Z-index par défaut pour être au-dessus du contenu */
+  z-index: 50;
+}
+
+/* --- Variantes de Positionnement --- */
+
+/* Reste collé en haut quand on scroll */
+.header-sticky {
+  position: sticky;
+  top: 0;
+}
+
+/* Reste fixe en haut (se superpose au contenu si transparent) */
+.header-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+/* Position normale dans le flux */
+.header-static {
+  position: relative;
+}
+
+/* --- Variantes de Style --- */
+
+/* Header transparent */
+.header-transparent {
+  --header-bg: transparent;
+  --header-shadow: none;
+  --header-border: none;
+}
+
+/* Header flottant (Glassmorphism) */
+.header-floating {
+  --header-bg: color-mix(in srgb, var(--color-base-100) 80%, transparent);
+  backdrop-filter: blur(12px);
+  margin-top: 1rem;
+  width: calc(100% - 2rem);
+  margin-inline: auto;
+  border-radius: var(--radius-box, 0.5rem);
+  position: fixed; /* Flottant implique souvent fixe */
+  top: 0;
+  left: 0;
+  right: 0;
+}

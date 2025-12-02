@@ -1,0 +1,25 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .: {}
+
+  packages/logic-backend:
+    dependencies:
+      '@lyxal/logic-shared':
+        specifier: file:../logic-shared
+        version: link:../logic-shared
+
+  packages/logic-build: {}
+
+  packages/logic-shared: {}
+
+  packages/logic-ui:
+    dependencies:
+      '@lyxal/logic-shared':
+        specifier: file:../logic-shared
+        version: link:../logic-shared

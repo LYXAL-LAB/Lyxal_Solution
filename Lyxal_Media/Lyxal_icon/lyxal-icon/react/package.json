@@ -1,0 +1,55 @@
+{
+	"name": "@lyxal-icon/react-iconify",
+	"description": "React wrapper for Lyxal Icon web component",
+	"author": "Vjacheslav Trushkin",
+	"version": "3.0.3",
+	"license": "MIT",
+	"bugs": "https://github.com/Lyxal/Lyxal/issues",
+	"homepage": "https://Lyxal.design/",
+	"funding": "https://github.com/sponsors/cyberalien",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Lyxal/Lyxal.git",
+		"directory": "Lyxal-icon/react"
+	},
+	"scripts": {
+		"clean": "rimraf lib dist tsconfig.tsbuildinfo",
+		"prebuild": "bun run clean",
+		"build": "tsup",
+		"test": "bun test"
+	},
+	"main": "dist/Lyxal.js",
+	"module": "dist/Lyxal.mjs",
+	"types": "dist/Lyxal.d.ts",
+	"exports": {
+		".": {
+			"import": "./dist/Lyxal.mjs",
+			"types": "./dist/Lyxal.d.ts",
+			"default": "./dist/Lyxal.js"
+		},
+		"./lib/Lyxal": {
+			"import": "./dist/Lyxal.mjs",
+			"types": "./dist/Lyxal.d.ts",
+			"require": "./dist/Lyxal.js"
+		},
+		"./*": "./*"
+	},
+	"dependencies": {
+		"lyxal-icon": "workspace:^",
+		"react": "^19.0.0"
+	},
+	"devDependencies": {
+		"@lyxal-icon/core": "workspace:^",
+		"@lyxal-icon/utils": "workspace:^",
+		"@testing-library/react": "^16.3.0",
+		"@types/react": "^19.2.6",
+		"@types/react-test-renderer": "^19.1.0",
+		"@vitejs/plugin-react": "^5.1.1",
+		"jsdom": "^27.2.0",
+		"rimraf": "^6.1.2",
+		"tsup": "^8.5.1"
+	},
+	"peerDependencies": {
+		"react": ">=18.0.0"
+	}
+}

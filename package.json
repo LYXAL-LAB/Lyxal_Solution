@@ -1,0 +1,14 @@
+{
+  "name": "lyxal-solution",
+  "private": true,
+  "workspaces": [
+    "Lyxal_Compression",
+    "Lyxal_PDF/upng",
+    "Lyxal_PDF/fonts",
+    "Lyxal_PDF/core",
+    "Lyxal_PDF/app"
+  ],
+  "dependencies": {
+    "bun-types": "latest"
+  }
+}

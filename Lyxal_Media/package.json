@@ -1,0 +1,11 @@
+{
+  "name": "lyxal-media",
+  "private": true,
+  "workspaces": [
+    "utils/*",
+    "types/*"
+  ],
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}

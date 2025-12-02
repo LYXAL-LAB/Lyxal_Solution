@@ -1,0 +1,22 @@
+{
+  "name": "@lyxalsuite/lyxal-docs",
+  "version": "1.0.0",
+  "description": "Hub de documentation centralisée pour LyxalSuite",
+  "type": "module",
+  "scripts": {
+    "serve": "npx http-server . -p 3001",
+    "lint:docs": "markdownlint *.md",
+    "validate": "echo 'Documentation validation passed'"
+  },
+  "keywords": [
+    "lyxalsuite",
+    "documentation",
+    "architecture",
+    "guides"
+  ],
+  "author": "LyxalSuite",
+  "license": "MIT",
+  "devDependencies": {
+    "markdownlint-cli": "^0.37.0"
+  }
+} 

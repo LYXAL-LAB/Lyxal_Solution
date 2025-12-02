@@ -70,8 +70,11 @@ export const useStudioPage = (code: string): UseStudioPageResult => {
 
   const loadPage = async () => {
     if (!code || configLoading) {
+      console.log(`[useStudioPage] Skipping load - code: ${code}, configLoading: ${configLoading}`);
       return;
     }
+
+    console.log(`[useStudioPage] 🔍 Loading page '${code}'...`);
 
     try {
       setLoading(true);
@@ -79,26 +82,44 @@ export const useStudioPage = (code: string): UseStudioPageResult => {
 
       // Requête SurrealDB pour charger la page
       const query = `
-        SELECT * FROM studio_page 
-        WHERE identity.code = '${code}' 
+        SELECT * FROM studio_page
+        WHERE identity.code = '${code}'
         AND status.is_active = true
         LIMIT 1
       `;
 
+      console.log(`[useStudioPage] 📡 Executing query:`, query);
+      console.log(`[useStudioPage] 🔗 Config used:`, {
+        url: config.infrastructure?.surrealDbUrl?.value,
+        ns: config.infrastructure?.surrealNamespace?.value,
+        db: config.infrastructure?.surrealDatabase?.value
+      });
+
       const result = await SurrealClient.query<StudioPage[]>(config, query);
 
+      console.log(`[useStudioPage] 📦 Raw result:`, result);
+      console.log(`[useStudioPage] 📊 Result type:`, typeof result, Array.isArray(result) ? `length: ${result.length}` : 'not array');
+
       if (result && Array.isArray(result) && result.length > 0) {
+        console.log(`[useStudioPage] ✅ Page found:`, result[0].identity);
         setPage(result[0]);
       } else {
+        console.log(`[useStudioPage] ❌ Page not found. Checking if exists inactive...`);
+
+        // Requête sans le filtre is_active pour déboguer
+        const debugQuery = `SELECT identity.code, status.is_active FROM studio_page WHERE identity.code = '${code}'`;
+        const debugResult = await SurrealClient.query<any[]>(config, debugQuery);
+        console.log(`[useStudioPage] 🔍 Debug result:`, debugResult);
+
         setPage(null);
         setError(new Error(`Page '${code}' not found or inactive`));
       }
     } catch (err) {
-      const error = err instanceof Error 
-        ? err 
+      const error = err instanceof Error
+        ? err
         : new Error(`Failed to load page '${code}'`);
+      console.error(`[useStudioPage] 💥 Failed to load page '${code}':`, err);
       setError(error);
-      console.error(`[useStudioPage] Failed to load page '${code}':`, err);
       setPage(null);
     } finally {
       setLoading(false);

@@ -1,0 +1,70 @@
+{
+	"name": "@lyxal-icon/react",
+	"description": "Lyxal icon component for React.",
+	"author": "Vjacheslav Trushkin",
+	"type": "module",
+	"version": "6.0.2",
+	"license": "MIT",
+	"bugs": "https://github.com/Lyxal/Lyxal/issues",
+	"homepage": "https://Lyxal.design/",
+	"funding": "https://github.com/sponsors/cyberalien",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Lyxal/Lyxal.git",
+		"directory": "components/react"
+	},
+	"scripts": {
+		"clean": "rimraf lib dist tsconfig.tsbuildinfo",
+		"prebuild": "bun run clean",
+		"build": "node build",
+		"build:lib": "tsc -b tsconfig.src.json",
+		"build:dist": "rollup -c rollup.config.js",
+		"prebuild:api": "api-extractor run --local --verbose --config api-extractor.offline.json",
+		"build:api": "api-extractor run --local --verbose --config api-extractor.Lyxal.json",
+		"build:cleanup": "node cleanup",
+		"test": "bun test"
+	},
+	"main": "dist/Lyxal.js",
+	"types": "dist/Lyxal.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/Lyxal.d.ts",
+			"require": "./dist/Lyxal.cjs",
+			"import": "./dist/Lyxal.js",
+			"default": "./dist/Lyxal.js"
+		},
+		"./offline": {
+			"types": "./dist/offline.d.ts",
+			"require": "./dist/offline.cjs",
+			"import": "./dist/offline.js",
+			"default": "./dist/offline.js"
+		},
+		"./dist/offline": {
+			"types": "./dist/offline.d.ts",
+			"require": "./dist/offline.cjs",
+			"import": "./dist/offline.js",
+			"default": "./dist/offline.js"
+		},
+		"./*": "./*"
+	},
+	"dependencies": {
+		"@lyxal-icon/types": "workspace:^"
+	},
+	"devDependencies": {
+		"@lyxal-icon/core": "workspace:^",
+		"@lyxal-icon/utils": "workspace:^",
+		"@microsoft/api-extractor": "^7.55.1",
+		"@rollup/plugin-node-resolve": "^16.0.3",
+		"@types/react": "^19.2.6",
+		"@types/react-dom": "^19.2.3",
+		"@vitest/browser-playwright": "^4.0.13",
+		"playwright": "^1.56.1",
+		"react": "^19.2.0",
+		"rimraf": "^6.1.2",
+		"rollup": "^4.53.3",
+		"vitest-browser-react": "^2.0.2"
+	},
+	"peerDependencies": {
+		"react": ">=18.0.0"
+	}
+}

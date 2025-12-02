@@ -1,0 +1,142 @@
+﻿[
+    {
+        "Provider":  "ActionNetwork",
+        "Description":  "Consume the Action Network API",
+        "DisplayName":  "Action Network",
+        "Service":  "ActionNetwork",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "ActiveCampaign",
+        "Description":  "Create and edit data in ActiveCampaign",
+        "DisplayName":  "ActiveCampaign",
+        "Service":  "ActiveCampaign",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "Adalo",
+        "Description":  "Consume Adalo API",
+        "DisplayName":  "Adalo",
+        "Service":  "Adalo",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "Affinity",
+        "Description":  "Consume Affinity API",
+        "DisplayName":  "Affinity",
+        "Service":  "Affinity",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "AgileCrm",
+        "Description":  "Consume Agile CRM API",
+        "DisplayName":  "Agile CRM",
+        "Service":  "AgileCrm",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "Airtable",
+        "Description":  "Read, update, write and delete data from Airtable",
+        "DisplayName":  "Airtable",
+        "Service":  "Airtable",
+        "Version":  "2.1"
+    },
+    {
+        "Provider":  "Airtable",
+        "Description":  "Read, update, write and delete data from Airtable",
+        "DisplayName":  "Airtable",
+        "Service":  "AirtableV1",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "Airtable",
+        "Description":  "Service AirtableV2",
+        "DisplayName":  "AirtableV2",
+        "Service":  "AirtableV2",
+        "Version":  "1.0"
+    },
+    {
+        "Provider":  "Airtop",
+        "Description":  "Scrape and control any site with Airtop",
+        "DisplayName":  "Airtop",
+        "Service":  "Airtop",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "AiTransform",
+        "Description":  "Modify data based on instructions written in plain english",
+        "DisplayName":  "AI Transform",
+        "Service":  "AiTransform",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "Amqp",
+        "Description":  "Sends a raw-message via AMQP 1.0, executed once per item",
+        "DisplayName":  "AMQP Sender",
+        "Service":  "Amqp",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "ApiTemplateIo",
+        "Description":  "Consume the APITemplate.io API",
+        "DisplayName":  "APITemplate.io",
+        "Service":  "ApiTemplateIo",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "Asana",
+        "Description":  "Consume Asana REST API",
+        "DisplayName":  "Asana",
+        "Service":  "Asana",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "Automizy",
+        "Description":  "Consume Automizy API",
+        "DisplayName":  "Automizy",
+        "Service":  "Automizy",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "Autopilot",
+        "Description":  "Consume Autopilot API",
+        "DisplayName":  "Autopilot",
+        "Service":  "Autopilot",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "Aws",
+        "Description":  "Invoke functions on AWS Lambda",
+        "DisplayName":  "AWS Lambda",
+        "Service":  "AwsLambda",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "Aws",
+        "Description":  "Sends data to AWS SNS",
+        "DisplayName":  "AWS SNS",
+        "Service":  "AwsSns",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "Aws",
+        "Description":  "Sends data to AWS Certificate Manager",
+        "DisplayName":  "AWS Certificate Manager",
+        "Service":  "AwsCertificateManager",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "Aws",
+        "Description":  "Sends data to AWS Cognito",
+        "DisplayName":  "AWS Cognito",
+        "Service":  "AwsCognito",
+        "Version":  "1"
+    },
+    {
+        "Provider":  "Aws",
+        "Description":  "Sends data to Amazon Comprehend",
+        "DisplayName":  "AWS Comprehend",
+        "Service":  "AwsComprehend",
+        "Version":  "1"
+    }
+]

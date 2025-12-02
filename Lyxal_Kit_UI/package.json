@@ -1,0 +1,50 @@
+{
+  "name": "lyxal-kit-ui",
+  "version": "1.0.0",
+  "description": "Lyxal Kit UI - Kit de composants UI pour l'écosystème LyxalSuite",
+  "main": "ui/index.ts",
+  "scripts": {
+    "dev": "bunx --bun vite",
+    "build": "bunx --bun vite build",
+    "preview": "bunx --bun vite preview",
+    "lint": "eslint . --config ../.config/eslint.config.base.js",
+    "lint:fix": "eslint . --config ../.config/eslint.config.base.js --fix",
+    "type-check": "tsc --noEmit",
+    "clean:dist": "rm -rf dist"
+  },
+  "dependencies": {
+    "clsx": "^2.0.0",
+    "lucide-react": "^0.294.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.25.1",
+    "recharts": "^2.8.0",
+    "zustand": "^5.0.8"
+  },
+  "keywords": [
+    "lyxal",
+    "lyxal-suite",
+    "lyxal-kit-ui",
+    "lyxal-kit-ui-components",
+    "lyxal-kit-ui-templates",
+    "lyxal-kit-ui-themes",
+    "lyxal-kit-ui-utils",
+    "lyxal-kit-ui-hooks",
+    "lyxal-kit-ui-services",
+    "lyxal-kit-ui-contexts"
+  ],
+  "author": "LyxalSuite Team",
+  "license": "Propritaire",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LYXAL-LAB/Lyxal_Solution.git",
+    "directory": "Lyxal_Kit_UI"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.9.2",
+    "vite": "^6.0.7"
+  }
+}
