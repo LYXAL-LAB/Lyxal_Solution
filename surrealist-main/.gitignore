@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.idea/
+
+.hintrc
+.env
+
+.DS_Store
+
+/src-tauri/gen/schemas
+/src-tauri/cache
+/target
