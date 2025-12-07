@@ -1,123 +1,114 @@
-import { Dict } from './primitives';
+/* Copyright 2012 Mozilla Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-export abstract class BaseStream {
-    pos: number = 0;
-
-    abstract get length(): number;
-    abstract get isEmpty(): boolean;
-
-    abstract getByte(): number;
-    abstract getBytes(length: number | null): Uint8Array;
-    
-    peekByte(): number {
-        const val = this.getByte();
-        if (val !== -1) {
-            this.pos--;
-        }
-        return val;
-    }
-
-    peekBytes(length: number): Uint8Array {
-        const bytes = this.getBytes(length);
-        this.pos -= bytes.length;
-        return bytes;
-    }
-
-    skip(n: number = 1) {
-        this.pos += n;
-    }
-
-    abstract reset(): void;
-    abstract moveStart(): void;
-    abstract makeSubStream(start: number, length: number, dict?: Dict | null): BaseStream;
-}
+import { BaseStream } from "./base_stream";
+import { stringToBytes } from "../shared/util";
+import { Dict } from "./primitives";
 
 export class Stream extends BaseStream {
-    private bytes: Uint8Array;
-    public start: number;
-    public end: number;
-    public dict: Dict | null;
+  bytes: Uint8Array;
+  start: number;
+  end: number;
+  
+  constructor(arrayBuffer: ArrayBufferLike | Uint8Array, start: number, length: number, dict: Dict | null) {
+    super();
 
-    constructor(buffer: ArrayBuffer | Uint8Array, start: number = 0, length: number = 0, dict: Dict | null = null) {
-        super();
-        this.bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-        this.start = start;
-        this.pos = start;
-        this.end = length ? start + length : this.bytes.length;
-        this.dict = dict;
+    this.bytes =
+      arrayBuffer instanceof Uint8Array
+        ? arrayBuffer
+        : new Uint8Array(arrayBuffer);
+    this.start = start || 0;
+    this.pos = this.start;
+    this.end = (start + length) || this.bytes.length;
+    this.dict = dict;
+  }
+
+  get length(): number {
+    return this.end - this.start;
+  }
+
+  get isEmpty(): boolean {
+    return this.length === 0;
+  }
+
+  getByte(): number {
+    if (this.pos >= this.end) {
+      return -1;
     }
+    return this.bytes[this.pos++];
+  }
 
-    get length(): number {
-        return this.end - this.start;
+  getBytes(length?: number): Uint8Array {
+    const bytes = this.bytes;
+    const pos = this.pos;
+    const strEnd = this.end;
+
+    if (!length) {
+      return bytes.subarray(pos, strEnd);
     }
-
-    get isEmpty(): boolean {
-        return this.length === 0;
+    let end = pos + length;
+    if (end > strEnd) {
+      end = strEnd;
     }
+    this.pos = end;
+    return bytes.subarray(pos, end);
+  }
 
-    getByte(): number {
-        if (this.pos >= this.end) {
-            return -1;
-        }
-        return this.bytes[this.pos++];
+  getByteRange(begin: number, end: number): Uint8Array {
+    if (begin < 0) {
+      begin = 0;
     }
-
-    getBytes(length: number | null = null): Uint8Array {
-        const pos = this.pos;
-        const strEnd = this.end;
-
-        if (!length) {
-            return this.bytes.slice(pos, strEnd);
-        }
-        
-        let end = pos + length;
-        if (end > strEnd) {
-            end = strEnd;
-        }
-        this.pos = end;
-        return this.bytes.slice(pos, end);
+    if (end > this.end) {
+      end = this.end;
     }
+    return this.bytes.subarray(begin, end);
+  }
 
-    reset() {
-        this.pos = this.start;
-    }
+  reset(): void {
+    this.pos = this.start;
+  }
 
-    moveStart() {
-        this.start = this.pos;
-    }
+  moveStart(): void {
+    this.start = this.pos;
+  }
 
-    makeSubStream(start: number, length: number, dict: Dict | null = null): Stream {
-        return new Stream(this.bytes.buffer as ArrayBuffer, start, length, dict);
+  makeSubStream(start: number, length?: number, dict: Dict | null = null): Stream {
+    if (length === undefined) {
+      length = this.end - start;
     }
+    return new Stream(this.bytes.buffer, start, length, dict);
+  }
 
-    getUint16(): number {
-        const b1 = this.getByte();
-        const b2 = this.getByte();
-        return (b1 << 8) | b2;
-    }
-
-    getInt16(): number {
-        const b1 = this.getByte();
-        const b2 = this.getByte();
-        const val = (b1 << 8) | b2;
-        return val >= 32768 ? val - 65536 : val;
-    }
-
-    getUint32(): number {
-        const b1 = this.getByte();
-        const b2 = this.getByte();
-        const b3 = this.getByte();
-        const b4 = this.getByte();
-        // Use >>> 0 to ensure unsigned in JS
-        return ((b1 << 24) | (b2 << 16) | (b3 << 8) | b4) >>> 0;
-    }
-
-    getInt32(): number {
-        const b1 = this.getByte();
-        const b2 = this.getByte();
-        const b3 = this.getByte();
-        const b4 = this.getByte();
-        return (b1 << 24) | (b2 << 16) | (b3 << 8) | b4;
-    }
+  clone(): Stream {
+    return new Stream(
+      this.bytes.buffer,
+      this.start,
+      this.end - this.start,
+      this.dict.clone()
+    );
+  }
 }
 
+export class StringStream extends Stream {
+  constructor(str: string) {
+    super(stringToBytes(str), 0, str.length, null);
+  }
+}
+
+export class NullStream extends Stream {
+  constructor() {
+    super(new Uint8Array(0), 0, 0, null);
+  }
+}

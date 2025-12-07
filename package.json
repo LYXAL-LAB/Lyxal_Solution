@@ -6,7 +6,10 @@
     "Lyxal_PDF/upng",
     "Lyxal_PDF/fonts",
     "Lyxal_PDF/core",
-    "Lyxal_PDF/app"
+    "Lyxal_PDF/app",
+    "Lyxal_iCal",
+    "Lyxal_Dav",
+    "Lyxal_Surreal"
   ],
   "dependencies": {
     "bun-types": "latest"

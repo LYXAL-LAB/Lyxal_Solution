@@ -1,0 +1,22 @@
+[package]
+name = "rrule-afl-fuzz"
+version = "0.1.0"
+authors = ["Ralph Bisschops <ralph.bisschops.dev@gmail.com>"]
+publish = false
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+afl = "*"
+chrono = "0.4.39"
+num-traits = "0.2.19"
+
+[dependencies.rrule]
+path = "../rrule"
+
+[features]
+default = []
+by-easter = ["rrule/by-easter"]

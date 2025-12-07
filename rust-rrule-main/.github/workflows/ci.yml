@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches:
+    - 'main'
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lints:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Format
+        run: |
+          cd rrule 
+          cargo fmt -- --check
+      - name: Linting
+        run: |
+          cd rrule
+          # revert it back to the following line, the deprecated functions are removed from chrono
+          # cargo clippy -- -D warnings
+          cargo clippy
+      - name: Cargo Doc
+        run: |
+          cargo doc --no-deps --all-features --examples
+          cargo test --doc -- --show-output
+
+  test:
+    needs: lints
+    runs-on: ${{ matrix.target.os }}
+    name: ${{ matrix.target.name }} / ${{ matrix.version }}
+    strategy:
+      matrix:
+        target:
+        - { name: Linux, os: ubuntu-latest, triple: x86_64-unknown-linux-gnu }
+        - { name: macOS, os: macos-latest, triple: x86_64-apple-darwin }
+        - { name: Windows, os: windows-2022, triple: x86_64-pc-windows-msvc }
+        version:
+        - 1.81.0 # MSRV
+        - stable
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install ${{ matrix.version }}
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.version }}-${{ matrix.target.triple }}
+          profile: minimal
+          override: true
+      - name: Run tests
+        run: |
+          cd rrule
+          cargo test --all-features --all-targets
+
+  audit:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Audit
+        run: |
+          cd rrule
+          cargo update
+          cargo audit
+        # Allowed to fail, but this will notify us that some dependency might need an update.
+        continue-on-error: true

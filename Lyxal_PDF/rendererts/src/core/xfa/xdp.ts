@@ -1,0 +1,66 @@
+/* Copyright 2021 Mozilla Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { $buildXFAObject, NamespaceIds } from "./namespaces.js";
+import { $namespaceId, $nodeName, $onChildCheck } from "./symbol_utils.js";
+import { XFAObject, XFAObjectArray } from "./xfa_object.js";
+
+const XDP_NS_ID = NamespaceIds.xdp.id;
+
+class Xdp extends XFAObject {
+  uuid: string;
+  timeStamp: string;
+  config: any;
+  connectionSet: any;
+  datasets: any;
+  localeSet: any;
+  stylesheet: XFAObjectArray;
+  template: any;
+
+  constructor(attributes: any) {
+    super(XDP_NS_ID, "xdp", /* hasChildren = */ true);
+    this.uuid = attributes.uuid || "";
+    this.timeStamp = attributes.timeStamp || "";
+    this.config = null;
+    this.connectionSet = null;
+    this.datasets = null;
+    this.localeSet = null;
+    this.stylesheet = new XFAObjectArray();
+    this.template = null;
+  }
+
+  [$onChildCheck](child: any) {
+    const ns = (NamespaceIds as any)[child[$nodeName]];
+    return ns && child[$namespaceId] === ns.id;
+  }
+}
+
+class XdpNamespace {
+  [key: string]: any;
+
+  static [$buildXFAObject](name: string, attributes: any) {
+    if (XdpNamespace.hasOwnProperty(name)) {
+      return (XdpNamespace as any)[name](attributes);
+    }
+    return undefined;
+  }
+
+  static xdp(attributes: any) {
+    return new Xdp(attributes);
+  }
+}
+
+export { XdpNamespace };
+

@@ -1,0 +1,347 @@
+// Lyxal Calendar Module Schema
+// Based on Cal.com schema, stripped of SaaS/Billing/Enterprise features
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client"
+}
+
+// ------------------------------------------------------
+// Core User & Auth (Simplified)
+// ------------------------------------------------------
+
+model User {
+  id                  Int                  @id @default(autoincrement())
+  username            String?
+  name                String?
+  email               String               @unique
+  emailVerified       DateTime?
+  password            UserPassword?
+  bio                 String?
+  avatarUrl           String?
+  timeZone            String               @default("Europe/London")
+  weekStart           String               @default("Sunday")
+  theme               String?
+  createdDate         DateTime             @default(now()) @map(name: "created")
+  
+  // Relations Core
+  eventTypes          EventType[]          @relation("user_eventtype")
+  credentials         Credential[]
+  teams               Membership[]
+  bookings            Booking[]
+  schedules           Schedule[]
+  defaultScheduleId   Int?
+  selectedCalendars   SelectedCalendar[]
+  destinationCalendar DestinationCalendar?
+  
+  // Availability
+  availability        Availability[]
+  
+  // Teams & Orgs
+  organizationId      Int?
+  organization        Team?                @relation("scope", fields: [organizationId], references: [id], onDelete: SetNull)
+  
+  // Profile management
+  profiles            Profile[]
+  movedToProfileId    Int?
+  movedToProfile      Profile?             @relation("moved_to_profile", fields: [movedToProfileId], references: [id], onDelete: SetNull)
+
+  @@map(name: "users")
+}
+
+model UserPassword {
+  hash   String
+  userId Int    @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Profile {
+  id             Int         @id @default(autoincrement())
+  uid            String
+  userId         Int
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId Int
+  organization   Team        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  username       String
+  eventTypes     EventType[]
+  movedFromUser  User?       @relation("moved_to_profile")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([userId, organizationId])
+  @@unique([username, organizationId])
+}
+
+model Team {
+  id                     Int                     @id @default(autoincrement())
+  name                   String
+  slug                   String?
+  logoUrl                String?
+  bio                    String?
+  members                Membership[]
+  eventTypes             EventType[]
+  createdAt              DateTime                @default(now())
+  metadata               Json?
+  theme                  String?
+  brandColor             String?
+  darkBrandColor         String?
+  
+  // Organization hierarchy
+  parentId               Int?
+  parent                 Team?                   @relation("organization", fields: [parentId], references: [id], onDelete: Cascade)
+  children               Team[]                  @relation("organization")
+  orgUsers               User[]                  @relation("scope")
+  
+  credentials            Credential[]
+  orgProfiles            Profile[]
+
+  @@unique([slug, parentId])
+}
+
+model Membership {
+  id                   Int               @id @default(autoincrement())
+  teamId               Int
+  userId               Int
+  accepted             Boolean           @default(false)
+  role                 MembershipRole
+  team                 Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt            DateTime?         @default(now())
+
+  @@unique([userId, teamId])
+}
+
+enum MembershipRole {
+  MEMBER
+  ADMIN
+  OWNER
+}
+
+// ------------------------------------------------------
+// Core Calendar Logic (EventTypes, Schedules)
+// ------------------------------------------------------
+
+model EventType {
+  id                Int     @id @default(autoincrement())
+  title             String
+  slug              String
+  description       String?
+  position          Int     @default(0)
+  locations         Json?
+  length            Int
+  hidden            Boolean @default(false)
+  
+  // Relations
+  users             User[]  @relation("user_eventtype")
+  owner             User?   @relation("owner", fields: [userId], references: [id], onDelete: Cascade)
+  userId            Int?
+  team              Team?   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId            Int?
+  profileId         Int?
+  profile           Profile? @relation(fields: [profileId], references: [id])
+  
+  schedule          Schedule? @relation(fields: [scheduleId], references: [id])
+  scheduleId        Int?
+  
+  bookings          Booking[]
+  availability      Availability[]
+  destinationCalendar DestinationCalendar?
+  
+  // Logic
+  price             Int     @default(0)
+  currency          String  @default("usd")
+  slotInterval      Int?
+  metadata          Json?
+  successRedirectUrl String?
+  
+  // Advanced Logic (Kept as they are useful)
+  periodType        PeriodType @default(UNLIMITED)
+  periodStartDate   DateTime?
+  periodEndDate     DateTime?
+  periodDays        Int?
+  minimumBookingNotice Int @default(120)
+  beforeEventBuffer Int @default(0)
+  afterEventBuffer  Int @default(0)
+  seatsPerTimeSlot  Int?
+  
+  hosts             Host[]
+
+  @@unique([userId, slug])
+  @@unique([teamId, slug])
+}
+
+enum PeriodType {
+  UNLIMITED
+  ROLLING
+  ROLLING_WINDOW
+  RANGE
+}
+
+model Schedule {
+  id           Int            @id @default(autoincrement())
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       Int
+  eventType    EventType[]
+  name         String
+  timeZone     String?
+  availability Availability[]
+}
+
+model Availability {
+  id          Int        @id @default(autoincrement())
+  user        User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int?
+  eventType   EventType? @relation(fields: [eventTypeId], references: [id])
+  eventTypeId Int?
+  days        Int[]
+  startTime   DateTime   @db.Time
+  endTime     DateTime   @db.Time
+  date        DateTime?  @db.Date
+  Schedule    Schedule?  @relation(fields: [scheduleId], references: [id])
+  scheduleId  Int?
+}
+
+// ------------------------------------------------------
+// Bookings
+// ------------------------------------------------------
+
+model Booking {
+  id                    Int                  @id @default(autoincrement())
+  uid                   String               @unique
+  user                  User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                Int?
+  userPrimaryEmail      String?
+  eventType             EventType?           @relation(fields: [eventTypeId], references: [id])
+  eventTypeId           Int?
+  title                 String
+  description           String?
+  startTime             DateTime
+  endTime               DateTime
+  attendees             Attendee[]
+  location              String?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime?            @updatedAt
+  status                BookingStatus        @default(ACCEPTED)
+  paid                  Boolean              @default(false)
+  
+  destinationCalendar   DestinationCalendar? @relation(fields: [destinationCalendarId], references: [id])
+  destinationCalendarId Int?
+  
+  references            BookingReference[]
+  metadata              Json?
+  cancellationReason    String?
+  rejectionReason       String?
+}
+
+enum BookingStatus {
+  CANCELLED
+  ACCEPTED
+  REJECTED
+  PENDING
+  AWAITING_HOST
+}
+
+model Attendee {
+  id          Int      @id @default(autoincrement())
+  email       String
+  name        String
+  timeZone    String
+  phoneNumber String?
+  locale      String?  @default("en")
+  booking     Booking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId   Int?
+}
+
+model BookingReference {
+  id                 Int      @id @default(autoincrement())
+  type               String
+  uid                String
+  meetingId          String?
+  meetingPassword    String?
+  meetingUrl         String?
+  booking            Booking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId          Int?
+  externalCalendarId String?
+  credentialId       Int?
+  credential         Credential? @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+}
+
+// ------------------------------------------------------
+// Integrations & Calendars
+// ------------------------------------------------------
+
+model Credential {
+  id             Int                   @id @default(autoincrement())
+  type           String
+  key            Json
+  user           User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         Int?
+  team           Team?                 @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId         Int?
+  app            App?                  @relation(fields: [appId], references: [slug], onDelete: Cascade)
+  appId          String?
+  destinationCalendars DestinationCalendar[]
+  selectedCalendars    SelectedCalendar[]
+  bookingReferences    BookingReference[]
+}
+
+model App {
+  slug        String          @id @unique
+  dirName     String          @unique
+  keys        Json?
+  categories  AppCategories[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  credentials Credential[]
+  enabled     Boolean         @default(false)
+}
+
+enum AppCategories {
+  calendar
+  messaging
+  other
+  payment
+  conferencing
+  crm
+  automation
+  analytics
+}
+
+model DestinationCalendar {
+  id           Int         @id @default(autoincrement())
+  integration  String
+  externalId   String
+  primaryEmail String?
+  user         User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       Int?        @unique
+  booking      Booking[]
+  eventType    EventType?  @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
+  eventTypeId  Int?        @unique
+  credential   Credential? @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  credentialId Int?
+}
+
+model SelectedCalendar {
+  id           String      @id @default(uuid())
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       Int
+  integration  String
+  externalId   String
+  credential   Credential? @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+  credentialId Int?
+}
+
+model Host {
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  eventType   EventType @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
+  eventTypeId Int
+  isFixed     Boolean   @default(false)
+  priority    Int?
+
+  @@id([userId, eventTypeId])
+}

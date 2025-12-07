@@ -1,273 +1,455 @@
+import { Util } from '../shared/util';
 import { OPS } from '../core/ops';
 import { OperatorList } from '../core/operator_list';
-import { Util } from '../shared/util';
+import { ImageKind } from '../shared/util';
+import { CanvasGradient } from './pattern_helper';
 
 export class CanvasGraphics {
-    ctx: CanvasRenderingContext2D; // Or compatible interface
-    commonObjs: any;
-    objs: any;
-    currentStack: any[] = [];
-    current: any = {
-        fillColor: '#000000',
-        strokeColor: '#000000',
-        lineWidth: 1,
-        lineCap: 'butt',
-        lineJoin: 'miter',
-        miterLimit: 10,
-        dashArray: [],
-        dashPhase: 0,
-        alpha: 1,
-        font: null,
-        fontSize: 0,
-        textMatrix: Util.IDENTITY_MATRIX
-    };
+    canvasCtx: CanvasRenderingContext2D;
+    current: any; // Current Graphics State
+    stateStack: any[] = [];
+    groupStack: any[] = [];
+    
+    // Cached objects
+    commonObjs: any = null;
+    objs: any = null;
 
-    constructor(ctx: CanvasRenderingContext2D, commonObjs: any, objs: any) {
-        this.ctx = ctx;
+    constructor(canvasCtx: CanvasRenderingContext2D, commonObjs: any, objs: any) {
+        this.canvasCtx = canvasCtx;
         this.commonObjs = commonObjs;
         this.objs = objs;
-    }
-
-    async executeOperatorList(operatorList: OperatorList) {
-        const fnArray = operatorList.fnArray;
-        const argsArray = operatorList.argsArray;
-
-        for (let i = 0; i < fnArray.length; i++) {
-            const fn = fnArray[i];
-            const args = argsArray[i];
-
-            switch (fn) {
-                case OPS.save: this.save(); break;
-                case OPS.restore: this.restore(); break;
-                case OPS.transform: this.transform(args[0], args[1], args[2], args[3], args[4], args[5]); break;
-                
-                // Path
-                case OPS.constructPath: this.constructPath(args[0], args[1]); break;
-                case OPS.stroke: this.stroke(args[0]); break;
-                case OPS.fill: this.fill(args[0]); break;
-                case OPS.eoFill: this.fill(args[0]); break; // EvenOdd fill logic needed
-                
-                // Text
-                case OPS.setTextMatrix: this.setTextMatrix(args[0], args[1], args[2], args[3], args[4], args[5]); break;
-                case OPS.setFont: this.setFont(args[0], args[1]); break;
-                case OPS.showText: this.showText(args[0]); break;
-                case OPS.setCharSpacing: this.setCharSpacing(args[0]); break;
-                case OPS.setWordSpacing: this.setWordSpacing(args[0]); break;
-                
-                // Color
-                case OPS.setFillColorN: this.setFillColorN(args); break;
-                case OPS.setStrokeColorN: this.setStrokeColorN(args); break;
-                
-                // State
-                case OPS.setLineWidth: this.setLineWidth(args[0]); break;
-                case OPS.setLineCap: this.setLineCap(args[0]); break;
-                case OPS.setLineJoin: this.setLineJoin(args[0]); break;
-                case OPS.setMiterLimit: this.setMiterLimit(args[0]); break;
-                case OPS.setDash: this.setDash(args[0], args[1]); break;
-                
-                // Image
-                case OPS.paintImageXObject: await this.paintImageXObject(args[0]); break;
-                
-                default: 
-                    // console.warn("Unimplemented Operator:", fn);
-            }
-        }
+        
+        this.current = {
+            lineWidth: 1,
+            lineCap: 'butt',
+            lineJoin: 'miter',
+            miterLimit: 10,
+            dashArray: [],
+            dashPhase: 0,
+            font: null,
+            fontSize: 0,
+            fillColor: '#000000',
+            strokeColor: '#000000',
+            globalAlpha: 1,
+            ctm: [1, 0, 0, 1, 0, 0] // Canvas Transform
+        };
     }
 
     save() {
-        this.ctx.save();
-        this.currentStack.push(JSON.parse(JSON.stringify(this.current)));
+        this.canvasCtx.save();
+        const old = this.current;
+        this.stateStack.push(old);
+        this.current = Object.assign({}, old);
+        this.current.ctm = old.ctm.slice();
     }
 
     restore() {
-        this.ctx.restore();
-        if (this.currentStack.length > 0) {
-            this.current = this.currentStack.pop();
+        if (this.stateStack.length > 0) {
+            this.current = this.stateStack.pop();
+            this.canvasCtx.restore();
         }
     }
 
     transform(a: number, b: number, c: number, d: number, e: number, f: number) {
-        this.ctx.transform(a, b, c, d, e, f);
+        this.canvasCtx.transform(a, b, c, d, e, f);
+        this.current.ctm = Util.transform([a, b, c, d, e, f], this.current.ctm);
     }
 
-    constructPath(ops: number[], args: number[]) {
-        this.ctx.beginPath();
-        let i = 0;
-        let j = 0;
-        
-        while (i < ops.length) {
-            switch (ops[i]) {
-                case OPS.moveTo:
-                    this.ctx.moveTo(args[j], args[j+1]);
-                    j += 2;
-                    break;
-                case OPS.lineTo:
-                    this.ctx.lineTo(args[j], args[j+1]);
-                    j += 2;
-                    break;
-                case OPS.curveTo:
-                    this.ctx.bezierCurveTo(args[j], args[j+1], args[j+2], args[j+3], args[j+4], args[j+5]);
-                    j += 6;
-                    break;
-                case OPS.rectangle:
-                    this.ctx.rect(args[j], args[j+1], args[j+2], args[j+3]);
-                    j += 4;
-                    break;
-                case OPS.closePath:
-                    this.ctx.closePath();
-                    break;
-            }
-            i++;
+    // Path Construction
+    moveTo(x: number, y: number) {
+        this.canvasCtx.moveTo(x, y);
+    }
+
+    lineTo(x: number, y: number) {
+        this.canvasCtx.lineTo(x, y);
+    }
+
+    curveTo(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number) {
+        this.canvasCtx.bezierCurveTo(x1, y1, x2, y2, x3, y3);
+    }
+
+    rectangle(x: number, y: number, w: number, h: number) {
+        this.canvasCtx.rect(x, y, w, h);
+    }
+
+    closePath() {
+        this.canvasCtx.closePath();
+    }
+
+    // Painting
+    stroke() {
+        this.canvasCtx.stroke();
+    }
+
+    closeStroke() {
+        this.closePath();
+        this.stroke();
+    }
+
+    fill() {
+        this.canvasCtx.fill();
+    }
+
+    eoFill() {
+        this.canvasCtx.fill("evenodd");
+    }
+
+    fillStroke() {
+        this.fill();
+        this.stroke();
+    }
+
+    endPath() {
+        this.canvasCtx.beginPath();
+    }
+
+    clip() {
+        this.canvasCtx.clip();
+    }
+
+    eoClip() {
+        this.canvasCtx.clip("evenodd");
+    }
+
+    // Text
+    beginText() {
+        // Text state handled in evaluator, but canvas context might need reset
+    }
+
+    endText() {
+    }
+
+    setFont(name: string, size: number, fontObj: any) {
+        // Construct CSS font string
+        // This is tricky without font loading in browser.
+        // Assuming fonts are loaded with @font-face using loadedName
+        let fontName = "sans-serif";
+        if (fontObj && fontObj.loadedName) {
+            fontName = `"${fontObj.loadedName}", sans-serif`;
         }
-    }
-
-    stroke(consume: boolean) {
-        this.ctx.stroke();
-    }
-
-    fill(consume: boolean) {
-        this.ctx.fill();
-    }
-
-    // Text Methods
-    setTextMatrix(a: number, b: number, c: number, d: number, e: number, f: number) {
-        this.current.textMatrix = [a, b, c, d, e, f];
-    }
-    
-    setFont(name: string, size: number) {
-        this.current.fontName = name;
+        
+        // PDF size is in text space units. Canvas expects pixels/points.
+        // We usually scale by CTM in text matrix, but for HTML5 Canvas font property:
+        // ctx.font = "10px FontName"
+        // The transform matrix handles the scaling of the coordinate system.
+        
         this.current.fontSize = size;
-        // In a real browser environment, we might need to map 'name' (PDF internal name)
-        // to a loaded @font-face family name.
-        // For now, fallback to generic.
-        this.ctx.font = `${size}px sans-serif`;
-    }
-
-    setCharSpacing(spacing: number) {
-        // Canvas doesn't support char spacing natively easily, usually done by manually positioning glyphs
-    }
-
-    setWordSpacing(spacing: number) {
-        // Same
+        this.current.font = fontName;
+        this.canvasCtx.font = `${size}px ${fontName}`;
     }
 
     showText(glyphs: { char: string, width: number }[]) {
-        const ctx = this.ctx;
-        const currentFont = this.current.font; // Need to set font on ctx
+        // glyphs is array of { char, width }
+        // We need to draw them.
+        // Note: spacing is already handled by Evaluator sending position adjustments?
+        // Wait, OPS.showText in my evaluator sends [{char, width}] list.
+        // Evaluator (PartialEvaluator) calculates positions?
+        // No, PartialEvaluator.handleShowText just pushes glyphs with their widths.
+        // Positioning is complex (Tj/TJ).
+        // Standard PDF.js CanvasGraphics `showText` iterates and uses current point.
         
-        // This is a simplified text rendering.
-        // PDF.js calculates exact positions.
-        
-        // We need to apply Text Matrix to CTM
-        ctx.save();
-        const tm = this.current.textMatrix;
-        // transform(tm...) 
-        // But ctx.transform multiplies CTM. 
-        // We usually want to use current point from previous text operation if not specified?
-        // showText implies we are at a position.
-        
-        // Actually, we should iterate glyphs and place them.
+        // Simplified approach for standard horizontal text:
         for (const glyph of glyphs) {
-            ctx.fillText(glyph.char, 0, 0); // At current origin
-            ctx.translate(glyph.width, 0); // Advance
+            if (typeof glyph.char === 'string') {
+                this.canvasCtx.fillText(glyph.char, 0, 0); // Draws at 0,0 of current transform
+                // Advance
+                this.canvasCtx.translate(glyph.width, 0); 
+            } else {
+                // Adjustment (number)
+                // glyph.width contains adjustment
+                this.canvasCtx.translate(-glyph.width, 0); // TJ numbers are negative
+            }
         }
-        
-        ctx.restore();
-    }
-
-    // Color
-    setFillColorN(args: any[]) {
-        if (args[0] === "TilingPattern") {
-             // Handle pattern
-        } else {
-             const rgb = args; // Assuming RGB for now, usually args are color components
-             const color = `rgb(${Math.floor(rgb[0]*255)}, ${Math.floor(rgb[1]*255)}, ${Math.floor(rgb[2]*255)})`;
-             this.ctx.fillStyle = color;
-             this.current.fillColor = color;
-        }
-    }
-
-    setStrokeColorN(args: any[]) {
-        const rgb = args;
-        const color = `rgb(${Math.floor(rgb[0]*255)}, ${Math.floor(rgb[1]*255)}, ${Math.floor(rgb[2]*255)})`;
-        this.ctx.strokeStyle = color;
-        this.current.strokeColor = color;
-    }
-
-    // State
-    setLineWidth(width: number) {
-        this.ctx.lineWidth = width;
-        this.current.lineWidth = width;
-    }
-
-    setLineCap(style: number) {
-        const map = ['butt', 'round', 'square'];
-        this.ctx.lineCap = map[style] as CanvasLineCap;
-    }
-
-    setLineJoin(style: number) {
-        const map = ['miter', 'round', 'bevel'];
-        this.ctx.lineJoin = map[style] as CanvasLineJoin;
-    }
-
-    setMiterLimit(limit: number) {
-        this.ctx.miterLimit = limit;
-    }
-
-    setDash(array: number[], phase: number) {
-        this.ctx.setLineDash(array);
-        this.ctx.lineDashOffset = phase;
     }
 
     // Images
-    async paintImageXObject(obj: any) {
-        // obj is PDFImage instance
-        if (obj && typeof obj.getImageData === 'function') {
-             try {
-                 const width = obj.width;
-                 const height = obj.height;
-                 const rgbaData = await obj.getImageData(); // Uint8ClampedArray
-                 
-                 // Browser environment assumption
-                 if (typeof ImageData !== 'undefined' && typeof document !== 'undefined') {
-                     const imageData = new ImageData(rgbaData, width, height);
-                     
-                     // Use a temporary canvas to draw the image so it can be transformed
-                     const tempCanvas = document.createElement('canvas');
-                     tempCanvas.width = width;
-                     tempCanvas.height = height;
-                     const tempCtx = tempCanvas.getContext('2d');
-                     if (tempCtx) {
-                         tempCtx.putImageData(imageData, 0, 0);
-                         
-                         // PDF images are drawn at 1x1 unit square by default, 
-                         // mapped to actual size by CTM (which we already applied via transform ops?)
-                         // No, usually PDF 'Do' operator draws image in the unit square (0,0) to (1,1)
-                         // BUT the CTM is usually set up before 'Do' to scale this unit square to the desired size.
-                         // So we draw the image at (0,0) with size (1,1).
-                         // Wait, drawImage(img, 0, 0, 1, 1) ?
-                         // Yes, if the CTM scales it up.
-                         
-                         this.ctx.save();
-                         // We need to scale the image from its pixel size to 1x1 PDF unit?
-                         // Or does the CTM handle the mapping from 1x1 to pixel size?
-                         // In PDF, an image is a 1x1 square.
-                         // So we must draw it into that 1x1 square.
-                         this.ctx.scale(1 / width, -1 / height); // PDF y-axis is flipped relative to Canvas usually?
-                         // Actually PDF coordinates: (0,0) is bottom-left (usually). Canvas: top-left.
-                         // The initial transform usually handles the flip.
-                         
-                         // If we assume we are in a 1x1 space:
-                         this.ctx.drawImage(tempCanvas, 0, 0, 1, 1);
-                         this.ctx.restore();
+    paintImageXObject(objId: string) {
+        // Resolve object asynchronously if needed?
+        // CanvasGraphics is currently synchronous execution of opList.
+        // In PDF.js, OperatorList execution can be async (e.g. for image decoding or font loading).
+        // For now, assume object is pre-loaded in this.objs by PDFObjects logic.
+        
+        const img = this.objs.get(objId);
+        if (img) {
+             const width = img.width;
+             const height = img.height;
+             
+             // Check if we have image data
+             if (img.data) {
+                 // ... (existing implementation) ...
+                 const canvas = document.createElement('canvas');
+                 canvas.width = width;
+                 canvas.height = height;
+                 const ctx = canvas.getContext('2d');
+                 if (ctx) {
+                     const imageData = ctx.createImageData(width, height);
+                     if (img.data.length === width * height * 4) {
+                         imageData.data.set(img.data);
+                     } else if (img.data.length === width * height * 3) {
+                         let j = 0;
+                         for (let i = 0; i < img.data.length; i += 3) {
+                             imageData.data[j++] = img.data[i];
+                             imageData.data[j++] = img.data[i+1];
+                             imageData.data[j++] = img.data[i+2];
+                             imageData.data[j++] = 255;
+                         }
                      }
-                 } else {
-                     // console.warn("Canvas/DOM not available for image rendering");
+                     ctx.putImageData(imageData, 0, 0);
+                     
+                     this.canvasCtx.save();
+                     this.canvasCtx.scale(1, -1);
+                     this.canvasCtx.drawImage(canvas, 0, -1, 1, 1);
+                     this.canvasCtx.restore();
                  }
-             } catch (e) {
-                 console.error("Error painting image", e);
+             } else if (img instanceof ImageBitmap || (typeof HTMLImageElement !== 'undefined' && img instanceof HTMLImageElement)) {
+                 // Native image support (if transferred from worker as Bitmap)
+                 this.canvasCtx.save();
+                 this.canvasCtx.scale(1, -1);
+                 this.canvasCtx.drawImage(img, 0, -1, 1, 1);
+                 this.canvasCtx.restore();
              }
+        } else {
+            console.warn(`Image ${objId} not found in objs cache`);
+        }
+    }
+
+    // Shading
+    shadingFill(shading: any) {
+        // shading: { type, coords, domain, extend, colorSpace, ... }
+        // We need to create a gradient and fill the current clipping path (or the whole page if no clip)
+        
+        // Save state (mostly for clipping)
+        this.save();
+        
+        let style;
+        const type = shading.type || shading.shadingType; // Compat check
+        if (type === 2) { // Axial
+             style = CanvasGradient.createLinearGradient(this.canvasCtx, shading);
+        } else if (type === 3) { // Radial
+             style = CanvasGradient.createRadialGradient(this.canvasCtx, shading);
+        } else if (type >= 4 && type <= 7) {
+            // Mesh Shading
+            const figures = shading.getFigures(shading.stream, null);
+            for (const fig of figures) {
+                if (fig.type === 'tri') {
+                    const [p0, p1, p2] = fig.coords;
+                    const [c0, c1, c2] = fig.colors;
+                    
+                    // Average color approximation (Standard Canvas 2D doesn't support barycentric interpolation)
+                    // Ideally we should create a gradient or subdivide.
+                    // Taking average for "flat shading" of the mesh.
+                    
+                    // c0, c1, c2 are arrays of components. Average them.
+                    const avgColor: number[] = [];
+                    for(let k=0; k<c0.length; k++) {
+                        avgColor[k] = (c0[k] + c1[k] + c2[k]) / 3;
+                    }
+                    
+                    // Convert to RGB
+                    const rgb = shading.colorSpace.getRgb(avgColor, 0);
+                    const color = Util.makeHexColor(rgb[0], rgb[1], rgb[2]);
+                    
+                    this.canvasCtx.fillStyle = color;
+                    this.canvasCtx.beginPath();
+                    this.canvasCtx.moveTo(p0[0], p0[1]);
+                    this.canvasCtx.lineTo(p1[0], p1[1]);
+                    this.canvasCtx.lineTo(p2[0], p2[1]);
+                    this.canvasCtx.fill();
+                }
+            }
+            this.restore();
+            return;
+        } else {
+            console.warn(`Unsupported shading type for display: ${type}`);
+            this.restore();
+            return;
+        }
+        
+        this.canvasCtx.fillStyle = style;
+        
+        // Fill a large rect to cover everything (relying on clip if present)
+        const huge = 100000;
+        this.canvasCtx.fillRect(-huge, -huge, 2 * huge, 2 * huge);
+        
+        this.restore();
+    }
+
+    // Graphics State
+    setGState(states: any[]) {
+        for (const [key, value] of states) {
+            switch (key) {
+                case "LW": 
+                    this.canvasCtx.lineWidth = value; 
+                    this.current.lineWidth = value; 
+                    break;
+                case "LC": 
+                    this.canvasCtx.lineCap = ['butt', 'round', 'square'][value] as CanvasLineCap;
+                    break;
+                case "LJ": 
+                    this.canvasCtx.lineJoin = ['miter', 'round', 'bevel'][value] as CanvasLineJoin;
+                    break;
+                case "ML": 
+                    this.canvasCtx.miterLimit = value; 
+                    break;
+                case "Font": 
+                    // value is [name, size, fontObj] ?? No, usually just font dict or name
+                    // In evaluator setGState, Font is special case not usually in map
+                    break;
+                case "BM":
+                    // PDF Blend Modes need mapping to Canvas globalCompositeOperation
+                    // Simple ones map directly: Multiply, Screen, Overlay, Darken, Lighten, ColorDodge, ColorBurn, HardLight, SoftLight, Difference, Exclusion
+                    // Normal -> source-over
+                    if (typeof value === 'string') {
+                         this.canvasCtx.globalCompositeOperation = value.toLowerCase() as GlobalCompositeOperation;
+                    }
+                    break;
+                case "SMask":
+                    if (value === "None") {
+                        this.current.smask = null;
+                    } else {
+                        this.current.smask = value;
+                        // Ideally we should begin a new layer/group here with the mask applied
+                    }
+                    break;
+                case "ca": // Non-stroking alpha
+                    this.current.fillAlpha = value;
+                    this.canvasCtx.globalAlpha = value; // Canvas only has one global alpha
+                    break;
+                case "CA": // Stroking alpha
+                    this.current.strokeAlpha = value;
+                     // Canvas globalAlpha applies to everything. 
+                     // Handling separate fill/stroke alpha requires saving/restoring or setting globalAlpha before each op.
+                    break;
+            }
+        }
+    }
+
+    // Groups
+    beginGroup(group: any) {
+        this.save();
+        
+        const width = this.canvasCtx.canvas.width;
+        const height = this.canvasCtx.canvas.height;
+        
+        const layerCanvas = document.createElement('canvas');
+        layerCanvas.width = width;
+        layerCanvas.height = height;
+        const layerCtx = layerCanvas.getContext('2d');
+        
+        if (layerCtx) {
+            this.groupStack.push({
+                ctx: this.canvasCtx,
+                layer: layerCanvas,
+                groupObj: group
+            });
+            
+            this.canvasCtx = layerCtx;
+            
+            // Sync CTM from current state to new context
+            const ctm = this.current.ctm;
+            this.canvasCtx.setTransform(ctm[0], ctm[1], ctm[2], ctm[3], ctm[4], ctm[5]);
+            
+            // Reset alpha/composite for inside the group
+            this.canvasCtx.globalAlpha = 1;
+            this.canvasCtx.globalCompositeOperation = 'source-over';
+        }
+    }
+
+    endGroup() {
+        if (this.groupStack.length === 0) {
+            this.restore();
+            return;
+        }
+        
+        const groupInfo = this.groupStack.pop();
+        const layerCanvas = groupInfo.layer;
+        const parentCtx = groupInfo.ctx;
+        
+        // Restore parent context
+        this.canvasCtx = parentCtx;
+        this.restore(); // Restore state (including CTM of parent)
+        
+        // Composite layerCanvas onto parentCtx
+        parentCtx.save();
+        parentCtx.setTransform(1, 0, 0, 1, 0, 0); // Identity to draw pixel-to-pixel
+        
+        // TODO: Handle SMask application here if the group defines one
+        // or if an SMask was active when the group started.
+        
+        parentCtx.drawImage(layerCanvas, 0, 0);
+        parentCtx.restore();
+    }
+
+    // Marked Content (Stubs)
+    beginMarkedContent(tag: string) { }
+    beginMarkedContentProps(tag: string, properties: any) { }
+    endMarkedContent() { }
+
+    executeOperatorList(operatorList: OperatorList) {
+        const fnArray = operatorList.fnArray;
+        const argsArray = operatorList.argsArray;
+
+        for (let i = 0; i < fnArray.length; i++) {
+            const fnId = fnArray[i];
+            const args = argsArray[i];
+
+            switch (fnId) {
+                case OPS.save: this.save(); break;
+                case OPS.restore: this.restore(); break;
+                case OPS.transform: this.transform(args[0], args[1], args[2], args[3], args[4], args[5]); break;
+                
+                case OPS.setLineWidth: 
+                    this.canvasCtx.lineWidth = args[0]; 
+                    this.current.lineWidth = args[0];
+                    break;
+                case OPS.setLineCap: 
+                    this.canvasCtx.lineCap = ['butt', 'round', 'square'][args[0]] as CanvasLineCap;
+                    break;
+                case OPS.setLineJoin: 
+                    this.canvasCtx.lineJoin = ['miter', 'round', 'bevel'][args[0]] as CanvasLineJoin;
+                    break;
+                case OPS.setMiterLimit: 
+                    this.canvasCtx.miterLimit = args[0];
+                    break;
+                
+                case OPS.setFillRGBColor: 
+                    this.canvasCtx.fillStyle = Util.makeHexColor(args[0], args[1], args[2]);
+                    break;
+                case OPS.setStrokeRGBColor: 
+                    this.canvasCtx.strokeStyle = Util.makeHexColor(args[0], args[1], args[2]);
+                    break;
+                
+                case OPS.moveTo: this.moveTo(args[0], args[1]); break;
+                case OPS.lineTo: this.lineTo(args[0], args[1]); break;
+                case OPS.curveTo: this.curveTo(args[0], args[1], args[2], args[3], args[4], args[5]); break;
+                case OPS.rectangle: this.rectangle(args[0], args[1], args[2], args[3]); break;
+                case OPS.closePath: this.closePath(); break;
+                
+                case OPS.stroke: this.stroke(); break;
+                case OPS.fill: this.fill(); break;
+                case OPS.eoFill: this.eoFill(); break;
+                case OPS.fillStroke: this.fillStroke(); break;
+                
+                case OPS.beginText: this.beginText(); break;
+                case OPS.endText: this.endText(); break;
+                case OPS.setFont: this.setFont(args[0], args[1], args[2]); break;
+                case OPS.showText: this.showText(args[0]); break;
+                
+                case OPS.paintImageXObject: this.paintImageXObject(args[0]); break;
+                case OPS.shadingFill: this.shadingFill(args[0]); break;
+                case OPS.setGState: this.setGState(args[0]); break;
+                case OPS.beginGroup: this.beginGroup(args[0]); break;
+                case OPS.endGroup: this.endGroup(); break;
+                case OPS.beginMarkedContent: this.beginMarkedContent(args[0]); break;
+                case OPS.beginMarkedContentProps: this.beginMarkedContentProps(args[0], args[1]); break;
+                case OPS.endMarkedContent: this.endMarkedContent(); break;
+                case OPS.dependency: 
+                    // Should have been handled before execution or during async loop
+                    // args[0] is list of objs needed.
+                    break;
+                
+                // ... Add other ops
+            }
         }
     }
 }
-

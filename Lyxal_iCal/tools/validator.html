@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <style>
+        body {
+            font-family: 'Verdana', sans-serif;
+            color: #333;
+            background-color: #f4f4f4;
+            padding: 20px;
+            font-size: 16px;
+            width: 42em;
+        }
+
+        input[type="submit"] {
+            font-size: 1.2rem;
+            border-radius: 5px;
+            border: 1px solid black;
+            margin-top: 1ex;
+            padding: 10px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 22rem;
+            font-family: monospace;
+        }
+
+        hr {
+            border: 1px solid #999;
+            margin: 0;
+        }
+    </style>
+    <script type="module">
+        import ICAL from "../dist/ical.js";
+
+        function stringError(e) {
+            return "Error: " + e +
+                ("fileName" in e ? "\nFilename: " + e.fileName : "") +
+                ("lineNumber" in e ? "\nLine: " + e.lineNumber : "") +
+                ("stack" in e ? "\nStack: " + e.stack : "");
+        }
+
+        window.validate = function validate() {
+            let duration = document.getElementById("duration");
+
+            let data = document.getElementById("data");
+
+            let error = document.getElementById("error");
+            let jcalres = document.getElementById("jcal");
+            let icalres = document.getElementById("ical");
+
+            duration.textContent = '';
+            error.textContent = jcalres.textContent = icalres.textContent = "";
+
+            let beginTime = Date.now();
+
+            let jcal, ical, from;
+            try {
+                jcal = JSON.parse(data.value);
+                from = "json";
+            } catch (jsonerr) {
+                try {
+                    jcal = ICAL.parse(data.value);
+                    from = "ical";
+                } catch (icalerr) {
+                    error.textContent = "Couldn't parse as iCalendar:\n" +
+                        stringError(icalerr) + "\n\nNor as jCal:\n" +
+                        stringError(jsonerr);
+                }
+            }
+
+            if (from == "json") {
+                ical = ICAL.stringify(jcal);
+                jcal = ICAL.parse(ical);
+            } else if (from == "ical") {
+                ical = ICAL.stringify(jcal);
+            } else {
+                ical = jcal = null;
+            }
+
+            let totalRuntime = Date.now() - beginTime;
+            duration.textContent = 'Total Runtime: ' + totalRuntime + ' ms';
+
+            try {
+                jcalres.textContent = jcal ? JSON.stringify(jcal, null, " ") : "";
+                icalres.textContent = ical;
+                document.getElementById("jcalbox").style.display = "";
+                document.getElementById("icalbox").style.display = "";
+            } catch (e) {
+                error.textContent = stringError(e);
+            }
+
+            return false;
+        };
+    </script>
+</head>
+
+<body>
+    <form method="post" action="#" onsubmit="return validate()">
+        <h1>iCalendar / jCal Validator</h1>
+        <p id="descr">This validator form takes either iCalendar or jCal data. iCalendar data will be parsed to jCal and
+            re-serialized to iCalendar. Similarly, jCal data will be parsed to iCalendar and re-serialized to jCal.</p>
+        <textarea id="data" rows="20" cols="80"></textarea><br />
+        <input type="submit" value="Validate" /><br />
+        <p id="duration"></p>
+        <hr>
+        <pre id="error"></pre>
+        <div id="jcalbox" style="display: none">
+            <h2>jCal Representation</h2>
+            <pre id="jcal"></pre>
+            <hr>
+        </div>
+        <div id="icalbox" style="display: none">
+            <h2>iCalendar Representation</h2>
+            <pre id="ical"></pre>
+        </div>
+    </form>
+</body>
+
+</html>
