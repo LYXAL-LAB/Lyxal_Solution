@@ -10,6 +10,8 @@ axelor-open-suite/
 lucide-main/
 React-tailwind-components/
 svg-logos/
+surrealml-main/
+surrealdb-3.0.0-alpha.16/
 
 # Temp & lourds
 *.log

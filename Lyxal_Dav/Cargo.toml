@@ -1,0 +1,41 @@
+[workspace]
+resolver = "2"
+members = [
+    "modules/core",
+]
+
+[workspace.dependencies]
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+async-trait = "0.1"
+
+# XML Handling (Performance critical)
+roxmltree = "0.19"
+quick-xml = "0.36"
+
+# Date & Time
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+
+# RRULE (Recurrence rule expansion)
+rrule = "0.13"
+
+# Async Runtime
+tokio = { version = "1.42", features = ["rt", "macros", "sync"] }
+
+[workspace.lints.clippy]
+# Same lints as surrealml for consistency
+allow_attributes = "warn"
+assigning_clones = "warn"
+cloned_instead_of_copied = "warn"
+debug_assert_with_mut_call = "warn"
+fallible_impl_from = "warn"
+get_unwrap = "warn"
+implicit_clone = "warn"
+inefficient_to_string = "warn"
+lossy_float_literal = "warn"

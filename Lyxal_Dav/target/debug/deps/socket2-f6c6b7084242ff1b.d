@@ -1,0 +1,11 @@
+D:\Users\DUBREUCQ\Desktop\Lyxal_Solution\Lyxal_Dav\target\debug\deps\socket2-f6c6b7084242ff1b.d: D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\lib.rs D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sockaddr.rs D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\socket.rs D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sockref.rs D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sys\windows.rs
+
+D:\Users\DUBREUCQ\Desktop\Lyxal_Solution\Lyxal_Dav\target\debug\deps\libsocket2-f6c6b7084242ff1b.rlib: D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\lib.rs D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sockaddr.rs D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\socket.rs D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sockref.rs D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sys\windows.rs
+
+D:\Users\DUBREUCQ\Desktop\Lyxal_Solution\Lyxal_Dav\target\debug\deps\libsocket2-f6c6b7084242ff1b.rmeta: D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\lib.rs D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sockaddr.rs D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\socket.rs D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sockref.rs D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sys\windows.rs
+
+D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\lib.rs:
+D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sockaddr.rs:
+D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\socket.rs:
+D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sockref.rs:
+D:\Users\DUBREUCQ\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sys\windows.rs:

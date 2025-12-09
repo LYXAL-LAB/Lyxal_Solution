@@ -1,0 +1,31 @@
+[package]
+name = "lyxal-dav-core"
+version = "0.1.0"
+edition = "2021"
+description = "Native CalDAV/CardDAV protocol engine for Lyxal Solution"
+authors = ["Lyxal Solution"]
+license = "MIT"
+
+[features]
+default = []
+# Future: ical-rrule = [] for full recurrence expansion
+
+[dependencies]
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }
+roxmltree = { workspace = true }
+quick-xml = { workspace = true }
+chrono = { workspace = true }
+chrono-tz = { workspace = true }
+tokio = { workspace = true }
+rrule = { workspace = true }
+
+[dev-dependencies]
+tokio = { version = "1.42", features = ["full"] }
+
+[lib]
+name = "lyxal_dav_core"
+path = "src/lib.rs"
