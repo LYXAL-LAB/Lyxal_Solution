@@ -10,4 +10,10 @@ pub enum DavError {
 
     #[error("Not Found")]
     NotFound,
+
+    #[error("Forbidden")]
+    Forbidden,
+
+    #[error("Method Not Allowed")]
+    MethodNotAllowed,
 }

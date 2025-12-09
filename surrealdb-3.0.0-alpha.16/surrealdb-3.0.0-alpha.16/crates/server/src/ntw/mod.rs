@@ -1,4 +1,5 @@
 mod api;
+mod dav;
 mod auth;
 pub mod client_ip;
 pub mod error;
@@ -91,6 +92,7 @@ impl RouterFactory for CommunityComposer {
 			.merge(key::router())
 			.merge(ml::router())
 			.merge(api::router())
+			.merge(dav::router())
 			.merge(gql::router())
 	}
 }

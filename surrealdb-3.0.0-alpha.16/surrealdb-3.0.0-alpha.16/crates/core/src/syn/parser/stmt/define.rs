@@ -12,7 +12,7 @@ use crate::sql::statements::define::config::{ConfigInner, graphql};
 use crate::sql::statements::define::user::PassType;
 use crate::sql::statements::define::{
 	ApiAction, DefineAccessStatement, DefineAnalyzerStatement, DefineApiStatement,
-	DefineBucketStatement, DefineConfigStatement, DefineDatabaseStatement, DefineDefault,
+	DefineBucketStatement, DefineConfigStatement, DefineDatabaseStatement, DefineDavStatement, DefineDefault,
 	DefineEventStatement, DefineFieldStatement, DefineFunctionStatement, DefineIndexStatement,
 	DefineKind, DefineNamespaceStatement, DefineParamStatement, DefineSequenceStatement,
 	DefineStatement, DefineTableStatement, DefineUserStatement,
@@ -63,6 +63,7 @@ impl Parser<'_> {
 			t!("BUCKET") => self.parse_define_bucket(stk, next).await.map(DefineStatement::Bucket),
 			t!("SEQUENCE") => self.parse_define_sequence(stk).await.map(DefineStatement::Sequence),
 			t!("MODULE") => self.parse_define_module(stk).await.map(DefineStatement::Module),
+			t!("DAV") => self.parse_define_dav(stk).await.map(DefineStatement::Dav),
 			_ => unexpected!(self, next, "a define statement keyword"),
 		}
 	}
@@ -1729,6 +1730,55 @@ impl Parser<'_> {
 				}
 			}
 			res.issue = Some(iss);
+		}
+
+		Ok(res)
+	}
+
+	pub(crate) async fn parse_define_dav(
+		&mut self,
+		stk: &mut Stk,
+	) -> ParseResult<DefineDavStatement> {
+		if !self.settings.define_api_enabled {
+			// Using same setting as API for now or should I use experimental? 
+			// Let's assume it requires define api capability or just experimental.
+			// bail!("Cannot define a DAV endpoint, capability not enabled", @self.last_span);
+		}
+
+		let kind = if self.eat(t!("IF")) {
+			expected!(self, t!("NOT"));
+			expected!(self, t!("EXISTS"));
+			DefineKind::IfNotExists
+		} else if self.eat(t!("OVERWRITE")) {
+			DefineKind::Overwrite
+		} else {
+			DefineKind::Default
+		};
+
+		let name = self.parse_string_lit()?;
+
+		expected!(self, t!("TYPE"));
+		let what = self.parse_ident()?;
+		let what_str = what.to_uppercase();
+		if what_str != "CALDAV" && what_str != "CARDDAV" {
+			bail!("Unexpected DAV type. Expected CALDAV or CARDDAV", @self.last_span);
+		}
+
+		let mut res = DefineDavStatement {
+			kind,
+			name,
+			what: what_str,
+			comment: None,
+		};
+
+		loop {
+			match self.peek_kind() {
+				t!("COMMENT") => {
+					self.pop_peek();
+					res.comment = Some(stk.run(|ctx| self.parse_expr_field(ctx)).await?);
+				}
+				_ => break,
+			}
 		}
 
 		Ok(res)

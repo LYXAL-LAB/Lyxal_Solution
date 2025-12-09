@@ -57,6 +57,7 @@ mod tests {
             Ok("etag-123".into()) 
         }
         async fn delete_resource(&self, _path: &str) -> anyhow::Result<()> { Ok(()) }
+        async fn create_collection(&self, _path: &str, _kind: crate::backend::ResourceKind) -> anyhow::Result<()> { Ok(()) }
     }
 
     #[tokio::test]
@@ -66,6 +67,7 @@ mod tests {
             "DELETE".to_string(),
             "/calendars/user/home/test.ics".to_string(),
             vec![],
+            std::collections::HashMap::new(),
             backend
         );
 
@@ -80,6 +82,7 @@ mod tests {
             "DELETE".to_string(),
             "/calendars/user/home/missing.ics".to_string(),
             vec![],
+            std::collections::HashMap::new(),
             backend
         );
 

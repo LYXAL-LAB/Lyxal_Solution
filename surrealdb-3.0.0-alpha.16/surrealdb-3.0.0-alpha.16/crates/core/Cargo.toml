@@ -64,6 +64,10 @@ targets = []
 
 [dependencies]
 
+# Lyxal Modules
+pdf = { package = "pdf_stub", version = "0.1.0", path = "../../crates/pdf_stub" }
+
+
 # External surreal crates
 surrealmx = { workspace = true, optional = true }
 surrealkv = { workspace = true, optional = true }

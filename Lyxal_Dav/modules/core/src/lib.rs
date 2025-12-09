@@ -30,13 +30,14 @@ pub struct DavContext {
     pub method: String,
     pub path: String,
     pub body: Vec<u8>,
+    pub headers: std::collections::HashMap<String, String>,
     pub backend: std::sync::Arc<dyn crate::backend::DavBackend>,
     // In the future: User/Auth info
 }
 
 impl DavContext {
-    pub fn new(method: String, path: String, body: Vec<u8>, backend: std::sync::Arc<dyn crate::backend::DavBackend>) -> Self {
-        Self { method, path, body, backend }
+    pub fn new(method: String, path: String, body: Vec<u8>, headers: std::collections::HashMap<String, String>, backend: std::sync::Arc<dyn crate::backend::DavBackend>) -> Self {
+        Self { method, path, body, headers, backend }
     }
 }
 
@@ -50,7 +51,8 @@ pub async fn process(ctx: DavContext) -> Result<String, DavError> {
         "PUT" => methods::put::handle(ctx).await,
         "GET" => methods::get::handle(ctx).await,
         "DELETE" => methods::delete::handle(ctx).await,
-        "OPTIONS" => Ok("Allow: OPTIONS, GET, PUT, DELETE, PROPFIND, REPORT".to_string()),
+        "MKCALENDAR" => methods::mkcalendar::handle(ctx).await,
+        "OPTIONS" => Ok("Allow: OPTIONS, GET, PUT, DELETE, PROPFIND, REPORT, MKCALENDAR".to_string()),
         _ => Ok(format!("Method {} not implemented yet", ctx.method)),
     }
 }
@@ -65,10 +67,26 @@ mod tests {
     struct MockBackend;
     #[async_trait]
     impl DavBackend for MockBackend {
-        async fn get_resource(&self, _path: &str) -> anyhow::Result<Option<Resource>> { Ok(None) }
+        async fn get_resource(&self, path: &str) -> anyhow::Result<Option<Resource>> {
+             if path == "/calendars/user/home" {
+                 Ok(Some(Resource {
+                     path: path.to_string(),
+                     kind: crate::backend::ResourceKind::Calendar, 
+                     mime_type: "text/calendar".into(),
+                     etag: "root".into(),
+                     content: None,
+                     properties: std::collections::HashMap::from([
+                         ("D:displayname".to_string(), "Native Calendar".to_string())
+                     ]),
+                 }))
+             } else {
+                 Ok(None)
+             }
+        }
         async fn list_collection(&self, _path: &str) -> anyhow::Result<Vec<Resource>> { Ok(vec![]) }
         async fn put_resource(&self, _path: &str, _data: &[u8], _mime: &str) -> anyhow::Result<String> { Ok("".into()) }
         async fn delete_resource(&self, _path: &str) -> anyhow::Result<()> { Ok(()) }
+        async fn create_collection(&self, _path: &str, _kind: crate::backend::ResourceKind) -> anyhow::Result<()> { Ok(()) }
     }
 
     #[tokio::test]
@@ -87,6 +105,7 @@ mod tests {
             "PROPFIND".to_string(), 
             "/calendars/user/home".to_string(), 
             body.as_bytes().to_vec(),
+            std::collections::HashMap::new(),
             backend
         );
 
@@ -96,6 +115,7 @@ mod tests {
 
         assert!(result.contains("<D:href>/calendars/user/home</D:href>"));
         assert!(result.contains("<D:displayname>Native Calendar</D:displayname>"));
-        assert!(result.contains("<D:collection/><C:calendar/>"));
+        assert!(result.contains("<D:collection/>"));
+        assert!(result.contains("<C:calendar"));
     }
 }

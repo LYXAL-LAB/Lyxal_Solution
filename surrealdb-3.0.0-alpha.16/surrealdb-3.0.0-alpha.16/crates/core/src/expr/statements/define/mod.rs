@@ -4,6 +4,7 @@ mod api;
 mod bucket;
 pub mod config;
 mod database;
+mod dav;
 mod event;
 mod field;
 mod function;
@@ -25,6 +26,7 @@ pub(crate) use api::{ApiAction, DefineApiStatement};
 pub(crate) use bucket::DefineBucketStatement;
 pub(crate) use config::DefineConfigStatement;
 pub(crate) use database::DefineDatabaseStatement;
+pub use dav::DefineDavStatement;
 pub(crate) use event::DefineEventStatement;
 pub(crate) use field::{DefineDefault, DefineFieldStatement};
 pub(crate) use function::DefineFunctionStatement;
@@ -71,6 +73,7 @@ pub(crate) enum DefineStatement {
 	Bucket(DefineBucketStatement),
 	Sequence(DefineSequenceStatement),
 	Module(DefineModuleStatement),
+	Dav(DefineDavStatement),
 }
 
 impl DefineStatement {
@@ -100,6 +103,7 @@ impl DefineStatement {
 			Self::Bucket(v) => v.compute(stk, ctx, opt, doc).await,
 			Self::Sequence(v) => v.compute(stk, ctx, opt, doc).await,
 			Self::Module(v) => v.compute(stk, ctx, opt, doc).await,
+			Self::Dav(v) => v.compute(stk, ctx, opt, doc).await,
 		}
 	}
 }
@@ -124,6 +128,7 @@ impl Display for DefineStatement {
 			Self::Bucket(v) => Display::fmt(v, f),
 			Self::Sequence(v) => Display::fmt(v, f),
 			Self::Module(v) => Display::fmt(v, f),
+			Self::Dav(v) => Display::fmt(v, f),
 		}
 	}
 }

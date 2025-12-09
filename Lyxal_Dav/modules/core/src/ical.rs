@@ -6,7 +6,7 @@
 use chrono::{DateTime, Utc, NaiveDateTime, NaiveDate};
 use chrono_tz::Tz;
 use rrule::RRuleSet;
-use serde_json::{Value, Map, json};
+use serde_json::{Value, Map};
 
 /// Error type for iCal operations
 #[derive(Debug, thiserror::Error)]
@@ -141,7 +141,7 @@ pub fn parse(ical_text: &str) -> Result<Value> {
             vtimezone_acc.push('\n');
         } else if in_vevent {
             if let Some((key, value)) = parse_property(line) {
-                result.insert(key.to_lowercase(), Value::String(value));
+                insert_property(&mut result, key.to_lowercase(), value);
             }
         }
     }
@@ -174,12 +174,32 @@ pub fn events(ical_text: &str) -> Result<Vec<Value>> {
         
         if let Some(ref mut event) = current_event {
             if let Some((key, value)) = parse_property(line) {
-                event.insert(key.to_lowercase(), Value::String(value));
+                insert_property(event, key.to_lowercase(), value);
             }
         }
     }
     
     Ok(events)
+}
+
+fn insert_property(map: &mut Map<String, Value>, key: String, value: String) {
+    if let Some(existing) = map.get_mut(&key) {
+        match existing {
+            Value::String(s) => {
+                let s_clone = s.clone();
+                *existing = Value::Array(vec![Value::String(s_clone), Value::String(value)]);
+            },
+            Value::Array(arr) => {
+                arr.push(Value::String(value));
+            },
+            _ => {
+                // Should not happen for this simple parser, but overwrite
+                *existing = Value::String(value);
+            }
+        }
+    } else {
+        map.insert(key, Value::String(value));
+    }
 }
 
 /// Extract a specific property from iCalendar text
@@ -388,10 +408,108 @@ fn parse_property(line: &str) -> Option<(String, String)> {
     Some((key.to_string(), value.to_string()))
 }
 
+/// Check if an event (represented as JSON Value) overlaps with a given time range
+pub fn is_in_range(event: &Value, range_start: DateTime<Utc>, range_end: DateTime<Utc>) -> bool {
+    let obj = match event {
+        Value::Object(o) => o,
+        _ => return false,
+    };
+
+    // 1. Get DTSTART (Required)
+    let dtstart_str = match obj.get("dtstart").and_then(|v| v.as_str()) {
+        Some(s) => s,
+        None => return false, // Invalid event without start
+    };
+    
+    let dtstart = match parse_date(dtstart_str) {
+        Ok(dt) => dt,
+        Err(_) => return false,
+    };
+
+    // 2. Determine Duration
+    // Priority: DTEND > DURATION > Default (0 or 1 day if allday)
+    let duration = if let Some(dtend_str) = obj.get("dtend").and_then(|v| v.as_str()) {
+         if let Ok(dtend) = parse_date(dtend_str) {
+             dtend.signed_duration_since(dtstart)
+         } else {
+             chrono::Duration::zero()
+         }
+    } else if let Some(_dur_str) = obj.get("duration").and_then(|v| v.as_str()) {
+        // TODO: Implement ISO duration parser
+        // For now, MVP assumes 0 duration if DURATION property is used without logic
+        chrono::Duration::zero()
+    } else {
+        chrono::Duration::zero()
+    };
+
+    // 3. Check RRULE
+    if let Some(rrule_str) = obj.get("rrule").and_then(|v| v.as_str()) {
+        let search_start = range_start - duration;
+        
+        // rrule crate requires iCal format: YYYYMMDDTHHMMSSZ
+        let start_str = dtstart.format("%Y%m%dT%H%M%SZ").to_string();
+        let mut rrule_block = format!(
+            "DTSTART:{}\nRRULE:{}", 
+            start_str, 
+            rrule_str.trim_start_matches("RRULE:")
+        );
+
+        // Handle EXDATE
+        if let Some(exdate) = obj.get("exdate") {
+            match exdate {
+                Value::String(s) => {
+                     rrule_block.push_str(&format!("\nEXDATE:{}", s));
+                },
+                Value::Array(arr) => {
+                    for val in arr {
+                        if let Value::String(s) = val {
+                            rrule_block.push_str(&format!("\nEXDATE:{}", s));
+                        }
+                    }
+                },
+                _ => {}
+            }
+        }
+
+        if let Ok(rrule_set) = rrule_block.parse::<RRuleSet>() {
+            let limit = 2000; 
+            let result = rrule_set.all(limit);
+            // println!("DEBUG: rrule generated {} dates", result.dates.len());
+            
+            for date in result.dates {
+                let dt_str = date.to_rfc3339();
+                // println!("DEBUG: checking date {}", dt_str);
+                
+                if let Ok(parsed) = DateTime::parse_from_rfc3339(&dt_str) {
+                    let occ_start: DateTime<Utc> = parsed.with_timezone(&Utc);
+                    let occ_end = occ_start + duration;
+                    
+                    if occ_start < range_end && occ_end > range_start {
+                        return true;
+                    }
+                    
+                    if occ_start >= range_end {
+                        return false; 
+                    }
+                }
+            }
+        } else {
+             // println!("DEBUG: failed to parse rrule block: {}", rrule_block);
+        }
+    } else {
+        // 4. Non-recurring check
+        let event_end = dtstart + duration;
+        return dtstart < range_end && event_end > range_start;
+    }
+
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use chrono::Datelike;
+    use serde_json::json;
 
     #[test]
     fn test_parse() {
@@ -466,5 +584,63 @@ END:VCALENDAR"#;
         assert_eq!(result.len(), 2);
         assert_eq!(result[0]["uid"], "event1");
         assert_eq!(result[1]["uid"], "event2");
+    }
+
+    #[test]
+    fn test_is_in_range_simple() {
+        let event_simple = json!({
+            "dtstart": "20250110T100000Z",
+            "duration": "PT1H" 
+        });
+        
+        let range_start = parse_date("20250110T000000Z").unwrap();
+        let range_end = parse_date("20250111T000000Z").unwrap();
+        
+        assert!(is_in_range(&event_simple, range_start, range_end), "Simple event in range failed");
+        
+        let range_early = parse_date("20250101T000000Z").unwrap();
+        let range_early_end = parse_date("20250102T000000Z").unwrap();
+        assert!(!is_in_range(&event_simple, range_early, range_early_end), "Simple event out of range failed");
+    }
+
+    #[test]
+    fn test_is_in_range_recurring() {
+        let event_recurring = json!({
+            "dtstart": "20250101T100000Z",
+            "duration": "PT1H",
+            "rrule": "FREQ=DAILY;COUNT=5"
+        });
+        
+        // Range covering the 3rd occurrence (2025-01-03 10:00)
+        let range_mid = parse_date("20250103T000000Z").unwrap();
+        let range_mid_end = parse_date("20250104T000000Z").unwrap();
+        assert!(is_in_range(&event_recurring, range_mid, range_mid_end), "Recurring event match failed");
+        
+        // Range after recurrence ends (2025-01-10)
+        let range_late = parse_date("20250110T000000Z").unwrap();
+        let range_late_end = parse_date("20250111T000000Z").unwrap();
+        assert!(!is_in_range(&event_recurring, range_late, range_late_end), "Recurring event no match failed");
+    }
+
+    #[test]
+    fn test_is_in_range_exdate() {
+        // Daily for 5 days: 2025-01-01 to 2025-01-05
+        // Exclude 2025-01-03
+        let event_exdate = json!({
+            "dtstart": "20250101T100000Z",
+            "duration": "PT1H",
+            "rrule": "FREQ=DAILY;COUNT=5",
+            "exdate": ["20250103T100000Z"]
+        });
+        
+        // 2025-01-03 should NOT match
+        let range_mid = parse_date("20250103T090000Z").unwrap();
+        let range_mid_end = parse_date("20250103T120000Z").unwrap();
+        assert!(!is_in_range(&event_exdate, range_mid, range_mid_end), "Excluded date matched!");
+
+        // 2025-01-02 should match
+        let range_prev = parse_date("20250102T090000Z").unwrap();
+        let range_prev_end = parse_date("20250102T120000Z").unwrap();
+        assert!(is_in_range(&event_exdate, range_prev, range_prev_end), "Included date failed match");
     }
 }

@@ -12,7 +12,7 @@ pub async fn handle(ctx: DavContext) -> Result<String, DavError> {
     let ical_text = String::from_utf8(ctx.body.clone())
         .map_err(|e| DavError::Internal(format!("Invalid UTF-8: {}", e)))?;
     
-    let parsed = ical::parse(&ical_text)
+    let _parsed = ical::parse(&ical_text)
         .map_err(|e| DavError::Internal(format!("ICS parse error: {}", e)))?;
 
     // 2. Determine MIME type
@@ -47,6 +47,7 @@ mod tests {
             Ok("etag-123".into()) 
         }
         async fn delete_resource(&self, _path: &str) -> anyhow::Result<()> { Ok(()) }
+        async fn create_collection(&self, _path: &str, _kind: crate::backend::ResourceKind) -> anyhow::Result<()> { Ok(()) }
     }
 
     #[tokio::test]
@@ -65,6 +66,7 @@ END:VCALENDAR"#;
             "PUT".to_string(),
             "/calendars/user/home/test.ics".to_string(),
             ical.as_bytes().to_vec(),
+            std::collections::HashMap::new(),
             backend
         );
 

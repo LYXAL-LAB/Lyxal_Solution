@@ -94,21 +94,37 @@ pub fn detect_report_type(body: &[u8]) -> Result<String, DavError> {
 }
 
 /// Parse a raw XML body from a REPORT request (calendar-multiget)
-pub fn parse_calendar_multiget(body: &[u8]) -> Result<Vec<String>, DavError> {
+pub fn parse_calendar_multiget(body: &[u8]) -> Result<(Vec<String>, PropfindRequest), DavError> {
     let text = std::str::from_utf8(body).map_err(|e| DavError::Internal(e.to_string()))?;
     let doc = Document::parse(text)?;
     let root = doc.root_element();
     
     let mut hrefs = Vec::new();
+    let mut request = PropfindRequest { all_prop: false, prop_names: false, props: vec![] };
+
     for child in root.children() {
-        if child.is_element() && child.tag_name().name() == "href" {
-             if let Some(text) = child.text() {
-                 hrefs.push(text.to_string());
-             }
+        if !child.is_element() { continue; }
+        
+        match child.tag_name().name() {
+            "href" => {
+                if let Some(text) = child.text() {
+                    hrefs.push(text.to_string());
+                }
+            },
+            "allprop" => request.all_prop = true,
+            "propname" => request.prop_names = true,
+            "prop" => {
+                for prop_node in child.children() {
+                    if prop_node.is_element() {
+                        request.props.push(prop_node.tag_name().name().to_string());
+                    }
+                }
+            },
+            _ => {}
         }
     }
     
-    Ok(hrefs)
+    Ok((hrefs, request))
 }
 
 /// A DAV Resource to be included in the response

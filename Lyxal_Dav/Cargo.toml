@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "modules/core",
+    "modules/server",
 ]
 
 [workspace.dependencies]

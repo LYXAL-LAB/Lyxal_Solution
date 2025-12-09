@@ -21,12 +21,12 @@ pub mod encoding;
 pub mod file;
 pub mod geo;
 pub mod http;
-pub mod ical;
 pub mod math;
 pub mod not;
 pub mod object;
 pub mod operate;
 pub mod parse;
+pub mod pdf;
 pub mod rand;
 pub mod record;
 pub mod schema;
@@ -252,18 +252,6 @@ pub fn synchronous(
 		"geo::hash::decode" => geo::hash::decode,
 		"geo::hash::encode" => geo::hash::encode,
 		"geo::is_valid" => geo::is::valid,
-		//
-		"ical::parse" => ical::parse,
-		"ical::events" => ical::events,
-		"ical::get" => ical::get,
-		"ical::has" => ical::has,
-		"ical::method" => ical::method,
-		"ical::attendees" => ical::attendees,
-		"ical::organizer" => ical::organizer,
-		"ical::stringify" => ical::stringify,
-		"ical::duration" => ical::duration,
-		"ical::timezone" => ical::timezone,
-		"ical::occurrences" => ical::occurrences,
 		//
 		"math::abs" => math::abs,
 		"math::acos" => math::acos,
@@ -617,6 +605,14 @@ pub async fn asynchronous(
 		"http::post" =>  http::post(ctx).await,
 		"http::patch" => http::patch(ctx).await,
 		"http::delete" => http::delete(ctx).await,
+		//
+		"pdf::generate" => pdf::generate.await,
+		"pdf::generate_flex" => pdf::generate_flex.await,
+		"pdf::page_count" => pdf::page_count.await,
+		"pdf::merge" => pdf::merge.await,
+		"pdf::info" => pdf::info.await,
+		"pdf::to_model" => pdf::to_model.await,
+		"pdf::extract_text" => pdf::extract_text.await,
 		//
 		"record::exists" => record::exists((stk, ctx, Some(opt), doc)).await,
 		"record::is_edge" => record::is::edge((stk, ctx, Some(opt), doc)).await,

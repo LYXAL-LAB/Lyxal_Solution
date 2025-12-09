@@ -8,6 +8,8 @@
 
 mod access;
 pub(crate) mod aggregation;
+/// DAV module
+pub mod dav; // Added
 mod database;
 mod module;
 mod namespace;
@@ -26,6 +28,7 @@ pub(crate) use database::*;
 pub(crate) use module::*;
 pub(crate) use namespace::*;
 pub(crate) use record::*;
+pub use dav::DavDefinition; // Added
 pub use schema::ApiMethod;
 pub(crate) use schema::{
 	ApiDefinition, Distance, FullTextParams, HnswParams, Scoring, VectorType, *,

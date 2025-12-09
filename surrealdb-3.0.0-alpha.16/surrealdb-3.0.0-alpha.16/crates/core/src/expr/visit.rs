@@ -772,6 +772,7 @@ implement_visitor! {
 			DefineStatement::Module(d) => {
 				this.visit_define_module(d)?;
 			},
+			DefineStatement::Dav(_) => {},
 		}
 		Ok(())
 	}
@@ -2206,6 +2207,7 @@ implement_visitor_mut! {
 			DefineStatement::Module(d) => {
 				this.visit_mut_define_module(d)?;
 			},
+			DefineStatement::Dav(_) => {},
 		}
 		Ok(())
 	}

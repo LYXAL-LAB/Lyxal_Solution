@@ -6,6 +6,7 @@ members = [
     "crates/server",
     "crates/types",
     "crates/types-derive",
+    "crates/pdf",
     "crates/surrealism/surrealism",
     "crates/surrealism/surrealism-cli",
     "crates/surrealism/surrealism-macros",

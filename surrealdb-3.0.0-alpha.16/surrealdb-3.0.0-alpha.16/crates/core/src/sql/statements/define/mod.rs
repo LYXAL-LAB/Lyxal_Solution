@@ -4,6 +4,7 @@ mod api;
 mod bucket;
 pub mod config;
 mod database;
+mod dav;
 mod event;
 mod field;
 mod function;
@@ -24,6 +25,7 @@ pub(crate) use api::{ApiAction, DefineApiStatement};
 pub(crate) use bucket::DefineBucketStatement;
 pub(crate) use config::DefineConfigStatement;
 pub(crate) use database::DefineDatabaseStatement;
+pub use dav::DefineDavStatement;
 pub(crate) use event::DefineEventStatement;
 pub(crate) use field::{DefineDefault, DefineFieldStatement};
 pub(crate) use function::DefineFunctionStatement;
@@ -87,6 +89,7 @@ pub(crate) enum DefineStatement {
 	Sequence(DefineSequenceStatement),
 	#[cfg_attr(feature = "arbitrary", arbitrary(skip))]
 	Module(DefineModuleStatement),
+	Dav(DefineDavStatement),
 }
 
 impl Display for DefineStatement {
@@ -109,6 +112,7 @@ impl Display for DefineStatement {
 			Self::Bucket(v) => Display::fmt(v, f),
 			Self::Sequence(v) => Display::fmt(v, f),
 			Self::Module(v) => Display::fmt(v, f),
+			Self::Dav(v) => Display::fmt(v, f),
 		}
 	}
 }
@@ -133,6 +137,7 @@ impl From<DefineStatement> for crate::expr::statements::DefineStatement {
 			DefineStatement::Bucket(v) => Self::Bucket(v.into()),
 			DefineStatement::Sequence(v) => Self::Sequence(v.into()),
 			DefineStatement::Module(v) => Self::Module(v.into()),
+			DefineStatement::Dav(v) => Self::Dav(v.into()),
 		}
 	}
 }
@@ -157,6 +162,7 @@ impl From<crate::expr::statements::DefineStatement> for DefineStatement {
 			crate::expr::statements::DefineStatement::Bucket(v) => Self::Bucket(v.into()),
 			crate::expr::statements::DefineStatement::Sequence(v) => Self::Sequence(v.into()),
 			crate::expr::statements::DefineStatement::Module(v) => Self::Module(v.into()),
+			crate::expr::statements::DefineStatement::Dav(v) => Self::Dav(v.into()),
 		}
 	}
 }

@@ -1,0 +1,22 @@
+[package]
+name = "lyxal-dav-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lyxal-dav-core = { path = "../core" }
+
+# Web Framework
+axum = "0.7"
+tokio = { workspace = true, features = ["full"] }
+
+# Utilities
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+serde = { workspace = true }
+uuid = { version = "1.0", features = ["v4"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tower-http = { version = "0.5", features = ["trace"] }

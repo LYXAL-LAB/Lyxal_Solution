@@ -9,27 +9,27 @@
 - [x] Trait `DavBackend`
 
 ## Phase 1 : Complétion des méthodes DAV
-- [ ] Implémenter PUT handler
-- [ ] Implémenter GET handler
-- [ ] Implémenter DELETE handler
-- [ ] Implémenter MKCALENDAR handler
+- [x] Implémenter PUT handler
+- [x] Implémenter GET handler
+- [x] Implémenter DELETE handler
+- [x] Implémenter MKCALENDAR handler
 
 ## Phase 2 : Amélioration PROPFIND/REPORT
-- [ ] Support `Depth: 0` / `Depth: 1` / `Depth: infinity`
-- [ ] Filter par propriétés demandées
-- [ ] Génération CTag dynamique
-- [ ] Support calendar-multiget avec filtrage
+- [x] Support `Depth: 0` / `Depth: 1` / `Depth: infinity`
+- [x] Filter par propriétés demandées
+- [x] Génération CTag dynamique (via backend)
+- [x] Support calendar-multiget avec filtrage
 
 ## Phase 3 : Récurrence et RRULE
-- [ ] Intégration `ical::occurrences` dans `query_collection`
-- [ ] Expansion des occurrences pour REPORT time-range
-- [ ] Gestion EXDATE (exclusions)
+- [x] Intégration `ical::occurrences` dans `query_collection`
+- [x] Expansion des occurrences pour REPORT time-range
+- [x] Gestion EXDATE (exclusions)
 
 ## Phase 4 : Serveur de test autonome
-- [ ] Créer `bin/test_server.rs`
-- [ ] Mock backend en mémoire
-- [ ] Endpoint HTTP `/dav/...`
-- [ ] Tests avec curl/httpie
+- [x] Créer `bin/test_server.rs` (via modules/server)
+- [x] Mock backend en mémoire
+- [x] Endpoint HTTP `/dav/...`
+- [x] Tests avec curl/httpie
 
 ## Phase 5 : Tests et validation
 - [ ] Tests unitaires complets
