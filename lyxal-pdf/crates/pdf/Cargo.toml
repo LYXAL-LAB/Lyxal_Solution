@@ -6,4 +6,4 @@ description = "Minimal PDF engine bootstrap for Lyxal"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-
+lopdf = "0.32"
