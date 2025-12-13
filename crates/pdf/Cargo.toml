@@ -1,0 +1,10 @@
+[package]
+name = "lyxal-pdf"
+version = "0.0.1"
+edition = "2021"
+description = "Minimal PDF engine bootstrap for Lyxal"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+
+
