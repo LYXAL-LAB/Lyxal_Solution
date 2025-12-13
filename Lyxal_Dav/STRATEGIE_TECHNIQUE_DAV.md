@@ -5,6 +5,9 @@
 **Cible :** Intégration Native SurrealDB (Rust)  
 **Contexte :** Pivot stratégique "Lyxal Smart Data Platform"
 
+> Décision CTO (2025-12) : iCal / CalDAV = Rust only.  
+> Toute logique iCal en TypeScript est gelée/abandonnée. La source de vérité sera le crate Rust `lyxal_ical_core`, consommé par Surreal (fonctions natives) et par Lyxal_Dav. Le contenu ci-dessous reste pour contexte historique, mais la pile cible est 100 % Rust/Surreal.
+
 ---
 
 ## 1. Executive Summary : Le Changement de Paradigme

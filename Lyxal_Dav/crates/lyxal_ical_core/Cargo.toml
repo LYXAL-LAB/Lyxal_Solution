@@ -1,0 +1,14 @@
+[package]
+name = "lyxal_ical_core"
+version = "0.1.0"
+edition = "2021"
+description = "Lyxal iCalendar core (Rust-only, source of truth for CalDAV/Surreal)"
+license = "MIT"
+
+[lib]
+name = "lyxal_ical_core"
+path = "src/lib.rs"
+
+[dependencies]
+thiserror = "1.0"
+

@@ -2,38 +2,64 @@
 //!
 //! Handles retrieving resources (calendar objects as .ics)
 
-use crate::DavContext;
+use crate::{DavContext, DavResponse};
 use crate::error::DavError;
 use crate::ical;
+use http::StatusCode;
+
+fn split_etags(value: &str) -> Vec<String> {
+    value
+        .split(',')
+        .map(|v| v.trim().trim_matches('"').to_string())
+        .collect()
+}
 
 /// Handle GET request - retrieve a resource as ICS
-pub async fn handle(ctx: DavContext) -> Result<String, DavError> {
-    // 1. Fetch the resource from backend
-    let resource = ctx.backend.get_resource(&ctx.path).await
+pub async fn handle(ctx: DavContext) -> Result<DavResponse, DavError> {
+    let resource = ctx
+        .backend
+        .get_resource(&ctx.path)
+        .await
         .map_err(|e| DavError::Internal(format!("Backend error: {}", e)))?;
 
-    match resource {
-        Some(res) => {
-            // 2. If content is available, return it
-            if let Some(content) = res.content {
-                let ical_str = String::from_utf8(content)
-                    .map_err(|e| DavError::Internal(format!("Invalid UTF-8: {}", e)))?;
-                Ok(ical_str)
-            } else {
-                // 3. If no content but properties exist, stringify them
-                // This would be the case for a database-backed store
-                // where we reconstruct ICS from stored properties
-                let properties_json = serde_json::to_value(&res.properties)
-                    .map_err(|e| DavError::Internal(format!("JSON error: {}", e)))?;
-                
-                let ical_str = ical::stringify(&properties_json)
-                    .map_err(|e| DavError::Internal(format!("Stringify error: {}", e)))?;
-                
-                Ok(ical_str)
-            }
+    let Some(res) = resource else {
+        return Err(DavError::NotFound);
+    };
+
+    let current_etag = res.etag.clone();
+
+    // Preconditions: If-Match / If-None-Match
+    if let Some(if_match) = ctx.header("if-match") {
+        let tags = split_etags(if_match);
+        if !tags.iter().any(|t| t == "*" || t == &current_etag) {
+            return Err(DavError::PreconditionFailed);
         }
-        None => Err(DavError::NotFound),
     }
+
+    if let Some(if_none_match) = ctx.header("if-none-match") {
+        let tags = split_etags(if_none_match);
+        if tags.iter().any(|t| t == "*" || t == &current_etag) {
+            let mut resp = DavResponse::empty(StatusCode::NOT_MODIFIED);
+            resp.headers.insert("ETag".into(), format!("\"{}\"", current_etag));
+            return Ok(resp);
+        }
+    }
+
+    let ical_str = if let Some(content) = res.content {
+        String::from_utf8(content).map_err(|e| DavError::Internal(format!("Invalid UTF-8: {}", e)))?
+    } else {
+        let properties_json = serde_json::to_value(&res.properties)
+            .map_err(|e| DavError::Internal(format!("JSON error: {}", e)))?;
+        ical::stringify(&properties_json)
+            .map_err(|e| DavError::Internal(format!("Stringify error: {}", e)))?
+    };
+
+    let mut resp = DavResponse::ics(StatusCode::OK, ical_str, Some(current_etag));
+    if !res.mime_type.is_empty() {
+        resp.headers
+            .insert("Content-Type".into(), res.mime_type.clone());
+    }
+    Ok(resp)
 }
 
 #[cfg(test)]
@@ -57,6 +83,7 @@ mod tests {
                     etag: "etag-123".into(),
                     content: Some(b"BEGIN:VCALENDAR\nVERSION:2.0\nEND:VCALENDAR".to_vec()),
                     properties: HashMap::new(),
+                    sync_token: None,
                 }))
             } else {
                 Ok(None)
@@ -82,7 +109,8 @@ mod tests {
         );
 
         let result = handle(ctx).await.expect("GET failed");
-        assert!(result.contains("BEGIN:VCALENDAR"));
+        let body = String::from_utf8(result.body).unwrap();
+        assert!(body.contains("BEGIN:VCALENDAR"));
     }
 
     #[tokio::test]

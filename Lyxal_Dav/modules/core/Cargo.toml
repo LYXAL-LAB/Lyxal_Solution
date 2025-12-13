@@ -22,6 +22,7 @@ chrono = { workspace = true }
 chrono-tz = { workspace = true }
 tokio = { workspace = true }
 rrule = { workspace = true }
+http = { workspace = true }
 
 [dev-dependencies]
 tokio = { version = "1.42", features = ["full"] }

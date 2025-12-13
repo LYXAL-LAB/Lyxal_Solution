@@ -16,4 +16,13 @@ pub enum DavError {
 
     #[error("Method Not Allowed")]
     MethodNotAllowed,
+
+    #[error("Precondition Failed")]
+    PreconditionFailed,
+
+    #[error("Not Modified")]
+    NotModified,
+
+    #[error("Bad Request: {0}")]
+    BadRequest(String),
 }

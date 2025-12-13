@@ -1,8 +1,9 @@
-use crate::{DavContext, xml};
+use crate::{DavContext, DavResponse, xml};
 use crate::error::DavError;
 use crate::xml::{DavResource, generate_multistatus};
+use http::StatusCode;
 
-pub async fn handle(ctx: DavContext) -> Result<String, DavError> {
+pub async fn handle(ctx: DavContext) -> Result<DavResponse, DavError> {
     let report_type = xml::detect_report_type(&ctx.body)?;
     
     // Determine resources and the property request
@@ -32,6 +33,7 @@ pub async fn handle(ctx: DavContext) -> Result<String, DavError> {
                         etag: "".into(),
                         content: None,
                         properties: std::collections::HashMap::new(),
+                        sync_token: None,
                     });
                 }
             }
@@ -77,7 +79,9 @@ pub async fn handle(ctx: DavContext) -> Result<String, DavError> {
     }).collect();
     
     // 4. Generate MultiStatus
-    Ok(generate_multistatus(xml_resources))
+    let mut resp = DavResponse::xml(StatusCode::MULTI_STATUS, generate_multistatus(xml_resources));
+    resp.headers.insert("DAV".into(), "1, 2, calendar-access".into());
+    Ok(resp)
 }
 
 #[cfg(test)]
@@ -103,6 +107,7 @@ mod tests {
                         etag: "e1".into(),
                         content: Some("BEGIN:VCALENDAR\nBEGIN:VEVENT\nDTSTART:20250101T100000Z\nDURATION:PT1H\nEND:VEVENT\nEND:VCALENDAR".as_bytes().to_vec()),
                         properties: HashMap::new(),
+                        sync_token: None,
                     },
                     Resource {
                         path: "/calendar/event2.ics".to_string(),
@@ -111,6 +116,7 @@ mod tests {
                         etag: "e2".into(),
                         content: Some("BEGIN:VCALENDAR\nBEGIN:VEVENT\nDTSTART:20250110T100000Z\nDURATION:PT1H\nEND:VEVENT\nEND:VCALENDAR".as_bytes().to_vec()),
                         properties: HashMap::new(),
+                        sync_token: None,
                     }
                  ])
             } else {
@@ -140,8 +146,9 @@ mod tests {
         
         let ctx = DavContext::new("REPORT".into(), "/calendar".into(), body.as_bytes().to_vec(), HashMap::new(), backend);
         let resp = handle(ctx).await.unwrap();
+        let body = String::from_utf8(resp.body).unwrap();
         
-        assert!(resp.contains("/calendar/event1.ics"), "Should contain event1");
-        assert!(!resp.contains("/calendar/event2.ics"), "Should NOT contain event2");
+        assert!(body.contains("/calendar/event1.ics"), "Should contain event1");
+        assert!(!body.contains("/calendar/event2.ics"), "Should NOT contain event2");
     }
 }

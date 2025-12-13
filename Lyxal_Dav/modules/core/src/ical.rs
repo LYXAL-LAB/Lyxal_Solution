@@ -444,7 +444,7 @@ pub fn is_in_range(event: &Value, range_start: DateTime<Utc>, range_end: DateTim
 
     // 3. Check RRULE
     if let Some(rrule_str) = obj.get("rrule").and_then(|v| v.as_str()) {
-        let search_start = range_start - duration;
+        let _search_start = range_start - duration;
         
         // rrule crate requires iCal format: YYYYMMDDTHHMMSSZ
         let start_str = dtstart.format("%Y%m%dT%H%M%SZ").to_string();

@@ -1,8 +1,9 @@
-use crate::DavContext;
+use crate::{DavContext, DavResponse};
 use crate::error::DavError;
 use crate::backend::ResourceKind;
+use http::StatusCode;
 
-pub async fn handle(ctx: DavContext) -> Result<String, DavError> {
+pub async fn handle(ctx: DavContext) -> Result<DavResponse, DavError> {
     // 1. Check if resource already exists
     if let Ok(Some(_)) = ctx.backend.get_resource(&ctx.path).await {
         return Err(DavError::Forbidden); // RFC 4791 says if resource exists, fail.
@@ -15,18 +16,7 @@ pub async fn handle(ctx: DavContext) -> Result<String, DavError> {
         .await
         .map_err(|e| DavError::Internal(format!("Backend error: {}", e)))?;
 
-    // 4. Return success
-    // MKCALENDAR returns 201 Created on success
-    Ok("".to_string()) 
-    // Note: The HTTP server layer should translate Ok("") into 201 Created if the method was MKCALENDAR
-    // But currently our `process` returns `String` (body).
-    // We rely on the server wrapper to handle status codes, OR we need to change return type.
-    // For now, empty body implies success. The server wrapper (in surrealdb-server)
-    // usually defaults to 200 OK. We might need to signify 201.
-    // However, looking at other handlers, we return body string.
-    // The server mapping in `surrealdb-server` handles the Result. 
-    // If we want 201, we might need a richer return type from `process`.
-    // But for now, let's assume 200 OK is "acceptable" or the wrapper handles it.
+    Ok(DavResponse::empty(StatusCode::CREATED))
 }
 
 #[cfg(test)]
@@ -52,6 +42,7 @@ mod tests {
                     etag: "123".into(),
                     content: None,
                     properties: std::collections::HashMap::new(),
+                    sync_token: None,
                 }))
             } else {
                 Ok(None)
@@ -72,8 +63,8 @@ mod tests {
         let backend = Arc::new(MockBackend { resources: Arc::new(Mutex::new(vec![])) });
         let ctx = DavContext::new("MKCALENDAR".into(), "/calendars/new".into(), vec![], std::collections::HashMap::new(), backend.clone());
 
-        let result = handle(ctx).await;
-        assert!(result.is_ok());
+        let result = handle(ctx).await.unwrap();
+        assert_eq!(result.status, StatusCode::CREATED);
 
         let resources = backend.resources.lock().unwrap();
         assert!(resources.contains(&"/calendars/new".to_string()));

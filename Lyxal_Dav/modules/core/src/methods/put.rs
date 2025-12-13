@@ -2,12 +2,55 @@
 //!
 //! Handles creating and updating resources (calendar objects)
 
-use crate::DavContext;
+use crate::{DavContext, DavResponse};
 use crate::error::DavError;
 use crate::ical;
+use http::StatusCode;
+
+fn split_etags(value: &str) -> Vec<String> {
+    value
+        .split(',')
+        .map(|v| v.trim().trim_matches('"').to_string())
+        .collect()
+}
 
 /// Handle PUT request - create or update a resource
-pub async fn handle(ctx: DavContext) -> Result<String, DavError> {
+pub async fn handle(ctx: DavContext) -> Result<DavResponse, DavError> {
+    // Fetch existing for preconditions/status
+    let existing = ctx
+        .backend
+        .get_resource(&ctx.path)
+        .await
+        .map_err(|e| DavError::Internal(format!("Backend error: {}", e)))?;
+    let current_etag = existing.as_ref().map(|r| r.etag.clone());
+
+    // Preconditions
+    if let Some(if_match) = ctx.header("if-match") {
+        if existing.is_none() {
+            return Err(DavError::PreconditionFailed);
+        }
+        let tags = split_etags(if_match);
+        if let Some(etag) = &current_etag {
+            if !tags.iter().any(|t| t == "*" || t == etag) {
+                return Err(DavError::PreconditionFailed);
+            }
+        } else {
+            return Err(DavError::PreconditionFailed);
+        }
+    }
+
+    if let Some(if_none_match) = ctx.header("if-none-match") {
+        let tags = split_etags(if_none_match);
+        if existing.is_some() && tags.iter().any(|t| t == "*") {
+            return Err(DavError::PreconditionFailed);
+        }
+        if let Some(etag) = &current_etag {
+            if tags.iter().any(|t| t == etag) {
+                return Err(DavError::PreconditionFailed);
+            }
+        }
+    }
+
     // 1. Parse the ICS content
     let ical_text = String::from_utf8(ctx.body.clone())
         .map_err(|e| DavError::Internal(format!("Invalid UTF-8: {}", e)))?;
@@ -22,12 +65,17 @@ pub async fn handle(ctx: DavContext) -> Result<String, DavError> {
     let etag = ctx.backend.put_resource(&ctx.path, ctx.body.as_slice(), mime).await
         .map_err(|e| DavError::Internal(format!("Storage error: {}", e)))?;
 
-    // 4. Return success response with ETag
-    // CalDAV PUT returns 201 Created or 204 No Content
-    // The ETag is typically returned in the response header, not body
-    // For our text-based response, we return the ETag
-    
-    Ok(format!("Created: {} (ETag: {})", ctx.path, etag))
+    let status = if existing.is_some() {
+        StatusCode::NO_CONTENT
+    } else {
+        StatusCode::CREATED
+    };
+
+    let mut resp = DavResponse::empty(status);
+    resp.headers.insert("ETag".into(), format!("\"{}\"", etag));
+    resp.headers.insert("Content-Type".into(), "text/plain; charset=utf-8".into());
+    resp.body = Vec::new();
+    Ok(resp)
 }
 
 #[cfg(test)]
@@ -71,7 +119,7 @@ END:VCALENDAR"#;
         );
 
         let result = handle(ctx).await.expect("PUT failed");
-        assert!(result.contains("Created"));
-        assert!(result.contains("etag-123"));
+        assert_eq!(result.status, StatusCode::CREATED);
+        assert!(result.headers.get("ETag").is_some());
     }
 }

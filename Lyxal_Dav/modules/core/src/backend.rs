@@ -10,6 +10,7 @@ pub struct Resource {
     pub etag: String,
     pub content: Option<Vec<u8>>, // Content if requested/small
     pub properties: std::collections::HashMap<String, String>,
+    pub sync_token: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -99,6 +100,7 @@ pub trait DavBackend: Send + Sync {
                     // Optional: Use expanded occurrences? 
                     // RFC says return the VEVENT.
                     res.content = Some(content); // Store back content if fetched
+                    // Ensure sync token is preserved
                     filtered.push(res);
                 }
             }

@@ -1,9 +1,10 @@
-use crate::{DavContext, xml};
+use crate::{DavContext, DavResponse, xml};
 use crate::error::DavError;
 use crate::xml::{DavResource, generate_multistatus};
 use crate::backend::ResourceKind;
+use http::StatusCode;
 
-pub async fn handle(ctx: DavContext) -> Result<String, DavError> {
+pub async fn handle(ctx: DavContext) -> Result<DavResponse, DavError> {
     // 1. Parse the request body (if any)
     let req = if ctx.body.is_empty() {
         // Empty body implies "allprop"
@@ -12,7 +13,7 @@ pub async fn handle(ctx: DavContext) -> Result<String, DavError> {
         xml::parse_propfind(&ctx.body)?
     };
 
-    let depth = ctx.headers.get("Depth").map(|s| s.as_str()).unwrap_or("infinity");
+    let depth = ctx.header("depth").map(|s| s.as_str()).unwrap_or("infinity");
 
     // 2. Fetch Resources
     let mut resources = Vec::new();
@@ -63,6 +64,12 @@ pub async fn handle(ctx: DavContext) -> Result<String, DavError> {
             properties.push(("D:getetag".to_string(), format!("\"{}\"", res.etag)));
         }
 
+        if let Some(sync) = &res.sync_token {
+            if req.all_prop || req.props.contains(&"sync-token".to_string()) || req.props.contains(&"D:sync-token".to_string()) {
+                properties.push(("D:sync-token".to_string(), sync.clone()));
+            }
+        }
+
         // 3b. Map Custom Properties (stored in map)
         for (key, value) in &res.properties {
             // Check if requested? (Ignoring namespace for simple match for now)
@@ -95,7 +102,9 @@ pub async fn handle(ctx: DavContext) -> Result<String, DavError> {
     }
 
     // 4. Generate Response
-    Ok(generate_multistatus(dav_resources))
+    let mut resp = DavResponse::xml(StatusCode::MULTI_STATUS, generate_multistatus(dav_resources));
+    resp.headers.insert("DAV".into(), "1, 2, calendar-access".into());
+    Ok(resp)
 }
 
 #[cfg(test)]
@@ -119,6 +128,7 @@ mod tests {
                     etag: "root".into(),
                     content: None,
                     properties: HashMap::from([("D:displayname".to_string(), "My Cal".to_string())]),
+                    sync_token: None,
                 }))
             } else if path == "/calendar/event.ics" {
                  Ok(Some(Resource {
@@ -128,6 +138,7 @@ mod tests {
                     etag: "child".into(),
                     content: None,
                     properties: HashMap::new(),
+                    sync_token: None,
                 }))
             } else {
                 Ok(None)
@@ -143,6 +154,7 @@ mod tests {
                         etag: "child".into(),
                         content: None,
                         properties: HashMap::new(),
+                        sync_token: None,
                     }
                  ])
             } else {
@@ -162,10 +174,11 @@ mod tests {
         
         let ctx = DavContext::new("PROPFIND".into(), "/calendar".into(), vec![], headers, backend);
         let params = handle(ctx).await.unwrap();
+        let body = String::from_utf8(params.body).unwrap();
         
         // Should contain root but NOT child
-        assert!(params.contains("/calendar</D:href>"));
-        assert!(!params.contains("/calendar/event.ics</D:href>"));
+        assert!(body.contains("/calendar</D:href>"));
+        assert!(!body.contains("/calendar/event.ics</D:href>"));
     }
 
     #[tokio::test]
@@ -176,9 +189,10 @@ mod tests {
         
         let ctx = DavContext::new("PROPFIND".into(), "/calendar".into(), vec![], headers, backend);
         let params = handle(ctx).await.unwrap();
+        let body = String::from_utf8(params.body).unwrap();
         
         // Should contain root AND child
-        assert!(params.contains("/calendar</D:href>"));
-        assert!(params.contains("/calendar/event.ics</D:href>"));
+        assert!(body.contains("/calendar</D:href>"));
+        assert!(body.contains("/calendar/event.ics</D:href>"));
     }
 }

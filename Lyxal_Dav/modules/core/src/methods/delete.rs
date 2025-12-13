@@ -2,26 +2,51 @@
 //!
 //! Handles deleting resources (calendar objects)
 
-use crate::DavContext;
+use crate::{DavContext, DavResponse};
 use crate::error::DavError;
+use http::StatusCode;
+
+fn split_etags(value: &str) -> Vec<String> {
+    value
+        .split(',')
+        .map(|v| v.trim().trim_matches('"').to_string())
+        .collect()
+}
 
 /// Handle DELETE request - remove a resource
-pub async fn handle(ctx: DavContext) -> Result<String, DavError> {
-    // 1. Check if resource exists (optional, but good for returning correct status)
-    let exists = ctx.backend.get_resource(&ctx.path).await
-        .map_err(|e| DavError::Internal(format!("Backend error: {}", e)))?
-        .is_some();
+pub async fn handle(ctx: DavContext) -> Result<DavResponse, DavError> {
+    let resource = ctx
+        .backend
+        .get_resource(&ctx.path)
+        .await
+        .map_err(|e| DavError::Internal(format!("Backend error: {}", e)))?;
 
-    if !exists {
+    let Some(res) = resource else {
         return Err(DavError::NotFound);
+    };
+
+    let current_etag = res.etag;
+
+    if let Some(if_match) = ctx.header("if-match") {
+        let tags = split_etags(if_match);
+        if !tags.iter().any(|t| t == "*" || t == &current_etag) {
+            return Err(DavError::PreconditionFailed);
+        }
     }
 
-    // 2. Delete the resource
-    ctx.backend.delete_resource(&ctx.path).await
+    if let Some(if_none_match) = ctx.header("if-none-match") {
+        let tags = split_etags(if_none_match);
+        if tags.iter().any(|t| t == "*" || t == &current_etag) {
+            return Err(DavError::PreconditionFailed);
+        }
+    }
+
+    ctx.backend
+        .delete_resource(&ctx.path)
+        .await
         .map_err(|e| DavError::Internal(format!("Delete error: {}", e)))?;
 
-    // 3. Return success (204 No Content equivalent)
-    Ok(format!("Deleted: {}", ctx.path))
+    Ok(DavResponse::empty(StatusCode::NO_CONTENT))
 }
 
 #[cfg(test)]
@@ -47,6 +72,7 @@ mod tests {
                     etag: "etag-123".into(),
                     content: None,
                     properties: HashMap::new(),
+                    sync_token: None,
                 }))
             } else {
                 Ok(None)
@@ -72,7 +98,7 @@ mod tests {
         );
 
         let result = handle(ctx).await.expect("DELETE failed");
-        assert!(result.contains("Deleted"));
+        assert_eq!(result.status, StatusCode::NO_CONTENT);
     }
 
     #[tokio::test]

@@ -24,27 +24,66 @@ pub mod backend;
 pub mod methods;
 pub mod ical;
 
+use http::StatusCode;
+use std::collections::HashMap;
+
 /// Main entry point for processing a DAV request
 /// This struct simulates the "Context" of a DAV transaction
 pub struct DavContext {
     pub method: String,
     pub path: String,
     pub body: Vec<u8>,
-    pub headers: std::collections::HashMap<String, String>,
+    pub headers: HashMap<String, String>,
     pub backend: std::sync::Arc<dyn crate::backend::DavBackend>,
     // In the future: User/Auth info
 }
 
 impl DavContext {
-    pub fn new(method: String, path: String, body: Vec<u8>, headers: std::collections::HashMap<String, String>, backend: std::sync::Arc<dyn crate::backend::DavBackend>) -> Self {
+    pub fn new(method: String, path: String, body: Vec<u8>, headers: HashMap<String, String>, backend: std::sync::Arc<dyn crate::backend::DavBackend>) -> Self {
         Self { method, path, body, headers, backend }
+    }
+
+    pub fn header(&self, name: &str) -> Option<&String> {
+        let lower = name.to_ascii_lowercase();
+        self.headers
+            .iter()
+            .find(|(k, _)| k.to_ascii_lowercase() == lower)
+            .map(|(_, v)| v)
     }
 }
 
 use crate::error::DavError;
 
+/// Canonical DAV response returned by handlers
+pub struct DavResponse {
+    pub status: StatusCode,
+    pub headers: HashMap<String, String>,
+    pub body: Vec<u8>,
+}
+
+impl DavResponse {
+    pub fn empty(status: StatusCode) -> Self {
+        Self { status, headers: HashMap::new(), body: Vec::new() }
+    }
+
+    pub fn xml(status: StatusCode, xml: String) -> Self {
+        let mut headers = HashMap::new();
+        headers.insert("Content-Type".to_string(), "application/xml; charset=utf-8".to_string());
+        Self { status, headers, body: xml.into_bytes() }
+    }
+
+    pub fn ics(status: StatusCode, ics: String, etag: Option<String>) -> Self {
+        let mut headers = HashMap::new();
+        headers.insert("Content-Type".to_string(), "text/calendar; charset=utf-8".to_string());
+        if let Some(tag) = etag {
+            headers.insert("ETag".to_string(), format!("\"{}\"", tag));
+        }
+        Self { status, headers, body: ics.into_bytes() }
+    }
+}
+
 /// Process a DAV request and return a DAV response
-pub async fn process(ctx: DavContext) -> Result<String, DavError> {
+pub async fn process(ctx: DavContext) -> Result<DavResponse, DavError> {
     match ctx.method.as_str() {
         "PROPFIND" => methods::propfind::handle(ctx).await,
         "REPORT" => methods::report::handle(ctx).await,
@@ -52,8 +91,13 @@ pub async fn process(ctx: DavContext) -> Result<String, DavError> {
         "GET" => methods::get::handle(ctx).await,
         "DELETE" => methods::delete::handle(ctx).await,
         "MKCALENDAR" => methods::mkcalendar::handle(ctx).await,
-        "OPTIONS" => Ok("Allow: OPTIONS, GET, PUT, DELETE, PROPFIND, REPORT, MKCALENDAR".to_string()),
-        _ => Ok(format!("Method {} not implemented yet", ctx.method)),
+        "OPTIONS" => {
+            let mut resp = DavResponse::empty(StatusCode::OK);
+            resp.headers.insert("Allow".into(), "OPTIONS, GET, PUT, DELETE, PROPFIND, REPORT, MKCALENDAR".into());
+            resp.headers.insert("DAV".into(), "1, 2, calendar-access".into());
+            Ok(resp)
+        },
+        _ => Err(DavError::MethodNotAllowed),
     }
 }
 
@@ -78,6 +122,7 @@ mod tests {
                      properties: std::collections::HashMap::from([
                          ("D:displayname".to_string(), "Native Calendar".to_string())
                      ]),
+                     sync_token: None,
                  }))
              } else {
                  Ok(None)
@@ -110,12 +155,12 @@ mod tests {
         );
 
         let result = process(ctx).await.expect("Process failed");
-        
-        println!("Result: {}", result);
+        let body = String::from_utf8(result.body).unwrap();
+        println!("Result: {}", body);
 
-        assert!(result.contains("<D:href>/calendars/user/home</D:href>"));
-        assert!(result.contains("<D:displayname>Native Calendar</D:displayname>"));
-        assert!(result.contains("<D:collection/>"));
-        assert!(result.contains("<C:calendar"));
+        assert!(body.contains("<D:href>/calendars/user/home</D:href>"));
+        assert!(body.contains("<D:displayname>Native Calendar</D:displayname>"));
+        assert!(body.contains("<D:collection/>"));
+        assert!(body.contains("<C:calendar"));
     }
 }
