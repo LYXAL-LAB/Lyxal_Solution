@@ -21,6 +21,8 @@ impl PdfMetadata {
     }
 }
 
+const PAGE_BREAK: &str = "\n\n--- PAGE BREAK ---\n\n";
+
 /// Ouvre un PDF a partir d'un buffer en memoire.
 pub fn open_pdf(bytes: &[u8]) -> Result<Document, lopdf::Error> {
     Document::load_mem(bytes)
@@ -57,6 +59,32 @@ pub fn extract_metadata(doc: &Document) -> PdfMetadata {
     }
 
     meta
+}
+
+/// Extrait le texte brut de chaque page. Pas de panic en cas d'erreur.
+pub fn extract_text_by_page(doc: &Document) -> Vec<String> {
+    let pages = doc.get_pages();
+    if pages.is_empty() {
+        return Vec::new();
+    }
+
+    let mut numbers: Vec<u32> = pages.keys().copied().collect();
+    numbers.sort_unstable();
+
+    numbers
+        .into_iter()
+        .map(|page_num| doc.extract_text(&[page_num]).unwrap_or_default())
+        .collect()
+}
+
+/// Extrait le texte brut du document, avec un separateur clair entre pages.
+pub fn extract_text(doc: &Document) -> String {
+    let per_page = extract_text_by_page(doc);
+    if per_page.is_empty() {
+        String::new()
+    } else {
+        per_page.join(PAGE_BREAK)
+    }
 }
 
 fn resolve_ref<'a>(doc: &'a Document, obj: &'a Object) -> Option<&'a Object> {
