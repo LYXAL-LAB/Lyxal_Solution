@@ -1,6 +1,9 @@
 //! Point d'entree minimal du moteur Lyxal PDF.
 
+mod model;
+
 use lopdf::{Document, Object};
+pub use model::{PdfDocument, PdfPage};
 
 /// Metadonnees simples extraites d'un PDF.
 pub struct PdfMetadata {
@@ -85,6 +88,18 @@ pub fn extract_text(doc: &Document) -> String {
     } else {
         per_page.join(PAGE_BREAK)
     }
+}
+
+/// Construit un modele minimal de document avec metadonnees et texte brut par page.
+pub fn build_document(doc: &Document) -> PdfDocument {
+    let metadata = extract_metadata(doc);
+    let pages = extract_text_by_page(doc)
+        .into_iter()
+        .enumerate()
+        .map(|(index, text)| PdfPage { index, text })
+        .collect();
+
+    PdfDocument { metadata, pages }
 }
 
 fn resolve_ref<'a>(doc: &'a Document, obj: &'a Object) -> Option<&'a Object> {
