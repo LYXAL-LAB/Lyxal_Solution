@@ -1,6 +1,34 @@
 use crate::model::PdfTextElement;
 use lopdf::{content::Content, Document, Object};
 
+#[derive(Clone, Copy)]
+struct TextState {
+    tm: [f32; 6], // a b c d e f
+    tl: f32,      // text leading (non utilisé pour l'instant)
+}
+
+impl TextState {
+    fn identity() -> Self {
+        Self {
+            tm: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+            tl: 0.0,
+        }
+    }
+
+    fn set_tm(&mut self, values: &[f32; 6]) {
+        self.tm = *values;
+    }
+
+    fn translate(&mut self, tx: f32, ty: f32) {
+        self.tm[4] += tx;
+        self.tm[5] += ty;
+    }
+
+    fn position(&self) -> (f32, f32) {
+        (self.tm[4], self.tm[5])
+    }
+}
+
 /// Parse les opérateurs texte basiques d'une page et retourne des éléments positionnés.
 /// Supporte uniquement Tj, TJ, Td, Tm. Aucune gestion avancée (fonts, scaling, rotation, kerning fin).
 pub fn parse_text_elements(doc: &Document, page_index: usize) -> Vec<PdfTextElement> {
@@ -29,29 +57,44 @@ pub fn parse_text_elements(doc: &Document, page_index: usize) -> Vec<PdfTextElem
         Err(_) => return elements,
     };
 
-    let mut x: f32 = 0.0;
-    let mut y: f32 = 0.0;
+    let mut state = TextState::identity();
 
     for op in content.operations {
         match op.operator.as_str() {
+            "BT" => {
+                state = TextState::identity();
+            }
+            "ET" => {
+                state = TextState::identity();
+            }
             "Td" => {
                 if op.operands.len() >= 2 {
                     let dx = to_f32(&op.operands[0]);
                     let dy = to_f32(&op.operands[1]);
-                    x += dx;
-                    y += dy;
+                    state.translate(dx, dy);
+                }
+            }
+            "TD" => {
+                if op.operands.len() >= 2 {
+                    let dx = to_f32(&op.operands[0]);
+                    let dy = to_f32(&op.operands[1]);
+                    state.translate(dx, dy);
                 }
             }
             "Tm" => {
                 if op.operands.len() >= 6 {
                     // a b c d e f -> on ne garde que e, f comme position.
-                    x = to_f32(&op.operands[4]);
-                    y = to_f32(&op.operands[5]);
+                    let mut tm = [0.0_f32; 6];
+                    for i in 0..6 {
+                        tm[i] = to_f32(&op.operands[i]);
+                    }
+                    state.set_tm(&tm);
                 }
             }
             "Tj" => {
                 if let Some(txt) = extract_text_operand(&op.operands) {
                     if !txt.is_empty() {
+                        let (x, y) = state.position();
                         elements.push(PdfTextElement {
                             content: txt,
                             x,
@@ -63,6 +106,7 @@ pub fn parse_text_elements(doc: &Document, page_index: usize) -> Vec<PdfTextElem
             "TJ" => {
                 if let Some(txt) = extract_text_array(&op.operands) {
                     if !txt.is_empty() {
+                        let (x, y) = state.position();
                         elements.push(PdfTextElement {
                             content: txt,
                             x,

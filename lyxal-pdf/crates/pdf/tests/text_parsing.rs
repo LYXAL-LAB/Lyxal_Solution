@@ -104,3 +104,71 @@ fn test_parse_multiple_tj_same_page() {
     assert!((elems[1].y - 20.0).abs() < f32::EPSILON);
 }
 
+#[test]
+fn test_tm_absolute_position() {
+    let ops = vec![
+        Operation::new("BT", vec![]),
+        Operation::new(
+            "Tm",
+            vec![1.into(), 0.into(), 0.into(), 1.into(), 100.into(), 200.into()],
+        ),
+        Operation::new("Tj", vec![Object::string_literal("Hello")]),
+        Operation::new("ET", vec![]),
+    ];
+    let doc = make_page_with_ops(ops);
+    let elems = parse_text_elements(&doc, 0);
+
+    assert_eq!(elems.len(), 1);
+    assert_eq!(elems[0].content, "Hello");
+    assert!((elems[0].x - 100.0).abs() < f32::EPSILON);
+    assert!((elems[0].y - 200.0).abs() < f32::EPSILON);
+}
+
+#[test]
+fn test_td_relative_move() {
+    let ops = vec![
+        Operation::new("BT", vec![]),
+        Operation::new(
+            "Tm",
+            vec![1.into(), 0.into(), 0.into(), 1.into(), 100.into(), 200.into()],
+        ),
+        Operation::new("Td", vec![10.into(), (-20).into()]),
+        Operation::new("Tj", vec![Object::string_literal("Hello")]),
+        Operation::new("ET", vec![]),
+    ];
+    let doc = make_page_with_ops(ops);
+    let elems = parse_text_elements(&doc, 0);
+
+    assert_eq!(elems.len(), 1);
+    assert_eq!(elems[0].content, "Hello");
+    assert!((elems[0].x - 110.0).abs() < f32::EPSILON);
+    assert!((elems[0].y - 180.0).abs() < f32::EPSILON);
+}
+
+#[test]
+fn test_multiple_td() {
+    let ops = vec![
+        Operation::new("BT", vec![]),
+        Operation::new(
+            "Tm",
+            vec![1.into(), 0.into(), 0.into(), 1.into(), 0.into(), 0.into()],
+        ),
+        Operation::new("Td", vec![10.into(), 5.into()]),
+        Operation::new("Tj", vec![Object::string_literal("A")]),
+        Operation::new("Td", vec![20.into(), (-5).into()]),
+        Operation::new("Tj", vec![Object::string_literal("B")]),
+        Operation::new("ET", vec![]),
+    ];
+    let doc = make_page_with_ops(ops);
+    let elems = parse_text_elements(&doc, 0);
+
+    assert_eq!(elems.len(), 2);
+    assert_eq!(elems[0].content, "A");
+    assert!((elems[0].x - 10.0).abs() < f32::EPSILON);
+    assert!((elems[0].y - 5.0).abs() < f32::EPSILON);
+
+    assert_eq!(elems[1].content, "B");
+    assert!((elems[1].x - 30.0).abs() < f32::EPSILON); // 10 + 20
+    assert!((elems[1].y - 0.0).abs() < f32::EPSILON); // 5 + (-5)
+}
+
