@@ -3,14 +3,16 @@ use lopdf::{content::Content, Document, Object};
 
 #[derive(Clone, Copy)]
 struct TextState {
-    tm: [f32; 6], // a b c d e f
-    tl: f32,      // text leading (non utilisé pour l'instant)
+    tm: [f32; 6],    // a b c d e f
+    font_size: f32,  // taille courante
+    tl: f32,         // text leading (non utilisé pour l'instant)
 }
 
 impl TextState {
     fn identity() -> Self {
         Self {
             tm: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+            font_size: 12.0,
             tl: 0.0,
         }
     }
@@ -81,6 +83,15 @@ pub fn parse_text_elements(doc: &Document, page_index: usize) -> Vec<PdfTextElem
                     state.translate(dx, dy);
                 }
             }
+            "Tf" => {
+                if op.operands.len() >= 2 {
+                    // /FontName size Tf
+                    let size = to_f32(&op.operands[1]);
+                    if size > 0.0 {
+                        state.font_size = size;
+                    }
+                }
+            }
             "Tm" => {
                 if op.operands.len() >= 6 {
                     // a b c d e f -> on ne garde que e, f comme position.
@@ -99,6 +110,7 @@ pub fn parse_text_elements(doc: &Document, page_index: usize) -> Vec<PdfTextElem
                             content: txt,
                             x,
                             y,
+                            font_size: state.font_size,
                         });
                     }
                 }
@@ -111,6 +123,7 @@ pub fn parse_text_elements(doc: &Document, page_index: usize) -> Vec<PdfTextElem
                             content: txt,
                             x,
                             y,
+                            font_size: state.font_size,
                         });
                     }
                 }

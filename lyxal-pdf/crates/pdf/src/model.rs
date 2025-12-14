@@ -11,6 +11,7 @@ pub struct PdfTextElement {
     pub content: String,
     pub x: f32,
     pub y: f32,
+    pub font_size: f32,
 }
 
 /// Eléments d'une page (pour extension future).

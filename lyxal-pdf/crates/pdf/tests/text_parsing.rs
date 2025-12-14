@@ -78,6 +78,7 @@ fn test_parse_simple_tj() {
     assert_eq!(elems[0].content, "Hello");
     assert!((elems[0].x - 100.0).abs() < f32::EPSILON);
     assert!((elems[0].y - 200.0).abs() < f32::EPSILON);
+    assert!((elems[0].font_size - 12.0).abs() < f32::EPSILON);
 }
 
 #[test]
@@ -98,6 +99,7 @@ fn test_parse_multiple_tj_same_page() {
     assert_eq!(elems[0].content, "First");
     assert!((elems[0].x - 10.0).abs() < f32::EPSILON);
     assert!((elems[0].y - 20.0).abs() < f32::EPSILON);
+    assert!((elems[0].font_size - 12.0).abs() < f32::EPSILON);
 
     assert_eq!(elems[1].content, "Second");
     assert!((elems[1].x - 60.0).abs() < f32::EPSILON); // 10 + 50
@@ -170,5 +172,45 @@ fn test_multiple_td() {
     assert_eq!(elems[1].content, "B");
     assert!((elems[1].x - 30.0).abs() < f32::EPSILON); // 10 + 20
     assert!((elems[1].y - 0.0).abs() < f32::EPSILON); // 5 + (-5)
+    assert!((elems[1].font_size - 12.0).abs() < f32::EPSILON);
+}
+
+#[test]
+fn test_tf_sets_font_size() {
+    let ops = vec![
+        Operation::new("BT", vec![]),
+        Operation::new("Tf", vec![Object::Name(b"F1".to_vec()), 18.into()]),
+        Operation::new(
+            "Tm",
+            vec![1.into(), 0.into(), 0.into(), 1.into(), 100.into(), 200.into()],
+        ),
+        Operation::new("Tj", vec![Object::string_literal("Hello")]),
+        Operation::new("ET", vec![]),
+    ];
+    let doc = make_page_with_ops(ops);
+    let elems = parse_text_elements(&doc, 0);
+
+    assert_eq!(elems.len(), 1);
+    assert_eq!(elems[0].content, "Hello");
+    assert!((elems[0].font_size - 18.0).abs() < f32::EPSILON);
+}
+
+#[test]
+fn test_font_size_default() {
+    let ops = vec![
+        Operation::new("BT", vec![]),
+        Operation::new(
+            "Tm",
+            vec![1.into(), 0.into(), 0.into(), 1.into(), 0.into(), 0.into()],
+        ),
+        Operation::new("Tj", vec![Object::string_literal("Default")]),
+        Operation::new("ET", vec![]),
+    ];
+    let doc = make_page_with_ops(ops);
+    let elems = parse_text_elements(&doc, 0);
+
+    assert_eq!(elems.len(), 1);
+    assert_eq!(elems[0].content, "Default");
+    assert!((elems[0].font_size - 12.0).abs() < f32::EPSILON);
 }
 
