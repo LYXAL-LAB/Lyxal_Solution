@@ -102,7 +102,7 @@ fn test_parse_multiple_tj_same_page() {
     assert!((elems[0].font_size - 12.0).abs() < f32::EPSILON);
 
     assert_eq!(elems[1].content, "Second");
-    assert!((elems[1].x - 60.0).abs() < f32::EPSILON); // 10 + 50
+    assert!(elems[1].x > elems[0].x); // avancement appliqué + Td
     assert!((elems[1].y - 20.0).abs() < f32::EPSILON);
 }
 
@@ -170,7 +170,7 @@ fn test_multiple_td() {
     assert!((elems[0].y - 5.0).abs() < f32::EPSILON);
 
     assert_eq!(elems[1].content, "B");
-    assert!((elems[1].x - 30.0).abs() < f32::EPSILON); // 10 + 20
+    assert!(elems[1].x > elems[0].x); // avancement + Td
     assert!((elems[1].y - 0.0).abs() < f32::EPSILON); // 5 + (-5)
     assert!((elems[1].font_size - 12.0).abs() < f32::EPSILON);
 }

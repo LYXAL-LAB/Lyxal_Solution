@@ -7,3 +7,4 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 lopdf = "0.32"
+ttf-parser = "0.20"
