@@ -1,0 +1,75 @@
+[package]
+name = "sozu-lib"
+description = "sozu library to build hot reconfigurable HTTP reverse proxies"
+repository = "https://github.com/sozu-proxy/sozu"
+readme = "README.md"
+documentation = "https://docs.rs/sozu-lib"
+homepage = "https://sozu.io"
+version = "1.1.1"
+license = "AGPL-3.0"
+authors = [
+  "Clément Delafargue <clement@delafargue.name>",
+  "Geoffroy Couprie <geo.couprie@gmail.com>",
+  "Eloi Demolis <eloi.demolis@clever-cloud.com>",
+  "Emmanuel Bosquet <emmanuel.bosquet@clever-cloud.com>",
+  "Florentin Dubois <florentin.dubois@clever-cloud.com>",
+]
+categories = ["network-programming"]
+edition = "2024"
+rust-version = "1.85.0"
+include = [
+  "./README.md",
+  "Cargo.toml",
+  "src/**/*",
+  "/examples/*",
+  "assets/certificate.pem",
+  "assets/certificate_chain.pem",
+  "assets/key.pem",
+]
+
+[dependencies]
+anyhow = { workspace = true }
+cookie-factory = { workspace = true }
+hdrhistogram = { workspace = true }
+hex = { workspace = true }
+hpack = { workspace = true }
+idna = { workspace = true }
+kawa = { workspace = true }
+libc = { workspace = true }
+memchr = { workspace = true }
+mio = { workspace = true, features = ["os-poll", "os-ext", "net"] }
+nom = { workspace = true, features = ["std"] }
+poule = { workspace = true }
+rand = { workspace = true }
+regex = { workspace = true }
+rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
+rusty_ulid = { workspace = true }
+sha2 = { workspace = true }
+slab = { workspace = true }
+socket2 = { workspace = true, features = ["all"] }
+thiserror = { workspace = true }
+time = { workspace = true }
+
+sozu-command-lib = { workspace = true }
+
+[dev-dependencies]
+quickcheck = { workspace = true }
+rand = { workspace = true }
+serial_test = { workspace = true }
+tiny_http = { workspace = true }
+
+[features]
+default = []
+logs-debug = []
+logs-trace = []
+opentelemetry = []
+simd = ["kawa/simd"]
+splice = []
+tolerant-http1-parser = ["kawa/tolerant-parsing"]
+
+[target.'cfg(target_arch = "x86_64")'.features]
+default = ["simd"]
+
+[badges]
+travis-ci = { repository = "sozu-proxy/sozu" }

@@ -1,0 +1,23 @@
+[package]
+name = "lyxal_raft-rt"
+readme = "../README.md"
+
+version       = { workspace = true }
+edition       = { workspace = true }
+authors       = { workspace = true }
+categories    = { workspace = true }
+description   = "Async runtime abstraction traits for Lyxal Raft"
+documentation = { workspace = true }
+homepage      = { workspace = true }
+keywords      = { workspace = true }
+license       = { workspace = true }
+repository    = { workspace = true }
+
+[features]
+default = []
+single-threaded = ["lyxal_raft-macros/single-threaded"]
+
+[dependencies]
+futures         = { workspace = true }
+lyxal_raft-macros = { version = "0.10", path = "../lyxal_macros" }
+rand            = { workspace = true }

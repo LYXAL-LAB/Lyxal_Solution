@@ -1,0 +1,17 @@
+[package]
+name = "lyxalraft-metrics-otel"
+version = "0.1.0"
+edition = "2024"
+authors = [
+    "Databend Authors <opensource@datafuselabs.com>",
+]
+description = "OpenTelemetry metrics integration for Lyxalraft"
+documentation = "https://docs.rs/lyxalraft-metrics-otel"
+homepage = "https://github.com/databendlabs/lyxalraft"
+keywords = ["raft", "consensus", "opentelemetry", "metrics"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/databendlabs/lyxalraft"
+
+[dependencies]
+lyxalraft = { path = "../lyxal_core", version = "0.10.0" }
+opentelemetry = "0.30.0"

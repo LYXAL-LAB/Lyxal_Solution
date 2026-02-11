@@ -1,0 +1,38 @@
+[package]
+name = "lyxal_net"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lyxal_sync = { workspace = true }
+lyxal_revision = { workspace = true }
+lyxalkv = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+log = "0.4"
+bytes = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+lazy_static = "1.4"
+rand = { workspace = true }
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+x25519-dalek = { version = "2.0", features = ["static_secrets", "reusable_secrets"] }
+hkdf = "0.12"
+sha2 = { workspace = true }
+hmac = "0.12"
+rand_core = { version = "0.6", features = ["std"] }
+base64 = { workspace = true }
+hex = { workspace = true }
+parking_lot = { workspace = true }
+async-trait.workspace = true
+zstd = { workspace = true }
+blake3.workspace = true
+dirs = "5.0"
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["json", "env-filter"] }
+tracing-appender = "0.2"
+toml = { workspace = true }
+dashmap = { workspace = true }
+bincode = { workspace = true }
+[dev-dependencies]
+env_logger = { workspace = true }
