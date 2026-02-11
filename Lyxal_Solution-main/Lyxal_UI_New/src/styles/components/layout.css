@@ -1,0 +1,13 @@
+.layout-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--color-base-200);
+  
+  /* Variables de configuration par défaut */
+  --layout-max-w: 1280px;  /* Largeur max du contenu */
+  --layout-p: 2rem;        /* Padding autour du contenu */
+  --layout-gap: 2rem;      /* Espace entre header/main/footer */
+}
+
+

@@ -1,0 +1,72 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Lyxal Plugin Schema",
+    "type": "object",
+    "required": ["pluginId", "version", "operators"],
+    "properties": {
+      "pluginId": {
+        "type": "string",
+        "description": "Identifiant unique du plugin, ex: '@lyxal/op-date-instance'"
+      },
+      "version": {
+        "type": "string",
+        "description": "Version du plugin (semver)"
+      },
+      "engineCompatibility": {
+        "type": "string",
+        "description": "Version minimale du moteur Lyxal supportée",
+        "default": "1.0.0"
+      },
+      "operators": {
+        "type": "array",
+        "description": "Liste des opérateurs fournis par ce plugin",
+        "items": {
+          "type": "object",
+          "required": ["name", "file"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Nom de l'opérateur, ex: '$date.instance.addDays'"
+            },
+            "file": {
+              "type": "string",
+              "description": "Nom du fichier JSON contenant la meta de l'opérateur"
+            },
+            "category": {
+              "type": "string",
+              "description": "Catégorie de l'opérateur, ex: 'date', 'array'"
+            },
+            "version": {
+              "type": "string",
+              "description": "Version de l'opérateur (semver)"
+            },
+            "deprecated": {
+              "type": "boolean",
+              "description": "Indique si l'opérateur est obsolète"
+            },
+            "tags": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Mots-clés associés"
+            }
+          }
+        }
+      },
+      "metadata": {
+        "type": "object",
+        "description": "Metadonnées complémentaires",
+        "properties": {
+          "author": { "type": "string" },
+          "license": { "type": "string" },
+          "homepage": { "type": "string" },
+          "docs": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      },
+      "signature": {
+        "type": ["string", "null"],
+        "description": "Signature cryptographique optionnelle du plugin"
+      }
+    }
+  }
+  

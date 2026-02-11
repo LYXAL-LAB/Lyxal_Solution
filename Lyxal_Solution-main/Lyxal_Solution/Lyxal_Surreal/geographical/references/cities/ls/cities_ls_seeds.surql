@@ -1,0 +1,14 @@
+-- Seeds pour les villes du pays: LS --
+
+CREATE base_city:ls_66574 SET state = base_state:ls_d, key.name = i18n_key:i18n_city_ls_66574_name, native = 'Teyateyaneng', location = (27.74895000, -29.14719000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q844423';
+CREATE base_city:ls_66564 SET state = base_state:ls_b, key.name = i18n_key:i18n_city_ls_66564_name, native = 'Butha-Buthe', location = (28.24937000, -28.76659000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q382249';
+CREATE base_city:ls_66565 SET state = base_state:ls_c, key.name = i18n_key:i18n_city_ls_66565_name, native = 'LERIBE', location = (28.04501000, -28.87185000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q993076';
+CREATE base_city:ls_66567 SET state = base_state:ls_c, key.name = i18n_key:i18n_city_ls_66567_name, native = 'Maputsoe', location = (27.89915000, -28.88660000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q1892158';
+CREATE base_city:ls_66566 SET state = base_state:ls_e, key.name = i18n_key:i18n_city_ls_66566_name, native = 'Mafeteng', location = (27.23744000, -29.82299000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q1013379';
+CREATE base_city:ls_66568 SET state = base_state:ls_a, key.name = i18n_key:i18n_city_ls_66568_name, native = 'Maseru', location = (27.48333000, -29.31667000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q3909';
+CREATE base_city:ls_66571 SET state = base_state:ls_a, key.name = i18n_key:i18n_city_ls_66571_name, native = 'Time', location = (27.76667000, -29.61667000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q6739344';
+CREATE base_city:ls_66569 SET state = base_state:ls_f, key.name = i18n_key:i18n_city_ls_66569_name, native = 'Mohale\'s Hoek', location = (27.47691000, -30.15137000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q1818943';
+CREATE base_city:ls_66570 SET state = base_state:ls_j, key.name = i18n_key:i18n_city_ls_66570_name, native = 'Mokhotlong', location = (29.06751000, -29.28939000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q1013428';
+CREATE base_city:ls_66572 SET state = base_state:ls_h, key.name = i18n_key:i18n_city_ls_66572_name, native = 'Let’s ruin Nek', location = (28.68936000, -30.11537000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q491829';
+CREATE base_city:ls_66573 SET state = base_state:ls_g, key.name = i18n_key:i18n_city_ls_66573_name, native = 'Quthing', location = (27.70027000, -30.40001000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q1003318';
+CREATE base_city:ls_66575 SET state = base_state:ls_k, key.name = i18n_key:i18n_city_ls_66575_name, native = 'Butha-Buthe', location = (28.60840000, -29.52204000), timezone = base_timezone:africa_johannesburg, wikiDataId = 'Q777028';

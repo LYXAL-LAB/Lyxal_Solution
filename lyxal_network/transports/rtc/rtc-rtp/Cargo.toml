@@ -1,0 +1,16 @@
+[package]
+name = "rtc-rtp"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+shared = { workspace = true, default-features = false, features = ["marshal"] }
+
+bytes = "1.5.0"
+rand = "0.9"
+serde = { version = "1.0.197", features = ["derive"] }
+memchr = "2.1.1"
+
+[dev-dependencies]
+chrono = "0.4.35"
+criterion = "0.5.1"

@@ -1,0 +1,33 @@
+# Node / build
+node_modules/
+dist/
+build/
+coverage/
+target/
+
+# Repos externes / gros dumps
+n8n-master/
+axelor-open-suite/
+lucide-main/
+React-tailwind-components/
+svg-logos/
+surrealml-main/
+surrealdb-3.0.0-alpha.16/
+
+# Temp & lourds
+*.log
+*.xlsx
+*.zip
+*.rar
+*.7z
+*.tmp
+
+# Env & OS
+.env
+.DS_Store
+Thumbs.db
+
+!package.json
+!tsconfig.json
+!*.app.json
+!*.node.json

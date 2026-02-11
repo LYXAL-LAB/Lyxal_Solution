@@ -1,0 +1,24 @@
+{
+	"name": "@lyxal-icon/api-redundancy",
+	"description": "Reusable redundancy library for API queries",
+	"version": "1.1.1",
+	"author": "Lyxal Labs",
+	"license": "Proprietary",
+	"type": "module",
+	"main": "dist/index.js",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"lint": "eslint src/*.ts",
+		"prebuild": "pnpm run lint",
+		"build": "tsdown",
+		"test": "bun test"
+	},
+	"bugs": "https://github.com/iconify/iconify/issues",
+	"homepage": "https://iconify.design/",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/iconify/iconify.git",
+		"directory": "packages/api-redundancy"
+	}
+}

@@ -1,0 +1,15 @@
+{
+	"$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
+	"extends": "./api-extractor.json",
+	"mainEntryPointFilePath": "lib/Lyxal.d.ts",
+	"bundledPackages": [
+		"@lyxal-icon/core",
+		"@lyxal-icon/utils",
+		"@lyxal-icon/api-redundancy",
+		"lyxal-icon"
+	],
+	"dtsRollup": {
+		"enabled": true,
+		"untrimmedFilePath": "<projectFolder>/dist/Lyxal.d.ts"
+	}
+}

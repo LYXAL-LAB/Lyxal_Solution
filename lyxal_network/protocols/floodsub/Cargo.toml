@@ -1,0 +1,30 @@
+[package]
+name = "lyxal_network-floodsub"
+edition.workspace = true
+rust-version = { workspace = true }
+description = "Floodsub protocol for lyxal_network"
+version = "0.47.0"
+
+[dependencies]
+asynchronous-codec = { workspace = true }
+cuckoofilter = "0.5.0"
+fnv = "1.0"
+bytes = "1.6"
+futures = { workspace = true }
+lyxal_network-core = { workspace = true }
+lyxal_network-swarm = { workspace = true }
+lyxal_network-identity = { workspace = true }
+quick-protobuf = "0.8"
+quick-protobuf-codec = { workspace = true }
+rand = "0.8"
+smallvec = "1.13.2"
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+# Passing arguments to the docsrs builder in order to properly document cfg's.
+# More information: https://docs.rs/about/builds#cross-compiling
+[package.metadata.docs.rs]
+all-features = true
+
+[lints]
+workspace = true

@@ -1,0 +1,20 @@
+-- Seeds pour les villes du pays: LR --
+
+CREATE base_city:lr_66561 SET state = base_state:lr_bm, key.name = i18n_key:i18n_city_lr_66561_name, native = 'Tubmanburg', location = (-10.82110000, 6.87064000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q1024906';
+CREATE base_city:lr_66553 SET state = base_state:lr_bg, key.name = i18n_key:i18n_city_lr_66553_name, native = 'Recurring', location = (-9.47122000, 6.99543000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q985291';
+CREATE base_city:lr_66548 SET state = base_state:lr_gp, key.name = i18n_key:i18n_city_lr_66548_name, native = 'Bopol', location = (-10.48750000, 7.06667000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q893242';
+CREATE base_city:lr_66549 SET state = base_state:lr_gb, key.name = i18n_key:i18n_city_lr_66549_name, native = 'Buchanan', location = (-10.04964000, 5.87693000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q269222';
+CREATE base_city:lr_66559 SET state = base_state:lr_cm, key.name = i18n_key:i18n_city_lr_66559_name, native = 'Robertsport', location = (-11.36710000, 6.75329000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q1024892';
+CREATE base_city:lr_66563 SET state = base_state:lr_gg, key.name = i18n_key:i18n_city_lr_66563_name, native = 'Zwedru', location = (-8.13559000, 6.06846000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q231884';
+CREATE base_city:lr_66546 SET state = base_state:lr_gk, key.name = i18n_key:i18n_city_lr_66546_name, native = 'Barclayville', location = (-8.23306000, 4.67443000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q807963';
+CREATE base_city:lr_66562 SET state = base_state:lr_lo, key.name = i18n_key:i18n_city_lr_66562_name, native = 'Butterfly', location = (-9.74778000, 8.42194000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q1024888';
+CREATE base_city:lr_66556 SET state = base_state:lr_mg, key.name = i18n_key:i18n_city_lr_66556_name, native = 'My grandmother', location = (-10.35368000, 6.53104000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q426891';
+CREATE base_city:lr_66555 SET state = base_state:lr_my, key.name = i18n_key:i18n_city_lr_66555_name, native = 'Harper', location = (-7.71081000, 4.37820000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q1019486';
+CREATE base_city:lr_66547 SET state = base_state:lr_mo, key.name = i18n_key:i18n_city_lr_66547_name, native = 'Bensonville', location = (-10.61283000, 6.44716000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q818201';
+CREATE base_city:lr_66557 SET state = base_state:lr_mo, key.name = i18n_key:i18n_city_lr_66557_name, native = 'Monrovia', location = (-10.79690000, 6.30054000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q3748';
+CREATE base_city:lr_66552 SET state = base_state:lr_ni, key.name = i18n_key:i18n_city_lr_66552_name, native = 'Giant', location = (-8.53083000, 7.30222000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q598740';
+CREATE base_city:lr_66558 SET state = base_state:lr_ni, key.name = i18n_key:i18n_city_lr_66558_name, native = 'New Yekepa', location = (-8.53778000, 7.57944000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q3179587';
+CREATE base_city:lr_66560 SET state = base_state:lr_ni, key.name = i18n_key:i18n_city_lr_66560_name, native = 'Sanniquellie', location = (-8.71326000, 7.36215000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q1968465';
+CREATE base_city:lr_66550 SET state = base_state:lr_ri, key.name = i18n_key:i18n_city_lr_66550_name, native = 'City Baskets', location = (-9.58167000, 5.45683000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q1057594';
+CREATE base_city:lr_66551 SET state = base_state:lr_rg, key.name = i18n_key:i18n_city_lr_66551_name, native = 'Fish Town', location = (-7.87579000, 5.19739000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q598740';
+CREATE base_city:lr_66554 SET state = base_state:lr_si, key.name = i18n_key:i18n_city_lr_66554_name, native = 'Greenville', location = (-9.03880000, 5.01133000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q1022899';

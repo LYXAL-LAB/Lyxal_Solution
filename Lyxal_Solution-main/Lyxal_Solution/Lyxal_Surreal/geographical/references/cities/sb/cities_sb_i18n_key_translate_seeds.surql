@@ -1,0 +1,37 @@
+-- Traductions pour les villes du pays: SB --
+
+RELATE i18n_key:i18n_city_sb_102905_name->i18n_translation->i18n_language:de SET text = 'Tulagi';
+RELATE i18n_key:i18n_city_sb_102905_name->i18n_translation->i18n_language:es SET text = 'Tulagi';
+RELATE i18n_key:i18n_city_sb_102905_name->i18n_translation->i18n_language:fr SET text = 'Tulagi';
+RELATE i18n_key:i18n_city_sb_102905_name->i18n_translation->i18n_language:it SET text = 'Tulagi';
+RELATE i18n_key:i18n_city_sb_102905_name->i18n_translation->i18n_language:en SET text = 'Tulagi';
+RELATE i18n_key:i18n_city_sb_102902_name->i18n_translation->i18n_language:de SET text = 'Honiara';
+RELATE i18n_key:i18n_city_sb_102902_name->i18n_translation->i18n_language:es SET text = 'Honiara';
+RELATE i18n_key:i18n_city_sb_102902_name->i18n_translation->i18n_language:fr SET text = 'Honiara';
+RELATE i18n_key:i18n_city_sb_102902_name->i18n_translation->i18n_language:it SET text = 'Honiara';
+RELATE i18n_key:i18n_city_sb_102902_name->i18n_translation->i18n_language:en SET text = 'Honiara';
+RELATE i18n_key:i18n_city_sb_102900_name->i18n_translation->i18n_language:de SET text = 'Buala';
+RELATE i18n_key:i18n_city_sb_102900_name->i18n_translation->i18n_language:es SET text = 'Buala';
+RELATE i18n_key:i18n_city_sb_102900_name->i18n_translation->i18n_language:fr SET text = 'Buala';
+RELATE i18n_key:i18n_city_sb_102900_name->i18n_translation->i18n_language:it SET text = 'Buala';
+RELATE i18n_key:i18n_city_sb_102900_name->i18n_translation->i18n_language:en SET text = 'Buala';
+RELATE i18n_key:i18n_city_sb_102903_name->i18n_translation->i18n_language:de SET text = 'Kirakira';
+RELATE i18n_key:i18n_city_sb_102903_name->i18n_translation->i18n_language:es SET text = 'Kirakira';
+RELATE i18n_key:i18n_city_sb_102903_name->i18n_translation->i18n_language:fr SET text = 'Kirakira';
+RELATE i18n_key:i18n_city_sb_102903_name->i18n_translation->i18n_language:it SET text = 'Kirakira';
+RELATE i18n_key:i18n_city_sb_102903_name->i18n_translation->i18n_language:en SET text = 'Kirakira';
+RELATE i18n_key:i18n_city_sb_102899_name->i18n_translation->i18n_language:de SET text = 'Auki';
+RELATE i18n_key:i18n_city_sb_102899_name->i18n_translation->i18n_language:es SET text = 'Auki';
+RELATE i18n_key:i18n_city_sb_102899_name->i18n_translation->i18n_language:fr SET text = 'Auki';
+RELATE i18n_key:i18n_city_sb_102899_name->i18n_translation->i18n_language:it SET text = 'Auki';
+RELATE i18n_key:i18n_city_sb_102899_name->i18n_translation->i18n_language:en SET text = 'Auki';
+RELATE i18n_key:i18n_city_sb_102904_name->i18n_translation->i18n_language:de SET text = 'Lata';
+RELATE i18n_key:i18n_city_sb_102904_name->i18n_translation->i18n_language:es SET text = 'Lata';
+RELATE i18n_key:i18n_city_sb_102904_name->i18n_translation->i18n_language:fr SET text = 'Lata';
+RELATE i18n_key:i18n_city_sb_102904_name->i18n_translation->i18n_language:it SET text = 'Lata';
+RELATE i18n_key:i18n_city_sb_102904_name->i18n_translation->i18n_language:en SET text = 'Lata';
+RELATE i18n_key:i18n_city_sb_102901_name->i18n_translation->i18n_language:de SET text = 'Gizo';
+RELATE i18n_key:i18n_city_sb_102901_name->i18n_translation->i18n_language:es SET text = 'Gizo';
+RELATE i18n_key:i18n_city_sb_102901_name->i18n_translation->i18n_language:fr SET text = 'Gizo';
+RELATE i18n_key:i18n_city_sb_102901_name->i18n_translation->i18n_language:it SET text = 'Gizo';
+RELATE i18n_key:i18n_city_sb_102901_name->i18n_translation->i18n_language:en SET text = 'Gizo';

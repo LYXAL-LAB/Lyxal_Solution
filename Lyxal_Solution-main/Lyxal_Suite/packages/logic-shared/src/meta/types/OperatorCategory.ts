@@ -1,0 +1,18 @@
+export type OperatorCategory =
+  | 'core'
+  | 'logic'
+  | 'math'
+  | 'date'
+  | 'array'
+  | 'object'
+  | 'string'
+  | 'number'
+  | 'http'
+  | 'surreal'
+  | 'ai'
+  | 'crypto'
+  | 'scheduler'
+  | 'cloud'
+  | 'instance'
+  | 'utils'
+  | 'custom';

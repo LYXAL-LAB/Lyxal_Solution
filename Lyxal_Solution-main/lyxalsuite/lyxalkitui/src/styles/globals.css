@@ -1,0 +1,140 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: all;
+  root: ":root";
+  logs: false;
+}
+
+/* Police Inter */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Styles de base pour LyxalKitUI */
+:root {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Largeur minimale FORCÉE globalement */
+html {
+  min-width: 320px !important;
+  overflow-x: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+/* Cacher la scrollbar pour Chrome, Safari et Opera */
+html::-webkit-scrollbar {
+  display: none;
+}
+
+/* Reset et styles de base */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Largeur minimale responsive au niveau body RENFORCÉE */
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  min-width: 320px !important;
+  overflow-x: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Cacher la scrollbar pour Chrome, Safari et Opera */
+body::-webkit-scrollbar {
+  display: none;
+}
+
+/* Forcer la largeur minimale sur tous les containers principaux */
+html, body, #root {
+  min-width: 320px !important;
+}
+
+/* Accessibilité */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Focus visible */
+:focus-visible {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+/* Styles de base */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.25;
+  margin-bottom: 0.5em;
+  color: oklch(var(--bc));
+}
+
+p {
+  margin-bottom: 1rem;
+  color: oklch(var(--bc));
+}
+
+a {
+  color: oklch(var(--p));
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+a:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* Classes utilitaires pour l'accessibilité */
+.visually-hidden {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  :root {
+    font-size: 14px;
+  }
+}
+
+/* Protection maximale contre les largeurs trop petites */
+@media (max-width: 320px) {
+  html, body, #root {
+    width: 320px !important;
+    min-width: 320px !important;
+    max-width: none !important;
+  }
+}
+
+/* Protection maximale contre les largeurs trop petites */
+@media (max-width: 320px) {
+  html, body, #root {
+    width: 320px !important;
+    min-width: 320px !important;
+    max-width: none !important;
+  }
+}

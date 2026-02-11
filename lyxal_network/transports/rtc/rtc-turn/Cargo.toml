@@ -1,0 +1,28 @@
+[package]
+name = "rtc-turn"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+shared = { workspace = true, default-features = false, features = [] }
+stun.workspace = true
+
+bytes = "1.5.0"
+log = "0.4.21"
+
+[dev-dependencies]
+env_logger = "0.11.3"
+chrono = "0.4.35"
+hex = "0.4.3"
+clap = { version = "4.5.3", features = ["derive"] }
+criterion = "0.5.1"
+crossbeam-channel = "0.5"
+ctrlc = "3.4"
+
+[features]
+metrics = []
+
+[[example]]
+name = "turn_client_udp"
+path = "examples/turn_client_udp.rs"
+bench = false

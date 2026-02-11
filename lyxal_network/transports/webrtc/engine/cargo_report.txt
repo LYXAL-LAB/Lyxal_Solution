@@ -1,0 +1,15 @@
+﻿cargo :     Checking webrtc v0.14.0 (C:\Users\A
+dministrator\Downloads\Lyxal_Solution-main\lyxa
+l_network\transports\webrtc\engine\webrtc)
+At line:1 char:1
++ cargo check 2>&1 | Out-File -FilePath 
+"cargo_report.txt" -Encoding ut ...
++ ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (  
+      Checking we...\engine\webrtc):String) [  
+  ], RemoteException
+    + FullyQualifiedErrorId : NativeCommandErr 
+   or
+ 
+    Finished `dev` profile [unoptimized + 
+debuginfo] target(s) in 10.13s

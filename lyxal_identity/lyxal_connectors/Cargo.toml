@@ -1,0 +1,20 @@
+[package]
+name = "lyxal_connectors"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+lyxal_core = { workspace = true }
+lyxal_schema = { workspace = true }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = "0.1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+lettre = { version = "0.11", default-features = false, features = ["tokio1-rustls-tls", "smtp-transport", "builder"] }
+oauth2 = { version = "4.4", default-features = false, features = ["reqwest"] }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = "0.1"

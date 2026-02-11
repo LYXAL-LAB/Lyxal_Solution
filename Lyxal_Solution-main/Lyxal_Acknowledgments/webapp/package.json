@@ -1,0 +1,31 @@
+{
+    "name": "lyxal-acknowledgments-webapp",
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "bun run serve.ts",
+        "build": "bun run build.ts"
+    },
+    "dependencies": {
+        "@radix-ui/react-slot": "^1.2.4",
+        "class-variance-authority": "^0.7.1",
+        "clsx": "^2.1.1",
+        "i18next": "^23.10.0",
+        "lucide-react": "^0.330.0",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "react-i18next": "^14.0.5",
+        "react-router-dom": "^6.22.0",
+        "tailwind-merge": "^3.4.0",
+        "tailwindcss-animate": "^1.0.7",
+        "zustand": "^4.5.0"
+    },
+    "devDependencies": {
+        "@types/react": "^18.2.55",
+        "@types/react-dom": "^18.2.19",
+        "autoprefixer": "^10.4.22",
+        "bun-types": "latest",
+        "postcss": "^8.5.6",
+        "tailwindcss": "^4.1.17"
+    }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@lyxal/identity",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist",
+    "start": "bun run dist/index.js"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "surrealdb": "^1.0.0",
+    "jose": "^5.2.0",
+    "zod": "^3.22.4",
+    "argon2": "^0.31.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "@types/uuid": "^9.0.8"
+  }
+}
+

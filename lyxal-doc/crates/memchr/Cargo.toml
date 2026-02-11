@@ -1,0 +1,14 @@
+[package]
+name = "memchr"
+version = "2.7.6"
+edition = "2021"
+description = "Fast byte search using SIMD (vendored)"
+license = "Unlicense OR MIT"
+
+[dependencies]
+# No dependencies - pure Rust with SIMD intrinsics
+
+[features]
+default = ["std"]
+std = ["alloc"]
+alloc = []

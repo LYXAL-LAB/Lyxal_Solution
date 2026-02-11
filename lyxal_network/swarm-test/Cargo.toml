@@ -1,0 +1,28 @@
+[package]
+name = "lyxal_network-swarm-test"
+version = "0.6.0"
+edition.workspace = true
+rust-version = { workspace = true }
+description = "Test framework for code building on top of lyxal_network-swarm"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = "0.1.80"
+lyxal_network-core = { workspace = true }
+lyxal_network-identity = { workspace = true, features = ["rand"] }
+lyxal_network-plaintext = { workspace = true }
+lyxal_network-swarm = { workspace = true }
+lyxal_network-tcp = { workspace = true }
+lyxal_network-yamux = { workspace = true }
+futures = { workspace = true }
+tracing = { workspace = true }
+futures-timer = "3.0.3"
+
+[features]
+default = ["tokio"]
+
+tokio = ["lyxal_network-swarm/tokio", "lyxal_network-tcp/tokio"]
+
+[lints]
+workspace = true

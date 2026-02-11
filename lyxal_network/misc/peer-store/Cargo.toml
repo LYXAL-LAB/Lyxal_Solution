@@ -1,0 +1,22 @@
+[package]
+name = "lyxal_network-peer-store"
+edition.workspace = true
+version = "0.1.0"
+publish = false
+rust-version.workspace = true
+
+[dependencies]
+hashlink = { workspace = true }
+lyxal_network-core = { workspace = true }
+lyxal_network-swarm = { workspace = true }
+lyxal_network-identity = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+lyxal_network-identity = { workspace = true, features = ["rand", "serde"] }
+lyxal_network = { workspace = true, features = ["macros", "identify"] }
+lyxal_network-swarm-test = { path = "../../swarm-test", features = ["tokio"] }
+serde_json = { version = "1.0.134" }
+
+[lints]
+workspace = true

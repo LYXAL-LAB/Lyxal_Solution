@@ -1,0 +1,33 @@
+{
+  "name": "@lyxal-compression/compression",
+  "version": "1.0.0",
+  "description": "Lyxal Universal Compression (Pako/Zlib)",
+  "main": "index.modern.js",
+  "browser": "./index.browser.js",
+  "module": "dist/index.mjs",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "browser": "./index.browser.js",
+      "import": "./dist/index.mjs",
+      "require": "./index.modern.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.modern.js",
+    "index.browser.js",
+    "index.d.ts",
+    "lib/",
+    "dist/"
+  ],
+  "scripts": {
+    "build": "bun build ./index.modern.js --outfile ./dist/index.mjs --target bun",
+    "test": "echo \"Tests removed for Lyxal packaging\""
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}

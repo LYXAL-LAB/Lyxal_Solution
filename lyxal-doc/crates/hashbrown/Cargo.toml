@@ -1,0 +1,19 @@
+[package]
+name = "hashbrown"
+version = "0.16.1"
+edition = "2021"
+description = "A Rust port of Google's SwissTable hash map (vendored)"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Vendored equivalent trait
+equivalent = { path = "../equivalent", optional = true }
+
+# For allocator-api2 support (optional)
+allocator-api2 = { version = "0.2.9", optional = true, default-features = false, features = ["alloc"] }
+
+[features]
+default = ["inline-more", "equivalent", "raw-entry"]
+inline-more = []
+raw-entry = []
+nightly = []

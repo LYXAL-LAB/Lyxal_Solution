@@ -1,0 +1,19 @@
+-- Seeds pour les villes du pays: DM --
+
+CREATE base_city:dm_31003 SET state = base_state:dm_02, key.name = i18n_key:i18n_city_dm_31003_name, native = 'Calibishie', location = (-61.34901000, 15.59297000), timezone = base_timezone:america_caracas, wikiDataId = 'Q2933944';
+CREATE base_city:dm_31008 SET state = base_state:dm_02, key.name = i18n_key:i18n_city_dm_31008_name, native = 'Husband', location = (-61.28375000, 15.53886000), timezone = base_timezone:america_caracas, wikiDataId = 'Q3052620';
+CREATE base_city:dm_31017 SET state = base_state:dm_02, key.name = i18n_key:i18n_city_dm_31017_name, native = 'Wesley', location = (-61.31667000, 15.56667000), timezone = base_timezone:america_caracas, wikiDataId = 'Q595272';
+CREATE base_city:dm_31018 SET state = base_state:dm_02, key.name = i18n_key:i18n_city_dm_31018_name, native = 'Woodford Hill', location = (-61.33149000, 15.58093000), timezone = base_timezone:america_caracas, wikiDataId = 'Q3098466';
+CREATE base_city:dm_31004 SET state = base_state:dm_03, key.name = i18n_key:i18n_city_dm_31004_name, native = 'Castle Bruce', location = (-61.25723000, 15.44397000), timezone = base_timezone:america_caracas, wikiDataId = 'Q1049398';
+CREATE base_city:dm_31012 SET state = base_state:dm_03, key.name = i18n_key:i18n_city_dm_31012_name, native = 'Rosalie', location = (-61.26667000, 15.36667000), timezone = base_timezone:america_caracas, wikiDataId = 'Q976314';
+CREATE base_city:dm_31013 SET state = base_state:dm_04, key.name = i18n_key:i18n_city_dm_31013_name, native = 'Reed', location = (-61.38808000, 15.30174000), timezone = base_timezone:america_caracas, wikiDataId = 'Q36281';
+CREATE base_city:dm_31011 SET state = base_state:dm_05, key.name = i18n_key:i18n_city_dm_31011_name, native = 'Portsmouth', location = (-61.46667000, 15.58333000), timezone = base_timezone:america_caracas, wikiDataId = 'Q1014235';
+CREATE base_city:dm_31014 SET state = base_state:dm_06, key.name = i18n_key:i18n_city_dm_31014_name, native = 'Saint Joseph', location = (-61.43333000, 15.40000000), timezone = base_timezone:america_caracas, wikiDataId = 'Q1021646';
+CREATE base_city:dm_31015 SET state = base_state:dm_06, key.name = i18n_key:i18n_city_dm_31015_name, native = 'Salisbury', location = (-61.43637000, 15.43689000), timezone = base_timezone:america_caracas, wikiDataId = 'Q3555054';
+CREATE base_city:dm_31009 SET state = base_state:dm_07, key.name = i18n_key:i18n_city_dm_31009_name, native = 'Michel Pointe', location = (-61.37452000, 15.25976000), timezone = base_timezone:america_caracas, wikiDataId = 'Q1934011';
+CREATE base_city:dm_31016 SET state = base_state:dm_08, key.name = i18n_key:i18n_city_dm_31016_name, native = 'Sulfur', location = (-61.35881000, 15.23374000), timezone = base_timezone:america_caracas, wikiDataId = 'Q1027850';
+CREATE base_city:dm_31002 SET state = base_state:dm_09, key.name = i18n_key:i18n_city_dm_31002_name, native = 'Berejahua', location = (-61.31667000, 15.23333000), timezone = base_timezone:america_caracas, wikiDataId = 'Q1136090';
+CREATE base_city:dm_31006 SET state = base_state:dm_09, key.name = i18n_key:i18n_city_dm_31006_name, native = 'The plain', location = (-61.24753000, 15.32768000), timezone = base_timezone:america_caracas, wikiDataId = 'Q3174970';
+CREATE base_city:dm_31007 SET state = base_state:dm_10, key.name = i18n_key:i18n_city_dm_31007_name, native = 'Mahaut', location = (-61.39701000, 15.36357000), timezone = base_timezone:america_caracas, wikiDataId = 'Q3052683';
+CREATE base_city:dm_31010 SET state = base_state:dm_10, key.name = i18n_key:i18n_city_dm_31010_name, native = 'Broken bridge', location = (-61.35000000, 15.36667000), timezone = base_timezone:america_caracas, wikiDataId = 'Q1972895';
+CREATE base_city:dm_31005 SET state = base_state:dm_11, key.name = i18n_key:i18n_city_dm_31005_name, native = 'Colihaut', location = (-61.46215000, 15.48478000), timezone = base_timezone:america_caracas, wikiDataId = 'Q1108306';

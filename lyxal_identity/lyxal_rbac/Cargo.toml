@@ -1,0 +1,22 @@
+[package]
+name = "lyxal_rbac"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+lyxal_core = { workspace = true }
+lyxal_schema = { workspace = true }
+lyxal_session = { path = "../lyxal_session" }
+
+axum.workspace = true
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+chrono.workspace = true
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = "0.1"
+utoipa.workspace = true

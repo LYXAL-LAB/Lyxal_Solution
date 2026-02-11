@@ -1,0 +1,33 @@
+<h2>{{t "email.magic_link.title"}}</h2>
+
+<p>{{t "email.magic_link.greeting"}}</p>
+
+<p>{{t "email.magic_link.intro" Organisation=Organisation Email=Data.Email}}</p>
+
+<p>{{t "email.magic_link.instructions"}}</p>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{Data.MagicLink}}" class="button">
+        {{t "email.magic_link.cta_button"}}
+    </a>
+</div>
+
+<div class="warning">
+    <p style="margin: 0;">
+        ⏱️ <strong>{{t "email.magic_link.warning_title"}}</strong>
+        {{t "email.magic_link.warning_text" ExpiresIn=Data.ExpiresIn}}
+    </p>
+</div>
+
+<p>{{t "email.magic_link.not_requested"}}</p>
+
+<hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+
+<p style="color: #666; font-size: 0.9em;">
+    {{t "email.magic_link.button_not_working"}}<br>
+    <a href="{{Data.MagicLink}}" style="color: #4F46E5; word-break: break-all;">{{Data.MagicLink}}</a>
+</p>
+
+<p style="color: #999; font-size: 0.8em;">
+    {{t "email.magic_link.footer" Organisation=Organisation BaseURL=Data.BaseURL}}
+</p>

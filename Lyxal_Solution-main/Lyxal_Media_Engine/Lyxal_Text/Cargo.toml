@@ -1,0 +1,19 @@
+[package]
+name = "lyxal_text"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# T1: Core Dependencies
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+
+# T1: Shaping & Metrics (Compute Core)
+# cosmic-text provides Shaping, Font fallback, etc.
+cosmic-text = "0.11"
+
+# Utils
+lazy_static = "1.4"
+lyxal_font = { path = "../Lyxal_Font" }
+

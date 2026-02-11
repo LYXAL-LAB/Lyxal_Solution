@@ -1,0 +1,9 @@
+[package]
+name = "itoa"
+version = "1.0.17"
+edition = "2021"
+description = "Fast integer primitive to string conversion (vendored)"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# No dependencies - pure Rust implementation

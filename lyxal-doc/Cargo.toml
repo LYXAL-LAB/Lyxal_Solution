@@ -1,0 +1,54 @@
+[package]
+name = "lyxal-doc"
+version = "1.0.0"
+edition = "2021"
+description = "Core Language Engine for Lyxal Document Suite"
+
+[workspace]
+members = [
+    "crates/fax_derive",
+    "crates/lopdf",
+    "crates/itoa",
+    "crates/weezl", 
+    "crates/rangemap",
+    "crates/bitflags",
+    "crates/equivalent",
+    "crates/memchr",
+    "crates/hashbrown",
+    "crates/indexmap",
+    "crates/nom",
+    "crates/nom_locate",
+]
+
+[dependencies]
+# Serialization
+hex = "0.4.3"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.148"
+
+# Errors
+thiserror = "2.0.17"
+
+# PDF Writing
+printpdf = "0.7.0"
+
+# PDF Reading - vendored lopdf
+lopdf = { path = "crates/lopdf" }
+weezl = { path = "crates/weezl" }
+ttf-parser = "0.20"
+flate2 = "1.1.5"
+jbig2dec = "0.3.1"
+
+# Image decoding (JPEG, PNG, etc.)
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp", "tiff"] }
+
+# Office document parsing (DOCX, XLSX, PPTX, ODT)
+zip = "2.2"
+quick-xml = { version = "0.37", features = ["serialize"] }
+
+# Cryptography (for PDF security)
+md5 = "0.8.0"
+sha2 = "0.10.9"
+
+# Internal proc-macro for fax codec
+fax_derive = { path = "crates/fax_derive" }

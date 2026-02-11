@@ -1,0 +1,22 @@
+[package]
+name = "lyxal_auth"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+lyxal_core.workspace = true
+lyxal_schema.workspace = true
+lyxal_iam = { path = "../lyxal_iam" }
+
+axum.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+argon2.workspace = true
+uuid.workspace = true
+utoipa = { workspace = true }

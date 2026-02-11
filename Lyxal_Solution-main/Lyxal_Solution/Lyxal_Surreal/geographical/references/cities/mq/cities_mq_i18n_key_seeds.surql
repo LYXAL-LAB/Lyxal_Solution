@@ -1,0 +1,36 @@
+-- Clés i18n pour les villes du pays: MQ --
+
+CREATE i18n_key:i18n_city_mq_154980_name SET description = 'Nom pour la ville \'Fort-de-France\'';
+CREATE i18n_key:i18n_city_mq_154981_name SET description = 'Nom pour la ville \'Le Lamentin\'';
+CREATE i18n_key:i18n_city_mq_154982_name SET description = 'Nom pour la ville \'Saint-Joseph\'';
+CREATE i18n_key:i18n_city_mq_154983_name SET description = 'Nom pour la ville \'Schœlcher\'';
+CREATE i18n_key:i18n_city_mq_154985_name SET description = 'Nom pour la ville \'Basse-Pointe\'';
+CREATE i18n_key:i18n_city_mq_154986_name SET description = 'Nom pour la ville \'Grand\\'Rivière\'';
+CREATE i18n_key:i18n_city_mq_154987_name SET description = 'Nom pour la ville \'Gros-Morne\'';
+CREATE i18n_key:i18n_city_mq_154984_name SET description = 'Nom pour la ville \'L\\'Ajoupa-Bouillon\'';
+CREATE i18n_key:i18n_city_mq_154993_name SET description = 'Nom pour la ville \'La Trinité\'';
+CREATE i18n_key:i18n_city_mq_154988_name SET description = 'Nom pour la ville \'Le Lorrain\'';
+CREATE i18n_key:i18n_city_mq_154990_name SET description = 'Nom pour la ville \'Le Marigot\'';
+CREATE i18n_key:i18n_city_mq_154991_name SET description = 'Nom pour la ville \'Le Robert\'';
+CREATE i18n_key:i18n_city_mq_154989_name SET description = 'Nom pour la ville \'Macouba\'';
+CREATE i18n_key:i18n_city_mq_154992_name SET description = 'Nom pour la ville \'Sainte-Marie\'';
+CREATE i18n_key:i18n_city_mq_154996_name SET description = 'Nom pour la ville \'Ducos\'';
+CREATE i18n_key:i18n_city_mq_154995_name SET description = 'Nom pour la ville \'Le Diamant\'';
+CREATE i18n_key:i18n_city_mq_154997_name SET description = 'Nom pour la ville \'Le François\'';
+CREATE i18n_key:i18n_city_mq_154998_name SET description = 'Nom pour la ville \'Le Marin\'';
+CREATE i18n_key:i18n_city_mq_155005_name SET description = 'Nom pour la ville \'Le Vauclin\'';
+CREATE i18n_key:i18n_city_mq_154994_name SET description = 'Nom pour la ville \'Les Anses-d\\'Arlet\'';
+CREATE i18n_key:i18n_city_mq_155004_name SET description = 'Nom pour la ville \'Les Trois-Îlets\'';
+CREATE i18n_key:i18n_city_mq_154999_name SET description = 'Nom pour la ville \'Rivière-Pilote\'';
+CREATE i18n_key:i18n_city_mq_155000_name SET description = 'Nom pour la ville \'Rivière-Salée\'';
+CREATE i18n_key:i18n_city_mq_155001_name SET description = 'Nom pour la ville \'Saint-Esprit\'';
+CREATE i18n_key:i18n_city_mq_155002_name SET description = 'Nom pour la ville \'Sainte-Anne\'';
+CREATE i18n_key:i18n_city_mq_155003_name SET description = 'Nom pour la ville \'Sainte-Luce\'';
+CREATE i18n_key:i18n_city_mq_155006_name SET description = 'Nom pour la ville \'Bellefontaine\'';
+CREATE i18n_key:i18n_city_mq_155008_name SET description = 'Nom pour la ville \'Case-Pilote\'';
+CREATE i18n_key:i18n_city_mq_155009_name SET description = 'Nom pour la ville \'Fonds-Saint-Denis\'';
+CREATE i18n_key:i18n_city_mq_155007_name SET description = 'Nom pour la ville \'Le Carbet\'';
+CREATE i18n_key:i18n_city_mq_155010_name SET description = 'Nom pour la ville \'Le Morne-Rouge\'';
+CREATE i18n_key:i18n_city_mq_155011_name SET description = 'Nom pour la ville \'Le Morne-Vert\'';
+CREATE i18n_key:i18n_city_mq_155012_name SET description = 'Nom pour la ville \'Le Prêcheur\'';
+CREATE i18n_key:i18n_city_mq_155013_name SET description = 'Nom pour la ville \'Saint-Pierre\'';

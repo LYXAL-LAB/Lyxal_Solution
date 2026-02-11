@@ -1,0 +1,20 @@
+<h2>{{t "email.signature_reminder.title"}}</h2>
+
+<p>{{t "email.signature_reminder.greeting" Name=Data.RecipientName}}</p>
+
+<p>{{t "email.signature_reminder.intro" Organisation=Organisation}}</p>
+
+<div style="text-align: center; margin: 30px 0;">
+    <a href="{{Data.SignURL}}" class="button">
+        {{t "email.signature_reminder.cta_button"}}
+    </a>
+</div>
+
+<p>{{t "email.signature_reminder.instructions"}}</p>
+
+<hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+
+<p style="color: #666; font-size: 0.9em;">
+    {{t "email.signature_reminder.button_not_working"}}<br>
+    <a href="{{Data.SignURL}}" style="color: #4F46E5; word-break: break-all;">{{Data.SignURL}}</a>
+</p>

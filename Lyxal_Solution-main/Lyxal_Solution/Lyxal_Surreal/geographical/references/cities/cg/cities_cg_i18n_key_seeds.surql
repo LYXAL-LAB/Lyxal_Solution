@@ -1,0 +1,19 @@
+-- Clés i18n pour les villes du pays: CG --
+
+CREATE i18n_key:i18n_city_cg_17345_name SET description = 'Nom pour la ville \'Kayes\'';
+CREATE i18n_key:i18n_city_cg_17348_name SET description = 'Nom pour la ville \'Madingou\'';
+CREATE i18n_key:i18n_city_cg_17339_name SET description = 'Nom pour la ville \'Brazzaville\'';
+CREATE i18n_key:i18n_city_cg_17349_name SET description = 'Nom pour la ville \'Makoua\'';
+CREATE i18n_key:i18n_city_cg_17352_name SET description = 'Nom pour la ville \'Owando\'';
+CREATE i18n_key:i18n_city_cg_17342_name SET description = 'Nom pour la ville \'Ewo\'';
+CREATE i18n_key:i18n_city_cg_17354_name SET description = 'Nom pour la ville \'Sibiti\'';
+CREATE i18n_key:i18n_city_cg_17344_name SET description = 'Nom pour la ville \'Impfondo\'';
+CREATE i18n_key:i18n_city_cg_17341_name SET description = 'Nom pour la ville \'Dolisie\'';
+CREATE i18n_key:i18n_city_cg_17350_name SET description = 'Nom pour la ville \'Mossendjo\'';
+CREATE i18n_key:i18n_city_cg_17340_name SET description = 'Nom pour la ville \'Djambala\'';
+CREATE i18n_key:i18n_city_cg_17343_name SET description = 'Nom pour la ville \'Gamboma\'';
+CREATE i18n_key:i18n_city_cg_17347_name SET description = 'Nom pour la ville \'Loandjili\'';
+CREATE i18n_key:i18n_city_cg_17353_name SET description = 'Nom pour la ville \'Pointe-Noire\'';
+CREATE i18n_key:i18n_city_cg_17346_name SET description = 'Nom pour la ville \'Kinkala\'';
+CREATE i18n_key:i18n_city_cg_17351_name SET description = 'Nom pour la ville \'Ouésso\'';
+CREATE i18n_key:i18n_city_cg_17355_name SET description = 'Nom pour la ville \'Sémbé\'';

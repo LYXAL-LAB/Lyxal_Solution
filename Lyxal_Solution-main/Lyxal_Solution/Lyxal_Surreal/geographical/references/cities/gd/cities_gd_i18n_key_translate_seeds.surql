@@ -1,0 +1,37 @@
+-- Traductions pour les villes du pays: GD --
+
+RELATE i18n_key:i18n_city_gd_52030_name->i18n_translation->i18n_language:de SET text = 'Hillsborough';
+RELATE i18n_key:i18n_city_gd_52030_name->i18n_translation->i18n_language:es SET text = 'Hillsborough';
+RELATE i18n_key:i18n_city_gd_52030_name->i18n_translation->i18n_language:fr SET text = 'Hillsborough';
+RELATE i18n_key:i18n_city_gd_52030_name->i18n_translation->i18n_language:it SET text = 'Hillsborough';
+RELATE i18n_key:i18n_city_gd_52030_name->i18n_translation->i18n_language:en SET text = 'Hillsborough';
+RELATE i18n_key:i18n_city_gd_52029_name->i18n_translation->i18n_language:de SET text = 'Grenville';
+RELATE i18n_key:i18n_city_gd_52029_name->i18n_translation->i18n_language:es SET text = 'Grenville';
+RELATE i18n_key:i18n_city_gd_52029_name->i18n_translation->i18n_language:fr SET text = 'Grenville';
+RELATE i18n_key:i18n_city_gd_52029_name->i18n_translation->i18n_language:it SET text = 'Grenville';
+RELATE i18n_key:i18n_city_gd_52029_name->i18n_translation->i18n_language:en SET text = 'Grenville';
+RELATE i18n_key:i18n_city_gd_52031_name->i18n_translation->i18n_language:de SET text = 'St. Davids';
+RELATE i18n_key:i18n_city_gd_52031_name->i18n_translation->i18n_language:es SET text = 'San David';
+RELATE i18n_key:i18n_city_gd_52031_name->i18n_translation->i18n_language:fr SET text = 'Saint-David';
+RELATE i18n_key:i18n_city_gd_52031_name->i18n_translation->i18n_language:it SET text = 'San Davide';
+RELATE i18n_key:i18n_city_gd_52031_name->i18n_translation->i18n_language:en SET text = 'Saint David’s';
+RELATE i18n_key:i18n_city_gd_52032_name->i18n_translation->i18n_language:de SET text = 'St. Georg';
+RELATE i18n_key:i18n_city_gd_52032_name->i18n_translation->i18n_language:es SET text = 'San Jorge';
+RELATE i18n_key:i18n_city_gd_52032_name->i18n_translation->i18n_language:fr SET text = 'Saint-Georges';
+RELATE i18n_key:i18n_city_gd_52032_name->i18n_translation->i18n_language:it SET text = 'San Giorgio';
+RELATE i18n_key:i18n_city_gd_52032_name->i18n_translation->i18n_language:en SET text = 'Saint George\\'s';
+RELATE i18n_key:i18n_city_gd_52028_name->i18n_translation->i18n_language:de SET text = 'Gouyave';
+RELATE i18n_key:i18n_city_gd_52028_name->i18n_translation->i18n_language:es SET text = 'Gouyave';
+RELATE i18n_key:i18n_city_gd_52028_name->i18n_translation->i18n_language:fr SET text = 'Gouyave';
+RELATE i18n_key:i18n_city_gd_52028_name->i18n_translation->i18n_language:it SET text = 'Gouyave';
+RELATE i18n_key:i18n_city_gd_52028_name->i18n_translation->i18n_language:en SET text = 'Gouyave';
+RELATE i18n_key:i18n_city_gd_52034_name->i18n_translation->i18n_language:de SET text = 'Viktoria';
+RELATE i18n_key:i18n_city_gd_52034_name->i18n_translation->i18n_language:es SET text = 'Victoria';
+RELATE i18n_key:i18n_city_gd_52034_name->i18n_translation->i18n_language:fr SET text = 'Victoria';
+RELATE i18n_key:i18n_city_gd_52034_name->i18n_translation->i18n_language:it SET text = 'Vittoria';
+RELATE i18n_key:i18n_city_gd_52034_name->i18n_translation->i18n_language:en SET text = 'Victoria';
+RELATE i18n_key:i18n_city_gd_52033_name->i18n_translation->i18n_language:de SET text = 'Sauteure';
+RELATE i18n_key:i18n_city_gd_52033_name->i18n_translation->i18n_language:es SET text = 'Sauteurs';
+RELATE i18n_key:i18n_city_gd_52033_name->i18n_translation->i18n_language:fr SET text = 'Sautés';
+RELATE i18n_key:i18n_city_gd_52033_name->i18n_translation->i18n_language:it SET text = 'Sauteurs';
+RELATE i18n_key:i18n_city_gd_52033_name->i18n_translation->i18n_language:en SET text = 'Sauteurs';

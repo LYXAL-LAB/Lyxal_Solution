@@ -1,0 +1,17 @@
+[package]
+name = "lyxal_adapter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+# Integration dependencies
+Lyxal_Layout = { path = "../Lyxal_Layout", package = "Lyxal_Layout" }
+lyxal_image = { path = "../Lyxal_Image" }
+# Utils
+image = "0.24.7"
+anyhow = "1.0"
+
+[dev-dependencies]
+# Dependencies for E2E tests

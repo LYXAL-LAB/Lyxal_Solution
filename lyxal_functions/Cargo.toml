@@ -1,0 +1,8 @@
+[package]
+name = "lyxal_functions"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+base-x = { path = "../lyxal_encoding/base-x" }
+anyhow = "1.0"

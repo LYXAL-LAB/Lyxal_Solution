@@ -1,0 +1,19 @@
+{
+	"name": "@Lyxal/collections",
+	"description": "Lyxal icon sets list",
+	"version": "1.0.18",
+	"main": "index.js",
+	"module": "index.mjs",
+	"types": "index.d.ts",
+	"exports": {
+		"./*": "./*",
+		".": {
+			"require": "./index.js",
+			"import": "./index.mjs"
+		},
+		"./collections.json": "./collections.json"
+	},
+	"dependencies": {
+		"@Lyxal/types": "^1.0.10"
+	}
+}

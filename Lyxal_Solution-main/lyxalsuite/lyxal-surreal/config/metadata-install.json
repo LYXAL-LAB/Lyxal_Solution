@@ -1,0 +1,13 @@
+{
+  "description": "Installation des tables de métadonnées pour les modules",
+  "paths": [
+    "Lyxal_solution/builder/entities/table_sub_module/structures",
+    "Lyxal_solution/builder/entities/table_module/structures"
+  ],
+  "options": {
+    "verify": true,
+    "dry_run": false,
+    "verbose": true,
+    "skip_errors": false
+  }
+} 

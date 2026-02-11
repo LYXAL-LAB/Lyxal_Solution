@@ -1,0 +1,18 @@
+[package]
+name = "lyxal-social-core"
+version = "0.1.0"
+edition = "2021"
+description = "Runtime social providers indépendant, sans dépendance SurrealDB. SurrealDB n’intègre que du code finalisé, testé et figé."
+license = "MIT OR Apache-2.0"
+repository = "https://example.com/lyxal-social-core"
+keywords = ["social", "runtime", "discord", "tiktok", "capabilities"]
+categories = ["network-programming", "authentication"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+urlencoding = "2"
+base64 = "0.22"
+
+[dev-dependencies]
+

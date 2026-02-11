@@ -1,0 +1,9 @@
+[package]
+name = "rangemap"
+version = "1.7.1"
+edition = "2018"
+description = "Map and set data structures whose keys are stored as ranges (vendored)"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# No dependencies - pure Rust implementation

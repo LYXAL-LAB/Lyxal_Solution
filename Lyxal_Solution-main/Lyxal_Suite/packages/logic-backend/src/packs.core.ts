@@ -1,0 +1,1 @@
+export { corePlugin } from '../../logic-ui/src/packs.core.js';

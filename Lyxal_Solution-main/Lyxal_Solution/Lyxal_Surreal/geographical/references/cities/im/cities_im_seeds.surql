@@ -1,0 +1,18 @@
+-- Seeds pour les villes du pays: IM --
+
+CREATE base_city:im_154082 SET state = base_state:im_01, key.name = i18n_key:i18n_city_im_154082_name, native = 'Andreas', location = (-4.52114630, 54.36841400), timezone = base_timezone:europe_london, wikiDataId = 'Q2484746';
+CREATE base_city:im_154083 SET state = base_state:im_01, key.name = i18n_key:i18n_city_im_154083_name, native = 'Bride', location = (-4.40803560, 54.38316570), timezone = base_timezone:europe_london, wikiDataId = 'Q2925151';
+CREATE base_city:im_154084 SET state = base_state:im_01, key.name = i18n_key:i18n_city_im_154084_name, native = 'Lezay', location = (-4.53110150, 54.29621930), timezone = base_timezone:europe_london, wikiDataId = 'Q3237456';
+CREATE base_city:im_154085 SET state = base_state:im_02, key.name = i18n_key:i18n_city_im_154085_name, native = 'Lonan', location = (-4.50103060, 54.22104520), timezone = base_timezone:europe_london, wikiDataId = 'Q3258914';
+CREATE base_city:im_154086 SET state = base_state:im_02, key.name = i18n_key:i18n_city_im_154086_name, native = 'Maughold', location = (-4.51223490, 54.25494540), timezone = base_timezone:europe_london, wikiDataId = 'Q2734578';
+CREATE base_city:im_154087 SET state = base_state:im_02, key.name = i18n_key:i18n_city_im_154087_name, native = 'Onchan', location = (-4.54908980, 54.19815080), timezone = base_timezone:europe_london, wikiDataId = 'Q7091958';
+CREATE base_city:im_154088 SET state = base_state:im_03, key.name = i18n_key:i18n_city_im_154088_name, native = 'German', location = (-4.70652730, 54.21871450), timezone = base_timezone:europe_london, wikiDataId = 'Q2734574';
+CREATE base_city:im_154089 SET state = base_state:im_04, key.name = i18n_key:i18n_city_im_154089_name, native = 'Ballaugh', location = (-4.62075260, 54.30481210), timezone = base_timezone:europe_london, wikiDataId = 'Q2734562';
+CREATE base_city:im_154090 SET state = base_state:im_04, key.name = i18n_key:i18n_city_im_154090_name, native = 'Jurby', location = (-4.54065860, 54.35905280), timezone = base_timezone:europe_london, wikiDataId = 'Q2734559';
+CREATE base_city:im_154091 SET state = base_state:im_04, key.name = i18n_key:i18n_city_im_154091_name, native = 'Michael', location = (-4.64273250, 54.27427780), timezone = base_timezone:europe_london, wikiDataId = 'Q2734562';
+CREATE base_city:im_154092 SET state = base_state:im_05, key.name = i18n_key:i18n_city_im_154092_name, native = 'Bradies', location = (-4.52585060, 54.16328280), timezone = base_timezone:europe_london, wikiDataId = 'Q2734571';
+CREATE base_city:im_154093 SET state = base_state:im_05, key.name = i18n_key:i18n_city_im_154093_name, native = 'Marown', location = (-4.64952180, 54.18462420), timezone = base_timezone:europe_london, wikiDataId = 'Q3294687';
+CREATE base_city:im_154094 SET state = base_state:im_05, key.name = i18n_key:i18n_city_im_154094_name, native = 'Santon', location = (-4.64937750, 54.12054890), timezone = base_timezone:europe_london, wikiDataId = 'Q3472980';
+CREATE base_city:im_154095 SET state = base_state:im_06, key.name = i18n_key:i18n_city_im_154095_name, native = 'Arbory', location = (-4.83564540, 54.10878070), timezone = base_timezone:europe_london, wikiDataId = 'Q2859727';
+CREATE base_city:im_154097 SET state = base_state:im_06, key.name = i18n_key:i18n_city_im_154097_name, native = 'Malew', location = (-4.80138270, 54.11180490), timezone = base_timezone:europe_london, wikiDataId = 'Q3281889';
+CREATE base_city:im_154096 SET state = base_state:im_06, key.name = i18n_key:i18n_city_im_154096_name, native = 'Rush', location = (-4.84149820, 54.09084920), timezone = base_timezone:europe_london, wikiDataId = 'Q3453376';

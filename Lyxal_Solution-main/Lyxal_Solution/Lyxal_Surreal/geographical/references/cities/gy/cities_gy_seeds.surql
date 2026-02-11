@@ -1,0 +1,16 @@
+-- Seeds pour les villes du pays: GY --
+
+CREATE base_city:gy_53826 SET state = base_state:gy_ba, key.name = i18n_key:i18n_city_gy_53826_name, native = 'Usabone', location = (-59.78333000, 8.20000000), timezone = base_timezone:america_caracas, wikiDataId = 'Q597458';
+CREATE base_city:gy_53822 SET state = base_state:gy_cu, key.name = i18n_key:i18n_city_gy_53822_name, native = 'Bartica', location = (-58.62192000, 6.40799000), timezone = base_timezone:america_caracas, wikiDataId = 'Q809428';
+CREATE base_city:gy_53823 SET state = base_state:gy_de, key.name = i18n_key:i18n_city_gy_53823_name, native = 'Georgetown', location = (-58.15527000, 6.80448000), timezone = base_timezone:america_caracas, wikiDataId = 'Q10717';
+CREATE base_city:gy_53827 SET state = base_state:gy_de, key.name = i18n_key:i18n_city_gy_53827_name, native = 'Mahaica Village', location = (-57.92181000, 6.68405000), timezone = base_timezone:america_caracas, wikiDataId = 'Q597458';
+CREATE base_city:gy_53830 SET state = base_state:gy_eb, key.name = i18n_key:i18n_city_gy_53830_name, native = 'New Amsterdam', location = (-57.51710000, 6.24793000), timezone = base_timezone:america_caracas, wikiDataId = 'Q923811';
+CREATE base_city:gy_53833 SET state = base_state:gy_eb, key.name = i18n_key:i18n_city_gy_53833_name, native = 'Skeld', location = (-57.13333000, 5.88333000), timezone = base_timezone:america_sao_paulo, wikiDataId = 'Q1051779';
+CREATE base_city:gy_53831 SET state = base_state:gy_es, key.name = i18n_key:i18n_city_gy_53831_name, native = 'Parika', location = (-58.42941000, 6.83712000), timezone = base_timezone:america_caracas, wikiDataId = 'Q268247';
+CREATE base_city:gy_53834 SET state = base_state:gy_es, key.name = i18n_key:i18n_city_gy_53834_name, native = 'Peace', location = (-58.19798000, 6.80927000), timezone = base_timezone:america_caracas, wikiDataId = 'Q1018877';
+CREATE base_city:gy_53828 SET state = base_state:gy_ma, key.name = i18n_key:i18n_city_gy_53828_name, native = 'Mahaicony Village', location = (-57.80486000, 6.57633000), timezone = base_timezone:america_caracas, wikiDataId = 'Q597458';
+CREATE base_city:gy_53832 SET state = base_state:gy_ma, key.name = i18n_key:i18n_city_gy_53832_name, native = 'Rosignol', location = (-57.53697000, 6.27095000), timezone = base_timezone:america_caracas, wikiDataId = 'Q1322106';
+CREATE base_city:gy_53821 SET state = base_state:gy_pm, key.name = i18n_key:i18n_city_gy_53821_name, native = 'Anna Regina', location = (-58.50769000, 7.26439000), timezone = base_timezone:america_caracas, wikiDataId = 'Q563067';
+CREATE base_city:gy_53829 SET state = base_state:gy_pt, key.name = i18n_key:i18n_city_gy_53829_name, native = 'Mahdia', location = (-59.15000000, 5.26667000), timezone = base_timezone:america_caracas, wikiDataId = 'Q1020481';
+CREATE base_city:gy_53825 SET state = base_state:gy_ud, key.name = i18n_key:i18n_city_gy_53825_name, native = 'Linden', location = (-58.30714000, 6.00809000), timezone = base_timezone:america_caracas, wikiDataId = 'Q741134';
+CREATE base_city:gy_53824 SET state = base_state:gy_ut, key.name = i18n_key:i18n_city_gy_53824_name, native = 'Lethem', location = (-59.80000000, 3.38333000), timezone = base_timezone:america_caracas, wikiDataId = 'Q1203781';

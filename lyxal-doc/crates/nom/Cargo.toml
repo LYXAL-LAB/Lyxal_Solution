@@ -1,0 +1,15 @@
+[package]
+name = "nom"
+version = "8.0.0"
+edition = "2021"
+description = "A byte-oriented, zero-copy, parser combinators library (vendored)"
+license = "MIT"
+
+[dependencies]
+# Vendored memchr
+memchr = { path = "../memchr", default-features = false }
+
+[features]
+default = ["std"]
+alloc = []
+std = ["alloc", "memchr/std"]

@@ -1,0 +1,20 @@
+{
+	"name": "@Lyxal-demo/doc-samples",
+	"version": "1.0.0",
+	"private": true,
+	"description": "Code samples used in documentation",
+	"license": "MIT",
+	"scripts": {
+		"build": "tsc"
+	},
+	"type": "module",
+	"dependencies": {
+		"@Lyxal/tools": "workspace:^"
+	},
+	"devDependencies": {
+		"@Lyxal/json": "^2.2.410",
+		"@Lyxal/utils": "^3.1.0",
+		"@types/node": "^24.10.1",
+		"typescript": "^5.9.3"
+	}
+}

@@ -1,0 +1,15 @@
+[package]
+name = "indexmap"
+version = "2.13.0"
+edition = "2021"
+description = "A hash table with consistent order and fast iteration (vendored)"
+license = "Apache-2.0 OR MIT"
+
+[dependencies]
+# Vendored dependencies
+equivalent = { path = "../equivalent", default-features = false }
+hashbrown = { path = "../hashbrown", default-features = false }
+
+[features]
+default = ["std"]
+std = []

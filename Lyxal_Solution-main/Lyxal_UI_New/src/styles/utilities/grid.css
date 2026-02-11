@@ -1,0 +1,66 @@
+/* --- Système de Grille Universel (CSS Grid) --- */
+
+.grid-root {
+  display: grid;
+  width: 100%;
+  
+  /* Configuration par défaut */
+  --grid-gap: 1.5rem;
+  --grid-cols: 1fr; /* 1 colonne par défaut */
+  
+  gap: var(--grid-gap);
+  grid-template-columns: var(--grid-cols);
+}
+
+/* --- Modèles de Layout (Macro) --- */
+
+/* Dashboard Classique : Sidebar (250px) + Contenu */
+.grid-dashboard {
+  --grid-cols: 280px 1fr;
+  align-items: start; /* La sidebar ne s'étire pas forcément */
+}
+
+/* Dashboard Collapsed : Sidebar Icones (80px) + Contenu */
+.grid-dashboard-collapsed {
+  --grid-cols: 80px 1fr;
+}
+
+/* Holy Grail : Sidebar G (250px) + Contenu + Sidebar D (300px) */
+.grid-holy-grail {
+  --grid-cols: 250px 1fr 300px;
+}
+
+/* --- Modèles de Contenu (Micro) --- */
+
+/* Grille Auto-Responsive (Magique !) 
+   Crée autant de colonnes que possible avec une largeur min de 300px */
+.grid-auto-fit {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.grid-cols-2 { --grid-cols: repeat(2, 1fr); }
+.grid-cols-3 { --grid-cols: repeat(3, 1fr); }
+.grid-cols-4 { --grid-cols: repeat(4, 1fr); }
+.grid-cols-12 { --grid-cols: repeat(12, 1fr); }
+
+/* --- Gestion des Gaps --- */
+
+.gap-none { --grid-gap: 0; }
+.gap-sm { --grid-gap: 0.5rem; }
+.gap-md { --grid-gap: 1.5rem; }
+.gap-lg { --grid-gap: 3rem; }
+
+/* --- Responsive (Mobile First : on écrase pour mobile) --- */
+@media (max-width: 768px) {
+  /* Sur mobile, tout repasse souvent en 1 colonne, 
+     sauf si on force avec une classe spécifique */
+  .grid-root:not(.grid-keep-cols) {
+    --grid-cols: 1fr;
+  }
+  
+  /* Les sidebars passent souvent au-dessus ou disparaissent sur mobile */
+  .grid-dashboard {
+    --grid-cols: 1fr; 
+  }
+}
+

@@ -1,0 +1,31 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "strict": true,
+        "skipLibCheck": true,
+        "declaration": true,
+        "declarationMap": true,
+        "outDir": "./dist",
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noEmit": false,
+        "types": [
+            "bun",
+            "bun-types",
+            "mocha"
+        ]
+    },
+    "include": [
+        "src/**/*",
+        "test/**/*",
+        "tools/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
+}

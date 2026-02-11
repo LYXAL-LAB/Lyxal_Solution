@@ -1,0 +1,32 @@
+-- Seeds pour les villes du pays: AE --
+
+CREATE base_city:ae_12 SET state = base_state:ae_az, key.name = i18n_key:i18n_city_ae_12_name, native = 'أبو ظبي', location = (54.43295000, 24.41361000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q1519';
+CREATE base_city:ae_16 SET state = base_state:ae_az, key.name = i18n_key:i18n_city_ae_16_name, native = 'مدينة العين', location = (55.76056000, 24.19167000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q234600';
+CREATE base_city:ae_19 SET state = base_state:ae_az, key.name = i18n_key:i18n_city_ae_19_name, native = 'الظفرة', location = (53.72225000, 23.65745000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q4703864';
+CREATE base_city:ae_26 SET state = base_state:ae_az, key.name = i18n_key:i18n_city_ae_26_name, native = 'مدينة بني ياس', location = (54.62944000, 24.30978000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q11960137';
+CREATE base_city:ae_11 SET state = base_state:ae_az, key.name = i18n_key:i18n_city_ae_11_name, native = 'غياثي', location = (52.58710260, 23.90453420), timezone = base_timezone:asia_dubai, wikiDataId = 'Q15221607';
+CREATE base_city:ae_34 SET state = base_state:ae_az, key.name = i18n_key:i18n_city_ae_34_name, native = 'مدينة خليفة', location = (54.60500000, 24.42588000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q6399642';
+CREATE base_city:ae_17 SET state = base_state:ae_az, key.name = i18n_key:i18n_city_ae_17_name, native = 'واحة ليوا', location = (53.24086080, 22.86972550), timezone = base_timezone:asia_dubai, wikiDataId = 'Q615949';
+CREATE base_city:ae_41 SET state = base_state:ae_az, key.name = i18n_key:i18n_city_ae_41_name, native = 'مصفح', location = (54.48267000, 24.35893000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q12243475';
+CREATE base_city:ae_42 SET state = base_state:ae_az, key.name = i18n_key:i18n_city_ae_42_name, native = 'مزيرعي', location = (53.78810000, 23.14355000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q21735810';
+CREATE base_city:ae_25 SET state = base_state:ae_az, key.name = i18n_key:i18n_city_ae_25_name, native = 'الرويس', location = (52.73056000, 24.11028000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q1023786';
+CREATE base_city:ae_49 SET state = base_state:ae_az, key.name = i18n_key:i18n_city_ae_49_name, native = 'مدينة زايد', location = (53.70522000, 23.65416000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q62269911';
+CREATE base_city:ae_14 SET state = base_state:ae_aj, key.name = i18n_key:i18n_city_ae_14_name, native = 'عجمان', location = (55.52341000, 25.40328000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q530171';
+CREATE base_city:ae_37 SET state = base_state:ae_aj, key.name = i18n_key:i18n_city_ae_37_name, native = 'المنامة', location = (56.00259000, 25.32568000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q1888663';
+CREATE base_city:ae_38 SET state = base_state:ae_aj, key.name = i18n_key:i18n_city_ae_38_name, native = 'مصفوت', location = (56.05158000, 24.83982000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q3133042';
+CREATE base_city:ae_32 SET state = base_state:ae_du, key.name = i18n_key:i18n_city_ae_32_name, native = 'دبي', location = (55.17128000, 25.06570000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q612';
+CREATE base_city:ae_28 SET state = base_state:ae_fu, key.name = i18n_key:i18n_city_ae_28_name, native = 'بلدية دبا الفجيرة', location = (56.24792000, 25.58580000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q3696182';
+CREATE base_city:ae_30 SET state = base_state:ae_fu, key.name = i18n_key:i18n_city_ae_30_name, native = 'دبا الفجيرة', location = (56.26176000, 25.59246000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q3696182';
+CREATE base_city:ae_31 SET state = base_state:ae_fu, key.name = i18n_key:i18n_city_ae_31_name, native = 'دبا الحصن', location = (56.27291000, 25.61955000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q6742405';
+CREATE base_city:ae_20 SET state = base_state:ae_fu, key.name = i18n_key:i18n_city_ae_20_name, native = 'الفجيرة', location = (56.34141000, 25.11641000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q4045';
+CREATE base_city:ae_43 SET state = base_state:ae_rk, key.name = i18n_key:i18n_city_ae_43_name, native = 'رأس الخيمة', location = (56.04058000, 25.46116000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q2126436';
+CREATE base_city:ae_18 SET state = base_state:ae_sh, key.name = i18n_key:i18n_city_ae_18_name, native = 'البطائح', location = (55.74272000, 25.22317000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q85740409';
+CREATE base_city:ae_13 SET state = base_state:ae_sh, key.name = i18n_key:i18n_city_ae_13_name, native = 'الذيد', location = (55.88157000, 25.28812000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q3492826';
+CREATE base_city:ae_22 SET state = base_state:ae_sh, key.name = i18n_key:i18n_city_ae_22_name, native = 'الحمرية', location = (55.54813000, 25.46121000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q4703978';
+CREATE base_city:ae_23 SET state = base_state:ae_sh, key.name = i18n_key:i18n_city_ae_23_name, native = 'السيدة', location = (55.76820000, 24.95536000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q55603483';
+CREATE base_city:ae_33 SET state = base_state:ae_sh, key.name = i18n_key:i18n_city_ae_33_name, native = 'كلباء', location = (56.27207000, 24.99816000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q2204078';
+CREATE base_city:ae_36 SET state = base_state:ae_sh, key.name = i18n_key:i18n_city_ae_36_name, native = 'خورفكان', location = (56.30280000, 25.33966000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q764279';
+CREATE base_city:ae_39 SET state = base_state:ae_sh, key.name = i18n_key:i18n_city_ae_39_name, native = 'ميلها', location = (55.91282000, 25.10097000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q1001413';
+CREATE base_city:ae_40 SET state = base_state:ae_sh, key.name = i18n_key:i18n_city_ae_40_name, native = 'مربح', location = (56.36256000, 25.27623000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q6401643';
+CREATE base_city:ae_46 SET state = base_state:ae_sh, key.name = i18n_key:i18n_city_ae_46_name, native = 'الشارقة', location = (55.41206000, 25.33737000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q289693';
+CREATE base_city:ae_47 SET state = base_state:ae_uq, key.name = i18n_key:i18n_city_ae_47_name, native = 'أم القيوين', location = (55.73520000, 25.49326000), timezone = base_timezone:asia_dubai, wikiDataId = 'Q2788830';

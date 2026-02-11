@@ -1,0 +1,37 @@
+-- Traductions pour les villes du pays: NR --
+
+RELATE i18n_key:i18n_city_nr_79762_name->i18n_translation->i18n_language:de SET text = 'Arijejen';
+RELATE i18n_key:i18n_city_nr_79762_name->i18n_translation->i18n_language:es SET text = 'Arijejen';
+RELATE i18n_key:i18n_city_nr_79762_name->i18n_translation->i18n_language:fr SET text = 'Arijejen';
+RELATE i18n_key:i18n_city_nr_79762_name->i18n_translation->i18n_language:it SET text = 'Arijejen';
+RELATE i18n_key:i18n_city_nr_79762_name->i18n_translation->i18n_language:en SET text = 'Arijejen';
+RELATE i18n_key:i18n_city_nr_79761_name->i18n_translation->i18n_language:de SET text = 'Anabar';
+RELATE i18n_key:i18n_city_nr_79761_name->i18n_translation->i18n_language:es SET text = 'Anabar';
+RELATE i18n_key:i18n_city_nr_79761_name->i18n_translation->i18n_language:fr SET text = 'Anabar';
+RELATE i18n_key:i18n_city_nr_79761_name->i18n_translation->i18n_language:it SET text = 'Anabar';
+RELATE i18n_key:i18n_city_nr_79761_name->i18n_translation->i18n_language:en SET text = 'Anabar';
+RELATE i18n_key:i18n_city_nr_79763_name->i18n_translation->i18n_language:de SET text = 'Baiti';
+RELATE i18n_key:i18n_city_nr_79763_name->i18n_translation->i18n_language:es SET text = 'Baiti';
+RELATE i18n_key:i18n_city_nr_79763_name->i18n_translation->i18n_language:fr SET text = 'Appât';
+RELATE i18n_key:i18n_city_nr_79763_name->i18n_translation->i18n_language:it SET text = 'Baiti';
+RELATE i18n_key:i18n_city_nr_79763_name->i18n_translation->i18n_language:en SET text = 'Baiti';
+RELATE i18n_key:i18n_city_nr_79764_name->i18n_translation->i18n_language:de SET text = 'Ijuw';
+RELATE i18n_key:i18n_city_nr_79764_name->i18n_translation->i18n_language:es SET text = 'Ijuw';
+RELATE i18n_key:i18n_city_nr_79764_name->i18n_translation->i18n_language:fr SET text = 'Ijuw';
+RELATE i18n_key:i18n_city_nr_79764_name->i18n_translation->i18n_language:it SET text = 'Ijuw';
+RELATE i18n_key:i18n_city_nr_79764_name->i18n_translation->i18n_language:en SET text = 'Ijuw';
+RELATE i18n_key:i18n_city_nr_79765_name->i18n_translation->i18n_language:de SET text = 'Menen';
+RELATE i18n_key:i18n_city_nr_79765_name->i18n_translation->i18n_language:es SET text = 'Menen';
+RELATE i18n_key:i18n_city_nr_79765_name->i18n_translation->i18n_language:fr SET text = 'Menin';
+RELATE i18n_key:i18n_city_nr_79765_name->i18n_translation->i18n_language:it SET text = 'Menen';
+RELATE i18n_key:i18n_city_nr_79765_name->i18n_translation->i18n_language:en SET text = 'Menen';
+RELATE i18n_key:i18n_city_nr_79766_name->i18n_translation->i18n_language:de SET text = 'Uaboe';
+RELATE i18n_key:i18n_city_nr_79766_name->i18n_translation->i18n_language:es SET text = 'Uaboe';
+RELATE i18n_key:i18n_city_nr_79766_name->i18n_translation->i18n_language:fr SET text = 'Uaboe';
+RELATE i18n_key:i18n_city_nr_79766_name->i18n_translation->i18n_language:it SET text = 'Uaboe';
+RELATE i18n_key:i18n_city_nr_79766_name->i18n_translation->i18n_language:en SET text = 'Uaboe';
+RELATE i18n_key:i18n_city_nr_79767_name->i18n_translation->i18n_language:de SET text = 'Yaren';
+RELATE i18n_key:i18n_city_nr_79767_name->i18n_translation->i18n_language:es SET text = 'Yaren';
+RELATE i18n_key:i18n_city_nr_79767_name->i18n_translation->i18n_language:fr SET text = 'Yaren';
+RELATE i18n_key:i18n_city_nr_79767_name->i18n_translation->i18n_language:it SET text = 'Yaren';
+RELATE i18n_key:i18n_city_nr_79767_name->i18n_translation->i18n_language:en SET text = 'Yaren';

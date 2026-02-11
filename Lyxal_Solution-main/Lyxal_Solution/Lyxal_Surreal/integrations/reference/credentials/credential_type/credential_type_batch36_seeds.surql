@@ -1,0 +1,12 @@
+﻿-- =============================================================================================
+-- | Batch 36 : Final Credentials - Security & Communication (2 credentials)
+-- =============================================================================================
+
+CREATE credential_type:zscaler_zia_api SET name = "zscalerZiaApi", slug = "zscaler-zia-api", is_active = true, identity = { display_name_i18n: i18n_key:credential_type_zscaler_zia_api_name, description_i18n: i18n_key:credential_type_zscaler_zia_api_description }, presentation = { icon: icon:zscaler_zia_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_zscaler_zia_api_tooltip, display_order: 1420 }, auth_type = auth_type:custom, provider = provider:zscaler, config = { oauth2: NONE, oauth1: NONE, required_fields: [{ name: "baseUrl", display_name: "Base URL", type: "string", is_secret: false, required: true, placeholder: "zsapi.zscalerthree.net" }, { name: "username", display_name: "Username", type: "string", is_secret: false, required: true }, { name: "password", display_name: "Password", type: "string", is_secret: true, required: true }, { name: "apiKey", display_name: "API Key", type: "string", is_secret: true, required: true }], metadata: { cloud_security: true, sase: true, zero_trust: true, enterprise: true, custom_auth: true } }, documentation = { url: url:zscaler_zia_docs, use_cases_i18n: NONE };
+
+CREATE credential_type:zulip_api SET name = "zulipApi", slug = "zulip-api", is_active = true, identity = { display_name_i18n: i18n_key:credential_type_zulip_api_name, description_i18n: i18n_key:credential_type_zulip_api_description }, presentation = { icon: icon:zulip_api, color_type: theme_color_type:neutral, tooltip_i18n: i18n_key:credential_type_zulip_api_tooltip, display_order: 1421 }, auth_type = auth_type:basic, provider = provider:zulip, config = { oauth2: NONE, oauth1: NONE, required_fields: [{ name: "url", display_name: "URL", type: "string", is_secret: false, required: true, placeholder: "https://yourZulipDomain.zulipchat.com" }, { name: "email", display_name: "Email", type: "string", is_secret: false, required: true, placeholder: "name@email.com" }, { name: "apiKey", display_name: "API Key", type: "string", is_secret: true, required: true }], metadata: { team_messaging: true, chat: true, open_source: true } }, documentation = { url: url:zulip_docs, use_cases_i18n: NONE };
+
+-- ✅ Batch 36: 2 credentials (1420-1421)
+-- 🎉 TOUS LES CREDENTIALS CRÉÉS ! 
+-- 📊 TOTAL FINAL: 387 credentials uniques (Batches 1-36)
+

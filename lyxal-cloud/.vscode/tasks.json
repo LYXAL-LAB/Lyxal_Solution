@@ -1,0 +1,44 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "npm",
+			"script": "tauri:dev",
+			"label": "Development",
+			"detail": "Run tauri dev"
+		},
+		{
+			"type": "npm",
+			"script": "tauri:build",
+			"label": "Release build",
+			"detail": "Run tauri build"
+		},
+		{
+			"type": "npm",
+			"script": "qc",
+			"label": "Check code quality",
+			"detail": "Run the linter",
+			"icon": {
+				"id": "vm-running"
+			}
+		},
+		{
+			"type": "npm",
+			"script": "qa",
+			"label": "Check & fix code quality",
+			"detail": "Run the linter and fix issues",
+			"icon": {
+				"id": "vm-running"
+			}
+		},
+		{
+			"type": "npm",
+			"script": "qau",
+			"label": "Check & fix code quality (Unsafe)",
+			"detail": "Run the linter and fix issues",
+			"icon": {
+				"id": "vm-running"
+			}
+		}
+	]
+}

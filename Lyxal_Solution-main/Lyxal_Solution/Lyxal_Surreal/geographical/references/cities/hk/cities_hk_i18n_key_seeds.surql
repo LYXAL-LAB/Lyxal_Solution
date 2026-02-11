@@ -1,0 +1,29 @@
+-- Clés i18n pour les villes du pays: HK --
+
+CREATE i18n_key:i18n_city_hk_153484_name SET description = 'Nom pour la ville \'Admiralty\'';
+CREATE i18n_key:i18n_city_hk_153483_name SET description = 'Nom pour la ville \'Central\'';
+CREATE i18n_key:i18n_city_hk_153508_name SET description = 'Nom pour la ville \'Tai O\'';
+CREATE i18n_key:i18n_city_hk_153500_name SET description = 'Nom pour la ville \'Kowloon Tong\'';
+CREATE i18n_key:i18n_city_hk_153505_name SET description = 'Nom pour la ville \'Kwun Tong\'';
+CREATE i18n_key:i18n_city_hk_153504_name SET description = 'Nom pour la ville \'Lam Tin\'';
+CREATE i18n_key:i18n_city_hk_153497_name SET description = 'Nom pour la ville \'Sheung Shui\'';
+CREATE i18n_key:i18n_city_hk_153493_name SET description = 'Nom pour la ville \'Sai Kung\'';
+CREATE i18n_key:i18n_city_hk_153498_name SET description = 'Nom pour la ville \'Tseung Kwan O\'';
+CREATE i18n_key:i18n_city_hk_153494_name SET description = 'Nom pour la ville \'Ma On Shan\'';
+CREATE i18n_key:i18n_city_hk_153489_name SET description = 'Nom pour la ville \'Sha Tin\'';
+CREATE i18n_key:i18n_city_hk_153499_name SET description = 'Nom pour la ville \'Sha Tin Wai\'';
+CREATE i18n_key:i18n_city_hk_153501_name SET description = 'Nom pour la ville \'Cheung Sha Wan\'';
+CREATE i18n_key:i18n_city_hk_153502_name SET description = 'Nom pour la ville \'Lai Chi Kok\'';
+CREATE i18n_key:i18n_city_hk_153506_name SET description = 'Nom pour la ville \'Aberdeen\'';
+CREATE i18n_key:i18n_city_hk_153496_name SET description = 'Nom pour la ville \'Stanley\'';
+CREATE i18n_key:i18n_city_hk_153507_name SET description = 'Nom pour la ville \'Stanley Peninsula\'';
+CREATE i18n_key:i18n_city_hk_153509_name SET description = 'Nom pour la ville \'Tai Mei Tuk\'';
+CREATE i18n_key:i18n_city_hk_153495_name SET description = 'Nom pour la ville \'Tai Po\'';
+CREATE i18n_key:i18n_city_hk_153490_name SET description = 'Nom pour la ville \'Tsuen Wan\'';
+CREATE i18n_key:i18n_city_hk_153491_name SET description = 'Nom pour la ville \'Tuen Mun\'';
+CREATE i18n_key:i18n_city_hk_153486_name SET description = 'Nom pour la ville \'Causeway Bay\'';
+CREATE i18n_key:i18n_city_hk_153485_name SET description = 'Nom pour la ville \'Wan Chai\'';
+CREATE i18n_key:i18n_city_hk_153503_name SET description = 'Nom pour la ville \'Wong Tai Sin\'';
+CREATE i18n_key:i18n_city_hk_153488_name SET description = 'Nom pour la ville \'Mong Kok\'';
+CREATE i18n_key:i18n_city_hk_153487_name SET description = 'Nom pour la ville \'Tsim Sha Tsui\'';
+CREATE i18n_key:i18n_city_hk_153492_name SET description = 'Nom pour la ville \'Yuen Long\'';

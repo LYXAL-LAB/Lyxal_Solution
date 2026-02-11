@@ -1,0 +1,23 @@
+-- Clés i18n pour les villes du pays: MV --
+
+CREATE i18n_key:i18n_city_mv_67929_name SET description = 'Nom pour la ville \'Hithadhoo\'';
+CREATE i18n_key:i18n_city_mv_67937_name SET description = 'Nom pour la ville \'Meedhoo\'';
+CREATE i18n_key:i18n_city_mv_67931_name SET description = 'Nom pour la ville \'Kudahuvadhoo\'';
+CREATE i18n_key:i18n_city_mv_67943_name SET description = 'Nom pour la ville \'Viligili\'';
+CREATE i18n_key:i18n_city_mv_67940_name SET description = 'Nom pour la ville \'Thinadhoo\'';
+CREATE i18n_key:i18n_city_mv_67927_name SET description = 'Nom pour la ville \'Fuvahmulah\'';
+CREATE i18n_key:i18n_city_mv_67923_name SET description = 'Nom pour la ville \'Dhidhdhoo\'';
+CREATE i18n_key:i18n_city_mv_67932_name SET description = 'Nom pour la ville \'Kulhudhuffushi\'';
+CREATE i18n_key:i18n_city_mv_67928_name SET description = 'Nom pour la ville \'Guraidhoo\'';
+CREATE i18n_key:i18n_city_mv_67930_name SET description = 'Nom pour la ville \'Hulhumale\'';
+CREATE i18n_key:i18n_city_mv_67933_name SET description = 'Nom pour la ville \'Maafushi\'';
+CREATE i18n_key:i18n_city_mv_67935_name SET description = 'Nom pour la ville \'Male\'';
+CREATE i18n_key:i18n_city_mv_67925_name SET description = 'Nom pour la ville \'Fonadhoo\'';
+CREATE i18n_key:i18n_city_mv_67939_name SET description = 'Nom pour la ville \'Naifaru\'';
+CREATE i18n_key:i18n_city_mv_67938_name SET description = 'Nom pour la ville \'Muli\'';
+CREATE i18n_key:i18n_city_mv_67936_name SET description = 'Nom pour la ville \'Manadhoo\'';
+CREATE i18n_key:i18n_city_mv_67941_name SET description = 'Nom pour la ville \'Ugoofaaru\'';
+CREATE i18n_key:i18n_city_mv_67926_name SET description = 'Nom pour la ville \'Funadhoo\'';
+CREATE i18n_key:i18n_city_mv_67934_name SET description = 'Nom pour la ville \'Mahibadhoo\'';
+CREATE i18n_key:i18n_city_mv_67942_name SET description = 'Nom pour la ville \'Veymandoo\'';
+CREATE i18n_key:i18n_city_mv_67924_name SET description = 'Nom pour la ville \'Felidhoo\'';

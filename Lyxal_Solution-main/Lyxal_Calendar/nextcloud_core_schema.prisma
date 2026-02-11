@@ -1,0 +1,174 @@
+// Nextcloud Core CalDAV - Schema Prisma Converti
+// Basé sur apps/dav/lib/Migration/Version1004Date20170825134824.php
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ================================================
+// SYSTÈME CALDAV COMPLET
+// ================================================
+
+model Calendar {
+  id             Int       @id @default(autoincrement())
+  principaluri   String?   @db.VarChar(255) // principals/users/username
+  displayname    String?   @db.VarChar(255)
+  uri            String?   @db.VarChar(255)
+  synctoken      Int       @default(1) @db.Integer
+  description    String?   @db.VarChar(255)
+  calendarorder  Int       @default(0) @db.Integer
+  calendarcolor  String?
+  timezone       String?   @db.Text
+  components     String?   @db.VarChar(64) // "VEVENT,VTODO"
+  transparent    Int       @default(0) @db.SmallInt
+  
+  objects        CalendarObject[]
+  changes        CalendarChange[]
+  shares         DavShare[]
+  
+  @@unique([principaluri, uri], name: "calendars_index")
+  @@map("calendars")
+}
+
+model CalendarObject {
+  id              Int      @id @default(autoincrement())
+  calendardata    Bytes?   // BLOB - iCal format complet (RFC 5545)
+  uri             String?  @db.VarChar(255)
+  calendarid      Int      @db.Integer
+  calendar        Cal endar  @relation(fields: [calendarid], references: [id], onDelete: Cascade)
+  lastmodified    Int?     @db.Integer
+  etag            String?  @db.VarChar(32)
+  size            Int      @db.Integer
+  componenttype   String?  @db.VarChar(8) // "VEVENT", "VTODO", "VJOURNAL"
+  firstoccurence  Int?     @db.Integer // Timestamp
+  lastoccurence   Int?     @db.Integer // Timestamp
+  uid             String?  @db.VarChar(255) // iCal UID
+  classification  Int?     @default(0) // 0=PUBLIC, 1=PRIVATE, 2=CONFIDENTIAL
+  
+  properties      CalendarObjectProp[]
+  
+  @@unique([calendarid, uri], name: "calobjects_index")
+  @@index([calendarid])
+  @@index([uid])
+  @@map("calendarobjects")
+}
+
+model CalendarChange {
+  id          Int      @id @default(autoincrement())
+  uri         String?  @db.VarChar(255)
+  synctoken   Int      @default(1) @db.Integer
+  calendarid  Int      @db.Integer
+  calendar    Calendar @relation(fields: [calendarid], references: [id], onDelete: Cascade)
+  operation   Int      @db.SmallInt // 1=ADDED, 2=MODIFIED, 3=DELETED
+  
+  @@index([calendarid, synctoken], name: "calendarid_synctoken")
+  @@map("calendarchanges")
+}
+
+model CalendarSubscription {
+  id                Int      @id @default(autoincrement())
+  uri               String?
+  principaluri      String?  @db.VarChar(255)
+  source            String?  @db.VarChar(255) // webcal://example.com/...
+  displayname       String?  @db.VarChar(100)
+  refreshrate       String?  @db.VarChar(10) // "P1D" (ISO 8601 duration)
+  calendarorder     Int      @default(0) @db.Integer
+  calendarcolor     String?
+  striptodos        Int?     @db.SmallInt
+  stripalarms       Int?     @db.SmallInt
+  stripattachments  Int?     @db.SmallInt
+  lastmodified      Int?     @db.Integer
+  
+  @@unique([principaluri, uri], name: "calsub_index")
+  @@map("calendarsubscriptions")
+}
+
+model SchedulingObject {
+  id            Int      @id @default(autoincrement())
+  principaluri  String?  @db.VarChar(255)
+  calendardata  Bytes?   // BLOB - iTIP messages (VFREEBUSY, invitations)
+  uri           String?  @db.VarChar(255)
+  lastmodified  Int?     @db.Integer
+  etag          String?  @db.VarChar(32)
+  size          Int      @db.Integer
+  
+  @@index([principaluri], name: "schedulobj_principuri_index")
+  @@index([lastmodified], name: "schedulobj_lastmodified_idx")
+  @@map("schedulingobjects")
+}
+
+model CalendarObjectProp {
+  id          Int             @id @default(autoincrement())
+  calendarid  Int             @db.Integer
+  objectid    Int             @db.Integer
+  object      CalendarObject  @relation(fields: [objectid], references: [id], onDelete: Cascade)
+  name        String?         @db.VarChar(64) // "SUMMARY", "LOCATION", "DTSTART"
+  parameter   String?         @db.VarChar(64) // iCal parameter
+  value       String?         @db.VarChar(255)
+  
+  @@index([objectid], name: "calendarobject_index")
+  @@index([name], name: "calendarobject_name_index")
+  @@index([value], name: "calendarobject_value_index")
+  @@map("calendarobjects_props")
+}
+
+model DavShare {
+  id            Int      @id @default(autoincrement())
+  principaluri  String?  @db.VarChar(255)
+  type          String?  @db.VarChar(255) // "calendar", "addressbook"
+  access        Int?     @db.SmallInt // 1=READ, 2=WRITE, 3=ADMIN
+  resourceid    Int      @db.Integer // calendarid
+  calendar      Calendar @relation(fields: [resourceid], references: [id], onDelete: Cascade)
+  publicuri     String?  @db.VarChar(255) // Pour liens publics
+  
+  @@unique([principaluri, resourceid, type, publicuri], name: "dav_shares_index")
+  @@index([resourceid, type], name: "dav_shares_resourceid_type")
+  @@index([resourceid, access], name: "dav_shares_resourceid_access")
+  @@map("dav_shares")
+}
+
+// ================================================
+// ENUMS
+// ================================================
+
+enum ComponentType {
+  VEVENT   // Événement
+  VTODO    // Tâche
+  VJOURNAL // Journal
+}
+
+enum ShareAccess {
+  READ   // 1
+  WRITE  // 2
+  ADMIN  // 3
+}
+
+enum ChangeOperation {
+  ADDED    // 1
+  MODIFIED // 2
+  DELETED  // 3
+}
+
+// ================================================
+// NOTES IMPORTANTES
+// ================================================
+
+// 1. Le champ `calendardata` (BLOB) contient le iCal complet au format texte
+//    Vous devez le parser avec une lib comme ical.js ou node-ical
+//
+// 2. La récurrence (RRULE) est dans le iCal, pas dans une colonne séparée
+//
+// 3. Pour migrer vers ce schema, vous devrez :
+//    - Parser tous vos événements existants en iCal
+//    - Les stocker en BLOB
+//    - OU refactorer pour utiliser un modèle relationnel (comme Cal.com)
+//
+// 4. CalendarObjectProp permet de rechercher sans parser le BLOB
+//    mais reste limité (255 chars max)
+//
+// 5. Ce schema est TRÈS différent de Cal.com qui utilise un modèle relationnel

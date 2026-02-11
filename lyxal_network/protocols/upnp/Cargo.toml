@@ -1,0 +1,27 @@
+[package]
+name = "lyxal_network-upnp"
+edition.workspace = true
+rust-version.workspace = true
+description = "UPnP support for lyxal_network transports"
+version = "0.6.0"
+publish = true
+
+[dependencies]
+futures = { workspace = true }
+futures-timer = "3.0.3"
+igd-next = "0.16.1"
+lyxal_network-core = { workspace = true }
+lyxal_network-swarm = { workspace = true }
+tokio = { workspace = true, default-features = false, features = ["rt"], optional = true }
+tracing = { workspace = true }
+
+[features]
+tokio = ["igd-next/aio_tokio", "dep:tokio"]
+
+[lints]
+workspace = true
+
+# Passing arguments to the docsrs builder in order to properly document cfg's.
+# More information: https://docs.rs/about/builds#cross-compiling
+[package.metadata.docs.rs]
+all-features = true

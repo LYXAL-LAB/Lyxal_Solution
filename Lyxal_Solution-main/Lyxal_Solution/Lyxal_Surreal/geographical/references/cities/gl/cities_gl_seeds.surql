@@ -1,0 +1,20 @@
+-- Seeds pour les villes du pays: GL --
+
+CREATE base_city:gl_154930 SET state = base_state:gl_av, key.name = i18n_key:i18n_city_gl_154930_name, native = 'Ilulissani', location = (-51.12805390, 69.22794880), timezone = base_timezone:america_nuuk, wikiDataId = 'Q191047';
+CREATE base_city:gl_154931 SET state = base_state:gl_av, key.name = i18n_key:i18n_city_gl_154931_name, native = 'Qaanaaq', location = (-69.24837110, 77.46740090), timezone = base_timezone:america_halifax, wikiDataId = 'Q223314';
+CREATE base_city:gl_154933 SET state = base_state:gl_av, key.name = i18n_key:i18n_city_gl_154933_name, native = 'Upernaaq', location = (-56.16236710, 72.78686030), timezone = base_timezone:america_nuuk, wikiDataId = 'Q303160';
+CREATE base_city:gl_154932 SET state = base_state:gl_av, key.name = i18n_key:i18n_city_gl_154932_name, native = 'Uummannaq', location = (-52.14978240, 70.67868970), timezone = base_timezone:america_nuuk, wikiDataId = 'Q747898';
+CREATE base_city:gl_154934 SET state = base_state:gl_ku, key.name = i18n_key:i18n_city_gl_154934_name, native = 'Nanortalimmi', location = (-45.25629050, 60.14308250), timezone = base_timezone:america_nuuk, wikiDataId = 'Q855324';
+CREATE base_city:gl_154935 SET state = base_state:gl_ku, key.name = i18n_key:i18n_city_gl_154935_name, native = 'Narsaq', location = (-46.06857080, 60.91140780), timezone = base_timezone:america_nuuk, wikiDataId = 'Q432397';
+CREATE base_city:gl_154936 SET state = base_state:gl_ku, key.name = i18n_key:i18n_city_gl_154936_name, native = 'Qaqortoq', location = (-46.05481630, 60.71959600), timezone = base_timezone:america_nuuk, wikiDataId = 'Q221203';
+CREATE base_city:gl_154937 SET state = base_state:gl_qt, key.name = i18n_key:i18n_city_gl_154937_name, native = 'Aasiaat', location = (-52.89951360, 68.70762800), timezone = base_timezone:america_nuuk, wikiDataId = 'Q211218';
+CREATE base_city:gl_154938 SET state = base_state:gl_qt, key.name = i18n_key:i18n_city_gl_154938_name, native = 'Kangaatsiaq', location = (-53.47685330, 68.30818450), timezone = base_timezone:america_nuuk, wikiDataId = 'Q612160';
+CREATE base_city:gl_154939 SET state = base_state:gl_qt, key.name = i18n_key:i18n_city_gl_154939_name, native = 'Qasigiannguit', location = (-51.20916370, 68.81986320), timezone = base_timezone:america_nuuk, wikiDataId = 'Q950991';
+CREATE base_city:gl_154940 SET state = base_state:gl_qt, key.name = i18n_key:i18n_city_gl_154940_name, native = 'Qeqertarsuarmi', location = (-53.56440060, 69.24430370), timezone = base_timezone:america_nuuk, wikiDataId = 'Q847668';
+CREATE base_city:gl_154941 SET state = base_state:gl_qe, key.name = i18n_key:i18n_city_gl_154941_name, native = 'Maniitsumi', location = (-52.94225730, 65.40657990), timezone = base_timezone:america_nuuk, wikiDataId = 'Q847691';
+CREATE base_city:gl_154942 SET state = base_state:gl_qe, key.name = i18n_key:i18n_city_gl_154942_name, native = 'Sisimiut', location = (-53.74567660, 66.93945740), timezone = base_timezone:america_nuuk, wikiDataId = 'Q208098';
+CREATE base_city:gl_154943 SET state = base_state:gl_sm, key.name = i18n_key:i18n_city_gl_154943_name, native = 'Ammassalik', location = (-37.65014660, 65.61452670), timezone = base_timezone:america_nuuk, wikiDataId = 'Q2139799';
+CREATE base_city:gl_154944 SET state = base_state:gl_sm, key.name = i18n_key:i18n_city_gl_154944_name, native = 'Ittoqqortoormiit', location = (-21.97986600, 70.48634210), timezone = base_timezone:america_nuuk, wikiDataId = 'Q321279';
+CREATE base_city:gl_154945 SET state = base_state:gl_sm, key.name = i18n_key:i18n_city_gl_154945_name, native = 'Ivittuut', location = (-48.18198510, 61.20651840), timezone = base_timezone:america_nuuk, wikiDataId = 'Q950978';
+CREATE base_city:gl_154946 SET state = base_state:gl_sm, key.name = i18n_key:i18n_city_gl_154946_name, native = 'Nuuk', location = (-51.74800910, 64.17910090), timezone = base_timezone:america_nuuk, wikiDataId = 'Q226';
+CREATE base_city:gl_154947 SET state = base_state:gl_sm, key.name = i18n_key:i18n_city_gl_154947_name, native = 'Paamiut', location = (-49.70519590, 62.00259620), timezone = base_timezone:america_nuuk, wikiDataId = 'Q545767';

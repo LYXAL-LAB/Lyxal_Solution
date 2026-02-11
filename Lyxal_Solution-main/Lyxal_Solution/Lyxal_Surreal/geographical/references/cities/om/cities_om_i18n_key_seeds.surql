@@ -1,0 +1,30 @@
+-- Clés i18n pour les villes du pays: OM --
+
+CREATE i18n_key:i18n_city_om_79926_name SET description = 'Nom pour la ville \'Adam\'';
+CREATE i18n_key:i18n_city_om_79930_name SET description = 'Nom pour la ville \'Bahlā’\'';
+CREATE i18n_key:i18n_city_om_79934_name SET description = 'Nom pour la ville \'Bidbid\'';
+CREATE i18n_key:i18n_city_om_79937_name SET description = 'Nom pour la ville \'Izkī\'';
+CREATE i18n_key:i18n_city_om_79942_name SET description = 'Nom pour la ville \'Nizwá\'';
+CREATE i18n_key:i18n_city_om_79948_name SET description = 'Nom pour la ville \'Sufālat Samā’il\'';
+CREATE i18n_key:i18n_city_om_79953_name SET description = 'Nom pour la ville \'‘Ibrī\'';
+CREATE i18n_key:i18n_city_om_79950_name SET description = 'Nom pour la ville \'Yanqul\'';
+CREATE i18n_key:i18n_city_om_79928_name SET description = 'Nom pour la ville \'Al Khābūrah\'';
+CREATE i18n_key:i18n_city_om_79929_name SET description = 'Nom pour la ville \'As Suwayq\'';
+CREATE i18n_key:i18n_city_om_79939_name SET description = 'Nom pour la ville \'Liwá\'';
+CREATE i18n_key:i18n_city_om_79952_name SET description = 'Nom pour la ville \'Şaḩam\'';
+CREATE i18n_key:i18n_city_om_79946_name SET description = 'Nom pour la ville \'Shināş\'';
+CREATE i18n_key:i18n_city_om_79947_name SET description = 'Nom pour la ville \'Sohar\'';
+CREATE i18n_key:i18n_city_om_79931_name SET description = 'Nom pour la ville \'Barkā’\'';
+CREATE i18n_key:i18n_city_om_79933_name SET description = 'Nom pour la ville \'Bayt al ‘Awābī\'';
+CREATE i18n_key:i18n_city_om_79943_name SET description = 'Nom pour la ville \'Oman Smart Future City\'';
+CREATE i18n_key:i18n_city_om_79944_name SET description = 'Nom pour la ville \'Rustaq\'';
+CREATE i18n_key:i18n_city_om_79927_name SET description = 'Nom pour la ville \'Al Buraymī\'';
+CREATE i18n_key:i18n_city_om_79936_name SET description = 'Nom pour la ville \'Haymā’\'';
+CREATE i18n_key:i18n_city_om_79949_name SET description = 'Nom pour la ville \'Sur\'';
+CREATE i18n_key:i18n_city_om_79951_name SET description = 'Nom pour la ville \'Şalālah\'';
+CREATE i18n_key:i18n_city_om_79935_name SET description = 'Nom pour la ville \'Dib Dibba\'';
+CREATE i18n_key:i18n_city_om_79938_name SET description = 'Nom pour la ville \'Khasab\'';
+CREATE i18n_key:i18n_city_om_79940_name SET description = 'Nom pour la ville \'Madḩā’ al Jadīdah\'';
+CREATE i18n_key:i18n_city_om_79932_name SET description = 'Nom pour la ville \'Bawshar\'';
+CREATE i18n_key:i18n_city_om_79941_name SET description = 'Nom pour la ville \'Muscat\'';
+CREATE i18n_key:i18n_city_om_79945_name SET description = 'Nom pour la ville \'Seeb\'';

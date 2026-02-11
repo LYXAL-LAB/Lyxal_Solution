@@ -1,0 +1,8 @@
+{
+  "id": "rust-lyxal_network-head",
+  "containerImageID": "rust-lyxal_network-head",
+  "transports": [
+    "tcp",
+    "quic"
+  ]
+}

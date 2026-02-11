@@ -1,0 +1,12 @@
+.git/
+.cargo/
+.github/
+.vscode/
+.aws/
+dist/
+node_modules/
+src-tauri/
+
+.dockerignore
+.gitignore
+netlify.toml

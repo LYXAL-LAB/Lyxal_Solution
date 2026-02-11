@@ -1,0 +1,16 @@
+[package]
+name = "rtc-datachannel"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+shared = { workspace = true, default-features = false, features = ["marshal"] }
+sansio.workspace = true
+sctp.workspace = true
+
+bytes = "1.5.0"
+log = "0.4.21"
+
+[dev-dependencies]
+env_logger = "0.11.3"
+chrono = "0.4.35"

@@ -1,0 +1,201 @@
+# Mapping Axelor Base (domains) ↔ SurrealDB (module base)
+
+Objectif: visualiser les correspondances, les domaines manquants (côté Surreal) et les tables ajoutées (côté Surreal sans équivalent Axelor).
+
+## Correspondances (Domain → Table Surreal)
+- ABCAnalysis → base_abc_analysis
+- ABCAnalysisClass → base_abc_analysis_class
+- ABCAnalysisLine → base_abc_analysis_line
+- AccountManagement → base_account_management
+- AdjustHistory → base_adjust_history
+- Address → base_address
+- AddressTemplate → base_address_template
+- AddressTemplateLine → base_address_template_line
+- AdvancedExport → base_advanced_export
+- AdvancedExportLine → base_advanced_export_line
+- AdvancedImport → base_advanced_import
+- AlternativeBarcode → base_alternative_barcode
+- AlternativeBarcodeType → base_alternative_barcode_type
+- Anonymizer → base_anonymizer
+- AnonymizerLine → base_anonymizer_line
+- App → app_base (script de configuration)
+- AppBase → app_base (script de configuration)
+- AttributionModel → base_attribution_model
+- Batch → base_batch
+- BatchImportHistory → base_batch_import_history
+- Bank → base_bank
+- BankAddress → base_bank_address
+- BankDetails → base_bank_details
+- BarcodeTypeConfig → base_barcode_type_config
+- BaseBatch → base_base_batch
+- Blocking → base_blocking
+- BirtPrintingWizard → base_birt_printing_wizard
+- BirtTemplate → base_birt_template
+- BirtTemplateParameter → base_birt_template_parameter
+- CalendarConfiguration → base_calendar_configuration
+- CalendarManagement → base_calendar_management
+- Canton → base_canton
+- Catalog → base_catalog
+- CatalogType → base_catalog_type
+- Citizenship → base_citizenship
+- City → base_city
+- Company → base_company
+- CompanyDepartment → base_company_department
+- ConnectorMapper → base_connector_mapper
+- Country → base_country
+- Currency → base_currency
+- CurrencyConversionLine → base_currency_conversion_line
+- DataBackup → base_data_backup
+- DataSharingProductWizard → base_data_sharing_product_wizard
+- DataSharingReferential → base_data_sharing_referential
+- DataSharingReferentialLine → base_data_sharing_referential_line
+- DayPlanning → base_day_planning
+- Department → system_tag (codes partner_department_*)
+- PartnerRole → system_tag (codes partner_role_*)
+- EconomicArea → base_economic_area
+- EmailAccount → base_email_account
+- EmailAddress → base_email_address
+- EventsPlanning → base_events_planning
+- EventsPlanningLine → base_events_planning_line
+- ExceptionOrigin → base_exception_origin
+- FakerApiField → base_faker_api_field
+- FakerApiFieldParameters → base_faker_api_field_parameters
+- File → base_file
+- FileField → base_file_field
+- FileSourceConnector → base_file_source_connector
+- FileSourceConnectorParameters → base_file_source_connector_parameters
+- FileTab → base_file_tab
+- FileType → base_file_type
+- FiscalPosition → base_fiscal_position
+- Function → system_tag (codes partner_function_*)
+- GeographicalArea → base_geographical_area
+- GlobalTrackingConfigurationLine → base_global_tracking_configuration_line
+- GlobalTrackingLog → base_global_tracking_log
+- GlobalTrackingLogLine → base_global_tracking_log_line
+- Group → base_user_group
+- ICalendar → base_icalendar
+- ICalendarEvent → base_icalendar_event
+- ICalendarUser → base_icalendar_user
+- ImportExportInterface → base_import_export_interface
+- ImportBatch → base_import_batch
+- ImportConfiguration → base_import_configuration
+- ImportExportTranslation → base_import_export_translation
+- ImportExportTranslationHistory → base_import_export_translation_history
+- ImportHistory → base_import_history
+- IndicatorGenerator → base_indicator_generator
+- IndicatorGeneratorGrouping → base_indicator_generator_grouping
+- IndustrySector → system_tag (codes industry_sector_*)
+- Language → base_language
+- Localization → base_locale
+- Mail → base_mail_message
+- MailBatch → base_mail_batch
+- MailingListMessage → base_mailing_list_message
+- MailTemplateAssociation → base_mail_template_association
+- ManagementObject → base_management_object
+- MediaType → system_tag (codes media_type_*)
+- MetaField → base_meta_field
+- MetaGroupMenuAssistant → base_meta_group_menu_assistant
+- MetaSchedule → base_meta_schedule
+- ModelEmailLink → base_model_email_link
+- Partner → base_partner
+- PartnerAddress → base_partner_address
+- PartnerCategory → system_tag
+- PartnerLink → base_partner_link (TYPE RELATION)
+- PartnerLinkType → base_partner_link_type
+- PartnerPriceList → base_partner_price_list
+- Period → base_period
+- PeriodType → base_period_type
+- Permission → base_user_permission
+- PermissionAssistant → base_permission_assistant
+- PfxCertificate → base_pfx_certificate
+- PickListEntry → base_pick_list_entry
+- PriceList → base_price_list
+- PriceListLine → base_price_list_line
+- Pricing → base_pricing
+- PricingLine → base_pricing_line
+- PricingRule → base_pricing_rule
+- Print → base_print
+- PrintLine → base_print_line
+- PrintTemplate → base_print_template
+- PrintTemplateLine → base_print_template_line
+- PrintingSettings → base_printing_settings
+- PrintingTemplate → base_printing_template
+- PrintingTemplateLine → base_printing_template_line
+- PrintingTemplateWizard → base_printing_template_wizard
+- Product → base_product
+- ProductCategory → base_product_category
+- ProductCompany → base_product_company
+- ProductFamily → base_product_family
+- ProductMultipleQty → base_product_multiple_qty
+- ProductVariant → base_product_variant
+- ProductVariantAttr → base_product_variant_attr
+- ProductVariantConfig → base_product_variant_config
+- ProductVariantValue → base_product_variant_value
+- PfxCertificate → base_pfx_certificate
+- Region → base_region
+- RegistrationNumberTemplate → base_registration_number_template
+- ReportType → base_report_type
+- ResearchParameter → base_research_parameter
+- ResearchParameterConfig → base_research_parameter_config
+- ResearchPrimaryKey → base_research_primary_key
+- ResearchRequest → base_research_request
+- ResearchResultLine → base_research_result_line
+- Role → base_user_role
+- Routing → base_routing
+- RoutingAction → base_routing_action
+- RoutingActionCreate → base_routing_action_create
+- RoutingActionCreateLine → base_routing_action_create_line
+- RoutingRule → base_routing_rule
+- Sequence → base_sequence
+- SequenceVersion → base_sequence_version
+- SharingSetting → base_sharing_setting
+- Site → base_site
+- Source → system_tag (codes partner_source_*)
+- StopReason → base_stop_reason
+- Street → base_street
+- SyncContact → base_sync_contact
+- SyncContactHistoric → base_sync_contact_historic
+- Tag → system_tag
+- Tax → base_tax
+- TaxEquiv → base_tax_equiv
+- TaxLine → base_tax_line
+- TaxNumber → base_tax_number
+- TaxType → base_tax_type
+- Team → base_team
+- TeamTask → base_team_task
+- Template → base_template
+- TemplateContext → base_template_context
+- TemplateRule → base_template_rule
+- TemplateRuleLine → base_template_rule_line
+- Timer → base_timer
+- TimerHistory → base_timer_history
+- TradingName → base_trading_name
+- TradingNamePrintingSettings → base_trading_name_printing_settings
+- TraceBack → base_trace_back
+- Unit → base_unit
+- UnitConversion → base_unit_conversion
+- User → base_user
+- WeeklyPlanning → base_weekly_planning
+- Year → base_year
+
+## Tables Surreal ajoutées (sans domain Axelor direct)
+- base_continent (pas d'entité Continent dans Axelor Base)
+- base_timezone (liste IANA complète, non présente dans Axelor Base)
+- base_address_format (profils de format d'adresse)
+- base_datetime_format (profils format date/heure)
+- base_priority
+- base_meta_model, base_meta_file (pas d'entités MetaModel/MetaFile)
+- base_activity_category, base_activity_type (au-delà du scope des entities Axelor Base)
+- base_agency
+- base_tour, base_tour_line
+- base_wiki, base_wiki_folder, base_topic
+- base_partner_company
+- base_country_language (TYPE RELATION)
+- base_country_timezone (TYPE RELATION)
+- base_communication_preference
+
+---
+
+Sources:
+- Domains Axelor: `axelor-open-suite/axelor-base/src/main/resources/domains`
+- Tables Surreal: `reprise/surreal/base/**`

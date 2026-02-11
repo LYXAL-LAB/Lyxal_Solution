@@ -1,0 +1,29 @@
+{
+  "name": "lyxal-investor",
+  "version": "1.0.0",
+  "description": "Module INVESTOR - Interface principale pour la gestion des SaaS déployés",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "jest --config ../.config/jest.config.base.js",
+    "test:watch": "jest --config ../.config/jest.config.base.js --watch",
+    "test:coverage": "jest --config ../.config/jest.config.base.js --coverage",
+    "lint": "eslint . --config ../.config/eslint.config.base.js",
+    "lint:fix": "eslint . --config ../.config/eslint.config.base.js --fix"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.5.2",
+    "vite": "^4.5.14"
+  },
+  "keywords": [
+    "lyxal",
+    "investor",
+    "monitoring"
+  ],
+  "author": "LyxalSuite Team",
+  "license": "MIT"
+}

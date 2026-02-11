@@ -1,0 +1,28 @@
+[package]
+name = "lyxal-dav-core"
+version = "1.0.0"
+edition = "2021"
+description = "Native CalDAV/CardDAV protocol engine for Lyxal Solution"
+authors = ["Lyxal Solution"]
+license = "MIT"
+
+[dependencies]
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }
+roxmltree = { workspace = true }
+quick-xml = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true }
+http = { workspace = true }
+lyxal_ical_core = { path = "../../crates/lyxal_ical_core" }
+lyxal_vcard_core = { path = "../../crates/lyxal_vcard_core" }
+
+[dev-dependencies]
+tokio = { version = "1.42", features = ["full"] }
+
+[lib]
+name = "lyxal_dav_core"
+path = "src/lib.rs"

@@ -1,0 +1,163 @@
+// Nextcloud Calendar - Schema Prisma Converti
+// Basé sur les migrations de calendar-main/lib/Migration/
+
+// ================================================
+// 1. APPOINTMENT BOOKING SYSTEM (comme Cal.com)
+// ================================================
+
+model AppointmentConfig {
+  id                   Int       @id @default(autoincrement())
+  token                String    @unique @db.VarChar(128)
+  name                 String    @db.VarChar(128)
+  description          String?   @db.Text
+  location             String?   @db.Text
+  visibility           AppointmentVisibility
+  userId               String    @db.VarChar(64)
+  targetCalendarUri    String    @db.VarChar(255)
+  calendarFreebusyUris Json?     // Array of calendar URIs for conflict checking
+  availability         Json?     // RRULE format
+  start                DateTime? // Booking window start
+  end                  DateTime? // Booking window end
+  length               Int       // Duration in minutes
+  increment            Int       // Slot increment in minutes
+  preparationDuration  Int       @default(0)
+  followupDuration     Int       @default(0)
+  timeBeforeNextSlot   Int?      // Buffer between slots
+  dailyMax             Int?      // Max bookings per day (NULL = unlimited)
+  
+  bookings             AppointmentBooking[]
+  
+  @@index([userId])
+  @@index([token])
+  @@map("calendar_appt_configs")
+}
+
+enum AppointmentVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+model AppointmentBooking {
+  id            Int                @id @default(autoincrement())
+  apptConfigId  Int
+  appointmentConfig AppointmentConfig @relation(fields: [apptConfigId], references: [id], onDelete: Cascade)
+  createdAt     DateTime           @default(now())
+  token         String             @unique @db.VarChar(32)
+  displayName   String             @db.VarChar(128)
+  description   String?            @db.Text
+  email         String             @db.VarChar(128)
+  start         DateTime
+  end           DateTime
+  timezone      String             @db.VarChar(32)
+  confirmed     Boolean            @default(false)
+  
+  @@index([apptConfigId])
+  @@index([start, end])
+  @@index([email])
+  @@map("calendar_appt_bookings")
+}
+
+// ================================================
+// 2. DATE PROPOSAL SYSTEM (comme Doodle)
+// ================================================
+
+model ProposalDetails {
+  id          Int      @id @default(autoincrement())
+  uid         String   @db.VarChar(255)
+  uuid        String   @db.VarChar(36)
+  title       String?  @db.Text
+  description String?  @db.Text
+  location    String?  @db.Text
+  duration    Int      // Minutes
+  
+  participants ProposalParticipant[]
+  dates        ProposalDate[]
+  votes        ProposalVote[]
+  
+  @@index([uid])
+  @@index([uuid])
+  @@map("calendar_proposal_dts")
+}
+
+model ProposalParticipant {
+  id         Int              @id @default(autoincrement())
+  uid        String           @db.VarChar(255)
+  proposalId Int
+  proposal   ProposalDetails  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  name       String?          @db.VarChar(255)
+  address    String           @db.VarChar(320) // Email
+  attendance ParticipantAttendance?
+  status     ParticipantStatus?
+  realm      String?          @db.VarChar(8)
+  token      String?          @db.VarChar(255)
+  
+  votes      ProposalVote[]
+  
+  @@index([proposalId])
+  @@index([address])
+  @@map("calendar_proposal_pts")
+}
+
+enum ParticipantAttendance {
+  REQUIRED
+  OPTIONAL
+}
+
+enum ParticipantStatus {
+  ACCEPTED
+  DECLINED
+  TENTATIVE
+}
+
+model ProposalDate {
+  id         Int              @id @default(autoincrement())
+  uid        String           @db.VarChar(255)
+  proposalId Int
+  proposal   ProposalDetails  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  date       DateTime
+  
+  votes      ProposalVote[]
+  
+  @@index([proposalId])
+  @@index([date])
+  @@map("calendar_proposal_dats")
+}
+
+model ProposalVote {
+  id            Int                  @id @default(autoincrement())
+  uid           String               @db.VarChar(255)
+  proposalId    Int                  @default(0)
+  proposal      ProposalDetails      @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  participantId Int
+  participant   ProposalParticipant  @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  dateId        Int
+  date          ProposalDate         @relation(fields: [dateId], references: [id], onDelete: Cascade)
+  vote          VoteOption
+  
+  @@index([proposalId])
+  @@index([participantId])
+  @@index([dateId])
+  @@unique([participantId, dateId])
+  @@map("calendar_proposal_vts")
+}
+
+enum VoteOption {
+  YES
+  NO
+  MAYBE
+}
+
+// ================================================
+// NOTES
+// ================================================
+
+// Ce schema NE CONTIENT PAS les tables de calendrier classiques.
+// Celles-ci sont dans Nextcloud Core (package 'dav'), pas dans l'app Calendar.
+//
+// Pour un calendrier complet, vous auriez besoin de :
+// - calendars (table des calendriers)
+// - calendar_objects (table des événements iCal)
+// - calendar_shares (partages)
+// - calendar_invitations (invitations)
+//
+// Ces tables sont gérées par le serveur CalDAV de Nextcloud Core.

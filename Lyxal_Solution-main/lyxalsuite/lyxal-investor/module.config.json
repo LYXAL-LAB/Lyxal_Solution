@@ -1,0 +1,55 @@
+{
+  "name": "lyxal-investor",
+  "version": "1.0.0",
+  "description": "Module INVESTOR - Interface principale pour la gestion des SaaS déployés",
+  "type": "investor-interface",
+  "namespace": "catalog",
+  "dependencies": [
+    "lyxal-surreal"
+  ],
+  "database": {
+    "reuses_tables": [
+      {
+        "name": "global_system_metrics",
+        "description": "Métriques système globales (de lyxal-surreal)",
+        "level": "INVESTOR_LEVEL",
+        "source": "lyxal-surreal"
+      },
+      {
+        "name": "global_saas_health",
+        "description": "Santé individuelle de chaque SaaS (de lyxal-surreal)",
+        "level": "INVESTOR_LEVEL",
+        "source": "lyxal-surreal"
+      },
+      {
+        "name": "cross_saas_analytics",
+        "description": "Analytics comparatives entre SaaS (de lyxal-surreal)",
+        "level": "INVESTOR_LEVEL",
+        "source": "lyxal-surreal"
+      },
+      {
+        "name": "global_alerts",
+        "description": "Alertes système globales (de lyxal-surreal)",
+        "level": "INVESTOR_LEVEL",
+        "source": "lyxal-surreal"
+      }
+    ],
+    "functions": [
+      {
+        "name": "get_platform_overview",
+        "description": "Vue d'ensemble de la plateforme (de lyxal-surreal)",
+        "level": "INVESTOR_LEVEL",
+        "source": "lyxal-surreal"
+      }
+    ]
+  },
+  "features": [
+    "monitoring",
+    "saas-overview"
+  ],
+  "ui": {
+    "main_component": "InvestorDashboard",
+    "monitoring_integration": true,
+    "reuses_monitoring": "lyxal-surreal"
+  }
+} 

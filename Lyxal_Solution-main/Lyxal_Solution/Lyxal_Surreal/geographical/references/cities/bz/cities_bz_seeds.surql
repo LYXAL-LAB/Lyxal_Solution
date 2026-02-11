@@ -1,0 +1,15 @@
+-- Seeds pour les villes du pays: BZ --
+
+CREATE base_city:bz_16133 SET state = base_state:bz_bz, key.name = i18n_key:i18n_city_bz_16133_name, native = 'Belize City', location = (-88.19756000, 17.49952000), timezone = base_timezone:america_mexico_city, wikiDataId = 'Q108223';
+CREATE base_city:bz_16143 SET state = base_state:bz_bz, key.name = i18n_key:i18n_city_bz_16143_name, native = 'San Pedro', location = (-87.96590000, 17.91598000), timezone = base_timezone:america_mexico_city, wikiDataId = 'Q677300';
+CREATE base_city:bz_16134 SET state = base_state:bz_cy, key.name = i18n_key:i18n_city_bz_16134_name, native = 'Belmopan', location = (-88.76667000, 17.25000000), timezone = base_timezone:america_mexico_city, wikiDataId = 'Q3043';
+CREATE base_city:bz_16135 SET state = base_state:bz_cy, key.name = i18n_key:i18n_city_bz_16135_name, native = 'Benque Viejo El Carmen', location = (-89.13917000, 17.07500000), timezone = base_timezone:america_mexico_city, wikiDataId = 'Q524851';
+CREATE base_city:bz_16142 SET state = base_state:bz_cy, key.name = i18n_key:i18n_city_bz_16142_name, native = 'San Ignacio', location = (-89.06960000, 17.15880000), timezone = base_timezone:america_mexico_city, wikiDataId = 'Q724815';
+CREATE base_city:bz_16145 SET state = base_state:bz_cy, key.name = i18n_key:i18n_city_bz_16145_name, native = 'Valley of Peace', location = (-88.83472000, 17.33472000), timezone = base_timezone:america_mexico_city, wikiDataId = 'Q7912335';
+CREATE base_city:bz_16136 SET state = base_state:bz_czl, key.name = i18n_key:i18n_city_bz_16136_name, native = 'Corozal', location = (-88.38849000, 18.39375000), timezone = base_timezone:america_mexico_city, wikiDataId = 'Q882907';
+CREATE base_city:bz_16138 SET state = base_state:bz_ow, key.name = i18n_key:i18n_city_bz_16138_name, native = 'Hopelchén', location = (-89.10000000, 17.80000000), timezone = base_timezone:america_mexico_city, wikiDataId = 'Q888300';
+CREATE base_city:bz_16139 SET state = base_state:bz_ow, key.name = i18n_key:i18n_city_bz_16139_name, native = 'Orange Walk', location = (-88.56328000, 18.08124000), timezone = base_timezone:america_mexico_city, wikiDataId = 'Q882964';
+CREATE base_city:bz_16144 SET state = base_state:bz_ow, key.name = i18n_key:i18n_city_bz_16144_name, native = 'Shipyard', location = (-88.65452000, 17.89382000), timezone = base_timezone:america_mexico_city, wikiDataId = 'Q737412';
+CREATE base_city:bz_16137 SET state = base_state:bz_sc, key.name = i18n_key:i18n_city_bz_16137_name, native = 'Dangriga', location = (-88.23313000, 16.96970000), timezone = base_timezone:america_mexico_city, wikiDataId = 'Q888300';
+CREATE base_city:bz_16140 SET state = base_state:bz_sc, key.name = i18n_key:i18n_city_bz_16140_name, native = 'Placentcia', location = (-88.36647000, 16.51419000), timezone = base_timezone:america_mexico_city, wikiDataId = 'Q2097877';
+CREATE base_city:bz_16141 SET state = base_state:bz_tol, key.name = i18n_key:i18n_city_bz_16141_name, native = 'Gorda Punta', location = (-88.80970000, 16.09835000), timezone = base_timezone:america_mexico_city, wikiDataId = 'Q883362';

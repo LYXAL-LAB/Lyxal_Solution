@@ -1,0 +1,31 @@
+[package]
+name = "lyxal_server"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+lyxal_core = { path = "../lyxal_core" }
+lyxal_auth = { path = "../lyxal_auth" }
+lyxal_iam = { path = "../lyxal_iam" }
+lyxal_mfa = { path = "../lyxal_mfa" }
+lyxal_oauth = { path = "../lyxal_oauth" }
+lyxal_rbac = { path = "../lyxal_rbac" }
+lyxal_session = { path = "../lyxal_session" }
+lyxal_connectors = { path = "../lyxal_connectors" }
+lyxal_schema = { path = "../lyxal_schema" }
+openssl.workspace = true
+
+axum.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tower-sessions.workspace = true
+tower-sessions-sqlx-store.workspace = true
+sqlx = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+dotenvy.workspace = true
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+utoipa.workspace = true
+utoipa-swagger-ui.workspace = true

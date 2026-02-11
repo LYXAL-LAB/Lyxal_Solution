@@ -1,0 +1,69 @@
+﻿-- ===== BATCH 2 : I18N KEYS (90 keys) =====
+
+
+
+
+
+
+
+CREATE i18n_key:provider_coda_name SET description = "coda name";
+CREATE i18n_key:provider_coda_description SET description = "coda description";
+CREATE i18n_key:provider_coda_tooltip SET description = "coda tooltip";
+CREATE i18n_key:provider_contentful_name SET description = "contentful name";
+CREATE i18n_key:provider_contentful_description SET description = "contentful description";
+CREATE i18n_key:provider_contentful_tooltip SET description = "contentful tooltip";
+CREATE i18n_key:provider_convert_name SET description = "convert name";
+CREATE i18n_key:provider_convert_description SET description = "convert description";
+CREATE i18n_key:provider_convert_tooltip SET description = "convert tooltip";
+CREATE i18n_key:provider_convertkit_name SET description = "convertkit name";
+CREATE i18n_key:provider_convertkit_description SET description = "convertkit description";
+CREATE i18n_key:provider_convertkit_tooltip SET description = "convertkit tooltip";
+CREATE i18n_key:provider_copper_name SET description = "copper name";
+CREATE i18n_key:provider_copper_description SET description = "copper description";
+CREATE i18n_key:provider_copper_tooltip SET description = "copper tooltip";
+CREATE i18n_key:provider_cortex_name SET description = "cortex name";
+CREATE i18n_key:provider_cortex_description SET description = "cortex description";
+CREATE i18n_key:provider_cortex_tooltip SET description = "cortex tooltip";
+CREATE i18n_key:provider_cratedb_name SET description = "cratedb name";
+CREATE i18n_key:provider_cratedb_description SET description = "cratedb description";
+CREATE i18n_key:provider_cratedb_tooltip SET description = "cratedb tooltip";
+CREATE i18n_key:provider_crowddev_name SET description = "crowddev name";
+CREATE i18n_key:provider_crowddev_description SET description = "crowddev description";
+CREATE i18n_key:provider_crowddev_tooltip SET description = "crowddev tooltip";
+CREATE i18n_key:provider_crowdstrike_name SET description = "crowdstrike name";
+CREATE i18n_key:provider_crowdstrike_description SET description = "crowdstrike description";
+CREATE i18n_key:provider_crowdstrike_tooltip SET description = "crowdstrike tooltip";
+CREATE i18n_key:provider_customer_io_name SET description = "customer_io name";
+CREATE i18n_key:provider_customer_io_description SET description = "customer_io description";
+CREATE i18n_key:provider_customer_io_tooltip SET description = "customer_io tooltip";
+CREATE i18n_key:provider_datadog_name SET description = "datadog name";
+CREATE i18n_key:provider_datadog_description SET description = "datadog description";
+CREATE i18n_key:provider_datadog_tooltip SET description = "datadog tooltip";
+CREATE i18n_key:provider_deepl_name SET description = "deepl name";
+CREATE i18n_key:provider_deepl_description SET description = "deepl description";
+CREATE i18n_key:provider_deepl_tooltip SET description = "deepl tooltip";
+CREATE i18n_key:provider_demio_name SET description = "demio name";
+CREATE i18n_key:provider_demio_description SET description = "demio description";
+CREATE i18n_key:provider_demio_tooltip SET description = "demio tooltip";
+CREATE i18n_key:provider_dfiriris_name SET description = "dfiriris name";
+CREATE i18n_key:provider_dfiriris_description SET description = "dfiriris description";
+CREATE i18n_key:provider_dfiriris_tooltip SET description = "dfiriris tooltip";
+CREATE i18n_key:provider_dhl_name SET description = "dhl name";
+CREATE i18n_key:provider_dhl_description SET description = "dhl description";
+CREATE i18n_key:provider_dhl_tooltip SET description = "dhl tooltip";
+CREATE i18n_key:provider_discord_name SET description = "discord name";
+CREATE i18n_key:provider_discord_description SET description = "discord description";
+CREATE i18n_key:provider_discord_tooltip SET description = "discord tooltip";
+CREATE i18n_key:provider_discourse_name SET description = "discourse name";
+CREATE i18n_key:provider_discourse_description SET description = "discourse description";
+CREATE i18n_key:provider_discourse_tooltip SET description = "discourse tooltip";
+CREATE i18n_key:provider_disqus_name SET description = "disqus name";
+CREATE i18n_key:provider_disqus_description SET description = "disqus description";
+CREATE i18n_key:provider_disqus_tooltip SET description = "disqus tooltip";
+CREATE i18n_key:provider_drift_name SET description = "drift name";
+CREATE i18n_key:provider_drift_description SET description = "drift description";
+CREATE i18n_key:provider_drift_tooltip SET description = "drift tooltip";
+CREATE i18n_key:provider_dropbox_name SET description = "dropbox name";
+CREATE i18n_key:provider_dropbox_description SET description = "dropbox description";
+CREATE i18n_key:provider_dropbox_tooltip SET description = "dropbox tooltip";
+

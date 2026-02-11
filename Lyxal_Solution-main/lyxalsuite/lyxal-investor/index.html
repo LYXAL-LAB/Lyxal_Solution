@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LyxalSuite - Dashboard INVESTOR</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+    }
+    #root {
+      min-height: 100vh;
+    }
+    .investor-dashboard {
+      padding: 2rem;
+    }
+    .dashboard-header {
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="investor-dashboard">
+      <div class="dashboard-header">
+        <h1 class="text-4xl font-bold text-primary mb-2">🏛️ Dashboard INVESTOR</h1>
+        <p class="text-lg text-base-content/70">Vue consolidée de tous vos SaaS déployés</p>
+        <div class="badge badge-lg badge-primary mt-4">INVESTOR_LEVEL - Namespace: catalog</div>
+      </div>
+      
+      <div class="alert alert-info mb-6">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span>Interface INVESTOR - Réutilise le système de monitoring existant en mode INVESTOR_LEVEL</span>
+      </div>
+
+      <!-- Ici sera injecté le composant React InvestorDashboard -->
+      <div id="monitoring-container">
+        <div class="loading loading-spinner loading-lg mx-auto block"></div>
+        <p class="text-center mt-4">Chargement du monitoring INVESTOR...</p>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module" src="./src/main.tsx"></script>
+</body>
+</html> 

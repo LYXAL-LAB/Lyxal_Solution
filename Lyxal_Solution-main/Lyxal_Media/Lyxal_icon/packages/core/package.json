@@ -1,0 +1,42 @@
+{
+	"name": "@lyxal-icon/core",
+	"type": "module",
+	"description": "Reusable files used by multiple Lyxal packages",
+	"author": "Lyxal Labs",
+	"version": "4.1.0",
+	"license": "Proprietary",
+	"bugs": "https://github.com/Lyxal/Lyxal/issues",
+	"homepage": "https://Lyxal.design/",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Lyxal/Lyxal.git",
+		"directory": "packages/core"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"test": "bun test"
+	},
+	"sideEffects": false,
+	"exports": {
+		"./lib/api/callbacks": "./lib/api/callbacks.js",
+		"./lib/api/config": "./lib/api/config.js",
+		"./lib/api/functions": "./lib/api/functions.js",
+		"./lib/api/icons": "./lib/api/icons.js",
+		"./lib/api/loaders": "./lib/api/loaders.js",
+		"./lib/api/modules": "./lib/api/modules.js",
+		"./lib/api/modules/fetch": "./lib/api/modules/fetch.js",
+		"./lib/api/modules/mock": "./lib/api/modules/mock.js",
+		"./lib/api/query": "./lib/api/query.js",
+		"./lib/api/types": "./lib/api/types.js",
+		"./lib/builder/functions": "./lib/builder/functions.js",
+		"./lib/icon/list": "./lib/icon/list.js",
+		"./lib/icon/sort": "./lib/icon/sort.js",
+		"./lib/storage/functions": "./lib/storage/functions.js",
+		"./lib/storage/storage": "./lib/storage/storage.js"
+	},
+	"dependencies": {
+		"@lyxal-icon/api-redundancy": "workspace:^",
+		"@lyxal-icon/types": "workspace:^",
+		"@lyxal-icon/utils": "workspace:^"
+	}
+}

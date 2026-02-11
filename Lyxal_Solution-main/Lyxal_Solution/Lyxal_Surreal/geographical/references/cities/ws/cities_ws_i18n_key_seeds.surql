@@ -1,0 +1,22 @@
+-- Clés i18n pour les villes du pays: WS --
+
+CREATE i18n_key:i18n_city_ws_130647_name SET description = 'Nom pour la ville \'Fasito‘outa\'';
+CREATE i18n_key:i18n_city_ws_130649_name SET description = 'Nom pour la ville \'Leulumoega\'';
+CREATE i18n_key:i18n_city_ws_130655_name SET description = 'Nom pour la ville \'Nofoali‘i\'';
+CREATE i18n_key:i18n_city_ws_130658_name SET description = 'Nom pour la ville \'Satapuala\'';
+CREATE i18n_key:i18n_city_ws_130654_name SET description = 'Nom pour la ville \'Mulifanua\'';
+CREATE i18n_key:i18n_city_ws_130646_name SET description = 'Nom pour la ville \'Falefa\'';
+CREATE i18n_key:i18n_city_ws_130650_name SET description = 'Nom pour la ville \'Lotofagā\'';
+CREATE i18n_key:i18n_city_ws_130651_name SET description = 'Nom pour la ville \'Lufilufi\'';
+CREATE i18n_key:i18n_city_ws_130659_name SET description = 'Nom pour la ville \'Solosolo\'';
+CREATE i18n_key:i18n_city_ws_130653_name SET description = 'Nom pour la ville \'Matavai\'';
+CREATE i18n_key:i18n_city_ws_130656_name SET description = 'Nom pour la ville \'Safotu\'';
+CREATE i18n_key:i18n_city_ws_130648_name SET description = 'Nom pour la ville \'Gataivai\'';
+CREATE i18n_key:i18n_city_ws_130661_name SET description = 'Nom pour la ville \'Vailoa\'';
+CREATE i18n_key:i18n_city_ws_130643_name SET description = 'Nom pour la ville \'Afega\'';
+CREATE i18n_key:i18n_city_ws_130644_name SET description = 'Nom pour la ville \'Apia\'';
+CREATE i18n_key:i18n_city_ws_130652_name SET description = 'Nom pour la ville \'Malie\'';
+CREATE i18n_key:i18n_city_ws_130660_name SET description = 'Nom pour la ville \'Vailima\'';
+CREATE i18n_key:i18n_city_ws_130662_name SET description = 'Nom pour la ville \'Vaiusu\'';
+CREATE i18n_key:i18n_city_ws_130657_name SET description = 'Nom pour la ville \'Samamea\'';
+CREATE i18n_key:i18n_city_ws_130645_name SET description = 'Nom pour la ville \'Asau\'';

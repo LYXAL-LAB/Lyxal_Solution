@@ -1,0 +1,12 @@
+[package]
+name = "bitflags"
+version = "2.10.0"
+edition = "2021"
+description = "A macro to generate structures which behave like bitflags (vendored)"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# No dependencies - pure Rust macro implementation
+
+[features]
+std = []

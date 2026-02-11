@@ -1,0 +1,37 @@
+-- Traductions pour les villes du pays: BB --
+
+RELATE i18n_key:i18n_city_bb_8452_name->i18n_translation->i18n_language:de SET text = 'Oistins';
+RELATE i18n_key:i18n_city_bb_8452_name->i18n_translation->i18n_language:es SET text = 'Oistins';
+RELATE i18n_key:i18n_city_bb_8452_name->i18n_translation->i18n_language:fr SET text = 'Oistins';
+RELATE i18n_key:i18n_city_bb_8452_name->i18n_translation->i18n_language:it SET text = 'Oistins';
+RELATE i18n_key:i18n_city_bb_8452_name->i18n_translation->i18n_language:en SET text = 'Oistins';
+RELATE i18n_key:i18n_city_bb_8450_name->i18n_translation->i18n_language:de SET text = 'Grönland';
+RELATE i18n_key:i18n_city_bb_8450_name->i18n_translation->i18n_language:es SET text = 'Tierra Verde';
+RELATE i18n_key:i18n_city_bb_8450_name->i18n_translation->i18n_language:fr SET text = 'Groenland';
+RELATE i18n_key:i18n_city_bb_8450_name->i18n_translation->i18n_language:it SET text = 'Groenlandia';
+RELATE i18n_key:i18n_city_bb_8450_name->i18n_translation->i18n_language:en SET text = 'Greenland';
+RELATE i18n_key:i18n_city_bb_8451_name->i18n_translation->i18n_language:de SET text = 'Holetown';
+RELATE i18n_key:i18n_city_bb_8451_name->i18n_translation->i18n_language:es SET text = 'Holetown';
+RELATE i18n_key:i18n_city_bb_8451_name->i18n_translation->i18n_language:fr SET text = 'Holetown';
+RELATE i18n_key:i18n_city_bb_8451_name->i18n_translation->i18n_language:it SET text = 'Holetown';
+RELATE i18n_key:i18n_city_bb_8451_name->i18n_translation->i18n_language:en SET text = 'Holetown';
+RELATE i18n_key:i18n_city_bb_8447_name->i18n_translation->i18n_language:de SET text = 'Bathseba';
+RELATE i18n_key:i18n_city_bb_8447_name->i18n_translation->i18n_language:es SET text = 'Betsabé';
+RELATE i18n_key:i18n_city_bb_8447_name->i18n_translation->i18n_language:fr SET text = 'Bethsabée';
+RELATE i18n_key:i18n_city_bb_8447_name->i18n_translation->i18n_language:it SET text = 'Betsabea';
+RELATE i18n_key:i18n_city_bb_8447_name->i18n_translation->i18n_language:en SET text = 'Bathsheba';
+RELATE i18n_key:i18n_city_bb_8448_name->i18n_translation->i18n_language:de SET text = 'Bridgetown';
+RELATE i18n_key:i18n_city_bb_8448_name->i18n_translation->i18n_language:es SET text = 'Bridgetown';
+RELATE i18n_key:i18n_city_bb_8448_name->i18n_translation->i18n_language:fr SET text = 'Bridgetown';
+RELATE i18n_key:i18n_city_bb_8448_name->i18n_translation->i18n_language:it SET text = 'Bridgetown';
+RELATE i18n_key:i18n_city_bb_8448_name->i18n_translation->i18n_language:en SET text = 'Bridgetown';
+RELATE i18n_key:i18n_city_bb_8453_name->i18n_translation->i18n_language:de SET text = 'Speightstown';
+RELATE i18n_key:i18n_city_bb_8453_name->i18n_translation->i18n_language:es SET text = 'Speightstown';
+RELATE i18n_key:i18n_city_bb_8453_name->i18n_translation->i18n_language:fr SET text = 'Speightstown';
+RELATE i18n_key:i18n_city_bb_8453_name->i18n_translation->i18n_language:it SET text = 'Speightstown';
+RELATE i18n_key:i18n_city_bb_8453_name->i18n_translation->i18n_language:en SET text = 'Speightstown';
+RELATE i18n_key:i18n_city_bb_8449_name->i18n_translation->i18n_language:de SET text = 'Kran';
+RELATE i18n_key:i18n_city_bb_8449_name->i18n_translation->i18n_language:es SET text = 'Grúa';
+RELATE i18n_key:i18n_city_bb_8449_name->i18n_translation->i18n_language:fr SET text = 'Grue';
+RELATE i18n_key:i18n_city_bb_8449_name->i18n_translation->i18n_language:it SET text = 'Gru';
+RELATE i18n_key:i18n_city_bb_8449_name->i18n_translation->i18n_language:en SET text = 'Crane';

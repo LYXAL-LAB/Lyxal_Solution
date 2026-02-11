@@ -1,0 +1,277 @@
+// SCHEMA PRISMA UNIFIÉ - TOUTES LES TABLES CALENDRIER NEXTCLOUD (15 Tables)
+// Combinaison de Core (CalDAV) et App (Booking/Polls)
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// 1. CORE CALDAV (9 Tables)
+// ==========================================
+
+model Calendar {
+  id             Int       @id @default(autoincrement())
+  principaluri   String?   @db.VarChar(255)
+  displayname    String?   @db.VarChar(255)
+  uri            String?   @db.VarChar(255)
+  synctoken      Int       @default(1)
+  description    String?   @db.VarChar(255)
+  calendarorder  Int       @default(0)
+  calendarcolor  String?
+  timezone       String?   @db.Text
+  components     String?   @db.VarChar(64)
+  transparent    Int       @default(0) @db.SmallInt
+  
+  objects        CalendarObject[]
+  changes        CalendarChange[]
+  shares         DavShare[]
+  reminders      CalendarReminder[]
+  
+  @@unique([principaluri, uri], name: "calendars_index")
+  @@map("oc_calendars")
+}
+
+model CalendarObject {
+  id              Int      @id @default(autoincrement())
+  calendardata    Bytes?   // BLOB iCal
+  uri             String?  @db.VarChar(255)
+  calendarid      Int
+  calendar        Calendar @relation(fields: [calendarid], references: [id], onDelete: Cascade)
+  lastmodified    Int?
+  etag            String?  @db.VarChar(32)
+  size            Int
+  componenttype   String?  @db.VarChar(8)
+  firstoccurence  Int?
+  lastoccurence   Int?
+  uid             String?  @db.VarChar(255)
+  classification  Int?     @default(0)
+  
+  properties      CalendarObjectProp[]
+  reminders       CalendarReminder[]
+  
+  @@unique([calendarid, uri], name: "calobjects_index")
+  @@map("oc_calendarobjects")
+}
+
+model CalendarChange {
+  id          Int      @id @default(autoincrement())
+  uri         String?  @db.VarChar(255)
+  synctoken   Int      @default(1)
+  calendarid  Int
+  calendar    Calendar @relation(fields: [calendarid], references: [id], onDelete: Cascade)
+  operation   Int      @db.SmallInt
+  
+  @@index([calendarid, synctoken])
+  @@map("oc_calendarchanges")
+}
+
+model CalendarSubscription {
+  id                Int      @id @default(autoincrement())
+  uri               String?
+  principaluri      String?  @db.VarChar(255)
+  source            String?  @db.VarChar(255)
+  displayname       String?  @db.VarChar(100)
+  refreshrate       String?  @db.VarChar(10)
+  calendarorder     Int      @default(0)
+  calendarcolor     String?
+  striptodos        Int?     @db.SmallInt
+  stripalarms       Int?     @db.SmallInt
+  stripattachments  Int?     @db.SmallInt
+  lastmodified      Int?
+  
+  @@unique([principaluri, uri])
+  @@map("oc_calendarsubscriptions")
+}
+
+model SchedulingObject {
+  id            Int      @id @default(autoincrement())
+  principaluri  String?  @db.VarChar(255)
+  calendardata  Bytes?
+  uri           String?  @db.VarChar(255)
+  lastmodified  Int?
+  etag          String?  @db.VarChar(32)
+  size          Int
+  
+  @@index([principaluri])
+  @@map("oc_schedulingobjects")
+}
+
+model CalendarObjectProp {
+  id          Int             @id @default(autoincrement())
+  calendarid  Int
+  objectid    Int
+  object      CalendarObject  @relation(fields: [objectid], references: [id], onDelete: Cascade)
+  name        String?         @db.VarChar(64)
+  parameter   String?         @db.VarChar(64)
+  value       String?         @db.VarChar(255)
+  
+  @@index([objectid])
+  @@index([name])
+  @@index([value])
+  @@map("oc_calendarobjects_props")
+}
+
+model DavShare {
+  id            Int      @id @default(autoincrement())
+  principaluri  String?  @db.VarChar(255)
+  type          String?  @db.VarChar(255)
+  access        Int?     @db.SmallInt
+  resourceid    Int
+  calendar      Calendar @relation(fields: [resourceid], references: [id], onDelete: Cascade)
+  publicuri     String?  @db.VarChar(255)
+  token         String?  @db.VarChar(255) // Added 2025
+  
+  @@unique([principaluri, resourceid, type, publicuri])
+  @@map("oc_dav_shares")
+}
+
+model CalendarReminder {
+  id                    Int            @id @default(autoincrement())
+  calendarId            Int
+  calendar              Calendar       @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  objectId              Int
+  object                CalendarObject @relation(fields: [objectId], references: [id], onDelete: Cascade)
+  isRecurring           Int?           @db.SmallInt
+  uid                   String         @db.VarChar(255)
+  recurrenceId          Int?
+  isRecurrenceException Int            @db.SmallInt
+  eventHash             String         @db.VarChar(255)
+  alarmHash             String         @db.VarChar(255)
+  type                  String         @db.VarChar(255)
+  isRelative            Int            @db.SmallInt
+  notificationDate      Int
+  isRepeatBased         Int            @db.SmallInt
+  
+  @@index([objectId])
+  @@map("oc_calendar_reminders")
+}
+
+model FederatedCalendar {
+  id                   Int     @id @default(autoincrement())
+  displayName          String  @db.VarChar(255)
+  color                String? @db.VarChar(7)
+  uri                  String  @db.VarChar(255)
+  principalUri         String  @db.VarChar(255)
+  remoteUrl            String  @db.VarChar(255)
+  token                String  @db.VarChar(255)
+  syncToken            Int     @default(0)
+  lastSync             Int?
+  sharedBy             String  @db.VarChar(255)
+  sharedByDisplayName  String  @db.VarChar(255)
+  components           String  @db.VarChar(255)
+  permissions          Int
+  
+  @@index([principalUri, uri])
+  @@map("oc_calendars_federated")
+}
+
+// ==========================================
+// 2. APP CALENDAR (6 Tables)
+// ==========================================
+
+model AppointmentConfig {
+  id                   Int       @id @default(autoincrement())
+  token                String    @unique @db.VarChar(128)
+  name                 String    @db.VarChar(128)
+  description          String?   @db.Text
+  location             String?   @db.Text
+  visibility           String    @db.VarChar(10)
+  userId               String    @db.VarChar(64)
+  targetCalendarUri    String    @db.VarChar(255)
+  calendarFreebusyUris String?   @db.Text
+  availability         String?   @db.Text
+  start                Int?
+  end                  Int?
+  length               Int
+  increment            Int
+  preparationDuration  Int       @default(0)
+  followupDuration     Int       @default(0)
+  timeBeforeNextSlot   Int?
+  dailyMax             Int?
+  
+  bookings             AppointmentBooking[]
+  
+  @@map("oc_calendar_appt_configs")
+}
+
+model AppointmentBooking {
+  id            Int                @id @default(autoincrement())
+  apptConfigId  Int
+  config        AppointmentConfig  @relation(fields: [apptConfigId], references: [id], onDelete: Cascade)
+  createdAt     Int
+  token         String             @unique @db.VarChar(32)
+  displayName   String             @db.VarChar(128)
+  description   String?            @db.Text
+  email         String             @db.VarChar(128)
+  start         Int
+  end           Int
+  timezone      String             @db.VarChar(32)
+  confirmed     Boolean            @default(false)
+  
+  @@map("oc_calendar_appt_bookings")
+}
+
+model ProposalDetails {
+  id          Int      @id @default(autoincrement())
+  uid         String   @db.VarChar(255)
+  uuid        String   @db.VarChar(36)
+  title       String?  @db.Text
+  description String?  @db.Text
+  location    String?  @db.Text
+  duration    Int
+  
+  participants ProposalParticipant[]
+  dates        ProposalDate[]
+  votes        ProposalVote[]
+  
+  @@map("oc_calendar_proposal_dts")
+}
+
+model ProposalParticipant {
+  id         Int              @id @default(autoincrement())
+  uid        String           @db.VarChar(255)
+  proposalId Int
+  proposal   ProposalDetails  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  name       String?          @db.VarChar(255)
+  address    String           @db.VarChar(320)
+  attendance String?          @db.VarChar(8)
+  status     String?          @db.VarChar(8)
+  realm      String?          @db.VarChar(8)
+  token      String?          @db.VarChar(255)
+  
+  votes      ProposalVote[]
+  
+  @@map("oc_calendar_proposal_pts")
+}
+
+model ProposalDate {
+  id         Int              @id @default(autoincrement())
+  uid        String           @db.VarChar(255)
+  proposalId Int
+  proposal   ProposalDetails  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  date       Int
+  
+  votes      ProposalVote[]
+  
+  @@map("oc_calendar_proposal_dats")
+}
+
+model ProposalVote {
+  id            Int                  @id @default(autoincrement())
+  uid           String               @db.VarChar(255)
+  proposalId    Int                  @default(0)
+  proposal      ProposalDetails      @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  participantId Int
+  participant   ProposalParticipant  @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  dateId        Int
+  date          ProposalDate         @relation(fields: [dateId], references: [id], onDelete: Cascade)
+  vote          String               @db.VarChar(8)
+  
+  @@unique([participantId, dateId])
+  @@map("oc_calendar_proposal_vts")
+}

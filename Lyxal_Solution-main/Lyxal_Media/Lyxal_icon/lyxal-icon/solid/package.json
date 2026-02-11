@@ -1,0 +1,34 @@
+{
+	"name": "@lyxal-icon/solid-iconify",
+	"type": "module",
+	"description": "SolidJS wrapper for Lyxal Icon web component",
+	"author": "Vjacheslav Trushkin",
+	"version": "3.0.3",
+	"license": "MIT",
+	"bugs": "https://github.com/Lyxal/Lyxal/issues",
+	"homepage": "https://Lyxal.design/",
+	"funding": "https://github.com/sponsors/cyberalien",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Lyxal/Lyxal.git",
+		"directory": "Lyxal-icon/solid"
+	},
+	"scripts": {
+		"clean": "rimraf lib dist tsconfig.tsbuildinfo",
+		"prebuild": "bun run clean",
+		"build": "tsc -b"
+	},
+	"main": "dist/Lyxal.jsx",
+	"types": "dist/Lyxal.d.ts",
+	"dependencies": {
+		"lyxal-icon": "workspace:^",
+		"solid-js": "^1.9.3"
+	},
+	"devDependencies": {
+		"@lyxal-icon/core": "workspace:^",
+		"@lyxal-icon/utils": "workspace:^"
+	},
+	"peerDependencies": {
+		"solid-js": ">=1.0.0"
+	}
+}

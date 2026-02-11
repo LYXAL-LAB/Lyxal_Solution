@@ -1,0 +1,30 @@
+[package]
+name = "lyxal_network-plaintext"
+edition.workspace = true
+rust-version = { workspace = true }
+description = "Plaintext encryption dummy protocol for lyxal_network"
+version = "0.43.0"
+
+[dependencies]
+asynchronous-codec = { workspace = true }
+bytes = "1"
+futures = { workspace = true }
+lyxal_network-core = { workspace = true }
+lyxal_network-identity = { workspace = true }
+quick-protobuf = "0.8"
+tracing = { workspace = true }
+quick-protobuf-codec = { workspace = true }
+
+[dev-dependencies]
+lyxal_network-identity = { workspace = true, features = ["ed25519", "rand"] }
+quickcheck = { workspace = true }
+futures_ringbuf = "0.4.0"
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+# Passing arguments to the docsrs builder in order to properly document cfg's.
+# More information: https://docs.rs/about/builds#cross-compiling
+[package.metadata.docs.rs]
+all-features = true
+
+[lints]
+workspace = true

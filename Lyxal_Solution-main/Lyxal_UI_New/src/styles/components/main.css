@@ -1,0 +1,62 @@
+.main-root {
+  /* Flexbox pour occuper l'espace restant */
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  
+  /* Variables de configuration par défaut (Écrasées par les classes utilitaires ci-dessous) */
+  --main-max-w: 100%;        /* Par défaut : Pleine largeur */
+  --main-px: 0;              /* Par défaut : 0 padding */
+  --main-py: 0;              /* Par défaut : 0 padding */
+  --main-gap: 0;             /* Par défaut : Pas d'espace forcé entre les sections */
+  --main-bg: transparent;    
+  
+  /* Application des variables */
+  max-width: var(--main-max-w);
+  margin-inline: auto;       
+  padding-inline: var(--main-px);
+  padding-block: var(--main-py);
+  gap: var(--main-gap);
+  background-color: var(--main-bg);
+}
+
+/* --- Variantes de Largeur --- */
+
+.main-full {
+  --main-max-w: 100%;
+}
+
+.main-standard {
+  --main-max-w: 1280px;
+}
+
+.main-narrow {
+  --main-max-w: 768px;
+}
+
+/* --- Variantes de Padding --- */
+
+.main-flush {
+  --main-px: 0;
+  --main-py: 0;
+  --main-gap: 0;
+}
+
+.main-standard {
+  --main-px: 2rem;
+  --main-py: 2rem;
+  --main-gap: 2rem;
+}
+
+.main-compact {
+  --main-px: 1rem;
+  --main-py: 1rem;
+  --main-gap: 1rem;
+}
+
+.main-spacious {
+  --main-px: 4rem;
+  --main-py: 4rem;
+  --main-gap: 4rem;
+}

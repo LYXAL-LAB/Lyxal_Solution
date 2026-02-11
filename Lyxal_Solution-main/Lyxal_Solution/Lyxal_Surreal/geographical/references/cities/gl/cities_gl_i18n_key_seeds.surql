@@ -1,0 +1,20 @@
+-- Clés i18n pour les villes du pays: GL --
+
+CREATE i18n_key:i18n_city_gl_154930_name SET description = 'Nom pour la ville \'Ilulissat\'';
+CREATE i18n_key:i18n_city_gl_154931_name SET description = 'Nom pour la ville \'Qaanaaq\'';
+CREATE i18n_key:i18n_city_gl_154933_name SET description = 'Nom pour la ville \'Upernavik\'';
+CREATE i18n_key:i18n_city_gl_154932_name SET description = 'Nom pour la ville \'Uummannaq\'';
+CREATE i18n_key:i18n_city_gl_154934_name SET description = 'Nom pour la ville \'Nanortalik\'';
+CREATE i18n_key:i18n_city_gl_154935_name SET description = 'Nom pour la ville \'Narsaq\'';
+CREATE i18n_key:i18n_city_gl_154936_name SET description = 'Nom pour la ville \'Qaqortoq\'';
+CREATE i18n_key:i18n_city_gl_154937_name SET description = 'Nom pour la ville \'Aasiaat\'';
+CREATE i18n_key:i18n_city_gl_154938_name SET description = 'Nom pour la ville \'Kangaatsiaq\'';
+CREATE i18n_key:i18n_city_gl_154939_name SET description = 'Nom pour la ville \'Qasigiannguit\'';
+CREATE i18n_key:i18n_city_gl_154940_name SET description = 'Nom pour la ville \'Qeqertarsuaq\'';
+CREATE i18n_key:i18n_city_gl_154941_name SET description = 'Nom pour la ville \'Maniitsoq\'';
+CREATE i18n_key:i18n_city_gl_154942_name SET description = 'Nom pour la ville \'Sisimiut\'';
+CREATE i18n_key:i18n_city_gl_154943_name SET description = 'Nom pour la ville \'Ammassalik\'';
+CREATE i18n_key:i18n_city_gl_154944_name SET description = 'Nom pour la ville \'Ittoqqortoormiit\'';
+CREATE i18n_key:i18n_city_gl_154945_name SET description = 'Nom pour la ville \'Ivittuut\'';
+CREATE i18n_key:i18n_city_gl_154946_name SET description = 'Nom pour la ville \'Nuuk\'';
+CREATE i18n_key:i18n_city_gl_154947_name SET description = 'Nom pour la ville \'Paamiut\'';

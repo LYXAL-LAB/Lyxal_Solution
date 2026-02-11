@@ -1,0 +1,5200 @@
+{
+  "actionnetwork": [
+    {
+      "display_name": "Attendance",
+      "value": "attendance"
+    },
+    {
+      "display_name": "Event",
+      "value": "event"
+    },
+    {
+      "display_name": "Person",
+      "value": "person"
+    },
+    {
+      "display_name": "Person Tag",
+      "value": "personTag"
+    },
+    {
+      "display_name": "Petition",
+      "value": "petition"
+    },
+    {
+      "display_name": "Signature",
+      "value": "signature"
+    },
+    {
+      "display_name": "Tag",
+      "value": "tag"
+    }
+  ],
+  "activecampaign": [
+    {
+      "display_name": "Account",
+      "value": "account"
+    },
+    {
+      "display_name": "Account Contact",
+      "value": "accountContact"
+    },
+    {
+      "display_name": "Connection",
+      "value": "connection"
+    },
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Contact List",
+      "value": "contactList"
+    },
+    {
+      "display_name": "Contact Tag",
+      "value": "contactTag"
+    },
+    {
+      "display_name": "Deal",
+      "value": "deal"
+    },
+    {
+      "display_name": "E-Commerce Customer",
+      "value": "ecommerceCustomer"
+    },
+    {
+      "display_name": "E-Commerce Order",
+      "value": "ecommerceOrder"
+    },
+    {
+      "display_name": "E-Commerce Order Product",
+      "value": "ecommerceOrderProducts"
+    },
+    {
+      "display_name": "List",
+      "value": "list"
+    },
+    {
+      "display_name": "Tag",
+      "value": "tag"
+    },
+    {
+      "display_name": "AccountContact",
+      "value": "accountcontact"
+    },
+    {
+      "display_name": "ContactList",
+      "value": "contactlist"
+    },
+    {
+      "display_name": "ContactTag",
+      "value": "contacttag"
+    },
+    {
+      "display_name": "EcomCustomer",
+      "value": "ecomcustomer"
+    },
+    {
+      "display_name": "EcomOrder",
+      "value": "ecomorder"
+    },
+    {
+      "display_name": "EcomOrderProducts",
+      "value": "ecomorderproducts"
+    }
+  ],
+  "adalo": [
+    {
+      "display_name": "Collection",
+      "value": "collection"
+    }
+  ],
+  "affinity": [
+    {
+      "display_name": "List",
+      "value": "list"
+    },
+    {
+      "display_name": "List Entry",
+      "value": "listEntry"
+    },
+    {
+      "display_name": "Organization",
+      "value": "organization"
+    },
+    {
+      "display_name": "Person",
+      "value": "person"
+    },
+    {
+      "display_name": "ListEntry",
+      "value": "listentry"
+    }
+  ],
+  "agilecrm": [
+    {
+      "display_name": "Company",
+      "value": "company"
+    },
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Deal",
+      "value": "deal"
+    }
+  ],
+  "airtable": [
+    {
+      "display_name": "Airtable",
+      "value": "airtable"
+    }
+  ],
+  "airtablev1": [
+    {
+      "display_name": "AirtableV1",
+      "value": "airtablev1"
+    }
+  ],
+  "airtablev2": [
+    {
+      "display_name": "AirtableV2",
+      "value": "airtablev2"
+    }
+  ],
+  "airtop": [
+    {
+      "display_name": "Extraction",
+      "value": "extraction"
+    },
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Interaction",
+      "value": "interaction"
+    },
+    {
+      "display_name": "Session",
+      "value": "session"
+    },
+    {
+      "display_name": "Window",
+      "value": "window"
+    }
+  ],
+  "aitransform": [
+    {
+      "display_name": "AiTransform",
+      "value": "aitransform"
+    }
+  ],
+  "amqp": [
+    {
+      "display_name": "Amqp",
+      "value": "amqp"
+    }
+  ],
+  "apitemplateio": [
+    {
+      "display_name": "Account",
+      "value": "account"
+    },
+    {
+      "display_name": "Image",
+      "value": "image"
+    },
+    {
+      "display_name": "PDF",
+      "value": "pdf"
+    }
+  ],
+  "asana": [
+    {
+      "display_name": "Project",
+      "value": "project"
+    },
+    {
+      "display_name": "Subtask",
+      "value": "subtask"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    },
+    {
+      "display_name": "Task Comment",
+      "value": "taskComment"
+    },
+    {
+      "display_name": "Task Project",
+      "value": "taskProject"
+    },
+    {
+      "display_name": "Task Tag",
+      "value": "taskTag"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "automizy": [
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "List",
+      "value": "list"
+    }
+  ],
+  "autopilot": [
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Contact Journey",
+      "value": "contactJourney"
+    },
+    {
+      "display_name": "Contact List",
+      "value": "contactList"
+    },
+    {
+      "display_name": "List",
+      "value": "list"
+    },
+    {
+      "display_name": "ContactJourney",
+      "value": "contactjourney"
+    },
+    {
+      "display_name": "ContactList",
+      "value": "contactlist"
+    }
+  ],
+  "awslambda": [
+    {
+      "display_name": "AwsLambda",
+      "value": "awslambda"
+    }
+  ],
+  "awssns": [
+    {
+      "display_name": "AwsSns",
+      "value": "awssns"
+    }
+  ],
+  "awscertificatemanager": [
+    {
+      "display_name": "Certificate",
+      "value": "certificate"
+    }
+  ],
+  "awscognito": [
+    {
+      "display_name": "Group",
+      "value": "group"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "User Pool",
+      "value": "userPool"
+    }
+  ],
+  "awscomprehend": [
+    {
+      "display_name": "Text",
+      "value": "text"
+    }
+  ],
+  "awsdynamodb": [
+    {
+      "display_name": "Item",
+      "value": "item"
+    }
+  ],
+  "awselb": [
+    {
+      "display_name": "Listener Certificate",
+      "value": "listenerCertificate"
+    },
+    {
+      "display_name": "Load Balancer",
+      "value": "loadBalancer"
+    },
+    {
+      "display_name": "ListenerCertificate",
+      "value": "listenercertificate"
+    },
+    {
+      "display_name": "LoadBalancer",
+      "value": "loadbalancer"
+    }
+  ],
+  "awsiam": [
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "Group",
+      "value": "group"
+    }
+  ],
+  "awsrekognition": [
+    {
+      "display_name": "Image",
+      "value": "image"
+    }
+  ],
+  "awss3": [
+    {
+      "display_name": "AwsS3",
+      "value": "awss3"
+    }
+  ],
+  "awss3v1": [
+    {
+      "display_name": "Bucket",
+      "value": "bucket"
+    },
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Folder",
+      "value": "folder"
+    }
+  ],
+  "awss3v2": [
+    {
+      "display_name": "Bucket",
+      "value": "bucket"
+    },
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Folder",
+      "value": "folder"
+    }
+  ],
+  "awsses": [
+    {
+      "display_name": "Custom Verification Email",
+      "value": "customVerificationEmail"
+    },
+    {
+      "display_name": "Email",
+      "value": "email"
+    },
+    {
+      "display_name": "Template",
+      "value": "template"
+    }
+  ],
+  "awssqs": [
+    {
+      "display_name": "AwsSqs",
+      "value": "awssqs"
+    }
+  ],
+  "awstextract": [
+    {
+      "display_name": "AwsTextract",
+      "value": "awstextract"
+    }
+  ],
+  "awstranscribe": [
+    {
+      "display_name": "Transcription Job",
+      "value": "transcriptionJob"
+    }
+  ],
+  "bamboohr": [
+    {
+      "display_name": "BambooHr",
+      "value": "bamboohr"
+    }
+  ],
+  "bannerbear": [
+    {
+      "display_name": "Image",
+      "value": "image"
+    },
+    {
+      "display_name": "Template",
+      "value": "template"
+    }
+  ],
+  "baserow": [
+    {
+      "display_name": "Row",
+      "value": "row"
+    },
+    {
+      "display_name": "Operation",
+      "value": "operation"
+    }
+  ],
+  "beeminder": [
+    {
+      "display_name": "Charge",
+      "value": "charge"
+    },
+    {
+      "display_name": "Datapoint",
+      "value": "datapoint"
+    },
+    {
+      "display_name": "Goal",
+      "value": "goal"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "bitly": [
+    {
+      "display_name": "Link",
+      "value": "link"
+    }
+  ],
+  "bitwarden": [
+    {
+      "display_name": "Collection",
+      "value": "collection"
+    },
+    {
+      "display_name": "Event",
+      "value": "event"
+    },
+    {
+      "display_name": "Group",
+      "value": "group"
+    },
+    {
+      "display_name": "Member",
+      "value": "member"
+    }
+  ],
+  "box": [
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Folder",
+      "value": "folder"
+    }
+  ],
+  "brandfetch": [
+    {
+      "display_name": "Brandfetch",
+      "value": "brandfetch"
+    }
+  ],
+  "brevo": [
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Contact Attribute",
+      "value": "attribute"
+    },
+    {
+      "display_name": "Email",
+      "value": "email"
+    },
+    {
+      "display_name": "Sender",
+      "value": "sender"
+    },
+    {
+      "display_name": "Attribute",
+      "value": "attribute"
+    }
+  ],
+  "bubble": [
+    {
+      "display_name": "Object",
+      "value": "object"
+    }
+  ],
+  "chargebee": [
+    {
+      "display_name": "Customer",
+      "value": "customer"
+    },
+    {
+      "display_name": "Invoice",
+      "value": "invoice"
+    },
+    {
+      "display_name": "Subscription",
+      "value": "subscription"
+    }
+  ],
+  "circleci": [
+    {
+      "display_name": "Pipeline",
+      "value": "pipeline"
+    }
+  ],
+  "ciscowebex": [
+    {
+      "display_name": "Meeting",
+      "value": "meeting"
+    },
+    {
+      "display_name": "Message",
+      "value": "message"
+    }
+  ],
+  "clearbit": [
+    {
+      "display_name": "Company",
+      "value": "company"
+    },
+    {
+      "display_name": "Person",
+      "value": "person"
+    }
+  ],
+  "clickup": [
+    {
+      "display_name": "Checklist",
+      "value": "checklist"
+    },
+    {
+      "display_name": "Checklist Item",
+      "value": "checklistItem"
+    },
+    {
+      "display_name": "Comment",
+      "value": "comment"
+    },
+    {
+      "display_name": "Folder",
+      "value": "folder"
+    },
+    {
+      "display_name": "Goal",
+      "value": "goal"
+    },
+    {
+      "display_name": "Goal Key Result",
+      "value": "goalKeyResult"
+    },
+    {
+      "display_name": "List",
+      "value": "list"
+    },
+    {
+      "display_name": "Space Tag",
+      "value": "spaceTag"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    },
+    {
+      "display_name": "Task Dependency",
+      "value": "taskDependency"
+    },
+    {
+      "display_name": "Task List",
+      "value": "taskList"
+    },
+    {
+      "display_name": "Task Tag",
+      "value": "taskTag"
+    },
+    {
+      "display_name": "Time Entry",
+      "value": "timeEntry"
+    },
+    {
+      "display_name": "Time Entry Tag",
+      "value": "timeEntryTag"
+    },
+    {
+      "display_name": "ChecklistItem",
+      "value": "checklistitem"
+    },
+    {
+      "display_name": "GoalKeyResult",
+      "value": "goalkeyresult"
+    },
+    {
+      "display_name": "SpaceTag",
+      "value": "spacetag"
+    },
+    {
+      "display_name": "TaskDependency",
+      "value": "taskdependency"
+    },
+    {
+      "display_name": "TaskList",
+      "value": "tasklist"
+    },
+    {
+      "display_name": "TaskTag",
+      "value": "tasktag"
+    },
+    {
+      "display_name": "TimeEntry",
+      "value": "timeentry"
+    },
+    {
+      "display_name": "TimeEntryTag",
+      "value": "timeentrytag"
+    }
+  ],
+  "clockify": [
+    {
+      "display_name": "Client",
+      "value": "client"
+    },
+    {
+      "display_name": "Project",
+      "value": "project"
+    },
+    {
+      "display_name": "Tag",
+      "value": "tag"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    },
+    {
+      "display_name": "Time Entry",
+      "value": "timeEntry"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "Workspace",
+      "value": "workspace"
+    },
+    {
+      "display_name": "TimeEntry",
+      "value": "timeentry"
+    }
+  ],
+  "cloudflare": [
+    {
+      "display_name": "Zone Certificate",
+      "value": "zoneCertificate"
+    },
+    {
+      "display_name": "ZoneCertificate",
+      "value": "zonecertificate"
+    }
+  ],
+  "cockpit": [
+    {
+      "display_name": "Collection",
+      "value": "collection"
+    },
+    {
+      "display_name": "Form",
+      "value": "form"
+    },
+    {
+      "display_name": "Singleton",
+      "value": "singleton"
+    }
+  ],
+  "coda": [
+    {
+      "display_name": "Control",
+      "value": "control"
+    },
+    {
+      "display_name": "Formula",
+      "value": "formula"
+    },
+    {
+      "display_name": "Table",
+      "value": "table"
+    },
+    {
+      "display_name": "View",
+      "value": "view"
+    }
+  ],
+  "code": [
+    {
+      "display_name": "Code",
+      "value": "code"
+    }
+  ],
+  "coingecko": [
+    {
+      "display_name": "Coin",
+      "value": "coin"
+    },
+    {
+      "display_name": "Event",
+      "value": "event"
+    }
+  ],
+  "comparedatasets": [
+    {
+      "display_name": "CompareDatasets",
+      "value": "comparedatasets"
+    }
+  ],
+  "compression": [
+    {
+      "display_name": "Compression",
+      "value": "compression"
+    }
+  ],
+  "contentful": [
+    {
+      "display_name": "Asset",
+      "value": "asset"
+    },
+    {
+      "display_name": "ContentType",
+      "value": "contenttype"
+    },
+    {
+      "display_name": "Entry",
+      "value": "entry"
+    },
+    {
+      "display_name": "Locale",
+      "value": "locale"
+    },
+    {
+      "display_name": "Space",
+      "value": "space"
+    }
+  ],
+  "convertkit": [
+    {
+      "display_name": "Custom Field",
+      "value": "customField"
+    },
+    {
+      "display_name": "Form",
+      "value": "form"
+    },
+    {
+      "display_name": "Sequence",
+      "value": "sequence"
+    },
+    {
+      "display_name": "Tag",
+      "value": "tag"
+    },
+    {
+      "display_name": "Tag Subscriber",
+      "value": "tagSubscriber"
+    },
+    {
+      "display_name": "CustomField",
+      "value": "customfield"
+    },
+    {
+      "display_name": "TagSubscriber",
+      "value": "tagsubscriber"
+    }
+  ],
+  "copper": [
+    {
+      "display_name": "Company",
+      "value": "company"
+    },
+    {
+      "display_name": "Customer Source",
+      "value": "customerSource"
+    },
+    {
+      "display_name": "Lead",
+      "value": "lead"
+    },
+    {
+      "display_name": "Opportunity",
+      "value": "opportunity"
+    },
+    {
+      "display_name": "Person",
+      "value": "person"
+    },
+    {
+      "display_name": "Project",
+      "value": "project"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "cortex": [
+    {
+      "display_name": "Analyzer",
+      "value": "analyzer"
+    },
+    {
+      "display_name": "Job",
+      "value": "job"
+    },
+    {
+      "display_name": "Responder",
+      "value": "responder"
+    }
+  ],
+  "cratedb": [
+    {
+      "display_name": "CrateDb",
+      "value": "cratedb"
+    }
+  ],
+  "cron": [
+    {
+      "display_name": "Cron",
+      "value": "cron"
+    }
+  ],
+  "crowddev": [
+    {
+      "display_name": "CrowdDev",
+      "value": "crowddev"
+    }
+  ],
+  "crypto": [
+    {
+      "display_name": "Crypto",
+      "value": "crypto"
+    }
+  ],
+  "customerio": [
+    {
+      "display_name": "Customer",
+      "value": "customer"
+    },
+    {
+      "display_name": "Event",
+      "value": "event"
+    },
+    {
+      "display_name": "Campaign",
+      "value": "campaign"
+    },
+    {
+      "display_name": "Segment",
+      "value": "segment"
+    }
+  ],
+  "datatable": [
+    {
+      "display_name": "Row",
+      "value": "row"
+    }
+  ],
+  "datetime": [
+    {
+      "display_name": "DateTime",
+      "value": "datetime"
+    }
+  ],
+  "datetimev1": [
+    {
+      "display_name": "DateTimeV1",
+      "value": "datetimev1"
+    }
+  ],
+  "datetimev2": [
+    {
+      "display_name": "AddToDate",
+      "value": "addtodate"
+    },
+    {
+      "display_name": "CurrentDate",
+      "value": "currentdate"
+    },
+    {
+      "display_name": "ExtractDate",
+      "value": "extractdate"
+    },
+    {
+      "display_name": "FormatDate",
+      "value": "formatdate"
+    },
+    {
+      "display_name": "RoundDate",
+      "value": "rounddate"
+    },
+    {
+      "display_name": "SubtractFromDate",
+      "value": "subtractfromdate"
+    }
+  ],
+  "debughelper": [
+    {
+      "display_name": "DebugHelper",
+      "value": "debughelper"
+    }
+  ],
+  "deepl": [
+    {
+      "display_name": "Language",
+      "value": "language"
+    },
+    {
+      "display_name": "Text",
+      "value": "text"
+    }
+  ],
+  "demio": [
+    {
+      "display_name": "Event",
+      "value": "event"
+    },
+    {
+      "display_name": "Report",
+      "value": "report"
+    }
+  ],
+  "dhl": [
+    {
+      "display_name": "Shipment",
+      "value": "shipment"
+    }
+  ],
+  "discord": [
+    {
+      "display_name": "Discord",
+      "value": "discord"
+    }
+  ],
+  "discordv1": [
+    {
+      "display_name": "DiscordV1",
+      "value": "discordv1"
+    }
+  ],
+  "discordv2": [
+    {
+      "display_name": "DiscordV2",
+      "value": "discordv2"
+    }
+  ],
+  "discourse": [
+    {
+      "display_name": "Category",
+      "value": "category"
+    },
+    {
+      "display_name": "Group",
+      "value": "group"
+    },
+    {
+      "display_name": "Post",
+      "value": "post"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "User Group",
+      "value": "userGroup"
+    },
+    {
+      "display_name": "UserGroup",
+      "value": "usergroup"
+    }
+  ],
+  "disqus": [
+    {
+      "display_name": "Forum",
+      "value": "forum"
+    }
+  ],
+  "drift": [
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    }
+  ],
+  "dropbox": [
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Folder",
+      "value": "folder"
+    },
+    {
+      "display_name": "Search",
+      "value": "search"
+    }
+  ],
+  "dropcontact": [
+    {
+      "display_name": "Dropcontact",
+      "value": "dropcontact"
+    }
+  ],
+  "editimage": [
+    {
+      "display_name": "EditImage",
+      "value": "editimage"
+    }
+  ],
+  "egoi": [
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    }
+  ],
+  "elasticsearch": [
+    {
+      "display_name": "Document",
+      "value": "document"
+    },
+    {
+      "display_name": "Index",
+      "value": "index"
+    }
+  ],
+  "elasticsecurity": [
+    {
+      "display_name": "Case",
+      "value": "case"
+    },
+    {
+      "display_name": "Case Comment",
+      "value": "caseComment"
+    },
+    {
+      "display_name": "Case Tag",
+      "value": "caseTag"
+    },
+    {
+      "display_name": "Connector",
+      "value": "connector"
+    }
+  ],
+  "emailreadimap": [
+    {
+      "display_name": "EmailReadImap",
+      "value": "emailreadimap"
+    }
+  ],
+  "emailreadimapv1": [
+    {
+      "display_name": "EmailReadImapV1",
+      "value": "emailreadimapv1"
+    }
+  ],
+  "emailreadimapv2": [
+    {
+      "display_name": "EmailReadImapV2",
+      "value": "emailreadimapv2"
+    }
+  ],
+  "emailsend": [
+    {
+      "display_name": "EmailSend",
+      "value": "emailsend"
+    }
+  ],
+  "emailsendv1": [
+    {
+      "display_name": "EmailSendV1",
+      "value": "emailsendv1"
+    }
+  ],
+  "emailsendv2": [
+    {
+      "display_name": "Email",
+      "value": "email"
+    }
+  ],
+  "emelia": [
+    {
+      "display_name": "Campaign",
+      "value": "campaign"
+    },
+    {
+      "display_name": "Contact List",
+      "value": "contactList"
+    },
+    {
+      "display_name": "ContactList",
+      "value": "contactlist"
+    }
+  ],
+  "erpnext": [
+    {
+      "display_name": "Document",
+      "value": "document"
+    }
+  ],
+  "description": [
+    {
+      "display_name": "Description",
+      "value": "description"
+    }
+  ],
+  "executecommand": [
+    {
+      "display_name": "ExecuteCommand",
+      "value": "executecommand"
+    }
+  ],
+  "executeworkflow": [
+    {
+      "display_name": "ExecuteWorkflow",
+      "value": "executeworkflow"
+    }
+  ],
+  "executiondata": [
+    {
+      "display_name": "ExecutionData",
+      "value": "executiondata"
+    }
+  ],
+  "facebookgraphapi": [
+    {
+      "display_name": "FacebookGraphApi",
+      "value": "facebookgraphapi"
+    }
+  ],
+  "filemaker": [
+    {
+      "display_name": "FileMaker",
+      "value": "filemaker"
+    }
+  ],
+  "converttofile": [
+    {
+      "display_name": "ConvertToFile",
+      "value": "converttofile"
+    }
+  ],
+  "extractfromfile": [
+    {
+      "display_name": "ExtractFromFile",
+      "value": "extractfromfile"
+    }
+  ],
+  "readwritefile": [
+    {
+      "display_name": "ReadWriteFile",
+      "value": "readwritefile"
+    }
+  ],
+  "filter": [
+    {
+      "display_name": "Filter",
+      "value": "filter"
+    }
+  ],
+  "filterv1": [
+    {
+      "display_name": "FilterV1",
+      "value": "filterv1"
+    }
+  ],
+  "filterv2": [
+    {
+      "display_name": "FilterV2",
+      "value": "filterv2"
+    }
+  ],
+  "flow": [
+    {
+      "display_name": "Task",
+      "value": "task"
+    }
+  ],
+  "form": [
+    {
+      "display_name": "Form",
+      "value": "form"
+    }
+  ],
+  "freshdesk": [
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Ticket",
+      "value": "ticket"
+    }
+  ],
+  "freshservice": [
+    {
+      "display_name": "Agent",
+      "value": "agent"
+    },
+    {
+      "display_name": "Agent Group",
+      "value": "agentGroup"
+    },
+    {
+      "display_name": "Agent Role",
+      "value": "agentRole"
+    },
+    {
+      "display_name": "Announcement",
+      "value": "announcement"
+    },
+    {
+      "display_name": "Asset Type",
+      "value": "assetType"
+    },
+    {
+      "display_name": "Change",
+      "value": "change"
+    },
+    {
+      "display_name": "Department",
+      "value": "department"
+    },
+    {
+      "display_name": "Location",
+      "value": "location"
+    },
+    {
+      "display_name": "Problem",
+      "value": "problem"
+    },
+    {
+      "display_name": "Product",
+      "value": "product"
+    },
+    {
+      "display_name": "Release",
+      "value": "release"
+    },
+    {
+      "display_name": "Requester",
+      "value": "requester"
+    },
+    {
+      "display_name": "Requester Group",
+      "value": "requesterGroup"
+    },
+    {
+      "display_name": "Software",
+      "value": "software"
+    },
+    {
+      "display_name": "Ticket",
+      "value": "ticket"
+    }
+  ],
+  "freshworkscrm": [
+    {
+      "display_name": "Account",
+      "value": "account"
+    },
+    {
+      "display_name": "Appointment",
+      "value": "appointment"
+    },
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Deal",
+      "value": "deal"
+    },
+    {
+      "display_name": "Note",
+      "value": "note"
+    },
+    {
+      "display_name": "Sales Activity",
+      "value": "salesActivity"
+    },
+    {
+      "display_name": "Search",
+      "value": "search"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    }
+  ],
+  "ftp": [
+    {
+      "display_name": "Ftp",
+      "value": "ftp"
+    }
+  ],
+  "function": [
+    {
+      "display_name": "Function",
+      "value": "function"
+    }
+  ],
+  "functionitem": [
+    {
+      "display_name": "FunctionItem",
+      "value": "functionitem"
+    }
+  ],
+  "getresponse": [
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    }
+  ],
+  "ghost": [
+    {
+      "display_name": "Post",
+      "value": "post"
+    }
+  ],
+  "git": [
+    {
+      "display_name": "Git",
+      "value": "git"
+    }
+  ],
+  "github": [
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Issue",
+      "value": "issue"
+    },
+    {
+      "display_name": "Organization",
+      "value": "organization"
+    },
+    {
+      "display_name": "Release",
+      "value": "release"
+    },
+    {
+      "display_name": "Repository",
+      "value": "repository"
+    },
+    {
+      "display_name": "Review",
+      "value": "review"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "Workflow",
+      "value": "workflow"
+    }
+  ],
+  "gitlab": [
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Issue",
+      "value": "issue"
+    },
+    {
+      "display_name": "Release",
+      "value": "release"
+    },
+    {
+      "display_name": "Repository",
+      "value": "repository"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "gong": [
+    {
+      "display_name": "Call",
+      "value": "call"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "googleads": [
+    {
+      "display_name": "Campaign",
+      "value": "campaign"
+    }
+  ],
+  "googleanalytics": [
+    {
+      "display_name": "GoogleAnalytics",
+      "value": "googleanalytics"
+    }
+  ],
+  "googleanalyticsv1": [
+    {
+      "display_name": "Report",
+      "value": "report"
+    },
+    {
+      "display_name": "User Activity",
+      "value": "userActivity"
+    },
+    {
+      "display_name": "UserActivity",
+      "value": "useractivity"
+    }
+  ],
+  "googleanalyticsv2": [
+    {
+      "display_name": "GoogleAnalyticsV2",
+      "value": "googleanalyticsv2"
+    }
+  ],
+  "googlebigquery": [
+    {
+      "display_name": "GoogleBigQuery",
+      "value": "googlebigquery"
+    }
+  ],
+  "googlebigqueryv1": [
+    {
+      "display_name": "Record",
+      "value": "record"
+    }
+  ],
+  "googlebigqueryv2": [
+    {
+      "display_name": "GoogleBigQueryV2",
+      "value": "googlebigqueryv2"
+    }
+  ],
+  "googlebooks": [
+    {
+      "display_name": "Bookshelf",
+      "value": "bookshelf"
+    },
+    {
+      "display_name": "Bookshelf Volume",
+      "value": "bookshelfVolume"
+    },
+    {
+      "display_name": "Volume",
+      "value": "volume"
+    }
+  ],
+  "googlebusinessprofile": [
+    {
+      "display_name": "Post",
+      "value": "post"
+    },
+    {
+      "display_name": "Review",
+      "value": "review"
+    }
+  ],
+  "googlecalendar": [
+    {
+      "display_name": "Calendar",
+      "value": "calendar"
+    },
+    {
+      "display_name": "Event",
+      "value": "event"
+    }
+  ],
+  "googlechat": [
+    {
+      "display_name": "Member",
+      "value": "member"
+    },
+    {
+      "display_name": "Message",
+      "value": "message"
+    },
+    {
+      "display_name": "Space",
+      "value": "space"
+    }
+  ],
+  "googlecloudnaturallanguage": [
+    {
+      "display_name": "Document",
+      "value": "document"
+    }
+  ],
+  "googlecloudstorage": [
+    {
+      "display_name": "Bucket",
+      "value": "bucket"
+    },
+    {
+      "display_name": "Object",
+      "value": "object"
+    }
+  ],
+  "googlecontacts": [
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    }
+  ],
+  "googledocs": [
+    {
+      "display_name": "Document",
+      "value": "document"
+    }
+  ],
+  "googledrive": [
+    {
+      "display_name": "GoogleDrive",
+      "value": "googledrive"
+    }
+  ],
+  "googledrivev1": [
+    {
+      "display_name": "Drive",
+      "value": "drive"
+    },
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Folder",
+      "value": "folder"
+    }
+  ],
+  "googledrivev2": [
+    {
+      "display_name": "GoogleDriveV2",
+      "value": "googledrivev2"
+    }
+  ],
+  "googlefirebasecloudfirestore": [
+    {
+      "display_name": "Document",
+      "value": "document"
+    },
+    {
+      "display_name": "Collection",
+      "value": "collection"
+    }
+  ],
+  "googlefirebaserealtimedatabase": [
+    {
+      "display_name": "GoogleFirebaseRealtimeDatabase",
+      "value": "googlefirebaserealtimedatabase"
+    }
+  ],
+  "gmail": [
+    {
+      "display_name": "Gmail",
+      "value": "gmail"
+    }
+  ],
+  "gmailv1": [
+    {
+      "display_name": "Draft",
+      "value": "draft"
+    },
+    {
+      "display_name": "Label",
+      "value": "label"
+    },
+    {
+      "display_name": "Message",
+      "value": "message"
+    },
+    {
+      "display_name": "Message Label",
+      "value": "messageLabel"
+    },
+    {
+      "display_name": "MessageLabel",
+      "value": "messagelabel"
+    }
+  ],
+  "gmailv2": [
+    {
+      "display_name": "Message",
+      "value": "message"
+    },
+    {
+      "display_name": "Label",
+      "value": "label"
+    },
+    {
+      "display_name": "Draft",
+      "value": "draft"
+    },
+    {
+      "display_name": "Thread",
+      "value": "thread"
+    }
+  ],
+  "gsuiteadmin": [
+    {
+      "display_name": "ChromeOS Device",
+      "value": "device"
+    },
+    {
+      "display_name": "Group",
+      "value": "group"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "Device",
+      "value": "device"
+    }
+  ],
+  "googleperspective": [
+    {
+      "display_name": "GooglePerspective",
+      "value": "googleperspective"
+    }
+  ],
+  "googlesheets": [
+    {
+      "display_name": "GoogleSheets",
+      "value": "googlesheets"
+    }
+  ],
+  "googlesheetsv1": [
+    {
+      "display_name": "GoogleSheetsV1",
+      "value": "googlesheetsv1"
+    }
+  ],
+  "googlesheetsv2": [
+    {
+      "display_name": "GoogleSheetsV2",
+      "value": "googlesheetsv2"
+    }
+  ],
+  "googleslides": [
+    {
+      "display_name": "Page",
+      "value": "page"
+    },
+    {
+      "display_name": "Presentation",
+      "value": "presentation"
+    }
+  ],
+  "googletasks": [
+    {
+      "display_name": "Task",
+      "value": "task"
+    }
+  ],
+  "googletranslate": [
+    {
+      "display_name": "Language",
+      "value": "language"
+    }
+  ],
+  "youtube": [
+    {
+      "display_name": "Channel",
+      "value": "channel"
+    },
+    {
+      "display_name": "Playlist",
+      "value": "playlist"
+    },
+    {
+      "display_name": "Playlist Item",
+      "value": "playlistItem"
+    },
+    {
+      "display_name": "Video",
+      "value": "video"
+    },
+    {
+      "display_name": "Video Category",
+      "value": "videoCategory"
+    },
+    {
+      "display_name": "PlaylistItem",
+      "value": "playlistitem"
+    },
+    {
+      "display_name": "VideoCategory",
+      "value": "videocategory"
+    }
+  ],
+  "gotify": [
+    {
+      "display_name": "Message",
+      "value": "message"
+    }
+  ],
+  "gotowebinar": [
+    {
+      "display_name": "Attendee",
+      "value": "attendee"
+    },
+    {
+      "display_name": "Co-Organizer",
+      "value": "coorganizer"
+    },
+    {
+      "display_name": "Panelist",
+      "value": "panelist"
+    },
+    {
+      "display_name": "Registrant",
+      "value": "registrant"
+    },
+    {
+      "display_name": "Session",
+      "value": "session"
+    },
+    {
+      "display_name": "Webinar",
+      "value": "webinar"
+    }
+  ],
+  "grafana": [
+    {
+      "display_name": "Dashboard",
+      "value": "dashboard"
+    },
+    {
+      "display_name": "Team",
+      "value": "team"
+    },
+    {
+      "display_name": "Team Member",
+      "value": "teamMember"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "graphql": [
+    {
+      "display_name": "GraphQL",
+      "value": "graphql"
+    }
+  ],
+  "grist": [
+    {
+      "display_name": "Operation",
+      "value": "operation"
+    }
+  ],
+  "hackernews": [
+    {
+      "display_name": "All",
+      "value": "all"
+    },
+    {
+      "display_name": "Article",
+      "value": "article"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "halopsa": [
+    {
+      "display_name": "Client",
+      "value": "client"
+    },
+    {
+      "display_name": "Site",
+      "value": "site"
+    },
+    {
+      "display_name": "Ticket",
+      "value": "ticket"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "harvest": [
+    {
+      "display_name": "Client",
+      "value": "client"
+    },
+    {
+      "display_name": "Company",
+      "value": "company"
+    },
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Estimate",
+      "value": "estimate"
+    },
+    {
+      "display_name": "Expense",
+      "value": "expense"
+    },
+    {
+      "display_name": "Invoice",
+      "value": "invoice"
+    },
+    {
+      "display_name": "Project",
+      "value": "project"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    },
+    {
+      "display_name": "Time Entry",
+      "value": "timeEntry"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "TimeEntry",
+      "value": "timeentry"
+    }
+  ],
+  "helpscout": [
+    {
+      "display_name": "Conversation",
+      "value": "conversation"
+    },
+    {
+      "display_name": "Customer",
+      "value": "customer"
+    },
+    {
+      "display_name": "Mailbox",
+      "value": "mailbox"
+    },
+    {
+      "display_name": "Thread",
+      "value": "thread"
+    }
+  ],
+  "highlevel": [
+    {
+      "display_name": "HighLevel",
+      "value": "highlevel"
+    }
+  ],
+  "highlevelv1": [
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Opportunity",
+      "value": "opportunity"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    }
+  ],
+  "highlevelv2": [
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Opportunity",
+      "value": "opportunity"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    },
+    {
+      "display_name": "Calendar",
+      "value": "calendar"
+    }
+  ],
+  "homeassistant": [
+    {
+      "display_name": "Camera Proxy",
+      "value": "cameraProxy"
+    },
+    {
+      "display_name": "Config",
+      "value": "config"
+    },
+    {
+      "display_name": "Event",
+      "value": "event"
+    },
+    {
+      "display_name": "Log",
+      "value": "log"
+    },
+    {
+      "display_name": "Service",
+      "value": "service"
+    },
+    {
+      "display_name": "State",
+      "value": "state"
+    },
+    {
+      "display_name": "Template",
+      "value": "template"
+    },
+    {
+      "display_name": "CameraProxy",
+      "value": "cameraproxy"
+    },
+    {
+      "display_name": "History",
+      "value": "history"
+    }
+  ],
+  "html": [
+    {
+      "display_name": "Html",
+      "value": "html"
+    }
+  ],
+  "htmlextract": [
+    {
+      "display_name": "HtmlExtract",
+      "value": "htmlextract"
+    }
+  ],
+  "httprequest": [
+    {
+      "display_name": "HttpRequest",
+      "value": "httprequest"
+    }
+  ],
+  "httprequestv1": [
+    {
+      "display_name": "HttpRequestV1",
+      "value": "httprequestv1"
+    }
+  ],
+  "httprequestv2": [
+    {
+      "display_name": "HttpRequestV2",
+      "value": "httprequestv2"
+    }
+  ],
+  "httprequestv3": [
+    {
+      "display_name": "HttpRequestV3",
+      "value": "httprequestv3"
+    }
+  ],
+  "hubspot": [
+    {
+      "display_name": "Hubspot",
+      "value": "hubspot"
+    }
+  ],
+  "hubspotv1": [
+    {
+      "display_name": "Company",
+      "value": "company"
+    },
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Contact List",
+      "value": "contactList"
+    },
+    {
+      "display_name": "Deal",
+      "value": "deal"
+    },
+    {
+      "display_name": "Engagement",
+      "value": "engagement"
+    },
+    {
+      "display_name": "Form",
+      "value": "form"
+    },
+    {
+      "display_name": "Ticket",
+      "value": "ticket"
+    },
+    {
+      "display_name": "ContactList",
+      "value": "contactlist"
+    }
+  ],
+  "hubspotv2": [
+    {
+      "display_name": "Company",
+      "value": "company"
+    },
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Contact List",
+      "value": "contactList"
+    },
+    {
+      "display_name": "Deal",
+      "value": "deal"
+    },
+    {
+      "display_name": "Engagement",
+      "value": "engagement"
+    },
+    {
+      "display_name": "Ticket",
+      "value": "ticket"
+    },
+    {
+      "display_name": "ContactList",
+      "value": "contactlist"
+    }
+  ],
+  "humanticai": [
+    {
+      "display_name": "Profile",
+      "value": "profile"
+    }
+  ],
+  "hunter": [
+    {
+      "display_name": "Hunter",
+      "value": "hunter"
+    }
+  ],
+  "icalendar": [
+    {
+      "display_name": "ICalendar",
+      "value": "icalendar"
+    }
+  ],
+  "if": [
+    {
+      "display_name": "If",
+      "value": "if"
+    }
+  ],
+  "ifv1": [
+    {
+      "display_name": "IfV1",
+      "value": "ifv1"
+    }
+  ],
+  "ifv2": [
+    {
+      "display_name": "IfV2",
+      "value": "ifv2"
+    }
+  ],
+  "intercom": [
+    {
+      "display_name": "Company",
+      "value": "company"
+    },
+    {
+      "display_name": "Lead",
+      "value": "lead"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "interval": [
+    {
+      "display_name": "Interval",
+      "value": "interval"
+    }
+  ],
+  "invoiceninja": [
+    {
+      "display_name": "Bank Transaction",
+      "value": "bank_transaction"
+    },
+    {
+      "display_name": "BankTransaction",
+      "value": "banktransaction"
+    },
+    {
+      "display_name": "Client",
+      "value": "client"
+    },
+    {
+      "display_name": "Expense",
+      "value": "expense"
+    },
+    {
+      "display_name": "Invoice",
+      "value": "invoice"
+    },
+    {
+      "display_name": "Payment",
+      "value": "payment"
+    },
+    {
+      "display_name": "Quote",
+      "value": "quote"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    }
+  ],
+  "itemlists": [
+    {
+      "display_name": "ItemLists",
+      "value": "itemlists"
+    }
+  ],
+  "itemlistsv1": [
+    {
+      "display_name": "Item List",
+      "value": "itemList"
+    }
+  ],
+  "itemlistsv2": [
+    {
+      "display_name": "Item List",
+      "value": "itemList"
+    }
+  ],
+  "itemlistsv3": [
+    {
+      "display_name": "ItemListsV3",
+      "value": "itemlistsv3"
+    }
+  ],
+  "iterable": [
+    {
+      "display_name": "Event",
+      "value": "event"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "User List",
+      "value": "userList"
+    },
+    {
+      "display_name": "UserList",
+      "value": "userlist"
+    }
+  ],
+  "jenkins": [
+    {
+      "display_name": "Build",
+      "value": "build"
+    },
+    {
+      "display_name": "Instance",
+      "value": "instance"
+    },
+    {
+      "display_name": "Job",
+      "value": "job"
+    }
+  ],
+  "jinaai": [
+    {
+      "display_name": "Reader",
+      "value": "reader"
+    },
+    {
+      "display_name": "Research",
+      "value": "research"
+    }
+  ],
+  "jira": [
+    {
+      "display_name": "Issue",
+      "value": "issue"
+    },
+    {
+      "display_name": "Issue Attachment",
+      "value": "issueAttachment"
+    },
+    {
+      "display_name": "Issue Comment",
+      "value": "issueComment"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "IssueAttachment",
+      "value": "issueattachment"
+    },
+    {
+      "display_name": "IssueComment",
+      "value": "issuecomment"
+    }
+  ],
+  "jwt": [
+    {
+      "display_name": "Jwt",
+      "value": "jwt"
+    }
+  ],
+  "kafka": [
+    {
+      "display_name": "Kafka",
+      "value": "kafka"
+    }
+  ],
+  "keap": [
+    {
+      "display_name": "Company",
+      "value": "company"
+    },
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Contact Note",
+      "value": "contactNote"
+    },
+    {
+      "display_name": "Contact Tag",
+      "value": "contactTag"
+    },
+    {
+      "display_name": "Ecommerce Order",
+      "value": "ecommerceOrder"
+    },
+    {
+      "display_name": "Ecommerce Product",
+      "value": "ecommerceProduct"
+    },
+    {
+      "display_name": "Email",
+      "value": "email"
+    },
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "ContactNote",
+      "value": "contactnote"
+    },
+    {
+      "display_name": "ContactTag",
+      "value": "contacttag"
+    },
+    {
+      "display_name": "EcommerceProduct",
+      "value": "ecommerceproduct"
+    }
+  ],
+  "kitemaker": [
+    {
+      "display_name": "Organization",
+      "value": "organization"
+    },
+    {
+      "display_name": "Space",
+      "value": "space"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "Work Item",
+      "value": "workItem"
+    }
+  ],
+  "kobotoolbox": [
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Form",
+      "value": "form"
+    },
+    {
+      "display_name": "Hook",
+      "value": "hook"
+    },
+    {
+      "display_name": "Submission",
+      "value": "submission"
+    }
+  ],
+  "ldap": [
+    {
+      "display_name": "Ldap",
+      "value": "ldap"
+    }
+  ],
+  "lemlist": [
+    {
+      "display_name": "Lemlist",
+      "value": "lemlist"
+    }
+  ],
+  "lemlistv1": [
+    {
+      "display_name": "Activity",
+      "value": "activity"
+    },
+    {
+      "display_name": "Campaign",
+      "value": "campaign"
+    },
+    {
+      "display_name": "Lead",
+      "value": "lead"
+    },
+    {
+      "display_name": "Team",
+      "value": "team"
+    },
+    {
+      "display_name": "Unsubscribe",
+      "value": "unsubscribe"
+    }
+  ],
+  "lemlistv2": [
+    {
+      "display_name": "Activity",
+      "value": "activity"
+    },
+    {
+      "display_name": "Campaign",
+      "value": "campaign"
+    },
+    {
+      "display_name": "Enrichment",
+      "value": "enrich"
+    },
+    {
+      "display_name": "Lead",
+      "value": "lead"
+    },
+    {
+      "display_name": "Team",
+      "value": "team"
+    },
+    {
+      "display_name": "Unsubscribe",
+      "value": "unsubscribe"
+    }
+  ],
+  "line": [
+    {
+      "display_name": "Notification",
+      "value": "notification"
+    }
+  ],
+  "linear": [
+    {
+      "display_name": "Comment",
+      "value": "comment"
+    },
+    {
+      "display_name": "Issue",
+      "value": "issue"
+    }
+  ],
+  "lingvanex": [
+    {
+      "display_name": "LingvaNex",
+      "value": "lingvanex"
+    }
+  ],
+  "linkedin": [
+    {
+      "display_name": "Post",
+      "value": "post"
+    }
+  ],
+  "lonescale": [
+    {
+      "display_name": "List",
+      "value": "list"
+    },
+    {
+      "display_name": "Item",
+      "value": "item"
+    }
+  ],
+  "magento2": [
+    {
+      "display_name": "Customer",
+      "value": "customer"
+    },
+    {
+      "display_name": "Invoice",
+      "value": "invoice"
+    },
+    {
+      "display_name": "Order",
+      "value": "order"
+    },
+    {
+      "display_name": "Product",
+      "value": "product"
+    }
+  ],
+  "mailcheck": [
+    {
+      "display_name": "Email",
+      "value": "email"
+    }
+  ],
+  "mailchimp": [
+    {
+      "display_name": "Campaign",
+      "value": "campaign"
+    },
+    {
+      "display_name": "List Group",
+      "value": "listGroup"
+    },
+    {
+      "display_name": "Member",
+      "value": "member"
+    },
+    {
+      "display_name": "Member Tag",
+      "value": "memberTag"
+    }
+  ],
+  "mailerlite": [
+    {
+      "display_name": "MailerLite",
+      "value": "mailerlite"
+    }
+  ],
+  "mailerlitev1": [
+    {
+      "display_name": "Subscriber",
+      "value": "subscriber"
+    }
+  ],
+  "mailerlitev2": [
+    {
+      "display_name": "Subscriber",
+      "value": "subscriber"
+    }
+  ],
+  "mailgun": [
+    {
+      "display_name": "Mailgun",
+      "value": "mailgun"
+    }
+  ],
+  "mailjet": [
+    {
+      "display_name": "Email",
+      "value": "email"
+    },
+    {
+      "display_name": "SMS",
+      "value": "sms"
+    },
+    {
+      "display_name": "Sms",
+      "value": "sms"
+    }
+  ],
+  "mandrill": [
+    {
+      "display_name": "Message",
+      "value": "message"
+    }
+  ],
+  "markdown": [
+    {
+      "display_name": "Markdown",
+      "value": "markdown"
+    }
+  ],
+  "marketstack": [
+    {
+      "display_name": "End-of-Day Data",
+      "value": "endOfDayData"
+    },
+    {
+      "display_name": "Exchange",
+      "value": "exchange"
+    },
+    {
+      "display_name": "Ticker",
+      "value": "ticker"
+    }
+  ],
+  "matrix": [
+    {
+      "display_name": "Account",
+      "value": "account"
+    },
+    {
+      "display_name": "Event",
+      "value": "event"
+    },
+    {
+      "display_name": "Media",
+      "value": "media"
+    },
+    {
+      "display_name": "Message",
+      "value": "message"
+    },
+    {
+      "display_name": "Room",
+      "value": "room"
+    },
+    {
+      "display_name": "Room Member",
+      "value": "roomMember"
+    },
+    {
+      "display_name": "RoomMember",
+      "value": "roommember"
+    }
+  ],
+  "mattermost": [
+    {
+      "display_name": "Mattermost",
+      "value": "mattermost"
+    }
+  ],
+  "mattermostv1": [
+    {
+      "display_name": "MattermostV1",
+      "value": "mattermostv1"
+    }
+  ],
+  "mautic": [
+    {
+      "display_name": "Campaign Contact",
+      "value": "campaignContact"
+    },
+    {
+      "display_name": "Company",
+      "value": "company"
+    },
+    {
+      "display_name": "Company Contact",
+      "value": "companyContact"
+    },
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Contact Segment",
+      "value": "contactSegment"
+    },
+    {
+      "display_name": "Segment Email",
+      "value": "segmentEmail"
+    },
+    {
+      "display_name": "CampaignContact",
+      "value": "campaigncontact"
+    },
+    {
+      "display_name": "CompanyContact",
+      "value": "companycontact"
+    },
+    {
+      "display_name": "ContactSegment",
+      "value": "contactsegment"
+    },
+    {
+      "display_name": "SegmentEmail",
+      "value": "segmentemail"
+    }
+  ],
+  "medium": [
+    {
+      "display_name": "Post",
+      "value": "post"
+    },
+    {
+      "display_name": "Publication",
+      "value": "publication"
+    }
+  ],
+  "merge": [
+    {
+      "display_name": "Merge",
+      "value": "merge"
+    }
+  ],
+  "mergev1": [
+    {
+      "display_name": "MergeV1",
+      "value": "mergev1"
+    }
+  ],
+  "mergev2": [
+    {
+      "display_name": "MergeV2",
+      "value": "mergev2"
+    }
+  ],
+  "mergev3": [
+    {
+      "display_name": "MergeV3",
+      "value": "mergev3"
+    }
+  ],
+  "messagebird": [
+    {
+      "display_name": "SMS",
+      "value": "sms"
+    },
+    {
+      "display_name": "Balance",
+      "value": "balance"
+    }
+  ],
+  "metabase": [
+    {
+      "display_name": "Alert",
+      "value": "alerts"
+    },
+    {
+      "display_name": "Database",
+      "value": "databases"
+    },
+    {
+      "display_name": "Metric",
+      "value": "metrics"
+    },
+    {
+      "display_name": "Question",
+      "value": "questions"
+    },
+    {
+      "display_name": "Alerts",
+      "value": "alerts"
+    },
+    {
+      "display_name": "Databases",
+      "value": "databases"
+    },
+    {
+      "display_name": "Metrics",
+      "value": "metrics"
+    },
+    {
+      "display_name": "Questions",
+      "value": "questions"
+    }
+  ],
+  "azurecosmosdb": [
+    {
+      "display_name": "Container",
+      "value": "container"
+    },
+    {
+      "display_name": "Item",
+      "value": "item"
+    }
+  ],
+  "microsoftdynamicscrm": [
+    {
+      "display_name": "Account",
+      "value": "account"
+    }
+  ],
+  "microsoftentra": [
+    {
+      "display_name": "Group",
+      "value": "group"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "microsoftexcel": [
+    {
+      "display_name": "MicrosoftExcel",
+      "value": "microsoftexcel"
+    }
+  ],
+  "microsoftexcelv1": [
+    {
+      "display_name": "Table",
+      "value": "table"
+    },
+    {
+      "display_name": "Workbook",
+      "value": "workbook"
+    },
+    {
+      "display_name": "Worksheet",
+      "value": "worksheet"
+    }
+  ],
+  "microsoftexcelv2": [
+    {
+      "display_name": "MicrosoftExcelV2",
+      "value": "microsoftexcelv2"
+    }
+  ],
+  "microsoftgraphsecurity": [
+    {
+      "display_name": "Secure Score",
+      "value": "secureScore"
+    },
+    {
+      "display_name": "Secure Score Control Profile",
+      "value": "secureScoreControlProfile"
+    }
+  ],
+  "microsoftonedrive": [
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Folder",
+      "value": "folder"
+    }
+  ],
+  "microsoftoutlook": [
+    {
+      "display_name": "MicrosoftOutlook",
+      "value": "microsoftoutlook"
+    }
+  ],
+  "microsoftoutlookv1": [
+    {
+      "display_name": "Draft",
+      "value": "draft"
+    },
+    {
+      "display_name": "Folder",
+      "value": "folder"
+    },
+    {
+      "display_name": "Folder Message",
+      "value": "folderMessage"
+    },
+    {
+      "display_name": "Message",
+      "value": "message"
+    },
+    {
+      "display_name": "Message Attachment",
+      "value": "messageAttachment"
+    },
+    {
+      "display_name": "DraftMessageShared",
+      "value": "draftmessageshared"
+    },
+    {
+      "display_name": "MessageAttachment",
+      "value": "messageattachment"
+    }
+  ],
+  "microsoftoutlookv2": [
+    {
+      "display_name": "MicrosoftOutlookV2",
+      "value": "microsoftoutlookv2"
+    }
+  ],
+  "microsoftsharepoint": [
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Item",
+      "value": "item"
+    },
+    {
+      "display_name": "List",
+      "value": "list"
+    }
+  ],
+  "microsoftsql": [
+    {
+      "display_name": "MicrosoftSql",
+      "value": "microsoftsql"
+    }
+  ],
+  "azurestorage": [
+    {
+      "display_name": "Blob",
+      "value": "blob"
+    },
+    {
+      "display_name": "Container",
+      "value": "container"
+    }
+  ],
+  "microsoftteams": [
+    {
+      "display_name": "MicrosoftTeams",
+      "value": "microsoftteams"
+    }
+  ],
+  "microsoftteamsv1": [
+    {
+      "display_name": "Channel",
+      "value": "channel"
+    },
+    {
+      "display_name": "Channel Message (Beta)",
+      "value": "channelMessage"
+    },
+    {
+      "display_name": "Chat Message",
+      "value": "chatMessage"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    },
+    {
+      "display_name": "ChannelMessage",
+      "value": "channelmessage"
+    },
+    {
+      "display_name": "ChatMessage",
+      "value": "chatmessage"
+    }
+  ],
+  "microsoftteamsv2": [
+    {
+      "display_name": "MicrosoftTeamsV2",
+      "value": "microsoftteamsv2"
+    }
+  ],
+  "microsofttodo": [
+    {
+      "display_name": "Linked Resource",
+      "value": "linkedResource"
+    },
+    {
+      "display_name": "List",
+      "value": "list"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    },
+    {
+      "display_name": "LinkedResource",
+      "value": "linkedresource"
+    }
+  ],
+  "mindee": [
+    {
+      "display_name": "Invoice",
+      "value": "invoice"
+    },
+    {
+      "display_name": "Receipt",
+      "value": "receipt"
+    }
+  ],
+  "misp": [
+    {
+      "display_name": "Attribute",
+      "value": "attribute"
+    },
+    {
+      "display_name": "Event",
+      "value": "event"
+    },
+    {
+      "display_name": "Event Tag",
+      "value": "eventTag"
+    },
+    {
+      "display_name": "Feed",
+      "value": "feed"
+    },
+    {
+      "display_name": "Galaxy",
+      "value": "galaxy"
+    },
+    {
+      "display_name": "Noticelist",
+      "value": "noticelist"
+    },
+    {
+      "display_name": "Object",
+      "value": "object"
+    },
+    {
+      "display_name": "Organisation",
+      "value": "organisation"
+    },
+    {
+      "display_name": "Tag",
+      "value": "tag"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "Warninglist",
+      "value": "warninglist"
+    }
+  ],
+  "mistralai": [
+    {
+      "display_name": "Document",
+      "value": "document"
+    }
+  ],
+  "mocean": [
+    {
+      "display_name": "SMS",
+      "value": "sms"
+    },
+    {
+      "display_name": "Voice",
+      "value": "voice"
+    }
+  ],
+  "mondaycom": [
+    {
+      "display_name": "Board",
+      "value": "board"
+    },
+    {
+      "display_name": "Board Column",
+      "value": "boardColumn"
+    },
+    {
+      "display_name": "Board Group",
+      "value": "boardGroup"
+    },
+    {
+      "display_name": "Board Item",
+      "value": "boardItem"
+    },
+    {
+      "display_name": "BoardColumn",
+      "value": "boardcolumn"
+    },
+    {
+      "display_name": "BoardGroup",
+      "value": "boardgroup"
+    },
+    {
+      "display_name": "BoardItem",
+      "value": "boarditem"
+    }
+  ],
+  "mongodb": [
+    {
+      "display_name": "MongoDb",
+      "value": "mongodb"
+    }
+  ],
+  "monicacrm": [
+    {
+      "display_name": "Activity",
+      "value": "activity"
+    },
+    {
+      "display_name": "Call",
+      "value": "call"
+    },
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Contact Field",
+      "value": "contactField"
+    },
+    {
+      "display_name": "Contact Tag",
+      "value": "contactTag"
+    },
+    {
+      "display_name": "Conversation",
+      "value": "conversation"
+    },
+    {
+      "display_name": "Conversation Message",
+      "value": "conversationMessage"
+    },
+    {
+      "display_name": "Journal Entry",
+      "value": "journalEntry"
+    },
+    {
+      "display_name": "Note",
+      "value": "note"
+    },
+    {
+      "display_name": "Reminder",
+      "value": "reminder"
+    },
+    {
+      "display_name": "Tag",
+      "value": "tag"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    }
+  ],
+  "movebinarydata": [
+    {
+      "display_name": "MoveBinaryData",
+      "value": "movebinarydata"
+    }
+  ],
+  "mqtt": [
+    {
+      "display_name": "Mqtt",
+      "value": "mqtt"
+    }
+  ],
+  "msg91": [
+    {
+      "display_name": "SMS",
+      "value": "sms"
+    }
+  ],
+  "mysql": [
+    {
+      "display_name": "MySql",
+      "value": "mysql"
+    }
+  ],
+  "mysqlv1": [
+    {
+      "display_name": "MySqlV1",
+      "value": "mysqlv1"
+    }
+  ],
+  "mysqlv2": [
+    {
+      "display_name": "MySqlV2",
+      "value": "mysqlv2"
+    }
+  ],
+  "n8n": [
+    {
+      "display_name": "Audit",
+      "value": "audit"
+    },
+    {
+      "display_name": "Credential",
+      "value": "credential"
+    },
+    {
+      "display_name": "Execution",
+      "value": "execution"
+    },
+    {
+      "display_name": "Workflow",
+      "value": "workflow"
+    }
+  ],
+  "n8ntrainingcustomerdatastore": [
+    {
+      "display_name": "N8nTrainingCustomerDatastore",
+      "value": "n8ntrainingcustomerdatastore"
+    }
+  ],
+  "n8ntrainingcustomermessenger": [
+    {
+      "display_name": "N8nTrainingCustomerMessenger",
+      "value": "n8ntrainingcustomermessenger"
+    }
+  ],
+  "nasa": [
+    {
+      "display_name": "Asteroid Neo-Browse",
+      "value": "asteroidNeoBrowse"
+    },
+    {
+      "display_name": "Asteroid Neo-Feed",
+      "value": "asteroidNeoFeed"
+    },
+    {
+      "display_name": "Asteroid Neo-Lookup",
+      "value": "asteroidNeoLookup"
+    },
+    {
+      "display_name": "Astronomy Picture of the Day",
+      "value": "astronomyPictureOfTheDay"
+    },
+    {
+      "display_name": "DONKI Coronal Mass Ejection",
+      "value": "donkiCoronalMassEjection"
+    },
+    {
+      "display_name": "DONKI High Speed Stream",
+      "value": "donkiHighSpeedStream"
+    },
+    {
+      "display_name": "DONKI Interplanetary Shock",
+      "value": "donkiInterplanetaryShock"
+    },
+    {
+      "display_name": "DONKI Magnetopause Crossing",
+      "value": "donkiMagnetopauseCrossing"
+    },
+    {
+      "display_name": "DONKI Notification",
+      "value": "donkiNotifications"
+    },
+    {
+      "display_name": "DONKI Radiation Belt Enhancement",
+      "value": "donkiRadiationBeltEnhancement"
+    },
+    {
+      "display_name": "DONKI Solar Energetic Particle",
+      "value": "donkiSolarEnergeticParticle"
+    },
+    {
+      "display_name": "DONKI Solar Flare",
+      "value": "donkiSolarFlare"
+    },
+    {
+      "display_name": "DONKI WSA+EnlilSimulation",
+      "value": "donkiWsaEnlilSimulation"
+    },
+    {
+      "display_name": "Earth Asset",
+      "value": "earthAssets"
+    },
+    {
+      "display_name": "Earth Imagery",
+      "value": "earthImagery"
+    }
+  ],
+  "netlify": [
+    {
+      "display_name": "Deploy",
+      "value": "deploy"
+    },
+    {
+      "display_name": "Site",
+      "value": "site"
+    }
+  ],
+  "netscaleradc": [
+    {
+      "display_name": "Certificate",
+      "value": "certificate"
+    },
+    {
+      "display_name": "File",
+      "value": "file"
+    }
+  ],
+  "nextcloud": [
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Folder",
+      "value": "folder"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "nocodb": [
+    {
+      "display_name": "Row",
+      "value": "row"
+    },
+    {
+      "display_name": "Operation",
+      "value": "operation"
+    }
+  ],
+  "noop": [
+    {
+      "display_name": "NoOp",
+      "value": "noop"
+    }
+  ],
+  "notion": [
+    {
+      "display_name": "Notion",
+      "value": "notion"
+    }
+  ],
+  "notionv1": [
+    {
+      "display_name": "Version",
+      "value": "version"
+    }
+  ],
+  "notionv2": [
+    {
+      "display_name": "Version",
+      "value": "version"
+    }
+  ],
+  "npm": [
+    {
+      "display_name": "Package",
+      "value": "package"
+    },
+    {
+      "display_name": "Distribution Tag",
+      "value": "distTag"
+    },
+    {
+      "display_name": "DistTag",
+      "value": "disttag"
+    }
+  ],
+  "odoo": [
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Custom Resource",
+      "value": "custom"
+    },
+    {
+      "display_name": "Note",
+      "value": "note"
+    },
+    {
+      "display_name": "Opportunity",
+      "value": "opportunity"
+    }
+  ],
+  "okta": [
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "onesimpleapi": [
+    {
+      "display_name": "Information",
+      "value": "information"
+    },
+    {
+      "display_name": "Social Profile",
+      "value": "socialProfile"
+    },
+    {
+      "display_name": "Utility",
+      "value": "utility"
+    },
+    {
+      "display_name": "Website",
+      "value": "website"
+    }
+  ],
+  "onfleet": [
+    {
+      "display_name": "Admin",
+      "value": "admin"
+    },
+    {
+      "display_name": "Container",
+      "value": "container"
+    },
+    {
+      "display_name": "Destination",
+      "value": "destination"
+    },
+    {
+      "display_name": "Hub",
+      "value": "hub"
+    },
+    {
+      "display_name": "Organization",
+      "value": "organization"
+    },
+    {
+      "display_name": "Recipient",
+      "value": "recipient"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    },
+    {
+      "display_name": "Team",
+      "value": "team"
+    },
+    {
+      "display_name": "Worker",
+      "value": "worker"
+    }
+  ],
+  "openai": [
+    {
+      "display_name": "Chat",
+      "value": "chat"
+    },
+    {
+      "display_name": "Image",
+      "value": "image"
+    },
+    {
+      "display_name": "Text",
+      "value": "text"
+    }
+  ],
+  "openthesaurus": [
+    {
+      "display_name": "OpenThesaurus",
+      "value": "openthesaurus"
+    }
+  ],
+  "openweathermap": [
+    {
+      "display_name": "OpenWeatherMap",
+      "value": "openweathermap"
+    }
+  ],
+  "oraclesql": [
+    {
+      "display_name": "OracleSql",
+      "value": "oraclesql"
+    }
+  ],
+  "orbit": [
+    {
+      "display_name": "Activity",
+      "value": "activity"
+    },
+    {
+      "display_name": "Member",
+      "value": "member"
+    },
+    {
+      "display_name": "Note",
+      "value": "note"
+    },
+    {
+      "display_name": "Post",
+      "value": "post"
+    }
+  ],
+  "oura": [
+    {
+      "display_name": "Profile",
+      "value": "profile"
+    },
+    {
+      "display_name": "Summary",
+      "value": "summary"
+    }
+  ],
+  "paddle": [
+    {
+      "display_name": "Coupon",
+      "value": "coupon"
+    },
+    {
+      "display_name": "Payment",
+      "value": "payment"
+    },
+    {
+      "display_name": "Plan",
+      "value": "plan"
+    },
+    {
+      "display_name": "Product",
+      "value": "product"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "Order",
+      "value": "order"
+    }
+  ],
+  "pagerduty": [
+    {
+      "display_name": "Incident",
+      "value": "incident"
+    },
+    {
+      "display_name": "Incident Note",
+      "value": "incidentNote"
+    },
+    {
+      "display_name": "Log Entry",
+      "value": "logEntry"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "IncidentNote",
+      "value": "incidentnote"
+    },
+    {
+      "display_name": "LogEntry",
+      "value": "logentry"
+    }
+  ],
+  "paypal": [
+    {
+      "display_name": "Payout",
+      "value": "payout"
+    },
+    {
+      "display_name": "Payout Item",
+      "value": "payoutItem"
+    },
+    {
+      "display_name": "Payment",
+      "value": "payment"
+    }
+  ],
+  "peekalink": [
+    {
+      "display_name": "Peekalink",
+      "value": "peekalink"
+    }
+  ],
+  "perplexity": [
+    {
+      "display_name": "Chat",
+      "value": "chat"
+    }
+  ],
+  "phantombuster": [
+    {
+      "display_name": "Agent",
+      "value": "agent"
+    }
+  ],
+  "philipshue": [
+    {
+      "display_name": "Light",
+      "value": "light"
+    }
+  ],
+  "pipedrive": [
+    {
+      "display_name": "Activity",
+      "value": "activity"
+    },
+    {
+      "display_name": "Deal",
+      "value": "deal"
+    },
+    {
+      "display_name": "Deal Activity",
+      "value": "dealActivity"
+    },
+    {
+      "display_name": "Deal Product",
+      "value": "dealProduct"
+    },
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Lead",
+      "value": "lead"
+    },
+    {
+      "display_name": "Note",
+      "value": "note"
+    },
+    {
+      "display_name": "Organization",
+      "value": "organization"
+    },
+    {
+      "display_name": "Person",
+      "value": "person"
+    },
+    {
+      "display_name": "Product",
+      "value": "product"
+    }
+  ],
+  "plivo": [
+    {
+      "display_name": "Call",
+      "value": "call"
+    },
+    {
+      "display_name": "SMS",
+      "value": "sms"
+    },
+    {
+      "display_name": "Mms",
+      "value": "mms"
+    },
+    {
+      "display_name": "Sms",
+      "value": "sms"
+    }
+  ],
+  "postbin": [
+    {
+      "display_name": "Bin",
+      "value": "bin"
+    },
+    {
+      "display_name": "Request",
+      "value": "request"
+    }
+  ],
+  "postgres": [
+    {
+      "display_name": "Postgres",
+      "value": "postgres"
+    }
+  ],
+  "postgresv1": [
+    {
+      "display_name": "PostgresV1",
+      "value": "postgresv1"
+    }
+  ],
+  "postgresv2": [
+    {
+      "display_name": "PostgresV2",
+      "value": "postgresv2"
+    }
+  ],
+  "posthog": [
+    {
+      "display_name": "Alias",
+      "value": "alias"
+    },
+    {
+      "display_name": "Event",
+      "value": "event"
+    },
+    {
+      "display_name": "Identity",
+      "value": "identity"
+    },
+    {
+      "display_name": "Track",
+      "value": "track"
+    }
+  ],
+  "profitwell": [
+    {
+      "display_name": "Company",
+      "value": "company"
+    },
+    {
+      "display_name": "Metric",
+      "value": "metric"
+    }
+  ],
+  "pushbullet": [
+    {
+      "display_name": "Push",
+      "value": "push"
+    }
+  ],
+  "pushcut": [
+    {
+      "display_name": "Notification",
+      "value": "notification"
+    }
+  ],
+  "pushover": [
+    {
+      "display_name": "Message",
+      "value": "message"
+    }
+  ],
+  "questdb": [
+    {
+      "display_name": "QuestDb",
+      "value": "questdb"
+    }
+  ],
+  "quickbase": [
+    {
+      "display_name": "Field",
+      "value": "field"
+    },
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Record",
+      "value": "record"
+    },
+    {
+      "display_name": "Report",
+      "value": "report"
+    }
+  ],
+  "quickbooks": [
+    {
+      "display_name": "Bill",
+      "value": "bill"
+    },
+    {
+      "display_name": "Customer",
+      "value": "customer"
+    },
+    {
+      "display_name": "Employee",
+      "value": "employee"
+    },
+    {
+      "display_name": "Estimate",
+      "value": "estimate"
+    },
+    {
+      "display_name": "Invoice",
+      "value": "invoice"
+    },
+    {
+      "display_name": "Item",
+      "value": "item"
+    },
+    {
+      "display_name": "Payment",
+      "value": "payment"
+    },
+    {
+      "display_name": "Purchase",
+      "value": "purchase"
+    },
+    {
+      "display_name": "Transaction",
+      "value": "transaction"
+    },
+    {
+      "display_name": "Vendor",
+      "value": "vendor"
+    }
+  ],
+  "quickchart": [
+    {
+      "display_name": "QuickChart",
+      "value": "quickchart"
+    }
+  ],
+  "rabbitmq": [
+    {
+      "display_name": "RabbitMQ",
+      "value": "rabbitmq"
+    }
+  ],
+  "raindrop": [
+    {
+      "display_name": "Bookmark",
+      "value": "bookmark"
+    },
+    {
+      "display_name": "Collection",
+      "value": "collection"
+    },
+    {
+      "display_name": "Tag",
+      "value": "tag"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "readbinaryfile": [
+    {
+      "display_name": "ReadBinaryFile",
+      "value": "readbinaryfile"
+    }
+  ],
+  "readbinaryfiles": [
+    {
+      "display_name": "ReadBinaryFiles",
+      "value": "readbinaryfiles"
+    }
+  ],
+  "readpdf": [
+    {
+      "display_name": "ReadPDF",
+      "value": "readpdf"
+    }
+  ],
+  "reddit": [
+    {
+      "display_name": "Post",
+      "value": "post"
+    },
+    {
+      "display_name": "Post Comment",
+      "value": "postComment"
+    },
+    {
+      "display_name": "Profile",
+      "value": "profile"
+    },
+    {
+      "display_name": "Subreddit",
+      "value": "subreddit"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "PostComment",
+      "value": "postcomment"
+    }
+  ],
+  "redis": [
+    {
+      "display_name": "Redis",
+      "value": "redis"
+    }
+  ],
+  "renamekeys": [
+    {
+      "display_name": "RenameKeys",
+      "value": "renamekeys"
+    }
+  ],
+  "respondtowebhook": [
+    {
+      "display_name": "RespondToWebhook",
+      "value": "respondtowebhook"
+    }
+  ],
+  "rocketchat": [
+    {
+      "display_name": "Chat",
+      "value": "chat"
+    }
+  ],
+  "rssfeedread": [
+    {
+      "display_name": "RssFeedRead",
+      "value": "rssfeedread"
+    }
+  ],
+  "rundeck": [
+    {
+      "display_name": "Job",
+      "value": "job"
+    }
+  ],
+  "s3": [
+    {
+      "display_name": "Bucket",
+      "value": "bucket"
+    },
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Folder",
+      "value": "folder"
+    }
+  ],
+  "salesforce": [
+    {
+      "display_name": "Account",
+      "value": "account"
+    },
+    {
+      "display_name": "Attachment",
+      "value": "attachment"
+    },
+    {
+      "display_name": "Case",
+      "value": "case"
+    },
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Custom Object",
+      "value": "customObject"
+    },
+    {
+      "display_name": "Document",
+      "value": "document"
+    },
+    {
+      "display_name": "Flow",
+      "value": "flow"
+    },
+    {
+      "display_name": "Lead",
+      "value": "lead"
+    },
+    {
+      "display_name": "Opportunity",
+      "value": "opportunity"
+    },
+    {
+      "display_name": "Search",
+      "value": "search"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "CustomObject",
+      "value": "customobject"
+    }
+  ],
+  "salesmate": [
+    {
+      "display_name": "Activity",
+      "value": "activity"
+    },
+    {
+      "display_name": "Company",
+      "value": "company"
+    },
+    {
+      "display_name": "Deal",
+      "value": "deal"
+    }
+  ],
+  "seatable": [
+    {
+      "display_name": "Row",
+      "value": "row"
+    },
+    {
+      "display_name": "Base",
+      "value": "base"
+    },
+    {
+      "display_name": "Link",
+      "value": "link"
+    },
+    {
+      "display_name": "Asset",
+      "value": "asset"
+    }
+  ],
+  "seatablev1": [
+    {
+      "display_name": "SeaTableV1",
+      "value": "seatablev1"
+    }
+  ],
+  "seatablev2": [
+    {
+      "display_name": "SeaTableV2",
+      "value": "seatablev2"
+    }
+  ],
+  "securityscorecard": [
+    {
+      "display_name": "Company",
+      "value": "company"
+    },
+    {
+      "display_name": "Industry",
+      "value": "industry"
+    },
+    {
+      "display_name": "Invite",
+      "value": "invite"
+    },
+    {
+      "display_name": "Portfolio",
+      "value": "portfolio"
+    },
+    {
+      "display_name": "Portfolio Company",
+      "value": "portfolioCompany"
+    },
+    {
+      "display_name": "Report",
+      "value": "report"
+    }
+  ],
+  "segment": [
+    {
+      "display_name": "Group",
+      "value": "group"
+    },
+    {
+      "display_name": "Identify",
+      "value": "identify"
+    },
+    {
+      "display_name": "Track",
+      "value": "track"
+    }
+  ],
+  "sendgrid": [
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "List",
+      "value": "list"
+    },
+    {
+      "display_name": "Mail",
+      "value": "mail"
+    }
+  ],
+  "sendy": [
+    {
+      "display_name": "Campaign",
+      "value": "campaign"
+    },
+    {
+      "display_name": "Subscriber",
+      "value": "subscriber"
+    }
+  ],
+  "sentryio": [
+    {
+      "display_name": "Event",
+      "value": "event"
+    },
+    {
+      "display_name": "Issue",
+      "value": "issue"
+    },
+    {
+      "display_name": "Organization",
+      "value": "organization"
+    },
+    {
+      "display_name": "Project",
+      "value": "project"
+    },
+    {
+      "display_name": "Release",
+      "value": "release"
+    },
+    {
+      "display_name": "Team",
+      "value": "team"
+    }
+  ],
+  "servicenow": [
+    {
+      "display_name": "Attachment",
+      "value": "attachment"
+    },
+    {
+      "display_name": "Business Service",
+      "value": "businessService"
+    },
+    {
+      "display_name": "Configuration Item",
+      "value": "configurationItems"
+    },
+    {
+      "display_name": "Department",
+      "value": "department"
+    },
+    {
+      "display_name": "Dictionary",
+      "value": "dictionary"
+    },
+    {
+      "display_name": "Incident",
+      "value": "incident"
+    },
+    {
+      "display_name": "Table Record",
+      "value": "tableRecord"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "User Group",
+      "value": "userGroup"
+    },
+    {
+      "display_name": "User Role",
+      "value": "userRole"
+    },
+    {
+      "display_name": "BusinessService",
+      "value": "businessservice"
+    },
+    {
+      "display_name": "ConfigurationItems",
+      "value": "configurationitems"
+    },
+    {
+      "display_name": "TableRecord",
+      "value": "tablerecord"
+    },
+    {
+      "display_name": "UserGroup",
+      "value": "usergroup"
+    },
+    {
+      "display_name": "UserRole",
+      "value": "userrole"
+    }
+  ],
+  "set": [
+    {
+      "display_name": "Set",
+      "value": "set"
+    }
+  ],
+  "setv1": [
+    {
+      "display_name": "SetV1",
+      "value": "setv1"
+    }
+  ],
+  "setv2": [
+    {
+      "display_name": "SetV2",
+      "value": "setv2"
+    }
+  ],
+  "shopify": [
+    {
+      "display_name": "Order",
+      "value": "order"
+    },
+    {
+      "display_name": "Product",
+      "value": "product"
+    }
+  ],
+  "signl4": [
+    {
+      "display_name": "Alert",
+      "value": "alert"
+    }
+  ],
+  "simulate": [
+    {
+      "display_name": "Simulate",
+      "value": "simulate"
+    }
+  ],
+  "slack": [
+    {
+      "display_name": "Slack",
+      "value": "slack"
+    }
+  ],
+  "slackv1": [
+    {
+      "display_name": "Channel",
+      "value": "channel"
+    },
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Message",
+      "value": "message"
+    },
+    {
+      "display_name": "Reaction",
+      "value": "reaction"
+    },
+    {
+      "display_name": "Star",
+      "value": "star"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "User Group",
+      "value": "userGroup"
+    },
+    {
+      "display_name": "User Profile",
+      "value": "userProfile"
+    },
+    {
+      "display_name": "UserGroup",
+      "value": "usergroup"
+    },
+    {
+      "display_name": "UserProfile",
+      "value": "userprofile"
+    }
+  ],
+  "slackv2": [
+    {
+      "display_name": "Channel",
+      "value": "channel"
+    },
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Message",
+      "value": "message"
+    },
+    {
+      "display_name": "Reaction",
+      "value": "reaction"
+    },
+    {
+      "display_name": "Star",
+      "value": "star"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "User Group",
+      "value": "userGroup"
+    },
+    {
+      "display_name": "UserGroup",
+      "value": "usergroup"
+    }
+  ],
+  "sms77": [
+    {
+      "display_name": "SMS",
+      "value": "sms"
+    },
+    {
+      "display_name": "Voice Call",
+      "value": "voice"
+    }
+  ],
+  "snowflake": [
+    {
+      "display_name": "Snowflake",
+      "value": "snowflake"
+    }
+  ],
+  "splitinbatches": [
+    {
+      "display_name": "SplitInBatches",
+      "value": "splitinbatches"
+    }
+  ],
+  "splitinbatchesv1": [
+    {
+      "display_name": "SplitInBatchesV1",
+      "value": "splitinbatchesv1"
+    }
+  ],
+  "splitinbatchesv2": [
+    {
+      "display_name": "SplitInBatchesV2",
+      "value": "splitinbatchesv2"
+    }
+  ],
+  "splitinbatchesv3": [
+    {
+      "display_name": "SplitInBatchesV3",
+      "value": "splitinbatchesv3"
+    }
+  ],
+  "splunk": [
+    {
+      "display_name": "Splunk",
+      "value": "splunk"
+    }
+  ],
+  "splunkv1": [
+    {
+      "display_name": "Fired Alert",
+      "value": "firedAlert"
+    },
+    {
+      "display_name": "Search Configuration",
+      "value": "searchConfiguration"
+    },
+    {
+      "display_name": "Search Job",
+      "value": "searchJob"
+    },
+    {
+      "display_name": "Search Result",
+      "value": "searchResult"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "splunkv2": [
+    {
+      "display_name": "SplunkV2",
+      "value": "splunkv2"
+    }
+  ],
+  "spontit": [
+    {
+      "display_name": "Push",
+      "value": "push"
+    }
+  ],
+  "spotify": [
+    {
+      "display_name": "Album",
+      "value": "album"
+    },
+    {
+      "display_name": "Artist",
+      "value": "artist"
+    },
+    {
+      "display_name": "Library",
+      "value": "library"
+    },
+    {
+      "display_name": "My Data",
+      "value": "myData"
+    },
+    {
+      "display_name": "Player",
+      "value": "player"
+    },
+    {
+      "display_name": "Playlist",
+      "value": "playlist"
+    },
+    {
+      "display_name": "Track",
+      "value": "track"
+    }
+  ],
+  "spreadsheetfile": [
+    {
+      "display_name": "SpreadsheetFile",
+      "value": "spreadsheetfile"
+    }
+  ],
+  "spreadsheetfilev1": [
+    {
+      "display_name": "SpreadsheetFileV1",
+      "value": "spreadsheetfilev1"
+    }
+  ],
+  "spreadsheetfilev2": [
+    {
+      "display_name": "SpreadsheetFileV2",
+      "value": "spreadsheetfilev2"
+    }
+  ],
+  "ssh": [
+    {
+      "display_name": "Command",
+      "value": "command"
+    },
+    {
+      "display_name": "File",
+      "value": "file"
+    }
+  ],
+  "stackby": [
+    {
+      "display_name": "Stackby",
+      "value": "stackby"
+    }
+  ],
+  "start": [
+    {
+      "display_name": "Start",
+      "value": "start"
+    }
+  ],
+  "stickynote": [
+    {
+      "display_name": "StickyNote",
+      "value": "stickynote"
+    }
+  ],
+  "stopanderror": [
+    {
+      "display_name": "StopAndError",
+      "value": "stopanderror"
+    }
+  ],
+  "storyblok": [
+    {
+      "display_name": "Story",
+      "value": "story"
+    },
+    {
+      "display_name": "StoryContent",
+      "value": "storycontent"
+    },
+    {
+      "display_name": "StoryManagement",
+      "value": "storymanagement"
+    }
+  ],
+  "strapi": [
+    {
+      "display_name": "Entry",
+      "value": "entry"
+    }
+  ],
+  "strava": [
+    {
+      "display_name": "Activity",
+      "value": "activity"
+    }
+  ],
+  "stripe": [
+    {
+      "display_name": "Balance",
+      "value": "balance"
+    },
+    {
+      "display_name": "Charge",
+      "value": "charge"
+    },
+    {
+      "display_name": "Coupon",
+      "value": "coupon"
+    },
+    {
+      "display_name": "Customer",
+      "value": "customer"
+    },
+    {
+      "display_name": "Customer Card",
+      "value": "customerCard"
+    },
+    {
+      "display_name": "Source",
+      "value": "source"
+    },
+    {
+      "display_name": "Token",
+      "value": "token"
+    }
+  ],
+  "supabase": [
+    {
+      "display_name": "Row",
+      "value": "row"
+    }
+  ],
+  "switch": [
+    {
+      "display_name": "Switch",
+      "value": "switch"
+    }
+  ],
+  "switchv1": [
+    {
+      "display_name": "SwitchV1",
+      "value": "switchv1"
+    }
+  ],
+  "switchv2": [
+    {
+      "display_name": "SwitchV2",
+      "value": "switchv2"
+    }
+  ],
+  "switchv3": [
+    {
+      "display_name": "SwitchV3",
+      "value": "switchv3"
+    }
+  ],
+  "syncromsp": [
+    {
+      "display_name": "SyncroMsp",
+      "value": "syncromsp"
+    }
+  ],
+  "syncromspv1": [
+    {
+      "display_name": "SyncroMspV1",
+      "value": "syncromspv1"
+    }
+  ],
+  "taiga": [
+    {
+      "display_name": "Epic",
+      "value": "epic"
+    },
+    {
+      "display_name": "Issue",
+      "value": "issue"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    },
+    {
+      "display_name": "User Story",
+      "value": "userStory"
+    }
+  ],
+  "tapfiliate": [
+    {
+      "display_name": "Affiliate",
+      "value": "affiliate"
+    },
+    {
+      "display_name": "Affiliate Metadata",
+      "value": "affiliateMetadata"
+    },
+    {
+      "display_name": "Program Affiliate",
+      "value": "programAffiliate"
+    },
+    {
+      "display_name": "AffiliateMetadata",
+      "value": "affiliatemetadata"
+    },
+    {
+      "display_name": "ProgramAffiliate",
+      "value": "programaffiliate"
+    }
+  ],
+  "telegram": [
+    {
+      "display_name": "Chat",
+      "value": "chat"
+    },
+    {
+      "display_name": "Callback",
+      "value": "callback"
+    },
+    {
+      "display_name": "File",
+      "value": "file"
+    },
+    {
+      "display_name": "Message",
+      "value": "message"
+    }
+  ],
+  "thehive": [
+    {
+      "display_name": "Alert",
+      "value": "alert"
+    },
+    {
+      "display_name": "Case",
+      "value": "case"
+    },
+    {
+      "display_name": "Log",
+      "value": "log"
+    },
+    {
+      "display_name": "Observable",
+      "value": "observable"
+    },
+    {
+      "display_name": "Task",
+      "value": "task"
+    }
+  ],
+  "thehiveproject": [
+    {
+      "display_name": "TheHiveProject",
+      "value": "thehiveproject"
+    }
+  ],
+  "timescaledb": [
+    {
+      "display_name": "TimescaleDb",
+      "value": "timescaledb"
+    }
+  ],
+  "todoist": [
+    {
+      "display_name": "Todoist",
+      "value": "todoist"
+    }
+  ],
+  "todoistv1": [
+    {
+      "display_name": "Task",
+      "value": "task"
+    }
+  ],
+  "todoistv2": [
+    {
+      "display_name": "Task",
+      "value": "task"
+    },
+    {
+      "display_name": "Project",
+      "value": "project"
+    },
+    {
+      "display_name": "Section",
+      "value": "section"
+    },
+    {
+      "display_name": "Comment",
+      "value": "comment"
+    },
+    {
+      "display_name": "Label",
+      "value": "label"
+    },
+    {
+      "display_name": "Reminder",
+      "value": "reminder"
+    }
+  ],
+  "totp": [
+    {
+      "display_name": "Totp",
+      "value": "totp"
+    }
+  ],
+  "aggregate": [
+    {
+      "display_name": "Aggregate",
+      "value": "aggregate"
+    }
+  ],
+  "limit": [
+    {
+      "display_name": "Limit",
+      "value": "limit"
+    }
+  ],
+  "removeduplicates": [
+    {
+      "display_name": "RemoveDuplicates",
+      "value": "removeduplicates"
+    }
+  ],
+  "removeduplicatesv1": [
+    {
+      "display_name": "RemoveDuplicatesV1",
+      "value": "removeduplicatesv1"
+    }
+  ],
+  "removeduplicatesv2": [
+    {
+      "display_name": "RemoveDuplicatesV2",
+      "value": "removeduplicatesv2"
+    }
+  ],
+  "sort": [
+    {
+      "display_name": "Sort",
+      "value": "sort"
+    }
+  ],
+  "splitout": [
+    {
+      "display_name": "SplitOut",
+      "value": "splitout"
+    }
+  ],
+  "summarize": [
+    {
+      "display_name": "Summarize",
+      "value": "summarize"
+    }
+  ],
+  "travisci": [
+    {
+      "display_name": "Build",
+      "value": "build"
+    }
+  ],
+  "trello": [
+    {
+      "display_name": "Attachment",
+      "value": "attachment"
+    },
+    {
+      "display_name": "Board",
+      "value": "board"
+    },
+    {
+      "display_name": "Board Member",
+      "value": "boardMember"
+    },
+    {
+      "display_name": "Card",
+      "value": "card"
+    },
+    {
+      "display_name": "Card Comment",
+      "value": "cardComment"
+    },
+    {
+      "display_name": "Checklist",
+      "value": "checklist"
+    },
+    {
+      "display_name": "Label",
+      "value": "label"
+    },
+    {
+      "display_name": "List",
+      "value": "list"
+    },
+    {
+      "display_name": "BoardMember",
+      "value": "boardmember"
+    },
+    {
+      "display_name": "CardComment",
+      "value": "cardcomment"
+    }
+  ],
+  "twake": [
+    {
+      "display_name": "Message",
+      "value": "message"
+    }
+  ],
+  "twilio": [
+    {
+      "display_name": "Call",
+      "value": "call"
+    },
+    {
+      "display_name": "SMS",
+      "value": "sms"
+    }
+  ],
+  "twist": [
+    {
+      "display_name": "Channel",
+      "value": "channel"
+    },
+    {
+      "display_name": "Comment",
+      "value": "comment"
+    },
+    {
+      "display_name": "Message Conversation",
+      "value": "messageConversation"
+    },
+    {
+      "display_name": "Thread",
+      "value": "thread"
+    },
+    {
+      "display_name": "MessageConversation",
+      "value": "messageconversation"
+    }
+  ],
+  "twitter": [
+    {
+      "display_name": "Twitter",
+      "value": "twitter"
+    }
+  ],
+  "twitterv1": [
+    {
+      "display_name": "Direct Message",
+      "value": "directMessage"
+    },
+    {
+      "display_name": "Tweet",
+      "value": "tweet"
+    },
+    {
+      "display_name": "DirectMessage",
+      "value": "directmessage"
+    }
+  ],
+  "twitterv2": [
+    {
+      "display_name": "Direct Message",
+      "value": "directMessage"
+    },
+    {
+      "display_name": "List",
+      "value": "list"
+    },
+    {
+      "display_name": "Tweet",
+      "value": "tweet"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "DirectMessage",
+      "value": "directmessage"
+    }
+  ],
+  "unleashedsoftware": [
+    {
+      "display_name": "Sales Order",
+      "value": "salesOrder"
+    },
+    {
+      "display_name": "Stock On Hand",
+      "value": "stockOnHand"
+    },
+    {
+      "display_name": "SalesOrder",
+      "value": "salesorder"
+    },
+    {
+      "display_name": "StockOnHand",
+      "value": "stockonhand"
+    }
+  ],
+  "uplead": [
+    {
+      "display_name": "Company",
+      "value": "company"
+    },
+    {
+      "display_name": "Person",
+      "value": "person"
+    }
+  ],
+  "uproc": [
+    {
+      "display_name": "Group",
+      "value": "group"
+    },
+    {
+      "display_name": "Tool",
+      "value": "tool"
+    }
+  ],
+  "uptimerobot": [
+    {
+      "display_name": "Account",
+      "value": "account"
+    },
+    {
+      "display_name": "Alert Contact",
+      "value": "alertContact"
+    },
+    {
+      "display_name": "Maintenance Window",
+      "value": "maintenanceWindow"
+    },
+    {
+      "display_name": "Monitor",
+      "value": "monitor"
+    },
+    {
+      "display_name": "Public Status Page",
+      "value": "publicStatusPage"
+    },
+    {
+      "display_name": "AlertContact",
+      "value": "alertcontact"
+    },
+    {
+      "display_name": "MaintenanceWindow",
+      "value": "maintenancewindow"
+    },
+    {
+      "display_name": "PublicStatusPage",
+      "value": "publicstatuspage"
+    }
+  ],
+  "urlscanio": [
+    {
+      "display_name": "Scan",
+      "value": "scan"
+    }
+  ],
+  "venafitlsprotectdatacenter": [
+    {
+      "display_name": "Certificate",
+      "value": "certificate"
+    },
+    {
+      "display_name": "Policy",
+      "value": "policy"
+    }
+  ],
+  "venafitlsprotectcloud": [
+    {
+      "display_name": "Certificate",
+      "value": "certificate"
+    },
+    {
+      "display_name": "Certificate Request",
+      "value": "certificateRequest"
+    },
+    {
+      "display_name": "CertificateRequest",
+      "value": "certificaterequest"
+    }
+  ],
+  "vero": [
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "Event",
+      "value": "event"
+    }
+  ],
+  "vonage": [
+    {
+      "display_name": "SMS",
+      "value": "sms"
+    }
+  ],
+  "wait": [
+    {
+      "display_name": "Wait",
+      "value": "wait"
+    }
+  ],
+  "webflow": [
+    {
+      "display_name": "Webflow",
+      "value": "webflow"
+    }
+  ],
+  "webflowv1": [
+    {
+      "display_name": "Item",
+      "value": "item"
+    }
+  ],
+  "webflowv2": [
+    {
+      "display_name": "WebflowV2",
+      "value": "webflowv2"
+    }
+  ],
+  "webhook": [
+    {
+      "display_name": "Webhook",
+      "value": "webhook"
+    }
+  ],
+  "wekan": [
+    {
+      "display_name": "Board",
+      "value": "board"
+    },
+    {
+      "display_name": "Card",
+      "value": "card"
+    },
+    {
+      "display_name": "Card Comment",
+      "value": "cardComment"
+    },
+    {
+      "display_name": "Checklist",
+      "value": "checklist"
+    },
+    {
+      "display_name": "Checklist Item",
+      "value": "checklistItem"
+    },
+    {
+      "display_name": "List",
+      "value": "list"
+    },
+    {
+      "display_name": "CardComment",
+      "value": "cardcomment"
+    },
+    {
+      "display_name": "ChecklistItem",
+      "value": "checklistitem"
+    }
+  ],
+  "whatsapp": [
+    {
+      "display_name": "Message",
+      "value": "message"
+    },
+    {
+      "display_name": "Media",
+      "value": "media"
+    },
+    {
+      "display_name": "Messages",
+      "value": "messages"
+    }
+  ],
+  "wise": [
+    {
+      "display_name": "Account",
+      "value": "account"
+    },
+    {
+      "display_name": "Exchange Rate",
+      "value": "exchangeRate"
+    },
+    {
+      "display_name": "Profile",
+      "value": "profile"
+    },
+    {
+      "display_name": "Quote",
+      "value": "quote"
+    },
+    {
+      "display_name": "Recipient",
+      "value": "recipient"
+    },
+    {
+      "display_name": "Transfer",
+      "value": "transfer"
+    }
+  ],
+  "woocommerce": [
+    {
+      "display_name": "Customer",
+      "value": "customer"
+    },
+    {
+      "display_name": "Order",
+      "value": "order"
+    },
+    {
+      "display_name": "Product",
+      "value": "product"
+    }
+  ],
+  "wordpress": [
+    {
+      "display_name": "Post",
+      "value": "post"
+    },
+    {
+      "display_name": "Page",
+      "value": "page"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "writebinaryfile": [
+    {
+      "display_name": "WriteBinaryFile",
+      "value": "writebinaryfile"
+    }
+  ],
+  "xero": [
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Invoice",
+      "value": "invoice"
+    }
+  ],
+  "xml": [
+    {
+      "display_name": "Xml",
+      "value": "xml"
+    }
+  ],
+  "yourls": [
+    {
+      "display_name": "URL",
+      "value": "url"
+    },
+    {
+      "display_name": "Url",
+      "value": "url"
+    }
+  ],
+  "zammad": [
+    {
+      "display_name": "Group",
+      "value": "group"
+    },
+    {
+      "display_name": "Organization",
+      "value": "organization"
+    },
+    {
+      "display_name": "Ticket",
+      "value": "ticket"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ],
+  "zendesk": [
+    {
+      "display_name": "Ticket",
+      "value": "ticket"
+    },
+    {
+      "display_name": "Ticket Field",
+      "value": "ticketField"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    },
+    {
+      "display_name": "Organization",
+      "value": "organization"
+    },
+    {
+      "display_name": "TicketField",
+      "value": "ticketfield"
+    }
+  ],
+  "zohocrm": [
+    {
+      "display_name": "Account",
+      "value": "account"
+    },
+    {
+      "display_name": "Contact",
+      "value": "contact"
+    },
+    {
+      "display_name": "Deal",
+      "value": "deal"
+    },
+    {
+      "display_name": "Invoice",
+      "value": "invoice"
+    },
+    {
+      "display_name": "Lead",
+      "value": "lead"
+    },
+    {
+      "display_name": "Product",
+      "value": "product"
+    },
+    {
+      "display_name": "Purchase Order",
+      "value": "purchaseOrder"
+    },
+    {
+      "display_name": "Quote",
+      "value": "quote"
+    },
+    {
+      "display_name": "Sales Order",
+      "value": "salesOrder"
+    },
+    {
+      "display_name": "Vendor",
+      "value": "vendor"
+    }
+  ],
+  "zoom": [
+    {
+      "display_name": "Meeting",
+      "value": "meeting"
+    },
+    {
+      "display_name": "MeetingRegistrant",
+      "value": "meetingregistrant"
+    },
+    {
+      "display_name": "Webinar",
+      "value": "webinar"
+    }
+  ],
+  "zulip": [
+    {
+      "display_name": "Message",
+      "value": "message"
+    },
+    {
+      "display_name": "Stream",
+      "value": "stream"
+    },
+    {
+      "display_name": "User",
+      "value": "user"
+    }
+  ]
+}

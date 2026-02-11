@@ -1,0 +1,31 @@
+{
+    "name": "@lyxalsuite/lyxal-test",
+    "version": "1.0.0",
+    "description": "Module centralisé de tests pour LyxalSuite - Utilitaires, mocks et fixtures partagés",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+      "build": "tsc",
+      "dev": "tsc --watch",
+      "test": "jest --config jest.config.cjs",
+      "test:watch": "jest --watch --config jest.config.cjs",
+      "test:all": "node scripts/run-all-tests.js",
+      "test:coverage": "jest --coverage --config jest.config.cjs",
+      "test:coverage:all": "node scripts/coverage-report.js",
+      "test:migrate": "node scripts/migrate-tests.js",
+      "clean": "rimraf dist",
+      "db:test:setup": "node scripts/test-db-setup.js",
+      "db:test:teardown": "node scripts/test-db-teardown.js"
+    },
+    "keywords": [
+      "lyxalsuite",
+      "testing",
+      "jest",
+      "mocks",
+      "fixtures",
+      "test-utilities"
+    ],
+    "author": "LyxalSuite",
+    "license": "MIT"
+  }

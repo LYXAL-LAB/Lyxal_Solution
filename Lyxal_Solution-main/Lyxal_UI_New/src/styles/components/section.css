@@ -1,0 +1,64 @@
+.section-root {
+  /* Position relative pour gérer les background images ou éléments absolus internes */
+  position: relative;
+  width: 100%;
+  
+  /* Variables de configuration par défaut */
+  --section-py: 4rem;        /* Padding vertical standard */
+  --section-bg: transparent; /* Fond transparent par défaut */
+  --section-max-w: 1280px;   /* Largeur du CONTENU interne */
+  --section-px: 1.5rem;      /* Padding horizontal du CONTENU */
+  
+  /* Application du fond et du padding vertical sur la section elle-même */
+  background-color: var(--section-bg);
+  padding-block: var(--section-py);
+}
+
+/* Le conteneur interne qui centre le contenu */
+.section-container {
+  width: 100%;
+  max-width: var(--section-max-w);
+  margin-inline: auto;
+  padding-inline: var(--section-px);
+  
+  /* Flex vertical par défaut pour empiler titre et contenu */
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* --- Variantes de Padding Vertical --- */
+
+.section-py-none { --section-py: 0; }
+.section-py-sm { --section-py: 2rem; }
+.section-py-md { --section-py: 4rem; } /* Défaut */
+.section-py-lg { --section-py: 6rem; }
+.section-py-xl { --section-py: 8rem; }
+
+/* --- Variantes de Largeur de Contenu --- */
+
+/* Contenu étroit (lecture, texte seul) */
+.section-width-narrow { --section-max-w: 768px; }
+
+/* Contenu large (dashboard, grilles larges) */
+.section-width-wide { --section-max-w: 1536px; }
+
+/* Contenu Pleine Largeur (Hero, Map) */
+.section-width-full { 
+  --section-max-w: 100%; 
+  --section-px: 0; /* Souvent on veut coller aux bords */
+}
+
+/* --- Variantes de Fond (Pratique pour alterner) --- */
+
+.section-bg-base { --section-bg: var(--color-base-100); }
+.section-bg-muted { --section-bg: var(--color-base-200); } /* Gris léger */
+.section-bg-primary { 
+  --section-bg: var(--color-primary); 
+  color: var(--color-primary-content); /* Adapte le texte automatiquement */
+}
+.section-bg-dark {
+  --section-bg: var(--color-neutral);
+  color: var(--color-neutral-content);
+}
+

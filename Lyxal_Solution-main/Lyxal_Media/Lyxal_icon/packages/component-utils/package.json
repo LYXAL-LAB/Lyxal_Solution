@@ -1,0 +1,52 @@
+{
+	"name": "@lyxal-icon/component-utils",
+	"type": "module",
+	"description": "Reusable files used by multiple Lyxal components",
+	"author": "Lyxal Labs",
+	"version": "0.0.1",
+	"license": "Proprietary",
+	"bugs": "https://github.com/Lyxal/Lyxal/issues",
+	"homepage": "https://Lyxal.design/",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Lyxal/Lyxal.git",
+		"directory": "packages/component-utils"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"test": "bun test"
+	},
+	"dependencies": {
+		"@lyxal-icon/fetch": "workspace:^",
+		"@lyxal-icon/types": "workspace:^",
+		"@lyxal-icon/utils": "workspace:^"
+	},
+	"exports": {
+		"./helpers/callbacks": "./lib/helpers/callbacks.js",
+		"./helpers/content": "./lib/helpers/content.js",
+		"./helpers/size": "./lib/helpers/size.js",
+		"./helpers/support": "./lib/helpers/support.js",
+		"./helpers/viewbox": "./lib/helpers/viewbox.js",
+		"./icon-lists/clear": "./lib/icon-lists/clear.js",
+		"./icon-lists/merge": "./lib/icon-lists/merge.js",
+		"./icon-lists/split": "./lib/icon-lists/split.js",
+		"./icon-lists/types": "./lib/icon-lists/types.js",
+		"./icons/get-icon": "./lib/icons/get-icon.js",
+		"./icons/load-icon": "./lib/icons/load-icon.js",
+		"./icons/load-icons": "./lib/icons/load-icons.js",
+		"./icons/subscribe": "./lib/icons/subscribe.js",
+		"./loader/api/batch": "./lib/loader/api/batch.js",
+		"./loader/api/create": "./lib/loader/api/create.js",
+		"./loader/api/init": "./lib/loader/api/init.js",
+		"./loader/loaders": "./lib/loader/loaders.js",
+		"./loader/parse": "./lib/loader/parse.js",
+		"./loader/queue": "./lib/loader/queue.js",
+		"./loader/types": "./lib/loader/types.js",
+		"./storage/create": "./lib/storage/create.js",
+		"./storage/storage": "./lib/storage/storage.js",
+		"./storage/subscribe": "./lib/storage/subscribe.js",
+		"./storage/subscription": "./lib/storage/subscription.js",
+		"./storage/types": "./lib/storage/types.js",
+		"./package.json": "./package.json"
+	}
+}

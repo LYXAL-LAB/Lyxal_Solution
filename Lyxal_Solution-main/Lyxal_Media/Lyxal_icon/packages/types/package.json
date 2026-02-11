@@ -1,0 +1,22 @@
+{
+	"name": "@lyxal-icon/types",
+	"type": "module",
+	"description": "Types for Lyxal data",
+	"version": "1.0.0",
+	"author": "Lyxal Labs",
+	"license": "Proprietary",
+	"types": "./types.d.ts",
+	"scripts": {
+		"test": "tsc --noEmit --strict --typeRoots '[]' types.d.ts"
+	},
+	"bugs": "https://github.com/Lyxal/Lyxal/issues",
+	"homepage": "https://Lyxal.design/docs/types/",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Lyxal/Lyxal.git",
+		"directory": "packages/types"
+	},
+	"devDependencies": {
+		"typescript": "^5.9.3"
+	}
+}

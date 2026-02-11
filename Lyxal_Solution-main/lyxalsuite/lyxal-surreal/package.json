@@ -1,0 +1,42 @@
+{
+  "name": "@lyxalsuite/lyxal-surreal",
+  "version": "1.0.0",
+  "description": "Module SurrealDB pour LyxalSuite - Monitoring et gestion de base de données",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint . --config ../.config/eslint.config.base.js",
+    "lint:fix": "eslint . --config ../.config/eslint.config.base.js --fix",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "surrealdb",
+    "monitoring",
+    "database",
+    "metrics",
+    "lyxalsuite"
+  ],
+  "author": "LyxalSuite Team",
+  "license": "MIT",
+  "peerDependencies": {
+    "surrealdb.js": "^0.11.0"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "package.json"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lyxalsuite/lyxal-surreal"
+  },
+  "bugs": {
+    "url": "https://github.com/lyxalsuite/lyxal-surreal/issues"
+  },
+  "homepage": "https://github.com/lyxalsuite/lyxal-surreal#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,13 @@
+{
+	"$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
+	"bundledPackages": [
+		"@lyxal-icon/core",
+		"@lyxal-icon/utils",
+		"lyxal-icon"
+	],
+	"mainEntryPointFilePath": "lib/offline.d.ts",
+	"dtsRollup": {
+		"enabled": true,
+		"untrimmedFilePath": "<projectFolder>/dist/offline.d.ts"
+	}
+}

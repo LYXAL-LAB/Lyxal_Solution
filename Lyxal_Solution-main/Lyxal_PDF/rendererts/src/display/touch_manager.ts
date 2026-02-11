@@ -1,0 +1,232 @@
+
+import { getOutputScale } from "./display_utils";
+
+// Helper to stop event propagation/default
+function stopEvent(e: Event) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+export class TouchManager {
+    #container: HTMLDivElement;
+    #isPinching = false;
+    #isPinchingStopped: (() => boolean) | null = null;
+    #isPinchingDisabled: (() => boolean) | null = null;
+    #onPinchStart: (() => void) | null = null;
+    #onPinching: ((origin: number[], pDistance: number, distance: number) => void) | null = null;
+    #onPinchEnd: (() => void) | null = null;
+    #pointerDownAC: AbortController | null = null;
+    #signal: AbortSignal;
+    #touchInfo: any = null;
+    #touchManagerAC: AbortController;
+    #touchMoveAC: AbortController | null = null;
+
+    constructor({
+        container,
+        isPinchingDisabled = null,
+        isPinchingStopped = null,
+        onPinchStart = null,
+        onPinching = null,
+        onPinchEnd = null,
+        signal,
+    }: {
+        container: HTMLDivElement,
+        isPinchingDisabled?: (() => boolean) | null,
+        isPinchingStopped?: (() => boolean) | null,
+        onPinchStart?: (() => void) | null,
+        onPinching?: ((origin: number[], pDistance: number, distance: number) => void) | null,
+        onPinchEnd?: (() => void) | null,
+        signal?: AbortSignal
+    }) {
+        this.#container = container;
+        this.#isPinchingStopped = isPinchingStopped;
+        this.#isPinchingDisabled = isPinchingDisabled;
+        this.#onPinchStart = onPinchStart;
+        this.#onPinching = onPinching;
+        this.#onPinchEnd = onPinchEnd;
+        this.#touchManagerAC = new AbortController();
+        
+        // AbortSignal.any is recent (ES2024?), fallback or use it if available in target env.
+        // For broad compatibility, we might need a polyfill or just one signal.
+        // Assuming target env supports it or we use only internal AC.
+        // If external signal provided, we should listen to it to abort internal AC.
+        if (signal) {
+            signal.addEventListener('abort', () => this.#touchManagerAC.abort());
+        }
+        this.#signal = this.#touchManagerAC.signal;
+
+        container.addEventListener("touchstart", this.#onTouchStart.bind(this), {
+            passive: false,
+            signal: this.#signal,
+        });
+    }
+
+    get MIN_TOUCH_DISTANCE_TO_PINCH() {
+        // The 35 is coming from:
+        //  https://searchfox.org/mozilla-central/source/gfx/layers/apz/src/GestureEventListener.cpp#36
+        //
+        // The properties TouchEvent::screenX/Y are in screen CSS pixels:
+        //  https://developer.mozilla.org/en-US/docs/Web/API/Touch/screenX#examples
+        // MIN_TOUCH_DISTANCE_TO_PINCH is in CSS pixels.
+        return 35 / getOutputScale(window).sx;
+    }
+
+    #onTouchStart(evt: TouchEvent) {
+        if (this.#isPinchingDisabled?.()) {
+            return;
+        }
+
+        if (evt.touches.length === 1) {
+            if (this.#pointerDownAC) {
+                return;
+            }
+            const pointerDownAC = (this.#pointerDownAC = new AbortController());
+            // const signal = AbortSignal.any([this.#signal, pointerDownAC.signal]);
+            const signal = pointerDownAC.signal; // Simplified
+            
+            const container = this.#container;
+
+            const opts: any = { capture: true, signal, passive: false };
+            const cancelPointerDown = (e: any) => {
+                if (e.pointerType === "touch") {
+                    this.#pointerDownAC?.abort();
+                    this.#pointerDownAC = null;
+                }
+            };
+            container.addEventListener(
+                "pointerdown",
+                (e: any) => {
+                    if (e.pointerType === "touch") {
+                        // This is the second finger so we don't want it select something
+                        // or whatever.
+                        stopEvent(e);
+                        cancelPointerDown(e);
+                    }
+                },
+                opts
+            );
+            container.addEventListener("pointerup", cancelPointerDown, opts);
+            container.addEventListener("pointercancel", cancelPointerDown, opts);
+            return;
+        }
+
+        if (!this.#touchMoveAC) {
+            this.#touchMoveAC = new AbortController();
+            // const signal = AbortSignal.any([this.#signal, this.#touchMoveAC.signal]);
+            const signal = this.#touchMoveAC.signal; // Simplified
+            const container = this.#container;
+
+            const opt: any = { signal, capture: false, passive: false };
+            container.addEventListener(
+                "touchmove",
+                this.#onTouchMove.bind(this),
+                opt
+            );
+            const onTouchEnd = this.#onTouchEnd.bind(this);
+            container.addEventListener("touchend", onTouchEnd, opt);
+            container.addEventListener("touchcancel", onTouchEnd, opt);
+
+            opt.capture = true;
+            container.addEventListener("pointerdown", stopEvent, opt);
+            container.addEventListener("pointermove", stopEvent, opt);
+            container.addEventListener("pointercancel", stopEvent, opt);
+            container.addEventListener("pointerup", stopEvent, opt);
+            this.#onPinchStart?.();
+        }
+
+        stopEvent(evt);
+
+        if (evt.touches.length !== 2 || this.#isPinchingStopped?.()) {
+            this.#touchInfo = null;
+            return;
+        }
+
+        let [touch0, touch1] = Array.from(evt.touches);
+        if (touch0.identifier > touch1.identifier) {
+            [touch0, touch1] = [touch1, touch0];
+        }
+        this.#touchInfo = {
+            touch0X: touch0.screenX,
+            touch0Y: touch0.screenY,
+            touch1X: touch1.screenX,
+            touch1Y: touch1.screenY,
+        };
+    }
+
+    #onTouchMove(evt: TouchEvent) {
+        if (!this.#touchInfo || evt.touches.length !== 2) {
+            return;
+        }
+
+        stopEvent(evt);
+
+        let [touch0, touch1] = Array.from(evt.touches);
+        if (touch0.identifier > touch1.identifier) {
+            [touch0, touch1] = [touch1, touch0];
+        }
+        const { screenX: screen0X, screenY: screen0Y } = touch0;
+        const { screenX: screen1X, screenY: screen1Y } = touch1;
+        const touchInfo = this.#touchInfo;
+        const {
+            touch0X: pTouch0X,
+            touch0Y: pTouch0Y,
+            touch1X: pTouch1X,
+            touch1Y: pTouch1Y,
+        } = touchInfo;
+
+        const prevGapX = pTouch1X - pTouch0X;
+        const prevGapY = pTouch1Y - pTouch0Y;
+        const currGapX = screen1X - screen0X;
+        const currGapY = screen1Y - screen0Y;
+
+        const distance = Math.hypot(currGapX, currGapY) || 1;
+        const pDistance = Math.hypot(prevGapX, prevGapY) || 1;
+        
+        if (
+            !this.#isPinching &&
+            Math.abs(pDistance - distance) <= this.MIN_TOUCH_DISTANCE_TO_PINCH
+        ) {
+            return;
+        }
+
+        touchInfo.touch0X = screen0X;
+        touchInfo.touch0Y = screen0Y;
+        touchInfo.touch1X = screen1X;
+        touchInfo.touch1Y = screen1Y;
+
+        if (!this.#isPinching) {
+            // Start pinching.
+            this.#isPinching = true;
+            // We return here else the first pinch is a bit too much
+            return;
+        }
+
+        const origin = [(screen0X + screen1X) / 2, (screen0Y + screen1Y) / 2];
+        this.#onPinching?.(origin, pDistance, distance);
+    }
+
+    #onTouchEnd(evt: TouchEvent) {
+        if (evt.touches.length >= 2) {
+            return;
+        }
+        
+        if (this.#touchMoveAC) {
+            this.#touchMoveAC.abort();
+            this.#touchMoveAC = null;
+            this.#onPinchEnd?.();
+        }
+
+        if (!this.#touchInfo) {
+            return;
+        }
+        stopEvent(evt);
+        this.#touchInfo = null;
+        this.#isPinching = false;
+    }
+
+    destroy() {
+        this.#touchManagerAC?.abort();
+        this.#pointerDownAC?.abort();
+        this.#pointerDownAC = null;
+    }
+}

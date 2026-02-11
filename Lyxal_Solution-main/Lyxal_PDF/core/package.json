@@ -1,0 +1,20 @@
+{
+  "name": "@lyxal-pdf/core",
+  "version": "1.0.0",
+  "description": "Lyxal PDF Core Engine (Modified PDF-Lib)",
+  "main": "dist/index.js",
+  "dependencies": {
+    "@lyxal-compression/compression": "workspace:*",
+    "@lyxal-pdf/upng": "workspace:*",
+    "@lyxal-pdf/pdf-fonts": "workspace:*",
+    "tslib": "^2.6.0"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun",
+    "build:web": "bun build ./src/index.ts --outfile ./dist/lyxal-core.browser.js --target browser --format esm"
+  }
+}

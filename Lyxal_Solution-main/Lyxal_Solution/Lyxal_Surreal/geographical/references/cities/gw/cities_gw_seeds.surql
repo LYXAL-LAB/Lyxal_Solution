@@ -1,0 +1,16 @@
+-- Seeds pour les villes du pays: GW --
+
+CREATE base_city:gw_53807 SET state = base_state:gw_ba, key.name = i18n_key:i18n_city_gw_53807_name, native = 'Bafatá', location = (-14.66167000, 12.16583000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q799788';
+CREATE base_city:gw_53815 SET state = base_state:gw_ba, key.name = i18n_key:i18n_city_gw_53815_name, native = 'Setor de Contuncoel', location = (-14.64100000, 12.55500000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q524784';
+CREATE base_city:gw_53820 SET state = base_state:gw_bm, key.name = i18n_key:i18n_city_gw_53820_name, native = 'Quinhamel', location = (-15.85556000, 11.88694000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q2622522';
+CREATE base_city:gw_53809 SET state = base_state:gw_bl, key.name = i18n_key:i18n_city_gw_53809_name, native = 'Garoto', location = (-15.47611000, 11.57694000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q681802';
+CREATE base_city:gw_53811 SET state = base_state:gw_bl, key.name = i18n_key:i18n_city_gw_53811_name, native = 'Bubaca', location = (-15.83333000, 11.28333000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q997407';
+CREATE base_city:gw_53812 SET state = base_state:gw_ca, key.name = i18n_key:i18n_city_gw_53812_name, native = 'Cache', location = (-16.16528000, 12.27444000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q1002807';
+CREATE base_city:gw_53813 SET state = base_state:gw_ca, key.name = i18n_key:i18n_city_gw_53813_name, native = 'Canchungo', location = (-16.03333000, 12.06722000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q1318022';
+CREATE base_city:gw_53817 SET state = base_state:gw_ga, key.name = i18n_key:i18n_city_gw_53817_name, native = 'Gabú', location = (-14.22222000, 12.28000000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q1015891';
+CREATE base_city:gw_53808 SET state = base_state:gw_oi, key.name = i18n_key:i18n_city_gw_53808_name, native = 'Bissorã', location = (-15.44750000, 12.22306000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q799788';
+CREATE base_city:gw_53816 SET state = base_state:gw_oi, key.name = i18n_key:i18n_city_gw_53816_name, native = 'Farim', location = (-15.22167000, 12.48389000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q1022984';
+CREATE base_city:gw_53818 SET state = base_state:gw_oi, key.name = i18n_key:i18n_city_gw_53818_name, native = 'Msula', location = (-15.31889000, 12.07333000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q1368576';
+CREATE base_city:gw_53810 SET state = base_state:gw_qu, key.name = i18n_key:i18n_city_gw_53810_name, native = 'Buba', location = (-14.99583000, 11.58889000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q997402';
+CREATE base_city:gw_53814 SET state = base_state:gw_to, key.name = i18n_key:i18n_city_gw_53814_name, native = 'Cátion', location = (-15.25472000, 11.28250000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q1190869';
+CREATE base_city:gw_53819 SET state = base_state:gw_to, key.name = i18n_key:i18n_city_gw_53819_name, native = 'Quebo', location = (-14.93333000, 11.33333000), timezone = base_timezone:africa_abidjan, wikiDataId = 'Q2622522';

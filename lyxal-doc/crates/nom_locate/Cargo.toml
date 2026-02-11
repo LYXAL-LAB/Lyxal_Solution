@@ -1,0 +1,15 @@
+[package]
+name = "nom_locate"
+version = "5.0.0"
+edition = "2018"
+description = "Vendored nom_locate - A special input type for nom to locate tokens"
+
+[features]
+default = ["std"]
+std = ["nom/std", "alloc", "memchr/std"]
+alloc = ["nom/alloc"]
+
+[dependencies]
+bytecount = "0.6"
+memchr = { path = "../memchr", default-features = false }
+nom = { path = "../nom", default-features = false }

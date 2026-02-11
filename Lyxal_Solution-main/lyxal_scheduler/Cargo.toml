@@ -1,0 +1,23 @@
+[package]
+name = "lyxal_scheduler"
+version = "0.1.0"
+edition = "2021"
+description = "Generic cron-based scheduler engine in Rust (standalone, Phase 1)."
+license = "MIT"
+
+[features]
+default = []
+surreal = ["surrealdb"]
+
+[dependencies]
+tokio = { version = "1.37", features = ["full"] }
+chrono = { version = "0.4", features = ["serde"] }
+cron = "0.12"
+async-trait = "0.1"
+futures = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+thiserror = "1.0"
+tracing = "0.1"
+surrealdb = { version = "1", optional = true }

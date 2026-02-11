@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "outDir": "./dist/gateway",
+    "rootDir": "./gateway",
+    "lib": ["es2022"],
+    "types": ["node"],
+    "allowSyntheticDefaultImports": true,
+    "jsx": "preserve"
+  },
+  "include": ["gateway/**/*"],
+  "exclude": ["gateway/**/*.test.ts", "node_modules", "dist"]
+} 

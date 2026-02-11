@@ -1,0 +1,18 @@
+{
+  "files": [],
+  "references": [
+    { "path": "../lyxal-surreal" },
+    { "path": "../lyxal-base" },
+    { "path": "../lyxal-master-console" },
+    { "path": "../lyxalauth" },
+    { "path": "../lyxalkitui" },
+    { "path": "../lyxal-investor" },
+    { "path": "../lyxal-gdpr" },
+    { "path": "../lyxal-config" },
+    { "path": "../lyxal-crm" },
+    { "path": "../lyxalmarketing" },
+    { "path": "../lyxalproduction" },
+    { "path": "../lyxal-cash-management" },
+    { "path": "../lyxal-helpdesk" }
+  ]
+} 

@@ -1,0 +1,37 @@
+-- Traductions pour les villes du pays: KY --
+
+RELATE i18n_key:i18n_city_ky_153943_name->i18n_translation->i18n_language:de SET text = 'Cayman Brac';
+RELATE i18n_key:i18n_city_ky_153943_name->i18n_translation->i18n_language:es SET text = 'Caimán Brac';
+RELATE i18n_key:i18n_city_ky_153943_name->i18n_translation->i18n_language:fr SET text = 'Îles Caïmans Brac';
+RELATE i18n_key:i18n_city_ky_153943_name->i18n_translation->i18n_language:it SET text = 'Cayman Brac';
+RELATE i18n_key:i18n_city_ky_153943_name->i18n_translation->i18n_language:en SET text = 'Cayman Brac';
+RELATE i18n_key:i18n_city_ky_153938_name->i18n_translation->i18n_language:de SET text = 'Boddenstadt';
+RELATE i18n_key:i18n_city_ky_153938_name->i18n_translation->i18n_language:es SET text = 'Ciudad de Bodden';
+RELATE i18n_key:i18n_city_ky_153938_name->i18n_translation->i18n_language:fr SET text = 'Bodden Town';
+RELATE i18n_key:i18n_city_ky_153938_name->i18n_translation->i18n_language:it SET text = 'Città di Bodden';
+RELATE i18n_key:i18n_city_ky_153938_name->i18n_translation->i18n_language:en SET text = 'Bodden Town';
+RELATE i18n_key:i18n_city_ky_153939_name->i18n_translation->i18n_language:de SET text = 'Ostende';
+RELATE i18n_key:i18n_city_ky_153939_name->i18n_translation->i18n_language:es SET text = 'Extremo este';
+RELATE i18n_key:i18n_city_ky_153939_name->i18n_translation->i18n_language:fr SET text = 'East End';
+RELATE i18n_key:i18n_city_ky_153939_name->i18n_translation->i18n_language:it SET text = 'East End';
+RELATE i18n_key:i18n_city_ky_153939_name->i18n_translation->i18n_language:en SET text = 'East End';
+RELATE i18n_key:i18n_city_ky_153940_name->i18n_translation->i18n_language:de SET text = 'George Town';
+RELATE i18n_key:i18n_city_ky_153940_name->i18n_translation->i18n_language:es SET text = 'George Town';
+RELATE i18n_key:i18n_city_ky_153940_name->i18n_translation->i18n_language:fr SET text = 'George Town';
+RELATE i18n_key:i18n_city_ky_153940_name->i18n_translation->i18n_language:it SET text = 'George Town';
+RELATE i18n_key:i18n_city_ky_153940_name->i18n_translation->i18n_language:en SET text = 'George Town';
+RELATE i18n_key:i18n_city_ky_153941_name->i18n_translation->i18n_language:de SET text = 'Nordseite';
+RELATE i18n_key:i18n_city_ky_153941_name->i18n_translation->i18n_language:es SET text = 'Lado Norte';
+RELATE i18n_key:i18n_city_ky_153941_name->i18n_translation->i18n_language:fr SET text = 'Côté nord';
+RELATE i18n_key:i18n_city_ky_153941_name->i18n_translation->i18n_language:it SET text = 'Lato Nord';
+RELATE i18n_key:i18n_city_ky_153941_name->i18n_translation->i18n_language:en SET text = 'North Side';
+RELATE i18n_key:i18n_city_ky_153942_name->i18n_translation->i18n_language:de SET text = 'West Bay';
+RELATE i18n_key:i18n_city_ky_153942_name->i18n_translation->i18n_language:es SET text = 'Bahía Oeste';
+RELATE i18n_key:i18n_city_ky_153942_name->i18n_translation->i18n_language:fr SET text = 'Baie Ouest';
+RELATE i18n_key:i18n_city_ky_153942_name->i18n_translation->i18n_language:it SET text = 'Baia Occidentale';
+RELATE i18n_key:i18n_city_ky_153942_name->i18n_translation->i18n_language:en SET text = 'West Bay';
+RELATE i18n_key:i18n_city_ky_153944_name->i18n_translation->i18n_language:de SET text = 'Little Cayman';
+RELATE i18n_key:i18n_city_ky_153944_name->i18n_translation->i18n_language:es SET text = 'Pequeño Caimán';
+RELATE i18n_key:i18n_city_ky_153944_name->i18n_translation->i18n_language:fr SET text = 'Petit Caïman';
+RELATE i18n_key:i18n_city_ky_153944_name->i18n_translation->i18n_language:it SET text = 'Piccola Cayman';
+RELATE i18n_key:i18n_city_ky_153944_name->i18n_translation->i18n_language:en SET text = 'Little Cayman';

@@ -1,0 +1,35 @@
+[package]
+name = "rtc-stun"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = []
+bench = []
+
+[dependencies]
+shared = { workspace = true, default-features = false, features = [] }
+
+bytes = "1.5.0"
+lazy_static = "1.4.0"
+url = "2.5.0"
+rand = "0.9"
+base64 = "0.22.0"
+subtle = "2.5.0"
+crc = "3.0.1"
+ring = "0.17.14"
+md-5 = "0.10"
+
+[dev-dependencies]
+clap = { version = "4.5.2", features = ["derive"] }
+criterion = "0.5.1"
+
+[[example]]
+name = "stun_client"
+path = "examples/stun_client.rs"
+bench = false
+
+[[example]]
+name = "stun_decode"
+path = "examples/stun_decode.rs"
+bench = false

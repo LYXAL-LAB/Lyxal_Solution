@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "Lyxal_Image",
+    "Lyxal_Layout",
+    "Lyxal_Text",
+    "Lyxal_Video",
+    "Lyxal_Motion",
+    "Lyxal_Font",
+    "Lyxal_Adapter",
+]

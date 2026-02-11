@@ -1,0 +1,886 @@
+-- List DNS Zones --
+source : https://docs.bunny.net/reference/dnszonepublic_index
+type appel : 
+GET /dnszone?page=1&perPage=1000 HTTP/1.1
+Accept: application/json
+Accesskey: bd1b2a8e-8c15-455e-96ec-3e8d4336b89b5d9c4a85-f66b-41ad-9d76-55e0d4fd8bff
+Host: api.bunny.net
+
+Query Params
+page int32 Defaults to 1
+perPage int32 5 to 1000 Defaults to 1000
+search string
+*The search term that will be used to filter the results
+
+Responses
+
+200 The list of DNS Zones on the account.
+
+Response body
+    object
+    Items array of objects
+        object
+        Id int64 required
+        Domain string
+        Records array of objects
+            object
+            Id int64 required
+            Type string enum
+                0 = A
+                1 = AAAA
+                2 = CNAME
+                3 = TXT
+                4 = MX
+                5 = Redirect
+                6 = Flatten
+                7 = PullZone
+                8 = SRV
+                9 = CAA
+                10 = PTR
+                11 = Script
+                12 = NS
+                A AAAA CNAME TXT MX Redirect Flatten PullZone SRV CAA PTR Script NS
+            Ttl int32 required
+            Value string
+            Name string
+            Weight int32 required
+            Priority int32 required
+            Port int32 required
+            Flags integer 0 to 255
+            Tag string
+            Accelerated boolean required
+            AcceleratedPullZoneId int64 required
+            LinkName string
+            IPGeoLocationInfo object
+            *Billing model contains data summary about the user's billing
+                CountryCode string
+                *The ISO country code of the location
+                Country string
+                *The name of the country of the location
+                ASN int64 required
+                *The ASN of the IP organization
+                OrganizationName string
+                *The mame of the organization that owns the IP
+                City string
+                *The name of the city of the location
+            GeolocationInfo object
+                Country string
+                City string
+                Latitude double required
+                Longitude double required
+            MonitorStatus string enum
+                0 = Unknown
+                1 = Online
+                2 = Offline
+                Unknown Online Offline
+            MonitorType string enum
+                0 = None
+                1 = Ping
+                2 = Http
+                3 = Monitor
+                None Ping Http Monitor
+            GeolocationLatitude double required
+            GeolocationLongitude double required
+            EnviromentalVariables array of objects
+                object
+                Name string
+                Value string
+            LatencyZone string
+            SmartRoutingType string enum
+                0 = None
+                1 = Latency
+                2 = Geolocation
+                None Latency Geolocation
+            Disabled boolean required
+            Comment string
+            AutoSslIssuance boolean required
+        DateModified date-time required
+        DateCreated date-time required
+        NameserversDetected boolean required
+        CustomNameserversEnabled boolean required
+        Nameserver1 string
+        Nameserver2 string
+        SoaEmail string
+        NameserversNextCheck date-time required
+        LoggingEnabled boolean required
+        LoggingIPAnonymizationEnabled boolean required
+        *Determines if the TLS 1 is enabled on the DNS Zone
+        LogAnonymizationType string | null enum
+            0 = OneDigit
+            1 = Drop
+            OneDigit Drop
+        DnsSecEnabled boolean required
+        *Determines if DNSSEC is enabled for this DNS Zone
+        CertificateKeyType string enum
+            0 = Ecdsa
+            1 = Rsa
+            Ecdsa Rsa
+    CurrentPage int32 required
+    TotalItems int32 required
+    HasMoreItems boolean required
+
+400 Failed removing hostname
+
+401 The request authorization failed
+
+500 Internal Server Error
+
+503 The service is currently unavailable
+
+
+-- Add DNS Zone --
+source : https://docs.bunny.net/reference/dnszonepublic_add
+type appel : 
+POST /dnszone HTTP/1.1
+Accept: application/json
+Content-Type: application/json
+Accesskey: bd1b2a8e-8c15-455e-96ec-3e8d4336b89b5d9c4a85-f66b-41ad-9d76-55e0d4fd8bff
+Host: api.bunny.net
+Content-Length: 19
+
+{"Domain":"string"}
+
+
+Body Params
+# Domain type string is required 
+  The domain that will be added.
+
+Responses 
+201 The DNS Zone was successfuly added
+400 Failed adding the DNS Zone. Model validation failed
+   Response body
+      object
+            ErrorKey string
+            Field string
+            Message string
+401 The request authorization failed
+
+500 Internal Server Error
+
+503 The service is currently unavailable
+
+-- Get DNS Zone --
+source : https://docs.bunny.net/reference/dnszonepublic_index2
+type appel : 
+GET /dnszone/id HTTP/1.1
+Accept: application/json
+Accesskey: bd1b2a8e-8c15-455e-96ec-3e8d4336b89b5d9c4a85-f66b-41ad-9d76-55e0d4fd8bff
+Host: api.bunny.net
+
+
+Path Params
+# id int64 required 
+  The ID of the DNS Zone that will be returned
+
+Responses 
+200 The DNS Zone with the requested ID
+
+Response body
+    object
+        Id int64 required
+        Domain string
+        Records array of objects
+            Id int64 required
+            Type string enum
+                    0 = A
+                    1 = AAAA
+                    2 = CNAME
+                    3 = TXT
+                    4 = MX
+                    5 = Redirect
+                    6 = Flatten
+                    7 = PullZone
+                    8 = SRV
+                    9 = CAA
+                    10 = PTR
+                    11 = Script
+                    12 = NS
+
+                    A AAAA CNAME TXT MX Redirect Flatten PullZone SRV CAA PTR Script NS
+            Ttl int32 required
+            Value string
+            Name string
+            Weight int32 required
+            Priority int32 required
+            Port int32 required
+            Flags integer 0 to 255
+            Tag string
+            Accelerated boolean required
+            AcceleratedPullZoneId int64 required
+            LinkName string
+            IPGeoLocationInfo object
+            *Billing model contains data summary about the user's billing
+                        CountryCode string The ISO country code of the location
+                        Country string The name of the country of the location
+                        ASN int64 required The ASN of the IP organization
+                        OrganizationName string The mame of the organization that owns the IP
+                        City string The name of the city of the location
+            GeolocationInfo object
+                        Country string
+                        City string
+                        Latitude double required
+                        Longitude double required
+            MonitorStatus string enum
+                0 = Unknown
+                1 = Online
+                2 = Offline
+                Unknown Online Offline
+            MonitorType string enum
+                0 = None
+                1 = Ping
+                2 = Http
+                3 = Monitor
+                None Ping Http Monitor
+            GeolocationLatitude double required
+            GeolocationLongitude double required
+            EnviromentalVariables array of objects
+                Name string
+                Value string
+            LatencyZone string
+            SmartRoutingType string enum
+                0 = None
+                1 = Latency
+                2 = Geolocation
+                None Latency Geolocation
+
+            Disabled boolean required
+            Comment string
+            AutoSslIssuance boolean required
+        DateModified date-time required
+        DateCreated date-time required
+        NameserversDetected boolean required
+        CustomNameserversEnabled boolean required
+        Nameserver1 string
+        Nameserver2 string
+        SoaEmail string
+        NameserversNextCheck date-time required
+        LoggingEnabled boolean required
+        LoggingIPAnonymizationEnabled boolean required
+        *Determines if the TLS 1 is enabled on the DNS Zone
+        LogAnonymizationType string | null enum
+            0 = OneDigit
+            1 = Drop
+            OneDigit Drop
+        DnsSecEnabled boolean required
+        *Determines if DNSSEC is enabled for this DNS Zone
+        CertificateKeyType string enum
+            0 = Ecdsa
+            1 = Rsa
+            Ecdsa Rsa
+400 Failed adding the DNS Zone. Model validation failed
+   Response body
+            ErrorKey string
+            Field string
+            Message string
+401 The request authorization failed
+500 Internal Server Error
+503 The service is currently unavailable
+
+-- Update DNS Zones --
+source : https://docs.bunny.net/reference/dnszonepublic_update
+type appel : 
+POST /dnszone/id HTTP/1.1
+Accept: application/json
+Content-Type: application/json
+Accesskey: bd1b2a8e-8c15-455e-96ec-3e8d4336b89b5d9c4a85-f66b-41ad-9d76-55e0d4fd8bff
+Host: api.bunny.net
+Content-Length: 231
+
+{"CustomNameserversEnabled":true,"Nameserver1":"string","Nameserver2":"string","SoaEmail":"user@example.com","LoggingEnabled":true,"LogAnonymizationType":"OneDigit","CertificateKeyType":"Ecdsa","LoggingIPAnonymizationEnabled":true}
+
+
+Path Params
+# id int64 required 
+  The ID of the DNS Zone that will be updated
+
+Body Params
+CustomNameserversEnabled boolean | null
+Nameserver1 string
+Nameserver2 string
+SoaEmail string
+LoggingEnabled boolean | null
+LogAnonymizationType string | null enum
+    0 = OneDigit
+    1 = Drop
+    Allowed: OneDigit Drop
+CertificateKeyType string | null enum
+    0 = Ecdsa
+    1 = Rsa
+    Allowed: Ecdsa Rsa
+LoggingIPAnonymizationEnabled boolean | null
+*Determines if the log anonoymization should be enabled
+
+Responses
+200 The DNS Zone with the requested ID
+
+Response body
+    object
+        Id int64 required
+        Domain string
+        Records array of objects
+            object
+            Id int64 required
+            Type string enum
+                0 = A
+                1 = AAAA
+                2 = CNAME
+                3 = TXT
+                4 = MX
+                5 = Redirect
+                6 = Flatten
+                7 = PullZone
+                8 = SRV
+                9 = CAA
+                10 = PTR
+                11 = Script
+                12 = NS
+                A AAAA CNAME TXT MX Redirect Flatten PullZone SRV CAA PTR Script NS
+            Ttl int32 required
+            Value string
+            Name string
+            Weight int32 required
+            Priority int32 required
+            Port int32 required
+            Flags integer 0 to 255
+            Tag string
+            Accelerated boolean required
+            AcceleratedPullZoneId int64 required
+            LinkName string
+            IPGeoLocationInfo object
+            *Billing model contains data summary about the user's billing
+                CountryCode string
+                *The ISO country code of the location
+                Country string
+                *The name of the country of the location
+                ASN int64 required
+                *The ASN of the IP organization
+                OrganizationName string
+                *The mame of the organization that owns the IP
+                City string
+                *The name of the city of the location
+            GeolocationInfo object
+                Country string
+                City string
+                Latitude double required
+                Longitude double required
+            MonitorStatus string enum
+                0 = Unknown
+                1 = Online
+                2 = Offline
+                Unknown Online Offline
+            MonitorType string enum
+                0 = None
+                1 = Ping
+                2 = Http
+                3 = Monitor
+                None Ping Http Monitor
+            GeolocationLatitude double required
+            GeolocationLongitude double required
+            EnviromentalVariables array of objects
+                object
+                Name string
+                Value string
+            LatencyZone string
+            SmartRoutingType string enum
+                0 = None
+                1 = Latency
+                2 = Geolocation
+                None Latency Geolocation
+
+            Disabled boolean required
+            Comment string
+            AutoSslIssuance boolean required
+        DateModified date-time required
+        DateCreated date-time required
+        NameserversDetected boolean required
+        CustomNameserversEnabled boolean required
+        Nameserver1 string
+        Nameserver2 string
+        SoaEmail string
+        NameserversNextCheck date-time required
+        LoggingEnabled boolean required
+        LoggingIPAnonymizationEnabled boolean required
+        *Determines if the TLS 1 is enabled on the DNS Zone
+
+        LogAnonymizationType string | null enum
+            0 = OneDigit
+            1 = Drop
+            OneDigit Drop
+
+        DnsSecEnabled boolean required
+        *Determines if DNSSEC is enabled for this DNS Zone
+
+        CertificateKeyType string enum
+            0 = Ecdsa
+            1 = Rsa
+            Ecdsa Rsa
+
+400 Failed removing hostname
+
+Response body
+    object
+        ErrorKey string
+        Field string
+        Message string
+
+401 The request authorization failed
+
+404 The DNS Zone with the requested ID does not exist.
+
+500 Internal Server Error
+
+503 The service is currently unavailable
+
+-- Delete DNS Zone --
+source : https://docs.bunny.net/reference/dnszonepublic_delete
+type appel : 
+DELETE /dnszone/id HTTP/1.1
+Accept: application/json
+Accesskey: bd1b2a8e-8c15-455e-96ec-3e8d4336b89b5d9c4a85-f66b-41ad-9d76-55e0d4fd8bff
+Host: api.bunny.net
+
+Path Params
+id int64 required
+*The DNS Zone ID that will be deleted.
+
+Responses
+204 The DNS Zone was successfuly deleted.
+
+400 Failed deleting the DNS Zone. See error response.
+
+Response body
+    object
+        ErrorKey string
+        Field string
+        Message string
+
+401 The request authorization failed
+
+404 The DNS Zone with the requested ID does not exist.
+
+500 Internal Server Error
+
+503 The service is currently unavailable
+
+-- Export --
+source : https://docs.bunny.net/reference/dnszonepublic_export
+type appel : 
+GET /dnszone/id/export HTTP/1.1
+Accept: application/json
+Accesskey: bd1b2a8e-8c15-455e-96ec-3e8d4336b89b5d9c4a85-f66b-41ad-9d76-55e0d4fd8bff
+Host: api.bunny.net
+
+Path Params
+id int64 required
+
+Response
+
+200 Success
+Response body
+    object
+
+400 Failed removing hostname
+Response body
+    object
+        ErrorKey string
+        Field string
+        Message string
+
+401 The request authorization failed
+
+500 Internal Server Error
+
+503 The service is currently unavailable
+
+-- Check the DNS zone availability --
+source : https://docs.bunny.net/reference/dnszonepublic_checkavailability
+type appel : 
+POST /dnszone/checkavailability HTTP/1.1
+Accept: application/json
+Content-Type: application/json
+Accesskey: bd1b2a8e-8c15-455e-96ec-3e8d4336b89b5d9c4a85-f66b-41ad-9d76-55e0d4fd8bff
+Host: api.bunny.net
+Content-Length: 17
+
+{"Name":"string"}
+
+Body Params
+Name string
+*Determines the name of the zone that we are checking
+
+Responses
+
+200 Success
+Response body
+    object
+
+400 Failed removing hostname
+
+Response body
+    object
+        ErrorKey string
+        Field string
+        Message string
+
+401 The request authorization failed
+
+500 Internal Server Error
+
+503 The service is currently unavailable
+
+-- Update DNS Record --
+source : https://docs.bunny.net/reference/dnszonepublic_updaterecord
+type appel : 
+POST /dnszone/zoneId/records/id HTTP/1.1
+Accept: application/json
+Content-Type: application/json
+Accesskey: bd1b2a8e-8c15-455e-96ec-3e8d4336b89b5d9c4a85-f66b-41ad-9d76-55e0d4fd8bff
+Host: api.bunny.net
+Content-Length: 403
+
+{"Type":"A","Ttl":0,"Value":"string","Name":"string","Weight":0,"Priority":0,"Flags":0,"Tag":"string","Port":0,"PullZoneId":0,"ScriptId":0,"Accelerated":true,"MonitorType":"None","GeolocationLatitude":0,"GeolocationLongitude":0,"LatencyZone":"string","SmartRoutingType":"None","Disabled":true,"EnviromentalVariables":[{"Name":"string","Value":"string"}],"Comment":"string","AutoSslIssuance":true,"Id":0}
+
+Path Params
+zoneId int64 required
+*The DNS Zone ID that contains the record.
+
+id int64 required
+*The ID of the DNS record that will be updated.
+
+Body Params
+Type string | null enum
+    0 = A
+    1 = AAAA
+    2 = CNAME
+    3 = TXT
+    4 = MX
+    5 = Redirect
+    6 = Flatten
+    7 = PullZone
+    8 = SRV
+    9 = CAA
+    10 = PTR
+    11 = Script
+    12 = NS
+    A AAAA CNAME TXT MX Redirect  Flatten PullZone SRV CAA PTR Script NS
+Ttl int32 | null
+Value string
+Name string
+Weight int32 | null
+Priority int32 | null
+Flags integer | null 0 to 255
+Tag string
+Port int32 | null
+PullZoneId int64 | null
+ScriptId int64 | null
+Accelerated boolean | null
+MonitorType string | null enum
+    0 = None
+    1 = Ping
+    2 = Http
+    3 = Monitor
+    Allowed: None Ping Http Monitor
+GeolocationLatitude double | null
+GeolocationLongitude double | null
+LatencyZone string
+SmartRoutingType string | null enum
+    0 = None
+    1 = Latency
+    2 = Geolocation
+    Allowed: None Latency Geolocation
+Disabled boolean | null
+EnviromentalVariables array of objects
+    object
+        Name string
+        Value string
+Comment string
+AutoSslIssuance boolean | null
+Id int64 required
+
+Responses
+204 The DNS record was successfuly updated.
+
+400Failed updating the DNS record. Model validation failed.
+
+Response body
+    object
+        ErrorKey string
+        Field string
+        Message string
+401 The request authorization failed
+
+404 The DNS Zone or DNS Record with the requested ID does not exist.
+
+500 Internal Server Error
+
+503 The service is currently unavailable
+
+
+-- Delete DNS Record --
+source : https://docs.bunny.net/reference/dnszonepublic_deleterecord
+type appel : 
+DELETE /dnszone/zoneId/records/id HTTP/1.1
+Accept: application/json
+Accesskey: bd1b2a8e-8c15-455e-96ec-3e8d4336b89b5d9c4a85-f66b-41ad-9d76-55e0d4fd8bff
+Host: api.bunny.net
+
+Path Params
+zoneId int64 required
+*The DNS Zone ID that contains the record.
+
+id int64 required
+*The ID of the DNS record that will be deleted.
+
+Responses
+204 The DNS record was successfuly deleted.
+
+400 Failed deleting the DNS Record. See error response.
+
+Response body
+    object
+        ErrorKey string
+        Field string
+        Message string
+
+401 The request authorization failed
+
+404 The DNS Zone or DNS Record with the requested ID does not exist.
+
+500 Internal Server Error
+
+503 The service is currently unavailable
+
+-- Import DNS Records --
+source : https://docs.bunny.net/reference/dnszonepublic_import
+type appel : 
+POST /dnszone/zoneId/import HTTP/1.1
+Accept: application/json
+Accesskey: bd1b2a8e-8c15-455e-96ec-3e8d4336b89b5d9c4a85-f66b-41ad-9d76-55e0d4fd8bff
+Host: api.bunny.net
+
+Path Params
+zoneId
+int64
+required
+The DNS Zone ID that should import the data.
+
+Responses
+
+200 The import operation has finished successfuly.
+
+400 Failed importing data. See error response.
+
+Response body
+    object
+        ErrorKey string
+        Field string
+        Message string
+
+401 The request authorization failed
+
+404 The DNS Zone with the requested ID does not exist.
+
+500 Internal Server Error
+
+503 The service is currently unavailable
+
+-- Add DNS Record --
+source : https://docs.bunny.net/reference/dnszonepublic_addrecord
+type appel : 
+PUT /dnszone/zoneId/records HTTP/1.1
+Accept: application/json
+Content-Type: application/json
+Accesskey: bd1b2a8e-8c15-455e-96ec-3e8d4336b89b5d9c4a85-f66b-41ad-9d76-55e0d4fd8bff
+Host: api.bunny.net
+Content-Length: 396
+
+{"Type":"A","Ttl":0,"Value":"string","Name":"string","Weight":0,"Priority":0,"Flags":0,"Tag":"string","Port":0,"PullZoneId":0,"ScriptId":0,"Accelerated":true,"MonitorType":"None","GeolocationLatitude":0,"GeolocationLongitude":0,"LatencyZone":"string","SmartRoutingType":"None","Disabled":true,"EnviromentalVariables":[{"Name":"string","Value":"string"}],"Comment":"string","AutoSslIssuance":true}
+
+Path Params
+zoneId int64 required
+*The DNS Zone ID to which the record will be added.
+
+Body Params
+Type string | null enum
+    0 = A
+    1 = AAAA
+    2 = CNAME
+    3 = TXT
+    4 = MX
+    5 = Redirect
+    6 = Flatten
+    7 = PullZone
+    8 = SRV
+    9 = CAA
+    10 = PTR
+    11 = Script
+    12 = NS
+    A AAAA CNAME TXT MX Redirect  Flatten PullZone SRV CAA PTR Script NS
+Ttl int32 | null
+Value string
+Name string
+Weight int32 | null
+Priority int32 | null
+Flags integer | null 0 to 255
+Tag string
+Port int32 | null
+PullZoneId int64 | null
+ScriptId int64 | null
+Accelerated boolean | null
+MonitorType string | null enum
+    0 = None
+    1 = Ping
+    2 = Http
+    3 = Monitor
+    Allowed: None Ping Http Monitor
+GeolocationLatitude double | null
+GeolocationLongitude double | null
+LatencyZone string
+SmartRoutingType string | null enum
+    0 = None
+    1 = Latency
+    2 = Geolocation
+    Allowed: None Latency Geolocation
+Disabled boolean | null
+EnviromentalVariables array of objects
+    object
+        Name string
+        Value string
+Comment string
+AutoSslIssuance boolean | null
+
+-- Enable DNSSEC on a DNS Zone --
+source : https://docs.bunny.net/reference/managednszonednssecendpoint_enablednssecdnszone
+type appel : 
+POST /dnszone/id/dnssec HTTP/1.1
+Accept: application/json
+Accesskey: bd1b2a8e-8c15-455e-96ec-3e8d4336b89b5d9c4a85-f66b-41ad-9d76-55e0d4fd8bff
+Host: api.bunny.net
+
+Path Params
+id int64 required
+*The ID of the DNS Zone for which DNSSEC will be enabled
+
+Responses
+
+200 Returns the DS record information for the DNS Zone with the given ID
+Response body
+    object
+        Enabled boolean required
+        DsRecord string
+        Digest string
+        DigestType string
+        Algorithm int32 required
+        PublicKey string
+        KeyTag int32 required
+        Flags int32 required
+        DsConfigured boolean required
+
+400 Failed removing hostname
+
+Response body
+    object
+        ErrorKey string
+        Field string
+        Message string
+401 The request authorization failed
+
+404 The DNS Zone with the requested ID does not exist
+
+500 Internal Server Error
+
+503 The service is currently unavailable
+
+-- Disable DNSSEC on a DNS Zone --
+source : https://docs.bunny.net/reference/managednszonednssecendpoint_disablednssecdnszone
+type appel : 
+DELETE /dnszone/id/dnssec HTTP/1.1
+Accept: application/json
+Accesskey: bd1b2a8e-8c15-455e-96ec-3e8d4336b89b5d9c4a85-f66b-41ad-9d76-55e0d4fd8bff
+Host: api.bunny.net
+
+Path Params
+id int64 required
+*The ID of the DNS Zone for which DNSSEC will be disabled
+
+Responses
+
+200 Disables DNSSEC for the DNS Zone with the given ID
+Response body
+    object
+        Enabled boolean required
+        DsRecord string
+        Digest string
+        DigestType string
+        Algorithm int32 required
+        PublicKey string
+        KeyTag int32 required
+        Flags int32 required
+        DsConfigured boolean required
+
+400 Failed removing hostname
+
+Response body
+    object
+        ErrorKey string
+        Field string
+        Message string
+401 The request authorization failed
+
+404 The DNS Zone with the requested ID does not exist
+
+500 Internal Server Error
+
+503 The service is currently unavailable
+
+-- Get DNS Query Statistics --
+source : https://docs.bunny.net/reference/dnszonepublic_statistics
+type appel : 
+GET /dnszone/id/statistics HTTP/1.1
+Accept: application/json
+Accesskey: bd1b2a8e-8c15-455e-96ec-3e8d4336b89b5d9c4a85-f66b-41ad-9d76-55e0d4fd8bff
+Host: api.bunny.net
+
+
+Path Params
+id int64 required
+*The ID of the DNS Zone for which the statistics will be returned
+
+Query Params
+dateFrom date-time
+(Optional) The start date of the statistics. If no value is passed, the last 30 days will be returned
+
+dateTo date-time
+(Optional) The end date of the statistics. If no value is passed, the last 30 days will be returned
+
+Responses
+
+200
+Returns the statistics for the DNS Zone with the given ID
+
+Response body
+    object
+        TotalQueriesServed int64 required
+        QueriesServedChart object
+            Has additional fields
+        NormalQueriesServedChart object
+            Has additional fields
+        SmartQueriesServedChart object
+            Has additional fields
+        QueriesByTypeChart object
+            Has additional fields
+
+400 Failed removing hostname
+Response body
+    object
+        ErrorKey string
+        Field string
+        Message string
+
+401 The request authorization failed
+
+404 The DNS Zone with the requested ID does not exist
+
+500 Internal Server Error
+
+503 The service is currently unavailable
