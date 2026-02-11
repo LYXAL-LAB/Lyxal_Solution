@@ -1,0 +1,75 @@
+div.thaw-time-picker-panel {
+    width: 160px;
+    height: 260px;
+    background-color: var(--colorNeutralBackground1);
+    border-radius: var(--borderRadiusMedium);
+    box-sizing: border-box;
+    box-shadow: var(--shadow16);
+}
+
+.thaw-time-picker-panel__time {
+    display: flex;
+    height: calc(100% - 40px);
+}
+
+.thaw-time-picker-panel__time-hour,
+.thaw-time-picker-panel__time-minute,
+.thaw-time-picker-panel__time-second {
+    flex: 1;
+}
+
+.thaw-time-picker-panel__time-item {
+    height: 34px;
+    margin: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.thaw-time-picker-panel__time-padding {
+    height: 184px;
+}
+
+.thaw-time-picker-panel__time-item--slected,
+.thaw-time-picker-panel__time-item:hover {
+    background-color: var(--colorNeutralBackground1Hover);
+}
+
+.thaw-time-picker-panel__time-item--slected {
+    color: var(--colorBrandForeground1);
+}
+
+.thaw-time-picker-panel__footer {
+    display: flex;
+    padding: 0 2px 2px;
+    height: 38px;
+    justify-content: space-evenly;
+    align-items: center;
+    border-top: var(--strokeWidthThin) solid var(--colorNeutralStroke1);
+}
+
+.thaw-time-picker-panel.fade-in-scale-up-transition-leave-active {
+    transform-origin: inherit;
+    transition: opacity 0.2s cubic-bezier(0.4, 0, 1, 1),
+        transform 0.2s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.thaw-time-picker-panel.fade-in-scale-up-transition-enter-active {
+    transform-origin: inherit;
+    transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1),
+        transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.thaw-time-picker-panel.fade-in-scale-up-transition-enter-from,
+.thaw-time-picker-panel.fade-in-scale-up-transition-leave-to {
+    opacity: 0;
+    transform: scale(0.9);
+}
+
+.thaw-time-picker-panel.fade-in-scale-up-transition-leave-from,
+.thaw-time-picker-panel.fade-in-scale-up-transition-enter-to {
+    opacity: 1;
+    transform: scale(1);
+}

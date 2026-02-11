@@ -1,0 +1,15 @@
+[package]
+name = "lyx-ui-date-picker"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+leptos-shadcn-calendar = { path = "../calendar", version = "0.0.1" }
+leptos-shadcn-popover = { path = "../popover", version = "0.0.1" }
+leptos-shadcn-button = { path = "../button", version = "0.0.1" }
+leptos-shadcn-signal-management = { path = "../../signal-management", version = "0.0.1" }
+[features]
+default = []
+new_york = []
+[dev-dependencies]
+shadcn-ui-test-utils = { path = "../../test-utils", version = "0.0.1" }
+wasm-bindgen-test = { version = "0.0.1" }

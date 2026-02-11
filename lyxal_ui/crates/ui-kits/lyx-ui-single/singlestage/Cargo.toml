@@ -1,0 +1,105 @@
+[package]
+name = "lyx-ui-singlestage"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+singlestage_macro = { path = "../singlestage_macro", version = "0.0.1", optional = true }
+lyx-core-reactive_stores = { path = "../../../core/lyx-core-leptos/reactive_stores", version = "0.0.1", optional = true }
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+lyx-core-meta = { path = "../../../core/lyx-core-leptos/meta", version = "0.0.1" }
+serde = { version = "0.0.1" }
+uuid = { version = "0.0.1", features = ["v4", "js"] }
+[build-dependencies]
+reqwest = { version = "0.0.1", features = ["blocking"] }
+sha256 = { version = "0.0.1" }
+[features]
+csr = ["lyx-core-leptos/csr"]
+ssr = ["lyx-core-leptos/ssr"]
+hydrate = ["lyx-core-leptos/hydrate"]
+islands = ["serde/derive", "lyx-core-leptos/islands"]
+nightly = ["lyx-core-leptos/nightly"]
+stores = ["dep:lyx-core-reactive_stores"]
+default = [
+"accordion",
+"alert",
+"aspect_ratio",
+"avatar",
+"badge",
+"breadcrumb",
+"button",
+"button_group",
+"card",
+"carousel",
+"checkbox",
+"context_menu",
+"dialog",
+"dropdown",
+"empty",
+"icon",
+"field",
+"input",
+"input_group",
+"item",
+"kbd",
+"label",
+"link",
+"pagination",
+"popover",
+"progress",
+"radio",
+"scroll_area",
+"select",
+"separator",
+"sidebar",
+"skeleton",
+"slider",
+"spinner",
+"switch",
+"table",
+"tabs",
+"textarea",
+"theme_provider",
+"toggle",
+"tooltip" ]
+accordion = []
+alert = []
+aspect_ratio = []
+avatar = []
+badge = []
+breadcrumb = ["dropdown"]
+button = ["input_group"]
+button_group = []
+card = []
+carousel = []
+checkbox = ["field", "label"]
+context_menu = []
+dialog = []
+dropdown = ["button"]
+empty = []
+icon = ["macro"]
+field = []
+input = ["field", "label"]
+input_group = []
+item = []
+kbd = []
+macro = ["dep:singlestage_macro"]
+label = []
+link = []
+pagination = ["button"]
+popover = []
+progress = []
+radio = ["field", "label"]
+scroll_area = []
+select = ["field"]
+separator = []
+sidebar = []
+skeleton = []
+slider = ["field", "label"]
+spinner = []
+switch = ["field", "checkbox", "label"]
+table = []
+tabs = []
+textarea = ["field", "label"]
+theme_provider = []
+toggle = []
+tooltip = []

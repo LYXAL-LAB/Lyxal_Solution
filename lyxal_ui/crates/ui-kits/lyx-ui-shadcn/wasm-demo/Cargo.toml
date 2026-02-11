@@ -1,0 +1,16 @@
+[package]
+name = "lyx-ui-wasm-demo"
+version = "0.0.1"
+edition = "2024"
+[lib]
+crate-type = ["cdylib"]
+[dependencies]
+# Leptos framework (using workspace dependencies)
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["csr"] }
+leptos-shadcn-ui-wasm = { path = "../packages/leptos-shadcn-ui-wasm", version = "0.0.1" }
+# WASM-specific dependencies (using workspace where available)
+wasm-bindgen = { version = "0.0.1" }
+console_error_panic_hook = { version = "0.0.1" }
+web-sys = { version = "0.0.1", features = ["console", "Document", "Element", "HtmlElement", "Window", "Performance" ] }
+[dev-dependencies]
+wasm-bindgen-test = { version = "0.0.1" }

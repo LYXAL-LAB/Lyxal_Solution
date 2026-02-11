@@ -1,0 +1,138 @@
+# Cargo configuration for WASM size optimization
+# Target: Reduce WASM bundle size below 2MB
+
+[build]
+# Build WASM with optimized settings
+target = "wasm32-unknown-unknown"
+
+[term]
+verbose = false
+color = 'auto'
+
+[net]
+git-fetch-with-cli = true
+
+# Target-specific configuration for WASM
+[target.wasm32-unknown-unknown]
+# Enable size-optimized linker settings
+rustflags = [
+    # Link-time optimization - most impactful for size reduction
+    "-C", "link-arg=-s",               # Strip symbols
+
+    # Code generation optimizations for size
+    "-C", "opt-level=z",               # Optimize for size ('z' is more aggressive than 's')
+    "-C", "embed-bitcode=no",          # Don't embed bitcode in final binary
+
+    # Remove debug information completely for production builds
+    "-C", "debuginfo=0",               # No debug info
+    "-C", "debug-assertions=off",      # Disable debug assertions
+
+    # Additional size optimizations
+    "-C", "overflow-checks=off",       # Disable overflow checks
+    "-C", "panic=abort",               # Reduce panic table size
+
+    # Strip more symbols
+    "-C", "strip=symbols",             # Strip all symbols
+
+    # Memory optimization
+    "-C", "inline-threshold=32",       # More aggressive inlining decisions
+
+    # Link-time optimization
+    "-C", "linker-plugin-lto",         # Enable linker plugin LTO
+]
+
+# Profile-specific optimizations
+[profile.release]
+# Maximum optimization for size
+opt-level = "z"        # Optimize for size
+lto = "fat"            # Full link-time optimization
+codegen-units = 1      # Single codegen unit for maximum optimization
+panic = "abort"        # Abort on panic (smaller code)
+strip = true           # Strip symbols
+overflow-checks = false # Disable overflow checks
+debug = false          # No debug info
+debug-assertions = false
+incremental = false    # Disable incremental compilation for smaller builds
+
+[profile.release.package."*"]
+# Even more aggressive optimization for dependencies
+opt-level = "z"
+strip = true
+codegen-units = 1
+
+[profile.wasm-release]
+# Specialized profile for WASM release builds
+inherits = "release"
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+debug = false
+debug-assertions = false
+overflow-checks = false
+incremental = false
+
+# Profile for development builds (optimized for speed)
+[profile.dev]
+opt-level = 0
+debug = true
+incremental = true
+codegen-units = 256  # Faster builds
+
+[profile.dev.package."*"]
+# Optimize dependencies even in dev mode for smaller WASM
+opt-level = "z"
+debug = false
+incremental = false
+
+# Minimal profile for absolute smallest WASM size
+[profile.min-size]
+inherits = "release"
+opt-level = "z"       # Maximum size optimization
+lto = "fat"           # Full LTO
+codegen-units = 1     # Maximum optimization
+strip = "symbols"     # Strip everything
+panic = "abort"
+debug = false
+debug-assertions = false
+overflow-checks = false
+incremental = false
+
+# =============================================================================
+# Compiler Warnings Configuration
+# =============================================================================
+# Treat compiler warnings as errors in CI to prevent warnings in the codebase
+# Set RUSTFLAGS="-D warnings" in CI to enable
+
+# =============================================================================
+# Test Coverage Configuration
+# =============================================================================
+# These settings enable automated test coverage reporting
+
+[env]
+# Coverage output directory
+COVERAGE_DIR = "target/coverage"
+COVERAGE_REPORT_TYPES = "html,json,lcov"
+
+# Coverage quality thresholds (minimum requirements)
+COVERAGE_MINIMUM_LINE_COVERAGE = "95"
+COVERAGE_MINIMUM_BRANCH_COVERAGE = "90"
+COVERAGE_MINIMUM_FUNCTION_COVERAGE = "100"
+
+# Disable incremental compilation for accurate coverage measurements
+CARGO_INCREMENTAL = "0"
+
+# LLVM coverage profiling settings
+LLVM_PROFILE_FILE = "target/coverage/%p-%m.profraw"
+
+# Coverage exclusion patterns (comma-separated)
+COVERAGE_EXCLUDE_PATTERNS = "tests/*,examples/*,benches/*,bin/*"
+
+# Report generation settings
+COVERAGE_HTML_TITLE = "Leptos ShadCN UI - Test Coverage Report"
+COVERAGE_OUTPUT_DIR = "coverage-reports"
+
+# CI/CD integration
+CI_COVERAGE_COMMENT = "true"
+COVERAGE_BADGE_OUTPUT = "coverage-reports/badges"

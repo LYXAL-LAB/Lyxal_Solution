@@ -1,0 +1,29 @@
+[package]
+name = "lyx-core-leptos_server"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+base64 = { version = "0.0.1", default-features = true }
+codee = { version = "0.0.1", features = ["json_serde"], default-features = true }
+lyx-core-hydration_context = { path = "../hydration_context", version = "0.0.1" }
+lyx-core-reactive_graph = { path = "../reactive_graph", version = "0.0.1", features = ["hydration"] }
+lyx-core-server_fn = { path = "../server_fn", version = "0.0.1" }
+tracing = { version = "0.0.1", optional = true, default-features = true }
+futures = { version = "0.0.1", default-features = true }
+lyx-core-any_spawner = { path = "../any_spawner", version = "0.0.1" }
+lyx-core-or_poisoned = { path = "../or_poisoned", version = "0.0.1" }
+lyx-core-tachys = { path = "../tachys", version = "0.0.1", features = ["reactive_graph"], optional = true }
+send_wrapper = { version = "0.0.1", default-features = true }
+serde = { version = "0.0.1", default-features = true }
+js-sys = { version = "0.0.1", default-features = true }
+wasm-bindgen = { version = "0.0.1", default-features = true }
+serde_json = { version = "0.0.1", default-features = true }
+[features]
+ssr = []
+hydration = []
+miniserde = ["codee/miniserde"]
+rkyv = ["codee/rkyv"]
+serde-wasm-bindgen = ["codee/json_serde_wasm"]
+serde-lite = ["codee/serde_lite"]
+tachys = ["dep:lyx-core-tachys"]
+tracing = ["dep:tracing"]

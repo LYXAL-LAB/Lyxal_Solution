@@ -1,0 +1,17 @@
+[package]
+name = "lyx-logic-leptos-windowing"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+
+
+default-struct-builder = { version = "0.0.1" }
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1", optional = true }
+lyx-logic-use = { path = "../../lyx-logic-use", version = "0.0.1", features = ["element"], optional = true }
+lyx-core-reactive_stores = { path = "../../../core/lyx-core-leptos/reactive_stores", version = "0.0.1" }
+serde = { version = "0.0.1", features = ["derive"] }
+web-sys = { version = "0.0.1" }
+
+[features]
+ssr = ["lyx-logic-use/ssr", "lyx-core-leptos/ssr"]

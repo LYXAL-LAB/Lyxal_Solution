@@ -1,0 +1,12 @@
+[package]
+name = "lyx-ui-bundle-size-monitor"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+cargo_metadata = { version = "0.0.1" }
+chrono = { version = "0.0.1" }
+dirs = { version = "0.0.1" }
+glob = { version = "0.0.1" }
+[[bin]]
+name = "lyx-ui-bundle-size-monitor"
+path = "src/lib.rs"

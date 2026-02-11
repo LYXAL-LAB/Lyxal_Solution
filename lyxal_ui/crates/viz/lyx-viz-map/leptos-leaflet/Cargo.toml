@@ -1,0 +1,18 @@
+[package]
+name = "lyx-viz-leptos-leaflet"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+js-sys = { version = "0.0.1" }
+leaflet = { version = "0.0.1" }
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+lyx-core-meta = { path = "../../../core/lyx-core-leptos/meta", version = "0.0.1" }
+paste = { version = "0.0.1" }
+serde-wasm-bindgen = { version = "0.0.1" }
+tracing = { version = "0.0.1" }
+wasm-bindgen = { version = "0.0.1" }
+web-sys = { version = "0.0.1", features = ["HtmlDivElement", "HtmlElement", "console" ] }
+[features]
+csr = ["lyx-core-leptos/csr"]
+hydrate = ["lyx-core-leptos/hydrate"]
+ssr = ["lyx-core-leptos/ssr", "lyx-core-meta/ssr"]

@@ -1,0 +1,14 @@
+[package]
+name = "lyx-core-hydration_context"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+lyx-core-any_error = { path = "../any_error", version = "0.0.1" }
+lyx-core-or_poisoned = { path = "../or_poisoned", version = "0.0.1" }
+futures = { version = "0.0.1", default-features = true }
+serde = { version = "0.0.1", features = ["derive"], default-features = true }
+wasm-bindgen = { version = "0.0.1", optional = true, default-features = true }
+js-sys = { version = "0.0.1", optional = true, default-features = true }
+pin-project-lite = { version = "0.0.1", default-features = true }
+[features]
+browser = ["dep:wasm-bindgen", "dep:js-sys"]

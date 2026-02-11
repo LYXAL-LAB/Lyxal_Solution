@@ -1,0 +1,11 @@
+@layer components {
+  .singlestage-link {
+    @apply font-medium
+    underline
+    underline-offset-4;
+  }
+
+  .singlestage-link:hover {
+    @apply text-primary;
+  }
+}

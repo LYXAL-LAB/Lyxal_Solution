@@ -1,0 +1,5 @@
+
+[workspace.dependencies]
+leptos-windowing = { version = "0.0.1", path = "./leptos-windowing" }
+
+

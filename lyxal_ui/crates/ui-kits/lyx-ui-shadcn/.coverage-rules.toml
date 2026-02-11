@@ -1,0 +1,152 @@
+# =============================================================================
+# Coverage Quality Gates Configuration
+# =============================================================================
+# This file defines coverage thresholds and quality gates for the
+# Leptos ShadCN UI project.
+#
+# These rules are enforced by the coverage reporting tools and CI/CD pipelines.
+#
+# =============================================================================
+
+# Overall project coverage requirements
+[overall]
+# Minimum line coverage percentage (required)
+min_line_coverage = 95.0
+# Minimum branch coverage percentage (required)
+min_branch_coverage = 90.0
+# Minimum function coverage percentage (required)
+min_function_coverage = 100.0
+# Fail the build if coverage is below threshold
+fail_below_threshold = true
+
+# Per-component coverage requirements
+[component_thresholds]
+# Default minimum for all components
+default_min_coverage = 90.0
+
+# Core components have higher requirements
+button_min_coverage = 95.0
+input_min_coverage = 95.0
+form_min_coverage = 95.0
+select_min_coverage = 95.0
+checkbox_min_coverage = 95.0
+
+# Advanced components
+dialog_min_coverage = 90.0
+popover_min_coverage = 90.0
+tooltip_min_coverage = 90.0
+dropdown_menu_min_coverage = 90.0
+combobox_min_coverage = 90.0
+
+# Layout components
+card_min_coverage = 90.0
+sheet_min_coverage = 90.0
+separator_min_coverage = 90.0
+tabs_min_coverage = 90.0
+accordion_min_coverage = 90.0
+
+# Utility components
+badge_min_coverage = 85.0
+alert_min_coverage = 85.0
+skeleton_min_coverage = 85.0
+separator_min_coverage = 85.0
+
+# Coverage exclusions (files/patterns to exclude from coverage calculations)
+[exclusions]
+# Test files and fixtures
+patterns = [
+    "tests/**",
+    "tests/**",
+    "**/*_test.rs",
+    "**/test*.rs",
+    "**/benches/**",
+    "**/examples/**",
+    "**/bin/**",
+    "**/*-build.rs",
+]
+
+# Files that should be excluded from coverage requirements
+files = [
+    "packages/cli/src/main.rs",
+    "packages/component-generator/src/main.rs",
+    "packages/test-runner/src/bin/run_tests.rs",
+]
+
+# Allowlist for critical files that must have 100% coverage
+[critical_files]
+# Files that require 100% coverage
+require_full_coverage = [
+    "packages/leptos/button/src/lib.rs",
+    "packages/leptos/input/src/lib.rs",
+    "packages/leptos/form/src/lib.rs",
+]
+
+# Coverage degradation rules
+[degradation]
+# Maximum allowed coverage decrease from previous build (percentage points)
+max_degradation = 1.0
+# Fail build if coverage degrades beyond threshold
+fail_on_degradation = true
+# Number of previous builds to compare against
+comparison_window = 5
+
+# Coverage reporting settings
+[reporting]
+# Generate HTML reports
+generate_html = true
+# Generate JSON reports
+generate_json = true
+# Generate LCov reports
+generate_lcov = true
+# Generate terminal reports
+generate_terminal = true
+# Output directory for reports
+output_directory = "coverage-reports"
+
+# Badge generation
+[badges]
+# Generate coverage badges
+generate_badges = true
+# Badge output directory
+output_directory = "coverage-reports/badges"
+# Badge formats (svg, png)
+formats = ["svg"]
+
+# CI/CD integration settings
+[ci]
+# Enable CI mode
+enabled = true
+# Post coverage as PR comment
+post_as_comment = true
+# Update coverage status checks
+update_status_checks = true
+# Fail CI if coverage is below threshold
+fail_ci_on_threshold = true
+# Coverage report retention (days)
+retention_days = 30
+
+# Coverage trend analysis
+[trends]
+# Enable trend tracking
+enabled = true
+# Store historical coverage data
+store_history = true
+# History database path
+history_file = "coverage-history.json"
+# Maximum history entries
+max_entries = 100
+
+# Coverage warnings
+[warnings]
+# Warn if coverage is below this threshold (but don't fail)
+warning_threshold = 90.0
+# Warn about files with decreasing coverage
+warn_on_decrease = true
+# Warn about uncovered public functions
+warn_uncovered_public = true
+
+# Exclude specific warnings
+exclude_warnings = [
+    "Generated code",
+    "Third-party dependencies",
+]

@@ -1,0 +1,51 @@
+[package]
+name = "lyx-core-service_mode"
+version = "0.0.1"
+edition = "2024"
+[lib]
+crate-type = ["cdylib", "rlib"]
+[dependencies]
+axum = { optional = true, version = "0.0.1" }
+clap = { optional = true, version = "0.0.1", features = ["derive"] }
+console_error_panic_hook = { version = "0.0.1" }
+lyx-core-leptos = { path = "../../../../leptos", version = "0.0.1", features = ["tracing"], optional = true }
+lyx-core-meta = { path = "../../../../meta", version = "0.0.1", optional = true }
+lyx-core-axum = { path = "../../", version = "0.0.1", optional = true }
+lyx-core-router = { path = "../../../../router", version = "0.0.1", optional = true }
+tokio = { version = "0.0.1", optional = true, features = ["rt-multi-thread", "macros", "time" ] }
+tower = { optional = true, version = "0.0.1" }
+tower-http = { optional = true, version = "0.0.1", features = ["fs"] }
+wasm-bindgen = { version = "0.0.1" }
+[features]
+hydrate = ["lyx-core-leptos/hydrate"]
+ssr = [
+"dep:axum",
+"dep:clap",
+"dep:tower",
+"dep:tower-http",
+"dep:tokio",
+"lyx-core-leptos/ssr",
+"lyx-core-meta/ssr",
+"dep:lyx-core-axum",
+"lyx-core-router/ssr" ]
+[profile.release]
+[profile.wasm-release]
+opt-level = 'z'
+lto = true
+codegen-units = 1
+[package.metadata.cargo-all-features]
+skip_feature_sets = [["ssr", "hydrate"], []]
+[package.metadata.leptos]
+output-name = "service_mode"
+site-root = { version = "0.0.1" }
+site-pkg-dir = { version = "0.0.1" }
+site-addr = { version = "0.0.1" }
+reload-port = 3001
+browserquery = { version = "0.0.1" }
+watch = false
+env = { version = "0.0.1" }
+bin-features = ["ssr"]
+bin-default-features = false
+lib-features = ["hydrate"]
+lib-default-features = false
+lib-profile-release = { version = "0.0.1" }

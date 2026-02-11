@@ -1,0 +1,57 @@
+div.thaw-back-top {
+    position: fixed;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 22px;
+    height: 44px;
+    min-width: 44px;
+    box-shadow: var(--shadow4);
+    background-color: var(--colorNeutralBackground1);
+}
+
+.thaw-back-top.fade-in-scale-up-transition-leave-active {
+    transform-origin: inherit;
+    transition: opacity 0.2s cubic-bezier(0.4, 0, 1, 1),
+        transform 0.2s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.thaw-back-top.fade-in-scale-up-transition-enter-active {
+    transform-origin: inherit;
+    transition: opacity 0.2s cubic-bezier(0, 0, 0.2, 1),
+        transform 0.2s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.thaw-back-top.fade-in-scale-up-transition-enter-from,
+.thaw-back-top.fade-in-scale-up-transition-leave-to {
+    opacity: 0;
+    transform: scale(0.9);
+}
+
+.thaw-back-top.fade-in-scale-up-transition-leave-from,
+.thaw-back-top.fade-in-scale-up-transition-enter-to {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.thaw-back-top > svg {
+    font-size: 24px;
+    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.thaw-back-top:hover,
+.thaw-back-top:active {
+    box-shadow: var(--shadow16);
+}
+
+.thaw-back-top:hover > svg {
+    color: var(--colorBrandBackgroundHover);
+}
+
+.thaw-back-top:active svg {
+    color: var(--colorBrandBackgroundPressed);
+}

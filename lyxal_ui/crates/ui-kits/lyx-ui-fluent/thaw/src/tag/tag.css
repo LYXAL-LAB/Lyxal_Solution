@@ -1,0 +1,99 @@
+.thaw-tag {
+    display: inline-grid;
+    align-items: center;
+    grid-template-areas:
+        "media primary dismissIcon"
+        "media secondary dismissIcon";
+    width: fit-content;
+    height: 32px;
+    padding: 0 7px;
+    background-color: var(--colorNeutralBackground3);
+    color: var(--colorNeutralForeground2);
+    font-family: inherit;
+    appearance: button;
+    text-align: unset;
+    box-sizing: border-box;
+    border: var(--strokeWidthThin) solid var(--colorTransparentStroke);
+    border-radius: var(--borderRadiusMedium);
+}
+
+.thaw-tag--disabled {
+    background-color: var(--colorNeutralBackgroundDisabled);
+    color: var(--colorNeutralForegroundDisabled);
+    border-color: var(--colorTransparentStrokeDisabled);
+    cursor: not-allowed;
+}
+
+.thaw-tag--small {
+    height: 24px;
+    padding: 0 5px;
+}
+
+.thaw-tag--extra-small {
+    height: 20px;
+    padding: 0 5px;
+}
+
+.thaw-tag--dismissible {
+    padding-right: 0;
+}
+
+.thaw-tag__primary-text {
+    grid-row-end: secondary;
+    grid-row-start: primary;
+    grid-column-start: primary;
+    white-space: nowrap;
+    padding: 0 var(--spacingHorizontalXXS) var(--spacingHorizontalXXS);
+    line-height: var(--lineHeightBase300);
+    font-weight: var(--fontWeightRegular);
+    font-size: var(--fontSizeBase300);
+    font-family: var(--fontFamilyBase);
+}
+
+.thaw-tag--small .thaw-tag__primary-text,
+.thaw-tag--extra-small .thaw-tag__primary-text {
+    font-size: var(--fontSizeBase200);
+    line-height: var(--lineHeightBase200);
+}
+
+.thaw-tag__dismiss {
+    grid-area: dismissIcon;
+    display: flex;
+    padding: 0;
+    padding-right: 7px;
+    padding-left: var(--spacingHorizontalXS);
+    font-size: 20px;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.thaw-tag--disabled .thaw-tag__dismiss {
+    color: currentColor;
+    cursor: not-allowed;
+}
+
+.thaw-tag--small .thaw-tag__dismiss {
+    padding-left: var(--spacingHorizontalXXS);
+    font-size: 16px;
+    padding-right: 5px;
+}
+
+.thaw-tag--extra-small .thaw-tag__dismiss {
+    padding-left: var(--spacingHorizontalXXS);
+    font-size: 12px;
+    padding-right: 5px;
+}
+
+.thaw-tag__dismiss > svg {
+    display: inline;
+    line-height: 0;
+}
+
+.thaw-tag:not(.thaw-tag--disabled) > .thaw-tag__dismiss:hover {
+    color: var(--colorCompoundBrandForeground1Hover);
+}
+
+.thaw-tag:not(.thaw-tag--disabled) > .thaw-tag__dismiss:active {
+    color: var(--colorCompoundBrandForeground1Pressed);
+}

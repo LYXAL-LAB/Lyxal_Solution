@@ -1,0 +1,9 @@
+
+[workspace.package]
+version = "0.0.1"
+
+[workspace.dependencies]
+leptos_typed_router_macro = { version = "0.0.1", path = "./leptos_typed_router_macro" }
+leptos = { version = "0.0.1", path = "../../core/lyx-core-leptos/leptos" }
+
+

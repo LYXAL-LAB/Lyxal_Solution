@@ -1,0 +1,12 @@
+[package]
+name = "lyx-logic-leptos_i18n_router"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+lyx-logic-leptos_i18n = { path = "../leptos_i18n", version = "0.0.1", optional = true }
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1", optional = true }
+lyx-core-router = { path = "../../../core/lyx-core-leptos/router", version = "0.0.1", optional = true }
+
+[features]
+ssr = ["lyx-core-leptos/ssr", "lyx-core-router/ssr", "lyx-logic-leptos_i18n/ssr"]

@@ -1,0 +1,105 @@
+.thaw-switch {
+    align-items: flex-start;
+    box-sizing: border-box;
+    display: inline-flex;
+    position: relative;
+}
+
+.thaw-switch__input {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: calc(40px + 2 * var(--spacingHorizontalS));
+    height: 100%;
+    margin: 0px;
+    opacity: 0;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+.thaw-switch__input:disabled {
+    cursor: default;
+}
+
+.thaw-switch__indicator {
+    flex-shrink: 0;
+    width: 40px;
+    height: 20px;
+    margin: var(--spacingVerticalS) var(--spacingHorizontalS);
+    font-size: 18px;
+    line-height: 0;
+    border-radius: var(--borderRadiusCircular);
+    border: 1px solid;
+    box-sizing: border-box;
+    fill: currentcolor;
+    pointer-events: none;
+    transition-duration: var(--durationNormal);
+    transition-timing-function: var(--curveEasyEase);
+    transition-property: background, border, color;
+}
+
+.thaw-switch__input:enabled:not(:checked) ~ .thaw-switch__indicator {
+    color: var(--colorNeutralStrokeAccessible);
+    border-color: var(--colorNeutralStrokeAccessible);
+}
+
+.thaw-switch__input:enabled:checked ~ .thaw-switch__indicator {
+    background-color: var(--colorCompoundBrandBackground);
+    color: var(--colorNeutralForegroundInverted);
+    border-color: var(--colorTransparentStroke);
+}
+
+.thaw-switch__input:enabled:checked:hover ~ .thaw-switch__indicator {
+    background-color: var(--colorCompoundBrandBackgroundHover);
+}
+
+.thaw-switch__input:enabled:checked:active ~ .thaw-switch__indicator {
+    background-color: var(--colorCompoundBrandBackgroundPressed);
+}
+
+.thaw-switch__input:disabled:not(:checked) ~ .thaw-switch__indicator {
+    border-color: var(--colorNeutralStrokeDisabled);
+}
+
+.thaw-switch__input:disabled:checked ~ .thaw-switch__indicator {
+    background-color: var(--colorNeutralBackgroundDisabled);
+    border-color: var(--colorTransparentStrokeDisabled);
+}
+
+.thaw-switch__input:disabled ~ .thaw-switch__indicator {
+    color: var(--colorNeutralForegroundDisabled);
+}
+
+.thaw-switch__indicator > svg {
+    display: inline;
+    line-height: 0;
+
+    transition-duration: var(--durationNormal);
+    transition-timing-function: var(--curveEasyEase);
+    transition-property: transform;
+}
+
+.thaw-switch__input:checked ~ .thaw-switch__indicator > svg {
+    transform: translateX(20px);
+}
+
+.thaw-switch__label {
+    margin-top: calc((20px - var(--lineHeightBase300)) / 2);
+    margin-bottom: calc((20px - var(--lineHeightBase300)) / 2);
+    padding: var(--spacingVerticalS) var(--spacingHorizontalS);
+    padding-left: var(--spacingHorizontalXS);
+    line-height: var(--lineHeightBase300);
+    font-size: var(--fontSizeBase300);
+    font-family: var(--fontFamilyBase);
+    color: var(--colorNeutralForeground1);
+    cursor: pointer;
+}
+
+.thaw-switch__input:enabled:not(:checked) ~ .thaw-switch__label {
+    color: var(--colorNeutralForeground1);
+}
+
+.thaw-switch__input:disabled ~ .thaw-switch__label {
+    cursor: default;
+    color: var(--colorNeutralForegroundDisabled);
+}

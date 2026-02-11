@@ -1,0 +1,20 @@
+[package]
+name = "lyx-ui-foundations-book-examples"
+version = "0.0.1"
+edition = "2024"
+
+[features]
+default = ["arrow", "flip", "placement", "shift", "size", "virtual"]
+arrow = []
+flip = []
+placement = []
+shift = []
+size = []
+virtual = []
+
+[dependencies]
+
+convert_case = { version = "0.0.1" }
+
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["csr"] }
+tailwind_fuse = { path = "../../lyx-found-tailwind/fuse", version = "0.0.1" }

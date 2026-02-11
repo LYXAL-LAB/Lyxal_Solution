@@ -1,0 +1,8 @@
+[package]
+name = "lyx-ui-foundations-example"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+
+yew = { version = "0.0.1", features = ["csr"] }

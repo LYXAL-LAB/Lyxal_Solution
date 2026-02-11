@@ -1,0 +1,87 @@
+# =============================================================================
+# Clippy Configuration
+# =============================================================================
+# This file configures Clippy lint behavior for the Leptos ShadCN UI project.
+#
+# Documentation: https://doc.rust-lang.org/clippy/lint_configuration.html
+#
+# =============================================================================
+
+# Lint categorization
+# Certain lint groups can be set to different severity levels:
+# - allow:    Lint will not be reported
+# - warn:     Lint will be reported as a warning (default)
+# - deny:     Lint will be reported as an error
+# - forbid:   Lint will be reported as an error and cannot be overridden
+
+# ---------------------------------------------------------------------------
+# Pedantic lints - Stricter checks for code quality
+# These are more opinionated lints that can help improve code quality
+# ---------------------------------------------------------------------------
+pedantic = "warn"
+
+# ---------------------------------------------------------------------------
+# Lint configuration options
+# ---------------------------------------------------------------------------
+
+# Threshold for warnings about item complexity (default: 25)
+# Higher values allow more complex functions
+cognitive-complexity-threshold = 30
+
+# Threshold for warnings about type complexity (default: 250)
+type-complexity-threshold = 250
+
+# Suppress lints from macros (default: true)
+# Setting to false can help catch issues in derive macros
+suppress-lint-in-const-from-bool-lint = true
+
+# Suppress dropping reference errors (default: false)
+suppress-drop-likelihood = false
+
+# Maximum function lines before triggering too_many_lines warning (default: 100)
+# Set to 0 to disable the lint
+too-many-lines-threshold = 150
+
+# ---------------------------------------------------------------------------
+# Single-use lints - Allow/deny specific lints
+# ---------------------------------------------------------------------------
+
+# These are common pedantic lints that teams may want to allow
+# Uncomment the ones you want to allow:
+
+# Allow certain common patterns
+# allow-expect-in-tests = true  # Allow expect() in tests
+# allow-unwrap-in-tests = true  # Allow unwrap() in tests
+# allow-mixed-uninlined-format-args = true  # Allow mixed format args
+
+# ---------------------------------------------------------------------------
+# Per-lint settings
+# ---------------------------------------------------------------------------
+
+# Documentation lints
+missing_docs_in_private_items = "warn"
+
+# Performance lints
+# These catch potential performance issues
+
+# Style lints
+# These enforce consistent code style
+
+# Complexity lints
+# These catch overly complex code patterns
+
+# Correctness lints
+# These catch potential bugs
+
+# Nursery lints
+# New lints that may have false positives
+nursery = "warn"
+
+# ---------------------------------------------------------------------------
+# Disallowed methods/types
+# ---------------------------------------------------------------------------
+# You can disallow specific methods or types to enforce best practices
+# Example:
+# [[disallowed-methods]]
+# path = "std::option::Option::map"
+# reason = "Use and_then instead for Options"

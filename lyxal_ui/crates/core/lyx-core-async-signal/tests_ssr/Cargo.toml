@@ -1,0 +1,12 @@
+[package]
+name = "lyx-core-tests_ssr"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+lyx-core-any_spawner = { path = "../../lyx-core-leptos/any_spawner", version = "0.0.1", features = ["tokio"] }
+expect-test = { version = "0.0.1" }
+futures = { version = "0.0.1" }
+lyx-core-leptos = { path = "../../lyx-core-leptos/leptos", version = "0.0.1", features = ["ssr"] }
+lyx-core-async-signal = { version = "0.0.1", path = "../src" }
+lyx-core-reactive_graph = { path = "../../lyx-core-leptos/reactive_graph", version = "0.0.1" }

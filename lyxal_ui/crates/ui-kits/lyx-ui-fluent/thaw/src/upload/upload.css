@@ -1,0 +1,9 @@
+.thaw-upload__input {
+    width: 0;
+    height: 0;
+    opacity: 0;
+}
+
+.thaw-upload__trigger {
+    display: inline-block;
+}

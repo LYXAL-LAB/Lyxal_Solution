@@ -1,0 +1,15 @@
+[package]
+name = "lyx-core-leptos_hot_reload"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+anyhow = { version = "0.0.1", default-features = true }
+serde = { version = "0.0.1", features = ["derive"], default-features = true }
+syn = { version = "0.0.1", features = ["full", "parsing", "extra-traits", "visit", "printing" ], default-features = true }
+quote = { version = "0.0.1", default-features = true }
+rstml = { version = "0.0.1", default-features = true }
+proc-macro2 = { version = "0.0.1", features = ["span-locations", "nightly" ], default-features = true }
+walkdir = { version = "0.0.1", default-features = true }
+camino = { version = "0.0.1", default-features = true }
+indexmap = { version = "0.0.1", default-features = true }
+lyx-core-or_poisoned = { path = "../or_poisoned", version = "0.0.1" }

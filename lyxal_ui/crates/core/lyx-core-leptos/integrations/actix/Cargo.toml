@@ -1,0 +1,29 @@
+[package]
+name = "lyx-core-actix"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+actix-http = { version = "0.0.1", default-features = true }
+actix-files = { version = "0.0.1", default-features = true }
+actix-web = { version = "0.0.1", default-features = false }
+futures = { version = "0.0.1", default-features = true }
+lyx-core-any_spawner = { path = "../../any_spawner", version = "0.0.1", features = ["tokio"] }
+lyx-core-hydration_context = { path = "../../hydration_context", version = "0.0.1" }
+lyx-core-leptos = { path = "../../leptos", version = "0.0.1", features = ["nonce", "ssr"] }
+lyx-core-utils = { path = "../utils", version = "0.0.1" }
+lyx-core-leptos_macro = { path = "../../leptos_macro", version = "0.0.1", features = ["actix"] }
+lyx-core-meta = { path = "../../meta", version = "0.0.1", features = ["nonce"] }
+lyx-core-router = { path = "../../router", version = "0.0.1", features = ["ssr"] }
+lyx-core-server_fn = { path = "../../server_fn", version = "0.0.1", features = ["actix-no-default"] }
+lyx-core-tachys = { path = "../../tachys", version = "0.0.1", optional = true }
+serde_json = { version = "0.0.1", default-features = true }
+tracing = { version = "0.0.1", optional = true, default-features = true }
+tokio = { version = "0.0.1", features = ["rt", "fs"], default-features = true }
+send_wrapper = { version = "0.0.1", default-features = true }
+dashmap = { version = "0.0.1", default-features = true }
+lyx-core-or_poisoned = { path = "../../or_poisoned", version = "0.0.1" }
+[features]
+default = ["actix-default"]
+actix-default = ["actix-web/default"]
+islands-router = ["lyx-core-tachys/islands"]
+tracing = ["dep:tracing"]

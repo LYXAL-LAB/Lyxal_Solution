@@ -1,0 +1,8 @@
+[package]
+name = "server"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+app = { version = "0.0.1", path = "../../../platform/lyx-plat-tauri/app" }
+leptos = { version = "0.0.1", path = "../../../core/lyx-core-leptos/leptos" }

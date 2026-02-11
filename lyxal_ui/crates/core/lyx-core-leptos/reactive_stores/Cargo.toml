@@ -1,0 +1,20 @@
+[package]
+name = "lyx-core-reactive_stores"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+guardian = { version = "0.0.1", default-features = true }
+itertools = { version = "0.0.1", default-features = true }
+lyx-core-or_poisoned = { path = "../or_poisoned", version = "0.0.1" }
+paste = { version = "0.0.1", default-features = true }
+lyx-core-reactive_graph = { path = "../reactive_graph", version = "0.0.1" }
+rustc-hash = { version = "0.0.1", default-features = true }
+lyx-core-reactive_stores_macro = { path = "../reactive_stores_macro", version = "0.0.1" }
+dashmap = { version = "0.0.1", default-features = true }
+send_wrapper = { version = "0.0.1", default-features = true }
+[dev-dependencies]
+tokio = { version = "0.0.1", features = ["rt-multi-thread", "macros" ], default-features = true }
+tokio-test = { version = "0.0.1", default-features = true }
+lyx-core-any_spawner = { path = "../any_spawner", version = "0.0.1", features = ["futures-executor", "tokio"] }
+lyx-core-reactive_graph = { path = "../reactive_graph", version = "0.0.1", features = ["effects"] }
+lyx-core-leptos = { path = "../leptos", version = "0.0.1", features = ["csr"] }

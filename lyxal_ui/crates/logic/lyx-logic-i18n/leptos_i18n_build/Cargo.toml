@@ -1,0 +1,45 @@
+[package]
+name = "lyx-logic-leptos_i18n_build"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+
+
+proc-macro2 = { version = "0.0.1" }
+lyx-logic-leptos_i18n_parser = { path = "../leptos_i18n_parser", version = "0.0.1", optional = true }
+lyx-logic-leptos_i18n_codegen = { path = "../leptos_i18n_codegen", version = "0.0.1", optional = true }
+
+icu_provider_export = { version = "0.0.1", features = ["baked_exporter"] }
+icu_provider_source = { version = "0.0.1", features = ["networking"] }
+icu = { version = "0.0.1", features = ["experimental"] }
+icu_provider = { version = "0.0.1" }
+icu_locale = { version = "0.0.1" }
+
+prettyplease = { version = "0.0.1", optional = true, features = ["verbatim"] }
+syn = { version = "0.0.1" }
+
+[features]
+default = []
+islands = ["lyx-logic-leptos_i18n_codegen/islands"]
+dynamic_load = ["lyx-logic-leptos_i18n_codegen/dynamic_load"]
+hydrate = ["lyx-logic-leptos_i18n_codegen/hydrate"]
+csr = ["lyx-logic-leptos_i18n_codegen/csr"]
+ssr = ["lyx-logic-leptos_i18n_codegen/ssr"]
+plurals = ["lyx-logic-leptos_i18n_parser/plurals", "lyx-logic-leptos_i18n_codegen/plurals"]
+format_datetime = [
+"lyx-logic-leptos_i18n_parser/format_datetime",
+"lyx-logic-leptos_i18n_codegen/format_datetime" ]
+format_list = [
+"lyx-logic-leptos_i18n_parser/format_list",
+"lyx-logic-leptos_i18n_codegen/format_list" ]
+format_nums = [
+"lyx-logic-leptos_i18n_parser/format_nums",
+"lyx-logic-leptos_i18n_codegen/format_nums" ]
+format_currency = [
+"lyx-logic-leptos_i18n_parser/format_currency",
+"format_nums",
+"lyx-logic-leptos_i18n_codegen/format_currency" ]
+
+# This is to format the code after codegen, helpfull for debugging
+pretty_print = ["dep:prettyplease"]

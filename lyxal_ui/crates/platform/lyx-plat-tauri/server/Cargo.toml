@@ -1,0 +1,23 @@
+[package]
+name = "lyx-platform-server"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+lyx-platform-app = { path = "../app", version = "0.0.1", features = ["ssr"] }
+lyx-platform-backend = { path = "../backend", version = "0.0.1", features = ["ssr"] }
+axum = { version = "0.0.1" }
+axum-macros = { version = "0.0.1" }
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+lyx-core-axum = { path = "../../../core/lyx-core-leptos/integrations/axum", version = "0.0.1" }
+lyx-core-router = { path = "../../../core/lyx-core-leptos/router", version = "0.0.1" }
+tokio = { version = "0.0.1", features = ["rt-multi-thread"] }
+tower-http = { version = "0.0.1", features = ["fs", "cors", "trace"] }
+tracing = { version = "0.0.1" }
+tracing-subscriber = { version = "0.0.1", features = ["env-filter"] }
+tracing-opentelemetry = { version = "0.0.1", default-features = true }
+opentelemetry = { version = "0.0.1", features = ["trace", "metrics"] }
+opentelemetry_sdk = { version = "0.0.1", default-features = false, features = ["trace", "rt-tokio" ] }
+opentelemetry-semantic-conventions = { version = "0.0.1" }
+opentelemetry-otlp = { version = "0.0.1", features = ["metrics"] }
+opentelemetry-stdout = { version = "0.0.1", features = ["trace", "metrics"] }

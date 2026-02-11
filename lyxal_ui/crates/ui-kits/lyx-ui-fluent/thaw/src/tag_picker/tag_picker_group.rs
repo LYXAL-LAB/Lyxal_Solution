@@ -1,0 +1,92 @@
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_fluent\thaw\src\tag_picker\tag_picker_group.rs
+```rust
+use super::{TagPickerInjection, TagPickerSize};
+use crate::{TagGroup, TagSize};
+use leptos::prelude::*;
+
+#[component]
+pub fn TagPickerGroup(
+    #[prop(optional, into)] class: MaybeProp<String>,
+    children: Children,
+) -> impl IntoView {
+    let tag_picker = TagPickerInjection::expect_context();
+    let class = MaybeProp::derive(move || {
+        Some(format!(
+            "thaw-tag-picker-group {}",
+            class.get().unwrap_or_default()
+        ))
+    });
+    let size = Signal::derive(move || match tag_picker.size.get() {
+        TagPickerSize::ExtraLarge => TagSize::Medium,
+        TagPickerSize::Large => TagSize::Small,
+        TagPickerSize::Medium => TagSize::ExtraSmall,
+    });
+    let on_dismiss = move |value| {
+        tag_picker.remove_selected_option(value);
+    };
+
+    view! {
+        <TagGroup
+            attr:role="listbox"
+            class
+            size
+            disabled=tag_picker.disabled
+            dismissible=true
+            on_dismiss
+        >
+            {children()}
+        </TagGroup>
+    }
+}
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```
+```

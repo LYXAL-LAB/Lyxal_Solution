@@ -1,0 +1,6 @@
+packages:
+    sdk
+    hs-cac-client
+    hs-exp-client
+    open-feature-provider
+    superposition-bindings

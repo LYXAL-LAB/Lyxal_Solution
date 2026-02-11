@@ -1,0 +1,17 @@
+[package]
+name = "lyx_form_proc_macros"
+description = "Proc macro used by lyx_form."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+categories.workspace = true
+keywords.workspace = true
+
+[dependencies]
+lyx_form_proc_macros_core.workspace = true
+
+[lib]
+proc-macro = true

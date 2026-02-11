@@ -1,0 +1,30 @@
+[package]
+name = "lyx-logic-query"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+cfg-if = { version = "0.0.1" }
+js-sys = { version = "0.0.1" , optional = true }
+web-sys = { version = "0.0.1", optional = true }
+miniserde = { version = "0.0.1" , optional = true }
+gloo-timers = { version = "0.0.1" , optional = true }
+tokio = { version = "0.0.1", optional = true }
+slotmap = { version = "0.0.1" }
+futures-channel = { version = "0.0.1" }
+futures = { version = "0.0.1" }
+async-trait = { version = "0.0.1" }
+indexed_db_futures = { version = "0.0.1" , optional = true }
+async_cell = { version = "0.0.1" , optional = true }
+
+[features]
+hydrate = ["js-sys", "dep:web-sys", "gloo-timers", "async_cell"]
+csr = ["js-sys", "dep:web-sys", "gloo-timers", "async_cell"]
+ssr = ["dep:tokio"]
+local_storage = ["miniserde", "web-sys/Storage"]
+indexed_db = [ "miniserde", "indexed_db_futures"]
+
+[dev-dependencies]
+lyx-core-axum = { path = "../../../core/lyx-core-leptos/integrations/axum", version = "0.0.1" }
+serde = { version = "0.0.1" }

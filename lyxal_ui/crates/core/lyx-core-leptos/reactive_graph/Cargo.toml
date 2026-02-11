@@ -1,0 +1,42 @@
+[package]
+name = "lyx-core-reactive_graph"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+lyx-core-any_spawner = { path = "../any_spawner", version = "0.0.1" }
+lyx-core-or_poisoned = { path = "../or_poisoned", version = "0.0.1" }
+futures = { version = "0.0.1", default-features = true }
+lyx-core-hydration_context = { path = "../hydration_context", version = "0.0.1", optional = true }
+pin-project-lite = { version = "0.0.1", default-features = true }
+rustc-hash = { version = "0.0.1", default-features = true }
+serde = { version = "0.0.1", optional = true, features = ["derive" ], default-features = true }
+slotmap = { version = "0.0.1", default-features = true }
+thiserror = { version = "0.0.1", default-features = true }
+tracing = { version = "0.0.1", optional = true, default-features = true }
+guardian = { version = "0.0.1", default-features = true }
+async-lock = { version = "0.0.1", default-features = true }
+send_wrapper = { version = "0.0.1", features = ["futures" ], default-features = true }
+subsecond = { version = "0.0.1", optional = true, default-features = true }
+indexmap = { version = "0.0.1", default-features = true }
+paste = { version = "0.0.1", default-features = true }
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+web-sys = { version = "0.0.1", features = ["console"] }
+[dev-dependencies]
+tokio = { version = "0.0.1", features = ["rt-multi-thread", "macros" ], default-features = true }
+tokio-test = { version = "0.0.1", default-features = true }
+lyx-core-any_spawner = { path = "../any_spawner", version = "0.0.1", features = ["futures-executor", "tokio"] }
+[build-dependencies]
+rustc_version = { version = "0.0.1", default-features = true }
+[features]
+nonce = []
+csr = []
+hydrate = []
+ssr = []
+nightly = []
+serde = ["dep:serde"]
+tracing = ["dep:tracing"]
+hydration = ["dep:lyx-core-hydration_context"]
+effects = [
+]
+sandboxed-arenas = []
+subsecond = ["dep:subsecond"]

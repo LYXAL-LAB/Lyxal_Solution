@@ -1,0 +1,27 @@
+[package]
+name = "lyx-comm-ws"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+json-patch = { version = "0.0.1" }
+lyx-core-leptos = { path = "../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+
+serde = { version = "0.0.1", features = ["derive"] }
+serde_json = { version = "0.0.1" }
+thiserror = { version = "0.0.1" }
+async-trait = { version = "0.0.1" }
+
+futures = { version = "0.0.1", default-features = false }
+tokio = { version = "0.0.1", features = ["sync"] }
+dashmap = { version = "0.0.1" }
+nanoid = { version = "0.0.1", optional = true }
+gloo-timers = { version = "0.0.1", optional = true, features = ["futures"] }
+
+[dev-dependencies]
+tokio = { version = "0.0.1", features = ["time"] }
+[features]
+default = []
+ssr = ["lyx-core-leptos/ssr", "dep:nanoid","tokio/rt-multi-thread"]
+csr = ["lyx-core-leptos/csr","dep:gloo-timers"]
+hydrate = ["lyx-core-leptos/hydrate","dep:gloo-timers"]

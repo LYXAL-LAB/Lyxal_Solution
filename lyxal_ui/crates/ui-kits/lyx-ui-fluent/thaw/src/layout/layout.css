@@ -1,0 +1,18 @@
+.thaw-layout {
+    flex: auto;
+}
+
+.thaw-layout--absolute-positioned {
+    background-color: inherit;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+}
+
+.thaw-layout--absolute-positioned
+    > .thaw-scrollbar
+    > .thaw-scrollbar__container {
+    display: flex;
+}

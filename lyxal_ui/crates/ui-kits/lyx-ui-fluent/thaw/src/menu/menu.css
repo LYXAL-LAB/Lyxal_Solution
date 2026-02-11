@@ -1,0 +1,38 @@
+.thaw-menu {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    row-gap: var(--spacingHorizontalXXS);
+    max-height: 80vh;
+    padding: var(--spacingHorizontalXS);
+    background-color: var(--colorNeutralBackground1);
+    color: var(--colorNeutralForeground1);
+    border-radius: var(--borderRadiusMedium);
+    box-shadow: var(--shadow16);
+    overflow-y: auto;
+    transform-origin: inherit;
+}
+
+[data-thaw-placement="top-start"] > .thaw-menu,
+[data-thaw-placement="top-end"] > .thaw-menu,
+[data-thaw-placement="top"] > .thaw-menu {
+    margin-bottom: 4px;
+}
+
+[data-thaw-placement="bottom-start"] > .thaw-menu,
+[data-thaw-placement="bottom-end"] > .thaw-menu,
+[data-thaw-placement="bottom"] > .thaw-menu {
+    margin-top: 4px;
+}
+
+[data-thaw-placement="left-start"] > .thaw-menu,
+[data-thaw-placement="left-end"] > .thaw-menu,
+[data-thaw-placement="left"] > .thaw-menu {
+    margin-right: 4px;
+}
+
+[data-thaw-placement="right-start"] > .thaw-menu,
+[data-thaw-placement="right-end"] > .thaw-menu,
+[data-thaw-placement="right"] > .thaw-menu {
+    margin-left: 4px;
+}

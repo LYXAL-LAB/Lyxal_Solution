@@ -1,0 +1,13 @@
+[package]
+name = "lyx-ui-foundations-dioxus"
+version = "0.0.1"
+edition = "2024"
+
+[features]
+icons = ["dep:lyx-ui-foundations-dioxus", "lyx-ui-foundations-dioxus/all-icons"]
+
+[dependencies]
+
+dioxus = { version = "0.0.1", features = ["web"] }
+
+lyx-ui-foundations-dioxus = { path = "../../packages/dioxus", version = "0.0.1", optional = true }

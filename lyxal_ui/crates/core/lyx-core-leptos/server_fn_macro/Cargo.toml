@@ -1,0 +1,20 @@
+[package]
+name = "lyx-core-server_fn_macro"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+quote = { version = "0.0.1", default-features = true }
+syn = { version = "0.0.1", features = ["full", "parsing", "extra-traits" ], default-features = true }
+proc-macro2 = { version = "0.0.1", default-features = true }
+xxhash-rust = { version = "0.0.1", features = ["const_xxh64" ], default-features = true }
+const_format = { version = "0.0.1", default-features = true }
+convert_case = { version = "0.0.1", default-features = true }
+[build-dependencies]
+rustc_version = { version = "0.0.1", default-features = true }
+[features]
+nightly = []
+ssr = []
+actix = []
+axum = []
+generic = []
+reqwest = []

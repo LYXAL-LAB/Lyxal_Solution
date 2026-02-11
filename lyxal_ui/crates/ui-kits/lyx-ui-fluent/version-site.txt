@@ -1,0 +1,13 @@
+main = https://thawui.vercel.app
+0.4.5 = https://thaw-7sijkg72g-thaw.vercel.app
+0.4.4 = https://thaw-31qheu9zp-thaw.vercel.app
+0.4.3 = https://thaw-qw87aibc2-thaw.vercel.app
+0.4.2 = https://thaw-gqp50wt0n-thaw.vercel.app
+0.4.1 = https://thaw-lym7uqo2l-thaw.vercel.app
+0.4.0 = https://thaw-dsc1blr5k-thaw.vercel.app
+0.3.3 = https://thaw-85fsrigp0-thaw.vercel.app
+0.3.2 = https://thaw-czldv7au5-thaw.vercel.app
+0.3.1 = https://thaw-bwh2r7eok-thaw.vercel.app
+0.3.0 = https://thaw-gxcwse9r5-thaw.vercel.app
+0.2.6 = https://thaw-mzh1656cm-thaw.vercel.app
+0.2.5 = https://thaw-8og1kv8zs-thaw.vercel.app

@@ -1,0 +1,85 @@
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\tooling\lyx-tool-cli\src\signal\reload.rs
+```rust
+1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\tooling\lyx-tool-cli\src\signal\reload.rs
+2: ```rust
+3: 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\tooling\lyx_tool_cli\src\signal\reload.rs
+4: 2: ```rust
+5: 3: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\tooling\lyx_tool_cli\src\signal\reload.rs
+6: 4: ```rust
+7: 5: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\tooling\lyx_tool_cli\src\signal\reload.rs
+8: 6: ```rust
+9: 7: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\tooling\lyx_tool_cli\src\signal\reload.rs
+10: 8: ```rust
+11: 9: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\tooling\lyx_tool_cli\src\signal\reload.rs
+12: 10: ```rust
+13: 11: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\tooling\lyx_tool_cli\src\signal\reload.rs
+14: 12: ```rust
+15: 13: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\tooling\lyx_tool_cli\src\signal\reload.rs
+16: 14: ```rust
+17: 15: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\tooling\lyx_tool_cli\src\signal\reload.rs
+18: 16: ```rust
+19: 17: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\tooling\lyx_tool_cli\src\signal\reload.rs
+20: 18: ```rust
+21: 19: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\tooling\lyx_tool_cli\src\signal\reload.rs
+22: 20: ```rust
+23: 21: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\tooling\lyx_tool_cli\src\signal\reload.rs
+24: 22: ```rust
+25: 23: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\tooling\lyx_tool_cli\src\signal\reload.rs
+26: 24: ```rust
+27: 25: use lyx-core-lyx_core_lyx-core-lyx_core_lyx-core-lyx_core_lyx-core-lyx_core_leptos_hot_reload::diff::Patches;
+28: 26: use tokio::sync::broadcast;
+29: 27: 
+30: 28: lazy_static::lazy_static! {
+31: 29:   static ref RELOAD_CHANNEL: broadcast::Sender::<ReloadType> = broadcast::channel::<ReloadType>(1).0;
+32: 30: }
+33: 31: 
+34: 32: #[derive(Debug, Clone)]
+35: 33: pub enum ReloadType {
+36: 34:     Full,
+37: 35:     Style,
+38: 36:     ViewPatches(String),
+39: 37: }
+40: 38: 
+41: 39: pub struct ReloadSignal {}
+42: 40: 
+43: 41: impl ReloadSignal {
+44: 42:     pub fn send_full() {
+45: 43:         if let Err(e) = RELOAD_CHANNEL.send(ReloadType::Full) {
+46: 44:             log::error!(r#"Error could not send reload "Full" due to: {e}"#);
+47: 45:         }
+48: 46:     }
+49: 47:     pub fn send_style() {
+50: 48:         if let Err(e) = RELOAD_CHANNEL.send(ReloadType::Style) {
+51: 49:             log::error!(r#"Error could not send reload "Style" due to: {e}"#);
+52: 50:         }
+53: 51:     }
+54: 52: 
+55: 53:     pub fn send_view_patches(view_patches: &Patches) {
+56: 54:         match serde_json::to_string(view_patches) {
+57: 55:             Ok(data) => {
+58: 56:                 if let Err(e) = RELOAD_CHANNEL.send(ReloadType::ViewPatches(data)) {
+59: 57:                     log::error!(r#"Error could not send reload "View Patches" due to: {e}"#);
+60: 58:                 }
+61: 59:             }
+62: 60:             Err(e) => log::error!(r#"Error could not send reload "View Patches" due to: {e}"#),
+63: 61:         }
+64: 62:     }
+65: 63: 
+66: 64:     pub fn subscribe() -> broadcast::Receiver<ReloadType> {
+67: 65:         RELOAD_CHANNEL.subscribe()
+68: 66:     }
+69: 67: }
+70: 68: ```
+71: 69: ```
+72: 70: ```
+73: 71: ```
+74: 72: ```
+75: 73: ```
+76: 74: ```
+77: 75: ```
+78: 76: ```
+79: 77: ```
+80: 78: ```
+81: 79: ```
+82: ```
+```

@@ -1,0 +1,50 @@
+[package]
+name = "lyx-ui-performance-audit"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+# Core dependencies
+tokio = { version = "0.0.1", features = ["full"] }
+serde = { version = "0.0.1", features = ["derive"] }
+serde_json = { version = "0.0.1" }
+anyhow = { version = "0.0.1" }
+thiserror = { version = "0.0.1" }
+# File system and path handling
+walkdir = { version = "0.0.1" }
+glob = { version = "0.0.1" }
+# Time and duration handling
+chrono = { version = "0.0.1", features = ["serde"] }
+# Async runtime
+futures = { version = "0.0.1" }
+# Logging
+log = { version = "0.0.1" }
+env_logger = { version = "0.0.1" }
+# Statistics and math
+online-statistics = { version = "0.0.1" }
+nalgebra = { version = "0.0.1" }
+# Random number generation
+rand = { version = "0.0.1" }
+# HTTP client
+reqwest = { version = "0.0.1", features = ["json"] }
+[dev-dependencies]
+# Testing dependencies
+criterion = { version = "0.0.1" }
+proptest = { version = "0.0.1" }
+tempfile = { version = "0.0.1" }
+# Async testing
+tokio-test = { version = "0.0.1" }
+[features]
+default = ["monitoring", "benchmarks"]
+monitoring = []
+benchmarks = []
+cli = ["dep:indicatif"]
+web = ["dep:wasm-bindgen", "dep:web-sys"]
+# CLI dependencies
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+clap = { version = "0.0.1", features = ["derive"] }
+indicatif = {  version = "0.0.1" , optional = true }
+# Web dependencies (optional)
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = { version = "0.0.1" , optional = true }
+web-sys = { version = "0.0.1" , optional = true }
+js-sys = { version = "0.0.1" }

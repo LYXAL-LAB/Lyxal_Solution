@@ -1,0 +1,15 @@
+[package]
+name = "lyx-ui-thaw_components"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+thaw_utils = { path = "../thaw_utils", version = "0.0.1" }
+web-sys = { version = "0.0.1", features = ["DomRect"] }
+cfg-if = { version = "0.0.1" }
+uuid = { version = "0.0.1", features = ["v4", "js"] }
+send_wrapper = { version = "0.0.1" }
+[features]
+csr = ["lyx-core-leptos/csr"]
+ssr = ["lyx-core-leptos/ssr"]
+hydrate = ["lyx-core-leptos/hydrate"]

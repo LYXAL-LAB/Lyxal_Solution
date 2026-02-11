@@ -1,0 +1,11 @@
+[package]
+name = "lyx-ui-foundations-stylers"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+glob = { version = "0.0.1" }
+syn = { version = "0.0.1", features = ["full"] }
+lyx-ui-foundations-stylers_core = { path = "../stylers_core", version = "0.0.1" }
+lyx-ui-foundations-stylers_macro = { path = "../stylers_macro", version = "0.0.1" }
+proc-macro2 = { version = "0.0.1" }

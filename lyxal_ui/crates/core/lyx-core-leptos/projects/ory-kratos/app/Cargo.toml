@@ -1,0 +1,25 @@
+[package]
+name = "app"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+lyx-core-leptos = { path = "../../../leptos", version = "0.0.1" }
+leptos_meta = { path = "../../../meta", version = "0.0.1" }
+leptos_router = { path = "../../../router", version = "0.0.1" }
+leptos_axum = { version = "0.0.1", path = "../../../integrations/axum", optional = true }
+axum = { version = "0.0.1", optional = true }
+axum-extra = { version = "0.0.1", optional = true }
+reqwest = { version = "0.0.1", optional = true }
+time = { version = "0.0.1", optional = true }
+tracing = { version = "0.0.1", optional = true }
+url = { version = "0.0.1", optional = true }
+uuid = { version = "0.0.1" }
+wasm-bindgen = { version = "0.0.1", optional = true }
+web-sys = { version = "0.0.1" }
+sqlx = { version = "0.0.1", optional = true }
+
+[features]
+default = []
+hydrate = ["lyx-core-leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate", "dep:wasm-bindgen"]
+ssr = ["lyx-core-leptos/ssr", "leptos_meta/ssr", "leptos_router/ssr", "dep:sqlx", "dep:time", "dep:leptos_axum", "dep:axum", "dep:tracing", "dep:reqwest", "dep:url", "dep:axum-extra"]

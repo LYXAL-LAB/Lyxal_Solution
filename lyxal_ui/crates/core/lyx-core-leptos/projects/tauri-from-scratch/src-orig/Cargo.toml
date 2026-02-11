@@ -1,0 +1,39 @@
+[package]
+name = "lyx-core-src-orig"
+version = "0.0.1"
+edition = "2024"
+[lib]
+crate-type = ["staticlib", "cdylib", "rlib"]
+[[bin]]
+name = "lyx-core-src-orig"
+path = "src/lib.rs"
+[dependencies]
+axum = { version = "0.0.1", optional = true }
+axum-macros = { version = "0.0.1", optional = true }
+console_error_panic_hook = { version = "0.0.1", optional = true }
+lyx-core-leptos = { path = "../../../leptos", version = "0.0.1", optional = true }
+lyx-core-axum = { path = "../../../integrations/axum", version = "0.0.1", optional = true }
+lyx-core-meta = { path = "../../../meta", version = "0.0.1", optional = true }
+lyx-core-server_fn = { path = "../../../server_fn", version = "0.0.1", optional = true }
+tokio = { version = "0.0.1", optional = true, features = ["rt-multi-thread"] }
+tower = { version = "0.0.1", optional = true }
+tower-http = { version = "0.0.1", optional = true, features = ["fs", "cors"] }
+wasm-bindgen = { version = "0.0.1", optional = true }
+[features]
+csr = ["lyx-core-leptos/csr", "dep:lyx-core-server_fn"]
+hydrate = [
+"lyx-core-leptos/hydrate",
+"dep:lyx-core-meta",
+"dep:console_error_panic_hook",
+"dep:wasm-bindgen"
+]
+ssr = [
+"dep:axum",
+"dep:axum-macros",
+"lyx-core-leptos/ssr",
+"dep:lyx-core-axum",
+"dep:lyx-core-meta",
+"lyx-core-meta/ssr",
+"dep:tower-http",
+"dep:tower",
+"dep:tokio" ]

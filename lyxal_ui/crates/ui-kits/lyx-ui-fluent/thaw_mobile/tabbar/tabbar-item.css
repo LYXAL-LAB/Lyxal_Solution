@@ -1,0 +1,17 @@
+.thaw-tabbar-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.thaw-tabbar-item--selected {
+    color: var(--thaw-font-color-selected)
+}
+
+.thaw-tabbar-item__content {
+    font-size: 12px;
+    line-height: 16px;
+}

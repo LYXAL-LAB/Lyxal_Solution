@@ -1,0 +1,8 @@
+[package]
+name = "lyx-logic-leptos_typed_router"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+lyx-logic-leptos_typed_router_macro = { path = "../leptos_typed_router_macro", version = "0.0.1" }

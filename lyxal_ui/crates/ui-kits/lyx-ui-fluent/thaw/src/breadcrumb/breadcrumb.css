@@ -1,0 +1,82 @@
+.thaw-breadcrumb__list {
+    list-style-type: none;
+    display: flex;
+    align-items: center;
+    margin: 0px;
+    padding: 0px;
+}
+
+.thaw-breadcrumb-item {
+    display: flex;
+    align-items: center;
+    color: var(--colorNeutralForeground2);
+    box-sizing: border-box;
+    flex-wrap: nowrap;
+}
+
+.thaw-breadcrumb-button {
+    align-items: center;
+    box-sizing: border-box;
+    display: inline-flex;
+    justify-content: center;
+    text-decoration-line: none;
+    vertical-align: middle;
+    margin: 0px;
+    overflow: hidden;
+    border: var(--strokeWidthThin) solid var(--colorNeutralStroke1);
+    font-family: var(--fontFamilyBase);
+    outline-style: none;
+    border-radius: var(--borderRadiusMedium);
+    font-size: var(--fontSizeBase300);
+    line-height: var(--lineHeightBase300);
+    transition-duration: var(--durationFaster);
+    transition-property: background, border, color;
+    transition-timing-function: var(--curveEasyEase);
+
+    flex-wrap: nowrap;
+    min-width: unset;
+    height: 32px;
+    color: var(--colorNeutralForeground2);
+    background-color: var(--colorSubtleBackground);
+    border-color: transparent;
+    font-weight: var(--fontWeightRegular);
+    padding: var(--spacingHorizontalSNudge);
+}
+
+.thaw-breadcrumb-button:hover {
+    color: var(--colorNeutralForeground2Hover);
+    background-color: var(--colorSubtleBackgroundHover);
+    cursor: pointer;
+}
+
+.thaw-breadcrumb-button:hover:active {
+    color: var(--colorNeutralForeground2Pressed);
+    background-color: var(--colorSubtleBackgroundPressed);
+    outline-style: none;
+}
+
+.thaw-breadcrumb-button--current {
+    font-weight: var(--fontWeightSemibold);
+}
+
+.thaw-breadcrumb-button--current:hover {
+    color: var(--colorNeutralForeground2);
+    background-color: var(--colorTransparentBackground);
+    cursor: auto;
+}
+
+.thaw-breadcrumb-button--current:hover:active {
+    color: var(--colorNeutralForeground2);
+    background-color: var(--colorTransparentBackground);
+    outline-style: none;
+}
+
+.thaw-breadcrumb-divider {
+    font-size: 16px;
+    display: flex;
+}
+
+.thaw-breadcrumb-divider > svg {
+    display: inline;
+    line-height: 0;
+}

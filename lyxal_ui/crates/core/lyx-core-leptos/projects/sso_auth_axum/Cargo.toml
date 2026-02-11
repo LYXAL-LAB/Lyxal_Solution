@@ -1,0 +1,52 @@
+[package]
+name = "lyx-core-sso_auth_axum"
+version = "0.0.1"
+edition = "2024"
+[lib]
+crate-type = ["cdylib", "rlib"]
+[dependencies]
+oauth2 = { version = "0.0.1", optional = true }
+anyhow = { version = "0.0.1" }
+console_log = { version = "0.0.1" }
+rand = { version = "0.0.1", optional = true, features = ["min_const_gen"] }
+console_error_panic_hook = { version = "0.0.1" }
+futures = { version = "0.0.1" }
+lyx-core-leptos = { path = "../../leptos", version = "0.0.1", optional = true }
+lyx-core-meta = { path = "../../meta", version = "0.0.1", optional = true }
+lyx-core-axum = { path = "../../integrations/axum", version = "0.0.1", optional = true }
+lyx-core-router = { path = "../../router", version = "0.0.1", optional = true }
+log = { version = "0.0.1" }
+simple_logger = { version = "0.0.1" }
+serde = { version = "0.0.1", features = ["derive"] }
+serde_json = { version = "0.0.1", optional = true }
+axum = { version = "0.0.1", optional = true, features = ["macros"] }
+tower = { version = "0.0.1", optional = true }
+tower-http = { version = "0.0.1", optional = true, features = ["fs"] }
+tokio = { version = "0.0.1", optional = true, features = ["full"] }
+http = { version = "0.0.1" }
+sqlx = { version = "0.0.1", optional = true, features = ["runtime-tokio-rustls", "sqlite" ] }
+thiserror = { version = "0.0.1" }
+wasm-bindgen = { version = "0.0.1" }
+axum_session_auth = { version = "0.0.1", optional = true, features = ["sqlite-rustls" ] }
+axum_session = { version = "0.0.1", optional = true, features = ["sqlite-rustls" ] }
+async-trait = { version = "0.0.1", optional = true }
+reqwest = { version = "0.0.1", optional = true, features = ["json"] }
+[features]
+hydrate = ["lyx-core-leptos/hydrate", "lyx-core-meta/hydrate", "lyx-core-router/hydrate"]
+ssr = [
+"dep:serde_json",
+"dep:axum",
+"dep:tower",
+"dep:tower-http",
+"dep:tokio",
+"dep:reqwest",
+"dep:oauth2",
+"dep:axum_session_auth",
+"dep:axum_session",
+"dep:async-trait",
+"dep:sqlx",
+"dep:rand",
+"lyx-core-leptos/ssr",
+"lyx-core-meta/ssr",
+"lyx-core-router/ssr",
+"dep:lyx-core-axum" ]

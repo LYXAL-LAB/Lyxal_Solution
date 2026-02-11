@@ -1,0 +1,97 @@
+[package]
+name = "lyx-logic-leptos_i18n"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+lyx-logic-use = { path = "../../lyx-logic-use", version = "0.0.1", features = ["use_locales"], optional = true }
+lyx-logic-leptos_i18n_macro = { path = "../leptos_i18n_macro", version = "0.0.1", optional = true }
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1", optional = true }
+lyx-core-meta = { path = "../../../core/lyx-core-leptos/meta", version = "0.0.1", optional = true }
+codee = { version = "0.0.1" }
+icu_locale = { version = "0.0.1" }
+icu_provider = { version = "0.0.1", optional = true, features = ["sync"] }
+icu_plurals = { version = "0.0.1", optional = true }
+icu_datetime = { version = "0.0.1", optional = true }
+icu_calendar = { version = "0.0.1", optional = true }
+icu_list = { version = "0.0.1", optional = true }
+icu_decimal = { version = "0.0.1", optional = true }
+typed-builder = { version = "0.0.1" }
+fixed_decimal = { version = "0.0.1", optional = true, features = ["ryu"] }
+icu_experimental = { version = "0.0.1", optional = true, features = ["ryu"] }
+writeable = { version = "0.0.1" }
+serde = { version = "0.0.1" }
+async-once-cell = { version = "0.0.1", optional = true }
+js-sys = { version = "0.0.1", optional = true }
+serde-wasm-bindgen = { version = "0.0.1", optional = true }
+futures = { version = "0.0.1", optional = true }
+default-struct-builder = { version = "0.0.1" }
+wasm-bindgen = { version = "0.0.1" }
+tinystr = { version = "0.0.1", optional = true }
+serde_json = { version = "0.0.1", optional = true }
+
+[features]
+default = ["cookie", "icu_compiled_data"]
+
+cookie = []
+icu_compiled_data = [
+"icu_plurals?/compiled_data",
+"icu_datetime?/compiled_data",
+"icu_calendar?/compiled_data",
+"icu_list?/compiled_data",
+"icu_decimal?/compiled_data",
+"icu_experimental?/compiled_data",
+"lyx-logic-leptos_i18n_macro/icu_compiled_data" ]
+nightly = ["lyx-core-leptos/nightly"]
+
+# Formatting features
+all_formats = [
+"plurals",
+"format_datetime",
+"format_list",
+"format_nums",
+"format_currency" ]
+plurals = ["dep:icu_plurals", "dep:icu_provider", "lyx-logic-leptos_i18n_macro/plurals"]
+format_datetime = [
+"dep:icu_datetime",
+"dep:icu_calendar",
+"dep:icu_provider",
+"lyx-logic-leptos_i18n_macro/format_datetime" ]
+format_list = [
+"dep:icu_list",
+"dep:icu_provider",
+"lyx-logic-leptos_i18n_macro/format_list" ]
+format_nums = [
+"dep:icu_decimal",
+"dep:fixed_decimal",
+"dep:icu_provider",
+"lyx-logic-leptos_i18n_macro/format_nums" ]
+format_currency = [
+"format_nums",
+"dep:tinystr",
+"dep:icu_experimental",
+"dep:icu_provider",
+"lyx-logic-leptos_i18n_macro/format_currency" ]
+
+# Target features
+actix = ["ssr", "lyx-logic-use/actix"]
+axum = ["ssr", "lyx-logic-use/axum"]
+hydrate = [
+"lyx-core-leptos/hydrate",
+"lyx-logic-leptos_i18n_macro/hydrate",
+"dep:js-sys",
+"dep:serde-wasm-bindgen" ]
+csr = ["lyx-core-leptos/csr", "lyx-logic-leptos_i18n_macro/csr"]
+ssr = [
+"lyx-core-leptos/ssr",
+"lyx-core-meta/ssr",
+"lyx-logic-use/ssr",
+"lyx-logic-leptos_i18n_macro/ssr" ]
+islands = ["lyx-core-leptos/islands", "lyx-logic-leptos_i18n_macro/islands"]
+dynamic_load = [
+"lyx-logic-leptos_i18n_macro/dynamic_load",
+"dep:async-once-cell",
+"dep:futures",
+"dep:serde_json" ]
+
+# Features needed for the doctests

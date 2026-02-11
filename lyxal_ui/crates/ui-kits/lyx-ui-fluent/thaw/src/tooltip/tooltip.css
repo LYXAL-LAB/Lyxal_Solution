@@ -1,0 +1,78 @@
+div.thaw-tooltip-content {
+    position: absolute;
+    transform-origin: inherit;
+
+    padding: 4px 11px 6px;
+    border-radius: var(--borderRadiusMedium);
+    border: 1px solid var(--colorTransparentStroke);
+    line-height: var(--lineHeightBase200);
+    font-size: var(--fontSizeBase200);
+    font-family: var(--fontFamilyBase);
+    max-width: 240px;
+    overflow-wrap: break-word;
+    box-sizing: border-box;
+    filter: drop-shadow(0 0 2px var(--colorNeutralShadowAmbient))
+        drop-shadow(0 4px 8px var(--colorNeutralShadowKey));
+}
+
+div.thaw-tooltip-content--normal {
+    background-color: var(--colorNeutralBackground1);
+    color: var(--colorNeutralForeground1);
+}
+
+div.thaw-tooltip-content--inverted {
+    background-color: var(--colorNeutralBackgroundStatic);
+    color: var(--colorNeutralForegroundStaticInverted);
+}
+
+.thaw-tooltip-content__angle {
+    position: absolute;
+    background-color: inherit;
+    background-clip: content-box;
+    box-sizing: border-box;
+    z-index: -1;
+
+    width: var(--thaw-positioning-arrow-height);
+    height: var(--thaw-positioning-arrow-height);
+    border-bottom-left-radius: var(--borderRadiusSmall);
+}
+
+.thaw-popover-surface__angle::before {
+    clip-path: polygon(0% 0%, 100% 100%, 0% 100%);
+    border-bottom-left-radius: var(--borderRadiusSmall);
+    height: 100%;
+    width: 100%;
+    background-color: inherit;
+    display: block;
+    content: "";
+    margin: -1px;
+    border: 1px solid var(--colorTransparentStroke);
+}
+
+[data-thaw-placement="top-start"] .thaw-tooltip-content__angle,
+[data-thaw-placement="top-end"] .thaw-tooltip-content__angle,
+[data-thaw-placement="top"] .thaw-tooltip-content__angle {
+    transform: rotate(-45deg);
+    bottom: var(--thaw-positioning-arrow-offset);
+}
+
+[data-thaw-placement="bottom-start"] .thaw-tooltip-content__angle,
+[data-thaw-placement="bottom-end"] .thaw-tooltip-content__angle,
+[data-thaw-placement="bottom"] .thaw-tooltip-content__angle {
+    transform: rotate(135deg);
+    top: var(--thaw-positioning-arrow-offset);
+}
+
+[data-thaw-placement="left-start"] .thaw-tooltip-content__angle,
+[data-thaw-placement="left-end"] .thaw-tooltip-content__angle,
+[data-thaw-placement="left"] .thaw-tooltip-content__angle {
+    transform: rotate(225deg);
+    right: var(--thaw-positioning-arrow-offset);
+}
+
+[data-thaw-placement="right-start"] .thaw-tooltip-content__angle,
+[data-thaw-placement="right-end"] .thaw-tooltip-content__angle,
+[data-thaw-placement="right"] .thaw-tooltip-content__angle {
+    transform: rotate(45deg);
+    left: var(--thaw-positioning-arrow-offset);
+}

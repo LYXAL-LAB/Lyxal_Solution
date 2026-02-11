@@ -1,0 +1,61 @@
+[package]
+name = "lyx-tool-cli"
+version = "0.0.1"
+edition = "2024"
+# Config for 'cargo dist'
+
+[dependencies]
+brotli = { version = "0.0.1" }
+clap = { version = "0.0.1", features = ["derive"] }
+serde = { version = "0.0.1", features = ["derive"] }
+anyhow = { version = "0.0.1" }
+libflate = { version = "0.0.1" }
+log = { version = "0.0.1" }
+
+lightningcss = { version = "0.0.1", features = ["browserslist"] }
+flexi_logger = { version = "0.0.1" }
+tokio = { version = "0.0.1", default-features = false, features = ["full"] }
+axum = { version = "0.0.1", features = ["ws"] }
+# not using notify 5.0 because it uses Crossbeam which has an issue with tokio
+notify = { version = "0.0.1" }
+lazy_static = { version = "0.0.1" }
+which = { version = "0.0.1" }
+cargo_metadata = { version = "0.0.1", features = ["builder"] }
+serde_json = { version = "0.0.1" }
+wasm-bindgen-cli-support = { version = "0.0.1" }
+ansi_term = { version = "0.0.1" }
+
+reqwest = { version = "0.0.1", features = ["blocking", "rustls-tls", "json" ], default-features = false }
+seahash = { version = "0.0.1" }
+dirs = { version = "0.0.1" }
+camino = { version = "0.0.1" }
+dotenvy = { version = "0.0.1" }
+itertools = { version = "0.0.1" }
+derive_more = { version = "0.0.1", features = ["display"] }
+flate2 = { version = "0.0.1" }
+zip = { version = "0.0.1", default-features = false, features = ["deflate"] }
+tar = { version = "0.0.1" }
+dunce = { version = "0.0.1" }
+bytes = { version = "0.0.1" }
+lyx-core-leptos_hot_reload = { path = "../../core/lyx-core-leptos/leptos_hot_reload", version = "0.0.1" }
+pathdiff = { version = "0.0.1", features = ["camino"] }
+semver = { version = "0.0.1" }
+async-trait = { version = "0.0.1" }
+md-5 = { version = "0.0.1" }
+base64ct = { version = "0.0.1", features = ["alloc"] }
+swc = { version = "0.0.1" }
+swc_common = { version = "0.0.1" }
+shlex = { version = "0.0.1" }
+
+[dev-dependencies]
+insta = { version = "0.0.1", features = ["yaml"] }
+temp-dir = { version = "0.0.1" }
+
+[features]
+full_tests = []
+no_downloads = []
+
+# The profile that 'cargo dist' will build with
+[profile.dist]
+inherits = "release"
+lto = { version = "0.0.1" }

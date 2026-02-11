@@ -1,0 +1,37 @@
+[package]
+name = "lyx-ui-performance-testing"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+# Core dependencies
+tokio = { version = "0.0.1", features = ["full"] }
+serde = { version = "0.0.1", features = ["derive"] }
+serde_json = { version = "0.0.1" }
+anyhow = { version = "0.0.1" }
+thiserror = { version = "0.0.1" }
+# Time handling
+chrono = { version = "0.0.1", features = ["serde"] }
+web-time = { version = "0.0.1" }
+# File system operations
+walkdir = { version = "0.0.1" }
+# System information
+sysinfo = { version = "0.0.1" }
+# Logging
+log = { version = "0.0.1" }
+env_logger = { version = "0.0.1" }
+[dev-dependencies]
+tempfile = { version = "0.0.1" }
+tokio-test = { version = "0.0.1" }
+pretty_assertions = { version = "0.0.1" }
+[features]
+default = ["benchmarks", "regression", "reporting"]
+benchmarks = []
+regression = []
+reporting = []
+ci-integration = []
+[[bin]]
+name = "lyx-ui-performance-testing"
+path = "src/lib.rs"
+# [[bench]]
+# name = "component_benchmarks"
+# harness = false

@@ -1,0 +1,18 @@
+[package]
+name = "lyx-ui-thaw_utils"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+lyx-core-meta = { path = "../../../core/lyx-core-leptos/meta", version = "0.0.1" }
+lyx-core-reactive_stores = { path = "../../../core/lyx-core-leptos/reactive_stores", version = "0.0.1" }
+web-sys = { version = "0.0.1" }
+wasm-bindgen = { version = "0.0.1" }
+cfg-if = { version = "0.0.1" }
+chrono = { version = "0.0.1" }
+send_wrapper = { version = "0.0.1" }
+[features]
+csr = ["lyx-core-leptos/csr"]
+ssr = ["lyx-core-leptos/ssr", "lyx-core-meta/ssr"]
+hydrate = ["lyx-core-leptos/hydrate"]
+nightly = ["lyx-core-leptos/nightly"]

@@ -1,0 +1,11 @@
+[package]
+name = "lyx-found-variant-macro"
+version = "0.0.1"
+edition = "2024"
+[lib]
+proc-macro = true
+[dependencies]
+syn = { version = "0.0.1", features = ["full"] }
+quote = { version = "0.0.1" }
+proc-macro2 = { version = "0.0.1" }
+darling = { version = "0.0.1" }

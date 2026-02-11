@@ -1,0 +1,38 @@
+[package]
+name = "lyx-spec-image"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+lyx-core-leptos = { path = "../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+lyx-core-router = { path = "../../core/lyx-core-leptos/router", version = "0.0.1" }
+lyx-core-meta = { path = "../../core/lyx-core-leptos/meta", version = "0.0.1" }
+
+wasm-bindgen = { version = "0.0.1" }
+web-sys = { version = "0.0.1", optional = true, features = ["HtmlImageElement"] }
+
+tokio = { version = "0.0.1", optional = true, features = ["rt-multi-thread", "rt", "fs"] }
+axum = { version = "0.0.1", optional = true, features = ["macros"] }
+tower = { version = "0.0.1", optional = true }
+tower-http = { version = "0.0.1", optional = true, features = ["fs"] }
+
+image = { version = "0.0.1", optional = true }
+webp = { version = "0.0.1", optional = true }
+serde = { version = "0.0.1", features = ["derive"] }
+serde_qs = { version = "0.0.1" }
+thiserror = { version = "0.0.1", optional = true }
+base64 = { version = "0.0.1" }
+tracing = { version = "0.0.1", optional = true }
+dashmap = { version = "0.0.1", optional = true }
+
+[features]
+ssr = [
+"lyx-core-router/ssr", "lyx-core-meta/ssr" , "lyx-core-leptos/ssr",
+"dep:webp", "dep:image",
+"dep:tokio", "dep:axum", "dep:tower", "dep:tower-http",
+"dep:tracing", "dep:dashmap", "dep:thiserror"
+]
+hydrate = [ "dep:web-sys","lyx-core-leptos/hydrate", "lyx-core-router/hydrate" ]
+
+[dev-dependencies]
+lyx-core-axum = { path = "../../core/lyx-core-leptos/integrations/axum", version = "0.0.1" }

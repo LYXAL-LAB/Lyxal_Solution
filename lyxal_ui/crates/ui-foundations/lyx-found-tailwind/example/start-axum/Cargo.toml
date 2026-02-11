@@ -1,0 +1,38 @@
+[package]
+name = "lyx-found-start-axum"
+version = "0.0.1"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+axum = { version = "0.0.1", optional = true }
+console_error_panic_hook = "0.0.1"
+lyx-core-leptos = { path = "../../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["nightly"] }
+lyx-core-axum = { path = "../../../../core/lyx-core-leptos/integrations/axum", version = "0.0.1", optional = true }
+lyx-core-meta = { path = "../../../../core/lyx-core-leptos/meta", version = "0.0.1", features = ["nightly"] }
+lyx-core-router = { path = "../../../../core/lyx-core-leptos/router", version = "0.0.1", features = ["nightly"] }
+tokio = { version = "0.0.1", optional = true, features = ["rt-multi-thread"] }
+tower = { version = "0.0.1", optional = true }
+tower-http = { version = "0.0.1", optional = true, features = ["fs"] }
+wasm-bindgen = "0.0.1"
+thiserror = "0.0.1"
+tracing = { version = "0.0.1", optional = true }
+http = "0.0.1"
+tailwind_fuse = { path = "../../fuse", version = "0.0.1" }
+
+[features]
+hydrate = ["lyx-core-leptos/hydrate", "lyx-core-meta/hydrate", "lyx-core-router/hydrate"]
+ssr = [
+"dep:axum",
+"dep:tokio",
+"dep:tower",
+"dep:tower-http",
+"dep:lyx-core-axum",
+"lyx-core-leptos/ssr",
+"lyx-core-meta/ssr",
+"lyx-core-router/ssr",
+"dep:tracing" ]
+
+# Defines a size-optimized profile for the WASM bundle in release mode

@@ -1,0 +1,22 @@
+### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx-core-leptos\router\Cargo.toml
+[package]
+name = "lyx-core-router"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+lyx-core-server_fn = { path = "../server_fn", version = "0.0.1", optional = true }
+lyx-core-leptos_dom = { path = "../leptos_dom", version = "0.0.1" }
+lyx-core-leptos_macro = { path = "../leptos_macro", version = "0.0.1" }
+lyx-core-reactive_graph = { path = "../reactive_graph", version = "0.0.1" }
+lyx-core-tachys = { path = "../tachys", version = "0.0.1" }
+serde = { version = "0.0.1" }
+tracing = { version = "0.0.1" }
+web-sys = { version = "0.0.1", features = ["Location", "History", "Window", "Element"] }
+
+[features]
+nonce = []
+nightly = []
+hydrate = []
+ssr = ["dep:lyx-core-server_fn"]
+csr = []

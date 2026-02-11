@@ -1,0 +1,21 @@
+[package]
+name = "lyx-core-experimentation_client"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+chrono = { version = "0.0.1" }
+derive_more = { version = "0.0.1" }
+log = { version = "0.0.1" }
+once_cell = { version = "0.0.1" }
+reqwest = { version = "0.0.1" }
+serde_json = { version = "0.0.1" }
+lyx-core-superposition_types = { path = "../superposition_types", version = "0.0.1", features = ["experimentation", "api" ] }
+tokio = { version = "0.0.1", features = ["full"] }
+
+[lib]
+name = "lyx-core-experimentation_client"
+crate-type = ["cdylib", "lib"]
+
+[build-dependencies]
+cbindgen = { version = "0.0.1" }

@@ -1,0 +1,23 @@
+[package]
+name = "lyx-ui-api-standards"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+# Core dependencies
+lyx-core-leptos = { path = "../../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["csr", "hydrate"] }
+serde = { version = "0.0.1", features = ["derive"] }
+serde_json = { version = "0.0.1" }
+thiserror = { version = "0.0.1" }
+# Validation and testing
+regex = { version = "0.0.1" }
+chrono = { version = "0.0.1", features = ["serde"] }
+# CSS utilities
+cssparser = { version = "0.0.1" }
+[dev-dependencies]
+tokio-test = { version = "0.0.1" }
+tempfile = { version = "0.0.1" }
+[features]
+default = ["validation", "linting"]
+validation = []
+linting = []
+testing = []

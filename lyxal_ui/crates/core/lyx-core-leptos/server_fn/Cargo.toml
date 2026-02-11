@@ -1,0 +1,36 @@
+[package]
+name = "lyx-core-server_fn"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+lyx-core-any_error = { path = "../any_error", version = "0.0.1" }
+lyx-core-server_fn_macro_default = { path = "./server_fn_macro_default", version = "0.0.1" }
+const_format = { version = "0.0.1" }
+const-str = { version = "0.0.1" }
+rustversion = { version = "0.0.1" }
+xxhash-rust = { version = "0.0.1", features = ["const_xxh64"] }
+serde = { version = "0.0.1", features = ["derive"] }
+send_wrapper = { version = "0.0.1", optional = true, features = ["futures"] }
+thiserror = { version = "0.0.1" }
+inventory = { version = "0.0.1", optional = true }
+dashmap = { version = "0.0.1" }
+serde_qs = { version = "0.0.1" }
+serde_json = { version = "0.0.1" }
+futures = { version = "0.0.1" }
+http = { version = "0.0.1" }
+bytes = { version = "0.0.1" }
+url = { version = "0.0.1" }
+pin-project-lite = { version = "0.0.1" }
+
+[features]
+multipart = []
+url = []
+browser = []
+actix-no-default = []
+axum-no-default = []
+ssr = ["dep:inventory"]
+cbor = []
+axum = []
+actix = []
+rsc = []

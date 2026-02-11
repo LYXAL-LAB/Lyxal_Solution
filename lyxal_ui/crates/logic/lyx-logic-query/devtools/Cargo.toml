@@ -1,0 +1,20 @@
+[package]
+name = "lyx-logic-devtools"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+
+
+cfg-if = { version = "0.0.1" }
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+lyx-logic-query = { path = "../query", version = "0.0.1" }
+js-sys = { version = "0.0.1" , optional = true }
+web-sys = { version = "0.0.1", optional = true, features = ["DomRect"] }
+wasm-bindgen = { version = "0.0.1" , optional = true }
+
+[features]
+csr = ["dep:web-sys", "wasm-bindgen", "js-sys"]
+force = []
+
+#

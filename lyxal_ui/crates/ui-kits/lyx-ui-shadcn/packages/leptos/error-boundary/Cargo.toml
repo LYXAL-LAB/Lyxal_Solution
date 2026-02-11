@@ -1,0 +1,16 @@
+[package]
+name = "lyx-ui-error-boundary"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+chrono = { version = "0.0.1" }
+lyx-core-leptos = { path = "../../../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["csr"] }
+log = { version = "0.0.1" }
+web-sys = { version = "0.0.1", features = ["Window", "Location"] }
+[dev-dependencies]
+wasm-bindgen-test = { version = "0.0.1" }
+shadcn-ui-test-utils = { path = "../../test-utils", version = "0.0.1" }
+[features]
+default = []
+development = []
+production = []

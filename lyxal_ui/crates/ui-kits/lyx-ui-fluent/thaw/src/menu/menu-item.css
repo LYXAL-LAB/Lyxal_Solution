@@ -1,0 +1,23 @@
+.thaw-menu-item {
+    display: flex;
+    align-items: center;
+    padding: var(--spacingVerticalSNudge) var(--spacingHorizontalS);
+    color: var(--colorNeutralForeground1);
+    cursor: pointer;
+    border-radius: var(--borderRadiusMedium);
+}
+
+.thaw-menu-item:hover:not(.thaw-menu-item--disabled) {
+    background-color: var(--colorNeutralBackground1Hover);
+    color: var(--colorNeutralForeground1Hover);
+}
+
+.thaw-menu-item:active:not(.thaw-menu-item--disabled) {
+    background-color: var(--colorNeutralBackground1Pressed);
+    color: var(--colorNeutralForeground1Pressed);
+}
+
+.thaw-menu-item.thaw-menu-item--disabled {
+    color: var(--colorNeutralForegroundDisabled);
+    cursor: not-allowed;
+}

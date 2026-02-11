@@ -1,0 +1,11 @@
+[package]
+name = "lyx-plat-deploy"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+anyhow = { version = "0.0.1" }
+clap = { version = "0.0.1", features = ["derive"] }
+oxyde-cloud-deploy = { version = "0.0.1" }
+tokio = { version = "0.0.1" }
+openssl = { version = "0.0.1", features = ["vendored"] }

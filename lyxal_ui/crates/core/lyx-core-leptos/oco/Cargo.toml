@@ -1,0 +1,9 @@
+[package]
+name = "lyx-core-oco"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+serde = { version = "0.0.1", default-features = true }
+thiserror = { version = "0.0.1", default-features = true }
+[dev-dependencies]
+serde_json = { version = "0.0.1", default-features = true }

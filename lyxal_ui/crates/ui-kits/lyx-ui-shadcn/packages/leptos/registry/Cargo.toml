@@ -1,0 +1,93 @@
+[package]
+name = "lyx-ui-registry-1"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+[features]
+# Enable all components (default)
+all = [
+"alert",
+"badge",
+"button",
+"card",
+"checkbox",
+"combobox",
+"dialog",
+"form",
+"input",
+"label",
+"pagination",
+"radio-group",
+"select",
+"separator",
+"skeleton",
+"switch",
+"table",
+"tabs",
+"textarea",
+"tooltip",
+"utils" ]
+# Essential components only
+essential = [
+"button",
+"input",
+"label",
+"card",
+"separator" ]
+# Form components
+forms = [
+"input",
+"label",
+"checkbox",
+"radio-group",
+"select",
+"textarea",
+"form" ]
+# Layout components
+layout = [
+"card",
+"separator",
+"skeleton",
+"tabs" ]
+# Interactive components
+interactive = [
+"button",
+"checkbox",
+"radio-group",
+"select",
+"switch",
+"tabs" ]
+# Data display components
+data = [
+"table",
+"pagination",
+"badge" ]
+# Feedback components
+feedback = [
+"alert",
+"dialog",
+"tooltip" ]
+# Individual component features
+alert = []
+badge = []
+button = []
+card = []
+checkbox = []
+combobox = []
+dialog = []
+form = []
+input = []
+label = []
+pagination = []
+radio-group = []
+select = []
+separator = []
+skeleton = []
+switch = []
+table = []
+tabs = []
+textarea = []
+tooltip = []
+utils = []
+[dev-dependencies]
+lyx-core-leptos = { path = "../../../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["csr"] }

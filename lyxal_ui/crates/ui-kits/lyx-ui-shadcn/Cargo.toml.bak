@@ -1,0 +1,273 @@
+# Leptos ShadCN UI Components
+# 
+# 🚨 MANDATORY: This project requires Leptos v0.8+ and is NOT compatible with earlier versions.
+# 
+# This project provides ShadCN UI components for Leptos v0.8+.
+# It is not compatible with earlier versions of Leptos due to breaking changes
+# in the v0.8 release.
+#
+# ✅ SUPPORTED: Leptos v0.8.0, v0.8.1, v0.8.2, v0.8.3, v0.8.4, v0.8.5, v0.8.6, v0.8.7, v0.8.8+
+# ❌ NOT SUPPORTED: Leptos v0.7.x, v0.6.x, or any earlier versions
+#
+[workspace]
+resolver = "2"
+members = [
+    "packages/registry",
+    "packages/cli",
+    "packages/test-utils",
+    "packages/component-generator",
+    "packages/signal-management",  # Signal lifecycle management for Leptos 0.8.8+
+    "packages/contract-testing",  # TDD contract testing framework
+    "packages/api-standards",  # API standardization framework
+    "packages/doc-automation",  # Documentation automation
+    "packages/performance-testing",  # Performance testing utilities
+    "packages/test-runner",  # Rust-based test runner and coverage measurement
+    "packages/shadcn",  # Core shadcn utilities
+    "packages/tailwind-rs-core",  # Tailwind CSS core utilities
+    "packages/tailwind-rs-core-macros",  # Tailwind CSS macros
+    "packages/leptos-shadcn-ui",  # Re-added for final publishing
+    "packages/leptos-shadcn-ui-wasm",  # WASM-optimized version with minimal dependencies
+    "performance-audit",  # Performance audit system
+    "leptos_v0_8_test_app",  # Leptos v0.8 compatibility test app
+    "examples/leptos",  # WASM demo application
+    "examples/dashboard-demo",  # Dashboard demo application
+    "examples/comprehensive-demo",  # Comprehensive demo application
+    "wasm-demo",  # Dedicated WASM demo for leptos-shadcn-ui-wasm
+    
+    # Basic components (no internal dependencies)
+    "packages/leptos/button",
+    "packages/leptos/input",
+    "packages/leptos/label",
+    "packages/leptos/checkbox",
+    "packages/leptos/switch",
+    "packages/leptos/radio-group",
+    "packages/leptos/select",
+    "packages/leptos/textarea",
+    "packages/leptos/card",
+    "packages/leptos/separator",
+    "packages/leptos/tabs",
+    "packages/leptos/accordion",
+    "packages/leptos/dialog",
+    "packages/leptos/popover",
+    "packages/leptos/tooltip",
+    "packages/leptos/alert",
+    "packages/leptos/badge",
+    "packages/leptos/skeleton",
+    "packages/leptos/progress",
+    "packages/leptos/toast",
+    "packages/leptos/table",
+    "packages/leptos/slider",
+    "packages/leptos/toggle",
+    "packages/leptos/carousel",
+    "packages/leptos/form",
+    "packages/leptos/combobox",
+    "packages/leptos/command",
+    "packages/leptos/input-otp",
+    "packages/leptos/breadcrumb",
+    "packages/leptos/navigation-menu",
+    "packages/leptos/context-menu",
+    "packages/leptos/dropdown-menu",
+    "packages/leptos/menubar",
+    "packages/leptos/hover-card",
+    "packages/leptos/aspect-ratio",
+    "packages/leptos/collapsible",
+    "packages/leptos/scroll-area",
+    "packages/leptos/sheet",
+    "packages/leptos/drawer",
+    "packages/leptos/alert-dialog",
+    "packages/leptos/avatar",
+    "packages/leptos/resizable",
+    
+    # Components with internal dependencies (publishing in sequence)
+    "packages/leptos/calendar",      # Depends on published components
+    "packages/leptos/date-picker",   # Depends on calendar, popover, button
+    "packages/leptos/pagination",    # Depends on button
+    "packages/leptos/error-boundary", # Error handling component
+    "packages/leptos/lazy-loading",   # Lazy loading system
+    "packages/leptos/registry",       # Component registry
+    "packages/leptos/analytics",      # Component usage analytics
+    "packages/leptos/utils",          # Utility functions
+
+    "scripts/run_quality_assessment",
+    "scripts/generate_component_tests",
+    "packages/bundle-size-monitor",  # Bundle size monitoring tool
+    "leptos_v0_8_test_app"]
+
+[workspace.package]
+authors = ["CloudShuttle <info@cloudshuttle.com>"]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/cloud-shuttle/leptos-shadcn-ui"
+version = "0.9.0"
+
+[workspace.dependencies]
+leptos = "0.8.9"
+leptos_router = "0.8.9"
+getrandom = { version = "0.2", features = ["js"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+leptos-node-ref = "0.2.0"
+leptos-struct-component = "0.2.0"
+leptos-style = "0.2.0"
+tailwind_fuse = { version = "0.3.2", features = ["variant"] }
+web-sys = "0.3"
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+wasm-bindgen-test = "0.3"
+console_error_panic_hook = "0.1"
+anyhow = "1.0"
+handlebars = "6.3.2"
+regex = "1.10"
+clap = { version = "4.5.46", features = ["derive"] }
+tokio = { version = "1.47.1", features = ["full"] }
+env_logger = "0.11"
+log = "0.4"
+console_log = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+shadcn-ui-test-utils = { path = "./packages/test-utils" }
+leptos-shadcn-signal-management = { path = "./packages/signal-management" }
+leptos-shadcn-contract-testing = { path = "./packages/contract-testing" }
+
+# Individual component packages
+leptos-shadcn-button = { path = "./packages/leptos/button" }
+leptos-shadcn-input = { path = "./packages/leptos/input" }
+leptos-shadcn-label = { path = "./packages/leptos/label" }
+leptos-shadcn-checkbox = { path = "./packages/leptos/checkbox" }
+leptos-shadcn-switch = { path = "./packages/leptos/switch" }
+leptos-shadcn-radio-group = { path = "./packages/leptos/radio-group" }
+leptos-shadcn-select = { path = "./packages/leptos/select" }
+leptos-shadcn-textarea = { path = "./packages/leptos/textarea" }
+leptos-shadcn-card = { path = "./packages/leptos/card" }
+leptos-shadcn-separator = { path = "./packages/leptos/separator" }
+leptos-shadcn-tabs = { path = "./packages/leptos/tabs" }
+leptos-shadcn-accordion = { path = "./packages/leptos/accordion" }
+leptos-shadcn-dialog = { path = "./packages/leptos/dialog" }
+leptos-shadcn-popover = { path = "./packages/leptos/popover" }
+leptos-shadcn-tooltip = { path = "./packages/leptos/tooltip" }
+leptos-shadcn-alert = { path = "./packages/leptos/alert" }
+leptos-shadcn-badge = { path = "./packages/leptos/badge" }
+leptos-shadcn-skeleton = { path = "./packages/leptos/skeleton" }
+leptos-shadcn-progress = { path = "./packages/leptos/progress" }
+leptos-shadcn-toast = { path = "./packages/leptos/toast" }
+leptos-shadcn-table = { path = "./packages/leptos/table" }
+leptos-shadcn-calendar = { path = "./packages/leptos/calendar" }
+leptos-shadcn-date-picker = { path = "./packages/leptos/date-picker" }
+leptos-shadcn-pagination = { path = "./packages/leptos/pagination" }
+leptos-shadcn-slider = { path = "./packages/leptos/slider" }
+leptos-shadcn-toggle = { path = "./packages/leptos/toggle" }
+
+# Advanced components
+leptos-shadcn-form = { path = "./packages/leptos/form" }
+leptos-shadcn-combobox = { path = "./packages/leptos/combobox" }
+leptos-shadcn-command = { path = "./packages/leptos/command" }
+leptos-shadcn-input-otp = { path = "./packages/leptos/input-otp" }
+leptos-shadcn-breadcrumb = { path = "./packages/leptos/breadcrumb" }
+leptos-shadcn-lazy-loading = { path = "./packages/leptos/lazy-loading" }
+leptos-shadcn-error-boundary = { path = "./packages/leptos/error-boundary" }
+leptos-shadcn-registry = { path = "./packages/leptos/registry" }
+
+# Additional components
+leptos-shadcn-drawer = { path = "./packages/leptos/drawer" }
+leptos-shadcn-context-menu = { path = "./packages/leptos/context-menu" }
+leptos-shadcn-alert-dialog = { path = "./packages/leptos/alert-dialog" }
+leptos-shadcn-navigation-menu = { path = "./packages/leptos/navigation-menu" }
+leptos-shadcn-dropdown-menu = { path = "./packages/leptos/dropdown-menu" }
+leptos-shadcn-menubar = { path = "./packages/leptos/menubar" }
+leptos-shadcn-hover-card = { path = "./packages/leptos/hover-card" }
+leptos-shadcn-aspect-ratio = { path = "./packages/leptos/aspect-ratio" }
+leptos-shadcn-collapsible = { path = "./packages/leptos/collapsible" }
+leptos-shadcn-scroll-area = { path = "./packages/leptos/scroll-area" }
+leptos-shadcn-sheet = { path = "./packages/leptos/sheet" }
+leptos-shadcn-avatar = { path = "./packages/leptos/avatar" }
+leptos-shadcn-resizable = { path = "./packages/leptos/resizable" }
+leptos-shadcn-carousel = { path = "./packages/leptos/carousel" }
+
+# =============================================================================
+# WASM Size Optimization Profiles
+# =============================================================================
+# These profiles are configured to minimize WASM bundle size below 2MB
+
+# Release profile with maximum size optimization
+[profile.release]
+opt-level = "z"        # Optimize for size ('z' is most aggressive)
+lto = "fat"            # Full link-time optimization across all crates
+codegen-units = 1      # Single codegen unit for maximum optimization
+panic = "abort"        # Abort on panic (smaller than unwinding)
+strip = true           # Strip symbols from binary
+overflow-checks = false # Disable overflow checks
+debug = false          # No debug information
+debug-assertions = false
+incremental = false    # Disable incremental for smaller build size
+
+# Apply even more aggressive optimization to dependencies
+[profile.release.package."*"]
+opt-level = "z"
+strip = true
+codegen-units = 1
+
+# Specialized WASM release profile
+[profile.wasm-release]
+inherits = "release"
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+debug = false
+debug-assertions = false
+overflow-checks = false
+incremental = false
+
+# Profile for development (optimized for compilation speed)
+[profile.dev]
+opt-level = 0
+debug = true
+incremental = true
+codegen-units = 256
+
+# Profile for dependencies in dev mode (size-optimized for faster WASM loads)
+[profile.dev.package."*"]
+opt-level = "z"
+debug = false
+incremental = false
+
+# Minimal size profile for absolute smallest WASM
+[profile.min-size]
+inherits = "release"
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+panic = "abort"
+debug = false
+debug-assertions = false
+overflow-checks = false
+incremental = false
+
+
+
+[patch.crates-io]
+leptos = { path = "../../core/lyx-core-leptos/leptos" }
+leptos_meta = { path = "../../core/lyx-core-leptos/meta" }
+leptos_router = { path = "../../core/lyx-core-leptos/router" }
+leptos_axum = { path = "../../core/lyx-core-leptos/integrations/axum" }
+leptos_actix = { path = "../../core/lyx-core-leptos/integrations/actix" }
+leptos_dom = { path = "../../core/lyx-core-leptos/leptos_dom" }
+leptos_macro = { path = "../../core/lyx-core-leptos/leptos_macro" }
+leptos_server = { path = "../../core/lyx-core-leptos/leptos_server" }
+leptos_config = { path = "../../core/lyx-core-leptos/leptos_config" }
+reactive_graph = { path = "../../core/lyx-core-leptos/reactive_graph" }
+reactive_stores = { path = "../../core/lyx-core-leptos/reactive_stores" }
+reactive_stores_macro = { path = "../../core/lyx-core-leptos/reactive_stores_macro" }
+server_fn = { path = "../../core/lyx-core-leptos/server_fn" }
+server_fn_macro = { path = "../../core/lyx-core-leptos/server_fn_macro" }
+tachys = { path = "../../core/lyx-core-leptos/tachys" }
+hydration_context = { path = "../../core/lyx-core-leptos/hydration_context" }
+throw_error = { path = "../../core/lyx-core-leptos/any_error" }
+any_spawner = { path = "../../core/lyx-core-leptos/any_spawner" }
+either_of = { path = "../../core/lyx-core-leptos/either_of" }
+oco_ref = { path = "../../core/lyx-core-leptos/oco" }
+or_poisoned = { path = "../../core/lyx-core-leptos/or_poisoned" }
+next_tuple = { path = "../../core/lyx-core-leptos/next_tuple" }
+leptos-use = { path = "../../logic/lyx-logic-use" }
+tailwind_fuse = { path = "../../ui-foundations/lyx-found-tailwind/fuse" }

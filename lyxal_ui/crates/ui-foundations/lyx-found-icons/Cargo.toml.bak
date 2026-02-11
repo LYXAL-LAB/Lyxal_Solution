@@ -1,0 +1,45 @@
+[workspace]
+members = ["book-examples/*", "packages/*", "scripts"]
+resolver = "2"
+
+[workspace.package]
+authors = ["Rust for Web <info@rustforweb.org>"]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/RustForWeb/lucide"
+version = "2.563.0"
+
+[workspace.dependencies]
+console_error_panic_hook = "0.1.7"
+console_log = "1.0.0"
+dioxus = "0.7.0"
+leptos = "0.8.0"
+log = "0.4.22"
+yew = "0.22.0"
+
+
+[patch.crates-io]
+leptos = { path = "../../core/lyx-core-leptos/leptos" }
+leptos_meta = { path = "../../core/lyx-core-leptos/meta" }
+leptos_router = { path = "../../core/lyx-core-leptos/router" }
+leptos_axum = { path = "../../core/lyx-core-leptos/integrations/axum" }
+leptos_actix = { path = "../../core/lyx-core-leptos/integrations/actix" }
+leptos_dom = { path = "../../core/lyx-core-leptos/leptos_dom" }
+leptos_macro = { path = "../../core/lyx-core-leptos/leptos_macro" }
+leptos_server = { path = "../../core/lyx-core-leptos/leptos_server" }
+leptos_config = { path = "../../core/lyx-core-leptos/leptos_config" }
+reactive_graph = { path = "../../core/lyx-core-leptos/reactive_graph" }
+reactive_stores = { path = "../../core/lyx-core-leptos/reactive_stores" }
+reactive_stores_macro = { path = "../../core/lyx-core-leptos/reactive_stores_macro" }
+server_fn = { path = "../../core/lyx-core-leptos/server_fn" }
+server_fn_macro = { path = "../../core/lyx-core-leptos/server_fn_macro" }
+tachys = { path = "../../core/lyx-core-leptos/tachys" }
+hydration_context = { path = "../../core/lyx-core-leptos/hydration_context" }
+throw_error = { path = "../../core/lyx-core-leptos/any_error" }
+any_spawner = { path = "../../core/lyx-core-leptos/any_spawner" }
+either_of = { path = "../../core/lyx-core-leptos/either_of" }
+oco_ref = { path = "../../core/lyx-core-leptos/oco" }
+or_poisoned = { path = "../../core/lyx-core-leptos/or_poisoned" }
+next_tuple = { path = "../../core/lyx-core-leptos/next_tuple" }
+leptos-use = { path = "../../logic/lyx-logic-use" }
+tailwind_fuse = { path = "../lyx-found-tailwind/fuse" }

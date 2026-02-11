@@ -1,0 +1,31 @@
+{
+  "name": "@shadcn-ui/visual-testing",
+  "version": "0.1.0",
+  "description": "Visual regression testing framework for shadcn-ui components using Playwright",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:update": "playwright test --update-snapshots",
+    "test:report": "playwright show-report",
+    "install:browsers": "playwright install chromium firefox webkit"
+  },
+  "keywords": [
+    "visual-testing",
+    "regression-testing",
+    "playwright",
+    "snapshot-testing"
+  ],
+  "author": "shadcn/ui Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "pixelmatch": "^5.3.0",
+    "pngjs": "^7.0.0"
+  }
+}

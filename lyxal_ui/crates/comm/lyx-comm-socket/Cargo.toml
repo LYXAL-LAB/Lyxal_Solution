@@ -1,0 +1,36 @@
+[package]
+name = "lyx-comm-socket"
+version = "0.0.1"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+anyhow = { version = "0.0.1" }
+axum = { version = "0.0.1", optional = true, features = ["macros"] }
+cookie = { version = "0.0.1", optional = true }
+futures-util = { version = "0.0.1", optional = true }
+lyx-core-leptos = { path = "../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+lyx-logic-use = { path = "../../logic/lyx-logic-use", version = "0.0.1", features = ["use_websocket" ] }
+lyx-core-axum = { path = "../../core/lyx-core-leptos/integrations/axum", version = "0.0.1", optional = true }
+regex = { version = "0.0.1", optional = true }
+serde = { version = "0.0.1", features = ["derive"] }
+serde_json = { version = "0.0.1" }
+serde_urlencoded = { version = "0.0.1" }
+tokio = { version = "0.0.1", optional = true, features = ["rt-multi-thread"] }
+tracing = { version = "0.0.1" }
+uuid = { version = "0.0.1", features = ["v4", "serde"] }
+
+[features]
+ssr = [
+"dep:axum",
+"dep:cookie",
+"dep:tokio",
+"dep:lyx-core-axum",
+"dep:regex",
+"lyx-core-leptos/ssr",
+"lyx-logic-use/ssr",
+"lyx-logic-use/axum",
+"dep:futures-util" ]
+hydrate = ["lyx-core-leptos/hydrate", "uuid/js"]

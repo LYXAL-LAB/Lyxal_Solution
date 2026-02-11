@@ -1,0 +1,36 @@
+{
+    "name": "superposition-client",
+    "version": "0.0.1",
+    "description": "Superposition Javascript SDK and OpenFeature Provider",
+    "private": true,
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/juspay/superposition.git"
+    },
+    "workspaces": [
+        "bindings",
+        "sdk",
+        "open-feature-provider",
+        "provider-sdk-tests"
+    ],
+    "files": [
+        "."
+    ],
+    "scripts": {
+        "build": "npm run build -w bindings -w sdk -w open-feature-provider",
+        "clean": "npm run clean --workspaces",
+        "test": "npm run test --workspaces --if-present",
+        "install-all": "npm install --workspaces && npm run build -w bindings -w sdk -w open-feature-provider",
+        "prepublishOnly": "npm --no-git-tag-version version $VERSION"
+    },
+    "dependencies": {
+        "rimraf": "^5.0.0",
+        "typescript": "~5.2.2"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0"
+    }
+}

@@ -1,0 +1,12 @@
+[package]
+name = "lyx-ui-card"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+leptos-shadcn-signal-management = { path = "../../signal-management", version = "0.0.1" }
+[features]
+default = []
+new_york = []
+[dev-dependencies]
+shadcn-ui-test-utils = { path = "../../test-utils", version = "0.0.1" }
+wasm-bindgen-test = { version = "0.0.1" }

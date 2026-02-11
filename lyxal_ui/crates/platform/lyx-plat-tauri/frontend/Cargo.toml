@@ -1,0 +1,25 @@
+[package]
+name = "lyx-platform-frontend"
+version = "0.0.1"
+edition = "2024"
+
+[lib]
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "lyx-platform-frontend"
+path = "src/lib.rs"
+
+[dependencies]
+cfg-if = { version = "0.0.1" }
+console_error_panic_hook = { version = "0.0.1" }
+console_log = { version = "0.0.1" }
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+log = { version = "0.0.1" }
+lyx-core-server_fn = { path = "../../../core/lyx-core-leptos/server_fn", version = "0.0.1" }
+wasm-bindgen = { version = "0.0.1" }
+lyx-platform-app = { path = "../app", version = "0.0.1" }
+
+[features]
+csr = ["lyx-core-leptos/csr", "lyx-platform-app/csr"]
+hydrate = ["lyx-core-leptos/hydrate", "lyx-platform-app/hydrate"]

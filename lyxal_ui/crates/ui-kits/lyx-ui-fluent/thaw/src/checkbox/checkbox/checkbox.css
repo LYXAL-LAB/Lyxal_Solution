@@ -1,0 +1,142 @@
+.thaw-checkbox {
+    position: relative;
+    display: inline-flex;
+    vertical-align: middle;
+    color: var(--colorNeutralForeground3);
+    cursor: pointer;
+}
+
+.thaw-checkbox.thaw-checkbox--disabled {
+    cursor: not-allowed;
+}
+
+.thaw-checkbox:hover {
+    color: var(--colorNeutralForeground2);
+
+    --thaw-checkbox__indicator--border-color: var(
+        --colorNeutralStrokeAccessibleHover
+    );
+}
+
+.thaw-checkbox:active {
+    color: var(--colorNeutralForeground1);
+
+    --thaw-checkbox__indicator--border-color: var(
+        --colorNeutralStrokeAccessiblePressed
+    );
+}
+
+.thaw-checkbox--checked:not(.thaw-checkbox--disabled) {
+    color: var(--colorNeutralForeground1);
+
+    --thaw-checkbox__indicator--background-color: var(
+        --colorCompoundBrandBackground
+    );
+    --thaw-checkbox__indicator--color: var(--colorNeutralForegroundInverted);
+    --thaw-checkbox__indicator--border-color: var(
+        --colorCompoundBrandBackground
+    );
+}
+
+.thaw-checkbox--checked:not(.thaw-checkbox--disabled):hover {
+    --thaw-checkbox__indicator--border-color: var(
+        --colorCompoundBrandBackgroundHover
+    );
+    --thaw-checkbox__indicator--background-color: var(
+        --colorCompoundBrandBackgroundHover
+    );
+}
+
+.thaw-checkbox--checked:not(.thaw-checkbox--disabled):active {
+    --thaw-checkbox__indicator--border-color: var(
+        --colorCompoundBrandBackgroundPressed
+    );
+    --thaw-checkbox__indicator--background-color: var(
+        --colorCompoundBrandBackgroundPressed
+    );
+}
+
+.thaw-checkbox--disabled,
+.thaw-checkbox--disabled:hover,
+.thaw-checkbox--disabled:active {
+    color: var(--colorNeutralForegroundDisabled);
+
+    --thaw-checkbox__indicator--color: var(
+        --colorNeutralForegroundDisabled
+    );
+    --thaw-checkbox__indicator--border-color: var(
+        --colorNeutralStrokeDisabled
+    );
+}
+
+.thaw-checkbox:focus,
+.thaw-checkbox:focus-visible {
+    outline-style: none;
+}
+
+.thaw-checkbox__input {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: calc(16px + 2 * var(--spacingHorizontalS));
+    height: 100%;
+    margin: 0px;
+    opacity: 0;
+    box-sizing: border-box;
+    cursor: inherit;
+}
+
+.thaw-checkbox--large > .thaw-checkbox__input {
+    width: calc(20px + 2 * var(--spacingHorizontalS));
+}
+
+.thaw-checkbox__indicator {
+    align-self: flex-start;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: var(--spacingVerticalS) var(--spacingHorizontalS);
+    height: 16px;
+    width: 16px;
+    background-color: var(--thaw-checkbox__indicator--background-color);
+    font-size: 12px;
+    color: var(--thaw-checkbox__indicator--color);
+    border-color: var(
+        --thaw-checkbox__indicator--border-color,
+        var(--colorNeutralStrokeAccessible)
+    );
+    border-style: solid;
+    border-width: var(--strokeWidthThin);
+    border-radius: var(--borderRadiusSmall);
+    fill: currentcolor;
+    box-sizing: border-box;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.thaw-checkbox--large > .thaw-checkbox__indicator {
+    font-size: 16px;
+    height: 20px;
+    width: 20px;
+}
+
+.thaw-checkbox__label {
+    align-self: center;
+    margin-bottom: calc((16px - var(--lineHeightBase300)) / 2);
+    margin-top: calc((16px - var(--lineHeightBase300)) / 2);
+    padding-bottom: var(--spacingVerticalS);
+    padding-top: var(--spacingVerticalS);
+    padding-left: var(--spacingHorizontalXS);
+    padding-right: var(--spacingHorizontalS);
+    line-height: var(--lineHeightBase300);
+    font-family: var(--fontFamilyBase);
+    font-size: var(--fontSizeBase300);
+    color: inherit;
+    cursor: inherit;
+}
+
+.thaw-checkbox--large > .thaw-checkbox__label {
+    margin-top: calc((20px - var(--lineHeightBase300)) / 2);
+    margin-bottom: calc((20px - var(--lineHeightBase300)) / 2);
+}

@@ -1,0 +1,19 @@
+[package]
+name = "lyx-ui-analytics"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+serde = { version = "0.0.1", features = ["derive"] }
+serde_json = { version = "0.0.1" }
+wasm-bindgen = { version = "0.0.1" }
+web-sys = { version = "0.0.1", features = ["Storage", "Window"] }
+js-sys = { version = "0.0.1" }
+gloo-storage = { version = "0.0.1" }
+[dev-dependencies]
+wasm-bindgen-test = { version = "0.0.1" }
+getrandom = { version = "0.0.1" }
+[features]
+default = []
+localStorage = []
+memory = []
+full = ["localStorage", "memory"]

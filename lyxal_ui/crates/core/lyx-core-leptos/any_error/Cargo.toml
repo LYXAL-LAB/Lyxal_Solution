@@ -1,0 +1,7 @@
+[package]
+name = "lyx-core-any_error"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+pin-project-lite = { version = "0.0.1", default-features = true }
+[dev-dependencies]

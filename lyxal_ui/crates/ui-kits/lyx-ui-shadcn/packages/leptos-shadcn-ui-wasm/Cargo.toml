@@ -1,0 +1,180 @@
+[package]
+name = "lyx-ui-leptos-shadcn-ui-wasm"
+version = "0.0.1"
+edition = "2024"
+[lib]
+crate-type = ["cdylib", "rlib"]
+# WASM-optimized dependencies only
+[dependencies]
+lyx-core-leptos = { path = "../../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+lyx-core-meta = { path = "../../../../core/lyx-core-leptos/meta", version = "0.0.1" }
+serde = { version = "0.0.1", features = ["derive"] }
+serde-wasm-bindgen = { version = "0.0.1" }
+# WASM-compatible utilities
+getrandom = { version = "0.0.1", features = ["js"] }
+uuid = { version = "0.0.1", features = ["v4", "js"] }
+# All available component dependencies (optional)
+leptos-shadcn-accordion = { path = "../leptos/accordion", version = "0.0.1", optional = true }
+leptos-shadcn-alert = { path = "../leptos/alert", version = "0.0.1", optional = true }
+leptos-shadcn-alert-dialog = { path = "../leptos/alert-dialog", version = "0.0.1", optional = true }
+leptos-shadcn-aspect-ratio = { path = "../leptos/aspect-ratio", version = "0.0.1", optional = true }
+leptos-shadcn-avatar = { path = "../leptos/avatar", version = "0.0.1", optional = true }
+leptos-shadcn-badge = { path = "../leptos/badge", version = "0.0.1", optional = true }
+leptos-shadcn-breadcrumb = { path = "../leptos/breadcrumb", version = "0.0.1", optional = true }
+leptos-shadcn-button = { path = "../leptos/button", version = "0.0.1", optional = true }
+leptos-shadcn-calendar = { path = "../leptos/calendar", version = "0.0.1", optional = true }
+leptos-shadcn-card = { path = "../leptos/card", version = "0.0.1", optional = true }
+leptos-shadcn-carousel = { path = "../leptos/carousel", version = "0.0.1", optional = true }
+leptos-shadcn-checkbox = { path = "../leptos/checkbox", version = "0.0.1", optional = true }
+leptos-shadcn-collapsible = { path = "../leptos/collapsible", version = "0.0.1", optional = true }
+leptos-shadcn-combobox = { path = "../leptos/combobox", version = "0.0.1", optional = true }
+leptos-shadcn-command = { path = "../leptos/command", version = "0.0.1", optional = true }
+leptos-shadcn-context-menu = { path = "../leptos/context-menu", version = "0.0.1", optional = true }
+leptos-shadcn-date-picker = { path = "../leptos/date-picker", version = "0.0.1", optional = true }
+leptos-shadcn-dialog = { path = "../leptos/dialog", version = "0.0.1", optional = true }
+leptos-shadcn-drawer = { path = "../leptos/drawer", version = "0.0.1", optional = true }
+leptos-shadcn-dropdown-menu = { path = "../leptos/dropdown-menu", version = "0.0.1", optional = true }
+leptos-shadcn-error-boundary = { path = "../leptos/error-boundary", version = "0.0.1", optional = true }
+leptos-shadcn-form = { path = "../leptos/form", version = "0.0.1", optional = true }
+leptos-shadcn-hover-card = { path = "../leptos/hover-card", version = "0.0.1", optional = true }
+leptos-shadcn-input = { path = "../leptos/input", version = "0.0.1", optional = true }
+leptos-shadcn-input-otp = { path = "../leptos/input-otp", version = "0.0.1", optional = true }
+leptos-shadcn-label = { path = "../leptos/label", version = "0.0.1", optional = true }
+leptos-shadcn-menubar = { path = "../leptos/menubar", version = "0.0.1", optional = true }
+leptos-shadcn-navigation-menu = { path = "../leptos/navigation-menu", version = "0.0.1", optional = true }
+leptos-shadcn-pagination = { path = "../leptos/pagination", version = "0.0.1", optional = true }
+leptos-shadcn-popover = { path = "../leptos/popover", version = "0.0.1", optional = true }
+leptos-shadcn-progress = { path = "../leptos/progress", version = "0.0.1", optional = true }
+leptos-shadcn-radio-group = { path = "../leptos/radio-group", version = "0.0.1", optional = true }
+leptos-shadcn-resizable = { path = "../leptos/resizable", version = "0.0.1", optional = true }
+leptos-shadcn-scroll-area = { path = "../leptos/scroll-area", version = "0.0.1", optional = true }
+leptos-shadcn-select = { path = "../leptos/select", version = "0.0.1", optional = true }
+leptos-shadcn-separator = { path = "../leptos/separator", version = "0.0.1", optional = true }
+leptos-shadcn-sheet = { path = "../leptos/sheet", version = "0.0.1", optional = true }
+leptos-shadcn-skeleton = { path = "../leptos/skeleton", version = "0.0.1", optional = true }
+leptos-shadcn-slider = { path = "../leptos/slider", version = "0.0.1", optional = true }
+leptos-shadcn-switch = { path = "../leptos/switch", version = "0.0.1", optional = true }
+leptos-shadcn-table = { path = "../leptos/table", version = "0.0.1", optional = true }
+leptos-shadcn-tabs = { path = "../leptos/tabs", version = "0.0.1", optional = true }
+leptos-shadcn-textarea = { path = "../leptos/textarea", version = "0.0.1", optional = true }
+leptos-shadcn-toast = { path = "../leptos/toast", version = "0.0.1", optional = true }
+leptos-shadcn-toggle = { path = "../leptos/toggle", version = "0.0.1", optional = true }
+leptos-shadcn-tooltip = { path = "../leptos/tooltip", version = "0.0.1", optional = true }
+# WASM-compatible dependencies
+wasm-bindgen = { version = "0.0.1" }
+web-sys = { version = "0.0.1", features = ["console", "Document", "Element", "HtmlElement", "Window", "Performance", "Storage"] }
+console_error_panic_hook = { version = "0.0.1" }
+# WASM-compatible testing
+[dev-dependencies]
+wasm-bindgen-test = { version = "0.0.1" }
+[features]
+default = ["core-components"]
+core-components = [
+"button",
+"input",
+"card",
+"label",
+"badge",
+"avatar",
+"separator",
+"skeleton",
+"alert",
+"alert-dialog"
+]
+all-components = [
+"accordion",
+"alert",
+"alert-dialog",
+"aspect-ratio",
+"avatar",
+"badge",
+"breadcrumb",
+"button",
+"calendar",
+"card",
+"carousel",
+"checkbox",
+"collapsible",
+"combobox",
+"command",
+"context-menu",
+"date-picker",
+"dialog",
+"drawer",
+"dropdown-menu",
+"error-boundary",
+"form",
+"hover-card",
+"input",
+"input-otp",
+"label",
+"menubar",
+"navigation-menu",
+"pagination",
+"popover",
+"progress",
+"radio-group",
+"resizable",
+"scroll-area",
+"select",
+"separator",
+"sheet",
+"skeleton",
+"slider",
+"switch",
+"table",
+"tabs",
+"textarea",
+"toast",
+"toggle",
+"tooltip"
+]
+# Individual component features
+accordion = ["dep:leptos-shadcn-accordion"]
+alert = ["dep:leptos-shadcn-alert"]
+alert-dialog = ["dep:leptos-shadcn-alert-dialog"]
+aspect-ratio = ["dep:leptos-shadcn-aspect-ratio"]
+avatar = ["dep:leptos-shadcn-avatar"]
+badge = ["dep:leptos-shadcn-badge"]
+breadcrumb = ["dep:leptos-shadcn-breadcrumb"]
+button = ["dep:leptos-shadcn-button"]
+calendar = ["dep:leptos-shadcn-calendar"]
+card = ["dep:leptos-shadcn-card"]
+carousel = ["dep:leptos-shadcn-carousel"]
+checkbox = ["dep:leptos-shadcn-checkbox"]
+collapsible = ["dep:leptos-shadcn-collapsible"]
+combobox = ["dep:leptos-shadcn-combobox"]
+command = ["dep:leptos-shadcn-command"]
+context-menu = ["dep:leptos-shadcn-context-menu"]
+date-picker = ["dep:leptos-shadcn-date-picker"]
+dialog = ["dep:leptos-shadcn-dialog"]
+drawer = ["dep:leptos-shadcn-drawer"]
+dropdown-menu = ["dep:leptos-shadcn-dropdown-menu"]
+error-boundary = ["dep:leptos-shadcn-error-boundary"]
+form = ["dep:leptos-shadcn-form"]
+hover-card = ["dep:leptos-shadcn-hover-card"]
+input = ["dep:leptos-shadcn-input"]
+input-otp = ["dep:leptos-shadcn-input-otp"]
+label = ["dep:leptos-shadcn-label"]
+menubar = ["dep:leptos-shadcn-menubar"]
+navigation-menu = ["dep:leptos-shadcn-navigation-menu"]
+pagination = ["dep:leptos-shadcn-pagination"]
+popover = ["dep:leptos-shadcn-popover"]
+progress = ["dep:leptos-shadcn-progress"]
+radio-group = ["dep:leptos-shadcn-radio-group"]
+resizable = ["dep:leptos-shadcn-resizable"]
+scroll-area = ["dep:leptos-shadcn-scroll-area"]
+select = ["dep:leptos-shadcn-select"]
+separator = ["dep:leptos-shadcn-separator"]
+sheet = ["dep:leptos-shadcn-sheet"]
+skeleton = ["dep:leptos-shadcn-skeleton"]
+slider = ["dep:leptos-shadcn-slider"]
+switch = ["dep:leptos-shadcn-switch"]
+table = ["dep:leptos-shadcn-table"]
+tabs = ["dep:leptos-shadcn-tabs"]
+textarea = ["dep:leptos-shadcn-textarea"]
+toast = ["dep:leptos-shadcn-toast"]
+toggle = ["dep:leptos-shadcn-toggle"]
+tooltip = ["dep:leptos-shadcn-tooltip"]
+# WASM-specific optimizations
+wasm-optimized = []

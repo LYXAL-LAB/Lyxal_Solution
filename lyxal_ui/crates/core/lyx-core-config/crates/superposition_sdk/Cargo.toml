@@ -1,0 +1,12 @@
+[package]
+name = "lyx-core-superposition_sdk"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+serde = { version = "0.0.1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.0.1", features = ["json"] }
+thiserror = "1"
+anyhow = "1"
+aws-smithy-async = "1.0"

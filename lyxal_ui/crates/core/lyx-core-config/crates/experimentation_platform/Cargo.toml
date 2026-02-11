@@ -1,0 +1,25 @@
+[package]
+name = "lyx-core-experimentation_platform"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+actix-web = { version = "0.0.1" }
+actix-http = { version = "0.0.1" }
+anyhow = { version = "0.0.1" }
+blake3 = { version = "0.0.1" }
+lyx-core-cac_client = { path = "../cac_client", version = "0.0.1" }
+chrono = { version = "0.0.1" }
+diesel = { version = "0.0.1" }
+lyx-core-experimentation_client = { path = "../experimentation_client", version = "0.0.1" }
+log = { version = "0.0.1" }
+reqwest = { version = "0.0.1" }
+serde = { version = "0.0.1" }
+serde_json = { version = "0.0.1" }
+lyx-core-service_utils = { path = "../service_utils", version = "0.0.1" }
+lyx-core-superposition_derives = { path = "../superposition_derives", version = "0.0.1" }
+lyx-core-superposition_macros = { path = "../superposition_macros", version = "0.0.1" }
+lyx-core-superposition_types = { path = "../superposition_types", version = "0.0.1", features = ["api", "experimentation", "result", "diesel_derives", "server" ], optional = true }
+
+[features]
+disable_db_data_validation = ["lyx-core-superposition_types/disable_db_data_validation"]

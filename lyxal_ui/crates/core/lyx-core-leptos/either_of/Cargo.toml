@@ -1,0 +1,10 @@
+[package]
+name = "lyx-core-either_of"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+pin-project-lite = { version = "0.0.1", default-features = true }
+paste = { version = "0.0.1", default-features = true }
+[features]
+default = ["no_std"]
+no_std = []

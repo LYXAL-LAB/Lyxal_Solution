@@ -1,0 +1,14 @@
+[package]
+name = "app"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+leptos_router = { path = "../../../core/lyx-core-leptos/router", version = "0.0.1", optional = true }
+leptos_meta = { path = "../../../core/lyx-core-leptos/meta", version = "0.0.1", optional = true }
+leptos_i18n = { path = "../../lyx-logic-i18n/leptos_i18n", version = "0.0.1", optional = true }
+leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1", optional = true }
+leptos_axum = { version = "0.0.1", path = "../../../core/lyx-core-leptos/integrations/axum", optional = true }
+[features]
+default = []
+hydrate = ["dep:leptos", "dep:leptos", "leptos/hydrate","dep:leptos_i18n", "dep:leptos_i18n", "leptos_i18n/hydrate"]
+ssr = ["dep:leptos", "dep:leptos", "leptos/ssr", "dep:leptos_meta", "dep:leptos_meta", "leptos_meta/ssr", "dep:leptos_router", "dep:leptos_router", "leptos_router/ssr", "dep:leptos_i18n", "dep:leptos_i18n", "leptos_i18n/axum","dep:leptos_axum"]

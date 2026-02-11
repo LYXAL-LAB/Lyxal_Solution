@@ -1,0 +1,11 @@
+[package]
+name = "lyx-ui-foundations-stylers_core"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+quote = { version = "0.0.1" }
+proc-macro2 = { version = "0.0.1", features = ["span-locations"] }
+rand = { version = "0.0.1" }
+rand_chacha = { version = "0.0.1" }
+levenshtein = { version = "0.0.1" }

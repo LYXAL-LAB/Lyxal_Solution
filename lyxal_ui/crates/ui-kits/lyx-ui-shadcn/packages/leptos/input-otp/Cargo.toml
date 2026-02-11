@@ -1,0 +1,20 @@
+[package]
+name = "lyx-ui-input-otp"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+lyx-core-leptos = { path = "../../../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["csr", "ssr"] }
+leptos-style = { version = "0.0.1" }
+serde = { version = "0.0.1", features = ["derive"] }
+web-sys = { version = "0.0.1" }
+wasm-bindgen = { version = "0.0.1" }
+leptos-shadcn-signal-management = { path = "../../signal-management", version = "0.0.1" }
+[features]
+default = ["lyx-core-leptos/csr"]
+csr = ["lyx-core-leptos/csr"]
+ssr = ["lyx-core-leptos/ssr"]
+hydrate = ["lyx-core-leptos/hydrate"]
+new_york = []
+[dev-dependencies]
+shadcn-ui-test-utils = { path = "../../test-utils", version = "0.0.1" }
+wasm-bindgen-test = { version = "0.0.1" }

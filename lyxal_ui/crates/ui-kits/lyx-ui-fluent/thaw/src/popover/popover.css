@@ -1,0 +1,85 @@
+div.thaw-popover-surface {
+    position: absolute;
+    transform-origin: inherit;
+
+    padding: 16px;
+    border-radius: var(--borderRadiusMedium);
+    border: 1px solid var(--colorTransparentStroke);
+    box-shadow: var(--shadow16);
+    line-height: var(--lineHeightBase300);
+    font-weight: var(--fontWeightRegular);
+    font-size: var(--fontSizeBase300);
+    font-family: var(--fontFamilyBase);
+    background-color: var(--colorNeutralBackground1);
+    color: var(--colorNeutralForeground1);
+}
+
+div.thaw-popover-surface--small {
+    padding: 12px;
+}
+
+div.thaw-popover-surface--large {
+    padding: 20px;
+}
+
+div.thaw-popover-surface--brand {
+    background-color: var(--colorBrandBackground);
+    color: var(--colorNeutralForegroundOnBrand);
+}
+
+div.thaw-popover-surface--inverted {
+    background-color: var(--colorNeutralBackgroundStatic);
+    color: var(--colorNeutralForegroundStaticInverted);
+}
+
+.thaw-popover-surface__angle {
+    position: absolute;
+    background-color: inherit;
+    background-clip: content-box;
+    box-sizing: border-box;
+    z-index: -1;
+
+    width: var(--thaw-positioning-arrow-height);
+    height: var(--thaw-positioning-arrow-height);
+    border-bottom-left-radius: var(--borderRadiusSmall);
+}
+
+.thaw-popover-surface__angle::before {
+    clip-path: polygon(0% 0%, 100% 100%, 0% 100%);
+    border-bottom-left-radius: var(--borderRadiusSmall);
+    height: 100%;
+    width: 100%;
+    background-color: inherit;
+    display: block;
+    content: "";
+    margin: -1px;
+    border: 1px solid var(--colorTransparentStroke);
+}
+
+[data-thaw-placement="top-start"] .thaw-popover-surface__angle,
+[data-thaw-placement="top-end"] .thaw-popover-surface__angle,
+[data-thaw-placement="top"] .thaw-popover-surface__angle {
+    transform: rotate(-45deg);
+    bottom: var(--thaw-positioning-arrow-offset);
+}
+
+[data-thaw-placement="bottom-start"] .thaw-popover-surface__angle,
+[data-thaw-placement="bottom-end"] .thaw-popover-surface__angle,
+[data-thaw-placement="bottom"] .thaw-popover-surface__angle {
+    transform: rotate(135deg);
+    top: var(--thaw-positioning-arrow-offset);
+}
+
+[data-thaw-placement="left-start"] .thaw-popover-surface__angle,
+[data-thaw-placement="left-end"] .thaw-popover-surface__angle,
+[data-thaw-placement="left"] .thaw-popover-surface__angle {
+    transform: rotate(225deg);
+    right: var(--thaw-positioning-arrow-offset);
+}
+
+[data-thaw-placement="right-start"] .thaw-popover-surface__angle,
+[data-thaw-placement="right-end"] .thaw-popover-surface__angle,
+[data-thaw-placement="right"] .thaw-popover-surface__angle {
+    transform: rotate(45deg);
+    left: var(--thaw-positioning-arrow-offset);
+}

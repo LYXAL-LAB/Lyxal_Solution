@@ -1,0 +1,19 @@
+[package]
+name = "server"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+api-boundary = { version = "0.0.1", path = "../api-boundary", optional = false }
+anyhow = { version = "0.0.1" }
+axum = { version = "0.0.1" }
+axum-extra = { version = "0.0.1", features = ["typed-header"] }
+env_logger = { version = "0.0.1" }
+log = { version = "0.0.1" }
+mailparse = { version = "0.0.1" }
+pwhash = { version = "0.0.1" }
+thiserror = { version = "0.0.1" }
+tokio = { version = "0.0.1", features = ["macros", "rt-multi-thread"] }
+tower-http = { version = "0.0.1", features = ["cors"] }
+uuid = { version = "0.0.1", features = ["v4"] }
+parking_lot = { version = "0.0.1" }
+headers = { version = "0.0.1" }

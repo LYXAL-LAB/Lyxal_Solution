@@ -1,0 +1,38 @@
+[package]
+name = "lyx-core-service_utils"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+actix-web = { version = "0.0.1" }
+aes-gcm = { version = "0.0.1" }
+anyhow = { version = "0.0.1" }
+aws-config = { version = "0.0.1", features = ["behavior-version-latest"] }
+aws-sdk-kms = { version = "0.0.1" }
+base64 = { version = "0.0.1" }
+chrono = { version = "0.0.1" }
+derive_more = { version = "0.0.1" }
+diesel = { version = "0.0.1" }
+fred = { version = "0.0.1", optional = true }
+futures-util = { version = "0.0.1" }
+jsonschema = { version = "0.0.1" }
+log = { version = "0.0.1" }
+once_cell = { version = "0.0.1" }
+openidconnect = { version = "0.0.1" }
+rand = { version = "0.0.1" }
+tracing = { version = "0.0.1" }
+regex = { version = "0.0.1" }
+reqwest = { version = "0.0.1" }
+rs-snowflake = { version = "0.0.1" }
+secrecy = { version = "0.0.1" }
+serde = { version = "0.0.1" }
+serde_json = { version = "0.0.1" }
+strum_macros = { version = "0.0.1" }
+lyx-core-superposition_macros = { path = "../superposition_macros", version = "0.0.1" }
+lyx-core-superposition_types = { path = "../superposition_types", version = "0.0.1", features = ["result", "api", "diesel_derives" ] }
+url = { version = "0.0.1" }
+urlencoding = { version = "0.0.1" }
+tracing-actix-web = { version = "0.0.1" }
+
+[features]
+high-performance-mode = ["dep:fred"]

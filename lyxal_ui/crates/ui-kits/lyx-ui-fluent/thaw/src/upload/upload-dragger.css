@@ -1,0 +1,15 @@
+.thaw-upload-dragger {
+    width: 100%;
+    padding: 20px;
+    background-color: var(--colorNeutralBackground1Hover);
+    border: var(--strokeWidthThin) dashed var(--colorNeutralStroke1);
+    border-radius: 3px;
+    text-align: center;
+    cursor: pointer;
+    transition: border 0.3s;
+    box-sizing: border-box;
+}
+.thaw-upload-dragger:hover,
+.thaw-upload--drag-over .thaw-upload-dragger {
+    border: var(--strokeWidthThin) dashed var(--colorBrandForeground1);
+}

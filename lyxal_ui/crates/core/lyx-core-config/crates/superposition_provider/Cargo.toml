@@ -1,0 +1,26 @@
+[package]
+name = "lyx-core-superposition_provider"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+serde = { version = "0.0.1" }
+serde_json = { version = "0.0.1" }
+thiserror = { version = "0.0.1" }
+tokio = { version = "0.0.1", features = ["full"] }
+async-trait = { version = "0.0.1" }
+log = { version = "0.0.1" }
+reqwest = { version = "0.0.1" }
+chrono = { version = "0.0.1" }
+uuid = { version = "0.0.1" }
+aws-smithy-types = { version = "0.0.1" }
+lyx-core-superposition_core = { path = "../superposition_core", version = "0.0.1" }
+
+# OpenFeature Rust SDK
+open-feature = { version = "0.0.1" }
+
+# Generated Smithy Rust SDK for Superposition
+lyx-core-superposition_sdk = { path = "../superposition_sdk", version = "0.0.1", features = ["behavior-version-latest"] }
+
+# Superposition types for proper type conversion
+lyx-core-superposition_types = { path = "../superposition_types", version = "0.0.1" }

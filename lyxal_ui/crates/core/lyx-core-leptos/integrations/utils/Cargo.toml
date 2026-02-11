@@ -1,0 +1,12 @@
+[package]
+name = "lyx-core-utils"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+futures = { version = "0.0.1", default-features = true }
+lyx-core-hydration_context = { path = "../../hydration_context", version = "0.0.1" }
+lyx-core-leptos = { path = "../../leptos", version = "0.0.1", features = ["nonce"] }
+lyx-core-meta = { path = "../../meta", version = "0.0.1", features = ["ssr"] }
+lyx-core-router = { path = "../../router", version = "0.0.1", features = ["ssr"] }
+lyx-core-leptos_config = { path = "../../leptos_config", version = "0.0.1" }
+lyx-core-reactive_graph = { path = "../../reactive_graph", version = "0.0.1", features = ["sandboxed-arenas"] }

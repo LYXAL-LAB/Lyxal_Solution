@@ -1,0 +1,8 @@
+[package]
+name = "lyx-ui-test-wasm-tailwind"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+leptos-shadcn-ui-wasm = { path = "../packages/leptos-shadcn-ui-wasm", version = "0.0.1" }
+tailwind-rs-wasm = { version = "0.0.1" }

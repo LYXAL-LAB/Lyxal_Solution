@@ -1,0 +1,28 @@
+[package]
+name = "lyx-comm-server-signal"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+cfg-if = { version = "0.0.1" }
+js-sys = { version = "0.0.1" }
+json-patch = { version = "0.0.1" }
+lyx-core-leptos = { path = "../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+serde = { version = "0.0.1", features = ["derive"] }
+serde_json = { version = "0.0.1" }
+wasm-bindgen = { version = "0.0.1", default-features = false }
+web-sys = { version = "0.0.1", features = ["WebSocket", "MessageEvent", "Window"] }
+thiserror = { version = "0.0.1", optional = true }
+
+# Actix
+actix-ws = { version = "0.0.1", optional = true }
+
+# Axum
+axum = { version = "0.0.1", optional = true, default-features = false, features = ["ws"] }
+futures = { version = "0.0.1", optional = true, default-features = false }
+
+[features]
+default = []
+ssr = []
+actix = ["dep:actix-ws", "dep:thiserror"]
+axum = ["dep:axum", "dep:futures", "dep:thiserror"]

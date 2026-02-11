@@ -1,0 +1,15 @@
+[package]
+name = "lyx-ui-component-generator"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+anyhow = { version = "0.0.1" }
+serde = { version = "0.0.1" }
+serde_json = { version = "0.0.1" }
+tokio = { version = "0.0.1" }
+clap = { version = "0.0.1" }
+handlebars = { version = "0.0.1" }
+regex = { version = "0.0.1" }
+# Registry integration
+shadcn-registry = { path = "../registry", version = "0.0.1" }
+shadcn-ui-test-utils = { path = "../test-utils", version = "0.0.1" }

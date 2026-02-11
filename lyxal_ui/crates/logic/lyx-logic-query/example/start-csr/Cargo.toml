@@ -1,0 +1,38 @@
+[package]
+name = "lyx-logic-start-csr"
+version = "0.0.1"
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lyx-core-leptos = { path = "../../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+lyx-core-meta = { path = "../../../../core/lyx-core-leptos/meta", version = "0.0.1" }
+lyx-core-router = { path = "../../../../core/lyx-core-leptos/router", version = "0.0.1" }
+console_log = { version = "0.0.1" }
+log = { version = "0.0.1" }
+console_error_panic_hook = { version = "0.0.1" }
+lyx-logic-query = { path = "../../query", version = "0.0.1" }
+lyx-logic-devtools = { path = "../../devtools", version = "0.0.1" }
+gloo-timers = { version = "0.0.1" }
+serde = { version = "0.0.1" }
+reqwest = { version = "0.0.1", features = ["json"] }
+lyx-logic-use = { path = "../../../lyx-logic-use", version = "0.0.1" }
+leptos_theme = { path = "../../../../ui-foundations/lyx-found-theme", version = "0.0.1" }
+
+# utils
+# strum = { version = "0.0.1", features = ["derive", "strum_macros"] }
+# strum_macros = "0.25"
+
+[dev-dependencies]
+
+
+wasm-bindgen = { version = "0.0.1" }
+wasm-bindgen-test = { version = "0.0.1" }
+web-sys = { version = "0.0.1", features = ["Document"] }
+
+[profile.release]
+opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = "abort"

@@ -1,0 +1,41 @@
+[package]
+name = "lyx-core-hexagonal-architecture"
+version = "0.0.1"
+edition = "2024"
+[lib]
+crate-type = ["cdylib", "rlib"]
+[dependencies]
+lyx-core-leptos = { path = "../../leptos", version = "0.0.1", optional = true }
+lyx-core-router = { path = "../../router", version = "0.0.1", optional = true }
+axum = { version = "0.0.1", optional = true }
+console_error_panic_hook = { version = "0.0.1" }
+lyx-core-axum = { path = "../../integrations/axum", version = "0.0.1", optional = true }
+lyx-core-meta = { path = "../../meta", version = "0.0.1", optional = true }
+tokio = { version = "0.0.1", optional = true, features = ["rt-multi-thread"] }
+tower = { version = "0.0.1", optional = true }
+tower-http = { version = "0.0.1", optional = true, features = ["fs"] }
+wasm-bindgen = { version = "0.0.1" }
+thiserror = { version = "0.0.1" }
+tracing = { version = "0.0.1", optional = true }
+http = { version = "0.0.1" }
+mockall = { version = "0.0.1" }
+cfg-if = { version = "0.0.1" }
+serde = { version = "0.0.1" }
+pin-project-lite = { version = "0.0.1" }
+[features]
+config_1 = []
+hydrate = ["lyx-core-leptos/hydrate"]
+ssr = [
+"dep:axum",
+"dep:tokio",
+"dep:tower",
+"dep:tower-http",
+"dep:lyx-core-axum",
+"lyx-core-leptos/ssr",
+"lyx-core-meta/ssr",
+"lyx-core-router/ssr",
+"dep:tracing" ]
+[profile.wasm-release]
+opt-level = 'z'
+lto = true
+codegen-units = 1

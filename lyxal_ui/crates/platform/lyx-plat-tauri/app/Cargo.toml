@@ -1,0 +1,23 @@
+[package]
+name = "lyx-platform-app"
+version = "0.0.1"
+edition = "2024"
+
+[lib]
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[dependencies]
+lyx-core-meta = { path = "../../../core/lyx-core-leptos/meta", version = "0.0.1" }
+lyx-platform-backend = { path = "../backend", version = "0.0.1" }
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+tracing = { version = "0.0.1" }
+lyx-core-router = { path = "../../../core/lyx-core-leptos/router", version = "0.0.1" }
+
+[features]
+csr = ["lyx-core-leptos/csr", "lyx-core-meta/csr", "lyx-core-router/csr"]
+hydrate = [
+"lyx-core-leptos/hydrate",
+"lyx-core-meta/hydrate",
+"lyx-platform-backend/hydrate",
+"lyx-core-router/hydrate" ]
+ssr = ["lyx-core-leptos/ssr", "lyx-core-meta/ssr", "lyx-platform-backend/ssr", "lyx-core-router/ssr"]

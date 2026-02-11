@@ -1,0 +1,7 @@
+.thaw-space {
+    display: flex;
+}
+
+.thaw-space__item {
+    max-width: 100%;
+}

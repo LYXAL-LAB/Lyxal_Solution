@@ -1,0 +1,23 @@
+[build]
+target = "./index.html"
+
+[watch]
+watch = [
+    ".",
+    "../trading-charts/src",
+    "../trading-charts/build.rs",
+    "../trading-charts/Cargo.toml",
+    "../trading-charts/bindings/src",
+    "../trading-charts/bindings/builder",
+    "../trading-charts/bindings/package.json",
+]
+
+ignores = [
+    "./dist",
+    "./README.md",
+]
+
+[serve]
+address = "127.0.0.1"
+port = 1421
+open = true

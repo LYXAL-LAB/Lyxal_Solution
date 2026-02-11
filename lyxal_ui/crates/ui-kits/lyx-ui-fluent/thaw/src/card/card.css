@@ -1,0 +1,24 @@
+.thaw-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-sizing: border-box;
+    max-width: 100%;
+    width: 720px;
+    margin: auto;
+    padding:  var(--thaw-card--size);
+    row-gap:  var(--thaw-card--size);
+    column-gap:  var(--thaw-card--size);
+
+    background-color: var(--colorNeutralBackground1);
+    color: var(--colorNeutralForeground1);
+    box-shadow: var(--shadow4);
+    border-radius: var(--borderRadiusMedium);
+
+    --thaw-card--size: 12px;
+}
+
+.thaw-card > .thaw-card-preview {
+    margin: 0 calc(var(--thaw-card--size)* -1);
+}

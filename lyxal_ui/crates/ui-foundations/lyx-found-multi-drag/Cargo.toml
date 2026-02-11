@@ -1,0 +1,20 @@
+[package]
+name = "lyx-found-multi-drag"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+lyx-core-leptos = { path = "../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["csr", "nightly"] }
+lyx-core-meta = { path = "../../core/lyx-core-leptos/meta", version = "0.0.1", features = ["csr", "nightly"] }
+lyx-core-router = { path = "../../core/lyx-core-leptos/router", version = "0.0.1", features = ["csr", "nightly"] }
+lyx-logic-use = { path = "../../logic/lyx-logic-use", version = "0.0.1" }
+log = { version = "0.0.1" }
+gloo-net = { version = "0.0.1", features = ["http"] }
+gloo-console = { version = "0.0.1" }
+web-sys = { version = "0.0.1", features = ["ScrollIntoViewOptions", "ScrollBehavior"] }
+mockall = { version = "0.0.1" }
+
+# dependecies for client (enable when csr or hydrate set)
+wasm-bindgen = { version = "0.0.1" }
+console_log = { version = "0.0.1" }
+console_error_panic_hook = { version = "0.0.1" }

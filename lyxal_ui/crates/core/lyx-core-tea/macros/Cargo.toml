@@ -1,0 +1,13 @@
+[package]
+name = "lyx-core-macros"
+version = "0.0.1"
+edition = "2024"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = { version = "0.0.1" }
+proc-macro-error = { version = "0.0.1" }
+quote = { version = "0.0.1" }
+syn = { version = "0.0.1", features = ["extra-traits"] }

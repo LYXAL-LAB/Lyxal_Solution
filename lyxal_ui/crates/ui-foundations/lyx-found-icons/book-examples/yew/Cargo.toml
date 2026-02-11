@@ -1,0 +1,13 @@
+[package]
+name = "lyx-ui-foundations-yew"
+version = "0.0.1"
+edition = "2024"
+
+[features]
+default = []
+icons = ["dep:lyx-ui-foundations-yew", "lyx-ui-foundations-yew/all-icons"]
+
+[dependencies]
+
+lyx-ui-foundations-yew = { path = "../../packages/yew", version = "0.0.1", optional = true }
+yew = { version = "0.0.1", features = ["csr"] }

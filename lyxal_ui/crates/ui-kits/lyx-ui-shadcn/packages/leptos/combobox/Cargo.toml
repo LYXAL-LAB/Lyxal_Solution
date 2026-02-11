@@ -1,0 +1,21 @@
+[package]
+name = "lyx-ui-combobox"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+leptos-style = { version = "0.0.1" }
+web-sys = { version = "0.0.1", features = ["HtmlInputElement", "HtmlElement", "Element", "Node", "NodeList", "Event", "EventTarget", "MouseEvent", "KeyboardEvent", "FocusEvent"] }
+wasm-bindgen = { version = "0.0.1" }
+tailwind_fuse = { path = "../../../../../ui-foundations/lyx-found-tailwind/fuse", version = "0.0.1" }
+gloo-timers = { version = "0.0.1" }
+leptos-struct-component = { version = "0.0.1" }
+leptos-shadcn-signal-management = { path = "../../signal-management", version = "0.0.1" }
+[dev-dependencies]
+shadcn-ui-test-utils = { path = "../../test-utils", version = "0.0.1" }
+wasm-bindgen-test = { version = "0.0.1" }
+[lib]
+name = "lyx-ui-combobox"
+path = "src/lib.rs"
+[[example]]
+name = "lyx-ui-combobox"
+path = "src/lib.rs"

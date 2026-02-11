@@ -1,0 +1,6 @@
+[package]
+name = "lyx-ui-lyx-ui-daisyui"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+lyx-core-leptos = { path = "../../core/lyx-core-leptos/leptos", version = "0.0.1" }

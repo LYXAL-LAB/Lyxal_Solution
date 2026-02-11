@@ -1,0 +1,20 @@
+[package]
+name = "lyx-core-leptos_dom"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+lyx-core-server_fn = { path = "../server_fn", version = "0.0.1", optional = true }
+lyx-core-tachys = { path = "../tachys", version = "0.0.1" }
+lyx-core-reactive_graph = { path = "../reactive_graph", version = "0.0.1" }
+lyx-core-or_poisoned = { path = "../or_poisoned", version = "0.0.1" }
+wasm-bindgen = { version = "0.0.1" }
+web-sys = { version = "0.0.1", features = ["Location", "Element", "Node"] }
+
+[features]
+islands = ["lyx-core-tachys/islands"]
+nonce = []
+nightly = []
+csr = ["lyx-core-tachys/csr"]
+ssr = ["lyx-core-tachys/ssr", "dep:lyx-core-server_fn"]
+hydrate = ["lyx-core-tachys/hydrate"]

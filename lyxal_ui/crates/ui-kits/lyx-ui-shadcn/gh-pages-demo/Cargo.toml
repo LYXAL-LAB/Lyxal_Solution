@@ -1,0 +1,32 @@
+[package]
+name = "lyx-ui-gh-pages-demo"
+version = "0.0.1"
+edition = "2024"
+[dependencies]
+# Leptos framework
+lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["csr"] }
+lyx-core-meta = { path = "../../../core/lyx-core-leptos/meta", version = "0.0.1" }
+# WASM dependencies
+console_error_panic_hook = { version = "0.0.1" }
+console_log = { version = "0.0.1" }
+log = { version = "0.0.1" }
+wasm-bindgen = { version = "0.0.1" }
+web-sys = { version = "0.0.1" }
+js-sys = { version = "0.0.1" }
+getrandom = { version = "0.0.1", features = ["js"] }
+uuid = { version = "0.0.1", features = ["v4", "js"] }
+# Tailwind-RS
+tailwind-rs-core = { path = "../packages/tailwind-rs-core", version = "0.0.1" }
+tailwind-rs-wasm = { version = "0.0.1" }
+# Published ShadCN UI components (refactored versions)
+leptos-shadcn-drawer = { path = "../packages/leptos/drawer", version = "0.0.1" }
+leptos-shadcn-context-menu = { path = "../packages/leptos/context-menu", version = "0.0.1" }
+leptos-shadcn-alert-dialog = { path = "../packages/leptos/alert-dialog", version = "0.0.1" }
+leptos-shadcn-select = { path = "../packages/leptos/select", version = "0.0.1" }
+leptos-shadcn-command = { path = "../packages/leptos/command", version = "0.0.1" }
+# Additional components for comprehensive demo
+leptos-shadcn-button = { path = "../packages/leptos/button", version = "0.0.1" }
+leptos-shadcn-card = { path = "../packages/leptos/card", version = "0.0.1" }
+leptos-shadcn-input = { path = "../packages/leptos/input", version = "0.0.1" }
+[lib]
+crate-type = ["cdylib"]

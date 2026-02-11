@@ -1,0 +1,128 @@
+.thaw-table {
+    display: table;
+    table-layout: fixed;
+    vertical-align: middle;
+    border-collapse: collapse;
+    width: 100%;
+    background-color: var(--colorSubtleBackground);
+}
+
+.thaw-table-header {
+    display: table-row-group;
+}
+
+.thaw-table-header-cell {
+    position: relative;
+    display: table-cell;
+    vertical-align: middle;
+    font-weight: var(--fontWeightRegular);
+    padding: 0px var(--spacingHorizontalS);
+}
+
+.thaw-table-header-cell__button {
+    position: relative;
+    display: flex;
+    flex: 1 1 0px;
+    align-items: center;
+    gap: var(--spacingHorizontalXS);
+    padding: 0px;
+    width: 100%;
+    height: 100%;
+    min-height: 32px;
+    text-align: unset;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: normal;
+    color: inherit;
+    background-color: inherit;
+    box-sizing: content-box;
+    resize: horizontal;
+    overflow: visible;
+    outline-style: none;
+    border: none;
+}
+
+.thaw-table-resize-handle {
+    position: absolute;
+    bottom: 0px;
+    top: 0px;
+    right: 0px;
+    width: 16px;
+    margin: 0px -8px;
+    z-index: 1;
+    transition-duration: 0.2s;
+    transition-property: opacity;
+    opacity: 0;
+    cursor: col-resize;
+}
+
+.thaw-table-resize-handle:hover {
+    opacity: 1;
+}
+
+.thaw-table-resize-handle:focus {
+    outline-style: none;
+}
+
+.thaw-table-resize-handle::after {
+    content: " ";
+    position: absolute;
+    display: block;
+    top: 0px;
+    left: 50%;
+    bottom: 0px;
+    width: 1px;
+    background-color: var(--colorNeutralStroke1);
+}
+
+.thaw-table-body {
+    display: table-row-group;
+}
+
+.thaw-table-row {
+    display: table-row;
+    box-sizing: border-box;
+    color: var(--colorNeutralForeground1);
+    border-bottom: var(--strokeWidthThin) solid var(--colorNeutralStroke2);
+}
+
+.thaw-table-body > .thaw-table-row:hover {
+    color: var(--colorNeutralForeground1Hover);
+    background-color: var(--colorSubtleBackgroundHover);
+}
+
+.thaw-table-body > .thaw-table-row:active {
+    color: var(--colorNeutralForeground1Pressed);
+    background-color: var(--colorSubtleBackgroundPressed);
+}
+
+.thaw-table-cell {
+    position: relative;
+    height: 44px;
+    display: table-cell;
+    vertical-align: middle;
+    padding: 0px var(--spacingHorizontalS);
+}
+
+.thaw-table-cell-layout {
+    display: flex;
+    flex: 1 1 0px;
+    align-items: center;
+    gap: var(--spacingHorizontalS);
+}
+
+.thaw-table-cell-layout--truncate .thaw-table-cell-layout__main {
+    overflow-x: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.thaw-table-cell-layout__content {
+    display: flex;
+    flex-direction: column;
+}
+
+.thaw-table-cell-layout--truncate,
+.thaw-table-cell-layout--truncate .thaw-table-cell-layout__content {
+    overflow-x: hidden;
+}
