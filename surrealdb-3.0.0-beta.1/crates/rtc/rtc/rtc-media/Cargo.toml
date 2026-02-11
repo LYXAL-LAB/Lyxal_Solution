@@ -1,0 +1,29 @@
+[package]
+name = "rtc-media"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "RTC Media in Rust"
+license.workspace = true
+documentation = "https://docs.rs/rtc-media"
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+shared = { workspace = true, default-features = false, features = [] }
+rtp.workspace = true
+
+byteorder = "1"
+bytes = "1"
+thiserror = "1"
+rand = "0.9"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+nearly_eq = "0.2"
+
+[[bench]]
+name = "audio_buffer"
+harness = false

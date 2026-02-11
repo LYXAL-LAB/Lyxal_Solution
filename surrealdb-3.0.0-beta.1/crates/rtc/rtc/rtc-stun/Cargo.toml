@@ -1,0 +1,47 @@
+[package]
+name = "rtc-stun"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "RTC STUN in Rust"
+license.workspace = true
+documentation = "https://docs.rs/rtc-stun"
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+default = []
+bench = []
+
+[dependencies]
+shared = { workspace = true, default-features = false, features = [] }
+
+bytes = "1.5.0"
+lazy_static = "1.4.0"
+url = "2.5.0"
+rand = "0.9"
+base64 = "0.22.0"
+subtle = "2.5.0"
+crc = "3.0.1"
+ring = "0.17.14"
+md-5 = "0.10"
+
+[dev-dependencies]
+clap = { version = "4.5.2", features = ["derive"] }
+criterion = "0.5.1"
+
+[[bench]]
+name = "bench"
+harness = false
+
+[[example]]
+name = "stun_client"
+path = "examples/stun_client.rs"
+bench = false
+
+[[example]]
+name = "stun_decode"
+path = "examples/stun_decode.rs"
+bench = false

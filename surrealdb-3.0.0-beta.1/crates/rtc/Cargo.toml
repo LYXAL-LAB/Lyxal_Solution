@@ -1,0 +1,106 @@
+[workspace]
+resolver = "2"
+
+members = [
+    # Sans-IO Stack (rtc)
+    "rtc/rtc",
+    "rtc/rtc-datachannel",
+    "rtc/rtc-dtls",
+    "rtc/rtc-ice",
+    "rtc/rtc-interceptor",
+    "rtc/rtc-interceptor-derive",
+    "rtc/rtc-mdns",
+    "rtc/rtc-media",
+    "rtc/rtc-rtcp",
+    "rtc/rtc-rtp",
+    "rtc/rtc-sctp",
+    "rtc/rtc-sdp",
+    "rtc/rtc-shared",
+    "rtc/rtc-srtp",
+    "rtc/rtc-stun",
+    "rtc/rtc-turn",
+    
+    # Async Stack (webrtc)
+    "webrtc/webrtc",
+    "webrtc/data",
+    "webrtc/dtls",
+    "webrtc/ice",
+    "webrtc/interceptor",
+    "webrtc/mdns",
+    "webrtc/media",
+    "webrtc/rtcp",
+    "webrtc/rtp",
+    "webrtc/sctp",
+    "webrtc/sdp",
+    "webrtc/srtp",
+    "webrtc/stun",
+    "webrtc/turn",
+    "webrtc/util",
+    
+    # SFU Server
+    "sfu",
+    
+    # Sans-IO Pattern
+    "sansio",
+]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Lyxal Team"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+homepage = "https://lyxal.io"
+repository = "https://github.com/lyxal/lyxal-rtc"
+keywords = ["webrtc", "rtc", "sfu", "realtime", "lyxal"]
+categories = ["network-programming", "multimedia", "asynchronous"]
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.37", features = ["full"] }
+async-trait = "0.1"
+futures = "0.3"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Crypto
+ring = "0.17"
+sha2 = "0.10"
+rcgen = { version = "0.13", features = ["pem", "x509-parser"] }
+rustls = { version = "0.23", default-features = false, features = ["std", "ring"] }
+
+# Utils
+bytes = "1.5"
+log = "0.4"
+thiserror = "1"
+rand = "0.9"
+url = "2"
+hex = "0.4"
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Sans-IO pattern
+sansio = { path = "sansio" }
+
+# RTC Sans-IO crates (internal)
+shared = { path = "rtc/rtc-shared", package = "rtc-shared" }
+datachannel = { path = "rtc/rtc-datachannel", package = "rtc-datachannel" }
+dtls = { path = "rtc/rtc-dtls", package = "rtc-dtls" }
+ice = { path = "rtc/rtc-ice", package = "rtc-ice" }
+interceptor = { path = "rtc/rtc-interceptor", package = "rtc-interceptor" }
+mdns = { path = "rtc/rtc-mdns", package = "rtc-mdns" }
+media = { path = "rtc/rtc-media", package = "rtc-media" }
+rtcp = { path = "rtc/rtc-rtcp", package = "rtc-rtcp" }
+rtp = { path = "rtc/rtc-rtp", package = "rtc-rtp" }
+sctp = { path = "rtc/rtc-sctp", package = "rtc-sctp" }
+sdp = { path = "rtc/rtc-sdp", package = "rtc-sdp" }
+srtp = { path = "rtc/rtc-srtp", package = "rtc-srtp" }
+stun = { path = "rtc/rtc-stun", package = "rtc-stun" }
+turn = { path = "rtc/rtc-turn", package = "rtc-turn" }
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
+lto = true
