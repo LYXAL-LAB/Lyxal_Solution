@@ -1,12 +1,14 @@
 [package]
 name = "api-boundary"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-serde = { version = "*", features = ["derive"] }
+serde = { version = "0.8.0", features = ["derive"] }
 
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 

@@ -1,6 +1,6 @@
 [package]
 name = "src-orig"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]
@@ -8,7 +8,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 name = "src-orig"
 path = "src/lib.rs"
 [dependencies]
-axum = { version = "*", optional = true }
+axum = { version = "0.8.0", optional = true }
 axum-macros = { version = "*", optional = true }
 console_error_panic_hook = { version = "*", optional = true }
 leptos = { path = "../leptos", version = "*", optional = true }
@@ -41,6 +41,8 @@ ssr = [
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 
 

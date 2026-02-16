@@ -1,9 +1,9 @@
 [package]
 name = "leptos_hot_reload"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-anyhow = { version = "*", default-features = true }
+anyhow = { version = "0.8.0", default-features = true }
 serde = { version = "*", features = ["derive"], default-features = true }
 syn = { version = "*", features = ["full", "parsing", "extra-traits", "visit", "printing" ], default-features = true }
 quote = { version = "*", default-features = true }
@@ -17,5 +17,7 @@ or_poisoned = { path = "../or_poisoned", version = "*" }
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 

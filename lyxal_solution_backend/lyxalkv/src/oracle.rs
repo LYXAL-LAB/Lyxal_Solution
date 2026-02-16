@@ -119,7 +119,12 @@ impl Oracle {
 		let version = self.atomic_commit(Arc::clone(&commit_entry))?;
 
 		// Check for conflicts
-		let has_conflict = self.check_conflicts(version, txn.start_commit_id, &commit_entry)?;
+		let has_conflict = self.check_conflicts(
+			version, 
+			txn.start_commit_id, 
+			&commit_entry,
+			&txn.read_set // On ajoute le read_set ici
+		)?;
 		if has_conflict {
 			self.transaction_commit_queue.remove(&version);
 			return Err(Error::TransactionWriteConflict);
@@ -173,16 +178,29 @@ impl Oracle {
 		version: u64,
 		start_commit_id: u64,
 		entry: &Arc<CommitEntry>,
+		read_set: &Arc<parking_lot::Mutex<std::collections::HashSet<Key>>>, // Nouvelle signature
 	) -> Result<bool> {
-		// Check for conflicts with transactions that committed after we started
+		// 1. Vérification des conflits d'écriture (existant)
 		for tx in self.transaction_commit_queue.range((start_commit_id + 1)..version) {
-			// Check if previous transaction conflicts with writes
 			if !tx.value().is_disjoint_writeset(entry) {
-				return Ok(true); // Conflict found
+				return Ok(true); // Conflit d'écriture trouvé
 			}
 		}
 
-		Ok(false) // No conflicts
+		// 2. Vérification des conflits de lecture (Nouveau - Snapshot Isolation)
+		let reads = read_set.lock();
+		if !reads.is_empty() {
+			for tx in self.transaction_commit_queue.range((start_commit_id + 1)..version) {
+				let committed_keys = &tx.value().keys;
+				for read_key in reads.iter() {
+					if committed_keys.contains(read_key) {
+						return Ok(true); // Une clé lue a été modifiée par une transaction concurrente
+					}
+				}
+			}
+		}
+
+		Ok(false) // Aucun conflit détecté
 	}
 
 	/// Shutdown the cleanup thread, waiting for it to exit

@@ -1085,6 +1085,16 @@ impl TableIterator {
 		self.current_block.as_ref().unwrap().value()
 	}
 
+	/// Returns a zero-copy DataRef to the value.
+	#[cfg(test)]
+	pub(crate) fn value_bytes_dataref(&self) -> crate::data::DataRef {
+		// On récupère l'itérateur du bloc courant
+		let block_iter = self.current_block.as_ref().expect("iterator not positioned");
+		
+		// On demande au BlockIterator de nous donner un DataRef (slice) de la valeur
+		block_iter.value_dataref()
+	}
+
 	fn reset(&mut self) {
 		self.positioned = false;
 		self.exhausted = false;

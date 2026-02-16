@@ -1,12 +1,12 @@
 [package]
 name = "counter_dwarf_debug"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [profile.release]
 codegen-units = 1
 lto = true
 [dependencies]
-leptos = { path = "../leptos", version = "*", features = ["csr"] }
+leptos = { path = "../leptos", version = "0.8.0", features = ["csr"] }
 console_log = { version = "*" }
 log = { version = "*" }
 console_error_panic_hook = { version = "*" }
@@ -18,5 +18,7 @@ web-sys = { version = "*" }
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 

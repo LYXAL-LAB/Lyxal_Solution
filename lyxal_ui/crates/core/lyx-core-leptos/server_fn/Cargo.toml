@@ -4,7 +4,7 @@ version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-any_error = { path = "../any_error", version = "*" }
+any_error = { path = "../any_error", version = "0.8.0" }
 server_fn_macro_default = { path = "server_fn_macro_default", version = "*" }
 const_format = { version = "*" }
 const-str = { version = "*" }
@@ -38,6 +38,7 @@ rsc = []
 
 [build-dependencies]
 rustc_version = "*"
+
 
 
 

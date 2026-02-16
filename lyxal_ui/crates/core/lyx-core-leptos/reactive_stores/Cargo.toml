@@ -3,7 +3,7 @@ name = "reactive_stores"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
-guardian = { version = "*", default-features = true }
+guardian = { version = "0.8.0", default-features = true }
 itertools = { version = "*", default-features = true }
 or_poisoned = { path = "../or_poisoned", version = "*" }
 paste = { version = "*", default-features = true }
@@ -22,5 +22,6 @@ leptos = { path = "../leptos", version = "*", features = ["csr"] }
 
 [build-dependencies]
 rustc_version = "*"
+
 
 

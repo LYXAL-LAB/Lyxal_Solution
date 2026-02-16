@@ -1,11 +1,11 @@
 ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\leptos\router\Cargo.toml
 [package]
 name = "router"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-server_fn = { path = "../server_fn", version = "*", optional = true }
+server_fn = { path = "../server_fn", version = "0.8.0", optional = true }
 leptos_dom = { path = "../leptos_dom", version = "*" }
 leptos_macro = { path = "../leptos_macro", version = "*" }
 reactive_graph = { path = "../reactive_graph", version = "*" }
@@ -24,6 +24,8 @@ csr = []
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 
 

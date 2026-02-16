@@ -4,7 +4,7 @@ version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-async-executor = { version = "*", optional = true }
+async-executor = { version = "0.8.0", optional = true }
 futures = { version = "*" }
 glib = { version = "*", optional = true }
 thiserror = { version = "*" }
@@ -29,5 +29,6 @@ futures-executor = ["futures/thread-pool", "futures/executor"]
 
 [build-dependencies]
 rustc_version = "*"
+
 
 

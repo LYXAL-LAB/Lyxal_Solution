@@ -5,7 +5,7 @@ version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-base64 = { version = "*", optional = true }
+base64 = { version = "0.8.0", optional = true }
 leptos_dom = { path = "../leptos_dom", version = "*" }
 leptos_macro = { path = "../leptos_macro", version = "*" }
 reactive_graph = { path = "../reactive_graph", version = "*" }
@@ -24,6 +24,7 @@ csr = ["leptos_dom/csr", "leptos_macro/csr"]
 
 [build-dependencies]
 rustc_version = "*"
+
 
 
 

@@ -1,16 +1,18 @@
 [package]
 name = "frontend"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
-app = { version = "*", path = "../../../../../platform/lyx-plat-tauri/app", optional = false, default-features = false, features = ["hydrate"] }
+app = { version = "0.8.0", path = "../../../../../platform/lyx-plat-tauri/app", optional = false, default-features = false, features = ["hydrate"] }
 leptos = { version = "*", path = "../../../leptos", optional = false, features = [ "hydrate" ] }
 ids = { version = "*", path = "../ids", optional = false }
 
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 

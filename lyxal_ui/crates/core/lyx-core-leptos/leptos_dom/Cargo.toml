@@ -4,7 +4,7 @@ version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-server_fn = { path = "../server_fn", version = "*", optional = true }
+server_fn = { path = "../server_fn", version = "0.8.0", optional = true }
 tachys = { path = "../tachys", version = "*" }
 reactive_graph = { path = "../reactive_graph", version = "*" }
 or_poisoned = { path = "../or_poisoned", version = "*" }
@@ -22,6 +22,7 @@ hydrate = ["tachys/hydrate"]
 
 [build-dependencies]
 rustc_version = "*"
+
 
 
 

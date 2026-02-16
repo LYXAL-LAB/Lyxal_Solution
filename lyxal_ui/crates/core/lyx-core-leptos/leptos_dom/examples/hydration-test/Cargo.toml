@@ -1,11 +1,11 @@
 [package]
 name = "hydration-test"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
-leptos = { path = "../leptos", version = "*", features = ["nightly"], optional = true }
+leptos = { path = "../leptos", version = "0.8.0", features = ["nightly"], optional = true }
 actix-web = { version = "*", optional = true }
 actix-files = { version = "*", optional = true }
 wasm-bindgen = { version = "*", optional = true }
@@ -20,6 +20,8 @@ hydrate = ["leptos/hydrate", "dep:wasm-bindgen", "dep:gloo"]
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 
 

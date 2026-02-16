@@ -3,7 +3,7 @@ name = "reactive_graph"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
-any_spawner = { path = "../any_spawner", version = "*" }
+any_spawner = { path = "../any_spawner", version = "0.8.0" }
 or_poisoned = { path = "../or_poisoned", version = "*" }
 futures = { version = "*", default-features = true }
 hydration_context = { path = "../hydration_context", version = "*", optional = true }
@@ -40,6 +40,7 @@ effects = [
 ]
 sandboxed-arenas = []
 subsecond = ["dep:subsecond"]
+
 
 
 

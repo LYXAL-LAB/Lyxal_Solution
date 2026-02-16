@@ -1,9 +1,9 @@
 [package]
 name = "leptos_server"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-base64 = { version = "*", default-features = true }
+base64 = { version = "0.8.0", default-features = true }
 codee = { version = "*", features = ["json_serde"], default-features = true }
 hydration_context = { path = "../hydration_context", version = "*" }
 reactive_graph = { path = "../reactive_graph", version = "*", features = ["hydration"] }
@@ -31,6 +31,8 @@ tracing = ["dep:tracing"]
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 
 

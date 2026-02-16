@@ -1,10 +1,10 @@
 [package]
 name = "benchmarks"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-leptos = { path = "../leptos", version = "*", features = ["ssr", "nightly"] }
+leptos = { path = "../leptos", version = "0.8.0", features = ["ssr", "nightly"] }
 leptos_reactive = { path = "../reactive_graph" }
 tachydom = { path = "../tachys" }
 # tachy_maccy = { path = "../tachy_maccy" }
@@ -27,5 +27,7 @@ web-sys = { version = "*", features = ["Window", "Document", "HtmlElement", "Htm
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 

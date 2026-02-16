@@ -5,7 +5,7 @@ edition = "2024"
 [lib]
 proc-macro = true
 [dependencies]
-convert_case = { version = "*", default-features = true }
+convert_case = { version = "0.8.0", default-features = true }
 proc-macro-error2 = { version = "*", default-features = true }
 proc-macro2 = { version = "*", default-features = true }
 quote = { version = "*", default-features = true }
@@ -14,5 +14,6 @@ syn = { version = "*", features = ["full"], default-features = true }
 
 [build-dependencies]
 rustc_version = "*"
+
 
 

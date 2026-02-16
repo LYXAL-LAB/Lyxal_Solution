@@ -1,11 +1,11 @@
 [package]
 name = "router_macro"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [lib]
 proc-macro = true
 [dependencies]
-proc-macro-error2 = { version = "*", default-features = false }
+proc-macro-error2 = { version = "0.8.0", default-features = false }
 proc-macro2 = { version = "*", default-features = true }
 quote = { version = "*", default-features = true }
 syn = { version = "*", features = ["full"], default-features = true }
@@ -17,5 +17,7 @@ leptos_macro = { path = "../leptos_macro", version = "*" }
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 

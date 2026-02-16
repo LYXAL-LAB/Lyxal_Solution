@@ -1,11 +1,11 @@
 [package]
 name = "app-2"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
-console_error_panic_hook = { version = "*" }
+console_error_panic_hook = { version = "0.8.0" }
 meta = { path = "../../../meta", version = "*", optional = true }
 router = { path = "../../../router", version = "*", optional = true }
 tower = { version = "*", optional = true }
@@ -47,6 +47,8 @@ ssr = [
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 
 

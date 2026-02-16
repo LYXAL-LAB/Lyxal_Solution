@@ -1,10 +1,10 @@
 [package]
 name = "app"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-leptos = { path = "../leptos", version = "*" }
+leptos = { path = "../leptos", version = "0.8.0" }
 leptos_meta = { path = "../leptos_meta", version = "*" }
 leptos_router = { path = "../leptos_router", version = "*" }
 leptos_axum = { version = "*", path = "../../../integrations/axum", optional = true }
@@ -27,6 +27,8 @@ ssr = ["leptos/ssr", "leptos_meta/ssr", "leptos_router/ssr", "dep:sqlx", "dep:ti
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 
 

@@ -35,3 +35,4 @@ members = [
   leptos_theme = { path = "./crates/ui-foundations/lyx-found-theme" }
   leptonic-theme = { path = "./crates/ui-kits/lyx-ui-leptonic/leptonic-theme" }
   leptonic = { path = "./crates/ui-kits/lyx-ui-leptonic/leptonic" }
+

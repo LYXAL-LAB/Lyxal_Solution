@@ -1,9 +1,9 @@
 [package]
 name = "either_of"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-pin-project-lite = { version = "*", default-features = true }
+pin-project-lite = { version = "0.8.0", default-features = true }
 paste = { version = "*", default-features = true }
 [features]
 default = ["no_std"]
@@ -12,5 +12,7 @@ no_std = []
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 

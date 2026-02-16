@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 next_tuple = { path = "../next_tuple" }
-html-escape = { version = "*" }
+html-escape = { version = "0.8.0" }
 erased = { version = "*" }
 reactive_graph = { path = "../reactive_graph", version = "*" }
 wasm-bindgen = { version = "*" }
@@ -22,6 +22,7 @@ hydrate = []
 
 [build-dependencies]
 rustc_version = "*"
+
 
 
 

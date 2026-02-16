@@ -5,8 +5,8 @@ edition = "2024"
 [lib]
 proc-macro = true
 [dependencies]
-syn = { version = "*", default-features = true }
-server_fn_macro = { path = "../server_fn_macro", version = "*", optional = true }
+syn = { version = "0.8.0", default-features = true }
+server_fn_macro = { path = "../../server_fn_macro", version = "*", optional = true }
 [features]
 nightly = ["server_fn_macro/nightly"]
 ssr = ["server_fn_macro/ssr"]
@@ -16,6 +16,8 @@ axum = ["server_fn_macro/axum"]
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 
 

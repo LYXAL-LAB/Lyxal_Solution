@@ -1,9 +1,9 @@
 [package]
 name = "actix"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-actix-http = { version = "*", default-features = true }
+actix-http = { version = "0.8.0", default-features = true }
 actix-files = { version = "*", default-features = true }
 actix-web = { version = "*", default-features = false }
 futures = { version = "*", default-features = true }
@@ -31,6 +31,8 @@ tracing = ["dep:tracing"]
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 
 

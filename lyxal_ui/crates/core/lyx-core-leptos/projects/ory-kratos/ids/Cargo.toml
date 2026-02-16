@@ -1,11 +1,13 @@
 [package]
 name = "ids"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
 
 
 [build-dependencies]
-rustc_version = "*"
+rustc_version = "0.8.0"
+
+
 
 

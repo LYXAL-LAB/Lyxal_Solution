@@ -172,7 +172,8 @@ pub struct Transaction {
 	/// The entries vec is used to keep different values for the same key for
 	/// savepoints and rollbacks.
 	pub(crate) write_set: BTreeMap<Key, Vec<Entry>>,
-
+	/// `read_set` tracks the keys read during the transaction for conflict detection
+	pub(crate) read_set: Arc<parking_lot::Mutex<std::collections::HashSet<Key>>>,
 	/// `closed` indicates if the transaction is closed. A closed transaction
 	/// cannot make any more changes to the data.
 	closed: bool,
@@ -239,6 +240,7 @@ impl Transaction {
 			snapshot,
 			core,
 			write_set: BTreeMap::new(),
+			read_set: Arc::new(parking_lot::Mutex::new(std::collections::HashSet::new())),
 			durability: Durability::Eventual,
 			closed: false,
 			start_commit_id,
@@ -447,6 +449,11 @@ impl Transaction {
 		if self.mode.is_write_only() {
 			return Err(Error::TransactionWriteOnly);
 		}
+
+		// If it's a mutable transaction, track the read for conflict detection
+		if self.mode.mutable() {
+			self.read_set.lock().insert(key.as_slice().to_vec());
+		}		
 
 		// If a timestamp is provided, use versioned read
 		if let Some(timestamp) = options.timestamp {

@@ -1,9 +1,9 @@
 [package]
 name = "test-bench"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-console_error_panic_hook = { version = "*" }
+console_error_panic_hook = { version = "0.8.0" }
 gloo = { version = "*", features = ["futures"] }
 leptos = { path = "../leptos", version = "*", features = ["nightly", "csr", "tracing"] }
 tracing = { version = "*" }
@@ -13,5 +13,7 @@ tracing-subscriber-wasm = { version = "*" }
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 

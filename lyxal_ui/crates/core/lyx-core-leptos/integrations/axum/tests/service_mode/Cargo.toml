@@ -1,11 +1,11 @@
 [package]
 name = "service_mode"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
-axum = { optional = true, version = "*" }
+axum = { optional = true, version = "0.8.0" }
 clap = { optional = true, version = "*", features = ["derive"] }
 console_error_panic_hook = { version = "*" }
 leptos = { path = "../leptos", version = "*", features = ["tracing"], optional = true }
@@ -53,6 +53,8 @@ lib-profile-release = { version = "*" }
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 
 

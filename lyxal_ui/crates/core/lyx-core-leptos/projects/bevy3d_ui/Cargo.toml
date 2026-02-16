@@ -1,12 +1,12 @@
 [package]
 name = "bevy3d_ui"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [profile.release]
 codegen-units = 1
 lto = true
 [dependencies]
-leptos = { path = "../leptos", version = "*", features = ["csr"] }
+leptos = { path = "../leptos", version = "0.8.0", features = ["csr"] }
 meta = { path = "../../meta", version = "*" }
 router = { path = "../../router", version = "*" }
 console_log = { version = "*" }
@@ -22,5 +22,7 @@ web-sys = { version = "*" }
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 

@@ -4,7 +4,7 @@ version = "0.8.0"
 edition = "2024"
 [dependencies]
 singlestage_macro = { path = "../singlestage_macro", optional = true }
-reactive_stores = { path = "../../../core/leptos/reactive_stores", optional = true }
+reactive_stores = { path = "../core/lyx-core-leptos/reactive_stores", optional = true }
 leptos = { path = "../core/lyx-core-leptos/leptos" }
 leptos_meta = { path = "../core/lyx-core-leptos/meta" }
 serde = { version = "*" }
@@ -103,6 +103,7 @@ textarea = ["field", "label"]
 theme_provider = []
 toggle = []
 tooltip = []
+
 
 
 

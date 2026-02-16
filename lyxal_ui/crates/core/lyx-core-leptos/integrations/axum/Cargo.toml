@@ -1,9 +1,9 @@
 [package]
 name = "axum"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-any_spawner = { path = "../any_spawner", version = "*", features = ["tokio"] }
+any_spawner = { path = "../any_spawner", version = "0.8.0", features = ["tokio"] }
 hydration_context = { path = "../hydration_context", version = "*" }
 axum = { version = "*", default-features = false, features = ["matched-path" ] }
 dashmap = { version = "*", default-features = true }
@@ -39,6 +39,8 @@ tracing = ["dep:tracing"]
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 
 

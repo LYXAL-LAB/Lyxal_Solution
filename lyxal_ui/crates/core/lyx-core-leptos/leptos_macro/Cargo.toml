@@ -5,7 +5,7 @@ edition = "2024"
 [lib]
 proc-macro = true
 [dependencies]
-attribute-derive = { version = "*", features = ["syn-full" ], default-features = true }
+attribute-derive = { version = "0.8.0", features = ["syn-full" ], default-features = true }
 cfg-if = { version = "*", default-features = true }
 html-escape = { version = "*", default-features = true }
 itertools = { version = "*", default-features = true }
@@ -45,6 +45,7 @@ actix = ["server_fn_macro/actix"]
 axum = ["server_fn_macro/axum"]
 generic = ["server_fn_macro/generic"]
 __internal_erase_components = []
+
 
 
 

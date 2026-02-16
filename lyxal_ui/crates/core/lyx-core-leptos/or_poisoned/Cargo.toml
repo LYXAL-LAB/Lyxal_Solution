@@ -6,5 +6,6 @@ edition = "2024"
 
 
 [build-dependencies]
-rustc_version = "*"
+rustc_version = "0.8.0"
+
 

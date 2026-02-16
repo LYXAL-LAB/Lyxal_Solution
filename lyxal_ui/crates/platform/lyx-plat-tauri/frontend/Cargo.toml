@@ -16,13 +16,14 @@ console_error_panic_hook = { version = "*" }
 console_log = { version = "*" }
 leptos = { path = "../core/lyx-core-leptos/leptos" }
 log = { version = "*" }
-server_fn = { path = "../../../core/leptos/server_fn" }
+server_fn = { path = "../core/lyx-core-leptos/server_fn" }
 wasm-bindgen = { version = "*" }
 lyx-platform-app = { path = "../app" }
 
 [features]
 csr = ["leptos/csr", "lyx-platform-app/csr"]
 hydrate = ["leptos/hydrate", "lyx-platform-app/hydrate"]
+
 
 
 

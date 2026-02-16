@@ -9,12 +9,13 @@ edition = "2024"
 default-struct-builder = { version = "*" }
 leptos = { path = "../core/lyx-core-leptos/leptos", optional = true }
 leptos-use = { path = "../../use", optional = true }
-reactive_stores = { path = "../../../core/leptos/reactive_stores" }
+reactive_stores = { path = "../core/lyx-core-leptos/reactive_stores" }
 serde = { version = "*", features = ["derive"] }
 web-sys = { version = "*" }
 
 [features]
 ssr = ["leptos/ssr", "leptos-windowing/ssr", "leptos-use/ssr"]
+
 
 
 

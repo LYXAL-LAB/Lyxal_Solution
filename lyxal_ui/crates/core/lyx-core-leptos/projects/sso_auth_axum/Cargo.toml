@@ -1,11 +1,11 @@
 [package]
 name = "sso_auth_axum"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
-oauth2 = { version = "*", optional = true }
+oauth2 = { version = "0.8.0", optional = true }
 anyhow = { version = "*" }
 console_log = { version = "*" }
 rand = { version = "*", optional = true, features = ["min_const_gen"] }
@@ -54,6 +54,8 @@ ssr = [
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 
 

@@ -3,15 +3,16 @@ name = "lyx-found-demo-pure-css"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
-leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr", "nightly"] }
+leptos = { path = "../../../../core/lyx-core-leptos/leptos", features = ["csr", "nightly"] }
 console_error_panic_hook = { version = "*" }
 console_log = { version = "*" }
 copy_dir = { version = "*" }
-leptos-use = { path = "../logic/lyx-logic-use" }
-leptos_meta = { path = "../core/lyx-core-leptos/meta" }
-leptos_router = { path = "../core/lyx-core-leptos/router", features = ["csr"] }
+leptos-use = { path = "../../../../logic/lyx-logic-use" }
+leptos_meta = { path = "../../../../core/lyx-core-leptos/meta" }
+leptos_router = { path = "../../../../core/lyx-core-leptos/router", features = ["csr"] }
 log = { version = "*" }
 leptos_theme = { path = "../../" }
+
 
 
 

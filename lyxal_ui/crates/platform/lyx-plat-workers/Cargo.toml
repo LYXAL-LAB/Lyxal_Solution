@@ -20,7 +20,7 @@ leptos = { path = "../core/lyx-core-leptos/leptos" }
 leptos_axum = { path = "../../core/leptos/integrations/axum", features = ["wasm" ], optional = true }
 leptos_meta = { path = "../core/lyx-core-leptos/meta" }
 leptos_router = { path = "../core/lyx-core-leptos/router" }
-leptos_dom = { path = "../../core/leptos/leptos_dom" }
+leptos_dom = { path = "../core/lyx-core-leptos/leptos_dom" }
 log = { version = "*" }
 once_cell = { version = "*" }
 serde = { version = "*", features = ["derive"] }
@@ -97,6 +97,7 @@ lib-features = ["hydrate"]
 #
 # Optional. Defaults to false.
 lib-default-features = false
+
 
 
 

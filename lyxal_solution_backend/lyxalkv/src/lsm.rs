@@ -185,7 +185,7 @@ impl CoreInner {
 		};
 
 		let core_inner = Arc::new(Self {
-			opts,
+			opts: Arc::clone(&opts),
 			active_memtable,
 			immutable_memtables,
 			level_manifest,
@@ -202,7 +202,19 @@ impl CoreInner {
 		if let Some(ref v) = vlog {
 			v.core.store(Arc::new(Some(Arc::downgrade(&core_inner))));
 		}
+        // --- Initialisation Chaos & QoS Controllers ---
+		let chaos = crate::vfs::ChaosController::get();
+		chaos.set_read_failure_prob(opts.chaos_read_prob);
+		chaos.set_write_failure_prob(opts.chaos_write_prob);
 
+		let scheduler = crate::vfs::IoScheduler::get();
+		if opts.io_bg_limit_bytes > 0 {
+			// Burst à 2x pour la réactivité sur les pics
+			scheduler.set_background_limit(opts.io_bg_limit_bytes as f64, (opts.io_bg_limit_bytes * 2) as f64);
+		}
+		if opts.io_fg_limit_bytes > 0 {
+			scheduler.set_foreground_limit(opts.io_fg_limit_bytes as f64, (opts.io_fg_limit_bytes * 2) as f64);
+		}
 		Ok(core_inner)
 	}
 
@@ -1452,7 +1464,6 @@ pub struct Tree {
 	pub(crate) core: Arc<Core>,
 }
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{OnceLock, Weak};
 

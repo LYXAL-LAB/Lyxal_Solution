@@ -3,7 +3,7 @@ name = "leptos_config"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
-config = { version = "*", default-features = false, features = ["toml", "convert-case" ] }
+config = { version = "0.8.0", default-features = false, features = ["toml", "convert-case" ] }
 regex = { version = "*", default-features = true }
 serde = { version = "*", features = ["derive", "rc" ], default-features = true }
 thiserror = { version = "*", default-features = true }
@@ -16,5 +16,6 @@ temp-env = { version = "*", features = ["async_closure" ], default-features = tr
 
 [build-dependencies]
 rustc_version = "*"
+
 
 

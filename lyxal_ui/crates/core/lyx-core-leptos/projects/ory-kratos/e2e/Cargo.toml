@@ -1,9 +1,9 @@
 [package]
 name = "e2e"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [dev-dependencies]
-anyhow = { version = "*" }
+anyhow = { version = "0.8.0" }
 async-trait = { version = "*" }
 cucumber = { version = "*", features = ["tracing", "macros"] }
 pretty_assertions = { version = "*" }
@@ -29,5 +29,7 @@ regex = { version = "*" }
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 

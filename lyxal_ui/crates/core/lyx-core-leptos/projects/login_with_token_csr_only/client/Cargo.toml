@@ -1,9 +1,9 @@
 [package]
 name = "client"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-api-boundary = { path = "../api-boundary", version = "*" }
+api-boundary = { path = "../api-boundary", version = "0.8.0" }
 leptos = { path = "../leptos", version = "*", features = ["csr"] }
 meta = { path = "../../../meta", version = "*", features = ["csr"] }
 router = { path = "../../../router", version = "*", features = ["csr"] }
@@ -18,5 +18,7 @@ thiserror = { version = "*" }
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 

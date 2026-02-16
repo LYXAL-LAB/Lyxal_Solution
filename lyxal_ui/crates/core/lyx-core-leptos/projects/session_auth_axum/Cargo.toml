@@ -1,11 +1,11 @@
 [package]
 name = "session_auth_axum"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
-anyhow = { version = "*" }
+anyhow = { version = "0.8.0" }
 console_log = { version = "*" }
 rand = { version = "*", optional = true, features = ["min_const_gen"] }
 console_error_panic_hook = { version = "*" }
@@ -53,6 +53,8 @@ ssr = [
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 
 

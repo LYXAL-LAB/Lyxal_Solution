@@ -1,9 +1,9 @@
 [package]
 name = "view-tests"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-leptos = { path = "../leptos", version = "*", features = ["csr", "nightly"] }
+leptos = { path = "../leptos", version = "0.8.0", features = ["csr", "nightly"] }
 console_log = { version = "*" }
 log = { version = "*" }
 console_error_panic_hook = { version = "*" }
@@ -13,5 +13,7 @@ wasm-bindgen-test = { version = "*" }
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 

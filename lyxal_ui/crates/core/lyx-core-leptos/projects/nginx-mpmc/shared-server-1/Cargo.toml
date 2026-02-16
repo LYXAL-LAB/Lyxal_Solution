@@ -1,11 +1,11 @@
 [package]
 name = "shared-server-1"
-version = "*"
+version = "0.8.0"
 edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
-axum = { version = "*", optional = true }
+axum = { version = "0.8.0", optional = true }
 leptos = { path = "../leptos", version = "*", optional = true }
 axum = { path = "../../../integrations/axum", version = "*", optional = true }
 tokio = { version = "*", optional = true, features = ["rt-multi-thread"] }
@@ -27,6 +27,8 @@ ssr = [
 
 [build-dependencies]
 rustc_version = "*"
+
+
 
 
 
