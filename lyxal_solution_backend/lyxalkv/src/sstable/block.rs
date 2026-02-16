@@ -754,6 +754,14 @@ impl BlockIterator {
 		&self.block.as_slice()[self.current_value_offset_start..self.current_value_offset_end]
 	}
 
+	/// Returns a zero-copy DataRef pointing to the value's location in the block.
+	pub(crate) fn value_dataref(&self) -> DataRef {
+		self.block.slice(
+			self.current_value_offset_start, 
+			self.current_value_offset_end - self.current_value_offset_start
+		)
+	}
+
 	/// Returns user key slice from current key without allocation
 	#[inline]
 	pub(crate) fn user_key(&self) -> &[u8] {
