@@ -1,39 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_single\singlestage\src\components\sidebar\separator.rs
-```rust
 use leptos::prelude::*;
 
 /// Visually eparates sidebar content.
@@ -211,3 +175,4 @@ pub fn SidebarSeparator(
 ```
 ```
 ```
+

@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx-logic-windowing\lyx-core-lyx_core_lyx-logic-leptos-pagination\src\hooks\pagination.rs
-```rust
 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx-logic-windowing\lyx-core-lyx_core_lyx-logic-lyx-core-lyx_core_lyx-logic-leptos-pagination\src\hooks\pagination.rs
 2: ```rust
 3: 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx_logic_windowing\lyx-core-lyx_core_lyx-logic-lyx-core-lyx_core_lyx-logic-leptos-pagination\src\hooks\pagination.rs
@@ -319,3 +317,4 @@
 317: 315: ```
 318: ```
 ```
+

@@ -1,31 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\tailwind-rs-core\examples\leptos_integration.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\tailwind-rs-core\examples\leptos_integration.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\tailwind-rs-core\examples\leptos_integration.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\tailwind-rs-core\examples\leptos_integration.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\tailwind-rs-core\examples\leptos_integration.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\tailwind-rs-core\examples\leptos_integration.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\tailwind-rs-core\examples\leptos_integration.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\tailwind-rs-core\examples\leptos_integration.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\tailwind-rs-core\examples\leptos_integration.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\tailwind-rs-core\examples\leptos_integration.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\tailwind-rs-core\examples\leptos_integration.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\tailwind-rs-core\examples\leptos_integration.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\tailwind-rs-core\examples\leptos_integration.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\tailwind-rs-core\examples\leptos_integration.rs
-```rust
 //! Example integration of tailwind-rs-core with Leptos components.
 
 use leptos::prelude::*;
@@ -346,3 +318,4 @@ pub fn TailwindRsCoreDemo() -> impl IntoView {
 ```
 ```
 ```
+

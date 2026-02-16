@@ -1,0 +1,71 @@
+---
+id: list-versions
+title: "ListVersions"
+description: "Retrieves a paginated list of config versions with their metadata, hash values, and creation timestamps for audit and rollback purposes."
+sidebar_label: "ListVersions"
+hide_title: true
+hide_table_of_contents: true
+api: eJzNVt9P20AM/ldOedqkFDomXnhjCG1IY0LA9oIQchO3OciPw+cAVdX/ffYlLUlbKrpp0p7aO/vsz/ZnO7MoRZ+QdWyrMjqKLpHJ4hN6A8bBxJbAmJrcejbV2CRVObYT84TkRd2bZ8uZ4QwtmQIZUmCITQY+M0+Q1+hjA2VqEkJQ84ZtgZ6hcN6MKzJQp5aDBlV5PoLkwbiaXOXR70VxVDmk8O4sFWDfBcKv1q8IHRCIS7mIjm5mUSkHUUqqumSRWg3lsUaayqEf4I+6GCFpMJax8IYrM0JDyDWVEqktDUKSaeyoIHySYQHR0SziqVMXZXj/d2bn83gJWW+2I74QDdO4VbPUVig2kkpiW07MmKrCfNoF7vttdrG+DCqaDGy6wJshpMH4mlsv9spJNI8jwsfaEkoJmWrsGXuu6ME7SPAv7N3qjXdCCvSqfzAc6k8/2i53jGiYxRNxJZRmFNLII3Aut0mg3P6915ezdSTV6B4T5ZgjJSjbxi9XDPmdFtOvZ19gN/LAjY1ybZ2OAIhAmbD64A3vUpJNuWraVUT6X5sQ0zvgddU4knYsVKI4cKB9GkB1s7jBPsPEvwP04sG8V76bBbwetr7TWCOTErPlHFcKeY5N7lathkz2Ex73yvOGvcuWEyctIebB8uEmPp2JBpWQXyHJKDwlkmF2+E9oJfPS64DYkMzXKDbA2RTMsmA30UnIfN2MV3MOpfgoVE9yI1M1q3TiTjDgAc7ksN8Ua//pdQR7TGqyPA0D2BeyCqZ74Oxexuy+gLfJca1Pb2616VflCIS0VLh9tXalmWmCf9vmMht6vzbcvl1fX5igLStGtlPJbfoXk0VfjlSuJN6C7D1ugvo2P0Eh1MuW4yoYbet2VUulZd3Z9k2bW5EcDA8OB8PPg+GhIhQVLiDwpp2dylvT2YYrjbok3/+0zttUMr7wvstBBr6EVlOugBuSdSbCkmbCjEzCV+FsJjXDn5TP53rdLEvlXmo9jHLt/jHkHrekY8flvxHyA047XxohMXKOlOTvB7LLTt+Cov14eAVxqweyiqLpvMVO3S1PHy7bgfrRbAfQ+SL4w0zs4Kr7vdDz1igcJwm6bk3WBu+8O96+nl5LV/4GFv3S3Q==
+sidebar_class_name: "get api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"ListVersions"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/config/versions"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Retrieves a paginated list of config versions with their metadata, hash values, and creation timestamps for audit and rollback purposes.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"count","in":"query","description":"Number of items to be returned in each page.","schema":{"type":"number","description":"Number of items to be returned in each page."}},{"name":"page","in":"query","description":"Page number to retrieve, starting from 1.","schema":{"type":"number","description":"Page number to retrieve, starting from 1."}},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"ListVersions 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"total_pages":{"type":"number"},"total_items":{"type":"number"},"data":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"config":{},"created_at":{"type":"string","format":"date-time"},"description":{"type":"string"},"tags":{"type":"array","items":{"type":"string"}}},"required":["config","created_at","description","id"],"title":"ListVersionsMember"}}},"required":["data","total_items","total_pages"],"title":"ListVersionsResponseContent"}}}},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

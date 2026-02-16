@@ -1,31 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs
-```rust
 use std::sync::atomic::{AtomicIsize, Ordering::SeqCst};
 
 use educe::Educe;
@@ -33,7 +5,7 @@ use leptos::on_cleanup;
 use leptos_reactive::{create_effect, MaybeSignal, SignalGet};
 use leptos_use::{use_document, use_window};
 
-use crate::utils::props::Attributes;
+use crate::utils::props::LeptonicAttributes;
 
 static PREVENT_SCROLL_COUNT: AtomicIsize = AtomicIsize::new(0);
 
@@ -50,8 +22,8 @@ pub struct UsePreventScrollReturn {
 #[derive(Educe)]
 #[educe(Debug)]
 pub struct UsePreventScrollProps {
-    /// These attributes must be spread onto the target element: `<foo {..attrs} />`
-    pub attrs: Attributes,
+    /// These LeptonicAttributes must be spread onto the target element: `<foo {..attrs} />`
+    pub attrs: LeptonicAttributes,
 }
 
 pub fn use_prevent_scroll(input: UsePreventScrollInput) -> UsePreventScrollReturn {
@@ -73,7 +45,7 @@ pub fn use_prevent_scroll(input: UsePreventScrollInput) -> UsePreventScrollRetur
             if let Some(doc) = window.document() {
                 if let Some(root) = doc.document_element() {
                     root.set_attribute("style", style(window, &root).as_str())
-                        .expect("Being able to set style attribute.");
+                        .expect("Being able to set style LeptonicAttribute.");
                 }
             }
         }
@@ -87,7 +59,7 @@ pub fn use_prevent_scroll(input: UsePreventScrollInput) -> UsePreventScrollRetur
                 if let Some(doc) = window.document() {
                     if let Some(root) = doc.document_element() {
                         root.set_attribute("style", "")
-                            .expect("Being able to set style attribute.");
+                            .expect("Being able to set style LeptonicAttribute.");
                     }
                 }
             }
@@ -113,7 +85,7 @@ pub fn use_prevent_scroll(input: UsePreventScrollInput) -> UsePreventScrollRetur
 
     UsePreventScrollReturn {
         props: UsePreventScrollProps {
-            attrs: Attributes::new(),
+            attrs: LeptonicAttributes::new(),
         },
     }
 }
@@ -166,17 +138,3 @@ fn is_scrollable(node: &web_sys::Element, check_for_overflow: bool) -> bool {
         false
     }
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```

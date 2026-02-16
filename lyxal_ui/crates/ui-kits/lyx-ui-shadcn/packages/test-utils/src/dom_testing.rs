@@ -1,31 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\test-utils\src\dom_testing.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\test-utils\src\dom_testing.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\test-utils\src\dom_testing.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\test-utils\src\dom_testing.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\test-utils\src\dom_testing.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\test-utils\src\dom_testing.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\test-utils\src\dom_testing.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\test-utils\src\dom_testing.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\test-utils\src\dom_testing.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\test-utils\src\dom_testing.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\test-utils\src\dom_testing.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\test-utils\src\dom_testing.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\test-utils\src\dom_testing.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_shadcn\packages\test-utils\src\dom_testing.rs
-```rust
 //! DOM testing utilities for Leptos ShadCN UI components
 //! 
 //! This module provides basic DOM rendering test capabilities to complement
@@ -310,3 +282,4 @@ impl crate::TestResult {
 ```
 ```
 ```
+

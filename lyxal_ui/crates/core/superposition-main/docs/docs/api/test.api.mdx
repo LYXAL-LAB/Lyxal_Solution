@@ -1,0 +1,71 @@
+---
+id: test
+title: "Test"
+description: "Executes a function in test mode with provided input parameters to validate its behavior before publishing or deployment."
+sidebar_label: "Test"
+hide_title: true
+hide_table_of_contents: true
+api: eJzFV1tvKjcQ/ivWPrVSCCg9eeGNQzk9kVqIgESVIoTMrmF9zu7atb0EhPa/d8beOxtC27TNAzEz47l8c/Fw8gKmfcWl4SLxht7kwPzUME0o2aaJj1TCEwIUQ2IRMPLKTUikEnsesABYMjVEUkVjZpjSxAiypxEPqGGEG002LKR7LhQctkIxItNNxHXIkx0BYsBkJI4xS8ytd+MJyRRFiw8BeLIEk0BU7I8UTp9FcPSGJ88XiQFxPFIpI+7bC/1vGr0/edoPWUzxJBI223rDl5NnjpKBPrH5xnzUaLiJkAB+pmxdeAsMiAo8MJxpVNBiD88VNeW/s2NNSBsFMXrZjdMDHDg6XocMS/ZciSR2kWWZC5srBkC8NLg31k6uqlC+qoJ6RsKzcxqA+ZLncO5Q9NqqW0Guspv38PJFDCl/C66C+y5aCRRMJxRSsS0/dLI+BD5ruDSTK20DOHZhXIdeEfNF8GzdHszb5XYm8C6E10ddC2/szFxfIWd+XQ4zpMmOrRWj0JAXgu0Wezfkxr2OUmj73hCvo2AZc0v/C1B0e73KapoLHW6ONpQ1tBmVMqz2cnLaUeW6wism7zovVo6TWVITwrmacGdt0NZe6tOG7q7Vg92UxhhuoOjWpsCNbNBbi3NhVV4yeugJtevxoLAbMhow9TcjOPRehfquJfXZP9C3QoqWItGunO4GA/zXfAHx3SHAIYUomLj61blcvttkLVIDw8I9B9oEwp7PHS8roHvmVUl6Hv36NFnD58PPo+XDbAosRxrPfnt8Wk7g+3g2XU5+XzaFxl9H018m6/lktJhN66yOWl6CbX3WDVUwbXfLyGq6ENV5Dug4RzOzPfFp8Ok8CSAqUuWzqTBfRJoEBKSqhMCt+67UPYBeldBowdSeqYlSsGLc/yuZjJnW2ACdI6iIucOdLgjwBt3hACgR1wgdzIVQ4CYkhd2EbOMOvX4Bdv/UmBNZ/2T7POsbtzlpmECKm6OdLDqGve14SyW/DY2Rn6nm/ihFhS92oLf5jCqmSoFVpW2BCDkQ3tZZooJ0cKWZpq/L5SOx0oSCOOCQp6FoZry5QT5m+oJn15ix4pfsWAGbNyyCebVuTg40lhHr3gXttle149mSV+/U5jOd4fzaCut9MUxTKC3IMs+dg2rRLoa7wd19b/BTb3BvdyMohJgm1f5ULMmNwGtL8v+6zudA4PbQlxGFoQ0hpCpCD10tv5SDA8SH7VdvWDxbtp6hBEPsA7h0OkFxsCcVZRmSIWEKi3yFaVCcbhBTKPmAazxDB21ppNkFlH6Y53PtR/KW3zmRJscq216+jbcfbOyn/9C4gymDNi7exA+P3hmqveilEx8ea2Gq/t43rDmBfID2lvXfQcPzmV7dGPk+k+aibH3oPs4WSxDe5L87sVmAqugr/iaFT5sAId20BgFLO3kRrIipfRk8pxP//gTfAGKA
+sidebar_class_name: "post api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Test"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/function/{function_name}/{stage}/test"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Executes a function in test mode with provided input parameters to validate its behavior before publishing or deployment.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"function_name","in":"path","schema":{"type":"string"},"required":true},{"name":"stage","in":"path","schema":{"type":"string","enum":["draft","published"],"title":"Stage"},"required":true},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"content":{"application/json":{"schema":{"oneOf":[{"type":"object","title":"value_validate","properties":{"value_validate":{"type":"object","properties":{"key":{"type":"string"},"value":{},"type":{"type":"string"},"environment":{}},"required":["environment","key","type","value"],"title":"ValueValidationFunctionRequest"}},"required":["value_validate"]},{"type":"object","title":"value_compute","properties":{"value_compute":{"type":"object","properties":{"name":{"type":"string"},"prefix":{"type":"string"},"type":{"type":"string"},"environment":{}},"required":["environment","name","prefix","type"],"title":"ValueComputeFunctionRequest"}},"required":["value_compute"]},{"type":"object","title":"context_validate","properties":{"context_validate":{"type":"object","properties":{"environment":{}},"required":["environment"],"title":"ContextValidationFunctionRequest"}},"required":["context_validate"]},{"type":"object","title":"change_reason_validate","properties":{"change_reason_validate":{"type":"object","properties":{"change_reason":{"type":"string"}},"required":["change_reason"],"title":"ChangeReasonValidationFunctionRequest"}},"required":["change_reason_validate"]}],"title":"FunctionExecutionRequest"}}},"required":true}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Test 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"fn_output":{},"stdout":{"type":"string"},"function_type":{"type":"string","enum":["VALUE_VALIDATION","VALUE_COMPUTE","CONTEXT_VALIDATION","CHANGE_REASON_VALIDATION"],"title":"FunctionTypes"}},"required":["fn_output","function_type","stdout"],"title":"TestResponseContent"}}}},"404":{"description":"ResourceNotFound 404 response"},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

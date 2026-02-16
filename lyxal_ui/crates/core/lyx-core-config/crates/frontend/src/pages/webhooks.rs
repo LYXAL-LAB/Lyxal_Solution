@@ -1,11 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\webhooks.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\webhooks.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\webhooks.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\webhooks.rs
-```rust
 use leptos::*;
 use leptos_router::A;
 use serde_json::{Map, Value, json};
@@ -206,3 +198,4 @@ pub fn Webhooks() -> impl IntoView {
 ```
 ```
 ```
+

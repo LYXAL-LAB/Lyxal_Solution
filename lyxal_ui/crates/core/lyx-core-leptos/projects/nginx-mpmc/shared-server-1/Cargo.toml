@@ -1,25 +1,33 @@
 [package]
-name = "lyx-core-shared-server-1"
-version = "0.0.1"
+name = "shared-server-1"
+version = "*"
 edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
-axum = { version = "0.0.1", optional = true }
-lyx-core-leptos = { path = "../../../leptos", version = "0.0.1", optional = true }
-lyx-core-axum = { path = "../../../integrations/axum", version = "0.0.1", optional = true }
-tokio = { version = "0.0.1", optional = true, features = ["rt-multi-thread"] }
-tower-http = { version = "0.0.1", optional = true, features = ["trace"] }
-tracing = { version = "0.0.1", optional = true }
-tracing-subscriber = { version = "0.0.1", optional = true }
+axum = { version = "*", optional = true }
+leptos = { path = "../leptos", version = "*", optional = true }
+axum = { path = "../../../integrations/axum", version = "*", optional = true }
+tokio = { version = "*", optional = true, features = ["rt-multi-thread"] }
+tower-http = { version = "*", optional = true, features = ["trace"] }
+tracing = { version = "*", optional = true }
+tracing-subscriber = { version = "*", optional = true }
 [features]
 default = ["ssr"]
-hydrate = ["lyx-core-leptos/hydrate"]
+hydrate = ["leptos/hydrate"]
 ssr = [
 "dep:axum",
 "dep:tokio",
-"dep:lyx-core-axum",
+"dep:axum",
 "dep:tracing",
 "dep:tracing-subscriber",
 "dep:tower-http",
-"lyx-core-leptos/ssr" ]
+"leptos/ssr" ]
+
+
+[build-dependencies]
+rustc_version = "*"
+
+
+
+

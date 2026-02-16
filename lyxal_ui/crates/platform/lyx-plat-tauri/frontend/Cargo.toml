@@ -1,6 +1,6 @@
 [package]
 name = "lyx-platform-frontend"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [lib]
@@ -11,15 +11,25 @@ name = "lyx-platform-frontend"
 path = "src/lib.rs"
 
 [dependencies]
-cfg-if = { version = "0.0.1" }
-console_error_panic_hook = { version = "0.0.1" }
-console_log = { version = "0.0.1" }
-lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
-log = { version = "0.0.1" }
-lyx-core-server_fn = { path = "../../../core/lyx-core-leptos/server_fn", version = "0.0.1" }
-wasm-bindgen = { version = "0.0.1" }
-lyx-platform-app = { path = "../app", version = "0.0.1" }
+cfg-if = { version = "*" }
+console_error_panic_hook = { version = "*" }
+console_log = { version = "*" }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+log = { version = "*" }
+server_fn = { path = "../../../core/leptos/server_fn" }
+wasm-bindgen = { version = "*" }
+lyx-platform-app = { path = "../app" }
 
 [features]
-csr = ["lyx-core-leptos/csr", "lyx-platform-app/csr"]
-hydrate = ["lyx-core-leptos/hydrate", "lyx-platform-app/hydrate"]
+csr = ["leptos/csr", "lyx-platform-app/csr"]
+hydrate = ["leptos/hydrate", "lyx-platform-app/hydrate"]
+
+
+
+
+
+
+
+
+
+

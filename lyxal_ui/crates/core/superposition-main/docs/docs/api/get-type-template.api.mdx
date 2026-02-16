@@ -1,0 +1,71 @@
+---
+id: get-type-template
+title: "GetTypeTemplate"
+description: "Retrieves detailed information about a specific type template including its schema and metadata."
+sidebar_label: "GetTypeTemplate"
+hide_title: true
+hide_table_of_contents: true
+api: eJy9Vk1v2zAM/SuCTxuQNEHXXHLrhq7rZSva7BQEAWMztlrHViU6a2D4v4+0nQ87TjCs605RpEfykXyinHsBOt9qQzpNvLH3gGQ1rtGpAAl0jIHSyTK1KxCAgkWakQLlDPp6qX1FG4OKcGViIGSoH2eBTkKlySnnR7gCBUmgVuwsAIILr+elBm3p7S7ggLdIE/YxqV3wuQELjEfrvPE09xL+wzgJNC/XPU8LUwMU8boK4o3zEsH7jhNIQq/oeRZfMm2Ro5DNsOjtfL32Uxv2dbB1FSEEaP/a2a/UPjsDPr7B30x2nEkTh07wl8Oh/DSb06qVYpDaWnE0P00IExI7MCbWflnlwZMT4/yYTLp4Qp+k4lZ6QroKva90F+/y9LQrCAItUSG+P3TKhu1UErSsn2fc9NcQZ6gqF4ojZT5lFlXmWHwsPbWM8VUvYlSiIE7YcM6cZ6VIimyahZHIkiJU1/d3ojHSFAuvHxWvdviOvPwIkhDnFsGdQvAZYTBfbM4eAx0f97zqCvEO54B90lxdtonB0XyVBnyV3mTZSakhsmkrwQbfRm7NUnVw7Ajea1zPQ4nM9r1oqfehFu6XWrVFIYyvhlfHumdomlkfv6f0Nc14nDBqL3y2GnXdljv2a1mIj2jXaG+sZSmN3uXGrNA5CLvuS7FPv4NOVwnEAkIZfZ5US23L5aSUPBajVKZmiCULGYFjbyBB3SDf9aCQ0YN+ZjVtyhnqVpqizQUYfRERmc/gtH+difF0JqOsfY5g0e4As723R6lIlfRpn7sqyL7XvvnfJpN7VaIVMJzzrsu+nZdiuZBz6ewZZn8SpoSfi1MCyj7JM1c6rfv1mHGHTep0bcNNc5Xry+HlqD/81B+OhCFDaAWlXuoXgYWuGr1rk8v3wvsfD25dJsJXGrAZP1FMO7OxEKkkNC0xjrHj/UXmtkecm5zmOTcEf9q4KGT7JUMrwuLlGqyGhRSMZRZoJ2sW6BJih2ey/vBQT6aP6hTBehMSGS/lE8H/eMkvRuNzoGAFb1/cf06iCnbwvbAjItfmXUIdfk00olWAa99HQwdnR4OrOBwUtzcTVvdv3YR15A==
+sidebar_class_name: "get api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"GetTypeTemplate"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/types/{type_name}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Retrieves detailed information about a specific type template including its schema and metadata.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"type_name","in":"path","schema":{"type":"string"},"required":true},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"GetTypeTemplate 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"type_name":{"type":"string"},"type_schema":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"description":{"type":"string"},"change_reason":{"type":"string"},"created_by":{"type":"string"},"created_at":{"type":"string","format":"date-time"},"last_modified_at":{"type":"string","format":"date-time"},"last_modified_by":{"type":"string"}},"required":["change_reason","created_at","created_by","description","last_modified_at","last_modified_by","type_name","type_schema"],"title":"GetTypeTemplateResponseContent"}}}},"404":{"description":"ResourceNotFound 404 response"},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

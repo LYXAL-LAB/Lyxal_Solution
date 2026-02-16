@@ -1,0 +1,11 @@
+﻿[package]
+name = "lyxal_ssr"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lyxal_types = { path = "../lyxal_types" }
+lyxal_renderer = { path = "../lyxal_renderer" }
+lyxal_css = { path = "../lyxal_css" }
+leptos = { version = "0.6", features = ["ssr"] }
+

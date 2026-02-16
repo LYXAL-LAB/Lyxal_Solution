@@ -1,28 +1,28 @@
 [package]
 name = "lyx-ui-performance-testing"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
 # Core dependencies
-tokio = { version = "0.0.1", features = ["full"] }
-serde = { version = "0.0.1", features = ["derive"] }
-serde_json = { version = "0.0.1" }
-anyhow = { version = "0.0.1" }
-thiserror = { version = "0.0.1" }
+tokio = { version = "*", features = ["full"] }
+serde = { version = "*", features = ["derive"] }
+serde_json = { version = "*" }
+anyhow = { version = "*" }
+thiserror = { version = "*" }
 # Time handling
-chrono = { version = "0.0.1", features = ["serde"] }
-web-time = { version = "0.0.1" }
+chrono = { version = "*", features = ["serde"] }
+web-time = { version = "*" }
 # File system operations
-walkdir = { version = "0.0.1" }
+walkdir = { version = "*" }
 # System information
-sysinfo = { version = "0.0.1" }
+sysinfo = { version = "*" }
 # Logging
-log = { version = "0.0.1" }
-env_logger = { version = "0.0.1" }
+log = { version = "*" }
+env_logger = { version = "*" }
 [dev-dependencies]
-tempfile = { version = "0.0.1" }
-tokio-test = { version = "0.0.1" }
-pretty_assertions = { version = "0.0.1" }
+tempfile = { version = "*" }
+tokio-test = { version = "*" }
+pretty_assertions = { version = "*" }
 [features]
 default = ["benchmarks", "regression", "reporting"]
 benchmarks = []
@@ -35,3 +35,7 @@ path = "src/lib.rs"
 # [[bench]]
 # name = "component_benchmarks"
 # harness = false
+
+
+
+

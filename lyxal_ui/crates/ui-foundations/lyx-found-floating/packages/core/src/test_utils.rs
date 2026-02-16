@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx-found-floating\packages\core\src\test_utils.rs
-```rust
 1: use lyx_ui_foundations_utils::{Dimensions, ElementRects, Rect};
 2: 
 3: use crate::types::{GetClippingRectArgs, GetElementRectsArgs, Platform};
@@ -55,3 +53,4 @@
 53: 
 54: pub const PLATFORM: TestPlatform = TestPlatform {};
 ```
+

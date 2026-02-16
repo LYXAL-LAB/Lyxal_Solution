@@ -1,0 +1,71 @@
+---
+id: get-type-templates-list
+title: "GetTypeTemplatesList"
+description: "Retrieves a paginated list of all type templates in the workspace, including their schemas and metadata for type management."
+sidebar_label: "GetTypeTemplatesList"
+hide_title: true
+hide_table_of_contents: true
+api: eJzFVlFv20YM/isHPXWAnbgZ8pK3bCjSAMUWJN5TYBhniZaulXQaj8piGPrvJe9kR7IVIW7Q9UnQkUd+JD/yuI0ScDGaiowto6voHggNPIFTWlU6NaUmSFRuHCm7VjrPFW0qUARFlbPIKVMqykD9Z/Gbq3QMEz6J8zoxZSoCg8rFGRSaDZaJKoB0okmrtcVgqdClTqGAks6iSWQrQC1QbhMGcwM0Z535ztkXhsFKlUbNhgBddPW4jUr+YeXY1qVIjYTxbw244Z9+cH/VxQpQAjEcgFNk1QoUAtVYcpQcCug4k7hBwATg0dU2EqR8v/T332e2aSZ7yHIyjviONVRwK2axrc5EOdJIkuM12kJ9PAXu2212sXLpx6HerhVhzWZC4M6TBYGVnVDIp4bJkZYWxUdLLr6rXurpc+SJ4qs5GNXK2hx0+f/472bgeWoxnZpkl4YMdOLTewTRkbiImkkk/g0Ck1mw9YztO+Yd9hZy4ipbOnCifzGbyaefmKEuUqypdlfZZWxL4haUy7qqchP7zJx/dWJhe4zIrr5C7HsRpWXJBP9kSedLSaI75iHDD3JfikG5jIaOQCNqIdrhhde8s3QZ8juQOi99PRCdJEZi1vld12hzSLMbKAFNrL7BZvqk8xpUMMHdg3XMzANVO+abDLh1Ds9mlYPyIw+h4oxzlgPrKENbp5mtyQ/Q67tboTsZygXX3wHXofuBuOJMlyksEbR7TYNl3ALL1WZUrOlYPIk4jkIkUhuYkuHs8p1cO1oWNjFr866bg5B6PH88CLCHtxdbP1UDGAecTzqk6VNk8VKLXvfc75qmOcTpydvn+KTXER2TQz25s/xn24uN93A51NK3rIFM1QfAJ8BPiEy2y5/S0QU4J6/UYJV20QzAGQpGbuhUHm2fUrWPXjLDAziz8uinEN54yvjnXJxKHh3ENRra+BffFYayzZmuzFlGVP2hnYmva7nwuJAZeygHjYB7hcWLtQfJQgj0dZv7yOX86Nn5PJ/fKa+tNKtzrG2qd4Pcv1kiF/aPIHuLG68+5scr+NqYcm290bZGDzVXtbLOtHe4UC6YvphdXE5nv09nl4KQVYh3MrnaPlXMVdWvl2oXsYPRtKfcr94i20QSPNM5O+DXlQOrMReQgViPUSAWcyHjgOVgu+UqwT+YN40chyVH2JYYp3mIMzfXOncwEvaJ++UgTH5XOsusf2H4PxJavx3IKWvjCIp2P/1BED9pIRzBG3bUF7gL+UEjeMNo2O1Yp5X1w3075X9T4/47G+IP5uwEV939sectKFzHMVRdCh29Ak136t58mvPY+A5ZmOsC
+sidebar_class_name: "get api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"GetTypeTemplatesList"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/types"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Retrieves a paginated list of all type templates in the workspace, including their schemas and metadata for type management.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"count","in":"query","description":"Number of items to be returned in each page.","schema":{"type":"number","description":"Number of items to be returned in each page."}},{"name":"page","in":"query","description":"Page number to retrieve, starting from 1.","schema":{"type":"number","description":"Page number to retrieve, starting from 1."}},{"name":"all","in":"query","description":"If true, returns all requested items, ignoring pagination parameters page and count.","schema":{"type":"boolean","description":"If true, returns all requested items, ignoring pagination parameters page and count."}},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"GetTypeTemplatesList 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"total_pages":{"type":"number"},"total_items":{"type":"number"},"data":{"type":"array","items":{"type":"object","properties":{"type_name":{"type":"string"},"type_schema":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"description":{"type":"string"},"change_reason":{"type":"string"},"created_by":{"type":"string"},"created_at":{"type":"string","format":"date-time"},"last_modified_at":{"type":"string","format":"date-time"},"last_modified_by":{"type":"string"}},"required":["change_reason","created_at","created_by","description","last_modified_at","last_modified_by","type_name","type_schema"],"title":"TypeTemplatesResponse"}}},"required":["data","total_items","total_pages"],"title":"GetTypeTemplatesListResponseContent"}}}},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

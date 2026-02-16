@@ -1,9 +1,15 @@
 [package]
-name = "lyx-core-oco"
-version = "0.0.1"
+name = "oco"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-serde = { version = "0.0.1", default-features = true }
-thiserror = { version = "0.0.1", default-features = true }
+serde = { version = "*", default-features = true }
+thiserror = { version = "*", default-features = true }
 [dev-dependencies]
-serde_json = { version = "0.0.1", default-features = true }
+serde_json = { version = "*", default-features = true }
+
+
+[build-dependencies]
+rustc_version = "*"
+
+

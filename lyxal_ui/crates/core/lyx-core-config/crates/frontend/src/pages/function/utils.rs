@@ -1,11 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\function\utils.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\function\utils.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\function\utils.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\function\utils.rs
-```rust
 use leptos::*;
 use leptos_router::A;
 use reqwest::StatusCode;
@@ -83,3 +75,4 @@ pub async fn publish_function(
 ```
 ```
 ```
+

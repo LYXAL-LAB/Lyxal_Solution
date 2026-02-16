@@ -1,11 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\config_version.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\config_version.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\config_version.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\config_version.rs
-```rust
 use leptos::*;
 use leptos_router::use_params_map;
 
@@ -123,3 +115,4 @@ pub fn ConfigVersion() -> impl IntoView {
 ```
 ```
 ```
+

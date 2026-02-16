@@ -1,7 +1,18 @@
 [package]
-name = "lyx-logic-basic"
-version = "0.0.1"
+name = "basic"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-lyx-core-leptos = { path = "../../../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+
+
+
+
+
+
+
+
+
+
+

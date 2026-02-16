@@ -1,11 +1,16 @@
 [package]
-name = "lyx-core-superposition_core"
-version = "0.0.1"
+name = "superposition_core"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-serde = { version = "0.0.1", features = ["derive"] }
+serde = { version = "*", features = ["derive"] }
 serde_json = "1"
-chrono = { version = "0.0.1", features = ["serde"] }
+chrono = { version = "*", features = ["serde"] }
 thiserror = "1"
 anyhow = "1"
+
+
+
+
+

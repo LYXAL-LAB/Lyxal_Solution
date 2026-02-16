@@ -1,0 +1,57 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install nightly
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        override: true
+
+    - name: Add wasm32-unknown-unknown
+      run: rustup target add wasm32-unknown-unknown
+
+    - name: Install Trunk
+      uses: jetli/trunk-action@v0.4.0
+      with:
+        version: 'latest'
+    
+    - name: Trunk build
+      run: trunk build example/index.html --release --public-url /leptos_animation
+
+    - name: Overwrite 404
+      run: cp example/dist/index.html example/dist/404.html
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v1
+      with:
+        path: ./example/dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2

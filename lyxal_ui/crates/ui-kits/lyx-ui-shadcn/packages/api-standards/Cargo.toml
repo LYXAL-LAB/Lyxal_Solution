@@ -1,23 +1,33 @@
 [package]
 name = "lyx-ui-api-standards"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
 # Core dependencies
-lyx-core-leptos = { path = "../../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["csr", "hydrate"] }
-serde = { version = "0.0.1", features = ["derive"] }
-serde_json = { version = "0.0.1" }
-thiserror = { version = "0.0.1" }
+leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr", "hydrate"] }
+serde = { version = "*", features = ["derive"] }
+serde_json = { version = "*" }
+thiserror = { version = "*" }
 # Validation and testing
-regex = { version = "0.0.1" }
-chrono = { version = "0.0.1", features = ["serde"] }
+regex = { version = "*" }
+chrono = { version = "*", features = ["serde"] }
 # CSS utilities
-cssparser = { version = "0.0.1" }
+cssparser = { version = "*" }
 [dev-dependencies]
-tokio-test = { version = "0.0.1" }
-tempfile = { version = "0.0.1" }
+tokio-test = { version = "*" }
+tempfile = { version = "*" }
 [features]
 default = ["validation", "linting"]
 validation = []
 linting = []
 testing = []
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,71 @@
+---
+id: update-type-templates
+title: "UpdateTypeTemplates"
+description: "Updates an existing type template's schema definition and metadata while preserving its identifier and usage history."
+sidebar_label: "UpdateTypeTemplates"
+hide_title: true
+hide_table_of_contents: true
+api: eJzlVktP20AQ/isrX9pKCUS0XLgBooVLiyA9IYQ29iTe4ni3s2MgivLfO7Pr2HmY9AXqoRxg8c7zm5lvdp5k4FM0jowtk6Pkq8s0gVe6VPBkPJlyomjmQBFMXcFXb7zyaQ5TrTIYm9KIHktnagqkWVerx9wUoByCB3wQfUNemQxKMmMDGIQrryegcnZgcbaX9BLrALXYusiaKIbsd1i79SyD8L0CTyc2myVH8yS1JbFROWrnCpMG/f1vXhKZJzFKOUn8bNSOvkFKbMeheCPDRuvbu+eFdZaFHHVxuaq26G0A9wlKQJOqe5j1H3RRgYomlCesUqoQOGnI1NiiGheM7YhBCnghBKxKCvErytFWk9xWxEdQx5cXgg8ZKiSuLzGuTfdN3OyNIZf7NNflBO4QtO+UWERADQIjfrMh3luD5bb131GZq1iW07oci3XLnD3wB6dRc4cAMng386Tkf9hacBLOvcQIik5TzuetcrRpbVpubD31LU76JluaykFngH9s7NHivXc6hb+wdytfvLOlj612MBjIn66JW0NUsaBaarLHl+z0mGBH7P/rHLAE3xFkd6PZzmtN29e9hPOYyk0iVeyTYXRZp9Ce7qY2E8b7G83OkH4yuSvxruW2DlVHjB3Oe2sj+jucEJt3hRQ46g+DD9v9z6K2whQ+W/poK94NLNU2P2sddk3NBdtFbsZr3jGAZ4jcToevMjVT8LKsuuuwhKAjnC4IRENPhAITgUu1243hZHrMbRZJMBUWDGR4lOyLW78/byqxEBKCtEJDs8Cmfmoon+1pZ/ZyIneivUmPK1G+uRVS27wHjYCNwG1r7VowiWk/b7PBQb4nm/N/PhxeqiCtNIvL1o/AL5lTNEdyL7XdEdmvuAniu/wEgVApKftV+4A4e9IMfVPVlvi2CK2Z1w0iWWEIU45tsFR3w3XF/eOsN3U83BI+GjsYHBz2B+/7g0PRYxGa6tCN9d6Jo6Q2mmOL5JrW/mfvtbo2BE+0z354Q3I+FRYSXezbmyAjwR+1HMK9lnPScjufcxfAVywWC/nMlUHpZj4+aDR6JEhyb2fGy5nnYqwLDzugeHtVk+I79VyA9UddCrOF7cT/8ZGX1dprZMFjs1z4Lx5EdLbyXGkCkVl9FVerj5k1b1Ggpqi+tN2KxBZrthrHaQqOdsquMtrl8fD0nKVH9dOdV4wooX6UZz3/DlWwIcnAPuHbnPdROakC+SbRqPz8AId8eG0=
+sidebar_class_name: "patch api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"UpdateTypeTemplates"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"patch"}
+  path={"/types/{type_name}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Updates an existing type template's schema definition and metadata while preserving its identifier and usage history.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"type_name","in":"path","schema":{"type":"string"},"required":true},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"content":{"application/json":{"schema":{"type":"object","properties":{"type_schema":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"description":{"type":"string"},"change_reason":{"type":"string"}},"required":["change_reason","type_schema"],"title":"UpdateTypeTemplatesRequestContent"}}},"required":true}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"UpdateTypeTemplates 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"type_name":{"type":"string"},"type_schema":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"description":{"type":"string"},"change_reason":{"type":"string"},"created_by":{"type":"string"},"created_at":{"type":"string","format":"date-time"},"last_modified_at":{"type":"string","format":"date-time"},"last_modified_by":{"type":"string"}},"required":["change_reason","created_at","created_by","description","last_modified_at","last_modified_by","type_name","type_schema"],"title":"UpdateTypeTemplatesResponseContent"}}}},"404":{"description":"ResourceNotFound 404 response"},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

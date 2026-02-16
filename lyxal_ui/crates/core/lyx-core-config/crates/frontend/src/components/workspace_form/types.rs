@@ -1,11 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\components\workspace_form\types.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\components\workspace_form\types.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\components\workspace_form\types.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\components\workspace_form\types.rs
-```rust
 use serde::{Deserialize, Serialize};
 use superposition_types::database::models::{Metrics, WorkspaceStatus};
 
@@ -29,3 +21,4 @@ pub struct RowData {
 ```
 ```
 ```
+

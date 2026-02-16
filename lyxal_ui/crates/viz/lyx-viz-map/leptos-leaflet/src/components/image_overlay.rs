@@ -1,43 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_map\leptos-leaflet\src\components\image_overlay.rs
-```rust
 use super::{use_pane_context, Bounds, LeafletMapContext};
 use crate::core::IntoThreadSafeJsValue;
 use leptos::logging::log;
@@ -139,3 +99,4 @@ pub fn ImageOverlay(
 ```
 ```
 ```
+

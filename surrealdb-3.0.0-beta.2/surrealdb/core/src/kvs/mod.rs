@@ -1,16 +1,3 @@
-//! The module defining the key value store.
-//! Everything related the transaction for the key value store is defined in the `tx.rs` file.
-//! This module enables the following operations on the key value store:
-//! - get
-//! - set
-//! - delete
-//! - put
-//!
-//! These operations can be processed by the following storage engines:
-//! - `indxdb`: WASM based database to store data in the browser
-//! - `lyxalkv`: LyxalKV embeddable persistent key-value store
-//! - `mem`: in-memory database
-
 pub mod export;
 
 mod api;
@@ -28,8 +15,11 @@ mod tx;
 mod util;
 
 mod indxdb;
-mod lyxalkv;
 mod mem;
+
+// REPARATION: DÃ©claration explicite du module lyxalkv
+#[cfg(feature = "kv-lyxalkv")]
+pub mod lyxalkv;
 
 #[cfg(test)]
 mod tests;
@@ -54,12 +44,6 @@ pub use timestamp::{HlcTimestamp, IncTimestamp, Timestamp};
 pub use tr::{LockType, TransactionType, Transactor};
 pub use tx::Transaction;
 
-/// The key part of a key-value pair. An alias for [`Vec<u8>`].
 pub type Key = Vec<u8>;
-
-/// The value part of a key-value pair. An alias for [`Vec<u8>`].
 pub type Val = Vec<u8>;
-
-/// The Version part of a key-value pair. An alias for [`u64`].
 pub type Version = u64;
-

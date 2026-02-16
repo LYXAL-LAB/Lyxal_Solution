@@ -1,19 +1,29 @@
 [package]
 name = "lyx-ui-command"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-lyx-core-leptos = { path = "../../../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["csr", "ssr"] }
-leptos-style = { version = "0.0.1" }
-serde = { version = "0.0.1", features = ["derive"] }
-web-sys = { version = "0.0.1" }
-leptos-shadcn-signal-management = { path = "../../signal-management", version = "0.0.1" }
+leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr", "ssr"] }
+leptos-style = { version = "*" }
+serde = { version = "*", features = ["derive"] }
+web-sys = { version = "*" }
+leptos-shadcn-signal-management = { path = "../../signal-management" }
 [features]
-default = ["lyx-core-leptos/csr"]
-csr = ["lyx-core-leptos/csr"]
-ssr = ["lyx-core-leptos/ssr"]
-hydrate = ["lyx-core-leptos/hydrate"]
+default = ["leptos/csr"]
+csr = ["leptos/csr"]
+ssr = ["leptos/ssr"]
+hydrate = ["leptos/hydrate"]
 new_york = []
 [dev-dependencies]
-shadcn-ui-test-utils = { path = "../../test-utils", version = "0.0.1" }
-wasm-bindgen-test = { version = "0.0.1" }
+shadcn-ui-test-utils = { path = "../../test-utils" }
+wasm-bindgen-test = { version = "*" }
+
+
+
+
+
+
+
+
+
+

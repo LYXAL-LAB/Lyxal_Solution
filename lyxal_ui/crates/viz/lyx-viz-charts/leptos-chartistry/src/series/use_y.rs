@@ -1,35 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\use_y.rs
-```rust
 use super::{
     bar::{RenderBar, UseBar},
     line::{RenderLine, UseLine},
@@ -182,3 +150,4 @@ fn Taster<X: Tick, Y: Tick>(series: UseY, state: State<X, Y>) -> impl IntoView {
 ```
 ```
 ```
+

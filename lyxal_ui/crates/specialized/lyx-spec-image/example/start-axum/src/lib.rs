@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\specialized\lyx-spec-image\lyx-ui-foundations-lyx_ui_foundations_example\lyx-specialized-start-axum\src\lib.rs
-```rust
 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\specialized\lyx-spec-image\lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_example\lyx-specialized-lyx-specialized-start-axum\src\lib.rs
 2: ```rust
 3: 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\specialized\lyx-spec-image\lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_example\lyx-specialized-lyx-specialized-lyx-specialized-start-axum\src\lib.rs
@@ -88,3 +86,4 @@
 86: 84: ```
 87: ```
 ```
+

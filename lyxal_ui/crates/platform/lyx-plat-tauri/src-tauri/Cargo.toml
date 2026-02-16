@@ -1,6 +1,6 @@
 [package]
 name = "lyx-platform-src-tauri"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [lib]
@@ -9,13 +9,17 @@ path = "src/lib.rs"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "0.0.1", features = [] }
+tauri-build = { version = "*", features = [] }
 
 [dependencies]
-tauri = { version = "0.0.1", features = ["devtools"] }
-serde_json = { version = "0.0.1" }
-#tauri-plugin-devtools = { version = "0.0.1" }
+tauri = { version = "*", features = ["devtools"] }
+serde_json = { version = "*" }
+#tauri-plugin-devtools = { version = "*" }
 
 [features]
 #default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+
+
+

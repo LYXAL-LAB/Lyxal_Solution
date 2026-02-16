@@ -1,35 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\series\stack.rs
-```rust
 use super::{ApplyUseSeries, GetYValue, IntoUseLine, SeriesAcc, UseY};
 use crate::{
     colours::{Colour, ColourScheme, BATLOW},
@@ -180,3 +148,4 @@ impl<T> GetYValue<T, f64> for UseStackLine<T, f64> {
 ```
 ```
 ```
+

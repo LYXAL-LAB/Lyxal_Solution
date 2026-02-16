@@ -1,13 +1,23 @@
 [package]
 name = "lyx-ui-visual-testing"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-lyx-core-leptos = { path = "../../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
-serde = { version = "0.0.1", features = ["derive"] }
-lazy_static = { version = "0.0.1" }
-wasm-bindgen = { version = "0.0.1" }
-js-sys = { version = "0.0.1" }
-web-sys = { version = "0.0.1" }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+serde = { version = "*", features = ["derive"] }
+lazy_static = { version = "*" }
+wasm-bindgen = { version = "*" }
+js-sys = { version = "*" }
+web-sys = { version = "*" }
 [lib]
 crate-type = ["cdylib", "rlib"]
+
+
+
+
+
+
+
+
+
+

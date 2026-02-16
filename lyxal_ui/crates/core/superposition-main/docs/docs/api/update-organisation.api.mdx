@@ -1,0 +1,71 @@
+---
+id: update-organisation
+title: "UpdateOrganisation"
+description: "Updates an existing organisation's information including contact details, status, and administrative properties."
+sidebar_label: "UpdateOrganisation"
+hide_title: true
+hide_table_of_contents: true
+api: eJzFVt9P2zAQ/lciv2yTClSMvvStICbQtA0Be6oqdE2O1iyxPdvpqKr877uzU5LQUE1obDxQx77f991nb0SGLrXSeKmVGIvvJgOPLgGV4KN0XqpFou0ClHTAIu9cItW9tkX4onWalxkLpVp5SH2SoQeZu0HiPPiSfkFlCWSFJAvektYKE2O1QeslukMxELwO1i6zpwC+tVySiMWfJTp/qrO1GG8E+0LleQnG5DINckcPjlPYCJcusQBe+bVBsqnnD5h6stM4jmZK5e36LtUZtqQpTEpIVANR53RH1mS+V8Isteq3EVLfY8FRZNr2H4UK7h4NBKqyEOOpmKRcT9q4VLBdXqHihnxez8VsILz0OatSQW+iuapqdneLfR0rfVZXuKpY3ICFAj1aCma6EYo+SFlm5E0yaAz4Ja136t6kwg2UFqnB3pZYzXjHGa1c7MTxcMg/fVBsB5eQXLJVFIO/hQNKpC/mmGZv0/8BblKLlH12N1+/DlZvg529eN2GDL7PbyQN2uGuHnhJxSWdMjT5dTq9pemAbdqpUyfCToUHEcyh40+16wTX8TrbP0ERn90ROhme7CKcRHVpU/yq/SfCVJaQVINv0hr1zcUl2bUK8hu0K7Tn1mqbjN5kMAp0DhZ9+GxxSE84fSVgDVgwgYjOSH8BRS4KFqOyEsssdRYpJWVOCdQyFkeupLiMdjIk0r6R3NFGZpUIyCyt9OvAUa6Qfrk+BCMPl96bU3AynZRsazqrBrvnCBbtk8CssXbDtYrleNnmU314n0LpNuzi9vYqCdIJkDilWjdky5msOefzMGAvR/YnboL4Pj9BIHSQ4XDd3Kznj1CYHHdvxmYenxHb7kHNZ81Bh6ea7S2LtHZqwtryUsV3y70OSddIu2ljgFQIbi6mfjw8Hh0MPx4MR6xHIr6AgPT6qopTmjx7VXTK13pV/I9HUN1Yj4/+yORA1yoTnQ3kHmdgKtyz/DtTQN9jIjFC7pLSZ/HNhjCF321eVbxNfbY8G7RcgZUw55rSpGRkgdY0dPeQO9xTlvfXNbF+SF6KuN4ExZy6grzkL1r+wHV8MVQ0fWKJkBEG2Xs8qIni4JbVG8Ud7uLJjRqTNEXj98q26eRqcnt2QdLz+gVZRGBb+MWvS/ofotQmlpIEwt5G5KAWZaBAEY3y3285RO5p
+sidebar_class_name: "patch api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"UpdateOrganisation"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"patch"}
+  path={"/superposition/organisations/{id}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Updates an existing organisation's information including contact details, status, and administrative properties.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"id","in":"path","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"content":{"application/json":{"schema":{"type":"object","properties":{"country_code":{"type":"string"},"contact_email":{"type":"string"},"contact_phone":{"type":"string"},"admin_email":{"type":"string"},"sector":{"type":"string"},"status":{"type":"string","enum":["Active","Inactive","PendingKyb"],"title":"OrgStatus"}},"title":"UpdateOrganisationRequestContent"}}}}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"UpdateOrganisation 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"id":{"type":"string"},"name":{"type":"string"},"country_code":{"type":"string"},"contact_email":{"type":"string"},"contact_phone":{"type":"string"},"created_by":{"type":"string"},"admin_email":{"type":"string"},"status":{"type":"string","enum":["Active","Inactive","PendingKyb"],"title":"OrgStatus"},"sector":{"type":"string"},"created_at":{"type":"string","format":"date-time"},"updated_at":{"type":"string","format":"date-time"},"updated_by":{"type":"string"}},"required":["admin_email","created_at","created_by","id","name","status","updated_at","updated_by"],"title":"UpdateOrganisationResponseContent"}}}},"404":{"description":"ResourceNotFound 404 response"},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

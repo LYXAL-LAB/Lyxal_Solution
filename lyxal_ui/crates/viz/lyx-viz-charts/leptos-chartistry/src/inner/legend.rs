@@ -1,35 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\viz\lyx_viz_charts\leptos-chartistry\src\inner\legend.rs
-```rust
 use crate::{edge::Edge, state::State, Anchor, Legend, Tick};
 use leptos::prelude::*;
 
@@ -131,3 +99,4 @@ pub(super) fn InsetLegend<X: Tick, Y: Tick>(
 ```
 ```
 ```
+

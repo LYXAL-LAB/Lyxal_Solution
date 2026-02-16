@@ -1,0 +1,2125 @@
+﻿cargo : warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+At line:1 char:1
++ cargo check --workspace 2>&1 | Out-File -FilePath workspace-errors.tx ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: profil...workspace root::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+package:   C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-foundations\lyx-found-tailwind\examp
+le\start-axum\Cargo.toml
+workspace: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\viz\lyx-viz-apex\Cargo.toml
+workspace: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\viz\lyx-viz-trading\example\Cargo.toml
+workspace: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\Cargo.toml
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkb
+ox\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkb
+ox\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkb
+ox\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkb
+ox\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-
+group\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-
+group\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-
+group\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-
+group\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\textar
+ea\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\textar
+ea\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\textar
+ea\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toolti
+p\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toolti
+p\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toolti
+p\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\card\C
+argo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\card\C
+argo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\card\C
+argo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\collap
+sible\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\collap
+sible\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\switch
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\switch
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\switch
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\calend
+ar\Cargo.toml: unused manifest key: dependencies.chrono.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\calend
+ar\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\calend
+ar\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\calend
+ar\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\naviga
+tion-menu\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\naviga
+tion-menu\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\naviga
+tion-menu\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\naviga
+tion-menu\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\pagina
+tion\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\pagina
+tion\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\pagina
+tion\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\pagina
+tion\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.leptos-struct-component.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.leptos-style.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dropdo
+wn-menu\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dropdo
+wn-menu\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dropdo
+wn-menu\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dropdo
+wn-menu\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\accord
+ion\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\accord
+ion\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\accord
+ion\Cargo.toml: unused manifest key: dependencies.leptos-style.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\accord
+ion\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\accord
+ion\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input-
+otp\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input-
+otp\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input-
+otp\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input-
+otp\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\resiza
+ble\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\resiza
+ble\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\resiza
+ble\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\resiza
+ble\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\menuba
+r\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\menuba
+r\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\menuba
+r\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\menuba
+r\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\aspect
+-ratio\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\aspect
+-ratio\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.leptos-struct-component.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.leptos-style.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dev-dependencies.getrandom.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dev-dependencies.js-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dev-dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\select
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\select
+\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\select
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\select
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\popove
+r\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\popove
+r\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\popove
+r\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toggle
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toggle
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toggle
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-
+dialog\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-
+dialog\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-
+dialog\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-
+dialog\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\avatar
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\avatar
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\avatar
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dependencies.js-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dependencies.serde_json.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dependencies.wasm-bindgen.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dev-dependencies.getrandom.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\scroll
+-area\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\scroll
+-area\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\scroll
+-area\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\breadc
+rumb\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\breadc
+rumb\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\breadc
+rumb\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\utils\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\utils\
+Cargo.toml: unused manifest key: dev-dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\utils\
+Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: 
+C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-leptonic\leptonic\Cargo.toml: 
+unused manifest key: build-dependencies.lyx-ui-leptonic-theme.path
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\lazy-l
+oading\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.leptos-struct-component.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.leptos-style.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\tabs\C
+argo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\tabs\C
+argo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\tabs\C
+argo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\table\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\table\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\table\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\contex
+t-menu\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\contex
+t-menu\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\contex
+t-menu\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\contex
+t-menu\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\form\C
+argo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\form\C
+argo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\form\C
+argo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\progre
+ss\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\progre
+ss\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\progre
+ss\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\comman
+d\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\comman
+d\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\comman
+d\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\comman
+d\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\separa
+tor\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\separa
+tor\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\separa
+tor\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\hover-
+card\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\hover-
+card\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\hover-
+card\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\sheet\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\sheet\
+Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\sheet\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\sheet\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\skelet
+on\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\skelet
+on\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\skelet
+on\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog
+\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog
+\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\slider
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\slider
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\slider
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: 
+C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\viz\lyx-viz-trading\trading-charts\Cargo.toml: 
+unused manifest key: dependencies.wasmbind-macro.package
+warning: 
+C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\viz\lyx-viz-trading\trading-charts\Cargo.toml: 
+unused manifest key: dependencies.wasmbind-macro.path
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.js-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.leptos-struct-component.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.leptos-style.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\regist
+ry\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\error-
+boundary\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\combob
+ox\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\combob
+ox\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\combob
+ox\Cargo.toml: unused manifest key: dependencies.wasm-bindgen.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\combob
+ox\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\combob
+ox\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\badge\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\badge\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\badge\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: method `leak_prevention_enabled` is never used
+   --> crates\ui-kits\lyx-ui-shadcn\packages\signal-management\src\advanced_memory.rs:278:8
+    |
+276 | impl MemoryLeakDetector {
+    | ----------------------- method in this implementation
+277 |     /// Check if leak prevention is enabled
+278 |     fn leak_prevention_enabled(&self) -> bool {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused `Result` that must be used
+   --> crates\ui-kits\lyx-ui-shadcn\packages\signal-management\src\advanced_memory.rs:129:21
+    |
+129 |                     self.cleanup_old_groups(3600); // Cleanup groups older than 1 hour
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: this `Result` may be an `Err` variant, which should be handled
+    = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+help: use `let _ = ...` to ignore the resulting value
+    |
+129 |                     let _ = self.cleanup_old_groups(3600); // Cleanup groups older than 1 hour
+    |                     +++++++
+
+warning: `lyx-ui-signal-management` (lib) generated 2 warnings
+warning: unused import: `struct_component`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog\src\default.rs:3:48
+  |
+3 | use leptos_struct_component::{StructComponent, struct_component};
+  |                                                ^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `struct_component`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog\src\new_york.rs:3:48
+  |
+3 | use leptos_struct_component::{StructComponent, struct_component};
+  |                                                ^^^^^^^^^^^^^^^^
+
+warning: unused variable: `dialog_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog\src\signal_managed.rs:96:9
+   |
+96 |     let dialog_state_for_disabled = dialog_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_dialog_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::default::LABEL_CLASS`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\class_constants_tests.rs:6:5
+  |
+6 | use crate::default::LABEL_CLASS;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\mod.rs:6:1
+  |
+6 | pub mod class_constants_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\class_constants_tests.rs:7:5
+  |
+7 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\mod.rs:6:1
+  |
+6 | pub mod class_constants_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\class_constants_tests.rs:8:5
+  |
+8 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\mod.rs:6:1
+  |
+6 | pub mod class_constants_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::default::LABEL_CLASS`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\component_behavior_tests.rs:6:5
+  |
+6 | use crate::default::LABEL_CLASS;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\mod.rs:7:1
+  |
+7 | pub mod component_behavior_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\component_behavior_tests.rs:7:5
+  |
+7 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\mod.rs:7:1
+  |
+7 | pub mod component_behavior_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\component_behavior_tests.rs:8:5
+  |
+8 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\mod.rs:7:1
+  |
+7 | pub mod component_behavior_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::default::LABEL_CLASS`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\edge_cases_tests.rs:6:5
+  |
+6 | use crate::default::LABEL_CLASS;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\mod.rs:8:1
+  |
+8 | pub mod edge_cases_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\edge_cases_tests.rs:7:5
+  |
+7 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\mod.rs:8:1
+  |
+8 | pub mod edge_cases_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\edge_cases_tests.rs:8:5
+  |
+8 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\mod.rs:8:1
+  |
+8 | pub mod edge_cases_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::default::LABEL_CLASS`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\integration_tests.rs:6:5
+  |
+6 | use crate::default::LABEL_CLASS;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\mod.rs:9:1
+  |
+9 | pub mod integration_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\integration_tests.rs:7:5
+  |
+7 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\mod.rs:9:1
+  |
+9 | pub mod integration_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\integration_tests.rs:8:5
+  |
+8 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\implementation_tests\mod.rs:9:1
+  |
+9 | pub mod integration_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `label_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\src\signal_managed.rs:96:9
+   |
+96 |     let label_state_for_disabled = label_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_label_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `lyx-ui-dialog` (lib) generated 3 warnings (run `cargo fix --lib -p lyx-ui-dialog` to apply 3 suggestions)
+warning: `lyx-ui-label` (lib) generated 13 warnings (run `cargo fix --lib -p lyx-ui-label` to apply 13 suggestions)
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> crates\ui-foundations\lyx-found-tailwind\fuse\src\ast\parser.rs:100:32
+    |
+100 | fn parse_normal_variant(input: &str) -> IResult<&str, ASTVariant> {
+    |                                ^^^^             ^^^^  ^^^^^^^^^^ the same lifetime is hidden here
+    |                                |                |
+    |                                |                the same lifetime is elided here
+    |                                the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+    = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
+help: use `'_` for type paths
+    |
+100 | fn parse_normal_variant(input: &str) -> IResult<&str, ASTVariant<'_>> {
+    |                                                                 ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> crates\ui-foundations\lyx-found-tailwind\fuse\src\ast\parser.rs:109:40
+    |
+109 | fn parse_data_attribute_variant(input: &str) -> IResult<&str, ASTVariant> {
+    |                                        ^^^^             ^^^^  ^^^^^^^^^^ the same lifetime is hidden here
+    |                                        |                |
+    |                                        |                the same lifetime is elided here
+    |                                        the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+109 | fn parse_data_attribute_variant(input: &str) -> IResult<&str, ASTVariant<'_>> {
+    |                                                                         ++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> crates\ui-foundations\lyx-found-tailwind\fuse\src\ast\parser.rs:119:45
+    |
+119 | fn parse_arbitrary_attribute_variant(input: &str) -> IResult<&str, ASTVariant> {
+    |                                             ^^^^             ^^^^  ^^^^^^^^^^ the same lifetime is hidden here
+    |                                             |                |
+    |                                             |                the same lifetime is elided here
+    |                                             the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+help: use `'_` for type paths
+    |
+119 | fn parse_arbitrary_attribute_variant(input: &str) -> IResult<&str, ASTVariant<'_>> {
+    |                                                                              ++++
+
+warning: `lyx-found-fuse` (lib) generated 3 warnings (run `cargo fix --lib -p lyx-found-fuse` to apply 3 suggestions)
+warning: unused import: `leptos::logging::log`
+ --> crates\ui-foundations\lyx-found-theme\src\theme.rs:3:5
+  |
+3 | use leptos::logging::log;
+  |     ^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `enable_system`
+  --> crates\ui-foundations\lyx-found-theme\src\theme.rs:66:29
+   |
+66 |     #[prop(default = true)] enable_system: bool,
+   |                             ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_enable_system`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `STORAGE_KEY` is never used
+ --> crates\ui-foundations\lyx-found-theme\src\theme.rs:6:7
+  |
+6 | const STORAGE_KEY: &'static str = "theme";
+  |       ^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `lyx-found-theme` (lib) generated 3 warnings (run `cargo fix --lib -p lyx-found-theme` to apply 2 suggestions)
+warning: unused import: `web_sys::KeyboardEvent`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-dialog\src\default_components\alert_dialog.rs:7:5
+  |
+7 | use web_sys::KeyboardEvent;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `wasm_bindgen::JsCast`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-dialog\src\default_components\alert_dialog.rs:8:5
+  |
+8 | use wasm_bindgen::JsCast;
+  |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-dialog\src\default_components\trigger.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-dialog\src\default_components\overlay.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-dialog\src\default_components\content.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-dialog\src\default_components\header_footer.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-dialog\src\default_components\title_description.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-dialog\src\default_components\action_cancel.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `alert_dialog_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-dialog\src\signal_managed.rs:96:9
+   |
+96 |     let alert_dialog_state_for_disabled = alert_dialog_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_alert_dialog_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `mode`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\calendar\src\default.rs:45:29
+   |
+45 |     #[prop(into, optional)] mode: Signal<String>,
+   |                             ^^^^ help: if this is intentional, prefix it with an underscore: `_mode`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `initial_focus`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\calendar\src\default.rs:49:29
+   |
+49 |     #[prop(into, optional)] initial_focus: Signal<bool>,
+   |                             ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_initial_focus`
+
+warning: unused variable: `children`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\calendar\src\default.rs:51:23
+   |
+51 |     #[prop(optional)] children: Option<Children>,
+   |                       ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_children`
+
+warning: unused variable: `calendar_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\calendar\src\signal_managed.rs:96:9
+   |
+96 |     let calendar_state_for_disabled = calendar_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_calendar_state_for_disabled`
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\default_components\trigger.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `wasm_bindgen::JsCast`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\default_components\trigger.rs:9:5
+  |
+9 | use wasm_bindgen::JsCast;
+  |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\default_components\content.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\default_components\items.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\default_components\checkbox_radio.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\default_components\label_separator.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\default_components\shortcut.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\default_components\submenu.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\tdd_tests\mod.rs:1:5
+   |
+ 1 | use leptos::prelude::*;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\lib.rs:33:1
+   |
+33 | mod tdd_tests;
+   | ^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\tdd_tests\mod.rs:2:5
+   |
+ 2 | use leptos_style::Style;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\lib.rs:33:1
+   |
+33 | mod tdd_tests;
+   | ^^^^^^^^^^^^^^
+
+warning: unused import: `crate::default::*`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\tdd_tests\mod.rs:3:5
+   |
+ 3 | use crate::default::*;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\lib.rs:33:1
+   |
+33 | mod tdd_tests;
+   | ^^^^^^^^^^^^^^
+
+warning: unused variable: `context_menu_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\signal_managed.rs:96:9
+   |
+96 |     let context_menu_state_for_disabled = context_menu_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_context_menu_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `open`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\default_components\content.rs:17:9
+   |
+17 |     let open = expect_context::<RwSignal<bool>>();
+   |         ^^^^ help: if this is intentional, prefix it with an underscore: `_open`
+
+warning: unused variable: `open`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\context-menu\src\default_components\submenu.rs:75:9
+   |
+75 |     let open = expect_context::<RwSignal<bool>>();
+   |         ^^^^ help: if this is intentional, prefix it with an underscore: `_open`
+
+warning: `lyx-ui-alert-dialog` (lib) generated 9 warnings (run `cargo fix --lib -p lyx-ui-alert-dialog` to apply 9 
+suggestions)
+warning: `lyx-ui-calendar` (lib) generated 4 warnings (run `cargo fix --lib -p lyx-ui-calendar` to apply 4 suggestions)
+warning: `lyx-ui-context-menu` (lib) generated 14 warnings (run `cargo fix --lib -p lyx-ui-context-menu` to apply 14 
+suggestions)
+warning: unused import: `leptos_node_ref::AnyNodeRef`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\select\src\default_components\select_root.rs:2:5
+  |
+2 | use leptos_node_ref::AnyNodeRef;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `StructComponent` and `struct_component`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\select\src\default_components\select_root.rs:3:31
+  |
+3 | use leptos_struct_component::{StructComponent, struct_component};
+  |                               ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\select\src\default_components\select_root.rs:4:5
+  |
+4 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_node_ref::AnyNodeRef`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\select\src\default_components\select_content.rs:2:5
+  |
+2 | use leptos_node_ref::AnyNodeRef;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `StructComponent` and `struct_component`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\select\src\default_components\select_content.rs:3:31
+  |
+3 | use leptos_struct_component::{StructComponent, struct_component};
+  |                               ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\select\src\default_components\select_content.rs:4:5
+  |
+4 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ev::MouseEvent`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\select\src\default_components\select_scroll.rs:1:14
+  |
+1 | use leptos::{ev::MouseEvent, prelude::*};
+  |              ^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_node_ref::AnyNodeRef`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\select\src\default_components\select_scroll.rs:2:5
+  |
+2 | use leptos_node_ref::AnyNodeRef;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `StructComponent` and `struct_component`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\select\src\default_components\select_scroll.rs:3:31
+  |
+3 | use leptos_struct_component::{StructComponent, struct_component};
+  |                               ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\select\src\default_components\select_scroll.rs:4:5
+  |
+4 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `tailwind_fuse`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\select\src\default_components\select_scroll.rs:5:5
+  |
+5 | use tailwind_fuse::*;
+  |     ^^^^^^^^^^^^^
+
+warning: unused import: `tailwind_fuse`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\select\src\default_components\select_root.rs:5:5
+  |
+5 | use tailwind_fuse::*;
+  |     ^^^^^^^^^^^^^
+
+warning: unused import: `tailwind_fuse`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\select\src\default_components\select_content.rs:5:5
+  |
+5 | use tailwind_fuse::*;
+  |     ^^^^^^^^^^^^^
+
+warning: unused variable: `select_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\select\src\signal_managed.rs:96:9
+   |
+96 |     let select_state_for_disabled = select_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_select_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `handle_click_outside`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\select\src\default_components\select_content.rs:23:9
+   |
+23 |     let handle_click_outside = move |_e: MouseEvent| {
+   |         ^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_handle_click_outside`
+
+warning: unused import: `web_sys::KeyboardEvent`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\drawer.rs:7:5
+  |
+7 | use web_sys::KeyboardEvent;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `wasm_bindgen::JsCast`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\drawer.rs:8:5
+  |
+8 | use wasm_bindgen::JsCast;
+  |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\trigger.rs:6:5
+  |
+6 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\portal_overlay.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\content.rs:6:5
+  |
+6 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\header_footer.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\title_description.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\close.rs:6:5
+  |
+6 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\nested.rs:6:5
+  |
+6 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\tdd_tests.rs:1:5
+   |
+ 1 | use leptos::prelude::*;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\lib.rs:31:1
+   |
+31 | mod tdd_tests;
+   | ^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\tdd_tests.rs:2:5
+   |
+ 2 | use leptos_style::Style;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\lib.rs:31:1
+   |
+31 | mod tdd_tests;
+   | ^^^^^^^^^^^^^^
+
+warning: unused import: `crate::*`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\tdd_tests.rs:3:5
+   |
+ 3 | use crate::*;
+   |     ^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\lib.rs:31:1
+   |
+31 | mod tdd_tests;
+   | ^^^^^^^^^^^^^^
+
+warning: unused variable: `drawer_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\signal_managed.rs:96:9
+   |
+96 |     let drawer_state_for_disabled = drawer_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_drawer_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `super::*`
+   --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\error-boundary\src\lib.rs:429:9
+    |
+429 |     use super::*;
+    |         ^^^^^^^^
+    |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+   --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\error-boundary\src\lib.rs:428:1
+    |
+428 | mod tests {
+    | ^^^^^^^^^
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `lyx-ui-select` (lib) generated 15 warnings (run `cargo fix --lib -p lyx-ui-select` to apply 12 suggestions)
+warning: `lyx-ui-drawer` (lib) generated 13 warnings (run `cargo fix --lib -p lyx-ui-drawer` to apply 13 suggestions)
+warning: `lyx-ui-error-boundary` (lib) generated 1 warning (run `cargo fix --lib -p lyx-ui-error-boundary` to apply 1 
+suggestion)
+warning: unused import: `super::*`
+   --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\lazy-loading\src\lib.rs:378:9
+    |
+378 |     use super::*;
+    |         ^^^^^^^^
+    |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+   --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\lazy-loading\src\lib.rs:377:1
+    |
+377 | mod tests {
+    | ^^^^^^^^^
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `lyx-ui-lazy-loading` (lib) generated 1 warning (run `cargo fix --lib -p lyx-ui-lazy-loading` to apply 1 
+suggestion)
+warning: unused import: `crate::advanced_tests`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_date_picker_tests.rs:1:9
+   |
+ 1 | pub use crate::advanced_tests;
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\lib.rs:19:1
+   |
+19 | mod advanced_date_picker_tests;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\integration_tests.rs:6:5
+  |
+6 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\mod.rs:6:1
+  |
+6 | pub mod integration_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `DatePickerWithRange` and `DatePicker`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\integration_tests.rs:7:22
+  |
+7 | use crate::default::{DatePicker, DatePickerWithRange};
+  |                      ^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\mod.rs:6:1
+  |
+6 | pub mod integration_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `lyx_ui_calendar::CalendarDate`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\integration_tests.rs:8:5
+  |
+8 | use lyx_ui_calendar::CalendarDate;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\mod.rs:6:1
+  |
+6 | pub mod integration_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\functionality_tests.rs:6:5
+  |
+6 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\mod.rs:7:1
+  |
+7 | pub mod functionality_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `DatePickerWithRange` and `DatePicker`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\functionality_tests.rs:7:22
+  |
+7 | use crate::default::{DatePicker, DatePickerWithRange};
+  |                      ^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\mod.rs:7:1
+  |
+7 | pub mod functionality_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `lyx_ui_calendar::CalendarDate`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\functionality_tests.rs:8:5
+  |
+8 | use lyx_ui_calendar::CalendarDate;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\mod.rs:7:1
+  |
+7 | pub mod functionality_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\advanced_features_tests.rs:6:5
+  |
+6 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\mod.rs:8:1
+  |
+8 | pub mod advanced_features_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `DatePickerWithRange` and `DatePicker`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\advanced_features_tests.rs:7:22
+  |
+7 | use crate::default::{DatePicker, DatePickerWithRange};
+  |                      ^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\mod.rs:8:1
+  |
+8 | pub mod advanced_features_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `lyx_ui_calendar::CalendarDate`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\advanced_features_tests.rs:8:5
+  |
+8 | use lyx_ui_calendar::CalendarDate;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\mod.rs:8:1
+  |
+8 | pub mod advanced_features_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\customization_tests.rs:6:5
+  |
+6 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\mod.rs:9:1
+  |
+9 | pub mod customization_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `DatePickerWithRange` and `DatePicker`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\customization_tests.rs:7:22
+  |
+7 | use crate::default::{DatePicker, DatePickerWithRange};
+  |                      ^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\mod.rs:9:1
+  |
+9 | pub mod customization_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `lyx_ui_calendar::CalendarDate`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\customization_tests.rs:8:5
+  |
+8 | use lyx_ui_calendar::CalendarDate;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\advanced_tests\mod.rs:9:1
+  |
+9 | pub mod customization_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `handle_select`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-picker\src\default.rs:29:9
+   |
+29 |     let handle_select = move |date: CalendarDate| {
+   |         ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_handle_select`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `lyx-ui-date-picker` (lib) generated 14 warnings (run `cargo fix --lib -p lyx-ui-date-picker` to apply 14 
+suggestions)
+warning: unused variable: `form_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\form\src\signal_managed.rs:96:9
+   |
+96 |     let form_state_for_disabled = form_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_form_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `lyx-ui-form` (lib) generated 1 warning (run `cargo fix --lib -p lyx-ui-form` to apply 1 suggestion)
+warning: unused variable: `accordion_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\accordion\src\signal_managed.rs:96:9
+   |
+96 |     let accordion_state_for_disabled = accordion_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_accordion_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `pagination_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\pagination\src\signal_managed.rs:96:9
+   |
+96 |     let pagination_state_for_disabled = pagination_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_pagination_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `combobox_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\combobox\src\signal_managed.rs:96:9
+   |
+96 |     let combobox_state_for_disabled = combobox_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_combobox_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `lyx-ui-accordion` (lib) generated 1 warning (run `cargo fix --lib -p lyx-ui-accordion` to apply 1 suggestion)
+warning: `lyx-ui-pagination` (lib) generated 1 warning (run `cargo fix --lib -p lyx-ui-pagination` to apply 1 
+suggestion)
+warning: `lyx-ui-combobox` (lib) generated 1 warning (run `cargo fix --lib -p lyx-ui-combobox` to apply 1 suggestion)
+    Checking lyx-ui-navigation-menu v0.9.1 (C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kit
+s\lyx-ui-shadcn\packages\lyx\navigation-menu)
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\resizable_tests\system_requirements_tests.rs:6:5
+  |
+6 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\resizable_tests\mod.rs:6:1
+  |
+6 | pub mod system_requirements_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `ResizableHandle`, `ResizablePanelGroup`, and `ResizablePanel`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\resizable_tests\system_requirements_tests.rs:7:22
+  |
+7 | use crate::default::{ResizableHandle, ResizablePanel, ResizablePanelGroup};
+  |                      ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\resizable_tests\mod.rs:6:1
+  |
+6 | pub mod system_requirements_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\resizable_tests\functionality_tests.rs:6:5
+  |
+6 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\resizable_tests\mod.rs:7:1
+  |
+7 | pub mod functionality_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `ResizableHandle`, `ResizablePanelGroup`, and `ResizablePanel`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\resizable_tests\functionality_tests.rs:7:22
+  |
+7 | use crate::default::{ResizableHandle, ResizablePanel, ResizablePanelGroup};
+  |                      ^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\resizable_tests\mod.rs:7:1
+  |
+7 | pub mod functionality_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `resizable_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\signal_managed.rs:96:9
+   |
+96 |     let resizable_state_for_disabled = resizable_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_resizable_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `keyboard_resize`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\default.rs:24:29
+   |
+24 |     #[prop(into, optional)] keyboard_resize: MaybeProp<bool>,
+   |                             ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_keyboard_resize`
+
+warning: unused variable: `touch_support`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\default.rs:25:29
+   |
+25 |     #[prop(into, optional)] touch_support: MaybeProp<bool>,
+   |                             ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_touch_support`
+
+warning: unused variable: `panel_sizes`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\default.rs:30:10
+   |
+30 |     let (panel_sizes, set_panel_sizes) = signal(Vec::<f64>::new());
+   |          ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_panel_sizes`
+
+warning: unused variable: `set_is_resizing`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\default.rs:31:23
+   |
+31 |     let (is_resizing, set_is_resizing) = signal(false);
+   |                       ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_set_is_resizing`
+
+warning: unused variable: `set_resize_direction`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\default.rs:32:28
+   |
+32 |     let (resize_direction, set_resize_direction) = signal(direction.get().unwrap_or_default());
+   |                            ^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_set_resize_direction`
+
+warning: unused variable: `handle_resize`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\default.rs:50:9
+   |
+50 |     let handle_resize = move |sizes: Vec<f64>| {
+   |         ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_handle_resize`
+
+warning: unused variable: `set_is_resizing`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\default.rs:88:23
+   |
+88 |     let (is_resizing, set_is_resizing) = signal(false);
+   |                       ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_set_is_resizing`
+
+warning: unused variable: `handle_resize`
+   --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\default.rs:122:9
+    |
+122 |     let handle_resize = move |size: f64| {
+    |         ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_handle_resize`
+
+warning: unused variable: `touch_support`
+   --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\default.rs:183:29
+    |
+183 |     #[prop(into, optional)] touch_support: MaybeProp<bool>,
+    |                             ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_touch_support`
+
+warning: unused variable: `keyboard_resize`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\new_york.rs:24:29
+   |
+24 |     #[prop(into, optional)] keyboard_resize: MaybeProp<bool>,
+   |                             ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_keyboard_resize`
+
+warning: unused variable: `touch_support`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\new_york.rs:25:29
+   |
+25 |     #[prop(into, optional)] touch_support: MaybeProp<bool>,
+   |                             ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_touch_support`
+
+warning: unused variable: `panel_sizes`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\new_york.rs:30:10
+   |
+30 |     let (panel_sizes, set_panel_sizes) = signal(Vec::<f64>::new());
+   |          ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_panel_sizes`
+
+warning: unused variable: `set_is_resizing`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\new_york.rs:31:23
+   |
+31 |     let (is_resizing, set_is_resizing) = signal(false);
+   |                       ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_set_is_resizing`
+
+warning: unused variable: `set_resize_direction`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\new_york.rs:32:28
+   |
+32 |     let (resize_direction, set_resize_direction) = signal(direction.get().unwrap_or_default());
+   |                            ^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_set_resize_direction`
+
+warning: unused variable: `handle_resize`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\new_york.rs:50:9
+   |
+50 |     let handle_resize = move |sizes: Vec<f64>| {
+   |         ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_handle_resize`
+
+warning: unused variable: `set_is_resizing`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\new_york.rs:88:23
+   |
+88 |     let (is_resizing, set_is_resizing) = signal(false);
+   |                       ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_set_is_resizing`
+
+warning: unused variable: `handle_resize`
+   --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\new_york.rs:122:9
+    |
+122 |     let handle_resize = move |size: f64| {
+    |         ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_handle_resize`
+
+warning: unused variable: `touch_support`
+   --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\new_york.rs:183:29
+    |
+183 |     #[prop(into, optional)] touch_support: MaybeProp<bool>,
+    |                             ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_touch_support`
+
+warning: unused variable: `size_diff`
+   --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\resizable.rs:151:13
+    |
+151 |         let size_diff = new_size - old_size;
+    |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_size_diff`
+
+warning: unused variable: `direction`
+   --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\resizable.rs:184:9
+    |
+184 |         direction: ResizeDirection,
+    |         ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_direction`
+
+warning: unused variable: `panel_index`
+   --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\resizable\src\resizable.rs:192:9
+    |
+192 |         panel_index: usize,
+    |         ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_panel_index`
+
+warning: unused variable: `input_otp_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\input-otp\src\signal_managed.rs:96:9
+   |
+96 |     let input_otp_state_for_disabled = input_otp_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_input_otp_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `lyx-ui-resizable` (lib) generated 26 warnings (run `cargo fix --lib -p lyx-ui-resizable` to apply 26 
+suggestions)
+warning: `lyx-ui-input-otp` (lib) generated 1 warning (run `cargo fix --lib -p lyx-ui-input-otp` to apply 1 suggestion)
+warning: unused variable: `dropdown_menu_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\dropdown-menu\src\signal_managed.rs:96:9
+   |
+96 |     let dropdown_menu_state_for_disabled = dropdown_menu_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_dropdown_menu_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\basic_rendering_tests.rs:6:5
+  |
+6 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\mod.rs:6:1
+  |
+6 | pub mod basic_rendering_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::default::Menubar`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\basic_rendering_tests.rs:7:5
+  |
+7 | use crate::default::Menubar;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\mod.rs:6:1
+  |
+6 | pub mod basic_rendering_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\state_management_tests.rs:6:5
+  |
+6 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\mod.rs:7:1
+  |
+7 | pub mod state_management_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::default::Menubar`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\state_management_tests.rs:7:5
+  |
+7 | use crate::default::Menubar;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\mod.rs:7:1
+  |
+7 | pub mod state_management_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\accessibility_tests.rs:6:5
+  |
+6 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\mod.rs:8:1
+  |
+8 | pub mod accessibility_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::default::Menubar`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\accessibility_tests.rs:7:5
+  |
+7 | use crate::default::Menubar;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\mod.rs:8:1
+  |
+8 | pub mod accessibility_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\integration_tests.rs:6:5
+  |
+6 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\mod.rs:9:1
+  |
+9 | pub mod integration_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::default::Menubar`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\integration_tests.rs:7:5
+  |
+7 | use crate::default::Menubar;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\mod.rs:9:1
+  |
+9 | pub mod integration_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\performance_tests.rs:6:5
+   |
+ 6 | use leptos::prelude::*;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\mod.rs:10:1
+   |
+10 | pub mod performance_tests;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::default::Menubar`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\performance_tests.rs:7:5
+   |
+ 7 | use crate::default::Menubar;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\menubar\src\tdd_tests\mod.rs:10:1
+   |
+10 | pub mod performance_tests;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    Checking lyx-ui-radio-group v0.9.1 
+(C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-group)
+warning: `lyx-ui-dropdown-menu` (lib) generated 1 warning (run `cargo fix --lib -p lyx-ui-dropdown-menu` to apply 1 
+suggestion)
+warning: `lyx-ui-menubar` (lib) generated 10 warnings (run `cargo fix --lib -p lyx-ui-menubar` to apply 10 suggestions)
+    Checking lyx-ui-separator v0.9.1 
+(C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\separator)
+    Checking lyx-ui-checkbox v0.9.1 
+(C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkbox)
+error[E0761]: file for module `tdd_tests` found at both 
+"crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkbox\src\tdd_tests.rs" and 
+"crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkbox\src\tdd_tests\mod.rs"
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkbox\src\lib.rs:12:1
+   |
+12 | mod tdd_tests;
+   | ^^^^^^^^^^^^^^
+   |
+   = help: delete or rename one of them to remove the ambiguity
+
+error[E0761]: file for module `tdd_tests` found at both 
+"crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-group\src\tdd_tests.rs" and 
+"crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-group\src\tdd_tests\mod.rs"
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-group\src\lib.rs:17:1
+   |
+17 | mod tdd_tests;
+   | ^^^^^^^^^^^^^^
+   |
+   = help: delete or rename one of them to remove the ambiguity
+
+error[E0761]: file for module `implementation_tests` found at both 
+"crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-group\src\implementation_tests.rs" and 
+"crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-group\src\implementation_tests\mod.rs"
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-group\src\lib.rs:19:1
+   |
+19 | mod implementation_tests;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: delete or rename one of them to remove the ambiguity
+
+error[E0761]: file for module `implementation_tests` found at both 
+"crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkbox\src\implementation_tests.rs" and 
+"crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkbox\src\implementation_tests\mod.rs"
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkbox\src\lib.rs:14:1
+   |
+14 | mod implementation_tests;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: delete or rename one of them to remove the ambiguity
+
+error[E0432]: unresolved imports `crate::default::NavigationMenuContent`, `crate::default::NavigationMenuItem`, 
+`crate::default::NavigationMenuList`, `crate::default::NavigationMenuTrigger`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\basic_rendering_tests.rs:7:38
+  |
+7 | use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+  |                                      ^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^  
+^^^^^^^^^^^^^^^^^^^^^ no `NavigationMenuTrigger` in `default`
+  |                                      |                      |                   |
+  |                                      |                      |                   no `NavigationMenuList` in 
+`default`
+  |                                      |                      no `NavigationMenuItem` in `default`
+  |                                      no `NavigationMenuContent` in `default`
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenu, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenu, NavigationMenuList, 
+NavigationMenuTrigger};
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenu, 
+NavigationMenuTrigger};
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuProps};
+  |
+
+error[E0432]: unresolved imports `crate::default::NavigationMenuContent`, `crate::default::NavigationMenuItem`, 
+`crate::default::NavigationMenuList`, `crate::default::NavigationMenuTrigger`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\state_management_tests.rs:7:38
+  |
+7 | use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+  |                                      ^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^  
+^^^^^^^^^^^^^^^^^^^^^ no `NavigationMenuTrigger` in `default`
+  |                                      |                      |                   |
+  |                                      |                      |                   no `NavigationMenuList` in 
+`default`
+  |                                      |                      no `NavigationMenuItem` in `default`
+  |                                      no `NavigationMenuContent` in `default`
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenu, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenu, NavigationMenuList, 
+NavigationMenuTrigger};
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenu, 
+NavigationMenuTrigger};
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuProps};
+  |
+
+error[E0432]: unresolved imports `crate::default::NavigationMenuContent`, `crate::default::NavigationMenuItem`, 
+`crate::default::NavigationMenuList`, `crate::default::NavigationMenuTrigger`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\accessibility_tests.rs:7:38
+  |
+7 | use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+  |                                      ^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^  
+^^^^^^^^^^^^^^^^^^^^^ no `NavigationMenuTrigger` in `default`
+  |                                      |                      |                   |
+  |                                      |                      |                   no `NavigationMenuList` in 
+`default`
+  |                                      |                      no `NavigationMenuItem` in `default`
+  |                                      no `NavigationMenuContent` in `default`
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenu, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenu, NavigationMenuList, 
+NavigationMenuTrigger};
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenu, 
+NavigationMenuTrigger};
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuProps};
+  |
+
+error[E0432]: unresolved imports `crate::default::NavigationMenuContent`, `crate::default::NavigationMenuItem`, 
+`crate::default::NavigationMenuList`, `crate::default::NavigationMenuTrigger`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\integration_tests.rs:7:38
+  |
+7 | use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+  |                                      ^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^  
+^^^^^^^^^^^^^^^^^^^^^ no `NavigationMenuTrigger` in `default`
+  |                                      |                      |                   |
+  |                                      |                      |                   no `NavigationMenuList` in 
+`default`
+  |                                      |                      no `NavigationMenuItem` in `default`
+  |                                      no `NavigationMenuContent` in `default`
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenu, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenu, NavigationMenuList, 
+NavigationMenuTrigger};
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenu, 
+NavigationMenuTrigger};
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuProps};
+  |
+
+error[E0432]: unresolved imports `crate::default::NavigationMenuContent`, `crate::default::NavigationMenuItem`, 
+`crate::default::NavigationMenuList`, `crate::default::NavigationMenuTrigger`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\performance_tests.rs:7:38
+  |
+7 | use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+  |                                      ^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^  
+^^^^^^^^^^^^^^^^^^^^^ no `NavigationMenuTrigger` in `default`
+  |                                      |                      |                   |
+  |                                      |                      |                   no `NavigationMenuList` in 
+`default`
+  |                                      |                      no `NavigationMenuItem` in `default`
+  |                                      no `NavigationMenuContent` in `default`
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenu, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenu, NavigationMenuList, 
+NavigationMenuTrigger};
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenu, 
+NavigationMenuTrigger};
+  |
+help: a similar name exists in the module
+  |
+7 - use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+7 + use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuProps};
+  |
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\basic_rendering_tests.rs:6:5
+  |
+6 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\mod.rs:6:1
+  |
+6 | pub mod basic_rendering_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `NavigationMenu`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\basic_rendering_tests.rs:7:22
+  |
+7 | use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+  |                      ^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\mod.rs:6:1
+  |
+6 | pub mod basic_rendering_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\state_management_tests.rs:6:5
+  |
+6 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\mod.rs:7:1
+  |
+7 | pub mod state_management_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `NavigationMenu`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\state_management_tests.rs:7:22
+  |
+7 | use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+  |                      ^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\mod.rs:7:1
+  |
+7 | pub mod state_management_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\accessibility_tests.rs:6:5
+  |
+6 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\mod.rs:8:1
+  |
+8 | pub mod accessibility_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `NavigationMenu`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\accessibility_tests.rs:7:22
+  |
+7 | use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+  |                      ^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\mod.rs:8:1
+  |
+8 | pub mod accessibility_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\integration_tests.rs:6:5
+  |
+6 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\mod.rs:9:1
+  |
+9 | pub mod integration_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `NavigationMenu`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\integration_tests.rs:7:22
+  |
+7 | use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+  |                      ^^^^^^^^^^^^^^
+  |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\mod.rs:9:1
+  |
+9 | pub mod integration_tests;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\performance_tests.rs:6:5
+   |
+ 6 | use leptos::prelude::*;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\mod.rs:10:1
+   |
+10 | pub mod performance_tests;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `NavigationMenu`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\performance_tests.rs:7:22
+   |
+ 7 | use crate::default::{NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuList, 
+NavigationMenuTrigger};
+   |                      ^^^^^^^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\tdd_tests\mod.rs:10:1
+   |
+10 | pub mod performance_tests;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `checkbox_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkbox\src\signal_managed.rs:96:9
+   |
+96 |     let checkbox_state_for_disabled = checkbox_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_checkbox_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+    Checking lyx-ui-badge v0.9.1 
+(C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\badge)
+For more information about this error, try `rustc --explain E0761`.
+warning: `lyx-ui-checkbox` (lib) generated 1 warning
+error: could not compile `lyx-ui-checkbox` (lib) due to 2 previous errors; 1 warning emitted
+warning: build failed, waiting for other jobs to finish...
+warning: unused variable: `navigation_menu_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\navigation-menu\src\signal_managed.rs:96:9
+   |
+96 |     let navigation_menu_state_for_disabled = navigation_menu_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_navigation_menu_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+error[E0308]: `if` and `else` have incompatible types
+   --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-group\src\default.rs:155:29
+    |
+150 | /                          if is_selected.get() {
+151 | |/                             view! {
+152 | ||                                 <div class=RADIO_INDICATOR_DOT_CLASS />
+153 | ||                             }
+    | ||_____________________________- expected because of this
+154 | |                          } else {
+155 | |                              view! { <div class=""></div> }
+    | |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&str`, found `Static<"">`
+156 | |                          }
+    | |__________________________- `if` and `else` have incompatible types
+    |
+    = note: expected struct `leptos::prelude::View<leptos::html::HtmlElement<_, (Class<&str>,), _>>`
+               found struct `leptos::prelude::View<leptos::html::HtmlElement<_, 
+(Class<leptos::tachys::view::static_types::Static<"">>,), _>>`
+    = note: this error originates in the macro `view` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+For more information about this error, try `rustc --explain E0432`.
+warning: `lyx-ui-navigation-menu` (lib) generated 11 warnings
+error: could not compile `lyx-ui-navigation-menu` (lib) due to 5 previous errors; 11 warnings emitted
+error[E0308]: `if` and `else` have incompatible types
+   --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-group\src\new_york.rs:155:29
+    |
+150 | /                          if is_selected.get() {
+151 | |/                             view! {
+152 | ||                                 <div class=RADIO_INDICATOR_DOT_CLASS />
+153 | ||                             }
+    | ||_____________________________- expected because of this
+154 | |                          } else {
+155 | |                              view! { <div class=""></div> }
+    | |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&str`, found `Static<"">`
+156 | |                          }
+    | |__________________________- `if` and `else` have incompatible types
+    |
+    = note: expected struct `leptos::prelude::View<leptos::html::HtmlElement<_, (Class<&str>,), _>>`
+               found struct `leptos::prelude::View<leptos::html::HtmlElement<_, 
+(Class<leptos::tachys::view::static_types::Static<"">>,), _>>`
+    = note: this error originates in the macro `view` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unused variable: `radio_group_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-group\src\signal_managed.rs:96:9
+   |
+96 |     let radio_group_state_for_disabled = radio_group_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_radio_group_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+Some errors have detailed explanations: E0308, E0761.
+For more information about an error, try `rustc --explain E0308`.
+warning: `lyx-ui-radio-group` (lib) generated 1 warning
+error: could not compile `lyx-ui-radio-group` (lib) due to 4 previous errors; 1 warning emitted
+warning: unused variable: `badge_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\badge\src\signal_managed.rs:96:9
+   |
+96 |     let badge_state_for_disabled = badge_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_badge_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `lyx-ui-badge` (lib) generated 1 warning (run `cargo fix --lib -p lyx-ui-badge` to apply 1 suggestion)

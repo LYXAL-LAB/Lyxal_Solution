@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx-logic-windowing\lyx-core-lyx_core_lyx-logic-leptos-pagination\lyx-ui-foundations-lyx_ui_foundations_examples\src\data.rs
-```rust
 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx-logic-windowing\lyx-core-lyx_core_lyx-logic-lyx-core-lyx_core_lyx-logic-leptos-pagination\lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_examples\src\data.rs
 2: ```rust
 3: 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx-logic-windowing\lyx-core-lyx_core_lyx-logic-lyx-core-lyx_core_lyx-logic-lyx-core-lyx_core_lyx-logic-leptos-pagination\lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_examples\src\data.rs
@@ -669,3 +667,4 @@
 667: 665: ```
 668: ```
 ```
+

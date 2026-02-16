@@ -1,0 +1,49 @@
+﻿[workspace]
+resolver = "2"
+
+members = [
+    "lyxal_actions",
+    "lyxal_animation",
+    "lyxal_arg_types",
+    "lyxal_assets",
+    "lyxal_auth",
+    "lyxal_cli",
+    "lyxal_client",
+    "lyxal_components",
+    "lyxal_css",
+    "lyxal_css_data",
+    "lyxal_css_engine",
+    "lyxal_dashboard",
+    "lyxal_deploy",
+    "lyxal_design_system",
+    "lyxal_domain",
+    "lyxal_export",
+    "lyxal_flags",
+    "lyxal_fonts",
+    "lyxal_html_data",
+    "lyxal_icons",
+    "lyxal_image",
+    "lyxal_primitives",
+    "lyxal_project",
+    "lyxal_project_build",
+    "lyxal_radix",
+    "lyxal_renderer",
+    "lyxal_rpc",
+    "lyxal_ssr",
+    "lyxal_state",
+    "lyxal_template",
+    "lyxal_tree",
+    "lyxal_types"
+]
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+leptos = "0.6"
+lazy_static = "1.4"
+nanoid = "0.4"
+thiserror = "1.0"
+async-trait = "0.1"
+reqwest = { version = "0.11", features = ["json"] }
+

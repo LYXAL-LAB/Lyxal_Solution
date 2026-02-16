@@ -1,31 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\aria.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\aria.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\aria.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\aria.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\aria.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\aria.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\aria.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\aria.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\aria.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\aria.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\aria.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\aria.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\aria.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\aria.rs
-```rust
 use std::{rc::Rc, str::FromStr};
 
 use educe::Educe;
@@ -37,22 +9,22 @@ use super::props::IntoAttributeName;
 pub enum AriaAttribute {
     /// see: <https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles>
     Role(GenericAttribute<AriaRole>),
-    /// see: <https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-controls>
+    /// see: <https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/LeptonicAttributes/aria-controls>
     Controls(GenericAttribute<AriaControls>),
-    /// see: <https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-haspopup>
+    /// see: <https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/LeptonicAttributes/aria-haspopup>
     HasPopup(GenericAttribute<AriaHasPopup>),
-    /// see: <https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-expanded>
+    /// see: <https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/LeptonicAttributes/aria-expanded>
     Expanded(GenericAttribute<AriaExpanded>),
 }
 
-impl From<AriaAttribute> for (&'static str, Attribute) {
+impl From<AriaAttribute> for (&'static str, LeptonicAttribute) {
     fn from(value: AriaAttribute) -> Self {
         let attr_name = value.to_attribute_name();
         match value {
-            AriaAttribute::Role(val) => (attr_name, val.into_attribute()),
-            AriaAttribute::Controls(val) => (attr_name, val.into_attribute()),
-            AriaAttribute::HasPopup(val) => (attr_name, val.into_attribute()),
-            AriaAttribute::Expanded(val) => (attr_name, val.into_attribute()),
+            AriaAttribute::Role(val) => (attr_name, val.into_leptonic_attribute()),
+            AriaAttribute::Controls(val) => (attr_name, val.into_leptonic_attribute()),
+            AriaAttribute::HasPopup(val) => (attr_name, val.into_leptonic_attribute()),
+            AriaAttribute::Expanded(val) => (attr_name, val.into_leptonic_attribute()),
         }
     }
 }
@@ -78,45 +50,45 @@ impl std::fmt::Display for AriaAttribute {
 
 #[derive(Clone, Educe)]
 #[educe(Debug)]
-pub enum GenericAttribute<T: IntoAttribute + 'static> {
+pub enum GenericAttribute<T: LeptonicIntoLeptonicAttribute + 'static> {
     /// A plain value.
     Static(T),
-    /// A (presumably reactive) function, which will be run inside an effect to do targeted updates to the attribute.
+    /// A (presumably reactive) function, which will be run inside an effect to do targeted updates to the LeptonicAttribute.
     Fn(#[educe(Debug(ignore))] Rc<dyn Fn() -> T>),
-    /// An optional value, which sets the attribute to the value if `Some` and removes the attribute if `None`.
+    /// An optional value, which sets the LeptonicAttribute to the value if `Some` and removes the LeptonicAttribute if `None`.
     Option(Option<T>),
-    /// A boolean attribute, which sets the attribute if `true` and removes the attribute if `false`.
+    /// A boolean LeptonicAttribute, which sets the LeptonicAttribute if `true` and removes the LeptonicAttribute if `false`.
     Bool(bool),
 }
 
-impl<T: IntoAttribute + Clone + 'static, F: Fn() -> T + 'static> From<F> for GenericAttribute<T> {
+impl<T: LeptonicIntoLeptonicAttribute + Clone + 'static, F: Fn() -> T + 'static> From<F> for GenericAttribute<T> {
     fn from(f: F) -> Self {
         Self::Fn(Rc::new(f))
     }
 }
 
 #[cfg(not(feature = "nightly"))]
-impl<T: IntoAttribute + Clone + 'static> From<Signal<T>> for GenericAttribute<T> {
+impl<T: LeptonicIntoLeptonicAttribute + Clone + 'static> From<Signal<T>> for GenericAttribute<T> {
     fn from(signal: Signal<T>) -> Self {
         Self::Fn(Rc::new(move || signal.get()))
     }
 }
 
-impl<T: IntoAttribute + 'static> IntoAttribute for GenericAttribute<T> {
-    fn into_attribute(self) -> Attribute {
+impl<T: LeptonicIntoLeptonicAttribute + 'static> LeptonicIntoLeptonicAttribute for GenericAttribute<T> {
+    fn into_leptonic_attribute(self) -> LeptonicAttribute {
         match self {
-            GenericAttribute::Static(v) => v.into_attribute(),
-            GenericAttribute::Fn(v) => Attribute::Fn(Rc::new(move || v().into_attribute())),
+            GenericAttribute::Static(v) => v.into_leptonic_attribute(),
+            GenericAttribute::Fn(v) => LeptonicAttribute::Fn(Rc::new(move || v().into_leptonic_attribute())),
             GenericAttribute::Option(v) => match v {
-                Some(t) => t.into_attribute(),
-                None => Attribute::Option(None),
+                Some(t) => t.into_leptonic_attribute(),
+                None => LeptonicAttribute::Option(None),
             },
-            GenericAttribute::Bool(v) => Attribute::Bool(v),
+            GenericAttribute::Bool(v) => LeptonicAttribute::Bool(v),
         }
     }
 
-    fn into_attribute_boxed(self: Box<Self>) -> Attribute {
-        self.into_attribute()
+    fn into_leptonic_attribute_boxed(self: Box<Self>) -> LeptonicAttribute {
+        self.into_leptonic_attribute()
     }
 }
 
@@ -128,15 +100,15 @@ pub enum AriaRole {
     Link,
 }
 
-impl IntoAttribute for AriaRole {
-    fn into_attribute(self) -> Attribute {
+impl LeptonicIntoLeptonicAttribute for AriaRole {
+    fn into_leptonic_attribute(self) -> LeptonicAttribute {
         match self {
-            Self::Link => Attribute::String(Oco::Borrowed("link")),
+            Self::Link => LeptonicAttribute::String(Oco::Borrowed("link")),
         }
     }
 
-    fn into_attribute_boxed(self: Box<Self>) -> Attribute {
-        self.into_attribute()
+    fn into_leptonic_attribute_boxed(self: Box<Self>) -> LeptonicAttribute {
+        self.into_leptonic_attribute()
     }
 }
 
@@ -149,16 +121,16 @@ pub enum AriaControls {
     Undefined,
 }
 
-impl IntoAttribute for AriaControls {
-    fn into_attribute(self) -> Attribute {
+impl LeptonicIntoLeptonicAttribute for AriaControls {
+    fn into_leptonic_attribute(self) -> LeptonicAttribute {
         match self {
-            Self::Id(ids) => Attribute::String(Oco::Owned(ids.join(" "))),
-            Self::Undefined => Attribute::Option(None),
+            Self::Id(ids) => LeptonicAttribute::String(Oco::Owned(ids.join(" "))),
+            Self::Undefined => LeptonicAttribute::Option(None),
         }
     }
 
-    fn into_attribute_boxed(self: Box<Self>) -> Attribute {
-        self.into_attribute()
+    fn into_leptonic_attribute_boxed(self: Box<Self>) -> LeptonicAttribute {
+        self.into_leptonic_attribute()
     }
 }
 
@@ -203,13 +175,13 @@ impl AriaHasPopup {
     }
 }
 
-impl IntoAttribute for AriaHasPopup {
-    fn into_attribute(self) -> Attribute {
-        Attribute::String(self.into_str().into())
+impl LeptonicIntoLeptonicAttribute for AriaHasPopup {
+    fn into_leptonic_attribute(self) -> LeptonicAttribute {
+        LeptonicAttribute::String(self.into_str().into())
     }
 
-    fn into_attribute_boxed(self: Box<Self>) -> Attribute {
-        self.into_attribute()
+    fn into_leptonic_attribute_boxed(self: Box<Self>) -> LeptonicAttribute {
+        self.into_leptonic_attribute()
     }
 }
 
@@ -272,28 +244,14 @@ impl From<Option<bool>> for AriaExpanded {
     }
 }
 
-impl IntoAttribute for AriaExpanded {
-    fn into_attribute(self) -> Attribute {
-        Attribute::String(self.into_str().into())
+impl LeptonicIntoLeptonicAttribute for AriaExpanded {
+    fn into_leptonic_attribute(self) -> LeptonicAttribute {
+        LeptonicAttribute::String(self.into_str().into())
     }
 
-    fn into_attribute_boxed(self: Box<Self>) -> Attribute {
-        Attribute::String(self.into_str().into())
+    fn into_leptonic_attribute_boxed(self: Box<Self>) -> LeptonicAttribute {
+        LeptonicAttribute::String(self.into_str().into())
     }
 }
 
 // ----------------------------------------------------------------------------------
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```

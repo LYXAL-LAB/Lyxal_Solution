@@ -1,18 +1,28 @@
 [package]
 name = "lyx-viz-trading-charts"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-gloo-console = { version = "0.0.1" }
-chrono = { version = "0.0.1", features = ["alloc", "serde", "wasmbind"] }
-wasmbind-macro = { version = "0.0.1", package = "wasmbind-js-file-macro" }
-emitix = { version = "0.0.1" }
-js-sys = { version = "0.0.1" }
-lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
-serde = { version = "0.0.1" }
-serde-wasm-bindgen = { version = "0.0.1" }
-wasm-bindgen = { version = "0.0.1" }
-web-sys = { version = "0.0.1" }
+gloo-console = { version = "*" }
+chrono = { version = "*", features = ["alloc", "serde", "wasmbind"] }
+wasmbind-macro = { version = "*", package = "wasmbind-js-file-macro" }
+emitix = { version = "*" }
+js-sys = { version = "*" }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+serde = { version = "*" }
+serde-wasm-bindgen = { version = "*" }
+wasm-bindgen = { version = "*" }
+web-sys = { version = "*" }
 [build-dependencies]
-npm_rs = { version = "0.0.1" }
-log = { version = "0.0.1" }
+npm_rs = { version = "*" }
+log = { version = "*" }
+
+
+
+
+
+
+
+
+
+

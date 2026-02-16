@@ -1,20 +1,24 @@
 [package]
 name = "lyx-tooling-formatter"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
 
-rstml = { version = "0.0.1" }
-syn = { version = "0.0.1" }
-proc-macro2 = { version = "0.0.1" }
-thiserror = { version = "0.0.1" }
-crop = { version = "0.0.1" }
-serde = { version = "0.0.1", features = ["derive"] }
-quote = { version = "0.0.1" }
-rustywind_core = { version = "0.0.1" }
+rstml = { version = "*" }
+syn = { version = "*" }
+proc-macro2 = { version = "*" }
+thiserror = { version = "*" }
+crop = { version = "*" }
+serde = { version = "*", features = ["derive"] }
+quote = { version = "*" }
+rustywind_core = { version = "*" }
 
 [dev-dependencies]
-indoc = { version = "0.0.1" }
-insta = { version = "0.0.1" }
-quote = { version = "0.0.1" }
+indoc = { version = "*" }
+insta = { version = "*" }
+quote = { version = "*" }
+
+
+
+

@@ -1,8 +1,12 @@
 [package]
 name = "lyx-ui-foundations-leptos"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
 
 [dev-dependencies]
+
+
+
+

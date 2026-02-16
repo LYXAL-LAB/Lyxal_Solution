@@ -1,15 +1,21 @@
 [package]
-name = "lyx-core-router_macro"
-version = "0.0.1"
+name = "router_macro"
+version = "*"
 edition = "2024"
 [lib]
 proc-macro = true
 [dependencies]
-proc-macro-error2 = { version = "0.0.1", default-features = false }
-proc-macro2 = { version = "0.0.1", default-features = true }
-quote = { version = "0.0.1", default-features = true }
-syn = { version = "0.0.1", features = ["full"], default-features = true }
+proc-macro-error2 = { version = "*", default-features = false }
+proc-macro2 = { version = "*", default-features = true }
+quote = { version = "*", default-features = true }
+syn = { version = "*", features = ["full"], default-features = true }
 [dev-dependencies]
-lyx-core-leptos = { path = "../leptos", version = "0.0.1" }
-lyx-core-router = { path = "../router", version = "0.0.1" }
-lyx-core-leptos_macro = { path = "../leptos_macro", version = "0.0.1" }
+leptos = { path = "../leptos", version = "*" }
+router = { path = "../router", version = "*" }
+leptos_macro = { path = "../leptos_macro", version = "*" }
+
+
+[build-dependencies]
+rustc_version = "*"
+
+

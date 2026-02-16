@@ -1,0 +1,21 @@
+
+[workspace.dependencies]
+leptos = { ${2} }
+cfg-if = "1"
+js-sys = { version = "*" }
+gloo-timers = { version = "*", features = ["futures"] }
+tokio = { version = "*", features = ["time"] }
+slotmap = "1"
+futures-channel = "0.3"
+futures = "0.3"
+web-sys = "0.3"
+
+
+
+
+
+
+
+
+
+

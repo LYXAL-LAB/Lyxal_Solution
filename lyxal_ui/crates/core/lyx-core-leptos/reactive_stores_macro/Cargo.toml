@@ -1,12 +1,18 @@
 [package]
-name = "lyx-core-reactive_stores_macro"
-version = "0.0.1"
+name = "reactive_stores_macro"
+version = "0.8.0"
 edition = "2024"
 [lib]
 proc-macro = true
 [dependencies]
-convert_case = { version = "0.0.1", default-features = true }
-proc-macro-error2 = { version = "0.0.1", default-features = true }
-proc-macro2 = { version = "0.0.1", default-features = true }
-quote = { version = "0.0.1", default-features = true }
-syn = { version = "0.0.1", features = ["full"], default-features = true }
+convert_case = { version = "*", default-features = true }
+proc-macro-error2 = { version = "*", default-features = true }
+proc-macro2 = { version = "*", default-features = true }
+quote = { version = "*", default-features = true }
+syn = { version = "*", features = ["full"], default-features = true }
+
+
+[build-dependencies]
+rustc_version = "*"
+
+

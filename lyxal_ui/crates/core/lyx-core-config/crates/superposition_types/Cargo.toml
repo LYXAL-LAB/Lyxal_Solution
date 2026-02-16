@@ -1,38 +1,38 @@
 [package]
-name = "lyx-core-superposition_types"
-version = "0.0.1"
+name = "superposition_types"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
 # env
-actix-web = { version = "0.0.1", optional = true }
-anyhow = { version = "0.0.1", optional = true }
-base64 = { version = "0.0.1", optional = true }
-bigdecimal = { version = "0.0.1" }
-chrono = { version = "0.0.1" }
-derive_more = { version = "0.0.1" }
-diesel = { version = "0.0.1", optional = true }
-diesel-derive-enum = { version = "0.0.1", optional = true, features = ["postgres" ] }
-jsonlogic = { version = "0.0.1" }
-log = { version = "0.0.1" }
-regex = { version = "0.0.1" }
-serde = { version = "0.0.1" }
-serde_json = { version = "0.0.1" }
-serde_urlencoded = { version = "0.0.1" }
-strum = { version = "0.0.1" }
-strum_macros = { version = "0.0.1" }
-lyx-core-superposition_derives = { path = "../superposition_derives", version = "0.0.1", optional = true }
-thiserror = { version = "0.0.1", optional = true }
-uuid = { version = "0.0.1" }
-uniffi = { version = "0.0.1" }
+actix-web = { version = "*", optional = true }
+anyhow = { version = "*", optional = true }
+base64 = { version = "*", optional = true }
+bigdecimal = { version = "*" }
+chrono = { version = "*" }
+derive_more = { version = "*" }
+diesel = { version = "*", optional = true }
+diesel-derive-enum = { version = "*", optional = true, features = ["postgres" ] }
+jsonlogic = { version = "*" }
+log = { version = "*" }
+regex = { version = "*" }
+serde = { version = "*" }
+serde_json = { version = "*" }
+serde_urlencoded = { version = "*" }
+strum = { version = "*" }
+strum_macros = { version = "*" }
+superposition_derives = { path = "../superposition_derives", optional = true }
+thiserror = { version = "*", optional = true }
+uuid = { version = "*" }
+uniffi = { version = "*" }
 
 [dev-dependencies]
-uniffi = { version = "0.0.1" }
+uniffi = { version = "*" }
 
 [features]
 diesel_derives = [
 "dep:diesel",
-"lyx-core-superposition_derives/diesel_derives",
+"superposition_derives/diesel_derives",
 "dep:diesel-derive-enum",
 "dep:base64" ]
 disable_db_data_validation = []
@@ -40,3 +40,10 @@ result = ["dep:diesel", "dep:anyhow", "dep:thiserror", "dep:actix-web"]
 server = ["dep:actix-web"]
 experimentation = []
 api = []
+
+
+
+
+
+
+

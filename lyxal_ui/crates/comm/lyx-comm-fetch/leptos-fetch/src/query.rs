@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\comm\lyx-comm-fetch\lyx-comm-lyx-core-lyx_core_leptos-fetch\src\query.rs
-```rust
 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\comm\lyx-comm-fetch\lyx-comm-lyx-core-lyx_core_lyx-comm-lyx-core-lyx_core_leptos-fetch\src\query.rs
 2: ```rust
 3: 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\comm\lyx_comm_fetch\lyx-comm-lyx-core-lyx_core_lyx-comm-lyx-core-lyx_core_leptos-fetch\src\query.rs
@@ -650,3 +648,4 @@
 648: 646: ```
 649: ```
 ```
+

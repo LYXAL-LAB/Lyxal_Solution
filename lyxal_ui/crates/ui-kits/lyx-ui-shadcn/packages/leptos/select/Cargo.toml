@@ -1,14 +1,24 @@
 [package]
 name = "lyx-ui-select"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-tailwind_fuse = { path = "../../../../../ui-foundations/lyx-found-tailwind/fuse", version = "0.0.1" }
-lyx-core-leptos = { path = "../../../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["ssr"] }
-leptos-shadcn-signal-management = { path = "../../signal-management", version = "0.0.1" }
+tailwind_fuse = { path = "../../../../../ui-foundations/lyx-found-tailwind/fuse" }
+leptos = { path = "../core/lyx-core-leptos/leptos", features = ["ssr"] }
+leptos-shadcn-signal-management = { path = "../../signal-management" }
 [features]
 default = []
 new_york = []
 [dev-dependencies]
-shadcn-ui-test-utils = { path = "../../test-utils", version = "0.0.1" }
-wasm-bindgen-test = { version = "0.0.1" }
+shadcn-ui-test-utils = { path = "../../test-utils" }
+wasm-bindgen-test = { version = "*" }
+
+
+
+
+
+
+
+
+
+

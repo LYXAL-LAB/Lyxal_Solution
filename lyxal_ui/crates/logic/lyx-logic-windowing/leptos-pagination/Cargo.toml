@@ -1,17 +1,28 @@
 [package]
-name = "lyx-logic-leptos-pagination"
-version = "0.0.1"
+name = "leptos-pagination"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
 
 
-default-struct-builder = { version = "0.0.1" }
-lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1", optional = true }
-lyx-logic-use = { path = "../../lyx-logic-use", version = "0.0.1", optional = true }
-lyx-core-reactive_stores = { path = "../../../core/lyx-core-leptos/reactive_stores", version = "0.0.1" }
-serde = { version = "0.0.1", features = ["derive"] }
-web-sys = { version = "0.0.1" }
+default-struct-builder = { version = "*" }
+leptos = { path = "../core/lyx-core-leptos/leptos", optional = true }
+leptos-use = { path = "../../use", optional = true }
+reactive_stores = { path = "../../../core/leptos/reactive_stores" }
+serde = { version = "*", features = ["derive"] }
+web-sys = { version = "*" }
 
 [features]
-ssr = ["lyx-core-leptos/ssr", "lyx-logic-leptos-windowing/ssr", "lyx-logic-use/ssr"]
+ssr = ["leptos/ssr", "leptos-windowing/ssr", "leptos-use/ssr"]
+
+
+
+
+
+
+
+
+
+
+

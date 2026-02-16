@@ -1,26 +1,36 @@
 [package]
-name = "lyx-core-sample-crumbs"
-version = "0.0.1"
+name = "sample-crumbs"
+version = "0.8.0"
 edition = "2024"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-lyx-core-src = { path = "../src", version = "0.0.1", optional = true }
-lyx-core-leptos = { path = "../../lyx-core-leptos/leptos", version = "0.0.1", optional = true }
-axum = { version = "0.0.1", optional = true }
-lyx-core-axum = { path = "../../lyx-core-leptos/integrations/axum", version = "0.0.1", optional = true }
-tokio = { version = "0.0.1", optional = true }
-wasm-bindgen = { version = "0.0.1" }
+src = { path = "../src", optional = true }
+leptos = { path = "../../leptos/leptos", optional = true }
+axum = { version = "*", optional = true }
+leptos_axum = { path = "../../leptos/integrations/axum", optional = true }
+tokio = { version = "*", optional = true }
+wasm-bindgen = { version = "*" }
 
 [features]
 default = ["ssr"]
-hydrate = ["lyx-core-leptos/hydrate"]
+hydrate = ["leptos/hydrate"]
 ssr = [
 "dep:axum",
 "dep:tokio",
-"dep:lyx-core-axum",
-"lyx-core-leptos/ssr",
-"lyx-core-src/ssr"
+"dep:leptos_axum",
+"leptos/ssr",
+"src/ssr"
 ]
+
+
+
+
+
+
+
+
+
+

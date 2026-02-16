@@ -1,18 +1,28 @@
 [package]
 name = "lyx-ui-thaw_utils"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
-lyx-core-meta = { path = "../../../core/lyx-core-leptos/meta", version = "0.0.1" }
-lyx-core-reactive_stores = { path = "../../../core/lyx-core-leptos/reactive_stores", version = "0.0.1" }
-web-sys = { version = "0.0.1" }
-wasm-bindgen = { version = "0.0.1" }
-cfg-if = { version = "0.0.1" }
-chrono = { version = "0.0.1" }
-send_wrapper = { version = "0.0.1" }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos_meta = { path = "../core/lyx-core-leptos/meta" }
+reactive_stores = { path = "../../../core/leptos/reactive_stores" }
+web-sys = { version = "*" }
+wasm-bindgen = { version = "*" }
+cfg-if = { version = "*" }
+chrono = { version = "*" }
+send_wrapper = { version = "*" }
 [features]
-csr = ["lyx-core-leptos/csr"]
-ssr = ["lyx-core-leptos/ssr", "lyx-core-meta/ssr"]
-hydrate = ["lyx-core-leptos/hydrate"]
-nightly = ["lyx-core-leptos/nightly"]
+csr = ["leptos/csr"]
+ssr = ["leptos/ssr", "leptos_meta/ssr"]
+hydrate = ["leptos/hydrate"]
+nightly = ["leptos/nightly"]
+
+
+
+
+
+
+
+
+
+

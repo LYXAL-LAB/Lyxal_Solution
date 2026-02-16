@@ -1,0 +1,10 @@
+﻿[package]
+name = "lyxal_tree"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lyxal_types = { path = "../lyxal_types" }
+serde = { version = "1.0", features = ["derive"] }
+nanoid = "0.4"
+

@@ -1,39 +1,11 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs
-```rust
 use std::rc::Rc;
 
 use educe::Educe;
-use leptos::{html::ElementDescriptor, Attribute, NodeRef, Oco};
+use leptos::{html::ElementDescriptor, LeptonicAttribute, NodeRef, Oco};
 use leptos_reactive::{create_memo, MaybeSignal, SignalGet};
 use leptos_use::{use_document, use_element_bounding};
 
-use crate::utils::{locale::WritingDirection, props::Attributes};
+use crate::utils::{locale::WritingDirection, props::LeptonicAttributes};
 
 // TODO: Serialize, Deserialize, Display, FormStr ???
 
@@ -124,7 +96,7 @@ pub struct UseOverlayPositionReturn {
 
 #[derive(Debug)]
 pub struct UseOverlayPositionProps {
-    pub attrs: Attributes,
+    pub attrs: LeptonicAttributes,
 }
 
 pub fn use_overlay_position<OverlayRef, TargetRef>(
@@ -217,14 +189,14 @@ where
         PhysicalPlacementX::OuterRight => target_bounding.right.get(),
     });
 
-    let mut attrs = Attributes::new();
+    let mut attrs = LeptonicAttributes::new();
     attrs.insert(
         "style",
-        Attribute::Fn(Rc::new(move || {
+        LeptonicAttribute::Fn(Rc::new(move || {
             let top = top.get();
             let left = left.get();
             let style = format!("position: fixed; z-index: 100000; top: {top}px; left: {left}px");
-            Attribute::String(Oco::Owned(style))
+            LeptonicAttribute::String(Oco::Owned(style))
         })),
     );
 
@@ -232,17 +204,3 @@ where
         props: UseOverlayPositionProps { attrs },
     }
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```

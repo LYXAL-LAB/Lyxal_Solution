@@ -1,14 +1,20 @@
 [package]
-name = "lyx-core-leptos_config"
-version = "0.0.1"
+name = "leptos_config"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-config = { version = "0.0.1", default-features = false, features = ["toml", "convert-case" ] }
-regex = { version = "0.0.1", default-features = true }
-serde = { version = "0.0.1", features = ["derive", "rc" ], default-features = true }
-thiserror = { version = "0.0.1", default-features = true }
-typed-builder = { version = "0.0.1", default-features = true }
+config = { version = "*", default-features = false, features = ["toml", "convert-case" ] }
+regex = { version = "*", default-features = true }
+serde = { version = "*", features = ["derive", "rc" ], default-features = true }
+thiserror = { version = "*", default-features = true }
+typed-builder = { version = "*", default-features = true }
 [dev-dependencies]
-tokio = { version = "0.0.1", features = ["rt", "macros" ], default-features = true }
-tempfile = { version = "0.0.1", default-features = true }
-temp-env = { version = "0.0.1", features = ["async_closure" ], default-features = true }
+tokio = { version = "*", features = ["rt", "macros" ], default-features = true }
+tempfile = { version = "*", default-features = true }
+temp-env = { version = "*", features = ["async_closure" ], default-features = true }
+
+
+[build-dependencies]
+rustc_version = "*"
+
+

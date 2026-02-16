@@ -530,3 +530,4 @@ mod tests {
         assert!(display.contains("Test error"));
     }
 }
+

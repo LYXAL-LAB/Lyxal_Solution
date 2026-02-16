@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx-found-floating\packages\core\src\compute_coords_from_placement.rs
-```rust
 1: use lyx_ui_foundations_utils::{
 2:     Alignment, Axis, Coords, ElementRects, Placement, Side, get_alignment, get_alignment_axis,
 3:     get_axis_length, get_side, get_side_axis,
@@ -179,3 +177,4 @@
 177:     }
 178: }
 ```
+

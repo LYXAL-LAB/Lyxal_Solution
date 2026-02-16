@@ -1,47 +1,47 @@
 [package]
-name = "lyx-ui-leptonic"
-version = "0.0.1"
+name = "leptonic"
+version = "0.8.0"
 edition = "2024"
 [build-dependencies]
-anyhow = { version = "0.0.1" }
-cargo_toml = { version = "0.0.1" }
-lazy_static = { version = "0.0.1" }
-leptonic-theme = { path = "../leptonic-theme", version = "0.0.1" }
-leptos-tiptap-build = { version = "0.0.1", optional = true }
+anyhow = { version = "*" }
+cargo_toml = { version = "*" }
+lazy_static = { version = "*" }
+leptonic-theme = { path = "../leptonic-theme" }
+leptos-tiptap-build = { version = "*", optional = true }
 [dependencies]
-cfg-if = { version = "0.0.1" }
-indexmap = { version = "0.0.1" }
-indoc = { version = "0.0.1" }
-itertools = { version = "0.0.1" }
-js-sys = { version = "0.0.1" }
-lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
-leptos_reactive = { version = "0.0.1" }
-leptos-tiptap = { version = "0.0.1", optional = true }
-lyx-logic-use = { path = "../../../logic/lyx-logic-use", version = "0.0.1", features = ["math"] }
-icondata = { version = "0.0.1" }
-lyx-core-meta = { path = "../../../core/lyx-core-leptos/meta", version = "0.0.1", features = [] }
-lyx-core-router = { path = "../../../core/lyx-core-leptos/router", version = "0.0.1" }
-serde = { version = "0.0.1" }
-serde-wasm-bindgen = { version = "0.0.1" }
-serde_json = { version = "0.0.1" }
-strum = { version = "0.0.1", features = ["derive"] }
-time = { version = "0.0.1", features = ["wasm-bindgen", "macros", "serde", "serde-well-known" ] }
-tracing = { version = "0.0.1" }
-uuid = { version = "0.0.1", features = ["v4", "v7", "js", "serde"] }
-wasm-bindgen = { version = "0.0.1" }
-wasm-bindgen-futures = { version = "0.0.1" }
+cfg-if = { version = "*" }
+indexmap = { version = "*" }
+indoc = { version = "*" }
+itertools = { version = "*" }
+js-sys = { version = "*" }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos_reactive = { version = "*" }
+leptos-tiptap = { version = "*", optional = true }
+leptos-use = { path = "../logic/lyx-logic-use", features = ["math"] }
+icondata = { version = "*" }
+leptos_meta = { path = "../core/lyx-core-leptos/meta", features = [] }
+leptos_router = { path = "../core/lyx-core-leptos/router" }
+serde = { version = "*" }
+serde-wasm-bindgen = { version = "*" }
+serde_json = { version = "*" }
+strum = { version = "*", features = ["derive"] }
+time = { version = "*", features = ["wasm-bindgen", "macros", "serde", "serde-well-known" ] }
+tracing = { version = "*" }
+uuid = { version = "*", features = ["v4", "v7", "js", "serde"] }
+wasm-bindgen = { version = "*" }
+wasm-bindgen-futures = { version = "*" }
 # TODO: What of all below is really required?
-web-sys = { version = "0.0.1", features = ["DomRect", "Event", "EventTarget", "ScrollIntoViewOptions", "HtmlFormElement", "HtmlInputElement", "Storage" ] }
-educe = { version = "0.0.1" }
+web-sys = { version = "*", features = ["DomRect", "Event", "EventTarget", "ScrollIntoViewOptions", "HtmlFormElement", "HtmlInputElement", "Storage" ] }
+educe = { version = "*" }
 [dev-dependencies]
-wasm-bindgen = { version = "0.0.1" }
-wasm-bindgen-test = { version = "0.0.1" }
-web-sys = { version = "0.0.1" }
+wasm-bindgen = { version = "*" }
+wasm-bindgen-test = { version = "*" }
+web-sys = { version = "*" }
 [features]
 default = ["hooks"]
-csr = ["lyx-core-leptos/csr"]
-ssr = ["lyx-core-leptos/ssr", "lyx-logic-use/ssr", "leptos-tiptap?/ssr"]
-hydrate = ["lyx-core-leptos/hydrate"]
+csr = ["leptos/csr"]
+ssr = ["leptos/ssr", "leptos-use/ssr", "leptos-tiptap?/ssr"]
+hydrate = ["leptos/hydrate"]
 # Core functionality. Hooks provide low level functions like `usePress` which hande interactions, aria attributes and more.
 # Use hooks to build your own set of components.
 hooks = []
@@ -57,6 +57,17 @@ clipboard = ["components", "web-sys/Clipboard"]
 # Enables tiptap editor support. Tiptap related JS files will be copied to your proect directory when running a build.
 tiptap = ["components", "dep:leptos-tiptap", "dep:leptos-tiptap-build"]
 full = ["hooks", "atoms", "components", "clipboard", "tiptap"]
-nightly = ["lyx-core-leptos/nightly"]
+nightly = ["leptos/nightly"]
 # Disable the build script when running on docs.rs
 docsrs = []
+
+
+
+
+
+
+
+
+
+
+

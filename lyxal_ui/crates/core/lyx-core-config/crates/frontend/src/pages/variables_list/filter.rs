@@ -1,11 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\variables_list\filter.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\variables_list\filter.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\variables_list\filter.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\pages\variables_list\filter.rs
-```rust
 use leptos::*;
 use serde_json::Value;
 use superposition_types::{
@@ -313,3 +305,4 @@ pub fn VariableFilterWidget(
 ```
 ```
 ```
+

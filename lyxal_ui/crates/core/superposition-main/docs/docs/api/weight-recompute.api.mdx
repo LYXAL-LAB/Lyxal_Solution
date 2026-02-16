@@ -1,0 +1,71 @@
+---
+id: weight-recompute
+title: "WeightRecompute"
+description: "Recalculates and updates the priority weights for all contexts in the workspace based on their dimensions."
+sidebar_label: "WeightRecompute"
+hide_title: true
+hide_table_of_contents: true
+api: eJzVVttq20AQ/ZVFTy34Ropf8taGQkIpmFzogwllLI2tTSTtZnY3iTH+986sZFm+5AIlhT5Z1p6ZOTNzZlarJEOXkrZemyo5TS4xhSINBXh0CqpMBZvFZ5+jsqQNab9UT6gXuXdqbkhBUajUVB6f+YWuIvDJ0L2zkKKagcNMmfhak8p0iZXjUG6Q9BJjkUACX2Qc+ld0ygRMaYNHPrdAUKJHcsnpdJVU/Idxz30ON9eLvoeFY5QW3jlChsT/XJpjCcnpKvFLK3DnSVeLZL3udTwYWvR19n7jXkL4EDQhE/UUcMdZm+1f+LuVN85yYdAJ/mQ0kp/d5uxVSDFIbaw4WuxC5cUOrC10Gms7vHNivDokY2Z3mHqpM0knvK5Dc7+7KCCCpWTmsXRvW3NVj6XL3DJdp3HoAbL6DIpJ1xeb7YvTcrqcolOtP2D1sSaRNKggWhNNNnpUJfg0ZwYD9QOXTmU41xVuRaikhbXMH6EI/Ogspnq+jCJu3foc2FVwXs1QsR5Ful77QnI4a/NitqbIftejcViD/Vwmu7NUc/eGOXLQUmgKB0MsJGXmbUYoRGNfB+qcDfl0M4we7mVEMcUMKx69LEhgVQ9LqAdN5GKKEO2FcYVP/xXjncGZdlTVS+I4d/LZacfttmN7Q3S5mZ+1OH8DdNZM2DqCx8dm9IIRxKq8QnpE+k7Echx/yJyydB0s8OiqaxM5QudYMmIh25Rretb07SdU7L0UBFePZZ8b2dJcjriZfc5/hk2Th3WZh9RZ3g7TIHKJq9uV2ufLAVg9yL2338Dp9GsQH9Nb2aX75wiE1AJut96upDh1/i/7bAsi7w90fH59PVERrYDhnGDTgc3CFsuZnMuEvMLsPWEi/LU4ERBbpqu5iU6b1l0FbrY1biNw7p+rXZ+MTsb90Zf+aCwMGeJLiNJprqRavap7le5wW20l+G8v/KZeUTK2AB23ZqBCKNWSmiaNa0a3g7yVFSsh53QFt1pJqBsq1mt5/RCQRGv8+Ai8tWdSQxHX5jYWGWbayQHreA6Fw1fK8hLZe1we+QSJt4dYiZbfH+TTZbPLPqu34rUfLB8fqvs5sxOtBnxNU7S+c3aww9bdfTG5uWZ1/wFEd6vh
+sidebar_class_name: "put api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"WeightRecompute"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"put"}
+  path={"/context/weight/recompute"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Recalculates and updates the priority weights for all contexts in the workspace based on their dimensions.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"x-config-tags","in":"header","schema":{"type":"string"}},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"WeightRecompute 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"data":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"condition":{"type":"object","additionalProperties":{},"description":"Represents conditional criteria used for context matching. Keys define dimension names and values specify the criteria that must be met.","title":"Condition"},"old_weight":{"type":"string","description":"Priority weight used to determine the order of context evaluation. Higher weights take precedence during configuration resolution."},"new_weight":{"type":"string","description":"Priority weight used to determine the order of context evaluation. Higher weights take precedence during configuration resolution."}},"required":["condition","id","new_weight","old_weight"],"title":"WeightRecomputeResponse"}}},"title":"WeightRecomputeResponseContent"}}}},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

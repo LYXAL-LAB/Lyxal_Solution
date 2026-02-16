@@ -1,0 +1,7 @@
+﻿[package]
+name = "lyxal_radix"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+leptos = "0.6"

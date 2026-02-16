@@ -1,16 +1,26 @@
 [package]
 name = "lyx-ui-foundations-example"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["nightly"] }
-lyx-core-router = { path = "../../../core/lyx-core-leptos/router", version = "0.0.1", features = ["nightly", "csr"] }
-wasm-bindgen = { version = "0.0.1" }
-web-sys = { version = "0.0.1", features = ["CanvasRenderingContext2d"] }
-lyx-found-animation = { path = "../", version = "0.0.1" }
-palette = { version = "0.0.1" }
-derive_more = { version = "0.0.1" }
-console_error_panic_hook = { version = "0.0.1" }
-log = { version = "0.0.1" }
-wasm-logger = { version = "0.0.1" }
+leptos = { path = "../core/lyx-core-leptos/leptos", features = ["nightly"] }
+leptos_router = { path = "../core/lyx-core-leptos/router", features = ["nightly", "csr"] }
+wasm-bindgen = { version = "*" }
+web-sys = { version = "*", features = ["CanvasRenderingContext2d"] }
+lyx-found-animation = { path = "../" }
+palette = { version = "*" }
+derive_more = { version = "*" }
+console_error_panic_hook = { version = "*" }
+log = { version = "*" }
+wasm-logger = { version = "*" }
+
+
+
+
+
+
+
+
+
+

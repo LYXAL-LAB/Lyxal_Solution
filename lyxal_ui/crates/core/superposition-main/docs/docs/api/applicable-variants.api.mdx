@@ -1,0 +1,71 @@
+---
+id: applicable-variants
+title: "ApplicableVariants"
+description: "Determines which experiment variants are applicable to a given context, used for experiment evaluation and variant selection."
+sidebar_label: "ApplicableVariants"
+hide_title: true
+hide_table_of_contents: true
+api: eJzFVttuGjEQ/RXLT60ECUqVl7ylKVKjpklEaFUJoWjYHVgne3FtLwEh/r0z9i67XHKR2qg8BGLP9cyZGa9kjDYySjtV5PJMfkGHJlM5WvGUqCgRuNBoVIa5E3MwCnJnBRgUoHWqIpikKFwhQMzUHHMRFbnDheuI0mIspoVp6+Mc0hLYkYA8rs0JiylGfHokO7IgaS9yGVM05xsnPyvfJGLwd4nWfS7ipTxbSe8yd/yzionVjx8s57OSNkowA/7llhrJZjF5IHdkRxt25hTajZmFOyQIcazYJqS3bZV1Zwe7AWqDFhkhslbrCJIgTBU0mFS+RAYuSlQ+OxLfcGlFjFMCXsSMlmWUcsioDgGrlHIWVmOkpkvhEmzMugTIVGmdmKDI0DGMTrmUc7io45AUrYopNjVVaFpZWmcoArleB2CVQQJ+tIFjS2vcGN6vzCCU5aIqx3rbojMl0oEGQzlR3ATgaCU5QTK26BZm1lUxe2MgE4SY3HX2i1dHu2+6ZeypMI9WQ4R/YW/MJ1YXuQ30OOn1+Gu74PsgCJITtSI5/EfkjMG1pcAYWHJyDjP7ujYBeyjjqv/uw8WuQEdiXmZMhYub6+Hg5opO+r9u+4PL7/3r4flVmwxV9kM2sO7U3Ll/xm8xR2OIVa/dH8zsrb1INJyqWRlmidiYDM1iUKdED244KFNXd9dT0kywpoPDuOO+Cl1q6i5nkZaPR75s9SprcZ/WvgUXsd2bN5s8d5vPd0IDw06p9oHfbbZRIMwr7RpI2upXsnF6iOaXJGEI8Ts0FFPfGBphp+/Ccxp3FmYH2Mix1bkcCOdQMqwBM54zsr/ZQT4sBobqmRS8YnRhfRzgEvrvuFlX9rhZcd15s34sRiWN3qUfYDZTLlkegVZHiXP6M1gVnZdsajTmmbR7j8QKsxEYN9buGKEAwvM2N6jwudyl/Nfh8FZ4aQEkzlM7lKEefKw54Xvushcie4sbL/6SHy/g68YkGDQ7u7+ATKe4vXN3tlNrGqh8WviQqurflVQgKpqqPBIFbAjspHdy2u196vZOWY/rmoFnX7UYmh4QrdfEVnKt18R/fwlVNWAjxzSulF/hpUk5ysDWkWyxlWfjAb4SxRJmOAmvVlR8/GHS9ZqPqSCGSTyuxsuE4WXW1uuS+R0ryxfUKFNILb4A14dBNX4+iueCpwm5vez9pKQjya3yLq7aT4Etb0Ggmhddv7kaib0R1micRxFq96Jse7rc3twNSXhSvVWzImYdA0/8jqW/FA2/ef2eYQF/tpIp5LPSD0IZbPLnD/6GHpo=
+sidebar_class_name: "post api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"ApplicableVariants"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/experiments/applicable-variants"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Determines which experiment variants are applicable to a given context, used for experiment evaluation and variant selection.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"content":{"application/json":{"schema":{"type":"object","properties":{"context":{"type":"object","additionalProperties":{},"description":"Represents conditional criteria used for context matching. Keys define dimension names and values specify the criteria that must be met.","title":"Condition"},"identifier":{"type":"string"}},"required":["context","identifier"],"title":"ApplicableVariantsRequestContent"}}},"required":true}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"ApplicableVariants 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"data":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"variant_type":{"type":"string","enum":["CONTROL","EXPERIMENTAL"],"title":"VariantType"},"context_id":{"type":"string"},"override_id":{"type":"string"},"overrides":{"type":"object","additionalProperties":{},"description":"Configuration overrides that replace default values when context conditions are met. Keys represent configuration keys and values are the override data.","title":"Overrides"}},"required":["id","overrides","variant_type"],"title":"Variant"}}},"required":["data"],"title":"ApplicableVariantsResponseContent"}}}},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

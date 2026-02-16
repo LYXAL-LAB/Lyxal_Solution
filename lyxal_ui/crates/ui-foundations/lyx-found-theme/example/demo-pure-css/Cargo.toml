@@ -1,14 +1,24 @@
 [package]
 name = "lyx-found-demo-pure-css"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-lyx-core-leptos = { path = "../../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["csr", "nightly"] }
-console_error_panic_hook = { version = "0.0.1" }
-console_log = { version = "0.0.1" }
-copy_dir = { version = "0.0.1" }
-lyx-logic-use = { path = "../../../../logic/lyx-logic-use", version = "0.0.1" }
-lyx-core-meta = { path = "../../../../core/lyx-core-leptos/meta", version = "0.0.1" }
-lyx-core-router = { path = "../../../../core/lyx-core-leptos/router", version = "0.0.1", features = ["csr"] }
-log = { version = "0.0.1" }
-leptos_theme = { path = "../../", version = "0.0.1" }
+leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr", "nightly"] }
+console_error_panic_hook = { version = "*" }
+console_log = { version = "*" }
+copy_dir = { version = "*" }
+leptos-use = { path = "../logic/lyx-logic-use" }
+leptos_meta = { path = "../core/lyx-core-leptos/meta" }
+leptos_router = { path = "../core/lyx-core-leptos/router", features = ["csr"] }
+log = { version = "*" }
+leptos_theme = { path = "../../" }
+
+
+
+
+
+
+
+
+
+

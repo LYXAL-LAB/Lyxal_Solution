@@ -1,48 +1,58 @@
 [package]
 name = "lyx-ui-comprehensive-demo"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
 # Leptos framework
-lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["csr"] }
-lyx-core-meta = { path = "../../../core/lyx-core-leptos/meta", version = "0.0.1" }
+leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr"] }
+leptos_meta = { path = "../core/lyx-core-leptos/meta" }
 # WASM dependencies
-console_error_panic_hook = { version = "0.0.1" }
-console_log = { version = "0.0.1" }
-log = { version = "0.0.1" }
-wasm-bindgen = { version = "0.0.1" }
-web-sys = { version = "0.0.1" }
-js-sys = { version = "0.0.1" }
-getrandom = { version = "0.0.1", features = ["js"] }
-uuid = { version = "0.0.1", features = ["v4", "js"] }
+console_error_panic_hook = { version = "*" }
+console_log = { version = "*" }
+log = { version = "*" }
+wasm-bindgen = { version = "*" }
+web-sys = { version = "*" }
+js-sys = { version = "*" }
+getrandom = { version = "*", features = ["js"] }
+uuid = { version = "*", features = ["v4", "js"] }
 # Tailwind-RS
-tailwind-rs-core = { path = "../packages/tailwind-rs-core", version = "0.0.1" }
-tailwind-rs-leptos = { version = "0.0.1" }
+tailwind-rs-core = { path = "../packages/tailwind-rs-core" }
+tailwind-rs-leptos = { version = "*" }
 # Published ShadCN UI components v0.9.1 (refactored versions)
-leptos-shadcn-drawer = { path = "../packages/leptos/drawer", version = "0.0.1" }
-leptos-shadcn-context-menu = { path = "../packages/leptos/context-menu", version = "0.0.1" }
-leptos-shadcn-alert-dialog = { path = "../packages/leptos/alert-dialog", version = "0.0.1" }
-leptos-shadcn-select = { path = "../packages/leptos/select", version = "0.0.1" }
-leptos-shadcn-command = { path = "../packages/leptos/command", version = "0.0.1" }
+leptos-shadcn-drawer = { path = "../packages/leptos/drawer" }
+leptos-shadcn-context-menu = { path = "../packages/leptos/context-menu" }
+leptos-shadcn-alert-dialog = { path = "../packages/leptos/alert-dialog" }
+leptos-shadcn-select = { path = "../packages/leptos/select" }
+leptos-shadcn-command = { path = "../packages/leptos/command" }
 # Additional components for comprehensive demo
-leptos-shadcn-button = { path = "../packages/leptos/button", version = "0.0.1" }
-leptos-shadcn-card = { path = "../packages/leptos/card", version = "0.0.1" }
-leptos-shadcn-input = { path = "../packages/leptos/input", version = "0.0.1" }
-leptos-shadcn-dialog = { path = "../packages/leptos/dialog", version = "0.0.1" }
-leptos-shadcn-dropdown-menu = { path = "../packages/leptos/dropdown-menu", version = "0.0.1" }
-leptos-shadcn-popover = { path = "../packages/leptos/popover", version = "0.0.1" }
-leptos-shadcn-tooltip = { path = "../packages/leptos/tooltip", version = "0.0.1" }
-leptos-shadcn-toast = { path = "../packages/leptos/toast", version = "0.0.1" }
-leptos-shadcn-accordion = { path = "../packages/leptos/accordion", version = "0.0.1" }
-leptos-shadcn-tabs = { path = "../packages/leptos/tabs", version = "0.0.1" }
-leptos-shadcn-switch = { path = "../packages/leptos/switch", version = "0.0.1" }
-leptos-shadcn-checkbox = { path = "../packages/leptos/checkbox", version = "0.0.1" }
-leptos-shadcn-radio-group = { path = "../packages/leptos/radio-group", version = "0.0.1" }
-leptos-shadcn-slider = { path = "../packages/leptos/slider", version = "0.0.1" }
-leptos-shadcn-progress = { path = "../packages/leptos/progress", version = "0.0.1" }
-leptos-shadcn-badge = { path = "../packages/leptos/badge", version = "0.0.1" }
-leptos-shadcn-avatar = { path = "../packages/leptos/avatar", version = "0.0.1" }
-leptos-shadcn-separator = { path = "../packages/leptos/separator", version = "0.0.1" }
-leptos-shadcn-skeleton = { path = "../packages/leptos/skeleton", version = "0.0.1" }
+leptos-shadcn-button = { path = "../packages/leptos/button" }
+leptos-shadcn-card = { path = "../packages/leptos/card" }
+leptos-shadcn-input = { path = "../packages/leptos/input" }
+leptos-shadcn-dialog = { path = "../packages/leptos/dialog" }
+leptos-shadcn-dropdown-menu = { path = "../packages/leptos/dropdown-menu" }
+leptos-shadcn-popover = { path = "../packages/leptos/popover" }
+leptos-shadcn-tooltip = { path = "../packages/leptos/tooltip" }
+leptos-shadcn-toast = { path = "../packages/leptos/toast" }
+leptos-shadcn-accordion = { path = "../packages/leptos/accordion" }
+leptos-shadcn-tabs = { path = "../packages/leptos/tabs" }
+leptos-shadcn-switch = { path = "../packages/leptos/switch" }
+leptos-shadcn-checkbox = { path = "../packages/leptos/checkbox" }
+leptos-shadcn-radio-group = { path = "../packages/leptos/radio-group" }
+leptos-shadcn-slider = { path = "../packages/leptos/slider" }
+leptos-shadcn-progress = { path = "../packages/leptos/progress" }
+leptos-shadcn-badge = { path = "../packages/leptos/badge" }
+leptos-shadcn-avatar = { path = "../packages/leptos/avatar" }
+leptos-shadcn-separator = { path = "../packages/leptos/separator" }
+leptos-shadcn-skeleton = { path = "../packages/leptos/skeleton" }
 [lib]
 crate-type = ["cdylib"]
+
+
+
+
+
+
+
+
+
+

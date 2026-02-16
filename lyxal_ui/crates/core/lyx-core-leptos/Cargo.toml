@@ -1,0 +1,200 @@
+[workspace]
+resolver = "2"
+members = [
+  # utilities
+  "any_spawner",
+  "const_str_slice_concat",
+  "either_of",
+  "next_tuple",
+  "oco",
+  "or_poisoned",
+
+  # core
+  "hydration_context",
+  "leptos",
+  "leptos_dom",
+  "leptos_config",
+  "leptos_hot_reload",
+  "leptos_macro",
+  "leptos_server",
+  "reactive_graph",
+  "reactive_stores",
+  "reactive_stores_macro",
+  "server_fn",
+  "server_fn_macro",
+  "server_fn/server_fn_macro_default",
+  "tachys",
+
+  # integrations
+  "integrations/actix",
+  "integrations/axum",
+  "integrations/utils",
+
+  # libraries
+  "meta",
+  "router",
+  "router_macro",
+  "any_error",
+]
+exclude = ["benchmarks", "examples", "projects"]
+
+[workspace.package]
+edition = "2021"
+rust-version = "*"
+
+[workspace.dependencies]
+# members
+throw_error = { path = "./any_error" }
+any_spawner = { path = "./any_spawner" }
+const_str_slice_concat = { path = "./const_str_slice_concat" }
+either_of = { path = "./either_of" }
+hydration_context = { path = "./hydration_context" }
+leptos = { path = "./leptos" }
+leptos_config = { path = "./leptos_config" }
+leptos_dom = { path = "./leptos_dom" }
+leptos_hot_reload = { path = "./leptos_hot_reload" }
+leptos_integration_utils = { path = "./integrations/utils" }
+leptos_macro = { path = "./leptos_macro" }
+leptos_router = { path = "./router" }
+leptos_router_macro = { path = "./router_macro" }
+leptos_server = { path = "./leptos_server" }
+leptos_meta = { path = "./meta" }
+next_tuple = { path = "./next_tuple" }
+oco_ref = { path = "./oco" }
+or_poisoned = { path = "./or_poisoned" }
+reactive_graph = { path = "./reactive_graph" }
+reactive_stores = { path = "./reactive_stores" }
+reactive_stores_macro = { path = "./reactive_stores_macro" }
+server_fn = { path = "./server_fn" }
+server_fn_macro = { path = "./server_fn_macro" }
+server_fn_macro_default = { path = "./server_fn/server_fn_macro_default" }
+tachys = { path = "./tachys" }
+
+# members deps
+async-once-cell = { default-features = false, version = "*" }
+itertools = { default-features = false, version = "*" }
+convert_case = { default-features = false, version = "*" }
+serde_json = { default-features = false, version = "*" }
+trybuild = { default-features = false, version = "*" }
+typed-builder = { default-features = false, version = "*" }
+typed-builder-macro = { default-features = false, version = "*" }
+thiserror = { default-features = false, version = "*" }
+wasm-bindgen = { default-features = false, version = "*" }
+indexmap = { default-features = false, version = "*" }
+rstml = { default-features = false, version = "*" }
+rustc_version = { default-features = false, version = "*" }
+guardian = { default-features = false, version = "*" }
+rustc-hash = { default-features = false, version = "*" }
+actix-web = { default-features = false, version = "*" }
+tracing = { default-features = false, version = "*" }
+slotmap = { default-features = false, version = "*" }
+futures = { default-features = false, version = "*" }
+dashmap = { default-features = false, version = "*" }
+pin-project-lite = { default-features = false, version = "*" }
+send_wrapper = { default-features = false, version = "*" }
+tokio-test = { default-features = false, version = "*" }
+html-escape = { default-features = false, version = "*" }
+proc-macro-error2 = { default-features = false, version = "*" }
+const_format = { default-features = false, version = "*" }
+gloo-net = { default-features = false, version = "*" }
+url = { default-features = false, version = "*" }
+tokio = { default-features = false, version = "*" }
+base64 = { default-features = false, version = "*" }
+cfg-if = { default-features = false, version = "*" }
+wasm-bindgen-futures = { default-features = false, version = "*" }
+tower = { default-features = false, version = "*" }
+proc-macro2 = { default-features = false, version = "*" }
+serde = { default-features = false, version = "*" }
+parking_lot = { default-features = false, version = "*" }
+axum = { default-features = false, version = "*" }
+serde_qs = { default-features = false, version = "*" }
+syn = { default-features = false, version = "*" }
+xxhash-rust = { default-features = false, version = "*" }
+paste = { default-features = false, version = "*" }
+quote = { default-features = false, version = "*" }
+web-sys = { default-features = false, version = "*" }
+js-sys = { default-features = false, version = "*" }
+rand = { default-features = false, version = "*" }
+serde-lite = { default-features = false, version = "*" }
+tokio-tungstenite = { default-features = false, version = "*" }
+serial_test = { default-features = false, version = "*" }
+erased = { default-features = false, version = "*" }
+glib = { default-features = false, version = "*" }
+async-trait = { default-features = false, version = "*" }
+anyhow = { default-features = false, version = "*" }
+walkdir = { default-features = false, version = "*" }
+actix-ws = { default-features = false, version = "*" }
+tower-http = { default-features = false, version = "*" }
+prettyplease = { default-features = false, version = "*" }
+inventory = { default-features = false, version = "*" }
+config = { default-features = false, version = "*" }
+camino = { default-features = false, version = "*" }
+ciborium = { default-features = false, version = "*" }
+bitcode = { default-features = false, version = "*" }
+multer = { default-features = false, version = "*" }
+leptos-spin-macro = { default-features = false, version = "*" }
+sledgehammer_utils = { default-features = false, version = "*" }
+sledgehammer_bindgen = { default-features = false, version = "*" }
+wasm-streams = { default-features = false, version = "*" }
+rkyv = { default-features = false, version = "*" }
+temp-env = { default-features = false, version = "*" }
+uuid = { default-features = false, version = "*" }
+bytes = { default-features = false, version = "*" }
+http = { default-features = false, version = "*" }
+regex = { default-features = false, version = "*" }
+drain_filter_polyfill = { default-features = false, version = "*" }
+tempfile = { default-features = false, version = "*" }
+futures-lite = { default-features = false, version = "*" }
+log = { default-features = false, version = "*" }
+percent-encoding = { default-features = false, version = "*" }
+async-executor = { default-features = false, version = "*" }
+const-str = { default-features = false, version = "*" }
+http-body-util = { default-features = false, version = "*" }
+hyper = { default-features = false, version = "*" }
+postcard = { default-features = false, version = "*" }
+rmp-serde = { default-features = false, version = "*" }
+reqwest = { default-features = false, version = "*" }
+tower-layer = { default-features = false, version = "*" }
+attribute-derive = { default-features = false, version = "*" }
+insta = { default-features = false, version = "*" }
+codee = { default-features = false, version = "*" }
+actix-http = { default-features = false, version = "*" }
+wasm-bindgen-test = { default-features = false, version = "*" }
+rustversion = { default-features = false, version = "*" }
+getrandom = { default-features = false, version = "*" }
+actix-files = { default-features = false, version = "*" }
+async-lock = { default-features = false, version = "*" }
+base16 = { default-features = false, version = "*" }
+digest = { default-features = false, version = "*" }
+sha2 = { default-features = false, version = "*" }
+subsecond = { default-features = false, version = "*" }
+dioxus-cli-config = { default-features = false, version = "*" }
+dioxus-devtools = { default-features = false, version = "*" }
+wasm_split_helpers = { default-features = false, version = "*" }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 'z'
+
+[workspace.metadata.cargo-all-features]
+skip_feature_sets = [["csr", "ssr"], ["csr", "hydrate"], ["ssr", "hydrate"]]
+max_combination_size = 2
+
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+  'cfg(leptos_debuginfo)',
+  'cfg(erase_components)',
+] }
+
+
+
+
+
+
+[build-dependencies]
+rustc_version = "*"
+
+
+
+

@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx-logic-i18n\lyx-core-lyx_core_lyx-logic-lyx_logic_leptos_i18n\src\macro_helpers\interpol_args.rs
-```rust
 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx-logic-i18n\lyx-core-lyx_core_lyx-logic-lyx_logic_lyx-core-lyx_core_lyx-logic-lyx_logic_leptos_i18n\src\macro_helpers\interpol_args.rs
 2: ```rust
 3: 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx_logic_i18n\lyx-core-lyx_core_lyx-logic-lyx_logic_lyx-core-lyx_core_lyx-logic-lyx_logic_leptos_i18n\src\macro_helpers\interpol_args.rs
@@ -249,3 +247,4 @@
 247: 245: ```
 248: ```
 ```
+

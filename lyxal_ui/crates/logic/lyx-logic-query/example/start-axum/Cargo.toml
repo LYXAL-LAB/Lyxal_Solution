@@ -1,6 +1,6 @@
 [package]
 name = "start-axum"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [lib]
@@ -9,26 +9,26 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 
 
-axum = { version = "0.0.1", optional = true }
-console_error_panic_hook = { version = "0.0.1" }
-console_log = { version = "0.0.1" }
-cfg-if = { version = "0.0.1" }
-leptos = { version = "0.0.1", path = "../../../../core/lyx-core-leptos/leptos", optional = true }
-leptos_axum = { version = "0.0.1", path = "../../../../core/lyx-core-leptos/integrations/axum", optional = true }
-leptos_meta = { version = "0.0.1", path = "../../../../core/lyx-core-leptos/meta", optional = true }
-leptos_router = { version = "0.0.1", path = "../../../../core/lyx-core-leptos/router", optional = true }
-log = { version = "0.0.1" }
-simple_logger = { version = "0.0.1" }
-tokio = { version = "0.0.1", optional = true, features = ["rt-multi-thread"] }
-tower = { version = "0.0.1", optional = true }
-tower-http = { version = "0.0.1", optional = true, features = ["fs"] }
-wasm-bindgen = { version = "0.0.1" }
-thiserror = { version = "0.0.1" }
-tracing = { version = "0.0.1", optional = true }
-http = { version = "0.0.1" }
-serde = { version = "0.0.1" }
-leptos_query = { version = "0.0.1", path = "../../query", optional = true }
-leptos_query_devtools = { version = "0.0.1", path = "../../devtools", optional = true }
+axum = { version = "*", optional = true }
+console_error_panic_hook = { version = "*" }
+console_log = { version = "*" }
+cfg-if = { version = "*" }
+leptos = { ${2}, optional = true }
+leptos_axum = { ${2, optional = true }, optional = true }
+leptos_meta = { ${2}, optional = true }
+leptos_router = { ${2}, optional = true }
+log = { version = "*" }
+simple_logger = { version = "*" }
+tokio = { version = "*", optional = true, features = ["rt-multi-thread"] }
+tower = { version = "*", optional = true }
+tower-http = { version = "*", optional = true, features = ["fs"] }
+wasm-bindgen = { version = "*" }
+thiserror = { version = "*" }
+tracing = { version = "*", optional = true }
+http = { version = "*" }
+serde = { version = "*" }
+leptos_query = { ${2}, optional = true }
+leptos_query_devtools = { ${2}, optional = true }
 
 [features]
 hydrate = [
@@ -48,3 +48,13 @@ ssr = [
 "leptos_router/ssr",
 "leptos_query/ssr",
 "dep:tracing" ]
+
+
+
+
+
+
+
+
+
+

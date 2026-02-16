@@ -1,7 +1,13 @@
 [package]
 name = "server"
-version = "0.0.1"
+version = "*"
 edition = "2024"
 [dependencies]
-app = { version = "0.0.1", path = "../../../../../platform/lyx-plat-tauri/app", optional = false, default-features = false, features = ["ssr"] }
-leptos = { version = "0.0.1", path = "../../../leptos", optional = false, features = [ "ssr" ] }
+app = { version = "*", path = "../../../../../platform/lyx-plat-tauri/app", optional = false, default-features = false, features = ["ssr"] }
+leptos = { version = "*", path = "../../../leptos", optional = false, features = [ "ssr" ] }
+
+
+[build-dependencies]
+rustc_version = "*"
+
+

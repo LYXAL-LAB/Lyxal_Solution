@@ -1,0 +1,71 @@
+---
+id: delete-dimension
+title: "DeleteDimension"
+description: "Permanently removes a dimension from the workspace. This operation will fail if the dimension has active dependencies or is referenced by existing configurations."
+sidebar_label: "DeleteDimension"
+hide_title: true
+hide_table_of_contents: true
+api: eJzVVMtu2zAQ/BWCpxbwC2ly8S1pXDRAUQSJewpyoKmVxUQimSXlRBD0792VZNnOC0Ufh/piipydXe4Mt5YJBI3GR+OsnMtLwEJZsDGvBELhNhCEEokpwAZCiBRdIWIG4tHhffBKw0QsMxOE84CKScSjyXORKpMLk7bQXXSmiE1Hs6FN8GATsNpQBoeCKBBSQNqBRKwqAU8mRGPXQjubmnXZsYeJHMkh10VCJZ9DDhHOt0no3CtUBe1hkPObWlr6IFyyhzB8V69iRuugMyiUnNcyVp6BISLllc1IIjyUBoGyRCyhGQ1cT2OH67FJtlQZqATwt8mGZv4B3y3vBE8tgsD4o9kx/x3K+6xXgkBiG8Wcx68FXUFwJWr47uIXV9pEHD+LOpnNXkZdWBLAqvwacAO4QCSRCbgLHElSNpLVOFZ5nxvdijq9C0xQv7y7W92BjiwwsgWi6W5aQAhqDa80iWqLJubwejlXfSWf+zIa/lGEWrNv5NClIKm35KfMsd2StoWty8g+czkdfDWth2XD0oEu0cSq9WAoTMyqifJmksXoz1Qw+rRkgptbtsLzc1AIOABud2zX3JTu3m9zDo3gfSrlUJmvy+WlaNFCEZyu3nd+6zeOXPE5i/tOZb+SpoW/l6cFtFIZm7qWtJfsuiSRvQumjyHdQkd9NDs6Gc8+jWcnXCFBIg0tDu1fVGdzsT8TDmqrd9b7PyZe3+cIT3Hqc0Uzgu5dYs5X6Xx4czDf5rsP8k5GDWJEXZOq8APzpuHthxKQ3UnLjUKjVtx18mpiAq/J7KnKA7zTuw9X/Qz6KN4qst9UtmIFVV7yFy3voTqYyQ09g+3Y++tFdMn2hvZQCL+9f5Jqf6QfZOsAp1qDj3tnLwZgsz90zhffFssFvZKfa6GuYQ==
+sidebar_class_name: "delete api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DeleteDimension"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"delete"}
+  path={"/dimension/{dimension}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Permanently removes a dimension from the workspace. This operation will fail if the dimension has active dependencies or is referenced by existing configurations.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"dimension","in":"path","schema":{"type":"string"},"required":true},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"204":{"description":"DeleteDimension 204 response"},"404":{"description":"ResourceNotFound 404 response"},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

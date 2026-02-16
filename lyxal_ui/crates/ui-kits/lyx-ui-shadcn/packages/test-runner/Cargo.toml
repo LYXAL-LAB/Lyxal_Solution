@@ -1,9 +1,13 @@
 [package]
 name = "lyx-ui-test-runner"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-serde = { version = "0.0.1", features = ["derive"] }
-serde_json = { version = "0.0.1" }
+serde = { version = "*", features = ["derive"] }
+serde_json = { version = "*" }
 [lib]
 crate-type = ["rlib"]
+
+
+
+

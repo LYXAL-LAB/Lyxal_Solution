@@ -1,0 +1,71 @@
+---
+id: create-webhook
+title: "CreateWebhook"
+description: "Creates a new webhook config to receive HTTP notifications when specified events occur in the system."
+sidebar_label: "CreateWebhook"
+hide_title: true
+hide_table_of_contents: true
+api: eJztV0tv2zgQ/isET10gTrxZ5JKbmxpNgBYNErd7MAyDlsYSG0nUkpQfMPzfO0PKEmUr3iyK7qk5xBI5nOc331A7HoOJtCytVAW/5XcahAXDBCtgzdawSJV6YZEqljJhVjENEcgVsPvJ5JEVysqljASdNWydQsFMCRGuQcxgBYU1TEVRpZksmE2Bma2xkF/yC65K0O7cQ9xY/dtbw10N/1Rg7HsVb/ntjqN5i8roUZRlVlu8+m7I5R03UQq5oCe7LQHVqcV3iCzqKTXZsRIM7RYih0DKWC2LhO8vuino2YdCLDKIg72FUhmIgjYrnfUeysGmKj7dInVVzm+n/ON4gm+PX57dz1f3fzS5u8ffD+NP48kYH+7How98dsGttBkpube2/Ow1o40VaNPrdGvk25/h8W/1ATwbVcaqfJ6CiHGxL3sijiXlRGSPYR6PE8Y/QgFaRuwFtoOVyCpgXgVDZ6rIVhpYZRARS6XZMoONxGSyWFiBaCo1GCytKyhCRKsqSVVlHVpGjw8ElYPvX7xfVA8HrcBlobXYoqhEdJmealC4qSgSmCPQTG+V9x51UlOdp0fi3YhbQDSuNOW+8CjzsAgS30H4k4f3XQ3rfdc4Jg1woRQaNVlXm+kBvHwzUDoZSDIkKfe+fPh20gQtEo9VB8rWSr+YUkTwE/pmtGJKpADfZtfDIf308UodP0MRdjiDtn739+/+/tn+zsUGuxXfIRTAJC0QzrifCWPnuJ0kgNCdC9uXVIwgpx2O3sPASsTTG6gDJRy64/lie3b7vxh1/uYqdsP0NcVdober/xeyC/ztxPYGGjzxqCeSbrH6qbPF/usk6vkjYFEM66aPfB5QQiPMn0Gj1rHWCNSbX0JBORgjkj4W2rdh9LjTFwydEAmxP69DNpSMA+/wUhnngLApvl2tm9uTAbxySbt1c8Pk0qbbS1HKyxS55b0wMhpVdGQ6o1FwvA9Cg24EZq22Z0qBj/J1nU3YtM6PicRdGp00EyiOgdZ5PswbR720T+A+49lbzDjxc3acgCsMVfmpvXKONyIvM2hHSttMXUMBGdcDhAZiPTLa3aZifiA0pE7c3cPTAQFOD0pmJywUsIAslsrlpMbXc4WIRHTIOuTW4PXw+mYw/GswvKFzBKBcFEGcvsFYexE/mpxNl/xv3wl1nS1s7FWZCRmOZI/8KT8gH5OUUk/g0m6HMIKvOtvvaRlLq6kd8HEltKRiefwf7jvUKbE0dRWXIjNwJvh3TzV5/sFecxFnZfe25gYnLnFqul9iKrzLdax5gZpaBhPS0UqcsF17YhRFUNqzsiEf1RedRf3RhoxPZ7RY0wcd/kdv6LvPgYAE3NoOx0ORVI4zuddJfz8A4rkKKA==
+sidebar_class_name: "post api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CreateWebhook"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/webhook"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Creates a new webhook config to receive HTTP notifications when specified events occur in the system.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"content":{"application/json":{"schema":{"type":"object","properties":{"name":{"type":"string"},"description":{"type":"string"},"enabled":{"type":"boolean"},"url":{"type":"string"},"method":{"type":"string","enum":["GET","POST","PUT","PATCH","DELETE","HEAD"],"title":"HttpMethod"},"version":{"type":"string","enum":["V1"],"title":"Version"},"custom_headers":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"events":{"type":"array","items":{"type":"string"}},"change_reason":{"type":"string"}},"required":["change_reason","description","enabled","events","method","name","url"],"title":"CreateWebhookRequestContent"}}},"required":true}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"CreateWebhook 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"name":{"type":"string"},"description":{"type":"string"},"enabled":{"type":"boolean"},"url":{"type":"string"},"method":{"type":"string","enum":["GET","POST","PUT","PATCH","DELETE","HEAD"],"title":"HttpMethod"},"version":{"type":"string","enum":["V1"],"title":"Version"},"custom_headers":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"events":{"type":"array","items":{"type":"string"}},"max_retries":{"type":"number"},"last_triggered_at":{"type":"string","format":"date-time"},"change_reason":{"type":"string"},"created_by":{"type":"string"},"created_at":{"type":"string","format":"date-time"},"last_modified_by":{"type":"string"},"last_modified_at":{"type":"string","format":"date-time"}},"required":["change_reason","created_at","created_by","description","enabled","events","last_modified_at","last_modified_by","max_retries","method","name","url","version"],"title":"CreateWebhookResponseContent"}}}},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

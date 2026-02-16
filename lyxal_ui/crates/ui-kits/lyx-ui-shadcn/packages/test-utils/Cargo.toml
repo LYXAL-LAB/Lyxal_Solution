@@ -1,22 +1,22 @@
 [package]
 name = "lyx-ui-test-utils"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-wasm-bindgen-test = { version = "0.0.1" }
-web-sys = { version = "0.0.1", features = ["console", "Document", "Element", "HtmlElement", "Window", "Performance", "PerformanceTiming"] }
-js-sys = { version = "0.0.1" }
-console_error_panic_hook = { version = "0.0.1" }
-serde = { version = "0.0.1" }
-serde_json = { version = "0.0.1" }
+wasm-bindgen-test = { version = "*" }
+web-sys = { version = "*", features = ["console", "Document", "Element", "HtmlElement", "Window", "Performance", "PerformanceTiming"] }
+js-sys = { version = "*" }
+console_error_panic_hook = { version = "*" }
+serde = { version = "*" }
+serde_json = { version = "*" }
 # ✅ FIXED: Add "js" feature for WASM compatibility
-uuid = { version = "0.0.1", features = ["v4", "js"] }
+uuid = { version = "*", features = ["v4", "js"] }
 # Framework-specific testing
-lyx-core-leptos = { path = "../../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
 # ✅ ADDED: WASM-compatible random generation
-getrandom = { version = "0.0.1", features = ["js"] }
+getrandom = { version = "*", features = ["js"] }
 # Snapshot testing dependencies
-chrono = { version = "0.0.1" }
+chrono = { version = "*" }
 [features]
 default = []
 wasm-testing = []
@@ -24,8 +24,18 @@ native-testing = []
 # Conditional dependencies for different targets
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # WASM-specific testing utilities
-wasm-bindgen-futures = { version = "0.0.1" }
+wasm-bindgen-futures = { version = "*" }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # Native-only testing utilities
-proptest = { version = "0.0.1" }
-tempfile = { version = "0.0.1" }
+proptest = { version = "*" }
+tempfile = { version = "*" }
+
+
+
+
+
+
+
+
+
+

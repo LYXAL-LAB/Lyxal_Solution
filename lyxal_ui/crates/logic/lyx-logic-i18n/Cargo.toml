@@ -1,0 +1,43 @@
+
+[workspace.package]
+version = "*"
+
+[workspace.dependencies]
+# pin macro, codegen and parser version, those don't follow semver internally so a version missmatch with the main crate can cause problems.
+leptos_i18n_macro = { ${2} }
+leptos_i18n_parser = { ${2} }
+leptos_i18n_codegen = { ${2} }
+leptos_i18n = { ${2} }
+leptos_i18n_router = { ${2} }
+leptos_i18n_build = { ${2} }
+
+# leptos
+leptos = { ${2} }
+leptos_router = { ${2} }
+leptos_meta = { ${2} }
+
+# icu
+icu = { version = "*", default-features = false }
+icu_locale = { version = "*", default-features = false }
+icu_provider = { version = "*", default-features = false }
+fixed_decimal = { version = "*", default-features = false }
+icu_provider_export = { version = "*", default-features = false }
+icu_provider_source = { version = "*", default-features = false }
+icu_plurals = { version = "*", default-features = false }
+icu_datetime = { version = "*", default-features = false }
+icu_calendar = { version = "*", default-features = false }
+icu_list = { version = "*", default-features = false }
+icu_decimal = { version = "*", default-features = false }
+icu_experimental = { version = "*", default-features = false }
+tinystr = "0.8.2"
+
+
+
+
+
+
+
+
+
+
+

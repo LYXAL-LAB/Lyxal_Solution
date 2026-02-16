@@ -1,47 +1,51 @@
 [package]
-name = "lyx-core-leptos_macro"
-version = "0.0.1"
+name = "leptos_macro"
+version = "0.8.0"
 edition = "2024"
 [lib]
 proc-macro = true
 [dependencies]
-attribute-derive = { version = "0.0.1", features = ["syn-full" ], default-features = true }
-cfg-if = { version = "0.0.1", default-features = true }
-html-escape = { version = "0.0.1", default-features = true }
-itertools = { version = "0.0.1", default-features = true }
-prettyplease = { version = "0.0.1", default-features = true }
-proc-macro-error2 = { version = "0.0.1", default-features = false }
-proc-macro2 = { version = "0.0.1", default-features = true }
-quote = { version = "0.0.1", default-features = true }
-syn = { version = "0.0.1", features = ["full"], default-features = true }
-rstml = { version = "0.0.1", default-features = true }
-lyx-core-leptos_hot_reload = { path = "../leptos_hot_reload", version = "0.0.1" }
-lyx-core-server_fn_macro = { path = "../server_fn_macro", version = "0.0.1", optional = true }
-convert_case = { version = "0.0.1", default-features = true }
-uuid = { version = "0.0.1", features = ["v4"], default-features = true }
-tracing = { version = "0.0.1", optional = true, default-features = true }
+attribute-derive = { version = "*", features = ["syn-full" ], default-features = true }
+cfg-if = { version = "*", default-features = true }
+html-escape = { version = "*", default-features = true }
+itertools = { version = "*", default-features = true }
+prettyplease = { version = "*", default-features = true }
+proc-macro-error2 = { version = "*", default-features = false }
+proc-macro2 = { version = "*", default-features = true }
+quote = { version = "*", default-features = true }
+syn = { version = "*", features = ["full"], default-features = true }
+rstml = { version = "*", default-features = true }
+leptos_hot_reload = { path = "../leptos_hot_reload", version = "*" }
+server_fn_macro = { path = "../server_fn_macro", version = "*", optional = true }
+convert_case = { version = "*", default-features = true }
+uuid = { version = "*", features = ["v4"], default-features = true }
+tracing = { version = "*", optional = true, default-features = true }
 [dev-dependencies]
-log = { version = "0.0.1", default-features = true }
-typed-builder = { version = "0.0.1", default-features = true }
-trybuild = { version = "0.0.1", default-features = true }
-lyx-core-leptos = { path = "../leptos", version = "0.0.1" }
-lyx-core-router = { path = "../router", version = "0.0.1", features = ["ssr"] }
-lyx-core-server_fn = { path = "../server_fn", version = "0.0.1", features = ["cbor"] }
-insta = { version = "0.0.1", default-features = true }
-serde = { version = "0.0.1", default-features = true }
+log = { version = "*", default-features = true }
+typed-builder = { version = "*", default-features = true }
+trybuild = { version = "*", default-features = true }
+leptos = { path = "../leptos", version = "*" }
+router = { path = "../router", version = "*", features = ["ssr"] }
+server_fn = { path = "../server_fn", version = "*", features = ["cbor"] }
+insta = { version = "*", default-features = true }
+serde = { version = "*", default-features = true }
 [build-dependencies]
-rustc_version = { version = "0.0.1", default-features = true }
+rustc_version = { version = "*", default-features = true }
 [features]
 stable = []
 csr = []
 hydrate = []
-ssr = ["lyx-core-server_fn_macro/ssr"]
-nightly = ["lyx-core-server_fn_macro/nightly"]
+ssr = ["server_fn_macro/ssr"]
+nightly = ["server_fn_macro/nightly"]
 tracing = ["dep:tracing"]
 islands = []
 trace-components = []
 trace-component-props = []
-actix = ["lyx-core-server_fn_macro/actix"]
-axum = ["lyx-core-server_fn_macro/axum"]
-generic = ["lyx-core-server_fn_macro/generic"]
+actix = ["server_fn_macro/actix"]
+axum = ["server_fn_macro/axum"]
+generic = ["server_fn_macro/generic"]
 __internal_erase_components = []
+
+
+
+

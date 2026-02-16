@@ -1,0 +1,71 @@
+---
+id: list-audit-logs
+title: "ListAuditLogs"
+description: "Retrieves a paginated list of audit logs with support for filtering by date range, table names, actions, and usernames for compliance and monitoring purposes."
+sidebar_label: "ListAuditLogs"
+hide_title: true
+hide_table_of_contents: true
+api: eJzNV8Fu2zgQ/RVCh8UWkBNvFrnk5m7dboBsESTuKTAMWhrbbCmRJakkhuF/3xlKsilbEeQkXezFlsjhzJvHx+FoE6VgEyO0EyqPrqI7cEbAI1jGmeZLkXMHKZPCOqYWjBepcEyqpWVPwq2YLbRWxrGFMmwhpAMj8iWbr1mKy5jh+RJi5vhcAst5BjZmPKFA9JCnrLBg/Lh3kKhMS8HzBPxkpnLhlHeoC6OVBXsWxZHSYDj5uE4R7g0CGxGoG8SEs5ob9Ic4bHT1sInIOVolqsgdzgrK8GcBZo0vzby/FtkcDOUoHGSWOcXmmAG4wuRIgMgZ8GRFlAChsMkKMh5dbSK31hQi9+vf5na7jXeQaaQb8S1asDIsuTXVxsXMOm4c0bYwKmN/nAK3v88QK5eyG+r1gjlToJsycdSWlPiMxpbU5amJmVjm1XaXusO1bL+fniMvDL+brVnNlZLA8/8mfsgAsTIjzR/ycATROgqBM6j4jDscoWUDJ9BP6NGpd/ZHh/DIm1tLDx/XtjnnxnCy8wQdB0X/ETxrqVIcJIJDTfhz/s4BMRyKE092dP31fnw3wYFvt59GkzE+fBrfjPFhGkdOOB/E14VRiaMLal2F+nId0mqx+s3m627531OJVCbFQ0X4q/rla15ZWOuSZltVvUv+LV5r4sgHvnL8DagiXx/XjcyeB8osByKtU1sBT33FeJGWOKIjJQykRxQ/D56U+WE1T+AN/qY0YjVmBF4cF8Mh/TVpadwIDE1YvQZjJSp3gFcBruIaL5vEE3T+3dLSzTEUNf8OCd0c2hCdTpSBnXJczqgg2OOairjL+UMR7+fxiPZR/QvRcU/ayPInfFYS3jJNKn95luoF1vhM9y0tcX3C3/OQ4u1uBNVeOasowqEcnoK38oS1lqK9Wh6C8kMCro9lQFGYckjOITRU0ecC77ftYQQPqbnVcUMYgaeGJu8qOf5VaXHrXV+2afkaLbA0yXswj2DGxuDZvvwlikYqLHUcrcTWabTAaUvGa3FJDVhJIfuN/bPr5YgWvFBXirq3JXgk3K3w5dw3l1QQICmMcGvfwdkM+8z1GdfibOWc/sitSEYFLXiYUoE5nAduwOwMpntv98REmezLPnfZ0/hRxf17Mrll3hobYbfCfCu66yrmexCaJyl3IOsTxpt3xfEGfn9EvlDeaV3NC9xZbJhFtQY3y5auL4YXl4Phn4PhJSFEE5dxr5OqTpNQWblpVUPdgLbZy+3//6FQUezg2Z1ryYWvL4WRlEYpOSwTXnKokhVSQQObDe4ffDNyu6XhqtqgDlNhCR2qdsGlhQ5iTvySaIX5A9bBZ8sjlwXZRCT4/kBO+UDoQFF9ibwSxC9q/Tvwll8j3XBLy7Br72O/78l7WVcddx/b3XXVxzjoV1+5Kae1jh1c79vfPZIpvRjhs/dFum71TjtGv99Vl+0H1o0haFRfSccJocI2thGtNBglCejwyB7dydvw/vsynmAB/xcb3wZO
+sidebar_class_name: "get api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"ListAuditLogs"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/audit"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Retrieves a paginated list of audit logs with support for filtering by date range, table names, actions, and usernames for compliance and monitoring purposes.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"count","in":"query","description":"Number of items to be returned in each page.","schema":{"type":"number","description":"Number of items to be returned in each page."}},{"name":"page","in":"query","description":"Page number to retrieve, starting from 1.","schema":{"type":"number","description":"Page number to retrieve, starting from 1."}},{"name":"all","in":"query","description":"If true, returns all requested items, ignoring pagination parameters page and count.","schema":{"type":"boolean","description":"If true, returns all requested items, ignoring pagination parameters page and count."}},{"name":"from_date","in":"query","schema":{"type":"string","format":"date-time"}},{"name":"to_date","in":"query","schema":{"type":"string","format":"date-time"}},{"name":"table","in":"query","style":"form","schema":{"type":"array","items":{"type":"string"}},"explode":true},{"name":"action","in":"query","style":"form","schema":{"type":"array","items":{"type":"string","enum":["INSERT","UPDATE","DELETE"],"title":"AuditAction"}},"explode":true},{"name":"username","in":"query","schema":{"type":"string"}},{"name":"sort_by","in":"query","description":"Sort order enumeration for list operations.","schema":{"type":"string","description":"Sort order enumeration for list operations.","enum":["desc","asc"],"title":"SortBy"}},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"ListAuditLogs 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"total_pages":{"type":"number"},"total_items":{"type":"number"},"data":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"},"table_name":{"type":"string"},"user_name":{"type":"string"},"timestamp":{"type":"string","format":"date-time"},"action":{"type":"string","enum":["INSERT","UPDATE","DELETE"],"title":"AuditAction"},"original_data":{},"new_data":{},"query":{"type":"string"}},"required":["action","id","query","table_name","timestamp","user_name"],"title":"AuditLogFull"}}},"required":["data","total_items","total_pages"],"title":"ListAuditLogsResponseContent"}}}},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

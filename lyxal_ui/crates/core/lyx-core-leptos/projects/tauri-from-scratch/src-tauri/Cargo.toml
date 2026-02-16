@@ -1,16 +1,20 @@
 [package]
 name = "src_tauri"
-version = "0.0.1"
+version = "*"
 edition = "2024"
 [lib]
 name = "src_tauri"
 path = "src/lib.rs"
 [build-dependencies]
-tauri-build = { version = "0.0.1", features = [] }
+rustc_version = "*"
+tauri-build = { version = "*", features = [] }
 [dependencies]
-log = { version = "0.0.1" }
-serde = { version = "0.0.1", features = ["derive"] }
-tauri = { version = "0.0.1", features = ["devtools"] }
-tauri-plugin-http = { version = "0.0.1" }
+log = { version = "*" }
+serde = { version = "*", features = ["derive"] }
+tauri = { version = "*", features = ["devtools"] }
+tauri-plugin-http = { version = "*" }
 [features]
 custom-protocol = ["tauri/custom-protocol"]
+
+
+

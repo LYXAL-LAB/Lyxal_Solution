@@ -1,27 +1,33 @@
 [package]
-name = "lyx-core-e2e"
-version = "0.0.1"
+name = "e2e"
+version = "*"
 edition = "2024"
 [dev-dependencies]
-anyhow = { version = "0.0.1" }
-async-trait = { version = "0.0.1" }
-cucumber = { version = "0.0.1", features = ["tracing", "macros"] }
-pretty_assertions = { version = "0.0.1" }
-serde_json = { version = "0.0.1" }
-tokio = { version = "0.0.1", features = ["macros", "rt-multi-thread", "time"] }
-url = { version = "0.0.1" }
-reqwest = { version = "0.0.1" }
-tracing = { version = "0.0.1" }
-chromiumoxide = { version = "0.0.1", default-features = false, features = ["tokio-runtime" ] }
-fake = { version = "0.0.1" }
-tokio-tungstenite = { version = "0.0.1" }
-futures-util = { version = "0.0.1" }
-uuid = { version = "0.0.1", features = ["serde"] }
-futures = { version = "0.0.1" }
+anyhow = { version = "*" }
+async-trait = { version = "*" }
+cucumber = { version = "*", features = ["tracing", "macros"] }
+pretty_assertions = { version = "*" }
+serde_json = { version = "*" }
+tokio = { version = "*", features = ["macros", "rt-multi-thread", "time"] }
+url = { version = "*" }
+reqwest = { version = "*" }
+tracing = { version = "*" }
+chromiumoxide = { version = "*", default-features = false, features = ["tokio-runtime" ] }
+fake = { version = "*" }
+tokio-tungstenite = { version = "*" }
+futures-util = { version = "*" }
+uuid = { version = "*", features = ["serde"] }
+futures = { version = "*" }
 [[test]]
-name = "lyx-core-e2e"
+name = "e2e"
 harness = false
 [features]
 ssr = []
 [dependencies]
-regex = { version = "0.0.1" }
+regex = { version = "*" }
+
+
+[build-dependencies]
+rustc_version = "*"
+
+

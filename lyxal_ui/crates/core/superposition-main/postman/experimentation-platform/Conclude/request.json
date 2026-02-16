@@ -1,0 +1,49 @@
+{
+  "method": "PATCH",
+  "header": [
+    {
+      "key": "Content-Type",
+      "value": "application/json",
+      "type": "text"
+    },
+    {
+      "key": "Authorization",
+      "value": "Bearer {{token}}",
+      "type": "text"
+    },
+    {
+      "key": "x-tenant",
+      "value": "{{x_tenant}}",
+      "type": "default"
+    },
+    {
+      "key": "x-org-id",
+      "value": "{{org_id}}",
+      "type": "default"
+    }
+  ],
+  "body": {
+    "mode": "raw",
+    "options": {
+      "raw": {
+        "language": "json"
+      }
+    },
+    "raw_json_formatted": {
+      "chosen_variant": "{{experiment_id}}-control",
+      "description": "description",
+      "change_reason": "change_reason"
+    }
+  },
+  "url": {
+    "raw": "{{host}}/experiments/{{experiment_id}}/conclude",
+    "host": [
+      "{{host}}"
+    ],
+    "path": [
+      "experiments",
+      "{{experiment_id}}",
+      "conclude"
+    ]
+  }
+}

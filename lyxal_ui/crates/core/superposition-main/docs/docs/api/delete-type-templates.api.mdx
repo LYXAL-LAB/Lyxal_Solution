@@ -1,0 +1,71 @@
+---
+id: delete-type-templates
+title: "DeleteTypeTemplates"
+description: "Permanently removes a type template from the workspace. No checks performed while deleting"
+sidebar_label: "DeleteTypeTemplates"
+hide_title: true
+hide_table_of_contents: true
+api: eJy1Vktv2kAQ/iurPbUSL6Xhwi1taBupSlFDTwihxR7wJrbXmV2TIOT/3pm1eRgMqprmxLLz+mbm2xlvZAg2QJ05bVI5kCPARKWQungtEBKzAiuUcOsMhIMki5UDsUCTCBeBeDH4ZDMVQEfcGxFEEDxZkQEuDCYQipdIxyBCiMHpdClb0pBMcaC7kELdsgDG5HpcebakkylUCd2jlYPJRqb0h3QZwMyfW1Izzky5iM6WgiZKDjZeg+6tQ45VtCTCc64RKJLDHIrWztdr2+CyrcOtqwhUCPjPznZFeIO/Kd/YzKSWakD6V70e/9Rb01AvQYpia0kRA5M66h3bqiyLdeCr3X207GBzCsjMHyFwXHXk3jhdht9Xuwm7l553pcJQc1QVjw6dkmE9nW+QAupAPMG6vVJxDqJ0IShSHrgcQeSWWERkEosYXvWcyaScooQzypny9NkRE9Hky8jkzpPyZnTXIRhOu5hx/SxxHYdvyCuIVLqEGYKy5zRI5iCczdcXxcqdiluSHwVLJOUAbaepumQTK+tmiQn1Qr/JshFSjWiTowRreGu51UvVgLEheKv2RA8pMt33ooHBvyryfqmYWxSM+rp3fcp/UjU5BnBv3FeTp6EgrT35yarf9GruyC8SGR8AV4BDRKJT/11eTQLWqmXTmyn2JWiA01QCtlBLHoGSyyX2E5LKSeMxMjxB/WgFPzRpGg5kl+Pa7mbXioKnEAQ5arf249Qm2kXrjsp0J3Iu+6ysDm5yNp5Meaody0Eh4E5huvf2wEUp8z7vc1cIvpfHA+D7eDwSXlsoUqfUq8pvRydbzlnOzb2A7G/CePVLcbyCb5VOF8Y7rVr2kFOTM2N1ZUN9s6Xrq95Vv9371O71GSGpONqdbFoth5Lv4qiDJ5Nox7/33b5VkRy8ui65ol1FoHOMGUJJoInXYYSD/WumpkeUGUs3G2oH/Ma4KPj6OQdkWtFxpVCrOZeLSBZqy2di6ELFFi7k++FXNZ4+inMAq0uV8ozxe4L+0ZHWRu27oCD+blfvfwdRBjv4cNgB4UfzLqEOPytq0UqFmyCAzB3ITiZXcTgpboc/huMh0fsPi2Z5/A==
+sidebar_class_name: "delete api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DeleteTypeTemplates"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"delete"}
+  path={"/types/{type_name}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Permanently removes a type template from the workspace. No checks performed while deleting
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"type_name","in":"path","schema":{"type":"string"},"required":true},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"DeleteTypeTemplates 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"type_name":{"type":"string"},"type_schema":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"description":{"type":"string"},"change_reason":{"type":"string"},"created_by":{"type":"string"},"created_at":{"type":"string","format":"date-time"},"last_modified_at":{"type":"string","format":"date-time"},"last_modified_by":{"type":"string"}},"required":["change_reason","created_at","created_by","description","last_modified_at","last_modified_by","type_name","type_schema"],"title":"DeleteTypeTemplatesResponseContent"}}}},"404":{"description":"ResourceNotFound 404 response"},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

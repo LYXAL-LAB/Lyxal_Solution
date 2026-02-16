@@ -1,31 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_hover.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_hover.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_hover.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_hover.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_hover.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_hover.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_hover.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_hover.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_hover.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_hover.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_hover.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_hover.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_hover.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_hover.rs
-```rust
 use educe::Educe;
 use leptos_reactive::{
     create_effect, create_signal, on_cleanup, store_value, Callable, Callback, MaybeSignal, Signal,
@@ -33,7 +5,7 @@ use leptos_reactive::{
 };
 use web_sys::PointerEvent;
 
-use crate::utils::{pointer_type::PointerType, props::Attributes, EventExt};
+use crate::utils::{pointer_type::PointerType, props::LeptonicAttributes, EventExt};
 
 // This is mostly based on work in: https://github.com/adobe/react-spectrum/blob/main/packages/%40react-aria/interactions/src/useHover.ts
 
@@ -68,7 +40,7 @@ pub struct UseHoverInput {
 #[derive(Educe)]
 #[educe(Debug)]
 pub struct UseHoverProps {
-    pub attrs: Attributes,
+    pub attrs: LeptonicAttributes,
 
     #[educe(Debug(ignore))]
     pub on_pointer_enter: Box<dyn Fn(PointerEvent)>,
@@ -171,24 +143,10 @@ pub fn use_hover(input: UseHoverInput) -> UseHoverReturn {
 
     UseHoverReturn {
         props: UseHoverProps {
-            attrs: Attributes::new(),
+            attrs: LeptonicAttributes::new(),
             on_pointer_enter,
             on_pointer_leave,
         },
         is_hovered: is_hovered.into(),
     }
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```

@@ -1,0 +1,491 @@
+/**
+ * Landscape Orientation Utilities
+ *
+ * These utilities provide specific styles for landscape orientation on tablets and foldable devices.
+ * Designed to complement the existing mobile-first responsive design system.
+ */
+
+/* ============================================
+   ORIENTATION MEDIA QUERIES
+   ============================================ */
+
+/* Landscape orientation (width > height) */
+@media (orientation: landscape) {
+  /* Base landscape adjustments */
+  .landscape\:flex-row {
+    flex-direction: row;
+  }
+
+  .landscape\:flex-col {
+    flex-direction: column;
+  }
+
+  .landscape\:items-center {
+    align-items: center;
+  }
+
+  .landscape\:justify-between {
+    justify-content: space-between;
+  }
+
+  /* Grid adjustments for landscape */
+  .landscape\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .landscape\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .landscape\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* Spacing adjustments */
+  .landscape\:gap-4 {
+    gap: 1rem;
+  }
+
+  .landscape\:gap-6 {
+    gap: 1.5rem;
+  }
+
+  .landscape\:p-4 {
+    padding: 1rem;
+  }
+
+  .landscape\:p-6 {
+    padding: 1.5rem;
+  }
+
+  /* Text adjustments */
+  .landscape\:text-left {
+    text-align: left;
+  }
+
+  /* Hide/show in landscape */
+  .landscape\:hidden {
+    display: none;
+  }
+
+  .landscape\:block {
+    display: block;
+  }
+
+  .landscape\:flex {
+    display: flex;
+  }
+}
+
+/* Portrait orientation (height > width) */
+@media (orientation: portrait) {
+  .portrait\:flex-col {
+    flex-direction: column;
+  }
+
+  .portrait\:flex-row {
+    flex-direction: row;
+  }
+
+  .portrait\:items-start {
+    align-items: flex-start;
+  }
+
+  .portrait\:gap-3 {
+    gap: 0.75rem;
+  }
+
+  .portrait\:gap-4 {
+    gap: 1rem;
+  }
+
+  .portrait\:hidden {
+    display: none;
+  }
+
+  .portrait\:block {
+    display: block;
+  }
+
+  .portrait\:flex {
+    display: flex;
+  }
+}
+
+/* ============================================
+   LANDSCAPE-SPECIFIC BREAKPOINTS
+   ============================================ */
+
+/* Small landscape (phones in landscape) */
+@media (min-width: 480px) and (orientation: landscape) {
+  .landscape-sm\:flex-row {
+    flex-direction: row;
+  }
+
+  .landscape-sm\:gap-4 {
+    gap: 1rem;
+  }
+
+  .landscape-sm\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Tablet landscape */
+@media (min-width: 768px) and (orientation: landscape) {
+  .landscape-md\:flex-row {
+    flex-direction: row;
+  }
+
+  .landscape-md\:items-center {
+    align-items: center;
+  }
+
+  .landscape-md\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .landscape-md\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .landscape-md\:gap-6 {
+    gap: 1.5rem;
+  }
+
+  .landscape-md\:p-6 {
+    padding: 1.5rem;
+  }
+
+  /* Navigation in landscape */
+  .landscape-md\:nav-horizontal {
+    flex-direction: row;
+  }
+
+  /* Tables in landscape */
+  .landscape-md\:table-overflow {
+    overflow-x: auto;
+  }
+}
+
+/* Large tablet/desktop landscape */
+@media (min-width: 1024px) and (orientation: landscape) {
+  .landscape-lg\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .landscape-lg\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .landscape-lg\:gap-8 {
+    gap: 2rem;
+  }
+}
+
+/* ============================================
+   COMPONENT-SPECIFIC LANDSCAPE STYLES
+   ============================================ */
+
+/* Cards in landscape */
+@media (orientation: landscape) {
+  .landscape-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .landscape-card-horizontal {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .landscape-card-horizontal > * {
+    flex: 1;
+  }
+
+  .landscape-card-media {
+    width: 200px;
+    height: 150px;
+    flex-shrink: 0;
+    object-fit: cover;
+  }
+}
+
+/* Forms in landscape */
+@media (orientation: landscape) {
+  .landscape-form-inline {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .landscape-form-actions {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
+
+  .landscape-form-row {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+  }
+}
+
+/* Navigation in landscape */
+@media (orientation: landscape) {
+  .landscape-nav {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .landscape-nav-item {
+    padding: 0.5rem 1rem;
+  }
+
+  .landscape-bottom-nav-hidden {
+    display: none;
+  }
+}
+
+/* Dialogs/Modals in landscape */
+@media (orientation: landscape) {
+  .landscape-dialog {
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .landscape-dialog-centered {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Tables in landscape */
+@media (orientation: landscape) {
+  .landscape-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .landscape-table {
+    min-width: 100%;
+  }
+}
+
+/* ============================================
+   TABLET-SPECIFIC LANDSCAPE ENHANCEMENTS
+   ============================================ */
+
+/* iPad and similar tablets (768px-1024px landscape) */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+  /* Two-column layouts */
+  .tablet-landscape-2-col {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+
+  /* Side-by-side content */
+  .tablet-landscape-side-by-side {
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+  }
+
+  .tablet-landscape-side-by-side > :first-child {
+    flex: 1;
+  }
+
+  .tablet-landscape-side-by-side > :last-child {
+    flex: 1;
+  }
+
+  /* Compact header */
+  .tablet-landscape-header-compact {
+    padding: 0.75rem 1.5rem;
+  }
+
+  /* Wider containers */
+  .tablet-landscape-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+}
+
+/* ============================================
+   FOLDABLE DEVICE SUPPORT
+   ============================================ */
+
+/* Dual-screen landscape layouts */
+@media (min-width: 1024px) and (orientation: landscape) {
+  /* Support for dual-screen/foldable devices */
+  .foldable-landscape-two-panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  /* Hinge/separator area */
+  .foldable-hinge {
+    width: 1rem;
+    background: var(--border);
+  }
+}
+
+/* ============================================
+   SAFE AREA HANDLING FOR LANDSCAPE
+   ============================================ */
+
+/* Landscape safe areas (notches on side) */
+@media (orientation: landscape) {
+  .landscape\:pl-safe {
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+
+  .landscape\:pr-safe {
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .landscape\:px-safe {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* ============================================
+   TYPOGRAPHY IN LANDSCAPE
+   ============================================ */
+
+@media (orientation: landscape) {
+  /* Smaller headings in landscape to fit horizontal space */
+  .landscape\:text-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .landscape\:text-base {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  /* Truncate text in landscape */
+  .landscape\:truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .landscape\:line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* ============================================
+   UTILITY CLASSES FOR COMMON PATTERNS
+   ============================================ */
+
+/* Stack in portrait, row in landscape */
+@media (orientation: portrait) {
+  .stack-portrait-row-landscape {
+    flex-direction: column;
+  }
+}
+
+@media (orientation: landscape) {
+  .stack-portrait-row-landscape {
+    flex-direction: row;
+  }
+}
+
+/* Full width in portrait, constrained in landscape */
+@media (orientation: portrait) {
+  .width-full-portrait-constrained-landscape {
+    width: 100%;
+  }
+}
+
+@media (orientation: landscape) {
+  .width-full-portrait-constrained-landscape {
+    width: auto;
+    max-width: 600px;
+  }
+}
+
+/* Single column portrait, multi-column landscape */
+@media (orientation: portrait) {
+  .cols-1-portrait-cols-2-landscape {
+    grid-template-columns: repeat(1, 1fr);
+  }
+}
+
+@media (orientation: landscape) {
+  .cols-1-portrait-cols-2-landscape {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ============================================
+   TRANSITION SMOOTHING
+   ============================================ */
+
+/* Smooth transitions when rotating */
+* {
+  transition-property: transform, opacity;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-out;
+}
+
+/* Prevent transitions on layout properties during rotation */
+@media (orientation: landscape) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
+}
+
+/* Re-enable transitions after rotation */
+@media (orientation: portrait) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
+}
+
+/* Add transition back after a delay */
+.transition-delay {
+  transition-delay: 300ms;
+}
+
+/* ============================================
+   PRINT SUPPORT FOR LANDSCAPE
+   ============================================ */
+
+@media print and (orientation: landscape) {
+  .print-landscape-show {
+    display: block !important;
+  }
+
+  .print-landscape-hide {
+    display: none !important;
+  }
+
+  .print-landscape-full-width {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}

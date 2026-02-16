@@ -1,15 +1,25 @@
 [package]
 name = "lyx-viz-lyx-viz-bevy"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-bevy = { version = "0.0.1", default-features = false }
-crossbeam-channel = { version = "0.0.1" }
-lyx-core-leptos = { path = "../../core/lyx-core-leptos/leptos", version = "0.0.1" }
-lyx-logic-use = { path = "../../logic/lyx-logic-use", version = "0.0.1", features = ["use_raf_fn" ] }
-paste = { version = "0.0.1" }
-variadics_please = { version = "0.0.1" }
+bevy = { version = "*", default-features = false }
+crossbeam-channel = { version = "*" }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos-use = { path = "../logic/lyx-logic-use", features = ["use_raf_fn" ] }
+paste = { version = "*" }
+variadics_please = { version = "*" }
 [dev-dependencies]
-bevy = { version = "0.0.1", default-features = false, features = ["bevy_window" ] }
+bevy = { version = "*", default-features = false, features = ["bevy_window" ] }
 [features]
 bevy_state = ["bevy/bevy_state"]
+
+
+
+
+
+
+
+
+
+

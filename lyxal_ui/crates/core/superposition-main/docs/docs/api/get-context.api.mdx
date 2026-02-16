@@ -1,0 +1,71 @@
+---
+id: get-context
+title: "GetContext"
+description: "Retrieves detailed information about a specific context by its unique identifier, including conditions, overrides, and metadata."
+sidebar_label: "GetContext"
+hide_title: true
+hide_table_of_contents: true
+api: eJzNVttu20YQ/ZUFnxpAkgUnftFbaqRJECQ1bPfJEIwVOSI3JrnMXuwIAv+9Z7i8SaKNNmmAPlnmzuXMzNkzu48SsrFRlVO6jFbRNTmj6JGsSMhJlVMiVLnVppBsIORGeyeksBXFaqtiEevS0XcnNjuhnBW+VN88CZVQ6XBOZgb3OPeJKlO2TRSHsTOhH8kYmOGnLBNRIFkinVxEs0hXZJpsHxMAek/uMuTAUSWNhCkZG63u9lGJf2CiEhwpRl9Jl+G3jTMqZLTaR25XsYVFUWUa1bPI0DevDCGyM57qWR/k+1ybdD6EykgmZH442JM2D7aSMf1EvDV/sRX6RZbtz5dL/nM4sKE/Aueic0CiZjSlYxdZVbmKm6aefbXstz/FoTdfKW66bHgEToWsaMkU1keZe5rylkkYssyvxnHgcsy0CmAB0A7EkLmABearpPAW3APzeoqBgnGG7AvxiXbMz60qSSSqoNIyN7n3tmFTg822JN0Jl9EQ1mUSobwFZYlpx4xzyuVcw2WHgwvsGPozNSLgVqU+0HngfABhqMpBEC5E+tx1qJ8yKvuahysjpAl4Q/Wm6x6bjHI88OGoB+zF9Xe5RXfLupr/7ECNa75/ZuhPpNLMnR4d131llEbDdyI4hFk6zZpCpuCxNZgMboTQ275aYtBNHQvxAY44DQHQMflAAiXHBGnhpnnTSsqoeHRE577xj45nMVFNnMkypXtD0j5ngTNHyb2crDnIIr6gpzR3IOLYZ7ObDJlL6+4LnbA6/rvAh56T4Q805O6owINyDnAetmoWBPUE6ASC0S05JE+nDz1l1gPjBsW6bsXqslWquuYK3izfnMocTLU3MX3R7g/twW9YDWIHr4spcfyIuAa39IYMwL0zBnJy8UtUEtJjZUrTM+kqn4Az1QL2kCmvuKiT9s+yRPSCLdBJyECmeTmmFLYitt4qOmuv0dleJTUvGoo9X8JmVdpCuWy3kJVaZM5Vv0ur4ree/e7WvLiOzwnCYXqD9RDthhsSan4+Zt8E/n6iDh9ub69EYy0kzPmpELrebUf23PA5D/YFZP8kTWP+Up7GoBkTP3SaoO24bjwGXGmrWh/MzIbQ58vzi/ny9Xx5wQhh4grZ0KXd/6C4GF4tRzrUM+7/8NhqG9jwButINavPm5yBBl7dRXFfyQpXG1zIUDAf7PeYEv1l8rrmzwBjmG1rvv3YtRvuIriXKMu/QditzC290JDfrlv1eiWew9Z+lOWuF5lVhJ9YfOEpWIPP3WvrP88esozeij0CvkS/JNX4JXmQLRi8jWOq3OjsRMXqsWK8f3cLrv8NWgQ00g==
+sidebar_class_name: "get api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"GetContext"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/context/{id}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Retrieves detailed information about a specific context by its unique identifier, including conditions, overrides, and metadata.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"id","in":"path","schema":{"type":"string"},"required":true},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"GetContext 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"id":{"type":"string"},"value":{"type":"object","additionalProperties":{},"description":"Represents conditional criteria used for context matching. Keys define dimension names and values specify the criteria that must be met.","title":"Condition"},"override":{"type":"object","additionalProperties":{},"description":"Configuration overrides that replace default values when context conditions are met. Keys represent configuration keys and values are the override data.","title":"Overrides"},"override_id":{"type":"string"},"weight":{"type":"string","description":"Priority weight used to determine the order of context evaluation. Higher weights take precedence during configuration resolution."},"description":{"type":"string"},"change_reason":{"type":"string"},"created_at":{"type":"string","format":"date-time"},"created_by":{"type":"string"},"last_modified_at":{"type":"string","format":"date-time"},"last_modified_by":{"type":"string"}},"required":["change_reason","created_at","created_by","description","id","last_modified_at","last_modified_by","override","override_id","value","weight"],"title":"GetContextResponseContent"}}}},"404":{"description":"ResourceNotFound 404 response"},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

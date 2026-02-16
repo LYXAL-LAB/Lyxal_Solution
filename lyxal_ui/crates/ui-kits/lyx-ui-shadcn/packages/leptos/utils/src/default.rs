@@ -55,3 +55,4 @@ pub fn cn_flexible<T: AsRef<str>>(classes: &[T]) -> String {
     let class_strings: Vec<&str> = classes.iter().map(|c| c.as_ref()).collect();
     tw_merge!(class_strings.join(" "))
 }
+

@@ -1,6 +1,12 @@
 [package]
-name = "lyx-core-api-boundary"
-version = "0.0.1"
+name = "api-boundary"
+version = "*"
 edition = "2024"
 [dependencies]
-serde = { version = "0.0.1", features = ["derive"] }
+serde = { version = "*", features = ["derive"] }
+
+
+[build-dependencies]
+rustc_version = "*"
+
+

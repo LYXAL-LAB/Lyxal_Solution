@@ -15,7 +15,7 @@ license-file.workspace = true
 
 [features]
 # Public features
-default = ["kv-mem", "graphql"]
+default = ["kv-mem", "kv-lyxalkv", "graphql"]
 kv-mem = [
     "dep:surrealmx",
     "tokio/time",

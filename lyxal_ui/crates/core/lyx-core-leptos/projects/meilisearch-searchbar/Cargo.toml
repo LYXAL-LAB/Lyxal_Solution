@@ -1,20 +1,27 @@
 [package]
-name = "lyx-core-meilisearch-searchbar"
-version = "0.0.1"
+name = "meilisearch-searchbar"
+version = "*"
 edition = "2024"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-lyx-core-leptos = { path = "../../leptos", version = "0.0.1" }
-serde = { version = "0.0.1", features = ["derive"] }
+leptos = { path = "../leptos", version = "*" }
+serde = { version = "*", features = ["derive"] }
 serde_json = "1"
 wasm-bindgen = "0.2"
-web-sys = { version = "0.0.1", features = ["HtmlInputElement", "HtmlElement", "Window"] }
-simple_logger = { version = "0.0.1", optional = true }
+web-sys = { version = "*", features = ["HtmlInputElement", "HtmlElement", "Window"] }
+simple_logger = { version = "*", optional = true }
 
 [features]
 default = []
-ssr = ["lyx-core-leptos/ssr", "dep:simple_logger"]
-hydrate = ["lyx-core-leptos/hydrate"]
+ssr = ["leptos/ssr", "dep:simple_logger"]
+hydrate = ["leptos/hydrate"]
+
+
+[build-dependencies]
+rustc_version = "*"
+
+
+

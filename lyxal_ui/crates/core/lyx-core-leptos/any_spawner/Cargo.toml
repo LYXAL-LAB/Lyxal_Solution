@@ -1,22 +1,22 @@
 [package]
-name = "lyx-core-any_spawner"
-version = "0.0.1"
+name = "any_spawner"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-async-executor = { version = "0.0.1", optional = true }
-futures = { version = "0.0.1" }
-glib = { version = "0.0.1", optional = true }
-thiserror = { version = "0.0.1" }
-tokio = { version = "0.0.1", features = ["rt"], optional = true }
-tracing = { version = "0.0.1", optional = true }
-wasm-bindgen-futures = { version = "0.0.1", optional = true }
+async-executor = { version = "*", optional = true }
+futures = { version = "*" }
+glib = { version = "*", optional = true }
+thiserror = { version = "*" }
+tokio = { version = "*", features = ["rt"], optional = true }
+tracing = { version = "*", optional = true }
+wasm-bindgen-futures = { version = "*", optional = true }
 
 [dev-dependencies]
-futures-lite = { version = "0.0.1" }
-tokio = { version = "0.0.1", features = ["rt", "macros", "time"] }
-wasm-bindgen-test = { version = "0.0.1" }
-serial_test = { version = "0.0.1" }
+futures-lite = { version = "*" }
+tokio = { version = "*", features = ["rt", "macros", "time"] }
+wasm-bindgen-test = { version = "*" }
+serial_test = { version = "*" }
 
 [features]
 async-executor = ["dep:async-executor"]
@@ -25,3 +25,9 @@ tokio = ["dep:tokio"]
 glib = ["dep:glib"]
 wasm-bindgen = ["dep:wasm-bindgen-futures"]
 futures-executor = ["futures/thread-pool", "futures/executor"]
+
+
+[build-dependencies]
+rustc_version = "*"
+
+

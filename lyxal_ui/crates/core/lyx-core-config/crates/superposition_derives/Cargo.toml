@@ -1,15 +1,20 @@
 [package]
-name = "lyx-core-superposition_derives"
-version = "0.0.1"
+name = "superposition_derives"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-syn = { version = "0.0.1", features = ["full"] }
-quote = { version = "0.0.1" }
-proc-macro2 = { version = "0.0.1" }
+syn = { version = "*", features = ["full"] }
+quote = { version = "*" }
+proc-macro2 = { version = "*" }
 
 [lib]
 proc-macro = true
 
 [features]
 diesel_derives = []
+
+
+
+
+

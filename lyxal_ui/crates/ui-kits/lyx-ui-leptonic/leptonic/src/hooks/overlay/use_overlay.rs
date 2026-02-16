@@ -1,36 +1,8 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay.rs
-```rust
 use educe::Educe;
-use leptos::{IntoAttribute, Oco};
+use leptos::{LeptonicIntoLeptonicAttribute, Oco};
 use leptos_reactive::{create_signal, MaybeSignal, ReadSignal, WriteSignal};
 
-use crate::utils::props::Attributes;
+use crate::utils::props::LeptonicAttributes;
 
 #[derive(Debug, Clone, Copy)]
 pub struct UseOverlayInput {
@@ -52,16 +24,16 @@ pub struct UseOverlayReturn {
 #[derive(Educe)]
 #[educe(Debug, Clone)]
 pub struct UseOverlayProps {
-    /// These attributes must be spread onto the target element: `<foo {..attrs} />`
-    pub attrs: Attributes,
+    /// These LeptonicAttributes must be spread onto the target element: `<foo {..attrs} />`
+    pub attrs: LeptonicAttributes,
 }
 
 pub fn use_overlay(input: UseOverlayInput) -> UseOverlayReturn {
     let (state, set_state) = create_signal(false);
     let id = uuid::Uuid::new_v4();
 
-    let mut attrs = Attributes::new();
-    attrs.insert("id", id.to_string().into_attribute());
+    let mut attrs = LeptonicAttributes::new();
+    attrs.insert("id", id.to_string().into_leptonic_attribute());
 
     UseOverlayReturn {
         props: UseOverlayProps { attrs },
@@ -70,17 +42,3 @@ pub fn use_overlay(input: UseOverlayInput) -> UseOverlayReturn {
         set_state,
     }
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```

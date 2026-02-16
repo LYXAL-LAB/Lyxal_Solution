@@ -1,8 +1,18 @@
 [package]
 name = "lyx-spec-captcha"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-lyx-core-leptos = { path = "../../core/lyx-core-leptos/leptos", version = "0.0.1" }
-spow = { version = "0.0.1", features = ["server", "client"] }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+spow = { version = "*", features = ["server", "client"] }
+
+
+
+
+
+
+
+
+
+

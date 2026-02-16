@@ -1,0 +1,31 @@
+{
+  "*": userAction,
+  "a": [...location],
+  "area": [...location],
+  "button": [...ability],
+  "label": [],
+  "input": [
+    ":placeholder-shown",
+    
+    "::placeholder",
+    ...ability,
+    ...validity,
+    ...required,
+    ":checked"],
+  "textarea": [
+    ":placeholder-shown",
+    
+    "::placeholder",
+    ...ability,
+    ...validity,
+    ...required],
+  "select": [
+    ...ability,
+    ...validity,
+    ...required],
+  "optgroup": [...ability],
+  "option": [...ability, ":checked", ":default"],
+  "fieldset": [...ability, ...validity],
+  "progress": [":indeterminate"],
+  "details": [":open"],
+  "dialog": [":open"]}

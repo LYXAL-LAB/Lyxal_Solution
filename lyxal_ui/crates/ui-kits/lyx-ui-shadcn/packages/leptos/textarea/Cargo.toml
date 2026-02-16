@@ -1,12 +1,17 @@
 [package]
 name = "lyx-ui-textarea"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-leptos-shadcn-signal-management = { path = "../../signal-management", version = "0.0.1" }
+leptos-shadcn-signal-management = { path = "../../signal-management" }
 [features]
 default = []
 new_york = []
 [dev-dependencies]
-shadcn-ui-test-utils = { path = "../../test-utils", version = "0.0.1" }
-wasm-bindgen-test = { version = "0.0.1" }
+shadcn-ui-test-utils = { path = "../../test-utils" }
+wasm-bindgen-test = { version = "*" }
+
+
+
+
+

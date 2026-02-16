@@ -1,36 +1,8 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\focus\use_focus.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\focus\use_focus.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\focus\use_focus.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\focus\use_focus.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\focus\use_focus.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\focus\use_focus.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\focus\use_focus.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\focus\use_focus.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\focus\use_focus.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\focus\use_focus.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\focus\use_focus.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\focus\use_focus.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\focus\use_focus.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\focus\use_focus.rs
-```rust
 use educe::Educe;
 use leptos::{ev::FocusEvent, Callable, Callback, MaybeSignal, SignalGet};
 use leptos_use::use_document;
 
-use crate::utils::{props::Attributes, EventTargetExt};
+use crate::utils::{props::LeptonicAttributes, EventTargetExt};
 
 // This is mostly based on work in: https://github.com/adobe/react-spectrum/blob/main/packages/%40react-aria/interactions/src/useFocus.ts
 
@@ -52,8 +24,8 @@ pub struct UseFocusReturn {
 #[derive(Educe)]
 #[educe(Debug)]
 pub struct UseFocusProps {
-    /// These attributes must be spread onto the target element: `<foo {..attrs} />`
-    pub attrs: Attributes,
+    /// These LeptonicAttributes must be spread onto the target element: `<foo {..attrs} />`
+    pub attrs: LeptonicAttributes,
 
     #[educe(Debug(ignore))]
     pub on_focus: Box<dyn Fn(FocusEvent)>,
@@ -93,23 +65,9 @@ pub fn use_focus(input: UseFocusInput) -> UseFocusReturn {
 
     UseFocusReturn {
         props: UseFocusProps {
-            attrs: Attributes::new(),
+            attrs: LeptonicAttributes::new(),
             on_focus,
             on_blur,
         },
     }
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```

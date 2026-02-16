@@ -1,12 +1,22 @@
 [package]
 name = "lyx-viz-leptos-chartistry"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-chrono = { version = "0.0.1" }
-lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
-lyx-logic-use = { path = "../../../logic/lyx-logic-use", version = "0.0.1" }
-log = { version = "0.0.1" }
-web-sys = { version = "0.0.1", features = ["DomRectReadOnly"] }
+chrono = { version = "*" }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos-use = { path = "../logic/lyx-logic-use" }
+log = { version = "*" }
+web-sys = { version = "*", features = ["DomRectReadOnly"] }
 [features]
-ssr = ["lyx-core-leptos/ssr", "lyx-logic-use/ssr"]
+ssr = ["leptos/ssr", "leptos-use/ssr"]
+
+
+
+
+
+
+
+
+
+

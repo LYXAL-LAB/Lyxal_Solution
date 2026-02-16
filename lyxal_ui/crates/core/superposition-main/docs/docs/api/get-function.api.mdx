@@ -1,0 +1,71 @@
+---
+id: get-function
+title: "GetFunction"
+description: "Retrieves detailed information about a specific function including its published and draft versions, code, and metadata."
+sidebar_label: "GetFunction"
+hide_title: true
+hide_table_of_contents: true
+api: eJzFVttu2kAQ/ZXVPrUSJPSSF95oStNILakIiSpFERrWA97E9rq767QI+d87YxtjBxP1FvUF7J0z9+OZ3cgAnbI69dokciin6K3GB3QiQA86wkDoZGlsDAwQsDCZFyBcikovtRLLLFGFRCcqygKdrIT2TqTZItIuJG1IAhFYWHrxgNYR0vWEMgH2CklMTgLwcCR70qRoCy/nAQVyhv5DZZtkKVggLFmQw5uNTOiFMFvn8+K9JzVnkIIP6dmpEGOQw43065TBjhJLVjLvSYvfMm2RvHibYd6r7f3oG7vq62BrKkQI0P6xse/G3rsUFP6FvVs+cSmVDR3jXw8G/NduWqNWggBiq0GelEk8Jp51IE0jrYoKH985VtzsB2IWd6g8V9xyP7wu3bYr3RV33fE5d7cTUtDgsHhnwWaJ1zHOK8bso3sSkywmKshXRwNJNfLaRyzflmFaWriuDNTOn8PyLm7wXQbLr4dOiOjYZ+VdPBho/5uKO3eL9RNlriwfwETg/Dw2AX3Dv+m+rXnAvAohWeHcIriuInOQTQJ3yGvClZLDbboefboaz+n3/P1odn4xIVF5dHrx+cvVbEzvpxeT2fjrrA06/TianI3n0/Ho8mLSFHX0fEa+ncxbX+fNoyTbKbXIvt/s/SYdImhvb8i1K9PRyo4eNXJqzIppNSZOqxmR55zi28Hb/QlDUJNZhRPjP5iMBjehdmOGtE665tI52bUJRJdoKZ+xtcaKk2eZTzE6B6uuuZLvUu8Ip6sErAErXjQ1ARxXkPZPaHg1rbAIgPfMUB5v+3G8aXUq5zGPKrPar4ud5WLtw/URpPoo9D59B06rUcY2bm55bTyWI1i0NeB2Z+2Sa1KmfdhmXQc+f0TOofw4m30RBVoAwSnzqvDb3cSaC5Zzb5+I7FfcFPCn/BSAolN81SiMVh27zKjHqXG60qnHNu3B1yf9wZv+4KSYicb5GArGVNuXaC4a94dH46Zm3f+871SV8/jDH6cR6GKZZDbiAEty3dQfO8GH7UFAhAgpawZtNtQqvLJRnvPxtwwtU44eH8BqWHApiYCBdvxMDF5C5PCJoryYVmPupTgUZ3UICY+uB4gyfqPHe1zvXcxy4vf27vPPAykdNm5udTD8UT2Lq+a9ruWtBIyUwtQ3ZHuDLW9Ok7PxjLj/EyYkBKU=
+sidebar_class_name: "get api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"GetFunction"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/function/{function_name}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Retrieves detailed information about a specific function including its published and draft versions, code, and metadata.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"function_name","in":"path","schema":{"type":"string"},"required":true},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"GetFunction 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"function_name":{"type":"string"},"published_code":{"type":"string"},"draft_code":{"type":"string"},"published_runtime_version":{"type":"string","enum":["1.0"],"title":"FunctionRuntimeVersion"},"draft_runtime_version":{"type":"string","enum":["1.0"],"title":"FunctionRuntimeVersion"},"published_at":{"type":"string","format":"date-time"},"draft_edited_at":{"type":"string","format":"date-time"},"published_by":{"type":"string"},"draft_edited_by":{"type":"string"},"last_modified_at":{"type":"string","format":"date-time"},"last_modified_by":{"type":"string"},"change_reason":{"type":"string"},"description":{"type":"string"},"function_type":{"type":"string","enum":["VALUE_VALIDATION","VALUE_COMPUTE","CONTEXT_VALIDATION","CHANGE_REASON_VALIDATION"],"title":"FunctionTypes"}},"required":["change_reason","description","draft_code","draft_edited_at","draft_edited_by","draft_runtime_version","function_name","function_type","last_modified_at","last_modified_by"],"title":"GetFunctionResponseContent"}}}},"404":{"description":"ResourceNotFound 404 response"},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

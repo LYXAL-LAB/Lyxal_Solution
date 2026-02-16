@@ -1,42 +1,52 @@
 [package]
 name = "lyx-specialized-start-axum"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-axum = { version = "0.0.1", optional = true, features = ["macros"] }
-console_error_panic_hook = { version = "0.0.1" }
-lyx-core-leptos = { path = "../../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["nightly"] }
-lyx-core-axum = { path = "../../../../core/lyx-core-leptos/integrations/axum", version = "0.0.1", optional = true }
-lyx-core-meta = { path = "../../../../core/lyx-core-leptos/meta", version = "0.0.1", features = ["nightly"] }
-lyx-core-router = { path = "../../../../core/lyx-core-leptos/router", version = "0.0.1", features = ["nightly"] }
-tokio = { version = "0.0.1", optional = true, features = ["rt-multi-thread"] }
-tower = { version = "0.0.1", optional = true }
-tower-http = { version = "0.0.1", optional = true, features = ["fs"] }
-wasm-bindgen = { version = "0.0.1" }
-thiserror = { version = "0.0.1" }
-tracing = { version = "0.0.1", optional = true }
-http = { version = "0.0.1" }
+axum = { version = "*", optional = true, features = ["macros"] }
+console_error_panic_hook = { version = "*" }
+leptos = { path = "../core/lyx-core-leptos/leptos", features = ["nightly"] }
+leptos_axum = { path = "../../../../core/leptos/integrations/axum", optional = true }
+leptos_meta = { path = "../core/lyx-core-leptos/meta", features = ["nightly"] }
+leptos_router = { path = "../core/lyx-core-leptos/router", features = ["nightly"] }
+tokio = { version = "*", optional = true, features = ["rt-multi-thread"] }
+tower = { version = "*", optional = true }
+tower-http = { version = "*", optional = true, features = ["fs"] }
+wasm-bindgen = { version = "*" }
+thiserror = { version = "*" }
+tracing = { version = "*", optional = true }
+http = { version = "*" }
 
-cfg-if = { version = "0.0.1" }
-lyx-spec-image = { path = "../../", version = "0.0.1" }
-simple_logger = { version = "0.0.1" }
-log = { version = "0.0.1" }
+cfg-if = { version = "*" }
+lyx-spec-image = { path = "../../" }
+simple_logger = { version = "*" }
+log = { version = "*" }
 
 [features]
-hydrate = ["lyx-core-leptos/hydrate", "lyx-core-meta/hydrate", "lyx-core-router/hydrate", "lyx-spec-image/hydrate"]
+hydrate = ["leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate", "lyx-spec-image/hydrate"]
 ssr = [
 "dep:axum",
 "dep:tokio",
 "dep:tower",
 "dep:tower-http",
-"dep:lyx-core-axum",
-"lyx-core-leptos/ssr",
-"lyx-core-meta/ssr",
-"lyx-core-router/ssr",
+"dep:leptos_axum",
+"leptos/ssr",
+"leptos_meta/ssr",
+"leptos_router/ssr",
 "dep:tracing",
 "lyx-spec-image/ssr"
 ]
+
+
+
+
+
+
+
+
+
+

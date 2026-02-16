@@ -1,28 +1,38 @@
 [package]
 name = "lyx-ui-thaw"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
-thaw_components = { path = "../thaw_components", version = "0.0.1" }
-thaw_macro = { path = "../thaw_macro", version = "0.0.1" }
-thaw_utils = { path = "../thaw_utils", version = "0.0.1" }
-leptos_transition_group = { version = "0.0.1" }
-web-sys = { version = "0.0.1", features = ["DomRect", "File", "FileList", "DataTransfer", "ScrollToOptions", "ScrollBehavior", "TreeWalker", "NodeFilter" ] }
-wasm-bindgen = { version = "0.0.1" }
-icondata_core = { version = "0.0.1" }
-icondata_ai = { version = "0.0.1" }
-uuid = { version = "0.0.1", features = ["v4", "js"] }
-cfg-if = { version = "0.0.1" }
-chrono = { version = "0.0.1" }
-palette = { version = "0.0.1" }
-num-traits = { version = "0.0.1" }
-send_wrapper = { version = "0.0.1" }
-slotmap = { version = "0.0.1" }
-getset = { version = "0.0.1" }
-pure-rust-locales = { version = "0.0.1" }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+thaw_components = { path = "../thaw_components" }
+thaw_macro = { path = "../thaw_macro" }
+thaw_utils = { path = "../thaw_utils" }
+leptos_transition_group = { version = "*" }
+web-sys = { version = "*", features = ["DomRect", "File", "FileList", "DataTransfer", "ScrollToOptions", "ScrollBehavior", "TreeWalker", "NodeFilter" ] }
+wasm-bindgen = { version = "*" }
+icondata_core = { version = "*" }
+icondata_ai = { version = "*" }
+uuid = { version = "*", features = ["v4", "js"] }
+cfg-if = { version = "*" }
+chrono = { version = "*" }
+palette = { version = "*" }
+num-traits = { version = "*" }
+send_wrapper = { version = "*" }
+slotmap = { version = "*" }
+getset = { version = "*" }
+pure-rust-locales = { version = "*" }
 [features]
-csr = ["lyx-core-leptos/csr", "thaw_components/csr", "thaw_utils/csr"]
-ssr = ["lyx-core-leptos/ssr", "thaw_components/ssr", "thaw_utils/ssr"]
-hydrate = ["lyx-core-leptos/hydrate", "thaw_components/hydrate", "thaw_utils/hydrate"]
-nightly = ["lyx-core-leptos/nightly", "thaw_utils/nightly"]
+csr = ["leptos/csr", "thaw_components/csr", "thaw_utils/csr"]
+ssr = ["leptos/ssr", "thaw_components/ssr", "thaw_utils/ssr"]
+hydrate = ["leptos/hydrate", "thaw_components/hydrate", "thaw_utils/hydrate"]
+nightly = ["leptos/nightly", "thaw_utils/nightly"]
+
+
+
+
+
+
+
+
+
+

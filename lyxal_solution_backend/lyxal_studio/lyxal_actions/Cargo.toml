@@ -1,0 +1,11 @@
+﻿[package]
+name = "lyxal_actions"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lyxal_types = { path = "../lyxal_types" }
+lyxal_state = { path = "../lyxal_state" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+leptos = { version = "0.6", features = ["csr"] }

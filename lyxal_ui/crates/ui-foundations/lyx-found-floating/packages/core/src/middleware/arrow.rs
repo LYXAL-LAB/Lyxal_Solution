@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx-found-floating\packages\core\src\middleware\arrow.rs
-```rust
 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx-found-floating\packages\core\src\middleware\arrow.rs
 2: ```rust
 3: 1: use lyx_ui_foundations_utils::{
@@ -229,3 +227,4 @@
 227: 225: }
 228: ```
 ```
+

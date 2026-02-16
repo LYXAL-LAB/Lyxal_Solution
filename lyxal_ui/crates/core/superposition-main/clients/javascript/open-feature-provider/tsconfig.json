@@ -1,0 +1,33 @@
+{
+    "compilerOptions": {
+        "target": "es2020",
+        "module": "ESNext",
+        "lib": [
+            "es2020",
+            "dom"
+        ],
+        "declaration": true,
+        "outDir": "./dist",
+        "rootDir": "./",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "moduleResolution": "node",
+        "paths": {
+            "superposition-sdk": ["../sdk/dist-types"],
+            "superposition-sdk/*": ["../sdk/dist-types/*"],
+            "superposition-bindings": ["../bindings/dist"],
+            "superposition-bindings/*": ["../bindings/dist/*"]
+        },
+        "baseUrl": "."
+    },
+    "include": [
+        "*.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
+}

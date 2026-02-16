@@ -1,8 +1,13 @@
 [package]
 name = "lyx-ui-shadcn"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-clap = { version = "0.0.1", features = ["cargo", "derive"] }
-spinners = { version = "0.0.1" }
-shadcn-ui-component-generator = { path = "../component-generator", version = "0.0.1" }
+clap = { version = "*", features = ["cargo", "derive"] }
+spinners = { version = "*" }
+shadcn-ui-component-generator = { path = "../component-generator" }
+
+
+
+
+

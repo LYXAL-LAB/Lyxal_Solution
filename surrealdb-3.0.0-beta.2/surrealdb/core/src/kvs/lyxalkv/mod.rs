@@ -5,7 +5,8 @@ use crate::kvs::api::Transactable;
 use crate::kvs::err::Error;
 use crate::kvs::{Key, Result, Val, Version};
 use async_trait::async_trait;
-use lyxalkv::{Mode, Tree, TreeBuilder};
+extern crate lyxalkv as lyxalkv_engine;
+pub use lyxalkv_engine::{Mode, Tree, TreeBuilder};
 use std::ops::Range;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -25,7 +26,7 @@ pub struct Transaction {
 	/// Is the transaction writeable?
 	write: bool,
 	/// The underlying datastore transaction
-	inner: RwLock<lyxalkv::Transaction>,
+	inner: RwLock<lyxalkv_engine::Transaction>,
 }
 
 impl Datastore {
@@ -162,7 +163,7 @@ impl Transactable for Transaction {
 				.await
 				.commit()
 				.await
-				.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))?;
+				.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))?;
 		}
 
 		Ok(())
@@ -179,7 +180,7 @@ impl Transactable for Transaction {
 			None => inner.get(&key),
 		}
 		.map(|v| v.is_some())
-		.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))
+		.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))
 	}
 
 	#[instrument(level = "trace", target = "surrealdb::core::kvs::api", skip(self), fields(key = key.sprint()))]
@@ -192,7 +193,7 @@ impl Transactable for Transaction {
 			Some(v) => inner.get_at_version(&key, v),
 			None => inner.get(&key),
 		}
-		.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))
+		.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))
 	}
 
 	#[instrument(level = "trace", target = "surrealdb::core::kvs::api", skip(self), fields(key = key.sprint()))]
@@ -208,7 +209,7 @@ impl Transactable for Transaction {
 			Some(v) => inner.set_at_version(&key, val, v),
 			None => inner.set(&key, val),
 		}
-		.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))
+		.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))
 	}
 
 	#[instrument(level = "trace", target = "surrealdb::core::kvs::api", skip(self), fields(key = key.sprint()))]
@@ -226,9 +227,9 @@ impl Transactable for Transaction {
 		}
 		let mut inner = self.inner.write().await;
 		let current =
-			inner.get(&key).map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))?;
+			inner.get(&key).map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))?;
 		if current == chk {
-			inner.set(&key, val).map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))
+			inner.set(&key, val).map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))
 		} else {
 			Err(Error::TransactionConditionNotMet)
 		}
@@ -246,7 +247,7 @@ impl Transactable for Transaction {
 			.write()
 			.await
 			.delete(&key)
-			.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))?;
+			.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))?;
 		Ok(())
 	}
 
@@ -260,9 +261,9 @@ impl Transactable for Transaction {
 		}
 		let mut inner = self.inner.write().await;
 		let current =
-			inner.get(&key).map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))?;
+			inner.get(&key).map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))?;
 		if current == chk {
-			inner.delete(&key).map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))
+			inner.delete(&key).map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))
 		} else {
 			Err(Error::TransactionConditionNotMet)
 		}
@@ -279,10 +280,10 @@ impl Transactable for Transaction {
 			Some(v) => {
 				let range = inner
 					.range_at_version(&rng.start, &rng.end, v)
-					.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))?;
+					.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))?;
 				for result in range {
 					let (key, _): (Key, Val) =
-						result.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))?;
+						result.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))?;
 					keys.push(key);
 					if limit > 0 && keys.len() >= limit as usize {
 						break;
@@ -292,10 +293,10 @@ impl Transactable for Transaction {
 			None => {
 				let range = inner
 					.range(&rng.start, &rng.end)
-					.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))?;
+					.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))?;
 				for result in range {
 					let (key, _): (Key, Val) =
-						result.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))?;
+						result.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))?;
 					keys.push(key);
 					if limit > 0 && keys.len() >= limit as usize {
 						break;
@@ -329,10 +330,10 @@ impl Transactable for Transaction {
 			Some(v) => {
 				let range = inner
 					.range_at_version(&rng.start, &rng.end, v)
-					.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))?;
+					.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))?;
 				for result in range {
 					let (key, val): (Key, Val) =
-						result.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))?;
+						result.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))?;
 					pairs.push((key, val));
 					if limit > 0 && pairs.len() >= limit as usize {
 						break;
@@ -342,10 +343,10 @@ impl Transactable for Transaction {
 			None => {
 				let range = inner
 					.range(&rng.start, &rng.end)
-					.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))?;
+					.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))?;
 				for result in range {
 					let (key, val): (Key, Val) =
-						result.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))?;
+						result.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))?;
 					pairs.push((key, val));
 					if limit > 0 && pairs.len() >= limit as usize {
 						break;
@@ -385,7 +386,7 @@ impl Transactable for Transaction {
 		};
 		let results = inner
 			.scan_all_versions(&rng.start, &rng.end, limit_opt)
-			.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))?;
+			.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))?;
 
 		Ok(results)
 	}
@@ -395,7 +396,7 @@ impl Transactable for Transaction {
 			.write()
 			.await
 			.set_savepoint()
-			.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))?;
+			.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))?;
 		Ok(())
 	}
 
@@ -404,7 +405,7 @@ impl Transactable for Transaction {
 			.write()
 			.await
 			.rollback_to_savepoint()
-			.map_err(|e: lyxalkv::Error| Error::Datastore(e.to_string()))?;
+			.map_err(|e: lyxalkv_engine::Error| Error::Datastore(e.to_string()))?;
 		Ok(())
 	}
 

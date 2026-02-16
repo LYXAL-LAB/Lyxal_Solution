@@ -1,11 +1,17 @@
 [package]
-name = "lyx-core-test-bench"
-version = "0.0.1"
+name = "test-bench"
+version = "*"
 edition = "2024"
 [dependencies]
-console_error_panic_hook = { version = "0.0.1" }
-gloo = { version = "0.0.1", features = ["futures"] }
-lyx-core-leptos = { path = "../../../leptos", version = "0.0.1", features = ["nightly", "csr", "tracing"] }
-tracing = { version = "0.0.1" }
-tracing-subscriber = { version = "0.0.1" }
-tracing-subscriber-wasm = { version = "0.0.1" }
+console_error_panic_hook = { version = "*" }
+gloo = { version = "*", features = ["futures"] }
+leptos = { path = "../leptos", version = "*", features = ["nightly", "csr", "tracing"] }
+tracing = { version = "*" }
+tracing-subscriber = { version = "*" }
+tracing-subscriber-wasm = { version = "*" }
+
+
+[build-dependencies]
+rustc_version = "*"
+
+

@@ -1,25 +1,30 @@
 [package]
 name = "lyx-ui-cli"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [[bin]]
 name = "lyx-ui-cli"
 path = "src/lib.rs"
 [dependencies]
-clap = { version = "0.0.1", features = ["derive"] }
-anyhow = { version = "0.0.1" }
-serde = { version = "0.0.1", features = ["derive"] }
-serde_json = { version = "0.0.1" }
-tokio = { version = "0.0.1", features = ["full"] }
-reqwest = { version = "0.0.1", features = ["json"] }
-indicatif = { version = "0.0.1" }
-console = { version = "0.0.1" }
-dialoguer = { version = "0.0.1" }
-tempfile = { version = "0.0.1" }
-walkdir = { version = "0.0.1" }
+clap = { version = "*", features = ["derive"] }
+anyhow = { version = "*" }
+serde = { version = "*", features = ["derive"] }
+serde_json = { version = "*" }
+tokio = { version = "*", features = ["full"] }
+reqwest = { version = "*", features = ["json"] }
+indicatif = { version = "*" }
+console = { version = "*" }
+dialoguer = { version = "*" }
+tempfile = { version = "*" }
+walkdir = { version = "*" }
 # Internal dependencies
-shadcn-registry = { path = "../registry", version = "0.0.1" }
-shadcn-ui-component-generator = { path = "../component-generator", version = "0.0.1" }
-shadcn-ui-test-utils = { path = "../test-utils", version = "0.0.1" }
+shadcn-registry = { path = "../registry" }
+shadcn-ui-component-generator = { path = "../component-generator" }
+shadcn-ui-test-utils = { path = "../test-utils" }
 [dev-dependencies]
-tempfile = { version = "0.0.1" }
+tempfile = { version = "*" }
+
+
+
+
+

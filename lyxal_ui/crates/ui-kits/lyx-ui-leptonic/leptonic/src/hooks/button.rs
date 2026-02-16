@@ -1,37 +1,9 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\button.rs
-```rust
 use educe::Educe;
-use leptos::{html::ElementDescriptor, Attribute, IntoAttribute, NodeRef};
+use leptos::{html::ElementDescriptor, LeptonicAttribute, LeptonicIntoLeptonicAttribute, NodeRef};
 use leptos_reactive::{MaybeSignal, Oco};
 use web_sys::{FocusEvent, KeyboardEvent, MouseEvent, PointerEvent};
 
-use crate::utils::{aria::*, props::Attributes, signals::MaybeSignalExt};
+use crate::utils::{aria::*, props::LeptonicAttributes, signals::MaybeSignalExt};
 
 use super::{
     focus::use_focus::{use_focus, UseFocusInput},
@@ -64,7 +36,7 @@ pub struct UseButtonReturn {
 #[derive(Educe)]
 #[educe(Debug)]
 pub struct UseButtonProps {
-    pub attrs: Attributes,
+    pub attrs: LeptonicAttributes,
 
     /// This handler must be attached to the target element: `<foo on:keydown=on_key_down />`
     #[educe(Debug(ignore))]
@@ -96,19 +68,19 @@ pub fn use_button<E: ElementDescriptor + 'static>(input: UseButtonInput<E>) -> U
 
     let focus = use_focus(input.use_focus_input);
 
-    let mut attrs = Attributes::new();
-    attrs.insert("role", Attribute::String(Oco::Borrowed("button")));
+    let mut attrs = LeptonicAttributes::new();
+    attrs.insert("role", LeptonicAttribute::String(Oco::Borrowed("button")));
     attrs.insert(
         "tabindex",
         input
             .disabled
             .map(|it| match it {
-                true => Attribute::Option(None),
-                false => Attribute::String(Oco::Borrowed("0")),
+                true => LeptonicAttribute::Option(None),
+                false => LeptonicAttribute::String(Oco::Borrowed("0")),
             })
-            .into_attribute(),
+            .into_leptonic_attribute(),
     );
-    attrs.insert("disabled", input.disabled.into_attribute());
+    attrs.insert("disabled", input.disabled.into_leptonic_attribute());
     attrs.insert(
         "aria-disabled",
         input
@@ -117,24 +89,24 @@ pub fn use_button<E: ElementDescriptor + 'static>(input: UseButtonInput<E>) -> U
                 true => "true",
                 false => "false",
             })
-            .into_attribute(),
+            .into_leptonic_attribute(),
     );
-    attrs.insert("aria-haspopup", input.aria_haspopup.into_attribute());
+    attrs.insert("aria-haspopup", input.aria_haspopup.into_leptonic_attribute());
 
-    // From https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-expanded
+    // From https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/LeptonicAttributes/aria-expanded
     // A button that opens a widget should have aria-controls set to the id of the expandable widget and aria-expanded set to the current state of the widget.
 
-    attrs.insert("aria-expanded", input.aria_expanded.into_attribute());
+    attrs.insert("aria-expanded", input.aria_expanded.into_leptonic_attribute());
     //props.insert(
     //    "aria-controls",
-    //    initial_props.aria_controls.into_attribute(),
+    //    initial_props.aria_controls.into_leptonic_attribute(),
     //);
     //props.insert(
     //    "aria-pressed",
-    //    initial_props.aria_pressed.into_attribute(),
+    //    initial_props.aria_pressed.into_leptonic_attribute(),
     //);
 
-    // Merge attributes
+    // Merge LeptonicAttributes
     attrs.merge(press.props.attrs);
     attrs.merge(focus.props.attrs);
 
@@ -160,17 +132,3 @@ pub fn use_button<E: ElementDescriptor + 'static>(input: UseButtonInput<E>) -> U
         },
     }
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```

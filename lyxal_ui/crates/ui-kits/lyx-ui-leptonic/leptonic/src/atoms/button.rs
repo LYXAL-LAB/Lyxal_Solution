@@ -1,39 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\button.rs
-```rust
 use leptos::*;
 use leptos_router::AProps;
 
@@ -59,9 +23,9 @@ pub fn Button(
     #[prop(into, optional)] style: Option<AttributeValue>,
     #[prop(into, optional)] aria_haspopup: OptMaybeSignal<AriaHasPopup>,
     #[prop(into, optional)] aria_expanded: OptMaybeSignal<AriaExpanded>,
-    /// Arbitrary additional attributes.
+    /// Arbitrary additional LeptonicAttributes.
     #[prop(attrs)]
-    attributes: Vec<(&'static str, Attribute)>,
+    LeptonicAttributes: Vec<(&'static str, LeptonicAttribute)>,
     children: Children,
 ) -> impl IntoView {
     let el: NodeRef<html::Button> = create_node_ref();
@@ -98,7 +62,7 @@ pub fn Button(
     view! {
         <button
             {..props.attrs}
-            {..attributes}
+            {..LeptonicAttributes}
             node_ref=el
             id=id
             class=class
@@ -139,9 +103,9 @@ pub fn LinkButton<H>(
     /// will skip this page.)
     #[prop(optional)]
     replace: bool,
-    /// Arbitrary additional attributes.
+    /// Arbitrary additional LeptonicAttributes.
     #[prop(attrs)]
-    attributes: Vec<(&'static str, Attribute)>,
+    LeptonicAttributes: Vec<(&'static str, LeptonicAttribute)>,
     children: Children,
 ) -> impl IntoView
 where
@@ -173,20 +137,20 @@ where
         },
     });
 
-    props.attrs.merge(attributes);
+    props.attrs.merge(LeptonicAttributes);
     if let Some(style) = style {
-        props.attrs.insert("style", style.into_attribute_boxed());
+        props.attrs.insert("style", style.into_leptonic_attribute_boxed());
     }
 
     let default_class = "leptonic-btn";
-    let class: Option<Box<dyn IntoAttribute>> = class
+    let class: Option<Box<dyn LeptonicIntoLeptonicAttribute>> = class
         .map(|c| {
-            c.into_attribute_boxed()
+            c.into_leptonic_attribute_boxed()
                 .prepend(Oco::Borrowed(default_class))
         })
-        .or_else(|| Some(Attribute::String(Oco::Borrowed(default_class))))
+        .or_else(|| Some(LeptonicAttribute::String(Oco::Borrowed(default_class))))
         .and_then(|new| {
-            let as_dyn: Box<dyn IntoAttribute> = Box::new(new);
+            let as_dyn: Box<dyn LeptonicIntoLeptonicAttribute> = Box::new(new);
             Some(as_dyn)
         });
 
@@ -199,7 +163,7 @@ where
         replace,
         class,
         id,
-        attributes: props.attrs.map.into_iter().collect::<Vec<_>>(),
+        LeptonicAttributes: props.attrs.map.into_iter().collect::<Vec<_>>(),
         children,
     })
     .into_view()
@@ -218,21 +182,3 @@ pub fn ButtonWrapper(children: Children) -> impl IntoView {
         </leptonic-btn-wrapper>
     }
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```

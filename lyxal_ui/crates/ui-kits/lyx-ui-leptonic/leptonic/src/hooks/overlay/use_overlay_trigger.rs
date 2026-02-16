@@ -1,31 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_trigger.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_trigger.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_trigger.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_trigger.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_trigger.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_trigger.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_trigger.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_trigger.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_trigger.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_trigger.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_trigger.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_trigger.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_trigger.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\overlay\use_overlay_trigger.rs
-```rust
 use std::rc::Rc;
 
 use educe::Educe;
@@ -36,7 +8,7 @@ use crate::{
     prelude::{AriaExpanded, AriaHasPopup},
     utils::{
         aria::{AriaAttribute, AriaControls, GenericAttribute},
-        props::Attributes,
+        props::LeptonicAttributes,
     },
 };
 
@@ -62,15 +34,15 @@ pub struct UseOverlayTriggerReturn {
 #[derive(Educe)]
 #[educe(Debug)]
 pub struct UseOverlayTriggerProps {
-    /// These attributes must be spread onto the target element: `<foo {..attrs} />`
-    pub attrs: Attributes,
+    /// These LeptonicAttributes must be spread onto the target element: `<foo {..attrs} />`
+    pub attrs: LeptonicAttributes,
 }
 
 #[derive(Educe)]
 #[educe(Debug)]
 pub struct UseOverlayTriggerOverlayProps {
-    /// These attributes must be spread onto the target element: `<foo {..attrs} />`
-    pub attrs: Attributes,
+    /// These LeptonicAttributes must be spread onto the target element: `<foo {..attrs} />`
+    pub attrs: LeptonicAttributes,
 }
 
 pub fn use_overlay_trigger(input: UseOverlayTriggerInput) -> UseOverlayTriggerReturn {
@@ -92,7 +64,7 @@ pub fn use_overlay_trigger(input: UseOverlayTriggerInput) -> UseOverlayTriggerRe
 
     let overlay_id = input.overlay_id;
 
-    let mut trigger_attrs = Attributes::new();
+    let mut trigger_attrs = LeptonicAttributes::new();
     trigger_attrs.insert_entry(AriaAttribute::HasPopup(GenericAttribute::Static(
         aria_has_popup,
     )));
@@ -112,17 +84,3 @@ pub fn use_overlay_trigger(input: UseOverlayTriggerInput) -> UseOverlayTriggerRe
         },
     }
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```

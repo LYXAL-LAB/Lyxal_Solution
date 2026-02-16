@@ -1,39 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\link.rs
-```rust
 use leptos::*;
 use leptos_router::*;
 
@@ -45,12 +9,12 @@ use crate::{
 #[component]
 #[allow(clippy::needless_pass_by_value)] // title: Option<AttributeValue>
 pub fn Link<H>(
-    /// Used to calculate the link's `href` attribute. Will be resolved relative
+    /// Used to calculate the link's `href` LeptonicAttribute. Will be resolved relative
     /// to the current route.
     href: H,
-    #[allow(unused)] // TODO: Remove this when leptos's A component supports the title attribute.
+    #[allow(unused)] // TODO: Remove this when leptos's A component supports the title LeptonicAttribute.
     #[prop(into, optional)]
-    title: Option<AttributeValue>, // TODO: This should be limited to string attributes...
+    title: Option<AttributeValue>, // TODO: This should be limited to string LeptonicAttributes...
     /// If `true`, the link is marked active when the location matches exactly;
     /// if false, link is marked active if the current route starts with it.
     #[prop(optional)]
@@ -62,10 +26,10 @@ pub fn Link<H>(
     /// will skip this page.)
     #[prop(optional)]
     replace: bool,
-    /// Sets the `id` attribute, making it easier to target.
+    /// Sets the `id` LeptonicAttribute, making it easier to target.
     #[prop(into, optional)]
     id: Option<AttributeValue>,
-    /// Sets the `class` attribute, making it easier to style.
+    /// Sets the `class` LeptonicAttribute, making it easier to style.
     #[prop(into, optional)]
     class: Option<AttributeValue>,
     #[prop(into, optional)] style: Option<AttributeValue>,
@@ -136,7 +100,7 @@ impl std::fmt::Display for LinkExtTarget {
 #[component]
 #[allow(clippy::needless_pass_by_value)] // `H` could be `&H`.
 pub fn LinkExt<H>(
-    /// Used to calculate the link's `href` attribute.
+    /// Used to calculate the link's `href` LeptonicAttribute.
     href: H,
     target: LinkExtTarget,
     #[prop(into, optional)] disabled: OptMaybeSignal<bool>,
@@ -167,21 +131,3 @@ where
         </leptonic-link>
     }
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```

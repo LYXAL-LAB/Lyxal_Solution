@@ -1,11 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\providers\condition_collapse_provider.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\providers\condition_collapse_provider.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\providers\condition_collapse_provider.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\providers\condition_collapse_provider.rs
-```rust
 use leptos::*;
 
 use crate::components::condition_pills::{ConditionId, use_condition_collapser};
@@ -30,3 +22,4 @@ pub fn ConditionCollapseProvider(children: Children) -> impl IntoView {
 ```
 ```
 ```
+

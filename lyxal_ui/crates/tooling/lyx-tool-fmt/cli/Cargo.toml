@@ -1,14 +1,19 @@
 [package]
 name = "lyx-tooling-cli"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-lyx-tooling-formatter = { path = "../formatter", version = "0.0.1" }
-clap = { version = "0.0.1", features = ["derive"] }
-rayon = { version = "0.0.1" }
-glob = { version = "0.0.1" }
-anyhow = { version = "0.0.1" }
-toml = { version = "0.0.1" }
-similar = { version = "0.0.1" }
-console = { version = "0.0.1" }
+lyx-tooling-formatter = { path = "../formatter" }
+clap = { version = "*", features = ["derive"] }
+rayon = { version = "*" }
+glob = { version = "*" }
+anyhow = { version = "*" }
+toml = { version = "*" }
+similar = { version = "*" }
+console = { version = "*" }
+
+
+
+
+

@@ -1,0 +1,204 @@
+# =============================================================================
+# GitHub Actions Workflow: Rust Formatting Check
+# =============================================================================
+# This workflow verifies that all Rust code is properly formatted using rustfmt.
+#
+# Features:
+# - Runs on every PR and push to main/develop
+# - Checks entire workspace for proper formatting
+# - Caches dependencies for faster builds
+# - Posts format results as PR comment
+# - Supports automatic fixing with format-fix workflow
+#
+# =============================================================================
+
+name: Format Check
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+# Environment variables
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  fmt:
+    name: Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: rustfmt
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-fmt-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run rustfmt check
+        run: |
+          echo "Checking Rust code formatting..."
+          cargo fmt --all -- --check
+
+      - name: Generate format report
+        if: failure()
+        run: |
+          mkdir -p fmt-reports
+
+          # Run rustfmt with output to capture formatting issues
+          cargo fmt --all -- --check 2>&1 | tee fmt-reports/fmt.log || true
+
+          # Count files that need formatting
+          if [ -f fmt-reports/fmt.log ]; then
+            FILE_COUNT=$(grep -c "please reformat" fmt-reports/fmt.log 2>/dev/null || echo "0")
+            echo "FILE_COUNT=$FILE_COUNT" >> $GITHUB_ENV
+            echo "NEEDS_FORMATTING=true" >> $GITHUB_ENV
+          else
+            echo "FILE_COUNT=0" >> $GITHUB_ENV
+            echo "NEEDS_FORMATTING=false" >> $GITHUB_ENV
+          fi
+
+      - name: Upload format reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fmt-reports
+          path: fmt-reports/
+          retention-days: 30
+
+      - name: Post format results as PR comment
+        if: github.event_name == 'pull_request' && failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let commentBody = '## 📐 Rust Format Check Results\n\n';
+
+            const needsFormatting = process.env.NEEDS_FORMATTING === 'true';
+            const fileCount = parseInt(process.env.FILE_COUNT || '0');
+
+            if (needsFormatting && fileCount > 0) {
+              commentBody += '❌ Some Rust code needs formatting.\n\n';
+              commentBody += '### Summary\n\n';
+              commentBody += `- **Files needing formatting:** ${fileCount}\n\n`;
+              commentBody += '### How to Fix\n\n';
+              commentBody += 'Run the following command to automatically format your code:\n\n';
+              commentBody += '```bash\n';
+              commentBody += 'cargo fmt --all\n';
+              commentBody += '```\n\n';
+              commentBody += 'This will format all Rust code according to the project\'s style guidelines.\n';
+            } else {
+              commentBody += '❌ Format check failed. Please review the logs for details.\n\n';
+            }
+
+            commentBody += '### Details\n\n';
+            commentBody += `- **Branch:** \`${process.env.GITHUB_REF_NAME}\`\n`;
+            commentBody += `- **Commit:** \`${process.env.GITHUB_SHA.slice(0, 7)}\`\n`;
+            commentBody += `- **Workflow:** [View Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n`;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('## 📐 Rust Format Check Results')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody,
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody,
+              });
+            }
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "## 📐 Format Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${NEEDS_FORMATTING}" = "true" ]; then
+            echo "❌ **Status:** Code needs formatting" >> $GITHUB_STEP_SUMMARY
+            echo "- **Files needing formatting:** ${FILE_COUNT}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **Status:** All code is properly formatted" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "- **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+
+  fmt-fix:
+    name: Auto-fix Format Issues
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && failure()
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: rustfmt
+
+      - name: Run rustfmt fix
+        run: |
+          echo "Applying automatic formatting..."
+          cargo fmt --all
+
+      - name: Commit formatted changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git diff --quiet && git diff --staged --quiet || git commit -am "style: auto-format code with rustfmt [skip ci]"
+          git push

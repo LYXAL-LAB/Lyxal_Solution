@@ -1,40 +1,12 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\anchor_link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\anchor_link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\anchor_link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\anchor_link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\anchor_link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\anchor_link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\anchor_link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\anchor_link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\anchor_link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\anchor_link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\anchor_link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\anchor_link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\anchor_link.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\anchor_link.rs
-```rust
 use educe::Educe;
-use leptos::{Attribute, Callable, Callback, IntoAttribute, SignalGet};
+use leptos::{LeptonicAttribute, Callable, Callback, LeptonicIntoLeptonicAttribute, SignalGet};
 use leptos_reactive::{MaybeSignal, Oco};
 use leptos_use::{use_document, use_window};
 use wasm_bindgen::JsValue;
 use web_sys::{KeyboardEvent, MouseEvent, PointerEvent, ScrollIntoViewOptions};
 
 use crate::utils::{
-    aria::*, props::Attributes, scroll_behavior::ScrollBehavior, signals::MaybeSignalExt,
+    aria::*, props::LeptonicAttributes, scroll_behavior::ScrollBehavior, signals::MaybeSignalExt,
 };
 
 use super::{use_press, UsePressInput};
@@ -82,7 +54,7 @@ pub struct UseAnchorLinkReturn {
 #[derive(Educe)]
 #[educe(Debug)]
 pub struct UseAnchorLinkProps {
-    pub attrs: Attributes,
+    pub attrs: LeptonicAttributes,
 
     /// This handler must be attached to the target element: `<foo on:keydown=on_key_down />`
     #[educe(Debug(ignore))]
@@ -139,23 +111,23 @@ pub fn use_anchor_link(input: UseAnchorLinkInput) -> UseAnchorLinkReturn {
     let press = use_press(press_input);
 
     let href: Href = input.href;
-    let mut attrs = Attributes::new();
+    let mut attrs = LeptonicAttributes::new();
     attrs.insert("role", AriaRole::Link);
-    attrs.insert("href", Attribute::String(href.0));
+    attrs.insert("href", LeptonicAttribute::String(href.0));
     if let Some(description) = input.description {
-        attrs.insert("aria-label", Attribute::String(description));
+        attrs.insert("aria-label", LeptonicAttribute::String(description));
     }
     /*attrs.insert(
         "tabindex",
         input
             .disabled
             .map(|it| match it {
-                true => Attribute::Option(None),
-                false => Attribute::String(Oco::Borrowed("0")),
+                true => LeptonicAttribute::Option(None),
+                false => LeptonicAttribute::String(Oco::Borrowed("0")),
             })
-            .into_attribute(),
+            .into_leptonic_attribute(),
     );
-    attrs.insert("disabled", input.disabled.into_attribute());*/
+    attrs.insert("disabled", input.disabled.into_leptonic_attribute());*/
     attrs.insert(
         "aria-disabled",
         input
@@ -164,10 +136,10 @@ pub fn use_anchor_link(input: UseAnchorLinkInput) -> UseAnchorLinkReturn {
                 true => "true",
                 false => "false",
             })
-            .into_attribute(),
+            .into_leptonic_attribute(),
     );
 
-    // Merge attributes
+    // Merge LeptonicAttributes
     attrs.merge(press.props.attrs);
 
     // Merge event handlers
@@ -184,17 +156,3 @@ pub fn use_anchor_link(input: UseAnchorLinkInput) -> UseAnchorLinkReturn {
         },
     }
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```

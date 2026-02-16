@@ -1,0 +1,71 @@
+---
+id: get-webhook
+title: "GetWebhook"
+description: "Retrieves detailed information about a specific webhook config, including its events, headers, and trigger history."
+sidebar_label: "GetWebhook"
+hide_title: true
+hide_table_of_contents: true
+api: eJzFVllv20YQ/iuLfWoByVbT+EVvaqLGBtrGsJX0wTCMETkiNya5zB62BYH/vTPLW6aN9Aj6IlKc69s5vtmDjNFGRpVO6UIu5RU6o/ABrYjRgcowFqrYaZMDKwjYau8ECFtipHYqEo+4TbW+F5EudiqZkXKU+VgViVDOCnJUODsTKUKMhl6giAUFSBI0IlXWabM/kTOpSzQhwEVMGD6g+7N2S6ISDOToyFoubw6yoD+kEh4zqRhyCS6ldxulmINcHqTbl6xjKVCRyGomDX71yiD5dsZjNevcPM21SeYqbl3VOP+xs0dt7m0JEf4Lf7f8xZa6sGhZ/81iwY9xlfoMCZKL1oACUR0c5ZxNoCwzFYW0nn6xbHd4jkNvv2DkOM+Gi+BUHbU+0gTaEY4JORawzfgwnWyrdYZQsNCbbNKI6pvq+LmI3fmc6i4/rDf07/LjdXh8Cr+rzbtzer5f/7berOnlfL16Lyl9TrmMnZw7V/5ee6YYD9RBk6D7IJ9/Gpp/bgzINvLUqfld08VT2YM4VpwTyC6HeTxOGBWuQENjc4/7+QNkHkXtQhAYHzlvUHhLM0cTJ3YZPilKpojBAdW4pDJTaetBdKnRPkl5Gl2KYnV5wXPUYv9Y4+J6hAkcQAZjYM/96TC3E9XgcsDTnQk8MFSgJG2pl0megXV3zRRjfAduKqk1Z9AXQo9zp6ifOJMpFAmSd7AvNFBEMkdet/tXxX8naMCb65gI62XHY6Vvdz+a4JujA47wjs42box+brqKTSCaOMm4WN0kzVqC5Inre3/Q3T2DXDXk8a5hjqriM71dvH1OO6SqvYnwD+1+1Z6onLR68iGrsymyuiC/hibjGg0BWRtDvX32XVgrR2shmSKuqj/5BJypFLAFJLx0ZJMoy/lrqUomGOLz7lnK02YNnh447xUTPkbeKLcPS8vmyqX7EyjVSUqk9AtYFa08W97c8gI5liMYNJ3Cbe/tmhNRn/Vln93h+bs8ZqDzzeZSBG0BpE7HbbLdbqnA2Szngr6C7FvCBPXX4gSFUB6+ZQSnTZmuPRW21FY1Nh1/00Z8czZf/DxfnDFCUnE5FP3S4tYW/f3haGF1nfY/3XSanDl8cqdlBmq4F+tmupGPHfhlOBI1QEqnZNHhQKXBTyarKv781aPhFqPXBzCKKSQ0XKxss4Z3kFl8JQs/XDXk9aN4CV27OAqmm7C06B+90g5rb2IVtXF72fnP49dxBle1DgPPzncJNbzIjaLVCqsowtINZM9IqxpSBV9equov2wHxzQ==
+sidebar_class_name: "get api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"GetWebhook"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/webhook/{name}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Retrieves detailed information about a specific webhook config, including its events, headers, and trigger history.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"name","in":"path","schema":{"type":"string"},"required":true},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"GetWebhook 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"name":{"type":"string"},"description":{"type":"string"},"enabled":{"type":"boolean"},"url":{"type":"string"},"method":{"type":"string","enum":["GET","POST","PUT","PATCH","DELETE","HEAD"],"title":"HttpMethod"},"version":{"type":"string","enum":["V1"],"title":"Version"},"custom_headers":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"events":{"type":"array","items":{"type":"string"}},"max_retries":{"type":"number"},"last_triggered_at":{"type":"string","format":"date-time"},"change_reason":{"type":"string"},"created_by":{"type":"string"},"created_at":{"type":"string","format":"date-time"},"last_modified_by":{"type":"string"},"last_modified_at":{"type":"string","format":"date-time"}},"required":["change_reason","created_at","created_by","description","enabled","events","last_modified_at","last_modified_by","max_retries","method","name","url","version"],"title":"GetWebhookResponseContent"}}}},"404":{"description":"ResourceNotFound 404 response"},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

@@ -1,0 +1,386 @@
+# =============================================================================
+# GitHub Actions Workflow: Automated Test Coverage Reporting
+# =============================================================================
+# This workflow generates automated test coverage reports for all pull requests
+# and pushes to the main branch.
+#
+# Features:
+# - Runs on every PR and push to main
+# - Generates coverage reports using cargo-llvm-cov
+# - Posts coverage summary as PR comment
+# - Uploads coverage reports as artifacts
+# - Fails PR if coverage is below threshold
+# - Tracks coverage trends over time
+# - Generates coverage badges
+#
+# =============================================================================
+
+name: Coverage Report
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      tool:
+        description: 'Coverage tool to use'
+        required: false
+        default: 'llvm-cov'
+        type: choice
+        options:
+          - llvm-cov
+          - tarpaulin
+      fail_under:
+        description: 'Minimum coverage threshold (default: 95%)'
+        required: false
+        default: '95'
+        type: string
+
+# Environment variables
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  RUSTFLAGS: "-D warnings"
+  COVERAGE_MINIMUM_LINE_COVERAGE: 95
+  COVERAGE_MINIMUM_BRANCH_COVERAGE: 90
+  COVERAGE_MINIMUM_FUNCTION_COVERAGE: 100
+
+jobs:
+  coverage:
+    name: Generate Coverage Report
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for trend analysis
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: llvm-tools-preview
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install cargo-llvm-cov
+        run: |
+          cargo install cargo-llvm-cov
+          echo "CARGO_LLVM_COV_VERSION=$(cargo llvm-cov --version)" >> $GITHUB_ENV
+
+      - name: Run tests with coverage
+        run: |
+          cargo llvm-cov --workspace --html --lcov --json --output-path coverage.json
+        env:
+          LLVM_PROFILE_FILE: ${{ github.workspace }}/target/coverage/%p-%m.profraw
+
+      - name: Generate coverage reports
+        run: |
+          mkdir -p coverage-reports
+
+          # Copy generated reports
+          cp -r target/llvm-cov/html coverage-reports/ 2>/dev/null || true
+          cp target/llvm-cov/lcov.info coverage-reports/coverage.lcov 2>/dev/null || true
+          cp coverage.json coverage-reports/ 2>/dev/null || true
+
+          # Generate summary
+          cat > coverage-reports/summary.txt << EOF
+          Coverage Report for Leptos ShadCN UI
+          =====================================
+          Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          Branch: ${{ github.ref_name }}
+          Commit: ${{ github.sha }}
+
+          EOF
+
+          # Extract coverage metrics
+          if [ -f coverage.json ]; then
+            python3 scripts/coverage_reporter.py --format json --output-dir coverage-reports || true
+          fi
+
+      - name: Generate coverage badge
+        run: |
+          mkdir -p coverage-reports/badges
+
+          # Extract coverage percentage
+          COVERAGE=$(cargo llvm-cov --workspace --text 2>/dev/null | grep -oP '\d+\.\d+%' | head -1 || echo "0%")
+          COVERAGE_NUM=$(echo $COVERAGE | sed 's/%//')
+
+          # Determine badge color
+          if (( $(echo "$COVERAGE_NUM >= 95" | bc -l) )); then
+            COLOR="brightgreen"
+          elif (( $(echo "$COVERAGE_NUM >= 90" | bc -l) )); then
+            COLOR="green"
+          elif (( $(echo "$COVERAGE_NUM >= 80" | bc -l) )); then
+            COLOR="yellow"
+          elif (( $(echo "$COVERAGE_NUM >= 70" | bc -l) )); then
+            COLOR="orange"
+          else
+            COLOR="red"
+          fi
+
+          # Generate SVG badge
+          cat > coverage-reports/badges/coverage.svg << EOF
+          <svg xmlns="http://www.w3.org/2000/svg" width="120" height="20">
+            <linearGradient id="b" x2="0" y2="100%">
+              <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+              <stop offset="1" stop-opacity=".1"/>
+            </linearGradient>
+            <mask id="a">
+              <rect width="120" height="20" rx="3" fill="#fff"/>
+            </mask>
+            <g mask="url(#a)">
+              <path fill="#555" d="M0 0h60v20H0z"/>
+              <path fill="${COLOR}" d="M60 0h60v20H60z"/>
+              <path fill="url(#b)" d="M0 0h120v20H0z"/>
+            </g>
+            <g fill="#fff" text-anchor="middle" font-family="DejaVu Sans,Verdana,Geneva,sans-serif" font-size="11">
+              <text x="30" y="15" fill="#010101" fill-opacity=".3">coverage</text>
+              <text x="30" y="14">coverage</text>
+              <text x="90" y="15" fill="#010101" fill-opacity=".3">${COVERAGE}</text>
+              <text x="90" y="14">${COVERAGE}</text>
+            </g>
+          </svg>
+          EOF
+
+          echo "Coverage: ${COVERAGE}"
+          echo "COVERAGE_PERCENTAGE=${COVERAGE}" >> $GITHUB_ENV
+
+      - name: Check coverage threshold
+        run: |
+          COVERAGE_NUM=$(echo $COVERAGE_PERCENTAGE | sed 's/%//')
+
+          echo "Checking coverage threshold..."
+          echo "Current coverage: ${COVERAGE_NUM}%"
+          echo "Required threshold: ${COVERAGE_MINIMUM_LINE_COVERAGE}%"
+
+          if (( $(echo "$COVERAGE_NUM < $COVERAGE_MINIMUM_LINE_COVERAGE" | bc -l) )); then
+            echo "❌ Coverage below threshold!"
+            echo "::error::Coverage ${COVERAGE_NUM}% is below threshold ${COVERAGE_MINIMUM_LINE_COVERAGE}%"
+            exit 1
+          else
+            echo "✅ Coverage meets threshold!"
+          fi
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: coverage-reports/
+          retention-days: 30
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage-reports/coverage.lcov
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Post coverage as PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const COVERAGE = process.env.COVERAGE_PERCENTAGE || '0%';
+            const THRESHOLD = process.env.COVERAGE_MINIMUM_LINE_COVERAGE || '95%';
+
+            const comment = `## 📊 Test Coverage Report
+
+            **Overall Coverage:** ${COVERAGE}
+            **Threshold:** ${THRESHOLD}
+
+            ${
+              parseFloat(COVERAGE) >= parseFloat(THRESHOLD)
+                ? '✅ Coverage meets threshold!'
+                : '❌ Coverage below threshold!'
+            }
+
+            ### Coverage Details
+
+            - **Branch:** \`${process.env.GITHUB_REF_NAME}\`
+            - **Commit:** \`${process.env.GITHUB_SHA.slice(0, 7)}\`
+            - **Tool:** cargo-llvm-cov
+
+            ### Reports
+
+            📁 [View Full Coverage Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            `;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('## 📊 Test Coverage Report')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment,
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment,
+              });
+            }
+
+      - name: Generate coverage summary
+        run: |
+          echo "## 📊 Coverage Report Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Overall Coverage:** ${COVERAGE_PERCENTAGE}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Threshold:** ${COVERAGE_MINIMUM_LINE_COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Reports" >> $GITHUB_STEP_SUMMARY
+          echo "- 📁 [View Full Coverage Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail on low coverage
+        if: github.event_name == 'pull_request'
+        run: |
+          COVERAGE_NUM=$(echo $COVERAGE_PERCENTAGE | sed 's/%//')
+
+          if (( $(echo "$COVERAGE_NUM < $COVERAGE_MINIMUM_LINE_COVERAGE" | bc -l) )); then
+            echo "::error::Coverage ${COVERAGE_NUM}% is below threshold ${COVERAGE_MINIMUM_LINE_COVERAGE}%"
+            exit 1
+          fi
+
+  coverage-trend:
+    name: Track Coverage Trends
+    runs-on: ubuntu-latest
+    needs: coverage
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download coverage reports
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-reports
+          path: coverage-reports/
+
+      - name: Update coverage history
+        run: |
+          HISTORY_FILE="coverage-history.json"
+
+          # Initialize history if it doesn't exist
+          if [ ! -f "$HISTORY_FILE" ]; then
+            echo '[]' > "$HISTORY_FILE"
+          fi
+
+          # Extract coverage from JSON report
+          if [ -f "coverage-reports/coverage.json" ]; then
+            COVERAGE=$(python3 -c "import json; print(json.load(open('coverage-reports/coverage.json')).get('coverage', 0))" 2>/dev/null || echo "0")
+          else
+            COVERAGE=$(cargo llvm-cov --workspace --text 2>/dev/null | grep -oP '\d+\.\d+%' | sed 's/%//' | head -1 || echo "0")
+          fi
+
+          # Add new entry
+          cat > "$HISTORY_FILE.tmp" << EOF
+          {
+            "date": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "coverage": ${COVERAGE},
+            "run_id": "${{ github.run_id }}"
+          }
+          EOF
+
+          # Merge with existing history
+          python3 << EOF
+          import json
+          with open('$HISTORY_FILE', 'r') as f:
+              history = json.load(f)
+          with open('$HISTORY_FILE.tmp', 'r') as f:
+              new_entry = json.load(f)
+          history.append(new_entry)
+          # Keep only last 100 entries
+          history = history[-100:]
+          with open('$HISTORY_FILE', 'w') as f:
+              json.dump(history, f, indent=2)
+          EOF
+
+          rm -f "$HISTORY_FILE.tmp"
+
+      - name: Upload updated history
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-history
+          path: coverage-history.json
+          retention-days: 90
+
+  coverage-badge-update:
+    name: Update Coverage Badge
+    runs-on: ubuntu-latest
+    needs: coverage
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download coverage reports
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-reports
+          path: coverage-reports/
+
+      - name: Commit coverage badge
+        run: |
+          # Create badges directory if it doesn't exist
+          mkdir -p docs/badges
+
+          # Copy badge
+          cp coverage-reports/badges/coverage.svg docs/badges/
+
+          # Commit the badge
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add docs/badges/coverage.svg
+          git diff --quiet && git diff --staged --quiet || git commit -m "chore: update coverage badge [skip ci]"
+          git push

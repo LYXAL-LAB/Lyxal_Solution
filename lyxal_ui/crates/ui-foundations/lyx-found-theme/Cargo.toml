@@ -1,13 +1,12 @@
 [package]
-name = "lyx-found-lyx-found-theme"
-version = "0.0.1"
+name = "leptos_theme"
+version = "0.8.0"
 edition = "2024"
+
 [dependencies]
-console_log = { version = "0.0.1" }
-lyx-core-leptos = { path = "../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["csr", "nightly"] }
-lyx-logic-use = { path = "../../logic/lyx-logic-use", version = "0.0.1", features = ["serde"] }
-wasm-bindgen = { version = "0.0.1" }
-web-sys = { version = "0.0.1" }
-serde = { version = "0.0.1" }
-serde_json = { version = "0.0.1" }
-rstest = { version = "0.0.1" }
+leptos = { path = "../../core/lyx-core-leptos/leptos" }
+leptos-use = { path = "../../logic/lyx-logic-use" }
+serde = { version = "*" }
+serde_json = { version = "*" }
+wasm-bindgen = { version = "*" }
+web-sys = { version = "*" }

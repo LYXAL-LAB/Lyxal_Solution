@@ -1,0 +1,11 @@
+﻿DEFINE TABLE file SCHEMAFULL;
+DEFINE FIELD name ON file TYPE string;
+DEFINE FIELD format ON file TYPE string;
+DEFINE FIELD size ON file TYPE int;
+DEFINE FIELD description ON file TYPE option<string>;
+DEFINE FIELD createdAt ON file TYPE datetime DEFAULT time::now();
+DEFINE FIELD updatedAt ON file TYPE datetime DEFAULT time::now() VALUE time::now();
+DEFINE FIELD meta ON file TYPE object DEFAULT {};
+DEFINE FIELD status ON file TYPE string ASSERT $value INSIDE ['UPLOADING', 'UPLOADED'] DEFAULT 'UPLOADING';
+DEFINE FIELD isDeleted ON file TYPE bool DEFAULT false;
+DEFINE INDEX fileNameIndex ON file FIELDS name UNIQUE;

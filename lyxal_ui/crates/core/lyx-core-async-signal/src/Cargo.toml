@@ -1,15 +1,25 @@
 [package]
-name = "lyx-core-src"
-version = "0.0.1"
+name = "src"
+version = "0.8.0"
 edition = "2024"
 
 [lib]
 path = "lib.rs"
 
 [dependencies]
-lyx-core-leptos = { path = "../../lyx-core-leptos/leptos", version = "0.0.1", optional = true }
-tokio = { version = "0.0.1", features = ["full"], optional = true }
+leptos = { path = "../../leptos/leptos", optional = true }
+tokio = { version = "*", features = ["full"], optional = true }
 
 [features]
 default = []
-ssr = ["lyx-core-leptos/ssr", "dep:tokio"]
+ssr = ["leptos/ssr", "dep:tokio"]
+
+
+
+
+
+
+
+
+
+

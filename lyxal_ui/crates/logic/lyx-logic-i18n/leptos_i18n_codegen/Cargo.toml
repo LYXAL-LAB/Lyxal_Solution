@@ -1,17 +1,17 @@
 [package]
-name = "lyx-logic-leptos_i18n_codegen"
-version = "0.0.1"
+name = "leptos_i18n_codegen"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
 
 
-proc-macro2 = { version = "0.0.1" }
-quote = { version = "0.0.1" }
-syn = { version = "0.0.1" }
-icu_locale = { version = "0.0.1", features = ["compiled_data"] }
-lyx-logic-leptos_i18n_parser = { path = "../leptos_i18n_parser", version = "0.0.1", optional = true }
-tinystr = { version = "0.0.1" }
+proc-macro2 = { version = "*" }
+quote = { version = "*" }
+syn = { version = "*" }
+icu_locale = { version = "*", features = ["compiled_data"] }
+leptos_i18n_parser = { path = "../leptos_i18n_parser", optional = true }
+tinystr = { version = "*" }
 
 [features]
 default = []
@@ -20,8 +20,15 @@ dynamic_load = []
 hydrate = []
 csr = []
 ssr = []
-plurals = ["lyx-logic-leptos_i18n_parser/plurals"]
-format_datetime = ["lyx-logic-leptos_i18n_parser/format_datetime"]
-format_list = ["lyx-logic-leptos_i18n_parser/format_list"]
-format_nums = ["lyx-logic-leptos_i18n_parser/format_nums"]
-format_currency = ["lyx-logic-leptos_i18n_parser/format_currency", "format_nums"]
+plurals = ["leptos_i18n_parser/plurals"]
+format_datetime = ["leptos_i18n_parser/format_datetime"]
+format_list = ["leptos_i18n_parser/format_list"]
+format_nums = ["leptos_i18n_parser/format_nums"]
+format_currency = ["leptos_i18n_parser/format_currency", "format_nums"]
+
+
+
+
+
+
+

@@ -1,24 +1,24 @@
 [package]
-name = "lyx-logic-core"
-version = "0.0.1"
+name = "core"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-web-sys = { version = "0.0.1", optional = true }
+web-sys = { version = "*", optional = true }
 
 
 
-bigdecimal = { version = "0.0.1", optional = true }
-chrono = { version = "0.0.1", optional = true }
-num-bigint = { version = "0.0.1", optional = true }
-serde = { version = "0.0.1", optional = true }
-serde_json = { version = "0.0.1", optional = true }
-uuid = { version = "0.0.1", optional = true }
+bigdecimal = { version = "*", optional = true }
+chrono = { version = "*", optional = true }
+num-bigint = { version = "*", optional = true }
+serde = { version = "*", optional = true }
+serde_json = { version = "*", optional = true }
+uuid = { version = "*", optional = true }
 
 [build-dependencies]
 
 
-rustc_version = { version = "0.0.1" }
+rustc_version = { version = "*" }
 
 [features]
 bigdecimal = ["dep:bigdecimal"]
@@ -33,3 +33,8 @@ cache-local-storage = [
 cache-serde_json = [
 "dep:serde",
 "dep:serde_json" ]
+
+
+
+
+

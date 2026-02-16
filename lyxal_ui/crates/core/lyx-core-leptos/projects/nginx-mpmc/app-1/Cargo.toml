@@ -1,46 +1,54 @@
 [package]
-name = "lyx-core-app-1"
-version = "0.0.1"
+name = "app-1"
+version = "*"
 edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
-console_error_panic_hook = { version = "0.0.1" }
-lyx-core-meta = { path = "../../../meta", version = "0.0.1", optional = true }
-lyx-core-router = { path = "../../../router", version = "0.0.1", optional = true }
-tower = { version = "0.0.1", optional = true }
-tower-http = { version = "0.0.1", optional = true, features = ["fs", "trace"] }
-wasm-bindgen = { version = "0.0.1" }
-thiserror = { version = "0.0.1" }
-tracing = { version = "0.0.1", optional = true }
-http = { version = "0.0.1" }
-axum = { version = "0.0.1", optional = true }
-lyx-core-leptos = { path = "../../../leptos", version = "0.0.1", optional = true }
-lyx-core-axum = { path = "../../../integrations/axum", version = "0.0.1", optional = true }
-tokio = { version = "0.0.1", optional = true, features = ["rt-multi-thread"] }
-shared-server = { version = "0.0.1", default-features = false }
-lyx-core-shared-server-2 = { path = "../shared-server-2", version = "0.0.1", optional = true }
-tracing-subscriber = { version = "0.0.1", features = ["env-filter"] }
+console_error_panic_hook = { version = "*" }
+meta = { path = "../../../meta", version = "*", optional = true }
+router = { path = "../../../router", version = "*", optional = true }
+tower = { version = "*", optional = true }
+tower-http = { version = "*", optional = true, features = ["fs", "trace"] }
+wasm-bindgen = { version = "*" }
+thiserror = { version = "*" }
+tracing = { version = "*", optional = true }
+http = { version = "*" }
+axum = { version = "*", optional = true }
+leptos = { path = "../leptos", version = "*", optional = true }
+axum = { path = "../../../integrations/axum", version = "*", optional = true }
+tokio = { version = "*", optional = true, features = ["rt-multi-thread"] }
+shared-server = { version = "*", default-features = false }
+shared-server-2 = { path = "../shared-server-2", version = "*", optional = true }
+tracing-subscriber = { version = "*", features = ["env-filter"] }
 [profile.wasm-release]
 opt-level = 'z'
 lto = true
 codegen-units = 1
 [features]
 hydrate = [
-"lyx-core-leptos/hydrate",
-"lyx-core-meta/hydrate",
-"lyx-core-router/hydrate",
+"leptos/hydrate",
+"meta/hydrate",
+"router/hydrate",
 "shared-server/hydrate",
-"lyx-core-shared-server-2/hydrate" ]
+"shared-server-2/hydrate" ]
 ssr = [
 "shared-server/ssr",
-"lyx-core-shared-server-2/ssr",
+"shared-server-2/ssr",
 "dep:axum",
 "dep:tokio",
 "dep:tower",
 "dep:tower-http",
-"dep:lyx-core-axum",
-"lyx-core-leptos/ssr",
-"lyx-core-meta/ssr",
-"lyx-core-router/ssr",
+"dep:axum",
+"leptos/ssr",
+"meta/ssr",
+"router/ssr",
 "dep:tracing" ]
+
+
+[build-dependencies]
+rustc_version = "*"
+
+
+
+

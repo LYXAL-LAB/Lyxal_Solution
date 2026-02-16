@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\platform\lyx-plat-tauri\lyx-platform-lyx_platform_frontend\src\main.rs
-```rust
 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\platform\lyx-plat-tauri\lyx-platform-lyx_platform_lyx-platform-lyx_platform_frontend\src\main.rs
 2: ```rust
 3: 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\platform\lyx_plat_tauri\lyx-platform-lyx_platform_lyx-platform-lyx_platform_frontend\src\main.rs
@@ -77,3 +75,4 @@
 75: 73: ```
 76: ```
 ```
+

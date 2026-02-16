@@ -1,10 +1,14 @@
 [package]
 name = "lyx-ui-foundations-visual"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
 
-convert_case = { version = "0.0.1" }
+convert_case = { version = "*" }
 
-yew = { version = "0.0.1", features = ["csr"] }
+yew = { version = "*", features = ["csr"] }
+
+
+
+

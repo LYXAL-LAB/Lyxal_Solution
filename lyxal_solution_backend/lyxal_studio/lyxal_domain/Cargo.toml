@@ -1,0 +1,15 @@
+﻿[package]
+name = "lyxal_domain"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lyxal_types = { path = "../lyxal_types" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.12", features = ["json"] }
+sha2 = "0.10"
+url = "2.5"
+tokio = { version = "1.0", features = ["full"] }
+async-trait = "0.1"
+

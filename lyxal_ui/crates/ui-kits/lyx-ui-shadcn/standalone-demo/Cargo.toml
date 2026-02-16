@@ -1,29 +1,39 @@
 [package]
 name = "lyx-ui-standalone-demo"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
 # Leptos framework
-lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["csr"] }
-lyx-core-meta = { path = "../../../core/lyx-core-leptos/meta", version = "0.0.1" }
+leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr"] }
+leptos_meta = { path = "../core/lyx-core-leptos/meta" }
 # WASM dependencies
-console_error_panic_hook = { version = "0.0.1" }
-console_log = { version = "0.0.1" }
-log = { version = "0.0.1" }
-wasm-bindgen = { version = "0.0.1" }
-web-sys = { version = "0.0.1" }
-js-sys = { version = "0.0.1" }
-getrandom = { version = "0.0.1", features = ["js"] }
-uuid = { version = "0.0.1", features = ["v4", "js"] }
+console_error_panic_hook = { version = "*" }
+console_log = { version = "*" }
+log = { version = "*" }
+wasm-bindgen = { version = "*" }
+web-sys = { version = "*" }
+js-sys = { version = "*" }
+getrandom = { version = "*", features = ["js"] }
+uuid = { version = "*", features = ["v4", "js"] }
 # Tailwind-RS
-tailwind-rs-core = { path = "../packages/tailwind-rs-core", version = "0.0.1" }
-tailwind-rs-leptos = { version = "0.0.1" }
+tailwind-rs-core = { path = "../packages/tailwind-rs-core" }
+tailwind-rs-leptos = { version = "*" }
 # Local components (using published versions for now)
-leptos-shadcn-button = { path = "../packages/leptos/button", version = "0.0.1" }
-leptos-shadcn-card = { path = "../packages/leptos/card", version = "0.0.1" }
-leptos-shadcn-input = { path = "../packages/leptos/input", version = "0.0.1" }
+leptos-shadcn-button = { path = "../packages/leptos/button" }
+leptos-shadcn-card = { path = "../packages/leptos/card" }
+leptos-shadcn-input = { path = "../packages/leptos/input" }
 [lib]
 crate-type = ["cdylib"]
 # [[bin]]
 # name = "leptos_shadcn_demo"
 # path = "src/main.rs"
+
+
+
+
+
+
+
+
+
+

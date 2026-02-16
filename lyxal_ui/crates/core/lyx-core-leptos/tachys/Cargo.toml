@@ -1,12 +1,15 @@
 [package]
-name = "lyx-core-tachys"
-version = "0.0.1"
+name = "tachys"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-lyx-core-reactive_graph = { path = "../reactive_graph", version = "0.0.1" }
-wasm-bindgen = { version = "0.0.1" }
-web-sys = { version = "0.0.1", features = ["Element", "Node"] }
+next_tuple = { path = "../next_tuple" }
+html-escape = { version = "*" }
+erased = { version = "*" }
+reactive_graph = { path = "../reactive_graph", version = "*" }
+wasm-bindgen = { version = "*" }
+web-sys = { version = "*", features = ["Element", "Node"] }
 
 [features]
 islands = []
@@ -15,3 +18,11 @@ nightly = []
 csr = []
 ssr = []
 hydrate = []
+
+
+[build-dependencies]
+rustc_version = "*"
+
+
+
+

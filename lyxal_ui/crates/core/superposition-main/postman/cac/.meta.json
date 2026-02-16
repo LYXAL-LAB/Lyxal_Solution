@@ -1,0 +1,10 @@
+{
+  "childrenOrder": [
+    "Default Config",
+    "config",
+    "Dimension",
+    "Context",
+    "audit log",
+    "custom types"
+  ]
+}

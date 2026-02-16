@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx-found-floating\packages\yew\tests\visual\src\spec\placement.rs
-```rust
 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_floating\packages\yew\tests\visual\src\spec\placement.rs
 2: ```rust
 3: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_floating\packages\yew\tests\visual\src\spec\placement.rs
@@ -185,3 +183,4 @@
 183: ```
 184: ```
 ```
+

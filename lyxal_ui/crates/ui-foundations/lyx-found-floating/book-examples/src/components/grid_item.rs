@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx-found-floating\book-lyx-ui-foundations-lyx_ui_foundations_examples\src\components\grid_item.rs
-```rust
 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx-found-floating\book-lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_examples\src\components\grid_item.rs
 2: ```rust
 3: 1: use lyx-core-lyx_core_lyx-core-lyx_core_leptos::prelude::*;
@@ -44,3 +42,4 @@
 42: 40: }
 43: ```
 ```
+

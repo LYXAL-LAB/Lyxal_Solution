@@ -1,9 +1,13 @@
 [package]
 name = "lyx-ui-singlestage_macro"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [lib]
 proc-macro = true
 [dependencies]
-quote = { version = "0.0.1" }
-syn = { version = "0.0.1" }
+quote = { version = "*" }
+syn = { version = "*" }
+
+
+
+

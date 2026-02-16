@@ -1,6 +1,6 @@
 [package]
 name = "lyx-viz-lyx-viz-apex"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [lib]
@@ -10,17 +10,27 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = []
 # This feature enables the leptos chart components.
-leptos = ["dep:lyx-core-leptos"]
+leptos = ["dep:leptos"]
 # This feature enables the yew chart components.
 yew = ["dep:yew", "dep:gloo"]
 
 [dependencies]
-wasm-bindgen = { version = "0.0.1", features = ["serde-serialize"] }
+wasm-bindgen = { version = "*", features = ["serde-serialize"] }
 wasm-bindgen-futures = "0.0.1"
-serde = { version = "0.0.1", features = ["derive"], optional = true }
+serde = { version = "*", features = ["derive"], optional = true }
 serde_json = "0.0.1"
 serde-wasm-bindgen = "0.0.1"
-yew = { version = "0.0.1", optional = true, features = ["csr"] }
-gloo = { version = "0.0.1", optional = true }
-indexmap = { version = "0.0.1", features = ["serde"] }
-lyx-core-leptos = { path = "../../core/lyx-core-leptos/leptos", version = "0.0.1", optional = true }
+yew = { version = "*", optional = true, features = ["csr"] }
+gloo = { version = "*", optional = true }
+indexmap = { version = "*", features = ["serde"] }
+leptos = { path = "../core/lyx-core-leptos/leptos", optional = true }
+
+
+
+
+
+
+
+
+
+

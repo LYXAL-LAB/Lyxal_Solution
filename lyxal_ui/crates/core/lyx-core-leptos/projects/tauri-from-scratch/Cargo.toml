@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["src-tauri", "src-orig"]
+
+[profile.release]
+codegen-units = 1
+lto = true
+
+
+
+
+[build-dependencies]
+rustc_version = "*"
+

@@ -1,0 +1,19 @@
+[build]
+target = "index.html"
+# public_url = "/thaw/"
+# release = true
+# filehash = false
+
+[watch]
+watch = [
+    "../thaw",
+    "../thaw_components",
+    "../thaw_utils",
+    "./src",
+    "../demo_markdown",
+]
+
+[serve]
+address = "127.0.0.1"
+port = 6421
+open = false

@@ -1,38 +1,38 @@
 [package]
-name = "lyx-core-sso_auth_axum"
-version = "0.0.1"
+name = "sso_auth_axum"
+version = "*"
 edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
-oauth2 = { version = "0.0.1", optional = true }
-anyhow = { version = "0.0.1" }
-console_log = { version = "0.0.1" }
-rand = { version = "0.0.1", optional = true, features = ["min_const_gen"] }
-console_error_panic_hook = { version = "0.0.1" }
-futures = { version = "0.0.1" }
-lyx-core-leptos = { path = "../../leptos", version = "0.0.1", optional = true }
-lyx-core-meta = { path = "../../meta", version = "0.0.1", optional = true }
-lyx-core-axum = { path = "../../integrations/axum", version = "0.0.1", optional = true }
-lyx-core-router = { path = "../../router", version = "0.0.1", optional = true }
-log = { version = "0.0.1" }
-simple_logger = { version = "0.0.1" }
-serde = { version = "0.0.1", features = ["derive"] }
-serde_json = { version = "0.0.1", optional = true }
-axum = { version = "0.0.1", optional = true, features = ["macros"] }
-tower = { version = "0.0.1", optional = true }
-tower-http = { version = "0.0.1", optional = true, features = ["fs"] }
-tokio = { version = "0.0.1", optional = true, features = ["full"] }
-http = { version = "0.0.1" }
-sqlx = { version = "0.0.1", optional = true, features = ["runtime-tokio-rustls", "sqlite" ] }
-thiserror = { version = "0.0.1" }
-wasm-bindgen = { version = "0.0.1" }
-axum_session_auth = { version = "0.0.1", optional = true, features = ["sqlite-rustls" ] }
-axum_session = { version = "0.0.1", optional = true, features = ["sqlite-rustls" ] }
-async-trait = { version = "0.0.1", optional = true }
-reqwest = { version = "0.0.1", optional = true, features = ["json"] }
+oauth2 = { version = "*", optional = true }
+anyhow = { version = "*" }
+console_log = { version = "*" }
+rand = { version = "*", optional = true, features = ["min_const_gen"] }
+console_error_panic_hook = { version = "*" }
+futures = { version = "*" }
+leptos = { path = "../leptos", version = "*", optional = true }
+meta = { path = "../../meta", version = "*", optional = true }
+axum = { path = "../../integrations/axum", version = "*", optional = true }
+router = { path = "../../router", version = "*", optional = true }
+log = { version = "*" }
+simple_logger = { version = "*" }
+serde = { version = "*", features = ["derive"] }
+serde_json = { version = "*", optional = true }
+axum = { version = "*", optional = true, features = ["macros"] }
+tower = { version = "*", optional = true }
+tower-http = { version = "*", optional = true, features = ["fs"] }
+tokio = { version = "*", optional = true, features = ["full"] }
+http = { version = "*" }
+sqlx = { version = "*", optional = true, features = ["runtime-tokio-rustls", "sqlite" ] }
+thiserror = { version = "*" }
+wasm-bindgen = { version = "*" }
+axum_session_auth = { version = "*", optional = true, features = ["sqlite-rustls" ] }
+axum_session = { version = "*", optional = true, features = ["sqlite-rustls" ] }
+async-trait = { version = "*", optional = true }
+reqwest = { version = "*", optional = true, features = ["json"] }
 [features]
-hydrate = ["lyx-core-leptos/hydrate", "lyx-core-meta/hydrate", "lyx-core-router/hydrate"]
+hydrate = ["leptos/hydrate", "meta/hydrate", "router/hydrate"]
 ssr = [
 "dep:serde_json",
 "dep:axum",
@@ -46,7 +46,15 @@ ssr = [
 "dep:async-trait",
 "dep:sqlx",
 "dep:rand",
-"lyx-core-leptos/ssr",
-"lyx-core-meta/ssr",
-"lyx-core-router/ssr",
-"dep:lyx-core-axum" ]
+"leptos/ssr",
+"meta/ssr",
+"router/ssr",
+"dep:axum" ]
+
+
+[build-dependencies]
+rustc_version = "*"
+
+
+
+

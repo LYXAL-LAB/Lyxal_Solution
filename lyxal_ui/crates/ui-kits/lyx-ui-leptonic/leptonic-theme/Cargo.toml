@@ -1,8 +1,13 @@
 [package]
-name = "lyx-ui-leptonic-theme"
-version = "0.0.1"
+name = "leptonic-theme"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-anyhow = { version = "0.0.1" }
-include_dir = { version = "0.0.1" }
-indoc = { version = "0.0.1" }
+anyhow = { version = "*" }
+include_dir = { version = "*" }
+indoc = { version = "*" }
+
+
+
+
+

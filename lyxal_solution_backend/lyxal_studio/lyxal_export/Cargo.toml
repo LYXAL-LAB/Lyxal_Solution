@@ -1,0 +1,12 @@
+﻿[package]
+name = "lyxal_export"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lyxal_types = { path = "../lyxal_types" }
+lyxal_renderer = { path = "../lyxal_renderer" }
+lyxal_css = { path = "../lyxal_css" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+

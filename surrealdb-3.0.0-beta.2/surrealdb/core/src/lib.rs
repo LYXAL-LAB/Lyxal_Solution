@@ -42,6 +42,8 @@ mod exe;
 mod fmt;
 mod fnc;
 mod key;
+#[cfg(feature = "kv-lyxalkv")]
+pub use crate::kvs::lyxalkv;
 #[doc(hidden)]
 pub mod str;
 #[cfg(feature = "surrealism")]

@@ -1,34 +1,7 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\props.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\props.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\props.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\props.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\props.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\props.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\props.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\props.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\props.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\props.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\props.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\props.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\props.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\utils\props.rs
-```rust
 use std::collections::HashMap;
-
-use leptos::{Attribute, IntoAttribute};
+use std::sync::Arc;
+use leptos::Oco;
+use leptos::prelude::{AttributeValue, IntoAttributeValue};
 
 pub trait IntoAttributeName {
     fn to_attribute_name(&self) -> &'static str;
@@ -41,11 +14,11 @@ impl IntoAttributeName for &'static str {
 }
 
 #[derive(Debug, Clone)]
-pub struct Attributes {
-    pub map: HashMap<&'static str, Attribute>,
+pub struct LeptonicAttributes {
+    pub map: HashMap<&'static str, LeptonicAttribute>,
 }
 
-impl Attributes {
+impl LeptonicAttributes {
     pub fn new() -> Self {
         Self {
             map: HashMap::new(),
@@ -55,50 +28,119 @@ impl Attributes {
     pub fn insert(
         &mut self,
         k: impl IntoAttributeName,
-        v: impl IntoAttribute,
-    ) -> Option<Attribute> {
-        self.map.insert(k.to_attribute_name(), v.into_attribute())
+        v: LeptonicAttribute,
+    ) -> Option<LeptonicAttribute> {
+        self.map.insert(k.to_attribute_name(), v)
     }
 
-    pub fn insert_entry<IntoAttrName: IntoAttributeName, IntoAttr: IntoAttribute>(
+    pub fn insert_entry<IntoAttrName: IntoAttributeName>(
         &mut self,
-        entry: impl Into<(IntoAttrName, IntoAttr)>,
-    ) -> Option<Attribute> {
-        let (k, v) = entry.into();
-        self.map.insert(k.to_attribute_name(), v.into_attribute())
+        entry: (IntoAttrName, LeptonicAttribute),
+    ) -> Option<LeptonicAttribute> {
+        let (k, v) = entry;
+        self.map.insert(k.to_attribute_name(), v)
     }
 
     pub fn merge(
         &mut self,
-        iter: impl IntoIterator<Item = (impl IntoAttributeName, impl IntoAttribute)>,
+        iter: impl IntoIterator<Item = (&'static str, LeptonicAttribute)>,
     ) {
-        self.map.extend(
-            iter.into_iter()
-                .map(|(k, v)| (k.to_attribute_name(), v.into_attribute())),
-        )
+        self.map.extend(iter);
     }
 }
 
-impl IntoIterator for Attributes {
-    type Item = (&'static str, Attribute);
-
-    type IntoIter = std::collections::hash_map::IntoIter<&'static str, Attribute>;
+impl IntoIterator for LeptonicAttributes {
+    type Item = (&'static str, LeptonicAttribute);
+    type IntoIter = std::collections::hash_map::IntoIter<&'static str, LeptonicAttribute>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.map.into_iter()
     }
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
+
+#[derive(Clone)]
+pub enum LeptonicAttribute {
+    String(Oco<'static, str>),
+    Fn(Arc<dyn Fn() -> LeptonicAttribute + Send + Sync>),
+    Bool(bool),
+    Option(Option<Oco<'static, str>>),
+}
+
+impl std::fmt::Debug for LeptonicAttribute {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::String(s) => f.debug_tuple("String").field(s).finish(),
+            Self::Fn(_) => f.debug_tuple("Fn").finish(),
+            Self::Bool(b) => f.debug_tuple("Bool").field(b).finish(),
+            Self::Option(o) => f.debug_tuple("Option").field(o).finish(),
+        }
+    }
+}
+
+impl LeptonicAttribute {
+    pub fn prepend(&self, string: String) -> Self {
+        match self {
+            Self::String(s) => Self::String(Oco::Owned(format!("{string} {s}"))),
+            Self::Fn(f) => {
+                let f = f.clone();
+                Self::Fn(Arc::new(move || f().prepend(string.clone())))
+            }
+            Self::Option(o) => {
+                Self::Option(o.as_ref().map(|s| Oco::Owned(format!("{string} {s}"))))
+            }
+            Self::Bool(_) => panic!("Cannot prepend something to an LeptonicAttribute::Bool."),
+        }
+    }
+
+    pub fn into_leptonic_attribute_value(self) -> AttributeValue {
+        match self {
+            Self::String(s) => s.into_leptonic_attribute_value(),
+            Self::Bool(b) => b.into_leptonic_attribute_value(),
+            Self::Option(o) => o.into_leptonic_attribute_value(),
+            Self::Fn(f) => {
+                let f = f.clone();
+                (move || f().into_leptonic_attribute_value()).into_leptonic_attribute_value()
+            }
+        }
+    }
+}
+
+impl IntoAttributeValue for LeptonicAttribute {
+    fn into_leptonic_attribute_value(self) -> AttributeValue {
+        self.into_leptonic_attribute_value()
+    }
+}
+
+pub trait LeptonicIntoLeptonicAttribute {
+    fn into_leptonic_attribute(self) -> LeptonicAttribute;
+}
+
+impl LeptonicIntoLeptonicAttribute for String {
+    fn into_leptonic_attribute(self) -> LeptonicAttribute {
+        LeptonicAttribute::String(Oco::Owned(self))
+    }
+}
+
+impl LeptonicIntoLeptonicAttribute for &'static str {
+    fn into_leptonic_attribute(self) -> LeptonicAttribute {
+        LeptonicAttribute::String(Oco::Borrowed(self))
+    }
+}
+
+impl LeptonicIntoLeptonicAttribute for Oco<'static, str> {
+    fn into_leptonic_attribute(self) -> LeptonicAttribute {
+        LeptonicAttribute::String(self)
+    }
+}
+
+impl LeptonicIntoLeptonicAttribute for bool {
+    fn into_leptonic_attribute(self) -> LeptonicAttribute {
+        LeptonicAttribute::Bool(self)
+    }
+}
+
+impl LeptonicIntoLeptonicAttribute for LeptonicAttribute {
+    fn into_leptonic_attribute(self) -> LeptonicAttribute {
+        self
+    }
+}

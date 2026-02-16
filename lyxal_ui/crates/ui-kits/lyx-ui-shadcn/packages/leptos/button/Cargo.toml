@@ -1,17 +1,23 @@
 [package]
 name = "lyx-ui-button"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-leptos-shadcn-signal-management = { path = "../../signal-management", version = "0.0.1" }
-# leptos-shadcn-api-standards = { version = "0.0.1", path = "../../api-standards" }
+leptos-shadcn-signal-management = { path = "../../signal-management" }
+# leptos-shadcn-api-standards = { ${2} }
 [features]
 default = []
 new_york = []
 [dev-dependencies]
-shadcn-ui-test-utils = { path = "../../test-utils", version = "0.0.1" }
-wasm-bindgen-test = { version = "0.0.1" }
-wasm-bindgen-futures = { version = "0.0.1" }
-js-sys = { version = "0.0.1" }
-getrandom = { version = "0.0.1" }
-web-sys = { version = "0.0.1", features = ["console", "HtmlElement", "HtmlButtonElement", "Element", "Node", "Document", "Window", "MouseEvent", "KeyboardEvent", "KeyboardEventInit", "TouchEvent", "Event", "EventTarget" ] }
+shadcn-ui-test-utils = { path = "../../test-utils" }
+wasm-bindgen-test = { version = "*" }
+wasm-bindgen-futures = { version = "*" }
+js-sys = { version = "*" }
+getrandom = { version = "*" }
+web-sys = { version = "*", features = ["console", "HtmlElement", "HtmlButtonElement", "Element", "Node", "Document", "Window", "MouseEvent", "KeyboardEvent", "KeyboardEventInit", "TouchEvent", "Event", "EventTarget" ] }
+
+
+
+
+
+

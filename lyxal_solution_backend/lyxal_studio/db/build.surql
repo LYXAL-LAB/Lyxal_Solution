@@ -1,0 +1,18 @@
+﻿DEFINE TABLE build SCHEMAFULL;
+DEFINE FIELD project ON build TYPE record<project>;
+DEFINE FIELD version ON build TYPE int DEFAULT 0;
+DEFINE FIELD createdAt ON build TYPE datetime DEFAULT time::now();
+DEFINE FIELD updatedAt ON build TYPE datetime DEFAULT time::now() VALUE time::now();
+DEFINE FIELD pages ON build TYPE array<object> DEFAULT [];
+DEFINE FIELD instances ON build TYPE array<object> DEFAULT [];
+DEFINE FIELD styles ON build TYPE array<object> DEFAULT [];
+DEFINE FIELD styleSources ON build TYPE array<object> DEFAULT [];
+DEFINE FIELD styleSourceSelections ON build TYPE array<object> DEFAULT [];
+DEFINE FIELD props ON build TYPE array<object> DEFAULT [];
+DEFINE FIELD breakpoints ON build TYPE array<object> DEFAULT [];
+DEFINE FIELD dataSources ON build TYPE array<object> DEFAULT [];
+DEFINE FIELD resources ON build TYPE array<object> DEFAULT [];
+DEFINE FIELD marketplaceProduct ON build TYPE object DEFAULT {};
+DEFINE FIELD deployment ON build TYPE option<string>;
+DEFINE FIELD publishStatus ON build TYPE string ASSERT $value INSIDE ['PENDING', 'PUBLISHED', 'FAILED'] DEFAULT 'PENDING';
+DEFINE INDEX buildProjectIndex ON build FIELDS project;

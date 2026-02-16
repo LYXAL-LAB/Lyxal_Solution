@@ -1,31 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_press.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_press.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_press.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_press.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_press.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_press.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_press.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_press.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_press.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_press.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_press.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_press.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_press.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\hooks\interactions\use_press.rs
-```rust
 use std::cell::RefCell;
 
 use educe::Educe;
@@ -38,7 +10,7 @@ use wasm_bindgen::JsCast;
 use web_sys::{KeyboardEvent, MouseEvent, PointerEvent};
 
 use crate::utils::{
-    current_target_contains_target, pointer_type::PointerType, props::Attributes, ElementExt,
+    current_target_contains_target, pointer_type::PointerType, props::LeptonicAttributes, ElementExt,
     EventExt, EventModifiers, EventTargetExt, Modifiers,
 };
 
@@ -89,8 +61,8 @@ pub struct UsePressInput {
 #[derive(Educe)]
 #[educe(Debug)]
 pub struct UsePressProps {
-    /// These attributes must be spread onto the target element: `<foo {..attrs} />`
-    pub attrs: Attributes,
+    /// These LeptonicAttributes must be spread onto the target element: `<foo {..attrs} />`
+    pub attrs: LeptonicAttributes,
 
     #[educe(Debug(ignore))]
     pub on_key_down: Box<dyn Fn(KeyboardEvent)>,
@@ -166,7 +138,7 @@ enum EventRef<'a> {
 
 #[allow(clippy::too_many_lines)]
 pub fn use_press(input: UsePressInput) -> UsePressReturn {
-    let attrs = Attributes::new();
+    let attrs = LeptonicAttributes::new();
 
     let (is_pressed, set_is_pressed) = create_signal(false);
 
@@ -574,17 +546,3 @@ fn is_valid_keyboard_event(e: &KeyboardEvent, current_target: web_sys::EventTarg
         None => true,
     }
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```

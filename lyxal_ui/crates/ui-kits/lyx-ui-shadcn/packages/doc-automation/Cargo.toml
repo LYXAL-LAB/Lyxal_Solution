@@ -1,32 +1,32 @@
 [package]
 name = "lyx-ui-doc-automation"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
 # Core dependencies
-tokio = { version = "0.0.1", features = ["full"] }
-serde = { version = "0.0.1", features = ["derive"] }
-serde_json = { version = "0.0.1" }
-anyhow = { version = "0.0.1" }
-thiserror = { version = "0.0.1" }
+tokio = { version = "*", features = ["full"] }
+serde = { version = "*", features = ["derive"] }
+serde_json = { version = "*" }
+anyhow = { version = "*" }
+thiserror = { version = "*" }
 # File system operations
-walkdir = { version = "0.0.1" }
+walkdir = { version = "*" }
 # Template processing
-handlebars = { version = "0.0.1" }
-pulldown-cmark = { version = "0.0.1" }
+handlebars = { version = "*" }
+pulldown-cmark = { version = "*" }
 # Code parsing
-syn = { version = "0.0.1", features = ["full", "extra-traits"] }
-quote = { version = "0.0.1" }
+syn = { version = "*", features = ["full", "extra-traits"] }
+quote = { version = "*" }
 # HTML generation
-html-escape = { version = "0.0.1" }
+html-escape = { version = "*" }
 # Time handling
-chrono = { version = "0.0.1", features = ["serde"] }
+chrono = { version = "*", features = ["serde"] }
 # Logging
-log = { version = "0.0.1" }
+log = { version = "*" }
 [dev-dependencies]
-tempfile = { version = "0.0.1" }
-tokio-test = { version = "0.0.1" }
-pretty_assertions = { version = "0.0.1" }
+tempfile = { version = "*" }
+tokio-test = { version = "*" }
+pretty_assertions = { version = "*" }
 [features]
 default = ["gallery", "api-docs"]
 gallery = []
@@ -35,3 +35,7 @@ testing = []
 [[bin]]
 name = "lyx-ui-doc-automation"
 path = "src/lib.rs"
+
+
+
+

@@ -1,32 +1,32 @@
 [package]
 name = "lyx-ui-contract-testing"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-lyx-core-leptos = { path = "../../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
-serde = { version = "0.0.1", features = ["derive"] }
-serde_json = { version = "0.0.1" }
-thiserror = { version = "0.0.1" }
-proptest = { version = "0.0.1" }
-semver = { version = "0.0.1" }
-anyhow = { version = "0.0.1" }
-chrono = { version = "0.0.1", features = ["serde"] }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+serde = { version = "*", features = ["derive"] }
+serde_json = { version = "*" }
+thiserror = { version = "*" }
+proptest = { version = "*" }
+semver = { version = "*" }
+anyhow = { version = "*" }
+chrono = { version = "*", features = ["serde"] }
 # Testing utilities (native only)
 # Optional dependencies
-wasm-bindgen-test = { optional = true, version = "0.0.1" }
-web-sys = { optional = true, version = "0.0.1", features = ["console"] }
+wasm-bindgen-test = { optional = true, version = "*" }
+web-sys = { optional = true, version = "*", features = ["console"] }
 [dev-dependencies]
-tempfile = { version = "0.0.1" }
+tempfile = { version = "*" }
 [features]
 default = ["validation"]
 validation = []
 wasm-testing = ["dep:wasm-bindgen-test", "dep:web-sys"]
 # Conditional dependencies for different targets
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "0.0.1", features = ["macros", "rt-multi-thread", "time"] }
-tokio-test = { version = "0.0.1" }
-criterion = { version = "0.0.1", features = ["html_reports"] }
-env_logger = { version = "0.0.1" }
+tokio = { version = "*", features = ["macros", "rt-multi-thread", "time"] }
+tokio-test = { version = "*" }
+criterion = { version = "*", features = ["html_reports"] }
+env_logger = { version = "*" }
 [[bin]]
 name = "lyx-ui-contract-testing"
 path = "src/lib.rs"
@@ -35,3 +35,13 @@ path = "src/lib.rs"
 # name = "contract_performance"
 # harness = false
 # required-features = ["performance-testing"]
+
+
+
+
+
+
+
+
+
+

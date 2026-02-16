@@ -1,13 +1,20 @@
 [package]
-name = "lyx-found-fuse"
-version = "0.0.1"
+name = "tailwind_fuse"
+version = "0.8.0"
 edition = "2024"
+
 [dependencies]
-nom = { version = "0.0.1" }
-tailwind_fuse_macro = { path = "../variant-macro", version = "0.0.1", optional = true }
+nom = { version = "*" }
+tailwind_fuse_macro = { path = "../variant-macro", optional = true }
+
 [dev-dependencies]
-divan = { version = "0.0.1" }
-fastrand = { version = "0.0.1" }
+divan = { version = "*" }
+fastrand = { version = "*" }
+
 [features]
+default = []
 variant = ["tailwind_fuse_macro"]
 debug = []
+
+
+

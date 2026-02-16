@@ -22,6 +22,8 @@ use uuid::Uuid;
 
 use super::api::Transactable;
 use super::export;
+#[cfg(feature = "kv-lyxalkv")]
+use super::lyxalkv;
 use super::tr::Transactor;
 use super::tx::Transaction;
 use super::version::MajorVersion;

@@ -1,0 +1,615 @@
+﻿cargo : warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+At line:1 char:102
++ ... -errors.txt -Encoding utf8; cargo check -p lyx-ui-drawer 2>&1 | Out-F ...
++                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: profil...workspace root::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+package:   C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-foundations\lyx-found-tailwind\examp
+le\start-axum\Cargo.toml
+workspace: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\viz\lyx-viz-apex\Cargo.toml
+workspace: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\viz\lyx-viz-trading\example\Cargo.toml
+workspace: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\Cargo.toml
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\aspect
+-ratio\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\aspect
+-ratio\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\badge\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\badge\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\badge\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\tabs\C
+argo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\tabs\C
+argo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\tabs\C
+argo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\naviga
+tion-menu\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\naviga
+tion-menu\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\naviga
+tion-menu\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\naviga
+tion-menu\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\card\C
+argo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\card\C
+argo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\card\C
+argo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\skelet
+on\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\skelet
+on\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\skelet
+on\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkb
+ox\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkb
+ox\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkb
+ox\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkb
+ox\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input-
+otp\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input-
+otp\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input-
+otp\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input-
+otp\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.leptos-struct-component.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.leptos-style.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toolti
+p\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toolti
+p\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toolti
+p\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: 
+C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-leptonic\leptonic\Cargo.toml: 
+unused manifest key: build-dependencies.lyx-ui-leptonic-theme.path
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\error-
+boundary\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\separa
+tor\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\separa
+tor\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\separa
+tor\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\combob
+ox\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\combob
+ox\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\combob
+ox\Cargo.toml: unused manifest key: dependencies.wasm-bindgen.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\combob
+ox\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\combob
+ox\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\slider
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\slider
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\slider
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dropdo
+wn-menu\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dropdo
+wn-menu\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dropdo
+wn-menu\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dropdo
+wn-menu\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\menuba
+r\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\menuba
+r\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\menuba
+r\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\menuba
+r\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\sheet\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\sheet\
+Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\sheet\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\sheet\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\popove
+r\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\popove
+r\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\popove
+r\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\hover-
+card\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\hover-
+card\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\hover-
+card\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-
+dialog\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-
+dialog\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-
+dialog\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-
+dialog\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dependencies.js-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dependencies.serde_json.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dependencies.wasm-bindgen.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dev-dependencies.getrandom.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.js-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.leptos-struct-component.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.leptos-style.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.leptos-struct-component.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.leptos-style.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\table\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\table\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\table\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\breadc
+rumb\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\breadc
+rumb\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\breadc
+rumb\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\select
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\select
+\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\select
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\select
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-
+group\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-
+group\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-
+group\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-
+group\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\comman
+d\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\comman
+d\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\comman
+d\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\comman
+d\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\utils\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\utils\
+Cargo.toml: unused manifest key: dev-dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\utils\
+Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\lazy-l
+oading\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.leptos-struct-component.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.leptos-style.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dev-dependencies.getrandom.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dev-dependencies.js-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dev-dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\pagina
+tion\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\pagina
+tion\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\pagina
+tion\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\pagina
+tion\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog
+\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog
+\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\progre
+ss\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\progre
+ss\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\progre
+ss\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\scroll
+-area\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\scroll
+-area\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\scroll
+-area\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: 
+C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\viz\lyx-viz-trading\trading-charts\Cargo.toml: 
+unused manifest key: dependencies.wasmbind-macro.package
+warning: 
+C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\viz\lyx-viz-trading\trading-charts\Cargo.toml: 
+unused manifest key: dependencies.wasmbind-macro.path
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\resiza
+ble\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\resiza
+ble\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\resiza
+ble\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\resiza
+ble\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\regist
+ry\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\contex
+t-menu\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\contex
+t-menu\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\contex
+t-menu\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\contex
+t-menu\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\switch
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\switch
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\switch
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\calend
+ar\Cargo.toml: unused manifest key: dependencies.chrono.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\calend
+ar\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\calend
+ar\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\calend
+ar\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\form\C
+argo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\form\C
+argo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\form\C
+argo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toggle
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toggle
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toggle
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\avatar
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\avatar
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\avatar
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\collap
+sible\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\collap
+sible\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\textar
+ea\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\textar
+ea\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\textar
+ea\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\accord
+ion\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\accord
+ion\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\accord
+ion\Cargo.toml: unused manifest key: dependencies.leptos-style.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\accord
+ion\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\accord
+ion\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: method `leak_prevention_enabled` is never used
+   --> crates\ui-kits\lyx-ui-shadcn\packages\signal-management\src\advanced_memory.rs:278:8
+    |
+276 | impl MemoryLeakDetector {
+    | ----------------------- method in this implementation
+277 |     /// Check if leak prevention is enabled
+278 |     fn leak_prevention_enabled(&self) -> bool {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused `Result` that must be used
+   --> crates\ui-kits\lyx-ui-shadcn\packages\signal-management\src\advanced_memory.rs:129:21
+    |
+129 |                     self.cleanup_old_groups(3600); // Cleanup groups older than 1 hour
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: this `Result` may be an `Err` variant, which should be handled
+    = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+help: use `let _ = ...` to ignore the resulting value
+    |
+129 |                     let _ = self.cleanup_old_groups(3600); // Cleanup groups older than 1 hour
+    |                     +++++++
+
+warning: `lyx-ui-signal-management` (lib) generated 2 warnings
+    Checking lyx-ui-drawer v0.9.1 
+(C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer)
+error: invalid tag name or attribute key
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\drawer.rs:32:70
+   |
+32 |             fallback=|| let rendered_children = children.map(|c| c());
+   |                                                                      ^
+
+error: tokens was ignored during parsing
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\drawer.rs:32:70
+   |
+32 |               fallback=|| let rendered_children = children.map(|c| c());
+   |  ______________________________________________________________________^
+33 | |
+34 | |     view! { <div></div> }
+   | |_________________________^
+
+error: expected expression, found `let` statement
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\drawer.rs:32:25
+   |
+32 |             fallback=|| let rendered_children = children.map(|c| c());
+   |                      -- ^^^
+   |                      |
+   |                      while parsing the body of this closure
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+help: you might have meant to open the body of the closure, instead of enclosing the closure in a block
+   |
+29 ~     
+30 ~             fallback=|| { let rendered_children = children.map(|c| c());
+   |
+
+error: invalid tag name or attribute key
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\portal_overlay.rs:53:70
+   |
+53 |             fallback=|| let rendered_children = children.map(|c| c());
+   |                                                                      ^
+
+error: tokens was ignored during parsing
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\portal_overlay.rs:53:70
+   |
+53 |               fallback=|| let rendered_children = children.map(|c| c());
+   |  ______________________________________________________________________^
+54 | |
+55 | |     view! { <div></div> }
+   | |_________________________^
+
+error: expected expression, found `let` statement
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\portal_overlay.rs:53:25
+   |
+53 |             fallback=|| let rendered_children = children.map(|c| c());
+   |                      -- ^^^
+   |                      |
+   |                      while parsing the body of this closure
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+help: you might have meant to open the body of the closure, instead of enclosing the closure in a block
+   |
+50 ~     
+51 ~             fallback=|| { let rendered_children = children.map(|c| c());
+   |
+
+error: invalid tag name or attribute key
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\content.rs:41:70
+   |
+41 |             fallback=|| let rendered_children = children.map(|c| c());
+   |                                                                      ^
+
+error: tokens was ignored during parsing
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\content.rs:41:70
+   |
+41 |               fallback=|| let rendered_children = children.map(|c| c());
+   |  ______________________________________________________________________^
+42 | |
+43 | |     view! { <div></div> }
+   | |_________________________^
+
+error: expected expression, found `let` statement
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\content.rs:41:25
+   |
+41 |             fallback=|| let rendered_children = children.map(|c| c());
+   |                      -- ^^^
+   |                      |
+   |                      while parsing the body of this closure
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+help: you might have meant to open the body of the closure, instead of enclosing the closure in a block
+   |
+38 ~     
+39 ~             fallback=|| { let rendered_children = children.map(|c| c());
+   |
+
+warning: unused import: `web_sys::KeyboardEvent`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\drawer.rs:7:5
+  |
+7 | use web_sys::KeyboardEvent;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `wasm_bindgen::JsCast`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\drawer.rs:8:5
+  |
+8 | use wasm_bindgen::JsCast;
+  |     ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\trigger.rs:6:5
+  |
+6 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\portal_overlay.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\content.rs:6:5
+  |
+6 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\header_footer.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\title_description.rs:7:5
+  |
+7 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\close.rs:6:5
+  |
+6 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+ --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\default_components\nested.rs:6:5
+  |
+6 | use leptos_style::Style;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\tdd_tests.rs:1:5
+   |
+ 1 | use leptos::prelude::*;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\lib.rs:31:1
+   |
+31 | mod tdd_tests;
+   | ^^^^^^^^^^^^^^
+
+warning: unused import: `leptos_style::Style`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\tdd_tests.rs:2:5
+   |
+ 2 | use leptos_style::Style;
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\lib.rs:31:1
+   |
+31 | mod tdd_tests;
+   | ^^^^^^^^^^^^^^
+
+warning: unused import: `crate::*`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\tdd_tests.rs:3:5
+   |
+ 3 | use crate::*;
+   |     ^^^^^^^^
+   |
+help: if this is a test module, consider adding a `#[cfg(test)]` to the containing module
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\lib.rs:31:1
+   |
+31 | mod tdd_tests;
+   | ^^^^^^^^^^^^^^
+
+warning: unused variable: `drawer_state_for_disabled`
+  --> crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer\src\signal_managed.rs:96:9
+   |
+96 |     let drawer_state_for_disabled = drawer_state.clone();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_drawer_state_for_disabled`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `lyx-ui-drawer` (lib) generated 13 warnings
+error: could not compile `lyx-ui-drawer` (lib) due to 9 previous errors; 13 warnings emitted

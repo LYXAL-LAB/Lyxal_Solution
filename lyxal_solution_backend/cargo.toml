@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "lyxalkv",
+    "lyxal_revision",
+    # "lyxal_studio", # Temporarily disabled due to broken paths
+]
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+leptos = "0.6"
+lazy_static = "1.4"
+nanoid = "0.4"
+thiserror = "1.0"
+async-trait = "0.1"
+reqwest = { version = "0.11", features = ["json"] }

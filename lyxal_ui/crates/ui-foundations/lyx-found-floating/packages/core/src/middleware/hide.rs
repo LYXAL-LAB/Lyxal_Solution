@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx-found-floating\packages\core\src\middleware\hide.rs
-```rust
 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx-found-floating\packages\core\src\middleware\hide.rs
 2: ```rust
 3: 1: use lyx_ui_foundations_utils::{ALL_SIDES, Rect, SideObject};
@@ -213,3 +211,4 @@
 211: 209: }
 212: ```
 ```
+

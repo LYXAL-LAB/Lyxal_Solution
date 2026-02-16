@@ -1,8 +1,18 @@
 [package]
 name = "lyx-spec-qr"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-fast_qr = { version = "0.0.1", features = ["svg"] }
-lyx-core-leptos = { path = "../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+fast_qr = { version = "*", features = ["svg"] }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+
+
+
+
+
+
+
+
+
+

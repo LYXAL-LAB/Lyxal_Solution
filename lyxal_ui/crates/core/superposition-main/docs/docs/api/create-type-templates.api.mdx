@@ -1,0 +1,71 @@
+---
+id: create-type-templates
+title: "CreateTypeTemplates"
+description: "Creates a new type template with specified schema definition, providing reusable type definitions for config validation."
+sidebar_label: "CreateTypeTemplates"
+hide_title: true
+hide_table_of_contents: true
+api: eJztVk1P20AQ/SurPbVSAhEVF24UoZYTEUlPUYQ29iRecGx3dw1EUf573+ya+CMmrYpQL+UQ7N35fPNmxlsZk42MLpzOM3khrwwpR1YokdGzcJuChKN1keJQPGuXCFtQpJeaYmGjhNZKxLTUmWb1gShM/qRjna2EodKqRUrBRC1jxTI3IsqzpV6JJ5XqWPHxiRzIvCDjX27ifSBTaE8r/xYyhn6WZN3XPN7Ii62EHUeZ40dVFKmOvP7pg+VctjJEyE8cBYzmiweKHOwgUHhzGkar2/tMrakhap1BHnI3CLdvm1Jx7DNT6bhpFIptZL9RRkZH4pE2QyRekggmBDyVkSsNidICVsZnmdKLZvSAjgKWhSGLPH12wiUmL1dJXjo8krgc3zB6TruU47oNcXXd9+QVJSpb0T1wtr0SuwC3NoR6zDribfODBoRtwOZ1ZD0VvQvlvKrKuGv7BC6Eg0IZ2HVkAOtsK0Od5MswN6uhjuFPM7wJqZgM3g4qVWfcNd0w9pybR1uoiN5hb84ntgDJA63ORiP+19dgLRQEBMWrJjz+Z/UHshoSvgLx/WJz9Fq5w+uBRB5rvpHIgYZOA13opMq6+3Ue+8H4Ds3ekH7Th414W7l1O/Qgxh7nf9/HgbyNRkbU5338v4GEAa0mZJ7IXBsDYpx/CP/XZK1a9bF/VyfTE05fMqyhVjyAJCcu6p0EYDCckpx3VpFbH4ZyCd5O2SsvLUtRabTb+PFl19iimxNV6JPEueKrsjq6LFlhNueJ1L0nZcjsBea1tQnDEDJ92+Y+dT6X3eb9Pp2OhZcWCuJItsL6deyx5oLvmapHIvsTN178mB8v4IvDlb6rN/31iwLa1JlpdWe1R9nBiNrLdUZDo+d1tsy9+YoVkxI8QjV1FSSoYYOxs9HZ+XD0ZTg6Zz0u+Fp5VlZBheYQHZIcjK09xf/lB1dVM0cv7hQOsfaQUmlSDjBweCYDh0G7hLmNg+0WhKAfJt3t+BhFMkxsPD4pozmCwOTXBcqcj7UPDS2yVKmlI2h8uqsm3WfxVoDYNO3179cOjiS3z4e4an4ctLwFgWpQDLnoDYmD2VVrXEYRFe6obHOujG8nUwgvqq9eTGzWMeqZv4jxi2j489mXmwX82RbjPVuVfgLKYJP/fgGZMzeD
+sidebar_class_name: "post api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CreateTypeTemplates"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/types"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Creates a new type template with specified schema definition, providing reusable type definitions for config validation.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"content":{"application/json":{"schema":{"type":"object","properties":{"type_name":{"type":"string"},"type_schema":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"description":{"type":"string"},"change_reason":{"type":"string"}},"required":["change_reason","description","type_name","type_schema"],"title":"CreateTypeTemplatesRequestContent"}}},"required":true}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"CreateTypeTemplates 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"type_name":{"type":"string"},"type_schema":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"description":{"type":"string"},"change_reason":{"type":"string"},"created_by":{"type":"string"},"created_at":{"type":"string","format":"date-time"},"last_modified_at":{"type":"string","format":"date-time"},"last_modified_by":{"type":"string"}},"required":["change_reason","created_at","created_by","description","last_modified_at","last_modified_by","type_name","type_schema"],"title":"CreateTypeTemplatesResponseContent"}}}},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

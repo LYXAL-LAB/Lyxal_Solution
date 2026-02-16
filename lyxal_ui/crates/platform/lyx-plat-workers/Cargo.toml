@@ -1,6 +1,6 @@
 [package]
 name = "lyx-plat-workers"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 publish = false
 
@@ -10,46 +10,46 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-axum = { optional = true, version = "0.0.1", default-features = false }
-console_error_panic_hook = { version = "0.0.1" }
-console_log = { optional = true, version = "0.0.1" }
-gloo-net = { version = "0.0.1", features = ["http"] }
-gloo-timers = { version = "0.0.1", features = ["futures"] }
-http-body-util = { version = "0.0.1" }
-lyx-core-leptos = { path = "../../core/lyx-core-leptos/leptos", version = "0.0.1" }
-lyx-core-axum = { path = "../../core/lyx-core-leptos/integrations/axum", version = "0.0.1", features = ["wasm" ], optional = true }
-lyx-core-meta = { path = "../../core/lyx-core-leptos/meta", version = "0.0.1" }
-lyx-core-router = { path = "../../core/lyx-core-leptos/router", version = "0.0.1" }
-lyx-core-leptos_dom = { path = "../../core/lyx-core-leptos/leptos_dom", version = "0.0.1" }
-log = { version = "0.0.1" }
-once_cell = { version = "0.0.1" }
-serde = { version = "0.0.1", features = ["derive"] }
-serde_json = { version = "0.0.1" }
-tower = { version = "0.0.1" }
-tower-service = { version = "0.0.1" }
-wasm-bindgen = { optional = true, version = "0.0.1" }
-wasm-bindgen-futures = { version = "0.0.1" }
-worker = { optional = true, version = "0.0.1", features = ["http", "axum", "d1"] }
+axum = { optional = true, version = "*", default-features = false }
+console_error_panic_hook = { version = "*" }
+console_log = { optional = true, version = "*" }
+gloo-net = { version = "*", features = ["http"] }
+gloo-timers = { version = "*", features = ["futures"] }
+http-body-util = { version = "*" }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos_axum = { path = "../../core/leptos/integrations/axum", features = ["wasm" ], optional = true }
+leptos_meta = { path = "../core/lyx-core-leptos/meta" }
+leptos_router = { path = "../core/lyx-core-leptos/router" }
+leptos_dom = { path = "../../core/leptos/leptos_dom" }
+log = { version = "*" }
+once_cell = { version = "*" }
+serde = { version = "*", features = ["derive"] }
+serde_json = { version = "*" }
+tower = { version = "*" }
+tower-service = { version = "*" }
+wasm-bindgen = { optional = true, version = "*" }
+wasm-bindgen-futures = { version = "*" }
+worker = { optional = true, version = "*", features = ["http", "axum", "d1"] }
 
 [features]
 hydrate = [
 "dep:console_log",
-"lyx-core-leptos/hydrate",
-"lyx-core-meta/hydrate",
-"lyx-core-router/hydrate",
-"lyx-core-leptos_dom/hydrate",
+"leptos/hydrate",
+"leptos_meta/hydrate",
+"leptos_router/hydrate",
+"leptos_dom/hydrate",
 "dep:wasm-bindgen" ]
 ssr = [
 "dep:axum",
-"lyx-core-leptos/ssr",
-"lyx-core-meta/ssr",
-"lyx-core-router/ssr",
-"lyx-core-leptos_dom/ssr",
-"dep:lyx-core-axum",
+"leptos/ssr",
+"leptos_meta/ssr",
+"leptos_router/ssr",
+"leptos_dom/ssr",
+"dep:leptos_axum",
 "dep:worker" ]
 
 [profile.release]
-opt-level = { version = "0.0.1" }   # optimize for size in release buildslto = true
+opt-level = { version = "*" }   # optimize for size in release buildslto = true
 strip = true
 codegen-units = 1
 
@@ -57,27 +57,27 @@ codegen-units = 1
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
 output-name = "lyx_plat_workers"
 # The site root folder is where cargo-leptos generate all output. WARNING all content of this folder will be erased on a rebuild. Use it in your server setup.
-site-root = { version = "0.0.1" }
+site-root = { version = "*" }
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
 # Defaults to pkg
-site-pkg-dir = { version = "0.0.1" }
+site-pkg-dir = { version = "*" }
 # [Optional] The source CSS file. If it ends with .sass or .scss then it will be compiled by dart-sass into CSS. The CSS is optimized by Lightning CSS before being written to <site-root>/<site-pkg>/app.css
 #style-file = "./style.css"
 # [Optional] Files in the asset-dir will be copied to the site-root directory
-assets-dir = { version = "0.0.1" }
+assets-dir = { version = "*" }
 # The IP and port (ex: 127.0.0.1:3000) where the server serves the content. Use it in your server setup.
-site-addr = { version = "0.0.1" }
+site-addr = { version = "*" }
 # The port to use for automatic reload monitoring
 reload-port = 3001
 # [Optional] Command to use when running end2end tests. It will run in the end2end dir.
-end2end-cmd = { version = "0.0.1" }
-end2end-dir = { version = "0.0.1" }
+end2end-cmd = { version = "*" }
+end2end-dir = { version = "*" }
 #  The browserlist query used for optimizing the CSS.
-browserquery = { version = "0.0.1" }
+browserquery = { version = "*" }
 # Set by cargo-leptos watch when building with that tool. Controls whether autoreload JS will be included in the head
 watch = false
 # The environment Leptos will run in, usually either "DEV" or "PROD"
-env = { version = "0.0.1" }
+env = { version = "*" }
 # The features to use when compiling the bin target
 #
 # Optional. Can be over-ridden with the command line parameter --bin-features
@@ -97,3 +97,13 @@ lib-features = ["hydrate"]
 #
 # Optional. Defaults to false.
 lib-default-features = false
+
+
+
+
+
+
+
+
+
+

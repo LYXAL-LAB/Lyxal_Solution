@@ -1,4 +1,9 @@
 [package]
-name = "lyx-logic-leptos-fluent-macros"
-version = "0.0.1"
+name = "leptos-fluent-macros"
+version = "0.8.0"
 edition = "2024"
+
+
+
+
+

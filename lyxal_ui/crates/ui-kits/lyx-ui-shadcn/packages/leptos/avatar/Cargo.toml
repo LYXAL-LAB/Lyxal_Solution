@@ -1,13 +1,23 @@
 [package]
 name = "lyx-ui-avatar"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
-lyx-core-leptos = { path = "../../../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
-leptos-style = { version = "0.0.1" }
-tailwind_fuse = { path = "../../../../../ui-foundations/lyx-found-tailwind/fuse", version = "0.0.1" }
-web-sys = { version = "0.0.1" }
-wasm-bindgen = { version = "0.0.1" }
-leptos-shadcn-signal-management = { path = "../../signal-management", version = "0.0.1" }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos-style = { version = "*" }
+tailwind_fuse = { path = "../../../../../ui-foundations/lyx-found-tailwind/fuse" }
+web-sys = { version = "*" }
+wasm-bindgen = { version = "*" }
+leptos-shadcn-signal-management = { path = "../../signal-management" }
 [dev-dependencies]
-wasm-bindgen-test = { version = "0.0.1" }
+wasm-bindgen-test = { version = "*" }
+
+
+
+
+
+
+
+
+
+

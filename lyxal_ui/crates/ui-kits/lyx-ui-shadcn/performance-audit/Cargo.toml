@@ -1,38 +1,38 @@
 [package]
 name = "lyx-ui-performance-audit"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
 # Core dependencies
-tokio = { version = "0.0.1", features = ["full"] }
-serde = { version = "0.0.1", features = ["derive"] }
-serde_json = { version = "0.0.1" }
-anyhow = { version = "0.0.1" }
-thiserror = { version = "0.0.1" }
+tokio = { version = "*", features = ["full"] }
+serde = { version = "*", features = ["derive"] }
+serde_json = { version = "*" }
+anyhow = { version = "*" }
+thiserror = { version = "*" }
 # File system and path handling
-walkdir = { version = "0.0.1" }
-glob = { version = "0.0.1" }
+walkdir = { version = "*" }
+glob = { version = "*" }
 # Time and duration handling
-chrono = { version = "0.0.1", features = ["serde"] }
+chrono = { version = "*", features = ["serde"] }
 # Async runtime
-futures = { version = "0.0.1" }
+futures = { version = "*" }
 # Logging
-log = { version = "0.0.1" }
-env_logger = { version = "0.0.1" }
+log = { version = "*" }
+env_logger = { version = "*" }
 # Statistics and math
-online-statistics = { version = "0.0.1" }
-nalgebra = { version = "0.0.1" }
+online-statistics = { version = "*" }
+nalgebra = { version = "*" }
 # Random number generation
-rand = { version = "0.0.1" }
+rand = { version = "*" }
 # HTTP client
-reqwest = { version = "0.0.1", features = ["json"] }
+reqwest = { version = "*", features = ["json"] }
 [dev-dependencies]
 # Testing dependencies
-criterion = { version = "0.0.1" }
-proptest = { version = "0.0.1" }
-tempfile = { version = "0.0.1" }
+criterion = { version = "*" }
+proptest = { version = "*" }
+tempfile = { version = "*" }
 # Async testing
-tokio-test = { version = "0.0.1" }
+tokio-test = { version = "*" }
 [features]
 default = ["monitoring", "benchmarks"]
 monitoring = []
@@ -41,10 +41,15 @@ cli = ["dep:indicatif"]
 web = ["dep:wasm-bindgen", "dep:web-sys"]
 # CLI dependencies
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-clap = { version = "0.0.1", features = ["derive"] }
-indicatif = {  version = "0.0.1" , optional = true }
+clap = { version = "*", features = ["derive"] }
+indicatif = { version = "*" , optional = true }
 # Web dependencies (optional)
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen = { version = "0.0.1" , optional = true }
-web-sys = { version = "0.0.1" , optional = true }
-js-sys = { version = "0.0.1" }
+wasm-bindgen = { version = "*" , optional = true }
+web-sys = { version = "*" , optional = true }
+js-sys = { version = "*" }
+
+
+
+
+

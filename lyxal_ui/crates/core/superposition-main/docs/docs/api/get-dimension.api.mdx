@@ -1,0 +1,71 @@
+---
+id: get-dimension
+title: "GetDimension"
+description: "Retrieves detailed information about a specific dimension, including its schema, cohort dependency graph, and configuration metadata."
+sidebar_label: "GetDimension"
+hide_title: true
+hide_table_of_contents: true
+api: eJzNVktv20YQ/isLnlpAsoU0vuimOopjwK0MWT4JgrAiR+Qm5O5mH64Fgf+9M0uRIiXKTZoG6EUiuTPzzc5889hHCdjYCO2EktE4moMzAl7AsgQcFzkkTMitMgUnAcY3yjvGmdUQi62IWSIKkBaPBigX5z4RMmXCWWbjDAo+YLHKlHFoTYNMQMY7lhquswHjMsFDuRWpN5XxAhET7vhVNIiUhurrfYJe3YH7UAPhoeaGozAYG42X+0jiCwolLQlBd9HcZfhceRKN95HbaRK0eEWZRuUgMvDVCwMI4YyHctDYeh0qkw5FUpvKgCdg/rWxv5T5YjWP4QfsreiL1UpasCT/bjSiv2762oFiKMFqFYTCYDuQjpS41rmIQ3yvP1vS3J97ojafIXYUbkPZcKLCPYa5z2mtrHDdQ+mLDd617LlsA8GTJKjx/LENhjqn95NgkHZfYDd84bkHVplg6IGPnTfAvEXOImPZNodXscmBEacwEBpjgfevuOYyo3yaEZtdBmzyeE+sc8Ll5Nes8gvhA8gaf0USFNdbL+PwUCW3JwQdj3vO44zLFNYGuL0gkXPr1oVKsMIgWXN3LjSIqpok2nMHQ4dJOdfc7PodQGj3nYZrnQsmj+W9DuX9HTmu5bgxfEf14aCwPSDlMT0fGrS7AEYO1KxcV2r7SEmYbUN/OHWkNjOf3j0/TOZnDK+/99yhVn2WwgWXjkW6bPRWVPuXNB9mt5OH9e3s02y+OEPuHPaGoI3XkX4TdD79Y7aYXkLtnv4jbFd8RY2pSUydhQVZaMonVoX2Dr6hdgqcCtwp02bZRqkcuDzzo1tHHVp3+NrDzm6RDjqj44RJPdXYU2Ztz1tNsGl5rRi1W/T80J1vD625LOmS70fvzzs7iipvYvhTuY/K4+xEqWN3R62bvnlwj3YNVtwTmBcwU2OwL978lLFQgLU87ctqq3B73OkLAWnwlIb7kVGWYohDP1O0EKQQPKABP46um5Rd75vHkoIPsTfC7UIXsIVw2e6Ka3GVOad/51bEE08GlqF2Ts+BGzCNwOpo7YkiUl36ss0mCvQ9Oh1jnxaLRxakGUdxvPch7DVjAu/pPIzNy559C0wQfwsnCIQ80aoXjB7y9eQxwy02Y9KqyY/bx7ub4ei34ejmMPUdFgCpHnYeZDlrr2wnQ7Eh3f9m4TzE0cGru9Y5xy0N7+VNTt5WPFt22sT4+ILcyDAAJLHfY9bg2eRlSZ+/eqBWtlxRJzSCbyiqS9qhLD0jk7c8t/BGeH6ZHzrer+ySk/X8lNR6QsPFN3zEHamzFZdI83rx/M+dqMBaa3PjCNXWT4FqL9UdtEpgEsegXevsrLuV7Y5yN11gCfwNZ2yLzg==
+sidebar_class_name: "get api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"GetDimension"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/dimension/{dimension}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Retrieves detailed information about a specific dimension, including its schema, cohort dependency graph, and configuration metadata.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"dimension","in":"path","schema":{"type":"string"},"required":true},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"GetDimension 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"dimension":{"type":"string"},"position":{"type":"number"},"schema":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"value_validation_function_name":{"type":"string"},"description":{"type":"string"},"change_reason":{"type":"string"},"last_modified_at":{"type":"string","format":"date-time"},"last_modified_by":{"type":"string"},"created_at":{"type":"string","format":"date-time"},"created_by":{"type":"string"},"dependency_graph":{"type":"object","additionalProperties":{"type":"array","items":{"type":"string"}},"title":"DependencyGraph"},"dimension_type":{"oneOf":[{"type":"object","title":"REGULAR","properties":{"REGULAR":{"type":"object","title":"Unit"}},"required":["REGULAR"]},{"type":"object","title":"LOCAL_COHORT","properties":{"LOCAL_COHORT":{"type":"string"}},"required":["LOCAL_COHORT"]},{"type":"object","title":"REMOTE_COHORT","properties":{"REMOTE_COHORT":{"type":"string"}},"required":["REMOTE_COHORT"]}],"title":"DimensionType"},"value_compute_function_name":{"type":"string"},"mandatory":{"type":"boolean"}},"required":["change_reason","created_at","created_by","dependency_graph","description","dimension","dimension_type","last_modified_at","last_modified_by","mandatory","position","schema"],"title":"GetDimensionResponseContent"}}}},"404":{"description":"ResourceNotFound 404 response"},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

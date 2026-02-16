@@ -1,0 +1,71 @@
+---
+id: delete-default-config
+title: "DeleteDefaultConfig"
+description: "Permanently removes a default config entry from the workspace. This operation cannot be performed if it affects config resolution for contexts that rely on this fallback value."
+sidebar_label: "DeleteDefaultConfig"
+hide_title: true
+hide_table_of_contents: true
+api: eJzVVMlu2zAQ/RWCpxbwhjS5+JbFRQMURZC4pyCHsTSymEgkM6TcGIL+vTOS7NiJExRdDvXF1Ox873FqnWJIyPhonNVTfYVUgkUbi7UiLN0KgwKVYgZVEVXibGaWit20Vhm5UsUc1Q9HD8FDgiM1z01QziOB1FMJWOuiWqBiU+aoxFSZTJmoIMswiWFTkTC4ompzOEysEZ/YHXOI7ORh2BOleAZFsYDkQa2gqHCkB3rb7jLlC1xggREvuoHP2+oc44GgZDsFPb2tteUPjn3ANfuM3NtDzPkckhxL0NNax7WXkBDJ2KVuBprwsTKE3CNShc1gW+Vp6Gg5NOmmVI6QIv12sS2af1DvTizBOxswSPzR5Fj+9qk+gJTiQLXJlLrHhxKvmayKEvzm4mdX2VQdv8g6mUxeZ10ypWShuEFaIc2ImGcOfE4c6JZ2GyUXvC9M0tI6vg9SoH59f7e4ZxEJvSQiiKa7bYkhwBIPAMWzRRMLPDzOdT/JeT9GIz/OgKWoRvdIqQ6qqtOcZqhZWLkT7aUtoq3cWE1TPe7fzbBT+bhmwTVCJCYVmbhutRhKE/P1CLwZ5TH6MwgmOa0k//ZOhPHSj0BI24C752o3Ak+HwNs1t5CInUfZ5+jLfH6l2mgFHM4g9Bxs1CeZC/ELze9M9itt2vD3+rQBLWnGZq4t2pN3UzHd3gXT5zCDoSt9NDk6GU4+DScnMiGHRF5nktq/r070ap/LlwPWz0r8HxdiD70kjH0BvEQYiooKuVinzFu9r0xOmsoyZDXlDJkE1DXzjN+paBoxP1ZIolc+roAMLIQHVm9qgpxZ/TxHwHeA/HDd76iP6q0ZeyNYWcvtdfiLjzJat60bfhKbhfjX23dtdtb5dgR5h/+k1e6y3+vWBZwmCfq443u1Fpvd/XMx+zqbz/jF/ASWZbpq
+sidebar_class_name: "delete api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"DeleteDefaultConfig"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"delete"}
+  path={"/default-config/{key}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Permanently removes a default config entry from the workspace. This operation cannot be performed if it affects config resolution for contexts that rely on this fallback value.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"key","in":"path","schema":{"type":"string"},"required":true},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"204":{"description":"DeleteDefaultConfig 204 response"},"404":{"description":"ResourceNotFound 404 response"},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

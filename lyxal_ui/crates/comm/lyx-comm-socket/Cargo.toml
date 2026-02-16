@@ -1,36 +1,46 @@
 [package]
 name = "lyx-comm-socket"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-anyhow = { version = "0.0.1" }
-axum = { version = "0.0.1", optional = true, features = ["macros"] }
-cookie = { version = "0.0.1", optional = true }
-futures-util = { version = "0.0.1", optional = true }
-lyx-core-leptos = { path = "../../core/lyx-core-leptos/leptos", version = "0.0.1" }
-lyx-logic-use = { path = "../../logic/lyx-logic-use", version = "0.0.1", features = ["use_websocket" ] }
-lyx-core-axum = { path = "../../core/lyx-core-leptos/integrations/axum", version = "0.0.1", optional = true }
-regex = { version = "0.0.1", optional = true }
-serde = { version = "0.0.1", features = ["derive"] }
-serde_json = { version = "0.0.1" }
-serde_urlencoded = { version = "0.0.1" }
-tokio = { version = "0.0.1", optional = true, features = ["rt-multi-thread"] }
-tracing = { version = "0.0.1" }
-uuid = { version = "0.0.1", features = ["v4", "serde"] }
+anyhow = { version = "*" }
+axum = { version = "*", optional = true, features = ["macros"] }
+cookie = { version = "*", optional = true }
+futures-util = { version = "*", optional = true }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos-use = { path = "../logic/lyx-logic-use", features = ["use_websocket" ] }
+leptos_axum = { path = "../../core/leptos/integrations/axum", optional = true }
+regex = { version = "*", optional = true }
+serde = { version = "*", features = ["derive"] }
+serde_json = { version = "*" }
+serde_urlencoded = { version = "*" }
+tokio = { version = "*", optional = true, features = ["rt-multi-thread"] }
+tracing = { version = "*" }
+uuid = { version = "*", features = ["v4", "serde"] }
 
 [features]
 ssr = [
 "dep:axum",
 "dep:cookie",
 "dep:tokio",
-"dep:lyx-core-axum",
+"dep:leptos_axum",
 "dep:regex",
-"lyx-core-leptos/ssr",
-"lyx-logic-use/ssr",
-"lyx-logic-use/axum",
+"leptos/ssr",
+"leptos-use/ssr",
+"leptos-use/axum",
 "dep:futures-util" ]
-hydrate = ["lyx-core-leptos/hydrate", "uuid/js"]
+hydrate = ["leptos/hydrate", "uuid/js"]
+
+
+
+
+
+
+
+
+
+

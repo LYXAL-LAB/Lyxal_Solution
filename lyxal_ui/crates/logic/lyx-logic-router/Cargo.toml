@@ -1,0 +1,17 @@
+
+[workspace.package]
+version = "*"
+
+[workspace.dependencies]
+leptos_typed_router_macro = { ${2} }
+leptos = { ${2} }
+
+
+
+
+
+
+
+
+
+

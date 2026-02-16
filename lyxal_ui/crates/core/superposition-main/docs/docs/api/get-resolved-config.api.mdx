@@ -1,0 +1,71 @@
+---
+id: get-resolved-config
+title: "GetResolvedConfig"
+description: "Resolves and merges config values based on context conditions, applying overrides and merge strategies to produce the final configuration."
+sidebar_label: "GetResolvedConfig"
+hide_title: true
+hide_table_of_contents: true
+api: eJzNV1tv2zYU/iuEnjbASoIOeelbahhdsAU17OwpMwpaPLbYUiJHUokFw/9955CSJfmWtNuw+sEWqXP9ztXbRIDLrDRe6jJ5n8zAafUMjvFSsALsGh8zXa7kmj1zVeFpyR0Ipku69rDx9CsksbsR48aoWpZrpp/BWin6gpjzlntYS7z0mhmrRZUB8zmwlSy5avRUSITCrpJRog3Ew71A0z6Cb6wT40CJFBb+Qpv8By3q5P02CSaVnh7JEpkF7usvjnzbJi7LoeD05GsDKFIvv0DmUQ4ag7o8mrYXs/GnCLmIvnI17bPsRgc4PnDDLBgLDu0hQMjNRu7Vn+VvUBOuFt8bhI/wIIKSFwiOXoWDkAWUjnAlLLz0iiwZRxkoP9ntuusjcGYRmXGDyG5H1IZb1ODBos1P24TUIS9auZIb1CHJcmSzNR6cr4PklbYFHQ+x49ZyopMeCte7xyijv8E42BilBV56W8FutFeIuUF+HWk8VNGJ2rO6XL98tsAxovTqNQlLrRXwciCiicJnKb7HABtRRhsK7eFQwjAJ7gl7gdWCGIbgW61YEFCFFGf3GGmEZsSAiguLI5aLLDNVUe1EJciaa+vTWHmN+Y6Jioxrq7Mn9hIQP4qJfUg3aegPadMf6hbUHLgAeyEumGFlVWAqJw+T2ccJnmeT6e9340my6CrjgWTPW9FDvdqu0y4NXtW3iw1HWhBHOb1JX7T96gzP4B/IW9ANtQQXO9G7mxv6GcbsqNYZkrGWD/VFxUGA4s6nhRZyJUnJiR543jf0iVfY7giiS5yBMsY4bUv7mzThzds797mG96nypvJTXivNRdPvbk/BRylvsYHPwaK1E2sx82+HAP5LcwSbueNrOA1Z68gJc2aNJf3mTRx8TX07GffnJHvgJeooiA6zB7t7rmlaGu2CQdzneLqO4bluuhflJGRYnL4Og8AV0uf1FTfyKvfefOBOZncVcT4tKMcP3wO3YPcEi07anJCJzp+XuUeD7o860q+Pj1MWqBlHchqfEf62kEI7o/eUSRcse4uaQH5JTyAI8aLgz7p1Y7LhhVEwXBeITpYr3U/UeYUZgdGQjex9hWBxv7tNb35Jb27JEwpYwUN+NS0FU5y1Oc72K8/Ajd7K82Otbg30pOXaKI79EF2srCKTY04+JVm3xcWsxETKKW3x3XZLxv5h1W5H13G+UqoK6fhSUetYceVglHyFur/DBFfxIqG8PUPc7R9voT5aOd7CNFgyLjOcDej/tz6cjF507Gj/6Zxb0MFK8i42jnYCnozbWbcv6z+xLHwnvD/Nmin0M3tN5X5P+O9V9beIgbZI0IyE9JFkdBRHU6rjuMsyMP4ibX9uTD/NH5F42fyjKsL+nlj+QnWK3yE+OvgY2ny4oz2jXFdh1iVRJn3+BqFTCIw=
+sidebar_class_name: "post api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"GetResolvedConfig"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/config/resolve"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Resolves and merges config values based on context conditions, applying overrides and merge strategies to produce the final configuration.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"prefix","in":"query","style":"form","schema":{"type":"array","items":{"type":"string"}},"explode":true},{"name":"version","in":"query","schema":{"type":"string"}},{"name":"show_reasoning","in":"query","schema":{"type":"boolean"}},{"name":"context_id","in":"query","schema":{"type":"string"}},{"name":"resolve_remote","in":"query","description":"Intended for control resolution. If true, evaluates and includes remote cohort-based contexts during config resolution.","schema":{"type":"boolean","description":"Intended for control resolution. If true, evaluates and includes remote cohort-based contexts during config resolution."}},{"name":"x-merge-strategy","in":"header","schema":{"type":"string","enum":["MERGE","REPLACE"],"title":"MergeStrategy"}},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"content":{"application/json":{"schema":{"type":"object","properties":{"context":{"type":"object","additionalProperties":{},"description":"Map representing the context.\nKeys correspond to the names of the dimensions.","title":"ContextMap"}},"title":"GetResolvedConfigRequestContent"}}}}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"GetResolvedConfig 200 response","headers":{"last-modified":{"schema":{"type":"string"},"required":true},"x-audit-id":{"schema":{"type":"string"}},"x-config-version":{"schema":{"type":"string"},"required":true}},"content":{"application/json":{"schema":{"title":"GetResolvedConfigOutputPayload"}}}},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

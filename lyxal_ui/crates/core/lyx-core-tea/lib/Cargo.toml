@@ -1,19 +1,30 @@
 [package]
-name = "lyx-core-lib"
-version = "0.0.1"
+name = "lib"
+version = "0.8.0"
 edition = "2024"
 
 [features]
-nightly = ["lyx-core-reactive_graph/nightly"]
+nightly = ["reactive_graph/nightly"]
 
 [dependencies]
-futures = { version = "0.0.1" }
-lyx-core-reactive_graph = { path = "../../lyx-core-leptos/reactive_graph", version = "0.0.1" }
-lyx-core-macros = { path = "../macros", version = "0.0.1" }
-smallvec = { version = "0.0.1" }
-tracing = { version = "0.0.1" }
-wasm-bindgen-futures = { version = "0.0.1" }
+futures = { version = "*" }
+reactive_graph = { path = "../../leptos/reactive_graph" }
+macros = { path = "../macros" }
+smallvec = { version = "*" }
+tracing = { version = "*" }
+wasm-bindgen-futures = { version = "*" }
 
 [dev-dependencies]
-# leptos = { version = "0.0.1", path = "../../lyx-core-leptos/leptos", features = ["nightly"] }
-lyx-core-leptos = { path = "../../lyx-core-leptos/leptos", version = "0.0.1" }
+# leptos = { ${2}, features = ["nightly"] }
+leptos = { path = "../../leptos/leptos" }
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,17 @@
+﻿branch 'main' set up to track 'origin/main'.
+git : To https://github.com/LYXAL-LAB/L
+yxal_Solution.git
+At line:1 char:337
++ ... directories except n8n"; git 
+push -u origin main --force 2>&1 | 
+Out-F ...
++                              
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpeci 
+   fied: (To https://gith...al_Soluti  
+  on.git:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCo 
+   mmandError
+ 
+ + b1c8e962...e98096c6 main -> main 
+(forced update)

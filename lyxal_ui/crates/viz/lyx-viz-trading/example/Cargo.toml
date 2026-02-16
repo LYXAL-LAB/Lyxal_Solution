@@ -1,17 +1,27 @@
 [package]
 name = "lyx-viz-lyx-viz-trading"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-serde = { version = "0.0.1", features = ["derive"] }
+serde = { version = "*", features = ["derive"] }
 serde_json = "0.0.1"
 
-charts = { version = "0.0.1", package = "trading-charts" }
+charts = { version = "*", package = "trading-charts" }
 
 console_error_panic_hook = "0.0.1"
 console_log = "0.0.1"
 emitix = "0.0.1"
-lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
 log = "0.0.1"
 wasm-bindgen = "0.0.1"
+
+
+
+
+
+
+
+
+
+

@@ -1,16 +1,22 @@
 [package]
-name = "lyx-core-client"
-version = "0.0.1"
+name = "client"
+version = "*"
 edition = "2024"
 [dependencies]
-lyx-core-api-boundary = { path = "../api-boundary", version = "0.0.1" }
-lyx-core-leptos = { path = "../../../leptos", version = "0.0.1", features = ["csr"] }
-lyx-core-meta = { path = "../../../meta", version = "0.0.1", features = ["csr"] }
-lyx-core-router = { path = "../../../router", version = "0.0.1", features = ["csr"] }
-log = { version = "0.0.1" }
-console_error_panic_hook = { version = "0.0.1" }
-console_log = { version = "0.0.1" }
-gloo-net = { version = "0.0.1" }
-gloo-storage = { version = "0.0.1" }
-serde = { version = "0.0.1" }
-thiserror = { version = "0.0.1" }
+api-boundary = { path = "../api-boundary", version = "*" }
+leptos = { path = "../leptos", version = "*", features = ["csr"] }
+meta = { path = "../../../meta", version = "*", features = ["csr"] }
+router = { path = "../../../router", version = "*", features = ["csr"] }
+log = { version = "*" }
+console_error_panic_hook = { version = "*" }
+console_log = { version = "*" }
+gloo-net = { version = "*" }
+gloo-storage = { version = "*" }
+serde = { version = "*" }
+thiserror = { version = "*" }
+
+
+[build-dependencies]
+rustc_version = "*"
+
+

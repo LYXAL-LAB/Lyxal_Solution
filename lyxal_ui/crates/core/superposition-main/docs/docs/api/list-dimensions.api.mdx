@@ -1,0 +1,71 @@
+---
+id: list-dimensions
+title: "ListDimensions"
+description: "Retrieves a paginated list of all dimensions in the workspace. Dimensions are returned with their details and metadata."
+sidebar_label: "ListDimensions"
+hide_title: true
+hide_table_of_contents: true
+api: eJzFV0tv2zgQ/iuETruAnWS7yCU3NzXSANl14DinwDBoaWSxlUgtSaUxDP33naEepizZjVt099LG4jy+mflmONwFEZhQi9wKJYObYA5WC3gFwzjL+UZIbiFiqTCWqZjxNGWRyEAalDZMSGYTYN+U/mpyHsIF+7Q/5BqYBltoiQa+CZuQrNAsAstFiucyYhn+HXHLL4JRoHLQnFDcR4jjAT3ujeFxzjVHcdAmuHnZBRJ/oFioCmnxVBD2fwrQW/zRjejvIluDJvTCQmaYVWztIcMYgIcJBQsEw4QJZDy42QV2m5ML6fR/zmxZjlrI9OU04keUYJVbMqvrkoyYsVxbITcs1ipjf5wD9/02faxY79NQ72NmdYFmqsCNY4gGFDbEG5eaERMbqTT5qBmFumxfT5cjRwdXzcGo1kqlwOV/49/PwNtY6c1YRE0aEuCRS28PorHkIihHAfkXGpDGhK1jrG2Vn7C3pC8mx7YAQ/Ifrq7ov25iuv3DUIY1SugsVNICNg6q8TxPRehycvnFkO6uj0Wtv0BIfZZralMrKs9WWZ6uKH2mz0AEXp27IgyeU+t7B1xrThQ7VDjivR1Eg0nLlRG2e7h3fDxAHkVOjaePvrPykHh3IEGLkH2F7fiVpwWwygT2ky5C5CKwwiADY6VZnMKbWKfAKF4sQ46VwOxXPLSJVsUmUYV1s3TyeE8NYIVNCdeswoXunZMV/isip7iKCxm6PypyDaSgg3jgPEy43MBKAzdHJFJu7CpTkYgFRCtu+0KjACPM6ISqCWOLRelrrrfDANC1PdNwo3PEZAQ5yAhkuF1tNM+TM2r8PRo2Tsp9eT613u6cMwLQsHJVqe0CJWEWu0vrEEhjZj69e36YzHsMb74PxNCoPkthHaT9kHhp9ZY0e45pPsxuJw+r29nn2XzR89w5HEyB768jfdLpfPrXbDE95rV7+l23XfElDca2ME0VFmShbZ9QZXlh4R29k+F9wK3SPsuaS+gQR7ePOrTu8HWAnd0m9dgT9Jg00I0DbeYj94ZgO/KGcjRvLobyMDI3oLtzfNSZ+p657o3T2Lytb5rS2b4euqruUUJjMz6BfgU91RpH5vUvua8yMIa2r5M9PQBnKBjS4BtaRgNvT8V84FKRKFphN+AQcItDKLj0K2sgLLSwWzcUTIa78faC5+IisTb/yI0IJwUpvbhWOjwHXKx1K7DcW3uiLFSBHrfZRk7fe+vU58XikTlpxlEcY61T3RDItQGdu1v0OLL3uHHip/w4AVcbIWPljNY1eiqwqh65sVDVIoDL0Ifr8dWf46vregmw2A+kWq9gxFLWeVgc3JIt1f7Hp1CdOwtv9jJPOS6KGEuhU8JX8enFmxRIgQTjpI+7HRYHnnValvS52tmJZJEwHDcQpGXMUwMnoj7zuTQIFZci723mRi/+DojN7wdyzivoBIr6ufWDIH7R++YE3urJtYe7pB9aEN5qIjRPhvPK+tu8Huu/s9P+vQfPD+bsDFf+c6jjrRKYhCHkPoV6w7/0B+7ddIHT4l9Bd9tH
+sidebar_class_name: "get api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"ListDimensions"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/dimension"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Retrieves a paginated list of all dimensions in the workspace. Dimensions are returned with their details and metadata.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"count","in":"query","description":"Number of items to be returned in each page.","schema":{"type":"number","description":"Number of items to be returned in each page."}},{"name":"page","in":"query","description":"Page number to retrieve, starting from 1.","schema":{"type":"number","description":"Page number to retrieve, starting from 1."}},{"name":"all","in":"query","description":"If true, returns all requested items, ignoring pagination parameters page and count.","schema":{"type":"boolean","description":"If true, returns all requested items, ignoring pagination parameters page and count."}},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={undefined}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"ListDimensions 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"total_pages":{"type":"number"},"total_items":{"type":"number"},"data":{"type":"array","items":{"type":"object","properties":{"dimension":{"type":"string"},"position":{"type":"number"},"schema":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"value_validation_function_name":{"type":"string"},"description":{"type":"string"},"change_reason":{"type":"string"},"last_modified_at":{"type":"string","format":"date-time"},"last_modified_by":{"type":"string"},"created_at":{"type":"string","format":"date-time"},"created_by":{"type":"string"},"dependency_graph":{"type":"object","additionalProperties":{"type":"array","items":{"type":"string"}},"title":"DependencyGraph"},"dimension_type":{"oneOf":[{"type":"object","title":"REGULAR","properties":{"REGULAR":{"type":"object","title":"Unit"}},"required":["REGULAR"]},{"type":"object","title":"LOCAL_COHORT","properties":{"LOCAL_COHORT":{"type":"string"}},"required":["LOCAL_COHORT"]},{"type":"object","title":"REMOTE_COHORT","properties":{"REMOTE_COHORT":{"type":"string"}},"required":["REMOTE_COHORT"]}],"title":"DimensionType"},"value_compute_function_name":{"type":"string"},"mandatory":{"type":"boolean"}},"required":["change_reason","created_at","created_by","dependency_graph","description","dimension","dimension_type","last_modified_at","last_modified_by","mandatory","position","schema"],"title":"DimensionResponse"}}},"required":["data","total_items","total_pages"],"title":"ListDimensionsResponseContent"}}}},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

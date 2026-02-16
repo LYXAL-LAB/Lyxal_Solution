@@ -1,8 +1,18 @@
 [package]
 name = "lyx-ui-foundations-example"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["csr"] }
-lyx-found-drag-reorder = { path = "../", version = "0.0.1" }
+leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr"] }
+lyx-found-drag-reorder = { path = "../" }
+
+
+
+
+
+
+
+
+
+

@@ -1,39 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\icon.rs
-```rust
 use leptos::*;
 
 use crate::Margin;
@@ -53,10 +17,10 @@ pub fn Icon(
 
     #[prop(into, optional)] id: Option<AttributeValue>,
 
-    /// HTML class attribute.
+    /// HTML class LeptonicAttribute.
     #[prop(into, optional)]
     class: Option<AttributeValue>,
-    /// HTML style attribute.
+    /// HTML style LeptonicAttribute.
     #[prop(into, optional)]
     style: Option<AttributeValue>,
     #[prop(optional)] margin: Option<Margin>,
@@ -78,17 +42,17 @@ where
             svg = svg.attr("y", y);
         }
         // The style set by the user overrides the style set by the icon.
-        // We ignore the width and height attributes of the icon, even if the user hasn't specified any.
+        // We ignore the width and height LeptonicAttributes of the icon, even if the user hasn't specified any.
         svg = svg.attr(
             "width",
-            Attribute::String(match (width.get(), icon.width) {
+            LeptonicAttribute::String(match (width.get(), icon.width) {
                 (Some(a), _) => Oco::from(a.get()),
                 _ => Oco::from("1em"),
             }),
         );
         svg = svg.attr(
             "height",
-            Attribute::String(match (height.get(), icon.height) {
+            LeptonicAttribute::String(match (height.get(), icon.height) {
                 (Some(a), _) => Oco::from(a.get()),
                 _ => Oco::from("1em"),
             }),
@@ -120,21 +84,3 @@ where
         </leptonic-icon>
     }
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```

@@ -1,0 +1,22 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add the wasm32-unknown-unknown target
+        run: rustup target add wasm32-unknown-unknown
+      - name: Install Cargo Hack
+        uses: taiki-e/install-action@cargo-hack
+      - name: Build
+        run: cargo hack build --target wasm32-unknown-unknown --lib --tests --examples --feature-powerset --mutually-exclusive-features yew,leptos
+      - name: Publish
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

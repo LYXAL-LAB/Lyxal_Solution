@@ -1,30 +1,40 @@
 [package]
 name = "lyx-ui-demo-simple"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
 # Leptos framework with SSR
-lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1", features = ["ssr"] }
-lyx-core-axum = { path = "../../../core/lyx-core-leptos/integrations/axum", version = "0.0.1", features = ["ssr"] }
-lyx-core-meta = { path = "../../../core/lyx-core-leptos/meta", version = "0.0.1", features = ["ssr"] }
-lyx-core-router = { path = "../../../core/lyx-core-leptos/router", version = "0.0.1", features = ["ssr"] }
+leptos = { path = "../core/lyx-core-leptos/leptos", features = ["ssr"] }
+leptos_axum = { path = "../../../core/leptos/integrations/axum", features = ["ssr"] }
+leptos_meta = { path = "../core/lyx-core-leptos/meta", features = ["ssr"] }
+leptos_router = { path = "../core/lyx-core-leptos/router", features = ["ssr"] }
 # Server dependencies
-axum = { version = "0.0.1" }
-tokio = { version = "0.0.1", features = ["full"] }
-tower = { version = "0.0.1" }
-tower-http = { version = "0.0.1", features = ["fs", "cors"] }
-tracing = { version = "0.0.1" }
-tracing-subscriber = { version = "0.0.1" }
+axum = { version = "*" }
+tokio = { version = "*", features = ["full"] }
+tower = { version = "*" }
+tower-http = { version = "*", features = ["fs", "cors"] }
+tracing = { version = "*" }
+tracing-subscriber = { version = "*" }
 # Local components
-leptos-shadcn-button = { path = "../packages/leptos/button", version = "0.0.1" }
-leptos-shadcn-card = { path = "../packages/leptos/card", version = "0.0.1" }
-leptos-shadcn-input = { path = "../packages/leptos/input", version = "0.0.1" }
+leptos-shadcn-button = { path = "../packages/leptos/button" }
+leptos-shadcn-card = { path = "../packages/leptos/card" }
+leptos-shadcn-input = { path = "../packages/leptos/input" }
 # Tailwind-RS
-tailwind-rs-core = { path = "../packages/tailwind-rs-core", version = "0.0.1" }
-tailwind-rs-leptos = { version = "0.0.1" }
+tailwind-rs-core = { path = "../packages/tailwind-rs-core" }
+tailwind-rs-leptos = { version = "*" }
 # UUID support
-uuid = { version = "0.0.1", features = ["v4"] }
+uuid = { version = "*", features = ["v4"] }
 # Binary target
 [[bin]]
 name = "lyx-ui-demo-simple"
 path = "src/lib.rs"
+
+
+
+
+
+
+
+
+
+

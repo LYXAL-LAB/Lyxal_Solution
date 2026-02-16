@@ -1,20 +1,26 @@
 [package]
-name = "lyx-core-bevy3d_ui"
-version = "0.0.1"
+name = "bevy3d_ui"
+version = "*"
 edition = "2024"
 [profile.release]
 codegen-units = 1
 lto = true
 [dependencies]
-lyx-core-leptos = { path = "../../leptos", version = "0.0.1", features = ["csr"] }
-lyx-core-meta = { path = "../../meta", version = "0.0.1" }
-lyx-core-router = { path = "../../router", version = "0.0.1" }
-console_log = { version = "0.0.1" }
-log = { version = "0.0.1" }
-console_error_panic_hook = { version = "0.0.1" }
-bevy = { version = "0.0.1" }
-crossbeam-channel = { version = "0.0.1" }
+leptos = { path = "../leptos", version = "*", features = ["csr"] }
+meta = { path = "../../meta", version = "*" }
+router = { path = "../../router", version = "*" }
+console_log = { version = "*" }
+log = { version = "*" }
+console_error_panic_hook = { version = "*" }
+bevy = { version = "*" }
+crossbeam-channel = { version = "*" }
 [dev-dependencies]
-wasm-bindgen = { version = "0.0.1" }
-wasm-bindgen-test = { version = "0.0.1" }
-web-sys = { version = "0.0.1" }
+wasm-bindgen = { version = "*" }
+wasm-bindgen-test = { version = "*" }
+web-sys = { version = "*" }
+
+
+[build-dependencies]
+rustc_version = "*"
+
+

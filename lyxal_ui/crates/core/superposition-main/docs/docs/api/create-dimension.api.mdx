@@ -1,0 +1,71 @@
+---
+id: create-dimension
+title: "CreateDimension"
+description: "Creates a new dimension with the specified json schema. Dimensions define categorical attributes used for context-based config management."
+sidebar_label: "CreateDimension"
+hide_title: true
+hide_table_of_contents: true
+api: eJztWEtv4zYQ/iuETi0QJ0aKXHLzZo1sgBQOHOdkGAYtjSXuSqRKUpsYhv97Z6gXJcvOBsUCbbE5GArn/fhmKO2DCEyoRW6FksFtcKeBWzCMMwmvLBIZSIMU9ipswmwCzOQQiq2AiH01eG7CBDJ+yT7XnIZFsBUSWIh6YqVFyFPGrdViU5DiwqDoVmkWKmnhzY42nE7wv62IWcYljwFV2cvgIlA5aE6OPUSNa40hpGv4qwBjP6loF9zuA6dRWnrkeZ6iZZK9Ij/prHSVnuwuB1SoNl8htKgn12TJCjBEbYL2WA36L+PggLzKCNslyiLbgCbiaRM8ipwYT598YyjTzf89SMCcsW+wG33naQGsVMHQgyK0hYY2g9sU3sQmBRZxy5mGXIPB+F3UWCutijhRhXVlmzw9UEatsCn5NSv9QvPOyBp/ReQE19tChu5B8gwGU9DxeIAeJlzGsMZymRMcTYrXJWkfKAmzbXC7PM5c7fJ8ev/yOJkflas+H0h6LfoiBcZ6KBtGaMBuWjZyq8PFacnH2d3kcX03+zKbL44sd4jHYfbsdbjPGp1P/5wtpqesdqnvmu2yrw6r1k4DpQVpaHohVFmOUH23EXqGulXvdolX8cCDUAMYz6keyuclxO8qaB+6VhETQJjkGl20oI3roNLf4G2kdDwSEZoRBK0EeIQwHUBp25h91Z6yV6W/mZyH8A/0rejE5Dgly1pej8du4gyM4CYDDJlYLYXWfk25/8qUS7mx60xFbl2uuT1muggwwowoAfoFI4tFOZbc7IYdcH3yMcW1zAmVEeQgI5Dhbh1rnicfqHHNx7XmO4KIhcwMT41m/jTW7p2xX4vh/7EYLgK8xmHbKe132UapFLh8d294bd3p14HuPLdkep00gMYBmPmef3RPlQPaW1QY583QfH9ADo3weQb9HfRUaxxyNz9lxmdgDF6nz6NwwJ2hYEiCx7Rg2/YwlBBcvImi+zmmy7nALc6N4MovhoGw0MLuHI5Nhu8Su0uei8vE2vwTNyKcFCS0dN3fpwPXoBuGVavtmdJQRnpaZxM6nQf9RfRlsXhijptxZMdgq1zXNXedS3S3+E579iNmHPs5O47BFYcqPW/fbqZvPMtT6O3tdti363rsrecf2Hutiq7DzXFvy3n8R5O6nbeH90aGNyqE3CqXvqodnwtsYA952JNVtNfj65vR+I/R+Ka6oVgEK4lWOktEMv8FsbfDG1j9u15zq84htqs85Xi5xPgKnZLLJZqWXtkRAAkhDQ/3e9L6otPDgY6xXWjiLleUfS34hhJKmKqvqoS+SBgiIGC3PDVwJke/zasp/Ts75STe37oXbVd1PAoIyD/FlH8N71grGaqRNVqUQ7/mOJqircQkDCG3Z3n9Kfc0e6bVu6m+OeD2IBnNX+l7BP6iN/ThwrrxiAzubI+rRsaFm8VBqZP+/gaMuRqG
+sidebar_class_name: "post api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CreateDimension"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/dimension"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Creates a new dimension with the specified json schema. Dimensions define categorical attributes used for context-based config management.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"content":{"application/json":{"schema":{"type":"object","properties":{"dimension":{"type":"string"},"position":{"type":"number"},"schema":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"value_validation_function_name":{"type":"string"},"description":{"type":"string"},"change_reason":{"type":"string"},"dimension_type":{"oneOf":[{"type":"object","title":"REGULAR","properties":{"REGULAR":{"type":"object","title":"Unit"}},"required":["REGULAR"]},{"type":"object","title":"LOCAL_COHORT","properties":{"LOCAL_COHORT":{"type":"string"}},"required":["LOCAL_COHORT"]},{"type":"object","title":"REMOTE_COHORT","properties":{"REMOTE_COHORT":{"type":"string"}},"required":["REMOTE_COHORT"]}],"title":"DimensionType"},"value_compute_function_name":{"type":"string"}},"required":["change_reason","description","dimension","position","schema"],"title":"CreateDimensionRequestContent"}}},"required":true}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"CreateDimension 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"dimension":{"type":"string"},"position":{"type":"number"},"schema":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"value_validation_function_name":{"type":"string"},"description":{"type":"string"},"change_reason":{"type":"string"},"last_modified_at":{"type":"string","format":"date-time"},"last_modified_by":{"type":"string"},"created_at":{"type":"string","format":"date-time"},"created_by":{"type":"string"},"dependency_graph":{"type":"object","additionalProperties":{"type":"array","items":{"type":"string"}},"title":"DependencyGraph"},"dimension_type":{"oneOf":[{"type":"object","title":"REGULAR","properties":{"REGULAR":{"type":"object","title":"Unit"}},"required":["REGULAR"]},{"type":"object","title":"LOCAL_COHORT","properties":{"LOCAL_COHORT":{"type":"string"}},"required":["LOCAL_COHORT"]},{"type":"object","title":"REMOTE_COHORT","properties":{"REMOTE_COHORT":{"type":"string"}},"required":["REMOTE_COHORT"]}],"title":"DimensionType"},"value_compute_function_name":{"type":"string"},"mandatory":{"type":"boolean"}},"required":["change_reason","created_at","created_by","dependency_graph","description","dimension","dimension_type","last_modified_at","last_modified_by","mandatory","position","schema"],"title":"CreateDimensionResponseContent"}}}},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx-logic-query\lyx-ui-foundations-lyx_ui_foundations_example\lyx-logic-start-csr\src\components\mod.rs
-```rust
 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx-logic-query\lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_example\lyx-logic-lyx-logic-start-csr\src\components\mod.rs
 2: ```rust
 3: 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx_logic_query\lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_example\lyx-logic-lyx-logic-start-csr\src\components\mod.rs
@@ -159,3 +157,4 @@
 157: 155: ```
 158: ```
 ```
+

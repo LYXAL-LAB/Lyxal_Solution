@@ -1,0 +1,19 @@
+name: General CI
+
+# Controls when the workflow will run
+on:
+  pull_request:
+jobs:
+  linting:
+    name: linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt, clippy
+      - name: fmt
+        run: cargo fmt --check
+      - name: clippy
+        run: cargo clippy -- -D warnings
+

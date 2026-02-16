@@ -1,6 +1,6 @@
 [package]
 name = "server"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 resolver = "2"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -16,3 +16,7 @@ tower-http.workspace = true
 tower.workspace = true
 app = { path = "../app", default-features = false, features = ["ssr"] }
 leptos = { workspace = true, features = [ "ssr" ]}
+
+
+
+

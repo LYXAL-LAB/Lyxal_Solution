@@ -1,43 +1,6 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\atoms\mod.rs
-```rust
-use std::rc::Rc;
-
-use leptos::Attribute;
-use leptos_reactive::Oco;
+use crate::LeptonicAttribute;
+use std::sync::Arc;
+use leptos::prelude::Oco;
 
 pub mod button;
 pub mod button_group;
@@ -60,33 +23,18 @@ trait AttributeExt {
     fn prepend(self, string: Oco<'static, str>) -> Self;
 }
 
-impl AttributeExt for Attribute {
+impl AttributeExt for LeptonicAttribute {
     fn prepend(self, string: Oco<'static, str>) -> Self {
         match self {
-            Attribute::String(s) => Attribute::String(Oco::Owned(format!("{string} {}", s))),
-            Attribute::Fn(f) => Attribute::Fn(Rc::new(move || f().prepend(string.clone()))),
-            Attribute::Option(o) => {
-                Attribute::Option(o.map(|s| Oco::Owned(format!("{string} {}", s))))
+            LeptonicAttribute::String(s) => LeptonicAttribute::String(Oco::Owned(format!("{string} {}", s))),
+            LeptonicAttribute::Fn(f) => {
+                let f = f.clone();
+                LeptonicAttribute::Fn(Arc::new(move || f().prepend(string.to_string())))
+            },
+            LeptonicAttribute::Option(o) => {
+                LeptonicAttribute::Option(o.map(|s| Oco::Owned(format!("{string} {}", s))))
             }
-            Attribute::Bool(_) => panic!("Cannot prepend something to an Attribute::Bool."),
+            LeptonicAttribute::Bool(_) => panic!("Cannot prepend something to an LeptonicAttribute::Bool."),
         }
     }
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```

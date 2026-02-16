@@ -1,6 +1,6 @@
 [package]
-name = "lyx-logic-table-macro"
-version = "0.0.1"
+name = "table-macro"
+version = "0.8.0"
 edition = "2024"
 
 [lib]
@@ -9,11 +9,16 @@ proc-macro = true
 [dependencies]
 
 
-syn = { version = "0.0.1" }
-quote = { version = "0.0.1" }
-darling = { version = "0.0.1" }
-proc-macro2 = { version = "0.0.1" }
-heck = { version = "0.0.1" }
+syn = { version = "*" }
+quote = { version = "*" }
+darling = { version = "*" }
+proc-macro2 = { version = "*" }
+heck = { version = "*" }
 
 [features]
 i18n = []
+
+
+
+
+

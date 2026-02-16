@@ -1,6 +1,6 @@
 [package]
 name = "start_tauri"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 [features]
 default = []
@@ -9,7 +9,11 @@ tauri = []
 name = "start_tauri"
 crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
-tauri-build = { version = "0.0.1", features = [] }
+tauri-build = { version = "*", features = [] }
 [dependencies]
-tauri = { version = "0.0.1", features = ["devtools"] }
+tauri = { version = "*", features = ["devtools"] }
 tauri-plugin-opener = "2"
+
+
+
+

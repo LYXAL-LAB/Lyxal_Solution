@@ -1,10 +1,22 @@
-use std::fmt::Display;
+pub use crate::utils::props::LeptonicAttribute;
+pub use crate::utils::props::LeptonicAttributes;
+pub use crate::utils::props::LeptonicIntoLeptonicAttribute;
+pub use crate::utils::props::LeptonicIntoLeptonicAttributeName;
 
-use leptos::*;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SendWrapper<T>(pub T);
+unsafe impl<T> Send for SendWrapper<T> {}
+unsafe impl<T> Sync for SendWrapper<T> {}
+
+pub type View = leptos::prelude::View<AnyView>;
+pub type LeptonicCustom = leptos::html::HtmlElement<leptos::html::Div, (), View>;
 use leptos_use::{use_window, UseElementBoundingReturn};
 use prelude::Consumer;
+use crate::utils::props::{LeptonicAttribute as Attribute, LeptonicAttributes as Attributes};
+use crate::utils::props::LeptonicIntoLeptonicAttribute as LeptonicIntoAttribute;
 
 pub mod atoms;
+
 pub mod components;
 pub mod contexts;
 pub mod hooks;
@@ -94,18 +106,18 @@ impl<T: Clone + Default> SignalGetUntracked for OptMaybeSignal<T> {
     }
 }
 
-impl<T: IntoAttribute + Clone> IntoAttribute for OptMaybeSignal<T> {
-    fn into_attribute(self) -> Attribute {
+impl<T: LeptonicIntoLeptonicAttribute + Clone> LeptonicIntoLeptonicAttribute for OptMaybeSignal<T> {
+    fn into_leptonic_attribute(self) -> LeptonicAttribute {
         match self.0 {
-            Some(t) => t.into_attribute(), // Requires T to be Clone!
-            None => Attribute::Option(None),
+            Some(t) => t.into_leptonic_attribute(), // Requires T to be Clone!
+            None => LeptonicAttribute::Option(None),
         }
     }
 
-    fn into_attribute_boxed(self: Box<Self>) -> Attribute {
+    fn into_leptonic_attribute_boxed(self: Box<Self>) -> LeptonicAttribute {
         match self.0 {
-            Some(t) => t.into_attribute(), // Requires T to be Clone!
-            None => Attribute::Option(None),
+            Some(t) => t.into_leptonic_attribute(), // Requires T to be Clone!
+            None => LeptonicAttribute::Option(None),
         }
     }
 }

@@ -1,0 +1,71 @@
+---
+id: publish
+title: "Publish"
+description: "Publishes the draft version of a function, making it the active version used for value_validation, value_compute, context_validation or change_reason_validation in the system."
+sidebar_label: "Publish"
+hide_title: true
+hide_table_of_contents: true
+api: eJzVV0tv2zgQ/isET13Ajr3d5uKb63WbAF0ncJRigSAwaGlssZFElqTSGIb/e4eknpbsbnebw+agSJxvHpwZfkPvaQQ6VFwaLjI6obf5OuE6Bk1MDCRSbGPIMyiNUiI2hJFNnoUWOyApe+LZlnDjoAxXn6HC5hoishGKPLMkhxU+ecS8nl8JRSpzAwMSiszAi2lACKqFMcu2sFLAtMiaMp45d3qnDaQXdECFBOVE11EdP64r+JqDNu9FtKOTPXVuMmNfmZQJD53O6Iu2295THcaQMvtmdhLQkFh/gdCgHamsB8NBOzPNuBpwbRQmgx4O3jFXgNE8HMEfB9Rwk0Ad59IHOSuCO7T1jcoBFyRTLAWDmUWTe5rhB1ooC7Fy3wPKbfkkM3bvnd2U4XWtV/ZehkJthzwqTcXAIlD/2tg3oZ60ZCH8B3uPdkVLkWmf/Lfjsf3X27EEhaREo5dfVO92lvtilsWJibClo36IO0anxbUFlWeGp3hc/CnqogcUsjy1nfX7xbjZTx+KOJfewufCQOX8NSzXcTPTZxCPf2olFI8uDK1yHQ9E3PykYu1uvTuT5sLyCUzCtFmlIuIb/pPu25onzP+IHgbt5u2RVw3nJafL9Hn66X6+wuf1n9Pg+maBIr80u/nr9j6Y4/fsZhHM/w7aoNnVdPFxvlrOp3c3i6aop+YB+tY/ILX2llrN3i12t0inGnTQIbh2ZnpK2VOjPsb1FNGgXNzeu/G7LrMgVOQqhIUwH0SeRQRRNcWg1mUfH12jXZWx5A4U7mWuFE6zy1fhphS0Zts+TjnU2+4Jpy8FVoNt7YCpiq9t9nDuxCLykyW0o8VNmAkdldUY7Vt1OoxkNYE1hLniZuemlk65iXcXTPKL2Bj5nmkeTnNr6+HRDo5jOTAFqgI81tbubHZ8Ak7brDJi149adEKvguCWODRhCMccFCUop5PVXFu5rfKZyP6JGwc/58cBXM1sAyzra8v8haUygZ5rR4MveLYRLpCi3nc5dogUmhd+KsLH6fn2cjj+Yzi+dGwqtEmZ67diZtdXpyOOqtr1f3g7LOpjbYxkwrgbXLlK7L58Kz9UxILwyTHplN2MDRhjxix8v8fWgHuVHA52GculbIvj6zNTnK1tGbDhI67tO56dDUs0nMnqm2VBrr+RUxEXiyyzhOlShF/4+gS7zlXwgOepvG398kC8w8ZdsQrGHuJXcdW8Sba8eUDBYsPAT4US0SHWWmMahiDNWWyT+W6nwewK0evil0Tq7nFUsW/2VwY+XSWE9JyJALe2x2GUbXPHz9QbtX/fAc++tSU=
+sidebar_class_name: "patch api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Publish"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"patch"}
+  path={"/function/{function_name}/publish"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Publishes the draft version of a function, making it the active version used for value_validation, value_compute, context_validation or change_reason_validation in the system.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"function_name","in":"path","schema":{"type":"string"},"required":true},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"content":{"application/json":{"schema":{"type":"object","properties":{"change_reason":{"type":"string"}},"required":["change_reason"],"title":"PublishRequestContent"}}},"required":true}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"Publish 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"function_name":{"type":"string"},"published_code":{"type":"string"},"draft_code":{"type":"string"},"published_runtime_version":{"type":"string","enum":["1.0"],"title":"FunctionRuntimeVersion"},"draft_runtime_version":{"type":"string","enum":["1.0"],"title":"FunctionRuntimeVersion"},"published_at":{"type":"string","format":"date-time"},"draft_edited_at":{"type":"string","format":"date-time"},"published_by":{"type":"string"},"draft_edited_by":{"type":"string"},"last_modified_at":{"type":"string","format":"date-time"},"last_modified_by":{"type":"string"},"change_reason":{"type":"string"},"description":{"type":"string"},"function_type":{"type":"string","enum":["VALUE_VALIDATION","VALUE_COMPUTE","CONTEXT_VALIDATION","CHANGE_REASON_VALIDATION"],"title":"FunctionTypes"}},"required":["change_reason","description","draft_code","draft_edited_at","draft_edited_by","draft_runtime_version","function_name","function_type","last_modified_at","last_modified_by"],"title":"PublishResponseContent"}}}},"404":{"description":"ResourceNotFound 404 response"},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

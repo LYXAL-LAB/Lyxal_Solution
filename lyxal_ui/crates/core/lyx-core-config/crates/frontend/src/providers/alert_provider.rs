@@ -1,11 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\providers\alert_provider.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\providers\alert_provider.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\providers\alert_provider.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\providers\alert_provider.rs
-```rust
 use cfg_if::cfg_if;
 
 use leptos::*;
@@ -92,3 +84,4 @@ pub fn AlertProvider(children: Children) -> impl IntoView {
 ```
 ```
 ```
+

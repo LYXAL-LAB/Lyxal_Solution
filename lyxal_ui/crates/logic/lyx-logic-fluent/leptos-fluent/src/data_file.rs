@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx-logic-fluent\lyx-core-lyx_core_lyx-logic-leptos-fluent\src\data_file.rs
-```rust
 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx-logic-fluent\lyx-core-lyx_core_lyx-logic-lyx-core-lyx_core_lyx-logic-leptos-fluent\src\data_file.rs
 2: ```rust
 3: 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx_logic_fluent\lyx-core-lyx_core_lyx-logic-lyx-core-lyx_core_lyx-logic-leptos-fluent\src\data_file.rs
@@ -367,3 +365,4 @@
 365: 363: ```
 366: ```
 ```
+

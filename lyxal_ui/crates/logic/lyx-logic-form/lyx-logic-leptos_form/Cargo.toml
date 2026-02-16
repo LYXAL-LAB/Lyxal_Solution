@@ -1,36 +1,43 @@
 [package]
-name = "lyx-logic-leptos_form"
-version = "0.0.1"
+name = "leptos_form"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-lyx-logic-core = { path = "../core", version = "0.0.1" }
+core = { path = "../core" }
 
 
-js-sys = { version = "0.0.1", optional = true }
+js-sys = { version = "*", optional = true }
 
-web-sys = { version = "0.0.1", optional = true }
+web-sys = { version = "*", optional = true }
 
 [dev-dependencies]
 
 
 
-uuid = { version = "0.0.1", features = ["v4"] }
+uuid = { version = "*", features = ["v4"] }
 
 [build-dependencies]
 
 
-rustc_version = { version = "0.0.1" }
+rustc_version = { version = "*" }
 
 [features]
-bigdecimal = ["lyx-logic-core/bigdecimal"]
+bigdecimal = ["core/bigdecimal"]
 cache-local-storage = [
 "dep:js-sys",
-"lyx-logic-core/cache-local-storage",
+"core/cache-local-storage",
 "dep:web-sys",
 "web-sys/Storage" ]
 cache-serde_json = [
-"lyx-logic-core/cache-serde_json" ]
-chrono = ["lyx-logic-core/chrono"]
-num-bigint = ["lyx-logic-core/num-bigint"]
-uuid = ["lyx-logic-core/uuid"]
+"core/cache-serde_json" ]
+chrono = ["core/chrono"]
+num-bigint = ["core/num-bigint"]
+uuid = ["core/uuid"]
+
+
+
+
+
+
+

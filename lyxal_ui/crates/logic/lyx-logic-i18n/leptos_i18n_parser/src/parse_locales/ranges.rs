@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx-logic-i18n\lyx-core-lyx_core_lyx-logic-lyx_logic_lyx-logic-lyx_logic_leptos_i18n_parser\src\parse_locales\ranges.rs
-```rust
 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx-logic-i18n\lyx-core-lyx_core_lyx-logic-lyx_logic_lyx-logic-lyx_logic_lyx-core-lyx_core_lyx-logic-lyx_logic_lyx-logic-lyx_logic_leptos_i18n_parser\src\parse_locales\ranges.rs
 2: ```rust
 3: 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx_logic_i18n\lyx-core-lyx_core_lyx-logic-lyx_logic_lyx-logic-lyx_logic_lyx-core-lyx_core_lyx-logic-lyx_logic_lyx-logic-lyx_logic_leptos_i18n_parser\src\parse_locales\ranges.rs
@@ -1350,3 +1348,4 @@
 1348: 1346: ```
 1349: ```
 ```
+

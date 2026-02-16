@@ -1,17 +1,17 @@
 
 [workspace.package]
 # update the internal crate versions when updating this workspace version
-version = "0.0.1"
+version = "*"
 edition = "2024"
 
 [workspace.dependencies]
 # internal to this workspace
-lyx_logic_form_core = { version = "0.0.1", path = "./core" }
-lyx_logic_form_proc_macros = { version = "0.0.1", path = "./proc_macros" }
-lyx_logic_form_proc_macros_core = { version = "0.0.1", path = "./proc_macros/core" }
+lyx_logic_form_core = { ${2} }
+lyx_logic_form_proc_macros = { ${2} }
+lyx_logic_form_proc_macros_core = { ${2} }
 
 bigdecimal = "~0.4"
-chrono = { version = "0", features = ["std"] }
+chrono = { version = "*", features = ["std"] }
 convert_case = "~0.6"
 darling = "0.20"
 derive_more = "~0.99"
@@ -20,28 +20,28 @@ indexmap = "2"
 inner = "0"
 itertools = "~0.12"
 js-sys = "~0.3"
-leptos = { version = "0.0.1", path = "../../core/lyx-core-leptos/leptos" }
-leptos_router = { version = "0.0.1", path = "../../core/lyx-core-leptos/router" }
-num-bigint = { version = "~0.4", default-features = false }
+leptos = { ${2} }
+leptos_router = { ${2} }
+num-bigint = { version = "*", default-features = false }
 paste = "~1"
 prettyplease = "0.2"
 pretty_assertions = "1.4.0"
 proc-macro2 = "1"
 quote = "1"
-serde = { version = "1", features = ["derive" ]}
+serde = { version = "*", features = ["derive" ]}
 serde_json = "1"
-syn = { version = "2", features = ["extra-traits", "full", "parsing"] }
+syn = { version = "*", features = ["extra-traits", "full", "parsing"] }
 tracing = "0"
 thiserror = "1"
 typed-builder = "~0.18"
-uuid = { version = "1", features = ["serde"] }
+uuid = { version = "*", features = ["serde"] }
 wasm-bindgen = "~0.2"
 web-sys = "~0.3"
 
 # Config for 'cargo dist'
 [workspace.metadata.dist]
 # The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
-cargo-dist-version = "0.4.2"
+cargo-dist-version = "*"
 # CI backends to support
 ci = ["github"]
 # The installers to generate for each app
@@ -55,5 +55,14 @@ pr-run-mode = "plan"
 [profile.dist]
 inherits = "release"
 lto = "thin"
+
+
+
+
+
+
+
+
+
 
 

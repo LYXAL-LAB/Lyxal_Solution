@@ -1,6 +1,6 @@
 [package]
-name = "lyx-logic-serverfn_sqlx"
-version = "0.0.1"
+name = "serverfn_sqlx"
+version = "0.8.0"
 edition = "2024"
 
 [lib]
@@ -11,37 +11,37 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 
 
-axum = { version = "0.0.1", optional = true }
-console_error_panic_hook = { version = "0.0.1" }
-http = { version = "0.0.1" }
-lyx-core-leptos = { path = "../../../../../core/lyx-core-leptos/leptos", version = "0.0.1", optional = true }
-lyx-logic-use = { path = "../../../../lyx-logic-use", version = "0.0.1", optional = true }
-lyx-logic-leptos-pagination = { path = "../../", version = "0.0.1" }
-lyx-core-axum = { path = "../../../../../core/lyx-core-leptos/integrations/axum", version = "0.0.1", optional = true }
-lyx-core-meta = { path = "../../../../../core/lyx-core-leptos/meta", version = "0.0.1", optional = true }
-lyx-core-router = { path = "../../../../../core/lyx-core-leptos/router", version = "0.0.1", optional = true }
-serde = { version = "0.0.1", features = ["derive"] }
-sqlx = { version = "0.0.1", optional = true, features = ["sqlite"] }
-thiserror = { version = "0.0.1" }
-tokio = { version = "0.0.1", optional = true, features = ["rt-multi-thread"] }
-tower = { version = "0.0.1", optional = true }
-tower-http = { version = "0.0.1", optional = true, features = ["fs"] }
-tracing = { version = "0.0.1", optional = true }
-wasm-bindgen = { version = "0.0.1" }
+axum = { version = "*", optional = true }
+console_error_panic_hook = { version = "*" }
+http = { version = "*" }
+leptos = { path = "../core/lyx-core-leptos/leptos", optional = true }
+leptos-use = { path = "../../../../use", optional = true }
+leptos-pagination = { path = "../../" }
+leptos_axum = { path = "../../../../../core/leptos/integrations/axum", optional = true }
+leptos_meta = { path = "../core/lyx-core-leptos/meta", optional = true }
+leptos_router = { path = "../core/lyx-core-leptos/router", optional = true }
+serde = { version = "*", features = ["derive"] }
+sqlx = { version = "*", optional = true, features = ["sqlite"] }
+thiserror = { version = "*" }
+tokio = { version = "*", optional = true, features = ["rt-multi-thread"] }
+tower = { version = "*", optional = true }
+tower-http = { version = "*", optional = true, features = ["fs"] }
+tracing = { version = "*", optional = true }
+wasm-bindgen = { version = "*" }
 
 [features]
-hydrate = ["lyx-core-leptos/hydrate"]
+hydrate = ["leptos/hydrate"]
 ssr = [
 "dep:axum",
 "dep:tokio",
 "dep:tower",
 "dep:tower-http",
-"dep:lyx-core-axum",
+"dep:leptos_axum",
 "dep:sqlx",
-"lyx-core-leptos/ssr",
-"lyx-core-meta/ssr",
-"lyx-core-router/ssr",
-"lyx-logic-use/ssr",
+"leptos/ssr",
+"leptos_meta/ssr",
+"leptos_router/ssr",
+"leptos-use/ssr",
 "dep:tracing" ]
 
 # Defines a size-optimized profile for the WASM bundle in release mode
@@ -57,11 +57,11 @@ panic = "abort"
 output-name = "serverfn_sqlx"
 
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
-site-root = { version = "0.0.1" }
+site-root = { version = "*" }
 
 # The site-root relative folder where all compiled output (JS, WASM and CSS) is written
 # Defaults to pkg
-site-pkg-dir = { version = "0.0.1" }
+site-pkg-dir = { version = "*" }
 
 # [Optional] The source CSS file. If it ends with .sass or .scss then it will be compiled by dart-sass into CSS. The CSS is optimized by Lightning CSS before being written to <site-root>/<site-pkg>/app.css
 # style-file = "style/output.css"
@@ -69,22 +69,22 @@ site-pkg-dir = { version = "0.0.1" }
 # The assets-dir cannot have a sub directory with the same name/path as site-pkg-dir.
 #
 # Optional. Env: LEPTOS_ASSETS_DIR.
-assets-dir = { version = "0.0.1" }
+assets-dir = { version = "*" }
 
 # The IP and port (ex: 127.0.0.1:3000) where the server serves the content. Use it in your server setup.
-site-addr = { version = "0.0.1" }
+site-addr = { version = "*" }
 
 # The port to use for automatic reload monitoring
 reload-port = 3001
 
 #  The browserlist query used for optimizing the CSS.
-browserquery = { version = "0.0.1" }
+browserquery = { version = "*" }
 
 # Set by cargo-leptos watch when building with that tool. Controls whether autoreload JS will be included in the head
 watch = false
 
 # The environment Leptos will run in, usually either "DEV" or "PROD"
-env = { version = "0.0.1" }
+env = { version = "*" }
 
 # The features to use when compiling the bin target
 #
@@ -109,6 +109,17 @@ lib-default-features = false
 # The profile to use for the lib target when compiling for release
 #
 # Optional. Defaults to "release".
-lib-profile-release = { version = "0.0.1" }
+lib-profile-release = { version = "*" }
 
-tailwind-input-file = { version = "0.0.1" }
+tailwind-input-file = { version = "*" }
+
+
+
+
+
+
+
+
+
+
+

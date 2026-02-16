@@ -1,0 +1,71 @@
+---
+id: create-organisation
+title: "CreateOrganisation"
+description: "Creates a new organisation with specified name and administrator email. This is the top-level entity that contains workspaces and manages organizational-level settings."
+sidebar_label: "CreateOrganisation"
+hide_title: true
+hide_table_of_contents: true
+api: eJzVVlFP2zAQ/iuWn1uomHjhDdCkoWkC0e4JIXRNjsaQ2J7ttHRV//vu7LRNaOg2tE0aqmjq+3x3/u67c1YyR585ZYMyWp7JS4cQ0AsQGhfCuBlo5YGNYqFCIbzFTD0qzIWGCgXoXEBeKQIFB8E4gRWo8khMCuUFfUKBIhg7LHGOpUAdVFjSIgSRGR1AaS8Wxj17CxlHJXcVaJjRc4r9PcaGsnHgMQSlZ/5IDqSx6KL1Kt8mft1KmCAOv9Xow4XJl/JsJTkkpcCPYG2psog7fvJ89JX0WUHZ81NYWiSfZvqEWSA/1nGwoNAnN7UObvmQmRxbaGKAUpPrQYwDWXiIXBxE2MLofh+R1QMePGVmXK+JK9NjWCc+lEPi664ToNlzP5BUnxJ76bxNXF42HK67/oKrMS54a7RPPJ2MRvzVJ7C2Y0E4sdkoB3+qSir/HXIG/6aqWTx9/jBdvq/oAULt900DibquuKrnWVBzZvFKw+bxBnVOqM/LabvCVIJxcndYTZuUIfTFfTSuYovMCTQMisilPbXN372nl5qD2m1l2GF4wBpoKr7lrpNcJ+pP1J/02ZI/5XTap/ArQjgaWWN0c3QfnaOpePpXJF6h9zQr+/nanKUnnb7D8A6YeWa305xf4jiuGEYEVRgKw+PWGh/zgVDQr2NfU1q0puI52tcGM07qqh0NfnJOh6voHlkegVVHRQj2ArzKzmt2c3e/HuzbERy6LeB+523MLCUi3va5ZYbXKZVuqT5NJjciogUQnK+nbHN3xCLwzinbY5O8ndmvhInwQ3EiINaOhXC7u7s+vkBlS9y/e3Y99Wo47RuambQzdGbNbnkzCXYraWK2JoLSjyYeuVHYuF182kAy8+ngJ6OT0+How3B0yvtYM3S789bGZ+oz8erW7pDXurX/p5eTRg4BX8KxLclVHHEujvXUNHfSv+Kt2zak9IKbjICrFWkQv7pyveZl0oXjXqLHOTgFU64CN48sEHKSELfZMy6ZscTdcMLpMLysOa29ocONl3acZxnacBDbngM31+MJgafNG1aVZOlgwW9f9P9Mxje1dCQCxLWVLEHP6ji6ZPLJfz8Aug26Ng==
+sidebar_class_name: "post api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CreateOrganisation"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/superposition/organisations"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Creates a new organisation with specified name and administrator email. This is the top-level entity that contains workspaces and manages organizational-level settings.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={undefined}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"content":{"application/json":{"schema":{"type":"object","properties":{"country_code":{"type":"string"},"contact_email":{"type":"string"},"contact_phone":{"type":"string"},"admin_email":{"type":"string"},"sector":{"type":"string"},"name":{"type":"string"}},"required":["admin_email","name"],"title":"CreateOrganisationRequestContent"}}},"required":true}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"CreateOrganisation 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"id":{"type":"string"},"name":{"type":"string"},"country_code":{"type":"string"},"contact_email":{"type":"string"},"contact_phone":{"type":"string"},"created_by":{"type":"string"},"admin_email":{"type":"string"},"status":{"type":"string","enum":["Active","Inactive","PendingKyb"],"title":"OrgStatus"},"sector":{"type":"string"},"created_at":{"type":"string","format":"date-time"},"updated_at":{"type":"string","format":"date-time"},"updated_by":{"type":"string"}},"required":["admin_email","created_at","created_by","id","name","status","updated_at","updated_by"],"title":"CreateOrganisationResponseContent"}}}},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

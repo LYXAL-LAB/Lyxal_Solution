@@ -1,0 +1,71 @@
+---
+id: update-webhook
+title: "UpdateWebhook"
+description: "Updates an existing webhook config, allowing modification of URL, events, headers, and other webhook properties."
+sidebar_label: "UpdateWebhook"
+hide_title: true
+hide_table_of_contents: true
+api: eJztV1tvGjkU/iuWn3YlSGjavPBGW9pE6m6jhHQfEIrMzGHGzczYa3sCCPHf9xzPHSYo24tWWpUH8My5375jdjwEGxipnVQZH/N7HQoHlomMwUZaJ7OIrWEZK/XIApWtZDRgIknUmgipCuVKBoJkmVqx+9tPAwZPkDk7YDGIEAweRBYy5WIwtSJtlAbjJNgzPuB09iquw9qBvwpOpBr4Owfr3qpwy8c7jj441E9HoXVSGj//asn7HbdBDKmgk9tqQHVq+RUCh3oam0TtBF0zW2cwLL4fcMjEMoGwRVsqlYDIiJibpFcoBRer8JhE6vKUj+f843SGTzef7/zPvf+ezN5d4e/76afpbIqHq+nkPV8MuJMuISVXzuk/Cs1o4wlT2ut0Y+TLq7b4l1IAZYPcOpU+lIXpS5IIQ0k5EclNO10o2+2Sj5CBkQF7hO3wSSQ5sEIFQ2fywOUGWG4hZCtl2CrBRsJkMqyrYAa0AYsVLJrGxUblUaxyh0dgk5tr6ojK98+FX1QP31Qtl4UxYous0kFqe6pB4cYii+DBgLC9Vd4XzSUN1Xl+wN7KYKcjb4t2fFe24b6rBaMHfKGFEdgMPsnzHc/wAfX4H/SYEqiFi/F81K5NMx0qrdVshspEQxlWqopyfrOytTKPVosAvkPfgt5YrTJbTNfFaHQ0ZN00MmRhlQza+kFjXUTV4/Cvef//z3sqNji9+AxtBkzSEtsZ6Ymw7gHJUQTYug/C9SUVI0iJwqlZh05iP70ASpADaQ61Lrcnyf/GqPe3WLHPK+4yvVz9SfDr+NuJrdsYzdzUFevxqCeSbrHqSRpUGEkT1/T+81hc4EcLjDGsN6M3x+CDrCo3Afyp3AeV44UEuRr8QanLPsi6Rr0Gh+MODPoyNQbb+/KnAFcK1oqoD7v2TfA97vSlgCRERKuHl4mylMIKrWj3BLR8/A4a8/PyVna+o+TvCfghyI10W7+8bCpdvD0TWp7FiExvhZXBJCfJ+YIWySEdhAFTMywabXeUiiLa53XW4dN7fghDV7PZDfPcTCA7Blzmu9pWHriJTiU94dlLzHj2U3Y8gy8QVfu2uadONyLVCRz3Uwu6y3VD67NcMA21rlSxPuoVQEjfg+otuJxXShZHmNXCDJmtlM9B2Vd3OXaiVlaWITYGL0YXl8PR6+HokuSQxaUiaxZtOY6sua0f7Nl6Ov6L/xVliR1s3LlOhGzv8qL353xdez72IWHeYoySSLsddhLcm2S/p9dYXUMTgccnYSTVz89HKG1Zy5VILJxIwW+3JeD+zp7zrlp2GUGkX7T4hEfcu9UFco9TV93Rfrj9wk7rhln7QKP+U0y1758dawVDCWzDGeloOI6wtpGYBAFod5K3jYbVfWxZ/sHE3iMhI9b05xO/fQGUD9KDl3+3w52WRbmHbF4opc8/JR1ISw==
+sidebar_class_name: "patch api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"UpdateWebhook"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"patch"}
+  path={"/webhook/{name}"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Updates an existing webhook config, allowing modification of URL, events, headers, and other webhook properties.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"name","in":"path","schema":{"type":"string"},"required":true},{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"content":{"application/json":{"schema":{"type":"object","properties":{"description":{"type":"string"},"enabled":{"type":"boolean"},"url":{"type":"string"},"method":{"type":"string","enum":["GET","POST","PUT","PATCH","DELETE","HEAD"],"title":"HttpMethod"},"version":{"type":"string","enum":["V1"],"title":"Version"},"custom_headers":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"events":{"type":"array","items":{"type":"string"}},"change_reason":{"type":"string"}},"required":["change_reason"],"title":"UpdateWebhookRequestContent"}}},"required":true}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"UpdateWebhook 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"name":{"type":"string"},"description":{"type":"string"},"enabled":{"type":"boolean"},"url":{"type":"string"},"method":{"type":"string","enum":["GET","POST","PUT","PATCH","DELETE","HEAD"],"title":"HttpMethod"},"version":{"type":"string","enum":["V1"],"title":"Version"},"custom_headers":{"type":"object","additionalProperties":{},"description":"Generic key-value object structure used for flexible data representation throughout the API.","title":"Object"},"events":{"type":"array","items":{"type":"string"}},"max_retries":{"type":"number"},"last_triggered_at":{"type":"string","format":"date-time"},"change_reason":{"type":"string"},"created_by":{"type":"string"},"created_at":{"type":"string","format":"date-time"},"last_modified_by":{"type":"string"},"last_modified_at":{"type":"string","format":"date-time"}},"required":["change_reason","created_at","created_by","description","enabled","events","last_modified_at","last_modified_by","max_retries","method","name","url","version"],"title":"UpdateWebhookResponseContent"}}}},"404":{"description":"ResourceNotFound 404 response"},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

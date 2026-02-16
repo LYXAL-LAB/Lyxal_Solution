@@ -1,39 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-kits\lyx_ui_leptonic\leptonic\src\components\button.rs
-```rust
 use std::{
     fmt::{Display, Formatter},
     rc::Rc,
@@ -196,9 +160,9 @@ pub fn LinkButton<H>(
     #[prop(into, optional)] style: Option<AttributeValue>,
     #[prop(into, optional)] aria_haspopup: OptMaybeSignal<AriaHasPopup>,
     #[prop(into, optional)] aria_expanded: OptMaybeSignal<AriaExpanded>,
-    #[allow(unused)] // TODO: Remove this when leptos's A component supports the title attribute.
+    #[allow(unused)] // TODO: Remove this when leptos's A component supports the title LeptonicAttribute.
     #[prop(into, optional)]
-    title: Option<AttributeValue>, // TODO: This should be limited to string attributes...
+    title: Option<AttributeValue>, // TODO: This should be limited to string LeptonicAttributes...
     /// If `true`, the link is marked active when the location matches exactly;
     /// if false, link is marked active if the current route starts with it.
     #[prop(optional)]
@@ -210,30 +174,30 @@ pub fn LinkButton<H>(
     /// will skip this page.)
     #[prop(optional)]
     replace: bool,
-    /// Arbitrary additional attributes.
+    /// Arbitrary additional LeptonicAttributes.
     #[prop(attrs)]
-    mut attributes: Vec<(&'static str, Attribute)>,
+    mut LeptonicAttributes: Vec<(&'static str, LeptonicAttribute)>,
     children: Children,
 ) -> impl IntoView
 where
     H: ToHref + 'static,
 {
-    attributes.push((
+    LeptonicAttributes.push((
         "data-variant",
-        Attribute::Fn(Rc::new(move || {
-            Attribute::String(Oco::Borrowed(variant.get().as_str()))
+        LeptonicAttribute::Fn(Rc::new(move || {
+            LeptonicAttribute::String(Oco::Borrowed(variant.get().as_str()))
         })),
     ));
-    attributes.push((
+    LeptonicAttributes.push((
         "data-color",
-        Attribute::Fn(Rc::new(move || {
-            Attribute::String(Oco::Borrowed(color.get().as_str()))
+        LeptonicAttribute::Fn(Rc::new(move || {
+            LeptonicAttribute::String(Oco::Borrowed(color.get().as_str()))
         })),
     ));
-    attributes.push((
+    LeptonicAttributes.push((
         "data-size",
-        Attribute::Fn(Rc::new(move || {
-            Attribute::String(Oco::Borrowed(size.get().as_str()))
+        LeptonicAttribute::Fn(Rc::new(move || {
+            LeptonicAttribute::String(Oco::Borrowed(size.get().as_str()))
         })),
     ));
 
@@ -248,28 +212,10 @@ where
         exact,
         state,
         replace,
-        attributes,
+        LeptonicAttributes,
         children,
         on_hover_start,
         on_hover_end,
     })
     .into_view()
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```

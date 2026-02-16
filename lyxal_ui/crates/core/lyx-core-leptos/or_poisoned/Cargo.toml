@@ -1,5 +1,10 @@
 [package]
-name = "lyx-core-or_poisoned"
-version = "0.0.1"
+name = "or_poisoned"
+version = "0.8.0"
 edition = "2024"
 [dependencies]
+
+
+[build-dependencies]
+rustc_version = "*"
+

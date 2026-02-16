@@ -1,11 +1,21 @@
 [package]
 name = "lyx-found-drag-reorder"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-js-sys = { version = "0.0.1" }
-lyx-core-leptos = { path = "../../core/lyx-core-leptos/leptos", version = "0.0.1" }
-send_wrapper = { version = "0.0.1" }
-wasm-bindgen = { version = "0.0.1" }
-web-sys = { version = "0.0.1", features = ["DataTransfer", "Document", "DomRect", "Element", "NodeList"] }
+js-sys = { version = "*" }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+send_wrapper = { version = "*" }
+wasm-bindgen = { version = "*" }
+web-sys = { version = "*", features = ["DataTransfer", "Document", "DomRect", "Element", "NodeList"] }
+
+
+
+
+
+
+
+
+
+

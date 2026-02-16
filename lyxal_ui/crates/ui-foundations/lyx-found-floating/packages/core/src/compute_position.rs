@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx-found-floating\packages\core\src\compute_position.rs
-```rust
 1: use lyx_ui_foundations_utils::{Coords, ElementOrVirtual, Placement, Strategy};
 2: 
 3: use crate::compute_coords_from_placement::compute_coords_from_placement;
@@ -283,3 +281,4 @@
 281:     }
 282: }
 ```
+

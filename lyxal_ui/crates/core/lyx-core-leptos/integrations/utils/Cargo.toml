@@ -1,12 +1,18 @@
 [package]
-name = "lyx-core-utils"
-version = "0.0.1"
+name = "utils"
+version = "*"
 edition = "2024"
 [dependencies]
-futures = { version = "0.0.1", default-features = true }
-lyx-core-hydration_context = { path = "../../hydration_context", version = "0.0.1" }
-lyx-core-leptos = { path = "../../leptos", version = "0.0.1", features = ["nonce"] }
-lyx-core-meta = { path = "../../meta", version = "0.0.1", features = ["ssr"] }
-lyx-core-router = { path = "../../router", version = "0.0.1", features = ["ssr"] }
-lyx-core-leptos_config = { path = "../../leptos_config", version = "0.0.1" }
-lyx-core-reactive_graph = { path = "../../reactive_graph", version = "0.0.1", features = ["sandboxed-arenas"] }
+futures = { version = "*", default-features = true }
+hydration_context = { path = "../hydration_context", version = "*" }
+leptos = { path = "../leptos", version = "*", features = ["nonce"] }
+meta = { path = "../../meta", version = "*", features = ["ssr"] }
+router = { path = "../../router", version = "*", features = ["ssr"] }
+leptos_config = { path = "../leptos_config", version = "*" }
+reactive_graph = { path = "../reactive_graph", version = "*", features = ["sandboxed-arenas"] }
+
+
+[build-dependencies]
+rustc_version = "*"
+
+

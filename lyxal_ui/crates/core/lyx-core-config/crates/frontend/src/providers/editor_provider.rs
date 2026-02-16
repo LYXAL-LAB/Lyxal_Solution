@@ -1,11 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\providers\editor_provider.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\providers\editor_provider.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\providers\editor_provider.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\lyx_core_config\crates\frontend\src\providers\editor_provider.rs
-```rust
 use derive_more::{Deref, DerefMut};
 use leptos::*;
 
@@ -54,3 +46,4 @@ pub fn EditorProvider(children: Children) -> impl IntoView {
 ```
 ```
 ```
+

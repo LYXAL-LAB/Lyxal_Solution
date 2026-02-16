@@ -1,30 +1,30 @@
 [package]
-name = "lyx-core-axum"
-version = "0.0.1"
+name = "axum"
+version = "*"
 edition = "2024"
 [dependencies]
-lyx-core-any_spawner = { path = "../../any_spawner", version = "0.0.1", features = ["tokio"] }
-lyx-core-hydration_context = { path = "../../hydration_context", version = "0.0.1" }
-axum = { version = "0.0.1", default-features = false, features = ["matched-path" ] }
-dashmap = { version = "0.0.1", default-features = true }
-futures = { version = "0.0.1", default-features = true }
-lyx-core-leptos = { path = "../../leptos", version = "0.0.1", features = ["nonce", "ssr"] }
-lyx-core-server_fn = { path = "../../server_fn", version = "0.0.1", features = ["axum-no-default"], optional = true }
-lyx-core-leptos_macro = { path = "../../leptos_macro", version = "0.0.1", features = ["axum"] }
-lyx-core-meta = { path = "../../meta", version = "0.0.1", features = ["ssr", "nonce"] }
-lyx-core-router = { path = "../../router", version = "0.0.1", features = ["ssr"] }
-lyx-core-utils = { path = "../utils", version = "0.0.1" }
-lyx-core-tachys = { path = "../../tachys", version = "0.0.1", optional = true }
-tokio = { version = "0.0.1", default-features = false }
-tower = { version = "0.0.1", features = ["util"], default-features = true }
-tower-http = { version = "0.0.1", default-features = true }
-tracing = { version = "0.0.1", optional = true, default-features = true }
-lyx-core-or_poisoned = { path = "../../or_poisoned", version = "0.0.1" }
+any_spawner = { path = "../any_spawner", version = "*", features = ["tokio"] }
+hydration_context = { path = "../hydration_context", version = "*" }
+axum = { version = "*", default-features = false, features = ["matched-path" ] }
+dashmap = { version = "*", default-features = true }
+futures = { version = "*", default-features = true }
+leptos = { path = "../leptos", version = "*", features = ["nonce", "ssr"] }
+server_fn = { path = "../server_fn", version = "*", features = ["axum-no-default"], optional = true }
+leptos_macro = { path = "../leptos_macro", version = "*", features = ["axum"] }
+meta = { path = "../../meta", version = "*", features = ["ssr", "nonce"] }
+router = { path = "../../router", version = "*", features = ["ssr"] }
+utils = { path = "../utils", version = "*" }
+tachys = { path = "../tachys", version = "*", optional = true }
+tokio = { version = "*", default-features = false }
+tower = { version = "*", features = ["util"], default-features = true }
+tower-http = { version = "*", default-features = true }
+tracing = { version = "*", optional = true, default-features = true }
+or_poisoned = { path = "../or_poisoned", version = "*" }
 [dev-dependencies]
-anyhow = { version = "0.0.1" }
-axum = { version = "0.0.1", default-features = true }
-reqwest = { version = "0.0.1" }
-tokio = { version = "0.0.1", features = ["io-util", "net", "process", "rt-multi-thread", "time" ], default-features = true }
+anyhow = { version = "*" }
+axum = { version = "*", default-features = true }
+reqwest = { version = "*" }
+tokio = { version = "*", features = ["io-util", "net", "process", "rt-multi-thread", "time" ], default-features = true }
 [features]
 wasm = []
 default = [
@@ -32,6 +32,13 @@ default = [
 "tokio/sync",
 "tower-http/fs",
 "tower/util",
-"lyx-core-server_fn/axum" ]
-islands-router = ["lyx-core-tachys/islands"]
+"server_fn/axum" ]
+islands-router = ["tachys/islands"]
 tracing = ["dep:tracing"]
+
+
+[build-dependencies]
+rustc_version = "*"
+
+
+

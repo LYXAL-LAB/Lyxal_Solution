@@ -1,0 +1,9 @@
+
+[workspace.dependencies]
+leptos-windowing = { ${2} }
+
+
+
+
+
+

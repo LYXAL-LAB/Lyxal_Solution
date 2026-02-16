@@ -1,6 +1,6 @@
 [package]
 name = "frontend"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [lib]
@@ -9,7 +9,16 @@ crate-type = ["cdylib", "rlib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-app = { version = "0.0.1", path = "../../../../../platform/lyx-plat-tauri/app" }
-leptos = { version = "0.0.1", path = "../../../../../core/lyx-core-leptos/leptos" }
-leptos_query = { version = "0.0.1", path = "../../../query" }
-leptos_query_devtools = { version = "0.0.1", path = "../../../devtools" }
+app = { ${2} }
+leptos = { ${2} }
+leptos_query = { ${2} }
+leptos_query_devtools = { ${2} }
+
+
+
+
+
+
+
+
+

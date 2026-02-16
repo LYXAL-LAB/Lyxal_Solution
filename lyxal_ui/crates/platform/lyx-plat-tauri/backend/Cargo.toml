@@ -1,23 +1,33 @@
 [package]
 name = "lyx-platform-backend"
-version = "0.0.1"
+version = "0.8.0"
 edition = "2024"
 
 [lib]
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
-axum = { version = "0.0.1", optional = true }
-lyx-core-leptos = { path = "../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
-lyx-core-axum = { path = "../../../core/lyx-core-leptos/integrations/axum", version = "0.0.1", optional = true }
-tower = { version = "0.0.1", optional = true }
-tower-http = { version = "0.0.1", optional = true, features = ["fs", "cors", "trace" ] }
+axum = { version = "*", optional = true }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos_axum = { path = "../../../core/leptos/integrations/axum", optional = true }
+tower = { version = "*", optional = true }
+tower-http = { version = "*", optional = true, features = ["fs", "cors", "trace" ] }
 
 [features]
-hydrate = ["lyx-core-leptos/hydrate"]
+hydrate = ["leptos/hydrate"]
 ssr = [
-"lyx-core-leptos/ssr",
-"dep:lyx-core-axum",
+"leptos/ssr",
+"dep:leptos_axum",
 "dep:axum",
 "dep:tower",
 "dep:tower-http" ]
+
+
+
+
+
+
+
+
+
+

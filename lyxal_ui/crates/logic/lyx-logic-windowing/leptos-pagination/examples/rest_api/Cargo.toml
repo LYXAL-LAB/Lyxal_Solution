@@ -1,14 +1,25 @@
 [package]
-name = "lyx-logic-rest_api"
-version = "0.0.1"
+name = "rest_api"
+version = "0.8.0"
 edition = "2024"
 
 [dependencies]
 
 
-anyhow = { version = "0.0.1" }
+anyhow = { version = "*" }
 
-gloo-net = { version = "0.0.1", features = ["http"] }
-lyx-core-leptos = { path = "../../../../../core/lyx-core-leptos/leptos", version = "0.0.1" }
+gloo-net = { version = "*", features = ["http"] }
+leptos = { path = "../core/lyx-core-leptos/leptos" }
 
-serde = { version = "0.0.1", features = ["derive"] }
+serde = { version = "*", features = ["derive"] }
+
+
+
+
+
+
+
+
+
+
+

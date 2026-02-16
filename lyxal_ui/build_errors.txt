@@ -1,0 +1,2617 @@
+﻿cargo : warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+At line:1 char:1
++ cargo check -p lyx-ui-leptonic 2>&1 | Out-File -FilePath build_errors ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: profil...workspace root::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+package:   C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-foundations\lyx-found-tailwind\examp
+le\start-axum\Cargo.toml
+workspace: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\viz\lyx-viz-apex\Cargo.toml
+workspace: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\Cargo.toml
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\viz\lyx-viz-trading\example\Cargo.toml
+workspace: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\Cargo.toml
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\popove
+r\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\popove
+r\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\popove
+r\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.leptos-struct-component.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.leptos-style.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dev-dependencies.getrandom.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dev-dependencies.js-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\button
+\Cargo.toml: unused manifest key: dev-dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dropdo
+wn-menu\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dropdo
+wn-menu\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dropdo
+wn-menu\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dropdo
+wn-menu\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dependencies.js-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dependencies.serde_json.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dependencies.wasm-bindgen.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dev-dependencies.getrandom.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\analyt
+ics\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\badge\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\badge\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\badge\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toggle
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toggle
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toggle
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: 
+C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\viz\lyx-viz-trading\trading-charts\Cargo.toml: 
+unused manifest key: dependencies.wasmbind-macro.package
+warning: 
+C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\viz\lyx-viz-trading\trading-charts\Cargo.toml: 
+unused manifest key: dependencies.wasmbind-macro.path
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\progre
+ss\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\progre
+ss\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\progre
+ss\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\hover-
+card\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\hover-
+card\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\hover-
+card\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\regist
+ry\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\pagina
+tion\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\pagina
+tion\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\pagina
+tion\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\pagina
+tion\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkb
+ox\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkb
+ox\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkb
+ox\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\checkb
+ox\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\form\C
+argo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\form\C
+argo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\form\C
+argo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\accord
+ion\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\accord
+ion\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\accord
+ion\Cargo.toml: unused manifest key: dependencies.leptos-style.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\accord
+ion\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\accord
+ion\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\select
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\select
+\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\select
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\select
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-
+dialog\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-
+dialog\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-
+dialog\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert-
+dialog\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\calend
+ar\Cargo.toml: unused manifest key: dependencies.chrono.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\calend
+ar\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\calend
+ar\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\calend
+ar\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\contex
+t-menu\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\contex
+t-menu\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\contex
+t-menu\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\contex
+t-menu\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: 
+C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-leptonic\leptonic\Cargo.toml: 
+unused manifest key: build-dependencies.lyx-ui-leptonic-theme.path
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\textar
+ea\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\textar
+ea\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\textar
+ea\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\utils\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\utils\
+Cargo.toml: unused manifest key: dev-dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\utils\
+Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\menuba
+r\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\menuba
+r\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\menuba
+r\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\menuba
+r\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\lazy-l
+oading\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\alert\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\slider
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\slider
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\slider
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\table\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\table\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\table\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\aspect
+-ratio\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\aspect
+-ratio\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toolti
+p\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toolti
+p\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toolti
+p\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\drawer
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog
+\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog
+\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\dialog
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-
+group\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-
+group\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-
+group\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\radio-
+group\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\naviga
+tion-menu\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\naviga
+tion-menu\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\naviga
+tion-menu\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\naviga
+tion-menu\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.leptos-struct-component.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.leptos-style.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\carous
+el\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\skelet
+on\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\skelet
+on\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\skelet
+on\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\label\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\collap
+sible\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\collap
+sible\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\resiza
+ble\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\resiza
+ble\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\resiza
+ble\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\resiza
+ble\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\sheet\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\sheet\
+Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\sheet\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\sheet\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\tabs\C
+argo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\tabs\C
+argo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\tabs\C
+argo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.js-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.leptos-struct-component.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.leptos-style.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\date-p
+icker\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\separa
+tor\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\separa
+tor\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\separa
+tor\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\card\C
+argo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\card\C
+argo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\card\C
+argo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\comman
+d\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\comman
+d\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\comman
+d\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\comman
+d\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.leptos-node-ref.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.leptos-struct-component.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.leptos-style.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\toast\
+Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input-
+otp\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input-
+otp\Cargo.toml: unused manifest key: dependencies.lucide-leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input-
+otp\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\input-
+otp\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\switch
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\switch
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\switch
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\scroll
+-area\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\scroll
+-area\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\scroll
+-area\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\breadc
+rumb\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\breadc
+rumb\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\breadc
+rumb\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\error-
+boundary\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\combob
+ox\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\combob
+ox\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\combob
+ox\Cargo.toml: unused manifest key: dependencies.wasm-bindgen.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\combob
+ox\Cargo.toml: unused manifest key: dependencies.web-sys.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\combob
+ox\Cargo.toml: unused manifest key: dev-dependencies.wasm-bindgen-test.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\avatar
+\Cargo.toml: unused manifest key: dependencies.leptos.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\avatar
+\Cargo.toml: unused manifest key: dependencies.tailwind_fuse.version
+warning: C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-shadcn\packages\lyx\avatar
+\Cargo.toml: unused manifest key: dependencies.web-sys.version
+    Checking lyx-ui-leptonic v0.9.0 
+(C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\crates\ui-kits\lyx-ui-leptonic\leptonic)
+error[E0432]: unresolved import `leptos_router::ToHref`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\link.rs:5:5
+  |
+5 | use leptos_router::ToHref;
+  |     ^^^^^^^^^^^^^^^^^^^^^ no `ToHref` in the root
+  |
+help: consider importing one of these traits instead
+  |
+5 - use leptos_router::ToHref;
+5 + use crate::components::link::components::ToHref;
+  |
+5 | use leptos_router::components::ToHref;
+  |                    ++++++++++++
+
+error[E0425]: cannot find function, tuple struct or tuple variant `A` in crate `leptos_router`
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\button.rs:161:20
+    |
+161 |     leptos_router::A(AProps {
+    |                    ^ not found in `leptos_router`
+    |
+help: consider importing one of these items
+    |
+  1 + use crate::components::prelude::Key::A;
+    |
+  1 + use crate::either::EitherOf10::A;
+    |
+  1 + use crate::either::EitherOf11::A;
+    |
+  1 + use crate::either::EitherOf12::A;
+    |
+    = and 16 other candidates
+help: if you import `A`, refer to it directly
+    |
+161 -     leptos_router::A(AProps {
+161 +     A(AProps {
+    |
+
+error[E0405]: cannot find trait `ElementType` in module `leptos::prelude`
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\button.rs:20:67
+   |
+20 | pub struct UseButtonInput<E: ElementDescriptor + leptos::prelude::ElementType + 'static> {
+   |                                                                   ^^^^^^^^^^^ not found in `leptos::prelude`
+   |
+help: consider importing one of these traits
+   |
+ 1 + use crate::html::ElementType;
+   |
+ 1 + use leptos::html::ElementType;
+   |
+help: if you import `ElementType`, refer to it directly
+   |
+20 - pub struct UseButtonInput<E: ElementDescriptor + leptos::prelude::ElementType + 'static> {
+20 + pub struct UseButtonInput<E: ElementDescriptor + ElementType + 'static> {
+   |
+
+error[E0405]: cannot find trait `ElementType` in module `leptos::prelude`
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\button.rs:66:59
+   |
+66 | pub fn use_button<E: ElementDescriptor + leptos::prelude::ElementType + 'static>(input: UseButtonInput<E>) -> 
+UseButtonReturn {
+   |                                                           ^^^^^^^^^^^ not found in `leptos::prelude`
+   |
+help: consider importing one of these traits
+   |
+ 1 + use crate::html::ElementType;
+   |
+ 1 + use leptos::html::ElementType;
+   |
+help: if you import `ElementType`, refer to it directly
+   |
+66 - pub fn use_button<E: ElementDescriptor + leptos::prelude::ElementType + 'static>(input: UseButtonInput<E>) -> 
+UseButtonReturn {
+66 + pub fn use_button<E: ElementDescriptor + ElementType + 'static>(input: UseButtonInput<E>) -> UseButtonReturn {
+   |
+
+error[E0405]: cannot find trait `ElementType` in module `leptos::prelude`
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs:78:54
+   |
+78 |     OverlayRef: ElementDescriptor + leptos::prelude::ElementType + 'static,
+   |                                                      ^^^^^^^^^^^ not found in `leptos::prelude`
+   |
+help: consider importing one of these traits
+   |
+ 1 + use crate::html::ElementType;
+   |
+ 1 + use leptos::html::ElementType;
+   |
+help: if you import `ElementType`, refer to it directly
+   |
+78 -     OverlayRef: ElementDescriptor + leptos::prelude::ElementType + 'static,
+78 +     OverlayRef: ElementDescriptor + ElementType + 'static,
+   |
+
+error[E0405]: cannot find trait `ElementType` in module `leptos::prelude`
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs:79:53
+   |
+79 |     TargetRef: ElementDescriptor + leptos::prelude::ElementType + 'static,
+   |                                                     ^^^^^^^^^^^ not found in `leptos::prelude`
+   |
+help: consider importing one of these traits
+   |
+ 1 + use crate::html::ElementType;
+   |
+ 1 + use leptos::html::ElementType;
+   |
+help: if you import `ElementType`, refer to it directly
+   |
+79 -     TargetRef: ElementDescriptor + leptos::prelude::ElementType + 'static,
+79 +     TargetRef: ElementDescriptor + ElementType + 'static,
+   |
+
+error[E0405]: cannot find trait `ElementType` in module `leptos::prelude`
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs:109:54
+    |
+109 |     OverlayRef: ElementDescriptor + leptos::prelude::ElementType + Clone + 'static,
+    |                                                      ^^^^^^^^^^^ not found in `leptos::prelude`
+    |
+help: consider importing one of these traits
+    |
+  1 + use crate::html::ElementType;
+    |
+  1 + use leptos::html::ElementType;
+    |
+help: if you import `ElementType`, refer to it directly
+    |
+109 -     OverlayRef: ElementDescriptor + leptos::prelude::ElementType + Clone + 'static,
+109 +     OverlayRef: ElementDescriptor + ElementType + Clone + 'static,
+    |
+
+error[E0405]: cannot find trait `ElementType` in module `leptos::prelude`
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs:110:53
+    |
+110 |     TargetRef: ElementDescriptor + leptos::prelude::ElementType + Clone + 'static,
+    |                                                     ^^^^^^^^^^^ not found in `leptos::prelude`
+    |
+help: consider importing one of these traits
+    |
+  1 + use crate::html::ElementType;
+    |
+  1 + use leptos::html::ElementType;
+    |
+help: if you import `ElementType`, refer to it directly
+    |
+110 -     TargetRef: ElementDescriptor + leptos::prelude::ElementType + Clone + 'static,
+110 +     TargetRef: ElementDescriptor + ElementType + Clone + 'static,
+    |
+
+warning: unnecessary qualification
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:12:27
+   |
+12 | pub type LeptonicCustom = leptos::html::Custom<web_sys::HtmlElement>;
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: requested on the command line with `-W unused-qualifications`
+help: remove the unnecessary path segments
+   |
+12 - pub type LeptonicCustom = leptos::html::Custom<web_sys::HtmlElement>;
+12 + pub type LeptonicCustom = html::Custom<web_sys::HtmlElement>;
+   |
+
+warning: unused import: `A`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\button.rs:6:33
+  |
+6 | use leptos_router::components::{A, AProps};
+  |                                 ^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\button_group.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\link.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\press.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `crate::AttributeValue`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\press.rs:3:5
+  |
+3 | use crate::AttributeValue;
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `AttributeValue` and `View`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\popover.rs:8:5
+  |
+8 |     AttributeValue, LeptonicCustom, View, SendWrapper,
+  |     ^^^^^^^^^^^^^^                  ^^^^
+
+warning: unused import: `leptos::portal::Portal`
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\popover.rs:10:5
+   |
+10 | use leptos::portal::Portal;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::*`
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\popover.rs:12:5
+   |
+12 | use leptos::*;
+   |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\alert.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\app_bar.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\box.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\button.rs:7:5
+  |
+7 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\card.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `crate::AttributeValue`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\card.rs:3:5
+  |
+3 | use crate::AttributeValue;
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\checkbox.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\collapsible.rs:4:5
+  |
+4 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\date_selector.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `crate::AttributeValue`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\date_selector.rs:3:5
+  |
+3 | use crate::AttributeValue;
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `AttributeValue` and `LeptonicCustom`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\datetime_input.rs:3:13
+  |
+3 | use crate::{AttributeValue, View, LeptonicCustom};
+  |             ^^^^^^^^^^^^^^        ^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\drawer.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\field.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\form_control.rs:4:5
+  |
+4 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\grid.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `crate::utils::ElementDescriptor`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\input.rs:3:5
+  |
+3 | use crate::utils::ElementDescriptor;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `LeptonicCustom`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\input.rs:7:35
+  |
+7 | use crate::{AttributeValue, View, LeptonicCustom};
+  |                                   ^^^^^^^^^^^^^^
+
+warning: unused import: `crate::utils::props::Attribute`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\input.rs:8:5
+  |
+8 | use crate::utils::props::Attribute;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\kbd.rs:4:5
+  |
+4 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `crate::AttributeValue`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\kbd.rs:5:5
+  |
+5 | use crate::AttributeValue;
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\label.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\link.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos_router::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\link.rs:7:5
+  |
+7 | use leptos_router::*;
+  |     ^^^^^^^^^^^^^^^^
+
+warning: unused import: `SendWrapper`
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\link.rs:11:21
+   |
+11 |     OptMaybeSignal, SendWrapper,
+   |                     ^^^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\modal.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\popover.rs:4:5
+  |
+4 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `View`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\popover.rs:5:29
+  |
+5 | use crate::{AttributeValue, View, LeptonicCustom};
+  |                             ^^^^
+
+warning: unused import: `leptos::*`
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\quicksearch.rs:11:5
+   |
+11 | use leptos::*;
+   |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\radio.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `crate::AttributeValue`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\root.rs:5:5
+  |
+5 | use crate::AttributeValue;
+  |     ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\separator.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\stack.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\tab.rs:4:5
+  |
+4 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused imports: `AttributeValue` and `LeptonicCustom`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\tab.rs:5:13
+  |
+5 | use crate::{AttributeValue, View, LeptonicCustom};
+  |             ^^^^^^^^^^^^^^        ^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\table.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\tabs.rs:4:5
+  |
+4 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused imports: `AttributeValue` and `LeptonicCustom`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\tabs.rs:5:13
+  |
+5 | use crate::{AttributeValue, View, LeptonicCustom};
+  |             ^^^^^^^^^^^^^^        ^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\theme.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\tile.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\toast.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\toggle.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\transitions\fade.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\transitions\grow.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\transitions\slide.rs:2:5
+  |
+2 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\transitions\slide.rs:3:5
+  |
+3 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::prelude::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\transitions\zoom.rs:2:5
+  |
+2 | use leptos::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\transitions\zoom.rs:3:5
+  |
+3 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\typography.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `Callable`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\anchor_link.rs:3:23
+  |
+3 | use leptos::prelude::{Callable, Callback, Get};
+  |                       ^^^^^^^^
+
+warning: unused import: `leptos::html::ElementType`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\button.rs:5:5
+  |
+5 | use leptos::html::ElementType;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\calendar.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::html::ElementType`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs:7:5
+  |
+7 | use leptos::html::ElementType;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\utils\aria.rs:5:5
+  |
+5 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unused import: `leptos::*`
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\utils\callback.rs:2:5
+  |
+2 | use leptos::*;
+  |     ^^^^^^^^^
+
+warning: unnecessary qualification
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\utils\callback.rs:161:25
+    |
+161 | pub fn view_producer<V: leptos::IntoView, F: Fn() -> V + 'static>(fun: F) -> ViewProducer {
+    |                         ^^^^^^^^^^^^^^^^
+    |
+help: remove the unnecessary path segments
+    |
+161 - pub fn view_producer<V: leptos::IntoView, F: Fn() -> V + 'static>(fun: F) -> ViewProducer {
+161 + pub fn view_producer<V: IntoView, F: Fn() -> V + 'static>(fun: F) -> ViewProducer {
+    |
+
+warning: unnecessary qualification
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\utils\callback.rs:165:9
+    |
+165 | impl<V: leptos::IntoView, F: Fn() -> V + 'static> From<F> for ViewProducer {
+    |         ^^^^^^^^^^^^^^^^
+    |
+help: remove the unnecessary path segments
+    |
+165 - impl<V: leptos::IntoView, F: Fn() -> V + 'static> From<F> for ViewProducer {
+165 + impl<V: IntoView, F: Fn() -> V + 'static> From<F> for ViewProducer {
+    |
+
+warning: unnecessary qualification
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\utils\callback.rs:213:38
+    |
+213 | pub fn view_callback<In: 'static, V: leptos::IntoView, F: Fn(In) -> V + 'static>(
+    |                                      ^^^^^^^^^^^^^^^^
+    |
+help: remove the unnecessary path segments
+    |
+213 - pub fn view_callback<In: 'static, V: leptos::IntoView, F: Fn(In) -> V + 'static>(
+213 + pub fn view_callback<In: 'static, V: IntoView, F: Fn(In) -> V + 'static>(
+    |
+
+warning: unnecessary qualification
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\utils\callback.rs:219:22
+    |
+219 | impl<In: 'static, V: leptos::IntoView, F: Fn(In) -> V + 'static> From<F> for ViewCallback<In> {
+    |                      ^^^^^^^^^^^^^^^^
+    |
+help: remove the unnecessary path segments
+    |
+219 - impl<In: 'static, V: leptos::IntoView, F: Fn(In) -> V + 'static> From<F> for ViewCallback<In> {
+219 + impl<In: 'static, V: IntoView, F: Fn(In) -> V + 'static> From<F> for ViewCallback<In> {
+    |
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:24:64
+   |
+24 | pub struct OptMaybeSignal<T: 'static + Send + Sync>(pub Option<MaybeSignal<T>>);
+   |                                                                ^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:71:40
+   |
+71 | impl<T: 'static + Send + Sync, I: Into<MaybeSignal<T>>> From<I> for OptMaybeSignal<T> {
+   |                                        ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:251:32
+    |
+251 |     let (signal, set_signal) = create_signal(read_from_local_storage::<T>(key).unwrap_or(initial));
+    |                                ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:280:5
+    |
+280 |     create_effect(move |_old| {
+    |     ^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:33:23
+   |
+33 |     pub fn or<D: Into<MaybeSignal<T>>>(self, default: D) -> MaybeSignal<T> {
+   |                       ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:33:61
+   |
+33 |     pub fn or<D: Into<MaybeSignal<T>>>(self, default: D) -> MaybeSignal<T> {
+   |                                                             ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:40:32
+   |
+40 |     pub fn or_default(self) -> MaybeSignal<T>
+   |                                ^^^^^^^^^^^
+
+warning: use of deprecated tuple variant `leptos::prelude::MaybeSignal::Static`: `MaybeSignal<T>` is deprecated in 
+favour of `Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:46:34
+   |
+46 |             None => MaybeSignal::Static(T::default()),
+   |                                  ^^^^^^
+
+warning: use of deprecated tuple variant `leptos::prelude::MaybeSignal::Static`: `MaybeSignal<T>` is deprecated in 
+favour of `Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:53:30
+   |
+53 |                 MaybeSignal::Static(v) => MaybeSignal::Static(map(v)).into(),
+   |                              ^^^^^^
+
+warning: use of deprecated tuple variant `leptos::prelude::MaybeSignal::Static`: `MaybeSignal<T>` is deprecated in 
+favour of `Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:53:56
+   |
+53 |                 MaybeSignal::Static(v) => MaybeSignal::Static(map(v)).into(),
+   |                                                        ^^^^^^
+
+warning: use of deprecated tuple variant `leptos::prelude::MaybeSignal::Dynamic`: `MaybeSignal<T>` is deprecated in 
+favour of `Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:54:30
+   |
+54 |                 MaybeSignal::Dynamic(sig) => {
+   |                              ^^^^^^^
+
+warning: use of deprecated tuple variant `leptos::prelude::MaybeSignal::Dynamic`: `MaybeSignal<T>` is deprecated in 
+favour of `Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:55:34
+   |
+55 |                     MaybeSignal::Dynamic(Signal::derive(move || map(sig.get()))).into()
+   |                                  ^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:433:32
+    |
+433 |         let (left, set_left) = create_signal(0.0);
+    |                                ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:434:30
+    |
+434 |         let (top, set_top) = create_signal(0.0);
+    |                              ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:435:34
+    |
+435 |         let (width, set_width) = create_signal(0.0);
+    |                                  ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:436:36
+    |
+436 |         let (height, set_height) = create_signal(0.0);
+    |                                    ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:439:17
+    |
+439 |             el: store_value(el.into()),
+    |                 ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:480:26
+    |
+480 |         let (x, set_x) = create_signal(0.0);
+    |                          ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:481:26
+    |
+481 |         let (y, set_y) = create_signal(0.0);
+    |                          ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\lib.rs:496:28
+    |
+496 |             rel_mouse_pos: create_memo(move |_| {
+    |                            ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\button.rs:35:37
+   |
+35 |     let el: NodeRef<html::Button> = create_node_ref();
+   |                                     ^^^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\hoverable.rs:8:46
+  |
+8 |     #[prop(into, optional)] disabled: Option<MaybeSignal<bool>>,
+  |                                              ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\press.rs:9:29
+  |
+9 |     #[prop(into)] disabled: MaybeSignal<bool>,
+  |                             ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\popover.rs:27:40
+   |
+27 | pub fn Popover(#[prop(into)] disabled: MaybeSignal<bool>, children: Children) -> impl IntoView {
+   |                                        ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\popover.rs:35:40
+   |
+35 |     let (trigger_el, set_trigger_el) = create_signal(None);
+   |                                        ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\popover.rs:47:47
+   |
+47 |     let trigger_el: NodeRef<LeptonicCustom> = create_node_ref();
+   |                                               ^^^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\popover.rs:67:32
+   |
+67 |     #[prop(into)] placement_x: MaybeSignal<PlacementX>,
+   |                                ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\popover.rs:68:32
+   |
+68 |     #[prop(into)] placement_y: MaybeSignal<PlacementY>,
+   |                                ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\popover.rs:69:38
+   |
+69 |     #[prop(into)] writing_direction: MaybeSignal<WritingDirection>,
+   |                                      ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\popover.rs:74:47
+   |
+74 |     let overlay_el: NodeRef<LeptonicCustom> = create_node_ref();
+   |                                               ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\collapsible.rs:88:28
+   |
+88 |     let (show, set_show) = create_signal(open);
+   |                            ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\color_picker.rs:78:42
+   |
+78 |     let palette_el: NodeRef<html::Div> = create_node_ref();
+   |                                          ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\color_picker.rs:81:48
+   |
+81 |     let (knob_listening, set_knob_listening) = create_signal(false);
+   |                                                ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\color_picker.rs:91:5
+   |
+91 |     create_effect(move |_| {
+   |     ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\color_picker.rs:99:9
+   |
+99 |         create_memo(move |_| project_into_range(cursor.rel_mouse_pos.get().0, 1.0, 0.0, None));
+   |         ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\color_picker.rs:100:41
+    |
+100 |     let projected_value_from_cursor_y = create_memo(move |_| {
+    |                                         ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\color_picker.rs:105:5
+    |
+105 |     create_effect(move |_| {
+    |     ^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\date_selector.rs:25:84
+   |
+25 |     #[prop(into, optional, default = GuideMode::CalendarFirst.into())] guide_mode: MaybeSignal<
+   |                                                                                    ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\date_selector.rs:31:5
+   |
+31 |     create_effect(move |_| on_change.set(calendar.selected.get()));
+   |     ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\date_selector.rs:33:28
+   |
+33 |     let (show, set_show) = create_signal(match guide_mode.get() {
+   |                            ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\date_selector.rs:39:36
+   |
+39 |     let (short_weekday_names, _) = create_signal(create_week_day_names());
+   |                                    ^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\datetime_input.rs:16:24
+   |
+16 |     #[prop(into)] get: MaybeSignal<Option<time::OffsetDateTime>>,
+   |                        ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\datetime_input.rs:39:28
+   |
+39 |     let (open, set_open) = create_signal(false);
+   |                            ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\datetime_input.rs:40:36
+   |
+40 |     let (in_focus, set_in_focus) = create_signal(false);
+   |                                    ^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\drawer.rs:34:59
+   |
+34 |     #[prop(into, optional, default = true.into())] shown: MaybeSignal<bool>,
+   |                                                           ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\drawer.rs:40:26
+   |
+40 |     let memoized_shown = create_memo(move |_| shown.get());
+   |                          ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\drawer.rs:42:40
+   |
+42 |     let (anim_state, set_anim_state) = create_signal(match memoized_shown.get_untracked() {
+   |                                        ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\drawer.rs:91:5
+   |
+91 |     create_effect(move |_| {
+   |     ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_rw_signal`: This function is being removed to conform to 
+Rust idioms. Please use `RwSignal::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\form_control.rs:23:17
+   |
+23 |     let input = create_rw_signal(None);
+   |                 ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\icon.rs:13:11
+   |
+13 |     icon: MaybeSignal<icondata::Icon>,
+   |           ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\input.rs:33:5
+   |
+33 |     create_effect(move |_prev| {
+   |     ^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\input.rs:82:24
+   |
+82 |     #[prop(into)] get: MaybeSignal<String>,
+   |                        ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\input.rs:94:42
+   |
+94 |     let node_ref: NodeRef<html::Input> = create_node_ref();
+   |                                          ^^^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\input.rs:144:24
+    |
+144 |     #[prop(into)] get: MaybeSignal<String>,
+    |                        ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\input.rs:156:42
+    |
+156 |     let node_ref: NodeRef<html::Input> = create_node_ref();
+    |                                          ^^^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\input.rs:198:24
+    |
+198 |     #[prop(into)] get: MaybeSignal<f64>,
+    |                        ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\input.rs:213:42
+    |
+213 |     let node_ref: NodeRef<html::Input> = create_node_ref();
+    |                                          ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\link.rs:47:39
+   |
+47 |     let el: NodeRef<LeptonicCustom> = create_node_ref();
+   |                                       ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_rw_signal`: This function is being removed to conform to 
+Rust idioms. Please use `RwSignal::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\modal.rs:54:18
+   |
+54 |     let modals = create_rw_signal(Vec::new());
+   |                  ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_rw_signal`: This function is being removed to conform to 
+Rust idioms. Please use `RwSignal::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\modal.rs:55:24
+   |
+55 |     let shown_modals = create_rw_signal(Vec::new());
+   |                        ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\modal.rs:62:22
+   |
+62 |     let has_modals = create_memo(move |_| shown_modals.with(|modals| !modals.is_empty()));
+   |                      ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\modal.rs:112:30
+    |
+112 |     #[prop(into)] show_when: MaybeSignal<bool>,
+    |                              ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\modal.rs:123:9
+    |
+123 |         create_effect(move |_| {
+    |         ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\modal.rs:133:17
+    |
+133 |     let shown = create_memo(move |_| show_when.get());
+    |                 ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\modal.rs:135:14
+    |
+135 |     let id = store_value(id.unwrap_or_else(|| key.to_string()));
+    |              ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\modal.rs:136:17
+    |
+136 |     let class = store_value(class);
+    |                 ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\modal.rs:148:5
+    |
+148 |     create_effect(move |_| match shown.get() {
+    |     ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_rw_signal`: This function is being removed to conform to 
+Rust idioms. Please use `RwSignal::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\popover.rs:38:20
+   |
+38 |     let popovers = create_rw_signal(Vec::new());
+   |                    ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\popover.rs:97:42
+   |
+97 |     #[prop(into, optional)] show: Option<MaybeSignal<bool>>,
+   |                                          ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\popover.rs:103:34
+    |
+103 |     let (clicked, set_clicked) = create_signal(false);
+    |                                  ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\popover.rs:107:39
+    |
+107 |     let el: NodeRef<LeptonicCustom> = create_node_ref();
+    |                                       ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\popover.rs:110:43
+    |
+110 |     let pop_el: NodeRef<LeptonicCustom> = create_node_ref();
+    |                                           ^^^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\popover.rs:117:13
+    |
+117 |             MaybeSignal::derive(move || is_hovered.get() || clicked.get())
+    |             ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\popover.rs:113:15
+    |
+113 |     let show: MaybeSignal<bool> = match show {
+    |               ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\progress_bar.rs:7:62
+  |
+7 |     #[prop(into, default = MaybeSignal::Static(100.0))] max: MaybeSignal<f64>,
+  |                                                              ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\progress_bar.rs:8:29
+  |
+8 |     #[prop(into)] progress: MaybeSignal<Option<f64>>,
+  |                             ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\progress_bar.rs:10:37
+   |
+10 |     let el: NodeRef<html::Custom> = create_node_ref();
+   |                                     ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\quicksearch.rs:22:40
+   |
+22 |     let (show_modal, set_show_modal) = create_signal(false);
+   |                                        ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\quicksearch.rs:63:30
+   |
+63 |     let (input, set_input) = create_signal(String::new());
+   |                              ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\quicksearch.rs:68:5
+   |
+68 |     create_effect(move |_old| {
+   |     ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\radio.rs:81:17
+   |
+81 |         states: store_value(Vec::new()),
+   |                 ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\root.rs:66:52
+   |
+66 |     let (g_keyboard_event, set_g_keyboard_event) = create_signal::<Option<KeyboardEvent>>(None);
+   |                                                    ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\root.rs:83:9
+   |
+83 |         create_signal::<Option<PointerEvent>>(None);
+   |         ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\root.rs:99:56
+   |
+99 |     let (g_pointer_up_event, set_g_pointer_up_event) = create_signal::<Option<PointerEvent>>(None);
+   |                                                        ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\root.rs:116:9
+    |
+116 |         create_signal::<Option<PointerEvent>>(None);
+    |         ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\root.rs:133:9
+    |
+133 |         create_signal::<Option<PointerEvent>>(None);
+    |         ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\root.rs:149:46
+    |
+149 |     let (g_click_event, set_g_click_event) = create_signal::<Option<MouseEvent>>(None);
+    |                                              ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\root.rs:164:50
+    |
+164 |     let (g_mouseup_event, set_g_mouseup_event) = create_signal::<Option<MouseEvent>>(None);
+    |                                                  ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\root.rs:179:48
+    |
+179 |     let (g_resize_event, set_g_resize_event) = create_signal::<Option<Event>>(None);
+    |                                                ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\root.rs:194:48
+    |
+194 |     let (g_scroll_event, set_g_scroll_event) = create_signal::<Option<Event>>(None);
+    |                                                ^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:86:28
+   |
+86 |     #[prop(into)] options: MaybeSignal<Vec<O>>,
+   |                            ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:103:34
+    |
+103 |     let (focused, set_focused) = create_signal(false);
+    |                                  ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:104:44
+    |
+104 |     let (show_options, set_show_options) = create_signal(false);
+    |                                            ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:111:54
+    |
+111 |     let (search_is_focused, set_search_is_focused) = create_signal(false);
+    |                                                      ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:113:26
+    |
+113 |     let stored_options = store_value(options);
+    |                          ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:114:42
+    |
+114 |     let (preselected, set_preselected) = create_signal(Option::<O>::None);
+    |                                          ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:115:32
+    |
+115 |     let memoized_preselected = create_memo(move |_| preselected.get());
+    |                                ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:117:32
+    |
+117 |     let (search, set_search) = create_signal(String::new());
+    |                                ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:132:28
+    |
+132 |     let filtered_options = create_memo(move |_| {
+    |                            ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:136:23
+    |
+136 |     let has_options = create_memo(move |_| !filtered_options.with(Vec::is_empty));
+    |                       ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:208:39
+    |
+208 |     let wrapper: NodeRef<html::Div> = create_node_ref();
+    |                                       ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:211:5
+    |
+211 |     create_effect(move |_| {
+    |     ^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:317:28
+    |
+317 |     #[prop(into)] options: MaybeSignal<Vec<O>>,
+    |                            ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:322:35
+    |
+322 |     #[prop(into)] allow_deselect: MaybeSignal<bool>,
+    |                                   ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:335:34
+    |
+335 |     let (focused, set_focused) = create_signal(false);
+    |                                  ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:336:44
+    |
+336 |     let (show_options, set_show_options) = create_signal(false);
+    |                                            ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:343:54
+    |
+343 |     let (search_is_focused, set_search_is_focused) = create_signal(false);
+    |                                                      ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:345:26
+    |
+345 |     let stored_options = store_value(options);
+    |                          ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:346:42
+    |
+346 |     let (preselected, set_preselected) = create_signal(Option::<O>::None);
+    |                                          ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:347:32
+    |
+347 |     let memoized_preselected = create_memo(move |_| preselected.get());
+    |                                ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:349:32
+    |
+349 |     let (search, set_search) = create_signal(String::new());
+    |                                ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:364:28
+    |
+364 |     let filtered_options = create_memo(move |_| {
+    |                            ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:368:23
+    |
+368 |     let has_options = create_memo(move |_| !filtered_options.with(Vec::is_empty));
+    |                       ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:444:39
+    |
+444 |     let wrapper: NodeRef<html::Div> = create_node_ref();
+    |                                       ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:447:5
+    |
+447 |     create_effect(move |_| {
+    |     ^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:573:28
+    |
+573 |     #[prop(into)] options: MaybeSignal<Vec<O>>,
+    |                            ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:590:34
+    |
+590 |     let (focused, set_focused) = create_signal(false);
+    |                                  ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:591:44
+    |
+591 |     let (show_options, set_show_options) = create_signal(false);
+    |                                            ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:598:54
+    |
+598 |     let (search_is_focused, set_search_is_focused) = create_signal(false);
+    |                                                      ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:600:26
+    |
+600 |     let stored_options = store_value(options);
+    |                          ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:601:42
+    |
+601 |     let (preselected, set_preselected) = create_signal(Option::<O>::None);
+    |                                          ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:602:32
+    |
+602 |     let memoized_preselected = create_memo(move |_| preselected.get());
+    |                                ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:604:32
+    |
+604 |     let (search, set_search) = create_signal(String::new());
+    |                                ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:619:28
+    |
+619 |     let filtered_options = create_memo(move |_| {
+    |                            ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:623:23
+    |
+623 |     let has_options = create_memo(move |_| !filtered_options.with(Vec::is_empty));
+    |                       ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:715:39
+    |
+715 |     let wrapper: NodeRef<html::Div> = create_node_ref();
+    |                                       ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:718:5
+    |
+718 |     create_effect(move |_| {
+    |     ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:846:5
+    |
+846 |     create_effect(move |_old| {
+    |     ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\select.rs:878:5
+    |
+878 |     create_effect(move |_old| {
+    |     ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\skeleton.rs:21:42
+   |
+21 |     let element: NodeRef<html::Custom> = create_node_ref();
+   |                                          ^^^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:240:26
+    |
+240 |     #[prop(into)] value: MaybeSignal<f64>,
+    |                          ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:255:17
+    |
+255 |     let range = create_memo(move |_| max - min);
+    |                 ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:257:38
+    |
+257 |     let bar_el: NodeRef<html::Div> = create_node_ref();
+    |                                      ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:260:39
+    |
+260 |     let knob_el: NodeRef<html::Div> = create_node_ref();
+    |                                       ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:277:5
+    |
+277 |     create_effect(move |_| {
+    |     ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:284:5
+    |
+284 |     create_effect(move |_| {
+    |     ^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:376:28
+    |
+376 |     #[prop(into)] value_a: MaybeSignal<f64>,
+    |                            ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:377:28
+    |
+377 |     #[prop(into)] value_b: MaybeSignal<f64>,
+    |                            ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:393:17
+    |
+393 |     let range = create_memo(move |_| max - min);
+    |                 ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:395:38
+    |
+395 |     let bar_el: NodeRef<html::Div> = create_node_ref();
+    |                                      ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:399:41
+    |
+399 |     let knob_a_el: NodeRef<html::Div> = create_node_ref();
+    |                                         ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:400:41
+    |
+400 |     let knob_b_el: NodeRef<html::Div> = create_node_ref();
+    |                                         ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:422:5
+    |
+422 |     create_effect(move |_| {
+    |     ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:430:39
+    |
+430 |     let projected_value_from_cursor = create_memo(move |_| {
+    |                                       ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:435:5
+    |
+435 |     create_effect(move |_| {
+    |     ^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:215:82
+    |
+215 |     fn to_maybe_signal(self, knob_el: NodeRef<html::Div>, knob: &KnobControl) -> MaybeSignal<bool> {
+    |                                                                                  ^^^^^^^^^^^
+
+warning: use of deprecated tuple variant `leptos::prelude::MaybeSignal::Static`: `MaybeSignal<T>` is deprecated in 
+favour of `Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:217:41
+    |
+217 |             Self::Never => MaybeSignal::Static(false),
+    |                                         ^^^^^^
+
+warning: use of deprecated tuple variant `leptos::prelude::MaybeSignal::Dynamic`: `MaybeSignal<T>` is deprecated in 
+favour of `Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:222:34
+    |
+222 |                     MaybeSignal::Dynamic(Signal::derive(move || {
+    |                                  ^^^^^^^
+
+warning: use of deprecated tuple variant `leptos::prelude::MaybeSignal::Dynamic`: `MaybeSignal<T>` is deprecated in 
+favour of `Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:228:34
+    |
+228 |                     MaybeSignal::Dynamic(knob_is_hovered)
+    |                                  ^^^^^^^
+
+warning: use of deprecated tuple variant `leptos::prelude::MaybeSignal::Dynamic`: `MaybeSignal<T>` is deprecated in 
+favour of `Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:230:47
+    |
+230 |                 (false, true) => MaybeSignal::Dynamic(knob.listening.into()),
+    |                                               ^^^^^^^
+
+warning: use of deprecated tuple variant `leptos::prelude::MaybeSignal::Static`: `MaybeSignal<T>` is deprecated in 
+favour of `Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:231:48
+    |
+231 |                 (false, false) => MaybeSignal::Static(false),
+    |                                                ^^^^^^
+
+warning: use of deprecated tuple variant `leptos::prelude::MaybeSignal::Static`: `MaybeSignal<T>` is deprecated in 
+favour of `Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:233:42
+    |
+233 |             Self::Always => MaybeSignal::Static(true),
+    |                                          ^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:598:69
+    |
+598 |     pub(crate) fn new(min: f64, max: f64, step: Option<f64>, value: MaybeSignal<f64>) -> Self {
+    |                                                                     ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:599:21
+    |
+599 |         let range = create_memo(move |_| max - min);
+    |                     ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\slider.rs:622:42
+    |
+622 |         let (listening, set_listening) = create_signal(false);
+    |                                          ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\tab.rs:44:16
+   |
+44 |     let name = store_value(name);
+   |                ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\tab.rs:57:9
+   |
+57 |         create_effect(move |_| {
+   |         ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\tab.rs:67:9
+   |
+67 |         create_effect(move |_| {
+   |         ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\tabs.rs:98:34
+   |
+98 |     let (history, set_history) = create_signal(TabHistory::new());
+   |                                  ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\tabs.rs:99:28
+   |
+99 |     let (tabs, set_tabs) = create_signal(Vec::new());
+   |                            ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\theme.rs:58:54
+   |
+58 |     let (theme, set_theme) = theme.unwrap_or_else(|| create_signal(T::default()));
+   |                                                      ^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\theme.rs:87:16
+   |
+87 |         state: MaybeSignal::derive(move || theme_context.theme.get() == on),
+   |                ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\toast.rs:135:32
+    |
+135 |     let (toasts, set_toasts) = create_signal(Vec::new());
+    |                                ^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\toggle.rs:59:26
+   |
+59 |     #[prop(into)] state: MaybeSignal<bool>,
+   |                          ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_node_ref`: This function is being removed to conform to 
+Rust idioms. Please use `NodeRef::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\transitions\collapse.rs:22:33
+   |
+22 |     let content: NodeRef<Div> = create_node_ref();
+   |                                 ^^^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\components\typography.rs:146:21
+    |
+146 |     let code_text = store_value(
+    |                     ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\anchor_link.rs:4:23
+  |
+4 | use leptos::prelude::{MaybeSignal, Oco};
+  |                       ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\anchor_link.rs:37:19
+   |
+37 |     pub disabled: MaybeSignal<bool>,
+   |                   ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\button.rs:4:23
+  |
+4 | use leptos::prelude::{MaybeSignal, Oco, NodeRef};
+  |                       ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\button.rs:23:19
+   |
+23 |     pub disabled: MaybeSignal<bool>,
+   |                   ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\button.rs:24:24
+   |
+24 |     pub aria_haspopup: MaybeSignal<AriaHasPopup>,
+   |                        ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\button.rs:25:24
+   |
+25 |     pub aria_expanded: MaybeSignal<AriaExpanded>,
+   |                        ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\calendar.rs:99:34
+   |
+99 |     let (staging, set_staging) = create_signal(initial_value);
+   |                                  ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\calendar.rs:101:24
+    |
+101 |     let staging_year = create_memo(move |_| staging.get().year());
+    |                        ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\calendar.rs:102:30
+    |
+102 |     let staging_month_name = create_memo(move |_| staging.get().month().to_string());
+    |                              ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\calendar.rs:104:48
+    |
+104 |     let selected: Memo<time::OffsetDateTime> = create_memo(move |_| staging.get());
+    |                                                ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_rw_signal`: This function is being removed to conform to 
+Rust idioms. Please use `RwSignal::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\calendar.rs:106:23
+    |
+106 |     let years_start = create_rw_signal(staging.get_untracked().year() - 4);
+    |                       ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\focus\use_focus.rs:3:43
+  |
+3 | use leptos::prelude::{Callable, Callback, MaybeSignal, Get};
+  |                                           ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\focus\use_focus.rs:13:19
+   |
+13 |     pub disabled: MaybeSignal<bool>,
+   |                   ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_hover.rs:3:5
+  |
+3 |     create_effect, create_signal, on_cleanup, store_value, Callable, Callback, MaybeSignal, Signal,
+  |     ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_hover.rs:3:20
+  |
+3 |     create_effect, create_signal, on_cleanup, store_value, Callable, Callback, MaybeSignal, Signal,
+  |                    ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_hover.rs:3:47
+  |
+3 |     create_effect, create_signal, on_cleanup, store_value, Callable, Callback, MaybeSignal, Signal,
+  |                                               ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_hover.rs:3:80
+  |
+3 |     create_effect, create_signal, on_cleanup, store_value, Callable, Callback, MaybeSignal, Signal,
+  |                                                                                ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_hover.rs:30:19
+   |
+30 |     pub disabled: MaybeSignal<bool>,
+   |                   ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_hover.rs:66:17
+   |
+66 |     let state = store_value(Option::<HoverState>::None);
+   |                 ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_hover.rs:67:40
+   |
+67 |     let (is_hovered, set_is_hovered) = create_signal(false);
+   |                                        ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_hover.rs:132:38
+    |
+132 |     let cancel_hover_when_disabled = create_effect(move |_| {
+    |                                      ^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_long_press.rs:2:33
+  |
+2 | use leptos::prelude::{Callback, MaybeSignal};
+  |                                 ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_long_press.rs:8:15
+  |
+8 |     disabled: MaybeSignal<bool>,
+  |               ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_move.rs:3:5
+  |
+3 |     create_effect, on_cleanup, store_value, Callable, Callback, Signal, Get,
+  |     ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_move.rs:3:32
+  |
+3 |     create_effect, on_cleanup, store_value, Callable, Callback, Signal, Get,
+  |                                ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_move.rs:80:17
+   |
+80 |     let state = store_value(Option::<MoveState>::None);
+   |                 ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_move.rs:81:18
+   |
+81 |     let active = store_value(false);
+   |                  ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_move.rs:99:19
+   |
+99 |     let on_move = create_effect(move |_| {
+   |                   ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_move.rs:134:21
+    |
+134 |     let on_cancel = create_effect(move |_| {
+    |                     ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_move.rs:157:17
+    |
+157 |     let on_up = create_effect(move |_| {
+    |                 ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_press.rs:5:5
+  |
+5 |     create_signal, store_value, Callable, Callback, MaybeSignal, Signal, GetUntracked,
+  |     ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_press.rs:5:20
+  |
+5 |     create_signal, store_value, Callable, Callback, MaybeSignal, Signal, GetUntracked,
+  |                    ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_press.rs:5:53
+  |
+5 |     create_signal, store_value, Callable, Callback, MaybeSignal, Signal, GetUntracked,
+  |                                                     ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_press.rs:49:19
+   |
+49 |     pub disabled: MaybeSignal<bool>,
+   |                   ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_press.rs:143:40
+    |
+143 |     let (is_pressed, set_is_pressed) = create_signal(false);
+    |                                        ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_press.rs:145:17
+    |
+145 |     let state = store_value::<Option<PressState>>(None);
+    |                 ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs:5:23
+  |
+5 | use leptos::prelude::{create_effect, MaybeSignal, Get};
+  |                       ^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs:5:38
+  |
+5 | use leptos::prelude::{create_effect, MaybeSignal, Get};
+  |                                      ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs:14:19
+   |
+14 |     pub disabled: MaybeSignal<bool>,
+   |                   ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_effect`: This function is being removed to conform to 
+Rust idioms. Please use `Effect::new()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\interactions\use_prevent_scroll.rs:69:19
+   |
+69 |     let _effect = create_effect(move |last| {
+   |                   ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay.rs:4:23
+  |
+4 | use leptos::prelude::{create_signal, MaybeSignal, ReadSignal, WriteSignal};
+  |                       ^^^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay.rs:4:38
+  |
+4 | use leptos::prelude::{create_signal, MaybeSignal, ReadSignal, WriteSignal};
+  |                                      ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay.rs:11:19
+   |
+11 |     pub disabled: MaybeSignal<bool>,
+   |                   ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_signal`: This function is being renamed to `signal()` to 
+conform to Rust idioms.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay.rs:33:30
+   |
+33 |     let (state, set_state) = create_signal(false);
+   |                              ^^^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs:8:23
+  |
+8 | use leptos::prelude::{create_memo, MaybeSignal, Get};
+  |                       ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+ --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs:8:36
+  |
+8 | use leptos::prelude::{create_memo, MaybeSignal, Get};
+  |                                    ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs:89:22
+   |
+89 |     pub placement_x: MaybeSignal<PlacementX>,
+   |                      ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs:90:22
+   |
+90 |     pub placement_y: MaybeSignal<PlacementY>,
+   |                      ^^^^^^^^^^^
+
+warning: use of deprecated enum `leptos::prelude::MaybeSignal`: `MaybeSignal<T>` is deprecated in favour of 
+`Signal<T>` which is `Copy`, now has a more efficient From<T> implementation and other benefits in 0.7.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs:92:28
+   |
+92 |     pub writing_direction: MaybeSignal<WritingDirection>,
+   |                            ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs:131:23
+    |
+131 |     let placement_x = create_memo(move |_| {
+    |                       ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs:155:23
+    |
+155 |     let placement_y = create_memo(move |_| match input.placement_y.get() {
+    |                       ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs:173:15
+    |
+173 |     let top = create_memo(move |_| match placement_y.get() {
+    |               ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::create_memo`: This function is being removed to conform to Rust 
+idioms. Please use `Memo::new()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\hooks\overlay\use_overlay_position.rs:184:16
+    |
+184 |     let left = create_memo(move |_| match placement_x.get() {
+    |                ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\utils\callback.rs:20:14
+   |
+20 |         Self(store_value(Box::new(fun)))
+   |              ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\utils\callback.rs:80:14
+   |
+80 |         Self(store_value(Box::new(fun)))
+   |              ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\utils\callback.rs:133:14
+    |
+133 |         Self(store_value(Box::new(fun)))
+    |              ^^^^^^^^^^^
+
+warning: use of deprecated function `leptos::prelude::store_value`: This function is being removed to conform to Rust 
+idioms. Please use `StoredValue::new()` or `StoredValue::new_local()` instead.
+   --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\utils\callback.rs:177:14
+    |
+177 |         Self(store_value(Box::new(fun)))
+    |              ^^^^^^^^^^^
+
+error[E0277]: the trait bound `web_sys::HtmlElement: AsRef<str>` is not satisfied
+  --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\popover.rs:22:47
+   |
+22 |     trigger_el: ReadSignal<Option<SendWrapper<NodeRef<LeptonicCustom>>>>,
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^ the trait `AsRef<str>` is not implemented 
+for `web_sys::HtmlElement`
+   |
+   = help: the following other types implement trait `AsRef<T>`:
+             `web_sys::HtmlElement` implements `AsRef<EventTarget>`
+             `web_sys::HtmlElement` implements `AsRef<JsValue>`
+             `web_sys::HtmlElement` implements `AsRef<Node>`
+             `web_sys::HtmlElement` implements `AsRef<web_sys::Element>`
+             `web_sys::HtmlElement` implements `AsRef<web_sys::HtmlElement>`
+             `web_sys::HtmlElement` implements `AsRef<web_sys::js_sys::Object>`
+   = note: required for `leptos::html::Custom<web_sys::HtmlElement>` to implement `ElementType`
+
+error[E0277]: `*mut u8` cannot be sent between threads safely
+    --> crates\ui-kits\lyx-ui-leptonic\leptonic\src\atoms\popover.rs:22:47
+     |
+  22 |     trigger_el: ReadSignal<Option<SendWrapper<NodeRef<LeptonicCustom>>>>,
+     |                                               ^^^^^^^^^^^^^^^^^^^^^^^ `*mut u8` cannot be sent between threads 
+safely
+     |
+     = help: within `web_sys::HtmlElement`, the trait `Send` is not implemented for `*mut u8`
+help: the trait `ElementType` is implemented for `leptos::html::Custom<E>`
+    --> C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tachys-0.2.11\src\html\element\cust
+om.rs:24:1
+     |
+  24 | / impl<E: 'static> ElementType for Custom<E>
+  25 | | where
+  26 | |     E: AsRef<str> + Send,
+     | |_________________________^
+note: required because it appears within the type `PhantomData<*mut u8>`
+    --> library\core\src\marker.rs:819:11
+note: required because it appears within the type `JsValue`
+    --> 
+C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\wasm-bindgen-0.2.106\src\lib.rs:153:12
+     |
+ 153 | pub struct JsValue {
+     |            ^^^^^^^
+note: required because it appears within the type `web_sys::js_sys::Object`
+    --> C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\js-sys-0.3.83\src\lib.rs:3650:14
+     |
+3650 |     pub type Object;
+     |              ^^^^^^
+note: required because it appears within the type `EventTarget`
+    --> C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\web-sys-0.3.83\src\features\gen_Eve
+ntTarget.rs:14:14
+     |
+  14 |     pub type EventTarget;
+     |              ^^^^^^^^^^^
+note: required because it appears within the type `Node`
+    --> C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\web-sys-0.3.83\src\features\gen_Nod
+e.rs:14:14
+     |
+  14 |     pub type Node;
+     |              ^^^^
+note: required because it appears within the type `web_sys::Element`
+    --> C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\web-sys-0.3.83\src\features\gen_Ele
+ment.rs:14:14
+     |
+  14 |     pub type Element;
+     |              ^^^^^^^
+note: required because it appears within the type `web_sys::HtmlElement`
+    --> C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\web-sys-0.3.83\src\features\gen_Htm
+lElement.rs:14:14
+     |
+  14 |     pub type HtmlElement;
+     |              ^^^^^^^^^^^
+     = note: required for `leptos::html::Custom<web_sys::HtmlElement>` to implement `ElementType`
+
+Some errors have detailed explanations: E0277, E0405, E0425, E0432.
+For more information about an error, try `rustc --explain E0277`.
+warning: `lyx-ui-leptonic` (lib) generated 944 warnings (654 duplicates)
+error: could not compile `lyx-ui-leptonic` (lib) due to 10 previous errors; 944 warnings emitted

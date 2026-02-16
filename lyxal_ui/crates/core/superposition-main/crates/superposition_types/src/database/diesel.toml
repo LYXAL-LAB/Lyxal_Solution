@@ -1,0 +1,8 @@
+[print_schema]
+file = "schema.rs"
+
+[print_schema.superposition]
+file = "superposition_schema.rs"
+
+[migrations_directory]
+dir = "../../migrations"

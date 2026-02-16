@@ -1,0 +1,26 @@
+Files created or modified for the Social Connect Module integration:
+
+# New Module Files (crates/core/src/fnc/social/)
+Lyxal_Solution-main/surrealdb-3.0.0-alpha.16/surrealdb-3.0.0-alpha.16/crates/core/src/fnc/social/mod.rs
+Lyxal_Solution-main/surrealdb-3.0.0-alpha.16/surrealdb-3.0.0-alpha.16/crates/core/src/fnc/social/runtime.rs
+Lyxal_Solution-main/surrealdb-3.0.0-alpha.16/surrealdb-3.0.0-alpha.16/crates/core/src/fnc/social/discord.rs
+Lyxal_Solution-main/surrealdb-3.0.0-alpha.16/surrealdb-3.0.0-alpha.16/crates/core/src/fnc/social/google_business.rs
+Lyxal_Solution-main/surrealdb-3.0.0-alpha.16/surrealdb-3.0.0-alpha.16/crates/core/src/fnc/social/linkedin.rs
+Lyxal_Solution-main/surrealdb-3.0.0-alpha.16/surrealdb-3.0.0-alpha.16/crates/core/src/fnc/social/meta.rs
+Lyxal_Solution-main/surrealdb-3.0.0-alpha.16/surrealdb-3.0.0-alpha.16/crates/core/src/fnc/social/snapchat.rs
+Lyxal_Solution-main/surrealdb-3.0.0-alpha.16/surrealdb-3.0.0-alpha.16/crates/core/src/fnc/social/tiktok.rs
+Lyxal_Solution-main/surrealdb-3.0.0-alpha.16/surrealdb-3.0.0-alpha.16/crates/core/src/fnc/social/x.rs
+Lyxal_Solution-main/surrealdb-3.0.0-alpha.16/surrealdb-3.0.0-alpha.16/crates/core/src/fnc/social/youtube.rs
+
+# Integration Tests
+Lyxal_Solution-main/surrealdb-3.0.0-alpha.16/surrealdb-3.0.0-alpha.16/crates/core/tests/social_integration.rs
+
+# Modified Core Files
+Lyxal_Solution-main/surrealdb-3.0.0-alpha.16/surrealdb-3.0.0-alpha.16/crates/core/src/fnc/mod.rs
+Lyxal_Solution-main/surrealdb-3.0.0-alpha.16/surrealdb-3.0.0-alpha.16/crates/core/src/kvs/ds.rs
+Lyxal_Solution-main/surrealdb-3.0.0-alpha.16/surrealdb-3.0.0-alpha.16/crates/core/src/ctx/context.rs
+Lyxal_Solution-main/surrealdb-3.0.0-alpha.16/surrealdb-3.0.0-alpha.16/crates/core/Cargo.toml
+
+# External Library
+Lyxal_Solution-main/lyxal-social-core/
+

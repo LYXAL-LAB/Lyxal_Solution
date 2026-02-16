@@ -1,0 +1,171 @@
+# =============================================================================
+# GitHub Actions Workflow: Clippy Linting
+# =============================================================================
+# This workflow runs Clippy lints on all pull requests and pushes to main.
+#
+# Features:
+# - Runs on every PR and push to main/develop
+# - Checks entire workspace with Clippy
+# - Uses strict lint settings (-D warnings turns warnings into errors)
+# - Caches dependencies for faster builds
+# - Posts lint results as PR comment
+# - Supports selective package checking
+#
+# =============================================================================
+
+name: Clippy
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+# Environment variables
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+  RUST_BACKTRACE: 1
+
+jobs:
+  clippy:
+    name: Clippy Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-clippy-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run Clippy
+        run: |
+          cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Generate Clippy report
+        if: always()
+        run: |
+          mkdir -p clippy-reports
+
+          # Run clippy with output format for parsing
+          cargo clippy --workspace --all-targets --all-features \
+            --message-format=json \
+            -- -D warnings 2>&1 | tee clippy-reports/clippy.json
+
+          # Count warnings/errors
+          if [ -f clippy-reports/clippy.json ]; then
+            ERROR_COUNT=$(grep -c '"level":"error"' clippy-reports/clippy.json 2>/dev/null || echo "0")
+            WARNING_COUNT=$(grep -c '"level":"warning"' clippy-reports/clippy.json 2>/dev/null || echo "0")
+
+            echo "ERROR_COUNT=$ERROR_COUNT" >> $GITHUB_ENV
+            echo "WARNING_COUNT=$WARNING_COUNT" >> $GITHUB_ENV
+            echo "TOTAL_ISSUES=$((ERROR_COUNT + WARNING_COUNT))" >> $GITHUB_ENV
+          else
+            echo "ERROR_COUNT=0" >> $GITHUB_ENV
+            echo "WARNING_COUNT=0" >> $GITHUB_ENV
+            echo "TOTAL_ISSUES=0" >> $GITHUB_ENV
+          fi
+
+      - name: Upload Clippy reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clippy-reports
+          path: clippy-reports/
+          retention-days: 30
+
+      - name: Post Clippy results as PR comment
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let commentBody = '## 🔍 Clippy Lint Results\n\n';
+
+            const totalIssues = parseInt(process.env.TOTAL_ISSUES || '0');
+            const errorCount = parseInt(process.env.ERROR_COUNT || '0');
+            const warningCount = parseInt(process.env.WARNING_COUNT || '0');
+
+            if (totalIssues === 0) {
+              commentBody += '✅ No Clippy warnings or errors found!\n\n';
+            } else {
+              commentBody += '❌ Clippy found issues that need attention.\n\n';
+              commentBody += '### Summary\n\n';
+              commentBody += `- **Total Issues:** ${totalIssues}\n`;
+              commentBody += `- **Errors:** ${errorCount}\n`;
+              commentBody += `- **Warnings:** ${warningCount}\n\n`;
+            }
+
+            commentBody += '### Details\n\n';
+            commentBody += `- **Branch:** \`${process.env.GITHUB_REF_NAME}\`\n`;
+            commentBody += `- **Commit:** \`${process.env.GITHUB_SHA.slice(0, 7)}\`\n`;
+            commentBody += `- **Workflow:** [View Details](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n`;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('## 🔍 Clippy Lint Results')
+            );
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody,
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody,
+              });
+            }
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "## 🔍 Clippy Lint Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total Issues:** ${TOTAL_ISSUES}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Errors:** ${ERROR_COUNT}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Warnings:** ${WARNING_COUNT}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY

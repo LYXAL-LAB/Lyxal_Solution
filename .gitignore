@@ -1,0 +1,17 @@
+# Rust
+**/target/
+**/*.rs.bk
+
+# Node/JS
+node_modules/
+.npm
+.vercel
+.turbo
+
+# IDEs
+.idea/
+.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db

@@ -1,33 +1,33 @@
 [package]
-name = "lyx-core-service_mode"
-version = "0.0.1"
+name = "service_mode"
+version = "*"
 edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
-axum = { optional = true, version = "0.0.1" }
-clap = { optional = true, version = "0.0.1", features = ["derive"] }
-console_error_panic_hook = { version = "0.0.1" }
-lyx-core-leptos = { path = "../../../../leptos", version = "0.0.1", features = ["tracing"], optional = true }
-lyx-core-meta = { path = "../../../../meta", version = "0.0.1", optional = true }
-lyx-core-axum = { path = "../../", version = "0.0.1", optional = true }
-lyx-core-router = { path = "../../../../router", version = "0.0.1", optional = true }
-tokio = { version = "0.0.1", optional = true, features = ["rt-multi-thread", "macros", "time" ] }
-tower = { optional = true, version = "0.0.1" }
-tower-http = { optional = true, version = "0.0.1", features = ["fs"] }
-wasm-bindgen = { version = "0.0.1" }
+axum = { optional = true, version = "*" }
+clap = { optional = true, version = "*", features = ["derive"] }
+console_error_panic_hook = { version = "*" }
+leptos = { path = "../leptos", version = "*", features = ["tracing"], optional = true }
+meta = { path = "../../../../meta", version = "*", optional = true }
+axum = { path = "../../", version = "*", optional = true }
+router = { path = "../../../../router", version = "*", optional = true }
+tokio = { version = "*", optional = true, features = ["rt-multi-thread", "macros", "time" ] }
+tower = { optional = true, version = "*" }
+tower-http = { optional = true, version = "*", features = ["fs"] }
+wasm-bindgen = { version = "*" }
 [features]
-hydrate = ["lyx-core-leptos/hydrate"]
+hydrate = ["leptos/hydrate"]
 ssr = [
 "dep:axum",
 "dep:clap",
 "dep:tower",
 "dep:tower-http",
 "dep:tokio",
-"lyx-core-leptos/ssr",
-"lyx-core-meta/ssr",
-"dep:lyx-core-axum",
-"lyx-core-router/ssr" ]
+"leptos/ssr",
+"meta/ssr",
+"dep:axum",
+"router/ssr" ]
 [profile.release]
 [profile.wasm-release]
 opt-level = 'z'
@@ -37,15 +37,23 @@ codegen-units = 1
 skip_feature_sets = [["ssr", "hydrate"], []]
 [package.metadata.leptos]
 output-name = "service_mode"
-site-root = { version = "0.0.1" }
-site-pkg-dir = { version = "0.0.1" }
-site-addr = { version = "0.0.1" }
+site-root = { version = "*" }
+site-pkg-dir = { version = "*" }
+site-addr = { version = "*" }
 reload-port = 3001
-browserquery = { version = "0.0.1" }
+browserquery = { version = "*" }
 watch = false
-env = { version = "0.0.1" }
+env = { version = "*" }
 bin-features = ["ssr"]
 bin-default-features = false
 lib-features = ["hydrate"]
 lib-default-features = false
-lib-profile-release = { version = "0.0.1" }
+lib-profile-release = { version = "*" }
+
+
+[build-dependencies]
+rustc_version = "*"
+
+
+
+

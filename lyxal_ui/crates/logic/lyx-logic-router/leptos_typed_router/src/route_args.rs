@@ -1,5 +1,3 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx-logic-router\lyx-core-lyx_core_lyx-logic-lyx_logic_leptos_typed_router\src\route_args.rs
-```rust
 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx-logic-router\lyx-core-lyx_core_lyx-logic-lyx_logic_lyx-core-lyx_core_lyx-logic-lyx_logic_leptos_typed_router\src\route_args.rs
 2: ```rust
 3: 1: ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\logic\lyx_logic_router\lyx-core-lyx_core_lyx-logic-lyx_logic_lyx-core-lyx_core_lyx-logic-lyx_logic_leptos_typed_router\src\route_args.rs
@@ -224,3 +222,4 @@
 222: 220: ```
 223: ```
 ```
+

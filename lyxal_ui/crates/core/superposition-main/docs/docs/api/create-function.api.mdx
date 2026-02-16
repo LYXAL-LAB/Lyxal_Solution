@@ -1,0 +1,71 @@
+---
+id: create-function
+title: "CreateFunction"
+description: "Creates a new custom function for value_validation, value_compute, context_validation or change_reason_validation with specified code, runtime version, and function type."
+sidebar_label: "CreateFunction"
+hide_title: true
+hide_table_of_contents: true
+api: eJzVV21v2jAQ/iuRP20StKxTv/QbZWxF2qCCtJpUVZFJDuIuL57ttEWI/747J5CEBLpq6qT2Q5rcy3Pn891js2YBaF8JaUSasAs2UMANaIc7CTw5fqZNGjuLLPFJ7yxS5TzyKAMPnyLgJOwUEj+NZWag4/hpYuDZVEwcdPNDnizBQ3idJlXdkzChoyX4YiEgQO8AMVSWGBGD8whK2xg8Cco0zErCCeuwVIKyIKNgl/rXwgjVCn5noM1lGqzYxZrZvBJDr1zKSPjW9fRB08LXTPshxJzeCB7x0vkD+AZxpKJARoAm7TYLL+ExVMy1USJZsk2nXtEWfa0UrRbbGK3KojZeUZumTYdBksXs4o59Oumx+w4zwkSk39ZmmiPcFgCVgF6OdBjxtv/9Zujhc/Sl744mY1TlosHkx/WNO8TvwWTsDn+6daPBVX/8behNh/3ZZFxVtaTnYmzNNpt8B4WCgCLXq1avcqVinb0N2l9bs36VDOotNM37Z1D0zaaekVEZoEByhWEMYmGSa5Y3BXvupmrZFQGGEzRWIfAAFH41uqyyr3vQFbCnVP3SkvvwD3j3JNEyTXTex2e9Hv1rG/9tARy0cbZOGOy/TZDM5pHQIQQe0UH7kCm+MIfVJcJbjEse/C2Qy7y5aQNEBo5Jw5A9oUvOZT4QCPNKxzLcfHWkzAXyAZuIa+PFaWAJ/FXh654H4F+my5cI992zW6XZm5vd3KRDDfoyNza2smWPjvBlzhQVwsRVnrfxzAgtVMKjGShMbqgU3hDO34RsYtCaL9tIYlOuoyWdtsWQB18S0e92U1M5kP/DlK4gMtU2A25C/DqtHEoa/EwJs7KHhI7xzrM64VKchMbIS66F38/I5+6eeH9fD1yB2hncl2gzKkK+zsOYu4WTfK+1LtiV61471trhaI5LLSq9PVzIc056mqQjmf1NGGt+LI41sFtD+zwtL3DDZx7LCFqOj3KK6xF34j3+qHDS7pZVyhqcbqm7QSFNptjQybxIbR2Krppl2IfYEqJYZol51js77/Y+d3vnloSxa2Juu7pYUj5XTuUuu0dxu+F4Xxf2ongU7VRGXNgjL1MRLSkfmrtyV7DPQ5onlK3X2IFwo6LNhsTYFYomCV8fuRJ8TuWm0dnei2jIAqFJgWO54JGGIyX8MC2I+KNzKMdfsKrf6mwJUcRoXt8kVPXOV4uWGxS81HVz4t5aNKiy9Oj7Pkhz1LbKZdeTmYvG8+LXU2xvWkzxJ5oSfGI29AssJ0E0sLI1HhfJMrOEy3JM+vsDs8kJMQ==
+sidebar_class_name: "post api-method"
+info_path: docs/api/superposition
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"CreateFunction"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/function"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Creates a new custom function for value_validation, value_compute, context_validation or change_reason_validation with specified code, runtime version, and function type.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<ParamsDetails
+  parameters={[{"name":"x-org-id","in":"header","schema":{"type":"string"},"required":true},{"name":"x-workspace","in":"header","schema":{"type":"string"},"required":true}]}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  title={"Body"}
+  body={{"content":{"application/json":{"schema":{"type":"object","properties":{"function_name":{"type":"string"},"description":{"type":"string"},"change_reason":{"type":"string"},"function":{"type":"string"},"runtime_version":{"type":"string","enum":["1.0"],"title":"FunctionRuntimeVersion"},"function_type":{"type":"string","enum":["VALUE_VALIDATION","VALUE_COMPUTE","CONTEXT_VALIDATION","CHANGE_REASON_VALIDATION"],"title":"FunctionTypes"}},"required":["change_reason","description","function","function_name","function_type","runtime_version"],"title":"CreateFunctionRequestContent"}}},"required":true}}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  id={undefined}
+  label={undefined}
+  responses={{"200":{"description":"CreateFunction 200 response","content":{"application/json":{"schema":{"type":"object","properties":{"function_name":{"type":"string"},"published_code":{"type":"string"},"draft_code":{"type":"string"},"published_runtime_version":{"type":"string","enum":["1.0"],"title":"FunctionRuntimeVersion"},"draft_runtime_version":{"type":"string","enum":["1.0"],"title":"FunctionRuntimeVersion"},"published_at":{"type":"string","format":"date-time"},"draft_edited_at":{"type":"string","format":"date-time"},"published_by":{"type":"string"},"draft_edited_by":{"type":"string"},"last_modified_at":{"type":"string","format":"date-time"},"last_modified_by":{"type":"string"},"change_reason":{"type":"string"},"description":{"type":"string"},"function_type":{"type":"string","enum":["VALUE_VALIDATION","VALUE_COMPUTE","CONTEXT_VALIDATION","CHANGE_REASON_VALIDATION"],"title":"FunctionTypes"}},"required":["change_reason","description","draft_code","draft_edited_at","draft_edited_by","draft_runtime_version","function_name","function_type","last_modified_at","last_modified_by"],"title":"CreateFunctionResponseContent"}}}},"500":{"description":"InternalServerError 500 response","content":{"application/json":{"schema":{"type":"object","properties":{"message":{"type":"string"}},"title":"InternalServerErrorResponseContent"}}}}}}
+>
+  
+</StatusCodes>
+
+
+      

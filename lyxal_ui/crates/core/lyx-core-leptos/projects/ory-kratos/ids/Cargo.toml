@@ -1,5 +1,11 @@
 [package]
-name = "lyx-core-ids"
-version = "0.0.1"
+name = "ids"
+version = "*"
 edition = "2024"
 [dependencies]
+
+
+[build-dependencies]
+rustc_version = "*"
+
+
