@@ -755,6 +755,7 @@ impl BlockIterator {
 	}
 
 	/// Returns a zero-copy DataRef pointing to the value's location in the block.
+	#[cfg(test)]
 	pub(crate) fn value_dataref(&self) -> DataRef {
 		self.block.slice(
 			self.current_value_offset_start, 
