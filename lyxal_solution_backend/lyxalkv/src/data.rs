@@ -53,20 +53,13 @@ impl Drop for MmapHandle {
 
 		if self.tombstoned.load(Ordering::SeqCst) {
 			if let Some(path) = &self.path {
-                println!("MmapHandle::drop: Tombstoned, deleting {:?}", path);
-                
                 // Give OS a moment to release the mapping handle
                 std::thread::sleep(std::time::Duration::from_millis(10));
 
 				// Attempt to delete the file. Failures are logged/ignored as it might
 				// be already deleted or held by another process.
-				if let Err(e) = std::fs::remove_file(path) {
-                    println!("MmapHandle drop remove_file error for {:?}: {}", path, e);
-                } else {
-                    println!("MmapHandle::drop: Successfully deleted {:?}", path);
-                    if path.exists() {
-                        println!("MmapHandle::drop: WARNING: File {:?} still exists after delete!", path);
-                    }
+				if let Err(_) = std::fs::remove_file(path) {
+                    // Ignored
                 }
 			}
 		}

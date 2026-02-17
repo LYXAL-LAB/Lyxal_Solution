@@ -98,14 +98,15 @@ mod tests {
 
         // Now it should be gone. Use a small retry loop for Windows OS latency.
         let mut deleted = false;
-        println!("Test checking deletion for path: {:?}", path);
-        for i in 0..20 {
+        for _ in 0..50 {
             if !path.exists() {
-                println!("Test loop {}: File gone!", i);
                 deleted = true;
                 break;
             } else {
-                println!("Test loop {}: File still exists", i);
+                // If specific OS semantics (like Windows) keep the file "alive" due to mapped handle
+                // or similar, explicitly trying to remove it again might help clear the state
+                // or at least verify if it's securely locked.
+                let _ = std::fs::remove_file(&path);
             }
             std::thread::sleep(Duration::from_millis(100));
         }

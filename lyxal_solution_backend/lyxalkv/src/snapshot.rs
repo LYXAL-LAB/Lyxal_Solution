@@ -1904,7 +1904,7 @@ mod tests {
 		let size = writer.finish()?;
 
 		let file = SysFile::open(&table_file_path)?;
-		file.sync_all()?;
+
 		let file: Arc<dyn File> = Arc::new(file);
 
 		let table = Table::new(table_id, opts, file, size as u64, Some(table_file_path))?;

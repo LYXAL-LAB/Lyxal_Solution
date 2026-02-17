@@ -1,0 +1,105 @@
+﻿cargo : warning: unused import: 
+`std::sync::Arc`
+At line:1 char:1
++ cargo test --package lyxalkv --lib -- 
+snapshot::tests::test_single_ke ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifie 
+   d: (warning: unused import: `std::syn  
+  c::Arc`:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeComma 
+   ndError
+ 
+ --> 
+lyxalkv\src\sstable\zero_copy_tests.rs:3:9
+  |
+3 |     use std::sync::Arc;
+  |         ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part 
+of `#[warn(unused)]`) on by default
+
+warning: unused import: 
+`std::path::PathBuf`
+ --> 
+lyxalkv\src\sstable\zero_copy_tests.rs:4:9
+  |
+4 |     use std::path::PathBuf;
+  |         ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::Options`
+ --> 
+lyxalkv\src\sstable\zero_copy_tests.rs:9:9
+  |
+9 |     use crate::Options;
+  |         ^^^^^^^^^^^^^^
+
+warning: unused import: 
+`crate::sstable::table::TableWriter`
+  --> lyxalkv\src\sstable\zero_copy_tests.
+rs:12:9
+   |
+12 | ...se 
+crate::sstable::table::TableWriter;
+   |       
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `value_dataref` is never 
+used
+   --> lyxalkv\src\sstable\block.rs:759:16
+    |
+560 | impl BlockIterator {
+    | ------------------ method in this 
+implementation
+...
+759 |     pub(crate) fn 
+value_dataref(&sel...
+    |                   ^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of 
+`#[warn(unused)]`) on by default
+
+warning: method `value_bytes_dataref` is 
+never used
+    --> 
+lyxalkv\src\sstable\table.rs:1090:16
+     |
+1003 | impl TableIterator {
+     | ------------------ method in this 
+implementation
+...
+1090 |     pub(crate) fn 
+value_bytes_dataref(&s...
+     |                   
+^^^^^^^^^^^^^^^^^^^
+
+warning: `lyxalkv` (lib test) generated 6 
+warnings (run `cargo fix --lib -p lyxalkv 
+--tests` to apply 4 suggestions)
+    Finished `test` profile [unoptimized 
++ debuginfo] target(s) in 0.95s
+     Running unittests src\lib.rs (C:\User
+s\Administrator\Downloads\Lyxal_Solution-m
+ain\lyxal_solution_backend\target\debug\de
+ps\lyxalkv-53873c8dd37d608f.exe)
+
+running 1 test
+test snapshot::tests::test_single_key_range ... FAILED
+
+failures:
+
+---- snapshot::tests::test_single_key_range stdout ----
+
+thread 'snapshot::tests::test_single_key_range' (19688) panicked at lyxalkv\src\snapshot.rs:2342:81:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    snapshot::tests::test_single_key_range
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 723 filtered out; finished in 0.17s
+
+error: test failed, to rerun pass `-p 
+lyxalkv --lib`
