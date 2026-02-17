@@ -1,0 +1,116 @@
+﻿cargo :     Checking lyxal_revision 
+v0.16.0 (C:\Users\Administrator\Downloads\
+Lyxal_Solution-main\lyxal_solution_backend
+\lyxal_revision)
+At line:1 char:1
++ cargo check --package lyxalkv --lib 
+2>&1 | Out-File -Encoding utf8 ch ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifie 
+   d: (    Checking ly...lyxal_revision)  
+  :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeComma 
+   ndError
+ 
+warning: unused macro definition: 
+`impl_LyxalRevisioned_specialised_vec`
+  --> lyxal_revision\src\implementations\s
+pecialised.rs:26:14
+   |
+26 | macro_rules! 
+impl_LyxalRevisioned_specialised_vec {
+   |              
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_macros)]` (part 
+of `#[warn(unused)]`) on by default
+
+error[E0119]: conflicting implementations 
+of trait 
+`SerializeLyxalRevisionedSpecialised` for 
+type `Vec<u8>`
+   --> lyxal_revision\src\implementations\
+specialised.rs:250:1
+    |
+101 | impl 
+SerializeLyxalRevisionedSpecialised for 
+Vec<u8> {
+    | ------------------------------------
+---------------- first implementation here
+...
+250 | impl 
+SerializeLyxalRevisionedSpecialised for 
+Vec<u8> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^ conflicting 
+implementation for `Vec<u8>`
+
+error[E0119]: conflicting implementations 
+of trait 
+`SerializeLyxalRevisionedSpecialised` for 
+type `Vec<i8>`
+   --> lyxal_revision\src\implementations\
+specialised.rs:282:1
+    |
+132 | impl 
+SerializeLyxalRevisionedSpecialised for 
+Vec<i8> {
+    | ------------------------------------
+---------------- first implementation here
+...
+282 | impl 
+SerializeLyxalRevisionedSpecialised for 
+Vec<i8> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^ conflicting 
+implementation for `Vec<i8>`
+
+error[E0119]: conflicting implementations 
+of trait 
+`DeserializeLyxalRevisionedSpecialised` 
+for type `Vec<u8>`
+   --> lyxal_revision\src\implementations\
+specialised.rs:257:1
+    |
+108 | impl 
+DeserializeLyxalRevisionedSpecialised for 
+Vec<u8> {
+    | ------------------------------------
+------------------ first implementation 
+here
+...
+257 | impl 
+DeserializeLyxalRevisionedSpecialised for 
+Vec<u8> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^ conflicting 
+implementation for `Vec<u8>`
+
+error[E0119]: conflicting implementations 
+of trait 
+`DeserializeLyxalRevisionedSpecialised` 
+for type `Vec<i8>`
+   --> lyxal_revision\src\implementations\
+specialised.rs:297:1
+    |
+147 | impl 
+DeserializeLyxalRevisionedSpecialised for 
+Vec<i8> {
+    | ------------------------------------
+------------------ first implementation 
+here
+...
+297 | impl 
+DeserializeLyxalRevisionedSpecialised for 
+Vec<i8> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^ conflicting 
+implementation for `Vec<i8>`
+
+For more information about this error, 
+try `rustc --explain E0119`.
+warning: `lyxal_revision` (lib) generated 
+1 warning
+error: could not compile `lyxal_revision` 
+(lib) due to 4 previous errors; 1 warning 
+emitted

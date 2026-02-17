@@ -15,8 +15,15 @@ fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
 
 	for entry in fs::read_dir(src)? {
 		let entry = entry?;
+		let file_name = entry.file_name();
+
+		// Skip LOCK files
+		if file_name == crate::lockfile::LockFile::LOCK_FILE_NAME {
+			continue;
+		}
+
 		let src_path = entry.path();
-		let dst_path = dst.join(entry.file_name());
+		let dst_path = dst.join(&file_name);
 
 		if src_path.is_dir() {
 			copy_dir_all(&src_path, &dst_path)?;
@@ -507,9 +514,15 @@ impl DatabaseCheckpoint {
 
 		for entry in fs::read_dir(source).map_err(|e| Error::Io(Arc::new(e)))? {
 			let entry = entry.map_err(|e| Error::Io(Arc::new(e)))?;
+			let file_name = entry.file_name();
+
+			// Skip LOCK files
+			if file_name == crate::lockfile::LockFile::LOCK_FILE_NAME {
+				continue;
+			}
 
 			let source_path = entry.path();
-			let dest_path = dest.join(entry.file_name());
+			let dest_path = dest.join(&file_name);
 
 			if source_path.is_file() {
 				// Create hard link if possible, otherwise copy

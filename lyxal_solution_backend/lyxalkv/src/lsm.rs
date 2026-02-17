@@ -1340,6 +1340,11 @@ impl Core {
 		self.commit_pipeline.get_visible_seq_num()
 	}
 
+	/// Checks if the Core is closed (background task manager is None)
+	pub(crate) fn is_closed(&self) -> bool {
+		self.task_manager.lock().unwrap_or_else(|e| e.into_inner()).is_none()
+	}
+
 	/// Safely closes the LSM tree by shutting down all components in the
 	/// correct order.
 	///
@@ -1480,12 +1485,25 @@ pub(crate) fn register_core(path: &Path, core: &Arc<Core>) {
 }
 
 pub(crate) fn get_core(path: &Path) -> Option<Arc<Core>> {
-	let reg = get_core_registry().lock();
-	if let Some(weak) = reg.get(path) {
+	let mut reg = get_core_registry().lock();
+	
+	let should_remove = if let Some(weak) = reg.get(path) {
 		if let Some(arc) = weak.upgrade() {
-			return Some(arc);
+			if !arc.is_closed() {
+				return Some(arc);
+			}
+			true // Closed, should remove
+		} else {
+			true // Dropped, should remove
 		}
+	} else {
+		false // Not found
+	};
+
+	if should_remove {
+		reg.remove(path);
 	}
+	
 	None
 }
 

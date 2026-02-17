@@ -9,18 +9,20 @@ use std::sync::Arc;
 /// It supports deferred deletion (deferred delete) when the file is "tombstoned".
 #[derive(Debug)]
 pub struct MmapHandle {
-	mmap: Mmap,
+	mmap: Option<Mmap>,
 	path: Option<PathBuf>,
 	tombstoned: AtomicBool,
+
 }
 
 impl MmapHandle {
 	pub fn new(mmap: Mmap, path: Option<PathBuf>) -> Self {
 		Self {
-			mmap,
+			mmap: Some(mmap),
 			path,
 			tombstoned: AtomicBool::new(false),
 		}
+
 	}
 
 	/// Mark the file as tombstoned. It will be deleted when the handle is dropped.
@@ -29,7 +31,8 @@ impl MmapHandle {
 	}
 
 	pub fn as_slice(&self) -> &[u8] {
-		&self.mmap
+		self.mmap.as_ref().unwrap()
+
 	}
 }
 
@@ -43,11 +46,28 @@ impl Deref for MmapHandle {
 
 impl Drop for MmapHandle {
 	fn drop(&mut self) {
+		// Explicitly drop the mmap BEFORE checking for tombstone/deletion.
+		// On Windows, the file cannot be deleted if it is mapped.
+		// Taking the Option drops the Mmap.
+		let _ = self.mmap.take();
+
 		if self.tombstoned.load(Ordering::SeqCst) {
 			if let Some(path) = &self.path {
+                println!("MmapHandle::drop: Tombstoned, deleting {:?}", path);
+                
+                // Give OS a moment to release the mapping handle
+                std::thread::sleep(std::time::Duration::from_millis(10));
+
 				// Attempt to delete the file. Failures are logged/ignored as it might
 				// be already deleted or held by another process.
-				let _ = std::fs::remove_file(path);
+				if let Err(e) = std::fs::remove_file(path) {
+                    println!("MmapHandle drop remove_file error for {:?}: {}", path, e);
+                } else {
+                    println!("MmapHandle::drop: Successfully deleted {:?}", path);
+                    if path.exists() {
+                        println!("MmapHandle::drop: WARNING: File {:?} still exists after delete!", path);
+                    }
+                }
 			}
 		}
 	}
@@ -97,7 +117,8 @@ impl DataRef {
 	pub fn as_slice(&self) -> &[u8] {
 		match &self.owner {
 			DataOwner::Heap(bytes) => &bytes[self.offset..self.offset + self.length],
-			DataOwner::Mmap(handle) => &handle.mmap[self.offset..self.offset + self.length],
+			DataOwner::Mmap(handle) => &handle.mmap.as_ref().unwrap()[self.offset..self.offset + self.length],
+
 		}
 	}
 

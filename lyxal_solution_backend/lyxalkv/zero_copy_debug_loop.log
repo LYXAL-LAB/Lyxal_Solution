@@ -1,0 +1,63 @@
+﻿cargo :    Compiling lyxalkv v0.16.0 (C:\U
+sers\Administrator\Downloads\Lyxal_Solutio
+n-main\lyxal_solution_backend\lyxalkv)
+At line:1 char:1
++ cargo test --package lyxalkv --lib 
+--features mmap_read -- sstable::z ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifie 
+   d: (   Compiling ly...ackend\lyxalkv)  
+  :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeComma 
+   ndError
+ 
+    Finished `test` profile [unoptimized 
++ debuginfo] target(s) in 24.99s
+     Running unittests src\lib.rs (C:\User
+s\Administrator\Downloads\Lyxal_Solution-m
+ain\lyxal_solution_backend\target\debug\de
+ps\lyxalkv-fd3a18bd275fec76.exe)
+
+running 1 test
+test sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete ... FAILED
+
+failures:
+
+---- sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete stdout ----
+Test checking deletion for path: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmpp4LFSz\\test_deferred.sst"
+Test loop 0: File still exists
+Test loop 1: File still exists
+Test loop 2: File still exists
+Test loop 3: File still exists
+Test loop 4: File still exists
+Test loop 5: File still exists
+Test loop 6: File still exists
+Test loop 7: File still exists
+Test loop 8: File still exists
+Test loop 9: File still exists
+Test loop 10: File still exists
+Test loop 11: File still exists
+Test loop 12: File still exists
+Test loop 13: File still exists
+Test loop 14: File still exists
+Test loop 15: File still exists
+Test loop 16: File still exists
+Test loop 17: File still exists
+Test loop 18: File still exists
+Test loop 19: File still exists
+
+thread 'sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete' (16172) panicked at lyxalkv\src\sstable\zero_copy_tests.rs:112:9:
+File should be deleted after last DataRef is dropped
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+MmapHandle::drop: Tombstoned, deleting "c:\\users\\administrator\\appdata\\local\\temp\\3\\.tmpp4lfsz\\test_deferred.sst"
+MmapHandle::drop: Successfully deleted "c:\\users\\administrator\\appdata\\local\\temp\\3\\.tmpp4lfsz\\test_deferred.sst"
+
+
+failures:
+    sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 732 filtered out; finished in 2.44s
+
+error: test failed, to rerun pass `-p 
+lyxalkv --lib`

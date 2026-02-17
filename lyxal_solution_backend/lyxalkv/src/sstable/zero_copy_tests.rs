@@ -89,6 +89,7 @@ mod tests {
 
         drop(iter);
         drop(table);
+        drop(file); // Ensure the file handle is closed so it can be deleted on Windows
         
         // Still exists because data_ref holds an Arc<MmapHandle>
         assert!(path.exists(), "File should still exist because DataRef holds the mapping");
@@ -97,10 +98,14 @@ mod tests {
 
         // Now it should be gone. Use a small retry loop for Windows OS latency.
         let mut deleted = false;
-        for _ in 0..20 {
+        println!("Test checking deletion for path: {:?}", path);
+        for i in 0..20 {
             if !path.exists() {
+                println!("Test loop {}: File gone!", i);
                 deleted = true;
                 break;
+            } else {
+                println!("Test loop {}: File still exists", i);
             }
             std::thread::sleep(Duration::from_millis(100));
         }
@@ -149,6 +154,7 @@ mod tests {
 
         // Drop the table. File should be deleted now.
         drop(table);
+        drop(file); // Ensure file handle is closed for Windows deletion
         
         // Wait a bit for Windows to release the file if there's any pending activity
         for _ in 0..10 {

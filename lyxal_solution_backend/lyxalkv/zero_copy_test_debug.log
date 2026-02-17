@@ -1,0 +1,49 @@
+﻿cargo :    Compiling lyxalkv v0.16.0 (C:\U
+sers\Administrator\Downloads\Lyxal_Solutio
+n-main\lyxal_solution_backend\lyxalkv)
+At line:1 char:1
++ cargo test --package lyxalkv --lib 
+--features mmap_read -- sstable::z ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifie 
+   d: (   Compiling ly...ackend\lyxalkv)  
+  :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeComma 
+   ndError
+ 
+    Finished `test` profile [unoptimized 
++ debuginfo] target(s) in 23.39s
+     Running unittests src\lib.rs (C:\User
+s\Administrator\Downloads\Lyxal_Solution-m
+ain\lyxal_solution_backend\target\debug\de
+ps\lyxalkv-fd3a18bd275fec76.exe)
+
+running 4 tests
+test sstable::zero_copy_tests::tests::test_zero_copy_reader_drop_survival ... ok
+test sstable::zero_copy_tests::tests::test_zero_copy_performance_alloc_mitigation ... ok
+test sstable::zero_copy_tests::tests::test_zero_copy_concurrency_compaction_scan ... FAILED
+test sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete ... FAILED
+
+failures:
+
+---- sstable::zero_copy_tests::tests::test_zero_copy_concurrency_compaction_scan stdout ----
+
+thread 'sstable::zero_copy_tests::tests::test_zero_copy_concurrency_compaction_scan' (24324) panicked at lyxalkv\src\sstable\zero_copy_tests.rs:161:9:
+File should be deleted after all references are dropped
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete stdout ----
+
+thread 'sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete' (22208) panicked at lyxalkv\src\sstable\zero_copy_tests.rs:108:9:
+File should be deleted after last DataRef is dropped
+
+
+failures:
+    sstable::zero_copy_tests::tests::test_zero_copy_concurrency_compaction_scan
+    sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete
+
+test result: FAILED. 2 passed; 2 failed; 0 ignored; 0 measured; 729 filtered out; finished in 2.21s
+
+error: test failed, to rerun pass `-p 
+lyxalkv --lib`

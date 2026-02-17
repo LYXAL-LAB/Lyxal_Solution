@@ -1,0 +1,1068 @@
+﻿cargo :    Compiling lyxalkv v0.16.0 (C:\U
+sers\Administrator\Downloads\Lyxal_Solutio
+n-main\lyxal_solution_backend\lyxalkv)
+At line:1 char:1
++ cargo test --package lyxalkv 
+--all-features -- --test-threads=1 2>&1  
+...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifie 
+   d: (   Compiling ly...ackend\lyxalkv)  
+  :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeComma 
+   ndError
+ 
+    Finished `test` profile [unoptimized 
++ debuginfo] target(s) in 1m 13s
+     Running unittests src\lib.rs (C:\User
+s\Administrator\Downloads\Lyxal_Solution-m
+ain\lyxal_solution_backend\target\debug\de
+ps\lyxalkv-fd3a18bd275fec76.exe)
+
+running 733 tests
+test batch::tests::test_add_record_consistent_encoding ... ok
+test batch::tests::test_batch_empty ... ok
+test batch::tests::test_batch_empty_key_and_value ... ok
+test batch::tests::test_batch_encode ... ok
+test batch::tests::test_batch_encode_decode ... ok
+test batch::tests::test_batch_get_count ... ok
+test batch::tests::test_batch_grow ... ok
+test batch::tests::test_batch_invalid_data ... ok
+test batch::tests::test_batch_iteration ... ok
+test batch::tests::test_batch_large_key_value ... ok
+test batch::tests::test_batch_large_number_of_records ... ok
+test batch::tests::test_batch_max_size ... ok
+test batch::tests::test_batch_multiple_operations ... ok
+test batch::tests::test_batch_new ... ok
+test batch::tests::test_batch_read_record ... ok
+test batch::tests::test_batch_sequence_numbers ... ok
+test batch::tests::test_batch_unicode_keys_and_values ... ok
+test batch::tests::test_batch_version ... ok
+test batch::tests::test_batchreader_get_seq_num ... ok
+test batch::tests::test_batchreader_new ... ok
+test bplustree::tree::tests::detect_corrupted_header ... ok
+test bplustree::tree::tests::detect_invalid_magic ... ok
+test bplustree::tree::tests::detect_invalid_version ... ok
+test bplustree::tree::tests::new_file_initializes_correct_header ... ok
+test bplustree::tree::tests::test_allocate_new_page_when_no_free_pages ... ok
+test bplustree::tree::tests::test_allocate_page_from_trunk ... ok
+test bplustree::tree::tests::test_allocate_with_inconsistent_count ... ok
+test bplustree::tree::tests::test_basic_operations ... ok
+test bplustree::tree::tests::test_concurrent_operations ... ok
+test bplustree::tree::tests::test_delete_persistence ... ok
+test bplustree::tree::tests::test_delete_with_multiple_key_sizes ... ok
+test bplustree::tree::tests::test_drop_behavior ... ok
+test bplustree::tree::tests::test_edge_key_positions ... ok
+test bplustree::tree::tests::test_empty_tree ... ok
+test bplustree::tree::tests::test_exact_match_range ... ok
+test bplustree::tree::tests::test_explicit_close ... ok
+test bplustree::tree::tests::test_free_page_basic ... ok
+test bplustree::tree::tests::test_free_page_multiple ... ok
+test bplustree::tree::tests::test_free_then_allocate_cycle ... ok
+test bplustree::tree::tests::test_full_range ... ok
+test bplustree::tree::tests::test_insert_with_multiple_key_sizes ... ok
+test bplustree::tree::tests::test_insertion_deletion_sequence ... ok
+test bplustree::tree::tests::test_internal_node_merge_bug ... ok
+test bplustree::tree::tests::test_invalid_range ... ok
+test bplustree::tree::tests::test_large_dataset_range ... ok
+test bplustree::tree::tests::test_missing_boundaries ... ok
+test bplustree::tree::tests::test_multiple_trunk_pages_chain ... ok
+test bplustree::tree::tests::test_multiple_updates_same_key ... ok
+test bplustree::tree::tests::test_no_overflow_page_leak ... ok
+test bplustree::tree::tests::test_predecessor_successor_operations ... ok
+test bplustree::tree::tests::test_range ... ok
+test bplustree::tree::tests::test_range_after_modifications ... ok
+test bplustree::tree::tests::test_range_basic ... ok
+test bplustree::tree::tests::test_range_empty ... ok
+test bplustree::tree::tests::test_range_spanning_leaves ... ok
+test bplustree::tree::tests::test_repurpose_empty_trunk ... ok
+test bplustree::tree::tests::test_sequential_delete_all ... ignored
+test bplustree::tree::tests::test_sequential_delete_samples ... ok
+test bplustree::tree::tests::test_sequential_insert ... ok
+test bplustree::tree::tests::test_sequential_inserts_and_deletes ... ok
+test bplustree::tree::tests::test_sequential_small ... ok
+test bplustree::tree::tests::test_sequential_split_no_recursion ... ok
+test bplustree::tree::tests::test_sequential_split_ordering_guarantee ... ok
+test bplustree::tree::tests::test_single_insert_search ... ok
+test bplustree::tree::tests::test_tree_persistence ... ok
+test bplustree::tree::tests::test_tree_reopen ... ok
+test bplustree::tree::tests::test_trunk_page_free_list_management ... ok
+test bplustree::tree::tests::test_update ... ok
+test bplustree::tree::tests::test_update_no_new_nodes_created ... ok
+test checkpoint::tests::test_checkpoint_metadata_binary_format ... ok
+test checkpoint::tests::test_checkpoint_metadata_serialization ... ok
+test checkpoint::tests::test_checkpoint_version_compatibility ... ok
+test clock::tests::test_default_clock_concurrent_monotonicity ... ok
+test clock::tests::test_default_clock_immediate_shutdown ... FAILED
+test clock::tests::test_default_clock_monotonicity ... ok
+test clock::tests::test_default_clock_no_duplicates ... ok
+test clock::tests::test_default_clock_progresses ... ok
+test clock::tests::test_default_clock_stays_close_to_wall_time ... ok
+test commit::tests::test_concurrent_commits ... ok
+test commit::tests::test_concurrent_commits_with_delays ... ok
+test commit::tests::test_sequential_commits ... ok
+test commit::tests::test_single_commit ... ok
+test commit::tests::test_sync_commit_after_shutdown ... ok
+test commit::tests::test_sync_commit_calls_write_and_apply ... ok
+test commit::tests::test_sync_commit_concurrent_access ... ok
+test commit::tests::test_sync_commit_empty_batch ... ok
+test commit::tests::test_sync_commit_multiple_batches_tracking ... ok
+test commit::tests::test_sync_commit_multiple_sequential ... ok
+test commit::tests::test_sync_commit_sequence_number_consistency ... ok
+test commit::tests::test_sync_commit_single ... ok
+test commit::tests::test_sync_commit_with_sync_wal ... ok
+test compaction::leveled::tests::test_compaction_edge_cases ... ok
+test compaction::leveled::tests::test_compaction_respects_sequence_numbers ... ok
+test compaction::leveled::tests::test_compaction_with_large_keys_and_values ... ok
+test compaction::leveled::tests::test_l0_overlapping_keys_compaction ... ok
+test compaction::leveled::tests::test_l0_tombstone_propagation_overlapping ... ok
+test compaction::leveled::tests::test_l1_to_l2_table_selection ... ok
+test compaction::leveled::tests::test_level_selection ... ok
+test compaction::leveled::tests::test_level_selection_round_robin ... ok
+test compaction::leveled::tests::test_multi_level_merge_compaction ... ok
+test compaction::leveled::tests::test_older_soft_delete_marked_stale_during_compaction ... ok
+test compaction::leveled::tests::test_select_tables_for_compaction_bug ... FAILED
+test compaction::leveled::tests::test_simple_merge_compaction ... ok
+test compaction::leveled::tests::test_soft_delete_compaction_behavior ... ok
+test compaction::leveled::tests::test_table_properties_population ... ok
+test compaction::leveled::tests::test_tombstone_propagation ... ok
+test compaction::leveled::tests::test_tombstone_propagation_journey ... ok
+test compaction::leveled::tests::test_tombstone_propagation_through_levels ... ok
+test comparator::tests::test_comparator_name ... ok
+test comparator::tests::test_compare_basic ... ok
+test comparator::tests::test_find_short_successor_basic ... ok
+test comparator::tests::test_find_shortest_separator_basic ... ok
+test comparator::tests::test_internal_key_ordering_with_seq_nums ... ok
+test comparator::tests::test_internal_key_separator_adjacent_user_keys ... ok
+test comparator::tests::test_internal_key_separator_with_max_seq ... ok
+test comparator::tests::test_internal_key_short_separator_adjacent ... ok
+test comparator::tests::test_internal_key_short_separator_different_user_keys ... ok
+test comparator::tests::test_internal_key_short_separator_misordered ... ok
+test comparator::tests::test_internal_key_short_separator_prefix_cases ... ok
+test comparator::tests::test_internal_key_short_separator_same_user_key ... ok
+test comparator::tests::test_internal_key_shortest_successor ... ok
+test comparator::tests::test_internal_key_shortest_successor_all_0xff ... ok
+test comparator::tests::test_separator_adjacent_bytes ... ok
+test comparator::tests::test_separator_all_0xff_suffix ... ok
+test comparator::tests::test_separator_binary_data ... ok
+test comparator::tests::test_separator_empty_strings ... ok
+test comparator::tests::test_separator_equal_strings ... ok
+test comparator::tests::test_separator_long_common_prefix ... ok
+test comparator::tests::test_separator_prefix_cases ... ok
+test comparator::tests::test_separator_scan_forward ... ok
+test comparator::tests::test_separator_start_greater_than_limit ... ok
+test comparator::tests::test_separator_successor_randomized ... ok
+test comparator::tests::test_separator_wide_gap ... ok
+test comparator::tests::test_successor_all_0xff ... ok
+test comparator::tests::test_successor_empty ... ok
+test comparator::tests::test_successor_single_byte ... ok
+test comparator::tests::test_successor_with_0xff_prefix ... ok
+test compression::tests::test_empty_compression_defaults_to_none ... ok
+test compression::tests::test_per_level_compression ... ok
+test compression::tests::test_per_level_with_more_levels ... ok
+test discard::tests::test_discard_stats_basic ... ok
+test discard::tests::test_discard_stats_expansion ... ok
+test discard::tests::test_discard_stats_persistence ... ok
+test discard::tests::test_discard_stats_remove ... ok
+test error::tests::test_clear_error ... ok
+test error::tests::test_error_downgrade_prevented ... ok
+test error::tests::test_error_severity_ordering ... ok
+test error::tests::test_error_severity_upgrade ... ok
+test error::tests::test_set_and_check_error ... ok
+test error::tests::test_soft_error_does_not_stop_db ... ok
+test iter::tests::test_combined_iterator_adds_older_versions_to_delete_list ... ok
+test iter::tests::test_combined_iterator_returns_latest_version ... ok
+test iter::tests::test_compaction_iterator_hard_delete_filtering ... ok
+test iter::tests::test_compaction_iterator_multiple_replace_operations ... ok
+test iter::tests::test_compaction_iterator_no_versioning_bottom_level ... ok
+test iter::tests::test_compaction_iterator_no_versioning_non_bottom_level ... ok
+test iter::tests::test_compaction_iterator_set_with_delete_behavior ... ok
+test iter::tests::test_compaction_iterator_set_with_delete_latest_version ... ok
+test iter::tests::test_compaction_iterator_set_with_delete_marks_older_versions_stale ... ok
+test iter::tests::test_compaction_iterator_set_with_delete_mixed_with_hard_delete ... ok
+test iter::tests::test_compaction_iterator_versioning_retention_bottom_level ... ok
+test iter::tests::test_compaction_iterator_versioning_retention_logic ... ok
+test iter::tests::test_delete_list_logic ... ok
+test iter::tests::test_hard_delete_at_bottom_level ... ok
+test iter::tests::test_hard_delete_at_non_bottom_level ... ok
+test iter::tests::test_merge_iterator_sequence_ordering ... ok
+test iter::tests::test_multiple_keys_with_mixed_scenarios ... ok
+test iter::tests::test_no_vlog_no_delete_list ... ok
+test iter::tests::test_sequence_ordering_across_iterators ... ok
+test levels::tests::test_last_sequence_persistence_across_manifest_reload ... FAILED
+test levels::tests::test_level_manifest_persistence ... FAILED
+test levels::tests::test_lsn_with_multiple_l0_tables ... FAILED
+test levels::tests::test_manifest_v1_with_log_number_and_last_sequence ... FAILED
+test lockfile::tests::test_drop_releases_lock ... ok
+test lockfile::tests::test_lock_acquisition_and_release ... ok
+test lockfile::tests::test_lock_contention ... ok
+test lockfile::tests::test_lock_file_multithreaded ... ok
+test lockfile::tests::test_lock_file_prevents_concurrent_access ... FAILED
+test lockfile::tests::test_lock_with_process_id ... FAILED
+test lockfile::tests::test_stale_lockfile_doesnt_block ... FAILED
+test lsm::tests::test_checkpoint_functionality ... ok
+test lsm::tests::test_checkpoint_restore_discards_pending_writes ... ok
+test lsm::tests::test_checkpoint_with_vlog ... ok
+test lsm::tests::test_clean_shutdown_actually_skips_wal ... ok
+test lsm::tests::test_clean_shutdown_no_empty_wal ... ok
+test lsm::tests::test_cleanup_multiple_orphaned_ssts ... ok
+test lsm::tests::test_cleanup_orphaned_sst_files ... ok
+test lsm::tests::test_close_without_flush ... ok
+test lsm::tests::test_compaction_with_updates_and_delete ... ok
+test lsm::tests::test_compaction_with_updates_and_delete_on_same_key ... ok
+test lsm::tests::test_comprehensive_orphaned_cleanup_with_multiple_ssts ... ok
+test lsm::tests::test_concurrent_flush_after_rotation ... ok
+test lsm::tests::test_crash_before_flush_replays_wal ... ok
+test lsm::tests::test_crash_recovery_with_orphaned_sst ... ok
+test lsm::tests::test_discard_file_directory_structure ... ok
+test lsm::tests::test_flush_all_memtables_on_close_ordering ... ok
+test lsm::tests::test_flush_immutable_memtables_with_empty_active ... ok
+test lsm::tests::test_flush_on_close_creates_sst ... ok
+test lsm::tests::test_flush_on_close_option_comparison ... ok
+test lsm::tests::test_full_crash_recovery_scenario ... ok
+test lsm::tests::test_large_range_scan ... ok
+test lsm::tests::test_last_sequence_persists_across_restart ... ok
+test lsm::tests::test_log_number_advances_with_flushes ... ok
+test lsm::tests::test_manifest_atomic_sst_and_log_number ... ok
+test lsm::tests::test_memtable_flush ... ok
+test lsm::tests::test_memtable_flush_with_delete ... ok
+test lsm::tests::test_memtable_flush_with_multiple_keys_and_updates ... ok
+test lsm::tests::test_memtable_wal_number_after_swap ... ok
+test lsm::tests::test_multiple_flush_cycles_log_number_sequence ... ok
+test lsm::tests::test_multiple_flush_cycles_with_sst_and_wal_verification ... ok
+test lsm::tests::test_no_spurious_small_flush ... ok
+test lsm::tests::test_persistence ... ok
+test lsm::tests::test_range_limit_functionality ... ok
+test lsm::tests::test_range_limit_with_skip_take ... ok
+test lsm::tests::test_range_skip_take ... ok
+test lsm::tests::test_range_skip_take_alphabetical ... ok
+test lsm::tests::test_recovery_with_manually_created_wal_segments ... ok
+test lsm::tests::test_shutdown_with_empty_memtable ... ok
+test lsm::tests::test_simple_range_seek ... ok
+test lsm::tests::test_soft_delete ... ok
+test lsm::tests::test_sst_table_ids_ordered_correctly_on_close ... ok
+test lsm::tests::test_sstable_lsn_bug ... ok
+test lsm::tests::test_table_id_assignment_across_restart ... ok
+test lsm::tests::test_tree_basic ... ok
+test lsm::tests::test_tree_builder ... ok
+test lsm::tests::test_valid_ssts_not_deleted_during_cleanup ... ok
+test lsm::tests::test_vlog_basic ... ok
+test lsm::tests::test_vlog_compaction_preserves_sequence_numbers ... FAILED
+test lsm::tests::test_vlog_concurrent_operations ... ok
+test lsm::tests::test_vlog_file_rotation ... ok
+test lsm::tests::test_vlog_prefill_on_reopen ... ok
+test lsm::tests::test_wal_append_after_crash_recovery ... ok
+test lsm::tests::test_wal_file_reuse_across_restarts ... ok
+test lsm::tests::test_wal_files_after_multiple_open_close_cycles ... ok
+test lsm::tests::test_wal_incremental_number_after_flush_and_reopen ... ok
+test lsm::tests::test_wal_number_correct_after_reopen ... ok
+test lsm::tests::test_wal_number_tracking_on_flush ... ok
+test lsm::tests::test_wal_recovery_mode_absolute_consistency_fails_on_corruption ... ok
+test lsm::tests::test_wal_recovery_mode_default_is_tolerate_with_repair ... ok
+test lsm::tests::test_wal_recovery_mode_tolerate_with_repair_succeeds_on_corruption ... ok
+test lsm::tests::test_wal_recovery_updates_last_sequence_in_memory ... ok
+test memtable::tests::memtable_add_and_get ... ok
+test memtable::tests::memtable_get ... ok
+test memtable::tests::memtable_get_latest_seq_no ... ok
+test memtable::tests::memtable_lsn ... ok
+test memtable::tests::memtable_prefix ... ok
+test memtable::tests::memtable_size ... ok
+test memtable::tests::test_binary_keys ... ok
+test memtable::tests::test_empty_memtable ... ok
+test memtable::tests::test_get_highest_seq_num ... ok
+test memtable::tests::test_key_kinds ... ok
+test memtable::tests::test_key_updates_with_sequence_numbers ... ok
+test memtable::tests::test_large_dataset ... ok
+test memtable::tests::test_latest_sequence_number ... ok
+test memtable::tests::test_memtable_size_tracking ... ok
+test memtable::tests::test_multiple_keys ... ok
+test memtable::tests::test_range_query ... ok
+test memtable::tests::test_range_query_with_sequence_numbers ... ok
+test memtable::tests::test_sequence_number_ordering ... ok
+test memtable::tests::test_single_key ... ok
+test memtable::tests::test_tombstones ... ok
+test snapshot::tests::test_basic_snapshot_visibility ... ok
+test snapshot::tests::test_bound_excluded_start_and_end ... FAILED
+test snapshot::tests::test_bound_included_start_and_end ... FAILED
+test snapshot::tests::test_bound_unbounded_end ... FAILED
+test snapshot::tests::test_bound_unbounded_start ... FAILED
+test snapshot::tests::test_cache_effectiveness_with_range_query ... ok
+test snapshot::tests::test_concurrent_snapshots ... ok
+test snapshot::tests::test_double_ended_iteration ... ok
+test snapshot::tests::test_double_ended_iteration_mixed_operations ... ok
+test snapshot::tests::test_double_ended_iteration_with_tombstones ... ok
+test snapshot::tests::test_empty_levels ... ok
+test snapshot::tests::test_empty_snapshot ... ok
+test snapshot::tests::test_fully_unbounded_range ... FAILED
+test snapshot::tests::test_inverted_range ... FAILED
+test snapshot::tests::test_level0_mixed_overlap_scenarios ... FAILED
+test snapshot::tests::test_level0_overlapping_tables_included ... FAILED
+test snapshot::tests::test_level0_tables_after_range_skipped ... FAILED
+test snapshot::tests::test_level0_tables_before_range_skipped ... FAILED
+test snapshot::tests::test_level1_binary_search_correct_range ... FAILED
+test snapshot::tests::test_level1_query_after_all_tables ... FAILED
+test snapshot::tests::test_level1_query_before_all_tables ... FAILED
+test snapshot::tests::test_level1_query_spans_all_tables ... FAILED
+test snapshot::tests::test_mixed_level0_and_level1_tables ... FAILED
+test snapshot::tests::test_range_skips_non_overlapping_tables ... ok
+test snapshot::tests::test_range_with_random_operations ... ok
+test snapshot::tests::test_single_key_range ... FAILED
+test snapshot::tests::test_snapshot_isolation_with_updates ... ok
+test snapshot::tests::test_snapshot_iterator_seq_num_complex_scenario ... ok
+test snapshot::tests::test_snapshot_iterator_seq_num_filtering_via_transactions ... ok
+test snapshot::tests::test_snapshot_iterator_seq_num_filtering_with_updates ... ok
+test snapshot::tests::test_snapshot_iterator_seq_num_with_deletions ... ok
+test snapshot::tests::test_snapshot_keys_only ... ok
+test snapshot::tests::test_snapshot_ordering_invariants ... ok
+test snapshot::tests::test_snapshot_with_complex_key_patterns ... ok
+test snapshot::tests::test_soft_delete_snapshot_double_ended_iteration ... ok
+test snapshot::tests::test_soft_delete_snapshot_individual_get ... ok
+test snapshot::tests::test_soft_delete_snapshot_mixed_with_hard_delete ... ok
+test snapshot::tests::test_tombstone_handling ... ok
+test snapshot::tests::test_version_resolution ... ok
+test sstable::block::tests::test_block_double_ended_iteration ... ok
+test sstable::block::tests::test_block_empty ... ok
+test sstable::block::tests::test_block_iter ... ok
+test sstable::block::tests::test_block_iter_reverse ... ok
+test sstable::block::tests::test_block_iterator_valid_after_exhaustion ... ok
+test sstable::block::tests::test_block_mixed_next_prev ... ok
+test sstable::block::tests::test_block_prev ... ok
+test sstable::block::tests::test_block_prev_edge_cases ... ok
+test sstable::block::tests::test_block_prev_from_middle ... ok
+test sstable::block::tests::test_block_seek ... ok
+test sstable::block::tests::test_block_seek_at_restart_point_boundaries ... ok
+test sstable::block::tests::test_block_seek_between_keys ... ok
+test sstable::block::tests::test_block_seek_exact_match ... ok
+test sstable::block::tests::test_block_seek_key_not_found_before_start ... ok
+test sstable::block::tests::test_block_seek_key_not_found_past_end ... ok
+test sstable::block::tests::test_block_seek_same_user_key_different_seq_nums ... ok
+test sstable::block::tests::test_block_seek_to_last ... ok
+test sstable::block::tests::test_block_single_restart_point ... ok
+test sstable::block::tests::test_prev_at_first_entry ... ok
+test sstable::block::tests::test_seek_to_last_empty_block ... ok
+test sstable::bloom::tests::test_bloom_filter_creation ... ok
+test sstable::bloom::tests::test_bloom_filter_empty ... ok
+test sstable::bloom::tests::test_bloom_filter_invalid_num_hashes ... ok
+test sstable::bloom::tests::test_bloom_filter_may_contain ... ok
+test sstable::filter_block::tests::test_basic_bloom_filter ... ok
+test sstable::filter_block::tests::test_empty ... ok
+test sstable::filter_block::tests::test_filter_block_many ... ok
+test sstable::filter_block::tests::test_multiple_filters ... ok
+test sstable::filter_block::tests::test_single_filter ... ok
+test sstable::index_block::tests::test_find_block_handle_by_key ... ok
+test sstable::index_block::tests::test_find_block_handle_by_key_different_user_keys ... ok
+test sstable::index_block::tests::test_find_block_handle_by_key_with_descending_seq_nums ... ok
+test sstable::index_block::tests::test_find_block_handle_returns_correct_partition_index ... ok
+test sstable::index_block::tests::test_partition_lookup_empty_partition_returns_none ... ok
+test sstable::index_block::tests::test_partition_lookup_exact_separator_match ... ok
+test sstable::index_block::tests::test_partition_lookup_single_partition ... ok
+test sstable::index_block::tests::test_partitioned_index_lookup ... ok
+test sstable::index_block::tests::test_top_level_index_writer_basic ... ok
+test sstable::index_block::tests::test_top_level_index_writer_exact_block_size ... ok
+test sstable::index_block::tests::test_top_level_index_writer_large_entries ... ok
+test sstable::index_block::tests::test_top_level_index_writer_multiple_blocks ... ok
+test sstable::table::tests::test_bad_input - should panic ... ok
+test sstable::table::tests::test_empty_range_returns_nothing ... ok
+test sstable::table::tests::test_excluded_bound_skips_all_versions ... ok
+test sstable::table::tests::test_footer ... ok
+test sstable::table::tests::test_get_all_keys_same_prefix_different_suffix ... ok
+test sstable::table::tests::test_get_block_boundary_same_user_key_bug ... ok
+test sstable::table::tests::test_get_boundary_conditions ... ok
+test sstable::table::tests::test_get_empty_table ... ok
+test sstable::table::tests::test_get_lookup_higher_than_stored ... ok
+test sstable::table::tests::test_get_multiple_keys_with_sequence_variations ... ok
+test sstable::table::tests::test_get_nonexistent_empty_key ... ok
+test sstable::table::tests::test_get_nonexistent_in_large_table ... ok
+test sstable::table::tests::test_get_nonexistent_key_between_existing ... ok
+test sstable::table::tests::test_get_nonexistent_key_greater_than_all ... ok
+test sstable::table::tests::test_get_nonexistent_key_returns_none ... ok
+test sstable::table::tests::test_get_nonexistent_with_similar_prefix ... ok
+test sstable::table::tests::test_get_nonexistent_with_special_chars ... ok
+test sstable::table::tests::test_get_partition_index_sequence_numbers ... ok
+test sstable::table::tests::test_get_same_key_different_sequence_numbers ... ok
+test sstable::table::tests::test_get_with_lower_sequence_number ... ok
+test sstable::table::tests::test_get_with_tombstone ... ok
+test sstable::table::tests::test_iter_items ... ok
+test sstable::table::tests::test_iterator_trait_prev_multi_partition_bug ... ok
+test sstable::table::tests::test_many_items ... ok
+test sstable::table::tests::test_partitioned_index_same_user_key_spanning_partitions_bug ... ok
+test sstable::table::tests::test_prev_iteration_across_partitions ... ok
+test sstable::table::tests::test_range_at_exact_block_boundary ... ok
+test sstable::table::tests::test_range_completely_after_table ... ok
+test sstable::table::tests::test_range_completely_before_table ... ok
+test sstable::table::tests::test_range_with_multiple_versions_at_boundary ... ok
+test sstable::table::tests::test_reverse_iteration_empty_range ... ok
+test sstable::table::tests::test_reverse_iteration_unbounded_consistency ... ok
+test sstable::table::tests::test_reverse_iteration_with_excluded_upper_bound ... ok
+test sstable::table::tests::test_seek_to_last_valid_block ... ok
+test sstable::table::tests::test_table_builder ... ok
+test sstable::table::tests::test_table_disjoint_key_range_persistence ... ok
+test sstable::table::tests::test_table_get_at_block_boundaries ... ok
+test sstable::table::tests::test_table_get_different_user_keys ... ok
+test sstable::table::tests::test_table_get_mvcc_correct_version ... ok
+test sstable::table::tests::test_table_get_returns_none_for_future_version ... ok
+test sstable::table::tests::test_table_get_tombstone_handling ... ok
+test sstable::table::tests::test_table_get_user_key_mismatch ... ok
+test sstable::table::tests::test_table_iter ... ok
+test sstable::table::tests::test_table_iter_both_bounds ... ok
+test sstable::table::tests::test_table_iter_both_bounds_excluded_same_key ... ok
+test sstable::table::tests::test_table_iter_both_bounds_excluded_same_key_reverse ... ok
+test sstable::table::tests::test_table_iter_excluded_bound_across_multiple_blocks ... ok
+test sstable::table::tests::test_table_iter_excluded_bound_across_partitions_reverse ... ok
+test sstable::table::tests::test_table_iter_excluded_bounds_adjacent_keys ... ok
+test sstable::table::tests::test_table_iter_forward_and_backward ... ok
+test sstable::table::tests::test_table_iter_lower_bound_excluded_forward_with_multiple_versions ... ok
+test sstable::table::tests::test_table_iter_lower_bound_included_reverse ... ok
+test sstable::table::tests::test_table_iter_multiple_versions_at_both_bounds ... ok
+test sstable::table::tests::test_table_iter_unbounded ... ok
+test sstable::table::tests::test_table_iter_unbounded_reverse ... ok
+test sstable::table::tests::test_table_iter_upper_bound_excluded ... ok
+test sstable::table::tests::test_table_iter_upper_bound_excluded_reverse ... ok
+test sstable::table::tests::test_table_iter_upper_bound_included ... ok
+test sstable::table::tests::test_table_iter_upper_bound_included_reverse_nonexistent_key ... ok
+test sstable::table::tests::test_table_iterator_advance_method_correctness ... ok
+test sstable::table::tests::test_table_iterator_basic_correctness ... ok
+test sstable::table::tests::test_table_iterator_does_not_restart_after_exhaustion ... ok
+test sstable::table::tests::test_table_iterator_edge_cases ... ok
+test sstable::table::tests::test_table_iterator_multiple_iterations ... ok
+test sstable::table::tests::test_table_iterator_next_vs_advance_consistency ... ok
+test sstable::table::tests::test_table_iterator_no_items_lost ... ok
+test sstable::table::tests::test_table_iterator_performance_regression ... ok
+test sstable::table::tests::test_table_iterator_positioning_edge_cases ... ok
+test sstable::table::tests::test_table_iterator_seek_behavior ... ok
+test sstable::table::tests::test_table_iterator_seek_exact_match ... ok
+test sstable::table::tests::test_table_iterator_seek_nonexistent_key ... ok
+test sstable::table::tests::test_table_iterator_seek_nonexistent_past_end ... ok
+test sstable::table::tests::test_table_iterator_seek_then_iterate ... ok
+test sstable::table::tests::test_table_iterator_state_invariants ... ok
+test sstable::table::tests::test_table_key_range_persistence ... ok
+test sstable::table::tests::test_table_key_range_with_many_blocks ... ok
+test sstable::table::tests::test_table_key_range_with_tombstones ... ok
+test sstable::table::tests::test_table_seek ... ok
+test sstable::table::tests::test_table_with_partitioned_index ... ok
+test sstable::table::tests::test_writer_key_range_ascending_keys ... ok
+test sstable::table::tests::test_writer_key_range_binary_keys ... ok
+test sstable::table::tests::test_writer_key_range_boundary_keys ... ok
+test sstable::table::tests::test_writer_key_range_clustered_pattern ... ok
+test sstable::table::tests::test_writer_key_range_empty ... ok
+test sstable::table::tests::test_writer_key_range_identical_keys_different_seqnums ... ok
+test sstable::table::tests::test_writer_key_range_interleaved_pattern ... ok
+test sstable::table::tests::test_writer_key_range_single_entry ... ok
+test sstable::table::tests::test_writer_key_range_sparse_pattern ... ok
+test sstable::table::tests::test_writer_key_range_unicode_keys ... ok
+test sstable::table::tests::test_writer_key_range_with_mixed_case ... ok
+test sstable::table::tests::test_writer_key_range_with_prefix_pattern ... ok
+test sstable::table::tests::test_writer_key_range_with_pseudo_random_keys ... ok
+test sstable::table::tests::test_writer_key_range_with_special_chars ... ok
+test sstable::zero_copy_tests::tests::test_zero_copy_concurrency_compaction_scan ... FAILED
+test sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete ... FAILED
+test sstable::zero_copy_tests::tests::test_zero_copy_performance_alloc_mitigation ... ok
+test sstable::zero_copy_tests::tests::test_zero_copy_reader_drop_survival ... ok
+test task::tests::test_already_running_tasks ... ok
+test task::tests::test_alternating_compactions ... ok
+test task::tests::test_concurrent_wake_up_level ... ok
+test task::tests::test_concurrent_wake_up_memtable ... ok
+test task::tests::test_error_handling ... ok
+test task::tests::test_multiple_wake_up_level ... ok
+test task::tests::test_multiple_wake_up_memtable ... ok
+test task::tests::test_task_from_fail ... ok
+test task::tests::test_wake_up_level ... ok
+test task::tests::test_wake_up_memtable ... ok
+test test::compression_tests::test_compression_10k_pairs_roundtrip ... ok
+test test::compression_tests::test_compression_checksum_verification ... ok
+test test::compression_tests::test_compression_iterator_operations ... ok
+test test::compression_tests::test_compression_large_values ... ok
+test test::compression_tests::test_compression_mixed_patterns ... ok
+test test::compression_tests::test_compression_per_level_options ... ok
+test test::compression_tests::test_compression_per_level_sstable_creation ... ok
+test test::compression_tests::test_compression_per_level_with_different_levels ... ok
+test test::compression_tests::test_compression_selector_per_level ... ok
+test test::compression_tests::test_compression_size_reduction ... ok
+test test::compression_tests::test_empty_compression_per_level_defaults_to_none ... ok
+test test::compression_tests::test_lsm_compression_10k_keys_with_range_scans ... ok
+test test::compression_tests::test_lsm_compression_disk_size_comparison ... ok
+test test::compression_tests::test_lsm_compression_persistence_after_reopen ... ok
+test test::compression_tests::test_table_writer_with_level_compression ... ok
+test test::qos_tests::test_io_qos_throttling ... ok
+test test::recovery_integration_tests::test_basic_recovery ... ok
+test test::recovery_integration_tests::test_corrupted_wal_with_valid_sst ... ok
+test test::recovery_integration_tests::test_file_count_after_recovery ... ok
+test test::recovery_integration_tests::test_manifest_log_number_progression ... ok
+test test::recovery_integration_tests::test_mixed_flushed_and_unflushed_wals ... ok
+test test::recovery_integration_tests::test_orphaned_sst_doesnt_break_recovery ... ok
+test test::recovery_integration_tests::test_recover_multiple_wals_without_flush ... ok
+test test::recovery_integration_tests::test_recover_with_existing_ssts ... ok
+test test::recovery_integration_tests::test_recover_with_large_wal ... ok
+test test::recovery_integration_tests::test_recovery_with_empty_wal ... ok
+test test::recovery_integration_tests::test_recovery_with_no_wal_files ... ok
+test test::recovery_integration_tests::test_wal_cleanup_after_recovery_without_flush ... ok
+test test::recovery_tests::test_100_segments_recovery ... ok
+test test::recovery_tests::test_all_empty_segments ... ok
+test test::recovery_tests::test_all_segments_already_flushed ... ok
+test test::recovery_tests::test_boundary_with_empty_segments ... ok
+test test::recovery_tests::test_completely_corrupted_file ... ok
+test test::recovery_tests::test_compressed_data_corruption ... ok
+test test::recovery_tests::test_compressed_wal_segments ... ok
+test test::recovery_tests::test_concurrent_wal_directory_modifications ... ok
+test test::recovery_tests::test_contiguous_sequence_numbers ... ok
+test test::recovery_tests::test_corruption_at_min_wal_boundary ... ok
+test test::recovery_tests::test_corruption_beginning_middle_segment ... ok
+test test::recovery_tests::test_corruption_end_segment_0 ... ok
+test test::recovery_tests::test_corruption_first_record_segment_0 ... ok
+test test::recovery_tests::test_corruption_in_batch_data ... ok
+test test::recovery_tests::test_corruption_in_wal_header ... ok
+test test::recovery_tests::test_corruption_last_segment ... ok
+test test::recovery_tests::test_corruption_middle_of_middle_segment ... ok
+test test::recovery_tests::test_corruption_middle_segment_0 ... ok
+test test::recovery_tests::test_crash_after_multiple_rapid_rotations ... ok
+test test::recovery_tests::test_crash_during_wal_write_mid_batch ... ok
+test test::recovery_tests::test_crash_immediately_after_rotation ... ok
+test test::recovery_tests::test_crash_with_unflushed_memtable ... ok
+test test::recovery_tests::test_crc_mismatch ... ok
+test test::recovery_tests::test_empty_segment_at_end ... ok
+test test::recovery_tests::test_empty_segments_between_data ... ok
+test test::recovery_tests::test_few_large_batches ... ok
+test test::recovery_tests::test_large_batches_multiple_segments ... ok
+test test::recovery_tests::test_large_sequence_numbers ... ok
+test test::recovery_tests::test_many_small_batches ... ok
+test test::recovery_tests::test_min_wal_equals_first_segment ... ok
+test test::recovery_tests::test_mixed_compression_segments ... ok
+test test::recovery_tests::test_mixed_flushed_unflushed ... ok
+test test::recovery_tests::test_multiple_corruptions_stop_at_first ... ok
+test test::recovery_tests::test_non_sequential_segment_ids_with_min_wal ... ok
+test test::recovery_tests::test_only_wal_extension_processed ... ok
+test test::recovery_tests::test_partial_batch_at_segment_end ... ok
+test test::recovery_tests::test_random_byte_corruption ... ok
+test test::recovery_tests::test_rapid_rotation_with_minimal_data ... ok
+test test::recovery_tests::test_recovery_min_wal_zero ... ok
+test test::recovery_tests::test_recovery_performance_scaling ... ok
+test test::recovery_tests::test_recovery_with_readonly_segment ... ok
+test test::recovery_tests::test_segment_larger_than_expected ... ok
+test test::recovery_tests::test_sequence_after_corruption ... ok
+test test::recovery_tests::test_sequence_gaps_detection ... ok
+test test::recovery_tests::test_sequence_tracking_10_segments ... ok
+test test::recovery_tests::test_sequential_5_segments_recovery ... ok
+test test::recovery_tests::test_single_large_vs_multiple_small_segments ... ok
+test test::recovery_tests::test_skip_flushed_segments ... ok
+test test::recovery_tests::test_symlink_to_wal_segment ... ok
+test test::recovery_tests::test_tail_corruption_recovery ... ok
+test test::recovery_tests::test_truncated_wal_file ... ok
+test test::recovery_tests::test_variable_sized_segments ... ok
+test test::recovery_tests::test_very_large_values_across_segments ... ok
+test test::recovery_tests::test_wal_segments_with_gaps ... ok
+test test::recovery_tests::test_zero_length_segment_file ... ok
+test transaction::tests::basic_transaction ... ok
+test transaction::tests::double_ended_iterator_tests::test_reverse_iteration_basic ... ok
+test transaction::tests::double_ended_iterator_tests::test_reverse_iteration_consistency_with_forward ... ok
+test transaction::tests::double_ended_iterator_tests::test_reverse_iteration_empty_range ... ok
+test transaction::tests::double_ended_iterator_tests::test_reverse_iteration_keys_only ... ok
+test transaction::tests::double_ended_iterator_tests::test_reverse_iteration_mixed_operations ... ok
+test transaction::tests::double_ended_iterator_tests::test_reverse_iteration_with_deletes ... ok
+test transaction::tests::double_ended_iterator_tests::test_reverse_iteration_with_limits ... ok
+test transaction::tests::double_ended_iterator_tests::test_reverse_iteration_with_soft_deletes ... ok
+test transaction::tests::double_ended_iterator_tests::test_reverse_iteration_with_writes ... ok
+test transaction::tests::g0_tests ... ok
+test transaction::tests::g_single ... ok
+test transaction::tests::insert_large_txn_and_get ... ignored
+test transaction::tests::is_send_sync ... ok
+test transaction::tests::mvcc_snapshot_isolation ... ok
+test transaction::tests::p4 ... ok
+test transaction::tests::ryow ... ok
+test transaction::tests::savepoint_tests::multiple_savepoints ... ok
+test transaction::tests::savepoint_tests::savepoint_nested_operations ... ok
+test transaction::tests::savepoint_tests::savepoint_rollback_on_updated_key ... ok
+test transaction::tests::savepoint_tests::savepoint_rollback_with_range_scan ... ok
+test transaction::tests::savepoint_tests::savepoint_with_deletes ... ok
+test transaction::tests::sdb_delete_record_id_bug ... ok
+test transaction::tests::test_commit_timestamp_consistency ... ok
+test transaction::tests::test_count_at_version ... ok
+test transaction::tests::test_count_at_version_with_deletes ... ok
+test transaction::tests::test_count_basic ... ok
+test transaction::tests::test_count_read_your_own_writes ... ok
+test transaction::tests::test_count_with_deletes ... ok
+test transaction::tests::test_count_with_options ... ok
+test transaction::tests::test_insert_delete_read_key ... ok
+test transaction::tests::test_keys_at_version ... ok
+test transaction::tests::test_keys_at_version_with_deletes ... ok
+test transaction::tests::test_keys_method ... ok
+test transaction::tests::test_range_at_version ... ok
+test transaction::tests::test_range_at_version_with_deletes ... ok
+test transaction::tests::test_range_basic_functionality ... ok
+test transaction::tests::test_range_boundary_conditions ... ok
+test transaction::tests::test_range_delete_then_set ... ok
+test transaction::tests::test_range_empty_result ... ok
+test transaction::tests::test_range_ordering ... ok
+test transaction::tests::test_range_read_your_own_writes ... ok
+test transaction::tests::test_range_value_pointer_resolution_bug ... ok
+test transaction::tests::test_range_with_bounds ... ok
+test transaction::tests::test_range_with_deletes ... ok
+test transaction::tests::test_range_with_limit ... ok
+test transaction::tests::test_range_write_sequence_order ... ok
+test transaction::tests::test_scan_all_versions ... ok
+test transaction::tests::test_scan_all_versions_with_deletes ... ok
+test transaction::tests::test_set_at_timestamp ... ok
+test transaction::tests::test_soft_delete_basic_functionality ... ok
+test transaction::tests::test_soft_delete_in_transaction_write_set ... ok
+test transaction::tests::test_soft_delete_mixed_with_other_operations ... ok
+test transaction::tests::test_soft_delete_range_scan_filtering ... ok
+test transaction::tests::test_soft_delete_rollback ... ok
+test transaction::tests::test_soft_delete_then_reinsert ... ok
+test transaction::tests::test_soft_delete_vs_hard_delete ... ok
+test transaction::tests::test_timestamp_via_write_options ... ok
+test transaction::tests::test_versioned_queries_basic ... ok
+test transaction::tests::test_versioned_queries_with_deletes ... ok
+test transaction::tests::test_versioned_queries_without_versioning ... ok
+test transaction::tests::transaction_delete_from_index ... ok
+test transaction::tests::version_tests::test_insert_multiple_versions_in_same_tx ... ok
+test transaction::tests::version_tests::test_replace_basic ... ok
+test transaction::tests::version_tests::test_replace_mixed_with_regular_operations ... ok
+test transaction::tests::version_tests::test_replace_replaces_previous_versions ... ok
+test transaction::tests::version_tests::test_scan_all_versions_deleted_records ... ok
+test transaction::tests::version_tests::test_scan_all_versions_multiple_keys_multiple_versions_each ... ok
+test transaction::tests::version_tests::test_scan_all_versions_multiple_keys_multiple_versions_each_deleted ... ok
+test transaction::tests::version_tests::test_scan_all_versions_multiple_keys_single_version_each ... ok
+test transaction::tests::version_tests::test_scan_all_versions_multiple_keys_single_version_each_deleted ... ok
+test transaction::tests::version_tests::test_scan_all_versions_range_boundaries ... ok
+test transaction::tests::version_tests::test_scan_all_versions_range_bounds ... ok
+test transaction::tests::version_tests::test_scan_all_versions_single_key_multiple_versions ... ok
+test transaction::tests::version_tests::test_scan_all_versions_single_key_single_version ... ok
+test transaction::tests::version_tests::test_scan_all_versions_soft_and_hard_delete ... ok
+test transaction::tests::version_tests::test_scan_all_versions_with_batches ... ok
+test transaction::tests::version_tests::test_scan_all_versions_with_limit ... ok
+test transaction::tests::version_tests::test_scan_all_versions_with_limit_with_multiple_versions_per_key ... ok
+test transaction::tests::version_tests::test_scan_all_versions_with_subsets ... ok
+test vfs::tests::test_concurrent_read_at ... ok
+test vlog::tests::test_discard_stats_operations ... ok
+test vlog::tests::test_gc_threshold_with_discard_stats ... ok
+test vlog::tests::test_prefill_file_handles ... ok
+test vlog::tests::test_value_location_edge_cases ... ok
+test vlog::tests::test_value_location_encode_into_decode ... ok
+test vlog::tests::test_value_location_from_encoded_value_inline ... ok
+test vlog::tests::test_value_location_from_encoded_value_vlog ... ok
+test vlog::tests::test_value_location_inline_encoding ... ok
+test vlog::tests::test_value_location_resolve_inline ... ok
+test vlog::tests::test_value_location_resolve_vlog ... ok
+test vlog::tests::test_value_location_size_calculation ... ok
+test vlog::tests::test_value_location_vlog_encoding ... ok
+test vlog::tests::test_value_pointer_codec ... ok
+test vlog::tests::test_value_pointer_decode_insufficient_data ... ok
+test vlog::tests::test_value_pointer_encode_into_decode ... ok
+test vlog::tests::test_value_pointer_encoding ... ok
+test vlog::tests::test_value_pointer_utility_methods ... ok
+test vlog::tests::test_vlog_append_and_get ... ok
+test vlog::tests::test_vlog_caching ... ok
+test vlog::tests::test_vlog_file_header_encoding ... ok
+test vlog::tests::test_vlog_file_header_invalid_magic ... ok
+test vlog::tests::test_vlog_file_header_invalid_size ... ok
+test vlog::tests::test_vlog_file_header_version_compatibility ... ok
+test vlog::tests::test_vlog_gc_with_versioned_index_cleanup_integration ... ok
+test vlog::tests::test_vlog_restart_continues_last_file ... ok
+test vlog::tests::test_vlog_restart_with_multiple_files ... ok
+test vlog::tests::test_vlog_small_value_acceptance ... ok
+test vlog::tests::test_vlog_with_file_header ... ok
+test vlog::tests::test_vlog_writer_reopen_append_only_behavior ... ok
+test vlog::vlog_zero_copy_tests::tests::test_vlog_checksum_on_mmap ... ok
+test vlog::vlog_zero_copy_tests::tests::test_vlog_deferred_delete_tombstone ... ok
+test vlog::vlog_zero_copy_tests::tests::test_vlog_mmap_required_fail_fast ... ok
+test vlog::vlog_zero_copy_tests::tests::test_vlog_reader_drop_safety ... ok
+test vlog::vlog_zero_copy_tests::tests::test_vlog_zero_copy_basic ... ok
+test wal::manager::tests::test_cleanup_stale_repair_files ... ok
+test wal::manager::tests::test_open_with_min_log_number_uses_highest_segment ... ok
+test wal::manager::tests::test_wal_append_to_existing ... ok
+test wal::manager::tests::test_wal_basic_operations ... ok
+test wal::manager::tests::test_wal_block_offset_across_sessions ... ok
+test wal::manager::tests::test_wal_compressed_file_detected_on_reopen ... ok
+test wal::manager::tests::test_wal_compression_type_detected_on_reopen ... ok
+test wal::manager::tests::test_wal_compression_type_readable_by_reader ... ok
+test wal::manager::tests::test_wal_no_compression_type_when_disabled ... ok
+test wal::manager::tests::test_wal_rotation ... ok
+test wal::reader::tests::aligned_eof ... ok
+test wal::reader::tests::all_block_boundary_remainders ... ok
+test wal::reader::tests::bad_length ... ok
+test wal::reader::tests::bad_record_type ... ok
+test wal::reader::tests::bufreader_eof_and_error ... ok
+test wal::reader::tests::checksum_mismatch ... ok
+test wal::reader::tests::compression_block_boundary_no_false_corruption ... ok
+test wal::reader::tests::compression_empty ... ok
+test wal::reader::tests::compression_fragmentation ... ok
+test wal::reader::tests::compression_read_write ... ok
+test wal::reader::tests::empty ... ok
+test wal::reader::tests::error_joins_records ... ok
+test wal::reader::tests::exact_block_alignment_stress ... ok
+test wal::reader::tests::fragmentation ... ok
+test wal::reader::tests::fuzz_random_record_sizes_no_false_corruption ... ok
+test wal::reader::tests::many_blocks ... ok
+test wal::reader::tests::marginal_trailer ... ok
+test wal::reader::tests::marginal_trailer2 ... ok
+test wal::reader::tests::missing_last ... ok
+test wal::reader::tests::mixed_fragmented_and_small_records ... ok
+test wal::reader::tests::multi_session_block_boundary_stress ... ok
+test wal::reader::tests::original_crud_bench_bug_reproduction ... ok
+test wal::reader::tests::partial_last ... ok
+test wal::reader::tests::random_read ... ok
+test wal::reader::tests::read_write_multiple_records ... ok
+test wal::reader::tests::reader_basic ... ok
+test wal::reader::tests::reader_block_boundary_padding ... ok
+test wal::reader::tests::reader_corrupted_compressed_data ... ok
+test wal::reader::tests::reader_offset_from_first_read ... ok
+test wal::reader::tests::reader_offset_partial_block ... ok
+test wal::reader::tests::reader_offsets_increasing ... ok
+test wal::reader::tests::reader_record_spanning_blocks ... ok
+test wal::reader::tests::reader_with_large_data ... ok
+test wal::reader::tests::resume_at_all_block_offsets ... ok
+test wal::reader::tests::short_trailer ... ok
+test wal::reader::tests::truncated_trailing_record ... ok
+test wal::reader::tests::unexpected_full_type ... ok
+test wal::reader::tests::unexpected_last_type ... ok
+test wal::reader::tests::unexpected_middle_type ... ok
+test wal::reader::tests::writer_block_boundary_exact_fit ... ok
+test wal::recovery::tests::test_corruption_stops_at_segment_n ... ok
+test wal::recovery::tests::test_default_reporter_usage ... ok
+test wal::recovery::tests::test_multi_segment_recovery_after_crash ... ok
+test wal::recovery::tests::test_post_corruption_replay ... ok
+test wal::recovery::tests::test_recovery_mode_skip_corrupted ... ok
+test wal::recovery::tests::test_recovery_mode_tolerate_tail_corruption ... ok
+test wal::recovery::tests::test_repair_corrupted_wal_segment_nonexistent ... ok
+test wal::recovery::tests::test_repair_with_three_batches_corrupt_third ... ok
+test wal::recovery::tests::test_replay_wal_empty_directory ... ok
+test wal::recovery::tests::test_replay_wal_multiple_batches ... ok
+test wal::recovery::tests::test_replay_wal_sequence_number_tracking ... ok
+test wal::recovery::tests::test_replay_wal_single_entry_batches ... ok
+test wal::tests::parse_segment_name_invalid_format ... ok
+test wal::tests::parse_segment_name_with_compound_extension ... ok
+test wal::tests::parse_segment_name_with_extension ... ok
+test wal::tests::parse_segment_name_without_extension ... ok
+test wal::tests::segment_name_with_compound_extension ... ok
+test wal::tests::segment_name_with_extension ... ok
+test wal::tests::segment_name_without_extension ... ok
+test wal::tests::segments_empty_directory ... ok
+test wal::tests::segments_non_empty_directory ... ok
+test wal::tests::test_cleanup_old_segments ... ok
+test wal::tests::test_cleanup_respects_min_wal_number ... ok
+test wal::tests::test_compression_type_from_u8 ... ok
+test wal::tests::test_empty_wal_segment ... ok
+test wal::tests::test_get_segment_range_with_compound_extension ... ok
+test wal::tests::test_list_segment_ids ... ok
+test wal::tests::test_list_segment_ids_with_extension_filter ... ok
+test wal::tests::test_options_builder ... ok
+test wal::tests::test_options_validation ... ok
+test wal::tests::test_record_type_from_u8 ... ok
+test wal::tests::test_should_include_file_helper ... ok
+test wal::tests::test_wal_replay_all_segments ... ok
+test wal::tests::test_wal_with_zero_padding_eof_handling ... ok
+test wal::writer::tests::test_fragmentation ... ok
+test wal::writer::tests::test_manual_flush ... ok
+test wal::writer::tests::test_writer_basic ... ok
+
+failures:
+
+---- clock::tests::test_default_clock_immediate_shutdown stdout ----
+
+thread 'clock::tests::test_default_clock_immediate_shutdown' (22132) panicked at lyxalkv\src\clock.rs:242:13:
+Clock took too long to drop: 97.0538ms. Thread may not be shutting down properly.
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- compaction::leveled::tests::test_select_tables_for_compaction_bug stdout ----
+
+thread 'compaction::leveled::tests::test_select_tables_for_compaction_bug' (20204) panicked at lyxalkv\src\compaction\leveled.rs:1326:14:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 1224, kind: Uncategorized, message: "The requested operation cannot be performed on a file with a user-mapped section open." })
+
+---- levels::tests::test_last_sequence_persistence_across_manifest_reload stdout ----
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=0, last_sequence=0, next_table_id=1, total_tables=0
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmpX0uFG5\\manifest\\00000000000000000000.manifest"
+
+thread 'levels::tests::test_last_sequence_persistence_across_manifest_reload' (16532) panicked at lyxalkv\src\levels\mod.rs:1173:18:
+Failed to create table 1: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- levels::tests::test_level_manifest_persistence stdout ----
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=0, last_sequence=0, next_table_id=1, total_tables=0
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmp9Nop8z\\manifest\\00000000000000000000.manifest"
+
+thread 'levels::tests::test_level_manifest_persistence' (3656) panicked at lyxalkv\src\levels\mod.rs:645:61:
+Failed to create table 1: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- levels::tests::test_lsn_with_multiple_l0_tables stdout ----
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=0, last_sequence=0, next_table_id=1, total_tables=0
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmpZVwxtE\\manifest\\00000000000000000000.manifest"
+
+thread 'levels::tests::test_lsn_with_multiple_l0_tables' (16060) panicked at lyxalkv\src\levels\mod.rs:1010:14:
+Failed to create table 1: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- levels::tests::test_manifest_v1_with_log_number_and_last_sequence stdout ----
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=0, last_sequence=0, next_table_id=1, total_tables=0
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmpYvFNdG\\manifest\\00000000000000000000.manifest"
+
+thread 'levels::tests::test_manifest_v1_with_log_number_and_last_sequence' (1276) panicked at lyxalkv\src\levels\mod.rs:1250:14:
+Failed to create table: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- lockfile::tests::test_lock_file_prevents_concurrent_access stdout ----
+[INFO  lyxalkv::lsm] === Starting LSM tree initialization ===
+[INFO  lyxalkv::lsm] Database path: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmpo8mcSK"
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=0, last_sequence=0, next_table_id=1, total_tables=0
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmpo8mcSK\\manifest\\00000000000000000000.manifest"
+[INFO  lyxalkv::lsm] Found 1 WAL files for recovery (starting from log 0)
+[INFO  lyxalkv::lsm] Recovering from WAL file #0: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmpo8mcSK\\wal\\00000000000000000000.wal"
+[INFO  lyxalkv::lsm] Replayed 0 batches from WAL #0
+[INFO  lyxalkv::lsm] Manifest state: log_number=0, last_sequence=0
+[INFO  lyxalkv::wal::recovery] Starting WAL recovery from directory: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmpo8mcSK\\wal"
+[DEBUG lyxalkv::wal::recovery] WAL recovery parameters: min_wal_number=0
+[INFO  lyxalkv::wal::recovery] Replaying WAL segments #00000000000000000000 to #00000000000000000000
+[DEBUG lyxalkv::wal::recovery] Processing WAL segment #00000000000000000000
+[INFO  lyxalkv::wal::recovery] No data recovered from WAL segments
+[DEBUG lyxalkv::lsm] WAL skipped or empty, using manifest_last_seq=0
+[DEBUG lyxalkv::lsm] No orphaned SST files found
+[INFO  lyxalkv::lsm] === LSM tree initialization complete ===
+[INFO  lyxalkv::lsm] Lyxalkv: Reusing existing Core handle for "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmpo8mcSK"
+
+thread 'lockfile::tests::test_lock_file_prevents_concurrent_access' (21228) panicked at lyxalkv\src\lockfile.rs:249:9:
+Second tree should fail to acquire lock
+[DEBUG lyxalkv::wal::manager] Closing WAL #00000000000000000000
+[DEBUG lyxalkv::wal::manager] WAL #00000000000000000000 closed and synced successfully
+DEBUG: LockFile::release() actually taking file
+
+---- lockfile::tests::test_lock_with_process_id stdout ----
+
+thread 'lockfile::tests::test_lock_with_process_id' (19300) panicked at lyxalkv\src\lockfile.rs:184:54:
+called `Result::unwrap()` on an `Err` value: Os { code: 33, kind: Uncategorized, message: "The process cannot access the file because another process has locked a portion of the file." }
+DEBUG: LockFile::release() actually taking file
+
+---- lockfile::tests::test_stale_lockfile_doesnt_block stdout ----
+
+thread 'lockfile::tests::test_stale_lockfile_doesnt_block' (23576) panicked at lyxalkv\src\lockfile.rs:223:54:
+called `Result::unwrap()` on an `Err` value: Os { code: 33, kind: Uncategorized, message: "The process cannot access the file because another process has locked a portion of the file." }
+DEBUG: LockFile::release() actually taking file
+
+---- lsm::tests::test_vlog_compaction_preserves_sequence_numbers stdout ----
+[INFO  lyxalkv::lsm] === Starting LSM tree initialization ===
+[INFO  lyxalkv::lsm] Database path: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.AcYhECIpaTsK"
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=0, last_sequence=0, next_table_id=1, total_tables=0
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.AcYhECIpaTsK\\manifest\\00000000000000000000.manifest"
+[INFO  lyxalkv::lsm] Found 1 WAL files for recovery (starting from log 0)
+[INFO  lyxalkv::lsm] Recovering from WAL file #0: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.AcYhECIpaTsK\\wal\\00000000000000000000.wal"
+[INFO  lyxalkv::lsm] Replayed 0 batches from WAL #0
+[INFO  lyxalkv::lsm] Manifest state: log_number=0, last_sequence=0
+[INFO  lyxalkv::wal::recovery] Starting WAL recovery from directory: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.AcYhECIpaTsK\\wal"
+[DEBUG lyxalkv::wal::recovery] WAL recovery parameters: min_wal_number=0
+[INFO  lyxalkv::wal::recovery] Replaying WAL segments #00000000000000000000 to #00000000000000000000
+[DEBUG lyxalkv::wal::recovery] Processing WAL segment #00000000000000000000
+[INFO  lyxalkv::wal::recovery] No data recovered from WAL segments
+[DEBUG lyxalkv::lsm] WAL skipped or empty, using manifest_last_seq=0
+[DEBUG lyxalkv::lsm] No orphaned SST files found
+[INFO  lyxalkv::lsm] === LSM tree initialization complete ===
+[DEBUG lyxalkv::lsm] make_room_for_write: flushing memtable size=188
+[DEBUG lyxalkv::wal::manager] WAL rotating: 00000000000000000000 -> 00000000000000000001
+[INFO  lyxalkv::wal::manager] WAL rotated and fsynced: 00000000000000000000 -> 00000000000000000001
+[DEBUG lyxalkv::lsm] WAL rotated before memtable flush: 0 -> 1
+[DEBUG lyxalkv::lsm] Created SST table_id=1, file_size=720
+[DEBUG lyxalkv::lsm] Changeset prepared: table_id=1, log_number=1 (WAL #00000000000000000000 flushed)
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=1, last_sequence=1, next_table_id=2, total_tables=1
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.AcYhECIpaTsK\\manifest\\00000000000000000000.manifest"
+[INFO  lyxalkv::lsm] Manifest updated atomically: table_id=1, log_number=1, last_sequence=1
+[DEBUG lyxalkv::lsm] Scheduling async WAL cleanup (min_wal_to_keep=1)
+[DEBUG lyxalkv::lsm] make_room_for_write: flushing memtable size=188
+[DEBUG lyxalkv::wal::manager] WAL rotating: 00000000000000000001 -> 00000000000000000002
+[INFO  lyxalkv::wal::manager] WAL rotated and fsynced: 00000000000000000001 -> 00000000000000000002
+[DEBUG lyxalkv::lsm] WAL rotated before memtable flush: 1 -> 2
+[DEBUG lyxalkv::lsm] Created SST table_id=2, file_size=720
+[DEBUG lyxalkv::lsm] Changeset prepared: table_id=2, log_number=2 (WAL #00000000000000000001 flushed)
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=2, last_sequence=2, next_table_id=3, total_tables=2
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.AcYhECIpaTsK\\manifest\\00000000000000000000.manifest"
+[INFO  lyxalkv::lsm] Manifest updated atomically: table_id=2, log_number=2, last_sequence=2
+[DEBUG lyxalkv::lsm] Scheduling async WAL cleanup (min_wal_to_keep=2)
+[DEBUG lyxalkv::lsm] make_room_for_write: flushing memtable size=188
+[DEBUG lyxalkv::wal::manager] WAL rotating: 00000000000000000002 -> 00000000000000000003
+[INFO  lyxalkv::wal::manager] WAL rotated and fsynced: 00000000000000000002 -> 00000000000000000003
+[DEBUG lyxalkv::lsm] WAL rotated before memtable flush: 2 -> 3
+[DEBUG lyxalkv::lsm] Created SST table_id=3, file_size=720
+[DEBUG lyxalkv::lsm] Changeset prepared: table_id=3, log_number=3 (WAL #00000000000000000002 flushed)
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=3, last_sequence=3, next_table_id=4, total_tables=3
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.AcYhECIpaTsK\\manifest\\00000000000000000000.manifest"
+[INFO  lyxalkv::lsm] Manifest updated atomically: table_id=3, log_number=3, last_sequence=3
+[DEBUG lyxalkv::lsm] Scheduling async WAL cleanup (min_wal_to_keep=3)
+[DEBUG lyxalkv::lsm] make_room_for_write: flushing memtable size=34
+[DEBUG lyxalkv::wal::manager] WAL rotating: 00000000000000000003 -> 00000000000000000004
+[INFO  lyxalkv::wal::manager] WAL rotated and fsynced: 00000000000000000003 -> 00000000000000000004
+[DEBUG lyxalkv::lsm] WAL rotated before memtable flush: 3 -> 4
+[DEBUG lyxalkv::lsm] Created SST table_id=4, file_size=562
+[DEBUG lyxalkv::lsm] Changeset prepared: table_id=4, log_number=4 (WAL #00000000000000000003 flushed)
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=4, last_sequence=4, next_table_id=5, total_tables=4
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.AcYhECIpaTsK\\manifest\\00000000000000000000.manifest"
+[INFO  lyxalkv::lsm] Manifest updated atomically: table_id=4, log_number=4, last_sequence=4
+[DEBUG lyxalkv::lsm] Scheduling async WAL cleanup (min_wal_to_keep=4)
+[DEBUG lyxalkv::lsm] make_room_for_write: flushing memtable size=26
+[DEBUG lyxalkv::wal::manager] WAL rotating: 00000000000000000004 -> 00000000000000000005
+[INFO  lyxalkv::wal::manager] WAL rotated and fsynced: 00000000000000000004 -> 00000000000000000005
+[DEBUG lyxalkv::lsm] WAL rotated before memtable flush: 4 -> 5
+[DEBUG lyxalkv::lsm] Created SST table_id=5, file_size=554
+[DEBUG lyxalkv::lsm] Changeset prepared: table_id=5, log_number=5 (WAL #00000000000000000004 flushed)
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=5, last_sequence=5, next_table_id=6, total_tables=5
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.AcYhECIpaTsK\\manifest\\00000000000000000000.manifest"
+[INFO  lyxalkv::lsm] Manifest updated atomically: table_id=5, log_number=5, last_sequence=5
+[DEBUG lyxalkv::lsm] Scheduling async WAL cleanup (min_wal_to_keep=5)
+[DEBUG lyxalkv::lsm] make_room_for_write: flushing memtable size=188
+[DEBUG lyxalkv::wal::manager] WAL rotating: 00000000000000000005 -> 00000000000000000006
+[INFO  lyxalkv::wal::manager] WAL rotated and fsynced: 00000000000000000005 -> 00000000000000000006
+[DEBUG lyxalkv::lsm] WAL rotated before memtable flush: 5 -> 6
+[DEBUG lyxalkv::lsm] Created SST table_id=6, file_size=720
+[DEBUG lyxalkv::lsm] Changeset prepared: table_id=6, log_number=6 (WAL #00000000000000000005 flushed)
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=6, last_sequence=6, next_table_id=7, total_tables=6
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.AcYhECIpaTsK\\manifest\\00000000000000000000.manifest"
+[INFO  lyxalkv::lsm] Manifest updated atomically: table_id=6, log_number=6, last_sequence=6
+[DEBUG lyxalkv::lsm] Scheduling async WAL cleanup (min_wal_to_keep=6)
+[DEBUG lyxalkv::lsm] make_room_for_write: flushing memtable size=188
+[DEBUG lyxalkv::wal::manager] WAL rotating: 00000000000000000006 -> 00000000000000000007
+[INFO  lyxalkv::wal::manager] WAL rotated and fsynced: 00000000000000000006 -> 00000000000000000007
+[DEBUG lyxalkv::lsm] WAL rotated before memtable flush: 6 -> 7
+[DEBUG lyxalkv::lsm] Created SST table_id=7, file_size=720
+[DEBUG lyxalkv::lsm] Changeset prepared: table_id=7, log_number=7 (WAL #00000000000000000006 flushed)
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=7, last_sequence=7, next_table_id=8, total_tables=7
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.AcYhECIpaTsK\\manifest\\00000000000000000000.manifest"
+[INFO  lyxalkv::lsm] Manifest updated atomically: table_id=7, log_number=7, last_sequence=7
+[DEBUG lyxalkv::lsm] Scheduling async WAL cleanup (min_wal_to_keep=7)
+[DEBUG lyxalkv::lsm] make_room_for_write: flushing memtable size=188
+[DEBUG lyxalkv::wal::manager] WAL rotating: 00000000000000000007 -> 00000000000000000008
+[INFO  lyxalkv::wal::manager] WAL rotated and fsynced: 00000000000000000007 -> 00000000000000000008
+[DEBUG lyxalkv::lsm] WAL rotated before memtable flush: 7 -> 8
+[DEBUG lyxalkv::lsm] Created SST table_id=8, file_size=720
+[DEBUG lyxalkv::lsm] Changeset prepared: table_id=8, log_number=8 (WAL #00000000000000000007 flushed)
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=8, last_sequence=8, next_table_id=9, total_tables=8
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.AcYhECIpaTsK\\manifest\\00000000000000000000.manifest"
+[INFO  lyxalkv::lsm] Manifest updated atomically: table_id=8, log_number=8, last_sequence=8
+[DEBUG lyxalkv::lsm] Scheduling async WAL cleanup (min_wal_to_keep=8)
+[DEBUG lyxalkv::vfs] COMPACT: Entered compact()
+[DEBUG lyxalkv::vfs] COMPACT: Creating table file "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.AcYhECIpaTsK\\sstables\\00000000000000000009.sst"
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=8, last_sequence=8, next_table_id=10, total_tables=1
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.AcYhECIpaTsK\\manifest\\00000000000000000000.manifest"
+
+thread 'lsm::tests::test_vlog_compaction_preserves_sequence_numbers' (22516) panicked at lyxalkv\src\lsm.rs:3738:43:
+called `Result::unwrap()` on an `Err` value: VLogDisabled
+[DEBUG lyxalkv::wal::manager] Closing WAL #00000000000000000008
+[DEBUG lyxalkv::wal::manager] WAL #00000000000000000008 closed and synced successfully
+DEBUG: LockFile::release() actually taking file
+
+---- snapshot::tests::test_bound_excluded_start_and_end stdout ----
+
+thread 'snapshot::tests::test_bound_excluded_start_and_end' (3632) panicked at lyxalkv\src\snapshot.rs:2227:81:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- snapshot::tests::test_bound_included_start_and_end stdout ----
+
+thread 'snapshot::tests::test_bound_included_start_and_end' (18428) panicked at lyxalkv\src\snapshot.rs:2202:81:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- snapshot::tests::test_bound_unbounded_end stdout ----
+
+thread 'snapshot::tests::test_bound_unbounded_end' (22360) panicked at lyxalkv\src\snapshot.rs:2276:81:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- snapshot::tests::test_bound_unbounded_start stdout ----
+
+thread 'snapshot::tests::test_bound_unbounded_start' (18704) panicked at lyxalkv\src\snapshot.rs:2254:81:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- snapshot::tests::test_fully_unbounded_range stdout ----
+
+thread 'snapshot::tests::test_fully_unbounded_range' (8364) panicked at lyxalkv\src\snapshot.rs:2298:81:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- snapshot::tests::test_inverted_range stdout ----
+
+thread 'snapshot::tests::test_inverted_range' (17940) panicked at lyxalkv\src\snapshot.rs:2369:81:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- snapshot::tests::test_level0_mixed_overlap_scenarios stdout ----
+
+thread 'snapshot::tests::test_level0_mixed_overlap_scenarios' (16796) panicked at lyxalkv\src\snapshot.rs:2049:81:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- snapshot::tests::test_level0_overlapping_tables_included stdout ----
+
+thread 'snapshot::tests::test_level0_overlapping_tables_included' (8076) panicked at lyxalkv\src\snapshot.rs:2020:81:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- snapshot::tests::test_level0_tables_after_range_skipped stdout ----
+
+thread 'snapshot::tests::test_level0_tables_after_range_skipped' (3044) panicked at lyxalkv\src\snapshot.rs:1992:81:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- snapshot::tests::test_level0_tables_before_range_skipped stdout ----
+
+thread 'snapshot::tests::test_level0_tables_before_range_skipped' (11900) panicked at lyxalkv\src\snapshot.rs:1964:81:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- snapshot::tests::test_level1_binary_search_correct_range stdout ----
+
+thread 'snapshot::tests::test_level1_binary_search_correct_range' (20148) panicked at lyxalkv\src\snapshot.rs:2084:82:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- snapshot::tests::test_level1_query_after_all_tables stdout ----
+
+thread 'snapshot::tests::test_level1_query_after_all_tables' (14824) panicked at lyxalkv\src\snapshot.rs:2146:82:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- snapshot::tests::test_level1_query_before_all_tables stdout ----
+
+thread 'snapshot::tests::test_level1_query_before_all_tables' (22768) panicked at lyxalkv\src\snapshot.rs:2118:82:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- snapshot::tests::test_level1_query_spans_all_tables stdout ----
+
+thread 'snapshot::tests::test_level1_query_spans_all_tables' (7960) panicked at lyxalkv\src\snapshot.rs:2174:82:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- snapshot::tests::test_mixed_level0_and_level1_tables stdout ----
+
+thread 'snapshot::tests::test_mixed_level0_and_level1_tables' (14432) panicked at lyxalkv\src\snapshot.rs:2394:83:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- snapshot::tests::test_single_key_range stdout ----
+
+thread 'snapshot::tests::test_single_key_range' (19580) panicked at lyxalkv\src\snapshot.rs:2342:81:
+called `Result::unwrap()` on an `Err` value: Io(Os { code: 5, kind: PermissionDenied, message: "Access is denied." })
+
+---- sstable::zero_copy_tests::tests::test_zero_copy_concurrency_compaction_scan stdout ----
+
+thread 'sstable::zero_copy_tests::tests::test_zero_copy_concurrency_compaction_scan' (12696) panicked at lyxalkv\src\sstable\zero_copy_tests.rs:159:9:
+File should be deleted after all references are dropped
+
+---- sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete stdout ----
+
+thread 'sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete' (2948) panicked at lyxalkv\src\sstable\zero_copy_tests.rs:107:9:
+File should be deleted after last DataRef is dropped
+
+
+failures:
+    clock::tests::test_default_clock_immediate_shutdown
+    compaction::leveled::tests::test_select_tables_for_compaction_bug
+    levels::tests::test_last_sequence_persistence_across_manifest_reload
+    levels::tests::test_level_manifest_persistence
+    levels::tests::test_lsn_with_multiple_l0_tables
+    levels::tests::test_manifest_v1_with_log_number_and_last_sequence
+    lockfile::tests::test_lock_file_prevents_concurrent_access
+    lockfile::tests::test_lock_with_process_id
+    lockfile::tests::test_stale_lockfile_doesnt_block
+    lsm::tests::test_vlog_compaction_preserves_sequence_numbers
+    snapshot::tests::test_bound_excluded_start_and_end
+    snapshot::tests::test_bound_included_start_and_end
+    snapshot::tests::test_bound_unbounded_end
+    snapshot::tests::test_bound_unbounded_start
+    snapshot::tests::test_fully_unbounded_range
+    snapshot::tests::test_inverted_range
+    snapshot::tests::test_level0_mixed_overlap_scenarios
+    snapshot::tests::test_level0_overlapping_tables_included
+    snapshot::tests::test_level0_tables_after_range_skipped
+    snapshot::tests::test_level0_tables_before_range_skipped
+    snapshot::tests::test_level1_binary_search_correct_range
+    snapshot::tests::test_level1_query_after_all_tables
+    snapshot::tests::test_level1_query_before_all_tables
+    snapshot::tests::test_level1_query_spans_all_tables
+    snapshot::tests::test_mixed_level0_and_level1_tables
+    snapshot::tests::test_single_key_range
+    sstable::zero_copy_tests::tests::test_zero_copy_concurrency_compaction_scan
+    sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete
+
+test result: FAILED. 703 passed; 28 failed; 2 ignored; 0 measured; 0 filtered out; finished in 889.21s
+
+error: test failed, to rerun pass `-p 
+lyxalkv --lib`

@@ -1,0 +1,42 @@
+﻿cargo :     Updating crates.io index
+At line:1 char:1
++ cargo test --package lyxalkv --lib 
+--features mmap_read -- sstable::z ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifie 
+   d: (    Updating crates.io index:Stri  
+  ng) [], RemoteException
+    + FullyQualifiedErrorId : NativeComma 
+   ndError
+ 
+     Locking 1 package to latest 
+compatible version
+      Adding bincode v1.3.3 (available: 
+v3.0.0)
+    Finished `test` profile [unoptimized 
++ debuginfo] target(s) in 6.21s
+     Running unittests src\lib.rs (C:\User
+s\Administrator\Downloads\Lyxal_Solution-m
+ain\lyxal_solution_backend\target\debug\de
+ps\lyxalkv-fd3a18bd275fec76.exe)
+
+running 1 test
+test sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete ... FAILED
+
+failures:
+
+---- sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete stdout ----
+
+thread 'sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete' (22768) panicked at lyxalkv\src\sstable\zero_copy_tests.rs:107:9:
+File should be deleted after last DataRef is dropped
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    sstable::zero_copy_tests::tests::test_zero_copy_deferred_delete
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 732 filtered out; finished in 3.74s
+
+error: test failed, to rerun pass `-p 
+lyxalkv --lib`

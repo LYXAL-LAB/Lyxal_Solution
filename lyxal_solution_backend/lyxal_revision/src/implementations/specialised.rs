@@ -23,9 +23,6 @@ pub trait DeserializeLyxalRevisionedSpecialised: LyxalRevisioned + DeserializeLy
 // Macro for generating optimized Vec<T> implementations for numeric types
 // --------------------------------------------------
 
-/// Macro to generate optimized `SerializeLyxalRevisioned`, `DeserializeLyxalRevisioned`, and `LyxalRevisioned`
-/// implementations for `Vec<T>` where `T` is a primitive numeric type with a well-defined
-/// little-endian byte representation.
 macro_rules! impl_LyxalRevisioned_specialised_vec {
 	($ty:ty) => {
 		impl SerializeLyxalRevisionedSpecialised for Vec<$ty> {
@@ -60,18 +57,20 @@ macro_rules! impl_LyxalRevisioned_specialised_vec {
 			#[inline]
 			fn deserialize_lyxal_revisioned_specialised<R: Read>(reader: &mut R) -> Result<Self, Error> {
 				let len = usize::deserialize_lyxal_revisioned(reader)?;
-				
-				// --- PROTECTION ANTI-DoS GRADE A+ ---
-				crate::check_allocation(len)?;
-				// ------------------------------------
-
 				if len == 0 {
 					return Ok(Self::new());
 				}
+
+				// --- PROTECTION ANTI-DoS GRADE A+ (FIX OOM) ---
+				// On vérifie la taille réelle en OCTETS (len * size_of)
+				let byte_len = len
+					.checked_mul(std::mem::size_of::<$ty>())
+					.ok_or(Error::IntegerOverflow)?;
+				crate::check_allocation(byte_len)?;
+				// ----------------------------------------------
+
 				if cfg!(target_endian = "little") {
-					let byte_len = len
-						.checked_mul(std::mem::size_of::<$ty>())
-						.ok_or(Error::IntegerOverflow)?;
+					// Fast path: bulk read directly into Vec
 					let mut vec = vec![<$ty>::default(); len];
 					unsafe {
 						let byte_slice =
@@ -110,10 +109,9 @@ impl DeserializeLyxalRevisionedSpecialised for Vec<u8> {
 	#[inline]
 	fn deserialize_lyxal_revisioned_specialised<R: Read>(reader: &mut R) -> Result<Self, Error> {
 		let len = usize::deserialize_lyxal_revisioned(reader)?;
-
-		// --- PROTECTION ANTI-DoS GRADE A+ ---
+		
+		// Protection Anti-DoS (1 octet par élément)
 		crate::check_allocation(len)?;
-		// ------------------------------------
 
 		if len == 0 {
 			return Ok(Self::new());
@@ -151,9 +149,8 @@ impl DeserializeLyxalRevisionedSpecialised for Vec<i8> {
 	fn deserialize_lyxal_revisioned_specialised<R: Read>(reader: &mut R) -> Result<Self, Error> {
 		let len = usize::deserialize_lyxal_revisioned(reader)?;
 
-		// --- PROTECTION ANTI-DoS GRADE A+ ---
+		// Protection Anti-DoS (1 octet par élément)
 		crate::check_allocation(len)?;
-		// ------------------------------------
 
 		if len == 0 {
 			return Ok(Self::new());
@@ -171,27 +168,17 @@ impl DeserializeLyxalRevisionedSpecialised for Vec<i8> {
 }
 
 // --------------------------------------------------
-// Optimized implementations for Vec<u16>, Vec<u32>, Vec<u64>, Vec<u128>
+// Instantiations des types numériques
 // --------------------------------------------------
 
 impl_LyxalRevisioned_specialised_vec!(u16);
 impl_LyxalRevisioned_specialised_vec!(u32);
 impl_LyxalRevisioned_specialised_vec!(u64);
 impl_LyxalRevisioned_specialised_vec!(u128);
-
-// --------------------------------------------------
-// Optimized implementations for Vec<i16>, Vec<i32>, Vec<i64>, Vec<i128>
-// --------------------------------------------------
-
 impl_LyxalRevisioned_specialised_vec!(i16);
 impl_LyxalRevisioned_specialised_vec!(i32);
 impl_LyxalRevisioned_specialised_vec!(i64);
 impl_LyxalRevisioned_specialised_vec!(i128);
-
-// --------------------------------------------------
-// Optimized implementations for Vec<f32>, Vec<f64>
-// --------------------------------------------------
-
 impl_LyxalRevisioned_specialised_vec!(f32);
 impl_LyxalRevisioned_specialised_vec!(f64);
 
