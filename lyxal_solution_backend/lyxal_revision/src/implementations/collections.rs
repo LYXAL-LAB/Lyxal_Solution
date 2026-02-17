@@ -40,6 +40,11 @@ impl<K: DeserializeLyxalRevisioned + Eq + Hash, V: DeserializeLyxalRevisioned, S
 	fn deserialize_lyxal_revisioned<R: std::io::Read>(reader: &mut R) -> Result<Self, Error> {
 		// Read the length first
 		let len = usize::deserialize_lyxal_revisioned(reader)?;
+
+		// --- MODIFICATION GRADE A+ ---
+		crate::check_allocation(len)?;
+		// -----------------------------
+
 		// Create a hash map with the necessary capacity
 		let mut map = Self::with_capacity_and_hasher(len, S::default());
 		// Iterate and deserialize each item
@@ -88,6 +93,11 @@ impl<K: DeserializeLyxalRevisioned + Ord, V: DeserializeLyxalRevisioned> Deseria
 	fn deserialize_lyxal_revisioned<R: std::io::Read>(reader: &mut R) -> Result<Self, Error> {
 		// Read the length first
 		let len = usize::deserialize_lyxal_revisioned(reader)?;
+
+		// --- MODIFICATION GRADE A+ ---
+		crate::check_allocation(len)?;
+		// -----------------------------
+
 		// Pre-allocate a Vec to collect all items with better cache locality
 		let mut items = Vec::with_capacity(len);
 		// Iterate and deserialize each item
@@ -140,6 +150,11 @@ impl<T: DeserializeLyxalRevisioned + Eq + Hash, S: BuildHasher + Default> Deseri
 	fn deserialize_lyxal_revisioned<R: std::io::Read>(reader: &mut R) -> Result<Self, Error> {
 		// Read the length first
 		let len = usize::deserialize_lyxal_revisioned(reader)?;
+
+		// --- MODIFICATION GRADE A+ ---
+		crate::check_allocation(len)?;
+		// -----------------------------
+
 		// Create a hash set with the necessary capacity
 		let mut set = Self::with_capacity_and_hasher(len, S::default());
 		// Iterate and deserialize each item
@@ -182,6 +197,11 @@ impl<T: DeserializeLyxalRevisioned + Ord> DeserializeLyxalRevisioned for BTreeSe
 	fn deserialize_lyxal_revisioned<R: std::io::Read>(reader: &mut R) -> Result<Self, Error> {
 		// Read the length first
 		let len = usize::deserialize_lyxal_revisioned(reader)?;
+
+		// --- MODIFICATION GRADE A+ ---
+		crate::check_allocation(len)?;
+		// -----------------------------
+
 		// Pre-allocate a Vec to collect all items with better cache locality
 		let mut items = Vec::with_capacity(len);
 		// Iterate and deserialize each item
@@ -229,6 +249,11 @@ impl<T: DeserializeLyxalRevisioned + Ord> DeserializeLyxalRevisioned for BinaryH
 	fn deserialize_lyxal_revisioned<R: std::io::Read>(reader: &mut R) -> Result<Self, Error> {
 		// Read the length first
 		let len = usize::deserialize_lyxal_revisioned(reader)?;
+
+		// --- MODIFICATION GRADE A+ ---
+		crate::check_allocation(len)?;
+		// -----------------------------
+
 		// Create a binary heap with the necessary capacity
 		let mut heap = Self::with_capacity(len);
 		// Iterate and deserialize each item
@@ -490,4 +515,3 @@ mod tests {
 		assert_eq!(map, out);
 	}
 }
-

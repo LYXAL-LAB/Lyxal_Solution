@@ -9,7 +9,7 @@ mod tests {
     #[cfg(feature = "mmap_read")]
     use crate::VLogMmapMode;
     #[cfg(feature = "mmap_read")]
-    use crate::data::DataRef;
+    // use crate::data::DataRef;
     #[cfg(feature = "mmap_read")]
     use std::sync::Arc;
     #[cfg(feature = "mmap_read")]

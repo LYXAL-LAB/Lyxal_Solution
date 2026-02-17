@@ -210,8 +210,8 @@ impl MemTable {
 		let table_file_path = lsm_opts.sstable_file_path(table_id);
 
 		{
-			let file = SysFile::create(&table_file_path)?;
-			let mut table_writer = TableWriter::new(file, table_id, Arc::clone(&lsm_opts), 0); // Memtables always flush to L0
+			let mut file = SysFile::create(&table_file_path)?;
+			let mut table_writer = TableWriter::new(&mut file, table_id, Arc::clone(&lsm_opts), 0); // Memtables always flush to L0
 
 			let iter = self.iter(false);
 			let iter = Box::new(iter);
@@ -230,10 +230,10 @@ impl MemTable {
 				table_writer.add(key, &encoded_val)?;
 			}
 			table_writer.finish()?;
+			file.sync_all()?;
 		}
 
 		let file = SysFile::open(&table_file_path)?;
-		file.sync_all()?;
 		let file: Arc<dyn File> = Arc::new(file);
 		let file_size = file.size()?;
 

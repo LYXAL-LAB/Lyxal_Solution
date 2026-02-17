@@ -1443,8 +1443,10 @@ impl Core {
 		log::debug!("Directory sync complete");
 
 		// Step 7: Release the database lock
+		log::debug!("Releasing lockfile...");
 		let mut lockfile = self.inner.lockfile.lock()?;
 		lockfile.release()?;
+		log::debug!("Lockfile released");
 
 		// Log final state
 		let final_manifest = self.inner.level_manifest.read()?;
@@ -2680,6 +2682,7 @@ mod tests {
 				"Value mismatch at index {idx}: expected '{expected_value}', found '{value_str}'"
 			);
 		}
+		drop(txn);
 
 		// Test 2: Partial range scan - first 100 items ([key_000000, key_000100) range)
 		let partial_start = "key_000000".as_bytes();
@@ -2708,6 +2711,7 @@ mod tests {
                 "Partial range value mismatch at index {idx}: expected '{expected_value}', found '{value_str}'"
             );
 		}
+		drop(txn);
 
 		// Test 3: Middle range scan - items 5000-5099
 		let middle_start = "key_005000".as_bytes();
@@ -2737,6 +2741,7 @@ mod tests {
                 "Middle range value mismatch at index {idx}: expected '{expected_value}', found '{value_str}'"
             );
 		}
+		drop(txn);
 
 		// Test 4: End range scan - last 100 items
 		let end_start = "key_009900".as_bytes();
@@ -2792,6 +2797,9 @@ mod tests {
 		let empty_result: Vec<_> = txn.range(empty_start, empty_end).unwrap().collect();
 
 		assert_eq!(empty_result.len(), 0, "Empty range scan should return 0 items");
+		drop(txn);
+
+		tree.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -3060,6 +3068,9 @@ mod tests {
 		let zero_result: Vec<_> = txn.range(&beg, &end).unwrap().take(0).collect();
 
 		assert_eq!(zero_result.len(), 0, "Range scan with .take(0) should return no items");
+		drop(txn);
+
+		tree.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -3122,6 +3133,7 @@ mod tests {
                 "Value mismatch at index {idx} with unlimited range: expected '{expected_value}', found '{value_str}'"
             );
 		}
+		drop(txn);
 
 		// Case: Test another skip position with take
 		let txn = tree.begin().unwrap();
@@ -3156,6 +3168,9 @@ mod tests {
                 "Value mismatch at index {idx} with limit 5050: expected '{expected_value}', found '{value_str}'"
             );
 		}
+		drop(txn);
+
+		tree.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]

@@ -1,0 +1,97 @@
+   Compiling lyxal_revision v0.16.0 (C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_solution_backend\lyxal_revision)
+   Compiling lyxalkv v0.16.0 (C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_solution_backend\lyxalkv)
+warning: unused import: `std::sync::Arc`
+ --> lyxalkv\src\sstable\zero_copy_tests.rs:3:9
+  |
+3 |     use std::sync::Arc;
+  |         ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `std::path::PathBuf`
+ --> lyxalkv\src\sstable\zero_copy_tests.rs:4:9
+  |
+4 |     use std::path::PathBuf;
+  |         ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::Options`
+ --> lyxalkv\src\sstable\zero_copy_tests.rs:9:9
+  |
+9 |     use crate::Options;
+  |         ^^^^^^^^^^^^^^
+
+warning: unused import: `crate::sstable::table::TableWriter`
+  --> lyxalkv\src\sstable\zero_copy_tests.rs:12:9
+   |
+12 |     use crate::sstable::table::TableWriter;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `value_dataref` is never used
+   --> lyxalkv\src\sstable\block.rs:759:16
+    |
+560 | impl BlockIterator {
+    | ------------------ method in this implementation
+...
+759 |     pub(crate) fn value_dataref(&self) -> DataRef {
+    |                   ^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `value_bytes_dataref` is never used
+    --> lyxalkv\src\sstable\table.rs:1090:16
+     |
+1003 | impl TableIterator {
+     | ------------------ method in this implementation
+...
+1090 |     pub(crate) fn value_bytes_dataref(&self) -> crate::data::DataRef {
+     |                   ^^^^^^^^^^^^^^^^^^^
+
+warning: `lyxalkv` (lib test) generated 6 warnings (run `cargo fix --lib -p lyxalkv --tests` to apply 4 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 15.36s
+     Running unittests src\lib.rs (C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_solution_backend\target\debug\deps\lyxalkv-53873c8dd37d608f.exe)
+
+running 1 test
+[INFO  lyxalkv::lsm] === Starting LSM tree initialization ===
+[INFO  lyxalkv::lsm] Database path: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.cimwizNZAyXI"
+[DEBUG lyxalkv::levels] Writing manifest: version=1, log_number=0, last_sequence=0, next_table_id=1, total_tables=0
+[DEBUG lyxalkv::levels] Manifest written successfully to "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.cimwizNZAyXI\\manifest\\00000000000000000000.manifest"
+[INFO  lyxalkv::lsm] Found 1 WAL files for recovery (starting from log 0)
+[INFO  lyxalkv::lsm] Recovering from WAL file #0: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.cimwizNZAyXI\\wal\\00000000000000000000.wal"
+[INFO  lyxalkv::lsm] Replayed 0 batches from WAL #0
+[INFO  lyxalkv::lsm] Manifest state: log_number=0, last_sequence=0
+[INFO  lyxalkv::wal::recovery] Starting WAL recovery from directory: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.cimwizNZAyXI\\wal"
+[DEBUG lyxalkv::wal::recovery] WAL recovery parameters: min_wal_number=0
+[INFO  lyxalkv::wal::recovery] Replaying WAL segments #00000000000000000000 to #00000000000000000000
+[DEBUG lyxalkv::wal::recovery] Processing WAL segment #00000000000000000000
+[INFO  lyxalkv::wal::recovery] No data recovered from WAL segments
+[DEBUG lyxalkv::lsm] WAL skipped or empty, using manifest_last_seq=0
+[DEBUG lyxalkv::lsm] No orphaned SST files found
+[INFO  lyxalkv::lsm] === LSM tree initialization complete ===
+[INFO  lyxalkv::lsm] Shutting down LSM tree...
+[DEBUG lyxalkv::lsm] Commit pipeline shutdown complete
+[DEBUG lyxalkv::lsm] Stopping background task manager...
+[DEBUG lyxalkv::lsm] Background task manager stopped
+[INFO  lyxalkv::lsm] Flushing all memtables on shutdown (flush_on_close=true)
+[INFO  lyxalkv::lsm] Flushing all memtables for shutdown...
+[INFO  lyxalkv::lsm] Flushing active memtable last (newest data): size=140
+[INFO  lyxalkv::memtable] Flushing memtable: creating file "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.cimwizNZAyXI\\sstables\\00000000000000000001.sst"
+[INFO  lyxalkv::memtable] Flushing memtable: file created and written. Opening for read.
+[INFO  lyxalkv::memtable] Flushing memtable: file opened successfully.
+[ERROR lyxalkv::memtable] Failed to sync flushed SST "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\test.cimwizNZAyXI\\sstables\\00000000000000000001.sst": Access is denied. (os error 5)
+
+thread 'transaction::tests::test_range_basic_functionality' (22476) panicked at lyxalkv\src\transaction.rs:1968:29:
+called `Result::unwrap()` on an `Err` value: Other("Failed to flush memtables during shutdown: Other error: Failed to flush memtable to SST table_id=1: IO error: Access is denied. (os error 5)")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+[DEBUG lyxalkv::wal::manager] Closing WAL #00000000000000000000
+[DEBUG lyxalkv::wal::manager] WAL #00000000000000000000 closed and synced successfully
+DEBUG: LockFile::release() actually taking file
+test transaction::tests::test_range_basic_functionality ... FAILED
+
+failures:
+
+failures:
+    transaction::tests::test_range_basic_functionality
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 723 filtered out; finished in 0.06s
+
+error: test failed, to rerun pass `-p lyxalkv --lib`

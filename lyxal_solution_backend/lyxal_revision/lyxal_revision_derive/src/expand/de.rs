@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-
+use syn::spanned::Spanned;
 use proc_macro2::{Span, TokenStream};
 use quote::{TokenStreamExt, quote};
 use syn::{Ident, Index};
@@ -91,11 +91,10 @@ impl<'ast> Visit<'ast> for DeserializeVisitor<'_> {
 			stream: &mut variants,
 			discriminants,
 		}
-		.visit_enum(i)
-		.unwrap();
+		.visit_enum(i)?;
 
 		let error_string =
-			format!("Invalid discriminant `{{x}}` for enum `{}` lyxal_revision `{{__lyxal_revision}}`", i.name);
+			format!("Invalid discriminant `{{x}}` for enum `{}` lyxal_revision `{}`", i.name, self.current);
 
 		self.stream.append_all(quote! {
 			let __discriminant = <u32 as ::lyxal_revision::DeserializeLyxalRevisioned>::deserialize_lyxal_revisioned(reader)?;
@@ -118,8 +117,7 @@ impl<'ast> Visit<'ast> for DeserializeVisitor<'_> {
 			current: self.current,
 			stream: &mut fields_binding,
 		}
-		.visit_struct(i)
-		.unwrap();
+		.visit_struct(i)?;
 
 		match i.fields {
 			Fields::Named {
@@ -174,11 +172,13 @@ impl<'ast> Visit<'ast> for DeserializeVisitor<'_> {
 			f.attrs.options.exists_at(self.current) && !f.attrs.options.exists_at(self.target)
 		}) {
 			let binding = f.name.to_binding();
-			let convert = f.attrs.options.convert.as_ref().unwrap();
-			let convert = Ident::new(&convert.value(), convert.span());
+			let convert = f.attrs.options.convert.as_ref().ok_or_else(|| {
+				syn::Error::new(f.name.span(), "Grade A+ Audit Error: Field removed but no #[convert] method provided.")
+			})?;
+			let convert_ident = Ident::new(&convert.value(), convert.span());
 			let lyxal_revision = self.current as u16;
 			self.stream.append_all(quote! {
-				Self::#convert(&mut __this,#lyxal_revision,#binding)?;
+				Self::#convert_ident(&mut __this, #lyxal_revision, #binding)?;
 			})
 		}
 
@@ -204,14 +204,13 @@ impl<'ast> Visit<'ast> for DeserializeVariant<'_> {
 			return Ok(());
 		}
 
-		let mut fields = TokenStream::new();
+		let mut fields_stream = TokenStream::new();
 		DeserializeFields {
 			target: self.target,
 			current: self.current,
-			stream: &mut fields,
+			stream: &mut fields_stream,
 		}
-		.visit_variant(i)
-		.unwrap();
+		.visit_variant(i)?;
 
 		let fields_struct_name = i.fields_name(&self.name.to_string());
 
@@ -222,14 +221,14 @@ impl<'ast> Visit<'ast> for DeserializeVariant<'_> {
 			} => {
 				let mut bindings = TokenStream::new();
 				let mut create = TokenStream::new();
-				let field_names = fields
+				let field_names: Vec<_> = fields
 					.iter()
 					.filter(|x| x.attrs.options.exists_at(self.target))
-					.map(|x| x.name.to_binding());
+					.map(|x| x.name.to_binding())
+					.collect();
 
-				let field_names_c = field_names.clone();
 				bindings.append_all(quote! {
-					let mut __fields = #fields_struct_name{ #(#field_names_c),* };
+					let mut __fields = #fields_struct_name{ #(#field_names),* };
 				});
 
 				let variant_name = &i.ident;
@@ -244,11 +243,13 @@ impl<'ast> Visit<'ast> for DeserializeVariant<'_> {
 						&& !x.attrs.options.exists_at(self.target)
 				}) {
 					let binding = f.name.to_binding();
-					let convert = f.attrs.options.convert.as_ref().unwrap();
-					let convert = Ident::new(&convert.value(), convert.span());
+					let convert = f.attrs.options.convert.as_ref().ok_or_else(|| {
+						syn::Error::new(f.name.span(), "Missing #[convert] for enum variant field.")
+					})?;
+					let convert_ident = Ident::new(&convert.value(), convert.span());
 					let lyxal_revision = self.current as u16;
 					bindings.append_all(quote! {
-						Self::#convert(&mut __fields,#lyxal_revision,#binding)?;
+						Self::#convert_ident(&mut __fields, #lyxal_revision, #binding)?;
 					})
 				}
 				(bindings, create)
@@ -259,16 +260,17 @@ impl<'ast> Visit<'ast> for DeserializeVariant<'_> {
 			} => {
 				let mut bindings = TokenStream::new();
 				let mut create = TokenStream::new();
-				let field_names = fields
+				let field_names: Vec<_> = fields
 					.iter()
 					.filter(|x| x.attrs.options.exists_at(self.target))
-					.map(|x| x.name.to_binding());
+					.map(|x| x.name.to_binding())
+					.collect();
 
 				bindings.append_all(quote! {
 					let mut __fields = #fields_struct_name( #(#field_names),* );
 				});
 
-				let field_names = fields
+				let field_indices = fields
 					.iter()
 					.filter(|x| x.attrs.options.exists_at(self.target))
 					.enumerate()
@@ -278,7 +280,7 @@ impl<'ast> Visit<'ast> for DeserializeVariant<'_> {
 					});
 				let variant_name = &i.ident;
 				create.append_all(quote! {
-					Ok(Self::#variant_name( #(__fields.#field_names,)*))
+					Ok(Self::#variant_name( #(__fields.#field_indices,)*))
 				});
 
 				for f in fields.iter().filter(|x| {
@@ -286,11 +288,13 @@ impl<'ast> Visit<'ast> for DeserializeVariant<'_> {
 						&& !x.attrs.options.exists_at(self.target)
 				}) {
 					let binding = f.name.to_binding();
-					let convert = f.attrs.options.convert.as_ref().unwrap();
-					let convert = Ident::new(&convert.value(), convert.span());
+					let convert = f.attrs.options.convert.as_ref().ok_or_else(|| {
+						syn::Error::new(f.name.span(), "Missing #[convert] for unnamed variant field.")
+					})?;
+					let convert_ident = Ident::new(&convert.value(), convert.span());
 					let lyxal_revision = self.current as u16;
 					bindings.append_all(quote! {
-						Self::#convert(&mut __fields,#lyxal_revision,#binding)?;
+						Self::#convert_ident(&mut __fields, #lyxal_revision, #binding)?;
 					})
 				}
 				(bindings, create)
@@ -316,7 +320,7 @@ impl<'ast> Visit<'ast> for DeserializeVariant<'_> {
 
 			self.stream.append_all(quote! {
 				#discr => {
-					#fields
+					#fields_stream
 					#bindings
 					#create
 				}
@@ -326,17 +330,17 @@ impl<'ast> Visit<'ast> for DeserializeVariant<'_> {
 				.discriminants
 				.get(&i.ident)
 				.expect("missed variant during discriminant calculation");
-			let convert = i.attrs.options.convert.as_ref().unwrap();
-			let convert = Ident::new(&convert.value(), convert.span());
+			let convert = i.attrs.options.convert.as_ref().ok_or_else(|| {
+				syn::Error::new(i.ident.span(), "Variant exists in current version but not target, and #[convert] is missing.")
+			})?;
+			let convert_ident = Ident::new(&convert.value(), convert.span());
 			let lyxal_revision = self.current as u16;
 
 			self.stream.append_all(quote! {
 				#discr => {
-					#fields
+					#fields_stream
 					#bindings
-
-					let __conv_fn: fn(#fields_struct_name, u16) -> ::std::result::Result<Self,::lyxal_revision::Error> = Self::#convert;
-					Self::#convert(__fields,#lyxal_revision)
+					Self::#convert_ident(__fields, #lyxal_revision)
 				}
 			})
 		}
@@ -375,14 +379,14 @@ impl<'ast> Visit<'ast> for DeserializeFields<'_> {
 						})
 					} else if exists_target && !exists_current {
 						if let Some(default) = f.attrs.options.default.as_ref() {
-							let default = Ident::new(&default.value(), default.span());
+							let default_ident = Ident::new(&default.value(), default.span());
 							let lyxal_revision = self.current as u16;
 							self.stream.append_all(quote! {
-								let #binding = Self::#default(#lyxal_revision)?;
+								let #binding = Self::#default_ident(#lyxal_revision)?;
 							})
 						} else {
 							self.stream.append_all(quote! {
-								let #binding = Default::default();
+								let #binding = ::core::default::Default::default();
 							})
 						}
 					} else if !exists_target && exists_current {

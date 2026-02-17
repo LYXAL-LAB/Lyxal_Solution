@@ -88,8 +88,6 @@ impl fmt::Display for Error {
             Self::InvalidBatchRecord => write!(f, "Invalid batch record"),
             Self::TransactionWriteConflict => write!(f, "Transaction write conflict"),
             Self::TransactionReadConflict(err) => write!(f, "Transaction read conflict: {err}"),
-            Self::TransactionReadConflict(err) => write!(f, "Transaction read conflict: {err}"),
-            Self::TransactionReadConflict(err) => write!(f, "Transaction read conflict: {err}"),
             Self::TransactionClosed => write!(f, "Transaction closed"),
             Self::EmptyKey => write!(f, "Empty key"),
             Self::TransactionWriteOnly => write!(f, "Transaction is write-only"),

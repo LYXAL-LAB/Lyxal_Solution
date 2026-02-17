@@ -1,4 +1,4 @@
-//! Defines a generic trait for version tolerant serialization and deserialization
+﻿//! Defines a generic trait for version tolerant serialization and deserialization
 //! and implements it for primitive data types using the `bincode` format.
 
 pub mod error;
@@ -10,6 +10,19 @@ pub use lyxal_revision_derive::lyxal_revisioned as revisioned;
 
 use std::any::TypeId;
 use std::io::{Read, Write};
+
+/// Limite d'allocation maximale (par défaut 1 Go).
+/// Utilisé pour prévenir les attaques par déni de service (DoS) lors de la désérialisation.
+pub const MAX_ALLOCATION: usize = 1024 * 1024 * 1024;
+
+/// Vérifie si une taille d'allocation est autorisée.
+#[inline]
+pub fn check_allocation(size: usize) -> Result<(), Error> {
+	if size > MAX_ALLOCATION {
+		return Err(Error::ExceededMaxAllocation(MAX_ALLOCATION));
+	}
+	Ok(())
+}
 
 pub mod prelude {
 	pub use crate::{DeserializeLyxalRevisioned, SerializeLyxalRevisioned, lyxal_revisioned};

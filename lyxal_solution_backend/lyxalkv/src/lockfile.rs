@@ -99,7 +99,10 @@ impl LockFile {
 	#[cfg(not(target_arch = "wasm32"))]
 	pub fn release(&mut self) -> Result<()> {
 		if let Some(_file) = self.file.take() {
+			eprintln!("DEBUG: LockFile::release() actually taking file");
 			// File will be closed when dropped
+		} else {
+			eprintln!("DEBUG: LockFile::release() file already taken");
 		}
 		Ok(())
 	}

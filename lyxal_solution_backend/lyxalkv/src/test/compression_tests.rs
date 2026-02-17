@@ -570,6 +570,8 @@ async fn test_lsm_compression_10k_keys_with_range_scans() {
 	);
 	println!("Partial range scan returned {} keys", partial_count);
 
+	drop(iter);
+	drop(partial_iter);
 	tree.close().await.unwrap();
 }
 
@@ -700,6 +702,7 @@ async fn test_lsm_compression_persistence_after_reopen() {
 		assert_eq!(scanned_count, keys.len(), "Range scan should return all keys after reopen");
 		println!("✓ Range scan successfully iterated through all {} keys", scanned_count);
 
+		drop(iter);
 		tree.close().await.unwrap();
 	}
 }
@@ -814,6 +817,7 @@ async fn test_lsm_compression_disk_size_comparison() {
 		let txn = tree_compressed.begin().unwrap();
 		let result = txn.get(&key).unwrap();
 		assert!(result.is_some(), "Key {} should exist after reopening compressed tree", i);
+		drop(txn);
 	}
 	tree_compressed.close().await.unwrap();
 }

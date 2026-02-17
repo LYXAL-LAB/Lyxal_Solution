@@ -117,6 +117,12 @@ where
 		if len == 0 {
 			return Ok(Self::new());
 		}
+
+		// --- MODIFICATION GRADE A+ ---
+		// Vérification de la limite d'allocation avant l'appel à with_capacity
+		crate::check_allocation(len)?;
+		// -----------------------------
+
 		// Create a vector with the necessary capacity
 		let mut vec = Self::with_capacity(len);
 		// Slow path: per-element deserialization
@@ -239,4 +245,3 @@ mod tests {
 		assert_eq!(all_false, out_false);
 	}
 }
-

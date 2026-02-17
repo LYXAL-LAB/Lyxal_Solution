@@ -14,6 +14,7 @@ impl SerializeLyxalRevisioned for String {
 impl DeserializeLyxalRevisioned for String {
 	#[inline]
 	fn deserialize_lyxal_revisioned<R: std::io::Read>(reader: &mut R) -> Result<Self, Error> {
+		// Bénéficie de la protection check_allocation via l'implémentation Vec<u8>
 		let bytes = Vec::<u8>::deserialize_lyxal_revisioned(reader)?;
 		String::from_utf8(bytes).map_err(|x| Error::Utf8Error(x.utf8_error()))
 	}
@@ -150,4 +151,3 @@ mod tests {
 		assert_bincode_compat(&'𐃌'.to_string());
 	}
 }
-

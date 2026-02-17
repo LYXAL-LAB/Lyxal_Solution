@@ -1397,6 +1397,8 @@ mod tests {
 
 		let mixed_range: Vec<_> = tx.range(b"mix", b"miy").unwrap().collect::<Vec<_>>();
 		assert_eq!(mixed_range.len(), 5);
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -1431,6 +1433,8 @@ mod tests {
 		// Verify no duplicates
 		let keys: HashSet<_> = range.iter().map(|item| item.0.clone()).collect();
 		assert_eq!(keys.len(), range.len());
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -1489,6 +1493,8 @@ mod tests {
 				"Regular range should have correct values"
 			);
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test]
@@ -1579,6 +1585,8 @@ mod tests {
 		for i in 0..5 {
 			assert_eq!(forward_items[i].0, backward_items[4 - i].0);
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -1637,6 +1645,8 @@ mod tests {
 		for i in 0..forward_items2.len() {
 			assert_eq!(forward_items2[i].0, backward_items2[forward_items2.len() - 1 - i].0);
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -1675,6 +1685,8 @@ mod tests {
 			assert_eq!(&tx2.get(b"key1").unwrap().unwrap(), b"value1");
 			assert!(tx2.get(b"key2").unwrap().is_none());
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -1731,6 +1743,8 @@ mod tests {
 			assert_eq!(&backward_items[1].0, b"key3");
 			assert_eq!(&backward_items[2].0, b"key1");
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -1784,6 +1798,8 @@ mod tests {
 			assert_eq!(&range[0].0, b"key3");
 			assert_eq!(&range[1].0, b"key4");
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -1830,6 +1846,8 @@ mod tests {
 		for i in 0..10 {
 			assert_eq!(forward_items[i].0, backward_items[9 - i].0);
 		}
+
+		store.close().await.unwrap();
 	}
 
 	// ========================================================================
@@ -2621,6 +2639,8 @@ mod tests {
 			assert_eq!(&range[0].0, b"key2");
 			assert_eq!(&range[1].0, b"key1");
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -2693,6 +2713,8 @@ mod tests {
 			assert_eq!(range.len(), 1);
 			assert_eq!(range[0].1.as_ref().unwrap().as_slice(), b"value_v3");
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -2765,6 +2787,8 @@ mod tests {
 			assert_eq!(&range[0].0, b"key3");
 			assert_eq!(&range[1].0, b"key1");
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -2867,5 +2891,7 @@ mod tests {
 			assert_eq!(range[2].1.as_ref().unwrap().as_slice(), b"v2_updated");
 			assert_eq!(&range[3].0, b"key1");
 		}
+
+		store.close().await.unwrap();
 	}
 }

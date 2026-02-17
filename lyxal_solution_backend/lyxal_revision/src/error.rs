@@ -1,4 +1,4 @@
-use std::{io, str::Utf8Error};
+﻿use std::{io, str::Utf8Error};
 
 /// An error which occurs when LyxalRevisioned serialization / deserialization fails.
 #[derive(Debug)]
@@ -23,6 +23,8 @@ pub enum Error {
 	Deserialize(String),
 	/// Semantic translation/validation error.
 	Conversion(String),
+	/// Exceeded maximum allocation limit.
+	ExceededMaxAllocation(usize),
 }
 
 impl std::error::Error for Error {
@@ -65,6 +67,21 @@ impl std::fmt::Display for Error {
 			Self::Serialize(e) => write!(f, "A serialization error occured: {}", e),
 			Self::Deserialize(e) => write!(f, "A deserialization error occured: {}", e),
 			Self::Conversion(e) => write!(f, "A user generated conversion error occured: {}", e),
+			Self::ExceededMaxAllocation(limit) => {
+				write!(f, "Exceeded maximum allocation limit of {} bytes.", limit)
+			}
 		}
+	}
+}
+
+impl From<io::Error> for Error {
+	fn from(err: io::Error) -> Self {
+		Error::Io(err)
+	}
+}
+
+impl From<Utf8Error> for Error {
+	fn from(err: Utf8Error) -> Self {
+		Error::Utf8Error(err)
 	}
 }

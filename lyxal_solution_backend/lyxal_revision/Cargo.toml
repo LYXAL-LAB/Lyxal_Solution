@@ -19,3 +19,10 @@ regex = { version = "1.12.2", optional = true }
 roaring = { version = "0.11.2", features = ["serde"], optional = true }
 rust_decimal = { version = "1.39.0", optional = true }
 uuid = { version = "1.19.0", optional = true }
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "revision_bench"
+harness = false

@@ -178,8 +178,11 @@ pub struct Transaction {
 	/// cannot make any more changes to the data.
 	closed: bool,
 
-	/// Tracks when this transaction started for deadlock detection
+	/// Tracks when this transaction started for snapshot isolation (LSM sequence number)
 	pub(crate) start_commit_id: u64,
+
+	/// Tracks when this transaction started for Oracle conflict detection (transaction ID)
+	pub(crate) start_tx_id: u64,
 
 	/// `savepoints` indicates the current number of stacked savepoints; zero
 	/// means none.
@@ -222,9 +225,11 @@ impl Transaction {
 
 		// Only register mutable transactions with the oracle for conflict detection
 		// Read-only transactions don't need conflict detection since they don't write
-		if mode.mutable() {
-			core.oracle.register_txn_start(start_commit_id);
-		}
+		let start_tx_id = if mode.mutable() {
+			core.oracle.register_txn_start(start_commit_id)
+		} else {
+			0
+		};
 
 		let mut snapshot = None;
 		if !mode.is_write_only() {
@@ -244,6 +249,7 @@ impl Transaction {
 			durability: Durability::Eventual,
 			closed: false,
 			start_commit_id,
+			start_tx_id,
 			savepoints: 0,
 			write_seqno: 0,
 		})
@@ -1486,8 +1492,8 @@ mod tests {
 	}
 
 	// Common setup logic for creating a store
-	async fn create_hermitage_store() -> Tree {
-		let (store, _) = create_store();
+	async fn create_hermitage_store() -> (Tree, TempDir) {
+		let (store, temp_dir) = create_store();
 
 		let key1 = Vec::from("k1");
 		let key2 = Vec::from("k2");
@@ -1499,7 +1505,7 @@ mod tests {
 		txn.set(&key2, &value2).unwrap();
 		txn.commit().await.unwrap();
 
-		store
+		(store, temp_dir)
 	}
 
 	// The following tests are taken from hermitage (https://github.com/ept/hermitage)
@@ -1508,7 +1514,7 @@ mod tests {
 	// G0: Write Cycles (dirty writes)
 	#[test(tokio::test)]
 	async fn g0_tests() {
-		let store = create_hermitage_store().await;
+		let (store, _temp_dir) = create_hermitage_store().await;
 		let key1 = Vec::from("k1");
 		let key2 = Vec::from("k2");
 		let value3 = Vec::from("v3");
@@ -1535,7 +1541,7 @@ mod tests {
 			txn2.set(&key2, &value6).unwrap();
 			assert!(match txn2.commit().await {
 				Err(err) => {
-					matches!(err, Error::TransactionWriteConflict)
+					matches!(err, Error::TransactionWriteConflict | Error::TransactionReadConflict(_))
 				}
 				_ => false,
 			});
@@ -1548,12 +1554,14 @@ mod tests {
 			let val2 = txn3.get(&key2).unwrap().unwrap();
 			assert_eq!(&val2, &value5);
 		}
+
+		store.close().await.unwrap();
 	}
 
 	// P4: Lost Update
 	#[test(tokio::test)]
 	async fn p4() {
-		let store = create_hermitage_store().await;
+		let (store, _temp_dir) = create_hermitage_store().await;
 
 		let key1 = Vec::from("k1");
 		let value3 = Vec::from("v3");
@@ -1572,16 +1580,18 @@ mod tests {
 
 			assert!(match txn2.commit().await {
 				Err(err) => {
-					matches!(err, Error::TransactionWriteConflict)
+					matches!(err, Error::TransactionWriteConflict | Error::TransactionReadConflict(_))
 				}
 				_ => false,
 			});
 		}
+
+		store.close().await.unwrap();
 	}
 
 	// G-single: Single Anti-dependency Cycles (read skew)
-	async fn g_single_tests() {
-		let store = create_hermitage_store().await;
+	async fn g_single_tests() -> (Tree, TempDir) {
+		let (store, temp_dir) = create_hermitage_store().await;
 
 		let key1 = Vec::from("k1");
 		let key2 = Vec::from("k2");
@@ -1605,11 +1615,14 @@ mod tests {
 			assert_eq!(txn1.get(&key2).unwrap().unwrap(), value2);
 			txn1.commit().await.unwrap();
 		}
+
+		(store, temp_dir)
 	}
 
 	#[test(tokio::test)]
 	async fn g_single() {
-		g_single_tests().await;
+		let (store, _temp_dir) = g_single_tests().await;
+		store.close().await.unwrap();
 	}
 
 	fn require_send<T: Send>(_: T) {}
@@ -1617,13 +1630,15 @@ mod tests {
 
 	#[test(tokio::test)]
 	async fn is_send_sync() {
-		let (db, _) = create_store();
+		let (db, _temp_dir) = create_store();
 
 		let txn = db.begin().unwrap();
 		require_send(txn);
 
 		let txn = db.begin().unwrap();
 		require_sync(txn);
+
+		db.close().await.unwrap();
 	}
 
 	const ENTRIES: usize = 400_000;
@@ -1674,7 +1689,7 @@ mod tests {
 	#[test(tokio::test)]
 	#[ignore]
 	async fn insert_large_txn_and_get() {
-		let store = create_hermitage_store().await;
+		let (store, _temp_dir) = create_hermitage_store().await;
 
 		let mut rng = make_rng();
 
@@ -1693,11 +1708,13 @@ mod tests {
 			let (key, _) = gen_pair(&mut rng);
 			txn.get(&key).unwrap();
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
 	async fn sdb_delete_record_id_bug() {
-		let (store, _) = create_store();
+		let (store, _temp_dir) = create_store();
 
 		// Define key-value pairs for the test
 		let key1 = Vec::from(&[
@@ -1835,11 +1852,13 @@ mod tests {
 			.unwrap();
 			txn3.commit().await.unwrap();
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
 	async fn transaction_delete_from_index() {
-		let (store, _) = create_store();
+		let (store, _temp_dir) = create_store();
 
 		// Define key-value pairs for the test
 		let key1 = Vec::from("foo1");
@@ -1876,11 +1895,13 @@ mod tests {
 		assert!(val.is_none());
 		let val = txn4.get(&key2).unwrap().unwrap();
 		assert_eq!(&val, &value);
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
 	async fn test_insert_delete_read_key() {
-		let (store, _) = create_store();
+		let (store, _temp_dir) = create_store();
 
 		// Key-value pair for the test
 		let key = Vec::from("test_key");
@@ -1912,6 +1933,8 @@ mod tests {
 			let txn = store.begin().unwrap();
 			assert!(txn.get(&key).unwrap().is_none());
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -1941,6 +1964,8 @@ mod tests {
 			assert_eq!(&range[1].0, b"key3");
 			assert_eq!(&range[1].1, b"value3");
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -1978,6 +2003,8 @@ mod tests {
 			let range: Vec<_> = tx.range(beg, end).unwrap().map(|r| r.unwrap()).collect::<Vec<_>>();
 			assert_eq!(range.len(), 0);
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -2010,6 +2037,8 @@ mod tests {
 			assert_eq!(&range[1].0, b"key02");
 			assert_eq!(&range[2].0, b"key03");
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -2047,6 +2076,8 @@ mod tests {
 			assert_eq!(range[3], (Vec::from(b"d"), Vec::from(b"4")));
 			assert_eq!(range[4], (Vec::from(b"e"), Vec::from(b"5")));
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -2081,6 +2112,8 @@ mod tests {
 			assert_eq!(&range[1].0, b"key3");
 			assert_eq!(&range[2].0, b"key5");
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -2111,6 +2144,8 @@ mod tests {
 			assert_eq!(range.len(), 3);
 			assert_eq!(range[1], (Vec::from(b"key2"), Vec::from(b"new_value2")));
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -2133,6 +2168,8 @@ mod tests {
 
 			assert_eq!(range.len(), 0);
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -2162,6 +2199,8 @@ mod tests {
 				assert_eq!(&item.0, expected_key.as_bytes());
 			}
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -2199,6 +2238,8 @@ mod tests {
 			assert_eq!(range.len(), 1);
 			assert_eq!(&range[0].0, b"key2");
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -2223,6 +2264,8 @@ mod tests {
 			assert_eq!(range.len(), 1);
 			assert_eq!(&range[0].1, b"value3"); // Latest value
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -2305,6 +2348,8 @@ mod tests {
 
 			assert!(!key_names.contains(&"key3".to_string()), "key3 should be removed");
 		}
+
+		store.close().await.unwrap();
 	}
 
 	#[test(tokio::test)]
@@ -2399,6 +2444,8 @@ mod tests {
 				);
 			}
 		}
+
+		tree.close().await.unwrap();
 	}
 
 	// Double-ended iterator tests
@@ -2446,6 +2493,8 @@ mod tests {
 				assert_eq!(keys[3], b"key2");
 				assert_eq!(keys[4], b"key1");
 			}
+
+			store.close().await.unwrap();
 		}
 
 		#[test(tokio::test)]
@@ -2492,6 +2541,8 @@ mod tests {
 				assert_eq!(keys[4], b"key2");
 				assert_eq!(keys[5], b"key1");
 			}
+
+			store.close().await.unwrap();
 		}
 
 		#[test(tokio::test)]

@@ -13,9 +13,9 @@ mod tests {
     #[cfg(feature = "mmap_read")]
     use crate::vfs::{File, remove_file};
     #[cfg(feature = "mmap_read")]
-    use crate::data::DataRef;
+    // use crate::data::DataRef;
     #[cfg(feature = "mmap_read")]
-    use crate::CompressionType;
+    // use crate::CompressionType;
     #[cfg(feature = "mmap_read")]
     use crate::sstable::{InternalKey, InternalKeyKind};
 

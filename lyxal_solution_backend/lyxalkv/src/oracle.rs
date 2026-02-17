@@ -82,10 +82,11 @@ impl Oracle {
 	}
 
 	/// Register a new transaction start
-	pub(crate) fn register_txn_start(&self, start_commit_id: u64) {
+	pub(crate) fn register_txn_start(&self, start_commit_id: u64) -> u64 {
 		let entry =
 			self.active_txn_starts.get_or_insert_with(start_commit_id, || AtomicUsize::new(0));
 		entry.value().fetch_add(1, Ordering::Relaxed);
+		self.transaction_commit_id.load(Ordering::Acquire)
 	}
 
 	/// Unregister a transaction when it commits or aborts
@@ -119,15 +120,14 @@ impl Oracle {
 		let version = self.atomic_commit(Arc::clone(&commit_entry))?;
 
 		// Check for conflicts
-		let has_conflict = self.check_conflicts(
+		if let Some(err) = self.check_conflicts(
 			version, 
-			txn.start_commit_id, 
+			txn.start_tx_id, 
 			&commit_entry,
-			&txn.read_set // On ajoute le read_set ici
-		)?;
-		if has_conflict {
+			&txn.read_set
+		)? {
 			self.transaction_commit_queue.remove(&version);
-			return Err(Error::TransactionWriteConflict);
+			return Err(err);
 		}
 
 		// No conflicts found, return the tx_id and commit timestamp
@@ -179,11 +179,11 @@ impl Oracle {
 		start_commit_id: u64,
 		entry: &Arc<CommitEntry>,
 		read_set: &Arc<parking_lot::Mutex<std::collections::HashSet<Key>>>, // Nouvelle signature
-	) -> Result<bool> {
+	) -> Result<Option<Error>> {
 		// 1. Vérification des conflits d'écriture (existant)
 		for tx in self.transaction_commit_queue.range((start_commit_id + 1)..version) {
 			if !tx.value().is_disjoint_writeset(entry) {
-				return Ok(true); // Conflit d'écriture trouvé
+				return Ok(Some(Error::TransactionWriteConflict));
 			}
 		}
 
@@ -194,13 +194,13 @@ impl Oracle {
 				let committed_keys = &tx.value().keys;
 				for read_key in reads.iter() {
 					if committed_keys.contains(read_key) {
-						return Ok(true); // Une clé lue a été modifiée par une transaction concurrente
+						return Ok(Some(Error::TransactionReadConflict(format!("{:?}", read_key))));
 					}
 				}
 			}
 		}
 
-		Ok(false) // Aucun conflit détecté
+		Ok(None)
 	}
 
 	/// Shutdown the cleanup thread, waiting for it to exit
