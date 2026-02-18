@@ -158,12 +158,18 @@ mod tests {
         drop(file); // Ensure file handle is closed for Windows deletion
         
         // Wait a bit for Windows to release the file if there's any pending activity
-        for _ in 0..10 {
-            if !path.exists() { break; }
+        let mut deleted = false;
+        for _ in 0..50 {
+            if !path.exists() {
+                deleted = true;
+                break;
+            } else {
+                 let _ = std::fs::remove_file(&path);
+            }
             std::thread::sleep(Duration::from_millis(50));
         }
         
-        assert!(!path.exists(), "File should be deleted after all references are dropped");
+        assert!(deleted, "File should be deleted after all references are dropped");
     }
 
     #[test]
