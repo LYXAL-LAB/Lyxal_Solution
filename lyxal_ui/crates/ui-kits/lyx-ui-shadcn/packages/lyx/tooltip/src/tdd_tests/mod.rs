@@ -1,5 +1,5 @@
-//! TDD tests for the Tooltip component
-//! 
+﻿//! TDD tests for the Tooltip component
+//!
 //! This module contains comprehensive test-driven development tests for the Tooltip component,
 //! organized into focused sub-modules for better maintainability and readability.
 

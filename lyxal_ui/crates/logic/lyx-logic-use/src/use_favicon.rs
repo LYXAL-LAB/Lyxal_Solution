@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
+﻿#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
 
 use crate::core::MaybeRwSignal;
 use default_struct_builder::DefaultBuilder;
@@ -14,8 +14,7 @@ use wasm_bindgen::JsCast;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::use_favicon;
 /// #
 /// # #[component]
@@ -27,15 +26,13 @@ use wasm_bindgen::JsCast;
 /// #
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Passing a Source Signal
 ///
 /// You can pass a `Signal` to [`use_favicon_with_options`]. Change from the source signal will be
 /// reflected in your favicon automatically.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_favicon_with_options, UseFaviconOptions, use_preferred_dark};
 /// #
 /// # #[component]
@@ -53,8 +50,7 @@ use wasm_bindgen::JsCast;
 /// #
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

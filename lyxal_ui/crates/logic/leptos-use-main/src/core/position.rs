@@ -1,5 +1,5 @@
-#[derive(Copy, Clone, Default, Debug)]
+﻿#[derive(Copy, Clone, Default, Debug)]
 pub struct Position {
-    pub x: f64,
-    pub y: f64,
+pub x: f64,
+pub y: f64,
 }

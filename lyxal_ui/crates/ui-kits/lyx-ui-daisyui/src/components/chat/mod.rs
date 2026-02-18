@@ -1,4 +1,4 @@
-//! # daisyUI Chat Component
+﻿//! # daisyUI Chat Component
 //!
 //! For more information, see: https://daisyui.com/components/chat/
 

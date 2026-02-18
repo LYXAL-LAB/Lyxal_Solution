@@ -1,4 +1,4 @@
-//! # daisyUI Tab Component
+﻿//! # daisyUI Tab Component
 //!
 //! For more information, see: https://daisyui.com/components/tab/
 
@@ -7,18 +7,3 @@ mod style;
 
 pub use component::*;
 pub use style::*;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

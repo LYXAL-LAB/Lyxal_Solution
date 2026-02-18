@@ -1,4 +1,4 @@
-use crate::core::{MaybeRwSignal, OptionLocalRwSignal, OptionLocalSignal};
+﻿use crate::core::{MaybeRwSignal, OptionLocalRwSignal, OptionLocalSignal};
 use default_struct_builder::DefaultBuilder;
 use js_sys::{Object, Reflect};
 use leptos::prelude::*;
@@ -12,8 +12,7 @@ use wasm_bindgen::{JsCast, JsValue};
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::logging::{log, error};
 /// # use lyx_logic_use::{use_user_media, UseUserMediaReturn};
 /// #
@@ -37,8 +36,7 @@ use wasm_bindgen::{JsCast, JsValue};
 ///
 /// view! { <video node_ref=video_ref controls=false autoplay=true muted=true></video> }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

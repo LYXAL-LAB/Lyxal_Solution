@@ -1,3 +1,3 @@
-mod badge;
+﻿mod badge;
 
 pub use badge::*;

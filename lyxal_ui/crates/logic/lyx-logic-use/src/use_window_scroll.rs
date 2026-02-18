@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
+﻿#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
 
 use crate::{UseEventListenerOptions, use_event_listener_with_options, use_window};
 use cfg_if::cfg_if;
@@ -13,8 +13,7 @@ use leptos::prelude::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::use_window_scroll;
 /// #
 /// # #[component]
@@ -23,8 +22,7 @@ use leptos::prelude::*;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

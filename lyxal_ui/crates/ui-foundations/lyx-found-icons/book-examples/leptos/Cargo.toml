@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx-ui-foundations-leptos"
 version = "0.8.0"
 edition = "2024"
@@ -9,7 +9,7 @@ icons = ["dep:lyx-ui-foundations-leptos", "lyx-ui-foundations-leptos/all-icons"]
 
 [dependencies]
 
-leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr"] }
+leptos = { path = "../../../../core/lyx-core-leptos/leptos", features = ["csr"] }
 
 lyx-ui-foundations-leptos = { path = "../../packages/leptos", optional = true }
 

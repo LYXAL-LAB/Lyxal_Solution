@@ -1,4 +1,4 @@
-#![forbid(unsafe_code)]
+﻿#![forbid(unsafe_code)]
 #![deny(warnings)]
 #![allow(clippy::too_many_arguments)]
 //! # About Leptos i18n codegen
@@ -14,15 +14,15 @@ pub mod load_locales;
 pub mod utils;
 
 pub fn gen_code(
-    parsed_locales: &ParsedLocales,
-    crate_path: Option<&syn::Path>,
-    emit_diagnostics: bool,
-    top_level_attributes: Option<&TokenStream>,
+parsed_locales: &ParsedLocales,
+crate_path: Option<&syn::Path>,
+emit_diagnostics: bool,
+top_level_attributes: Option<&TokenStream>,
 ) -> Result<TokenStream> {
-    load_locales::load_locales(
-        parsed_locales,
-        crate_path,
-        emit_diagnostics,
-        top_level_attributes,
-    )
+load_locales::load_locales(
+parsed_locales,
+crate_path,
+emit_diagnostics,
+top_level_attributes,
+)
 }

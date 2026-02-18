@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx_form_proc_macros"
 description = "Proc macro used by lyx_form."
 version.workspace = true

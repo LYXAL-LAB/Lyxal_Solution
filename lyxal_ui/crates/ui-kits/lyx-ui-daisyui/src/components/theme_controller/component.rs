@@ -1,4 +1,4 @@
-use leptos::{prelude::*, tachys::html::class::class as class_fn};
+﻿use leptos::{prelude::*, tachys::html::class::class as class_fn};
 
 /// # Theme Controller Wrapper Component
 ///
@@ -6,34 +6,18 @@ use leptos::{prelude::*, tachys::html::class::class as class_fn};
 /// As such, it is intended to be used with form elements such as `Input` and `Button`.
 ///
 /// ### Add to `input.css`
-/// ```css
+/// css
 /// @source inline("theme-controller");
-/// ```
-#[component]
+/// #[component]
 pub fn ThemeController(
-    /// Valid daisyUI theme name to activate when checked
-    #[prop(optional, into)]
-    theme_name: &'static str,
+/// Valid daisyUI theme name to activate when checked
+#[prop(optional, into)]
+theme_name: &'static str,
 
-    /// Form element children (such as input (checkbox, toggle), button etc...)
-    children: Children,
+/// Form element children (such as input (checkbox, toggle), button etc...)
+children: Children,
 ) -> impl IntoView {
-    children()
-        .add_any_attr(class_fn(("theme-controller", true)))
-        .attr("value", theme_name)
+children()
+.add_any_attr(class_fn(("theme-controller", true)))
+.attr("value", theme_name)
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

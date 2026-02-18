@@ -1,6 +1,6 @@
-use crate::{
-    codec::{Patch, Post, Put},
-    ContentType, Decodes, Encodes, Format, FormatType,
+﻿use crate::{
+codec::{Patch, Post, Put},
+ContentType, Decodes, Encodes, Format, FormatType,
 };
 use bytes::Bytes;
 use serde::{de::DeserializeOwned, Serialize};
@@ -9,33 +9,33 @@ use serde::{de::DeserializeOwned, Serialize};
 pub struct PostcardEncoding;
 
 impl ContentType for PostcardEncoding {
-    const CONTENT_TYPE: &'static str = "application/x-postcard";
+const CONTENT_TYPE: &'static str = "application/x-postcard";
 }
 
 impl FormatType for PostcardEncoding {
-    const FORMAT_TYPE: Format = Format::Binary;
+const FORMAT_TYPE: Format = Format::Binary;
 }
 
 impl<T> Encodes<T> for PostcardEncoding
 where
-    T: Serialize,
+T: Serialize,
 {
-    type Error = postcard::Error;
+type Error = postcard::Error;
 
-    fn encode(value: &T) -> Result<Bytes, Self::Error> {
-        postcard::to_allocvec(value).map(Bytes::from)
-    }
+fn encode(value: &T) -> Result<Bytes, Self::Error> {
+postcard::to_allocvec(value).map(Bytes::from)
+}
 }
 
 impl<T> Decodes<T> for PostcardEncoding
 where
-    T: DeserializeOwned,
+T: DeserializeOwned,
 {
-    type Error = postcard::Error;
+type Error = postcard::Error;
 
-    fn decode(bytes: Bytes) -> Result<T, Self::Error> {
-        postcard::from_bytes(&bytes)
-    }
+fn decode(bytes: Bytes) -> Result<T, Self::Error> {
+postcard::from_bytes(&bytes)
+}
 }
 
 /// Pass arguments and receive responses with postcard in a `POST` request.

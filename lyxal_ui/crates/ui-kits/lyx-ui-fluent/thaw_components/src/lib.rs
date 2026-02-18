@@ -1,4 +1,4 @@
-mod binder;
+﻿mod binder;
 mod focus_trap;
 mod if_comp;
 mod option_comp;
@@ -14,20 +14,5 @@ use leptos::prelude::{slot, ChildrenFn};
 
 #[slot]
 pub struct Fallback {
-    children: ChildrenFn,
+children: ChildrenFn,
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

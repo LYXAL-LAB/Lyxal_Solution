@@ -1,4 +1,4 @@
-// Implementation tests for Checkbox component
+﻿// Implementation tests for Checkbox component
 // These tests focus on actual implementation logic and component behavior
 
 mod class_constants;

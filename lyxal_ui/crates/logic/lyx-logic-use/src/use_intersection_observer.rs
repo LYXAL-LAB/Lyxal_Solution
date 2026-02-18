@@ -1,4 +1,4 @@
-use crate::core::{IntoElementMaybeSignal, IntoElementsMaybeSignal};
+﻿use crate::core::{IntoElementMaybeSignal, IntoElementsMaybeSignal};
 use crate::sendwrap_fn;
 use cfg_if::cfg_if;
 use default_struct_builder::DefaultBuilder;
@@ -24,8 +24,7 @@ use wasm_bindgen::prelude::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::html::Div;
 /// # use lyx_logic_use::use_intersection_observer;
 /// #
@@ -47,8 +46,7 @@ use wasm_bindgen::prelude::*;
 ///     </div>
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// ## SendWrapped Return
 ///
 /// The returned closures `pause`, `resume` and `stop` are sendwrapped functions. They can

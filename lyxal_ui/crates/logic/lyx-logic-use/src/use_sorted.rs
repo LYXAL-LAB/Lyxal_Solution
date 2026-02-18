@@ -1,4 +1,4 @@
-use leptos::prelude::*;
+﻿use leptos::prelude::*;
 use leptos::reactive::wrappers::read::Signal;
 use std::cmp::Ordering;
 use std::ops::DerefMut;
@@ -11,8 +11,7 @@ use std::ops::DerefMut;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::use_sorted;
 /// #
 /// # #[component]
@@ -22,12 +21,10 @@ use std::ops::DerefMut;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// You can also sort by key or with a compare function.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_sorted_by, use_sorted_by_key};
 /// #
 /// #[derive(Clone, PartialEq)]
@@ -71,8 +68,7 @@ use std::ops::DerefMut;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// Please note that these two ways of sorting are equivalent.
 pub fn use_sorted<S, I, T>(iterable: S) -> Signal<I>
 where

@@ -1,4 +1,4 @@
-mod content;
+﻿mod content;
 mod group;
 mod item;
 mod label;
@@ -20,8 +20,8 @@ use leptos::prelude::*;
 
 #[derive(Clone)]
 pub struct DropdownMenuContext {
-    pub menu_id: RwSignal<String>,
-    pub trigger_id: RwSignal<String>,
+pub menu_id: RwSignal<String>,
+pub trigger_id: RwSignal<String>,
 }
 
 #[derive(Clone)]
@@ -29,5 +29,5 @@ pub struct DropdownTriggerContext {}
 
 #[derive(Clone)]
 pub struct DropdownMenuGroupContext {
-    heading_id: RwSignal<String>,
+heading_id: RwSignal<String>,
 }

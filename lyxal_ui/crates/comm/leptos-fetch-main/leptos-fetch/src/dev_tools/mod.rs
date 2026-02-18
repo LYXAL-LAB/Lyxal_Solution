@@ -1,14 +1,13 @@
-/// [`QueryDevtools`] is provided to help visualize all of the inner workings of Leptos Fetch and will likely save a bunch of tedious debugging!
+﻿/// [`QueryDevtools`] is provided to help visualize all of the inner workings of Leptos Fetch and will likely save a bunch of tedious debugging!
 ///
 /// To enable, the `devtools` feature must be added, the component won't be shown or included in the binary when you build your app in release mode for performance.
 ///
 /// If you need the devtools component in release mode, you can use the `devtools-always` feature instead.
 ///
-/// ```bash
+/// bash
 /// cargo add leptos-fetch --feature devtools
-/// ```
-///
-/// ```rust,no_run
+/// ///
+/// ,no_run
 /// use leptos::*;
 /// use leptos_fetch::{QueryClient, QueryDevtools};
 /// #[component]
@@ -21,26 +20,24 @@
 ///         // Rest of App...
 ///     }
 /// }
-/// ```
-#[leptos::component]
+/// #[leptos::component]
 pub fn QueryDevtools<Codec: 'static>(
-    /// The client to monitor.
-    client: crate::QueryClient<Codec>,
+/// The client to monitor.
+client: crate::QueryClient<Codec>,
 ) -> impl leptos::IntoView {
-    #[cfg(any(
-        all(debug_assertions, feature = "devtools"),
-        feature = "devtools-always"
-    ))]
-    {
-        use inner::dev_tools::DevtoolsRoot;
-        use leptos::prelude::*;
-        view! { <DevtoolsRoot client=client /> }
-    }
+#[cfg(any(
+all(debug_assertions, feature = "devtools"),
+feature = "devtools-always"
+))]
+{
+use inner::dev_tools::DevtoolsRoot;
+use leptos::prelude::*;
+view! { <DevtoolsRoot client=client /> }
+}
 }
 
 #[cfg(any(
-    all(debug_assertions, feature = "devtools"),
-    feature = "devtools-always"
+all(debug_assertions, feature = "devtools"),
+feature = "devtools-always"
 ))]
 mod inner;
-

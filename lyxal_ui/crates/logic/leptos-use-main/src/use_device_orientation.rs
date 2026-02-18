@@ -1,4 +1,4 @@
-use cfg_if::cfg_if;
+﻿use cfg_if::cfg_if;
 use leptos::*;
 
 /// Reactive [DeviceOrientationEvent](https://developer.mozilla.org/en-US/docs/Web/API/DeviceOrientationEvent).
@@ -11,8 +11,7 @@ use leptos::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos_use::{use_device_orientation, UseDeviceOrientationReturn};
 /// #
 /// # #[component]
@@ -27,64 +26,63 @@ use leptos::*;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// On the server this function returns values as if the orientation
 /// capabilties were not supported by the device.
 pub fn use_device_orientation() -> UseDeviceOrientationReturn {
-    cfg_if! { if #[cfg(feature = "ssr")] {
-        let is_supported = Signal::derive(|| false);
-        let absolute = || false;
-        let alpha = || None;
-        let beta = || None;
-        let gamma = || None;
-    } else {
-        use crate::{use_event_listener_with_options, UseEventListenerOptions, use_supported, js};
-        use leptos::ev::deviceorientation;
+cfg_if! { if #[cfg(feature = "ssr")] {
+let is_supported = Signal::derive(|| false);
+let absolute = || false;
+let alpha = || None;
+let beta = || None;
+let gamma = || None;
+} else {
+use crate::{use_event_listener_with_options, UseEventListenerOptions, use_supported, js};
+use leptos::ev::deviceorientation;
 
-        let is_supported = use_supported(|| js!("DeviceOrientationEvent" in &window()));
-        let (absolute, set_absolute) = create_signal(false);
-        let (alpha, set_alpha) = create_signal(None);
-        let (beta, set_beta) = create_signal(None);
-        let (gamma, set_gamma) = create_signal(None);
+let is_supported = use_supported(|| js!("DeviceOrientationEvent" in &window()));
+let (absolute, set_absolute) = create_signal(false);
+let (alpha, set_alpha) = create_signal(None);
+let (beta, set_beta) = create_signal(None);
+let (gamma, set_gamma) = create_signal(None);
 
-        if is_supported.get_untracked() {
-            let cleanup = use_event_listener_with_options(
-                window(),
-                deviceorientation,
-                move |event: web_sys::DeviceOrientationEvent| {
-                    set_absolute.set(event.absolute());
-                    set_alpha.set(event.alpha());
-                    set_beta.set(event.beta());
-                    set_gamma.set(event.gamma());
-                },
-                UseEventListenerOptions::default()
-                    .capture(false)
-                    .passive(true)
-                    .once(false),
-            );
+if is_supported.get_untracked() {
+let cleanup = use_event_listener_with_options(
+window(),
+deviceorientation,
+move |event: web_sys::DeviceOrientationEvent| {
+set_absolute.set(event.absolute());
+set_alpha.set(event.alpha());
+set_beta.set(event.beta());
+set_gamma.set(event.gamma());
+},
+UseEventListenerOptions::default()
+.capture(false)
+.passive(true)
+.once(false),
+);
 
-            leptos::on_cleanup(cleanup);
-        }
-    }}
+leptos::on_cleanup(cleanup);
+}
+}}
 
-    UseDeviceOrientationReturn {
-        is_supported,
-        absolute: absolute.into(),
-        alpha: alpha.into(),
-        beta: beta.into(),
-        gamma: gamma.into(),
-    }
+UseDeviceOrientationReturn {
+is_supported,
+absolute: absolute.into(),
+alpha: alpha.into(),
+beta: beta.into(),
+gamma: gamma.into(),
+}
 }
 
 /// Return type of [`use_device_orientation`].
 #[derive(Clone)]
 pub struct UseDeviceOrientationReturn {
-    pub is_supported: Signal<bool>,
-    pub absolute: Signal<bool>,
-    pub alpha: Signal<Option<f64>>,
-    pub beta: Signal<Option<f64>>,
-    pub gamma: Signal<Option<f64>>,
+pub is_supported: Signal<bool>,
+pub absolute: Signal<bool>,
+pub alpha: Signal<Option<f64>>,
+pub beta: Signal<Option<f64>>,
+pub gamma: Signal<Option<f64>>,
 }

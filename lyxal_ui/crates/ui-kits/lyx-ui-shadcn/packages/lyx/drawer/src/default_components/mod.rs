@@ -1,5 +1,5 @@
-//! Drawer default components
-//! 
+﻿//! Drawer default components
+//!
 //! This module contains all the default drawer components organized into focused sub-modules
 //! for better maintainability and readability.
 

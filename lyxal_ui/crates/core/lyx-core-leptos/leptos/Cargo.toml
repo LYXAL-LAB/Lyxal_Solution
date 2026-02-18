@@ -1,11 +1,11 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\leptos\leptos\Cargo.toml
+﻿### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\leptos\leptos\Cargo.toml
 [package]
 name = "leptos"
 version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-base64 = { version = "0.8.0", optional = true }
+base64 = { version = "*", optional = true }
 leptos_dom = { path = "../leptos_dom", version = "*" }
 leptos_macro = { path = "../leptos_macro", version = "*" }
 reactive_graph = { path = "../reactive_graph", version = "*" }

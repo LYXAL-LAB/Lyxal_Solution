@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx-viz-lyx-viz-trading"
 version = "0.8.0"
 edition = "2024"
@@ -12,7 +12,7 @@ charts = { version = "*", package = "trading-charts" }
 console_error_panic_hook = "0.0.1"
 console_log = "0.0.1"
 emitix = "0.0.1"
-leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos = { path = "../../../core/lyx-core-leptos/leptos" }
 log = "0.0.1"
 wasm-bindgen = "0.0.1"
 

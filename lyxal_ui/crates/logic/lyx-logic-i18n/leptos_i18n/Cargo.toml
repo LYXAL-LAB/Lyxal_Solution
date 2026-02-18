@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "leptos_i18n"
 version = "0.8.0"
 edition = "2024"
@@ -6,8 +6,8 @@ edition = "2024"
 [dependencies]
 leptos-use = { path = "../../use", features = ["use_locales"], optional = true }
 leptos_i18n_macro = { path = "../leptos_i18n_macro", optional = true }
-leptos = { path = "../core/lyx-core-leptos/leptos", optional = true }
-leptos_meta = { path = "../core/lyx-core-leptos/meta", optional = true }
+leptos = { path = "../../../core/lyx-core-leptos/leptos", optional = true }
+leptos_meta = { path = "../../../core/lyx-core-leptos/meta", optional = true }
 codee = { version = "*" }
 icu_locale = { version = "*" }
 icu_provider = { version = "*", optional = true, features = ["sync"] }

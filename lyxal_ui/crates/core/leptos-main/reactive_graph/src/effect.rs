@@ -1,4 +1,4 @@
-//! Side effects that run in response to changes in the reactive values they read from.
+﻿//! Side effects that run in response to changes in the reactive values they read from.
 
 #[allow(clippy::module_inception)]
 mod effect;
@@ -16,12 +16,12 @@ pub use render_effect::*;
 #[inline(always)]
 #[track_caller]
 #[deprecated = "This function is being removed to conform to Rust idioms. \
-                Please use `RenderEffect::new()` instead."]
+Please use `RenderEffect::new()` instead."]
 pub fn create_render_effect<T>(
-    fun: impl FnMut(Option<T>) -> T + 'static,
+fun: impl FnMut(Option<T>) -> T + 'static,
 ) -> RenderEffect<T>
 where
-    T: 'static,
+T: 'static,
 {
-    RenderEffect::new(fun)
+RenderEffect::new(fun)
 }

@@ -1,4 +1,4 @@
-use crate::core::{ElementMaybeSignal, IntoElementMaybeSignal, MaybeRwSignal};
+﻿use crate::core::{ElementMaybeSignal, IntoElementMaybeSignal, MaybeRwSignal};
 use default_struct_builder::DefaultBuilder;
 use leptos::prelude::*;
 #[cfg(not(feature = "ssr"))]
@@ -15,8 +15,7 @@ use std::sync::Arc;
 ///
 /// ### Simple lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_example
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::html::Textarea;
 /// # use lyx_logic_use::{use_textarea_autosize, UseTextareaAutosizeReturn};
 /// #
@@ -40,14 +39,13 @@ use std::sync::Arc;
 ///     />
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// > Make sure that you set `box-sizing: border-box` on the textarea element.
 /// >
 /// > It's also recommended to reset the scrollbar styles for the textarea element to avoid
 /// > incorrect height values for large amounts of text.
 ///
-/// ```css
+/// css
 /// textarea {
 ///   -ms-overflow-style: none;
 ///   scrollbar-width: none;
@@ -56,15 +54,13 @@ use std::sync::Arc;
 /// textarea::-webkit-scrollbar {
 ///   display: none;
 /// }
-/// ```
-///
+/// ///
 /// ### With `rows` attribute
 ///
 /// If you need support for the rows attribute on a textarea element, then you should set the
 /// `style_prop` option to `"min-height"`.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::html::Textarea;
 /// # use lyx_logic_use::{use_textarea_autosize_with_options, UseTextareaAutosizeOptions, UseTextareaAutosizeReturn};
 /// #
@@ -92,8 +88,7 @@ use std::sync::Arc;
 ///     />
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// ## SendWrapped Return
 ///
 /// The returned closure `trigger_resize` is a sendwrapped function. It can
@@ -103,7 +98,7 @@ use std::sync::Arc;
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).
 ///
-/// On the server this will always return an empty string as ´content` and a no-op `trigger_resize`.
+/// On the server this will always return an empty string as Â´content` and a no-op `trigger_resize`.
 // #[doc(cfg(feature = "use_textarea_autosize"))]
 pub fn use_textarea_autosize<El, M>(
 el: El,

@@ -1,4 +1,4 @@
-//! Leptos port of [shadcn/ui Aspect Ratio](https://ui.shadcn.com/docs/components/aspect-ratio).
+﻿//! Leptos port of [shadcn/ui Aspect Ratio](https://ui.shadcn.com/docs/components/aspect-ratio).
 //!
 //! Displays content within a desired ratio.
 //!

@@ -1,39 +1,39 @@
-use leptos::*;
+﻿use leptos::*;
 use leptos_animation::*;
 use std::ops::Sub;
 
 #[component]
 pub fn Text() -> impl IntoView {
-    let (text, set_text) = create_signal("");
+let (text, set_text) = create_signal("");
 
-    let animated_text = create_animated_signal(
-        move || text.get().into(),
-        |from, to, progress| {
-            // Animate between strings by taking the beginning of the to-string
-            // followed by the end of the from-string
-            TextString(String::from_iter(
-                to.chars()
-                    .take((progress * to.len() as f64) as usize)
-                    .chain(from.chars().skip((progress * from.len() as f64) as usize)),
-            ))
-        },
-    );
+let animated_text = create_animated_signal(
+move || text.get().into(),
+|from, to, progress| {
+// Animate between strings by taking the beginning of the to-string
+// followed by the end of the from-string
+TextString(String::from_iter(
+to.chars()
+.take((progress * to.len() as f64) as usize)
+.chain(from.chars().skip((progress * from.len() as f64) as usize)),
+))
+},
+);
 
-    view! {
-        <main class="text">
-            <button on:click=move |_| { set_text.set("") }>"Empty"</button>
-            <button on:click=move |_| { set_text.set("Hello World") }>"Hello"</button>
-            <button on:click=move |_| { set_text.set(AUSTIN) }>"Austin"</button>
-            <button on:click=move |_| { set_text.set(LOREM_IPSUM) }>"Lorem Ipsum"</button>
-            <textarea prop:value=move || animated_text.get().0></textarea>
-            <a
-                class="source"
-                href="https://github.com/PaulWagener/leptos_animation/blob/master/example/src/text.rs"
-            >
-                "View Source"
-            </a>
-        </main>
-    }
+view! {
+<main class="text">
+<button on:click=move |_| { set_text.set("") }>"Empty"</button>
+<button on:click=move |_| { set_text.set("Hello World") }>"Hello"</button>
+<button on:click=move |_| { set_text.set(AUSTIN) }>"Austin"</button>
+<button on:click=move |_| { set_text.set(LOREM_IPSUM) }>"Lorem Ipsum"</button>
+<textarea prop:value=move || animated_text.get().0></textarea>
+<a
+class="source"
+href="https://github.com/PaulWagener/leptos_animation/blob/master/example/src/text.rs"
+>
+"View Source"
+</a>
+</main>
+}
 }
 
 #[derive(Clone)]
@@ -43,10 +43,10 @@ struct TextString(String);
 /// animations. This is a very ill-defined operations for strings, so we basically cheat by not providing
 /// a real implementation. This will result in glitches when there are multiple overlapping animations.
 impl Sub for TextString {
-    type Output = TextString;
-    fn sub(self, rhs: Self) -> Self::Output {
-        rhs
-    }
+type Output = TextString;
+fn sub(self, rhs: Self) -> Self::Output {
+rhs
+}
 }
 
 const AUSTIN: &str = "IT is a truth universally acknowledged, that a single man in possession of a good fortune must be in want of a wife.

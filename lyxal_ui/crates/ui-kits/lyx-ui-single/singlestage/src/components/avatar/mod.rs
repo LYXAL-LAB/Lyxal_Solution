@@ -1,4 +1,4 @@
-mod avatar;
+﻿mod avatar;
 mod fallback;
 mod group;
 mod image;

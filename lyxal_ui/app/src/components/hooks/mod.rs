@@ -1,4 +1,4 @@
-pub mod use_is_current_path;
+﻿pub mod use_is_current_path;
 pub mod use_theme_mode;
 pub mod use_random;
 pub mod use_pagination;

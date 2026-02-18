@@ -1,4 +1,4 @@
-use std::sync::Arc;
+﻿use std::sync::Arc;
 
 use anyhow::bail;
 use camino::Utf8Path;
@@ -10,74 +10,55 @@ use crate::service::serve;
 use crate::signal::Interrupt;
 
 pub async fn end2end_all(conf: &Config) -> Result<()> {
-    for proj in &conf.projects {
-        end2end_proj(proj).await?;
-    }
-    Ok(())
+for proj in &conf.projects {
+end2end_proj(proj).await?;
+}
+Ok(())
 }
 
 pub async fn end2end_proj(proj: &Arc<Project>) -> Result<()> {
-    if let Some(lyx-core-lyx_core_lyx-core-lyx_core_e2e) = &proj.end2end {
-        if !super::build::build_proj(proj).await.dot()? {
-            return Ok(());
-        }
+if let Some(lyx-core-lyx_core_lyx-core-lyx_core_e2e) = &proj.end2end {
+if !super::build::build_proj(proj).await.dot()? {
+return Ok(());
+}
 
-        let lyx-platform-lyx_platform_lyx-platform-lyx_platform_server = serve::spawn(proj).await;
-        try_run(&lyx-core-lyx_core_lyx-core-lyx_core_e2e.cmd, &lyx-core-lyx_core_lyx-core-lyx_core_e2e.dir)
-            .await
-            .context(format!("running: {}", &lyx-core-lyx_core_lyx-core-lyx_core_e2e.cmd))?;
-        Interrupt::request_shutdown().await;
-        lyx-platform-lyx_platform_lyx-platform-lyx_platform_server.await.dot()??;
-    } else {
-        log::info!("end2end the Crate.toml package.metadata.lyx-core-lyx_core_lyx-core-lyx_core_leptos.end2end_cmd parameter not set")
-    }
-    Ok(())
+let lyx-platform-lyx_platform_lyx-platform-lyx_platform_server = serve::spawn(proj).await;
+try_run(&lyx-core-lyx_core_lyx-core-lyx_core_e2e.cmd, &lyx-core-lyx_core_lyx-core-lyx_core_e2e.dir)
+.await
+.context(format!("running: {}", &lyx-core-lyx_core_lyx-core-lyx_core_e2e.cmd))?;
+Interrupt::request_shutdown().await;
+lyx-platform-lyx_platform_lyx-platform-lyx_platform_server.await.dot()??;
+} else {
+log::info!("end2end the Crate.toml package.metadata.lyx-core-lyx_core_lyx-core-lyx_core_leptos.end2end_cmd parameter not set")
+}
+Ok(())
 }
 
 async fn try_run(cmd: &str, dir: &Utf8Path) -> Result<()> {
-    let mut parts = cmd.split(' ');
-    let exe = parts
-        .next()
-        .ok_or_else(|| anyhow!("Invalid command {cmd:?}"))?;
+let mut parts = cmd.split(' ');
+let exe = parts
+.next()
+.ok_or_else(|| anyhow!("Invalid command {cmd:?}"))?;
 
-    let args = parts.collect::<Vec<_>>();
+let args = parts.collect::<Vec<_>>();
 
-    log::trace!("End2End running {cmd:?}");
-    let mut process = Command::new(exe)
-        .args(args)
-        .current_dir(dir)
-        .spawn()
-        .context(format!("Could not spawn command {cmd:?}"))?;
+log::trace!("End2End running {cmd:?}");
+let mut process = Command::new(exe)
+.args(args)
+.current_dir(dir)
+.spawn()
+.context(format!("Could not spawn command {cmd:?}"))?;
 
-    let mut int = Interrupt::subscribe_any();
+let mut int = Interrupt::subscribe_any();
 
-    tokio::select! {
-          _ = int.recv() => Ok(()),
-          result = process.wait() => {
-            let status = result?;
-            if !status.success() {
-                bail!("Command terminated with exit code {}", status)
-            }
-            Ok(())
-        }
-    }
+tokio::select! {
+_ = int.recv() => Ok(()),
+result = process.wait() => {
+let status = result?;
+if !status.success() {
+bail!("Command terminated with exit code {}", status)
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-
+Ok(())
+}
+}
+}

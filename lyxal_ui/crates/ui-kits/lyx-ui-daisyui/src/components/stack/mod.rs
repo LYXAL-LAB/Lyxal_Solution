@@ -1,4 +1,4 @@
-//! # daisyUI Stack Component
+﻿//! # daisyUI Stack Component
 //!
 //! For more information, see: https://daisyui.com/components/stack/
 
@@ -7,18 +7,3 @@ mod style;
 
 pub use component::*;
 pub use style::*;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Leptos Shadcn UI Contributors
+﻿// Copyright (c) 2024-2025 Leptos Shadcn UI Contributors
 // SPDX-License-Identifier: MIT
 
 //! # Leptos Shadcn UI Analytics
@@ -15,8 +15,7 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust
-//! use leptos::prelude::*;
+//! //! use leptos::prelude::*;
 //! use leptos_shadcn_analytics::{AnalyticsProvider, dashboard::AnalyticsDashboard, hooks::use_track_component};
 //!
 //! #[component]
@@ -34,12 +33,10 @@
 //!     use_track_component("MyComponent");
 //!     view! { <div>"Hello"</div> }
 //! }
-//! ```
-//!
+//! //!
 //! ## Configuration
 //!
-//! ```rust
-//! use leptos_shadcn_analytics::types::{AnalyticsConfig, StorageMode};
+//! //! use leptos_shadcn_analytics::types::{AnalyticsConfig, StorageMode};
 //!
 //! let config = AnalyticsConfig {
 //!     storage_mode: StorageMode::LocalStorage,
@@ -47,9 +44,7 @@
 //!     track_variants: true,
 //!     ..Default::default()
 //! };
-//! ```
-
-pub mod context;
+//! pub mod context;
 pub mod dashboard;
 pub mod hooks;
 pub mod storage;
@@ -59,16 +54,15 @@ pub mod types;
 pub use context::{use_analytics, use_analytics_unsafe, AnalyticsContext, AnalyticsProvider};
 pub use dashboard::{AnalyticsBadge, AnalyticsDashboard, format_timestamp};
 pub use hooks::{
-    use_analytics_clear, use_analytics_enabled, use_analytics_export, use_analytics_summary,
-    use_analytics_toggle, use_component_stats, use_most_used_components, use_track_component,
-    use_track_component_full, use_track_component_variant,
+use_analytics_clear, use_analytics_enabled, use_analytics_export, use_analytics_summary,
+use_analytics_toggle, use_component_stats, use_most_used_components, use_track_component,
+use_track_component_full, use_track_component_variant,
 };
 pub use storage::AnalyticsStorage;
 pub use types::{
-    AnalyticsConfig, ComponentStats, ComponentUsageEntry, ComponentUsageEvent, StoredAnalytics,
-    StorageMode,
+AnalyticsConfig, ComponentStats, ComponentUsageEntry, ComponentUsageEvent, StoredAnalytics,
+StorageMode,
 };
 
 /// Version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-

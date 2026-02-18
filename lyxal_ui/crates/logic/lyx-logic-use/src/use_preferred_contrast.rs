@@ -1,4 +1,4 @@
-use crate::use_media_query;
+﻿use crate::use_media_query;
 use leptos::prelude::*;
 use leptos::reactive::wrappers::read::Signal;
 use std::fmt::Display;
@@ -7,8 +7,7 @@ use std::fmt::Display;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::use_preferred_contrast;
 /// #
 /// # #[component]
@@ -18,8 +17,7 @@ use std::fmt::Display;
 /// #
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

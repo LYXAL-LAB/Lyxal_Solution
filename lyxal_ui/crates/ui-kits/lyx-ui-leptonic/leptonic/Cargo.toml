@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "leptonic"
 version = "0.8.0"
 edition = "2024"
@@ -14,13 +14,13 @@ indexmap = { version = "*" }
 indoc = { version = "*" }
 itertools = { version = "*" }
 js-sys = { version = "*" }
-leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos = { path = "../../../core/lyx-core-leptos/leptos" }
 leptos_reactive = { version = "*" }
 leptos-tiptap = { version = "*", optional = true }
-leptos-use = { path = "../logic/lyx-logic-use", features = ["math"] }
+leptos-use = { path = "../../../logic/lyx-logic-use", features = ["math"] }
 icondata = { version = "*" }
-leptos_meta = { path = "../core/lyx-core-leptos/meta", features = [] }
-leptos_router = { path = "../core/lyx-core-leptos/router" }
+leptos_meta = { path = "../../../core/lyx-core-leptos/meta", features = [] }
+leptos_router = { path = "../../../core/lyx-core-leptos/router" }
 serde = { version = "*" }
 serde-wasm-bindgen = { version = "*" }
 serde_json = { version = "*" }

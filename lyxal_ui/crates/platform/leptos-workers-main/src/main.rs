@@ -1,4 +1,4 @@
-//! This file only exists to make `cargo-leptos` happy. It doesn't do anything.
+﻿//! This file only exists to make `cargo-leptos` happy. It doesn't do anything.
 fn main() {
-    println!("not used");
+println!("not used");
 }

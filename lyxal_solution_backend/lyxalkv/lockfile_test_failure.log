@@ -1,0 +1,168 @@
+﻿cargo : warning: unused import: `std::sync::Arc`
+At line:1 char:1
++ cargo test --package lyxalkv --lib -- lockfile::tests --nocapture 2>& ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: unused import: `std::sync::Arc`:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ --> lyxalkv\src\sstable\zero_copy_tests.rs:3:9
+  |
+3 |     use std::sync::Arc;
+  |         ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `std::path::PathBuf`
+ --> lyxalkv\src\sstable\zero_copy_tests.rs:4:9
+  |
+4 |     use std::path::PathBuf;
+  |         ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::Options`
+ --> lyxalkv\src\sstable\zero_copy_tests.rs:9:9
+  |
+9 |     use crate::Options;
+  |         ^^^^^^^^^^^^^^
+
+warning: unused import: `crate::sstable::table::TableWriter`
+  --> lyxalkv\src\sstable\zero_copy_tests.rs:12:9
+   |
+12 |     use crate::sstable::table::TableWriter;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `value_dataref` is never used
+   --> lyxalkv\src\sstable\block.rs:759:16
+    |
+560 | impl BlockIterator {
+    | ------------------ method in this implementation
+...
+759 |     pub(crate) fn value_dataref(&self) -> DataRef {
+    |                   ^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: method `value_bytes_dataref` is never used
+    --> lyxalkv\src\sstable\table.rs:1090:16
+     |
+1003 | impl TableIterator {
+     | ------------------ method in this implementation
+...
+1090 |     pub(crate) fn value_bytes_dataref(&self) -> crate::data::DataRef {
+     |                   ^^^^^^^^^^^^^^^^^^^
+
+warning: `lyxalkv` (lib test) generated 6 warnings (run `cargo fix --lib -p lyxalkv --tests` to apply 4 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.79s
+
+running 7 tests
+test lockfile::tests::test_lock_acquisition_and_release ... ok
+     Running unittests src\lib.rs (C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_solution_backend\target\d
+ebug\deps\lyxalkv-53873c8dd37d608f.exe)
+DEBUG: LockFile::release() actually taking file
+DEBUG: LockFile::release() file already taken
+DEBUG: LockFile::release() actually taking file
+DEBUG: LockFile::release() actually taking file
+DEBUG: LockFile::release() file already taken
+test lockfile::tests::test_lock_contention ... ok
+[INFO  lyxalkv::lsm] === Starting LSM tree initialization ===
+[INFO  lyxalkv::lsm] Database path: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmpCwwr6k"
+DEBUG: LockFile::release() actually taking file
+
+thread 'lockfile::tests::test_lock_with_process_id' (21008) panicked at lyxalkv\src\lockfile.rs:184:54:
+called `Result::unwrap()` on an `Err` value: Os { code: 33, kind: Uncategorized, message: "The process cannot access 
+the file because another process has locked a portion of the file." }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+DEBUG: LockFile::release() actually taking file
+DEBUG: LockFile::release() actually taking file
+[INFO  lyxalkv::lsm] === Starting LSM tree initialization ===
+[INFO  lyxalkv::lsm] Database path: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmp1lnd19"
+[INFO  lyxalkv::lsm] === Starting LSM tree initialization ===
+[INFO  lyxalkv::lsm] Database path: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmp1lnd19"
+[INFO  lyxalkv::lsm] === Starting LSM tree initialization ===
+[INFO  lyxalkv::lsm] Database path: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmp1lnd19"
+DEBUG: LockFile::release() file already taken
+[INFO  lyxalkv::lsm] === Starting LSM tree initialization ===
+[INFO  lyxalkv::lsm] Database path: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmp1lnd19"
+DEBUG: LockFile::release() file already taken
+DEBUG: LockFile::release() file already taken
+[INFO  lyxalkv::lsm] === Starting LSM tree initialization ===
+[INFO  lyxalkv::lsm] Database path: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmp1lnd19"
+DEBUG: LockFile::release() file already taken
+[INFO  lyxalkv::lsm] === Starting LSM tree initialization ===
+[INFO  lyxalkv::lsm] Database path: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmp1lnd19"
+[INFO  lyxalkv::lsm] === Starting LSM tree initialization ===
+[INFO  lyxalkv::lsm] Database path: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmp1lnd19"
+DEBUG: LockFile::release() file already taken
+[INFO  lyxalkv::lsm] === Starting LSM tree initialization ===
+DEBUG: LockFile::release() file already taken
+[INFO  lyxalkv::lsm] Database path: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmp1lnd19"
+[INFO  lyxalkv::lsm] === Starting LSM tree initialization ===
+[INFO  lyxalkv::lsm] Database path: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmp1lnd19"
+[INFO  lyxalkv::lsm] === Starting LSM tree initialization ===
+[INFO  lyxalkv::lsm] Database path: "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmp1lnd19"
+DEBUG: LockFile::release() file already taken
+DEBUG: LockFile::release() file already taken
+DEBUG: LockFile::release() file already taken
+[INFO  lyxalkv::lsm] Found 1 WAL files for recovery (starting from log 0)
+[INFO  lyxalkv::lsm] Recovering from WAL file #0: 
+"C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmpCwwr6k\\wal\\00000000000000000000.wal"
+[INFO  lyxalkv::lsm] Replayed 0 batches from WAL #0
+[INFO  lyxalkv::lsm] Found 1 WAL files for recovery (starting from log 0)
+[INFO  lyxalkv::lsm] Recovering from WAL file #0: 
+"C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmp1lnd19\\wal\\00000000000000000000.wal"
+[INFO  lyxalkv::lsm] Manifest state: log_number=0, last_sequence=0
+[INFO  lyxalkv::lsm] Replayed 0 batches from WAL #0
+[INFO  lyxalkv::wal::recovery] Starting WAL recovery from directory: 
+"C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmpCwwr6k\\wal"
+[INFO  lyxalkv::lsm] Manifest state: log_number=0, last_sequence=0
+[INFO  lyxalkv::wal::recovery] Starting WAL recovery from directory: 
+"C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmp1lnd19\\wal"
+[INFO  lyxalkv::wal::recovery] Replaying WAL segments #00000000000000000000 to #00000000000000000000
+[INFO  lyxalkv::wal::recovery] Replaying WAL segments #00000000000000000000 to #00000000000000000000
+[INFO  lyxalkv::wal::recovery] No data recovered from WAL segments
+[INFO  lyxalkv::wal::recovery] No data recovered from WAL segments
+[INFO  lyxalkv::lsm] === LSM tree initialization complete ===
+[INFO  lyxalkv::lsm] === LSM tree initialization complete ===
+[INFO  lyxalkv::lsm] Lyxalkv: Reusing existing Core handle for 
+"C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\3\\.tmpCwwr6k"
+
+thread 'lockfile::tests::test_lock_file_prevents_concurrent_access' (21192) panicked at lyxalkv\src\lockfile.rs:249:9:
+Second tree should fail to acquire lock
+[INFO  lyxalkv::lsm] Shutting down LSM tree...
+[INFO  lyxalkv::lsm] Flushing all memtables on shutdown (flush_on_close=true)
+[INFO  lyxalkv::lsm] Flushing all memtables for shutdown...
+[INFO  lyxalkv::lsm] All memtables flushed successfully for shutdown
+[INFO  lyxalkv::lsm] All memtables flushed successfully on shutdown
+[INFO  lyxalkv::lsm] Closing WAL: active_log_number=0
+test lockfile::tests::test_lock_with_process_id ... FAILED
+DEBUG: LockFile::release() actually taking file
+test lockfile::tests::test_drop_releases_lock ... ok
+DEBUG: LockFile::release() actually taking file
+[INFO  lyxalkv::lsm] === LSM tree shutdown complete === log_number=0, last_sequence=0
+[INFO  lyxalkv::lsm] Shutting down LSM tree...
+[INFO  lyxalkv::lsm] Flushing all memtables on shutdown (flush_on_close=true)
+[INFO  lyxalkv::lsm] Flushing all memtables for shutdown...
+test lockfile::tests::test_lock_file_prevents_concurrent_access ... FAILED
+test lockfile::tests::test_lock_file_multithreaded ... ok
+test lockfile::tests::test_stale_lockfile_doesnt_block ... FAILED
+
+failures:
+
+failures:
+[INFO  lyxalkv::lsm] All memtables flushed successfully for shutdown
+[INFO  lyxalkv::lsm] All memtables flushed successfully on shutdown
+[INFO  lyxalkv::lsm] Closing WAL: active_log_number=0
+DEBUG: LockFile::release() file already taken
+[INFO  lyxalkv::lsm] === LSM tree shutdown complete === log_number=0, last_sequence=0
+DEBUG: LockFile::release() file already taken
+
+thread 'lockfile::tests::test_stale_lockfile_doesnt_block' (17532) panicked at lyxalkv\src\lockfile.rs:223:54:
+called `Result::unwrap()` on an `Err` value: Os { code: 33, kind: Uncategorized, message: "The process cannot access 
+the file because another process has locked a portion of the file." }
+DEBUG: LockFile::release() actually taking file
+error: test failed, to rerun pass `-p lyxalkv --lib`
+    lockfile::tests::test_lock_file_prevents_concurrent_access
+    lockfile::tests::test_lock_with_process_id
+    lockfile::tests::test_stale_lockfile_doesnt_block
+
+test result: FAILED. 4 passed; 3 failed; 0 ignored; 0 measured; 717 filtered out; finished in 0.14s
+

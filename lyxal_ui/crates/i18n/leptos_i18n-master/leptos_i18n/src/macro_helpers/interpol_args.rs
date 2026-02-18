@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+﻿use std::marker::PhantomData;
 
 use leptos::IntoView;
 
@@ -17,68 +17,68 @@ pub struct WithAttributes<O>(PhantomData<O>);
 
 /// Marker trait for differenciating closure based on their arguments
 pub trait AttributesArgMarker: 'static {
-    /// The actual type being turned into a view
-    type IntoView: IntoView + 'static;
+/// The actual type being turned into a view
+type IntoView: IntoView + 'static;
 }
 
 impl<O: IntoView + 'static> AttributesArgMarker for WithAttributes<O> {
-    type IntoView = O;
+type IntoView = O;
 }
 
 impl<O: IntoView + 'static> AttributesArgMarker for WithoutAttributes<O> {
-    type IntoView = O;
+type IntoView = O;
 }
 
 impl<O: IntoView + 'static> AttributesArgMarker for O {
-    type IntoView = O;
+type IntoView = O;
 }
 
 /// Trait for a type that can be used as an interpolation component.
 pub trait InterpolateComp<O: AttributesArgMarker>: Clone + 'static + Send + Sync {
-    /// Create a view from self
-    fn to_view(&self, children: leptos::children::ChildrenFn, attrs: &Attributes) -> O::IntoView;
+/// Create a view from self
+fn to_view(&self, children: leptos::children::ChildrenFn, attrs: &Attributes) -> O::IntoView;
 }
 
 impl<
-    O: IntoView + 'static,
-    T: Fn(leptos::children::ChildrenFn) -> O + Clone + 'static + Send + Sync,
+O: IntoView + 'static,
+T: Fn(leptos::children::ChildrenFn) -> O + Clone + 'static + Send + Sync,
 > InterpolateComp<WithoutAttributes<O>> for T
 {
-    fn to_view(&self, children: leptos::children::ChildrenFn, _attrs: &Attributes) -> O {
-        self(children)
-    }
+fn to_view(&self, children: leptos::children::ChildrenFn, _attrs: &Attributes) -> O {
+self(children)
+}
 }
 
 impl<
-    O: IntoView + 'static,
-    T: Fn(leptos::children::ChildrenFn, Attributes) -> O + Clone + 'static + Send + Sync,
+O: IntoView + 'static,
+T: Fn(leptos::children::ChildrenFn, Attributes) -> O + Clone + 'static + Send + Sync,
 > InterpolateComp<WithAttributes<O>> for T
 {
-    fn to_view(&self, children: leptos::children::ChildrenFn, attrs: &Attributes) -> O {
-        self(children, attrs.clone())
-    }
+fn to_view(&self, children: leptos::children::ChildrenFn, attrs: &Attributes) -> O {
+self(children, attrs.clone())
+}
 }
 
 /// Marker trait for a type that can be used as an interpolation self-closed component.
 pub trait InterpolateCompSelfClosed<O: AttributesArgMarker>: Clone + 'static + Send + Sync {
-    /// Create a view from self
-    fn to_view(&self, attrs: &Attributes) -> O::IntoView;
+/// Create a view from self
+fn to_view(&self, attrs: &Attributes) -> O::IntoView;
 }
 
 impl<O: IntoView + 'static, T: Fn() -> O + Clone + 'static + Send + Sync>
-    InterpolateCompSelfClosed<WithoutAttributes<O>> for T
+InterpolateCompSelfClosed<WithoutAttributes<O>> for T
 {
-    fn to_view(&self, _attrs: &Attributes) -> O {
-        self()
-    }
+fn to_view(&self, _attrs: &Attributes) -> O {
+self()
+}
 }
 
 impl<O: IntoView + 'static, T: Fn(Attributes) -> O + Clone + 'static + Send + Sync>
-    InterpolateCompSelfClosed<WithAttributes<O>> for T
+InterpolateCompSelfClosed<WithAttributes<O>> for T
 {
-    fn to_view(&self, attrs: &Attributes) -> O {
-        self(attrs.clone())
-    }
+fn to_view(&self, attrs: &Attributes) -> O {
+self(attrs.clone())
+}
 }
 
 /// Marker trait for a type that can be used to produce a count for a range key.
@@ -89,13 +89,13 @@ impl<T, F: Fn() -> T + Clone + 'static + Send + Sync> InterpolateRangeCount<T> f
 /// Marker trait for a type that can produce a `icu::plurals::PluralOperands`
 #[cfg(feature = "plurals")]
 pub trait InterpolatePluralCount: Fn() -> Self::Count + Clone + 'static + Send + Sync {
-    /// The returned value that can be turned into a `icu::plurals::PluralOperands`
-    type Count: Into<icu_plurals::PluralOperands>;
+/// The returned value that can be turned into a `icu::plurals::PluralOperands`
+type Count: Into<icu_plurals::PluralOperands>;
 }
 
 #[cfg(feature = "plurals")]
 impl<T: Into<icu_plurals::PluralOperands>, F: Fn() -> T + Clone + 'static + Send + Sync>
-    InterpolatePluralCount for F
+InterpolatePluralCount for F
 {
-    type Count = T;
+type Count = T;
 }

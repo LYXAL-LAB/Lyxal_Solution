@@ -1,4 +1,4 @@
-//! # About the async signal
+﻿//! # About the async signal
 //!
 //! `leptos_async_signal` is a library built on top of
 //! [Leptos](https://github.com/leptos-rs/leptos) that extends the functionality of Leptos signals
@@ -57,19 +57,19 @@ use async_state::AsyncState;
 #[derive(Clone)]
 pub struct AsyncWriteSignal<T>
 where
-    T: 'static,
+T: 'static,
 {
-    inner: Arc<AsyncWriteSignalInner<T>>,
+inner: Arc<AsyncWriteSignalInner<T>>,
 }
 
 #[derive(Clone)]
 struct AsyncWriteSignalInner<T>
 where
-    T: 'static,
+T: 'static,
 {
-    signal_write: ArcWriteSignal<T>,
-    #[cfg(feature = "ssr")]
-    state: AsyncState,
+signal_write: ArcWriteSignal<T>,
+#[cfg(feature = "ssr")]
+state: AsyncState,
 }
 
 /// Creates a new async signal, that is, the pairing of a resource with an
@@ -78,61 +78,61 @@ where
 /// this works is documented by [`AsyncWriteSignal`].
 pub fn async_signal<T>(default: T) -> (ArcResource<T>, AsyncWriteSignal<T>)
 where
-    T: Clone + Send + Sync + PartialEq + Serialize + DeserializeOwned,
+T: Clone + Send + Sync + PartialEq + Serialize + DeserializeOwned,
 {
-    let (signal_read, signal_write) = arc_signal(default);
-    #[cfg(feature = "ssr")]
-    let state = AsyncState::default();
-    let inner = AsyncWriteSignalInner {
-        signal_write,
-        #[cfg(feature = "ssr")]
-        state: state.clone(),
-    };
-    let resource = ArcResource::new(
-        {
-            let signal_read = signal_read.clone();
-            move || signal_read.get()
-        },
-        move |_| {
-            #[cfg(feature = "ssr")]
-            let state = state.clone();
-            let signal_read = signal_read.clone();
-            async move {
-                #[cfg(feature = "ssr")]
-                state.wait().await;
-                signal_read.get_untracked()
-            }
-        },
-    );
-    let async_write_signal = AsyncWriteSignal { inner: Arc::new(inner) };
-    (resource, async_write_signal)
+let (signal_read, signal_write) = arc_signal(default);
+#[cfg(feature = "ssr")]
+let state = AsyncState::default();
+let inner = AsyncWriteSignalInner {
+signal_write,
+#[cfg(feature = "ssr")]
+state: state.clone(),
+};
+let resource = ArcResource::new(
+{
+let signal_read = signal_read.clone();
+move || signal_read.get()
+},
+move |_| {
+#[cfg(feature = "ssr")]
+let state = state.clone();
+let signal_read = signal_read.clone();
+async move {
+#[cfg(feature = "ssr")]
+state.wait().await;
+signal_read.get_untracked()
+}
+},
+);
+let async_write_signal = AsyncWriteSignal { inner: Arc::new(inner) };
+(resource, async_write_signal)
 }
 
 impl<T> Set for AsyncWriteSignal<T>
 where
-    T: Send + Sync + 'static,
+T: Send + Sync + 'static,
 {
-    type Value = T;
+type Value = T;
 
-    fn set(&self, value: Self::Value) {
-        self.inner.signal_write.set(value);
-        #[cfg(feature = "ssr")]
-        self.inner.state.mark_ready();
-    }
+fn set(&self, value: Self::Value) {
+self.inner.signal_write.set(value);
+#[cfg(feature = "ssr")]
+self.inner.state.mark_ready();
+}
 
-    fn try_set(&self, value: Self::Value) -> Option<Self::Value> {
-        let res = self.inner.signal_write.try_set(value);
-        #[cfg(feature = "ssr")]
-        self.inner.state.mark_ready();
-        res
-    }
+fn try_set(&self, value: Self::Value) -> Option<Self::Value> {
+let res = self.inner.signal_write.try_set(value);
+#[cfg(feature = "ssr")]
+self.inner.state.mark_ready();
+res
+}
 }
 
 #[cfg(feature = "ssr")]
 impl<T> Drop for AsyncWriteSignal<T> {
-    fn drop(&mut self) {
-        if let Some(inner) = Arc::get_mut(&mut self.inner) {
-            inner.state.mark_ready()
-        }
-    }
+fn drop(&mut self) {
+if let Some(inner) = Arc::get_mut(&mut self.inner) {
+inner.state.mark_ready()
+}
+}
 }

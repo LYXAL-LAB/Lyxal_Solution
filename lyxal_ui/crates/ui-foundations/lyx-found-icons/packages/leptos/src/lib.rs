@@ -1,4 +1,4 @@
-//! Leptos port of [Lucide](https://lucide.dev/).
+﻿//! Leptos port of [Lucide](https://lucide.dev/).
 //!
 //! Lucide is a beautiful & consistent icon toolkit made by the community.
 //!
@@ -13,20 +13,20 @@ mod a_large_small;
 #[cfg(any(feature = "accessibility", feature = "medical"))]
 mod accessibility;
 #[cfg(any(
-    feature = "medical",
-    feature = "account",
-    feature = "social",
-    feature = "science",
-    feature = "multimedia"
+feature = "medical",
+feature = "account",
+feature = "social",
+feature = "science",
+feature = "multimedia"
 ))]
 mod activity;
 #[cfg(feature = "home")]
 mod air_vent;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "connectivity",
-    feature = "devices",
-    feature = "brands"
+feature = "multimedia",
+feature = "connectivity",
+feature = "devices",
+feature = "brands"
 ))]
 mod airplay;
 #[cfg(any(feature = "devices", feature = "notifications", feature = "time"))]
@@ -108,17 +108,17 @@ mod anvil;
 #[cfg(feature = "photography")]
 mod aperture;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "files"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "files"
 ))]
 mod app_window;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "files"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "files"
 ))]
 mod app_window_mac;
 #[cfg(feature = "food-beverage")]
@@ -144,17 +144,17 @@ mod arrow_big_right;
 #[cfg(any(feature = "arrows", feature = "gaming"))]
 mod arrow_big_right_dash;
 #[cfg(any(
-    feature = "arrows",
-    feature = "text",
-    feature = "development",
-    feature = "gaming"
+feature = "arrows",
+feature = "text",
+feature = "development",
+feature = "gaming"
 ))]
 mod arrow_big_up;
 #[cfg(any(
-    feature = "arrows",
-    feature = "text",
-    feature = "development",
-    feature = "gaming"
+feature = "arrows",
+feature = "text",
+feature = "development",
+feature = "gaming"
 ))]
 mod arrow_big_up_dash;
 #[cfg(feature = "arrows")]
@@ -268,10 +268,10 @@ mod badge_japanese_yen;
 #[cfg(feature = "social")]
 mod badge_minus;
 #[cfg(any(
-    feature = "social",
-    feature = "finance",
-    feature = "shopping",
-    feature = "math"
+feature = "social",
+feature = "finance",
+feature = "shopping",
+feature = "math"
 ))]
 mod badge_percent;
 #[cfg(feature = "social")]
@@ -375,12 +375,12 @@ mod bike;
 #[cfg(any(feature = "text", feature = "development"))]
 mod binary;
 #[cfg(any(
-    feature = "navigation",
-    feature = "nature",
-    feature = "photography",
-    feature = "science",
-    feature = "travel",
-    feature = "development"
+feature = "navigation",
+feature = "nature",
+feature = "photography",
+feature = "science",
+feature = "travel",
+feature = "development"
 ))]
 mod binoculars;
 #[cfg(feature = "science")]
@@ -388,19 +388,19 @@ mod biohazard;
 #[cfg(feature = "animals")]
 mod bird;
 #[cfg(any(
-    feature = "nature",
-    feature = "animals",
-    feature = "navigation",
-    feature = "home"
+feature = "nature",
+feature = "animals",
+feature = "navigation",
+feature = "home"
 ))]
 mod birdhouse;
 #[cfg(any(feature = "brands", feature = "development", feature = "finance"))]
 mod bitcoin;
 #[cfg(any(
-    feature = "design",
-    feature = "photography",
-    feature = "tools",
-    feature = "development"
+feature = "design",
+feature = "photography",
+feature = "tools",
+feature = "development"
 ))]
 mod blend;
 #[cfg(feature = "home")]
@@ -444,13 +444,13 @@ mod book_headphones;
 #[cfg(any(feature = "social", feature = "text", feature = "gaming"))]
 mod book_heart;
 #[cfg(any(
-    feature = "photography",
-    feature = "text",
-    feature = "multimedia",
-    feature = "files",
-    feature = "social",
-    feature = "shopping",
-    feature = "travel"
+feature = "photography",
+feature = "text",
+feature = "multimedia",
+feature = "files",
+feature = "social",
+feature = "shopping",
+feature = "travel"
 ))]
 mod book_image;
 #[cfg(any(feature = "development", feature = "security", feature = "gaming"))]
@@ -480,10 +480,10 @@ mod book_up;
 #[cfg(feature = "development")]
 mod book_up_2;
 #[cfg(any(
-    feature = "account",
-    feature = "connectivity",
-    feature = "communication",
-    feature = "social"
+feature = "account",
+feature = "connectivity",
+feature = "communication",
+feature = "social"
 ))]
 mod book_user;
 #[cfg(any(feature = "text", feature = "gaming"))]
@@ -511,10 +511,10 @@ mod bottle_wine;
 #[cfg(any(feature = "gaming", feature = "tools"))]
 mod bow_arrow;
 #[cfg(any(
-    feature = "shapes",
-    feature = "gaming",
-    feature = "development",
-    feature = "math"
+feature = "shapes",
+feature = "gaming",
+feature = "development",
+feature = "math"
 ))]
 mod r#box;
 #[cfg(any(feature = "shapes", feature = "gaming", feature = "development"))]
@@ -620,15 +620,15 @@ mod calendar_x_2;
 #[cfg(feature = "time")]
 mod calendars;
 #[cfg(any(
-    feature = "photography",
-    feature = "devices",
-    feature = "communication"
+feature = "photography",
+feature = "devices",
+feature = "communication"
 ))]
 mod camera;
 #[cfg(any(
-    feature = "photography",
-    feature = "devices",
-    feature = "communication"
+feature = "photography",
+feature = "devices",
+feature = "communication"
 ))]
 mod camera_off;
 #[cfg(feature = "food-beverage")]
@@ -654,10 +654,10 @@ mod car_taxi_front;
 #[cfg(any(feature = "transportation", feature = "travel", feature = "nature"))]
 mod caravan;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "communication",
-    feature = "multimedia",
-    feature = "devices"
+feature = "connectivity",
+feature = "communication",
+feature = "multimedia",
+feature = "devices"
 ))]
 mod card_sim;
 #[cfg(feature = "food-beverage")]
@@ -669,11 +669,11 @@ mod case_sensitive;
 #[cfg(any(feature = "text", feature = "development"))]
 mod case_upper;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "multimedia",
-    feature = "communication",
-    feature = "files"
+feature = "connectivity",
+feature = "devices",
+feature = "multimedia",
+feature = "communication",
+feature = "files"
 ))]
 mod cassette_tape;
 #[cfg(any(feature = "devices", feature = "connectivity"))]
@@ -683,11 +683,11 @@ mod castle;
 #[cfg(feature = "animals")]
 mod cat;
 #[cfg(any(
-    feature = "security",
-    feature = "devices",
-    feature = "communication",
-    feature = "connectivity",
-    feature = "photography"
+feature = "security",
+feature = "devices",
+feature = "communication",
+feature = "connectivity",
+feature = "photography"
 ))]
 mod cctv;
 #[cfg(feature = "charts")]
@@ -729,10 +729,10 @@ mod chart_no_axes_column_increasing;
 #[cfg(feature = "charts")]
 mod chart_no_axes_combined;
 #[cfg(any(
-    feature = "charts",
-    feature = "time",
-    feature = "development",
-    feature = "design"
+feature = "charts",
+feature = "time",
+feature = "development",
+feature = "design"
 ))]
 mod chart_no_axes_gantt;
 #[cfg(any(feature = "charts", feature = "files"))]
@@ -784,10 +784,10 @@ mod chevrons_left;
 #[cfg(feature = "arrows")]
 mod chevrons_left_right;
 #[cfg(any(
-    feature = "communication",
-    feature = "devices",
-    feature = "multimedia",
-    feature = "gaming"
+feature = "communication",
+feature = "devices",
+feature = "multimedia",
+feature = "gaming"
 ))]
 mod chevrons_left_right_ellipsis;
 #[cfg(any(feature = "arrows", feature = "gaming"))]
@@ -869,10 +869,10 @@ mod circle_parking_off;
 #[cfg(feature = "multimedia")]
 mod circle_pause;
 #[cfg(any(
-    feature = "social",
-    feature = "finance",
-    feature = "shopping",
-    feature = "math"
+feature = "social",
+feature = "finance",
+feature = "shopping",
+feature = "math"
 ))]
 mod circle_percent;
 #[cfg(feature = "shapes")]
@@ -880,10 +880,10 @@ mod circle_pile;
 #[cfg(feature = "multimedia")]
 mod circle_play;
 #[cfg(any(
-    feature = "math",
-    feature = "development",
-    feature = "cursors",
-    feature = "gaming"
+feature = "math",
+feature = "development",
+feature = "cursors",
+feature = "gaming"
 ))]
 mod circle_plus;
 #[cfg(feature = "finance")]
@@ -1045,10 +1045,10 @@ mod columns_3;
 #[cfg(any(feature = "layout", feature = "design"))]
 mod columns_3_cog;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "text",
-    feature = "security"
+feature = "layout",
+feature = "design",
+feature = "text",
+feature = "security"
 ))]
 mod columns_4;
 #[cfg(any(feature = "development", feature = "files"))]
@@ -1068,17 +1068,17 @@ mod cone;
 #[cfg(feature = "development")]
 mod construction;
 #[cfg(any(
-    feature = "account",
-    feature = "connectivity",
-    feature = "communication",
-    feature = "social"
+feature = "account",
+feature = "connectivity",
+feature = "communication",
+feature = "social"
 ))]
 mod contact;
 #[cfg(any(
-    feature = "account",
-    feature = "connectivity",
-    feature = "communication",
-    feature = "social"
+feature = "account",
+feature = "connectivity",
+feature = "communication",
+feature = "social"
 ))]
 mod contact_round;
 #[cfg(any(feature = "development", feature = "transportation", feature = "mail"))]
@@ -1146,35 +1146,35 @@ mod currency;
 #[cfg(any(feature = "shapes", feature = "design", feature = "math"))]
 mod cylinder;
 #[cfg(any(
-    feature = "buildings",
-    feature = "sustainability",
-    feature = "navigation"
+feature = "buildings",
+feature = "sustainability",
+feature = "navigation"
 ))]
 mod dam;
 #[cfg(any(feature = "devices", feature = "development"))]
 mod database;
 #[cfg(any(
-    feature = "devices",
-    feature = "arrows",
-    feature = "design",
-    feature = "development",
-    feature = "photography"
+feature = "devices",
+feature = "arrows",
+feature = "design",
+feature = "development",
+feature = "photography"
 ))]
 mod database_backup;
 #[cfg(any(feature = "devices", feature = "development"))]
 mod database_zap;
 #[cfg(any(
-    feature = "design",
-    feature = "text",
-    feature = "arrows",
-    feature = "math"
+feature = "design",
+feature = "text",
+feature = "arrows",
+feature = "math"
 ))]
 mod decimals_arrow_left;
 #[cfg(any(
-    feature = "design",
-    feature = "text",
-    feature = "arrows",
-    feature = "math"
+feature = "design",
+feature = "text",
+feature = "arrows",
+feature = "math"
 ))]
 mod decimals_arrow_right;
 #[cfg(any(feature = "text", feature = "arrows"))]
@@ -1182,33 +1182,33 @@ mod delete;
 #[cfg(feature = "food-beverage")]
 mod dessert;
 #[cfg(any(
-    feature = "shapes",
-    feature = "math",
-    feature = "design",
-    feature = "tools"
+feature = "shapes",
+feature = "math",
+feature = "design",
+feature = "tools"
 ))]
 mod diameter;
 #[cfg(any(feature = "shapes", feature = "gaming"))]
 mod diamond;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "photography",
-    feature = "tools",
-    feature = "devices"
+feature = "multimedia",
+feature = "photography",
+feature = "tools",
+feature = "devices"
 ))]
 mod diamond_minus;
 #[cfg(any(
-    feature = "social",
-    feature = "finance",
-    feature = "shopping",
-    feature = "math"
+feature = "social",
+feature = "finance",
+feature = "shopping",
+feature = "math"
 ))]
 mod diamond_percent;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "photography",
-    feature = "tools",
-    feature = "devices"
+feature = "multimedia",
+feature = "photography",
+feature = "tools",
+feature = "devices"
 ))]
 mod diamond_plus;
 #[cfg(feature = "gaming")]
@@ -1242,10 +1242,10 @@ mod dna;
 #[cfg(any(feature = "medical", feature = "food-beverage"))]
 mod dna_off;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "files"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "files"
 ))]
 mod dock;
 #[cfg(feature = "animals")]
@@ -1295,11 +1295,11 @@ mod earth;
 #[cfg(any(feature = "security", feature = "development", feature = "devices"))]
 mod earth_lock;
 #[cfg(any(
-    feature = "science",
-    feature = "design",
-    feature = "development",
-    feature = "accessibility",
-    feature = "photography"
+feature = "science",
+feature = "design",
+feature = "development",
+feature = "accessibility",
+feature = "photography"
 ))]
 mod eclipse;
 #[cfg(any(feature = "food-beverage", feature = "animals"))]
@@ -1321,10 +1321,10 @@ mod equal_not;
 #[cfg(feature = "text")]
 mod eraser;
 #[cfg(any(
-    feature = "communication",
-    feature = "devices",
-    feature = "multimedia",
-    feature = "gaming"
+feature = "communication",
+feature = "devices",
+feature = "multimedia",
+feature = "gaming"
 ))]
 mod ethernet_port;
 #[cfg(feature = "finance")]
@@ -1336,24 +1336,24 @@ mod expand;
 #[cfg(any(feature = "arrows", feature = "text", feature = "social"))]
 mod external_link;
 #[cfg(any(
-    feature = "accessibility",
-    feature = "photography",
-    feature = "design",
-    feature = "security"
+feature = "accessibility",
+feature = "photography",
+feature = "design",
+feature = "security"
 ))]
 mod eye;
 #[cfg(any(
-    feature = "accessibility",
-    feature = "photography",
-    feature = "design",
-    feature = "security"
+feature = "accessibility",
+feature = "photography",
+feature = "design",
+feature = "security"
 ))]
 mod eye_closed;
 #[cfg(any(
-    feature = "accessibility",
-    feature = "photography",
-    feature = "design",
-    feature = "security"
+feature = "accessibility",
+feature = "photography",
+feature = "design",
+feature = "security"
 ))]
 mod eye_off;
 #[cfg(any(feature = "social", feature = "brands"))]
@@ -1487,10 +1487,10 @@ mod files;
 #[cfg(any(feature = "photography", feature = "multimedia"))]
 mod film;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "medical",
-    feature = "devices"
+feature = "account",
+feature = "security",
+feature = "medical",
+feature = "devices"
 ))]
 mod fingerprint_pattern;
 #[cfg(any(feature = "home", feature = "tools", feature = "travel"))]
@@ -1570,10 +1570,10 @@ mod folder_heart;
 #[cfg(any(feature = "files", feature = "arrows"))]
 mod folder_input;
 #[cfg(any(
-    feature = "charts",
-    feature = "development",
-    feature = "design",
-    feature = "files"
+feature = "charts",
+feature = "development",
+feature = "design",
+feature = "files"
 ))]
 mod folder_kanban;
 #[cfg(any(feature = "files", feature = "security"))]
@@ -1627,10 +1627,10 @@ mod frown;
 #[cfg(any(feature = "transportation", feature = "navigation"))]
 mod fuel;
 #[cfg(any(
-    feature = "layout",
-    feature = "multimedia",
-    feature = "design",
-    feature = "photography"
+feature = "layout",
+feature = "multimedia",
+feature = "design",
+feature = "photography"
 ))]
 mod fullscreen;
 #[cfg(feature = "layout")]
@@ -1640,45 +1640,45 @@ mod funnel_plus;
 #[cfg(feature = "layout")]
 mod funnel_x;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "photography",
-    feature = "multimedia"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "photography",
+feature = "multimedia"
 ))]
 mod gallery_horizontal;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "photography",
-    feature = "multimedia",
-    feature = "files"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "photography",
+feature = "multimedia",
+feature = "files"
 ))]
 mod gallery_horizontal_end;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "photography",
-    feature = "multimedia"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "photography",
+feature = "multimedia"
 ))]
 mod gallery_thumbnails;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "photography",
-    feature = "multimedia"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "photography",
+feature = "multimedia"
 ))]
 mod gallery_vertical;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "photography",
-    feature = "multimedia",
-    feature = "files"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "photography",
+feature = "multimedia",
+feature = "files"
 ))]
 mod gallery_vertical_end;
 #[cfg(any(feature = "gaming", feature = "devices"))]
@@ -1754,10 +1754,10 @@ mod graduation_cap;
 #[cfg(feature = "food-beverage")]
 mod grape;
 #[cfg(any(
-    feature = "text",
-    feature = "layout",
-    feature = "design",
-    feature = "math"
+feature = "text",
+feature = "layout",
+feature = "design",
+feature = "math"
 ))]
 mod grid_2_x_2;
 #[cfg(any(feature = "text", feature = "layout", feature = "math"))]
@@ -1767,10 +1767,10 @@ mod grid_2_x_2_plus;
 #[cfg(any(feature = "text", feature = "layout", feature = "math"))]
 mod grid_2_x_2_x;
 #[cfg(any(
-    feature = "text",
-    feature = "math",
-    feature = "layout",
-    feature = "design"
+feature = "text",
+feature = "math",
+feature = "layout",
+feature = "design"
 ))]
 mod grid_3_x_2;
 #[cfg(any(feature = "text", feature = "layout", feature = "design"))]
@@ -1796,10 +1796,10 @@ mod hand;
 #[cfg(any(feature = "finance", feature = "account"))]
 mod hand_coins;
 #[cfg(any(
-    feature = "social",
-    feature = "emoji",
-    feature = "communication",
-    feature = "sports"
+feature = "social",
+feature = "emoji",
+feature = "communication",
+feature = "sports"
 ))]
 mod hand_fist;
 #[cfg(any(feature = "cursors", feature = "design", feature = "layout"))]
@@ -1815,27 +1815,27 @@ mod hand_platter;
 #[cfg(any(feature = "shopping", feature = "transportation"))]
 mod handbag;
 #[cfg(any(
-    feature = "account",
-    feature = "social",
-    feature = "communication",
-    feature = "finance",
-    feature = "security"
+feature = "account",
+feature = "social",
+feature = "communication",
+feature = "finance",
+feature = "security"
 ))]
 mod handshake;
 #[cfg(any(feature = "development", feature = "devices"))]
 mod hard_drive;
 #[cfg(any(
-    feature = "development",
-    feature = "devices",
-    feature = "arrows",
-    feature = "files"
+feature = "development",
+feature = "devices",
+feature = "arrows",
+feature = "files"
 ))]
 mod hard_drive_download;
 #[cfg(any(
-    feature = "development",
-    feature = "devices",
-    feature = "arrows",
-    feature = "files"
+feature = "development",
+feature = "devices",
+feature = "arrows",
+feature = "files"
 ))]
 mod hard_drive_upload;
 #[cfg(feature = "tools")]
@@ -1865,36 +1865,36 @@ mod heading_5;
 #[cfg(feature = "text")]
 mod heading_6;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "connectivity",
-    feature = "communication",
-    feature = "devices",
-    feature = "gaming"
+feature = "multimedia",
+feature = "connectivity",
+feature = "communication",
+feature = "devices",
+feature = "gaming"
 ))]
 mod headphone_off;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "connectivity",
-    feature = "devices",
-    feature = "files",
-    feature = "gaming"
+feature = "multimedia",
+feature = "connectivity",
+feature = "devices",
+feature = "files",
+feature = "gaming"
 ))]
 mod headphones;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "connectivity",
-    feature = "devices",
-    feature = "files",
-    feature = "gaming"
+feature = "multimedia",
+feature = "connectivity",
+feature = "devices",
+feature = "files",
+feature = "gaming"
 ))]
 mod headset;
 #[cfg(any(
-    feature = "medical",
-    feature = "social",
-    feature = "multimedia",
-    feature = "emoji",
-    feature = "gaming",
-    feature = "shapes"
+feature = "medical",
+feature = "social",
+feature = "multimedia",
+feature = "emoji",
+feature = "gaming",
+feature = "shapes"
 ))]
 mod heart;
 #[cfg(feature = "emoji")]
@@ -1902,21 +1902,21 @@ mod heart_crack;
 #[cfg(any(feature = "emoji", feature = "account", feature = "security"))]
 mod heart_handshake;
 #[cfg(any(
-    feature = "medical",
-    feature = "account",
-    feature = "multimedia",
-    feature = "gaming",
-    feature = "social"
+feature = "medical",
+feature = "account",
+feature = "multimedia",
+feature = "gaming",
+feature = "social"
 ))]
 mod heart_minus;
 #[cfg(any(feature = "social", feature = "multimedia"))]
 mod heart_off;
 #[cfg(any(
-    feature = "medical",
-    feature = "account",
-    feature = "multimedia",
-    feature = "gaming",
-    feature = "social"
+feature = "medical",
+feature = "account",
+feature = "multimedia",
+feature = "gaming",
+feature = "social"
 ))]
 mod heart_plus;
 #[cfg(feature = "medical")]
@@ -1936,10 +1936,10 @@ mod hop;
 #[cfg(feature = "food-beverage")]
 mod hop_off;
 #[cfg(any(
-    feature = "medical",
-    feature = "buildings",
-    feature = "navigation",
-    feature = "travel"
+feature = "medical",
+feature = "buildings",
+feature = "navigation",
+feature = "travel"
 ))]
 mod hospital;
 #[cfg(any(feature = "buildings", feature = "navigation", feature = "travel"))]
@@ -1965,17 +1965,17 @@ mod id_card;
 #[cfg(any(feature = "security", feature = "account"))]
 mod id_card_lanyard;
 #[cfg(any(
-    feature = "photography",
-    feature = "text",
-    feature = "multimedia",
-    feature = "files"
+feature = "photography",
+feature = "text",
+feature = "multimedia",
+feature = "files"
 ))]
 mod image;
 #[cfg(any(
-    feature = "photography",
-    feature = "text",
-    feature = "multimedia",
-    feature = "files"
+feature = "photography",
+feature = "text",
+feature = "multimedia",
+feature = "files"
 ))]
 mod image_down;
 #[cfg(any(feature = "photography", feature = "multimedia", feature = "files"))]
@@ -1983,28 +1983,28 @@ mod image_minus;
 #[cfg(any(feature = "photography", feature = "multimedia", feature = "files"))]
 mod image_off;
 #[cfg(any(
-    feature = "photography",
-    feature = "text",
-    feature = "multimedia",
-    feature = "files"
+feature = "photography",
+feature = "text",
+feature = "multimedia",
+feature = "files"
 ))]
 mod image_play;
 #[cfg(any(feature = "photography", feature = "multimedia", feature = "files"))]
 mod image_plus;
 #[cfg(any(
-    feature = "photography",
-    feature = "text",
-    feature = "multimedia",
-    feature = "files"
+feature = "photography",
+feature = "text",
+feature = "multimedia",
+feature = "files"
 ))]
 mod image_up;
 #[cfg(any(feature = "photography", feature = "multimedia"))]
 mod image_upscale;
 #[cfg(any(
-    feature = "photography",
-    feature = "text",
-    feature = "multimedia",
-    feature = "files"
+feature = "photography",
+feature = "text",
+feature = "multimedia",
+feature = "files"
 ))]
 mod images;
 #[cfg(any(feature = "arrows", feature = "files"))]
@@ -2060,11 +2060,11 @@ mod lamp_wall_down;
 #[cfg(feature = "home")]
 mod lamp_wall_up;
 #[cfg(any(
-    feature = "design",
-    feature = "tools",
-    feature = "math",
-    feature = "sports",
-    feature = "gaming"
+feature = "design",
+feature = "tools",
+feature = "math",
+feature = "sports",
+feature = "gaming"
 ))]
 mod land_plot;
 #[cfg(any(feature = "finance", feature = "navigation", feature = "buildings"))]
@@ -2094,10 +2094,10 @@ mod layout_dashboard;
 #[cfg(any(feature = "design", feature = "layout"))]
 mod layout_grid;
 #[cfg(any(
-    feature = "design",
-    feature = "layout",
-    feature = "photography",
-    feature = "text"
+feature = "design",
+feature = "layout",
+feature = "photography",
+feature = "text"
 ))]
 mod layout_list;
 #[cfg(any(feature = "design", feature = "layout"))]
@@ -2109,27 +2109,27 @@ mod layout_template;
 #[cfg(any(feature = "nature", feature = "sustainability", feature = "seasons"))]
 mod leaf;
 #[cfg(any(
-    feature = "food-beverage",
-    feature = "emoji",
-    feature = "sustainability"
+feature = "food-beverage",
+feature = "emoji",
+feature = "sustainability"
 ))]
 mod leafy_green;
 #[cfg(any(feature = "communication", feature = "multimedia"))]
 mod lectern;
 #[cfg(any(
-    feature = "text",
-    feature = "photography",
-    feature = "multimedia",
-    feature = "navigation",
-    feature = "development"
+feature = "text",
+feature = "photography",
+feature = "multimedia",
+feature = "navigation",
+feature = "development"
 ))]
 mod library;
 #[cfg(any(
-    feature = "text",
-    feature = "photography",
-    feature = "multimedia",
-    feature = "navigation",
-    feature = "development"
+feature = "text",
+feature = "photography",
+feature = "multimedia",
+feature = "navigation",
+feature = "development"
 ))]
 mod library_big;
 #[cfg(any(feature = "accessibility", feature = "medical"))]
@@ -2193,10 +2193,10 @@ mod list_video;
 #[cfg(any(feature = "multimedia", feature = "text"))]
 mod list_x;
 #[cfg(any(
-    feature = "cursors",
-    feature = "multimedia",
-    feature = "layout",
-    feature = "design"
+feature = "cursors",
+feature = "multimedia",
+feature = "layout",
+feature = "design"
 ))]
 mod loader;
 #[cfg(any(feature = "cursors", feature = "multimedia", feature = "layout"))]
@@ -2364,17 +2364,17 @@ mod message_square_x;
 #[cfg(feature = "social")]
 mod messages_square;
 #[cfg(any(
-    feature = "devices",
-    feature = "communication",
-    feature = "connectivity",
-    feature = "multimedia"
+feature = "devices",
+feature = "communication",
+feature = "connectivity",
+feature = "multimedia"
 ))]
 mod mic;
 #[cfg(any(
-    feature = "devices",
-    feature = "communication",
-    feature = "connectivity",
-    feature = "multimedia"
+feature = "devices",
+feature = "communication",
+feature = "connectivity",
+feature = "multimedia"
 ))]
 mod mic_off;
 #[cfg(any(feature = "devices", feature = "multimedia"))]
@@ -2386,10 +2386,10 @@ mod microscope;
 #[cfg(any(feature = "food-beverage", feature = "home"))]
 mod microwave;
 #[cfg(any(
-    feature = "arrows",
-    feature = "navigation",
-    feature = "development",
-    feature = "gaming"
+feature = "arrows",
+feature = "navigation",
+feature = "development",
+feature = "gaming"
 ))]
 mod milestone;
 #[cfg(feature = "food-beverage")]
@@ -2401,10 +2401,10 @@ mod minimize;
 #[cfg(any(feature = "arrows", feature = "layout", feature = "design"))]
 mod minimize_2;
 #[cfg(any(
-    feature = "math",
-    feature = "development",
-    feature = "text",
-    feature = "tools"
+feature = "math",
+feature = "development",
+feature = "text",
+feature = "tools"
 ))]
 mod minus;
 #[cfg(any(feature = "connectivity", feature = "devices"))]
@@ -2512,10 +2512,10 @@ mod nfc;
 #[cfg(feature = "medical")]
 mod non_binary;
 #[cfg(any(
-    feature = "text",
-    feature = "communication",
-    feature = "social",
-    feature = "design"
+feature = "text",
+feature = "communication",
+feature = "social",
+feature = "design"
 ))]
 mod notebook;
 #[cfg(any(feature = "text", feature = "social"))]
@@ -2543,10 +2543,10 @@ mod octagon_pause;
 #[cfg(any(feature = "math", feature = "notifications"))]
 mod octagon_x;
 #[cfg(any(
-    feature = "math",
-    feature = "development",
-    feature = "text",
-    feature = "science"
+feature = "math",
+feature = "development",
+feature = "text",
+feature = "science"
 ))]
 mod omega;
 #[cfg(feature = "development")]
@@ -2574,26 +2574,26 @@ mod package_x;
 #[cfg(any(feature = "design", feature = "tools"))]
 mod paint_bucket;
 #[cfg(any(
-    feature = "text",
-    feature = "design",
-    feature = "home",
-    feature = "tools"
+feature = "text",
+feature = "design",
+feature = "home",
+feature = "tools"
 ))]
 mod paint_roller;
 #[cfg(any(
-    feature = "text",
-    feature = "design",
-    feature = "photography",
-    feature = "home",
-    feature = "tools"
+feature = "text",
+feature = "design",
+feature = "photography",
+feature = "home",
+feature = "tools"
 ))]
 mod paintbrush;
 #[cfg(any(
-    feature = "text",
-    feature = "design",
-    feature = "photography",
-    feature = "home",
-    feature = "tools"
+feature = "text",
+feature = "design",
+feature = "photography",
+feature = "home",
+feature = "tools"
 ))]
 mod paintbrush_vertical;
 #[cfg(any(feature = "text", feature = "design", feature = "photography"))]
@@ -2643,10 +2643,10 @@ mod panels_right_bottom;
 #[cfg(any(feature = "layout", feature = "design", feature = "development"))]
 mod panels_top_left;
 #[cfg(any(
-    feature = "text",
-    feature = "design",
-    feature = "files",
-    feature = "mail"
+feature = "text",
+feature = "design",
+feature = "files",
+feature = "mail"
 ))]
 mod paperclip;
 #[cfg(any(feature = "development", feature = "files", feature = "math"))]
@@ -2670,35 +2670,35 @@ mod pen_off;
 #[cfg(any(feature = "text", feature = "design", feature = "cursors"))]
 mod pen_tool;
 #[cfg(any(
-    feature = "design",
-    feature = "cursors",
-    feature = "tools",
-    feature = "text"
+feature = "design",
+feature = "cursors",
+feature = "tools",
+feature = "text"
 ))]
 mod pencil;
 #[cfg(any(feature = "text", feature = "design", feature = "tools"))]
 mod pencil_line;
 #[cfg(any(
-    feature = "design",
-    feature = "cursors",
-    feature = "tools",
-    feature = "text"
+feature = "design",
+feature = "cursors",
+feature = "tools",
+feature = "text"
 ))]
 mod pencil_off;
 #[cfg(any(
-    feature = "tools",
-    feature = "design",
-    feature = "layout",
-    feature = "text"
+feature = "tools",
+feature = "design",
+feature = "layout",
+feature = "text"
 ))]
 mod pencil_ruler;
 #[cfg(feature = "shapes")]
 mod pentagon;
 #[cfg(any(
-    feature = "math",
-    feature = "development",
-    feature = "finance",
-    feature = "shopping"
+feature = "math",
+feature = "development",
+feature = "finance",
+feature = "shopping"
 ))]
 mod percent;
 #[cfg(any(feature = "accessibility", feature = "people"))]
@@ -2706,49 +2706,49 @@ mod person_standing;
 #[cfg(feature = "finance")]
 mod philippine_peso;
 #[cfg(any(
-    feature = "text",
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "text",
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 mod phone;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 mod phone_call;
 #[cfg(any(
-    feature = "arrows",
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "arrows",
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 mod phone_forwarded;
 #[cfg(any(
-    feature = "arrows",
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "arrows",
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 mod phone_incoming;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 mod phone_missed;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 mod phone_off;
 #[cfg(any(
-    feature = "arrows",
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "arrows",
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 mod phone_outgoing;
 #[cfg(any(feature = "development", feature = "math"))]
@@ -2796,12 +2796,12 @@ mod plug_2;
 #[cfg(feature = "devices")]
 mod plug_zap;
 #[cfg(any(
-    feature = "math",
-    feature = "tools",
-    feature = "development",
-    feature = "text",
-    feature = "cursors",
-    feature = "gaming"
+feature = "math",
+feature = "tools",
+feature = "development",
+feature = "text",
+feature = "cursors",
+feature = "gaming"
 ))]
 mod plus;
 #[cfg(feature = "brands")]
@@ -2825,11 +2825,11 @@ mod power;
 #[cfg(feature = "connectivity")]
 mod power_off;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "photography",
-    feature = "devices",
-    feature = "communication",
-    feature = "design"
+feature = "multimedia",
+feature = "photography",
+feature = "devices",
+feature = "communication",
+feature = "design"
 ))]
 mod presentation;
 #[cfg(feature = "devices")]
@@ -2839,17 +2839,17 @@ mod printer_check;
 #[cfg(feature = "devices")]
 mod printer_x;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "photography",
-    feature = "devices",
-    feature = "communication"
+feature = "multimedia",
+feature = "photography",
+feature = "devices",
+feature = "communication"
 ))]
 mod projector;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "photography",
-    feature = "devices"
+feature = "layout",
+feature = "design",
+feature = "photography",
+feature = "devices"
 ))]
 mod proportions;
 #[cfg(any(feature = "development", feature = "gaming"))]
@@ -2863,9 +2863,9 @@ mod quote;
 #[cfg(feature = "animals")]
 mod rabbit;
 #[cfg(any(
-    feature = "navigation",
-    feature = "security",
-    feature = "communication"
+feature = "navigation",
+feature = "security",
+feature = "communication"
 ))]
 mod radar;
 #[cfg(feature = "science")]
@@ -2879,10 +2879,10 @@ mod radio_receiver;
 #[cfg(any(feature = "devices", feature = "multimedia", feature = "social"))]
 mod radio_tower;
 #[cfg(any(
-    feature = "shapes",
-    feature = "math",
-    feature = "design",
-    feature = "tools"
+feature = "shapes",
+feature = "math",
+feature = "design",
+feature = "tools"
 ))]
 mod radius;
 #[cfg(any(feature = "transportation", feature = "navigation"))]
@@ -2918,10 +2918,10 @@ mod rectangle_circle;
 #[cfg(any(feature = "text", feature = "development"))]
 mod rectangle_ellipsis;
 #[cfg(any(
-    feature = "devices",
-    feature = "gaming",
-    feature = "multimedia",
-    feature = "connectivity"
+feature = "devices",
+feature = "gaming",
+feature = "multimedia",
+feature = "connectivity"
 ))]
 mod rectangle_goggles;
 #[cfg(any(feature = "shapes", feature = "design"))]
@@ -2975,11 +2975,11 @@ mod rocking_chair;
 #[cfg(feature = "navigation")]
 mod roller_coaster;
 #[cfg(any(
-    feature = "nature",
-    feature = "seasons",
-    feature = "sustainability",
-    feature = "home",
-    feature = "social"
+feature = "nature",
+feature = "seasons",
+feature = "sustainability",
+feature = "home",
+feature = "social"
 ))]
 mod rose;
 #[cfg(feature = "design")]
@@ -2989,21 +2989,21 @@ mod rotate_ccw;
 #[cfg(any(feature = "security", feature = "account"))]
 mod rotate_ccw_key;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "photography",
-    feature = "tools",
-    feature = "arrows"
+feature = "layout",
+feature = "design",
+feature = "photography",
+feature = "tools",
+feature = "arrows"
 ))]
 mod rotate_ccw_square;
 #[cfg(any(feature = "arrows", feature = "design", feature = "photography"))]
 mod rotate_cw;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "photography",
-    feature = "tools",
-    feature = "arrows"
+feature = "layout",
+feature = "design",
+feature = "photography",
+feature = "tools",
+feature = "arrows"
 ))]
 mod rotate_cw_square;
 #[cfg(feature = "navigation")]
@@ -3011,10 +3011,10 @@ mod route;
 #[cfg(feature = "navigation")]
 mod route_off;
 #[cfg(any(
-    feature = "development",
-    feature = "devices",
-    feature = "connectivity",
-    feature = "home"
+feature = "development",
+feature = "devices",
+feature = "connectivity",
+feature = "home"
 ))]
 mod router;
 #[cfg(any(feature = "layout", feature = "design", feature = "text"))]
@@ -3056,29 +3056,29 @@ mod scale_3_d;
 #[cfg(feature = "design")]
 mod scaling;
 #[cfg(any(
-    feature = "devices",
-    feature = "shopping",
-    feature = "security",
-    feature = "social",
-    feature = "gaming"
+feature = "devices",
+feature = "shopping",
+feature = "security",
+feature = "social",
+feature = "gaming"
 ))]
 mod scan;
 #[cfg(any(feature = "shopping", feature = "devices"))]
 mod scan_barcode;
 #[cfg(any(
-    feature = "photography",
-    feature = "multimedia",
-    feature = "accessibility",
-    feature = "security",
-    feature = "devices",
-    feature = "account"
+feature = "photography",
+feature = "multimedia",
+feature = "accessibility",
+feature = "security",
+feature = "devices",
+feature = "account"
 ))]
 mod scan_eye;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "devices",
-    feature = "social"
+feature = "account",
+feature = "security",
+feature = "devices",
+feature = "social"
 ))]
 mod scan_face;
 #[cfg(feature = "medical")]
@@ -3086,16 +3086,16 @@ mod scan_heart;
 #[cfg(any(feature = "devices", feature = "shopping"))]
 mod scan_line;
 #[cfg(any(
-    feature = "account",
-    feature = "shopping",
-    feature = "devices",
-    feature = "security"
+feature = "account",
+feature = "shopping",
+feature = "devices",
+feature = "security"
 ))]
 mod scan_qr_code;
 #[cfg(any(
-    feature = "photography",
-    feature = "multimedia",
-    feature = "accessibility"
+feature = "photography",
+feature = "multimedia",
+feature = "accessibility"
 ))]
 mod scan_search;
 #[cfg(any(feature = "text", feature = "devices"))]
@@ -3109,15 +3109,15 @@ mod scissors_line_dashed;
 #[cfg(feature = "transportation")]
 mod scooter;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 mod screen_share;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 mod screen_share_off;
 #[cfg(any(feature = "gaming", feature = "development", feature = "text"))]
@@ -3169,95 +3169,95 @@ mod share_2;
 #[cfg(any(feature = "text", feature = "files"))]
 mod sheet;
 #[cfg(any(
-    feature = "animals",
-    feature = "development",
-    feature = "nature",
-    feature = "science",
-    feature = "travel",
-    feature = "food-beverage",
-    feature = "home"
+feature = "animals",
+feature = "development",
+feature = "nature",
+feature = "science",
+feature = "travel",
+feature = "food-beverage",
+feature = "home"
 ))]
 mod shell;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming",
-    feature = "shapes"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming",
+feature = "shapes"
 ))]
 mod shield;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "notifications",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "notifications",
+feature = "gaming"
 ))]
 mod shield_alert;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 mod shield_ban;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 mod shield_check;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 mod shield_ellipsis;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 mod shield_half;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 mod shield_minus;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 mod shield_off;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming",
-    feature = "medical"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming",
+feature = "medical"
 ))]
 mod shield_plus;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 mod shield_question_mark;
 #[cfg(any(feature = "account", feature = "security", feature = "development"))]
 mod shield_user;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 mod shield_x;
 #[cfg(any(feature = "transportation", feature = "navigation", feature = "travel"))]
@@ -3301,17 +3301,17 @@ mod signal_zero;
 #[cfg(feature = "text")]
 mod signature;
 #[cfg(any(
-    feature = "arrows",
-    feature = "navigation",
-    feature = "development",
-    feature = "gaming"
+feature = "arrows",
+feature = "navigation",
+feature = "development",
+feature = "gaming"
 ))]
 mod signpost;
 #[cfg(any(
-    feature = "arrows",
-    feature = "navigation",
-    feature = "development",
-    feature = "gaming"
+feature = "arrows",
+feature = "navigation",
+feature = "development",
+feature = "gaming"
 ))]
 mod signpost_big;
 #[cfg(feature = "medical")]
@@ -3323,10 +3323,10 @@ mod skip_forward;
 #[cfg(feature = "gaming")]
 mod skull;
 #[cfg(any(
-    feature = "account",
-    feature = "social",
-    feature = "brands",
-    feature = "development"
+feature = "account",
+feature = "social",
+feature = "brands",
+feature = "development"
 ))]
 mod slack;
 #[cfg(any(feature = "development", feature = "math"))]
@@ -3346,10 +3346,10 @@ mod smartphone_nfc;
 #[cfg(any(feature = "emoji", feature = "account"))]
 mod smile;
 #[cfg(any(
-    feature = "emoji",
-    feature = "social",
-    feature = "notifications",
-    feature = "communication"
+feature = "emoji",
+feature = "social",
+feature = "notifications",
+feature = "communication"
 ))]
 mod smile_plus;
 #[cfg(any(feature = "animals", feature = "food-beverage"))]
@@ -3361,10 +3361,10 @@ mod soap_dispenser_droplet;
 #[cfg(feature = "home")]
 mod sofa;
 #[cfg(any(
-    feature = "home",
-    feature = "science",
-    feature = "sustainability",
-    feature = "weather"
+feature = "home",
+feature = "science",
+feature = "sustainability",
+feature = "weather"
 ))]
 mod solar_panel;
 #[cfg(feature = "food-beverage")]
@@ -3376,10 +3376,10 @@ mod spade;
 #[cfg(feature = "shapes")]
 mod sparkle;
 #[cfg(any(
-    feature = "cursors",
-    feature = "multimedia",
-    feature = "gaming",
-    feature = "weather"
+feature = "cursors",
+feature = "multimedia",
+feature = "gaming",
+feature = "weather"
 ))]
 mod sparkles;
 #[cfg(any(feature = "multimedia", feature = "devices"))]
@@ -3393,10 +3393,10 @@ mod spell_check_2;
 #[cfg(feature = "design")]
 mod spline;
 #[cfg(any(
-    feature = "arrows",
-    feature = "cursors",
-    feature = "design",
-    feature = "tools"
+feature = "arrows",
+feature = "cursors",
+feature = "design",
+feature = "tools"
 ))]
 mod spline_pointer;
 #[cfg(any(feature = "development", feature = "arrows"))]
@@ -3404,10 +3404,10 @@ mod split;
 #[cfg(any(feature = "communication", feature = "tools", feature = "social"))]
 mod spool;
 #[cfg(any(
-    feature = "devices",
-    feature = "photography",
-    feature = "multimedia",
-    feature = "communication"
+feature = "devices",
+feature = "photography",
+feature = "multimedia",
+feature = "communication"
 ))]
 mod spotlight;
 #[cfg(any(feature = "design", feature = "tools"))]
@@ -3417,10 +3417,10 @@ mod sprout;
 #[cfg(any(feature = "shapes", feature = "multimedia"))]
 mod square;
 #[cfg(any(
-    feature = "medical",
-    feature = "social",
-    feature = "science",
-    feature = "multimedia"
+feature = "medical",
+feature = "social",
+feature = "science",
+feature = "multimedia"
 ))]
 mod square_activity;
 #[cfg(any(feature = "arrows", feature = "gaming"))]
@@ -3448,25 +3448,25 @@ mod square_arrow_up_left;
 #[cfg(any(feature = "arrows", feature = "social"))]
 mod square_arrow_up_right;
 #[cfg(any(
-    feature = "text",
-    feature = "security",
-    feature = "math",
-    feature = "development"
+feature = "text",
+feature = "security",
+feature = "math",
+feature = "development"
 ))]
 mod square_asterisk;
 #[cfg(any(
-    feature = "text",
-    feature = "design",
-    feature = "tools",
-    feature = "files",
-    feature = "development"
+feature = "text",
+feature = "design",
+feature = "tools",
+feature = "files",
+feature = "development"
 ))]
 mod square_bottom_dashed_scissors;
 #[cfg(any(
-    feature = "charts",
-    feature = "time",
-    feature = "development",
-    feature = "design"
+feature = "charts",
+feature = "time",
+feature = "development",
+feature = "design"
 ))]
 mod square_chart_gantt;
 #[cfg(feature = "notifications")]
@@ -3492,10 +3492,10 @@ mod square_dashed_bottom_code;
 #[cfg(any(feature = "charts", feature = "development", feature = "design"))]
 mod square_dashed_kanban;
 #[cfg(any(
-    feature = "arrows",
-    feature = "cursors",
-    feature = "development",
-    feature = "tools"
+feature = "arrows",
+feature = "cursors",
+feature = "development",
+feature = "tools"
 ))]
 mod square_dashed_mouse_pointer;
 #[cfg(any(feature = "design", feature = "development", feature = "layout"))]
@@ -3511,11 +3511,11 @@ mod square_function;
 #[cfg(any(feature = "charts", feature = "development", feature = "design"))]
 mod square_kanban;
 #[cfg(any(
-    feature = "text",
-    feature = "photography",
-    feature = "multimedia",
-    feature = "navigation",
-    feature = "development"
+feature = "text",
+feature = "photography",
+feature = "multimedia",
+feature = "navigation",
+feature = "development"
 ))]
 mod square_library;
 #[cfg(any(feature = "transportation", feature = "navigation"))]
@@ -3523,18 +3523,18 @@ mod square_m;
 #[cfg(feature = "layout")]
 mod square_menu;
 #[cfg(any(
-    feature = "math",
-    feature = "development",
-    feature = "text",
-    feature = "tools",
-    feature = "devices"
+feature = "math",
+feature = "development",
+feature = "text",
+feature = "tools",
+feature = "devices"
 ))]
 mod square_minus;
 #[cfg(any(
-    feature = "arrows",
-    feature = "cursors",
-    feature = "development",
-    feature = "tools"
+feature = "arrows",
+feature = "cursors",
+feature = "development",
+feature = "tools"
 ))]
 mod square_mouse_pointer;
 #[cfg(any(feature = "transportation", feature = "navigation"))]
@@ -3546,10 +3546,10 @@ mod square_pause;
 #[cfg(feature = "text")]
 mod square_pen;
 #[cfg(any(
-    feature = "social",
-    feature = "finance",
-    feature = "shopping",
-    feature = "math"
+feature = "social",
+feature = "finance",
+feature = "shopping",
+feature = "math"
 ))]
 mod square_percent;
 #[cfg(any(feature = "development", feature = "math"))]
@@ -3559,10 +3559,10 @@ mod square_pilcrow;
 #[cfg(any(feature = "arrows", feature = "multimedia"))]
 mod square_play;
 #[cfg(any(
-    feature = "math",
-    feature = "tools",
-    feature = "development",
-    feature = "text"
+feature = "math",
+feature = "tools",
+feature = "development",
+feature = "text"
 ))]
 mod square_plus;
 #[cfg(feature = "connectivity")]
@@ -3572,11 +3572,11 @@ mod square_radical;
 #[cfg(any(feature = "design", feature = "development", feature = "layout"))]
 mod square_round_corner;
 #[cfg(any(
-    feature = "text",
-    feature = "design",
-    feature = "tools",
-    feature = "files",
-    feature = "development"
+feature = "text",
+feature = "design",
+feature = "tools",
+feature = "files",
+feature = "development"
 ))]
 mod square_scissors;
 #[cfg(any(feature = "text", feature = "math"))]
@@ -3620,13 +3620,13 @@ mod squirrel;
 #[cfg(any(feature = "design", feature = "cursors", feature = "tools"))]
 mod stamp;
 #[cfg(any(
-    feature = "account",
-    feature = "social",
-    feature = "shapes",
-    feature = "multimedia",
-    feature = "weather",
-    feature = "emoji",
-    feature = "gaming"
+feature = "account",
+feature = "social",
+feature = "shapes",
+feature = "multimedia",
+feature = "weather",
+feature = "emoji",
+feature = "gaming"
 ))]
 mod star;
 #[cfg(any(feature = "social", feature = "multimedia"))]
@@ -3656,10 +3656,10 @@ mod strikethrough;
 #[cfg(feature = "text")]
 mod subscript;
 #[cfg(any(
-    feature = "accessibility",
-    feature = "weather",
-    feature = "seasons",
-    feature = "sustainability"
+feature = "accessibility",
+feature = "weather",
+feature = "seasons",
+feature = "sustainability"
 ))]
 mod sun;
 #[cfg(any(feature = "accessibility", feature = "weather"))]
@@ -3707,10 +3707,10 @@ mod table_rows_split;
 #[cfg(feature = "devices")]
 mod tablet;
 #[cfg(any(
-    feature = "devices",
-    feature = "design",
-    feature = "development",
-    feature = "tools"
+feature = "devices",
+feature = "design",
+feature = "development",
+feature = "tools"
 ))]
 mod tablet_smartphone;
 #[cfg(feature = "medical")]
@@ -3730,10 +3730,10 @@ mod tally_4;
 #[cfg(any(feature = "math", feature = "gaming"))]
 mod tally_5;
 #[cfg(any(
-    feature = "shapes",
-    feature = "math",
-    feature = "design",
-    feature = "tools"
+feature = "shapes",
+feature = "math",
+feature = "design",
+feature = "tools"
 ))]
 mod tangent;
 #[cfg(any(feature = "brands", feature = "gaming"))]
@@ -3823,10 +3823,10 @@ mod toolbox;
 #[cfg(feature = "weather")]
 mod tornado;
 #[cfg(any(
-    feature = "shapes",
-    feature = "design",
-    feature = "tools",
-    feature = "food-beverage"
+feature = "shapes",
+feature = "design",
+feature = "tools",
+feature = "food-beverage"
 ))]
 mod torus;
 #[cfg(feature = "devices")]
@@ -3838,9 +3838,9 @@ mod tower_control;
 #[cfg(any(feature = "gaming", feature = "development"))]
 mod toy_brick;
 #[cfg(any(
-    feature = "transportation",
-    feature = "sustainability",
-    feature = "food-beverage"
+feature = "transportation",
+feature = "sustainability",
+feature = "food-beverage"
 ))]
 mod tractor;
 #[cfg(feature = "transportation")]
@@ -3902,10 +3902,10 @@ mod tv_minimal;
 #[cfg(any(feature = "devices", feature = "multimedia"))]
 mod tv_minimal_play;
 #[cfg(any(
-    feature = "brands",
-    feature = "social",
-    feature = "account",
-    feature = "gaming"
+feature = "brands",
+feature = "social",
+feature = "account",
+feature = "gaming"
 ))]
 mod twitch;
 #[cfg(any(feature = "brands", feature = "social", feature = "account"))]
@@ -3997,10 +3997,10 @@ mod variable;
 #[cfg(any(feature = "security", feature = "travel", feature = "home"))]
 mod vault;
 #[cfg(any(
-    feature = "shapes",
-    feature = "math",
-    feature = "design",
-    feature = "tools"
+feature = "shapes",
+feature = "math",
+feature = "design",
+feature = "tools"
 ))]
 mod vector_square;
 #[cfg(any(feature = "food-beverage", feature = "sustainability"))]
@@ -4012,34 +4012,34 @@ mod venus;
 #[cfg(feature = "medical")]
 mod venus_and_mars;
 #[cfg(any(
-    feature = "devices",
-    feature = "connectivity",
-    feature = "account",
-    feature = "notifications"
+feature = "devices",
+feature = "connectivity",
+feature = "account",
+feature = "notifications"
 ))]
 mod vibrate;
 #[cfg(any(feature = "devices", feature = "connectivity", feature = "account"))]
 mod vibrate_off;
 #[cfg(any(
-    feature = "devices",
-    feature = "communication",
-    feature = "connectivity",
-    feature = "photography"
+feature = "devices",
+feature = "communication",
+feature = "connectivity",
+feature = "photography"
 ))]
 mod video;
 #[cfg(any(
-    feature = "devices",
-    feature = "communication",
-    feature = "connectivity",
-    feature = "photography"
+feature = "devices",
+feature = "communication",
+feature = "connectivity",
+feature = "photography"
 ))]
 mod video_off;
 #[cfg(any(
-    feature = "devices",
-    feature = "communication",
-    feature = "connectivity",
-    feature = "photography",
-    feature = "files"
+feature = "devices",
+feature = "communication",
+feature = "connectivity",
+feature = "photography",
+feature = "files"
 ))]
 mod videotape;
 #[cfg(any(feature = "design", feature = "photography"))]
@@ -4049,33 +4049,33 @@ mod voicemail;
 #[cfg(any(feature = "sports", feature = "gaming", feature = "travel"))]
 mod volleyball;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "communication",
-    feature = "multimedia"
+feature = "connectivity",
+feature = "communication",
+feature = "multimedia"
 ))]
 mod volume;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "communication",
-    feature = "multimedia"
+feature = "connectivity",
+feature = "communication",
+feature = "multimedia"
 ))]
 mod volume_1;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "communication",
-    feature = "multimedia"
+feature = "connectivity",
+feature = "communication",
+feature = "multimedia"
 ))]
 mod volume_2;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "communication",
-    feature = "multimedia"
+feature = "connectivity",
+feature = "communication",
+feature = "multimedia"
 ))]
 mod volume_off;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "communication",
-    feature = "multimedia"
+feature = "connectivity",
+feature = "communication",
+feature = "multimedia"
 ))]
 mod volume_x;
 #[cfg(feature = "social")]
@@ -4089,17 +4089,17 @@ mod wallet_minimal;
 #[cfg(any(feature = "account", feature = "devices"))]
 mod wallpaper;
 #[cfg(any(
-    feature = "design",
-    feature = "gaming",
-    feature = "cursors",
-    feature = "photography"
+feature = "design",
+feature = "gaming",
+feature = "cursors",
+feature = "photography"
 ))]
 mod wand;
 #[cfg(any(
-    feature = "design",
-    feature = "gaming",
-    feature = "cursors",
-    feature = "photography"
+feature = "design",
+feature = "gaming",
+feature = "cursors",
+feature = "photography"
 ))]
 mod wand_sparkles;
 #[cfg(any(feature = "buildings", feature = "navigation"))]
@@ -4109,10 +4109,10 @@ mod washing_machine;
 #[cfg(feature = "time")]
 mod watch;
 #[cfg(any(
-    feature = "weather",
-    feature = "navigation",
-    feature = "multimedia",
-    feature = "sustainability"
+feature = "weather",
+feature = "navigation",
+feature = "multimedia",
+feature = "sustainability"
 ))]
 mod waves;
 #[cfg(any(feature = "weather", feature = "sustainability"))]
@@ -4122,17 +4122,17 @@ mod waves_arrow_up;
 #[cfg(any(feature = "sports", feature = "home"))]
 mod waves_ladder;
 #[cfg(any(
-    feature = "security",
-    feature = "account",
-    feature = "navigation",
-    feature = "development",
-    feature = "social"
+feature = "security",
+feature = "account",
+feature = "navigation",
+feature = "development",
+feature = "social"
 ))]
 mod waypoints;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 mod webcam;
 #[cfg(any(feature = "development", feature = "social", feature = "account"))]
@@ -4184,33 +4184,33 @@ mod x;
 #[cfg(any(feature = "multimedia", feature = "social", feature = "brands"))]
 mod youtube;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "photography",
-    feature = "weather"
+feature = "connectivity",
+feature = "devices",
+feature = "photography",
+feature = "weather"
 ))]
 mod zap;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "photography",
-    feature = "weather"
+feature = "connectivity",
+feature = "devices",
+feature = "photography",
+feature = "weather"
 ))]
 mod zap_off;
 #[cfg(any(
-    feature = "accessibility",
-    feature = "layout",
-    feature = "design",
-    feature = "text",
-    feature = "photography"
+feature = "accessibility",
+feature = "layout",
+feature = "design",
+feature = "text",
+feature = "photography"
 ))]
 mod zoom_in;
 #[cfg(any(
-    feature = "accessibility",
-    feature = "layout",
-    feature = "design",
-    feature = "text",
-    feature = "photography"
+feature = "accessibility",
+feature = "layout",
+feature = "design",
+feature = "text",
+feature = "photography"
 ))]
 mod zoom_out;
 
@@ -4223,20 +4223,20 @@ pub use a_large_small::*;
 #[cfg(any(feature = "accessibility", feature = "medical"))]
 pub use accessibility::*;
 #[cfg(any(
-    feature = "medical",
-    feature = "account",
-    feature = "social",
-    feature = "science",
-    feature = "multimedia"
+feature = "medical",
+feature = "account",
+feature = "social",
+feature = "science",
+feature = "multimedia"
 ))]
 pub use activity::*;
 #[cfg(feature = "home")]
 pub use air_vent::*;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "connectivity",
-    feature = "devices",
-    feature = "brands"
+feature = "multimedia",
+feature = "connectivity",
+feature = "devices",
+feature = "brands"
 ))]
 pub use airplay::*;
 #[cfg(any(feature = "devices", feature = "notifications", feature = "time"))]
@@ -4318,17 +4318,17 @@ pub use anvil::*;
 #[cfg(feature = "photography")]
 pub use aperture::*;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "files"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "files"
 ))]
 pub use app_window::*;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "files"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "files"
 ))]
 pub use app_window_mac::*;
 #[cfg(feature = "food-beverage")]
@@ -4354,17 +4354,17 @@ pub use arrow_big_right::*;
 #[cfg(any(feature = "arrows", feature = "gaming"))]
 pub use arrow_big_right_dash::*;
 #[cfg(any(
-    feature = "arrows",
-    feature = "text",
-    feature = "development",
-    feature = "gaming"
+feature = "arrows",
+feature = "text",
+feature = "development",
+feature = "gaming"
 ))]
 pub use arrow_big_up::*;
 #[cfg(any(
-    feature = "arrows",
-    feature = "text",
-    feature = "development",
-    feature = "gaming"
+feature = "arrows",
+feature = "text",
+feature = "development",
+feature = "gaming"
 ))]
 pub use arrow_big_up_dash::*;
 #[cfg(feature = "arrows")]
@@ -4478,10 +4478,10 @@ pub use badge_japanese_yen::*;
 #[cfg(feature = "social")]
 pub use badge_minus::*;
 #[cfg(any(
-    feature = "social",
-    feature = "finance",
-    feature = "shopping",
-    feature = "math"
+feature = "social",
+feature = "finance",
+feature = "shopping",
+feature = "math"
 ))]
 pub use badge_percent::*;
 #[cfg(feature = "social")]
@@ -4585,12 +4585,12 @@ pub use bike::*;
 #[cfg(any(feature = "text", feature = "development"))]
 pub use binary::*;
 #[cfg(any(
-    feature = "navigation",
-    feature = "nature",
-    feature = "photography",
-    feature = "science",
-    feature = "travel",
-    feature = "development"
+feature = "navigation",
+feature = "nature",
+feature = "photography",
+feature = "science",
+feature = "travel",
+feature = "development"
 ))]
 pub use binoculars::*;
 #[cfg(feature = "science")]
@@ -4598,19 +4598,19 @@ pub use biohazard::*;
 #[cfg(feature = "animals")]
 pub use bird::*;
 #[cfg(any(
-    feature = "nature",
-    feature = "animals",
-    feature = "navigation",
-    feature = "home"
+feature = "nature",
+feature = "animals",
+feature = "navigation",
+feature = "home"
 ))]
 pub use birdhouse::*;
 #[cfg(any(feature = "brands", feature = "development", feature = "finance"))]
 pub use bitcoin::*;
 #[cfg(any(
-    feature = "design",
-    feature = "photography",
-    feature = "tools",
-    feature = "development"
+feature = "design",
+feature = "photography",
+feature = "tools",
+feature = "development"
 ))]
 pub use blend::*;
 #[cfg(feature = "home")]
@@ -4654,13 +4654,13 @@ pub use book_headphones::*;
 #[cfg(any(feature = "social", feature = "text", feature = "gaming"))]
 pub use book_heart::*;
 #[cfg(any(
-    feature = "photography",
-    feature = "text",
-    feature = "multimedia",
-    feature = "files",
-    feature = "social",
-    feature = "shopping",
-    feature = "travel"
+feature = "photography",
+feature = "text",
+feature = "multimedia",
+feature = "files",
+feature = "social",
+feature = "shopping",
+feature = "travel"
 ))]
 pub use book_image::*;
 #[cfg(any(feature = "development", feature = "security", feature = "gaming"))]
@@ -4690,10 +4690,10 @@ pub use book_up::*;
 #[cfg(feature = "development")]
 pub use book_up_2::*;
 #[cfg(any(
-    feature = "account",
-    feature = "connectivity",
-    feature = "communication",
-    feature = "social"
+feature = "account",
+feature = "connectivity",
+feature = "communication",
+feature = "social"
 ))]
 pub use book_user::*;
 #[cfg(any(feature = "text", feature = "gaming"))]
@@ -4721,10 +4721,10 @@ pub use bottle_wine::*;
 #[cfg(any(feature = "gaming", feature = "tools"))]
 pub use bow_arrow::*;
 #[cfg(any(
-    feature = "shapes",
-    feature = "gaming",
-    feature = "development",
-    feature = "math"
+feature = "shapes",
+feature = "gaming",
+feature = "development",
+feature = "math"
 ))]
 pub use r#box::*;
 #[cfg(any(feature = "shapes", feature = "gaming", feature = "development"))]
@@ -4830,15 +4830,15 @@ pub use calendar_x_2::*;
 #[cfg(feature = "time")]
 pub use calendars::*;
 #[cfg(any(
-    feature = "photography",
-    feature = "devices",
-    feature = "communication"
+feature = "photography",
+feature = "devices",
+feature = "communication"
 ))]
 pub use camera::*;
 #[cfg(any(
-    feature = "photography",
-    feature = "devices",
-    feature = "communication"
+feature = "photography",
+feature = "devices",
+feature = "communication"
 ))]
 pub use camera_off::*;
 #[cfg(feature = "food-beverage")]
@@ -4864,10 +4864,10 @@ pub use car_taxi_front::*;
 #[cfg(any(feature = "transportation", feature = "travel", feature = "nature"))]
 pub use caravan::*;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "communication",
-    feature = "multimedia",
-    feature = "devices"
+feature = "connectivity",
+feature = "communication",
+feature = "multimedia",
+feature = "devices"
 ))]
 pub use card_sim::*;
 #[cfg(feature = "food-beverage")]
@@ -4879,11 +4879,11 @@ pub use case_sensitive::*;
 #[cfg(any(feature = "text", feature = "development"))]
 pub use case_upper::*;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "multimedia",
-    feature = "communication",
-    feature = "files"
+feature = "connectivity",
+feature = "devices",
+feature = "multimedia",
+feature = "communication",
+feature = "files"
 ))]
 pub use cassette_tape::*;
 #[cfg(any(feature = "devices", feature = "connectivity"))]
@@ -4893,11 +4893,11 @@ pub use castle::*;
 #[cfg(feature = "animals")]
 pub use cat::*;
 #[cfg(any(
-    feature = "security",
-    feature = "devices",
-    feature = "communication",
-    feature = "connectivity",
-    feature = "photography"
+feature = "security",
+feature = "devices",
+feature = "communication",
+feature = "connectivity",
+feature = "photography"
 ))]
 pub use cctv::*;
 #[cfg(feature = "charts")]
@@ -4939,10 +4939,10 @@ pub use chart_no_axes_column_increasing::*;
 #[cfg(feature = "charts")]
 pub use chart_no_axes_combined::*;
 #[cfg(any(
-    feature = "charts",
-    feature = "time",
-    feature = "development",
-    feature = "design"
+feature = "charts",
+feature = "time",
+feature = "development",
+feature = "design"
 ))]
 pub use chart_no_axes_gantt::*;
 #[cfg(any(feature = "charts", feature = "files"))]
@@ -4994,10 +4994,10 @@ pub use chevrons_left::*;
 #[cfg(feature = "arrows")]
 pub use chevrons_left_right::*;
 #[cfg(any(
-    feature = "communication",
-    feature = "devices",
-    feature = "multimedia",
-    feature = "gaming"
+feature = "communication",
+feature = "devices",
+feature = "multimedia",
+feature = "gaming"
 ))]
 pub use chevrons_left_right_ellipsis::*;
 #[cfg(any(feature = "arrows", feature = "gaming"))]
@@ -5079,10 +5079,10 @@ pub use circle_parking_off::*;
 #[cfg(feature = "multimedia")]
 pub use circle_pause::*;
 #[cfg(any(
-    feature = "social",
-    feature = "finance",
-    feature = "shopping",
-    feature = "math"
+feature = "social",
+feature = "finance",
+feature = "shopping",
+feature = "math"
 ))]
 pub use circle_percent::*;
 #[cfg(feature = "shapes")]
@@ -5090,10 +5090,10 @@ pub use circle_pile::*;
 #[cfg(feature = "multimedia")]
 pub use circle_play::*;
 #[cfg(any(
-    feature = "math",
-    feature = "development",
-    feature = "cursors",
-    feature = "gaming"
+feature = "math",
+feature = "development",
+feature = "cursors",
+feature = "gaming"
 ))]
 pub use circle_plus::*;
 #[cfg(feature = "finance")]
@@ -5255,10 +5255,10 @@ pub use columns_3::*;
 #[cfg(any(feature = "layout", feature = "design"))]
 pub use columns_3_cog::*;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "text",
-    feature = "security"
+feature = "layout",
+feature = "design",
+feature = "text",
+feature = "security"
 ))]
 pub use columns_4::*;
 #[cfg(any(feature = "development", feature = "files"))]
@@ -5278,17 +5278,17 @@ pub use cone::*;
 #[cfg(feature = "development")]
 pub use construction::*;
 #[cfg(any(
-    feature = "account",
-    feature = "connectivity",
-    feature = "communication",
-    feature = "social"
+feature = "account",
+feature = "connectivity",
+feature = "communication",
+feature = "social"
 ))]
 pub use contact::*;
 #[cfg(any(
-    feature = "account",
-    feature = "connectivity",
-    feature = "communication",
-    feature = "social"
+feature = "account",
+feature = "connectivity",
+feature = "communication",
+feature = "social"
 ))]
 pub use contact_round::*;
 #[cfg(any(feature = "development", feature = "transportation", feature = "mail"))]
@@ -5356,35 +5356,35 @@ pub use currency::*;
 #[cfg(any(feature = "shapes", feature = "design", feature = "math"))]
 pub use cylinder::*;
 #[cfg(any(
-    feature = "buildings",
-    feature = "sustainability",
-    feature = "navigation"
+feature = "buildings",
+feature = "sustainability",
+feature = "navigation"
 ))]
 pub use dam::*;
 #[cfg(any(feature = "devices", feature = "development"))]
 pub use database::*;
 #[cfg(any(
-    feature = "devices",
-    feature = "arrows",
-    feature = "design",
-    feature = "development",
-    feature = "photography"
+feature = "devices",
+feature = "arrows",
+feature = "design",
+feature = "development",
+feature = "photography"
 ))]
 pub use database_backup::*;
 #[cfg(any(feature = "devices", feature = "development"))]
 pub use database_zap::*;
 #[cfg(any(
-    feature = "design",
-    feature = "text",
-    feature = "arrows",
-    feature = "math"
+feature = "design",
+feature = "text",
+feature = "arrows",
+feature = "math"
 ))]
 pub use decimals_arrow_left::*;
 #[cfg(any(
-    feature = "design",
-    feature = "text",
-    feature = "arrows",
-    feature = "math"
+feature = "design",
+feature = "text",
+feature = "arrows",
+feature = "math"
 ))]
 pub use decimals_arrow_right::*;
 #[cfg(any(feature = "text", feature = "arrows"))]
@@ -5392,33 +5392,33 @@ pub use delete::*;
 #[cfg(feature = "food-beverage")]
 pub use dessert::*;
 #[cfg(any(
-    feature = "shapes",
-    feature = "math",
-    feature = "design",
-    feature = "tools"
+feature = "shapes",
+feature = "math",
+feature = "design",
+feature = "tools"
 ))]
 pub use diameter::*;
 #[cfg(any(feature = "shapes", feature = "gaming"))]
 pub use diamond::*;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "photography",
-    feature = "tools",
-    feature = "devices"
+feature = "multimedia",
+feature = "photography",
+feature = "tools",
+feature = "devices"
 ))]
 pub use diamond_minus::*;
 #[cfg(any(
-    feature = "social",
-    feature = "finance",
-    feature = "shopping",
-    feature = "math"
+feature = "social",
+feature = "finance",
+feature = "shopping",
+feature = "math"
 ))]
 pub use diamond_percent::*;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "photography",
-    feature = "tools",
-    feature = "devices"
+feature = "multimedia",
+feature = "photography",
+feature = "tools",
+feature = "devices"
 ))]
 pub use diamond_plus::*;
 #[cfg(feature = "gaming")]
@@ -5452,10 +5452,10 @@ pub use dna::*;
 #[cfg(any(feature = "medical", feature = "food-beverage"))]
 pub use dna_off::*;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "files"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "files"
 ))]
 pub use dock::*;
 #[cfg(feature = "animals")]
@@ -5505,11 +5505,11 @@ pub use earth::*;
 #[cfg(any(feature = "security", feature = "development", feature = "devices"))]
 pub use earth_lock::*;
 #[cfg(any(
-    feature = "science",
-    feature = "design",
-    feature = "development",
-    feature = "accessibility",
-    feature = "photography"
+feature = "science",
+feature = "design",
+feature = "development",
+feature = "accessibility",
+feature = "photography"
 ))]
 pub use eclipse::*;
 #[cfg(any(feature = "food-beverage", feature = "animals"))]
@@ -5531,10 +5531,10 @@ pub use equal_not::*;
 #[cfg(feature = "text")]
 pub use eraser::*;
 #[cfg(any(
-    feature = "communication",
-    feature = "devices",
-    feature = "multimedia",
-    feature = "gaming"
+feature = "communication",
+feature = "devices",
+feature = "multimedia",
+feature = "gaming"
 ))]
 pub use ethernet_port::*;
 #[cfg(feature = "finance")]
@@ -5546,24 +5546,24 @@ pub use expand::*;
 #[cfg(any(feature = "arrows", feature = "text", feature = "social"))]
 pub use external_link::*;
 #[cfg(any(
-    feature = "accessibility",
-    feature = "photography",
-    feature = "design",
-    feature = "security"
+feature = "accessibility",
+feature = "photography",
+feature = "design",
+feature = "security"
 ))]
 pub use eye::*;
 #[cfg(any(
-    feature = "accessibility",
-    feature = "photography",
-    feature = "design",
-    feature = "security"
+feature = "accessibility",
+feature = "photography",
+feature = "design",
+feature = "security"
 ))]
 pub use eye_closed::*;
 #[cfg(any(
-    feature = "accessibility",
-    feature = "photography",
-    feature = "design",
-    feature = "security"
+feature = "accessibility",
+feature = "photography",
+feature = "design",
+feature = "security"
 ))]
 pub use eye_off::*;
 #[cfg(any(feature = "social", feature = "brands"))]
@@ -5697,10 +5697,10 @@ pub use files::*;
 #[cfg(any(feature = "photography", feature = "multimedia"))]
 pub use film::*;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "medical",
-    feature = "devices"
+feature = "account",
+feature = "security",
+feature = "medical",
+feature = "devices"
 ))]
 pub use fingerprint_pattern::*;
 #[cfg(any(feature = "home", feature = "tools", feature = "travel"))]
@@ -5780,10 +5780,10 @@ pub use folder_heart::*;
 #[cfg(any(feature = "files", feature = "arrows"))]
 pub use folder_input::*;
 #[cfg(any(
-    feature = "charts",
-    feature = "development",
-    feature = "design",
-    feature = "files"
+feature = "charts",
+feature = "development",
+feature = "design",
+feature = "files"
 ))]
 pub use folder_kanban::*;
 #[cfg(any(feature = "files", feature = "security"))]
@@ -5837,10 +5837,10 @@ pub use frown::*;
 #[cfg(any(feature = "transportation", feature = "navigation"))]
 pub use fuel::*;
 #[cfg(any(
-    feature = "layout",
-    feature = "multimedia",
-    feature = "design",
-    feature = "photography"
+feature = "layout",
+feature = "multimedia",
+feature = "design",
+feature = "photography"
 ))]
 pub use fullscreen::*;
 #[cfg(feature = "layout")]
@@ -5850,45 +5850,45 @@ pub use funnel_plus::*;
 #[cfg(feature = "layout")]
 pub use funnel_x::*;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "photography",
-    feature = "multimedia"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "photography",
+feature = "multimedia"
 ))]
 pub use gallery_horizontal::*;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "photography",
-    feature = "multimedia",
-    feature = "files"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "photography",
+feature = "multimedia",
+feature = "files"
 ))]
 pub use gallery_horizontal_end::*;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "photography",
-    feature = "multimedia"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "photography",
+feature = "multimedia"
 ))]
 pub use gallery_thumbnails::*;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "photography",
-    feature = "multimedia"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "photography",
+feature = "multimedia"
 ))]
 pub use gallery_vertical::*;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "development",
-    feature = "photography",
-    feature = "multimedia",
-    feature = "files"
+feature = "layout",
+feature = "design",
+feature = "development",
+feature = "photography",
+feature = "multimedia",
+feature = "files"
 ))]
 pub use gallery_vertical_end::*;
 #[cfg(any(feature = "gaming", feature = "devices"))]
@@ -5964,10 +5964,10 @@ pub use graduation_cap::*;
 #[cfg(feature = "food-beverage")]
 pub use grape::*;
 #[cfg(any(
-    feature = "text",
-    feature = "layout",
-    feature = "design",
-    feature = "math"
+feature = "text",
+feature = "layout",
+feature = "design",
+feature = "math"
 ))]
 pub use grid_2_x_2::*;
 #[cfg(any(feature = "text", feature = "layout", feature = "math"))]
@@ -5977,10 +5977,10 @@ pub use grid_2_x_2_plus::*;
 #[cfg(any(feature = "text", feature = "layout", feature = "math"))]
 pub use grid_2_x_2_x::*;
 #[cfg(any(
-    feature = "text",
-    feature = "math",
-    feature = "layout",
-    feature = "design"
+feature = "text",
+feature = "math",
+feature = "layout",
+feature = "design"
 ))]
 pub use grid_3_x_2::*;
 #[cfg(any(feature = "text", feature = "layout", feature = "design"))]
@@ -6006,10 +6006,10 @@ pub use hand::*;
 #[cfg(any(feature = "finance", feature = "account"))]
 pub use hand_coins::*;
 #[cfg(any(
-    feature = "social",
-    feature = "emoji",
-    feature = "communication",
-    feature = "sports"
+feature = "social",
+feature = "emoji",
+feature = "communication",
+feature = "sports"
 ))]
 pub use hand_fist::*;
 #[cfg(any(feature = "cursors", feature = "design", feature = "layout"))]
@@ -6025,27 +6025,27 @@ pub use hand_platter::*;
 #[cfg(any(feature = "shopping", feature = "transportation"))]
 pub use handbag::*;
 #[cfg(any(
-    feature = "account",
-    feature = "social",
-    feature = "communication",
-    feature = "finance",
-    feature = "security"
+feature = "account",
+feature = "social",
+feature = "communication",
+feature = "finance",
+feature = "security"
 ))]
 pub use handshake::*;
 #[cfg(any(feature = "development", feature = "devices"))]
 pub use hard_drive::*;
 #[cfg(any(
-    feature = "development",
-    feature = "devices",
-    feature = "arrows",
-    feature = "files"
+feature = "development",
+feature = "devices",
+feature = "arrows",
+feature = "files"
 ))]
 pub use hard_drive_download::*;
 #[cfg(any(
-    feature = "development",
-    feature = "devices",
-    feature = "arrows",
-    feature = "files"
+feature = "development",
+feature = "devices",
+feature = "arrows",
+feature = "files"
 ))]
 pub use hard_drive_upload::*;
 #[cfg(feature = "tools")]
@@ -6075,36 +6075,36 @@ pub use heading_5::*;
 #[cfg(feature = "text")]
 pub use heading_6::*;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "connectivity",
-    feature = "communication",
-    feature = "devices",
-    feature = "gaming"
+feature = "multimedia",
+feature = "connectivity",
+feature = "communication",
+feature = "devices",
+feature = "gaming"
 ))]
 pub use headphone_off::*;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "connectivity",
-    feature = "devices",
-    feature = "files",
-    feature = "gaming"
+feature = "multimedia",
+feature = "connectivity",
+feature = "devices",
+feature = "files",
+feature = "gaming"
 ))]
 pub use headphones::*;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "connectivity",
-    feature = "devices",
-    feature = "files",
-    feature = "gaming"
+feature = "multimedia",
+feature = "connectivity",
+feature = "devices",
+feature = "files",
+feature = "gaming"
 ))]
 pub use headset::*;
 #[cfg(any(
-    feature = "medical",
-    feature = "social",
-    feature = "multimedia",
-    feature = "emoji",
-    feature = "gaming",
-    feature = "shapes"
+feature = "medical",
+feature = "social",
+feature = "multimedia",
+feature = "emoji",
+feature = "gaming",
+feature = "shapes"
 ))]
 pub use heart::*;
 #[cfg(feature = "emoji")]
@@ -6112,21 +6112,21 @@ pub use heart_crack::*;
 #[cfg(any(feature = "emoji", feature = "account", feature = "security"))]
 pub use heart_handshake::*;
 #[cfg(any(
-    feature = "medical",
-    feature = "account",
-    feature = "multimedia",
-    feature = "gaming",
-    feature = "social"
+feature = "medical",
+feature = "account",
+feature = "multimedia",
+feature = "gaming",
+feature = "social"
 ))]
 pub use heart_minus::*;
 #[cfg(any(feature = "social", feature = "multimedia"))]
 pub use heart_off::*;
 #[cfg(any(
-    feature = "medical",
-    feature = "account",
-    feature = "multimedia",
-    feature = "gaming",
-    feature = "social"
+feature = "medical",
+feature = "account",
+feature = "multimedia",
+feature = "gaming",
+feature = "social"
 ))]
 pub use heart_plus::*;
 #[cfg(feature = "medical")]
@@ -6146,10 +6146,10 @@ pub use hop::*;
 #[cfg(feature = "food-beverage")]
 pub use hop_off::*;
 #[cfg(any(
-    feature = "medical",
-    feature = "buildings",
-    feature = "navigation",
-    feature = "travel"
+feature = "medical",
+feature = "buildings",
+feature = "navigation",
+feature = "travel"
 ))]
 pub use hospital::*;
 #[cfg(any(feature = "buildings", feature = "navigation", feature = "travel"))]
@@ -6175,17 +6175,17 @@ pub use id_card::*;
 #[cfg(any(feature = "security", feature = "account"))]
 pub use id_card_lanyard::*;
 #[cfg(any(
-    feature = "photography",
-    feature = "text",
-    feature = "multimedia",
-    feature = "files"
+feature = "photography",
+feature = "text",
+feature = "multimedia",
+feature = "files"
 ))]
 pub use image::*;
 #[cfg(any(
-    feature = "photography",
-    feature = "text",
-    feature = "multimedia",
-    feature = "files"
+feature = "photography",
+feature = "text",
+feature = "multimedia",
+feature = "files"
 ))]
 pub use image_down::*;
 #[cfg(any(feature = "photography", feature = "multimedia", feature = "files"))]
@@ -6193,28 +6193,28 @@ pub use image_minus::*;
 #[cfg(any(feature = "photography", feature = "multimedia", feature = "files"))]
 pub use image_off::*;
 #[cfg(any(
-    feature = "photography",
-    feature = "text",
-    feature = "multimedia",
-    feature = "files"
+feature = "photography",
+feature = "text",
+feature = "multimedia",
+feature = "files"
 ))]
 pub use image_play::*;
 #[cfg(any(feature = "photography", feature = "multimedia", feature = "files"))]
 pub use image_plus::*;
 #[cfg(any(
-    feature = "photography",
-    feature = "text",
-    feature = "multimedia",
-    feature = "files"
+feature = "photography",
+feature = "text",
+feature = "multimedia",
+feature = "files"
 ))]
 pub use image_up::*;
 #[cfg(any(feature = "photography", feature = "multimedia"))]
 pub use image_upscale::*;
 #[cfg(any(
-    feature = "photography",
-    feature = "text",
-    feature = "multimedia",
-    feature = "files"
+feature = "photography",
+feature = "text",
+feature = "multimedia",
+feature = "files"
 ))]
 pub use images::*;
 #[cfg(any(feature = "arrows", feature = "files"))]
@@ -6270,11 +6270,11 @@ pub use lamp_wall_down::*;
 #[cfg(feature = "home")]
 pub use lamp_wall_up::*;
 #[cfg(any(
-    feature = "design",
-    feature = "tools",
-    feature = "math",
-    feature = "sports",
-    feature = "gaming"
+feature = "design",
+feature = "tools",
+feature = "math",
+feature = "sports",
+feature = "gaming"
 ))]
 pub use land_plot::*;
 #[cfg(any(feature = "finance", feature = "navigation", feature = "buildings"))]
@@ -6304,10 +6304,10 @@ pub use layout_dashboard::*;
 #[cfg(any(feature = "design", feature = "layout"))]
 pub use layout_grid::*;
 #[cfg(any(
-    feature = "design",
-    feature = "layout",
-    feature = "photography",
-    feature = "text"
+feature = "design",
+feature = "layout",
+feature = "photography",
+feature = "text"
 ))]
 pub use layout_list::*;
 #[cfg(any(feature = "design", feature = "layout"))]
@@ -6319,27 +6319,27 @@ pub use layout_template::*;
 #[cfg(any(feature = "nature", feature = "sustainability", feature = "seasons"))]
 pub use leaf::*;
 #[cfg(any(
-    feature = "food-beverage",
-    feature = "emoji",
-    feature = "sustainability"
+feature = "food-beverage",
+feature = "emoji",
+feature = "sustainability"
 ))]
 pub use leafy_green::*;
 #[cfg(any(feature = "communication", feature = "multimedia"))]
 pub use lectern::*;
 #[cfg(any(
-    feature = "text",
-    feature = "photography",
-    feature = "multimedia",
-    feature = "navigation",
-    feature = "development"
+feature = "text",
+feature = "photography",
+feature = "multimedia",
+feature = "navigation",
+feature = "development"
 ))]
 pub use library::*;
 #[cfg(any(
-    feature = "text",
-    feature = "photography",
-    feature = "multimedia",
-    feature = "navigation",
-    feature = "development"
+feature = "text",
+feature = "photography",
+feature = "multimedia",
+feature = "navigation",
+feature = "development"
 ))]
 pub use library_big::*;
 #[cfg(any(feature = "accessibility", feature = "medical"))]
@@ -6403,10 +6403,10 @@ pub use list_video::*;
 #[cfg(any(feature = "multimedia", feature = "text"))]
 pub use list_x::*;
 #[cfg(any(
-    feature = "cursors",
-    feature = "multimedia",
-    feature = "layout",
-    feature = "design"
+feature = "cursors",
+feature = "multimedia",
+feature = "layout",
+feature = "design"
 ))]
 pub use loader::*;
 #[cfg(any(feature = "cursors", feature = "multimedia", feature = "layout"))]
@@ -6574,17 +6574,17 @@ pub use message_square_x::*;
 #[cfg(feature = "social")]
 pub use messages_square::*;
 #[cfg(any(
-    feature = "devices",
-    feature = "communication",
-    feature = "connectivity",
-    feature = "multimedia"
+feature = "devices",
+feature = "communication",
+feature = "connectivity",
+feature = "multimedia"
 ))]
 pub use mic::*;
 #[cfg(any(
-    feature = "devices",
-    feature = "communication",
-    feature = "connectivity",
-    feature = "multimedia"
+feature = "devices",
+feature = "communication",
+feature = "connectivity",
+feature = "multimedia"
 ))]
 pub use mic_off::*;
 #[cfg(any(feature = "devices", feature = "multimedia"))]
@@ -6596,10 +6596,10 @@ pub use microscope::*;
 #[cfg(any(feature = "food-beverage", feature = "home"))]
 pub use microwave::*;
 #[cfg(any(
-    feature = "arrows",
-    feature = "navigation",
-    feature = "development",
-    feature = "gaming"
+feature = "arrows",
+feature = "navigation",
+feature = "development",
+feature = "gaming"
 ))]
 pub use milestone::*;
 #[cfg(feature = "food-beverage")]
@@ -6611,10 +6611,10 @@ pub use minimize::*;
 #[cfg(any(feature = "arrows", feature = "layout", feature = "design"))]
 pub use minimize_2::*;
 #[cfg(any(
-    feature = "math",
-    feature = "development",
-    feature = "text",
-    feature = "tools"
+feature = "math",
+feature = "development",
+feature = "text",
+feature = "tools"
 ))]
 pub use minus::*;
 #[cfg(any(feature = "connectivity", feature = "devices"))]
@@ -6722,10 +6722,10 @@ pub use nfc::*;
 #[cfg(feature = "medical")]
 pub use non_binary::*;
 #[cfg(any(
-    feature = "text",
-    feature = "communication",
-    feature = "social",
-    feature = "design"
+feature = "text",
+feature = "communication",
+feature = "social",
+feature = "design"
 ))]
 pub use notebook::*;
 #[cfg(any(feature = "text", feature = "social"))]
@@ -6753,10 +6753,10 @@ pub use octagon_pause::*;
 #[cfg(any(feature = "math", feature = "notifications"))]
 pub use octagon_x::*;
 #[cfg(any(
-    feature = "math",
-    feature = "development",
-    feature = "text",
-    feature = "science"
+feature = "math",
+feature = "development",
+feature = "text",
+feature = "science"
 ))]
 pub use omega::*;
 #[cfg(feature = "development")]
@@ -6784,26 +6784,26 @@ pub use package_x::*;
 #[cfg(any(feature = "design", feature = "tools"))]
 pub use paint_bucket::*;
 #[cfg(any(
-    feature = "text",
-    feature = "design",
-    feature = "home",
-    feature = "tools"
+feature = "text",
+feature = "design",
+feature = "home",
+feature = "tools"
 ))]
 pub use paint_roller::*;
 #[cfg(any(
-    feature = "text",
-    feature = "design",
-    feature = "photography",
-    feature = "home",
-    feature = "tools"
+feature = "text",
+feature = "design",
+feature = "photography",
+feature = "home",
+feature = "tools"
 ))]
 pub use paintbrush::*;
 #[cfg(any(
-    feature = "text",
-    feature = "design",
-    feature = "photography",
-    feature = "home",
-    feature = "tools"
+feature = "text",
+feature = "design",
+feature = "photography",
+feature = "home",
+feature = "tools"
 ))]
 pub use paintbrush_vertical::*;
 #[cfg(any(feature = "text", feature = "design", feature = "photography"))]
@@ -6853,10 +6853,10 @@ pub use panels_right_bottom::*;
 #[cfg(any(feature = "layout", feature = "design", feature = "development"))]
 pub use panels_top_left::*;
 #[cfg(any(
-    feature = "text",
-    feature = "design",
-    feature = "files",
-    feature = "mail"
+feature = "text",
+feature = "design",
+feature = "files",
+feature = "mail"
 ))]
 pub use paperclip::*;
 #[cfg(any(feature = "development", feature = "files", feature = "math"))]
@@ -6880,35 +6880,35 @@ pub use pen_off::*;
 #[cfg(any(feature = "text", feature = "design", feature = "cursors"))]
 pub use pen_tool::*;
 #[cfg(any(
-    feature = "design",
-    feature = "cursors",
-    feature = "tools",
-    feature = "text"
+feature = "design",
+feature = "cursors",
+feature = "tools",
+feature = "text"
 ))]
 pub use pencil::*;
 #[cfg(any(feature = "text", feature = "design", feature = "tools"))]
 pub use pencil_line::*;
 #[cfg(any(
-    feature = "design",
-    feature = "cursors",
-    feature = "tools",
-    feature = "text"
+feature = "design",
+feature = "cursors",
+feature = "tools",
+feature = "text"
 ))]
 pub use pencil_off::*;
 #[cfg(any(
-    feature = "tools",
-    feature = "design",
-    feature = "layout",
-    feature = "text"
+feature = "tools",
+feature = "design",
+feature = "layout",
+feature = "text"
 ))]
 pub use pencil_ruler::*;
 #[cfg(feature = "shapes")]
 pub use pentagon::*;
 #[cfg(any(
-    feature = "math",
-    feature = "development",
-    feature = "finance",
-    feature = "shopping"
+feature = "math",
+feature = "development",
+feature = "finance",
+feature = "shopping"
 ))]
 pub use percent::*;
 #[cfg(any(feature = "accessibility", feature = "people"))]
@@ -6916,49 +6916,49 @@ pub use person_standing::*;
 #[cfg(feature = "finance")]
 pub use philippine_peso::*;
 #[cfg(any(
-    feature = "text",
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "text",
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 pub use phone::*;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 pub use phone_call::*;
 #[cfg(any(
-    feature = "arrows",
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "arrows",
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 pub use phone_forwarded::*;
 #[cfg(any(
-    feature = "arrows",
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "arrows",
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 pub use phone_incoming::*;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 pub use phone_missed::*;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 pub use phone_off::*;
 #[cfg(any(
-    feature = "arrows",
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "arrows",
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 pub use phone_outgoing::*;
 #[cfg(any(feature = "development", feature = "math"))]
@@ -7006,12 +7006,12 @@ pub use plug_2::*;
 #[cfg(feature = "devices")]
 pub use plug_zap::*;
 #[cfg(any(
-    feature = "math",
-    feature = "tools",
-    feature = "development",
-    feature = "text",
-    feature = "cursors",
-    feature = "gaming"
+feature = "math",
+feature = "tools",
+feature = "development",
+feature = "text",
+feature = "cursors",
+feature = "gaming"
 ))]
 pub use plus::*;
 #[cfg(feature = "brands")]
@@ -7035,11 +7035,11 @@ pub use power::*;
 #[cfg(feature = "connectivity")]
 pub use power_off::*;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "photography",
-    feature = "devices",
-    feature = "communication",
-    feature = "design"
+feature = "multimedia",
+feature = "photography",
+feature = "devices",
+feature = "communication",
+feature = "design"
 ))]
 pub use presentation::*;
 #[cfg(feature = "devices")]
@@ -7049,17 +7049,17 @@ pub use printer_check::*;
 #[cfg(feature = "devices")]
 pub use printer_x::*;
 #[cfg(any(
-    feature = "multimedia",
-    feature = "photography",
-    feature = "devices",
-    feature = "communication"
+feature = "multimedia",
+feature = "photography",
+feature = "devices",
+feature = "communication"
 ))]
 pub use projector::*;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "photography",
-    feature = "devices"
+feature = "layout",
+feature = "design",
+feature = "photography",
+feature = "devices"
 ))]
 pub use proportions::*;
 #[cfg(any(feature = "development", feature = "gaming"))]
@@ -7073,9 +7073,9 @@ pub use quote::*;
 #[cfg(feature = "animals")]
 pub use rabbit::*;
 #[cfg(any(
-    feature = "navigation",
-    feature = "security",
-    feature = "communication"
+feature = "navigation",
+feature = "security",
+feature = "communication"
 ))]
 pub use radar::*;
 #[cfg(feature = "science")]
@@ -7089,10 +7089,10 @@ pub use radio_receiver::*;
 #[cfg(any(feature = "devices", feature = "multimedia", feature = "social"))]
 pub use radio_tower::*;
 #[cfg(any(
-    feature = "shapes",
-    feature = "math",
-    feature = "design",
-    feature = "tools"
+feature = "shapes",
+feature = "math",
+feature = "design",
+feature = "tools"
 ))]
 pub use radius::*;
 #[cfg(any(feature = "transportation", feature = "navigation"))]
@@ -7128,10 +7128,10 @@ pub use rectangle_circle::*;
 #[cfg(any(feature = "text", feature = "development"))]
 pub use rectangle_ellipsis::*;
 #[cfg(any(
-    feature = "devices",
-    feature = "gaming",
-    feature = "multimedia",
-    feature = "connectivity"
+feature = "devices",
+feature = "gaming",
+feature = "multimedia",
+feature = "connectivity"
 ))]
 pub use rectangle_goggles::*;
 #[cfg(any(feature = "shapes", feature = "design"))]
@@ -7185,11 +7185,11 @@ pub use rocking_chair::*;
 #[cfg(feature = "navigation")]
 pub use roller_coaster::*;
 #[cfg(any(
-    feature = "nature",
-    feature = "seasons",
-    feature = "sustainability",
-    feature = "home",
-    feature = "social"
+feature = "nature",
+feature = "seasons",
+feature = "sustainability",
+feature = "home",
+feature = "social"
 ))]
 pub use rose::*;
 #[cfg(feature = "design")]
@@ -7199,21 +7199,21 @@ pub use rotate_ccw::*;
 #[cfg(any(feature = "security", feature = "account"))]
 pub use rotate_ccw_key::*;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "photography",
-    feature = "tools",
-    feature = "arrows"
+feature = "layout",
+feature = "design",
+feature = "photography",
+feature = "tools",
+feature = "arrows"
 ))]
 pub use rotate_ccw_square::*;
 #[cfg(any(feature = "arrows", feature = "design", feature = "photography"))]
 pub use rotate_cw::*;
 #[cfg(any(
-    feature = "layout",
-    feature = "design",
-    feature = "photography",
-    feature = "tools",
-    feature = "arrows"
+feature = "layout",
+feature = "design",
+feature = "photography",
+feature = "tools",
+feature = "arrows"
 ))]
 pub use rotate_cw_square::*;
 #[cfg(feature = "navigation")]
@@ -7221,10 +7221,10 @@ pub use route::*;
 #[cfg(feature = "navigation")]
 pub use route_off::*;
 #[cfg(any(
-    feature = "development",
-    feature = "devices",
-    feature = "connectivity",
-    feature = "home"
+feature = "development",
+feature = "devices",
+feature = "connectivity",
+feature = "home"
 ))]
 pub use router::*;
 #[cfg(any(feature = "layout", feature = "design", feature = "text"))]
@@ -7266,29 +7266,29 @@ pub use scale_3_d::*;
 #[cfg(feature = "design")]
 pub use scaling::*;
 #[cfg(any(
-    feature = "devices",
-    feature = "shopping",
-    feature = "security",
-    feature = "social",
-    feature = "gaming"
+feature = "devices",
+feature = "shopping",
+feature = "security",
+feature = "social",
+feature = "gaming"
 ))]
 pub use scan::*;
 #[cfg(any(feature = "shopping", feature = "devices"))]
 pub use scan_barcode::*;
 #[cfg(any(
-    feature = "photography",
-    feature = "multimedia",
-    feature = "accessibility",
-    feature = "security",
-    feature = "devices",
-    feature = "account"
+feature = "photography",
+feature = "multimedia",
+feature = "accessibility",
+feature = "security",
+feature = "devices",
+feature = "account"
 ))]
 pub use scan_eye::*;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "devices",
-    feature = "social"
+feature = "account",
+feature = "security",
+feature = "devices",
+feature = "social"
 ))]
 pub use scan_face::*;
 #[cfg(feature = "medical")]
@@ -7296,16 +7296,16 @@ pub use scan_heart::*;
 #[cfg(any(feature = "devices", feature = "shopping"))]
 pub use scan_line::*;
 #[cfg(any(
-    feature = "account",
-    feature = "shopping",
-    feature = "devices",
-    feature = "security"
+feature = "account",
+feature = "shopping",
+feature = "devices",
+feature = "security"
 ))]
 pub use scan_qr_code::*;
 #[cfg(any(
-    feature = "photography",
-    feature = "multimedia",
-    feature = "accessibility"
+feature = "photography",
+feature = "multimedia",
+feature = "accessibility"
 ))]
 pub use scan_search::*;
 #[cfg(any(feature = "text", feature = "devices"))]
@@ -7319,15 +7319,15 @@ pub use scissors_line_dashed::*;
 #[cfg(feature = "transportation")]
 pub use scooter::*;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 pub use screen_share::*;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 pub use screen_share_off::*;
 #[cfg(any(feature = "gaming", feature = "development", feature = "text"))]
@@ -7379,95 +7379,95 @@ pub use share_2::*;
 #[cfg(any(feature = "text", feature = "files"))]
 pub use sheet::*;
 #[cfg(any(
-    feature = "animals",
-    feature = "development",
-    feature = "nature",
-    feature = "science",
-    feature = "travel",
-    feature = "food-beverage",
-    feature = "home"
+feature = "animals",
+feature = "development",
+feature = "nature",
+feature = "science",
+feature = "travel",
+feature = "food-beverage",
+feature = "home"
 ))]
 pub use shell::*;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming",
-    feature = "shapes"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming",
+feature = "shapes"
 ))]
 pub use shield::*;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "notifications",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "notifications",
+feature = "gaming"
 ))]
 pub use shield_alert::*;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 pub use shield_ban::*;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 pub use shield_check::*;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 pub use shield_ellipsis::*;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 pub use shield_half::*;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 pub use shield_minus::*;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 pub use shield_off::*;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming",
-    feature = "medical"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming",
+feature = "medical"
 ))]
 pub use shield_plus::*;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 pub use shield_question_mark::*;
 #[cfg(any(feature = "account", feature = "security", feature = "development"))]
 pub use shield_user::*;
 #[cfg(any(
-    feature = "account",
-    feature = "security",
-    feature = "development",
-    feature = "gaming"
+feature = "account",
+feature = "security",
+feature = "development",
+feature = "gaming"
 ))]
 pub use shield_x::*;
 #[cfg(any(feature = "transportation", feature = "navigation", feature = "travel"))]
@@ -7511,17 +7511,17 @@ pub use signal_zero::*;
 #[cfg(feature = "text")]
 pub use signature::*;
 #[cfg(any(
-    feature = "arrows",
-    feature = "navigation",
-    feature = "development",
-    feature = "gaming"
+feature = "arrows",
+feature = "navigation",
+feature = "development",
+feature = "gaming"
 ))]
 pub use signpost::*;
 #[cfg(any(
-    feature = "arrows",
-    feature = "navigation",
-    feature = "development",
-    feature = "gaming"
+feature = "arrows",
+feature = "navigation",
+feature = "development",
+feature = "gaming"
 ))]
 pub use signpost_big::*;
 #[cfg(feature = "medical")]
@@ -7533,10 +7533,10 @@ pub use skip_forward::*;
 #[cfg(feature = "gaming")]
 pub use skull::*;
 #[cfg(any(
-    feature = "account",
-    feature = "social",
-    feature = "brands",
-    feature = "development"
+feature = "account",
+feature = "social",
+feature = "brands",
+feature = "development"
 ))]
 pub use slack::*;
 #[cfg(any(feature = "development", feature = "math"))]
@@ -7556,10 +7556,10 @@ pub use smartphone_nfc::*;
 #[cfg(any(feature = "emoji", feature = "account"))]
 pub use smile::*;
 #[cfg(any(
-    feature = "emoji",
-    feature = "social",
-    feature = "notifications",
-    feature = "communication"
+feature = "emoji",
+feature = "social",
+feature = "notifications",
+feature = "communication"
 ))]
 pub use smile_plus::*;
 #[cfg(any(feature = "animals", feature = "food-beverage"))]
@@ -7571,10 +7571,10 @@ pub use soap_dispenser_droplet::*;
 #[cfg(feature = "home")]
 pub use sofa::*;
 #[cfg(any(
-    feature = "home",
-    feature = "science",
-    feature = "sustainability",
-    feature = "weather"
+feature = "home",
+feature = "science",
+feature = "sustainability",
+feature = "weather"
 ))]
 pub use solar_panel::*;
 #[cfg(feature = "food-beverage")]
@@ -7586,10 +7586,10 @@ pub use spade::*;
 #[cfg(feature = "shapes")]
 pub use sparkle::*;
 #[cfg(any(
-    feature = "cursors",
-    feature = "multimedia",
-    feature = "gaming",
-    feature = "weather"
+feature = "cursors",
+feature = "multimedia",
+feature = "gaming",
+feature = "weather"
 ))]
 pub use sparkles::*;
 #[cfg(any(feature = "multimedia", feature = "devices"))]
@@ -7603,10 +7603,10 @@ pub use spell_check_2::*;
 #[cfg(feature = "design")]
 pub use spline::*;
 #[cfg(any(
-    feature = "arrows",
-    feature = "cursors",
-    feature = "design",
-    feature = "tools"
+feature = "arrows",
+feature = "cursors",
+feature = "design",
+feature = "tools"
 ))]
 pub use spline_pointer::*;
 #[cfg(any(feature = "development", feature = "arrows"))]
@@ -7614,10 +7614,10 @@ pub use split::*;
 #[cfg(any(feature = "communication", feature = "tools", feature = "social"))]
 pub use spool::*;
 #[cfg(any(
-    feature = "devices",
-    feature = "photography",
-    feature = "multimedia",
-    feature = "communication"
+feature = "devices",
+feature = "photography",
+feature = "multimedia",
+feature = "communication"
 ))]
 pub use spotlight::*;
 #[cfg(any(feature = "design", feature = "tools"))]
@@ -7627,10 +7627,10 @@ pub use sprout::*;
 #[cfg(any(feature = "shapes", feature = "multimedia"))]
 pub use square::*;
 #[cfg(any(
-    feature = "medical",
-    feature = "social",
-    feature = "science",
-    feature = "multimedia"
+feature = "medical",
+feature = "social",
+feature = "science",
+feature = "multimedia"
 ))]
 pub use square_activity::*;
 #[cfg(any(feature = "arrows", feature = "gaming"))]
@@ -7658,25 +7658,25 @@ pub use square_arrow_up_left::*;
 #[cfg(any(feature = "arrows", feature = "social"))]
 pub use square_arrow_up_right::*;
 #[cfg(any(
-    feature = "text",
-    feature = "security",
-    feature = "math",
-    feature = "development"
+feature = "text",
+feature = "security",
+feature = "math",
+feature = "development"
 ))]
 pub use square_asterisk::*;
 #[cfg(any(
-    feature = "text",
-    feature = "design",
-    feature = "tools",
-    feature = "files",
-    feature = "development"
+feature = "text",
+feature = "design",
+feature = "tools",
+feature = "files",
+feature = "development"
 ))]
 pub use square_bottom_dashed_scissors::*;
 #[cfg(any(
-    feature = "charts",
-    feature = "time",
-    feature = "development",
-    feature = "design"
+feature = "charts",
+feature = "time",
+feature = "development",
+feature = "design"
 ))]
 pub use square_chart_gantt::*;
 #[cfg(feature = "notifications")]
@@ -7702,10 +7702,10 @@ pub use square_dashed_bottom_code::*;
 #[cfg(any(feature = "charts", feature = "development", feature = "design"))]
 pub use square_dashed_kanban::*;
 #[cfg(any(
-    feature = "arrows",
-    feature = "cursors",
-    feature = "development",
-    feature = "tools"
+feature = "arrows",
+feature = "cursors",
+feature = "development",
+feature = "tools"
 ))]
 pub use square_dashed_mouse_pointer::*;
 #[cfg(any(feature = "design", feature = "development", feature = "layout"))]
@@ -7721,11 +7721,11 @@ pub use square_function::*;
 #[cfg(any(feature = "charts", feature = "development", feature = "design"))]
 pub use square_kanban::*;
 #[cfg(any(
-    feature = "text",
-    feature = "photography",
-    feature = "multimedia",
-    feature = "navigation",
-    feature = "development"
+feature = "text",
+feature = "photography",
+feature = "multimedia",
+feature = "navigation",
+feature = "development"
 ))]
 pub use square_library::*;
 #[cfg(any(feature = "transportation", feature = "navigation"))]
@@ -7733,18 +7733,18 @@ pub use square_m::*;
 #[cfg(feature = "layout")]
 pub use square_menu::*;
 #[cfg(any(
-    feature = "math",
-    feature = "development",
-    feature = "text",
-    feature = "tools",
-    feature = "devices"
+feature = "math",
+feature = "development",
+feature = "text",
+feature = "tools",
+feature = "devices"
 ))]
 pub use square_minus::*;
 #[cfg(any(
-    feature = "arrows",
-    feature = "cursors",
-    feature = "development",
-    feature = "tools"
+feature = "arrows",
+feature = "cursors",
+feature = "development",
+feature = "tools"
 ))]
 pub use square_mouse_pointer::*;
 #[cfg(any(feature = "transportation", feature = "navigation"))]
@@ -7756,10 +7756,10 @@ pub use square_pause::*;
 #[cfg(feature = "text")]
 pub use square_pen::*;
 #[cfg(any(
-    feature = "social",
-    feature = "finance",
-    feature = "shopping",
-    feature = "math"
+feature = "social",
+feature = "finance",
+feature = "shopping",
+feature = "math"
 ))]
 pub use square_percent::*;
 #[cfg(any(feature = "development", feature = "math"))]
@@ -7769,10 +7769,10 @@ pub use square_pilcrow::*;
 #[cfg(any(feature = "arrows", feature = "multimedia"))]
 pub use square_play::*;
 #[cfg(any(
-    feature = "math",
-    feature = "tools",
-    feature = "development",
-    feature = "text"
+feature = "math",
+feature = "tools",
+feature = "development",
+feature = "text"
 ))]
 pub use square_plus::*;
 #[cfg(feature = "connectivity")]
@@ -7782,11 +7782,11 @@ pub use square_radical::*;
 #[cfg(any(feature = "design", feature = "development", feature = "layout"))]
 pub use square_round_corner::*;
 #[cfg(any(
-    feature = "text",
-    feature = "design",
-    feature = "tools",
-    feature = "files",
-    feature = "development"
+feature = "text",
+feature = "design",
+feature = "tools",
+feature = "files",
+feature = "development"
 ))]
 pub use square_scissors::*;
 #[cfg(any(feature = "text", feature = "math"))]
@@ -7830,13 +7830,13 @@ pub use squirrel::*;
 #[cfg(any(feature = "design", feature = "cursors", feature = "tools"))]
 pub use stamp::*;
 #[cfg(any(
-    feature = "account",
-    feature = "social",
-    feature = "shapes",
-    feature = "multimedia",
-    feature = "weather",
-    feature = "emoji",
-    feature = "gaming"
+feature = "account",
+feature = "social",
+feature = "shapes",
+feature = "multimedia",
+feature = "weather",
+feature = "emoji",
+feature = "gaming"
 ))]
 pub use star::*;
 #[cfg(any(feature = "social", feature = "multimedia"))]
@@ -7866,10 +7866,10 @@ pub use strikethrough::*;
 #[cfg(feature = "text")]
 pub use subscript::*;
 #[cfg(any(
-    feature = "accessibility",
-    feature = "weather",
-    feature = "seasons",
-    feature = "sustainability"
+feature = "accessibility",
+feature = "weather",
+feature = "seasons",
+feature = "sustainability"
 ))]
 pub use sun::*;
 #[cfg(any(feature = "accessibility", feature = "weather"))]
@@ -7917,10 +7917,10 @@ pub use table_rows_split::*;
 #[cfg(feature = "devices")]
 pub use tablet::*;
 #[cfg(any(
-    feature = "devices",
-    feature = "design",
-    feature = "development",
-    feature = "tools"
+feature = "devices",
+feature = "design",
+feature = "development",
+feature = "tools"
 ))]
 pub use tablet_smartphone::*;
 #[cfg(feature = "medical")]
@@ -7940,10 +7940,10 @@ pub use tally_4::*;
 #[cfg(any(feature = "math", feature = "gaming"))]
 pub use tally_5::*;
 #[cfg(any(
-    feature = "shapes",
-    feature = "math",
-    feature = "design",
-    feature = "tools"
+feature = "shapes",
+feature = "math",
+feature = "design",
+feature = "tools"
 ))]
 pub use tangent::*;
 #[cfg(any(feature = "brands", feature = "gaming"))]
@@ -8033,10 +8033,10 @@ pub use toolbox::*;
 #[cfg(feature = "weather")]
 pub use tornado::*;
 #[cfg(any(
-    feature = "shapes",
-    feature = "design",
-    feature = "tools",
-    feature = "food-beverage"
+feature = "shapes",
+feature = "design",
+feature = "tools",
+feature = "food-beverage"
 ))]
 pub use torus::*;
 #[cfg(feature = "devices")]
@@ -8048,9 +8048,9 @@ pub use tower_control::*;
 #[cfg(any(feature = "gaming", feature = "development"))]
 pub use toy_brick::*;
 #[cfg(any(
-    feature = "transportation",
-    feature = "sustainability",
-    feature = "food-beverage"
+feature = "transportation",
+feature = "sustainability",
+feature = "food-beverage"
 ))]
 pub use tractor::*;
 #[cfg(feature = "transportation")]
@@ -8112,10 +8112,10 @@ pub use tv_minimal::*;
 #[cfg(any(feature = "devices", feature = "multimedia"))]
 pub use tv_minimal_play::*;
 #[cfg(any(
-    feature = "brands",
-    feature = "social",
-    feature = "account",
-    feature = "gaming"
+feature = "brands",
+feature = "social",
+feature = "account",
+feature = "gaming"
 ))]
 pub use twitch::*;
 #[cfg(any(feature = "brands", feature = "social", feature = "account"))]
@@ -8207,10 +8207,10 @@ pub use variable::*;
 #[cfg(any(feature = "security", feature = "travel", feature = "home"))]
 pub use vault::*;
 #[cfg(any(
-    feature = "shapes",
-    feature = "math",
-    feature = "design",
-    feature = "tools"
+feature = "shapes",
+feature = "math",
+feature = "design",
+feature = "tools"
 ))]
 pub use vector_square::*;
 #[cfg(any(feature = "food-beverage", feature = "sustainability"))]
@@ -8222,34 +8222,34 @@ pub use venus::*;
 #[cfg(feature = "medical")]
 pub use venus_and_mars::*;
 #[cfg(any(
-    feature = "devices",
-    feature = "connectivity",
-    feature = "account",
-    feature = "notifications"
+feature = "devices",
+feature = "connectivity",
+feature = "account",
+feature = "notifications"
 ))]
 pub use vibrate::*;
 #[cfg(any(feature = "devices", feature = "connectivity", feature = "account"))]
 pub use vibrate_off::*;
 #[cfg(any(
-    feature = "devices",
-    feature = "communication",
-    feature = "connectivity",
-    feature = "photography"
+feature = "devices",
+feature = "communication",
+feature = "connectivity",
+feature = "photography"
 ))]
 pub use video::*;
 #[cfg(any(
-    feature = "devices",
-    feature = "communication",
-    feature = "connectivity",
-    feature = "photography"
+feature = "devices",
+feature = "communication",
+feature = "connectivity",
+feature = "photography"
 ))]
 pub use video_off::*;
 #[cfg(any(
-    feature = "devices",
-    feature = "communication",
-    feature = "connectivity",
-    feature = "photography",
-    feature = "files"
+feature = "devices",
+feature = "communication",
+feature = "connectivity",
+feature = "photography",
+feature = "files"
 ))]
 pub use videotape::*;
 #[cfg(any(feature = "design", feature = "photography"))]
@@ -8259,33 +8259,33 @@ pub use voicemail::*;
 #[cfg(any(feature = "sports", feature = "gaming", feature = "travel"))]
 pub use volleyball::*;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "communication",
-    feature = "multimedia"
+feature = "connectivity",
+feature = "communication",
+feature = "multimedia"
 ))]
 pub use volume::*;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "communication",
-    feature = "multimedia"
+feature = "connectivity",
+feature = "communication",
+feature = "multimedia"
 ))]
 pub use volume_1::*;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "communication",
-    feature = "multimedia"
+feature = "connectivity",
+feature = "communication",
+feature = "multimedia"
 ))]
 pub use volume_2::*;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "communication",
-    feature = "multimedia"
+feature = "connectivity",
+feature = "communication",
+feature = "multimedia"
 ))]
 pub use volume_off::*;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "communication",
-    feature = "multimedia"
+feature = "connectivity",
+feature = "communication",
+feature = "multimedia"
 ))]
 pub use volume_x::*;
 #[cfg(feature = "social")]
@@ -8299,17 +8299,17 @@ pub use wallet_minimal::*;
 #[cfg(any(feature = "account", feature = "devices"))]
 pub use wallpaper::*;
 #[cfg(any(
-    feature = "design",
-    feature = "gaming",
-    feature = "cursors",
-    feature = "photography"
+feature = "design",
+feature = "gaming",
+feature = "cursors",
+feature = "photography"
 ))]
 pub use wand::*;
 #[cfg(any(
-    feature = "design",
-    feature = "gaming",
-    feature = "cursors",
-    feature = "photography"
+feature = "design",
+feature = "gaming",
+feature = "cursors",
+feature = "photography"
 ))]
 pub use wand_sparkles::*;
 #[cfg(any(feature = "buildings", feature = "navigation"))]
@@ -8319,10 +8319,10 @@ pub use washing_machine::*;
 #[cfg(feature = "time")]
 pub use watch::*;
 #[cfg(any(
-    feature = "weather",
-    feature = "navigation",
-    feature = "multimedia",
-    feature = "sustainability"
+feature = "weather",
+feature = "navigation",
+feature = "multimedia",
+feature = "sustainability"
 ))]
 pub use waves::*;
 #[cfg(any(feature = "weather", feature = "sustainability"))]
@@ -8332,17 +8332,17 @@ pub use waves_arrow_up::*;
 #[cfg(any(feature = "sports", feature = "home"))]
 pub use waves_ladder::*;
 #[cfg(any(
-    feature = "security",
-    feature = "account",
-    feature = "navigation",
-    feature = "development",
-    feature = "social"
+feature = "security",
+feature = "account",
+feature = "navigation",
+feature = "development",
+feature = "social"
 ))]
 pub use waypoints::*;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "communication"
+feature = "connectivity",
+feature = "devices",
+feature = "communication"
 ))]
 pub use webcam::*;
 #[cfg(any(feature = "development", feature = "social", feature = "account"))]
@@ -8394,32 +8394,32 @@ pub use x::*;
 #[cfg(any(feature = "multimedia", feature = "social", feature = "brands"))]
 pub use youtube::*;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "photography",
-    feature = "weather"
+feature = "connectivity",
+feature = "devices",
+feature = "photography",
+feature = "weather"
 ))]
 pub use zap::*;
 #[cfg(any(
-    feature = "connectivity",
-    feature = "devices",
-    feature = "photography",
-    feature = "weather"
+feature = "connectivity",
+feature = "devices",
+feature = "photography",
+feature = "weather"
 ))]
 pub use zap_off::*;
 #[cfg(any(
-    feature = "accessibility",
-    feature = "layout",
-    feature = "design",
-    feature = "text",
-    feature = "photography"
+feature = "accessibility",
+feature = "layout",
+feature = "design",
+feature = "text",
+feature = "photography"
 ))]
 pub use zoom_in::*;
 #[cfg(any(
-    feature = "accessibility",
-    feature = "layout",
-    feature = "design",
-    feature = "text",
-    feature = "photography"
+feature = "accessibility",
+feature = "layout",
+feature = "design",
+feature = "text",
+feature = "photography"
 ))]
 pub use zoom_out::*;

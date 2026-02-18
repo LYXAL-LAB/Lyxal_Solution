@@ -1,4 +1,4 @@
-use leptos::prelude::*;
+﻿use leptos::prelude::*;
 use leptos::reactive::wrappers::read::Signal;
 
 /// Reactive `NOT` condition.
@@ -9,8 +9,7 @@ use leptos::reactive::wrappers::read::Signal;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::math::use_not;
 /// #
 /// # #[component]
@@ -21,8 +20,7 @@ use leptos::reactive::wrappers::read::Signal;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// See also
 ///
 /// - [`use_and`]

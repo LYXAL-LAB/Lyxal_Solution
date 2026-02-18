@@ -1,4 +1,4 @@
-//! # Divider Component
+﻿//! # Divider Component
 //!
 //! For more information, see: https://daisyui.com/components/divider/
 

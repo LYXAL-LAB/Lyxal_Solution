@@ -1,4 +1,4 @@
-use super::style::RadialProgressColor;
+﻿use super::style::RadialProgressColor;
 use crate::merge_classes;
 use leptos::{html::Div, prelude::*};
 
@@ -8,74 +8,54 @@ use leptos::{html::Div, prelude::*};
 /// circular progress indicators with customizable colors, sizes, and values.
 ///
 /// ### Add to `input.css`
-/// ```css
+/// css
 /// @source inline("radial-progress text-primary text-secondary text-accent text-success text-info text-warning text-error");
-/// ```
-///
+/// ///
 /// ## Node References
 /// - `node_ref` - References top `div`` element ([HTMLDivElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLDivElement))
 #[component]
 pub fn RadialProgress(
-    /// Color scheme of the radial progress
-    #[prop(optional, into)]
-    color: Signal<RadialProgressColor>,
+/// Color scheme of the radial progress
+#[prop(optional, into)]
+color: Signal<RadialProgressColor>,
 
-    /// Progress value (0-100)
-    #[prop(optional, into)]
-    value: Signal<f64>,
+/// Progress value (0-100)
+#[prop(optional, into)]
+value: Signal<f64>,
 
-    /// Thickness of the progress ring
-    #[prop(optional, into)]
-    thickness: Signal<Option<String>>,
+/// Thickness of the progress ring
+#[prop(optional, into)]
+thickness: Signal<Option<String>>,
 
-    /// Additional CSS classes
-    #[prop(optional, into)]
-    class: &'static str,
+/// Additional CSS classes
+#[prop(optional, into)]
+class: &'static str,
 
-    /// Node reference to the div element
-    #[prop(optional)]
-    node_ref: NodeRef<Div>,
+/// Node reference to the div element
+#[prop(optional)]
+node_ref: NodeRef<Div>,
 
-    /// Optional child elements displayed in the center
-    #[prop(optional)]
-    children: Option<Children>,
+/// Optional child elements displayed in the center
+#[prop(optional)]
+children: Option<Children>,
 ) -> impl IntoView {
-    view! {
-        <div
-            node_ref=node_ref
-            role="progressbar"
-            class=move || {
-                merge_classes!(
-                    "radial-progress",
-                    color.get().as_str(),
-                    class
-                )
-            }
-
-            aria-valuenow=value
-            style:--value=move || value.get().to_string()
-            style:--thickness=move || thickness.get()
-        >
-            {children.map(|v| v())}
-        </div>
-    }
+view! {
+<div
+node_ref=node_ref
+role="progressbar"
+class=move || {
+merge_classes!(
+"radial-progress",
+color.get().as_str(),
+class
+)
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
 
+aria-valuenow=value
+style:--value=move || value.get().to_string()
+style:--thickness=move || thickness.get()
+>
+{children.map(|v| v())}
+</div>
+}
+}

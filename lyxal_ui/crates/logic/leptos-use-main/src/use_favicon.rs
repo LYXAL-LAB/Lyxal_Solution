@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
+﻿#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
 
 use crate::core::MaybeRwSignal;
 use cfg_if::cfg_if;
@@ -14,8 +14,7 @@ use wasm_bindgen::JsCast;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos_use::use_favicon;
 /// #
 /// # #[component]
@@ -27,15 +26,13 @@ use wasm_bindgen::JsCast;
 /// #
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Passing a Source Signal
 ///
 /// You can pass a `Signal` to [`use_favicon_with_options`]. Change from the source signal will be
 /// reflected in your favicon automatically.
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos_use::{use_favicon_with_options, UseFaviconOptions, use_preferred_dark};
 /// #
 /// # #[component]
@@ -53,81 +50,80 @@ use wasm_bindgen::JsCast;
 /// #
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// On the server only the signals work but no favicon will be changed obviously.
 pub fn use_favicon() -> (Signal<Option<String>>, WriteSignal<Option<String>>) {
-    use_favicon_with_options(UseFaviconOptions::default())
+use_favicon_with_options(UseFaviconOptions::default())
 }
 
 /// Version of [`use_favicon`] that accepts a `UseFaviconOptions`. See [`use_favicon`] for more details.
 pub fn use_favicon_with_options(
-    options: UseFaviconOptions,
+options: UseFaviconOptions,
 ) -> (Signal<Option<String>>, WriteSignal<Option<String>>) {
-    let UseFaviconOptions {
-        new_icon,
-        base_url,
-        rel,
-    } = options;
+let UseFaviconOptions {
+new_icon,
+base_url,
+rel,
+} = options;
 
-    let (favicon, set_favicon) = new_icon.into_signal();
+let (favicon, set_favicon) = new_icon.into_signal();
 
-    cfg_if! { if #[cfg(not(feature = "ssr"))] {
-        let link_selector = format!("link[rel*=\"{rel}\"]");
+cfg_if! { if #[cfg(not(feature = "ssr"))] {
+let link_selector = format!("link[rel*=\"{rel}\"]");
 
-        let apply_icon = move |icon: &String| {
-            if let Some(head) = document().head() {
-                if let Ok(links) = head.query_selector_all(&link_selector) {
-                    let href = format!("{base_url}{icon}");
+let apply_icon = move |icon: &String| {
+if let Some(head) = document().head() {
+if let Ok(links) = head.query_selector_all(&link_selector) {
+let href = format!("{base_url}{icon}");
 
-                    for i in 0..links.length() {
-                        let node = links.get(i).expect("checked length");
-                        let link: web_sys::HtmlLinkElement = node.unchecked_into();
-                        link.set_href(&href);
-                    }
-                }
-            }
-        };
+for i in 0..links.length() {
+let node = links.get(i).expect("checked length");
+let link: web_sys::HtmlLinkElement = node.unchecked_into();
+link.set_href(&href);
+}
+}
+}
+};
 
-        let _ = watch(
-                        move || favicon.get(),
-            move |new_icon, prev_icon, _| {
-                if Some(new_icon) != prev_icon {
-                    if let Some(new_icon) = new_icon {
-                        apply_icon(new_icon);
-                    }
-                }
-            },
-            false,
-        );
-    }}
+let _ = watch(
+move || favicon.get(),
+move |new_icon, prev_icon, _| {
+if Some(new_icon) != prev_icon {
+if let Some(new_icon) = new_icon {
+apply_icon(new_icon);
+}
+}
+},
+false,
+);
+}}
 
-    (favicon, set_favicon)
+(favicon, set_favicon)
 }
 
 /// Options for [`use_favicon_with_options`].
 #[derive(DefaultBuilder)]
 pub struct UseFaviconOptions {
-    /// New input favicon. Can be a `RwSignal` in which case updates will change the favicon. Defaults to None.
-    #[builder(into)]
-    new_icon: MaybeRwSignal<Option<String>>,
+/// New input favicon. Can be a `RwSignal` in which case updates will change the favicon. Defaults to None.
+#[builder(into)]
+new_icon: MaybeRwSignal<Option<String>>,
 
-    /// Base URL of the favicon. Defaults to "".
-    #[builder(into)]
-    base_url: String,
-    /// Rel attribute of the <link> tag. Defaults to "icon".
-    #[builder(into)]
-    rel: String,
+/// Base URL of the favicon. Defaults to "".
+#[builder(into)]
+base_url: String,
+/// Rel attribute of the <link> tag. Defaults to "icon".
+#[builder(into)]
+rel: String,
 }
 
 impl Default for UseFaviconOptions {
-    fn default() -> Self {
-        Self {
-            new_icon: Default::default(),
-            base_url: "".to_string(),
-            rel: "icon".to_string(),
-        }
-    }
+fn default() -> Self {
+Self {
+new_icon: Default::default(),
+base_url: "".to_string(),
+rel: "icon".to_string(),
+}
+}
 }

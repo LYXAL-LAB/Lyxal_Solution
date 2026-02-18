@@ -1,11 +1,11 @@
-use leptos::html::Div;
+﻿use leptos::html::Div;
 use leptos::prelude::*;
 use wasm_bindgen::prelude::*;
 
 use crate::core::{IntoThreadSafeJsValue, JsSignal};
 
 use super::{
-    use_pane_context, LeafletMapContext, LeafletOverlayContainerContext, PaneStrategy, Position,
+use_pane_context, LeafletMapContext, LeafletOverlayContainerContext, PaneStrategy, Position,
 };
 
 /// A tooltip component for displaying hover information on map elements.
@@ -22,7 +22,7 @@ use super::{
 /// # Examples
 ///
 /// Basic tooltip using pane context (default behavior):
-/// ```rust,no_run
+/// ,no_run
 /// use leptos::prelude::*;
 /// use leptos_leaflet::prelude::*;
 ///
@@ -41,10 +41,9 @@ use super::{
 ///         </MapContainer>
 ///     }
 /// }
-/// ```
-///
+/// ///
 /// Tooltip with explicit pane strategy:
-/// ```rust,no_run
+/// ,no_run
 /// use leptos::prelude::*;
 /// use leptos_leaflet::prelude::*;
 ///
@@ -65,10 +64,9 @@ use super::{
 ///         </MapContainer>
 ///     }
 /// }
-/// ```
-///
+/// ///
 /// Tooltip using Leaflet's default behavior:
-/// ```rust,no_run
+/// ,no_run
 /// use leptos::prelude::*;
 /// use leptos_leaflet::prelude::*;
 ///
@@ -89,10 +87,9 @@ use super::{
 ///         </MapContainer>
 ///     }
 /// }
-/// ```
-///
+/// ///
 /// Standalone tooltip with position:
-/// ```rust,no_run
+/// ,no_run
 /// use leptos::prelude::*;
 /// use leptos_leaflet::prelude::*;
 ///
@@ -111,96 +108,78 @@ use super::{
 ///         </MapContainer>
 ///     }
 /// }
-/// ```
-///
+/// ///
 /// # Props
 ///
 /// - `pane_strategy`: Controls how the tooltip determines which pane to use
 /// - Other props control tooltip behavior like position, permanence, direction, etc.
 #[component]
 pub fn Tooltip(
-    #[prop(into, optional)] position: JsSignal<Position>,
-    #[prop(into, optional)] pane_strategy: Option<PaneStrategy>,
-    #[prop(into, optional)] permanent: Signal<bool>,
-    #[prop(into, optional, default="auto".into())] direction: Signal<String>,
-    #[prop(into, optional)] sticky: Signal<bool>,
-    #[prop(into, optional, default=0.9.into())] opacity: Signal<f64>,
-    children: Children,
+#[prop(into, optional)] position: JsSignal<Position>,
+#[prop(into, optional)] pane_strategy: Option<PaneStrategy>,
+#[prop(into, optional)] permanent: Signal<bool>,
+#[prop(into, optional, default="auto".into())] direction: Signal<String>,
+#[prop(into, optional)] sticky: Signal<bool>,
+#[prop(into, optional, default=0.9.into())] opacity: Signal<f64>,
+children: Children,
 ) -> impl IntoView {
-    let map_context = use_context::<LeafletMapContext>();
-    let overlay_context = use_context::<LeafletOverlayContainerContext>();
+let map_context = use_context::<LeafletMapContext>();
+let overlay_context = use_context::<LeafletOverlayContainerContext>();
 
-    let content = NodeRef::<Div>::new();
-    // let content = view! { <div>{children()}</div>};
-    Effect::new(move |_| {
-        let options = leaflet::TooltipOptions::default();
+let content = NodeRef::<Div>::new();
+// let content = view! { <div>{children()}</div>};
+Effect::new(move |_| {
+let options = leaflet::TooltipOptions::default();
 
-        // Apply pane strategy
-        match pane_strategy.as_ref().unwrap_or(&PaneStrategy::Context) {
-            PaneStrategy::Custom(pane_signal) => {
-                let pane_value = pane_signal.get_untracked();
-                if !pane_value.is_empty() {
-                    options.set_pane(pane_value);
-                }
-            }
-            PaneStrategy::Context => {
-                if let Some(pane_context) = use_pane_context() {
-                    options.set_pane(pane_context.name().to_string());
-                }
-            }
-            PaneStrategy::Default => {
-                // Use Leaflet's default pane behavior - don't set any pane
-            }
-        }
-
-        options.set_permanent(permanent.get_untracked());
-        options.set_direction(direction.get_untracked());
-        options.set_sticky(sticky.get_untracked());
-        options.set_opacity(opacity.get_untracked());
-
-        if let Some(overlay_context) = overlay_context {
-            if let Some(layer) = overlay_context.container::<leaflet::Layer>() {
-                let tooltip = leaflet::Tooltip::new(&options, Some(layer.unchecked_ref()))
-                    .into_thread_safe_js_value();
-                let content = content.get_untracked().expect("content ref");
-                tooltip.set_content(content.unchecked_ref());
-                layer.bind_tooltip(&tooltip);
-                on_cleanup(move || {
-                    tooltip.remove();
-                });
-            }
-        } else if let Some(map) = map_context.expect("Map context not found").map() {
-            let tooltip = leaflet::Tooltip::new_with_lat_lng(
-                &position.get_untracked().as_lat_lng(),
-                &options,
-            )
-            .into_thread_safe_js_value();
-            let content = content.get_untracked().expect("content ref");
-            let html_view: &JsValue = content.unchecked_ref();
-            tooltip.set_content(html_view);
-            tooltip.open_on(&map);
-            on_cleanup(move || {
-                tooltip.remove();
-            });
-        }
-    });
-
-    view! { <div style="visibility:collapse"><div node_ref=content>{children()}</div></div> }
+// Apply pane strategy
+match pane_strategy.as_ref().unwrap_or(&PaneStrategy::Context) {
+PaneStrategy::Custom(pane_signal) => {
+let pane_value = pane_signal.get_untracked();
+if !pane_value.is_empty() {
+options.set_pane(pane_value);
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
+}
+PaneStrategy::Context => {
+if let Some(pane_context) = use_pane_context() {
+options.set_pane(pane_context.name().to_string());
+}
+}
+PaneStrategy::Default => {
+// Use Leaflet's default pane behavior - don't set any pane
+}
+}
 
+options.set_permanent(permanent.get_untracked());
+options.set_direction(direction.get_untracked());
+options.set_sticky(sticky.get_untracked());
+options.set_opacity(opacity.get_untracked());
+
+if let Some(overlay_context) = overlay_context {
+if let Some(layer) = overlay_context.container::<leaflet::Layer>() {
+let tooltip = leaflet::Tooltip::new(&options, Some(layer.unchecked_ref()))
+.into_thread_safe_js_value();
+let content = content.get_untracked().expect("content ref");
+tooltip.set_content(content.unchecked_ref());
+layer.bind_tooltip(&tooltip);
+on_cleanup(move || {
+tooltip.remove();
+});
+}
+} else if let Some(map) = map_context.expect("Map context not found").map() {
+let tooltip = leaflet::Tooltip::new_with_lat_lng(
+&position.get_untracked().as_lat_lng(),
+&options,
+)
+.into_thread_safe_js_value();
+let content = content.get_untracked().expect("content ref");
+let html_view: &JsValue = content.unchecked_ref();
+tooltip.set_content(html_view);
+tooltip.open_on(&map);
+on_cleanup(move || {
+tooltip.remove();
+});
+}
+});
+
+view! { <div style="visibility:collapse"><div node_ref=content>{children()}</div></div> }
+}

@@ -1,4 +1,4 @@
-use crate::core::ConnectionReadyState;
+﻿use crate::core::ConnectionReadyState;
 use async_trait::async_trait;
 use default_struct_builder::DefaultBuilder;
 use js_sys::Reflect;
@@ -29,8 +29,7 @@ use bincode::serde::{decode_from_slice as from_slice, encode_to_vec as to_vec};
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::use_webtransport;
 /// #
 /// # #[component]
@@ -39,8 +38,7 @@ use bincode::serde::{decode_from_slice as from_slice, encode_to_vec as to_vec};
 /// #
 /// # view! { }
 /// # }
-/// ```
-pub fn use_webtransport(url: &str) -> UseWebTransportReturn {
+/// pub fn use_webtransport(url: &str) -> UseWebTransportReturn {
 use_webtransport_with_options(url, UseWebTransportOptions::default())
 }
 

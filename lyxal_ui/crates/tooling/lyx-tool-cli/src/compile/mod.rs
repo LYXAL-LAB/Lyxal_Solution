@@ -1,4 +1,4 @@
-#[cfg(test)]
+﻿#[cfg(test)]
 mod tests;
 
 mod assets;
@@ -20,32 +20,13 @@ pub use style::style;
 use itertools::Itertools;
 
 fn build_cargo_command_string(args: impl IntoIterator<Item = String>) -> String {
-    std::iter::once("cargo".to_owned())
-        .chain(args.into_iter().map(|arg| {
-            if arg.contains(' ') {
-                format!("'{arg}'")
-            } else {
-                arg
-            }
-        }))
-        .join(" ")
+std::iter::once("cargo".to_owned())
+.chain(args.into_iter().map(|arg| {
+if arg.contains(' ') {
+format!("'{arg}'")
+} else {
+arg
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-
+}))
+.join(" ")
+}

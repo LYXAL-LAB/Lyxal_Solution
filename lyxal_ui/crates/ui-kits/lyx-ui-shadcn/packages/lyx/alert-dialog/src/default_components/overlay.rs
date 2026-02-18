@@ -1,5 +1,5 @@
-//! AlertDialog overlay component
-//! 
+﻿//! AlertDialog overlay component
+//!
 //! This module contains the AlertDialogOverlay component for the
 //! background overlay of the alert dialog.
 
@@ -9,33 +9,31 @@ use web_sys::MouseEvent;
 
 #[component]
 pub fn AlertDialogOverlay(
-    #[prop(into, optional)] class: MaybeProp<String>,
-    #[prop(into, optional)] id: MaybeProp<String>,
-    #[prop(into, optional)] style: MaybeProp<String>,
-    #[prop(optional)] children: Option<Children>,
+#[prop(into, optional)] class: MaybeProp<String>,
+#[prop(into, optional)] id: MaybeProp<String>,
+#[prop(into, optional)] style: MaybeProp<String>,
+#[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
-    let open = expect_context::<RwSignal<bool>>();
-    let on_open_change = expect_context::<Option<Callback<bool>>>();
+let open = expect_context::<RwSignal<bool>>();
+let on_open_change = expect_context::<Option<Callback<bool>>>();
 
-    let handle_click = move |_e: MouseEvent| {
-        open.set(false);
-        if let Some(callback) = &on_open_change {
-            callback.run(false);
-        }
-    };
-
-    let rendered_children = children.map(|c| c());
-
-    view! {
-        <div
-            class=move || format!("fixed inset-0 z-50 bg-background/80 backdrop-blur-sm {}", class.get().unwrap_or_default())
-            id=move || id.get().unwrap_or_default()
-            style=move || format!("display: {}; {}", if open.get() { "block" } else { "none" }, style.get().unwrap_or_default())
-            on:click=handle_click
-        >
-            {rendered_children}
-        </div>
-    }
+let handle_click = move |_e: MouseEvent| {
+open.set(false);
+if let Some(callback) = &on_open_change {
+callback.run(false);
 }
+};
 
+let rendered_children = children.map(|c| c());
 
+view! {
+<div
+class=move || format!("fixed inset-0 z-50 bg-background/80 backdrop-blur-sm {}", class.get().unwrap_or_default())
+id=move || id.get().unwrap_or_default()
+style=move || format!("display: {}; {}", if open.get() { "block" } else { "none" }, style.get().unwrap_or_default())
+on:click=handle_click
+>
+{rendered_children}
+</div>
+}
+}

@@ -1,4 +1,4 @@
-mod accordion;
+﻿mod accordion;
 mod custom_icon;
 
 pub use accordion::*;

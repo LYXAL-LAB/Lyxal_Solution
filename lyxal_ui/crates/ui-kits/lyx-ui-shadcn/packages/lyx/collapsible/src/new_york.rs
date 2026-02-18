@@ -1,2 +1,2 @@
-// Re-export the default implementation for New York theme
+﻿// Re-export the default implementation for New York theme
 pub use crate::default::*;

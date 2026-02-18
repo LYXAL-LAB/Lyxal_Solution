@@ -1,4 +1,4 @@
-use super::{MatchInterface, MatchNestedRoutes, PathSegment, RouteMatchId};
+﻿use super::{MatchInterface, MatchNestedRoutes, PathSegment, RouteMatchId};
 use crate::{ChooseView, GeneratedRouteData, MatchParams};
 use core::iter;
 use either_of::*;
@@ -6,317 +6,317 @@ use std::borrow::Cow;
 use tachys::view::iterators::StaticVec;
 
 impl MatchParams for () {
-    fn to_params(&self) -> Vec<(Cow<'static, str>, String)> {
-        Vec::new()
-    }
+fn to_params(&self) -> Vec<(Cow<'static, str>, String)> {
+Vec::new()
+}
 }
 
 impl MatchInterface for () {
-    type Child = ();
+type Child = ();
 
-    fn as_id(&self) -> RouteMatchId {
-        RouteMatchId(0)
-    }
+fn as_id(&self) -> RouteMatchId {
+RouteMatchId(0)
+}
 
-    fn as_matched(&self) -> &str {
-        ""
-    }
+fn as_matched(&self) -> &str {
+""
+}
 
-    fn into_view_and_child(self) -> (impl ChooseView, Option<Self::Child>) {
-        ((), None)
-    }
+fn into_view_and_child(self) -> (impl ChooseView, Option<Self::Child>) {
+((), None)
+}
 }
 
 impl MatchNestedRoutes for () {
-    type Data = ();
-    type Match = ();
+type Data = ();
+type Match = ();
 
-    fn optional(&self) -> bool {
-        false
-    }
+fn optional(&self) -> bool {
+false
+}
 
-    fn match_nested<'a>(
-        &self,
-        path: &'a str,
-    ) -> (Option<(RouteMatchId, Self::Match)>, &'a str) {
-        (Some((RouteMatchId(0), ())), path)
-    }
+fn match_nested<'a>(
+&self,
+path: &'a str,
+) -> (Option<(RouteMatchId, Self::Match)>, &'a str) {
+(Some((RouteMatchId(0), ())), path)
+}
 
-    fn generate_routes(
-        &self,
-    ) -> impl IntoIterator<Item = GeneratedRouteData> + '_ {
-        iter::once(GeneratedRouteData {
-            segments: vec![PathSegment::Unit],
-            ..Default::default()
-        })
-    }
+fn generate_routes(
+&self,
+) -> impl IntoIterator<Item = GeneratedRouteData> + '_ {
+iter::once(GeneratedRouteData {
+segments: vec![PathSegment::Unit],
+..Default::default()
+})
+}
 }
 
 impl<A> MatchParams for (A,)
 where
-    A: MatchParams,
+A: MatchParams,
 {
-    fn to_params(&self) -> Vec<(Cow<'static, str>, String)> {
-        self.0.to_params()
-    }
+fn to_params(&self) -> Vec<(Cow<'static, str>, String)> {
+self.0.to_params()
+}
 }
 
 impl<A> MatchInterface for (A,)
 where
-    A: MatchInterface + 'static,
+A: MatchInterface + 'static,
 {
-    type Child = A::Child;
+type Child = A::Child;
 
-    fn as_id(&self) -> RouteMatchId {
-        self.0.as_id()
-    }
+fn as_id(&self) -> RouteMatchId {
+self.0.as_id()
+}
 
-    fn as_matched(&self) -> &str {
-        self.0.as_matched()
-    }
+fn as_matched(&self) -> &str {
+self.0.as_matched()
+}
 
-    fn into_view_and_child(self) -> (impl ChooseView, Option<Self::Child>) {
-        self.0.into_view_and_child()
-    }
+fn into_view_and_child(self) -> (impl ChooseView, Option<Self::Child>) {
+self.0.into_view_and_child()
+}
 }
 
 impl<A> MatchNestedRoutes for (A,)
 where
-    A: MatchNestedRoutes + 'static,
+A: MatchNestedRoutes + 'static,
 {
-    type Data = A::Data;
-    type Match = A::Match;
+type Data = A::Data;
+type Match = A::Match;
 
-    fn match_nested<'a>(
-        &'a self,
-        path: &'a str,
-    ) -> (Option<(RouteMatchId, Self::Match)>, &'a str) {
-        self.0.match_nested(path)
-    }
+fn match_nested<'a>(
+&'a self,
+path: &'a str,
+) -> (Option<(RouteMatchId, Self::Match)>, &'a str) {
+self.0.match_nested(path)
+}
 
-    fn generate_routes(
-        &self,
-    ) -> impl IntoIterator<Item = GeneratedRouteData> + '_ {
-        self.0.generate_routes()
-    }
+fn generate_routes(
+&self,
+) -> impl IntoIterator<Item = GeneratedRouteData> + '_ {
+self.0.generate_routes()
+}
 
-    fn optional(&self) -> bool {
-        self.0.optional()
-    }
+fn optional(&self) -> bool {
+self.0.optional()
+}
 }
 
 impl<A, B> MatchParams for Either<A, B>
 where
-    A: MatchParams,
-    B: MatchParams,
+A: MatchParams,
+B: MatchParams,
 {
-    fn to_params(&self) -> Vec<(Cow<'static, str>, String)> {
-        match self {
-            Either::Left(i) => i.to_params(),
-            Either::Right(i) => i.to_params(),
-        }
-    }
+fn to_params(&self) -> Vec<(Cow<'static, str>, String)> {
+match self {
+Either::Left(i) => i.to_params(),
+Either::Right(i) => i.to_params(),
+}
+}
 }
 
 impl<A, B> MatchInterface for Either<A, B>
 where
-    A: MatchInterface,
-    B: MatchInterface,
+A: MatchInterface,
+B: MatchInterface,
 {
-    type Child = Either<A::Child, B::Child>;
+type Child = Either<A::Child, B::Child>;
 
-    fn as_id(&self) -> RouteMatchId {
-        match self {
-            Either::Left(i) => i.as_id(),
-            Either::Right(i) => i.as_id(),
-        }
-    }
+fn as_id(&self) -> RouteMatchId {
+match self {
+Either::Left(i) => i.as_id(),
+Either::Right(i) => i.as_id(),
+}
+}
 
-    fn as_matched(&self) -> &str {
-        match self {
-            Either::Left(i) => i.as_matched(),
-            Either::Right(i) => i.as_matched(),
-        }
-    }
+fn as_matched(&self) -> &str {
+match self {
+Either::Left(i) => i.as_matched(),
+Either::Right(i) => i.as_matched(),
+}
+}
 
-    fn into_view_and_child(self) -> (impl ChooseView, Option<Self::Child>) {
-        match self {
-            Either::Left(i) => {
-                let (view, child) = i.into_view_and_child();
-                (Either::Left(view), child.map(Either::Left))
-            }
-            Either::Right(i) => {
-                let (view, child) = i.into_view_and_child();
-                (Either::Right(view), child.map(Either::Right))
-            }
-        }
-    }
+fn into_view_and_child(self) -> (impl ChooseView, Option<Self::Child>) {
+match self {
+Either::Left(i) => {
+let (view, child) = i.into_view_and_child();
+(Either::Left(view), child.map(Either::Left))
+}
+Either::Right(i) => {
+let (view, child) = i.into_view_and_child();
+(Either::Right(view), child.map(Either::Right))
+}
+}
+}
 }
 
 impl<A, B> MatchNestedRoutes for (A, B)
 where
-    A: MatchNestedRoutes,
-    B: MatchNestedRoutes,
+A: MatchNestedRoutes,
+B: MatchNestedRoutes,
 {
-    type Data = (A::Data, B::Data);
-    type Match = Either<A::Match, B::Match>;
+type Data = (A::Data, B::Data);
+type Match = Either<A::Match, B::Match>;
 
-    fn match_nested<'a>(
-        &'a self,
-        path: &'a str,
-    ) -> (Option<(RouteMatchId, Self::Match)>, &'a str) {
-        #[allow(non_snake_case)]
-        let (A, B) = &self;
-        if let (Some((id, matched)), remaining) = A.match_nested(path) {
-            return (Some((id, Either::Left(matched))), remaining);
-        }
-        if let (Some((id, matched)), remaining) = B.match_nested(path) {
-            return (Some((id, Either::Right(matched))), remaining);
-        }
-        (None, path)
-    }
+fn match_nested<'a>(
+&'a self,
+path: &'a str,
+) -> (Option<(RouteMatchId, Self::Match)>, &'a str) {
+#[allow(non_snake_case)]
+let (A, B) = &self;
+if let (Some((id, matched)), remaining) = A.match_nested(path) {
+return (Some((id, Either::Left(matched))), remaining);
+}
+if let (Some((id, matched)), remaining) = B.match_nested(path) {
+return (Some((id, Either::Right(matched))), remaining);
+}
+(None, path)
+}
 
-    fn generate_routes(
-        &self,
-    ) -> impl IntoIterator<Item = GeneratedRouteData> + '_ {
-        #![allow(non_snake_case)]
+fn generate_routes(
+&self,
+) -> impl IntoIterator<Item = GeneratedRouteData> + '_ {
+#![allow(non_snake_case)]
 
-        let (A, B) = &self;
+let (A, B) = &self;
 
-        let A = A.generate_routes().into_iter();
-        let B = B.generate_routes().into_iter();
+let A = A.generate_routes().into_iter();
+let B = B.generate_routes().into_iter();
 
-        A.chain(B)
-    }
+A.chain(B)
+}
 
-    fn optional(&self) -> bool {
-        self.0.optional() && self.1.optional()
-    }
+fn optional(&self) -> bool {
+self.0.optional() && self.1.optional()
+}
 }
 
 impl<T> MatchNestedRoutes for StaticVec<T>
 where
-    T: MatchNestedRoutes,
+T: MatchNestedRoutes,
 {
-    type Data = Vec<T::Data>;
-    type Match = T::Match;
+type Data = Vec<T::Data>;
+type Match = T::Match;
 
-    fn match_nested<'a>(
-        &'a self,
-        path: &'a str,
-    ) -> (Option<(RouteMatchId, Self::Match)>, &'a str) {
-        for item in self.iter() {
-            if let (Some((id, matched)), remaining) = item.match_nested(path) {
-                return (Some((id, matched)), remaining);
-            }
-        }
-        (None, path)
-    }
+fn match_nested<'a>(
+&'a self,
+path: &'a str,
+) -> (Option<(RouteMatchId, Self::Match)>, &'a str) {
+for item in self.iter() {
+if let (Some((id, matched)), remaining) = item.match_nested(path) {
+return (Some((id, matched)), remaining);
+}
+}
+(None, path)
+}
 
-    fn generate_routes(
-        &self,
-    ) -> impl IntoIterator<Item = GeneratedRouteData> + '_ {
-        self.iter().flat_map(T::generate_routes)
-    }
+fn generate_routes(
+&self,
+) -> impl IntoIterator<Item = GeneratedRouteData> + '_ {
+self.iter().flat_map(T::generate_routes)
+}
 
-    fn optional(&self) -> bool {
-        self.iter().all(|n| n.optional())
-    }
+fn optional(&self) -> bool {
+self.iter().all(|n| n.optional())
+}
 }
 
 macro_rules! chain_generated {
-    ($first:expr, $second:expr, ) => {
-        $first.chain($second)
-    };
-    ($first:expr, $second:ident, $($rest:ident,)+) => {
-        chain_generated!(
-            $first.chain($second),
-            $($rest,)+
-        )
-    }
+($first:expr, $second:expr, ) => {
+$first.chain($second)
+};
+($first:expr, $second:ident, $($rest:ident,)+) => {
+chain_generated!(
+$first.chain($second),
+$($rest,)+
+)
+}
 }
 
 macro_rules! tuples {
-    ($either:ident => $($ty:ident = $count:expr),*) => {
-        impl<'a, $($ty,)*> MatchParams for $either <$($ty,)*>
-        where
-			$($ty: MatchParams),*,
-        {
-            fn to_params(&self) -> Vec<(Cow<'static, str>, String)> {
-                match self {
-                    $($either::$ty(i) => i.to_params(),)*
-                }
-            }
-        }
+($either:ident => $($ty:ident = $count:expr),*) => {
+impl<'a, $($ty,)*> MatchParams for $either <$($ty,)*>
+where
+$($ty: MatchParams),*,
+{
+fn to_params(&self) -> Vec<(Cow<'static, str>, String)> {
+match self {
+$($either::$ty(i) => i.to_params(),)*
+}
+}
+}
 
-        impl<$($ty,)*> MatchInterface for $either <$($ty,)*>
-        where
-            $($ty: MatchInterface + 'static),*,
-        {
-            type Child = $either<$($ty::Child,)*>;
+impl<$($ty,)*> MatchInterface for $either <$($ty,)*>
+where
+$($ty: MatchInterface + 'static),*,
+{
+type Child = $either<$($ty::Child,)*>;
 
-            fn as_id(&self) -> RouteMatchId {
-                match self {
-                    $($either::$ty(i) => i.as_id(),)*
-                }
-            }
+fn as_id(&self) -> RouteMatchId {
+match self {
+$($either::$ty(i) => i.as_id(),)*
+}
+}
 
-            fn as_matched(&self) -> &str {
-                match self {
-                    $($either::$ty(i) => i.as_matched(),)*
-                }
-            }
+fn as_matched(&self) -> &str {
+match self {
+$($either::$ty(i) => i.as_matched(),)*
+}
+}
 
-            fn into_view_and_child(
-                self,
-            ) -> (
-                impl ChooseView,
-                Option<Self::Child>,
-            ) {
-                match self {
-                    $($either::$ty(i) => {
-                        let (view, child) = i.into_view_and_child();
-                        ($either::$ty(view), child.map($either::$ty))
-                    })*
-                }
-            }
-        }
+fn into_view_and_child(
+self,
+) -> (
+impl ChooseView,
+Option<Self::Child>,
+) {
+match self {
+$($either::$ty(i) => {
+let (view, child) = i.into_view_and_child();
+($either::$ty(view), child.map($either::$ty))
+})*
+}
+}
+}
 
-        impl<$($ty),*> MatchNestedRoutes for ($($ty,)*)
-        where
-			$($ty: MatchNestedRoutes + 'static),*,
-        {
-            type Data = ($($ty::Data,)*);
-            type Match = $either<$($ty::Match,)*>;
+impl<$($ty),*> MatchNestedRoutes for ($($ty,)*)
+where
+$($ty: MatchNestedRoutes + 'static),*,
+{
+type Data = ($($ty::Data,)*);
+type Match = $either<$($ty::Match,)*>;
 
-            fn optional(&self) -> bool {
-                #[allow(non_snake_case)]
-                let ($($ty,)*) = &self;
-                $($ty.optional() &&)*
-                true
-            }
+fn optional(&self) -> bool {
+#[allow(non_snake_case)]
+let ($($ty,)*) = &self;
+$($ty.optional() &&)*
+true
+}
 
-            fn match_nested<'a>(&'a self, path: &'a str) -> (Option<(RouteMatchId, Self::Match)>, &'a str) {
-                #[allow(non_snake_case)]
+fn match_nested<'a>(&'a self, path: &'a str) -> (Option<(RouteMatchId, Self::Match)>, &'a str) {
+#[allow(non_snake_case)]
 
-                let ($($ty,)*) = &self;
-                $(if let (Some((_, matched)), remaining) = $ty.match_nested(path) {
-                    return (Some((RouteMatchId($count), $either::$ty(matched))), remaining);
-                })*
-                (None, path)
-            }
+let ($($ty,)*) = &self;
+$(if let (Some((_, matched)), remaining) = $ty.match_nested(path) {
+return (Some((RouteMatchId($count), $either::$ty(matched))), remaining);
+})*
+(None, path)
+}
 
-            fn generate_routes(
-                &self,
-            ) -> impl IntoIterator<Item = GeneratedRouteData> + '_ {
-                #![allow(non_snake_case)]
+fn generate_routes(
+&self,
+) -> impl IntoIterator<Item = GeneratedRouteData> + '_ {
+#![allow(non_snake_case)]
 
-                let ($($ty,)*) = &self;
-                $(let $ty = $ty.generate_routes().into_iter();)*
-                chain_generated!($($ty,)*)
-            }
-        }
-    }
+let ($($ty,)*) = &self;
+$(let $ty = $ty.generate_routes().into_iter();)*
+chain_generated!($($ty,)*)
+}
+}
+}
 }
 
 tuples!(EitherOf3 => A = 0, B = 1, C = 2);

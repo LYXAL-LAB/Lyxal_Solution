@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "rest_api"
 version = "0.8.0"
 edition = "2024"
@@ -9,7 +9,7 @@ edition = "2024"
 anyhow = { version = "*" }
 
 gloo-net = { version = "*", features = ["http"] }
-leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos = { path = "../../../../../core/lyx-core-leptos/leptos" }
 
 serde = { version = "*", features = ["derive"] }
 

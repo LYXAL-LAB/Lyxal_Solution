@@ -1,4 +1,4 @@
-use leptos::*;
+﻿use leptos::*;
 use std::cmp::Ordering;
 use std::ops::DerefMut;
 
@@ -10,8 +10,7 @@ use std::ops::DerefMut;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos_use::use_sorted;
 /// #
 /// # #[component]
@@ -21,12 +20,10 @@ use std::ops::DerefMut;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// You can also sort by key or with a compare function.
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos_use::{use_sorted_by, use_sorted_by_key};
 /// #
 /// #[derive(Clone, PartialEq)]
@@ -70,53 +67,52 @@ use std::ops::DerefMut;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// Please note that these two ways of sorting are equivalent.
 pub fn use_sorted<S, I, T>(iterable: S) -> Signal<I>
 where
-    S: Into<MaybeSignal<I>>,
-    T: Ord,
-    I: DerefMut<Target = [T]> + Clone + PartialEq,
+S: Into<MaybeSignal<I>>,
+T: Ord,
+I: DerefMut<Target = [T]> + Clone + PartialEq,
 {
-    let iterable = iterable.into();
+let iterable = iterable.into();
 
-    Signal::derive(move || {
-        let mut iterable = iterable.get();
-        iterable.sort();
-        iterable
-    })
+Signal::derive(move || {
+let mut iterable = iterable.get();
+iterable.sort();
+iterable
+})
 }
 
 /// Version of [`use_sorted`] with a compare function.
 pub fn use_sorted_by<S, I, T, F>(iterable: S, cmp_fn: F) -> Signal<I>
 where
-    S: Into<MaybeSignal<I>>,
-    I: DerefMut<Target = [T]> + Clone + PartialEq,
-    F: FnMut(&T, &T) -> Ordering + Clone + 'static,
+S: Into<MaybeSignal<I>>,
+I: DerefMut<Target = [T]> + Clone + PartialEq,
+F: FnMut(&T, &T) -> Ordering + Clone + 'static,
 {
-    let iterable = iterable.into();
+let iterable = iterable.into();
 
-    Signal::derive(move || {
-        let mut iterable = iterable.get();
-        iterable.sort_by(cmp_fn.clone());
-        iterable
-    })
+Signal::derive(move || {
+let mut iterable = iterable.get();
+iterable.sort_by(cmp_fn.clone());
+iterable
+})
 }
 
 /// Version of [`use_sorted`] by key.
 pub fn use_sorted_by_key<S, I, T, K, F>(iterable: S, key_fn: F) -> Signal<I>
 where
-    S: Into<MaybeSignal<I>>,
-    I: DerefMut<Target = [T]> + Clone + PartialEq,
-    K: Ord,
-    F: FnMut(&T) -> K + Clone + 'static,
+S: Into<MaybeSignal<I>>,
+I: DerefMut<Target = [T]> + Clone + PartialEq,
+K: Ord,
+F: FnMut(&T) -> K + Clone + 'static,
 {
-    let iterable = iterable.into();
+let iterable = iterable.into();
 
-    Signal::derive(move || {
-        let mut iterable = iterable.get();
-        iterable.sort_by_key(key_fn.clone());
-        iterable
-    })
+Signal::derive(move || {
+let mut iterable = iterable.get();
+iterable.sort_by_key(key_fn.clone());
+iterable
+})
 }

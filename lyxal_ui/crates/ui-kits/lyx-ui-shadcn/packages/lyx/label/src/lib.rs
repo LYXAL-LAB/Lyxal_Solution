@@ -1,4 +1,4 @@
-//! Leptos port of shadcn/ui label
+﻿//! Leptos port of shadcn/ui label
 
 mod signal_managed;
 mod default;

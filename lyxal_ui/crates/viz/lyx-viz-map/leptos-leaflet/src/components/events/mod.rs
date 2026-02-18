@@ -1,4 +1,4 @@
-mod drag_events;
+﻿mod drag_events;
 mod layer_events;
 mod map_events;
 mod mouse_events;
@@ -13,20 +13,3 @@ pub use mouse_events::MouseEvents;
 pub use move_events::MoveEvents;
 pub use popup_events::PopupEvents;
 pub use tooltip_events::TooltipEvents;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

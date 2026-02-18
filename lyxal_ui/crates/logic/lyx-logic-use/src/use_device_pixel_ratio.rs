@@ -1,4 +1,4 @@
-use cfg_if::cfg_if;
+﻿use cfg_if::cfg_if;
 use leptos::prelude::*;
 
 /// Reactive [`window.devicePixelRatio`](https://developer.mozilla.org/en-US/docs/Web/API/Window/devicePixelRatio)
@@ -13,8 +13,7 @@ use leptos::prelude::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos_use::use_device_pixel_ratio;
 /// #
 /// # #[component]
@@ -23,42 +22,41 @@ use leptos::prelude::*;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://leptos-use.rs/server_side_rendering.html).
 ///
 /// On the server this function returns a Signal that is always `1.0`.
 pub fn use_device_pixel_ratio() -> Signal<f64> {
-    cfg_if! { if #[cfg(feature = "ssr")] {
-        Signal::derive(|| 1.0)
-    } else {
-        use crate::{use_event_listener_with_options, UseEventListenerOptions};
+cfg_if! { if #[cfg(feature = "ssr")] {
+Signal::derive(|| 1.0)
+} else {
+use crate::{use_event_listener_with_options, UseEventListenerOptions};
 
-        use leptos::ev::change;
+use leptos::ev::change;
 
-        let initial_pixel_ratio = window().device_pixel_ratio();
-        let (pixel_ratio, set_pixel_ratio) = signal(initial_pixel_ratio);
+let initial_pixel_ratio = window().device_pixel_ratio();
+let (pixel_ratio, set_pixel_ratio) = signal(initial_pixel_ratio);
 
-        Effect::new(move |_| {
-            let media = window().match_media(
-                &format!("(resolution: {}dppx)", pixel_ratio.get())
-            ).unwrap();
+Effect::new(move |_| {
+let media = window().match_media(
+&format!("(resolution: {}dppx)", pixel_ratio.get())
+).unwrap();
 
-            _ = use_event_listener_with_options(
-                media,
-                change,
-                move |_| {
-                    set_pixel_ratio.set(window().device_pixel_ratio());
-                },
-                UseEventListenerOptions::default()
-                    .capture(false)
-                    .passive(true)
-                    .once(true),
-            );
-        });
+_ = use_event_listener_with_options(
+media,
+change,
+move |_| {
+set_pixel_ratio.set(window().device_pixel_ratio());
+},
+UseEventListenerOptions::default()
+.capture(false)
+.passive(true)
+.once(true),
+);
+});
 
-        pixel_ratio.into()
-    }}
+pixel_ratio.into()
+}}
 }

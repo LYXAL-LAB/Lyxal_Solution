@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx-ui-test-runner"
 version = "0.8.0"
 edition = "2024"

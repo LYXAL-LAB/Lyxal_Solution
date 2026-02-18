@@ -1,16 +1,15 @@
-//! Support for [::rust_decimal] crate.
+﻿//! Support for [::rust_decimal] crate.
 use crate::*;
 use ::rust_decimal::Decimal;
 use leptos::prelude::*;
 
 #[derive(Clone, Default)]
 pub struct DecimalNumberRenderOptions {
-    /// Specifies the number of digits to display after the decimal point
-    pub precision: Option<usize>,
+/// Specifies the number of digits to display after the decimal point
+pub precision: Option<usize>,
 }
 /// Implementation for [`Decimal`] to work with the [`TableRow`] derive and the [`DefaultTableCellRenderer`]
-/// ```
-/// # use leptos_struct_table::*;
+/// /// # use leptos_struct_table::*;
 /// # use leptos::prelude::*;
 /// # use ::rust_decimal::Decimal;
 /// #[derive(TableRow, Clone)]
@@ -19,14 +18,13 @@ pub struct DecimalNumberRenderOptions {
 ///     #[table(format(precision = 2usize))]
 ///     my_field: Decimal
 /// }
-/// ```
-impl CellValue<Decimal> for Decimal {
-    type RenderOptions = DecimalNumberRenderOptions;
-    fn render_value(self, options: Self::RenderOptions) -> impl IntoView {
-        if let Some(value) = options.precision.as_ref() {
-            format!("{:.value$}", self)
-        } else {
-            self.to_string()
-        }
-    }
+/// impl CellValue<Decimal> for Decimal {
+type RenderOptions = DecimalNumberRenderOptions;
+fn render_value(self, options: Self::RenderOptions) -> impl IntoView {
+if let Some(value) = options.precision.as_ref() {
+format!("{:.value$}", self)
+} else {
+self.to_string()
+}
+}
 }

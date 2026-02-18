@@ -1,4 +1,4 @@
-#![forbid(unsafe_code)]
+﻿#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
 //! # Leptos Image
@@ -22,25 +22,22 @@
 //! ### Setup Process
 //!
 //! 1. **Provide Image Context**: Initialize your Leptos application with `leptos_image::provide_image_context` to grant it read access to the image cache.
-//!    ```
-//!    use leptos::*;
+//!    //!    use leptos::*;
 //!
 //!    #[component]
 //!    fn App() -> impl IntoView {
 //!        leptos_image::provide_image_context();
 //!        // Your app content here
 //!    }
-//!    ```
-//! 2. **Integrate with Leptos Routes**: Ensure your router includes the `ImageOptimizer` context when setting up Leptos routes.
+//!    //! 2. **Integrate with Leptos Routes**: Ensure your router includes the `ImageOptimizer` context when setting up Leptos routes.
 //! 3. **Axum State Configuration**: Incorporate `ImageOptimizer` into your app's Axum state for centralized management.
 //! 4. **Cache Route Configuration**: Add a dedicated route to your router for serving optimized images from the cache.
 //!
 //! ### Example Implementation
 //!
-//! Here’s how you can integrate the Image Optimizer into your Leptos application:
+//! Hereâ€™s how you can integrate the Image Optimizer into your Leptos application:
 //!
-//! ```
-//!     
+//! //!
 //! # use leptos_image::*;
 //! # use leptos::*;
 //! # use axum::*;
@@ -76,14 +73,12 @@
 //!     provide_image_context();
 //!     // Your app content here
 //! }
-//! ```
-//!
+//! //!
 //! This setup ensures your Leptos application is fully equipped to deliver optimized images, enhancing the performance and user experience of your web projects.
 //!
 //! Now you can use the Image Component anywhere in your app!
 
-//! ```
-//! use leptos::*;
+//! //! use leptos::*;
 //! use leptos_image::*;
 //!
 //! #[component]
@@ -98,8 +93,7 @@
 //!         />
 //!     }
 //! }
-//! ```
-//!
+//! //!
 
 mod image;
 mod optimizer;

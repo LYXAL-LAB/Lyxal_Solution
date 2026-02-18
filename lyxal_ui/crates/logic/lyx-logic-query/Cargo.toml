@@ -1,4 +1,4 @@
-
+﻿
 [workspace.dependencies]
 leptos = { ${2} }
 cfg-if = "1"

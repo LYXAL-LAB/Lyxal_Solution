@@ -1,4 +1,4 @@
-// Legacy tests for Button component
+﻿// Legacy tests for Button component
 // These tests focus on comprehensive functionality and edge cases
 
 pub mod basic_rendering;

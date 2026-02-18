@@ -1,4 +1,4 @@
-//! # daisyUI Avatar Components
+﻿//! # daisyUI Avatar Components
 //!
 //! For more information, see: https://daisyui.com/components/avatar/
 

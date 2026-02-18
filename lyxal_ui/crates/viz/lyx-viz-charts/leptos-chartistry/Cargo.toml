@@ -1,11 +1,11 @@
-[package]
+﻿[package]
 name = "lyx-viz-leptos-chartistry"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
 chrono = { version = "*" }
-leptos = { path = "../core/lyx-core-leptos/leptos" }
-leptos-use = { path = "../logic/lyx-logic-use" }
+leptos = { path = "../../../core/lyx-core-leptos/leptos" }
+leptos-use = { path = "../../../logic/lyx-logic-use" }
 log = { version = "*" }
 web-sys = { version = "*", features = ["DomRectReadOnly"] }
 [features]

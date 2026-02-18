@@ -1,10 +1,10 @@
-[package]
+﻿[package]
 name = "lyx-ui-api-standards"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
 # Core dependencies
-leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr", "hydrate"] }
+leptos = { path = "../../../../core/lyx-core-leptos/leptos", features = ["csr", "hydrate"] }
 serde = { version = "*", features = ["derive"] }
 serde_json = { version = "*" }
 thiserror = { version = "*" }

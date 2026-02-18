@@ -1,4 +1,4 @@
-#![forbid(unsafe_code)]
+﻿#![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
 //! This crate contains the default implementation of the #[macro@crate::server] macro without additional context from the server.
@@ -13,7 +13,7 @@ use syn::__private::ToTokens;
 /// feature is enabled on this crate.
 ///
 /// ## Usage
-/// ```rust,ignore
+/// ,ignore
 /// #[server]
 /// pub async fn blog_posts(
 ///     category: String,
@@ -22,12 +22,11 @@ use syn::__private::ToTokens;
 ///     // maybe do some other work
 ///     Ok(posts)
 /// }
-/// ```
-///
+/// ///
 /// ## Named Arguments
 ///
 /// You can any combination of the following named arguments:
-/// - `name`: sets the identifier for the server function’s type, which is a struct created
+/// - `name`: sets the identifier for the server functionâ€™s type, which is a struct created
 ///   to hold the arguments (defaults to the function identifier in PascalCase)
 /// - `prefix`: a prefix at which the server function handler will be mounted (defaults to `/api`)
 /// - `endpoint`: specifies the exact path at which the server function handler will be mounted,
@@ -44,7 +43,7 @@ use syn::__private::ToTokens;
 ///     - `"GetCbor"`: `GET` request with URL-encoded arguments and CBOR response
 /// - `req` and `res` specify the HTTP request and response types to be used on the server (these
 ///   should usually only be necessary if you are integrating with a server other than Actix/Axum)
-/// ```rust,ignore
+/// ,ignore
 /// #[server(
 ///   name = SomeStructName,
 ///   prefix = "/my_api",
@@ -67,19 +66,17 @@ use syn::__private::ToTokens;
 ///
 ///   // etc.
 /// }
-/// ```
-#[proc_macro_attribute]
+/// #[proc_macro_attribute]
 pub fn server(args: proc_macro::TokenStream, s: TokenStream) -> TokenStream {
-    match server_macro_impl(
-        args.into(),
-        s.into(),
-        Some(syn::parse_quote!(server_fn)),
-        option_env!("SERVER_FN_PREFIX").unwrap_or("/api"),
-        None,
-        None,
-    ) {
-        Err(e) => e.to_compile_error().into(),
-        Ok(s) => s.to_token_stream().into(),
-    }
+match server_macro_impl(
+args.into(),
+s.into(),
+Some(syn::parse_quote!(server_fn)),
+option_env!("SERVER_FN_PREFIX").unwrap_or("/api"),
+None,
+None,
+) {
+Err(e) => e.to_compile_error().into(),
+Ok(s) => s.to_token_stream().into(),
 }
-
+}

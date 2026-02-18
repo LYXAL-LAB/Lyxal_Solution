@@ -1,11 +1,11 @@
-[package]
+﻿[package]
 name = "lyx-ui-leptos_v0_8_test_app"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
-leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos = { path = "../../../core/lyx-core-leptos/leptos" }
 leptos-shadcn-ui = { path = "../packages/leptos-shadcn-ui" }
-leptos_router = { path = "../core/lyx-core-leptos/router" }
+leptos_router = { path = "../../../core/lyx-core-leptos/router" }
 console_error_panic_hook = { version = "*" }
 
 

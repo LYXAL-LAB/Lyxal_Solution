@@ -1,8 +1,8 @@
-use super::style::{MenuDirection, MenuSize};
+﻿use super::style::{MenuDirection, MenuSize};
 use crate::merge_classes;
 use leptos::{
-    html::{H2, Li, Ul},
-    prelude::*,
+html::{H2, Li, Ul},
+prelude::*,
 };
 
 /// # Menu Component
@@ -11,59 +11,58 @@ use leptos::{
 /// structured navigation with automatic selection tracking and hierarchical organization.
 ///
 /// ### Add to `input.css`
-/// ```css
+/// css
 /// @source inline("menu menu-horizontal menu-vertical menu-xs menu-sm menu-md menu-lg menu-xl menu-title menu-active");
-/// ```
-///
+/// ///
 /// ## Node References
 /// - `node_ref` - References the ul element ([HTMLUListElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLUListElement))
 #[component]
 pub fn Menu(
-    /// If true, disables automatic selection tracking
-    #[prop(optional)]
-    manual: bool,
+/// If true, disables automatic selection tracking
+#[prop(optional)]
+manual: bool,
 
-    /// Signal for tracking the currently selected menu item value
-    #[prop(optional)]
-    selected: RwSignal<Option<String>>,
+/// Signal for tracking the currently selected menu item value
+#[prop(optional)]
+selected: RwSignal<Option<String>>,
 
-    /// Layout direction of menu items
-    #[prop(optional, into)]
-    direction: Signal<MenuDirection>,
+/// Layout direction of menu items
+#[prop(optional, into)]
+direction: Signal<MenuDirection>,
 
-    /// Size variant for menu items
-    #[prop(optional, into)]
-    size: Signal<MenuSize>,
+/// Size variant for menu items
+#[prop(optional, into)]
+size: Signal<MenuSize>,
 
-    /// Additional CSS classes
-    #[prop(optional, into)]
-    class: &'static str,
+/// Additional CSS classes
+#[prop(optional, into)]
+class: &'static str,
 
-    /// Reference to the ul element
-    #[prop(optional)]
-    node_ref: NodeRef<Ul>,
+/// Reference to the ul element
+#[prop(optional)]
+node_ref: NodeRef<Ul>,
 
-    /// Menu content
-    children: Children,
+/// Menu content
+children: Children,
 ) -> impl IntoView {
-    let manager = MenuManager { manual, selected };
-    provide_context(manager);
+let manager = MenuManager { manual, selected };
+provide_context(manager);
 
-    view! {
-        <ul
-            node_ref=node_ref
-            class=move || {
-                merge_classes!(
-                    "menu",
-                    direction.get().as_str(),
-                    size.get().as_str(),
-                    class
-                )
-            }
-        >
-            {children()}
-        </ul>
-    }
+view! {
+<ul
+node_ref=node_ref
+class=move || {
+merge_classes!(
+"menu",
+direction.get().as_str(),
+size.get().as_str(),
+class
+)
+}
+>
+{children()}
+</ul>
+}
 }
 
 /// # Menu Item Component
@@ -75,78 +74,78 @@ pub fn Menu(
 /// - `node_ref` - References the li element ([HTMLLIElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLLIElement))
 #[component]
 pub fn MenuItem(
-    /// Optional URL for navigation
-    #[prop(optional, into)]
-    href: Signal<String>,
+/// Optional URL for navigation
+#[prop(optional, into)]
+href: Signal<String>,
 
-    /// Unique identifier for selection tracking
-    #[prop(optional, into)]
-    value: Signal<String>,
+/// Unique identifier for selection tracking
+#[prop(optional, into)]
+value: Signal<String>,
 
-    /// Manual active state (manual mode only)
-    #[prop(optional, into)]
-    active: Signal<bool>,
+/// Manual active state (manual mode only)
+#[prop(optional, into)]
+active: Signal<bool>,
 
-    /// Whether the item is disabled
-    #[prop(optional, into)]
-    disabled: Signal<bool>,
+/// Whether the item is disabled
+#[prop(optional, into)]
+disabled: Signal<bool>,
 
-    /// Additional CSS classes
-    #[prop(optional, into)]
-    class: &'static str,
+/// Additional CSS classes
+#[prop(optional, into)]
+class: &'static str,
 
-    /// Reference to the li element
-    #[prop(optional)]
-    node_ref: NodeRef<Li>,
+/// Reference to the li element
+#[prop(optional)]
+node_ref: NodeRef<Li>,
 
-    /// If true, renders without anchor wrapper
-    #[prop(optional, into)]
-    is_submenu: bool,
+/// If true, renders without anchor wrapper
+#[prop(optional, into)]
+is_submenu: bool,
 
-    /// Item content
-    children: Children,
+/// Item content
+children: Children,
 ) -> impl IntoView {
-    let MenuManager { manual, selected } = MenuManager::expect_context();
+let MenuManager { manual, selected } = MenuManager::expect_context();
 
-    let on_click = move |_| {
-        if disabled.get_untracked() {
-            return;
-        }
+let on_click = move |_| {
+if disabled.get_untracked() {
+return;
+}
 
-        if value.get_untracked().is_empty() {
-            return;
-        }
+if value.get_untracked().is_empty() {
+return;
+}
 
-        let mut selected = selected.write();
-        *selected = Some(value.get_untracked());
-    };
+let mut selected = selected.write();
+*selected = Some(value.get_untracked());
+};
 
-    let is_active = move || {
-        if manual {
-            return active.get();
-        }
+let is_active = move || {
+if manual {
+return active.get();
+}
 
-        selected
-            .get()
-            .as_ref()
-            .is_some_and(|s| s == &value.get_untracked())
-    };
+selected
+.get()
+.as_ref()
+.is_some_and(|s| s == &value.get_untracked())
+};
 
-    view! {
-        <li node_ref=node_ref on:click=on_click class=class>
-            {if !is_submenu {
-                view! {
-                    <a href=href class:menu-active=is_active>
-                        {children()}
-                    </a>
-                }
-                    .into_any()
-            } else {
-                view! { {children()} }.into_any()
-            }}
+view! {
+<li node_ref=node_ref on:click=on_click class=class>
+{if !is_submenu {
+view! {
+<a href=href class:menu-active=is_active>
+{children()}
+</a>
+}
+.into_any()
+} else {
+view! { {children()} }.into_any()
+}}
 
-        </li>
-    }
+</li>
+}
 }
 
 /// # Menu Title Component
@@ -158,22 +157,22 @@ pub fn MenuItem(
 /// - `node_ref` - References the h2 element ([HTMLHeadingElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLHeadingElement))
 #[component]
 pub fn MenuTitle(
-    /// Additional CSS classes
-    #[prop(optional, into)]
-    class: &'static str,
+/// Additional CSS classes
+#[prop(optional, into)]
+class: &'static str,
 
-    /// Reference to the h2 element
-    #[prop(optional)]
-    node_ref: NodeRef<H2>,
+/// Reference to the h2 element
+#[prop(optional)]
+node_ref: NodeRef<H2>,
 
-    /// Title text
-    children: Children,
+/// Title text
+children: Children,
 ) -> impl IntoView {
-    view! {
-        <h2 node_ref=node_ref class=move || merge_classes!("menu-title", class)>
-            {children()}
-        </h2>
-    }
+view! {
+<h2 node_ref=node_ref class=move || merge_classes!("menu-title", class)>
+{children()}
+</h2>
+}
 }
 
 /// # SubMenu Component
@@ -185,55 +184,36 @@ pub fn MenuTitle(
 /// - `node_ref` - References the ul element ([HTMLUListElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLUListElement))
 #[component]
 pub fn SubMenu(
-    /// Additional CSS classes
-    #[prop(optional, into)]
-    class: &'static str,
+/// Additional CSS classes
+#[prop(optional, into)]
+class: &'static str,
 
-    /// Reference to the ul element
-    #[prop(optional)]
-    node_ref: NodeRef<Ul>,
+/// Reference to the ul element
+#[prop(optional)]
+node_ref: NodeRef<Ul>,
 
-    /// Submenu content
-    children: Children,
+/// Submenu content
+children: Children,
 ) -> impl IntoView {
-    view! {
-        <ul node_ref=node_ref class=class>
-            {children()}
-        </ul>
-    }
+view! {
+<ul node_ref=node_ref class=class>
+{children()}
+</ul>
+}
 }
 
 /// Internal context manager for menu selection state.
 #[derive(Clone)]
 pub(crate) struct MenuManager {
-    /// Whether the menu operates in manual mode (disables automatic selection)
-    manual: bool,
-    /// Signal tracking the currently selected menu item value
-    selected: RwSignal<Option<String>>,
+/// Whether the menu operates in manual mode (disables automatic selection)
+manual: bool,
+/// Signal tracking the currently selected menu item value
+selected: RwSignal<Option<String>>,
 }
 
 impl MenuManager {
-    /// Retrieves the MenuManager from context.
-    pub fn expect_context() -> Self {
-        expect_context()
-    }
+/// Retrieves the MenuManager from context.
+pub fn expect_context() -> Self {
+expect_context()
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-
+}

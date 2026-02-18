@@ -1,4 +1,4 @@
-use crate::{ReconnectLimit, core::ConnectionReadyState};
+﻿use crate::{ReconnectLimit, core::ConnectionReadyState};
 use cfg_if::cfg_if;
 use codee::{CodecError, Decoder, Encoder, HybridCoderError, HybridDecoder, HybridEncoder};
 use default_struct_builder::DefaultBuilder;
@@ -22,8 +22,7 @@ use web_sys::{CloseEvent, Event};
 /// > Please check [the codec chapter](https://use.rs/codecs.html) to see what codecs are
 /// > available and what feature flags they require.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use codee::string::FromToStringCodec;
 /// # use lyx_logic_use::{use_websocket, UseWebSocketReturn};
 /// # use lyx_logic_use::core::ConnectionReadyState;
@@ -67,13 +66,11 @@ use web_sys::{CloseEvent, Event};
 ///     </div>
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// Here is another lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_example using `msgpack` for encoding and decoding. This means that only binary
 /// messages can be sent or received. For this to work you have to enable the **`msgpack_serde` feature** flag.
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use codee::binary::MsgpackSerdeCodec;
 /// # use lyx_logic_use::{use_websocket, UseWebSocketReturn};
 /// # use serde::{Deserialize, Serialize};
@@ -101,16 +98,14 @@ use web_sys::{CloseEvent, Event};
 /// #
 /// # view! {}
 /// }
-/// ```
-///
+/// ///
 /// ### Heartbeats
 ///
 /// Heartbeats can be configured by the `heartbeat` option. You have to provide a heartbeat
 /// type, that implements the `Default` trait and an `Encoder` for it. This encoder doesn't have
 /// to be the same as the one used for the other websocket messages.
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use codee::string::FromToStringCodec;
 /// # use lyx_logic_use::{use_websocket_with_options, UseWebSocketOptions, UseWebSocketReturn};
 /// # use serde::{Deserialize, Serialize};
@@ -141,8 +136,7 @@ use web_sys::{CloseEvent, Event};
 /// #
 /// # view! {}
 /// }
-/// ```
-///
+/// ///
 /// ## Relative Paths
 ///
 /// If the provided `url` is relative, it will be resolved relative to the current page.
@@ -167,8 +161,7 @@ use web_sys::{CloseEvent, Event};
 ///
 /// First we define the `struct` that is going to be passed around as context.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// use std::sync::Arc;
 ///
 /// #[derive(Clone)]
@@ -191,12 +184,10 @@ use web_sys::{CloseEvent, Event};
 ///         (self.send)(&message.to_string())
 ///     }
 /// }
-/// ```
-///
+/// ///
 /// Now you can provide the context like the following.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use codee::string::FromToStringCodec;
 /// # use lyx_logic_use::{use_websocket, UseWebSocketReturn};
 /// # use std::sync::Arc;
@@ -227,12 +218,10 @@ use web_sys::{CloseEvent, Event};
 /// #
 /// # view! {}
 /// # }
-/// ```
-///
+/// ///
 /// Finally let's use the context:
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_websocket, UseWebSocketReturn};
 /// # use std::sync::Arc;
 /// # #[derive(Clone)]
@@ -256,8 +245,7 @@ use web_sys::{CloseEvent, Event};
 /// #
 /// # view! {}
 /// # }
-/// ```
-///
+/// ///
 /// ## SendWrapped Return
 ///
 /// The returned closures `open`, `close`, and `send` are sendwrapped functions. They can

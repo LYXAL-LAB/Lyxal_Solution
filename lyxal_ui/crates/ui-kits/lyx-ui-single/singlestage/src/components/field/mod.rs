@@ -1,4 +1,4 @@
-mod content;
+﻿mod content;
 mod description;
 mod error;
 mod field;
@@ -24,7 +24,7 @@ use leptos::prelude::RwSignal;
 
 #[derive(Clone)]
 pub struct FieldContext {
-    pub description_id: RwSignal<String>,
-    pub input_id: RwSignal<String>,
-    pub label_id: RwSignal<String>,
+pub description_id: RwSignal<String>,
+pub input_id: RwSignal<String>,
+pub label_id: RwSignal<String>,
 }

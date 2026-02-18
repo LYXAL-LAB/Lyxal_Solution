@@ -1,27 +1,27 @@
-use camino::Utf8PathBuf;
+﻿use camino::Utf8PathBuf;
 
 use crate::{
-    config::{Cli, Commands, Opts},
-    ext::PathBufExt,
-    run,
+config::{Cli, Commands, Opts},
+ext::PathBufExt,
+run,
 };
 
 #[tokio::test]
 async fn workspace_build() {
-    let command = Commands::Build(Opts::default());
+let command = Commands::Build(Opts::default());
 
-    let cli = Cli {
-        manifest_path: Some(Utf8PathBuf::from("lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_examples/workspace/Cargo.toml")),
-        log: Vec::new(),
-        command,
-    };
+let cli = Cli {
+manifest_path: Some(Utf8PathBuf::from("lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_examples/workspace/Cargo.toml")),
+log: Vec::new(),
+command,
+};
 
-    run(cli).await.unwrap();
+run(cli).await.unwrap();
 
-    // when running the current working directory is changed to the manifest path.
-    let site_dir = Utf8PathBuf::from("target/site");
+// when running the current working directory is changed to the manifest path.
+let site_dir = Utf8PathBuf::from("target/site");
 
-    //insta::assert_snapshot!(site_dir.ls_ascii(0).unwrap_or_default());
+//insta::assert_snapshot!(site_dir.ls_ascii(0).unwrap_or_default());
 }
 
 // TODO: `cargo-lyx-core-lyx_core_lyx-core-lyx_core_leptos` sets the cwd which is a global env
@@ -44,22 +44,3 @@ async fn workspace_build() {
 
 //     insta::assert_snapshot!(site_dir.ls_ascii(0).unwrap_or_default());
 // }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

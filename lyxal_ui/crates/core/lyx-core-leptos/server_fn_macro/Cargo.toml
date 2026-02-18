@@ -1,9 +1,9 @@
-[package]
+﻿[package]
 name = "server_fn_macro"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
-quote = { version = "0.8.0", default-features = true }
+quote = { version = "*", default-features = true }
 syn = { version = "*", features = ["full", "parsing", "extra-traits" ], default-features = true }
 proc-macro2 = { version = "*", default-features = true }
 xxhash-rust = { version = "*", features = ["const_xxh64" ], default-features = true }

@@ -1,4 +1,4 @@
-//! Leptos port of shadcn/ui menubar
+﻿//! Leptos port of shadcn/ui menubar
 
 mod signal_managed;
 mod default;

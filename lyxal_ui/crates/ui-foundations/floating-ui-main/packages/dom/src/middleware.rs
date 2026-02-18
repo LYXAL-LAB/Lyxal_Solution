@@ -1,16 +1,16 @@
-use floating_ui_core::middleware::{
-    Arrow as CoreArrow, AutoPlacement as CoreAutoPlacement, Flip as CoreFlip, Hide as CoreHide,
-    Inline as CoreInline, Offset as CoreOffset, Shift as CoreShift, Size as CoreSize,
+﻿use floating_ui_core::middleware::{
+Arrow as CoreArrow, AutoPlacement as CoreAutoPlacement, Flip as CoreFlip, Hide as CoreHide,
+Inline as CoreInline, Offset as CoreOffset, Shift as CoreShift, Size as CoreSize,
 };
 use web_sys::{Element, Window};
 
 pub use floating_ui_core::middleware::{
-    ARROW_NAME, AUTO_PLACEMENT_NAME, ApplyState, ArrowData, ArrowOptions, AutoPlacementData,
-    AutoPlacementDataOverflow, AutoPlacementOptions, CrossAxis, DefaultLimiter, FLIP_NAME,
-    FallbackStrategy, FlipData, FlipDataOverflow, FlipOptions, HIDE_NAME, HideData, HideOptions,
-    HideStrategy, INLINE_NAME, InlineOptions, LimitShift, LimitShiftOffset, LimitShiftOffsetValues,
-    LimitShiftOptions, OFFSET_NAME, OffsetData, OffsetOptions, OffsetOptionsValues, SHIFT_NAME,
-    SIZE_NAME, ShiftData, ShiftOptions, SizeOptions,
+ARROW_NAME, AUTO_PLACEMENT_NAME, ApplyState, ArrowData, ArrowOptions, AutoPlacementData,
+AutoPlacementDataOverflow, AutoPlacementOptions, CrossAxis, DefaultLimiter, FLIP_NAME,
+FallbackStrategy, FlipData, FlipDataOverflow, FlipOptions, HIDE_NAME, HideData, HideOptions,
+HideStrategy, INLINE_NAME, InlineOptions, LimitShift, LimitShiftOffset, LimitShiftOffsetValues,
+LimitShiftOptions, OFFSET_NAME, OffsetData, OffsetOptions, OffsetOptionsValues, SHIFT_NAME,
+SIZE_NAME, ShiftData, ShiftOptions, SizeOptions,
 };
 
 /// Arrow middleware.

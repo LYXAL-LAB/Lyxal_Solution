@@ -1,9 +1,9 @@
-[package]
+﻿[package]
 name = "lyx-ui-input-otp"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
-leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr", "ssr"] }
+leptos = { path = "../../../../../core/lyx-core-leptos/leptos", features = ["csr", "ssr"] }
 leptos-style = { version = "*" }
 serde = { version = "*", features = ["derive"] }
 web-sys = { version = "*" }

@@ -1,4 +1,4 @@
-// Implementation tests module for form component
+﻿// Implementation tests module for form component
 // Split from original 783-line file into focused modules
 
 mod styling_tests;

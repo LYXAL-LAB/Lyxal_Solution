@@ -1,44 +1,4 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\core\merge\mod.rs
-```rust
-pub(crate) mod config;
+﻿pub(crate) mod config;
 pub(crate) mod get_collision_id;
 pub(crate) mod get_collisions;
 pub(crate) mod merge_impl;
@@ -58,10 +18,10 @@ pub use merge_impl::tw_merge_override;
 /// If you want a custom type to be used with this macro, implement the [`crate::MaybeIntoTailwindClass`] trait.
 #[macro_export]
 macro_rules! tw_merge {
-    ($($item:expr),+ $(,)?) => {{
-        let joined = $crate::tw_join!($($item),+);
-        $crate::merge::tw_merge(joined.as_str())
-    }};
+($($item:expr),+ $(,)?) => {{
+let joined = $crate::tw_join!($($item),+);
+$crate::merge::tw_merge(joined.as_str())
+}};
 }
 
 /// Merges all the Tailwind classes in the string, resolving conflicts.
@@ -69,7 +29,7 @@ macro_rules! tw_merge {
 /// If you need custom options use [`tw_merge_options`].
 #[inline]
 pub fn tw_merge(class: impl AsRef<str>) -> String {
-    tw_merge_slice_options(&[class.as_ref()], Default::default())
+tw_merge_slice_options(&[class.as_ref()], Default::default())
 }
 
 /// Merges all the Tailwind classes in the provided strings, resolving conflicts.
@@ -78,15 +38,14 @@ pub fn tw_merge(class: impl AsRef<str>) -> String {
 /// If you need custom options use [`tw_merge_slice_options`].
 #[inline]
 pub fn tw_merge_slice(class: &[&str]) -> String {
-    tw_merge_slice_options(class, Default::default())
+tw_merge_slice_options(class, Default::default())
 }
 
 /// Merges all the Tailwind classes, resolving conflicts, with the provided options.
 ///
 /// ## Example: With Tailwind Prefix
 ///
-/// ```
-/// # use tailwind_fuse::merge::*;
+/// /// # use tailwind_fuse::merge::*;
 /// const OPTIONS: MergeOptions = MergeOptions {
 ///   prefix: "tw-",
 ///   separator: ":",
@@ -95,15 +54,14 @@ pub fn tw_merge_slice(class: &[&str]) -> String {
 /// pub fn my_custom_tw_merge(class: impl AsRef<str>) -> String {
 ///    tw_merge_options(class, OPTIONS)
 /// }
-/// ```
-#[inline]
+/// #[inline]
 pub fn tw_merge_options(class: impl AsRef<str>, options: MergeOptions) -> String {
-    merge_impl::tw_merge_override(
-        &[class.as_ref()],
-        options,
-        |_: &[&str], _: Option<&str>| None,
-        |_: &str| None,
-    )
+merge_impl::tw_merge_override(
+&[class.as_ref()],
+options,
+|_: &[&str], _: Option<&str>| None,
+|_: &str| None,
+)
 }
 
 /// Merges all the Tailwind classes in the provided strings, resolving conflicts.
@@ -113,8 +71,7 @@ pub fn tw_merge_options(class: impl AsRef<str>, options: MergeOptions) -> String
 ///
 /// ## Example: With Tailwind Prefix
 ///
-/// ```
-/// # use tailwind_fuse::merge::*;
+/// /// # use tailwind_fuse::merge::*;
 /// const OPTIONS: MergeOptions = MergeOptions {
 ///   prefix: "tw-",
 ///   separator: ":",
@@ -123,36 +80,35 @@ pub fn tw_merge_options(class: impl AsRef<str>, options: MergeOptions) -> String
 /// pub fn my_custom_tw_merge(class: &[&str]) -> String {
 ///    tw_merge_slice_options(class, OPTIONS)
 /// }
-/// ```
-#[inline]
+/// #[inline]
 pub fn tw_merge_slice_options(class: &[&str], options: MergeOptions) -> String {
-    merge_impl::tw_merge_override(
-        class,
-        options,
-        |_: &[&str], _: Option<&str>| None,
-        |_: &str| None,
-    )
+merge_impl::tw_merge_override(
+class,
+options,
+|_: &[&str], _: Option<&str>| None,
+|_: &str| None,
+)
 }
 
 /// Return a ConflictId for a given Tailwind Class.
 pub trait CollisionIdFn {
-    /// elements: parts of the Tailwind class separated by `-`.
-    ///
-    /// (e.g. `bg-red-500` would be `["bg", "red", "500"]`)
-    ///
-    /// arbitrary: the arbitrary value at the end of the Tailwind class
-    ///
-    /// <https://tailwindcss.com/docs/adding-custom-styles#using-arbitrary-values>
-    fn apply(&self, elements: &[&str], arbitrary: Option<&str>) -> Option<&'static str>;
+/// elements: parts of the Tailwind class separated by `-`.
+///
+/// (e.g. `bg-red-500` would be `["bg", "red", "500"]`)
+///
+/// arbitrary: the arbitrary value at the end of the Tailwind class
+///
+/// <https://tailwindcss.com/docs/adding-custom-styles#using-arbitrary-values>
+fn apply(&self, elements: &[&str], arbitrary: Option<&str>) -> Option<&'static str>;
 }
 
 impl<F> CollisionIdFn for F
 where
-    F: Fn(&[&str], Option<&str>) -> Option<&'static str> + 'static,
+F: Fn(&[&str], Option<&str>) -> Option<&'static str> + 'static,
 {
-    fn apply(&self, elements: &[&str], arbitrary: Option<&str>) -> Option<&'static str> {
-        self(elements, arbitrary)
-    }
+fn apply(&self, elements: &[&str], arbitrary: Option<&str>) -> Option<&'static str> {
+self(elements, arbitrary)
+}
 }
 
 /// Return list of CollisionIds that collide with the given CollisionId.
@@ -161,35 +117,15 @@ where
 ///
 /// e.g. "flex-row" should probably collide with "flex-col"
 pub trait GetCollisionsFn {
-    /// Return list of CollisionIds that collide with the given CollisionId.
-    fn apply(&self, collision_id: &str) -> Option<Vec<&'static str>>;
+/// Return list of CollisionIds that collide with the given CollisionId.
+fn apply(&self, collision_id: &str) -> Option<Vec<&'static str>>;
 }
 
 impl<F> GetCollisionsFn for F
 where
-    F: Fn(&str) -> Option<Vec<&'static str>>,
+F: Fn(&str) -> Option<Vec<&'static str>>,
 {
-    fn apply(&self, collision_id: &str) -> Option<Vec<&'static str>> {
-        self(collision_id)
-    }
+fn apply(&self, collision_id: &str) -> Option<Vec<&'static str>> {
+self(collision_id)
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
+}

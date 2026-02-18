@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx-viz-trading-charts"
 version = "0.8.0"
 edition = "2024"
@@ -8,7 +8,7 @@ chrono = { version = "*", features = ["alloc", "serde", "wasmbind"] }
 wasmbind-macro = { version = "*", package = "wasmbind-js-file-macro" }
 emitix = { version = "*" }
 js-sys = { version = "*" }
-leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos = { path = "../../../core/lyx-core-leptos/leptos" }
 serde = { version = "*" }
 serde-wasm-bindgen = { version = "*" }
 wasm-bindgen = { version = "*" }

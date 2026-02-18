@@ -1,4 +1,4 @@
-mod algorithm;
+﻿mod algorithm;
 mod convenience;
 mod ring;
 

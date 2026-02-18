@@ -1,5 +1,5 @@
-//! TDD tests for the Switch component
-//! 
+﻿//! TDD tests for the Switch component
+//!
 //! This module contains comprehensive TDD tests for the Switch component,
 //! organized into focused sub-modules for better maintainability and readability.
 

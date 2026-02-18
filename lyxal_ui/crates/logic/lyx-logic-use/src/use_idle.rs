@@ -1,4 +1,4 @@
-use crate::core::now;
+﻿use crate::core::now;
 use crate::filter_builder_methods;
 use crate::utils::{DebounceOptions, FilterOptions, ThrottleOptions};
 use default_struct_builder::DefaultBuilder;
@@ -13,8 +13,7 @@ use leptos::reactive::wrappers::read::Signal;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::{use_idle, UseIdleReturn};
 /// #
@@ -28,12 +27,10 @@ use leptos::reactive::wrappers::read::Signal;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// Programatically resetting:
 ///
-/// ```
-/// # use std::time::Duration;
+/// /// # use std::time::Duration;
 /// use leptos::prelude::*;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::{use_idle, UseIdleReturn};
@@ -48,8 +45,7 @@ use leptos::reactive::wrappers::read::Signal;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## SendWrapped Return
 ///
 /// The returned closure `reset` is a sendwrapped function. It can
@@ -61,14 +57,13 @@ use leptos::reactive::wrappers::read::Signal;
 ///
 /// On the server this will always return static signals
 ///
-/// ```ignore
+/// ignore
 /// UseIdleReturn{
 ///     idle: Signal(initial_state),
 ///     last_active: Signal(now),
 ///     reset: || {}
 /// }
-/// ```
-pub fn use_idle(timeout: u64) -> UseIdleReturn<impl Fn() + Clone + Send + Sync> {
+/// pub fn use_idle(timeout: u64) -> UseIdleReturn<impl Fn() + Clone + Send + Sync> {
 use_idle_with_options(timeout, UseIdleOptions::default())
 }
 

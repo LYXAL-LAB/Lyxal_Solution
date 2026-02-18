@@ -1,4 +1,4 @@
-mod content;
+﻿mod content;
 mod item;
 mod select;
 
@@ -11,25 +11,6 @@ use leptos::prelude::MaybeProp;
 
 #[derive(Clone)]
 pub struct SelectContext {
-    placeholder: MaybeProp<String>,
-    value: Reactive<String>,
+placeholder: MaybeProp<String>,
+value: Reactive<String>,
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

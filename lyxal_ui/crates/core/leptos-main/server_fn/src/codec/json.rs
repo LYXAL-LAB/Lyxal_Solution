@@ -1,4 +1,4 @@
-use super::{Patch, Post, Put};
+﻿use super::{Patch, Post, Put};
 use crate::{ContentType, Decodes, Encodes, Format, FormatType};
 use bytes::Bytes;
 use serde::{de::DeserializeOwned, Serialize};
@@ -7,33 +7,33 @@ use serde::{de::DeserializeOwned, Serialize};
 pub struct JsonEncoding;
 
 impl ContentType for JsonEncoding {
-    const CONTENT_TYPE: &'static str = "application/json";
+const CONTENT_TYPE: &'static str = "application/json";
 }
 
 impl FormatType for JsonEncoding {
-    const FORMAT_TYPE: Format = Format::Text;
+const FORMAT_TYPE: Format = Format::Text;
 }
 
 impl<T> Encodes<T> for JsonEncoding
 where
-    T: Serialize,
+T: Serialize,
 {
-    type Error = serde_json::Error;
+type Error = serde_json::Error;
 
-    fn encode(output: &T) -> Result<Bytes, Self::Error> {
-        serde_json::to_vec(output).map(Bytes::from)
-    }
+fn encode(output: &T) -> Result<Bytes, Self::Error> {
+serde_json::to_vec(output).map(Bytes::from)
+}
 }
 
 impl<T> Decodes<T> for JsonEncoding
 where
-    T: DeserializeOwned,
+T: DeserializeOwned,
 {
-    type Error = serde_json::Error;
+type Error = serde_json::Error;
 
-    fn decode(bytes: Bytes) -> Result<T, Self::Error> {
-        serde_json::from_slice(&bytes)
-    }
+fn decode(bytes: Bytes) -> Result<T, Self::Error> {
+serde_json::from_slice(&bytes)
+}
 }
 
 /// Pass arguments and receive responses as JSON in the body of a `POST` request.

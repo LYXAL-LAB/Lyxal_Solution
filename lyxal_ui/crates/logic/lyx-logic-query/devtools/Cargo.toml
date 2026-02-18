@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "devtools"
 version = "0.8.0"
 edition = "2024"
@@ -7,7 +7,7 @@ edition = "2024"
 
 
 cfg-if = { version = "*" }
-leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos = { path = "../../../core/lyx-core-leptos/leptos" }
 query = { path = "../query" }
 js-sys = { version = "*" , optional = true }
 web-sys = { version = "*", optional = true, features = ["DomRect"] }

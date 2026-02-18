@@ -1,11 +1,11 @@
-[package]
+﻿[package]
 name = "lyx-ui-leptos-shadcn-ui"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
 # Core Leptos dependencies (v0.8.x)
-leptos = { path = "../core/lyx-core-leptos/leptos", optional = true }
-leptos_router = { path = "../core/lyx-core-leptos/router" }
+leptos = { path = "../../../../core/lyx-core-leptos/leptos", optional = true }
+leptos_router = { path = "../../../../core/lyx-core-leptos/router" }
 leptos-node-ref = { version = "*" }
 leptos-struct-component = { version = "*" }
 leptos-style = { version = "*" }

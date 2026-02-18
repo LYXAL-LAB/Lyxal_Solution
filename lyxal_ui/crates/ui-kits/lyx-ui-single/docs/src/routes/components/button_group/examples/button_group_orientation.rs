@@ -1,16 +1,16 @@
-use leptos::prelude::*;
+﻿use leptos::prelude::*;
 use singlestage::*;
 
 #[component]
 pub fn ButtonGroupOrientationExample() -> impl IntoView {
-    view! {
-        <ButtonGroup vertical=true aria_label="Media controls" class="h-fit">
-            <Button variant="outline" size="icon">
-                {icon!(icondata::LuPlus)}
-            </Button>
-            <Button variant="outline" size="icon">
-                {icon!(icondata::LuMinus)}
-            </Button>
-        </ButtonGroup>
-    }
+view! {
+<ButtonGroup vertical=true aria_label="Media controls" class="h-fit">
+<Button variant="outline" size="icon">
+{icon!(icondata::LuPlus)}
+</Button>
+<Button variant="outline" size="icon">
+{icon!(icondata::LuMinus)}
+</Button>
+</ButtonGroup>
+}
 }

@@ -1,4 +1,4 @@
-//! Leptos port of shadcn/ui navigation-menu
+﻿//! Leptos port of shadcn/ui navigation-menu
 
 mod signal_managed;
 mod default;

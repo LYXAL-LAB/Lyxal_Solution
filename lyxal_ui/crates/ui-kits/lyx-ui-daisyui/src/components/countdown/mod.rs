@@ -1,4 +1,4 @@
-//! # daisyUI Countdown Component
+﻿//! # daisyUI Countdown Component
 //!
 //! For more information, see: https://daisyui.com/components/countdown/
 

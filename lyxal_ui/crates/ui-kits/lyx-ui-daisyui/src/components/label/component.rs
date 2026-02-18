@@ -1,7 +1,7 @@
-use crate::merge_classes;
+﻿use crate::merge_classes;
 use leptos::{
-    html::{Label as HtmlLabel, Span},
-    prelude::*,
+html::{Label as HtmlLabel, Span},
+prelude::*,
 };
 
 /// # Label Component
@@ -10,30 +10,29 @@ use leptos::{
 /// form labeling with consistent styling and layout.
 ///
 /// ### Add to `input.css`
-/// ```css
+/// css
 /// @source inline("label label-text label-text-alt");
-/// ```
-///
+/// ///
 /// ## Node References
 /// - `node_ref` - References the label element ([HTMLLabelElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLLabelElement))
 #[component]
 pub fn Label(
-    /// Additional CSS classes
-    #[prop(optional, into)]
-    class: &'static str,
+/// Additional CSS classes
+#[prop(optional, into)]
+class: &'static str,
 
-    /// Node reference to the label element
-    #[prop(optional)]
-    node_ref: NodeRef<HtmlLabel>,
+/// Node reference to the label element
+#[prop(optional)]
+node_ref: NodeRef<HtmlLabel>,
 
-    /// Child elements of the label
-    children: Children,
+/// Child elements of the label
+children: Children,
 ) -> impl IntoView {
-    view! {
-        <label node_ref=node_ref class=move || merge_classes!("label", class)>
-            {children()}
-        </label>
-    }
+view! {
+<label node_ref=node_ref class=move || merge_classes!("label", class)>
+{children()}
+</label>
+}
 }
 
 /// # Label Text Component
@@ -45,20 +44,20 @@ pub fn Label(
 /// - `node_ref` - References the span element ([HTMLSpanElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLSpanElement))
 #[component]
 pub fn LabelText(
-    /// Additional CSS classes
-    #[prop(optional, into)]
-    class: &'static str,
-    /// Node reference to the span element
-    #[prop(optional)]
-    node_ref: NodeRef<Span>,
-    /// Text content of the label
-    children: Children,
+/// Additional CSS classes
+#[prop(optional, into)]
+class: &'static str,
+/// Node reference to the span element
+#[prop(optional)]
+node_ref: NodeRef<Span>,
+/// Text content of the label
+children: Children,
 ) -> impl IntoView {
-    view! {
-        <span node_ref=node_ref class=move || merge_classes!("label-text", class)>
-            {children()}
-        </span>
-    }
+view! {
+<span node_ref=node_ref class=move || merge_classes!("label-text", class)>
+{children()}
+</span>
+}
 }
 
 /// # Label Text Alt Component
@@ -70,39 +69,20 @@ pub fn LabelText(
 /// - `node_ref` - References the span element ([HTMLSpanElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLSpanElement))
 #[component]
 pub fn LabelTextAlt(
-    /// Additional CSS classes
-    #[prop(optional, into)]
-    class: &'static str,
+/// Additional CSS classes
+#[prop(optional, into)]
+class: &'static str,
 
-    /// Node reference to the span element
-    #[prop(optional)]
-    node_ref: NodeRef<Span>,
+/// Node reference to the span element
+#[prop(optional)]
+node_ref: NodeRef<Span>,
 
-    /// Alternative text content of the label
-    children: Children,
+/// Alternative text content of the label
+children: Children,
 ) -> impl IntoView {
-    view! {
-        <span node_ref=node_ref class=move || merge_classes!("label-text-alt", class)>
-            {children()}
-        </span>
-    }
+view! {
+<span node_ref=node_ref class=move || merge_classes!("label-text-alt", class)>
+{children()}
+</span>
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-
+}

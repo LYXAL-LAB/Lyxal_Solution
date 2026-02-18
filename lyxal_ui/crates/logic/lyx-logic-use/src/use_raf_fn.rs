@@ -1,4 +1,4 @@
-use crate::sendwrap_fn;
+﻿use crate::sendwrap_fn;
 use crate::utils::Pausable;
 use cfg_if::cfg_if;
 use default_struct_builder::DefaultBuilder;
@@ -15,8 +15,7 @@ use std::rc::Rc;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::use_raf_fn;
 /// use lyx_logic_use::utils::Pausable;
 /// #
@@ -30,8 +29,7 @@ use std::rc::Rc;
 ///
 /// view! { <div>Count: { count }</div> }
 /// }
-/// ```
-///
+/// ///
 /// You can use `use_raf_fn_with_options` and set `immediate` to `false`. In that case
 /// you have to call `resume()` before the `callback` is executed.
 ///

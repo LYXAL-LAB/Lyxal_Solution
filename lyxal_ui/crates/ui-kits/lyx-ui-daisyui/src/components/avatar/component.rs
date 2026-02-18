@@ -1,4 +1,4 @@
-use super::style::AvatarModifier;
+﻿use super::style::AvatarModifier;
 use crate::merge_classes;
 use leptos::{html::Div, prelude::*};
 
@@ -8,10 +8,9 @@ use leptos::{html::Div, prelude::*};
 /// images, initials, or placeholder content in a consistent thumbnail format.
 ///
 /// ### Add to `input.css`
-/// ```css
+/// css
 /// @source inline("avatar avatar-group avatar-online avatar-offline avatar-placeholder");
-/// ```
-///
+/// ///
 /// ## Sizing and Shapes
 ///
 /// Use Tailwind utility classes for custom sizing:
@@ -23,36 +22,36 @@ use leptos::{html::Div, prelude::*};
 /// - `node_ref` - References the avatar container `<div>` element ([HTMLDivElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLDivElement))
 #[component]
 pub fn Avatar(
-    /// Status indicator or avatar type modifier
-    #[prop(optional, into)]
-    modifier: Signal<AvatarModifier>,
+/// Status indicator or avatar type modifier
+#[prop(optional, into)]
+modifier: Signal<AvatarModifier>,
 
-    /// Additional CSS classes
-    #[prop(optional, into)]
-    class: &'static str,
+/// Additional CSS classes
+#[prop(optional, into)]
+class: &'static str,
 
-    /// Node reference for the avatar container
-    #[prop(optional)]
-    node_ref: NodeRef<Div>,
+/// Node reference for the avatar container
+#[prop(optional)]
+node_ref: NodeRef<Div>,
 
-    /// Avatar content (images, text, icons, or other elements)
-    children: Children,
+/// Avatar content (images, text, icons, or other elements)
+children: Children,
 ) -> impl IntoView {
-    view! {
-        <div
-            aria-label="avatar"
-            node_ref=node_ref
-            class=move || {
-                merge_classes!(
-                    "avatar",
-                    modifier.get().as_str(),
-                    class
-                )
-            }
-        >
-            {children()}
-        </div>
-    }
+view! {
+<div
+aria-label="avatar"
+node_ref=node_ref
+class=move || {
+merge_classes!(
+"avatar",
+modifier.get().as_str(),
+class
+)
+}
+>
+{children()}
+</div>
+}
 }
 
 /// # Avatar Group Component
@@ -61,20 +60,20 @@ pub fn Avatar(
 /// multiple avatars in a stacked or overlapping layout.
 #[component]
 pub fn AvatarGroup(
-    /// Additional CSS classes
-    #[prop(optional, into)]
-    class: &'static str,
+/// Additional CSS classes
+#[prop(optional, into)]
+class: &'static str,
 
-    /// Node reference for the avatar group container
-    #[prop(optional)]
-    node_ref: NodeRef<Div>,
+/// Node reference for the avatar group container
+#[prop(optional)]
+node_ref: NodeRef<Div>,
 
-    /// Avatar components to display in the group
-    children: Children,
+/// Avatar components to display in the group
+children: Children,
 ) -> impl IntoView {
-    view! {
-        <div node_ref=node_ref class=move || merge_classes!("avatar-group", class)>
-            {children()}
-        </div>
-    }
+view! {
+<div node_ref=node_ref class=move || merge_classes!("avatar-group", class)>
+{children()}
+</div>
+}
 }

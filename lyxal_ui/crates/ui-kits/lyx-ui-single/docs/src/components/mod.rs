@@ -1,4 +1,4 @@
-mod code_block;
+﻿mod code_block;
 mod component_template;
 mod sidebar;
 mod theme_switcher;

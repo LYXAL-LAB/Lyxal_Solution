@@ -1,4 +1,4 @@
-//! Pagination for Leptos.
+﻿//! Pagination for Leptos.
 //!
 //! This crate contains hooks and components for easy pagination of data.
 //! It provides efficient loading, caching and displaying of large data. At the same time it
@@ -6,8 +6,7 @@
 //!
 //! ## Usage
 //!
-//! ```
-//! # use leptos::prelude::*;
+//! //! # use leptos::prelude::*;
 //! # use leptos_pagination::*;
 //! # use std::ops::Range;
 //! #
@@ -50,8 +49,7 @@
 //!     </nav>
 //! }
 //! # }
-//! ```
-//!
+//! //!
 //! ## Loading data
 //!
 //! Loading data is done through implementing one of the various `Loader` traits. Depending on your use case

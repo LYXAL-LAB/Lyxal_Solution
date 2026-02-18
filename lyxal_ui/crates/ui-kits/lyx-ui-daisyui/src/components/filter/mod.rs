@@ -1,4 +1,4 @@
-//! # daisyUI Filter Component
+﻿//! # daisyUI Filter Component
 //!
 //! For more information, see: https://daisyui.com/components/filter/
 

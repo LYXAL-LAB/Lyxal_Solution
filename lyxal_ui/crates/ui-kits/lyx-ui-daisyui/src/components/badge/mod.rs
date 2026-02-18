@@ -1,4 +1,4 @@
-//! # daisyUI Badge Components
+﻿//! # daisyUI Badge Components
 //!
 //! For more information, see: https://daisyui.com/components/badge/
 

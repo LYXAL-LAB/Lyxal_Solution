@@ -1,4 +1,4 @@
-use super::{Patch, Post, Put};
+﻿use super::{Patch, Post, Put};
 use crate::{ContentType, Decodes, Encodes, Format, FormatType};
 use bytes::Bytes;
 
@@ -6,33 +6,33 @@ use bytes::Bytes;
 pub struct BitcodeEncoding;
 
 impl ContentType for BitcodeEncoding {
-    const CONTENT_TYPE: &'static str = "application/bitcode";
+const CONTENT_TYPE: &'static str = "application/bitcode";
 }
 
 impl FormatType for BitcodeEncoding {
-    const FORMAT_TYPE: Format = Format::Binary;
+const FORMAT_TYPE: Format = Format::Binary;
 }
 
 impl<T> Encodes<T> for BitcodeEncoding
 where
-    T: bitcode::Encode,
+T: bitcode::Encode,
 {
-    type Error = std::convert::Infallible;
+type Error = std::convert::Infallible;
 
-    fn encode(value: &T) -> Result<Bytes, Self::Error> {
-        Ok(Bytes::from(bitcode::encode(value)))
-    }
+fn encode(value: &T) -> Result<Bytes, Self::Error> {
+Ok(Bytes::from(bitcode::encode(value)))
+}
 }
 
 impl<T> Decodes<T> for BitcodeEncoding
 where
-    T: bitcode::DecodeOwned,
+T: bitcode::DecodeOwned,
 {
-    type Error = bitcode::Error;
+type Error = bitcode::Error;
 
-    fn decode(bytes: Bytes) -> Result<T, Self::Error> {
-        bitcode::decode(bytes.as_ref())
-    }
+fn decode(bytes: Bytes) -> Result<T, Self::Error> {
+bitcode::decode(bytes.as_ref())
+}
 }
 
 /// Pass arguments and receive responses using `bitcode` in a `POST` request.

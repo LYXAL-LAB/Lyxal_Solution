@@ -1,4 +1,4 @@
-use crate::{WatchOptions, utils::ThrottleOptions, watch_with_options};
+﻿use crate::{WatchOptions, utils::ThrottleOptions, watch_with_options};
 use default_struct_builder::DefaultBuilder;
 
 /// A throttled version of `leptos::watch`.
@@ -9,8 +9,7 @@ use default_struct_builder::DefaultBuilder;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::watch_throttled;
 /// #
@@ -27,16 +26,14 @@ use default_struct_builder::DefaultBuilder;
 ///
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// This really is only shorthand shorthand for `watch_with_options(deps, callback, WatchOptions::default().throttle(ms))`.
 ///
 /// Please note that if the current component is cleaned up before the throttled callback is called, the throttled callback will not be called.
 ///
 /// There's also `watch_throttled_with_options` where you can specify the other watch options (except `filter`).
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::{watch_throttled_with_options, WatchThrottledOptions};
 /// #
@@ -54,8 +51,7 @@ use default_struct_builder::DefaultBuilder;
 ///
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Recommended Reading
 ///
 /// - [**Debounce vs Throttle**: Definitive Visual Guide](https://redd.one/blog/debounce-vs-throttle)

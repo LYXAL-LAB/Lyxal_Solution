@@ -1,4 +1,4 @@
-//! Leptos port of shadcn/ui toast
+﻿//! Leptos port of shadcn/ui toast
 
 mod signal_managed;
 mod default;
@@ -8,9 +8,9 @@ pub mod sonner;
 pub use default::{Toast, ToastProps};
 pub use new_york::{Toast as ToastNewYork};
 pub use sonner::{
-    SonnerProvider, SonnerViewport, SonnerToast,
-    ToastPosition, ToastTheme, ToastVariant, ToastAction, ToastData, ToastBuilder,
-    toast
+SonnerProvider, SonnerViewport, SonnerToast,
+ToastPosition, ToastTheme, ToastVariant, ToastAction, ToastData, ToastBuilder,
+toast
 };
 
 mod tests;

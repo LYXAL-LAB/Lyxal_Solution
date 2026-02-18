@@ -1,4 +1,4 @@
-[workspace]
+﻿[workspace]
 resolver = "2"
 members = ["macros", "lib"]
 
@@ -25,7 +25,7 @@ either_of = { path = "../leptos/either_of" }
 oco_ref = { path = "../leptos/oco" }
 or_poisoned = { path = "../leptos/or_poisoned" }
 next_tuple = { path = "../leptos/next_tuple" }
-leptos-use = { path = "../logic/lyx-logic-use" }
+leptos-use = { path = "../../logic/lyx-logic-use" }
 tailwind_fuse = { path = "../../ui-foundations/lyx-found-tailwind/fuse" }
 
 

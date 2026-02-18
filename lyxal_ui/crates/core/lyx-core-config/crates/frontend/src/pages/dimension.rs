@@ -1,11 +1,11 @@
-use std::ops::Deref;
+﻿use std::ops::Deref;
 
 use leptos::*;
 use leptos_router::{A, use_navigate, use_params_map};
 use serde_json::Value;
 use superposition_types::database::models::cac::DimensionType;
 use superposition_types::{
-    api::dimension::DimensionResponse, database::models::cac::DependencyGraph,
+api::dimension::DimensionResponse, database::models::cac::DependencyGraph,
 };
 
 use crate::api::dimensions;
@@ -13,11 +13,11 @@ use crate::components::badge::Badge;
 use crate::components::cohort_schema::CohortSchema;
 use crate::components::description::ContentDescription;
 use crate::components::{
-    alert::AlertType,
-    button::{Button, ButtonAnchor},
-    dimension_form::{ChangeLogSummary, ChangeType, DimensionForm},
-    input::{Input, InputType, Toggle},
-    skeleton::{Skeleton, SkeletonVariant},
+alert::AlertType,
+button::{Button, ButtonAnchor},
+dimension_form::{ChangeLogSummary, ChangeType, DimensionForm},
+input::{Input, InputType, Toggle},
+skeleton::{Skeleton, SkeletonVariant},
 };
 use crate::providers::{alert_provider::enqueue_alert, editor_provider::EditorProvider};
 use crate::schema::{JsonSchemaType, SchemaType};
@@ -25,413 +25,408 @@ use crate::types::{DimensionTypeOptions, OrganisationId, Workspace};
 
 #[component]
 fn TreeNode(
-    name: String,
-    data: DependencyGraph,
-    #[prop(default = vec![])] parents_last: Vec<bool>,
-    #[prop(default = false)] root: bool,
+name: String,
+data: DependencyGraph,
+#[prop(default = vec![])] parents_last: Vec<bool>,
+#[prop(default = false)] root: bool,
 ) -> impl IntoView {
-    let mut prefix = String::new();
-    for (i, is_last) in parents_last.iter().enumerate() {
-        if i == parents_last.len() - 1 {
-            prefix.push_str(if *is_last { "└── " } else { "├── " });
-        } else {
-            prefix.push_str(if *is_last { "    " } else { "│   " });
-        }
-    }
+let mut prefix = String::new();
+for (i, is_last) in parents_last.iter().enumerate() {
+if i == parents_last.len() - 1 {
+prefix.push_str(if *is_last { "â””â”€â”€ " } else { "â”œâ”€â”€ " });
+} else {
+prefix.push_str(if *is_last { "    " } else { "â”‚   " });
+}
+}
 
-    let children = data.get(&name).cloned().unwrap_or_default();
+let children = data.get(&name).cloned().unwrap_or_default();
 
-    view! {
-        <div class="flex whitespace-pre">
-            <div class="text-gray-500 font-mono">{prefix}</div>
-            <div class="w-full flex flex-row gap-2 items-center">
-                {if root {
-                    view! {
-                        <div class="flex gap-2 font-medium">
-                            {name} <span class="stat-title">"(current)"</span>
-                        </div>
-                    }
-                        .into_view()
-                } else {
-                    view! {
-                        <A
-                            href=format!("../{name}")
-                            class="underline text-blue-600 hover:text-blue-800 text-ellipsis overflow-hidden"
-                        >
-                            {name}
-                        </A>
-                    }
-                        .into_view()
-                }}
-                {if children.is_empty() {
-                    ().into_view()
-                } else {
-                    view! { <div class="stat-title w-full max-w-fit">"depends on:"</div> }
-                        .into_view()
-                }}
-            </div>
-        </div>
-        {children
-            .iter()
-            .enumerate()
-            .map(|(i, child)| {
-                let mut new_parents_last = parents_last.clone();
-                new_parents_last.push(i == children.len() - 1);
-                view! {
-                    <TreeNode name=child.clone() data=data.clone() parents_last=new_parents_last />
-                }
-            })
-            .collect_view()}
-    }
+view! {
+<div class="flex whitespace-pre">
+<div class="text-gray-500 font-mono">{prefix}</div>
+<div class="w-full flex flex-row gap-2 items-center">
+{if root {
+view! {
+<div class="flex gap-2 font-medium">
+{name} <span class="stat-title">"(current)"</span>
+</div>
+}
+.into_view()
+} else {
+view! {
+<A
+href=format!("../{name}")
+class="underline text-blue-600 hover:text-blue-800 text-ellipsis overflow-hidden"
+>
+{name}
+</A>
+}
+.into_view()
+}}
+{if children.is_empty() {
+().into_view()
+} else {
+view! { <div class="stat-title w-full max-w-fit">"depends on:"</div> }
+.into_view()
+}}
+</div>
+</div>
+{children
+.iter()
+.enumerate()
+.map(|(i, child)| {
+let mut new_parents_last = parents_last.clone();
+new_parents_last.push(i == children.len() - 1);
+view! {
+<TreeNode name=child.clone() data=data.clone() parents_last=new_parents_last />
+}
+})
+.collect_view()}
+}
 }
 
 #[component]
 fn DimensionInfo(dimension: DimensionResponse) -> impl IntoView {
-    let dimension_type = DimensionTypeOptions::from(&dimension.dimension_type);
-    view! {
-        <div class="card bg-base-100 max-w-screen shadow">
-            <div class="card-body">
-                <h2 class="card-title">"Info"</h2>
-                <div class="flex flex-col gap-4">
-                    <div class="flex flex-row gap-6 flex-wrap">
-                        <div class="h-fit w-[250px] flex gap-4">
-                            <div class="stat-title">"Position"</div>
-                            <div class="stat-value text-base">{*dimension.position}</div>
-                        </div>
-                        <div class="h-fit w-[250px] flex gap-4">
-                            <div class="stat-title">"Dimension Type"</div>
-                            <div class="stat-value text-base">{dimension_type.to_string()}</div>
-                        </div>
-                        <div class="h-fit w-[250px] flex gap-4">
-                            <div class="stat-title">"Mandatory"</div>
-                            <div class="stat-value text-base">
-                                <Toggle value=dimension.mandatory disabled=true on_change=|_| {} />
-                            </div>
-                        </div>
-                    </div>
-                    {if dimension.value_validation_function_name.is_some()
-                        || dimension.value_compute_function_name.is_some()
-                    {
-                        view! {
-                            <div class="flex flex-row gap-6 flex-wrap">
-                                {dimension
-                                    .value_validation_function_name
-                                    .map(|name| {
-                                        view! {
-                                            <div class="h-fit w-[250px] flex gap-4">
-                                                <div class="stat-title">"Validation Function"</div>
-                                                <A
-                                                    href=format!("../../function/{name}")
-                                                    class="text-base text-blue-500 underline underline-offset-2"
-                                                >
-                                                    {name}
-                                                </A>
-                                            </div>
-                                        }
-                                    })}
-                                {dimension
-                                    .value_compute_function_name
-                                    .map(|name| {
-                                        view! {
-                                            <div class="h-fit w-[250px] flex gap-4">
-                                                <div class="stat-title">"Value Compute Function"</div>
-                                                <A
-                                                    href=format!("../../function/{name}")
-                                                    class="text-base text-blue-500 underline underline-offset-2"
-                                                >
-                                                    {name}
-                                                </A>
-                                            </div>
-                                        }
-                                    })}
-                            </div>
-                        }
-                            .into_view()
-                    } else {
-                        ().into_view()
-                    }}
-                    {match &dimension.dimension_type {
-                        DimensionType::Regular {} | DimensionType::RemoteCohort(_) => {
-                            view! {
-                                <div class="flex gap-4">
-                                    <div class="stat-title">"Schema"</div>
-                                    <EditorProvider>
-                                        <Input
-                                            disabled=true
-                                            id="type-schema"
-                                            class="rounded-md resize-y w-[28rem]"
-                                            schema_type=SchemaType::Single(JsonSchemaType::Object)
-                                            value=Value::from(dimension.schema)
-                                            on_change=move |_| {}
-                                            r#type=InputType::Monaco(vec![])
-                                        />
-                                    </EditorProvider>
-                                </div>
-                            }
-                        }
-                        DimensionType::LocalCohort(_) => {
-                            view! {
-                                <div class="flex gap-4">
-                                    <div class="stat-title">"Cohort Schema"</div>
-                                    <EditorProvider>
-                                        <CohortSchema
-                                            dimension_schema=Value::from(dimension.schema)
-                                            on_change=move |_| ()
-                                            hide_label=true
-                                        />
-                                    </EditorProvider>
-                                </div>
-                            }
-                        }
-                    }}
-                </div>
-            </div>
-        </div>
-    }
+let dimension_type = DimensionTypeOptions::from(&dimension.dimension_type);
+view! {
+<div class="card bg-base-100 max-w-screen shadow">
+<div class="card-body">
+<h2 class="card-title">"Info"</h2>
+<div class="flex flex-col gap-4">
+<div class="flex flex-row gap-6 flex-wrap">
+<div class="h-fit w-[250px] flex gap-4">
+<div class="stat-title">"Position"</div>
+<div class="stat-value text-base">{*dimension.position}</div>
+</div>
+<div class="h-fit w-[250px] flex gap-4">
+<div class="stat-title">"Dimension Type"</div>
+<div class="stat-value text-base">{dimension_type.to_string()}</div>
+</div>
+<div class="h-fit w-[250px] flex gap-4">
+<div class="stat-title">"Mandatory"</div>
+<div class="stat-value text-base">
+<Toggle value=dimension.mandatory disabled=true on_change=|_| {} />
+</div>
+</div>
+</div>
+{if dimension.value_validation_function_name.is_some()
+|| dimension.value_compute_function_name.is_some()
+{
+view! {
+<div class="flex flex-row gap-6 flex-wrap">
+{dimension
+.value_validation_function_name
+.map(|name| {
+view! {
+<div class="h-fit w-[250px] flex gap-4">
+<div class="stat-title">"Validation Function"</div>
+<A
+href=format!("../../function/{name}")
+class="text-base text-blue-500 underline underline-offset-2"
+>
+{name}
+</A>
+</div>
+}
+})}
+{dimension
+.value_compute_function_name
+.map(|name| {
+view! {
+<div class="h-fit w-[250px] flex gap-4">
+<div class="stat-title">"Value Compute Function"</div>
+<A
+href=format!("../../function/{name}")
+class="text-base text-blue-500 underline underline-offset-2"
+>
+{name}
+</A>
+</div>
+}
+})}
+</div>
+}
+.into_view()
+} else {
+().into_view()
+}}
+{match &dimension.dimension_type {
+DimensionType::Regular {} | DimensionType::RemoteCohort(_) => {
+view! {
+<div class="flex gap-4">
+<div class="stat-title">"Schema"</div>
+<EditorProvider>
+<Input
+disabled=true
+id="type-schema"
+class="rounded-md resize-y w-[28rem]"
+schema_type=SchemaType::Single(JsonSchemaType::Object)
+value=Value::from(dimension.schema)
+on_change=move |_| {}
+r#type=InputType::Monaco(vec![])
+/>
+</EditorProvider>
+</div>
+}
+}
+DimensionType::LocalCohort(_) => {
+view! {
+<div class="flex gap-4">
+<div class="stat-title">"Cohort Schema"</div>
+<EditorProvider>
+<CohortSchema
+dimension_schema=Value::from(dimension.schema)
+on_change=move |_| ()
+hide_label=true
+/>
+</EditorProvider>
+</div>
+}
+}
+}}
+</div>
+</div>
+</div>
+}
 }
 
 #[component]
 fn DimensionData(dimension: DimensionResponse) -> impl IntoView {
-    view! {
-        <ContentDescription
-            description=dimension.description.clone()
-            change_reason=dimension.change_reason.clone()
-            created_by=dimension.created_by.clone()
-            created_at=dimension.created_at
-            last_modified_by=dimension.last_modified_by.clone()
-            last_modified_at=dimension.last_modified_at
-        />
-        <DimensionInfo dimension=dimension.clone() />
-        {if dimension.dependency_graph.len() < 2
-            && (DimensionType::Regular {} == dimension.dimension_type)
-        {
-            ().into_view()
-        } else {
-            view! {
-                <div class="card bg-base-100 max-w-screen shadow">
-                    <div class="card-body">
-                        <h2 class="card-title">"Dependency Data"</h2>
-                        <div class="flex flex-col gap-4">
-                            {if dimension.dependency_graph.len() < 2 {
-                                ().into_view()
-                            } else {
-                                view! {
-                                    <div class="flex flex-row gap-6 flex-wrap">
-                                        <div class="h-fit flex flex-col gap-1 overflow-x-scroll">
-                                            <div class="stat-title">
-                                                "Dimensions on which this dimension depends on"
-                                            </div>
-                                            <div class="w-[inherit] pl-5 whitespace-pre overflow-x-auto">
-                                                <TreeNode
-                                                    name=dimension.dimension.clone()
-                                                    data=dimension.dependency_graph.clone()
-                                                    root=true
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                                    .into_view()
-                            }}
-                            {match dimension.dimension_type {
-                                DimensionType::Regular {} => ().into_view(),
-                                DimensionType::LocalCohort(cohort_based_on)
-                                | DimensionType::RemoteCohort(cohort_based_on) => {
-                                    view! {
-                                        <div class="flex flex-row gap-6 flex-wrap">
-                                            <div class="h-fit flex flex-col gap-1">
-                                                <div class="stat-title">"Cohort is based on"</div>
-                                                <Badge
-                                                    href_fn=|d| format!("../{d}")
-                                                    options=Signal::derive(move || {
-                                                        vec![cohort_based_on.clone()]
-                                                    })
-                                                />
-                                            </div>
-                                        </div>
-                                    }
-                                        .into_view()
-                                }
-                            }}
-                        </div>
-                    </div>
-                </div>
-            }
-                .into_view()
-        }}
-    }
+view! {
+<ContentDescription
+description=dimension.description.clone()
+change_reason=dimension.change_reason.clone()
+created_by=dimension.created_by.clone()
+created_at=dimension.created_at
+last_modified_by=dimension.last_modified_by.clone()
+last_modified_at=dimension.last_modified_at
+/>
+<DimensionInfo dimension=dimension.clone() />
+{if dimension.dependency_graph.len() < 2
+&& (DimensionType::Regular {} == dimension.dimension_type)
+{
+().into_view()
+} else {
+view! {
+<div class="card bg-base-100 max-w-screen shadow">
+<div class="card-body">
+<h2 class="card-title">"Dependency Data"</h2>
+<div class="flex flex-col gap-4">
+{if dimension.dependency_graph.len() < 2 {
+().into_view()
+} else {
+view! {
+<div class="flex flex-row gap-6 flex-wrap">
+<div class="h-fit flex flex-col gap-1 overflow-x-scroll">
+<div class="stat-title">
+"Dimensions on which this dimension depends on"
+</div>
+<div class="w-[inherit] pl-5 whitespace-pre overflow-x-auto">
+<TreeNode
+name=dimension.dimension.clone()
+data=dimension.dependency_graph.clone()
+root=true
+/>
+</div>
+</div>
+</div>
+}
+.into_view()
+}}
+{match dimension.dimension_type {
+DimensionType::Regular {} => ().into_view(),
+DimensionType::LocalCohort(cohort_based_on)
+| DimensionType::RemoteCohort(cohort_based_on) => {
+view! {
+<div class="flex flex-row gap-6 flex-wrap">
+<div class="h-fit flex flex-col gap-1">
+<div class="stat-title">"Cohort is based on"</div>
+<Badge
+href_fn=|d| format!("../{d}")
+options=Signal::derive(move || {
+vec![cohort_based_on.clone()]
+})
+/>
+</div>
+</div>
+}
+.into_view()
+}
+}}
+</div>
+</div>
+</div>
+}
+.into_view()
+}}
+}
 }
 
 #[derive(Clone)]
 enum Action {
-    None,
-    Delete,
+None,
+Delete,
 }
 
 #[component]
 pub fn DimensionPage() -> impl IntoView {
-    let path_params = use_params_map();
-    let workspace = use_context::<Signal<Workspace>>().unwrap();
-    let org = use_context::<Signal<OrganisationId>>().unwrap();
-    let dimension_name = Memo::new(move |_| {
-        path_params
-            .with(|params| params.get("dimension_name").cloned().unwrap_or("1".into()))
-    });
-    let action_rws = RwSignal::new(Action::None);
-    let delete_inprogress_rws = RwSignal::new(false);
+let path_params = use_params_map();
+let workspace = use_context::<Signal<Workspace>>().unwrap();
+let org = use_context::<Signal<OrganisationId>>().unwrap();
+let dimension_name = Memo::new(move |_| {
+path_params
+.with(|params| params.get("dimension_name").cloned().unwrap_or("1".into()))
+});
+let action_rws = RwSignal::new(Action::None);
+let delete_inprogress_rws = RwSignal::new(false);
 
-    let dimension_resource = create_blocking_resource(
-        move || (dimension_name.get(), workspace.get().0, org.get().0),
-        |(dimension_name, workspace, org_id)| async move {
-            dimensions::get(&dimension_name, &workspace, &org_id)
-                .await
-                .ok()
-        },
-    );
+let dimension_resource = create_blocking_resource(
+move || (dimension_name.get(), workspace.get().0, org.get().0),
+|(dimension_name, workspace, org_id)| async move {
+dimensions::get(&dimension_name, &workspace, &org_id)
+.await
+.ok()
+},
+);
 
-    let confirm_delete = Callback::new(move |_| {
-        delete_inprogress_rws.set(true);
-        spawn_local(async move {
-            let result = dimensions::delete(
-                dimension_name.get_untracked(),
-                &workspace.get_untracked(),
-                &org.get_untracked(),
-            )
-            .await;
-            delete_inprogress_rws.set(false);
-            match result {
-                Ok(_) => {
-                    logging::log!("Dimension deleted successfully");
-                    let navigate = use_navigate();
-                    let redirect_url = format!(
-                        "/admin/{}/{}/dimensions",
-                        org.get().0,
-                        workspace.get().0,
-                    );
-                    navigate(&redirect_url, Default::default());
-                    enqueue_alert(
-                        String::from("Dimension deleted successfully"),
-                        AlertType::Success,
-                        5000,
-                    );
-                }
-                Err(e) => {
-                    logging::error!("Error deleting dimension: {:?}", e);
-                    enqueue_alert(e, AlertType::Error, 5000);
-                }
-            }
-        });
-    });
+let confirm_delete = Callback::new(move |_| {
+delete_inprogress_rws.set(true);
+spawn_local(async move {
+let result = dimensions::delete(
+dimension_name.get_untracked(),
+&workspace.get_untracked(),
+&org.get_untracked(),
+)
+.await;
+delete_inprogress_rws.set(false);
+match result {
+Ok(_) => {
+logging::log!("Dimension deleted successfully");
+let navigate = use_navigate();
+let redirect_url = format!(
+"/admin/{}/{}/dimensions",
+org.get().0,
+workspace.get().0,
+);
+navigate(&redirect_url, Default::default());
+enqueue_alert(
+String::from("Dimension deleted successfully"),
+AlertType::Success,
+5000,
+);
+}
+Err(e) => {
+logging::error!("Error deleting dimension: {:?}", e);
+enqueue_alert(e, AlertType::Error, 5000);
+}
+}
+});
+});
 
-    view! {
-        <Suspense fallback=move || {
-            view! { <Skeleton variant=SkeletonVariant::DetailPage /> }
-        }>
-            {move || {
-                let dimension = match dimension_resource.get() {
-                    Some(Some(dim)) => dim,
-                    _ => return view! { <h1>"Error fetching dimension"</h1> }.into_view(),
-                };
+view! {
+<Suspense fallback=move || {
+view! { <Skeleton variant=SkeletonVariant::DetailPage /> }
+}>
+{move || {
+let dimension = match dimension_resource.get() {
+Some(Some(dim)) => dim,
+_ => return view! { <h1>"Error fetching dimension"</h1> }.into_view(),
+};
 
-                view! {
-                    <div class="flex flex-col gap-4">
-                        <div class="flex justify-between items-center gap-2">
-                            <h1 class="text-2xl font-extrabold text-ellipsis overflow-hidden">
-                                {dimension.dimension.clone()}
-                            </h1>
-                            {if dimension.dimension != "variantIds" {
-                                view! {
-                                    <div class="w-full max-w-fit flex flex-row join">
-                                        <ButtonAnchor
-                                            force_style="btn join-item px-5 py-2.5 text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 shadow-lg rounded-lg"
-                                            href="edit"
-                                            icon_class="ri-edit-line"
-                                            text="Edit"
-                                        />
-                                        <Button
-                                            force_style="btn join-item px-5 py-2.5 text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 shadow-lg rounded-lg"
-                                            on_click=move |_| action_rws.set(Action::Delete)
-                                            icon_class="ri-delete-bin-line"
-                                            text="Delete"
-                                        />
-                                    </div>
-                                }
-                                    .into_view()
-                            } else {
-                                ().into_view()
-                            }}
-                        </div>
-                        <DimensionData dimension />
-                    </div>
-                    <Show when=move || matches!(action_rws.get(), Action::Delete)>
-                        <ChangeLogSummary
-                            dimension_name=dimension_name.get()
-                            change_type=ChangeType::Delete
-                            on_close=move |_| action_rws.set(Action::None)
-                            on_confirm=confirm_delete
-                            inprogress=delete_inprogress_rws
-                        />
-                    </Show>
-                }
-                    .into_view()
-            }}
-        </Suspense>
-    }
+view! {
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-center gap-2">
+<h1 class="text-2xl font-extrabold text-ellipsis overflow-hidden">
+{dimension.dimension.clone()}
+</h1>
+{if dimension.dimension != "variantIds" {
+view! {
+<div class="w-full max-w-fit flex flex-row join">
+<ButtonAnchor
+force_style="btn join-item px-5 py-2.5 text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 shadow-lg rounded-lg"
+href="edit"
+icon_class="ri-edit-line"
+text="Edit"
+/>
+<Button
+force_style="btn join-item px-5 py-2.5 text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 shadow-lg rounded-lg"
+on_click=move |_| action_rws.set(Action::Delete)
+icon_class="ri-delete-bin-line"
+text="Delete"
+/>
+</div>
+}
+.into_view()
+} else {
+().into_view()
+}}
+</div>
+<DimensionData dimension />
+</div>
+<Show when=move || matches!(action_rws.get(), Action::Delete)>
+<ChangeLogSummary
+dimension_name=dimension_name.get()
+change_type=ChangeType::Delete
+on_close=move |_| action_rws.set(Action::None)
+on_confirm=confirm_delete
+inprogress=delete_inprogress_rws
+/>
+</Show>
+}
+.into_view()
+}}
+</Suspense>
+}
 }
 
 #[component]
 pub fn EditDimension() -> impl IntoView {
-    let path_params = use_params_map();
-    let workspace = use_context::<Signal<Workspace>>().unwrap();
-    let org = use_context::<Signal<OrganisationId>>().unwrap();
-    let dimension_name = Memo::new(move |_| {
-        path_params
-            .with(|params| params.get("dimension_name").cloned().unwrap_or("1".into()))
-    });
+let path_params = use_params_map();
+let workspace = use_context::<Signal<Workspace>>().unwrap();
+let org = use_context::<Signal<OrganisationId>>().unwrap();
+let dimension_name = Memo::new(move |_| {
+path_params
+.with(|params| params.get("dimension_name").cloned().unwrap_or("1".into()))
+});
 
-    let dimension_resource = create_blocking_resource(
-        move || (dimension_name.get(), workspace.get().0, org.get().0),
-        |(dimension_name, workspace, org_id)| async move {
-            dimensions::get(&dimension_name, &workspace, &org_id)
-                .await
-                .ok()
-        },
-    );
+let dimension_resource = create_blocking_resource(
+move || (dimension_name.get(), workspace.get().0, org.get().0),
+|(dimension_name, workspace, org_id)| async move {
+dimensions::get(&dimension_name, &workspace, &org_id)
+.await
+.ok()
+},
+);
 
-    view! {
-        <Suspense fallback=move || {
-            view! { <Skeleton variant=SkeletonVariant::DetailPage /> }
-        }>
-            {move || {
-                let dimension = match dimension_resource.get() {
-                    Some(Some(dim)) => dim,
-                    _ => return view! { <h1>"Error fetching dimension"</h1> }.into_view(),
-                };
+view! {
+<Suspense fallback=move || {
+view! { <Skeleton variant=SkeletonVariant::DetailPage /> }
+}>
+{move || {
+let dimension = match dimension_resource.get() {
+Some(Some(dim)) => dim,
+_ => return view! { <h1>"Error fetching dimension"</h1> }.into_view(),
+};
 
-                view! {
-                    <DimensionForm
-                        edit=true
-                        position=*dimension.position as u32
-                        dimension_name=dimension.dimension.clone()
-                        dimension_type=dimension.dimension_type.clone()
-                        dimension_schema=Value::from(dimension.schema)
-                        validation_function_name=dimension.value_validation_function_name.clone()
-                        value_compute_function_name=dimension.value_compute_function_name.clone()
-                        description=dimension.description.deref().to_string()
-                        redirect_url_cancel=format!("../../{}", dimension.dimension)
-                    />
-                }
-            }}
-        </Suspense>
-    }
+view! {
+<DimensionForm
+edit=true
+position=*dimension.position as u32
+dimension_name=dimension.dimension.clone()
+dimension_type=dimension.dimension_type.clone()
+dimension_schema=Value::from(dimension.schema)
+validation_function_name=dimension.value_validation_function_name.clone()
+value_compute_function_name=dimension.value_compute_function_name.clone()
+description=dimension.description.deref().to_string()
+redirect_url_cancel=format!("../../{}", dimension.dimension)
+/>
+}
+}}
+</Suspense>
+}
 }
 
 #[component]
 pub fn CreateDimension() -> impl IntoView {
-    view! { <DimensionForm redirect_url_cancel="../../dimensions" /> }
+view! { <DimensionForm redirect_url_cancel="../../dimensions" /> }
 }
-```
-```
-```
-```
-

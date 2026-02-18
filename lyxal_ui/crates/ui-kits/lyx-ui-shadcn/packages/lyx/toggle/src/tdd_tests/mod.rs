@@ -1,5 +1,5 @@
-//! TDD Tests for Toggle Component
-//! 
+﻿//! TDD Tests for Toggle Component
+//!
 //! This module contains all the test-driven development tests for the Toggle component,
 //! organized into focused modules for better maintainability.
 

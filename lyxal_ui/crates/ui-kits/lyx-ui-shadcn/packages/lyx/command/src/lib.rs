@@ -1,5 +1,5 @@
-//! Leptos port of shadcn/ui command
-//! 
+﻿//! Leptos port of shadcn/ui command
+//!
 //! Re-exports all command components for easy access.
 
 mod signal_managed;

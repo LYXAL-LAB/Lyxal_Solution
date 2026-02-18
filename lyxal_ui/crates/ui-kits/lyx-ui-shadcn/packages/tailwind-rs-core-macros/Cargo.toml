@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx-ui-tailwind-rs-core-macros"
 version = "0.8.0"
 edition = "2024"

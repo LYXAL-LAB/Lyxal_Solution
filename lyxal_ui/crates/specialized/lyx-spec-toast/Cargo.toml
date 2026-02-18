@@ -1,12 +1,12 @@
-[package]
+﻿[package]
 name = "lyx-spec-toast"
 version = "0.8.0"
 edition = "2024"
 
 [dependencies]
 js-sys = { version = "*" }
-leptos = { path = "../core/lyx-core-leptos/leptos" }
-leptos_meta = { path = "../core/lyx-core-leptos/meta", optional = true }
+leptos = { path = "../../core/lyx-core-leptos/leptos" }
+leptos_meta = { path = "../../core/lyx-core-leptos/meta", optional = true }
 wasm-bindgen = { version = "*" }
 web-sys = { version = "*", features = ["EventTarget", "HtmlElement", "DomRect", "Element" ] }
 cfg-if = { version = "*" }

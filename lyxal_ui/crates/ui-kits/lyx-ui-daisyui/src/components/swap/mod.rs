@@ -1,4 +1,4 @@
-//! # daisyUI Swap Component
+﻿//! # daisyUI Swap Component
 //!
 //! For more information, see: https://daisyui.com/components/swap/
 
@@ -7,18 +7,3 @@ mod style;
 
 pub use component::*;
 pub use style::*;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

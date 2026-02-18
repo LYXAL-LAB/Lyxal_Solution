@@ -1,12 +1,11 @@
-use leptos::prelude::*;
+﻿use leptos::prelude::*;
 
 crate::use_derive_signal!(
 /// Reactive `ToString::to_string()`.
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::use_to_string;
 /// #
 /// # #[component]
@@ -16,7 +15,6 @@ crate::use_derive_signal!(
 /// #
 /// # view! { }
 /// # }
-/// ```
-use_to_string<T, T: ToString + 'static> -> String
+/// use_to_string<T, T: ToString + 'static> -> String
 |value| value.to_string()
 );

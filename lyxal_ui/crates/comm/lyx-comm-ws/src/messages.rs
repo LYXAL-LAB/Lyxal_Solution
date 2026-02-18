@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+﻿use std::borrow::Cow;
 
 use json_patch::Patch;
 use serde::{Deserialize, Serialize};
@@ -6,110 +6,83 @@ use serde_json::Value;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum Messages {
-    ServerSignal(ServerSignalMessage),
-    BiDirectional(BiDirectionalMessage),
-    Channel(ChannelMessage),
+ServerSignal(ServerSignalMessage),
+BiDirectional(BiDirectionalMessage),
+Channel(ChannelMessage),
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum ServerSignalMessage {
-    Establish(String),
-    EstablishResponse((String, Value)),
-    Update(SignalUpdate),
-    Delete(String),
+Establish(String),
+EstablishResponse((String, Value)),
+Update(SignalUpdate),
+Delete(String),
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum BiDirectionalMessage {
-    Establish(String),
-    EstablishResponse((String, Value)),
-    Update(SignalUpdate),
-    Delete(String),
+Establish(String),
+EstablishResponse((String, Value)),
+Update(SignalUpdate),
+Delete(String),
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum ChannelMessage {
-    Establish(String),
-    EstablishResponse(String),
-    Message(String, Value),
-    Delete(String),
+Establish(String),
+EstablishResponse(String),
+Message(String, Value),
+Delete(String),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SignalUpdate {
-    name: Cow<'static, str>,
-    patch: Patch,
+name: Cow<'static, str>,
+patch: Patch,
 }
 
 impl SignalUpdate {
-    /// Creates a new [`SignalUpdate`] from an old and new instance of `T`.
-    /// # Errors
-    /// Returns an error if the serialization of the old or new value fails.
-    pub fn new<T>(
-        name: impl Into<Cow<'static, str>>,
-        old: &T,
-        new: &T,
-    ) -> Result<Self, serde_json::Error>
-    where
-        T: Serialize,
-    {
-        let left = serde_json::to_value(old)?;
-        let right = serde_json::to_value(new)?;
-        let patch = json_patch::diff(&left, &right);
-        Ok(Self {
-            name: name.into(),
-            patch,
-        })
-    }
-
-    /// Creates a new [`SignalUpdate`] from two json values.
-    pub fn new_from_json(name: impl Into<Cow<'static, str>>, old: &Value, new: &Value) -> Self {
-        let patch = json_patch::diff(old, new);
-        Self {
-            name: name.into(),
-            patch,
-        }
-    }
-
-    pub fn new_from_patch(name: impl Into<Cow<'static, str>>, patch: &Patch) -> Self {
-        Self {
-            name: name.into(),
-            patch: patch.clone(),
-        }
-    }
-
-    pub(crate) const fn get_patch(&self) -> &Patch {
-        &self.patch
-    }
-
-    pub(crate) const fn get_name(&self) -> &Cow<'static, str> {
-        &self.name
-    }
+/// Creates a new [`SignalUpdate`] from an old and new instance of `T`.
+/// # Errors
+/// Returns an error if the serialization of the old or new value fails.
+pub fn new<T>(
+name: impl Into<Cow<'static, str>>,
+old: &T,
+new: &T,
+) -> Result<Self, serde_json::Error>
+where
+T: Serialize,
+{
+let left = serde_json::to_value(old)?;
+let right = serde_json::to_value(new)?;
+let patch = json_patch::diff(&left, &right);
+Ok(Self {
+name: name.into(),
+patch,
+})
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
 
+/// Creates a new [`SignalUpdate`] from two json values.
+pub fn new_from_json(name: impl Into<Cow<'static, str>>, old: &Value, new: &Value) -> Self {
+let patch = json_patch::diff(old, new);
+Self {
+name: name.into(),
+patch,
+}
+}
+
+pub fn new_from_patch(name: impl Into<Cow<'static, str>>, patch: &Patch) -> Self {
+Self {
+name: name.into(),
+patch: patch.clone(),
+}
+}
+
+pub(crate) const fn get_patch(&self) -> &Patch {
+&self.patch
+}
+
+pub(crate) const fn get_name(&self) -> &Cow<'static, str> {
+&self.name
+}
+}

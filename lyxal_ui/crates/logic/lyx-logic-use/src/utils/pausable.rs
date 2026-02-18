@@ -1,4 +1,4 @@
-use leptos::reactive::wrappers::read::Signal;
+﻿use leptos::reactive::wrappers::read::Signal;
 
 /// Pausable effect
 #[derive(Clone)]

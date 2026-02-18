@@ -1,10 +1,10 @@
-[package]
+﻿[package]
 name = "query"
 version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos = { path = "../../../core/lyx-core-leptos/leptos" }
 cfg-if = { version = "*" }
 js-sys = { version = "*" , optional = true }
 web-sys = { version = "*", optional = true }
@@ -26,8 +26,9 @@ local_storage = ["miniserde", "web-sys/Storage"]
 indexed_db = [ "miniserde", "indexed_db_futures"]
 
 [dev-dependencies]
-leptos_axum = { path = "../../../core/leptos/integrations/axum" }
+leptos_axum = { path = "../../../core/lyx-core-leptos/integrations/axum" }
 serde = { version = "*" }
+
 
 
 

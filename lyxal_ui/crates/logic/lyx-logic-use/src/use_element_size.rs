@@ -1,4 +1,4 @@
-use crate::core::IntoElementMaybeSignal;
+﻿use crate::core::IntoElementMaybeSignal;
 use crate::core::Size;
 use cfg_if::cfg_if;
 use default_struct_builder::DefaultBuilder;
@@ -22,8 +22,7 @@ use wasm_bindgen::JsCast;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::{html::Div, prelude::*};
+/// /// # use leptos::{html::Div, prelude::*};
 /// # use lyx_logic_use::{use_element_size, UseElementSizeReturn};
 /// #
 /// # #[component]
@@ -39,8 +38,7 @@ use wasm_bindgen::JsCast;
 ///     </div>
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

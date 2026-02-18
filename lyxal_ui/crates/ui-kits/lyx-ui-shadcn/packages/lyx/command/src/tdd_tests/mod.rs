@@ -1,4 +1,4 @@
-// TDD tests module for command component
+﻿// TDD tests module for command component
 // Split from original 607-line file into focused modules
 
 mod basic_rendering_tests;

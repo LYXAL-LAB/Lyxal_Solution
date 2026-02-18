@@ -1,4 +1,4 @@
-use leptos::prelude::{guards::ReadGuard, *};
+﻿use leptos::prelude::{guards::ReadGuard, *};
 use leptos::reactive::wrappers::read::Signal;
 use send_wrapper::SendWrapper;
 use std::{ops::Deref, rc::Rc, time::Duration};
@@ -19,8 +19,7 @@ UseMutationObserverOptions, UseMutationObserverReturn, use_mutation_observer_wit
 ///
 /// into a function. Used for lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_example in [`fn@crate::use_event_listener`].
 ///
-/// ```
-/// # use leptos::{html::Div, prelude::*};
+/// /// # use leptos::{html::Div, prelude::*};
 /// # use lyx_logic_use::{use_element_size};
 /// # use send_wrapper::SendWrapper;
 /// #
@@ -55,8 +54,7 @@ UseMutationObserverOptions, UseMutationObserverReturn, use_mutation_observer_wit
 /// # view! {
 /// # }
 /// # }
-/// ```
-#[cfg_attr(not(debug_assertions), repr(transparent))]
+/// #[cfg_attr(not(debug_assertions), repr(transparent))]
 pub struct ElementMaybeSignal<T: 'static> {
 #[cfg(debug_assertions)]
 defined_at: &'static std::panic::Location<'static>,

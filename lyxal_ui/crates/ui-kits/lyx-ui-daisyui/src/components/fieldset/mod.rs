@@ -1,4 +1,4 @@
-//! # daisyUI Fieldset Component
+﻿//! # daisyUI Fieldset Component
 //!
 //! For more information, see: https://daisyui.com/components/fieldset/
 

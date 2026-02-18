@@ -1,4 +1,4 @@
-#![deny(warnings)]
+﻿#![deny(warnings)]
 
 pub mod app;
 
@@ -13,8 +13,8 @@ pub struct BakedProvider;
 impl_data_provider!(BakedProvider);
 
 fn main() {
-    use app::App;
-    leptos_i18n::custom_provider::set_icu_data_provider(BakedProvider);
-    console_error_panic_hook::set_once();
-    leptos::mount::mount_to_body(|| leptos::view! { <App /> })
+use app::App;
+leptos_i18n::custom_provider::set_icu_data_provider(BakedProvider);
+console_error_panic_hook::set_once();
+leptos::mount::mount_to_body(|| leptos::view! { <App /> })
 }

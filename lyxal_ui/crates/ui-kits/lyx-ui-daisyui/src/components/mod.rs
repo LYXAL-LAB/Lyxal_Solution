@@ -1,4 +1,4 @@
-//! daisyUI components
+﻿//! daisyUI components
 
 mod accordion;
 mod alert;

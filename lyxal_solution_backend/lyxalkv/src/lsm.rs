@@ -1518,13 +1518,17 @@ impl Tree {
 
 		// P25: Handle sharing. If the database is already open in this process,
 		// reuse the existing Core handle to avoid "Access Denied" (os error 33/5) on Windows.
-		let core = if let Some(existing) = get_core(&opts.path) {
-			log::info!("Lyxalkv: Reusing existing Core handle for {:?}", opts.path);
-			existing
-		} else {
+		// Check if we already have an active Core for this path
+		let core = if !opts.internal_bypass_registry {
+			if let Some(core) = get_core(&opts.path) {
+				log::info!("Lyxalkv: Reusing existing Core handle for {:?}", opts.path);
+				return Ok(Self { core });
+			}
 			let new_core = Arc::new(Core::new(Arc::clone(&opts))?);
 			register_core(&opts.path, &new_core);
 			new_core
+		} else {
+			Arc::new(Core::new(Arc::clone(&opts))?)
 		};
 
 		// TODO: Add file to write options manifest
@@ -2002,6 +2006,12 @@ impl TreeBuilder {
 	/// Controls whether to flush the active memtable during database shutdown.
 	pub fn with_flush_on_close(mut self, value: bool) -> Self {
 		self.opts = self.opts.with_flush_on_close(value);
+		self
+	}
+
+	/// Internal option to bypass the core handle registry (used for tests)
+	pub(crate) fn with_internal_bypass_registry(mut self, value: bool) -> Self {
+		self.opts.internal_bypass_registry = value;
 		self
 	}
 

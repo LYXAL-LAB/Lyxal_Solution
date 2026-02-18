@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "next_tuple"
 version = "0.8.0"
 edition = "2024"
@@ -6,7 +6,7 @@ edition = "2024"
 
 
 [build-dependencies]
-rustc_version = "0.8.0"
+rustc_version = "*"
 
 
 

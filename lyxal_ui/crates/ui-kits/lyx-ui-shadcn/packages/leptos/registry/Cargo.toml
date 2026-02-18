@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx-ui-registry-1"
 version = "0.8.0"
 edition = "2024"
@@ -90,7 +90,7 @@ textarea = []
 tooltip = []
 utils = []
 [dev-dependencies]
-leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr"] }
+leptos = { path = "../../../../../core/lyx-core-leptos/leptos", features = ["csr"] }
 
 
 

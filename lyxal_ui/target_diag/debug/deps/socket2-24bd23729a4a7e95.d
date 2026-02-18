@@ -1,9 +1,0 @@
-C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\target_diag\debug\deps\socket2-24bd23729a4a7e95.d: C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\lib.rs C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sockaddr.rs C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\socket.rs C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sockref.rs C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sys\windows.rs
-
-C:\Users\Administrator\Downloads\Lyxal_Solution-main\lyxal_ui\target_diag\debug\deps\libsocket2-24bd23729a4a7e95.rmeta: C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\lib.rs C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sockaddr.rs C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\socket.rs C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sockref.rs C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sys\windows.rs
-
-C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\lib.rs:
-C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sockaddr.rs:
-C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\socket.rs:
-C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sockref.rs:
-C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\socket2-0.6.1\src\sys\windows.rs:

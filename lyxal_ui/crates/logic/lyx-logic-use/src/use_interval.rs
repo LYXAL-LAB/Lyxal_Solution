@@ -1,4 +1,4 @@
-use crate::utils::Pausable;
+﻿use crate::utils::Pausable;
 use crate::{UseIntervalFnOptions, sendwrap_fn, use_interval_fn_with_options};
 use default_struct_builder::DefaultBuilder;
 use leptos::prelude::*;
@@ -13,8 +13,7 @@ use std::rc::Rc;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_interval, UseIntervalReturn};
 /// #
 /// # #[component]
@@ -28,8 +27,7 @@ use std::rc::Rc;
 /// }  = use_interval( 200 );
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## SendWrapped Return
 ///
 /// The returned closures `pause`, `resume` and `reset` are sendwrapped functions. They can

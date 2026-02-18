@@ -1,4 +1,4 @@
-mod chat;
+﻿mod chat;
 mod message;
 mod rooms;
 

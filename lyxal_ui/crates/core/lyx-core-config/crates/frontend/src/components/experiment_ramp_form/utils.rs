@@ -1,41 +1,36 @@
-use superposition_types::{
-    api::experiments::{ExperimentResponse, RampRequest},
-    database::models::{ChangeReason, experimentation::TrafficPercentage},
+﻿use superposition_types::{
+api::experiments::{ExperimentResponse, RampRequest},
+database::models::{ChangeReason, experimentation::TrafficPercentage},
 };
 
 use crate::utils::{
-    construct_request_headers, parse_json_response, request, use_host_server,
+construct_request_headers, parse_json_response, request, use_host_server,
 };
 
 pub async fn ramp_experiment(
-    exp_id: &str,
-    percent: u8,
-    change_reason: Option<String>,
-    workspace: &str,
-    org_id: &str,
+exp_id: &str,
+percent: u8,
+change_reason: Option<String>,
+workspace: &str,
+org_id: &str,
 ) -> Result<ExperimentResponse, String> {
-    let payload = RampRequest {
-        change_reason: ChangeReason::try_from(
-            change_reason.unwrap_or(format!("ramping to {percent}")),
-        )?,
-        traffic_percentage: TrafficPercentage::try_from(percent as i32)?,
-    };
+let payload = RampRequest {
+change_reason: ChangeReason::try_from(
+change_reason.unwrap_or(format!("ramping to {percent}")),
+)?,
+traffic_percentage: TrafficPercentage::try_from(percent as i32)?,
+};
 
-    let host = use_host_server();
-    let url = format!("{host}/experiments/{exp_id}/ramp");
+let host = use_host_server();
+let url = format!("{host}/experiments/{exp_id}/ramp");
 
-    let response = request(
-        url,
-        reqwest::Method::PATCH,
-        Some(payload),
-        construct_request_headers(&[("x-workspace", workspace), ("x-org-id", org_id)])?,
-    )
-    .await?;
+let response = request(
+url,
+reqwest::Method::PATCH,
+Some(payload),
+construct_request_headers(&[("x-workspace", workspace), ("x-org-id", org_id)])?,
+)
+.await?;
 
-    parse_json_response(response).await
+parse_json_response(response).await
 }
-```
-```
-```
-```
-

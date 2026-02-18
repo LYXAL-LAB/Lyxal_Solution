@@ -1,4 +1,4 @@
-use crate::{watch_with_options, utils::DebounceOptions, WatchOptions};
+﻿use crate::{watch_with_options, utils::DebounceOptions, WatchOptions};
 use default_struct_builder::DefaultBuilder;
 use leptos::*;
 
@@ -10,8 +10,7 @@ use leptos::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos::logging::log;
 /// # use leptos_use::watch_debounced;
 /// #
@@ -28,16 +27,14 @@ use leptos::*;
 ///
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// This really is only shorthand shorthand for `watch_with_options(deps, callback, WatchOptions::default().debounce(ms))`.
 ///
 /// Please note that if the current component is cleaned up before the debounced callback is called, the debounced callback will not be called.
 ///
 /// There's also [`watch_debounced_with_options`] where you can specify the other watch options (except `filter`).
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos::logging::log;
 /// # use leptos_use::{watch_debounced_with_options, WatchDebouncedOptions};
 /// #
@@ -55,8 +52,7 @@ use leptos::*;
 ///
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Recommended Reading
 ///
 /// - [**Debounce vs Throttle**: Definitive Visual Guide](https://redd.one/blog/debounce-vs-throttle)
@@ -74,48 +70,48 @@ use leptos::*;
 /// * [`fn@crate::watch_throttled`]
 pub fn watch_debounced<W, T, DFn, CFn>(deps: DFn, callback: CFn, ms: f64) -> impl Fn() + Clone
 where
-    DFn: Fn() -> W + 'static,
-    CFn: Fn(&W, Option<&W>, Option<T>) -> T + Clone + 'static,
-    W: Clone + 'static,
-    T: Clone + 'static,
+DFn: Fn() -> W + 'static,
+CFn: Fn(&W, Option<&W>, Option<T>) -> T + Clone + 'static,
+W: Clone + 'static,
+T: Clone + 'static,
 {
-    watch_with_options(deps, callback, WatchOptions::default().debounce(ms))
+watch_with_options(deps, callback, WatchOptions::default().debounce(ms))
 }
 
 /// Version of `watch_debounced` that accepts `WatchDebouncedOptions`.
 /// See [`watch_debounced`] for how to use.
 pub fn watch_debounced_with_options<W, T, DFn, CFn>(
-    deps: DFn,
-    callback: CFn,
-    ms: f64,
-    options: WatchDebouncedOptions,
+deps: DFn,
+callback: CFn,
+ms: f64,
+options: WatchDebouncedOptions,
 ) -> impl Fn() + Clone
 where
-    DFn: Fn() -> W + 'static,
-    CFn: Fn(&W, Option<&W>, Option<T>) -> T + Clone + 'static,
-    W: Clone + 'static,
-    T: Clone + 'static,
+DFn: Fn() -> W + 'static,
+CFn: Fn(&W, Option<&W>, Option<T>) -> T + Clone + 'static,
+W: Clone + 'static,
+T: Clone + 'static,
 {
-    watch_with_options(
-        deps,
-        callback,
-        WatchOptions::default()
-            .debounce_with_options(ms, DebounceOptions::default().max_wait(options.max_wait))
-            .immediate(options.immediate),
-    )
+watch_with_options(
+deps,
+callback,
+WatchOptions::default()
+.debounce_with_options(ms, DebounceOptions::default().max_wait(options.max_wait))
+.immediate(options.immediate),
+)
 }
 
 /// Options for [`watch_debounced_with_options`].
 #[derive(DefaultBuilder, Default)]
 pub struct WatchDebouncedOptions {
-    /// If `immediate` is false, the `callback` will not run immediately but only after
-    /// the first change is detected of any signal that is accessed in `deps`.
-    /// Defaults to `true`.
-    immediate: bool,
+/// If `immediate` is false, the `callback` will not run immediately but only after
+/// the first change is detected of any signal that is accessed in `deps`.
+/// Defaults to `true`.
+immediate: bool,
 
-    /// The maximum time allowed to be delayed before the callback invoked.
-    /// In milliseconds.
-    /// Same as [`DebounceOptions::max_wait`]
-    #[builder(into)]
-    pub max_wait: MaybeSignal<Option<f64>>,
+/// The maximum time allowed to be delayed before the callback invoked.
+/// In milliseconds.
+/// Same as [`DebounceOptions::max_wait`]
+#[builder(into)]
+pub max_wait: MaybeSignal<Option<f64>>,
 }

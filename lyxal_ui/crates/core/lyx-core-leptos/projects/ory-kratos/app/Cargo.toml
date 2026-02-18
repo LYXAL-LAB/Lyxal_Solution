@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "app"
 version = "0.8.0"
 edition = "2024"
@@ -8,7 +8,7 @@ leptos = { path = "../leptos", version = "0.8.0" }
 leptos_meta = { path = "../leptos_meta", version = "*" }
 leptos_router = { path = "../leptos_router", version = "*" }
 leptos_axum = { version = "*", path = "../../../integrations/axum", optional = true }
-axum = { version = "*", optional = true }
+leptos_axum = { version = "*", optional = true }
 axum-extra = { version = "*", optional = true }
 reqwest = { version = "*", optional = true }
 time = { version = "*", optional = true }

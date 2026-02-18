@@ -1,4 +1,4 @@
-//! # Dropdown Component Module
+﻿//! # Dropdown Component Module
 //!
 //! Dropdown menu components for contextual actions and selections.
 //! Built on HTML `<details>` element with accessible trigger and content areas.

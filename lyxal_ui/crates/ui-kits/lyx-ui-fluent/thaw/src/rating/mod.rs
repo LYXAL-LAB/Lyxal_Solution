@@ -1,4 +1,4 @@
-mod rating;
+﻿mod rating;
 mod rating_display;
 mod rating_item;
 

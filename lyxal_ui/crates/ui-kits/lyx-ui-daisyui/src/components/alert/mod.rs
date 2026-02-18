@@ -1,4 +1,4 @@
-//! # daisyUI Alert Components
+﻿//! # daisyUI Alert Components
 //!
 //! For more information, see: https://daisyui.com/components/alert/
 

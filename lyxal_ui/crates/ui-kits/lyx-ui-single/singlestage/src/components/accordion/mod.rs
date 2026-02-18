@@ -1,4 +1,4 @@
-mod accordion;
+﻿mod accordion;
 mod content;
 mod item;
 mod trigger;

@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx-platform-server"
 version = "0.8.0"
 edition = "2024"
@@ -6,11 +6,11 @@ edition = "2024"
 [dependencies]
 lyx-platform-app = { path = "../app", features = ["ssr"] }
 lyx-platform-backend = { path = "../backend", features = ["ssr"] }
-axum = { version = "*" }
+leptos_axum = { version = "*" }
 axum-macros = { version = "*" }
-leptos = { path = "../core/lyx-core-leptos/leptos" }
-leptos_axum = { path = "../../../core/leptos/integrations/axum" }
-leptos_router = { path = "../core/lyx-core-leptos/router" }
+leptos = { path = "../../../core/lyx-core-leptos/leptos" }
+leptos_axum = { path = "../../../core/lyx-core-leptos/integrations/axum" }
+leptos_router = { path = "../../../core/lyx-core-leptos/router" }
 tokio = { version = "*", features = ["rt-multi-thread"] }
 tower-http = { version = "*", features = ["fs", "cors", "trace"] }
 tracing = { version = "*" }
@@ -21,6 +21,7 @@ opentelemetry_sdk = { version = "*", default-features = false, features = ["trac
 opentelemetry-semantic-conventions = { version = "*" }
 opentelemetry-otlp = { version = "*", features = ["metrics"] }
 opentelemetry-stdout = { version = "*", features = ["trace", "metrics"] }
+
 
 
 

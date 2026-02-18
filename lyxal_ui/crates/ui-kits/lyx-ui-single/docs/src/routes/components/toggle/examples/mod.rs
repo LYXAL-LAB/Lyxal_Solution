@@ -1,4 +1,4 @@
-mod toggle;
+﻿mod toggle;
 mod toggle_disabled;
 mod toggle_large;
 mod toggle_outline;

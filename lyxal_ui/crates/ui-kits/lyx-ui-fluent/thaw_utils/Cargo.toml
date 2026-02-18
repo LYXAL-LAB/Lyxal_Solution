@@ -1,11 +1,11 @@
-[package]
+﻿[package]
 name = "lyx-ui-thaw_utils"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
-leptos = { path = "../core/lyx-core-leptos/leptos" }
-leptos_meta = { path = "../core/lyx-core-leptos/meta" }
-reactive_stores = { path = "../core/lyx-core-leptos/reactive_stores" }
+leptos = { path = "../../../core/lyx-core-leptos/leptos" }
+leptos_meta = { path = "../../../core/lyx-core-leptos/meta" }
+reactive_stores = { path = "../../../core/lyx-core-leptos/reactive_stores" }
 web-sys = { version = "*" }
 wasm-bindgen = { version = "*" }
 cfg-if = { version = "*" }

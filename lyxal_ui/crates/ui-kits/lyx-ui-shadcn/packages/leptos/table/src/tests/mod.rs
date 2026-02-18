@@ -1,5 +1,5 @@
-//! Comprehensive Tests for Table Component
-//! 
+﻿//! Comprehensive Tests for Table Component
+//!
 //! This module contains all the test-driven development tests for the Table component,
 //! organized into focused modules for better maintainability.
 

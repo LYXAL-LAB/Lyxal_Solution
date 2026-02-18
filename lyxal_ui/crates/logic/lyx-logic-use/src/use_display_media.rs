@@ -1,7 +1,7 @@
-use crate::core::OptionLocalRwSignal;
+﻿use crate::core::OptionLocalRwSignal;
 use crate::{
-    core::{MaybeRwSignal, OptionLocalSignal},
-    sendwrap_fn,
+core::{MaybeRwSignal, OptionLocalSignal},
+sendwrap_fn,
 };
 use cfg_if::cfg_if;
 use default_struct_builder::DefaultBuilder;
@@ -17,8 +17,7 @@ use wasm_bindgen::{JsCast, JsValue};
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::logging::{log, error};
 /// # use leptos_use::{use_display_media, UseDisplayMediaReturn};
 /// #
@@ -42,8 +41,7 @@ use wasm_bindgen::{JsCast, JsValue};
 ///
 /// view! { <video node_ref=video_ref controls=false autoplay=true muted=true></video> }
 /// # }
-/// ```
-///
+/// ///
 /// ## SendWrapped Return
 ///
 /// The returned closures `start` and `stop` are sendwrapped functions. They can
@@ -57,152 +55,152 @@ use wasm_bindgen::{JsCast, JsValue};
 /// and the stream will always be `None`.
 pub fn use_display_media()
 -> UseDisplayMediaReturn<impl Fn() + Clone + Send + Sync, impl Fn() + Clone + Send + Sync> {
-    use_display_media_with_options(UseDisplayMediaOptions::default())
+use_display_media_with_options(UseDisplayMediaOptions::default())
 }
 
 /// Version of [`use_display_media`] that accepts a [`UseDisplayMediaOptions`].
 pub fn use_display_media_with_options(
-    options: UseDisplayMediaOptions,
+options: UseDisplayMediaOptions,
 ) -> UseDisplayMediaReturn<impl Fn() + Clone + Send + Sync, impl Fn() + Clone + Send + Sync> {
-    let UseDisplayMediaOptions { enabled, audio } = options;
+let UseDisplayMediaOptions { enabled, audio } = options;
 
-    let (enabled, set_enabled) = enabled.into_signal();
+let (enabled, set_enabled) = enabled.into_signal();
 
-    let stream = OptionLocalRwSignal::<Result<web_sys::MediaStream, JsValue>>::new();
+let stream = OptionLocalRwSignal::<Result<web_sys::MediaStream, JsValue>>::new();
 
-    let _start = move || async move {
-        cfg_if! { if #[cfg(not(feature = "ssr"))] {
-            if stream.get_untracked().is_some() {
-                return;
-            }
+let _start = move || async move {
+cfg_if! { if #[cfg(not(feature = "ssr"))] {
+if stream.get_untracked().is_some() {
+return;
+}
 
-            let new_stream = create_media(audio).await;
+let new_stream = create_media(audio).await;
 
-            stream.update(|s| *s = Some(new_stream));
-        } else {
-            let _ = audio;
-        }}
-    };
+stream.update(|s| *s = Some(new_stream));
+} else {
+let _ = audio;
+}}
+};
 
-    let _stop = move || {
-        if let Some(sendwrapped_stream) = stream.get_untracked()
-            && let Ok(stream) = sendwrapped_stream.as_ref()
-        {
-            for track in stream.get_tracks() {
-                track.unchecked_ref::<web_sys::MediaStreamTrack>().stop();
-            }
-        }
+let _stop = move || {
+if let Some(sendwrapped_stream) = stream.get_untracked()
+&& let Ok(stream) = sendwrapped_stream.as_ref()
+{
+for track in stream.get_tracks() {
+track.unchecked_ref::<web_sys::MediaStreamTrack>().stop();
+}
+}
 
-        stream.set(None);
-    };
+stream.set(None);
+};
 
-    let start = sendwrap_fn!(move || {
-        cfg_if! { if #[cfg(not(feature = "ssr"))] {
-            leptos::task::spawn_local(async move {
-                _start().await;
-                stream.with_untracked(move |stream| {
-                    if let Some(sendwrapped_stream) = stream && sendwrapped_stream.as_ref().is_ok() {
-                        set_enabled.set(true);
-                    }
-                });
-            });
-        }}
-    });
+let start = sendwrap_fn!(move || {
+cfg_if! { if #[cfg(not(feature = "ssr"))] {
+leptos::task::spawn_local(async move {
+_start().await;
+stream.with_untracked(move |stream| {
+if let Some(sendwrapped_stream) = stream && sendwrapped_stream.as_ref().is_ok() {
+set_enabled.set(true);
+}
+});
+});
+}}
+});
 
-    let stop = sendwrap_fn!(move || {
-        _stop();
-        set_enabled.set(false);
-    });
+let stop = sendwrap_fn!(move || {
+_stop();
+set_enabled.set(false);
+});
 
-    Effect::watch(
-        move || enabled.get(),
-        move |enabled, _, _| {
-            if *enabled {
-                leptos::task::spawn_local(async move {
-                    _start().await;
-                });
-            } else {
-                _stop();
-            }
-        },
-        true,
-    );
+Effect::watch(
+move || enabled.get(),
+move |enabled, _, _| {
+if *enabled {
+leptos::task::spawn_local(async move {
+_start().await;
+});
+} else {
+_stop();
+}
+},
+true,
+);
 
-    UseDisplayMediaReturn {
-        stream: stream.read_only(),
-        start,
-        stop,
-        enabled,
-        set_enabled,
-    }
+UseDisplayMediaReturn {
+stream: stream.read_only(),
+start,
+stop,
+enabled,
+set_enabled,
+}
 }
 
 #[cfg(not(feature = "ssr"))]
 async fn create_media(audio: bool) -> Result<web_sys::MediaStream, JsValue> {
-    use crate::js_fut;
-    use crate::use_window::use_window;
+use crate::js_fut;
+use crate::use_window::use_window;
 
-    let media = use_window()
-        .navigator()
-        .ok_or_else(|| JsValue::from_str("Failed to access window.navigator"))
-        .and_then(|n| n.media_devices())?;
+let media = use_window()
+.navigator()
+.ok_or_else(|| JsValue::from_str("Failed to access window.navigator"))
+.and_then(|n| n.media_devices())?;
 
-    let constraints = web_sys::DisplayMediaStreamConstraints::new();
-    if audio {
-        constraints.set_audio(&JsValue::from(true));
-    }
+let constraints = web_sys::DisplayMediaStreamConstraints::new();
+if audio {
+constraints.set_audio(&JsValue::from(true));
+}
 
-    let promise = media.get_display_media_with_constraints(&constraints)?;
-    let res = js_fut!(promise).await?;
+let promise = media.get_display_media_with_constraints(&constraints)?;
+let res = js_fut!(promise).await?;
 
-    Ok::<_, JsValue>(web_sys::MediaStream::unchecked_from_js(res))
+Ok::<_, JsValue>(web_sys::MediaStream::unchecked_from_js(res))
 }
 
 // NOTE: there's no video value because it has to be `true`. Otherwise the stream would always resolve to an Error.
 /// Options for [`use_display_media`].
 #[derive(DefaultBuilder, Clone, Copy, Debug)]
 pub struct UseDisplayMediaOptions {
-    /// If the stream is enabled. Defaults to `false`.
-    enabled: MaybeRwSignal<bool>,
+/// If the stream is enabled. Defaults to `false`.
+enabled: MaybeRwSignal<bool>,
 
-    /// A value of `true` indicates that the returned [`MediaStream`](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream)
-    /// will contain an audio track, if audio is supported and available for the display surface chosen by the user.
-    /// The default value is `false`.
-    audio: bool,
+/// A value of `true` indicates that the returned [`MediaStream`](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream)
+/// will contain an audio track, if audio is supported and available for the display surface chosen by the user.
+/// The default value is `false`.
+audio: bool,
 }
 
 impl Default for UseDisplayMediaOptions {
-    fn default() -> Self {
-        Self {
-            enabled: false.into(),
-            audio: false,
-        }
-    }
+fn default() -> Self {
+Self {
+enabled: false.into(),
+audio: false,
+}
+}
 }
 
 /// Return type of [`use_display_media`]
 #[derive(Clone)]
 pub struct UseDisplayMediaReturn<StartFn, StopFn>
 where
-    StartFn: Fn() + Clone + Send + Sync,
-    StopFn: Fn() + Clone + Send + Sync,
+StartFn: Fn() + Clone + Send + Sync,
+StopFn: Fn() + Clone + Send + Sync,
 {
-    /// The current [`MediaStream`](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream) if it exists.
-    /// Initially this is `None` until `start` resolved successfully.
-    /// In case the stream couldn't be started, for example because the user didn't grant permission,
-    /// this has the value `Some(Err(...))`.
-    pub stream: OptionLocalSignal<Result<web_sys::MediaStream, JsValue>>,
+/// The current [`MediaStream`](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream) if it exists.
+/// Initially this is `None` until `start` resolved successfully.
+/// In case the stream couldn't be started, for example because the user didn't grant permission,
+/// this has the value `Some(Err(...))`.
+pub stream: OptionLocalSignal<Result<web_sys::MediaStream, JsValue>>,
 
-    /// Starts the screen streaming. Triggers the ask for permission if not already granted.
-    pub start: StartFn,
+/// Starts the screen streaming. Triggers the ask for permission if not already granted.
+pub start: StartFn,
 
-    /// Stops the screen streaming
-    pub stop: StopFn,
+/// Stops the screen streaming
+pub stop: StopFn,
 
-    /// A value of `true` indicates that the returned [`MediaStream`](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream)
-    /// has resolved successfully and thus the stream is enabled.
-    pub enabled: Signal<bool>,
+/// A value of `true` indicates that the returned [`MediaStream`](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream)
+/// has resolved successfully and thus the stream is enabled.
+pub enabled: Signal<bool>,
 
-    /// A value of `true` is the same as calling `start()` whereas `false` is the same as calling `stop()`.
-    pub set_enabled: WriteSignal<bool>,
+/// A value of `true` is the same as calling `start()` whereas `false` is the same as calling `stop()`.
+pub set_enabled: WriteSignal<bool>,
 }

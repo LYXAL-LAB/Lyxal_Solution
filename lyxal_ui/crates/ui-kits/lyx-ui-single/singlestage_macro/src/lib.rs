@@ -1,4 +1,4 @@
-use proc_macro::TokenStream;
+﻿use proc_macro::TokenStream;
 
 mod icon;
 
@@ -13,7 +13,7 @@ mod icon;
 ///
 /// * `stroke_linecap`
 /// * `stroke_linejoin`
-/// * `stroke_width`  
+/// * `stroke_width`
 /// * `width`
 /// * `height`
 /// * `stroke`
@@ -23,8 +23,7 @@ mod icon;
 ///
 /// # Examples
 ///
-/// ```rust
-/// use singlestage::icon;
+/// /// use singlestage::icon;
 ///
 ///<Label>
 ///  {icon!(icondata::FiCreditCard)} "Card"
@@ -33,21 +32,7 @@ mod icon;
 ///<Label>
 ///  {icon!(icondata::FiCreditCard, width=100, class="mr-3")} "Card"
 /// </Label>
-/// ```
-#[proc_macro]
+/// #[proc_macro]
 pub fn icon(input: TokenStream) -> TokenStream {
-    icon::icon(input)
+icon::icon(input)
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

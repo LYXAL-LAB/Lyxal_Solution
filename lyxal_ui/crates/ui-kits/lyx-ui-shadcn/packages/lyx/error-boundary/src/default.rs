@@ -1,15 +1,15 @@
-//! Default implementation of the Error Handling system
+﻿//! Default implementation of the Error Handling system
 
 pub use super::*;
 
 // Re-export the main components for easy access
 pub use super::{
-    ErrorBoundary,
-    ErrorFallback,
-    ErrorInfo,
-    use_error_handler,
-    create_user_error,
-    handle_error,
+ErrorBoundary,
+ErrorFallback,
+ErrorInfo,
+use_error_handler,
+create_user_error,
+handle_error,
 };
 
 // Default styling classes for the error fallback
@@ -36,60 +36,60 @@ pub const DEFAULT_SHOW_TECHNICAL_DETAILS: bool = false; // Usually too technical
 
 // Error fallback styling constants
 pub const ERROR_FALLBACK_STYLES: &str = r#"
-    .error-fallback {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 200px;
-        padding: 2rem;
-        background-color: #fef2f2;
-        border: 1px solid #fecaca;
-        border-radius: 0.5rem;
-        margin: 1rem 0;
-    }
-    
-    .error-content {
-        text-align: center;
-        max-width: 500px;
-    }
-    
-    .error-icon {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        color: #dc2626;
-        font-weight: bold;
-    }
-    
-    .error-title {
-        font-size: 1.5rem;
-        font-weight: 600;
-        color: #dc2626;
-        margin-bottom: 0.5rem;
-    }
-    
-    .error-message {
-        color: #6b7280;
-        margin-bottom: 1.5rem;
-        line-height: 1.5;
-    }
-    
-    .error-actions {
-        display: flex;
-        justify-content: center;
-    }
-    
-    .error-retry {
-        padding: 0.5rem 1rem;
-        border: none;
-        border-radius: 0.375rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-        background-color: #2563eb;
-        color: white;
-    }
-    
-    .error-retry:hover {
-        background-color: #1d4ed8;
-    }
+.error-fallback {
+display: flex;
+align-items: center;
+justify-content: center;
+min-height: 200px;
+padding: 2rem;
+background-color: #fef2f2;
+border: 1px solid #fecaca;
+border-radius: 0.5rem;
+margin: 1rem 0;
+}
+
+.error-content {
+text-align: center;
+max-width: 500px;
+}
+
+.error-icon {
+font-size: 3rem;
+margin-bottom: 1rem;
+color: #dc2626;
+font-weight: bold;
+}
+
+.error-title {
+font-size: 1.5rem;
+font-weight: 600;
+color: #dc2626;
+margin-bottom: 0.5rem;
+}
+
+.error-message {
+color: #6b7280;
+margin-bottom: 1.5rem;
+line-height: 1.5;
+}
+
+.error-actions {
+display: flex;
+justify-content: center;
+}
+
+.error-retry {
+padding: 0.5rem 1rem;
+border: none;
+border-radius: 0.375rem;
+font-weight: 500;
+cursor: pointer;
+transition: all 0.2s;
+background-color: #2563eb;
+color: white;
+}
+
+.error-retry:hover {
+background-color: #1d4ed8;
+}
 "#;

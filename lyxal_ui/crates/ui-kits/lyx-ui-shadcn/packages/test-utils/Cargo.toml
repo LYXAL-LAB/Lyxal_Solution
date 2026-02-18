@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx-ui-test-utils"
 version = "0.8.0"
 edition = "2024"
@@ -9,11 +9,11 @@ js-sys = { version = "*" }
 console_error_panic_hook = { version = "*" }
 serde = { version = "*" }
 serde_json = { version = "*" }
-# ✅ FIXED: Add "js" feature for WASM compatibility
+# âœ… FIXED: Add "js" feature for WASM compatibility
 uuid = { version = "*", features = ["v4", "js"] }
 # Framework-specific testing
-leptos = { path = "../core/lyx-core-leptos/leptos" }
-# ✅ ADDED: WASM-compatible random generation
+leptos = { path = "../../../../core/lyx-core-leptos/leptos" }
+# âœ… ADDED: WASM-compatible random generation
 getrandom = { version = "*", features = ["js"] }
 # Snapshot testing dependencies
 chrono = { version = "*" }

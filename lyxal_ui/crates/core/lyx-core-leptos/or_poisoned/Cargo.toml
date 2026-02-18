@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "or_poisoned"
 version = "0.8.0"
 edition = "2024"
@@ -6,6 +6,6 @@ edition = "2024"
 
 
 [build-dependencies]
-rustc_version = "0.8.0"
+rustc_version = "*"
 
 

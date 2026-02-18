@@ -1,4 +1,4 @@
-use crate::core::IntoElementsMaybeSignal;
+﻿use crate::core::IntoElementsMaybeSignal;
 use cfg_if::cfg_if;
 use default_struct_builder::DefaultBuilder;
 use leptos::reactive::wrappers::read::Signal;
@@ -21,8 +21,7 @@ use std::rc::Rc;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::html::Pre;
 /// # use lyx_logic_use::{use_mutation_observer_with_options, UseMutationObserverOptions};
 /// #
@@ -45,8 +44,7 @@ use std::rc::Rc;
 ///     <pre node_ref=el>{ text }</pre>
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// ## SendWrapped Return
 ///
 /// The returned closure `stop` is a sendwrapped function. It can

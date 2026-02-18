@@ -1,5 +1,5 @@
-//! Sonner toast component
-//! 
+﻿//! Sonner toast component
+//!
 //! This module contains the complete Sonner toast system,
 //! organized into focused sub-modules for better maintainability and readability.
 

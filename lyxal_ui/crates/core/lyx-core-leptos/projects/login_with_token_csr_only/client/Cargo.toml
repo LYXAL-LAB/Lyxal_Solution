@@ -1,12 +1,12 @@
-[package]
+﻿[package]
 name = "client"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
-api-boundary = { path = "../api-boundary", version = "0.8.0" }
+api-boundary = { path = "../api-boundary", version = "*" }
 leptos = { path = "../leptos", version = "*", features = ["csr"] }
-meta = { path = "../../../meta", version = "*", features = ["csr"] }
-router = { path = "../../../router", version = "*", features = ["csr"] }
+leptos_meta = { path = "../../../meta", version = "*", features = ["csr"] }
+leptos_router = { path = "../../../router", version = "*", features = ["csr"] }
 log = { version = "*" }
 console_error_panic_hook = { version = "*" }
 console_log = { version = "*" }

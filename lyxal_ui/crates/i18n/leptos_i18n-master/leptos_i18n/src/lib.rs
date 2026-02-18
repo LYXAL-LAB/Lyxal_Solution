@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "nightly", feature(fn_traits))]
+﻿#![cfg_attr(feature = "nightly", feature(fn_traits))]
 #![cfg_attr(feature = "nightly", feature(unboxed_closures))]
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
@@ -24,28 +24,25 @@
 //!
 //! `./locales/en.json`:
 //!
-//! ```json
+//! json
 //! {
 //!     "click_to_change_lang": "Click to change language",
 //!     "click_count": "You clicked {{ count }} times",
 //!     "click_to_inc": "Click to increment the counter"
 //! }
-//! ```
-//!
+//! //!
 //! `./locales/fr.json`:
 //!
-//! ```json
+//! json
 //! {
 //!     "click_to_change_lang": "Cliquez pour changez de langue",
-//!     "click_count": "Vous avez cliqué {{ count }} fois",
-//!     "click_to_inc": "Cliquez pour incrémenter le compteur"
+//!     "click_count": "Vous avez cliquÃ© {{ count }} fois",
+//!     "click_to_inc": "Cliquez pour incrÃ©menter le compteur"
 //! }
-//! ```
-//!
+//! //!
 //! ### Rust code:
 //!
-//! ```rust
-//! #   leptos_i18n::declare_locales! {
+//! //! #   leptos_i18n::declare_locales! {
 //! #       path: leptos_i18n,
 //! #       default: "en",
 //! #       locales: ["en", "fr"],
@@ -56,8 +53,8 @@
 //! #       },
 //! #       fr: {
 //! #           click_to_change_lang: "Cliquez pour changez de langue",
-//! #           click_count: "Vous avez cliqué {{ count }} fois",
-//! #           click_to_inc: "Cliquez pour incrémenter le compteur"
+//! #           click_count: "Vous avez cliquÃ© {{ count }} fois",
+//! #           click_to_inc: "Cliquez pour incrÃ©menter le compteur"
 //! #       },
 //! #   };
 //! # /*
@@ -114,9 +111,7 @@
 //!         <button on:click=inc>{t!(i18n, click_to_inc)}</button>
 //!     }
 //! }
-//! ```
-
-pub mod context;
+//! pub mod context;
 pub mod display;
 mod fetch_locale;
 mod fetch_translations;
@@ -142,80 +137,80 @@ pub use scopes::{ConstScope, Scope};
 /// This module contain utilities for plurals.
 #[cfg(feature = "plurals")]
 pub mod plurals {
-    pub use leptos_i18n_macro::{
-        t_plural, t_plural_ordinal, td_plural, td_plural_ordinal, tu_plural, tu_plural_ordinal,
-    };
+pub use leptos_i18n_macro::{
+t_plural, t_plural_ordinal, td_plural, td_plural_ordinal, tu_plural, tu_plural_ordinal,
+};
 }
 
 #[doc(hidden)]
 pub mod __private {
-    pub use crate::locale_traits::TranslationUnitId;
-    pub mod fetch_translations {
-        pub use crate::fetch_translations::*;
-    }
-    #[cfg(feature = "plurals")]
-    pub use crate::formatting::get_plural_rules;
-    pub use crate::macro_helpers::*;
-    pub use leptos_i18n_macro as macros_reexport;
+pub use crate::locale_traits::TranslationUnitId;
+pub mod fetch_translations {
+pub use crate::fetch_translations::*;
+}
+#[cfg(feature = "plurals")]
+pub use crate::formatting::get_plural_rules;
+pub use crate::macro_helpers::*;
+pub use leptos_i18n_macro as macros_reexport;
 
-    /// Helper trait to make some bounds for dummy code
-    pub trait AnyBound {}
-    impl<T: ?Sized> AnyBound for T {}
+/// Helper trait to make some bounds for dummy code
+pub trait AnyBound {}
+impl<T: ?Sized> AnyBound for T {}
 
-    #[deprecated(since = "0.6.0", note = "Ranges are deprecated, use plurals instead.")]
-    pub fn warn_deprecated_ranges() {}
+#[deprecated(since = "0.6.0", note = "Ranges are deprecated, use plurals instead.")]
+pub fn warn_deprecated_ranges() {}
 }
 
 /// This module contain utilities to create custom ICU providers.
 pub mod custom_provider {
-    pub use crate::macro_helpers::formatting::{
-        data_provider::IcuDataProvider, inner::set_icu_data_provider,
-    };
-    pub use leptos_i18n_macro::IcuDataProvider;
+pub use crate::macro_helpers::formatting::{
+data_provider::IcuDataProvider, inner::set_icu_data_provider,
+};
+pub use leptos_i18n_macro::IcuDataProvider;
 }
 
 /// Reexports of backend libraries, mostly about formatting.
 pub mod reexports {
-    #[cfg(feature = "format_nums")]
-    pub use fixed_decimal;
-    #[cfg(feature = "format_currency")]
-    pub use tinystr::tinystr;
+#[cfg(feature = "format_nums")]
+pub use fixed_decimal;
+#[cfg(feature = "format_currency")]
+pub use tinystr::tinystr;
 
-    /// module containing reexports of crates from the icu project
-    pub mod icu {
-        #[cfg(feature = "format_datetime")]
-        pub use icu_calendar as calendar;
-        #[cfg(feature = "format_datetime")]
-        pub use icu_datetime as datetime;
-        #[cfg(feature = "format_nums")]
-        pub use icu_decimal as decimal;
-        #[cfg(feature = "format_currency")]
-        pub use icu_experimental::dimension::currency;
-        #[cfg(feature = "format_list")]
-        pub use icu_list as list;
-        #[cfg(feature = "plurals")]
-        pub use icu_plurals as plurals;
+/// module containing reexports of crates from the icu project
+pub mod icu {
+#[cfg(feature = "format_datetime")]
+pub use icu_calendar as calendar;
+#[cfg(feature = "format_datetime")]
+pub use icu_datetime as datetime;
+#[cfg(feature = "format_nums")]
+pub use icu_decimal as decimal;
+#[cfg(feature = "format_currency")]
+pub use icu_experimental::dimension::currency;
+#[cfg(feature = "format_list")]
+pub use icu_list as list;
+#[cfg(feature = "plurals")]
+pub use icu_plurals as plurals;
 
-        #[cfg(any(
-            feature = "format_nums",
-            feature = "format_datetime",
-            feature = "format_list",
-            feature = "format_currency",
-            feature = "plurals"
-        ))]
-        pub use icu_provider as provider;
+#[cfg(any(
+feature = "format_nums",
+feature = "format_datetime",
+feature = "format_list",
+feature = "format_currency",
+feature = "plurals"
+))]
+pub use icu_provider as provider;
 
-        pub use icu_locale as locid;
-    }
-    pub use leptos;
-    pub use serde;
-    pub use typed_builder;
-    pub use wasm_bindgen;
+pub use icu_locale as locid;
+}
+pub use leptos;
+pub use serde;
+pub use typed_builder;
+pub use wasm_bindgen;
 }
 
 /// Utility macro for using reactive translations in a non reactive component when using islands.
 ///
-/// ```rust, ignore
+/// , ignore
 /// use crate::i18n::*;
 ///
 /// #[component]
@@ -226,8 +221,7 @@ pub mod reexports {
 ///         </I18nContextProvider>
 ///     }
 /// }
-/// ```
-///
+/// ///
 /// The code above would not work because the component is only rendered on the server and never runs on the client, so using `t!` would make the translation unreactive.
 ///
 /// `ti!` wrapp the call to `t!` in an isolated island, making it run on the client.
@@ -235,7 +229,7 @@ pub mod reexports {
 /// The drawbacks are that this macro is really simple, so it don't add args to the island, making it impossible to use variable in your translation.
 /// I mean ACTUAL variables, it is totally ok to use literals or refer to global variable, as long as you are not trying to capture outer variables.
 ///
-/// ```rust, ignore
+/// , ignore
 /// ti!(SayName, say_name, name = "John"); // totally OK
 ///
 /// static MY_NUM: usize = 0;
@@ -248,24 +242,23 @@ pub mod reexports {
 ///         {children}
 ///     </div>
 /// }); // NOT OK -> tries to capture outer scope.
-/// ```
-///
+/// ///
 /// Also note that this macro does NOT take the context as the first argument, instead it takes the name for the generated island.
 ///
 /// If you need to pass variable args, you will have to make yourself an island that take those args.
 #[cfg(feature = "islands")]
 #[macro_export]
 macro_rules! ti {
-    ($island_name: ident, $($tt:tt)*) => {
-        {
-            mod inner {
-                use super::*;
-                $crate::make_i18n_island!($island_name, $($tt)*);
-            }
+($island_name: ident, $($tt:tt)*) => {
+{
+mod inner {
+use super::*;
+$crate::make_i18n_island!($island_name, $($tt)*);
+}
 
-            || view! { <inner::$island_name /> }
-        }
-    };
+|| view! { <inner::$island_name /> }
+}
+};
 }
 
 /// Utility Macro to generate an island for a translation key.
@@ -274,7 +267,7 @@ macro_rules! ti {
 ///
 /// This macro mitigate that by creating the island and then you can use it multiple time.
 ///
-/// ```rust, ignore
+/// , ignore
 /// use crate::i18n::*;
 ///
 /// #[component]
@@ -290,13 +283,12 @@ macro_rules! ti {
 ///         </I18nContextProvider>
 ///     }
 /// }
-/// ```
-///
+/// ///
 /// The code above won't compile as the `HelloWorld` island is created multiple time, and `wasm_bindgen` don't like duplicate symbols.
 ///
 /// Do this instead:
 ///
-/// ```rust, ignore
+/// , ignore
 /// use crate::i18n::*;
 ///
 /// leptos_i18n::make_i18n_island(HelloWorld, hello_world);
@@ -314,15 +306,13 @@ macro_rules! ti {
 ///         </I18nContextProvider>
 ///     }
 /// }
-/// ```
-#[cfg(feature = "islands")]
+/// #[cfg(feature = "islands")]
 #[macro_export]
 macro_rules! make_i18n_island {
-    ($island_name: ident, $($tt:tt)*) => {
-        #[island]
-        pub fn $island_name() -> impl IntoView {
-            t!(use_i18n(), $($tt)*)
-        }
-    };
+($island_name: ident, $($tt:tt)*) => {
+#[island]
+pub fn $island_name() -> impl IntoView {
+t!(use_i18n(), $($tt)*)
 }
-
+};
+}

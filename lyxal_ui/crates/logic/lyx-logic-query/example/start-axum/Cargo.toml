@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "start-axum"
 version = "0.8.0"
 edition = "2024"
@@ -9,7 +9,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 
 
-axum = { version = "*", optional = true }
+leptos_axum = { version = "*", optional = true }
 console_error_panic_hook = { version = "*" }
 console_log = { version = "*" }
 cfg-if = { version = "*" }

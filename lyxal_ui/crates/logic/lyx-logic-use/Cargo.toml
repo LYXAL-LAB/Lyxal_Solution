@@ -1,10 +1,10 @@
-[package]
+﻿[package]
 name = "leptos-use"
 version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos = { path = "../../core/lyx-core-leptos/leptos" }
 serde = { version = "*", optional = true, features = ["derive"] }
 wasm-bindgen = { version = "*" }
 web-sys = { version = "*", features = ["Window", "Document", "Element", "HtmlElement", "Storage"] }

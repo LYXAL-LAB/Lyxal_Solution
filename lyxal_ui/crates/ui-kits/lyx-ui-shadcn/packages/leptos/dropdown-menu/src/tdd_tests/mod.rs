@@ -1,4 +1,4 @@
-// TDD tests for Dropdown-menu component
+﻿// TDD tests for Dropdown-menu component
 // These tests focus on Test-Driven Development patterns
 
 #[cfg(test)]

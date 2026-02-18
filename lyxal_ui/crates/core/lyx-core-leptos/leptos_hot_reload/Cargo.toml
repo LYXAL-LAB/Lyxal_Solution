@@ -1,9 +1,9 @@
-[package]
+﻿[package]
 name = "leptos_hot_reload"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
-anyhow = { version = "0.8.0", default-features = true }
+anyhow = { version = "*", default-features = true }
 serde = { version = "*", features = ["derive"], default-features = true }
 syn = { version = "*", features = ["full", "parsing", "extra-traits", "visit", "printing" ], default-features = true }
 quote = { version = "*", default-features = true }

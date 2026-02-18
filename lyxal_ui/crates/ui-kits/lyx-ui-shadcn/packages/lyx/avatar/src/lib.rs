@@ -1,4 +1,4 @@
-//! Leptos port of shadcn/ui avatar
+﻿//! Leptos port of shadcn/ui avatar
 
 mod signal_managed;
 mod default;

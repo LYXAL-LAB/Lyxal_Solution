@@ -1,4 +1,4 @@
-#![forbid(unsafe_code)]
+﻿#![forbid(unsafe_code)]
 #![deny(warnings)]
 #![allow(clippy::too_many_arguments)]
 

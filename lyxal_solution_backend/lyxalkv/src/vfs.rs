@@ -108,9 +108,9 @@ impl SysFile {
         loop {
             match opts.open(path) {
                 Ok(f) => return Ok(Self::new(f)),
-                Err(e) if attempts < 10 && e.kind() == std::io::ErrorKind::PermissionDenied => {
+                Err(e) if (attempts < 20) && (e.kind() == std::io::ErrorKind::PermissionDenied) => {
                     attempts += 1;
-                    std::thread::sleep(std::time::Duration::from_millis(10 * attempts));
+                    std::thread::sleep(std::time::Duration::from_millis(20 * attempts));
                 }
                 Err(e) => return Err(e),
             }
@@ -123,9 +123,9 @@ impl SysFile {
         loop {
             match StdFile::create(path) {
                 Ok(f) => return Ok(Self::new(f)),
-                Err(e) if attempts < 10 && e.kind() == std::io::ErrorKind::PermissionDenied => {
+                Err(e) if (attempts < 20) && (e.kind() == std::io::ErrorKind::PermissionDenied) => {
                     attempts += 1;
-                    std::thread::sleep(std::time::Duration::from_millis(10 * attempts));
+                    std::thread::sleep(std::time::Duration::from_millis(20 * attempts));
                 }
                 Err(e) => return Err(e),
             }

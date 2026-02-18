@@ -1,11 +1,11 @@
-[package]
+﻿[package]
 name = "server"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
-api-boundary = { version = "0.8.0", path = "../api-boundary", optional = false }
+api-boundary = { version = "*", path = "../api-boundary", optional = false }
 anyhow = { version = "*" }
-axum = { version = "*" }
+leptos_axum = { version = "*" }
 axum-extra = { version = "*", features = ["typed-header"] }
 env_logger = { version = "*" }
 log = { version = "*" }

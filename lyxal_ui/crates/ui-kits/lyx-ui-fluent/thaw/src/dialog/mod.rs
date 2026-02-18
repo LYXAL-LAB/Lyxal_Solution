@@ -1,4 +1,4 @@
-mod dialog;
+﻿mod dialog;
 mod dialog_actions;
 mod dialog_body;
 mod dialog_content;

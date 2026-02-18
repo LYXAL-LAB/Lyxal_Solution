@@ -1,4 +1,4 @@
-use crate::{core::MaybeRwSignal, storage::StorageType, utils::FilterOptions};
+﻿use crate::{core::MaybeRwSignal, storage::StorageType, utils::FilterOptions};
 use codee::{CodecError, Decoder, Encoder};
 use default_struct_builder::DefaultBuilder;
 use leptos::prelude::*;
@@ -33,8 +33,7 @@ const INTERNAL_STORAGE_EVENT: &str = "use-storage";
 ///
 /// ## Example
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::storage::{StorageType, use_local_storage, use_session_storage, use_storage};
 /// # use serde::{Deserialize, Serialize};
 /// # use codee::string::{FromToStringCodec, JsonSerdeCodec, Base64};
@@ -79,8 +78,7 @@ const INTERNAL_STORAGE_EVENT: &str = "use-storage";
 ///         }
 ///     }
 /// }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).
@@ -92,8 +90,7 @@ const INTERNAL_STORAGE_EVENT: &str = "use-storage";
 /// If you use a value from storage to control conditional rendering you might run into issues with
 /// hydration.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::storage::use_session_storage;
 /// # use codee::string::FromToStringCodec;
 /// #
@@ -107,8 +104,7 @@ const INTERNAL_STORAGE_EVENT: &str = "use-storage";
 ///     </Show>
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// You can see hydration warnings in the browser console and the conditional parts of
 /// the app might never show up when rendered on the server and then hydrated in the browser. The
 /// reason for this is that the server has no access to storage and therefore will always use
@@ -125,8 +121,7 @@ const INTERNAL_STORAGE_EVENT: &str = "use-storage";
 /// the value from storage by an animation frame. This gets rid of the hydration warnings and makes
 /// the app correctly render things. Some flickering might be unavoidable though.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::storage::{use_local_storage_with_options, UseStorageOptions};
 /// # use codee::string::FromToStringCodec;
 /// #
@@ -143,8 +138,7 @@ const INTERNAL_STORAGE_EVENT: &str = "use-storage";
 ///     </Show>
 /// }
 /// # }
-/// ```
-#[inline(always)]
+/// #[inline(always)]
 pub fn use_storage<T, C>(
 storage_type: StorageType,
 key: impl Into<Signal<String>>,

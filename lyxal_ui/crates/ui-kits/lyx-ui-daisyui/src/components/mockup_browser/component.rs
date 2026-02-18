@@ -1,4 +1,4 @@
-use crate::merge_classes;
+﻿use crate::merge_classes;
 use leptos::{html::Div, prelude::*};
 
 /// # Mockup Browser Component
@@ -7,30 +7,29 @@ use leptos::{html::Div, prelude::*};
 /// a styled web browser frame for displaying web interfaces.
 ///
 /// ### Add to `input.css`
-/// ```css
+/// css
 /// @source inline("mockup-browser mockup-browser-toolbar");
-/// ```
-///
+/// ///
 /// ## Node References
 /// - `node_ref` - References the div element ([HTMLDivElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLDivElement))
 #[component]
 pub fn MockupBrowser(
-    /// Additional CSS classes
-    #[prop(optional, into)]
-    class: &'static str,
+/// Additional CSS classes
+#[prop(optional, into)]
+class: &'static str,
 
-    /// Node reference to the div element
-    #[prop(optional)]
-    node_ref: NodeRef<Div>,
+/// Node reference to the div element
+#[prop(optional)]
+node_ref: NodeRef<Div>,
 
-    /// Content displayed within the browser frame
-    children: Children,
+/// Content displayed within the browser frame
+children: Children,
 ) -> impl IntoView {
-    view! {
-        <div node_ref=node_ref class=move || merge_classes!("mockup-browser", class)>
-            {children()}
-        </div>
-    }
+view! {
+<div node_ref=node_ref class=move || merge_classes!("mockup-browser", class)>
+{children()}
+</div>
+}
 }
 
 /// # Mockup Browser Toolbar Component
@@ -42,39 +41,20 @@ pub fn MockupBrowser(
 /// - `node_ref` - References the div element ([HTMLDivElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLDivElement))
 #[component]
 pub fn MockupBrowserToolbar(
-    /// Additional CSS classes
-    #[prop(optional, into)]
-    class: &'static str,
+/// Additional CSS classes
+#[prop(optional, into)]
+class: &'static str,
 
-    /// Node reference to the div element
-    #[prop(optional)]
-    node_ref: NodeRef<Div>,
+/// Node reference to the div element
+#[prop(optional)]
+node_ref: NodeRef<Div>,
 
-    /// Content displayed within the browser toolbar
-    children: Children,
+/// Content displayed within the browser toolbar
+children: Children,
 ) -> impl IntoView {
-    view! {
-        <div node_ref=node_ref class=move || merge_classes!("mockup-browser-toolbar", class)>
-            {children()}
-        </div>
-    }
+view! {
+<div node_ref=node_ref class=move || merge_classes!("mockup-browser-toolbar", class)>
+{children()}
+</div>
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-
+}

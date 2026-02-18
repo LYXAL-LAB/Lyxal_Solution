@@ -1,7 +1,7 @@
-use floating_ui_core::{Boundary as CoreBoundary, Middleware};
+﻿use floating_ui_core::{Boundary as CoreBoundary, Middleware};
 use floating_ui_utils::{
-    DefaultVirtualElement as CoreDefaultVirtualElement, ElementOrVirtual as CoreElementOrVirtual,
-    OwnedElementOrVirtual as CoreOwnedElementOrVirtual,
+DefaultVirtualElement as CoreDefaultVirtualElement, ElementOrVirtual as CoreElementOrVirtual,
+OwnedElementOrVirtual as CoreOwnedElementOrVirtual,
 };
 use web_sys::{Element, Window};
 

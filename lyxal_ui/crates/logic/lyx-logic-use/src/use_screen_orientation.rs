@@ -1,4 +1,4 @@
-use leptos::prelude::*;
+﻿use leptos::prelude::*;
 
 /// Reactive [Screen Orientation API](https://developer.mozilla.org/en-US/docs/Web/API/Screen_Orientation_API).
 /// It provides web developers with information about the user's current screen orientation.
@@ -9,8 +9,7 @@ use leptos::prelude::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_screen_orientation, UseScreenOrientationReturn};
 /// #
 /// # #[component]
@@ -19,8 +18,7 @@ use leptos::prelude::*;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

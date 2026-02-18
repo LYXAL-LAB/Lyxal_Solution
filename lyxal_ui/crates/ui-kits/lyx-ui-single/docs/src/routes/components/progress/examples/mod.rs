@@ -1,3 +1,3 @@
-mod progress;
+﻿mod progress;
 
 pub use progress::*;

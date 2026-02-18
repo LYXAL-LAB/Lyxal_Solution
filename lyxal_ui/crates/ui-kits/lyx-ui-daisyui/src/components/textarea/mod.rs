@@ -1,4 +1,4 @@
-//! # daisyUI Textarea Component
+﻿//! # daisyUI Textarea Component
 //!
 //! For more information, see: https://daisyui.com/components/textarea/
 
@@ -7,18 +7,3 @@ mod style;
 
 pub use component::*;
 pub use style::*;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

@@ -352,10 +352,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f67855af358fcb20fac58f9d714c94e2b228fe5694c1c9b4ead4a366343eda1b"
 
 [[package]]
-name = "const_str_slice_concat"
-version = "0.8.0"
-
-[[package]]
 name = "convert_case"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -517,14 +513,6 @@ name = "either_of"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "216d23e0ec69759a17f05e1c553f3a6870e5ec73420fbb07807a6f34d5d1d5a4"
-dependencies = [
- "paste",
- "pin-project-lite",
-]
-
-[[package]]
-name = "either_of"
-version = "0.8.0"
 dependencies = [
  "paste",
  "pin-project-lite",
@@ -1400,7 +1388,7 @@ checksum = "5f9569fc37575a5d64c0512145af7630bf651007237ef67a8a77328199d315bb"
 dependencies = [
  "any_spawner 0.3.0",
  "cfg-if",
- "either_of 0.1.6",
+ "either_of",
  "futures",
  "hydration_context 0.3.0",
  "leptos_config",
@@ -1514,6 +1502,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rstml",
+ "rustc_version",
  "serde",
  "syn",
  "walkdir",
@@ -1803,6 +1792,9 @@ checksum = "60993920e071b0c9b66f14e2b32740a4e27ffc82854dcd72035887f336a09a28"
 [[package]]
 name = "next_tuple"
 version = "0.8.0"
+dependencies = [
+ "rustc_version",
+]
 
 [[package]]
 name = "nom"
@@ -2525,6 +2517,7 @@ dependencies = [
 name = "server_fn_macro_default"
 version = "0.8.0"
 dependencies = [
+ "rustc_version",
  "server_fn_macro 0.8.0",
  "syn",
 ]
@@ -2694,9 +2687,9 @@ checksum = "f2b2db11e455f7e84e2cc3e76f8a3f3843f7956096265d5ecff781eabe235077"
 dependencies = [
  "any_spawner 0.3.0",
  "async-trait",
- "const_str_slice_concat 0.1.0",
+ "const_str_slice_concat",
  "drain_filter_polyfill",
- "either_of 0.1.6",
+ "either_of",
  "erased",
  "futures",
  "html-escape",
@@ -2724,24 +2717,11 @@ dependencies = [
 name = "tachys"
 version = "0.8.0"
 dependencies = [
- "any_error",
- "const_str_slice_concat 0.8.0",
- "drain_filter_polyfill",
- "either",
- "either_of 0.8.0",
  "erased",
- "futures",
  "html-escape",
- "indexmap",
- "itertools",
- "js-sys",
  "next_tuple 0.8.0",
- "or_poisoned 0.8.0",
- "paste",
  "reactive_graph 0.8.0",
- "rustc-hash 2.1.1",
  "rustc_version",
- "send_wrapper",
  "wasm-bindgen",
  "web-sys",
 ]

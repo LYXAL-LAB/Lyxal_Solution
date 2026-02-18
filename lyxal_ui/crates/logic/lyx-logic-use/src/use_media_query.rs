@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports, dead_code))]
+﻿#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports, dead_code))]
 
 use crate::use_event_listener;
 use cfg_if::cfg_if;
@@ -16,8 +16,7 @@ use std::rc::Rc;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::use_media_query;
 /// #
 /// # #[component]
@@ -29,8 +28,7 @@ use std::rc::Rc;
 /// #
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

@@ -1,110 +1,38 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\example\demo\src\component\typography.rs
-```rust
-use leptos::*;
+﻿use leptos::*;
 use tailwind_fuse::*;
 
 #[component]
 fn H1(#[prop(optional, into)] class: String, children: Children) -> impl IntoView {
-    let class = tw_merge!(
-        "scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl",
-        class
-    );
-    view! {
-        <h1 class={class}>
-            {children()}
-        </h1>
-    }
+let class = tw_merge!(
+"scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl",
+class
+);
+view! {
+<h1 class={class}>
+{children()}
+</h1>
+}
 }
 
 #[component]
 fn H2(#[prop(optional, into)] class: String, children: Children) -> impl IntoView {
-    let class = tw_merge!(
-        "scroll-m-20 border-b pb-2 text-xl font-semibold tracking-tight",
-        class
-    );
-    view! {
-        <h2 class={class}>
-            {children()}
-        </h2>
-    }
+let class = tw_merge!(
+"scroll-m-20 border-b pb-2 text-xl font-semibold tracking-tight",
+class
+);
+view! {
+<h2 class={class}>
+{children()}
+</h2>
+}
 }
 
 #[component]
 fn H4(#[prop(optional, into)] class: String, children: Children) -> impl IntoView {
-    let class = tw_merge!("scroll-m-20 text-xl font-semibold tracking-tight", class);
-    view! {
-        <h4 class={class}>
-            {children()}
-        </h4>
-    }
+let class = tw_merge!("scroll-m-20 text-xl font-semibold tracking-tight", class);
+view! {
+<h4 class={class}>
+{children()}
+</h4>
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
+}

@@ -1,4 +1,4 @@
-use crate::UseEventListenerOptions;
+﻿use crate::UseEventListenerOptions;
 use crate::core::{Direction, Directions, IntoElementMaybeSignal};
 use cfg_if::cfg_if;
 use default_struct_builder::DefaultBuilder;
@@ -32,8 +32,7 @@ const ARRIVED_STATE_THRESHOLD_PIXELS: f64 = 1.0;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::ev::resize;
 /// # use leptos::html::Div;
 /// # use lyx_logic_use::{use_scroll, UseScrollReturn};
@@ -50,15 +49,13 @@ const ARRIVED_STATE_THRESHOLD_PIXELS: f64 = 1.0;
 ///     <div node_ref=element>"..."</div>
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// ### With Offsets
 ///
 /// You can provide offsets when you use [`use_scroll_with_options`].
 /// These offsets are thresholds in pixels when a side is considered to have arrived. This is reflected in the return field `arrived_state`.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::html::Div;
 /// # use leptos::ev::resize;
 /// # use lyx_logic_use::{use_scroll_with_options, UseScrollReturn, UseScrollOptions, ScrollOffset};
@@ -89,14 +86,12 @@ const ARRIVED_STATE_THRESHOLD_PIXELS: f64 = 1.0;
 /// #     view! { /// #         <div node_ref=element>"..."</div>
 /// #     }
 /// # }
-/// ```
-///
+/// ///
 /// ### Setting Scroll Position
 ///
 /// Set the `x` and `y` values to make the element scroll to that position.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::html::Div;
 /// # use leptos::ev::resize;
 /// # use lyx_logic_use::{use_scroll, UseScrollReturn};
@@ -115,16 +110,14 @@ const ARRIVED_STATE_THRESHOLD_PIXELS: f64 = 1.0;
 ///     <button on:click=move |_| set_y(y.get_untracked() + 10.0)>"Scroll down 10px"</button>
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// ### Smooth Scrolling
 ///
 /// Set `behavior: smooth` to enable smooth scrolling. The `behavior` option defaults to `auto`,
 /// which means no smooth scrolling. See the `behavior` option on
 /// [Element.scrollTo](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollTo) for more information.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::ev::resize;
 /// # use leptos::html::Div;
 /// # use lyx_logic_use::{use_scroll_with_options, UseScrollReturn, UseScrollOptions, ScrollBehavior};
@@ -143,12 +136,10 @@ const ARRIVED_STATE_THRESHOLD_PIXELS: f64 = 1.0;
 /// # view! { /// #     <div node_ref=element>"..."</div>
 /// # }
 /// # }
-/// ```
-///
+/// ///
 /// or as a `Signal`:
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::ev::resize;
 /// # use leptos::html::Div;
 /// # use lyx_logic_use::{use_scroll_with_options, UseScrollReturn, UseScrollOptions, ScrollBehavior};
@@ -173,8 +164,7 @@ const ARRIVED_STATE_THRESHOLD_PIXELS: f64 = 1.0;
 /// # view! { /// #     <div node_ref=element>"..."</div>
 /// # }
 /// # }
-/// ```
-///
+/// ///
 /// ## SendWrapped Return
 ///
 /// The returned closures `set_x`, `set_y` and `measure` are sendwrapped functions. They can

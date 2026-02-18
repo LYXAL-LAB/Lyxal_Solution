@@ -1,21 +1,17 @@
-/// Macro to wrap closures with `send_wrapper::SendWrapper`.
+﻿/// Macro to wrap closures with `send_wrapper::SendWrapper`.
 ///
 /// ## Usage
 ///
-/// ```
-/// # use lyx_logic_use::sendwrap_fn;
+/// /// # use lyx_logic_use::sendwrap_fn;
 ///
 /// let wrapped = sendwrap_fn!(move |a: i32, b: i32| { /* do stuff */ });
-/// ```
-///
+/// ///
 /// For closures that implement only `FnOnce`:
 ///
-/// ```
-/// # use lyx_logic_use::sendwrap_fn;
+/// /// # use lyx_logic_use::sendwrap_fn;
 ///
 /// let wrapped = sendwrap_fn!(once move || { /* do stuff */ });
-/// ```
-#[macro_export]
+/// #[macro_export]
 macro_rules! sendwrap_fn {
 (move |$($param:ident : $ty:ty),*| $($content:tt)*) => {
 {

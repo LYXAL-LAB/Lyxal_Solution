@@ -1,4 +1,4 @@
-mod collapsible;
+﻿mod collapsible;
 mod content;
 mod sub;
 mod sub_item;
@@ -10,20 +10,5 @@ pub use sub_item::*;
 
 #[derive(Clone)]
 pub struct CollapsibleContext {
-    id: String,
+id: String,
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

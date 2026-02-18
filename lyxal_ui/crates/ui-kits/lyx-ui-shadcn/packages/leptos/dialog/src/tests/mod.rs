@@ -1,4 +1,4 @@
-//! TDD Tests for Dialog Component
+﻿//! TDD Tests for Dialog Component
 //!
 //! This module contains all the test-driven development tests for the Dialog component,
 //! organized into focused modules for better maintainability.

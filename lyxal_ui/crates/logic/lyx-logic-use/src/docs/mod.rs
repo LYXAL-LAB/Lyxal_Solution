@@ -1,4 +1,4 @@
-//#![doc(cfg(feature = "docs"))]
+﻿//#![doc(cfg(feature = "docs"))]
 //! Collection of documentation related utilities. Used extensively in the lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_examples.
 
 mod boolean_display;

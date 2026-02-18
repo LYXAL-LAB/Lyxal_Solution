@@ -1,4 +1,4 @@
-//! Easily create Leptos table components from structs.
+﻿//! Easily create Leptos table components from structs.
 //!
 //! ![Hero Image](https://raw.githubusercontent.com/synphonyte/leptos-struct-table/master/hero.webp)
 //!
@@ -17,8 +17,7 @@
 //!
 //! # Usage
 //!
-//! ```
-//! use leptos::prelude::*;
+//! //! use leptos::prelude::*;
 //! use leptos_struct_table::*;
 //!
 //! #[derive(TableRow, Clone)]
@@ -43,8 +42,7 @@
 //!         </table>
 //!     }
 //! }
-//! ```
-//!
+//! //!
 //! # Leptos Compatibility
 //!
 //! | Crate version                 | Compatible Leptos version |
@@ -52,16 +50,16 @@
 //! | <= 0.2                        | 0.3                       |
 //! | 0.3                           | 0.4                       |
 //! | 0.4, 0.5, 0.6                 | 0.5                       |
-//! | 0.7 – 0.12                    | 0.6                       |
+//! | 0.7 â€“ 0.12                    | 0.6                       |
 //! | 0.14.0-beta                   | 0.7                       |
-//! | 0.15 – 0.18                   | 0.8                       |
+//! | 0.15 â€“ 0.18                   | 0.8                       |
 //!
 //! # Server-Side Rendering
 //!
 //! To use this with Leptos' server-side rendering, you can have to add `leptos-use` as a dependency to your `Cargo.toml` and
 //! then configure it for SSR like the following.
 //!
-//! ```toml
+//! toml
 //! [dependencies]
 //! leptos-use = "<current version>"
 //! # ...
@@ -76,8 +74,7 @@
 //!     # ...
 //!     "leptos-use/ssr",
 //! ]
-//! ```
-//!
+//! //!
 //! Please see the [serverfn_sqlx example](https://github.com/Synphonyte/leptos-struct-table/blob/master/examples/serverfn_sqlx/Cargo.toml)
 //! for a working project with SSR.
 //!
@@ -148,29 +145,27 @@
 //! - [`cell_value::NumberRenderOptions`]
 #![cfg_attr(feature = "chrono", doc = r##"- [`chrono::RenderChronoOptions`]"##)]
 #![cfg_attr(
-    feature = "rust_decimal",
-    doc = r##"- [`rust_decimal::DecimalNumberRenderOptions`]"##
+feature = "rust_decimal",
+doc = r##"- [`rust_decimal::DecimalNumberRenderOptions`]"##
 )]
 //!
 //!
 #![cfg_attr(
-    feature = "chrono",
-    doc = r##"
+feature = "chrono",
+doc = r##"
 Example:
 
-```
 # use leptos::prelude::*;
 # use leptos_struct_table::*;
 # use ::chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 #
 #[derive(TableRow, Clone)]
 pub struct TemperatureMeasurement {
-    #[table(title = "Temperature (°C)", format(precision = 2usize))]
-    temperature: f32,
-    #[table(format(string = "%m.%d.%Y"))]
-    date: NaiveDate,
+#[table(title = "Temperature (Â°C)", format(precision = 2usize))]
+temperature: f32,
+#[table(format(string = "%m.%d.%Y"))]
+date: NaiveDate,
 }
-```
 "##
 )]
 
@@ -189,8 +184,7 @@ pub struct TemperatureMeasurement {
 //!
 //! Example:
 //!
-//! ```
-//! # use leptos::prelude::*;
+//! //! # use leptos::prelude::*;
 //! # use leptos_struct_table::*;
 //! #
 //! #[derive(TableRow, Clone)]
@@ -199,8 +193,7 @@ pub struct TemperatureMeasurement {
 //!     id: u32,
 //!     title: String,
 //! }
-//! ```
-//!
+//! //!
 //! # Field Getters
 //!
 //! Sometimes you want to display a field that is not part of the struct but a derived value either
@@ -209,8 +202,7 @@ pub struct TemperatureMeasurement {
 //!
 //! Let's start with [`FieldGetter`] and see an example:
 //!
-//! ```
-//! # use leptos::prelude::*;
+//! //! # use leptos::prelude::*;
 //! # use leptos_struct_table::*;
 //! # use serde::{Deserialize, Serialize};
 //! #
@@ -231,12 +223,10 @@ pub struct TemperatureMeasurement {
 //!         format!("{} by {}", self.title, self.author)
 //!     }
 //! }
-//! ```
-//!
+//! //!
 //! To provide maximum flexibility you can use the `getter` attribute.
 //!
-//! ```
-//! # use leptos::prelude::*;
+//! //! # use leptos::prelude::*;
 //! # use leptos_struct_table::*;
 //! #
 //! #[derive(TableRow, Clone)]
@@ -252,8 +242,7 @@ pub struct TemperatureMeasurement {
 //!         format!("Title: {}", self.title)
 //!     }
 //! }
-//! ```
-//!
+//! //!
 //! ## When to use `FieldGetter` vs `getter` attribute
 //!
 //! A field of type `FieldGetter<T>` is a virtual field that doesn't really exist on the struct.
@@ -289,8 +278,7 @@ pub struct TemperatureMeasurement {
 //!
 //! Example:
 //!
-//! ```
-//! # use leptos::prelude::*;
+//! //! # use leptos::prelude::*;
 //! # use leptos_struct_table::*;
 //! #
 //! #[derive(TableRow)]
@@ -315,8 +303,7 @@ pub struct TemperatureMeasurement {
 //!         </td>
 //!     }
 //! }
-//! ```
-//!
+//! //!
 //! For more detailed information please have a look at the [custom_renderers_svg example](https://github.com/synphonyte/leptos-struct-table/blob/master/examples/custom_renderers_svg/src/main.rs) for a complete customization.
 //!
 //! For custom row renderers, you may want to have a look at [table_grouping example](https://github.com/synphonyte/leptos-struct-table/blob/master/examples/table_grouping/src/grouping.rs), this example reuses existing
@@ -328,8 +315,7 @@ pub struct TemperatureMeasurement {
 //! You might have noticed the prop `row` in the custom cell renderer above. This can be used
 //! to edit the data. Simply use the `RwSignal` to access the row and change the fields.
 //!
-//! ```
-//! # use leptos::{prelude::*, logging};
+//! //! # use leptos::{prelude::*, logging};
 //! # use leptos_struct_table::*;
 //! #
 //! #[derive(TableRow, Clone, Default, Debug)]
@@ -374,17 +360,14 @@ pub struct TemperatureMeasurement {
 //!         </table>
 //!     }
 //! }
-//! ```
-//!
+//! //!
 //! Please have a look at the [editable example](https://github.com/Synphonyte/leptos-struct-table/tree/master/examples/editable/src/main.rs) for a fully working example.
 //!
 //! # Column index type
 //! Configured via the table annotation on a TableRow struct.
 //!
-//! ```rust
-//! #[table(columne_index_type = value)]
-//! ```
-//!
+//! //! #[table(columne_index_type = value)]
+//! //!
 //! Current supported column index type **values**: `"usize"` or `"enum"`.\
 //! The column type is used to refer to columns in various places, some of which listed below:
 //!  - Custom cell renderers via [`DefaultTableCellRendererProps#index`](DefaultTableCellRendererProps#structfield.index)
@@ -397,8 +380,7 @@ pub struct TemperatureMeasurement {
 //! This is the default index type.
 //!
 //! It can be set explicitely:
-//! ```rust
-//! # use leptos::{prelude::*, logging};
+//! //! # use leptos::{prelude::*, logging};
 //! # use leptos_struct_table::*;
 //! #
 //! #[derive(TableRow, Clone, Default, Debug)]
@@ -409,14 +391,12 @@ pub struct TemperatureMeasurement {
 //!     content: String, // no index (skipped)
 //!     title: String, // index = 1
 //! }
-//! ```
-//! Usize indexes start at 0 at the first relevant struct field. Fields marked `skip` do not have an index.
+//! //! Usize indexes start at 0 at the first relevant struct field. Fields marked `skip` do not have an index.
 //!
 //! ## Enum column index type
 //!
 //! Used as follows:
-//! ```rust
-//! # use leptos::{prelude::*, logging};
+//! //! # use leptos::{prelude::*, logging};
 //! # use leptos_struct_table::*;
 //! #
 //! #[derive(TableRow, Clone, Default, Debug)]
@@ -428,8 +408,7 @@ pub struct TemperatureMeasurement {
 //!     content: String, // no index (skipped)
 //!     title: String, // index = BookColumn::Title
 //! }
-//! ```
-//!
+//! //!
 //! Fields are converted to UpperCammelCase for their generated enum variant.
 //! See the [column_index_type example](https://github.com/synphonyte/leptos-struct-table/blob/master/examples/column_index_type/src/main.rs) for more information.
 //!
@@ -502,29 +481,29 @@ use std::marker::PhantomData;
 /// Type of sorting of a column
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum ColumnSort {
-    Ascending,
-    Descending,
-    None,
+Ascending,
+Descending,
+None,
 }
 
 impl ColumnSort {
-    /// Returns the a default class name
-    pub fn as_class(&self) -> &'static str {
-        match self {
-            ColumnSort::Ascending => "sort-asc",
-            ColumnSort::Descending => "sort-desc",
-            _ => "",
-        }
-    }
+/// Returns the a default class name
+pub fn as_class(&self) -> &'static str {
+match self {
+ColumnSort::Ascending => "sort-asc",
+ColumnSort::Descending => "sort-desc",
+_ => "",
+}
+}
 
-    /// Returns the SQL sort order (ASC or DESC) or `None` if `ColumnSort::None`.
-    pub fn as_sql(&self) -> Option<&'static str> {
-        match self {
-            ColumnSort::Ascending => Some("ASC"),
-            ColumnSort::Descending => Some("DESC"),
-            _ => None,
-        }
-    }
+/// Returns the SQL sort order (ASC or DESC) or `None` if `ColumnSort::None`.
+pub fn as_sql(&self) -> Option<&'static str> {
+match self {
+ColumnSort::Ascending => Some("ASC"),
+ColumnSort::Descending => Some("DESC"),
+_ => None,
+}
+}
 }
 
 /// Type of struct field used to specify that the value of this field is
@@ -532,7 +511,6 @@ impl ColumnSort {
 ///
 /// Please refer to the [`getter` example](https://github.com/Synphonyte/leptos-struct-table/tree/master/examples/getter) for how this is used
 #[derive(
-    Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Serialize, Deserialize,
+Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Serialize, Deserialize,
 )]
 pub struct FieldGetter<T>(PhantomData<T>);
-

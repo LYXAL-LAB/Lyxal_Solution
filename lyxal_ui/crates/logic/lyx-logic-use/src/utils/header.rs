@@ -1,4 +1,4 @@
-#[cfg(feature = "actix")]
+﻿#[cfg(feature = "actix")]
 use http0_2::HeaderName;
 #[cfg(feature = "axum")]
 use http1::HeaderName;
@@ -12,12 +12,11 @@ use leptos::prelude::*;
 ///
 /// ## Example
 ///
-/// ```ignore
+/// ignore
 /// # use lyx_logic_use::utils::header;
 /// #
 /// let content_len = header(http::header::CONTENT_LENGTH);
-/// ```
-pub fn header<N>(name: N) -> Option<String>
+/// pub fn header<N>(name: N) -> Option<String>
 where
 N: Into<HeaderName>,
 {

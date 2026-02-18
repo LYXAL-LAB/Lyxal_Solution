@@ -1,4 +1,4 @@
-#![deny(warnings)]
+﻿#![deny(warnings)]
 #![cfg(test)]
 
 include!(concat!(env!("OUT_DIR"), "/i18n/mod.rs"));

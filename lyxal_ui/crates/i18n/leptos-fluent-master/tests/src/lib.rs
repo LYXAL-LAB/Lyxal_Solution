@@ -1,4 +1,4 @@
-#![allow(unused_imports, dead_code)]
+﻿#![allow(unused_imports, dead_code)]
 // TODO: remove previous line at v0.3.0
 
 #[cfg(test)]

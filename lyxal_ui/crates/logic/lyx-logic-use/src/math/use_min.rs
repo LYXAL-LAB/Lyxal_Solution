@@ -1,4 +1,4 @@
-use crate::math::shared::use_partial_cmp;
+﻿use crate::math::shared::use_partial_cmp;
 use leptos::prelude::*;
 use leptos::reactive::wrappers::read::Signal;
 use std::cmp::Ordering;
@@ -14,8 +14,7 @@ use_partial_cmp!(
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::math::use_min;
 /// #
 /// # #[component]
@@ -26,8 +25,7 @@ use_partial_cmp!(
 /// # assert_eq!(result.get(), Some(1.0));
 /// # view! { }
 /// # }
-/// ```
-// #[doc(cfg(feature = "math"))]
+/// // #[doc(cfg(feature = "math"))]
 use_min,
 Ordering::Greater
 );

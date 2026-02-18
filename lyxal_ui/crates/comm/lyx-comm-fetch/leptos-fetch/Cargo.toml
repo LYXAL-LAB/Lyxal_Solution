@@ -1,10 +1,10 @@
-[package]
+﻿[package]
 name = "lyx-comm-leptos-fetch"
 version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos = { path = "../../../core/lyx-core-leptos/leptos" }
 serde = { version = "*", features = ["derive"] }
 wasm-bindgen = { version = "*" }
 js-sys = { version = "*" }

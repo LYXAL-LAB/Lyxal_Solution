@@ -1,4 +1,4 @@
-/// Macro to easily create helper functions that derive a signal using a piece of code.
+﻿/// Macro to easily create helper functions that derive a signal using a piece of code.
 ///
 /// See [`fn@crate::is_ok`] or [`fn@crate::use_to_string`] as lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_examples.
 #[macro_export]

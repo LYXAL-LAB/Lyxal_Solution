@@ -1,8 +1,8 @@
-//! # Leptos Router
+﻿//! # Leptos Router
 //!
 //! Leptos Router is a router and state management tool for web applications
 //! written in Rust using the Leptos web framework.
-//! It is ”isomorphic”, i.e., it can be used for client-side applications/single-page
+//! It is â€isomorphicâ€, i.e., it can be used for client-side applications/single-page
 //! apps (SPAs), server-side rendering/multi-page apps (MPAs), or to synchronize
 //! state between the two.
 //!
@@ -10,7 +10,7 @@
 //!
 //! Leptos Router is built on a few simple principles:
 //! 1. **URL drives state.** For web applications, the URL should be the ultimate
-//!    source of truth for most of your app’s state. (It’s called a **Universal
+//!    source of truth for most of your appâ€™s state. (Itâ€™s called a **Universal
 //!    Resource Locator** for a reason!)
 //!
 //! 2. **Nested routing.** A URL can match multiple routes that exist in a nested tree
@@ -20,14 +20,13 @@
 //! 3. **Progressive enhancement.** The [`A`](crate::components::A) and
 //!    [`Form`](crate::components::Form) components resolve any relative
 //!    nested routes, render actual `<a>` and `<form>` elements, and (when possible)
-//!    upgrading them to handle those navigations with client-side routing. If you’re using
+//!    upgrading them to handle those navigations with client-side routing. If youâ€™re using
 //!    them with server-side rendering (with or without hydration), they just work,
 //!    whether JS/WASM have loaded or not.
 //!
 //! ## Example
 //!
-//! ```rust
-//! use leptos::prelude::*;
+//! //! use leptos::prelude::*;
 //! use leptos_router::components::*;
 //! use leptos_router::path;
 //! use leptos_router::hooks::use_params_map;
@@ -107,8 +106,7 @@
 //!   );
 //!   // ... return some view
 //! }
-//! ```
-//!
+//! //!
 //! You can find examples of additional APIs in the [`router`] example.
 //!
 //! # Feature Flags
@@ -155,70 +153,69 @@ pub use navigate::*;
 pub use ssr_mode::*;
 
 pub(crate) mod view_transition {
-    use js_sys::{Function, Promise, Reflect};
-    use leptos::leptos_dom::helpers::document;
-    use wasm_bindgen::{closure::Closure, intern, JsCast, JsValue};
+use js_sys::{Function, Promise, Reflect};
+use leptos::leptos_dom::helpers::document;
+use wasm_bindgen::{closure::Closure, intern, JsCast, JsValue};
 
-    pub fn start_view_transition(
-        level: u8,
-        is_back_navigation: bool,
-        fun: impl FnOnce() + 'static,
-    ) {
-        let document = document();
-        let document_element = document.document_element().unwrap();
-        let class_list = document_element.class_list();
-        let svt = Reflect::get(
-            &document,
-            &JsValue::from_str(intern("startViewTransition")),
-        )
-        .and_then(|svt| svt.dyn_into::<Function>());
-        _ = class_list.add_1(&format!("router-outlet-{level}"));
-        if is_back_navigation {
-            _ = class_list.add_1("router-back");
-        }
-        match svt {
-            Ok(svt) => {
-                let cb = Closure::once_into_js(Box::new(move || {
-                    fun();
-                }));
-                match svt.call1(
-                    document.unchecked_ref(),
-                    cb.as_ref().unchecked_ref(),
-                ) {
-                    Ok(view_transition) => {
-                        let class_list = document_element.class_list();
-                        let finished = Reflect::get(
-                            &view_transition,
-                            &JsValue::from_str("finished"),
-                        )
-                        .expect("no `finished` property on ViewTransition")
-                        .unchecked_into::<Promise>();
-                        let cb = Closure::new(Box::new(move |_| {
-                            if is_back_navigation {
-                                class_list.remove_1("router-back").unwrap();
-                            }
-                            class_list
-                                .remove_1(&format!("router-outlet-{level}"))
-                                .unwrap();
-                        })
-                            as Box<dyn FnMut(JsValue)>);
-                        _ = finished.then(&cb);
-                        cb.into_js_value();
-                    }
-                    Err(e) => {
-                        web_sys::console::log_1(&e);
-                    }
-                }
-            }
-            Err(_) => {
-                leptos::logging::warn!(
-                    "NOTE: View transitions are not supported in this \
-                     browser; unless you provide a polyfill, view transitions \
-                     will not be applied."
-                );
-                fun();
-            }
-        }
-    }
+pub fn start_view_transition(
+level: u8,
+is_back_navigation: bool,
+fun: impl FnOnce() + 'static,
+) {
+let document = document();
+let document_element = document.document_element().unwrap();
+let class_list = document_element.class_list();
+let svt = Reflect::get(
+&document,
+&JsValue::from_str(intern("startViewTransition")),
+)
+.and_then(|svt| svt.dyn_into::<Function>());
+_ = class_list.add_1(&format!("router-outlet-{level}"));
+if is_back_navigation {
+_ = class_list.add_1("router-back");
 }
-
+match svt {
+Ok(svt) => {
+let cb = Closure::once_into_js(Box::new(move || {
+fun();
+}));
+match svt.call1(
+document.unchecked_ref(),
+cb.as_ref().unchecked_ref(),
+) {
+Ok(view_transition) => {
+let class_list = document_element.class_list();
+let finished = Reflect::get(
+&view_transition,
+&JsValue::from_str("finished"),
+)
+.expect("no `finished` property on ViewTransition")
+.unchecked_into::<Promise>();
+let cb = Closure::new(Box::new(move |_| {
+if is_back_navigation {
+class_list.remove_1("router-back").unwrap();
+}
+class_list
+.remove_1(&format!("router-outlet-{level}"))
+.unwrap();
+})
+as Box<dyn FnMut(JsValue)>);
+_ = finished.then(&cb);
+cb.into_js_value();
+}
+Err(e) => {
+web_sys::console::log_1(&e);
+}
+}
+}
+Err(_) => {
+leptos::logging::warn!(
+"NOTE: View transitions are not supported in this \
+browser; unless you provide a polyfill, view transitions \
+will not be applied."
+);
+fun();
+}
+}
+}
+}

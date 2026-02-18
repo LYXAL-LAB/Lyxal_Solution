@@ -1,5 +1,5 @@
-//! Resizable tests for the Resizable component
-//! 
+﻿//! Resizable tests for the Resizable component
+//!
 //! This module contains comprehensive tests for the Resizable component,
 //! organized into focused sub-modules for better maintainability and readability.
 

@@ -1,4 +1,4 @@
-[workspace]
+﻿[workspace]
 resolver = "2"
 members = [
   # utilities
@@ -106,7 +106,7 @@ tower = { default-features = false, version = "*" }
 proc-macro2 = { default-features = false, version = "*" }
 serde = { default-features = false, version = "*" }
 parking_lot = { default-features = false, version = "*" }
-axum = { default-features = false, version = "*" }
+leptos_axum = { default-features = false, version = "*" }
 serde_qs = { default-features = false, version = "*" }
 syn = { default-features = false, version = "*" }
 xxhash-rust = { default-features = false, version = "*" }

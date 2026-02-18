@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "tailwind_fuse"
 version = "0.8.0"
 edition = "2024"

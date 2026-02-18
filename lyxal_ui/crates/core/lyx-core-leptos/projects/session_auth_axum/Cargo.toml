@@ -1,23 +1,23 @@
-[package]
+﻿[package]
 name = "session_auth_axum"
 version = "0.8.0"
 edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
-anyhow = { version = "0.8.0" }
+anyhow = { version = "*" }
 console_log = { version = "*" }
 rand = { version = "*", optional = true, features = ["min_const_gen"] }
 console_error_panic_hook = { version = "*" }
 futures = { version = "*" }
 leptos = { path = "../leptos", version = "*", optional = true }
-meta = { path = "../../meta", version = "*", optional = true }
-axum = { path = "../../integrations/axum", version = "*", optional = true }
-router = { path = "../../router", version = "*", optional = true }
+leptos_meta = { path = "../../meta", version = "*", optional = true }
+leptos_axum = { path = "../../integrations/axum", version = "*", optional = true }
+leptos_router = { path = "../../router", version = "*", optional = true }
 log = { version = "*" }
 simple_logger = { version = "*" }
 serde = { version = "*", features = ["derive"] }
-axum = { version = "*", optional = true, features = ["macros"] }
+leptos_axum = { version = "*", optional = true, features = ["macros"] }
 tower = { version = "*", optional = true }
 tower-http = { version = "*", optional = true, features = ["fs"] }
 tokio = { version = "*", optional = true, features = ["full"] }

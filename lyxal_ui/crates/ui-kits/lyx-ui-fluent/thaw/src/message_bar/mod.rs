@@ -1,4 +1,4 @@
-mod message_bar;
+﻿mod message_bar;
 mod message_bar_actions;
 mod message_bar_body;
 mod message_bar_title;

@@ -1,4 +1,4 @@
-use crate::core::IntoElementMaybeSignal;
+﻿use crate::core::IntoElementMaybeSignal;
 use cfg_if::cfg_if;
 use default_struct_builder::DefaultBuilder;
 use leptos::prelude::*;
@@ -16,8 +16,7 @@ use leptos::reactive::wrappers::read::Signal;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::html::Div;
 /// # use lyx_logic_use::use_element_visibility;
 /// #
@@ -33,8 +32,7 @@ use leptos::reactive::wrappers::read::Signal;
 ///     </div>
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

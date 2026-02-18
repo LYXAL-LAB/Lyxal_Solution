@@ -1,4 +1,4 @@
-mod close;
+﻿mod close;
 mod content;
 mod description;
 mod dialog;
@@ -20,6 +20,6 @@ use leptos::prelude::*;
 
 #[derive(Clone)]
 pub struct DialogContext {
-    pub labeled_by: RwSignal<String>,
-    pub described_by: RwSignal<String>,
+pub labeled_by: RwSignal<String>,
+pub described_by: RwSignal<String>,
 }

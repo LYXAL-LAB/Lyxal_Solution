@@ -1,4 +1,4 @@
-//! Compatibility tests for the Input component
+﻿//! Compatibility tests for the Input component
 //!
 //! This module contains tests for compatibility with different versions
 //! of Leptos and other frameworks.

@@ -1,4 +1,4 @@
-//! # daisyUI Diff Component
+﻿//! # daisyUI Diff Component
 //!
 //! For more information, see: https://daisyui.com/components/diff/
 

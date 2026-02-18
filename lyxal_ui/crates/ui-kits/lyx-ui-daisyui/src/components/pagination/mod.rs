@@ -1,4 +1,4 @@
-//! # daisyUI Pagination Component
+﻿//! # daisyUI Pagination Component
 //!
 //! For more information, see: https://daisyui.com/components/pagination/
 
@@ -7,22 +7,3 @@ mod style;
 
 pub use component::*;
 pub use style::*;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

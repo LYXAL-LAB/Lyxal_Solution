@@ -1,4 +1,4 @@
-mod body;
+﻿mod body;
 mod caption;
 mod cell;
 mod footer;
@@ -15,18 +15,3 @@ pub use head::*;
 pub use header::*;
 pub use row::*;
 pub use table::*;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

@@ -1,4 +1,4 @@
-use leptos::prelude::*;
+﻿use leptos::prelude::*;
 use std::marker::PhantomData;
 
 /// Wrapper for `setTimeout` with controls.
@@ -9,8 +9,7 @@ use std::marker::PhantomData;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_timeout_fn, UseTimeoutFnReturn};
 /// #
 /// # #[component]
@@ -26,8 +25,7 @@ use std::marker::PhantomData;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## SendWrapped Return
 ///
 /// The returned closures `start` and `stop` are sendwrapped functions. They can

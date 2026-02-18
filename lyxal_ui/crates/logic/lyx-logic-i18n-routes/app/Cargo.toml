@@ -1,12 +1,12 @@
-[package]
+﻿[package]
 name = "app"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
-leptos_router = { path = "../core/lyx-core-leptos/router", optional = true }
-leptos_meta = { path = "../core/lyx-core-leptos/meta", optional = true }
+leptos_router = { path = "../../../core/lyx-core-leptos/router", optional = true }
+leptos_meta = { path = "../../../core/lyx-core-leptos/meta", optional = true }
 leptos_i18n = { path = "../../i18n/leptos_i18n", optional = true }
-leptos = { path = "../core/lyx-core-leptos/leptos", optional = true }
+leptos = { path = "../../../core/lyx-core-leptos/leptos", optional = true }
 leptos_axum = { ${2, optional = true }, optional = true }
 [features]
 default = []

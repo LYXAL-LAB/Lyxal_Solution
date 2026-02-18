@@ -1,4 +1,4 @@
-use crate::core::MaybeRwSignal;
+﻿use crate::core::MaybeRwSignal;
 use leptos::prelude::*;
 
 /// A boolean switcher with utility functions.
@@ -9,8 +9,7 @@ use leptos::prelude::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use lyx_logic_use::{use_toggle, UseToggleReturn};
 /// #
 /// # #[component]
@@ -19,8 +18,7 @@ use leptos::prelude::*;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## See also
 ///
 /// * [`fn@crate::use_cycle_list`]

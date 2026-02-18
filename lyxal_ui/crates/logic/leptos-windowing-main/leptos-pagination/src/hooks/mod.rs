@@ -1,4 +1,4 @@
-mod controls;
+﻿mod controls;
 mod pagination;
 
 pub use controls::*;

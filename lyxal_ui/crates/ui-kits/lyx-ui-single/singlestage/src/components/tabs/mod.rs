@@ -1,4 +1,4 @@
-use crate::Reactive;
+﻿use crate::Reactive;
 
 mod content;
 mod list;
@@ -12,20 +12,5 @@ pub use trigger::*;
 
 #[derive(Clone)]
 pub struct TabsContext {
-    value: Reactive<String>,
+value: Reactive<String>,
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

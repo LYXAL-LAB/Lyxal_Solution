@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
+﻿#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
 
 use crate::sendwrap_fn;
 use crate::utils::Pausable;
@@ -18,8 +18,7 @@ use std::time::Duration;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::use_interval_fn;
 /// # use lyx_logic_use::utils::Pausable;
 /// #
@@ -33,8 +32,7 @@ use std::time::Duration;
 /// );
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## SendWrapped Return
 ///
 /// The returned closures `pause` and `resume` are sendwrapped functions. They can

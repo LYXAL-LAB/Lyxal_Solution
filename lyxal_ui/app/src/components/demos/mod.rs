@@ -1,4 +1,4 @@
-pub mod demo_card;
+﻿pub mod demo_card;
 pub mod demo_accordion;
 pub mod demo_drawer;
 pub mod demo_select;

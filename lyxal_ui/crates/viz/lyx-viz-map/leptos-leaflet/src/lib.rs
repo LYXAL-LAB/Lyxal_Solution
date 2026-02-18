@@ -1,4 +1,4 @@
-//! # leptos-leaflet
+﻿//! # leptos-leaflet
 //!
 //! This crate provides a set of components and utilities to work with the Leaflet library in Leptos.
 //!
@@ -28,8 +28,7 @@
 //!
 //! ## Example
 //!
-//! ```rust
-//! use std::time::Duration;
+//! //! use std::time::Duration;
 //!
 //! use leptos::prelude::*;
 //! use leptos_leaflet::prelude::*;
@@ -79,14 +78,13 @@
 //!         </MapContainer>
 //!     }
 //! }
-//! ```
-mod components;
+//! mod components;
 mod core;
 
 pub mod prelude {
-    pub use crate::components::*;
-    pub use crate::core::*;
-    pub use crate::position;
+pub use crate::components::*;
+pub use crate::core::*;
+pub use crate::position;
 }
 
 /// Leaflet re-exports
@@ -96,68 +94,47 @@ use paste::paste;
 
 #[macro_export]
 macro_rules! leaflet_events {
-    (($t:ident, $target:ty), $(($rust:ident, $js:ident, $b:ty)),+) => {
-        $crate::paste! {
-            use leptos::prelude::*;
-            #[derive(Clone, Default)]
-            pub struct $t {
-                inner: StoredValue<[<Inner $t>], LocalStorage>,
-            }
-
-            #[derive(Default)]
-            struct [<Inner $t>] {
-                $(
-                    [<$rust _handler>]: Option<Box<dyn Fn($b)>>,
-                )+
-            }
-
-            impl $t {
-                pub fn new() -> Self {
-                    Self {
-                        inner: StoredValue::new_local(Default::default()),
-                    }
-                }
-
-                pub fn setup(&self, map: &$target) {
-                    $(
-                        self.inner.update_value(|inner| {
-                            if let Some(handler) = inner.[<$rust _handler>].take() {
-                                map.[<on_ $js>](handler);
-                            }
-                        });
-                    )+
-                }
-
-                $(
-                #[must_use = "This method returns the event handler list, which must be stored in a variable to be used later."]
-                pub fn [<set_ $rust>](self, handler: impl Fn($b) + 'static) -> Self {
-                    let handler = Box::new(handler);
-                    self.inner.update_value(|v| {v.[<$rust _handler>].replace(handler);});
-                    self
-                }
-                )+
-            }
-        }
-    }
+(($t:ident, $target:ty), $(($rust:ident, $js:ident, $b:ty)),+) => {
+$crate::paste! {
+use leptos::prelude::*;
+#[derive(Clone, Default)]
+pub struct $t {
+inner: StoredValue<[<Inner $t>], LocalStorage>,
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
 
+#[derive(Default)]
+struct [<Inner $t>] {
+$(
+[<$rust _handler>]: Option<Box<dyn Fn($b)>>,
+)+
+}
+
+impl $t {
+pub fn new() -> Self {
+Self {
+inner: StoredValue::new_local(Default::default()),
+}
+}
+
+pub fn setup(&self, map: &$target) {
+$(
+self.inner.update_value(|inner| {
+if let Some(handler) = inner.[<$rust _handler>].take() {
+map.[<on_ $js>](handler);
+}
+});
+)+
+}
+
+$(
+#[must_use = "This method returns the event handler list, which must be stored in a variable to be used later."]
+pub fn [<set_ $rust>](self, handler: impl Fn($b) + 'static) -> Self {
+let handler = Box::new(handler);
+self.inner.update_value(|v| {v.[<$rust _handler>].replace(handler);});
+self
+}
+)+
+}
+}
+}
+}

@@ -1,4 +1,4 @@
-mod empty;
+﻿mod empty;
 mod empty_avatar;
 mod empty_avatar_group;
 mod empty_background;

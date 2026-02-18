@@ -1,10 +1,10 @@
-[package]
+﻿[package]
 name = "lyx-spec-obfuscate"
 version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-leptos = { path = "../core/lyx-core-leptos/leptos", features = [] }
+leptos = { path = "../../core/lyx-core-leptos/leptos", features = [] }
 
 
 

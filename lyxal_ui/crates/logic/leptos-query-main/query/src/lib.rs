@@ -1,4 +1,4 @@
-#![warn(missing_docs)]
+﻿#![warn(missing_docs)]
 #![forbid(unsafe_code)]
 
 //! # Leptos Query
@@ -61,13 +61,12 @@
 //!
 //! ## Installation
 //!
-//! ```bash
+//! bash
 //! cargo add leptos_query
-//! ```
-//!
+//! //!
 //! Then add the relevant feature(s) to your `Cargo.toml`
 //!
-//! ```toml
+//! toml
 //!
 //! [features]
 //! hydrate = [
@@ -79,8 +78,7 @@
 //!     # ...
 //!  ]
 //!
-//! ```
-//!
+//! //!
 //!
 //! ## Quick Start
 //!
@@ -88,8 +86,7 @@
 //!
 //! In the root of your App, provide a query client with [provide_query_client] or [provide_query_client_with_options] if you want to override the default options.
 //!
-//! ```rust
-//! use leptos_query::*;
+//! //! use leptos_query::*;
 //! use leptos::*;
 //!
 //! #[component]
@@ -99,12 +96,10 @@
 //!
 //!     // Rest of App...
 //! }
-//! ```
-//!
+//! //!
 //! Then make a query function with [`create_query`][crate::create_query::create_query()]
 //!
-//! ```
-//! use leptos::*;
+//! //! use leptos::*;
 //! use leptos_query::*;
 //!
 //!
@@ -131,12 +126,10 @@
 //!     todo!()
 //! }
 //!
-//! ```
-//!
+//! //!
 //! Now you can use the query in any component in your app.
 //!
-//! ```rust
-//! # use serde::*;
+//! //! # use serde::*;
 //! #
 //! # // Make a key type.
 //! # #[derive(Debug, Clone,  Hash, Eq, PartialEq)]
@@ -186,42 +179,38 @@
 //!        </div>
 //!     }
 //! }
-//! ```
-//! For a complete working example see [the example directory](/example)
+//! //! For a complete working example see [the example directory](/example)
 //!
 //! ## Devtools Quickstart
 //!
 //! To use the devtools, you need to add the devtools crate:
 //!
-//! ```bash
+//! bash
 //! cargo add leptos_query_devtools
-//! ```
-//!
+//! //!
 //! Then in your `cargo.toml` enable the `csr` feature.
 //!
 //! #### Hydrate Example
 //! - If your app is using SSR, then this should go under the "hydrate" feature.
-//! ```toml
+//! toml
 //! [features]
 //! hydrate = [
 //!     "leptos_query_devtools/csr",
 //! ]
-//! ```
-//!
+//! //!
 //! #### CSR Example
 //! - If your app is using CSR, then this should go under the "csr" feature.
-//! ```toml
+//! toml
 //! [features]
 //! csr = [
 //!     "leptos_query_devtools/csr",
 //! ]
-//! ```
-//!
+//! //!
 //! Then in your app, render the devtools component. Make sure you also provide the query client.
 //!
 //! Devtools will by default only show in development mode. It will not be shown, or included in binary, when you build your app in release mode. If you want to override this behaviour, you can enable the `force` feature.
 //!
-//! ```rust,ignore
+//! ,ignore
 //!
 //! use leptos_query_devtools::LeptosQueryDevtools;
 //! use leptos_query::*;
@@ -237,8 +226,7 @@
 //!     }
 //! }
 //!
-//! ```
-//!
+//! //!
 
 /// Subcriptions to cache-wide query events.
 pub mod cache_observer;
@@ -274,4 +262,3 @@ impl<K> QueryKey for K where K: std::fmt::Debug + Clone + std::hash::Hash + Eq {
 /// Convenience trait for query value requirements.
 pub trait QueryValue: std::fmt::Debug + Clone + leptos::Serializable {}
 impl<V> QueryValue for V where V: std::fmt::Debug + Clone + leptos::Serializable {}
-

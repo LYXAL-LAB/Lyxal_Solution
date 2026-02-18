@@ -1,4 +1,4 @@
-use crate::{WatchOptions, watch_with_options};
+﻿use crate::{WatchOptions, watch_with_options};
 use leptos::prelude::*;
 
 /// Pausable [`watch`].
@@ -9,8 +9,7 @@ use leptos::prelude::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::{watch_pausable, WatchPausableReturn};
 /// #
@@ -40,8 +39,7 @@ use leptos::prelude::*;
 /// set_source.set("hello".to_string()); // > "Changed to hello"
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// There's also [`watch_pausable_with_options`] which takes the same options as [`watch`].
 ///
 /// ## Server-Side Rendering

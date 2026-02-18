@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "sample-crumbs"
 version = "0.8.0"
 edition = "2024"
@@ -9,7 +9,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 src = { path = "../src", optional = true }
 leptos = { path = "../../leptos/leptos", optional = true }
-axum = { version = "*", optional = true }
+leptos_axum = { version = "*", optional = true }
 leptos_axum = { path = "../../leptos/integrations/axum", optional = true }
 tokio = { version = "*", optional = true }
 wasm-bindgen = { version = "*" }

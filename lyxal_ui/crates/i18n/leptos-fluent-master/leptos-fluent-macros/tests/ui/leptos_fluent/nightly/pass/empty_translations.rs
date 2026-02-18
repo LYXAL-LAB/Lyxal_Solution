@@ -1,22 +1,22 @@
-use leptos::prelude::*;
+﻿use leptos::prelude::*;
 use leptos_fluent_macros::leptos_fluent;
 
 #[component]
 fn I18n(children: Children) -> impl IntoView {
-    leptos_fluent! {
-        children: children(),
-        locales: "../../../../examples/csr-minimal/locales",
-        translations: [],
-    }
+leptos_fluent! {
+children: children(),
+locales: "../../../../examples/csr-minimal/locales",
+translations: [],
+}
 }
 
 #[component]
 pub fn App() -> impl IntoView {
-    view! {
-        <I18n>
-            <p>+</p>
-        </I18n>
-    }
+view! {
+<I18n>
+<p>+</p>
+</I18n>
+}
 }
 
 fn main() {}

@@ -1,4 +1,4 @@
-use crate::core::{OptionLocalRwSignal, OptionLocalSignal};
+﻿use crate::core::{OptionLocalRwSignal, OptionLocalSignal};
 use default_struct_builder::DefaultBuilder;
 use leptos::prelude::*;
 use leptos::reactive::wrappers::read::Signal;
@@ -14,8 +14,7 @@ use leptos::reactive::wrappers::read::Signal;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_geolocation, UseGeolocationReturn};
 /// #
 /// # #[component]
@@ -30,8 +29,7 @@ use leptos::reactive::wrappers::read::Signal;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 ///
 /// ## SendWrapped Return
 ///

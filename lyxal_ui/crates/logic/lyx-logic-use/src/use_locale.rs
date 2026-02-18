@@ -1,4 +1,4 @@
-use crate::{UseLocalesOptions, use_locales_with_options};
+﻿use crate::{UseLocalesOptions, use_locales_with_options};
 use leptos::{logging::warn, prelude::*};
 use unic_langid::LanguageIdentifier;
 
@@ -18,8 +18,7 @@ use unic_langid::LanguageIdentifier;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use lyx_logic_use::use_locale;
 /// use unic_langid::langid_slice;
 /// #
@@ -29,8 +28,7 @@ use unic_langid::LanguageIdentifier;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

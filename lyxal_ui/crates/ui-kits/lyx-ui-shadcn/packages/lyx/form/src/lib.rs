@@ -1,5 +1,5 @@
-//! Leptos port of shadcn/ui Form component
-//! 
+﻿//! Leptos port of shadcn/ui Form component
+//!
 //! Provides form building blocks with validation and accessibility features.
 
 mod signal_managed;

@@ -1,4 +1,4 @@
-//! The serialization/deserialization process for server functions consists of a series of steps,
+﻿//! The serialization/deserialization process for server functions consists of a series of steps,
 //! each of which is represented by a different trait:
 //! 1. [`IntoReq`]: The client serializes the [`ServerFn`] argument type into an HTTP request.
 //! 2. The [`Client`] sends the request to the server.
@@ -75,9 +75,9 @@ pub use stream::*;
 /// 1. Serializing the data into some [`String`], [`Bytes`](bytes::Bytes), or [`Stream`](futures::Stream).
 /// 2. Creating a request with a body of that type.
 ///
-/// For example, here’s the implementation for [`Json`].
+/// For example, hereâ€™s the implementation for [`Json`].
 ///
-/// ```rust,ignore
+/// ,ignore
 /// impl<E, T, Request> IntoReq<Json, Request, E> for T
 /// where
 ///     Request: ClientReq<E>,
@@ -95,10 +95,9 @@ pub use stream::*;
 ///         Request::try_new_post(path, accepts, Json::CONTENT_TYPE, data)
 ///     }
 /// }
-/// ```
-pub trait IntoReq<Encoding, Request, E> {
-    /// Attempts to serialize the arguments into an HTTP request.
-    fn into_req(self, path: &str, accepts: &str) -> Result<Request, E>;
+/// pub trait IntoReq<Encoding, Request, E> {
+/// Attempts to serialize the arguments into an HTTP request.
+fn into_req(self, path: &str, accepts: &str) -> Result<Request, E>;
 }
 
 /// Deserializes an HTTP request into the data type, on the server.
@@ -109,9 +108,9 @@ pub trait IntoReq<Encoding, Request, E> {
 /// 1. Extracting the request body into some [`String`], [`Bytes`](bytes::Bytes), or [`Stream`](futures::Stream).
 /// 2. Deserializing that data into the data type.
 ///
-/// For example, here’s the implementation for [`Json`].
+/// For example, hereâ€™s the implementation for [`Json`].
 ///
-/// ```rust,ignore
+/// ,ignore
 /// impl<E, T, Request> FromReq<Json, Request, E> for T
 /// where
 ///     // require the Request implement `Req`
@@ -130,13 +129,12 @@ pub trait IntoReq<Encoding, Request, E> {
 ///             .map_err(|e| ServerFnErrorErr::Args(e.to_string()).into_app_error())
 ///     }
 /// }
-/// ```
-pub trait FromReq<Encoding, Request, E>
+/// pub trait FromReq<Encoding, Request, E>
 where
-    Self: Sized,
+Self: Sized,
 {
-    /// Attempts to deserialize the arguments from a request.
-    fn from_req(req: Request) -> impl Future<Output = Result<Self, E>> + Send;
+/// Attempts to deserialize the arguments from a request.
+fn from_req(req: Request) -> impl Future<Output = Result<Self, E>> + Send;
 }
 
 /// Serializes the data type into an HTTP response.
@@ -147,9 +145,9 @@ where
 /// 1. Serializing the data type to a [`String`], [`Bytes`](bytes::Bytes), or a [`Stream`](futures::Stream).
 /// 2. Creating a response with that serialized value as its body.
 ///
-/// For example, here’s the implementation for [`Json`].
+/// For example, hereâ€™s the implementation for [`Json`].
 ///
-/// ```rust,ignore
+/// ,ignore
 /// impl<E, T, Response> IntoRes<Json, Response, E> for T
 /// where
 ///     Response: Res<E>,
@@ -164,10 +162,9 @@ where
 ///         Response::try_from_string(Json::CONTENT_TYPE, data)
 ///     }
 /// }
-/// ```
-pub trait IntoRes<Encoding, Response, E> {
-    /// Attempts to serialize the output into an HTTP response.
-    fn into_res(self) -> impl Future<Output = Result<Response, E>> + Send;
+/// pub trait IntoRes<Encoding, Response, E> {
+/// Attempts to serialize the output into an HTTP response.
+fn into_res(self) -> impl Future<Output = Result<Response, E>> + Send;
 }
 
 /// Deserializes the data type from an HTTP response.
@@ -179,9 +176,9 @@ pub trait IntoRes<Encoding, Response, E> {
 ///    from the response body.
 /// 2. Deserializing the data type from that value.
 ///
-/// For example, here’s the implementation for [`Json`].
+/// For example, hereâ€™s the implementation for [`Json`].
 ///
-/// ```rust,ignore
+/// ,ignore
 /// impl<E, T, Response> FromRes<Json, Response, E> for T
 /// where
 ///     Response: ClientRes<E> + Send,
@@ -198,20 +195,18 @@ pub trait IntoRes<Encoding, Response, E> {
 ///             .map_err(|e| ServerFnErrorErr::Deserialization(e.to_string()).into_app_error())
 ///     }
 /// }
-/// ```
-pub trait FromRes<Encoding, Response, E>
+/// pub trait FromRes<Encoding, Response, E>
 where
-    Self: Sized,
+Self: Sized,
 {
-    /// Attempts to deserialize the outputs from a response.
-    fn from_res(res: Response) -> impl Future<Output = Result<Self, E>> + Send;
+/// Attempts to deserialize the outputs from a response.
+fn from_res(res: Response) -> impl Future<Output = Result<Self, E>> + Send;
 }
 
 /// Defines a particular encoding format, which can be used for serializing or deserializing data.
 pub trait Encoding: ContentType {
-    /// The HTTP method used for requests.
-    ///
-    /// This should be `POST` in most cases.
-    const METHOD: Method;
+/// The HTTP method used for requests.
+///
+/// This should be `POST` in most cases.
+const METHOD: Method;
 }
-

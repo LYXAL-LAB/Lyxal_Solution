@@ -1,4 +1,4 @@
-use crate::{watch_with_options, utils::ThrottleOptions, WatchOptions};
+﻿use crate::{watch_with_options, utils::ThrottleOptions, WatchOptions};
 use default_struct_builder::DefaultBuilder;
 
 /// A throttled version of `leptos::watch`.
@@ -9,8 +9,7 @@ use default_struct_builder::DefaultBuilder;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos::logging::log;
 /// # use leptos_use::watch_throttled;
 /// #
@@ -27,16 +26,14 @@ use default_struct_builder::DefaultBuilder;
 ///
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// This really is only shorthand shorthand for `watch_with_options(deps, callback, WatchOptions::default().throttle(ms))`.
 ///
 /// Please note that if the current component is cleaned up before the throttled callback is called, the throttled callback will not be called.
 ///
 /// There's also `watch_throttled_with_options` where you can specify the other watch options (except `filter`).
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos::logging::log;
 /// # use leptos_use::{watch_throttled_with_options, WatchThrottledOptions};
 /// #
@@ -54,8 +51,7 @@ use default_struct_builder::DefaultBuilder;
 ///
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Recommended Reading
 ///
 /// - [**Debounce vs Throttle**: Definitive Visual Guide](https://redd.one/blog/debounce-vs-throttle)
@@ -73,61 +69,61 @@ use default_struct_builder::DefaultBuilder;
 /// * [`fn@crate::watch_debounced`]
 pub fn watch_throttled<W, T, DFn, CFn>(deps: DFn, callback: CFn, ms: f64) -> impl Fn() + Clone
 where
-    DFn: Fn() -> W + 'static,
-    CFn: Fn(&W, Option<&W>, Option<T>) -> T + Clone + 'static,
-    W: Clone + 'static,
-    T: Clone + 'static,
+DFn: Fn() -> W + 'static,
+CFn: Fn(&W, Option<&W>, Option<T>) -> T + Clone + 'static,
+W: Clone + 'static,
+T: Clone + 'static,
 {
-    watch_with_options(deps, callback, WatchOptions::default().throttle(ms))
+watch_with_options(deps, callback, WatchOptions::default().throttle(ms))
 }
 
 /// Version of [`fn@watch_throttled`] that accepts `WatchThrottledOptions`. See [`watch_throttled`] for how to use.
 pub fn watch_throttled_with_options<W, T, DFn, CFn>(
-    deps: DFn,
-    callback: CFn,
-    ms: f64,
-    options: WatchThrottledOptions,
+deps: DFn,
+callback: CFn,
+ms: f64,
+options: WatchThrottledOptions,
 ) -> impl Fn() + Clone
 where
-    DFn: Fn() -> W + 'static,
-    CFn: Fn(&W, Option<&W>, Option<T>) -> T + Clone + 'static,
-    W: Clone + 'static,
-    T: Clone + 'static,
+DFn: Fn() -> W + 'static,
+CFn: Fn(&W, Option<&W>, Option<T>) -> T + Clone + 'static,
+W: Clone + 'static,
+T: Clone + 'static,
 {
-    watch_with_options(
-        deps,
-        callback,
-        WatchOptions::default()
-            .throttle_with_options(
-                ms,
-                ThrottleOptions::default()
-                    .leading(options.leading)
-                    .trailing(options.trailing),
-            )
-            .immediate(options.immediate),
-    )
+watch_with_options(
+deps,
+callback,
+WatchOptions::default()
+.throttle_with_options(
+ms,
+ThrottleOptions::default()
+.leading(options.leading)
+.trailing(options.trailing),
+)
+.immediate(options.immediate),
+)
 }
 
 /// Options for [`watch_throttled_with_options`].
 #[derive(DefaultBuilder)]
 pub struct WatchThrottledOptions {
-    /// If `immediate` is false, the `callback` will not run immediately but only after
-    /// the first change is detected of any signal that is accessed in `deps`.
-    /// Defaults to `true`.
-    immediate: bool,
+/// If `immediate` is false, the `callback` will not run immediately but only after
+/// the first change is detected of any signal that is accessed in `deps`.
+/// Defaults to `true`.
+immediate: bool,
 
-    /// Invoke on the trailing edge of the timeout. Defaults to `true`.
-    pub trailing: bool,
-    /// Invoke on the leading edge of the timeout. Defaults to `true`.
-    pub leading: bool,
+/// Invoke on the trailing edge of the timeout. Defaults to `true`.
+pub trailing: bool,
+/// Invoke on the leading edge of the timeout. Defaults to `true`.
+pub leading: bool,
 }
 
 impl Default for WatchThrottledOptions {
-    fn default() -> Self {
-        Self {
-            immediate: false,
-            trailing: true,
-            leading: true,
-        }
-    }
+fn default() -> Self {
+Self {
+immediate: false,
+trailing: true,
+leading: true,
+}
+}
 }

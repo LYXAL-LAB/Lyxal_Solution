@@ -1,4 +1,4 @@
-//! # daisyUI Card Component
+﻿//! # daisyUI Card Component
 //!
 //! For more information, see the [daisyUI card documentation](https://daisyui.com/components/card/).
 

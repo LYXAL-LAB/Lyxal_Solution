@@ -1,4 +1,4 @@
-//! # daisyUI Carousel Component
+﻿//! # daisyUI Carousel Component
 //!
 //! For more information, see: https://daisyui.com/components/carousel/
 

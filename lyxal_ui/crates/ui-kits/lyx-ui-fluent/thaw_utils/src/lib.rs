@@ -1,4 +1,4 @@
-mod callback;
+﻿mod callback;
 pub mod class_list;
 mod dom;
 mod event_listener;
@@ -19,18 +19,3 @@ pub use optional_prop::OptionalProp;
 pub use signals::*;
 pub use throttle::throttle;
 pub use time::now_date;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

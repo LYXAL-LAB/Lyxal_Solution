@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "leptos-windowing"
 version = "0.8.0"
 edition = "2024"
@@ -7,9 +7,9 @@ edition = "2024"
 
 
 default-struct-builder = { version = "*" }
-leptos = { path = "../core/lyx-core-leptos/leptos", optional = true }
+leptos = { path = "../../../core/lyx-core-leptos/leptos", optional = true }
 leptos-use = { path = "../../use", features = ["element"], optional = true }
-reactive_stores = { path = "../core/lyx-core-leptos/reactive_stores" }
+reactive_stores = { path = "../../../core/lyx-core-leptos/reactive_stores" }
 serde = { version = "*", features = ["derive"] }
 web-sys = { version = "*" }
 

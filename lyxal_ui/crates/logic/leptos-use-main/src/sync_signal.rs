@@ -1,4 +1,4 @@
-use crate::core::UseRwSignal;
+﻿use crate::core::UseRwSignal;
 use default_struct_builder::DefaultBuilder;
 use leptos::*;
 use std::rc::Rc;
@@ -16,8 +16,7 @@ use std::rc::Rc;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos_use::sync_signal;
 /// #
 /// # #[component]
@@ -39,14 +38,12 @@ use std::rc::Rc;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ### `RwSignal`
 ///
 /// You can mix and match `RwSignal`s and `Signal`-`WriteSignal` pairs.
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos_use::sync_signal;
 /// #
 /// # #[component]
@@ -63,14 +60,12 @@ use std::rc::Rc;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ### One directional
 ///
 /// You can synchronize a signal only from left to right or right to left.
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos_use::{sync_signal_with_options, SyncSignalOptions, SyncDirection};
 /// #
 /// # #[component]
@@ -94,14 +89,12 @@ use std::rc::Rc;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ### Custom Transform
 ///
 /// You can optionally provide custom transforms between the two signals.
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos_use::{sync_signal_with_options, SyncSignalOptions};
 /// #
 /// # #[component]
@@ -125,102 +118,99 @@ use std::rc::Rc;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// #### Different Types
 ///
 /// `SyncSignalOptions::default()` is only defined if the two signal types are identical or
 /// implement `From` for each other. Otherwise, you have to initialize the options with
 /// `with_transforms` instead of `default`.
 ///
-/// ```
-/// # use leptos_use::SyncSignalOptions;
+/// /// # use leptos_use::SyncSignalOptions;
 /// # use std::str::FromStr;
 /// #
 /// let options = SyncSignalOptions::with_transforms(
 ///     |left: &String| i32::from_str(left).unwrap_or_default(),
 ///     |right: &i32| right.to_string(),
 /// );
-/// ```
-///
+/// ///
 pub fn sync_signal<T>(
-    left: impl Into<UseRwSignal<T>>,
-    right: impl Into<UseRwSignal<T>>,
+left: impl Into<UseRwSignal<T>>,
+right: impl Into<UseRwSignal<T>>,
 ) -> impl Fn() + Clone
 where
-    T: Clone + PartialEq + 'static,
+T: Clone + PartialEq + 'static,
 {
-    sync_signal_with_options(left, right, SyncSignalOptions::default())
+sync_signal_with_options(left, right, SyncSignalOptions::default())
 }
 
 /// Version of [`sync_signal`] that takes a `SyncSignalOptions`. See [`sync_signal`] for how to use.
 pub fn sync_signal_with_options<L, R>(
-    left: impl Into<UseRwSignal<L>>,
-    right: impl Into<UseRwSignal<R>>,
-    options: SyncSignalOptions<L, R>,
+left: impl Into<UseRwSignal<L>>,
+right: impl Into<UseRwSignal<R>>,
+options: SyncSignalOptions<L, R>,
 ) -> impl Fn() + Clone
 where
-    L: Clone + PartialEq + 'static,
-    R: Clone + PartialEq + 'static,
+L: Clone + PartialEq + 'static,
+R: Clone + PartialEq + 'static,
 {
-    let SyncSignalOptions {
-        immediate,
-        direction,
-        transform_ltr,
-        transform_rtl,
-        assign_ltr,
-        assign_rtl,
-    } = options;
+let SyncSignalOptions {
+immediate,
+direction,
+transform_ltr,
+transform_rtl,
+assign_ltr,
+assign_rtl,
+} = options;
 
-    let left = left.into();
-    let right = right.into();
+let left = left.into();
+let right = right.into();
 
-    let mut stop_watch_left = None;
-    let mut stop_watch_right = None;
+let mut stop_watch_left = None;
+let mut stop_watch_right = None;
 
-    if matches!(direction, SyncDirection::Both | SyncDirection::LeftToRight) {
-        stop_watch_left = Some(watch(
-            move || left.get(),
-            move |new_value, _, _| {
-                let new_value = (*transform_ltr)(new_value);
+if matches!(direction, SyncDirection::Both | SyncDirection::LeftToRight) {
+stop_watch_left = Some(watch(
+move || left.get(),
+move |new_value, _, _| {
+let new_value = (*transform_ltr)(new_value);
 
-                if right.with_untracked(|right| right != &new_value) {
-                    right.update(|right| assign_ltr(right, new_value));
-                }
-            },
-            immediate,
-        ));
-    }
+if right.with_untracked(|right| right != &new_value) {
+right.update(|right| assign_ltr(right, new_value));
+}
+},
+immediate,
+));
+}
 
-    if matches!(direction, SyncDirection::Both | SyncDirection::RightToLeft) {
-        stop_watch_right = Some(watch(
-            move || right.get(),
-            move |new_value, _, _| {
-                let new_value = (*transform_rtl)(new_value);
+if matches!(direction, SyncDirection::Both | SyncDirection::RightToLeft) {
+stop_watch_right = Some(watch(
+move || right.get(),
+move |new_value, _, _| {
+let new_value = (*transform_rtl)(new_value);
 
-                if left.with_untracked(|left| left != &new_value) {
-                    left.update(|left| assign_rtl(left, new_value));
-                }
-            },
-            immediate,
-        ));
-    }
+if left.with_untracked(|left| left != &new_value) {
+left.update(|left| assign_rtl(left, new_value));
+}
+},
+immediate,
+));
+}
 
-    move || {
-        if let Some(stop_watch_left) = &stop_watch_left {
-            stop_watch_left();
-        }
-        if let Some(stop_watch_right) = &stop_watch_right {
-            stop_watch_right();
-        }
-    }
+move || {
+if let Some(stop_watch_left) = &stop_watch_left {
+stop_watch_left();
+}
+if let Some(stop_watch_right) = &stop_watch_right {
+stop_watch_right();
+}
+}
 }
 
 /// Direction of syncing.
 pub enum SyncDirection {
-    LeftToRight,
-    RightToLeft,
-    Both,
+LeftToRight,
+RightToLeft,
+Both,
 }
 
 pub type AssignFn<T> = Rc<dyn Fn(&mut T, T)>;
@@ -228,100 +218,100 @@ pub type AssignFn<T> = Rc<dyn Fn(&mut T, T)>;
 /// Options for [`sync_signal_with_options`].
 #[derive(DefaultBuilder)]
 pub struct SyncSignalOptions<L, R> {
-    /// If `true`, the signals will be immediately synced when this function is called.
-    /// If `false`, a signal is only updated when the other signal's value changes.
-    /// Defaults to `true`.
-    immediate: bool,
+/// If `true`, the signals will be immediately synced when this function is called.
+/// If `false`, a signal is only updated when the other signal's value changes.
+/// Defaults to `true`.
+immediate: bool,
 
-    /// Direction of syncing. Defaults to `SyncDirection::Both`.
-    direction: SyncDirection,
+/// Direction of syncing. Defaults to `SyncDirection::Both`.
+direction: SyncDirection,
 
-    /// Transforms the left signal into the right signal.
-    /// Defaults to identity.
-    #[builder(skip)]
-    transform_ltr: Rc<dyn Fn(&L) -> R>,
+/// Transforms the left signal into the right signal.
+/// Defaults to identity.
+#[builder(skip)]
+transform_ltr: Rc<dyn Fn(&L) -> R>,
 
-    /// Transforms the right signal into the left signal.
-    /// Defaults to identity.
-    #[builder(skip)]
-    transform_rtl: Rc<dyn Fn(&R) -> L>,
+/// Transforms the right signal into the left signal.
+/// Defaults to identity.
+#[builder(skip)]
+transform_rtl: Rc<dyn Fn(&R) -> L>,
 
-    /// Assigns the left signal to the right signal.
-    /// Defaults to `*r = l`.
-    #[builder(skip)]
-    assign_ltr: AssignFn<R>,
+/// Assigns the left signal to the right signal.
+/// Defaults to `*r = l`.
+#[builder(skip)]
+assign_ltr: AssignFn<R>,
 
-    /// Assigns the right signal to the left signal.
-    /// Defaults to `*l = r`.
-    #[builder(skip)]
-    assign_rtl: AssignFn<L>,
+/// Assigns the right signal to the left signal.
+/// Defaults to `*l = r`.
+#[builder(skip)]
+assign_rtl: AssignFn<L>,
 }
 
 impl<L, R> SyncSignalOptions<L, R> {
-    /// Transforms the left signal into the right signal.
-    /// Defaults to identity.
-    pub fn transform_ltr(self, transform_ltr: impl Fn(&L) -> R + 'static) -> Self {
-        Self {
-            transform_ltr: Rc::new(transform_ltr),
-            ..self
-        }
-    }
+/// Transforms the left signal into the right signal.
+/// Defaults to identity.
+pub fn transform_ltr(self, transform_ltr: impl Fn(&L) -> R + 'static) -> Self {
+Self {
+transform_ltr: Rc::new(transform_ltr),
+..self
+}
+}
 
-    /// Transforms the right signal into the left signal.
-    /// Defaults to identity.
-    pub fn transform_rtl(self, transform_rtl: impl Fn(&R) -> L + 'static) -> Self {
-        Self {
-            transform_rtl: Rc::new(transform_rtl),
-            ..self
-        }
-    }
+/// Transforms the right signal into the left signal.
+/// Defaults to identity.
+pub fn transform_rtl(self, transform_rtl: impl Fn(&R) -> L + 'static) -> Self {
+Self {
+transform_rtl: Rc::new(transform_rtl),
+..self
+}
+}
 
-    /// Assigns the left signal to the right signal.
-    /// Defaults to `*r = l`.
-    pub fn assign_ltr(self, assign_ltr: impl Fn(&mut R, R) + 'static) -> Self {
-        Self {
-            assign_ltr: Rc::new(assign_ltr),
-            ..self
-        }
-    }
+/// Assigns the left signal to the right signal.
+/// Defaults to `*r = l`.
+pub fn assign_ltr(self, assign_ltr: impl Fn(&mut R, R) + 'static) -> Self {
+Self {
+assign_ltr: Rc::new(assign_ltr),
+..self
+}
+}
 
-    /// Assigns the right signal to the left signal.
-    /// Defaults to `*l = r`.
-    pub fn assign_rtl(self, assign_rtl: impl Fn(&mut L, L) + 'static) -> Self {
-        Self {
-            assign_rtl: Rc::new(assign_rtl),
-            ..self
-        }
-    }
-    /// Initializes options with transforms
-    pub fn with_transforms(
-        transform_ltr: impl Fn(&L) -> R + 'static,
-        transform_rtl: impl Fn(&R) -> L + 'static,
-    ) -> Self {
-        Self {
-            immediate: true,
-            direction: SyncDirection::Both,
-            transform_ltr: Rc::new(transform_ltr),
-            transform_rtl: Rc::new(transform_rtl),
-            assign_ltr: Rc::new(|right, left| *right = left),
-            assign_rtl: Rc::new(|left, right| *left = right),
-        }
-    }
+/// Assigns the right signal to the left signal.
+/// Defaults to `*l = r`.
+pub fn assign_rtl(self, assign_rtl: impl Fn(&mut L, L) + 'static) -> Self {
+Self {
+assign_rtl: Rc::new(assign_rtl),
+..self
+}
+}
+/// Initializes options with transforms
+pub fn with_transforms(
+transform_ltr: impl Fn(&L) -> R + 'static,
+transform_rtl: impl Fn(&R) -> L + 'static,
+) -> Self {
+Self {
+immediate: true,
+direction: SyncDirection::Both,
+transform_ltr: Rc::new(transform_ltr),
+transform_rtl: Rc::new(transform_rtl),
+assign_ltr: Rc::new(|right, left| *right = left),
+assign_rtl: Rc::new(|left, right| *left = right),
+}
+}
 }
 
 impl<L, R> Default for SyncSignalOptions<L, R>
 where
-    L: Clone + From<R>,
-    R: Clone + From<L>,
+L: Clone + From<R>,
+R: Clone + From<L>,
 {
-    fn default() -> Self {
-        Self {
-            immediate: true,
-            direction: SyncDirection::Both,
-            transform_ltr: Rc::new(|x| x.clone().into()),
-            transform_rtl: Rc::new(|x| x.clone().into()),
-            assign_ltr: Rc::new(|right, left| *right = left),
-            assign_rtl: Rc::new(|left, right| *left = right),
-        }
-    }
+fn default() -> Self {
+Self {
+immediate: true,
+direction: SyncDirection::Both,
+transform_ltr: Rc::new(|x| x.clone().into()),
+transform_rtl: Rc::new(|x| x.clone().into()),
+assign_ltr: Rc::new(|right, left| *right = left),
+assign_rtl: Rc::new(|left, right| *left = right),
+}
+}
 }

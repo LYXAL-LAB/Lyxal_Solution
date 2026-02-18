@@ -1,11 +1,10 @@
-use leptos::*;
+﻿use leptos::*;
 
 /// SSR compatibe `is_supported`
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos_use::{use_supported, js};
 /// # use wasm_bindgen::JsValue;
 /// #
@@ -19,16 +18,15 @@ use leptos::*;
 /// }
 /// #    view! { }
 /// # }
-/// ```
-pub fn use_supported(callback: impl Fn() -> bool + 'static) -> Signal<bool> {
-    #[cfg(feature = "ssr")]
-    {
-        let _ = callback;
-        Signal::derive(|| false)
-    }
+/// pub fn use_supported(callback: impl Fn() -> bool + 'static) -> Signal<bool> {
+#[cfg(feature = "ssr")]
+{
+let _ = callback;
+Signal::derive(|| false)
+}
 
-    #[cfg(not(feature = "ssr"))]
-    {
-        Signal::derive(callback)
-    }
+#[cfg(not(feature = "ssr"))]
+{
+Signal::derive(callback)
+}
 }

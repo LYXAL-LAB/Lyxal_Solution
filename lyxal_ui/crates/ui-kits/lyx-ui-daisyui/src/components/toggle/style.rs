@@ -1,92 +1,77 @@
-/// Color variants for the Toggle component.
+﻿/// Color variants for the Toggle component.
 #[derive(Clone, Debug, Default)]
 pub enum ToggleColor {
-    /// Default toggle styling with no additional color classes
-    #[default]
-    Default,
+/// Default toggle styling with no additional color classes
+#[default]
+Default,
 
-    /// Primary theme color
-    Primary,
+/// Primary theme color
+Primary,
 
-    /// Secondary theme color
-    Secondary,
+/// Secondary theme color
+Secondary,
 
-    /// Accent theme color
-    Accent,
+/// Accent theme color
+Accent,
 
-    /// Success/positive color (green)
-    Success,
+/// Success/positive color (green)
+Success,
 
-    /// Warning color (yellow/orange)
-    Warning,
+/// Warning color (yellow/orange)
+Warning,
 
-    /// Info color (blue)
-    Info,
+/// Info color (blue)
+Info,
 
-    /// Error/danger color (red)
-    Error,
+/// Error/danger color (red)
+Error,
 }
 
 impl ToggleColor {
-    /// CSS class string
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ToggleColor::Default => "",
-            ToggleColor::Primary => "toggle-primary",
-            ToggleColor::Secondary => "toggle-secondary",
-            ToggleColor::Accent => "toggle-accent",
-            ToggleColor::Success => "toggle-success",
-            ToggleColor::Warning => "toggle-warning",
-            ToggleColor::Info => "toggle-info",
-            ToggleColor::Error => "toggle-error",
-        }
-    }
+/// CSS class string
+pub fn as_str(&self) -> &'static str {
+match self {
+ToggleColor::Default => "",
+ToggleColor::Primary => "toggle-primary",
+ToggleColor::Secondary => "toggle-secondary",
+ToggleColor::Accent => "toggle-accent",
+ToggleColor::Success => "toggle-success",
+ToggleColor::Warning => "toggle-warning",
+ToggleColor::Info => "toggle-info",
+ToggleColor::Error => "toggle-error",
+}
+}
 }
 
 /// Size variants for the Toggle component.
 #[derive(Clone, Debug, Default)]
 pub enum ToggleSize {
-    /// Extra small toggle
-    Xs,
+/// Extra small toggle
+Xs,
 
-    /// Small toggle
-    Sm,
+/// Small toggle
+Sm,
 
-    /// Medium toggle (default size)
-    #[default]
-    Md,
+/// Medium toggle (default size)
+#[default]
+Md,
 
-    /// Large toggle
-    Lg,
+/// Large toggle
+Lg,
 
-    /// Extra large toggle
-    Xl,
+/// Extra large toggle
+Xl,
 }
 
 impl ToggleSize {
-    /// CSS class string
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ToggleSize::Xs => "toggle-xs",
-            ToggleSize::Sm => "toggle-sm",
-            ToggleSize::Md => "toggle-md",
-            ToggleSize::Lg => "toggle-lg",
-            ToggleSize::Xl => "toggle-xl",
-        }
-    }
+/// CSS class string
+pub fn as_str(&self) -> &'static str {
+match self {
+ToggleSize::Xs => "toggle-xs",
+ToggleSize::Sm => "toggle-sm",
+ToggleSize::Md => "toggle-md",
+ToggleSize::Lg => "toggle-lg",
+ToggleSize::Xl => "toggle-xl",
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-
+}
+}

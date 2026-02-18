@@ -1,4 +1,4 @@
-use crate::utils::get_header;
+﻿use crate::utils::get_header;
 use default_struct_builder::DefaultBuilder;
 use leptos::*;
 use std::rc::Rc;
@@ -11,8 +11,7 @@ use std::rc::Rc;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos_use::use_prefers_reduced_motion;
 /// # use leptos_use::docs::BooleanDisplay;
 /// #
@@ -32,8 +31,7 @@ use std::rc::Rc;
 ///     </div>
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// On the server this will try to read the
@@ -57,46 +55,46 @@ use std::rc::Rc;
 /// * [`fn@crate::use_preferred_contrast`]
 /// * [`fn@crate::use_preferred_dark`]
 pub fn use_prefers_reduced_motion() -> Signal<bool> {
-    use_prefers_reduced_motion_with_options(UsePrefersReducedMotionOptions::default())
+use_prefers_reduced_motion_with_options(UsePrefersReducedMotionOptions::default())
 }
 
 /// Version of [`fn@crate::use_prefers_reduced_motion`] that takes a `UsePrefersReducedMotionOptions`. See [`fn@crate::use_prefers_reduced_motion`] for how to use.
 pub fn use_prefers_reduced_motion_with_options(
-    options: UsePrefersReducedMotionOptions,
+options: UsePrefersReducedMotionOptions,
 ) -> Signal<bool> {
-    #[cfg(not(feature = "ssr"))]
-    {
-        let _ = options;
-        crate::use_media_query("(prefers-reduced-motion: reduce)")
-    }
-    #[cfg(feature = "ssr")]
-    {
-        Signal::derive(move || (options.ssr_motion_header_getter)() == Some("reduce".to_string()))
-    }
+#[cfg(not(feature = "ssr"))]
+{
+let _ = options;
+crate::use_media_query("(prefers-reduced-motion: reduce)")
+}
+#[cfg(feature = "ssr")]
+{
+Signal::derive(move || (options.ssr_motion_header_getter)() == Some("reduce".to_string()))
+}
 }
 
 /// Options for [`fn@crate::use_prefers_reduced_motion_with_options`].
 #[derive(DefaultBuilder)]
 pub struct UsePrefersReducedMotionOptions {
-    /// Getter function to return the string value of the
-    /// [`Sec-CH-Prefers-Reduced-Motion`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Sec-CH-Prefers-Reduced-Motion)
-    /// header.
-    /// When you use one of the features `"axum"`, `"actix"` or `"spin"` there's a valid default
-    /// implementation provided.
-    #[allow(dead_code)]
-    pub(crate) ssr_motion_header_getter: Rc<dyn Fn() -> Option<String>>,
+/// Getter function to return the string value of the
+/// [`Sec-CH-Prefers-Reduced-Motion`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Sec-CH-Prefers-Reduced-Motion)
+/// header.
+/// When you use one of the features `"axum"`, `"actix"` or `"spin"` there's a valid default
+/// implementation provided.
+#[allow(dead_code)]
+pub(crate) ssr_motion_header_getter: Rc<dyn Fn() -> Option<String>>,
 }
 
 impl Default for UsePrefersReducedMotionOptions {
-    fn default() -> Self {
-        Self {
-            ssr_motion_header_getter: Rc::new(move || {
-                get_header!(
-                    HeaderName::from_static("sec-ch-prefers-reduced-motion"),
-                    use_locale,
-                    ssr_motion_header_getter
-                )
-            }),
-        }
-    }
+fn default() -> Self {
+Self {
+ssr_motion_header_getter: Rc::new(move || {
+get_header!(
+HeaderName::from_static("sec-ch-prefers-reduced-motion"),
+use_locale,
+ssr_motion_header_getter
+)
+}),
+}
+}
 }

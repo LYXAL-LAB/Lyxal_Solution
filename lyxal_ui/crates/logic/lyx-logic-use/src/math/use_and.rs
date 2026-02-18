@@ -1,4 +1,4 @@
-use crate::math::shared::use_binary_logic;
+﻿use crate::math::shared::use_binary_logic;
 use leptos::prelude::*;
 use leptos::reactive::wrappers::read::Signal;
 use paste::paste;
@@ -12,8 +12,7 @@ use_binary_logic!(
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::math::use_and;
 /// #
 /// # #[component]
@@ -25,8 +24,7 @@ use_binary_logic!(
 /// #
 /// # view! { }
 /// # }
-/// ```
-// #[doc(cfg(feature = "math"))]
+/// // #[doc(cfg(feature = "math"))]
 and
 &&
 );

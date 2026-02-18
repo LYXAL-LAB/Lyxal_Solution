@@ -1,4 +1,4 @@
-[workspace]
+﻿[workspace]
 resolver = "2"
 members = ["leptonic", "leptonic-theme"]
 exclude = ["examples"]
@@ -119,29 +119,29 @@ wildcard_imports = { level = "allow", priority = 1 }
 
 
 [patch.crates-io]
-leptos = { path = "../core/lyx-core-leptos/leptos" }
-leptos_meta = { path = "../core/lyx-core-leptos/meta" }
-leptos_router = { path = "../core/lyx-core-leptos/router" }
-leptos_axum = { path = "../../core/leptos/integrations/axum" }
-leptos_actix = { path = "../../core/leptos/integrations/actix" }
-leptos_dom = { path = "../core/lyx-core-leptos/leptos_dom" }
-leptos_macro = { path = "../core/lyx-core-leptos/leptos_macro" }
-leptos_server = { path = "../../core/leptos/leptos_server" }
-leptos_config = { path = "../../core/leptos/leptos_config" }
-reactive_graph = { path = "../core/lyx-core-leptos/reactive_graph" }
-reactive_stores = { path = "../core/lyx-core-leptos/reactive_stores" }
-reactive_stores_macro = { path = "../core/lyx-core-leptos/reactive_stores_macro" }
-server_fn = { path = "../core/lyx-core-leptos/server_fn" }
-server_fn_macro = { path = "../core/lyx-core-leptos/server_fn_macro" }
-tachys = { path = "../core/lyx-core-leptos/tachys" }
-hydration_context = { path = "../../core/leptos/hydration_context" }
-throw_error = { path = "../core/lyx-core-leptos/any_error" }
-any_spawner = { path = "../core/lyx-core-leptos/any_spawner" }
-either_of = { path = "../../core/leptos/either_of" }
-oco_ref = { path = "../core/lyx-core-leptos/oco" }
-or_poisoned = { path = "../core/lyx-core-leptos/or_poisoned" }
-next_tuple = { path = "../../core/leptos/next_tuple" }
-leptos-use = { path = "../logic/lyx-logic-use" }
+leptos = { path = "../../core/lyx-core-leptos/leptos" }
+leptos_meta = { path = "../../core/lyx-core-leptos/meta" }
+leptos_router = { path = "../../core/lyx-core-leptos/router" }
+leptos_axum = { path = "../../core/lyx-core-leptos/integrations/axum" }
+leptos_actix = { path = "../../core/lyx-core-leptos/integrations/actix" }
+leptos_dom = { path = "../../core/lyx-core-leptos/leptos_dom" }
+leptos_macro = { path = "../../core/lyx-core-leptos/leptos_macro" }
+leptos_server = { path = "../../core/lyx-core-leptos/leptos_server" }
+leptos_config = { path = "../../core/lyx-core-leptos/leptos_config" }
+reactive_graph = { path = "../../core/lyx-core-leptos/reactive_graph" }
+reactive_stores = { path = "../../core/lyx-core-leptos/reactive_stores" }
+reactive_stores_macro = { path = "../../core/lyx-core-leptos/reactive_stores_macro" }
+server_fn = { path = "../../core/lyx-core-leptos/server_fn" }
+server_fn_macro = { path = "../../core/lyx-core-leptos/server_fn_macro" }
+tachys = { path = "../../core/lyx-core-leptos/tachys" }
+hydration_context = { path = "../../core/lyx-core-leptos/hydration_context" }
+throw_error = { path = "../../core/lyx-core-leptos/any_error" }
+any_spawner = { path = "../../core/lyx-core-leptos/any_spawner" }
+either_of = { path = "../../core/lyx-core-leptos/either_of" }
+oco_ref = { path = "../../core/lyx-core-leptos/oco" }
+or_poisoned = { path = "../../core/lyx-core-leptos/or_poisoned" }
+next_tuple = { path = "../../core/lyx-core-leptos/next_tuple" }
+leptos-use = { path = "../../logic/lyx-logic-use" }
 tailwind_fuse = { path = "../../ui-foundations/lyx-found-tailwind/fuse" }
 
 

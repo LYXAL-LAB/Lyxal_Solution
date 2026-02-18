@@ -1,11 +1,11 @@
-[package]
+﻿[package]
 name = "tachys"
 version = "0.8.0"
 edition = "2024"
 
 [dependencies]
 next_tuple = { path = "../next_tuple" }
-html-escape = { version = "0.8.0" }
+html-escape = { version = "*" }
 erased = { version = "*" }
 reactive_graph = { path = "../reactive_graph", version = "*" }
 wasm-bindgen = { version = "*" }

@@ -1,4 +1,4 @@
-//! # daisyUI Range Component
+﻿//! # daisyUI Range Component
 //!
 //! For more information, see: https://daisyui.com/components/range/
 
@@ -7,18 +7,3 @@ mod style;
 
 pub use component::*;
 pub use style::*;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

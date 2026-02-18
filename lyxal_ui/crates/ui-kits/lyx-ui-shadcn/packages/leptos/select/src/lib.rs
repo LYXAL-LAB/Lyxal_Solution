@@ -1,4 +1,4 @@
-//! Leptos port of [shadcn/ui Select](https://ui.shadcn.com/docs/components/select).
+﻿//! Leptos port of [shadcn/ui Select](https://ui.shadcn.com/docs/components/select).
 //!
 //! Component description here.
 //!
@@ -19,11 +19,11 @@ pub use new_york as select;
 // Real focused tests (replaces 891-line bloated file)
 
 mod tests {
-    pub mod class_constants_tests;
-    pub mod state_management_tests;
-    pub mod callback_tests;
-    pub mod item_logic_tests;
-    pub mod accessibility_tests;
+pub mod class_constants_tests;
+pub mod state_management_tests;
+pub mod callback_tests;
+pub mod item_logic_tests;
+pub mod accessibility_tests;
 }
 
 // Legacy tests (will be removed)

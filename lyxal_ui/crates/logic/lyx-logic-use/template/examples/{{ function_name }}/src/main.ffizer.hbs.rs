@@ -1,4 +1,4 @@
-use leptos::prelude::*;
+﻿use leptos::prelude::*;
 use lyx_logic_use::docs::lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_demo_or_body;
 use lyx_logic_use{{#if module}}::{{ module }}{{/if}}::{{ function_name }};
 

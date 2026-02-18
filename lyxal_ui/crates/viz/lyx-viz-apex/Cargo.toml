@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx-viz-lyx-viz-apex"
 version = "0.8.0"
 edition = "2024"
@@ -23,7 +23,7 @@ serde-wasm-bindgen = "0.0.1"
 yew = { version = "*", optional = true, features = ["csr"] }
 gloo = { version = "*", optional = true }
 indexmap = { version = "*", features = ["serde"] }
-leptos = { path = "../core/lyx-core-leptos/leptos", optional = true }
+leptos = { path = "../../core/lyx-core-leptos/leptos", optional = true }
 
 
 

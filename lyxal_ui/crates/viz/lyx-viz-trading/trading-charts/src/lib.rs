@@ -1,4 +1,4 @@
-#[doc(hidden)]
+﻿#[doc(hidden)]
 mod bindings;
 mod error;
 
@@ -10,20 +10,3 @@ pub mod series;
 pub use error::JsError;
 
 pub const REFIT_EVENT_KIND: &str = "trading-charts/refit";
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

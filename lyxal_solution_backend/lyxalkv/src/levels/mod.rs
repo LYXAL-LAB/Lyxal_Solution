@@ -585,6 +585,9 @@ mod tests {
 	// Helper function to create a test table with direct file IO
 	fn create_test_table(table_id: u64, num_items: u64, opts: Arc<Options>) -> Result<Arc<Table>> {
 		let table_file_path = opts.sstable_file_path(table_id);
+		if let Some(parent) = table_file_path.parent() {
+			std::fs::create_dir_all(parent)?;
+		}
 
 		let size = {
 			let mut file = SysFile::create(&table_file_path)?;
@@ -609,7 +612,6 @@ mod tests {
 
 		// Open the file for reading
 		let file = SysFile::open_with_hint(&table_file_path, crate::vfs::IoHint::Random)?;
-		file.sync_all()?;
 		let file: Arc<dyn File> = Arc::new(file);
 
 		// Create the table
@@ -767,6 +769,7 @@ mod tests {
 			opts.level_count as usize,
 			"Incorrect number of levels in new manifest"
 		);
+
 
 		// Verify tables were loaded correctly
 		let level0 = &new_manifest.levels.as_ref()[0];

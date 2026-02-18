@@ -1,4 +1,4 @@
-use crate::merge_classes;
+﻿use crate::merge_classes;
 use leptos::{html::Div, prelude::*};
 
 /// # Mockup Window Component
@@ -7,47 +7,27 @@ use leptos::{html::Div, prelude::*};
 /// a styled desktop window frame for displaying content.
 ///
 /// ### Add to `input.css`
-/// ```css
+/// css
 /// @source inline("mockup-window");
-/// ```
-///
+/// ///
 /// ## Node References
 /// - `node_ref` - References the div element ([HTMLDivElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLDivElement))
 #[component]
 pub fn MockupWindow(
-    /// Additional CSS classes
-    #[prop(optional, into)]
-    class: &'static str,
+/// Additional CSS classes
+#[prop(optional, into)]
+class: &'static str,
 
-    /// Node reference to the div element
-    #[prop(optional)]
-    node_ref: NodeRef<Div>,
+/// Node reference to the div element
+#[prop(optional)]
+node_ref: NodeRef<Div>,
 
-    /// Content displayed within the window frame
-    children: Children,
+/// Content displayed within the window frame
+children: Children,
 ) -> impl IntoView {
-    view! {
-        <div node_ref=node_ref class=move || merge_classes!("mockup-window", class)>
-            {children()}
-        </div>
-    }
+view! {
+<div node_ref=node_ref class=move || merge_classes!("mockup-window", class)>
+{children()}
+</div>
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-
+}

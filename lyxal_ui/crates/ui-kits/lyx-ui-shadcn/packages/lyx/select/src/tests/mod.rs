@@ -1,4 +1,4 @@
-// Split implementation tests into focused modules
+﻿// Split implementation tests into focused modules
 mod class_tests;
 mod component_tests;
 mod interaction_tests;

@@ -1,4 +1,4 @@
-use super::{use_storage_with_options, StorageType, UseStorageOptions};
+﻿use super::{use_storage_with_options, StorageType, UseStorageOptions};
 use codee::{Decoder, Encoder};
 use leptos::signal_prelude::*;
 
@@ -11,27 +11,27 @@ use leptos::signal_prelude::*;
 /// ## Usage
 /// See [`fn@crate::storage::use_storage`] for more details on how to use.
 pub fn use_session_storage<T, C>(
-    key: impl AsRef<str>,
+key: impl AsRef<str>,
 ) -> (Signal<T>, WriteSignal<T>, impl Fn() + Clone)
 where
-    T: Clone + Default + PartialEq,
-    C: Encoder<T, Encoded = String> + Decoder<T, Encoded = str>,
+T: Clone + Default + PartialEq,
+C: Encoder<T, Encoded = String> + Decoder<T, Encoded = str>,
 {
-    use_storage_with_options::<T, C>(
-        StorageType::Session,
-        key,
-        UseStorageOptions::<T, <C as Encoder<T>>::Error, <C as Decoder<T>>::Error>::default(),
-    )
+use_storage_with_options::<T, C>(
+StorageType::Session,
+key,
+UseStorageOptions::<T, <C as Encoder<T>>::Error, <C as Decoder<T>>::Error>::default(),
+)
 }
 
 /// Accepts [`UseStorageOptions`]. See [`use_session_storage`] for details.
 pub fn use_session_storage_with_options<T, C>(
-    key: impl AsRef<str>,
-    options: UseStorageOptions<T, <C as Encoder<T>>::Error, <C as Decoder<T>>::Error>,
+key: impl AsRef<str>,
+options: UseStorageOptions<T, <C as Encoder<T>>::Error, <C as Decoder<T>>::Error>,
 ) -> (Signal<T>, WriteSignal<T>, impl Fn() + Clone)
 where
-    T: Clone + PartialEq,
-    C: Encoder<T, Encoded = String> + Decoder<T, Encoded = str>,
+T: Clone + PartialEq,
+C: Encoder<T, Encoded = String> + Decoder<T, Encoded = str>,
 {
-    use_storage_with_options::<T, C>(StorageType::Session, key, options)
+use_storage_with_options::<T, C>(StorageType::Session, key, options)
 }

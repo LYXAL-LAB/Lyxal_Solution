@@ -1,4 +1,4 @@
-#[cfg(all(not(feature = "devtools"), not(feature = "devtools-always")))]
+﻿#[cfg(all(not(feature = "devtools"), not(feature = "devtools-always")))]
 /// If the `devtools` or `devtools-always` feature is enabled, this trait requires T to implement `std::fmt::Debug`.
 /// Otherwise, this trait is implemented for all types.
 ///

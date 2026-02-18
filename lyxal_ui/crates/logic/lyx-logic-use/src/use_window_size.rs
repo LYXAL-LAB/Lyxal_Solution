@@ -1,4 +1,4 @@
-use crate::core::Size;
+﻿use crate::core::Size;
 use crate::{
 UseEventListenerOptions, use_event_listener_with_options, use_media_query, use_window,
 };
@@ -14,8 +14,7 @@ use leptos::prelude::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use lyx_logic_use::{use_window_size, UseWindowSizeReturn};
 /// #
 /// # #[component]
@@ -24,8 +23,7 @@ use leptos::prelude::*;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

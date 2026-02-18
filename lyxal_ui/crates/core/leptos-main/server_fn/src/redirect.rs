@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+﻿use std::sync::OnceLock;
 
 /// A custom header that can be set with any value to indicate
 /// that the server function client should redirect to a new route.
@@ -20,14 +20,14 @@ pub(crate) static REDIRECT_HOOK: OnceLock<RedirectHook> = OnceLock::new();
 /// Sets a function that will be called if a server function returns a `3xx` status
 /// or the [`REDIRECT_HEADER`]. Returns `Err(_)` if the hook has already been set.
 pub fn set_redirect_hook(
-    hook: impl Fn(&str) + Send + Sync + 'static,
+hook: impl Fn(&str) + Send + Sync + 'static,
 ) -> Result<(), RedirectHook> {
-    REDIRECT_HOOK.set(Box::new(hook))
+REDIRECT_HOOK.set(Box::new(hook))
 }
 
 /// Calls the hook that has been set by [`set_redirect_hook`] to redirect to `loc`.
 pub fn call_redirect_hook(loc: &str) {
-    if let Some(hook) = REDIRECT_HOOK.get() {
-        hook(loc)
-    }
+if let Some(hook) = REDIRECT_HOOK.get() {
+hook(loc)
+}
 }

@@ -1,16 +1,16 @@
-[package]
+﻿[package]
 name = "lyx-ui-foundations-demo"
 version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr", "nightly"] }
+leptos = { path = "../../../../core/lyx-core-leptos/leptos", features = ["csr", "nightly"] }
 console_error_panic_hook = { version = "*" }
 console_log = { version = "*" }
 copy_dir = { version = "*" }
 
-leptos_meta = { path = "../core/lyx-core-leptos/meta", features = ["csr"] }
-leptos_router = { path = "../core/lyx-core-leptos/router", features = ["csr"] }
+leptos_meta = { path = "../../../../core/lyx-core-leptos/meta", features = ["csr"] }
+leptos_router = { path = "../../../../core/lyx-core-leptos/router", features = ["csr"] }
 log = { version = "*" }
 tailwind_fuse = { path = "../../fuse" }
 leptos_theme = { path = "../../../lyx-found-theme" }

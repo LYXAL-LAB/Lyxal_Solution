@@ -1,4 +1,4 @@
-#![allow(clippy::needless_lifetimes)]
+﻿#![allow(clippy::needless_lifetimes)]
 
 use crate::{prelude::*, WasmSplitManifest};
 use leptos_config::LeptosOptions;
@@ -10,35 +10,35 @@ use std::{path::PathBuf, sync::OnceLock};
 /// This should be included in the `<head>` of your application shell during development.
 #[component]
 pub fn AutoReload(
-    /// Whether the file-watching feature should be disabled.
-    #[prop(optional)]
-    disable_watch: bool,
-    /// Configuration options for this project.
-    options: LeptosOptions,
+/// Whether the file-watching feature should be disabled.
+#[prop(optional)]
+disable_watch: bool,
+/// Configuration options for this project.
+options: LeptosOptions,
 ) -> impl IntoView {
-    (!disable_watch && std::env::var("LEPTOS_WATCH").is_ok()).then(|| {
-        #[cfg(feature = "nonce")]
-        let nonce = crate::nonce::use_nonce();
-        #[cfg(not(feature = "nonce"))]
-        let nonce = None::<()>;
+(!disable_watch && std::env::var("LEPTOS_WATCH").is_ok()).then(|| {
+#[cfg(feature = "nonce")]
+let nonce = crate::nonce::use_nonce();
+#[cfg(not(feature = "nonce"))]
+let nonce = None::<()>;
 
-        let reload_port = match options.reload_external_port {
-            Some(val) => val,
-            None => options.reload_port,
-        };
-        let protocol = match options.reload_ws_protocol {
-            leptos_config::ReloadWSProtocol::WS => "'ws://'",
-            leptos_config::ReloadWSProtocol::WSS => "'wss://'",
-        };
+let reload_port = match options.reload_external_port {
+Some(val) => val,
+None => options.reload_port,
+};
+let protocol = match options.reload_ws_protocol {
+leptos_config::ReloadWSProtocol::WS => "'ws://'",
+leptos_config::ReloadWSProtocol::WSS => "'wss://'",
+};
 
-        let script = format!(
-            "(function (reload_port, protocol) {{ {} {} }})({reload_port:?}, \
-             {protocol})",
-            leptos_hot_reload::HOT_RELOAD_JS,
-            include_str!("reload_script.js")
-        );
-        view! { <script nonce=nonce>{script}</script> }
-    })
+let script = format!(
+"(function (reload_port, protocol) {{ {} {} }})({reload_port:?}, \
+{protocol})",
+leptos_hot_reload::HOT_RELOAD_JS,
+include_str!("reload_script.js")
+);
+view! { <script nonce=nonce>{script}</script> }
+})
 }
 
 /// Inserts hydration scripts that add interactivity to your server-rendered HTML.
@@ -46,148 +46,148 @@ pub fn AutoReload(
 /// This should be included in the `<head>` of your application shell.
 #[component]
 pub fn HydrationScripts(
-    /// Configuration options for this project.
-    options: LeptosOptions,
-    /// Should be `true` to hydrate in `islands` mode.
-    #[prop(optional)]
-    islands: bool,
-    /// Should be `true` to add the “islands router,” which enables limited client-side routing
-    /// when running in islands mode.
-    #[prop(optional)]
-    islands_router: bool,
-    /// A base url, not including a trailing slash
-    #[prop(optional, into)]
-    root: Option<String>,
+/// Configuration options for this project.
+options: LeptosOptions,
+/// Should be `true` to hydrate in `islands` mode.
+#[prop(optional)]
+islands: bool,
+/// Should be `true` to add the â€œislands router,â€ which enables limited client-side routing
+/// when running in islands mode.
+#[prop(optional)]
+islands_router: bool,
+/// A base url, not including a trailing slash
+#[prop(optional, into)]
+root: Option<String>,
 ) -> impl IntoView {
-    static SPLIT_MANIFEST: OnceLock<Option<WasmSplitManifest>> =
-        OnceLock::new();
+static SPLIT_MANIFEST: OnceLock<Option<WasmSplitManifest>> =
+OnceLock::new();
 
-    if let Some(splits) = SPLIT_MANIFEST.get_or_init(|| {
-        let root = root.clone().unwrap_or_default();
+if let Some(splits) = SPLIT_MANIFEST.get_or_init(|| {
+let root = root.clone().unwrap_or_default();
 
-        let (wasm_split_js, wasm_split_manifest) = if options.hash_files {
-            let hash_path = std::env::current_exe()
-                .map(|path| {
-                    path.parent().map(|p| p.to_path_buf()).unwrap_or_default()
-                })
-                .unwrap_or_default()
-                .join(options.hash_file.as_ref());
-            let hashes = std::fs::read_to_string(&hash_path)
-                .expect("failed to read hash file");
+let (wasm_split_js, wasm_split_manifest) = if options.hash_files {
+let hash_path = std::env::current_exe()
+.map(|path| {
+path.parent().map(|p| p.to_path_buf()).unwrap_or_default()
+})
+.unwrap_or_default()
+.join(options.hash_file.as_ref());
+let hashes = std::fs::read_to_string(&hash_path)
+.expect("failed to read hash file");
 
-            let mut split =
-                "__wasm_split.______________________.js".to_string();
-            let mut manifest = "__wasm_split_manifest.json".to_string();
-            for line in hashes.lines() {
-                let line = line.trim();
-                if !line.is_empty() {
-                    if let Some((file, hash)) = line.split_once(':') {
-                        if file == "manifest" {
-                            manifest.clear();
-                            manifest.push_str("__wasm_split_manifest.");
-                            manifest.push_str(hash.trim());
-                            manifest.push_str(".json");
-                        }
-                        if file == "split" {
-                            split.clear();
-                            split.push_str("__wasm_split.");
-                            split.push_str(hash.trim());
-                            split.push_str(".js");
-                        }
-                    }
-                }
-            }
-            (split, manifest)
-        } else {
-            (
-                "__wasm_split.______________________.js".to_string(),
-                "__wasm_split_manifest.json".to_string(),
-            )
-        };
+let mut split =
+"__wasm_split.______________________.js".to_string();
+let mut manifest = "__wasm_split_manifest.json".to_string();
+for line in hashes.lines() {
+let line = line.trim();
+if !line.is_empty() {
+if let Some((file, hash)) = line.split_once(':') {
+if file == "manifest" {
+manifest.clear();
+manifest.push_str("__wasm_split_manifest.");
+manifest.push_str(hash.trim());
+manifest.push_str(".json");
+}
+if file == "split" {
+split.clear();
+split.push_str("__wasm_split.");
+split.push_str(hash.trim());
+split.push_str(".js");
+}
+}
+}
+}
+(split, manifest)
+} else {
+(
+"__wasm_split.______________________.js".to_string(),
+"__wasm_split_manifest.json".to_string(),
+)
+};
 
-        let site_dir = &options.site_root;
-        let pkg_dir = &options.site_pkg_dir;
-        let path = PathBuf::from(site_dir.to_string());
-        let path = path.join(pkg_dir.to_string()).join(wasm_split_manifest);
-        let file = std::fs::read_to_string(path).ok()?;
+let site_dir = &options.site_root;
+let pkg_dir = &options.site_pkg_dir;
+let path = PathBuf::from(site_dir.to_string());
+let path = path.join(pkg_dir.to_string()).join(wasm_split_manifest);
+let file = std::fs::read_to_string(path).ok()?;
 
-        let manifest = WasmSplitManifest(ArcStoredValue::new((
-            format!("{root}/{pkg_dir}"),
-            serde_json::from_str(&file).expect("could not read manifest file"),
-            wasm_split_js,
-        )));
+let manifest = WasmSplitManifest(ArcStoredValue::new((
+format!("{root}/{pkg_dir}"),
+serde_json::from_str(&file).expect("could not read manifest file"),
+wasm_split_js,
+)));
 
-        Some(manifest)
-    }) {
-        provide_context(splits.clone());
-    }
+Some(manifest)
+}) {
+provide_context(splits.clone());
+}
 
-    let mut js_file_name = options.output_name.to_string();
-    let mut wasm_file_name = options.output_name.to_string();
-    if options.hash_files {
-        let hash_path = std::env::current_exe()
-            .map(|path| {
-                path.parent().map(|p| p.to_path_buf()).unwrap_or_default()
-            })
-            .unwrap_or_default()
-            .join(options.hash_file.as_ref());
-        if hash_path.exists() {
-            let hashes = std::fs::read_to_string(&hash_path)
-                .expect("failed to read hash file");
-            for line in hashes.lines() {
-                let line = line.trim();
-                if !line.is_empty() {
-                    if let Some((file, hash)) = line.split_once(':') {
-                        if file == "js" {
-                            js_file_name.push_str(&format!(".{}", hash.trim()));
-                        } else if file == "wasm" {
-                            wasm_file_name
-                                .push_str(&format!(".{}", hash.trim()));
-                        }
-                    }
-                }
-            }
-        } else {
-            leptos::logging::error!(
-                "File hashing is active but no hash file was found"
-            );
-        }
-    } else if std::option_env!("LEPTOS_OUTPUT_NAME").is_none() {
-        wasm_file_name.push_str("_bg");
-    }
+let mut js_file_name = options.output_name.to_string();
+let mut wasm_file_name = options.output_name.to_string();
+if options.hash_files {
+let hash_path = std::env::current_exe()
+.map(|path| {
+path.parent().map(|p| p.to_path_buf()).unwrap_or_default()
+})
+.unwrap_or_default()
+.join(options.hash_file.as_ref());
+if hash_path.exists() {
+let hashes = std::fs::read_to_string(&hash_path)
+.expect("failed to read hash file");
+for line in hashes.lines() {
+let line = line.trim();
+if !line.is_empty() {
+if let Some((file, hash)) = line.split_once(':') {
+if file == "js" {
+js_file_name.push_str(&format!(".{}", hash.trim()));
+} else if file == "wasm" {
+wasm_file_name
+.push_str(&format!(".{}", hash.trim()));
+}
+}
+}
+}
+} else {
+leptos::logging::error!(
+"File hashing is active but no hash file was found"
+);
+}
+} else if std::option_env!("LEPTOS_OUTPUT_NAME").is_none() {
+wasm_file_name.push_str("_bg");
+}
 
-    let pkg_path = &options.site_pkg_dir;
-    #[cfg(feature = "nonce")]
-    let nonce = crate::nonce::use_nonce();
-    #[cfg(not(feature = "nonce"))]
-    let nonce = None::<String>;
-    let script = if islands {
-        if let Some(sc) = Owner::current_shared_context() {
-            sc.set_is_hydrating(false);
-        }
-        include_str!("./island_script.js")
-    } else {
-        include_str!("./hydration_script.js")
-    };
+let pkg_path = &options.site_pkg_dir;
+#[cfg(feature = "nonce")]
+let nonce = crate::nonce::use_nonce();
+#[cfg(not(feature = "nonce"))]
+let nonce = None::<String>;
+let script = if islands {
+if let Some(sc) = Owner::current_shared_context() {
+sc.set_is_hydrating(false);
+}
+include_str!("./island_script.js")
+} else {
+include_str!("./hydration_script.js")
+};
 
-    let islands_router = islands_router
-        .then_some(include_str!("./islands_routing.js"))
-        .unwrap_or_default();
+let islands_router = islands_router
+.then_some(include_str!("./islands_routing.js"))
+.unwrap_or_default();
 
-    let root = root.unwrap_or_default();
-    view! {
-        <link rel="modulepreload" href=format!("{root}/{pkg_path}/{js_file_name}.js") crossorigin=nonce.clone()/>
-        <link
-            rel="preload"
-            href=format!("{root}/{pkg_path}/{wasm_file_name}.wasm")
-            r#as="fetch"
-            r#type="application/wasm"
-            crossorigin=nonce.clone().unwrap_or_default()
-        />
-        <script type="module" nonce=nonce>
-            {format!("{script}({root:?}, {pkg_path:?}, {js_file_name:?}, {wasm_file_name:?});{islands_router}")}
-        </script>
-    }
+let root = root.unwrap_or_default();
+view! {
+<link rel="modulepreload" href=format!("{root}/{pkg_path}/{js_file_name}.js") crossorigin=nonce.clone()/>
+<link
+rel="preload"
+href=format!("{root}/{pkg_path}/{wasm_file_name}.wasm")
+r#as="fetch"
+r#type="application/wasm"
+crossorigin=nonce.clone().unwrap_or_default()
+/>
+<script type="module" nonce=nonce>
+{format!("{script}({root:?}, {pkg_path:?}, {js_file_name:?}, {wasm_file_name:?});{islands_router}")}
+</script>
+}
 }
 
 /// If this is provided via context, it means that you are using the islands router and

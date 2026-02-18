@@ -1,4 +1,4 @@
-#![allow(clippy::module_inception)]
+﻿#![allow(clippy::module_inception)]
 use std::include_str;
 mod components;
 pub mod reactive;

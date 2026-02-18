@@ -1,12 +1,12 @@
-[package]
+﻿[package]
 name = "lyx-viz-lyx-viz-bevy"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
 bevy = { version = "*", default-features = false }
 crossbeam-channel = { version = "*" }
-leptos = { path = "../core/lyx-core-leptos/leptos" }
-leptos-use = { path = "../logic/lyx-logic-use", features = ["use_raf_fn" ] }
+leptos = { path = "../../core/lyx-core-leptos/leptos" }
+leptos-use = { path = "../../logic/lyx-logic-use", features = ["use_raf_fn" ] }
 paste = { version = "*" }
 variadics_please = { version = "*" }
 [dev-dependencies]

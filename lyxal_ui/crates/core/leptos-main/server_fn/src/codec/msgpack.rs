@@ -1,6 +1,6 @@
-use crate::{
-    codec::{Patch, Post, Put},
-    ContentType, Decodes, Encodes, Format, FormatType,
+﻿use crate::{
+codec::{Patch, Post, Put},
+ContentType, Decodes, Encodes, Format, FormatType,
 };
 use bytes::Bytes;
 use serde::{de::DeserializeOwned, Serialize};
@@ -9,33 +9,33 @@ use serde::{de::DeserializeOwned, Serialize};
 pub struct MsgPackEncoding;
 
 impl ContentType for MsgPackEncoding {
-    const CONTENT_TYPE: &'static str = "application/msgpack";
+const CONTENT_TYPE: &'static str = "application/msgpack";
 }
 
 impl FormatType for MsgPackEncoding {
-    const FORMAT_TYPE: Format = Format::Binary;
+const FORMAT_TYPE: Format = Format::Binary;
 }
 
 impl<T> Encodes<T> for MsgPackEncoding
 where
-    T: Serialize,
+T: Serialize,
 {
-    type Error = rmp_serde::encode::Error;
+type Error = rmp_serde::encode::Error;
 
-    fn encode(value: &T) -> Result<Bytes, Self::Error> {
-        rmp_serde::to_vec(value).map(Bytes::from)
-    }
+fn encode(value: &T) -> Result<Bytes, Self::Error> {
+rmp_serde::to_vec(value).map(Bytes::from)
+}
 }
 
 impl<T> Decodes<T> for MsgPackEncoding
 where
-    T: DeserializeOwned,
+T: DeserializeOwned,
 {
-    type Error = rmp_serde::decode::Error;
+type Error = rmp_serde::decode::Error;
 
-    fn decode(bytes: Bytes) -> Result<T, Self::Error> {
-        rmp_serde::from_slice(&bytes)
-    }
+fn decode(bytes: Bytes) -> Result<T, Self::Error> {
+rmp_serde::from_slice(&bytes)
+}
 }
 
 /// Pass arguments and receive responses as MessagePack in a `POST` request.

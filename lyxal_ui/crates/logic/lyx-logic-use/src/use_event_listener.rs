@@ -1,4 +1,4 @@
-use crate::core::IntoElementMaybeSignal;
+﻿use crate::core::IntoElementMaybeSignal;
 use cfg_if::cfg_if;
 use default_struct_builder::DefaultBuilder;
 use leptos::ev::EventDescriptor;
@@ -19,8 +19,7 @@ use wasm_bindgen::JsCast;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::ev::visibilitychange;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::{use_document, use_event_listener};
@@ -32,13 +31,11 @@ use wasm_bindgen::JsCast;
 /// });
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// You can also pass a [`NodeRef`](https://docs.rs/leptos/latest/leptos/struct.NodeRef.html) as the event target, [`use_event_listener`] will unregister the previous event and register
 /// the new one when you change the target.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::ev::click;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::use_event_listener;
@@ -62,12 +59,10 @@ use wasm_bindgen::JsCast;
 ///     </Show>
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// You can also call the returned to unregister the listener.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::ev::keydown;
 /// # use leptos::logging::log;
 /// # use web_sys::KeyboardEvent;
@@ -83,8 +78,7 @@ use wasm_bindgen::JsCast;
 /// #
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## SendWrapped Return
 ///
 /// The returned closure is a sendwrapped function. It can
@@ -226,7 +220,7 @@ once: bool,
 /// [`preventDefault()`](https://developer.mozilla.org/en-US/docs/Web/API/Event/preventDefault "preventDefault()").
 /// If a passive listener does call `preventDefault()`, the user agent will do
 /// nothing other than generate a console warning. If not specified,
-/// defaults to `false` – except that in browsers other than Safari,
+/// defaults to `false` â€“ except that in browsers other than Safari,
 /// defaults to `true` for the
 /// [`wheel`](https://developer.mozilla.org/en-US/docs/Web/API/Element/wheel_event "wheel"),
 /// [`mousewheel`](https://developer.mozilla.org/en-US/docs/Web/API/Element/mousewheel_event "mousewheel"),

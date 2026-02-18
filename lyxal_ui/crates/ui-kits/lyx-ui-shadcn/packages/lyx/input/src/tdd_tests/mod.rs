@@ -1,4 +1,4 @@
-// TDD tests module for input component
+﻿// TDD tests module for input component
 // Split from original 663-line file into focused modules
 
 mod basic_rendering_tests;

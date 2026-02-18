@@ -1,2 +1,2 @@
-mod slider;
+﻿mod slider;
 pub use slider::*;

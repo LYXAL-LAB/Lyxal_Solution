@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
+﻿#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
 
 use cfg_if::cfg_if;
 use default_struct_builder::DefaultBuilder;

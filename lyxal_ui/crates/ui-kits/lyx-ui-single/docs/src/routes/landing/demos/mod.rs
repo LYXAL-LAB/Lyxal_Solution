@@ -1,4 +1,4 @@
-mod chat;
+﻿mod chat;
 mod cookie_settings;
 mod create_account;
 mod payment_method;

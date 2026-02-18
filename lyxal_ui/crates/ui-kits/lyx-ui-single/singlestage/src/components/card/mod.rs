@@ -1,4 +1,4 @@
-mod card;
+﻿mod card;
 mod content;
 mod description;
 mod footer;

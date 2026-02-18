@@ -1,4 +1,4 @@
-pub mod get_bounding_client_rect;
+﻿pub mod get_bounding_client_rect;
 pub mod get_css_dimensions;
 pub mod get_document_rect;
 pub mod get_html_offset;

@@ -1,9 +1,9 @@
-[package]
+﻿[package]
 name = "leptos_actix"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
-actix-http = { version = "0.8.0", default-features = true }
+actix-http = { version = "*", default-features = true }
 actix-files = { version = "*", default-features = true }
 actix-web = { version = "*", default-features = false }
 futures = { version = "*", default-features = true }
@@ -12,8 +12,8 @@ hydration_context = { path = "../hydration_context", version = "*" }
 leptos = { path = "../leptos", version = "*", features = ["nonce", "ssr"] }
 utils = { path = "../utils", version = "*" }
 leptos_macro = { path = "../leptos_macro", version = "*", features = ["actix"] }
-meta = { path = "../../meta", version = "*", features = ["nonce"] }
-router = { path = "../../router", version = "*", features = ["ssr"] }
+leptos_meta = { path = "../../meta", version = "*", features = ["nonce"] }
+leptos_router = { path = "../../router", version = "*", features = ["ssr"] }
 server_fn = { path = "../server_fn", version = "*", features = ["actix-no-default"] }
 tachys = { path = "../tachys", version = "*", optional = true }
 serde_json = { version = "*", default-features = true }

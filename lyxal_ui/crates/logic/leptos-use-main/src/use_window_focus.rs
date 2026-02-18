@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
+﻿#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
 
 use crate::use_event_listener;
 use cfg_if::cfg_if;
@@ -14,8 +14,7 @@ use leptos::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos_use::use_window_focus;
 /// #
 /// # #[component]
@@ -24,24 +23,23 @@ use leptos::*;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// On the server this returns a `Signal` that is always `true`.
 pub fn use_window_focus() -> Signal<bool> {
-    cfg_if! { if #[cfg(feature = "ssr")] {
-        let initial_focus = true;
-    } else {
-        let initial_focus = document().has_focus().unwrap_or_default();
-    }}
+cfg_if! { if #[cfg(feature = "ssr")] {
+let initial_focus = true;
+} else {
+let initial_focus = document().has_focus().unwrap_or_default();
+}}
 
-    let (focused, set_focused) = create_signal(initial_focus);
+let (focused, set_focused) = create_signal(initial_focus);
 
-    cfg_if! { if #[cfg(not(feature = "ssr"))] {
-        let _ = use_event_listener(window(), blur, move |_| set_focused.set(false));
-        let _ = use_event_listener(window(), focus, move |_| set_focused.set(true));
-    }}
+cfg_if! { if #[cfg(not(feature = "ssr"))] {
+let _ = use_event_listener(window(), blur, move |_| set_focused.set(false));
+let _ = use_event_listener(window(), focus, move |_| set_focused.set(true));
+}}
 
-    focused.into()
+focused.into()
 }

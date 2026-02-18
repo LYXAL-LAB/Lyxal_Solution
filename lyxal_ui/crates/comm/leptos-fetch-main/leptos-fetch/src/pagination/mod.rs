@@ -1,4 +1,4 @@
-mod paginated_cursor;
+﻿mod paginated_cursor;
 mod paginated_offset;
 mod paginated_shared;
 

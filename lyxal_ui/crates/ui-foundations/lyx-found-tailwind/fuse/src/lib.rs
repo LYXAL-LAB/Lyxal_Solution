@@ -1,52 +1,4 @@
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\ui-foundations\lyx_found_tailwind\fuse\src\lib.rs
-```rust
-#![forbid(missing_docs)]
+﻿#![forbid(missing_docs)]
 
 //! # Tailwind Fuse
 //! [<img alt="github" src="https://img.shields.io/badge/github-gaucho--labs/tailwind--fuse-8da0cb?style=for-the-badge&labelColor=555555&logo=github" height="20">](https://github.com/gaucho-labs/tailwind-fuse)
@@ -67,15 +19,13 @@
 //! Variants requires the `variant` feature to be enabled.
 //!
 //! #### With variant
-//! ```bash
+//! bash
 //! cargo add tailwind-fuse --features variant
-//! ```
-//!
+//! //!
 //! #### Without variant
-//! ```bash
+//! bash
 //! cargo add tailwind-fuse
-//! ```
-//!
+//! //!
 //! ## Usage: Fuse
 //!
 //! You can use [`tw_join!`] to join Tailwind classes, and [`tw_merge!`] to merge Tailwind Classes handling conflicts.
@@ -83,8 +33,7 @@
 //!
 //! You can use anything that implements [`AsTailwindClass`]
 //!
-//! ```
-//! use tailwind_fuse::*;
+//! //! use tailwind_fuse::*;
 //!
 //! // No conflict resolution
 //! assert_eq!(
@@ -104,27 +53,23 @@
 //!    "p-4 py-2",
 //!    tw_merge!("p-4", "py-2")
 //! );
-//! ```
-//!
+//! //!
 //! You can use Options to exclude certain classes from being merged
 //!
-//! ```
-//! use tailwind_fuse::*;
+//! //! use tailwind_fuse::*;
 //!
 //! assert_eq!(
 //!   "flex justify-center",
 //!   tw_join!("flex", (false).then_some("items-center"), (true).then_some("justify-center"))
 //! )
-//! ```
-//!
+//! //!
 //! ### Custom Tailwind Prefix/Separator
 //!
 //! Use [`merge::set_merge_options`] to set global options for [`tw_merge!`] and variant macros.
 //!
 //! This can only be set once. Subsequent calls will be ignored.
 //!
-//! ```
-//! use tailwind_fuse::{*, merge::*};
+//! //! use tailwind_fuse::{*, merge::*};
 //!
 //! const OPTIONS: MergeOptions = MergeOptions {
 //!     prefix: "tw-",
@@ -144,8 +89,7 @@
 //!   tw_merge!("tw-bg-black", "tw-bg-white"),
 //! );
 //!
-//! ```
-//!
+//! //!
 //!
 //! ## Usage: Variants
 //!
@@ -159,8 +103,7 @@
 //! 3. Enum variant class from [`TwVariant`]
 //! 4. Override class using [`IntoTailwindClass::with_class`] on the struct or builder
 //!
-//! ```
-//! use tailwind_fuse::*;
+//! //! use tailwind_fuse::*;
 //!
 //! // Your Component Type
 //! #[derive(TwClass)]
@@ -190,13 +133,11 @@
 //!     #[tw(class = "bg-red-500 text-red-100")]
 //!     Red,
 //! }
-//! ```
-//!
+//! //!
 //! You can now use the `Btn` struct to generate Tailwind classes, using builder syntax, or using the struct directly
 //!
 //! ### Struct Syntax
-//! ```
-//! # use tailwind_fuse::*;
+//! //! # use tailwind_fuse::*;
 //! # // Your Component Type
 //! # #[derive(TwClass)]
 //! # // Optional base class
@@ -238,13 +179,11 @@
 //!    "flex h-9 px-4 py-2 text-blue-100 bg-green-500",
 //!    button.with_class("bg-green-500")
 //! );
-//! ```
-//!
+//! //!
 //! ### Builder Syntax
 //! You access the builder using the `variants` method. Every variant that is not provided will be replaced with the default variant.
 //!
-//! ```
-//! # use tailwind_fuse::*;
+//! //! # use tailwind_fuse::*;
 //! #
 //! # #[derive(TwClass)]
 //! # // Optional base class
@@ -290,8 +229,7 @@
 //!       .with_class("bg-green-500")
 //! );
 //!
-//! ```
-//!
+//! //!
 //! #### VSCode Intellisense
 //!
 //! You can enable autocompletion inside `#[tw()]` using the steps below:
@@ -300,14 +238,13 @@
 //!
 //! 2. Add the following to your [`settings.json`](https://code.visualstudio.com/docs/getstarted/settings):
 //!
-//! ```json
+//! json
 //! {
 //!   "tailwindCSS.experimental.classRegex": [
 //!     ["#[tw\\\\([^\\]]*class\\s*=\\s*\"([^\"]*)\"\\)]", "\"([^\"]*)\""]
 //!   ]
 //! }
-//! ```
-//!
+//! //!
 
 pub use crate::core::merge;
 pub use crate::core::*;
@@ -320,160 +257,132 @@ pub use variant::*;
 
 #[cfg(feature = "variant")]
 mod variant {
-    /// Used to Fuse Tailwind Classes together.
-    pub trait TailwindFuse {
-        /// Strings are not guaranteed to be single class nor free of whitespace.
-        fn fuse_classes(&self, class: &[&str]) -> String;
-    }
-
-    /// Will merge Tailwind classes and handle conflicts using [`crate::merge::tw_merge_slice`]
-    pub struct TailwindMerge;
-
-    impl TailwindFuse for TailwindMerge {
-        fn fuse_classes(&self, class: &[&str]) -> String {
-            crate::merge::tw_merge_slice(class)
-        }
-    }
-
-    /// Will simply join Tailwind classes together without handling conflicts
-    pub struct TailwindJoin;
-
-    impl TailwindFuse for TailwindJoin {
-        fn fuse_classes(&self, class: &[&str]) -> String {
-            class
-                .iter()
-                .flat_map(|s| s.split_whitespace())
-                .map(|s| s.trim())
-                .filter(|s| !s.is_empty())
-                .fold(String::new(), |mut acc, s| {
-                    if !acc.is_empty() {
-                        acc.push(' ');
-                    }
-                    acc.push_str(s);
-                    acc
-                })
-        }
-    }
-
-    /// Derives a class for use with Tailwind CSS in Rust components.
-    ///
-    /// Allows building components with first-class support for Tailwind.
-    ///
-    /// Defaults to using [`crate::tw_merge()`] to resolve conflicts.
-    ///
-    /// Resolves conflicts using the following merge order:
-    /// - [`TwClass`] base class
-    /// - [`TwVariant`] base class
-    /// - [`TwVariant`] enum variant class
-    /// - Override class with `with_class`
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use tailwind_fuse::*;
-    ///
-    /// #[derive(TwClass, Debug)]
-    /// // Optional base class.
-    /// #[tw(class = "flex")]
-    /// struct Btn {
-    ///     size: BtnSize,
-    ///     color: BtnColor,
-    /// }
-    ///
-    /// #[derive(TwVariant, Debug)]
-    /// enum BtnSize {
-    ///     #[tw(default, class = "h-9 px-4 py-2")]
-    ///     Default,
-    ///     #[tw(class = "h-8 px-3")]
-    ///     Sm,
-    ///     #[tw(class = "h-10 px-8")]
-    ///     Lg,
-    /// }
-    ///
-    /// #[derive(TwVariant, Debug)]
-    /// enum BtnColor {
-    ///     #[tw(default, class = "bg-blue-500 text-blue-100")]
-    ///     Blue,
-    ///     #[tw(class = "bg-red-500 text-red-100")]
-    ///     Red,
-    /// }
-    ///
-    /// let btn = Btn { size: BtnSize::Default, color: BtnColor::Blue };
-    /// assert_eq!(btn.to_class(), "flex h-9 px-4 py-2 bg-blue-500 text-blue-100");
-    ///
-    /// let btn_variant = Btn::builder().color(BtnColor::Red).to_class();
-    /// assert_eq!(btn_variant, "flex h-9 px-4 py-2 bg-red-500 text-red-100");
-    /// ```
-    ///
-    pub use tailwind_fuse_macro::TwClass;
-
-    /// Represents a customizable property (variant) of a UI element.
-    /// Each variant must be an enum with a default case.
-    ///
-    /// Use `.to_class()` to get the class for the variant and `.with_class()` to append a class.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use tailwind_fuse::*;
-    ///
-    /// #[derive(TwVariant, Debug)]
-    /// // Optional base class
-    /// #[tw(class = "hover:brightness-50")]
-    /// enum BtnColor {
-    ///     #[tw(default, class = "bg-blue-500 text-blue-100")]
-    ///     Default,
-    ///     #[tw(class = "bg-red-500 text-red-100")]
-    ///     Red,
-    /// }
-    ///
-    /// assert_eq!("hover:brightness-50 bg-blue-500 text-blue-100", BtnColor::Default.as_class());
-    /// assert_eq!("hover:brightness-50 bg-red-500 text-red-100", BtnColor::Red.as_class());
-    /// ```
-    ///
-    pub use tailwind_fuse_macro::TwVariant;
-
-    /// A trait to convert a type into a Tailwind class.
-    /// Implemented automatically for usages of [`TwClass`] and [`TwVariant`].
-    pub trait IntoTailwindClass {
-        /// Convert the type into a Tailwind class.
-        fn to_class(&self) -> String;
-        /// Append to the class (with override precedence) and return the new class.
-        fn with_class(&self, class: impl AsRef<str>) -> String;
-    }
-
-    /// Converts a type into it's builder.
-    /// Automatically implemented for usages of [`TwClass`].
-    pub trait IntoBuilder {
-        /// The builder type.
-        type Builder;
-        /// Get a builder instance
-        fn builder() -> Self::Builder;
-        /// Convert the instance into the builder.
-        fn into_builder(self) -> Self::Builder;
-    }
+/// Used to Fuse Tailwind Classes together.
+pub trait TailwindFuse {
+/// Strings are not guaranteed to be single class nor free of whitespace.
+fn fuse_classes(&self, class: &[&str]) -> String;
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
+
+/// Will merge Tailwind classes and handle conflicts using [`crate::merge::tw_merge_slice`]
+pub struct TailwindMerge;
+
+impl TailwindFuse for TailwindMerge {
+fn fuse_classes(&self, class: &[&str]) -> String {
+crate::merge::tw_merge_slice(class)
+}
+}
+
+/// Will simply join Tailwind classes together without handling conflicts
+pub struct TailwindJoin;
+
+impl TailwindFuse for TailwindJoin {
+fn fuse_classes(&self, class: &[&str]) -> String {
+class
+.iter()
+.flat_map(|s| s.split_whitespace())
+.map(|s| s.trim())
+.filter(|s| !s.is_empty())
+.fold(String::new(), |mut acc, s| {
+if !acc.is_empty() {
+acc.push(' ');
+}
+acc.push_str(s);
+acc
+})
+}
+}
+
+/// Derives a class for use with Tailwind CSS in Rust components.
+///
+/// Allows building components with first-class support for Tailwind.
+///
+/// Defaults to using [`crate::tw_merge()`] to resolve conflicts.
+///
+/// Resolves conflicts using the following merge order:
+/// - [`TwClass`] base class
+/// - [`TwVariant`] base class
+/// - [`TwVariant`] enum variant class
+/// - Override class with `with_class`
+///
+/// # Example
+///
+/// /// use tailwind_fuse::*;
+///
+/// #[derive(TwClass, Debug)]
+/// // Optional base class.
+/// #[tw(class = "flex")]
+/// struct Btn {
+///     size: BtnSize,
+///     color: BtnColor,
+/// }
+///
+/// #[derive(TwVariant, Debug)]
+/// enum BtnSize {
+///     #[tw(default, class = "h-9 px-4 py-2")]
+///     Default,
+///     #[tw(class = "h-8 px-3")]
+///     Sm,
+///     #[tw(class = "h-10 px-8")]
+///     Lg,
+/// }
+///
+/// #[derive(TwVariant, Debug)]
+/// enum BtnColor {
+///     #[tw(default, class = "bg-blue-500 text-blue-100")]
+///     Blue,
+///     #[tw(class = "bg-red-500 text-red-100")]
+///     Red,
+/// }
+///
+/// let btn = Btn { size: BtnSize::Default, color: BtnColor::Blue };
+/// assert_eq!(btn.to_class(), "flex h-9 px-4 py-2 bg-blue-500 text-blue-100");
+///
+/// let btn_variant = Btn::builder().color(BtnColor::Red).to_class();
+/// assert_eq!(btn_variant, "flex h-9 px-4 py-2 bg-red-500 text-red-100");
+/// ///
+pub use tailwind_fuse_macro::TwClass;
+
+/// Represents a customizable property (variant) of a UI element.
+/// Each variant must be an enum with a default case.
+///
+/// Use `.to_class()` to get the class for the variant and `.with_class()` to append a class.
+///
+/// # Example
+///
+/// /// use tailwind_fuse::*;
+///
+/// #[derive(TwVariant, Debug)]
+/// // Optional base class
+/// #[tw(class = "hover:brightness-50")]
+/// enum BtnColor {
+///     #[tw(default, class = "bg-blue-500 text-blue-100")]
+///     Default,
+///     #[tw(class = "bg-red-500 text-red-100")]
+///     Red,
+/// }
+///
+/// assert_eq!("hover:brightness-50 bg-blue-500 text-blue-100", BtnColor::Default.as_class());
+/// assert_eq!("hover:brightness-50 bg-red-500 text-red-100", BtnColor::Red.as_class());
+/// ///
+pub use tailwind_fuse_macro::TwVariant;
+
+/// A trait to convert a type into a Tailwind class.
+/// Implemented automatically for usages of [`TwClass`] and [`TwVariant`].
+pub trait IntoTailwindClass {
+/// Convert the type into a Tailwind class.
+fn to_class(&self) -> String;
+/// Append to the class (with override precedence) and return the new class.
+fn with_class(&self, class: impl AsRef<str>) -> String;
+}
+
+/// Converts a type into it's builder.
+/// Automatically implemented for usages of [`TwClass`].
+pub trait IntoBuilder {
+/// The builder type.
+type Builder;
+/// Get a builder instance
+fn builder() -> Self::Builder;
+/// Convert the instance into the builder.
+fn into_builder(self) -> Self::Builder;
+}
+}

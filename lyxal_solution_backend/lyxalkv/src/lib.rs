@@ -233,6 +233,9 @@ pub struct Options {
 	pub io_bg_limit_bytes: u64,
 	/// Foreground I/O limit in bytes/sec (0 = unlimited)
 	pub io_fg_limit_bytes: u64,
+
+	/// Internal option to bypass the core handle registry (used for tests)
+	pub(crate) internal_bypass_registry: bool,
 }
 
 impl Default for Options {
@@ -272,6 +275,7 @@ impl Default for Options {
 			chaos_write_prob: 0,
 			io_bg_limit_bytes: 0,
 			io_fg_limit_bytes: 0,
+			internal_bypass_registry: false,
 		}
 	}
 }

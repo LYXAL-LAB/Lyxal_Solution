@@ -1,5 +1,5 @@
-//! Advanced tests for the Date-picker component
-//! 
+﻿//! Advanced tests for the Date-picker component
+//!
 //! This module contains comprehensive tests for advanced date picker functionality,
 //! organized into focused sub-modules for better maintainability and readability.
 

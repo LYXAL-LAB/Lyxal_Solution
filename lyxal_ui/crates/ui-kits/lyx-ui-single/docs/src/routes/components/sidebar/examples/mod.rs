@@ -1,3 +1,3 @@
-mod sidebar;
+﻿mod sidebar;
 
 pub use sidebar::*;

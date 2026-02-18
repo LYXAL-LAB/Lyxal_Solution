@@ -1,4 +1,4 @@
-mod spinner;
+﻿mod spinner;
 mod spinner_badge;
 mod spinner_button;
 mod spinner_color;

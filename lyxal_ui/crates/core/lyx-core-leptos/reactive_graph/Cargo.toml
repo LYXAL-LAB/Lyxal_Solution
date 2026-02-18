@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "reactive_graph"
 version = "0.8.0"
 edition = "2024"

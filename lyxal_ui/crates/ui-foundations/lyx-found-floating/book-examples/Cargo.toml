@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx-ui-foundations-book-examples"
 version = "0.8.0"
 edition = "2024"
@@ -16,7 +16,7 @@ virtual = []
 
 convert_case = { version = "*" }
 
-leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr"] }
+leptos = { path = "../../../core/lyx-core-leptos/leptos", features = ["csr"] }
 tailwind_fuse = { path = "../../lyx-found-tailwind/fuse" }
 
 

@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "app"
 version = "0.8.0"
 edition = "2024"
@@ -35,7 +35,7 @@ wasm-bindgen = { workspace = true }
 
 
 
-axum = { workspace = true, optional = true }
+leptos_axum = { workspace = true, optional = true }
 leptos_axum = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
 tower = { workspace = true, optional = true }

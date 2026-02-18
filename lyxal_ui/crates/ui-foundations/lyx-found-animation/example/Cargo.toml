@@ -1,11 +1,11 @@
-[package]
+﻿[package]
 name = "lyx-ui-foundations-example"
 version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-leptos = { path = "../core/lyx-core-leptos/leptos", features = ["nightly"] }
-leptos_router = { path = "../core/lyx-core-leptos/router", features = ["nightly", "csr"] }
+leptos = { path = "../../../core/lyx-core-leptos/leptos", features = ["nightly"] }
+leptos_router = { path = "../../../core/lyx-core-leptos/router", features = ["nightly", "csr"] }
 wasm-bindgen = { version = "*" }
 web-sys = { version = "*", features = ["CanvasRenderingContext2d"] }
 lyx-found-animation = { path = "../" }

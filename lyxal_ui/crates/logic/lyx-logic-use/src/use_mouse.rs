@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
+﻿#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
 
 use crate::core::{IntoElementMaybeSignal, Position};
 use crate::{UseEventListenerOptions, UseWindow, use_event_listener_with_options, use_window};
@@ -17,8 +17,7 @@ use wasm_bindgen::{JsCast, JsValue};
 ///
 /// ## Basic Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_mouse, UseMouseReturn};
 /// #
 /// # #[component]
@@ -28,13 +27,11 @@ use wasm_bindgen::{JsCast, JsValue};
 /// } = use_mouse();
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// Touch is enabled by default. To only detect mouse changes, set `touch` to `false`.
 /// The `dragover` event is used to track mouse position while dragging.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_mouse_with_options, UseMouseOptions, UseMouseReturn};
 /// #
 /// # #[component]
@@ -46,14 +43,12 @@ use wasm_bindgen::{JsCast, JsValue};
 /// );
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Custom Extractor
 ///
 /// It's also possible to provide a custom extractor to get the position from the events.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::html::Div;
 /// use web_sys::MouseEvent;
 /// use lyx_logic_use::{use_mouse_with_options, UseMouseOptions, UseMouseReturn, UseMouseEventExtractor, UseMouseCoordType};
@@ -82,8 +77,7 @@ use wasm_bindgen::{JsCast, JsValue};
 ///     );
 ///     view! { <div node_ref=element></div> }
 /// }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

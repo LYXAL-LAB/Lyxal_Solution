@@ -1,4 +1,4 @@
-// The Scientific colour maps are licensed under a MIT License
+﻿// The Scientific colour maps are licensed under a MIT License
 //
 // Copyright (c) 2023, Fabio Crameri
 //
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// The Scientific colour maps by Fabio Crameri (Crameri 2018) prevent visual distortion of the data and exclusion of readers with colour­-vision deficiencies (Crameri et al., 2020) and the overview graphic is available via the open-access s-ink.org repository.
+// The Scientific colour maps by Fabio Crameri (Crameri 2018) prevent visual distortion of the data and exclusion of readers with colourÂ­-vision deficiencies (Crameri et al., 2020) and the overview graphic is available via the open-access s-ink.org repository.
 
 /*
 Notes:
@@ -38,67 +38,50 @@ Reading material:
 use super::{scheme::DivergingGradient, Colour, SequentialGradient};
 
 pub const BATLOW: [Colour; 10] = [
-    Colour::from_rgb(0x01, 0x19, 0x59),
-    Colour::from_rgb(0x10, 0x3F, 0x60),
-    Colour::from_rgb(0x1C, 0x5A, 0x62),
-    Colour::from_rgb(0x3C, 0x6D, 0x56),
-    Colour::from_rgb(0x68, 0x7B, 0x3E),
-    Colour::from_rgb(0x9D, 0x89, 0x2B),
-    Colour::from_rgb(0xD2, 0x93, 0x43),
-    Colour::from_rgb(0xF8, 0xA1, 0x7B),
-    Colour::from_rgb(0xFD, 0xB7, 0xBC),
-    Colour::from_rgb(0xFA, 0xCC, 0xFA),
+Colour::from_rgb(0x01, 0x19, 0x59),
+Colour::from_rgb(0x10, 0x3F, 0x60),
+Colour::from_rgb(0x1C, 0x5A, 0x62),
+Colour::from_rgb(0x3C, 0x6D, 0x56),
+Colour::from_rgb(0x68, 0x7B, 0x3E),
+Colour::from_rgb(0x9D, 0x89, 0x2B),
+Colour::from_rgb(0xD2, 0x93, 0x43),
+Colour::from_rgb(0xF8, 0xA1, 0x7B),
+Colour::from_rgb(0xFD, 0xB7, 0xBC),
+Colour::from_rgb(0xFA, 0xCC, 0xFA),
 ];
 
 pub const LIPARI: SequentialGradient = (
-    Colour::from_rgb(0x03, 0x13, 0x26),
-    &[
-        Colour::from_rgb(0x13, 0x38, 0x5A),
-        Colour::from_rgb(0x47, 0x58, 0x7A),
-        Colour::from_rgb(0x6B, 0x5F, 0x76),
-        Colour::from_rgb(0x8E, 0x61, 0x6C),
-        Colour::from_rgb(0xBC, 0x64, 0x61),
-        Colour::from_rgb(0xE5, 0x7B, 0x62),
-        Colour::from_rgb(0xE7, 0xA2, 0x79),
-        Colour::from_rgb(0xE9, 0xC9, 0x9F),
-        Colour::from_rgb(0xFD, 0xF5, 0xDA),
-    ],
+Colour::from_rgb(0x03, 0x13, 0x26),
+&[
+Colour::from_rgb(0x13, 0x38, 0x5A),
+Colour::from_rgb(0x47, 0x58, 0x7A),
+Colour::from_rgb(0x6B, 0x5F, 0x76),
+Colour::from_rgb(0x8E, 0x61, 0x6C),
+Colour::from_rgb(0xBC, 0x64, 0x61),
+Colour::from_rgb(0xE5, 0x7B, 0x62),
+Colour::from_rgb(0xE7, 0xA2, 0x79),
+Colour::from_rgb(0xE9, 0xC9, 0x9F),
+Colour::from_rgb(0xFD, 0xF5, 0xDA),
+],
 );
 
 pub const BERLIN: DivergingGradient = (
-    (
-        Colour::from_rgb(0x9E, 0xB0, 0xFF),
-        &[
-            Colour::from_rgb(0x5B, 0xA4, 0xDB),
-            Colour::from_rgb(0x2D, 0x75, 0x97),
-            Colour::from_rgb(0x1A, 0x42, 0x56),
-            Colour::from_rgb(0x11, 0x19, 0x1E),
-        ],
-    ),
-    (
-        Colour::from_rgb(0x28, 0x0D, 0x01),
-        &[
-            Colour::from_rgb(0x50, 0x18, 0x03),
-            Colour::from_rgb(0x8A, 0x3F, 0x2A),
-            Colour::from_rgb(0xC4, 0x75, 0x6A),
-            Colour::from_rgb(0xFF, 0xAD, 0xAD),
-        ],
-    ),
+(
+Colour::from_rgb(0x9E, 0xB0, 0xFF),
+&[
+Colour::from_rgb(0x5B, 0xA4, 0xDB),
+Colour::from_rgb(0x2D, 0x75, 0x97),
+Colour::from_rgb(0x1A, 0x42, 0x56),
+Colour::from_rgb(0x11, 0x19, 0x1E),
+],
+),
+(
+Colour::from_rgb(0x28, 0x0D, 0x01),
+&[
+Colour::from_rgb(0x50, 0x18, 0x03),
+Colour::from_rgb(0x8A, 0x3F, 0x2A),
+Colour::from_rgb(0xC4, 0x75, 0x6A),
+Colour::from_rgb(0xFF, 0xAD, 0xAD),
+],
+),
 );
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

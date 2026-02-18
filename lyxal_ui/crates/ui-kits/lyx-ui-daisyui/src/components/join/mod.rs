@@ -1,4 +1,4 @@
-//! # daisyUI Join Component
+﻿//! # daisyUI Join Component
 //!
 //! For more information, see: https://daisyui.com/components/join/
 
@@ -7,22 +7,3 @@ mod style;
 
 pub use component::*;
 pub use style::*;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

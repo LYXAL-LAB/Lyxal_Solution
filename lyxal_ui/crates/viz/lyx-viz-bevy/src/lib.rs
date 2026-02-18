@@ -1,4 +1,4 @@
-//! Embed an idiomatic Bevy app inside your Leptos app.
+﻿//! Embed an idiomatic Bevy app inside your Leptos app.
 //!
 //! [Send and Receive Messages ![Messages Demo](https://media.githubusercontent.com/media/Synphonyte/leptos-bevy-canvas/refs/heads/main/docs/unidir_messages.webp)](https://github.com/Synphonyte/leptos-bevy-canvas/tree/main/examples/unidir_messages)
 //!
@@ -19,8 +19,7 @@
 //!
 //! # Example
 //!
-//! ```
-//! use bevy::prelude::*;
+//! //! use bevy::prelude::*;
 //! use leptos::prelude::*;
 //! use leptos_bevy_canvas::prelude::*;
 //!
@@ -88,8 +87,7 @@
 //!
 //!     app
 //! }
-//! ```
-//!
+//! //!
 //! Please check the examples to see how to synchronize a `Resource` or a `Query`.
 //!
 //! # Compatibility
@@ -112,30 +110,9 @@ pub mod traits;
 mod utils;
 
 pub mod prelude {
-    pub use crate::app_extension::*;
-    pub use crate::leptos_component::*;
-    pub use crate::messages::*;
-    pub use crate::queries::*;
-    pub use crate::signal_synced::*;
+pub use crate::app_extension::*;
+pub use crate::leptos_component::*;
+pub use crate::messages::*;
+pub use crate::queries::*;
+pub use crate::signal_synced::*;
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

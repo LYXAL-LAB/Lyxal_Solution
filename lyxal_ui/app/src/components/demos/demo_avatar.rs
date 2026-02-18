@@ -1,4 +1,4 @@
-use leptos::prelude::*;
+﻿use leptos::prelude::*;
 
 use crate::components::ui::avatar::{Avatar, AvatarFallback, AvatarImage};
 
@@ -6,10 +6,10 @@ use crate::components::ui::avatar::{Avatar, AvatarFallback, AvatarImage};
 
 #[component]
 pub fn DemoAvatar() -> impl IntoView {
-    view! {
-        <Avatar>
-            <AvatarImage attr:src="/broken-image.png" attr:alt="@rustify.rs" />
-            <AvatarFallback>RS</AvatarFallback>
-        </Avatar>
-    }
+view! {
+<Avatar>
+<AvatarImage attr:src="/broken-image.png" attr:alt="@rustify.rs" />
+<AvatarFallback>RS</AvatarFallback>
+</Avatar>
+}
 }

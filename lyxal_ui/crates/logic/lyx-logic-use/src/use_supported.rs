@@ -1,11 +1,10 @@
-use leptos::prelude::*;
+﻿use leptos::prelude::*;
 
 /// SSR compatibe `is_supported`
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_supported, js};
 /// # use wasm_bindgen::JsValue;
 /// #
@@ -19,8 +18,7 @@ use leptos::prelude::*;
 /// }
 /// #    view! { }
 /// # }
-/// ```
-pub fn use_supported(callback: impl Fn() -> bool + Send + Sync + 'static) -> Signal<bool> {
+/// pub fn use_supported(callback: impl Fn() -> bool + Send + Sync + 'static) -> Signal<bool> {
 #[cfg(feature = "ssr")]
 {
 let _ = callback;

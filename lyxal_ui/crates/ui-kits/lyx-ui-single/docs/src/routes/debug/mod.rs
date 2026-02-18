@@ -1,4 +1,4 @@
-use leptos::prelude::*;
+﻿use leptos::prelude::*;
 
 mod button;
 mod checkbox;
@@ -26,19 +26,19 @@ use toggle::*;
 
 #[component]
 pub fn ReactiveDebug() -> impl IntoView {
-    view! {
-        <div class="space-y-6">
-            <DebugCheckbox />
-            <DebugInput />
-            <DebugTextarea />
-            <DebugFormReset />
-            <DebugSelect />
-            <DebugRadio />
-            <DebugSlider />
-            <DebugButton />
-            <DebugToggle />
-            <DebugDropdown />
-            <DebugContextMenu />
-        </div>
-    }
+view! {
+<div class="space-y-6">
+<DebugCheckbox />
+<DebugInput />
+<DebugTextarea />
+<DebugFormReset />
+<DebugSelect />
+<DebugRadio />
+<DebugSlider />
+<DebugButton />
+<DebugToggle />
+<DebugDropdown />
+<DebugContextMenu />
+</div>
+}
 }

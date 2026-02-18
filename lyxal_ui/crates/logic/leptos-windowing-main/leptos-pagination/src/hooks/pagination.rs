@@ -1,10 +1,10 @@
-use std::fmt::Debug;
+﻿use std::fmt::Debug;
 
 use default_struct_builder::DefaultBuilder;
 use leptos::prelude::*;
 use leptos_windowing::{
-    InternalLoader, ItemWindow,
-    hook::{UseLoadOnDemandResult, use_load_on_demand},
+InternalLoader, ItemWindow,
+hook::{UseLoadOnDemandResult, use_load_on_demand},
 };
 use reactive_stores::Store;
 
@@ -18,8 +18,7 @@ use crate::{PaginationState, PaginationStateStoreFields};
 ///
 /// ## Usage
 ///
-/// ```
-/// # use std::ops::Range;
+/// /// # use std::ops::Range;
 /// #
 /// # use leptos_pagination::{use_pagination, use_pagination_controls, UsePaginationOptions, UsePaginationControlsOptions, PaginationState, MemoryLoader};
 /// #
@@ -58,8 +57,7 @@ use crate::{PaginationState, PaginationStateStoreFields};
 ///
 /// // Use this to control the pagination
 /// let pagination_controls = use_pagination_controls(state, UsePaginationControlsOptions::default());
-/// ```
-///
+/// ///
 /// ## Paramters
 ///
 /// - `state`: The pagination state. Used to communicate between the pagination controls and this component.
@@ -68,98 +66,98 @@ use crate::{PaginationState, PaginationStateStoreFields};
 /// - `options`: Additional options for the pagination logic.
 #[must_use]
 pub fn use_pagination<T, L, Q, M>(
-    state: Store<PaginationState>,
-    loader: L,
-    query: impl Into<Signal<Q>>,
-    item_count_per_page: impl Into<Signal<usize>>,
-    options: UsePaginationOptions,
+state: Store<PaginationState>,
+loader: L,
+query: impl Into<Signal<Q>>,
+item_count_per_page: impl Into<Signal<usize>>,
+options: UsePaginationOptions,
 ) -> ItemWindow<T>
 where
-    T: Send + Sync + 'static,
-    L: InternalLoader<M, Item = T, Query = Q> + 'static,
-    L::Error: Send + Sync,
-    Q: Send + Sync + 'static,
+T: Send + Sync + 'static,
+L: InternalLoader<M, Item = T, Query = Q> + 'static,
+L::Error: Send + Sync,
+Q: Send + Sync + 'static,
 {
-    let UsePaginationOptions {
-        overscan_page_count,
-    } = options;
+let UsePaginationOptions {
+overscan_page_count,
+} = options;
 
-    let item_count_per_page = item_count_per_page.into();
+let item_count_per_page = item_count_per_page.into();
 
-    let item_count = RwSignal::new(None::<usize>);
+let item_count = RwSignal::new(None::<usize>);
 
-    Effect::new(move || {
-        if let Some(item_count) = item_count.get() {
-            state
-                .page_count()
-                .set(Some(item_count.div_ceil(item_count_per_page.get())));
-        }
-    });
+Effect::new(move || {
+if let Some(item_count) = item_count.get() {
+state
+.page_count()
+.set(Some(item_count.div_ceil(item_count_per_page.get())));
+}
+});
 
-    let start_index_to_load = Signal::derive(move || {
-        let current_page = state.current_page().get();
-        current_page.saturating_sub(overscan_page_count) * item_count_per_page.get()
-    });
+let start_index_to_load = Signal::derive(move || {
+let current_page = state.current_page().get();
+current_page.saturating_sub(overscan_page_count) * item_count_per_page.get()
+});
 
-    let end_index_to_load = Signal::derive(move || {
-        let current_page = state.current_page().get();
-        (current_page + overscan_page_count) * item_count_per_page.get()
-    });
+let end_index_to_load = Signal::derive(move || {
+let current_page = state.current_page().get();
+(current_page + overscan_page_count) * item_count_per_page.get()
+});
 
-    let range_to_load = Memo::new(move |_| {
-        let start_index = start_index_to_load.get();
-        let end_index = end_index_to_load.get();
+let range_to_load = Memo::new(move |_| {
+let start_index = start_index_to_load.get();
+let end_index = end_index_to_load.get();
 
-        start_index..end_index
-    });
+start_index..end_index
+});
 
-    let range_to_display = Memo::new(move |_| {
-        let item_count_per_page = item_count_per_page.get();
-        let start_index = state.current_page().get() * item_count_per_page;
-        let end_index = start_index + item_count_per_page;
+let range_to_display = Memo::new(move |_| {
+let item_count_per_page = item_count_per_page.get();
+let start_index = state.current_page().get() * item_count_per_page;
+let end_index = start_index + item_count_per_page;
 
-        start_index..end_index
-    });
+start_index..end_index
+});
 
-    let UseLoadOnDemandResult {
-        item_count_result,
-        item_window,
-    } = use_load_on_demand(range_to_load, range_to_display, loader, query);
+let UseLoadOnDemandResult {
+item_count_result,
+item_window,
+} = use_load_on_demand(range_to_load, range_to_display, loader, query);
 
-    Effect::new(move || {
-        match &*item_count_result.read() {
-            Ok(None) => {
-                *state.page_count_error().write() =
-                    Some("Data source didn't provide an item/page count".to_string())
-            }
-            Ok(Some(count)) => {
-                // This sets the page_count. See effect above.
-                item_count.set(Some(*count));
-                *state.page_count_error().write() = None;
-            }
-            Err(err) => {
-                *state.page_count_error().write() =
-                    Some(format!("Error fetching item/page count: {err:?}"))
-            }
-        }
-    });
+Effect::new(move || {
+match &*item_count_result.read() {
+Ok(None) => {
+*state.page_count_error().write() =
+Some("Data source didn't provide an item/page count".to_string())
+}
+Ok(Some(count)) => {
+// This sets the page_count. See effect above.
+item_count.set(Some(*count));
+*state.page_count_error().write() = None;
+}
+Err(err) => {
+*state.page_count_error().write() =
+Some(format!("Error fetching item/page count: {err:?}"))
+}
+}
+});
 
-    item_window
+item_window
 }
 
 #[derive(Debug, Clone, DefaultBuilder)]
 pub struct UsePaginationOptions {
-    /// How many pages to load before and after the current page.
-    ///
-    /// A value of 1 means that the current page as well as the one before and after will be loaded.
-    /// Defaults to 1.
-    overscan_page_count: usize,
+/// How many pages to load before and after the current page.
+///
+/// A value of 1 means that the current page as well as the one before and after will be loaded.
+/// Defaults to 1.
+overscan_page_count: usize,
 }
 
 impl Default for UsePaginationOptions {
-    fn default() -> Self {
-        Self {
-            overscan_page_count: 1,
-        }
-    }
+fn default() -> Self {
+Self {
+overscan_page_count: 1,
+}
+}
 }

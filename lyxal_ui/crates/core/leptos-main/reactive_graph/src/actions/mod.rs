@@ -1,4 +1,4 @@
-//! Reactive primitives to asynchronously update some value.
+﻿//! Reactive primitives to asynchronously update some value.
 
 mod action;
 mod multi_action;

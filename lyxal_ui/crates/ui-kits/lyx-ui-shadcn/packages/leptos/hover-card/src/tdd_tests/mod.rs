@@ -1,5 +1,5 @@
-//! TDD tests for the Hover-card component
-//! 
+﻿//! TDD tests for the Hover-card component
+//!
 //! This module contains comprehensive test-driven development tests for the Hover-card component,
 //! organized into focused sub-modules for better maintainability and readability.
 

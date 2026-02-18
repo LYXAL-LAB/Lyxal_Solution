@@ -1,4 +1,4 @@
-#![deny(unused_crate_dependencies)]
+﻿#![deny(unused_crate_dependencies)]
 
 mod mount_style;
 #[cfg(feature = "builtin_toast")]

@@ -1,4 +1,4 @@
-mod checkbox;
+﻿mod checkbox;
 mod group;
 
 pub use checkbox::*;
@@ -8,6 +8,6 @@ use crate::Reactive;
 
 #[derive(Clone)]
 pub struct CheckboxGroupContext {
-    pub invalid: Reactive<bool>,
-    pub value: Reactive<Vec<String>>,
+pub invalid: Reactive<bool>,
+pub value: Reactive<Vec<String>>,
 }

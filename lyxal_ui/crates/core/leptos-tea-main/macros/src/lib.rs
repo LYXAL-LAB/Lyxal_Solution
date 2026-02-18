@@ -1,4 +1,4 @@
-// macro_rules! declare_model {
+﻿// macro_rules! declare_model {
 //   (
 //     $( #[$model_meta:meta] )*
 //     $vis:vis struct $model:ident {
@@ -201,9 +201,9 @@ use proc_macro_error::proc_macro_error;
 #[proc_macro_derive(Model, attributes(model))]
 #[proc_macro_error]
 pub fn model(stream: proc_macro::TokenStream) -> proc_macro::TokenStream {
-  let ast = syn::parse_macro_input!(stream as syn::DeriveInput);
+let ast = syn::parse_macro_input!(stream as syn::DeriveInput);
 
-  let model = model::model(ast);
+let model = model::model(ast);
 
-  codegen::codegen(model).into()
+codegen::codegen(model).into()
 }

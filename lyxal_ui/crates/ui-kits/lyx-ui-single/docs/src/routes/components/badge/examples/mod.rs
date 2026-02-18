@@ -1,4 +1,4 @@
-mod badge;
+﻿mod badge;
 mod badge_icon;
 mod badge_invalid;
 mod badge_link;

@@ -1,4 +1,4 @@
-use leptos::prelude::*;
+﻿use leptos::prelude::*;
 use std::ops::{Deref, DerefMut};
 
 /// A signal of an optional send-wrapped type `T` that is always `None` on the server but behaves

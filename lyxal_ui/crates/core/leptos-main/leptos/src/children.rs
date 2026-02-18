@@ -1,12 +1,12 @@
-use crate::into_view::{IntoView, View};
+﻿use crate::into_view::{IntoView, View};
 use std::{
-    fmt::{self, Debug},
-    sync::Arc,
+fmt::{self, Debug},
+sync::Arc,
 };
 use tachys::view::{
-    any_view::{AnyView, IntoAny},
-    fragment::{Fragment, IntoFragment},
-    RenderHtml,
+any_view::{AnyView, IntoAny},
+fragment::{Fragment, IntoFragment},
+RenderHtml,
 };
 
 /// The most common type for the `children` property on components,
@@ -51,8 +51,7 @@ type BoxedChildrenFn = Box<dyn Fn() -> AnyView + Send>;
 ///
 /// ## Examples
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::html::p;
 /// # use leptos::IntoView;
 /// # use leptos_macro::component;
@@ -85,10 +84,10 @@ type BoxedChildrenFn = Box<dyn Fn() -> AnyView + Send>;
 ///     )
 /// }
 pub trait ToChildren<F> {
-    /// Convert the provided type (generally a closure) to Self (generally a "children" type,
-    /// e.g., [Children]). See the implementations to see exactly which input types are supported
-    /// and which "children" type they are converted to.
-    fn to_children(f: F) -> Self;
+/// Convert the provided type (generally a closure) to Self (generally a "children" type,
+/// e.g., [Children]). See the implementations to see exactly which input types are supported
+/// and which "children" type they are converted to.
+fn to_children(f: F) -> Self;
 }
 
 /// Compiler optimisation, can be used with certain type to avoid unique closures in the view!{} macro.
@@ -96,149 +95,149 @@ pub struct ChildrenOptContainer<T>(pub T);
 
 impl<F, C> ToChildren<F> for Children
 where
-    F: FnOnce() -> C + Send + 'static,
-    C: RenderHtml + Send + 'static,
+F: FnOnce() -> C + Send + 'static,
+C: RenderHtml + Send + 'static,
 {
-    #[inline]
-    fn to_children(f: F) -> Self {
-        Box::new(move || f().into_any())
-    }
+#[inline]
+fn to_children(f: F) -> Self {
+Box::new(move || f().into_any())
+}
 }
 
 impl<T> ToChildren<ChildrenOptContainer<T>> for Children
 where
-    T: IntoAny + Send + 'static,
+T: IntoAny + Send + 'static,
 {
-    #[inline]
-    fn to_children(t: ChildrenOptContainer<T>) -> Self {
-        Box::new(move || t.0.into_any())
-    }
+#[inline]
+fn to_children(t: ChildrenOptContainer<T>) -> Self {
+Box::new(move || t.0.into_any())
+}
 }
 
 impl<F, C> ToChildren<F> for ChildrenFn
 where
-    F: Fn() -> C + Send + Sync + 'static,
-    C: RenderHtml + Send + 'static,
+F: Fn() -> C + Send + Sync + 'static,
+C: RenderHtml + Send + 'static,
 {
-    #[inline]
-    fn to_children(f: F) -> Self {
-        Arc::new(move || f().into_any())
-    }
+#[inline]
+fn to_children(f: F) -> Self {
+Arc::new(move || f().into_any())
+}
 }
 
 impl<T> ToChildren<ChildrenOptContainer<T>> for ChildrenFn
 where
-    T: IntoAny + Clone + Send + Sync + 'static,
+T: IntoAny + Clone + Send + Sync + 'static,
 {
-    #[inline]
-    fn to_children(t: ChildrenOptContainer<T>) -> Self {
-        Arc::new(move || t.0.clone().into_any())
-    }
+#[inline]
+fn to_children(t: ChildrenOptContainer<T>) -> Self {
+Arc::new(move || t.0.clone().into_any())
+}
 }
 
 impl<F, C> ToChildren<F> for ChildrenFnMut
 where
-    F: Fn() -> C + Send + 'static,
-    C: RenderHtml + Send + 'static,
+F: Fn() -> C + Send + 'static,
+C: RenderHtml + Send + 'static,
 {
-    #[inline]
-    fn to_children(f: F) -> Self {
-        Box::new(move || f().into_any())
-    }
+#[inline]
+fn to_children(f: F) -> Self {
+Box::new(move || f().into_any())
+}
 }
 
 impl<T> ToChildren<ChildrenOptContainer<T>> for ChildrenFnMut
 where
-    T: IntoAny + Clone + Send + 'static,
+T: IntoAny + Clone + Send + 'static,
 {
-    #[inline]
-    fn to_children(t: ChildrenOptContainer<T>) -> Self {
-        Box::new(move || t.0.clone().into_any())
-    }
+#[inline]
+fn to_children(t: ChildrenOptContainer<T>) -> Self {
+Box::new(move || t.0.clone().into_any())
+}
 }
 
 impl<F, C> ToChildren<F> for BoxedChildrenFn
 where
-    F: Fn() -> C + Send + 'static,
-    C: RenderHtml + Send + 'static,
+F: Fn() -> C + Send + 'static,
+C: RenderHtml + Send + 'static,
 {
-    #[inline]
-    fn to_children(f: F) -> Self {
-        Box::new(move || f().into_any())
-    }
+#[inline]
+fn to_children(f: F) -> Self {
+Box::new(move || f().into_any())
+}
 }
 
 impl<T> ToChildren<ChildrenOptContainer<T>> for BoxedChildrenFn
 where
-    T: IntoAny + Clone + Send + 'static,
+T: IntoAny + Clone + Send + 'static,
 {
-    #[inline]
-    fn to_children(t: ChildrenOptContainer<T>) -> Self {
-        Box::new(move || t.0.clone().into_any())
-    }
+#[inline]
+fn to_children(t: ChildrenOptContainer<T>) -> Self {
+Box::new(move || t.0.clone().into_any())
+}
 }
 
 impl<F, C> ToChildren<F> for ChildrenFragment
 where
-    F: FnOnce() -> C + Send + 'static,
-    C: IntoFragment,
+F: FnOnce() -> C + Send + 'static,
+C: IntoFragment,
 {
-    #[inline]
-    fn to_children(f: F) -> Self {
-        Box::new(move || f().into_fragment())
-    }
+#[inline]
+fn to_children(f: F) -> Self {
+Box::new(move || f().into_fragment())
+}
 }
 
 impl<T> ToChildren<ChildrenOptContainer<T>> for ChildrenFragment
 where
-    T: IntoAny + Send + 'static,
+T: IntoAny + Send + 'static,
 {
-    #[inline]
-    fn to_children(t: ChildrenOptContainer<T>) -> Self {
-        Box::new(move || Fragment::new(vec![t.0.into_any()]))
-    }
+#[inline]
+fn to_children(t: ChildrenOptContainer<T>) -> Self {
+Box::new(move || Fragment::new(vec![t.0.into_any()]))
+}
 }
 
 impl<F, C> ToChildren<F> for ChildrenFragmentFn
 where
-    F: Fn() -> C + Send + 'static,
-    C: IntoFragment,
+F: Fn() -> C + Send + 'static,
+C: IntoFragment,
 {
-    #[inline]
-    fn to_children(f: F) -> Self {
-        Arc::new(move || f().into_fragment())
-    }
+#[inline]
+fn to_children(f: F) -> Self {
+Arc::new(move || f().into_fragment())
+}
 }
 
 impl<T> ToChildren<ChildrenOptContainer<T>> for ChildrenFragmentFn
 where
-    T: IntoAny + Clone + Send + 'static,
+T: IntoAny + Clone + Send + 'static,
 {
-    #[inline]
-    fn to_children(t: ChildrenOptContainer<T>) -> Self {
-        Arc::new(move || Fragment::new(vec![t.0.clone().into_any()]))
-    }
+#[inline]
+fn to_children(t: ChildrenOptContainer<T>) -> Self {
+Arc::new(move || Fragment::new(vec![t.0.clone().into_any()]))
+}
 }
 
 impl<F, C> ToChildren<F> for ChildrenFragmentMut
 where
-    F: FnMut() -> C + Send + 'static,
-    C: IntoFragment,
+F: FnMut() -> C + Send + 'static,
+C: IntoFragment,
 {
-    #[inline]
-    fn to_children(mut f: F) -> Self {
-        Box::new(move || f().into_fragment())
-    }
+#[inline]
+fn to_children(mut f: F) -> Self {
+Box::new(move || f().into_fragment())
+}
 }
 
 impl<T> ToChildren<ChildrenOptContainer<T>> for ChildrenFragmentMut
 where
-    T: IntoAny + Clone + Send + 'static,
+T: IntoAny + Clone + Send + 'static,
 {
-    #[inline]
-    fn to_children(t: ChildrenOptContainer<T>) -> Self {
-        Box::new(move || Fragment::new(vec![t.0.clone().into_any()]))
-    }
+#[inline]
+fn to_children(t: ChildrenOptContainer<T>) -> Self {
+Box::new(move || Fragment::new(vec![t.0.clone().into_any()]))
+}
 }
 
 /// New-type wrapper for a function that returns a view with `From` and `Default` traits implemented
@@ -247,36 +246,36 @@ where
 pub struct ViewFn(Arc<dyn Fn() -> AnyView + Send + Sync + 'static>);
 
 impl Default for ViewFn {
-    fn default() -> Self {
-        Self(Arc::new(|| ().into_any()))
-    }
+fn default() -> Self {
+Self(Arc::new(|| ().into_any()))
+}
 }
 
 impl<F, C> From<F> for ViewFn
 where
-    F: Fn() -> C + Send + Sync + 'static,
-    C: RenderHtml + Send + 'static,
+F: Fn() -> C + Send + Sync + 'static,
+C: RenderHtml + Send + 'static,
 {
-    fn from(value: F) -> Self {
-        Self(Arc::new(move || value().into_any()))
-    }
+fn from(value: F) -> Self {
+Self(Arc::new(move || value().into_any()))
+}
 }
 
 impl<C> From<View<C>> for ViewFn
 where
-    C: Clone + Send + Sync + 'static,
-    View<C>: IntoAny,
+C: Clone + Send + Sync + 'static,
+View<C>: IntoAny,
 {
-    fn from(value: View<C>) -> Self {
-        Self(Arc::new(move || value.clone().into_any()))
-    }
+fn from(value: View<C>) -> Self {
+Self(Arc::new(move || value.clone().into_any()))
+}
 }
 
 impl ViewFn {
-    /// Execute the wrapped function
-    pub fn run(&self) -> AnyView {
-        (self.0)()
-    }
+/// Execute the wrapped function
+pub fn run(&self) -> AnyView {
+(self.0)()
+}
 }
 
 /// New-type wrapper for a function, which will only be called once and returns a view with `From` and
@@ -284,36 +283,36 @@ impl ViewFn {
 pub struct ViewFnOnce(Box<dyn FnOnce() -> AnyView + Send + 'static>);
 
 impl Default for ViewFnOnce {
-    fn default() -> Self {
-        Self(Box::new(|| ().into_any()))
-    }
+fn default() -> Self {
+Self(Box::new(|| ().into_any()))
+}
 }
 
 impl<F, C> From<F> for ViewFnOnce
 where
-    F: FnOnce() -> C + Send + 'static,
-    C: RenderHtml + Send + 'static,
+F: FnOnce() -> C + Send + 'static,
+C: RenderHtml + Send + 'static,
 {
-    fn from(value: F) -> Self {
-        Self(Box::new(move || value().into_any()))
-    }
+fn from(value: F) -> Self {
+Self(Box::new(move || value().into_any()))
+}
 }
 
 impl<C> From<View<C>> for ViewFnOnce
 where
-    C: Send + Sync + 'static,
-    View<C>: IntoAny,
+C: Send + Sync + 'static,
+View<C>: IntoAny,
 {
-    fn from(value: View<C>) -> Self {
-        Self(Box::new(move || value.into_any()))
-    }
+fn from(value: View<C>) -> Self {
+Self(Box::new(move || value.into_any()))
+}
 }
 
 impl ViewFnOnce {
-    /// Execute the wrapped function
-    pub fn run(self) -> AnyView {
-        (self.0)()
-    }
+/// Execute the wrapped function
+pub fn run(self) -> AnyView {
+(self.0)()
+}
 }
 
 /// A typed equivalent to [`Children`], which takes a generic but preserves type information to
@@ -321,32 +320,32 @@ impl ViewFnOnce {
 pub struct TypedChildren<T>(Box<dyn FnOnce() -> View<T> + Send>);
 
 impl<T> TypedChildren<T> {
-    /// Extracts the inner `children` function.
-    pub fn into_inner(self) -> impl FnOnce() -> View<T> + Send {
-        self.0
-    }
+/// Extracts the inner `children` function.
+pub fn into_inner(self) -> impl FnOnce() -> View<T> + Send {
+self.0
+}
 }
 
 impl<F, C> ToChildren<F> for TypedChildren<C>
 where
-    F: FnOnce() -> C + Send + 'static,
-    C: IntoView,
-    C::AsyncOutput: Send,
+F: FnOnce() -> C + Send + 'static,
+C: IntoView,
+C::AsyncOutput: Send,
 {
-    #[inline]
-    fn to_children(f: F) -> Self {
-        TypedChildren(Box::new(move || f().into_view()))
-    }
+#[inline]
+fn to_children(f: F) -> Self {
+TypedChildren(Box::new(move || f().into_view()))
+}
 }
 
 impl<T> ToChildren<ChildrenOptContainer<T>> for TypedChildren<T>
 where
-    T: IntoView + 'static,
+T: IntoView + 'static,
 {
-    #[inline]
-    fn to_children(t: ChildrenOptContainer<T>) -> Self {
-        TypedChildren(Box::new(move || t.0.into_view()))
-    }
+#[inline]
+fn to_children(t: ChildrenOptContainer<T>) -> Self {
+TypedChildren(Box::new(move || t.0.into_view()))
+}
 }
 
 /// A typed equivalent to [`ChildrenFnMut`], which takes a generic but preserves type information to
@@ -354,38 +353,38 @@ where
 pub struct TypedChildrenMut<T>(Box<dyn FnMut() -> View<T> + Send>);
 
 impl<T> Debug for TypedChildrenMut<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("TypedChildrenMut").finish()
-    }
+fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+f.debug_tuple("TypedChildrenMut").finish()
+}
 }
 
 impl<T> TypedChildrenMut<T> {
-    /// Extracts the inner `children` function.
-    pub fn into_inner(self) -> impl FnMut() -> View<T> + Send {
-        self.0
-    }
+/// Extracts the inner `children` function.
+pub fn into_inner(self) -> impl FnMut() -> View<T> + Send {
+self.0
+}
 }
 
 impl<F, C> ToChildren<F> for TypedChildrenMut<C>
 where
-    F: FnMut() -> C + Send + 'static,
-    C: IntoView,
-    C::AsyncOutput: Send,
+F: FnMut() -> C + Send + 'static,
+C: IntoView,
+C::AsyncOutput: Send,
 {
-    #[inline]
-    fn to_children(mut f: F) -> Self {
-        TypedChildrenMut(Box::new(move || f().into_view()))
-    }
+#[inline]
+fn to_children(mut f: F) -> Self {
+TypedChildrenMut(Box::new(move || f().into_view()))
+}
 }
 
 impl<T> ToChildren<ChildrenOptContainer<T>> for TypedChildrenMut<T>
 where
-    T: IntoView + Clone + 'static,
+T: IntoView + Clone + 'static,
 {
-    #[inline]
-    fn to_children(t: ChildrenOptContainer<T>) -> Self {
-        TypedChildrenMut(Box::new(move || t.0.clone().into_view()))
-    }
+#[inline]
+fn to_children(t: ChildrenOptContainer<T>) -> Self {
+TypedChildrenMut(Box::new(move || t.0.clone().into_view()))
+}
 }
 
 /// A typed equivalent to [`ChildrenFn`], which takes a generic but preserves type information to
@@ -393,43 +392,43 @@ where
 pub struct TypedChildrenFn<T>(Arc<dyn Fn() -> View<T> + Send + Sync>);
 
 impl<T> Debug for TypedChildrenFn<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("TypedChildrenFn").finish()
-    }
+fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+f.debug_tuple("TypedChildrenFn").finish()
+}
 }
 
 impl<T> Clone for TypedChildrenFn<T> {
-    // Manual implementation to avoid the `T: Clone` bound.
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
+// Manual implementation to avoid the `T: Clone` bound.
+fn clone(&self) -> Self {
+Self(self.0.clone())
+}
 }
 
 impl<T> TypedChildrenFn<T> {
-    /// Extracts the inner `children` function.
-    pub fn into_inner(self) -> Arc<dyn Fn() -> View<T> + Send + Sync> {
-        self.0
-    }
+/// Extracts the inner `children` function.
+pub fn into_inner(self) -> Arc<dyn Fn() -> View<T> + Send + Sync> {
+self.0
+}
 }
 
 impl<F, C> ToChildren<F> for TypedChildrenFn<C>
 where
-    F: Fn() -> C + Send + Sync + 'static,
-    C: IntoView,
-    C::AsyncOutput: Send,
+F: Fn() -> C + Send + Sync + 'static,
+C: IntoView,
+C::AsyncOutput: Send,
 {
-    #[inline]
-    fn to_children(f: F) -> Self {
-        TypedChildrenFn(Arc::new(move || f().into_view()))
-    }
+#[inline]
+fn to_children(f: F) -> Self {
+TypedChildrenFn(Arc::new(move || f().into_view()))
+}
 }
 
 impl<T> ToChildren<ChildrenOptContainer<T>> for TypedChildrenFn<T>
 where
-    T: IntoView + Clone + Sync + 'static,
+T: IntoView + Clone + Sync + 'static,
 {
-    #[inline]
-    fn to_children(t: ChildrenOptContainer<T>) -> Self {
-        TypedChildrenFn(Arc::new(move || t.0.clone().into_view()))
-    }
+#[inline]
+fn to_children(t: ChildrenOptContainer<T>) -> Self {
+TypedChildrenFn(Arc::new(move || t.0.clone().into_view()))
+}
 }

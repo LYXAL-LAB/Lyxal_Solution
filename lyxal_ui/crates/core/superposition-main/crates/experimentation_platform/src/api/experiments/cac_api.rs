@@ -1,4 +1,4 @@
-use std::str::FromStr;
+﻿use std::str::FromStr;
 
 use actix_http::header::{self, HeaderMap, HeaderName, HeaderValue};
 use actix_web::web::Data;
@@ -6,315 +6,315 @@ use reqwest::{Response, StatusCode};
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value};
 use service_utils::service::types::{
-    AppState, OrganisationId, WorkspaceContext, WorkspaceId,
+AppState, OrganisationId, WorkspaceContext, WorkspaceId,
 };
 use superposition_macros::{bad_argument, response_error, unexpected_error};
 use superposition_types::{
-    Cac, Condition, User,
-    api::{
-        config::ResolveConfigQuery,
-        context::{ContextBulkResponse, ContextValidationRequest},
-    },
-    custom_query::{DimensionQuery, QueryMap, QueryParam},
-    database::models::cac::Context as ContextResp,
-    result as superposition,
+Cac, Condition, User,
+api::{
+config::ResolveConfigQuery,
+context::{ContextBulkResponse, ContextValidationRequest},
+},
+custom_query::{DimensionQuery, QueryMap, QueryParam},
+database::models::cac::Context as ContextResp,
+result as superposition,
 };
 
 pub fn construct_header_map(
-    workspace_id: &WorkspaceId,
-    organisation_id: &OrganisationId,
-    other_headers: Vec<(&str, String)>,
+workspace_id: &WorkspaceId,
+organisation_id: &OrganisationId,
+other_headers: Vec<(&str, String)>,
 ) -> superposition::Result<HeaderMap> {
-    let mut headers = HeaderMap::new();
-    let workspace_val = HeaderValue::from_str(workspace_id).map_err(|err| {
-        log::error!("failed to set header: {}", err);
-        unexpected_error!("Something went wrong")
-    })?;
-    headers.insert(HeaderName::from_static("x-tenant"), workspace_val);
+let mut headers = HeaderMap::new();
+let workspace_val = HeaderValue::from_str(workspace_id).map_err(|err| {
+log::error!("failed to set header: {}", err);
+unexpected_error!("Something went wrong")
+})?;
+headers.insert(HeaderName::from_static("x-tenant"), workspace_val);
 
-    let org_val = HeaderValue::from_str(organisation_id).map_err(|err| {
-        log::error!("failed to set header: {}", err);
-        unexpected_error!("Something went wrong")
-    })?;
-    headers.insert(HeaderName::from_static("x-org-id"), org_val);
+let org_val = HeaderValue::from_str(organisation_id).map_err(|err| {
+log::error!("failed to set header: {}", err);
+unexpected_error!("Something went wrong")
+})?;
+headers.insert(HeaderName::from_static("x-org-id"), org_val);
 
-    for (header, value) in other_headers {
-        let header_name = HeaderName::from_str(header).map_err(|err| {
-            log::error!("failed to set header: {}", err);
-            unexpected_error!("Something went wrong")
-        })?;
+for (header, value) in other_headers {
+let header_name = HeaderName::from_str(header).map_err(|err| {
+log::error!("failed to set header: {}", err);
+unexpected_error!("Something went wrong")
+})?;
 
-        HeaderValue::from_str(value.as_str())
-            .map(|header_val| headers.insert(header_name, header_val))
-            .map_err(|err| {
-                log::error!("failed to set header: {}", err);
-                unexpected_error!("Something went wrong")
-            })?;
-    }
+HeaderValue::from_str(value.as_str())
+.map(|header_val| headers.insert(header_name, header_val))
+.map_err(|err| {
+log::error!("failed to set header: {}", err);
+unexpected_error!("Something went wrong")
+})?;
+}
 
-    Ok(headers)
+Ok(headers)
 }
 
 pub async fn parse_error_response(
-    response: reqwest::Response,
+response: reqwest::Response,
 ) -> superposition::Result<(StatusCode, superposition::ErrorResponse)> {
-    let status_code = response.status();
-    let error_response = response
-        .json::<superposition::ErrorResponse>()
-        .await
-        .map_err(|err: reqwest::Error| {
-            log::error!("failed to parse error response: {}", err);
-            unexpected_error!("Something went wrong")
-        })?;
-    log::error!("http call to CAC failed with err {:?}", error_response);
+let status_code = response.status();
+let error_response = response
+.json::<superposition::ErrorResponse>()
+.await
+.map_err(|err: reqwest::Error| {
+log::error!("failed to parse error response: {}", err);
+unexpected_error!("Something went wrong")
+})?;
+log::error!("http call to CAC failed with err {:?}", error_response);
 
-    Ok((status_code, error_response))
+Ok((status_code, error_response))
 }
 
 pub async fn process_cac_http_response<T: DeserializeOwned>(
-    response: Result<Response, reqwest::Error>,
+response: Result<Response, reqwest::Error>,
 ) -> superposition::Result<T> {
-    let internal_server_error = unexpected_error!("Something went wrong.");
-    match response {
-        Ok(res) if res.status().is_success() => {
-            let ok_resp = res.json::<T>().await.map_err(|err| {
-                log::error!("failed to parse JSON response with error: {}", err);
-                internal_server_error
-            })?;
-            Ok(ok_resp)
-        }
-        Ok(res) => {
-            log::error!("http call to CAC failed with status_code {}", res.status());
+let internal_server_error = unexpected_error!("Something went wrong.");
+match response {
+Ok(res) if res.status().is_success() => {
+let ok_resp = res.json::<T>().await.map_err(|err| {
+log::error!("failed to parse JSON response with error: {}", err);
+internal_server_error
+})?;
+Ok(ok_resp)
+}
+Ok(res) => {
+log::error!("http call to CAC failed with status_code {}", res.status());
 
-            if res.status().is_client_error() {
-                let (status_code, error_response) = parse_error_response(res).await?;
-                Err(response_error!(status_code, error_response.message))
-            } else {
-                Err(internal_server_error)
-            }
-        }
-        Err(err) => {
-            log::error!("reqwest failed to send request to CAC with error: {}", err);
-            Err(internal_server_error)
-        }
-    }
+if res.status().is_client_error() {
+let (status_code, error_response) = parse_error_response(res).await?;
+Err(response_error!(status_code, error_response.message))
+} else {
+Err(internal_server_error)
+}
+}
+Err(err) => {
+log::error!("reqwest failed to send request to CAC with error: {}", err);
+Err(internal_server_error)
+}
+}
 }
 
 pub async fn process_cac_bulk_operation_http_response(
-    response: Result<Response, reqwest::Error>,
+response: Result<Response, reqwest::Error>,
 ) -> superposition::Result<(Vec<ContextBulkResponse>, Option<String>)> {
-    let internal_server_error = unexpected_error!("Something went wrong.");
-    match response {
-        Ok(res) if res.status().is_success() => {
-            let config_version = res
-                .headers()
-                .get("x-config-version")
-                .and_then(|val| val.to_str().ok().map(String::from));
-            let bulk_resp =
-                res.json::<Vec<ContextBulkResponse>>()
-                    .await
-                    .map_err(|err| {
-                        log::error!("failed to parse JSON response with error: {}", err);
-                        internal_server_error
-                    })?;
-            Ok((bulk_resp, config_version))
-        }
-        Ok(res) => {
-            log::error!("http call to CAC failed with status_code {}", res.status());
+let internal_server_error = unexpected_error!("Something went wrong.");
+match response {
+Ok(res) if res.status().is_success() => {
+let config_version = res
+.headers()
+.get("x-config-version")
+.and_then(|val| val.to_str().ok().map(String::from));
+let bulk_resp =
+res.json::<Vec<ContextBulkResponse>>()
+.await
+.map_err(|err| {
+log::error!("failed to parse JSON response with error: {}", err);
+internal_server_error
+})?;
+Ok((bulk_resp, config_version))
+}
+Ok(res) => {
+log::error!("http call to CAC failed with status_code {}", res.status());
 
-            if res.status().is_client_error() {
-                let (status_code, error_response) = parse_error_response(res).await?;
-                Err(response_error!(status_code, error_response.message))
-            } else {
-                Err(internal_server_error)
-            }
-        }
-        Err(err) => {
-            log::error!("reqwest failed to send request to CAC with error: {}", err);
-            Err(internal_server_error)
-        }
-    }
+if res.status().is_client_error() {
+let (status_code, error_response) = parse_error_response(res).await?;
+Err(response_error!(status_code, error_response.message))
+} else {
+Err(internal_server_error)
+}
+}
+Err(err) => {
+log::error!("reqwest failed to send request to CAC with error: {}", err);
+Err(internal_server_error)
+}
+}
 }
 
 pub async fn get_partial_resolve_config(
-    user: &User,
-    state: &Data<AppState>,
-    exp_context: &Condition,
-    context_id: &str,
-    workspace_context: &WorkspaceContext,
+user: &User,
+state: &Data<AppState>,
+exp_context: &Condition,
+context_id: &str,
+workspace_context: &WorkspaceContext,
 ) -> superposition::Result<Map<String, Value>> {
-    let exp_context_dimension_value: &Map<String, Value> = exp_context;
+let exp_context_dimension_value: &Map<String, Value> = exp_context;
 
-    get_resolved_config(
-        user,
-        state,
-        &DimensionQuery::from(exp_context_dimension_value.clone()),
-        ResolveConfigQuery {
-            context_id: Some(context_id.to_string()),
-            ..Default::default()
-        },
-        workspace_context,
-    )
-    .await
+get_resolved_config(
+user,
+state,
+&DimensionQuery::from(exp_context_dimension_value.clone()),
+ResolveConfigQuery {
+context_id: Some(context_id.to_string()),
+..Default::default()
+},
+workspace_context,
+)
+.await
 }
 
 pub async fn get_resolved_config(
-    user: &User,
-    state: &Data<AppState>,
-    dimension_query: &DimensionQuery<QueryMap>,
-    resolve_params: ResolveConfigQuery,
-    workspace_context: &WorkspaceContext,
+user: &User,
+state: &Data<AppState>,
+dimension_query: &DimensionQuery<QueryMap>,
+resolve_params: ResolveConfigQuery,
+workspace_context: &WorkspaceContext,
 ) -> superposition::Result<Map<String, Value>> {
-    let http_client = state.http_client.clone();
-    let resolve_params = ResolveConfigQuery {
-        resolve_remote: Some(true),
-        // Forced latest version to ensure we get the most recent config from CAC.
-        // Without this, CAC falls back to the workspace's default version setting, which may cause issue.
-        version: Some("latest".to_string()),
-        ..resolve_params
-    };
+let http_client = state.http_client.clone();
+let resolve_params = ResolveConfigQuery {
+resolve_remote: Some(true),
+// Forced latest version to ensure we get the most recent config from CAC.
+// Without this, CAC falls back to the workspace's default version setting, which may cause issue.
+version: Some("latest".to_string()),
+..resolve_params
+};
 
-    let url = format!(
-        "{}/config/resolve?{}&{}",
-        state.cac_host,
-        resolve_params.to_query_param(),
-        dimension_query.to_query_param()
-    );
+let url = format!(
+"{}/config/resolve?{}&{}",
+state.cac_host,
+resolve_params.to_query_param(),
+dimension_query.to_query_param()
+);
 
-    let user_str = serde_json::to_string(user).map_err(|err| {
-        log::error!("Something went wrong, failed to stringify user data {err}");
-        unexpected_error!(
-            "Something went wrong, failed to stringify user data {}",
-            err
-        )
-    })?;
+let user_str = serde_json::to_string(user).map_err(|err| {
+log::error!("Something went wrong, failed to stringify user data {err}");
+unexpected_error!(
+"Something went wrong, failed to stringify user data {}",
+err
+)
+})?;
 
-    let extra_headers = vec![("x-user", user_str)];
+let extra_headers = vec![("x-user", user_str)];
 
-    let headers_map = construct_header_map(
-        &workspace_context.workspace_id,
-        &workspace_context.organisation_id,
-        extra_headers,
-    )?;
-    let response = http_client
-        .get(&url)
-        .headers(headers_map.into())
-        .header(
-            header::AUTHORIZATION,
-            format!("Internal {}", state.superposition_token),
-        )
-        .send()
-        .await;
+let headers_map = construct_header_map(
+&workspace_context.workspace_id,
+&workspace_context.organisation_id,
+extra_headers,
+)?;
+let response = http_client
+.get(&url)
+.headers(headers_map.into())
+.header(
+header::AUTHORIZATION,
+format!("Internal {}", state.superposition_token),
+)
+.send()
+.await;
 
-    process_cac_http_response(response).await
+process_cac_http_response(response).await
 }
 
 pub async fn get_context_override(
-    user: &User,
-    state: &Data<AppState>,
-    workspace_context: &WorkspaceContext,
-    context_id: String,
+user: &User,
+state: &Data<AppState>,
+workspace_context: &WorkspaceContext,
+context_id: String,
 ) -> superposition::Result<ContextResp> {
-    let http_client = state.http_client.clone();
-    let url = state.cac_host.clone() + "/context/" + context_id.as_ref();
-    let user_str = serde_json::to_string(user).map_err(|err| {
-        log::error!("Something went wrong, failed to stringify user data {err}");
-        unexpected_error!(
-            "Something went wrong, failed to stringify user data {}",
-            err
-        )
-    })?;
+let http_client = state.http_client.clone();
+let url = state.cac_host.clone() + "/context/" + context_id.as_ref();
+let user_str = serde_json::to_string(user).map_err(|err| {
+log::error!("Something went wrong, failed to stringify user data {err}");
+unexpected_error!(
+"Something went wrong, failed to stringify user data {}",
+err
+)
+})?;
 
-    let extra_headers = vec![("x-user", user_str)];
+let extra_headers = vec![("x-user", user_str)];
 
-    let headers_map = construct_header_map(
-        &workspace_context.workspace_id,
-        &workspace_context.organisation_id,
-        extra_headers,
-    )?;
-    let response = http_client
-        .get(&url)
-        .headers(headers_map.into())
-        .header(
-            header::AUTHORIZATION,
-            format!("Internal {}", state.superposition_token),
-        )
-        .send()
-        .await;
-    let resp_contexts = process_cac_http_response(response).await.map_err(|err| {
-        log::error!("Failed to fetch context during cac http call");
-        match err {
-            superposition::AppError::ResponseError(val) if val.status_code == StatusCode::NOT_FOUND => {
-                response_error!(StatusCode::PRECONDITION_FAILED, "Context not found in CAC for given experiment, you should discard this experiment")
-            }
-            _ => err,
-        }
-    })?;
-    Ok(resp_contexts)
+let headers_map = construct_header_map(
+&workspace_context.workspace_id,
+&workspace_context.organisation_id,
+extra_headers,
+)?;
+let response = http_client
+.get(&url)
+.headers(headers_map.into())
+.header(
+header::AUTHORIZATION,
+format!("Internal {}", state.superposition_token),
+)
+.send()
+.await;
+let resp_contexts = process_cac_http_response(response).await.map_err(|err| {
+log::error!("Failed to fetch context during cac http call");
+match err {
+superposition::AppError::ResponseError(val) if val.status_code == StatusCode::NOT_FOUND => {
+response_error!(StatusCode::PRECONDITION_FAILED, "Context not found in CAC for given experiment, you should discard this experiment")
+}
+_ => err,
+}
+})?;
+Ok(resp_contexts)
 }
 
 pub async fn validate_context(
-    state: &Data<AppState>,
-    condition: &Condition,
-    workspace_context: &WorkspaceContext,
-    user: &User,
+state: &Data<AppState>,
+condition: &Condition,
+workspace_context: &WorkspaceContext,
+user: &User,
 ) -> superposition::Result<()> {
-    let http_client = state.http_client.clone();
-    let url = state.cac_host.clone() + "/context/validate";
-    let user_str = serde_json::to_string(user).map_err(|err| {
-        log::error!("Something went wrong, failed to stringify user data {err}");
-        unexpected_error!(
-            "Something went wrong, failed to stringify user data {}",
-            err
-        )
-    })?;
+let http_client = state.http_client.clone();
+let url = state.cac_host.clone() + "/context/validate";
+let user_str = serde_json::to_string(user).map_err(|err| {
+log::error!("Something went wrong, failed to stringify user data {err}");
+unexpected_error!(
+"Something went wrong, failed to stringify user data {}",
+err
+)
+})?;
 
-    let extra_headers = vec![("x-user", user_str)];
+let extra_headers = vec![("x-user", user_str)];
 
-    let headers_map = construct_header_map(
-        &workspace_context.workspace_id,
-        &workspace_context.organisation_id,
-        extra_headers,
-    )?;
-    let payload = Cac::<Condition>::try_from((**condition).clone()).map_err(|err| {
-        log::error!("failed to decode condition with error : {}", err);
-        bad_argument!(err)
-    })?;
-    let payload = ContextValidationRequest { context: payload };
-    let response = http_client
-        .post(&url)
-        .headers(headers_map.into())
-        .header(
-            header::AUTHORIZATION,
-            format!("Internal {}", state.superposition_token),
-        )
-        .json(&payload)
-        .send()
-        .await;
-    match response {
-        Ok(res) if res.status() == StatusCode::OK => {
-            log::info!("Context validation successful");
-            Ok(())
-        }
-        Ok(res) => {
-            let error_message: Map<String, Value> = res.json().await.map_err(|err| {
-                log::error!("failed to parse Context validate error response: {}", err);
-                unexpected_error!("failed to parse Context validate error. Please checks the system logs")
-            })?;
-            let error_message = error_message.get("message")
-                .map(|err| err.as_str()
-                        .unwrap_or("The error message returned by the system could not be understood.")
-                )
-                .ok_or_else(|| unexpected_error!("failed to parse Context validate error. Please checks the system logs"))?;
-            log::error!(
-                "http call to context validate failed with error {}",
-                error_message
-            );
-            Err(bad_argument!(error_message))
-        }
-        Err(err) => {
-            log::error!("Context validation failed with the error: {err}");
-            Err(unexpected_error!(err))
-        }
-    }
+let headers_map = construct_header_map(
+&workspace_context.workspace_id,
+&workspace_context.organisation_id,
+extra_headers,
+)?;
+let payload = Cac::<Condition>::try_from((**condition).clone()).map_err(|err| {
+log::error!("failed to decode condition with error : {}", err);
+bad_argument!(err)
+})?;
+let payload = ContextValidationRequest { context: payload };
+let response = http_client
+.post(&url)
+.headers(headers_map.into())
+.header(
+header::AUTHORIZATION,
+format!("Internal {}", state.superposition_token),
+)
+.json(&payload)
+.send()
+.await;
+match response {
+Ok(res) if res.status() == StatusCode::OK => {
+log::info!("Context validation successful");
+Ok(())
+}
+Ok(res) => {
+let error_message: Map<String, Value> = res.json().await.map_err(|err| {
+log::error!("failed to parse Context validate error response: {}", err);
+unexpected_error!("failed to parse Context validate error. Please checks the system logs")
+})?;
+let error_message = error_message.get("message")
+.map(|err| err.as_str()
+.unwrap_or("The error message returned by the system could not be understood.")
+)
+.ok_or_else(|| unexpected_error!("failed to parse Context validate error. Please checks the system logs"))?;
+log::error!(
+"http call to context validate failed with error {}",
+error_message
+);
+Err(bad_argument!(error_message))
+}
+Err(err) => {
+log::error!("Context validation failed with the error: {err}");
+Err(unexpected_error!(err))
+}
+}
 }

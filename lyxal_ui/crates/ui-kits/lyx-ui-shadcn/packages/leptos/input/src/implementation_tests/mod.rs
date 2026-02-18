@@ -1,4 +1,4 @@
-// Implementation tests module for input component
+﻿// Implementation tests module for input component
 // Split from original 867-line file into focused modules
 
 pub mod validation_tests;

@@ -1,4 +1,4 @@
-use crate::Reactive;
+﻿use crate::Reactive;
 
 mod group;
 mod radio;
@@ -8,26 +8,7 @@ pub use radio::*;
 
 #[derive(Clone)]
 pub struct RadioGroupContext {
-    name: String,
-    invalid: Reactive<bool>,
-    value: Reactive<String>,
+name: String,
+invalid: Reactive<bool>,
+value: Reactive<String>,
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

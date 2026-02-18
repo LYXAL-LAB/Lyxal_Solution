@@ -1,4 +1,4 @@
-use default_struct_builder::DefaultBuilder;
+﻿use default_struct_builder::DefaultBuilder;
 use leptos::reactive::actions::Action;
 use leptos::reactive::wrappers::read::Signal;
 use leptos::{
@@ -18,8 +18,7 @@ use crate::{js_fut, sendwrap_fn, use_window};
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_service_worker_with_options, UseServiceWorkerOptions, UseServiceWorkerReturn};
 /// #
 /// # #[component]
@@ -38,8 +37,7 @@ use crate::{js_fut, sendwrap_fn, use_window};
 ///
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## SendWrapped Return
 ///
 /// The returned closures `check_for_update` and `skip_waiting` are sendwrapped functions. They can

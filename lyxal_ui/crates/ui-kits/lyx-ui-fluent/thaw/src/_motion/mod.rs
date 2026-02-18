@@ -1,18 +1,3 @@
-mod collapse_transition;
+﻿mod collapse_transition;
 
 pub use collapse_transition::*;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

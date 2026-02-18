@@ -1,4 +1,4 @@
-mod carousel;
+﻿mod carousel;
 mod content;
 mod item;
 mod next;
@@ -14,7 +14,7 @@ use leptos::prelude::*;
 
 #[derive(Clone)]
 pub struct CarouselContext {
-    pub current_item: RwSignal<i32>,
-    pub num_items: RwSignal<i32>,
-    pub ul_ref: NodeRef<leptos::html::Ul>,
+pub current_item: RwSignal<i32>,
+pub num_items: RwSignal<i32>,
+pub ul_ref: NodeRef<leptos::html::Ul>,
 }

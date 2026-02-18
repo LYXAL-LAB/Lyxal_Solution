@@ -1,17 +1,17 @@
-[package]
+﻿[package]
 name = "leptos_router_macro"
 version = "0.8.0"
 edition = "2024"
 [lib]
 proc-macro = true
 [dependencies]
-proc-macro-error2 = { version = "0.8.0", default-features = false }
+proc-macro-error2 = { version = "*", default-features = false }
 proc-macro2 = { version = "*", default-features = true }
 quote = { version = "*", default-features = true }
 syn = { version = "*", features = ["full"], default-features = true }
 [dev-dependencies]
 leptos = { path = "../leptos", version = "*" }
-router = { path = "../router", version = "*" }
+leptos_router = { path = "../router", version = "*" }
 leptos_macro = { path = "../leptos_macro", version = "*" }
 
 

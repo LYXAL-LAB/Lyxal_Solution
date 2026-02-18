@@ -1,4 +1,4 @@
-use crate::math::shared::use_simple_math;
+﻿use crate::math::shared::use_simple_math;
 use leptos::prelude::*;
 use leptos::reactive::wrappers::read::Signal;
 use num::Float;
@@ -13,8 +13,7 @@ use_simple_math!(
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::math::use_abs;
 /// #
 /// # #[component]
@@ -25,7 +24,6 @@ use_simple_math!(
 /// # assert_eq!(result.get(), 32.25);
 /// # view! { }
 /// # }
-/// ```
-// #[doc(cfg(feature = "math"))]
+/// // #[doc(cfg(feature = "math"))]
 abs
 );

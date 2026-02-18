@@ -1,5 +1,5 @@
-//! Implementation tests for the Label component
-//! 
+﻿//! Implementation tests for the Label component
+//!
 //! This module contains comprehensive tests for the Label component's implementation,
 //! organized into focused sub-modules for better maintainability and readability.
 

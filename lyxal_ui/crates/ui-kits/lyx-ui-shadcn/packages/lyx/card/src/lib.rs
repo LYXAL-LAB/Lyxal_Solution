@@ -1,4 +1,4 @@
-//! Leptos port of shadcn/ui card
+﻿//! Leptos port of shadcn/ui card
 
 mod default;
 mod new_york;
@@ -7,9 +7,9 @@ mod signal_managed;
 pub use default::{Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, CardVariant, InteractiveCard};
 pub use new_york::{Card as CardNewYork, CardHeader as CardHeaderNewYork, CardTitle as CardTitleNewYork, CardDescription as CardDescriptionNewYork, CardContent as CardContentNewYork, CardFooter as CardFooterNewYork};
 pub use signal_managed::{
-    SignalManagedCard, EnhancedCard, SignalManagedCardState,
-    SignalManagedCardHeader, SignalManagedCardTitle, SignalManagedCardDescription,
-    SignalManagedCardContent, SignalManagedCardFooter
+SignalManagedCard, EnhancedCard, SignalManagedCardState,
+SignalManagedCardHeader, SignalManagedCardTitle, SignalManagedCardDescription,
+SignalManagedCardContent, SignalManagedCardFooter
 };
 
 mod tests;

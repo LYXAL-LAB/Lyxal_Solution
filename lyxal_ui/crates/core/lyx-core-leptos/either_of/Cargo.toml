@@ -1,9 +1,9 @@
-[package]
+﻿[package]
 name = "either_of"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
-pin-project-lite = { version = "0.8.0", default-features = true }
+pin-project-lite = { version = "*", default-features = true }
 paste = { version = "*", default-features = true }
 [features]
 default = ["no_std"]

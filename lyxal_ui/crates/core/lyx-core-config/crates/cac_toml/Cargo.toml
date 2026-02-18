@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "cac_toml"
 version = "0.8.0"
 edition = "2024"

@@ -1,4 +1,4 @@
-use crate::core::IntoElementMaybeSignal;
+﻿use crate::core::IntoElementMaybeSignal;
 use crate::{UseEventListenerOptions, use_event_listener_with_options};
 use default_struct_builder::DefaultBuilder;
 use leptos::ev::{mouseenter, mouseleave};
@@ -14,8 +14,7 @@ use leptos::reactive::wrappers::read::Signal;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::html::Button;
 /// # use lyx_logic_use::use_element_hover;
 /// #
@@ -28,8 +27,7 @@ use leptos::reactive::wrappers::read::Signal;
 ///     <button node_ref=el>{ move || format!("{:?}", is_hovered.get()) }</button>
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

@@ -1,4 +1,4 @@
-//! An implementation of a fine-grained reactive system.
+﻿//! An implementation of a fine-grained reactive system.
 //!
 //! Fine-grained reactivity is an approach to modeling the flow of data through an interactive
 //! application by composing together three categories of reactive primitives:
@@ -12,8 +12,7 @@
 //! subscribe to them to respond to changes in their values. Effects and computations are "subscriber"
 //! nodes, because they can listen to changes in other values.
 //!
-//! ```rust
-//! # any_spawner::Executor::init_futures_executor();
+//! //! # any_spawner::Executor::init_futures_executor();
 //! # let owner = reactive_graph::owner::Owner::new(); owner.set();
 //! use reactive_graph::{
 //!     computed::ArcMemo,
@@ -36,8 +35,7 @@
 //! // updating `count` will propagate changes to the dependencies,
 //! // causing the effect to run again
 //! count.set(2);
-//! ```
-//!
+//! //!
 //! This reactivity is called "fine grained" because updating the value of a signal only affects
 //! the effects and computations that depend on its value, without requiring any diffing or update
 //! calculations for other values.
@@ -103,82 +101,81 @@ mod nightly;
 
 /// Reexports frequently-used traits.
 pub mod prelude {
-    pub use crate::{
-        into_reactive_value::IntoReactiveValue, owner::FromLocal, traits::*,
-    };
+pub use crate::{
+into_reactive_value::IntoReactiveValue, owner::FromLocal, traits::*,
+};
 }
 
 // TODO remove this, it's just useful while developing
 #[allow(unused)]
 #[doc(hidden)]
 pub fn log_warning(text: Arguments) {
-    #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-    {
-        web_sys::console::warn_1(&text.to_string().into());
-    }
-    #[cfg(all(
-        not(feature = "tracing"),
-        not(all(target_arch = "wasm32", target_os = "unknown"))
-    ))]
-    {
-        eprintln!("{text}");
-    }
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+{
+web_sys::console::warn_1(&text.to_string().into());
+}
+#[cfg(all(
+not(feature = "tracing"),
+not(all(target_arch = "wasm32", target_os = "unknown"))
+))]
+{
+eprintln!("{text}");
+}
 }
 
 /// Calls [`Executor::spawn`](any_spawner::Executor::spawn) on non-wasm targets and [`Executor::spawn_local`](any_spawner::Executor::spawn_local) on wasm targets, but ensures that the task also runs in the current arena, if
 /// multithreaded arena sandboxing is enabled.
 pub fn spawn(task: impl Future<Output = ()> + Send + 'static) {
-    #[cfg(feature = "sandboxed-arenas")]
-    let task = owner::Sandboxed::new(task);
+#[cfg(feature = "sandboxed-arenas")]
+let task = owner::Sandboxed::new(task);
 
-    #[cfg(not(target_family = "wasm"))]
-    any_spawner::Executor::spawn(task);
+#[cfg(not(target_family = "wasm"))]
+any_spawner::Executor::spawn(task);
 
-    #[cfg(target_family = "wasm")]
-    any_spawner::Executor::spawn_local(task);
+#[cfg(target_family = "wasm")]
+any_spawner::Executor::spawn_local(task);
 }
 
 /// Calls [`Executor::spawn_local`](any_spawner::Executor::spawn_local), but ensures that the task also runs in the current arena, if
 /// multithreaded arena sandboxing is enabled.
 pub fn spawn_local(task: impl Future<Output = ()> + 'static) {
-    #[cfg(feature = "sandboxed-arenas")]
-    let task = owner::Sandboxed::new(task);
+#[cfg(feature = "sandboxed-arenas")]
+let task = owner::Sandboxed::new(task);
 
-    any_spawner::Executor::spawn_local(task);
+any_spawner::Executor::spawn_local(task);
 }
 
 /// Calls [`Executor::spawn_local`](any_spawner::Executor), but ensures that the task runs under the current reactive [`Owner`](crate::owner::Owner) and observer.
 ///
 /// Does not cancel the task if the owner is cleaned up.
 pub fn spawn_local_scoped(task: impl Future<Output = ()> + 'static) {
-    let task = ScopedFuture::new(task);
+let task = ScopedFuture::new(task);
 
-    #[cfg(feature = "sandboxed-arenas")]
-    let task = owner::Sandboxed::new(task);
+#[cfg(feature = "sandboxed-arenas")]
+let task = owner::Sandboxed::new(task);
 
-    any_spawner::Executor::spawn_local(task);
+any_spawner::Executor::spawn_local(task);
 }
 
 /// Calls [`Executor::spawn_local`](any_spawner::Executor), but ensures that the task runs under the current reactive [`Owner`](crate::owner::Owner) and observer.
 ///
 /// Cancels the task if the owner is cleaned up.
 pub fn spawn_local_scoped_with_cancellation(
-    task: impl Future<Output = ()> + 'static,
+task: impl Future<Output = ()> + 'static,
 ) {
-    use crate::owner::on_cleanup;
-    use futures::future::{AbortHandle, Abortable};
+use crate::owner::on_cleanup;
+use futures::future::{AbortHandle, Abortable};
 
-    let (abort_handle, abort_registration) = AbortHandle::new_pair();
-    on_cleanup(move || abort_handle.abort());
+let (abort_handle, abort_registration) = AbortHandle::new_pair();
+on_cleanup(move || abort_handle.abort());
 
-    let task = Abortable::new(task, abort_registration);
-    let task = ScopedFuture::new(task);
+let task = Abortable::new(task, abort_registration);
+let task = ScopedFuture::new(task);
 
-    #[cfg(feature = "sandboxed-arenas")]
-    let task = owner::Sandboxed::new(task);
+#[cfg(feature = "sandboxed-arenas")]
+let task = owner::Sandboxed::new(task);
 
-    any_spawner::Executor::spawn_local(async move {
-        _ = task.await;
-    });
+any_spawner::Executor::spawn_local(async move {
+_ = task.await;
+});
 }
-

@@ -1,65 +1,50 @@
-use std::fmt;
+﻿use std::fmt;
 
 #[derive(Clone, Default, PartialEq)]
 #[non_exhaustive]
 pub enum Mode {
-    #[default]
-    Auto,
-    Dark,
-    Light,
+#[default]
+Auto,
+Dark,
+Light,
 }
 
 impl From<String> for Mode {
-    fn from(input: String) -> Self {
-        match input.as_str() {
-            "dark" => Self::Dark,
-            "light" => Self::Light,
-            _ => Self::Auto,
-        }
-    }
+fn from(input: String) -> Self {
+match input.as_str() {
+"dark" => Self::Dark,
+"light" => Self::Light,
+_ => Self::Auto,
+}
+}
 }
 
 impl From<&str> for Mode {
-    fn from(input: &str) -> Self {
-        match input {
-            "dark" => Self::Dark,
-            "light" => Self::Light,
-            _ => Self::Auto,
-        }
-    }
+fn from(input: &str) -> Self {
+match input {
+"dark" => Self::Dark,
+"light" => Self::Light,
+_ => Self::Auto,
+}
+}
 }
 
 impl From<Mode> for String {
-    fn from(val: Mode) -> Self {
-        match val {
-            Mode::Auto => String::from("auto"),
-            Mode::Dark => String::from("dark"),
-            Mode::Light => String::from("light"),
-        }
-    }
+fn from(val: Mode) -> Self {
+match val {
+Mode::Auto => String::from("auto"),
+Mode::Dark => String::from("dark"),
+Mode::Light => String::from("light"),
+}
+}
 }
 
 impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Mode::Auto => write!(f, "auto"),
-            Mode::Dark => write!(f, "dark"),
-            Mode::Light => write!(f, "light"),
-        }
-    }
+fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+match self {
+Mode::Auto => write!(f, "auto"),
+Mode::Dark => write!(f, "dark"),
+Mode::Light => write!(f, "light"),
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-
+}
+}

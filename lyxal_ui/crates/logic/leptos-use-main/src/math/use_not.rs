@@ -1,4 +1,4 @@
-use leptos::*;
+﻿use leptos::*;
 
 /// Reactive `NOT` condition.
 ///
@@ -8,8 +8,7 @@ use leptos::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos_use::math::use_not;
 /// #
 /// # #[component]
@@ -20,8 +19,7 @@ use leptos::*;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// See also
 ///
 /// - [`use_and`]
@@ -30,8 +28,8 @@ use leptos::*;
 // #[doc(cfg(feature = "math"))]
 pub fn use_not<S>(a: S) -> Signal<bool>
 where
-    S: Into<MaybeSignal<bool>>,
+S: Into<MaybeSignal<bool>>,
 {
-    let a = a.into();
-    Signal::derive(move || !a.get())
+let a = a.into();
+Signal::derive(move || !a.get())
 }

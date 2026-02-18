@@ -1,18 +1,18 @@
-[package]
+﻿[package]
 name = "leptos_axum"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
 any_spawner = { path = "../any_spawner", version = "0.8.0", features = ["tokio"] }
 hydration_context = { path = "../hydration_context", version = "*" }
-axum = { version = "*", default-features = false, features = ["matched-path" ] }
+leptos_axum = { version = "*", default-features = false, features = ["matched-path" ] }
 dashmap = { version = "*", default-features = true }
 futures = { version = "*", default-features = true }
 leptos = { path = "../leptos", version = "*", features = ["nonce", "ssr"] }
 server_fn = { path = "../server_fn", version = "*", features = ["axum-no-default"], optional = true }
 leptos_macro = { path = "../leptos_macro", version = "*", features = ["axum"] }
-meta = { path = "../../meta", version = "*", features = ["ssr", "nonce"] }
-router = { path = "../../router", version = "*", features = ["ssr"] }
+leptos_meta = { path = "../../meta", version = "*", features = ["ssr", "nonce"] }
+leptos_router = { path = "../../router", version = "*", features = ["ssr"] }
 utils = { path = "../utils", version = "*" }
 tachys = { path = "../tachys", version = "*", optional = true }
 tokio = { version = "*", default-features = false }
@@ -22,7 +22,7 @@ tracing = { version = "*", optional = true, default-features = true }
 or_poisoned = { path = "../or_poisoned", version = "*" }
 [dev-dependencies]
 anyhow = { version = "*" }
-axum = { version = "*", default-features = true }
+leptos_axum = { version = "*", default-features = true }
 reqwest = { version = "*" }
 tokio = { version = "*", features = ["io-util", "net", "process", "rt-multi-thread", "time" ], default-features = true }
 [features]

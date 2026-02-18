@@ -1,150 +1,149 @@
-use crate::owner::Owner;
+﻿use crate::owner::Owner;
 use or_poisoned::OrPoisoned;
 use std::{
-    any::{Any, TypeId},
-    collections::VecDeque,
+any::{Any, TypeId},
+collections::VecDeque,
 };
 
 impl Owner {
-    fn provide_context<T: Send + Sync + 'static>(&self, value: T) {
-        self.inner
-            .write()
-            .or_poisoned()
-            .contexts
-            .insert(value.type_id(), Box::new(value));
-    }
+fn provide_context<T: Send + Sync + 'static>(&self, value: T) {
+self.inner
+.write()
+.or_poisoned()
+.contexts
+.insert(value.type_id(), Box::new(value));
+}
 
-    fn use_context<T: Clone + 'static>(&self) -> Option<T> {
-        self.with_context(Clone::clone)
-    }
+fn use_context<T: Clone + 'static>(&self) -> Option<T> {
+self.with_context(Clone::clone)
+}
 
-    fn take_context<T: 'static>(&self) -> Option<T> {
-        let ty = TypeId::of::<T>();
-        let mut inner = self.inner.write().or_poisoned();
-        let contexts = &mut inner.contexts;
-        if let Some(context) = contexts.remove(&ty) {
-            context.downcast::<T>().ok().map(|n| *n)
-        } else {
-            let mut parent = inner.parent.as_ref().and_then(|p| p.upgrade());
-            while let Some(ref this_parent) = parent.clone() {
-                let mut this_parent = this_parent.write().or_poisoned();
-                let contexts = &mut this_parent.contexts;
-                let value = contexts.remove(&ty);
-                let downcast =
-                    value.and_then(|context| context.downcast::<T>().ok());
-                if let Some(value) = downcast {
-                    return Some(*value);
-                } else {
-                    parent =
-                        this_parent.parent.as_ref().and_then(|p| p.upgrade());
-                }
-            }
-            None
-        }
-    }
+fn take_context<T: 'static>(&self) -> Option<T> {
+let ty = TypeId::of::<T>();
+let mut inner = self.inner.write().or_poisoned();
+let contexts = &mut inner.contexts;
+if let Some(context) = contexts.remove(&ty) {
+context.downcast::<T>().ok().map(|n| *n)
+} else {
+let mut parent = inner.parent.as_ref().and_then(|p| p.upgrade());
+while let Some(ref this_parent) = parent.clone() {
+let mut this_parent = this_parent.write().or_poisoned();
+let contexts = &mut this_parent.contexts;
+let value = contexts.remove(&ty);
+let downcast =
+value.and_then(|context| context.downcast::<T>().ok());
+if let Some(value) = downcast {
+return Some(*value);
+} else {
+parent =
+this_parent.parent.as_ref().and_then(|p| p.upgrade());
+}
+}
+None
+}
+}
 
-    fn with_context<T: 'static, R>(
-        &self,
-        cb: impl FnOnce(&T) -> R,
-    ) -> Option<R> {
-        let ty = TypeId::of::<T>();
-        let inner = self.inner.read().or_poisoned();
-        let contexts = &inner.contexts;
-        let reference = if let Some(context) = contexts.get(&ty) {
-            context.downcast_ref::<T>()
-        } else {
-            let mut parent = inner.parent.as_ref().and_then(|p| p.upgrade());
-            while let Some(ref this_parent) = parent.clone() {
-                let this_parent = this_parent.read().or_poisoned();
-                let contexts = &this_parent.contexts;
-                let value = contexts.get(&ty);
-                let downcast =
-                    value.and_then(|context| context.downcast_ref::<T>());
-                if let Some(value) = downcast {
-                    return Some(cb(value));
-                } else {
-                    parent =
-                        this_parent.parent.as_ref().and_then(|p| p.upgrade());
-                }
-            }
+fn with_context<T: 'static, R>(
+&self,
+cb: impl FnOnce(&T) -> R,
+) -> Option<R> {
+let ty = TypeId::of::<T>();
+let inner = self.inner.read().or_poisoned();
+let contexts = &inner.contexts;
+let reference = if let Some(context) = contexts.get(&ty) {
+context.downcast_ref::<T>()
+} else {
+let mut parent = inner.parent.as_ref().and_then(|p| p.upgrade());
+while let Some(ref this_parent) = parent.clone() {
+let this_parent = this_parent.read().or_poisoned();
+let contexts = &this_parent.contexts;
+let value = contexts.get(&ty);
+let downcast =
+value.and_then(|context| context.downcast_ref::<T>());
+if let Some(value) = downcast {
+return Some(cb(value));
+} else {
+parent =
+this_parent.parent.as_ref().and_then(|p| p.upgrade());
+}
+}
 
-            None
-        };
-        reference.map(cb)
-    }
+None
+};
+reference.map(cb)
+}
 
-    fn update_context<T: 'static, R>(
-        &self,
-        cb: impl FnOnce(&mut T) -> R,
-    ) -> Option<R> {
-        let ty = TypeId::of::<T>();
-        let mut inner = self.inner.write().or_poisoned();
-        let contexts = &mut inner.contexts;
-        let reference = if let Some(context) = contexts.get_mut(&ty) {
-            context.downcast_mut::<T>()
-        } else {
-            let mut parent = inner.parent.as_ref().and_then(|p| p.upgrade());
-            while let Some(ref this_parent) = parent.clone() {
-                let mut this_parent = this_parent.write().or_poisoned();
-                let contexts = &mut this_parent.contexts;
-                let value = contexts.get_mut(&ty);
-                let downcast =
-                    value.and_then(|context| context.downcast_mut::<T>());
-                if let Some(value) = downcast {
-                    return Some(cb(value));
-                } else {
-                    parent =
-                        this_parent.parent.as_ref().and_then(|p| p.upgrade());
-                }
-            }
-            None
-        };
-        reference.map(cb)
-    }
+fn update_context<T: 'static, R>(
+&self,
+cb: impl FnOnce(&mut T) -> R,
+) -> Option<R> {
+let ty = TypeId::of::<T>();
+let mut inner = self.inner.write().or_poisoned();
+let contexts = &mut inner.contexts;
+let reference = if let Some(context) = contexts.get_mut(&ty) {
+context.downcast_mut::<T>()
+} else {
+let mut parent = inner.parent.as_ref().and_then(|p| p.upgrade());
+while let Some(ref this_parent) = parent.clone() {
+let mut this_parent = this_parent.write().or_poisoned();
+let contexts = &mut this_parent.contexts;
+let value = contexts.get_mut(&ty);
+let downcast =
+value.and_then(|context| context.downcast_mut::<T>());
+if let Some(value) = downcast {
+return Some(cb(value));
+} else {
+parent =
+this_parent.parent.as_ref().and_then(|p| p.upgrade());
+}
+}
+None
+};
+reference.map(cb)
+}
 
-    /// Searches for items stored in context in either direction, either among parents or among
-    /// descendants.
-    pub fn use_context_bidirectional<T: Clone + 'static>(&self) -> Option<T> {
-        self.use_context()
-            .unwrap_or_else(|| self.find_context_in_children())
-    }
+/// Searches for items stored in context in either direction, either among parents or among
+/// descendants.
+pub fn use_context_bidirectional<T: Clone + 'static>(&self) -> Option<T> {
+self.use_context()
+.unwrap_or_else(|| self.find_context_in_children())
+}
 
-    fn find_context_in_children<T: Clone + 'static>(&self) -> Option<T> {
-        let ty = TypeId::of::<T>();
-        let inner = self.inner.read().or_poisoned();
-        let mut to_search = VecDeque::new();
-        to_search.extend(inner.children.clone());
-        drop(inner);
+fn find_context_in_children<T: Clone + 'static>(&self) -> Option<T> {
+let ty = TypeId::of::<T>();
+let inner = self.inner.read().or_poisoned();
+let mut to_search = VecDeque::new();
+to_search.extend(inner.children.clone());
+drop(inner);
 
-        while let Some(next) = to_search.pop_front() {
-            if let Some(child) = next.upgrade() {
-                let child = child.read().or_poisoned();
-                let contexts = &child.contexts;
-                if let Some(context) = contexts.get(&ty) {
-                    return context.downcast_ref::<T>().cloned();
-                }
+while let Some(next) = to_search.pop_front() {
+if let Some(child) = next.upgrade() {
+let child = child.read().or_poisoned();
+let contexts = &child.contexts;
+if let Some(context) = contexts.get(&ty) {
+return context.downcast_ref::<T>().cloned();
+}
 
-                to_search.extend(child.children.clone());
-            }
-        }
+to_search.extend(child.children.clone());
+}
+}
 
-        None
-    }
+None
+}
 }
 
 /// Provides a context value of type `T` to the current reactive [`Owner`]
 /// and all of its descendants. This can be accessed using [`use_context`].
 ///
 /// This is useful for passing values down to components or functions lower in a
-/// hierarchy without needs to “prop drill” by passing them through each layer as
+/// hierarchy without needs to â€œprop drillâ€ by passing them through each layer as
 /// arguments to a function or properties of a component.
 ///
 /// Context works similarly to variable scope: a context that is provided higher in
 /// the reactive graph can be used lower down, but a context that is provided lower
 /// down cannot be used higher up.
 ///
-/// ```rust
-/// # use reactive_graph::prelude::*;
+/// /// # use reactive_graph::prelude::*;
 /// # use reactive_graph::owner::*;
 /// # let owner = Owner::new(); owner.set();
 /// # use reactive_graph::effect::Effect;
@@ -165,8 +164,7 @@ impl Owner {
 ///     });
 /// });
 /// # });
-/// ```
-///
+/// ///
 /// ## Context Shadowing
 ///
 /// Only a single value of any type can be provided via context. If you need to provide multiple
@@ -176,8 +174,7 @@ impl Owner {
 /// Providing a second value of the same type "lower" in the ownership tree will shadow the value,
 /// just as a second `let` declaration with the same variable name will shadow that variable.
 ///
-/// ```rust
-/// # use reactive_graph::prelude::*;
+/// /// # use reactive_graph::prelude::*;
 /// # use reactive_graph::owner::*;
 /// # let owner = Owner::new(); owner.set();
 /// # use reactive_graph::effect::Effect;
@@ -199,11 +196,10 @@ impl Owner {
 ///     });
 /// });
 /// # });
-/// ```
-pub fn provide_context<T: Send + Sync + 'static>(value: T) {
-    if let Some(owner) = Owner::current() {
-        owner.provide_context(value);
-    }
+/// pub fn provide_context<T: Send + Sync + 'static>(value: T) {
+if let Some(owner) = Owner::current() {
+owner.provide_context(value);
+}
 }
 
 /// Extracts a context value of type `T` from the reactive system.
@@ -215,18 +211,17 @@ pub fn provide_context<T: Send + Sync + 'static>(value: T) {
 /// [`provide_context`](provide_context).
 ///
 /// This is useful for passing values down to components or functions lower in a
-/// hierarchy without needs to “prop drill” by passing them through each layer as
+/// hierarchy without needs to â€œprop drillâ€ by passing them through each layer as
 /// arguments to a function or properties of a component.
 ///
 /// Context works similarly to variable scope: a context that is provided higher in
 /// the reactive graph can be used lower down, but a context that is provided lower
 /// in the tree cannot be used higher up.
 ///
-/// While the term “consume” is sometimes used, note that [`use_context`] clones the value, rather
+/// While the term â€œconsumeâ€ is sometimes used, note that [`use_context`] clones the value, rather
 /// than removing it; it is still accessible to other users.
 ///
-/// ```rust
-/// # use reactive_graph::prelude::*;
+/// /// # use reactive_graph::prelude::*;
 /// # use reactive_graph::owner::*;
 /// # let owner = Owner::new(); owner.set();
 /// # use reactive_graph::effect::Effect;
@@ -246,9 +241,8 @@ pub fn provide_context<T: Send + Sync + 'static>(value: T) {
 ///     });
 /// });
 /// # });
-/// ```
-pub fn use_context<T: Clone + 'static>() -> Option<T> {
-    Owner::current().and_then(|owner| owner.use_context())
+/// pub fn use_context<T: Clone + 'static>() -> Option<T> {
+Owner::current().and_then(|owner| owner.use_context())
 }
 
 /// Extracts a context value of type `T` from the reactive system, and
@@ -263,18 +257,17 @@ pub fn use_context<T: Clone + 'static>() -> Option<T> {
 /// [`provide_context`](provide_context).
 ///
 /// This is useful for passing values down to components or functions lower in a
-/// hierarchy without needs to “prop drill” by passing them through each layer as
+/// hierarchy without needs to â€œprop drillâ€ by passing them through each layer as
 /// arguments to a function or properties of a component.
 ///
 /// Context works similarly to variable scope: a context that is provided higher in
 /// the reactive graph can be used lower down, but a context that is provided lower
 /// in the tree cannot be used higher up.
 ///
-/// While the term “consume” is sometimes used, note that [`use_context`] clones the value, rather
+/// While the term â€œconsumeâ€ is sometimes used, note that [`use_context`] clones the value, rather
 /// than removing it; it is still accessible to other users.
 ///
-/// ```rust
-/// # use reactive_graph::prelude::*;
+/// /// # use reactive_graph::prelude::*;
 /// # use reactive_graph::owner::*;
 /// # let owner = Owner::new(); owner.set();
 /// # use reactive_graph::effect::Effect;
@@ -294,21 +287,20 @@ pub fn use_context<T: Clone + 'static>() -> Option<T> {
 ///     });
 /// });
 /// # });
-/// ```
-/// ## Panics
+/// /// ## Panics
 /// Panics if a context of this type is not found in the current reactive
 /// owner or its ancestors.
 #[track_caller]
 pub fn expect_context<T: Clone + 'static>() -> T {
-    let location = std::panic::Location::caller();
+let location = std::panic::Location::caller();
 
-    use_context().unwrap_or_else(|| {
-        panic!(
-            "{:?} expected context of type {:?} to be present",
-            location,
-            std::any::type_name::<T>()
-        )
-    })
+use_context().unwrap_or_else(|| {
+panic!(
+"{:?} expected context of type {:?} to be present",
+location,
+std::any::type_name::<T>()
+)
+})
 }
 
 /// Extracts a context value of type `T` from the reactive system, and takes ownership,
@@ -324,14 +316,13 @@ pub fn expect_context<T: Clone + 'static>() -> T {
 /// [`provide_context`](provide_context).
 ///
 /// This is useful for passing values down to components or functions lower in a
-/// hierarchy without needs to “prop drill” by passing them through each layer as
+/// hierarchy without needs to â€œprop drillâ€ by passing them through each layer as
 /// arguments to a function or properties of a component.
 ///
 /// Context works similarly to variable scope: a context that is provided higher in
 /// the reactive graph can be used lower down, but a context that is provided lower
 /// in the tree cannot be used higher up.
-/// ```rust
-/// # use reactive_graph::prelude::*;
+/// /// # use reactive_graph::prelude::*;
 /// # use reactive_graph::owner::*;
 /// # let owner = Owner::new(); owner.set();
 /// # use reactive_graph::effect::Effect;
@@ -353,9 +344,8 @@ pub fn expect_context<T: Clone + 'static>() -> T {
 ///     });
 /// });
 /// # });
-/// ```
-pub fn take_context<T: 'static>() -> Option<T> {
-    Owner::current().and_then(|owner| owner.take_context())
+/// pub fn take_context<T: 'static>() -> Option<T> {
+Owner::current().and_then(|owner| owner.take_context())
 }
 
 /// Access a reference to a context value of type `T` in the reactive system.
@@ -368,15 +358,14 @@ pub fn take_context<T: 'static>() -> Option<T> {
 /// [`provide_context`](provide_context).
 ///
 /// This is useful for passing values down to components or functions lower in a
-/// hierarchy without needs to “prop drill” by passing them through each layer as
+/// hierarchy without needs to â€œprop drillâ€ by passing them through each layer as
 /// arguments to a function or properties of a component.
 ///
 /// Context works similarly to variable scope: a context that is provided higher in
 /// the reactive graph can be used lower down, but a context that is provided lower
 /// in the tree cannot be used higher up.
 ///
-/// ```rust
-/// # use reactive_graph::prelude::*;
+/// /// # use reactive_graph::prelude::*;
 /// # use reactive_graph::owner::*;
 /// # let owner = Owner::new(); owner.set();
 /// # use reactive_graph::effect::Effect;
@@ -392,9 +381,8 @@ pub fn take_context<T: 'static>() -> Option<T> {
 ///     });
 /// });
 /// # });
-/// ```
-pub fn with_context<T: 'static, R>(cb: impl FnOnce(&T) -> R) -> Option<R> {
-    Owner::current().and_then(|owner| owner.with_context(cb))
+/// pub fn with_context<T: 'static, R>(cb: impl FnOnce(&T) -> R) -> Option<R> {
+Owner::current().and_then(|owner| owner.with_context(cb))
 }
 
 /// Update a context value of type `T` in the reactive system.
@@ -407,15 +395,14 @@ pub fn with_context<T: 'static, R>(cb: impl FnOnce(&T) -> R) -> Option<R> {
 /// [`provide_context`](provide_context).
 ///
 /// This is useful for passing values down to components or functions lower in a
-/// hierarchy without needs to “prop drill” by passing them through each layer as
+/// hierarchy without needs to â€œprop drillâ€ by passing them through each layer as
 /// arguments to a function or properties of a component.
 ///
 /// Context works similarly to variable scope: a context that is provided higher in
 /// the reactive graph can be used lower down, but a context that is provided lower
 /// in the tree cannot be used higher up.
 ///
-/// ```rust
-/// # use reactive_graph::prelude::*;
+/// /// # use reactive_graph::prelude::*;
 /// # use reactive_graph::owner::*;
 /// # let owner = Owner::new(); owner.set();
 /// # use reactive_graph::effect::Effect;
@@ -434,10 +421,8 @@ pub fn with_context<T: 'static, R>(cb: impl FnOnce(&T) -> R) -> Option<R> {
 ///     });
 /// });
 /// # });
-/// ```
-pub fn update_context<T: 'static, R>(
-    cb: impl FnOnce(&mut T) -> R,
+/// pub fn update_context<T: 'static, R>(
+cb: impl FnOnce(&mut T) -> R,
 ) -> Option<R> {
-    Owner::current().and_then(|owner| owner.update_context(cb))
+Owner::current().and_then(|owner| owner.update_context(cb))
 }
-

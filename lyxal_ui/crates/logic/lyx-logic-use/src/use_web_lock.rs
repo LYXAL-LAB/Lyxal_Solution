@@ -1,4 +1,4 @@
-use default_struct_builder::DefaultBuilder;
+﻿use default_struct_builder::DefaultBuilder;
 use std::future::Future;
 use thiserror::Error;
 use wasm_bindgen::JsValue;
@@ -20,8 +20,7 @@ pub use web_sys::LockMode;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::use_web_lock;
 /// #
 /// async fn my_process(_lock: web_sys::Lock) -> i32 {
@@ -38,8 +37,7 @@ pub use web_sys::LockMode;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

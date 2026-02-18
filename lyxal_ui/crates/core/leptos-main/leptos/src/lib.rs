@@ -1,4 +1,4 @@
-#![deny(missing_docs)]
+﻿#![deny(missing_docs)]
 
 //! # About Leptos
 //!
@@ -31,7 +31,7 @@
 //!   context, and more.
 //! - **[`fetch`]** introduces [`Resource`](leptos::prelude::Resource)s, which allow you to integrate arbitrary `async` code like an
 //!   HTTP request within your reactive code.
-//! - **[`router`]** shows how to use Leptos’s nested router to enable client-side navigation and route-specific, reactive data loading.
+//! - **[`router`]** shows how to use Leptosâ€™s nested router to enable client-side navigation and route-specific, reactive data loading.
 //! - **[`slots`]** shows how to use slots on components.
 //! - **[`spread`]** shows how the spread syntax can be used to spread data and/or event handlers onto elements.
 //! - **[`counter_isomorphic`]** shows different methods of interaction with a stateful server, including server functions,
@@ -88,14 +88,14 @@
 //!   the performance of the `template! {}` macro.
 //! - **`csr`** Client-side rendering: Generate DOM nodes in the browser.
 //! - **`ssr`** Server-side rendering: Generate an HTML string (typically on the server).
-//! - **`islands`** Activates “islands mode,” in which components are not made interactive on the
+//! - **`islands`** Activates â€œislands mode,â€ in which components are not made interactive on the
 //!   client unless they use the `#[island]` macro.
 //! - **`hydrate`** Hydration: use this to add interactivity to an SSRed Leptos app.
 //! - **`nonce`** Adds support for nonces to be added as part of a Content Security Policy.
 //! - **`rkyv`** In SSR/hydrate mode, enables using [`rkyv`](https://docs.rs/rkyv/latest/rkyv/) to serialize resources.
 //! - **`tracing`** Adds support for [`tracing`](https://docs.rs/tracing/latest/tracing/).
 //! - **`trace-component-props`** Adds `tracing` support for component props.
-//! - **`delegation`** Uses event delegation rather than the browser’s native event handling
+//! - **`delegation`** Uses event delegation rather than the browserâ€™s native event handling
 //!   system. (This improves the performance of creating large numbers of elements simultaneously,
 //!   in exchange for occasional edge cases in which events behave differently from native browser
 //!   events.)
@@ -107,8 +107,7 @@
 //!
 //! # A Simple Counter
 //!
-//! ```rust
-//! use leptos::prelude::*;
+//! //! use leptos::prelude::*;
 //!
 //! #[component]
 //! pub fn SimpleCounter(initial_value: i32) -> impl IntoView {
@@ -130,12 +129,10 @@
 //!         </div>
 //!     }
 //! }
-//! ```
-//!
+//! //!
 //! Leptos is easy to use with [Trunk](https://trunkrs.dev/) (or with a simple wasm-bindgen setup):
 //!
-//! ```rust
-//! use leptos::{mount::mount_to_body, prelude::*};
+//! //! use leptos::{mount::mount_to_body, prelude::*};
 //!
 //! #[component]
 //! fn SimpleCounter(initial_value: i32) -> impl IntoView {
@@ -148,55 +145,53 @@
 //!     mount_to_body(|| view! { <SimpleCounter initial_value=3 /> })
 //! # }
 //! }
-//! ```
-
-#![cfg_attr(all(feature = "nightly", rustc_nightly), feature(fn_traits))]
+//! #![cfg_attr(all(feature = "nightly", rustc_nightly), feature(fn_traits))]
 #![cfg_attr(all(feature = "nightly", rustc_nightly), feature(unboxed_closures))]
 
 extern crate self as leptos;
 
 /// Exports all the core types of the library.
 pub mod prelude {
-    // Traits
-    // These should always be exported from the prelude
-    pub use reactive_graph::prelude::*;
-    pub use tachys::prelude::*;
+// Traits
+// These should always be exported from the prelude
+pub use reactive_graph::prelude::*;
+pub use tachys::prelude::*;
 
-    // Structs
-    // In the future, maybe we should remove this blanket export
-    // However, it is definitely useful relative to looking up every struct etc.
-    mod export_types {
-        #[cfg(feature = "nonce")]
-        pub use crate::nonce::*;
-        pub use crate::{
-            callback::*, children::*, component::*, control_flow::*, error::*,
-            form::*, hydration::*, into_view::*, mount::*, suspense::*,
-            text_prop::*,
-        };
-        pub use leptos_config::*;
-        pub use leptos_dom::helpers::*;
-        pub use leptos_macro::*;
-        pub use leptos_server::*;
-        pub use oco_ref::*;
-        pub use reactive_graph::{
-            actions::*,
-            computed::*,
-            effect::*,
-            graph::untrack,
-            owner::*,
-            signal::*,
-            wrappers::{read::*, write::*},
-        };
-        pub use server_fn::{
-            self,
-            error::{FromServerFnError, ServerFnError, ServerFnErrorErr},
-        };
-        pub use tachys::{
-            reactive_graph::{bind::BindAttribute, node_ref::*, Suspend},
-            view::{fragment::Fragment, template::ViewTemplate},
-        };
-    }
-    pub use export_types::*;
+// Structs
+// In the future, maybe we should remove this blanket export
+// However, it is definitely useful relative to looking up every struct etc.
+mod export_types {
+#[cfg(feature = "nonce")]
+pub use crate::nonce::*;
+pub use crate::{
+callback::*, children::*, component::*, control_flow::*, error::*,
+form::*, hydration::*, into_view::*, mount::*, suspense::*,
+text_prop::*,
+};
+pub use leptos_config::*;
+pub use leptos_dom::helpers::*;
+pub use leptos_macro::*;
+pub use leptos_server::*;
+pub use oco_ref::*;
+pub use reactive_graph::{
+actions::*,
+computed::*,
+effect::*,
+graph::untrack,
+owner::*,
+signal::*,
+wrappers::{read::*, write::*},
+};
+pub use server_fn::{
+self,
+error::{FromServerFnError, ServerFnError, ServerFnErrorErr},
+};
+pub use tachys::{
+reactive_graph::{bind::BindAttribute, node_ref::*, Suspend},
+view::{fragment::Fragment, template::ViewTemplate},
+};
+}
+pub use export_types::*;
 }
 
 /// Components used for working with HTML forms, like `<ActionForm>`.
@@ -218,15 +213,15 @@ mod error_boundary;
 
 /// Tools for handling errors.
 pub mod error {
-    pub use crate::error_boundary::*;
-    pub use throw_error::*;
+pub use crate::error_boundary::*;
+pub use throw_error::*;
 }
 
 /// Control-flow components like `<Show>`, `<For>`, and `<Await>`.
 pub mod control_flow {
-    pub use crate::{
-        animated_show::*, await_::*, for_loop::*, show::*, show_let::*,
-    };
+pub use crate::{
+animated_show::*, await_::*, for_loop::*, show::*, show_let::*,
+};
 }
 mod animated_show;
 mod await_;
@@ -246,7 +241,7 @@ pub mod nonce;
 
 /// Components to load asynchronous data.
 pub mod suspense {
-    pub use crate::{suspense_component::*, transition::*};
+pub use crate::{suspense_component::*, transition::*};
 }
 
 #[macro_use]
@@ -283,8 +278,8 @@ pub use reactive_graph as reactive;
 
 /// Provide and access data along the reactive graph, sharing data without directly passing arguments.
 pub mod context {
-    pub use crate::provider::*;
-    pub use reactive_graph::owner::{provide_context, use_context};
+pub use crate::provider::*;
+pub use reactive_graph::owner::{provide_context, use_context};
 }
 
 #[doc(inline)]
@@ -311,47 +306,47 @@ pub mod subsecond;
 
 /// Utilities for simple isomorphic logging to the console or terminal.
 pub mod logging {
-    pub use leptos_dom::{
-        debug_error, debug_log, debug_warn, error, log, warn,
-    };
+pub use leptos_dom::{
+debug_error, debug_log, debug_warn, error, log, warn,
+};
 }
 
 /// Utilities for working with asynchronous tasks.
 pub mod task {
-    use any_spawner::Executor;
-    use reactive_graph::computed::ScopedFuture;
-    use std::future::Future;
+use any_spawner::Executor;
+use reactive_graph::computed::ScopedFuture;
+use std::future::Future;
 
-    /// Spawns a thread-safe [`Future`].
-    ///
-    /// This will be run with the current reactive owner and observer using a [`ScopedFuture`].
-    #[track_caller]
-    #[inline(always)]
-    pub fn spawn(fut: impl Future<Output = ()> + Send + 'static) {
-        let fut = ScopedFuture::new(fut);
+/// Spawns a thread-safe [`Future`].
+///
+/// This will be run with the current reactive owner and observer using a [`ScopedFuture`].
+#[track_caller]
+#[inline(always)]
+pub fn spawn(fut: impl Future<Output = ()> + Send + 'static) {
+let fut = ScopedFuture::new(fut);
 
-        #[cfg(not(target_family = "wasm"))]
-        Executor::spawn(fut);
+#[cfg(not(target_family = "wasm"))]
+Executor::spawn(fut);
 
-        #[cfg(target_family = "wasm")]
-        Executor::spawn_local(fut);
-    }
+#[cfg(target_family = "wasm")]
+Executor::spawn_local(fut);
+}
 
-    /// Spawns a [`Future`] that cannot be sent across threads.
-    #[track_caller]
-    #[inline(always)]
-    pub fn spawn_local(fut: impl Future<Output = ()> + 'static) {
-        Executor::spawn_local(fut)
-    }
+/// Spawns a [`Future`] that cannot be sent across threads.
+#[track_caller]
+#[inline(always)]
+pub fn spawn_local(fut: impl Future<Output = ()> + 'static) {
+Executor::spawn_local(fut)
+}
 
-    /// Waits until the next "tick" of the current async executor.
-    pub async fn tick() {
-        Executor::tick().await
-    }
+/// Waits until the next "tick" of the current async executor.
+pub async fn tick() {
+Executor::tick().await
+}
 
-    pub use reactive_graph::{
-        spawn_local_scoped, spawn_local_scoped_with_cancellation,
-    };
+pub use reactive_graph::{
+spawn_local_scoped, spawn_local_scoped_with_cancellation,
+};
 }
 
 // these reexports are used in islands
@@ -372,35 +367,34 @@ pub use web_sys;
 
 #[doc(hidden)]
 pub mod __reexports {
-    pub use send_wrapper;
-    pub use wasm_bindgen_futures;
+pub use send_wrapper;
+pub use wasm_bindgen_futures;
 }
 
 #[doc(hidden)]
 #[derive(Clone, Debug, Default)]
 pub struct PrefetchLazyFn(
-    pub  reactive_graph::owner::ArcStoredValue<
-        std::collections::HashSet<&'static str>,
-    >,
+pub  reactive_graph::owner::ArcStoredValue<
+std::collections::HashSet<&'static str>,
+>,
 );
 
 #[doc(hidden)]
 pub fn prefetch_lazy_fn_on_server(id: &'static str) {
-    use crate::context::use_context;
-    use reactive_graph::traits::WriteValue;
+use crate::context::use_context;
+use reactive_graph::traits::WriteValue;
 
-    if let Some(prefetches) = use_context::<PrefetchLazyFn>() {
-        prefetches.0.write_value().insert(id);
-    }
+if let Some(prefetches) = use_context::<PrefetchLazyFn>() {
+prefetches.0.write_value().insert(id);
+}
 }
 
 #[doc(hidden)]
 #[derive(Clone, Debug, Default)]
 pub struct WasmSplitManifest(
-    pub  reactive_graph::owner::ArcStoredValue<(
-        String,                                         // the pkg root
-        std::collections::HashMap<String, Vec<String>>, // preloads
-        String, // the name of the __wasm_split.js file
-    )>,
+pub  reactive_graph::owner::ArcStoredValue<(
+String,                                         // the pkg root
+std::collections::HashMap<String, Vec<String>>, // preloads
+String, // the name of the __wasm_split.js file
+)>,
 );
-

@@ -1,4 +1,4 @@
-use default_struct_builder::DefaultBuilder;
+﻿use default_struct_builder::DefaultBuilder;
 use leptos::prelude::*;
 
 ///{{#if (eq unstable_apis "true")}}
@@ -12,8 +12,7 @@ use leptos::prelude::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use{{#if module}}::{{ module }}{{/if}}::{{ function_name }};
 /// #
 /// # #[component]
@@ -22,8 +21,7 @@ use leptos::prelude::*;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

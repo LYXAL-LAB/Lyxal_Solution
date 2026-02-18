@@ -1,10 +1,10 @@
-[package]
+﻿[package]
 name = "lyx-ui-select"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
 tailwind_fuse = { path = "../../../../../ui-foundations/lyx-found-tailwind/fuse" }
-leptos = { path = "../core/lyx-core-leptos/leptos", features = ["ssr"] }
+leptos = { path = "../../../../../core/lyx-core-leptos/leptos", features = ["ssr"] }
 leptos-shadcn-signal-management = { path = "../../signal-management" }
 [features]
 default = []

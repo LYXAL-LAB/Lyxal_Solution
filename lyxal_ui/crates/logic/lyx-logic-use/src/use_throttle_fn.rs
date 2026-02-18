@@ -1,4 +1,4 @@
-use crate::utils::{create_filter_wrapper, create_filter_wrapper_with_arg, throttle_filter};
+﻿use crate::utils::{create_filter_wrapper, create_filter_wrapper_with_arg, throttle_filter};
 use leptos::prelude::Signal;
 use std::sync::{Arc, Mutex};
 
@@ -15,8 +15,7 @@ pub use crate::utils::ThrottleOptions;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::use_throttle_fn;
 /// #
 /// # #[component]
@@ -33,14 +32,12 @@ pub use crate::utils::ThrottleOptions;
 ///     </button>
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// Please note that if the current component is cleaned up before the throttled callback is called, the throttled callback will not be called.
 ///
 /// You can provide options when you use [`use_throttle_fn_with_options`].
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{ThrottleOptions, use_throttle_fn_with_options};
 /// # #[component]
 /// # fn Demo() -> impl IntoView {
@@ -55,8 +52,7 @@ pub use crate::utils::ThrottleOptions;
 /// );
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// If you want to throttle a function that takes an argument there are also the versions
 /// [`use_throttle_fn_with_arg`] and [`use_throttle_fn_with_arg_and_options`].
 ///

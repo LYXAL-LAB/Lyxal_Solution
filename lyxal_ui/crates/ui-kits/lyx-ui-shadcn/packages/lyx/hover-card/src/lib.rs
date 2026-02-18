@@ -1,4 +1,4 @@
-//! Leptos port of shadcn/ui hover-card
+﻿//! Leptos port of shadcn/ui hover-card
 
 mod signal_managed;
 mod default;

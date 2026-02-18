@@ -1,6 +1,6 @@
-use diesel::{
-    PgConnection,
-    r2d2::{ConnectionManager, Pool},
+﻿use diesel::{
+PgConnection,
+r2d2::{ConnectionManager, Pool},
 };
 
 pub mod utils;

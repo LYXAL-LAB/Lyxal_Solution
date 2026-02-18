@@ -1,3 +1,3 @@
-fn main() {
-    println!("Bundle size monitor placeholder");
+﻿fn main() {
+println!("Bundle size monitor placeholder");
 }

@@ -1,4 +1,4 @@
-use crate::core::impl_ssr_safe_method;
+﻿use crate::core::impl_ssr_safe_method;
 use crate::{use_document, UseDocument};
 use cfg_if::cfg_if;
 use std::ops::Deref;
@@ -15,8 +15,7 @@ use leptos::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos_use::use_window;
 /// #
 /// # #[component]
@@ -28,13 +27,12 @@ use leptos::*;
 /// #
 /// # view! { }
 /// # }
-/// ```
-pub fn use_window() -> UseWindow {
-    cfg_if! { if #[cfg(feature = "ssr")] {
-        UseWindow(None)
-    } else {
-        UseWindow(Some(window()))
-    }}
+/// pub fn use_window() -> UseWindow {
+cfg_if! { if #[cfg(feature = "ssr")] {
+UseWindow(None)
+} else {
+UseWindow(Some(window()))
+}}
 }
 
 /// Return type of [`use_window`].
@@ -42,27 +40,27 @@ pub fn use_window() -> UseWindow {
 pub struct UseWindow(Option<web_sys::Window>);
 
 impl Deref for UseWindow {
-    type Target = Option<web_sys::Window>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+type Target = Option<web_sys::Window>;
+fn deref(&self) -> &Self::Target {
+&self.0
+}
 }
 
 impl UseWindow {
-    impl_ssr_safe_method!(
-        /// Returns `Some(Navigator)` in the Browser. `None` otherwise.
-        navigator(&self) -> Option<web_sys::Navigator>
-    );
+impl_ssr_safe_method!(
+/// Returns `Some(Navigator)` in the Browser. `None` otherwise.
+navigator(&self) -> Option<web_sys::Navigator>
+);
 
-    /// Returns the same as [`fn@use_document`].
-    #[inline(always)]
-    pub fn document(&self) -> UseDocument {
-        use_document()
-    }
+/// Returns the same as [`fn@use_document`].
+#[inline(always)]
+pub fn document(&self) -> UseDocument {
+use_document()
+}
 
-    impl_ssr_safe_method!(
-        /// Returns the same as `window().match_media()` in the Browser. `Ok(None)` otherwise.
-        match_media(&self, query: &str) -> Result<Option<web_sys::MediaQueryList>, wasm_bindgen::JsValue>;
-        .unwrap_or(Ok(None))
-    );
+impl_ssr_safe_method!(
+/// Returns the same as `window().match_media()` in the Browser. `Ok(None)` otherwise.
+match_media(&self, query: &str) -> Result<Option<web_sys::MediaQueryList>, wasm_bindgen::JsValue>;
+.unwrap_or(Ok(None))
+);
 }

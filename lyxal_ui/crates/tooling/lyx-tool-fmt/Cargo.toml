@@ -1,9 +1,9 @@
-[workspace]
+﻿[workspace]
 members = ["printer", "cli", "formatter", "prettyplease"]
 resolver = "2"
 
 [workspace.package]
-version = "0.8.0"
+version = "*"
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
@@ -11,7 +11,7 @@ leptosfmt-prettyplease = { path = "./prettyplease", features = [
     "verbatim",
 ] }
 leptosfmt-formatter = { path = "./formatter" }
-leptosfmt-pretty-printer = { version = "0.8.0" }
+leptosfmt-pretty-printer = { version = "*" }
 
 syn = { version = "*", features = ["visit", "full", "extra-traits"] }
 proc-macro2 = { version = "*", features = ["span-locations"] }

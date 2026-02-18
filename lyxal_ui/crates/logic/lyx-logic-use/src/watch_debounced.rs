@@ -1,4 +1,4 @@
-use crate::{WatchOptions, utils::DebounceOptions, watch_with_options};
+﻿use crate::{WatchOptions, utils::DebounceOptions, watch_with_options};
 use default_struct_builder::DefaultBuilder;
 use leptos::prelude::*;
 
@@ -10,8 +10,7 @@ use leptos::prelude::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::watch_debounced;
 /// #
@@ -28,16 +27,14 @@ use leptos::prelude::*;
 ///
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// This really is only shorthand shorthand for `watch_with_options(deps, callback, WatchOptions::default().debounce(ms))`.
 ///
 /// Please note that if the current component is cleaned up before the debounced callback is called, the debounced callback will not be called.
 ///
 /// There's also [`watch_debounced_with_options`] where you can specify the other watch options (except `filter`).
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::{watch_debounced_with_options, WatchDebouncedOptions};
 /// #
@@ -55,8 +52,7 @@ use leptos::prelude::*;
 ///
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Recommended Reading
 ///
 /// - [**Debounce vs Throttle**: Definitive Visual Guide](https://redd.one/blog/debounce-vs-throttle)

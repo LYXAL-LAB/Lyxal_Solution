@@ -1,73 +1,73 @@
-use std::ops::Range;
+﻿use std::ops::Range;
 
 use leptos::prelude::*;
 use leptos_pagination::{
-    MemoryLoader, {PaginatedFor, PaginationNext, PaginationPages, PaginationPrev, PaginationState},
+MemoryLoader, {PaginatedFor, PaginationNext, PaginationPages, PaginationPrev, PaginationState},
 };
 use leptos_pagination_examples::data::{BOOKS, Book};
 
 fn main() {
-    _ = console_log::init_with_level(log::Level::Debug);
-    console_error_panic_hook::set_once();
+_ = console_log::init_with_level(log::Level::Debug);
+console_error_panic_hook::set_once();
 
-    mount_to_body(App)
+mount_to_body(App)
 }
 
 #[component]
 pub fn App() -> impl IntoView {
-    let state = PaginationState::new_store();
+let state = PaginationState::new_store();
 
-    view! {
-        <ul class="m-10 text-sm bg-white rounded-md border border-gray-300 dark:bg-gray-800 dark:border-gray-700 overflow-clip">
-            <PaginatedFor loader=BookLoader query=() state item_count_per_page=5 let:idx_book>
-                <li class="p-2 bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
-                    <h3 class="font-bold text-gray-900 dark:text-white">{idx_book.data.title}</h3>
-                    <p class="text-gray-500 dark:text-gray-400">{idx_book.data.author}</p>
-                </li>
-            </PaginatedFor>
-        </ul>
+view! {
+<ul class="m-10 text-sm bg-white rounded-md border border-gray-300 dark:bg-gray-800 dark:border-gray-700 overflow-clip">
+<PaginatedFor loader=BookLoader query=() state item_count_per_page=5 let:idx_book>
+<li class="p-2 bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+<h3 class="font-bold text-gray-900 dark:text-white">{idx_book.data.title}</h3>
+<p class="text-gray-500 dark:text-gray-400">{idx_book.data.author}</p>
+</li>
+</PaginatedFor>
+</ul>
 
-        <div class="flex justify-between">
-            <nav aria-label="Page navigation" class="flex justify-start m-10">
-                <PaginationPrev
-                    state
-                    attr:class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-blue-500 dark:focus:text-white cursor-pointer select-none"
-                >
-                    Prev
-                </PaginationPrev>
-                <PaginationNext
-                    state
-                    attr:class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 hover:text-gray-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-blue-500 dark:focus:text-white border-l-0 cursor-pointer select-none"
-                >
-                    Next
-                </PaginationNext>
-            </nav>
+<div class="flex justify-between">
+<nav aria-label="Page navigation" class="flex justify-start m-10">
+<PaginationPrev
+state
+attr:class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-blue-500 dark:focus:text-white cursor-pointer select-none"
+>
+Prev
+</PaginationPrev>
+<PaginationNext
+state
+attr:class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 hover:text-gray-700 focus:z-10 focus:ring-2 focus:ring-blue-700 focus:text-blue-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white dark:focus:ring-blue-500 dark:focus:text-white border-l-0 cursor-pointer select-none"
+>
+Next
+</PaginationNext>
+</nav>
 
-            <nav aria-label="Page number navigation" class="flex justify-end m-10">
-                <PaginationPages
-                    state
-                    ul_class="inline-flex text-sm"
-                    li_class="border border-gray-300 dark:border-gray-700 border-l-0 first:border-l first:rounded-l-lg last:rounded-r-lg bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    active_class="bg-blue-600 font-bold hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 first:rounded-l-lg last:rounded-r-lg *:text-white *:hover:text-white dark:*:text-white dark:*:hover:text-white"
-                    anchor_class="flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white cursor-pointer select-none"
-                    separator_class="self-center select-none mx-2 text-gray-500 dark:text-gray-400"
-                />
-            </nav>
-        </div>
-    }
+<nav aria-label="Page number navigation" class="flex justify-end m-10">
+<PaginationPages
+state
+ul_class="inline-flex text-sm"
+li_class="border border-gray-300 dark:border-gray-700 border-l-0 first:border-l first:rounded-l-lg last:rounded-r-lg bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+active_class="bg-blue-600 font-bold hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 first:rounded-l-lg last:rounded-r-lg *:text-white *:hover:text-white dark:*:text-white dark:*:hover:text-white"
+anchor_class="flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white cursor-pointer select-none"
+separator_class="self-center select-none mx-2 text-gray-500 dark:text-gray-400"
+/>
+</nav>
+</div>
+}
 }
 
 pub struct BookLoader;
 
 impl MemoryLoader for BookLoader {
-    type Item = Book;
-    type Query = ();
+type Item = Book;
+type Query = ();
 
-    fn load_items(&self, range: Range<usize>, _query: &()) -> Vec<Self::Item> {
-        BOOKS[range.clone()].to_vec()
-    }
+fn load_items(&self, range: Range<usize>, _query: &()) -> Vec<Self::Item> {
+BOOKS[range.clone()].to_vec()
+}
 
-    fn item_count(&self, _query: &()) -> usize {
-        BOOKS.len()
-    }
+fn item_count(&self, _query: &()) -> usize {
+BOOKS.len()
+}
 }

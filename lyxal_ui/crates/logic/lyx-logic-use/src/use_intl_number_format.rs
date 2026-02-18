@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports, dead_code))]
+﻿#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports, dead_code))]
 
 use crate::{js, sendwrap_fn, utils::js_value_from_to_string};
 use cfg_if::cfg_if;
@@ -18,8 +18,7 @@ use wasm_bindgen::{JsCast, JsValue};
 ///
 /// In lyx_logic_lyx_logic_basic use without specifying a locale, a formatted string in the default locale and with default options is returned.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_intl_number_format, UseIntlNumberFormatOptions};
 /// #
 /// # #[component]
@@ -32,16 +31,14 @@ use wasm_bindgen::{JsCast, JsValue};
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Using locales
 ///
 /// This lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_example shows some of the variations in localized number formats. In order to get the format
 /// of the language used in the user interface of your application, make sure to specify that language
 /// (and possibly some fallback languages) using the `locales` argument:
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_intl_number_format, UseIntlNumberFormatOptions};
 /// #
 /// # #[component]
@@ -58,7 +55,7 @@ use wasm_bindgen::{JsCast, JsValue};
 /// let number_format = use_intl_number_format(
 ///     UseIntlNumberFormatOptions::default().locale("ar-EG"),
 /// );
-/// let formatted = number_format.format::<f32>(number); // ١٢٣٤٥٦٫٧٨٩
+/// let formatted = number_format.format::<f32>(number); // Ù¡Ù¢Ù£Ù¤Ù¥Ù¦Ù«Ù§Ù¨Ù©
 ///
 /// // India uses thousands/lakh/crore separators
 /// let number_format = use_intl_number_format(
@@ -70,7 +67,7 @@ use wasm_bindgen::{JsCast, JsValue};
 /// let number_format = use_intl_number_format(
 ///     UseIntlNumberFormatOptions::default().locale("zh-Hans-CN-u-nu-hanidec"),
 /// );
-/// let formatted = number_format.format::<f32>(number); // 一二三,四五六.七八九
+/// let formatted = number_format.format::<f32>(number); // ä¸€äºŒä¸‰,å››äº”å…­.ä¸ƒå…«ä¹
 ///
 /// // when requesting a language that may not be supported, such as
 /// // Balinese, include a fallback language, in this case Indonesian
@@ -82,14 +79,12 @@ use wasm_bindgen::{JsCast, JsValue};
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Using options
 ///
 /// The results can be customized in multiple ways.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{NumberStyle, UnitDisplay, use_intl_number_format, UseIntlNumberFormatOptions};
 /// #
 /// # #[component]
@@ -103,7 +98,7 @@ use wasm_bindgen::{JsCast, JsValue};
 ///         .style(NumberStyle::Currency)
 ///         .currency("EUR"),
 /// );
-/// let formatted = number_format.format::<f64>(number); // 123.456,79 €
+/// let formatted = number_format.format::<f64>(number); // 123.456,79 â‚¬
 ///
 /// // the Japanese yen doesn't use a minor unit
 /// let number_format = use_intl_number_format(
@@ -112,7 +107,7 @@ use wasm_bindgen::{JsCast, JsValue};
 ///         .style(NumberStyle::Currency)
 ///         .currency("JPY"),
 /// );
-/// let formatted = number_format.format::<f64>(number); // ￥123,457
+/// let formatted = number_format.format::<f64>(number); // ï¿¥123,457
 ///
 /// // limit to three significant digits
 /// let number_format = use_intl_number_format(
@@ -142,8 +137,7 @@ use wasm_bindgen::{JsCast, JsValue};
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// For an exhaustive list of options see [`UseIntlNumberFormatOptions`](https://docs.rs/lyx_logic_use/latest/lyx_logic_use/struct.UseIntlNumberFormatOptions.html).
 ///
 /// ## Formatting ranges
@@ -194,7 +188,7 @@ js_value_from_to_string!(CompactDisplay);
 /// How to display the currency in currency formatting.
 #[derive(Default, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum CurrencyDisplay {
-/// use a localized currency symbol such as €.
+/// use a localized currency symbol such as â‚¬.
 #[default]
 Symbol,
 /// use a narrow format symbol ("$100" rather than "US$100").
@@ -391,17 +385,17 @@ _ => JsValue::from(&value.to_string()),
 
 #[derive(Default, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum RoundingMode {
-/// round toward +∞. Positive values round up. Negative values round "more positive".
+/// round toward +âˆž. Positive values round up. Negative values round "more positive".
 Ceil,
-/// round toward -∞. Positive values round down. Negative values round "more negative".
+/// round toward -âˆž. Positive values round down. Negative values round "more negative".
 Floor,
 /// round away from 0. The _magnitude_ of the value is always increased by rounding. Positive values round up. Negative values round "more negative".
 Expand,
 /// round toward 0. This _magnitude_ of the value is always reduced by rounding. Positive values round down. Negative values round "less negative".
 Trunc,
-/// ties toward +∞. Values above the half-increment round like `Ceil` (towards +∞), and below like `Floor` (towards -∞). On the half-increment, values round like `Ceil`.
+/// ties toward +âˆž. Values above the half-increment round like `Ceil` (towards +âˆž), and below like `Floor` (towards -âˆž). On the half-increment, values round like `Ceil`.
 HalfCeil,
-/// ties toward -∞. Values above the half-increment round like `Ceil` (towards +∞), and below like `Floor` (towards -∞). On the half-increment, values round like `Floor`.
+/// ties toward -âˆž. Values above the half-increment round like `Ceil` (towards +âˆž), and below like `Floor` (towards -âˆž). On the half-increment, values round like `Floor`.
 HalfFloor,
 /// ties away from 0. Values above the half-increment round like `Expand` (away from zero), and below like `Trunc` (towards 0). On the half-increment, values round like `Expand`.
 #[default]
@@ -486,14 +480,14 @@ compact_display: CompactDisplay,
 
 /// The currency to use in currency formatting.
 /// Possible values are the ISO 4217 currency codes, such as "USD" for the US dollar, "EUR" for the euro,
-/// or "CNY" for the Chinese RMB — see the [Current currency & funds code list](https://www.six-group.com/en/products-services/financial-information/data-standards.html#scrollTo=currency-codes).
+/// or "CNY" for the Chinese RMB â€” see the [Current currency & funds code list](https://www.six-group.com/en/products-services/financial-information/data-standards.html#scrollTo=currency-codes).
 /// There is no default value; if the style is `Currency`, the currency property must be provided.
 #[builder(into)]
 currency: Option<String>,
 
 /// How to display the currency in currency formatting. The default is `Symbol`.
 ///
-/// - `Symbol`: use a localized currency symbol such as €.
+/// - `Symbol`: use a localized currency symbol such as â‚¬.
 /// - `NarrowSymbol`: use a narrow format symbol ("$100" rather than "US$100").
 /// - `Code`: use the ISO currency code.
 /// - `Name`: use a localized currency name such as `"dollar"`.
@@ -566,12 +560,12 @@ use_grouping: NumberGrouping,
 /// Experimental.
 /// Options for rounding modes. The default is `HalfExpand`.
 ///
-/// - `Ceil`: round toward +∞. Positive values round up. Negative values round "more positive".
-/// - `Floor` round toward -∞. Positive values round down. Negative values round "more negative".
+/// - `Ceil`: round toward +âˆž. Positive values round up. Negative values round "more positive".
+/// - `Floor` round toward -âˆž. Positive values round down. Negative values round "more negative".
 /// - `Expand`: round away from 0. The _magnitude_ of the value is always increased by rounding. Positive values round up. Negative values round "more negative".
 /// - `Trunc`: round toward 0. This _magnitude_ of the value is always reduced by rounding. Positive values round down. Negative values round "less negative".
-/// - `HalfCeil`: ties toward +∞. Values above the half-increment round like `Ceil` (towards +∞), and below like `Floor` (towards -∞). On the half-increment, values round like `Ceil`.
-/// - `HalfFloor`: ties toward -∞. Values above the half-increment round like `Ceil` (towards +∞), and below like `Floor` (towards -∞). On the half-increment, values round like `Floor`.
+/// - `HalfCeil`: ties toward +âˆž. Values above the half-increment round like `Ceil` (towards +âˆž), and below like `Floor` (towards -âˆž). On the half-increment, values round like `Ceil`.
+/// - `HalfFloor`: ties toward -âˆž. Values above the half-increment round like `Ceil` (towards +âˆž), and below like `Floor` (towards -âˆž). On the half-increment, values round like `Floor`.
 /// - `HalfExpand`: ties away from 0. Values above the half-increment round like `Expand` (away from zero), and below like `Trunc` (towards 0). On the half-increment, values round like `Expand`.
 /// - `HalfTrunc`: ties toward 0. Values above the half-increment round like `Expand` (away from zero), and below like `Trunc` (towards 0). On the half-increment, values round like `Trunc`.
 /// - `HalfEven`: ties towards the nearest even integer. Values above the half-increment round like `Expand` (away from zero), and below like `Trunc` (towards 0). On the half-increment values round towards the nearest even digit.
@@ -600,8 +594,7 @@ rounding_priority: RoundingPriority,
 ///
 /// For lyx-ui-foundations-lyx_ui_foundations_lyx-ui-foundations-lyx_ui_foundations_example, if `maximum_fraction_digits` is 2 and `rounding_increment` is 5, then the number is rounded to the nearest 0.05 ("nickel rounding").
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_intl_number_format, UseIntlNumberFormatOptions, NumberStyle};
 /// #
 /// # #[component]
@@ -620,8 +613,7 @@ rounding_priority: RoundingPriority,
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// If you set `minimum_fraction_digits` and `maximum_fraction_digits`, they must set them to the same value; otherwise a `RangeError` is thrown.
 rounding_increment: u16,
 
@@ -807,8 +799,7 @@ result.as_string().unwrap_or_default()
 
 /// Formats a range of numbers according to the locale and formatting options of this `Intl.NumberFormat` object.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{NumberStyle, use_intl_number_format, UseIntlNumberFormatOptions};
 /// #
 /// # #[component]
@@ -821,7 +812,7 @@ result.as_string().unwrap_or_default()
 ///         .maximum_fraction_digits(0),
 /// );
 ///
-/// let formatted = nf.format_range::<i32, i32>(3, 5); // "$3 – $5"
+/// let formatted = nf.format_range::<i32, i32>(3, 5); // "$3 â€“ $5"
 ///
 /// // Note: the "approximately equals" symbol is added if
 /// // startRange and endRange round to the same values.
@@ -829,10 +820,8 @@ result.as_string().unwrap_or_default()
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
-/// ```
-/// # use leptos::prelude::*;
+/// ///
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{NumberStyle, use_intl_number_format, UseIntlNumberFormatOptions};
 /// #
 /// # #[component]
@@ -845,13 +834,12 @@ result.as_string().unwrap_or_default()
 ///         .maximum_fraction_digits(0),
 /// );
 ///
-/// let formatted = nf.format_range::<i32, i32>(3, 5); // "3-5 €"
-/// let formatted = nf.format_range::<f64, f64>(2.9, 3.1); // "~3 €"
+/// let formatted = nf.format_range::<i32, i32>(3, 5); // "3-5 â‚¬"
+/// let formatted = nf.format_range::<f64, f64>(2.9, 3.1); // "~3 â‚¬"
 /// #
 /// # view! { }
 /// # }
-/// ```
-pub fn format_range<NStart, NEnd>(
+/// pub fn format_range<NStart, NEnd>(
 &self,
 start: impl Into<Signal<NStart>>,
 end: impl Into<Signal<NEnd>>,

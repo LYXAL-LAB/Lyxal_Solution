@@ -1,53 +1,53 @@
-/// # Button Color Variants
+﻿/// # Button Color Variants
 ///
 /// Style enum for daisyUI button color classes that control the semantic color scheme
 /// of button components. Colors follow daisyUI's semantic color system.
 #[derive(Clone, Debug, Default)]
 pub enum ButtonColor {
-    /// Default button color (no color class applied)
-    #[default]
-    Default,
+/// Default button color (no color class applied)
+#[default]
+Default,
 
-    /// Neutral dark color for non-saturated UI elements
-    Neutral,
+/// Neutral dark color for non-saturated UI elements
+Neutral,
 
-    /// Primary brand color for main actions
-    Primary,
+/// Primary brand color for main actions
+Primary,
 
-    /// Secondary brand color for secondary actions
-    Secondary,
+/// Secondary brand color for secondary actions
+Secondary,
 
-    /// Accent brand color for highlighted actions
-    Accent,
+/// Accent brand color for highlighted actions
+Accent,
 
-    /// Info color for informational actions
-    Info,
+/// Info color for informational actions
+Info,
 
-    /// Success color for positive/safe actions
-    Success,
+/// Success color for positive/safe actions
+Success,
 
-    /// Warning color for caution actions
-    Warning,
+/// Warning color for caution actions
+Warning,
 
-    /// Error color for destructive/dangerous actions
-    Error,
+/// Error color for destructive/dangerous actions
+Error,
 }
 
 impl ButtonColor {
-    /// CSS class string
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ButtonColor::Default => "",
-            ButtonColor::Neutral => "btn-neutral",
-            ButtonColor::Primary => "btn-primary",
-            ButtonColor::Secondary => "btn-secondary",
-            ButtonColor::Accent => "btn-accent",
-            ButtonColor::Info => "btn-info",
-            ButtonColor::Success => "btn-success",
-            ButtonColor::Warning => "btn-warning",
-            ButtonColor::Error => "btn-error",
-        }
-    }
+/// CSS class string
+pub fn as_str(&self) -> &'static str {
+match self {
+ButtonColor::Default => "",
+ButtonColor::Neutral => "btn-neutral",
+ButtonColor::Primary => "btn-primary",
+ButtonColor::Secondary => "btn-secondary",
+ButtonColor::Accent => "btn-accent",
+ButtonColor::Info => "btn-info",
+ButtonColor::Success => "btn-success",
+ButtonColor::Warning => "btn-warning",
+ButtonColor::Error => "btn-error",
+}
+}
 }
 
 /// # Button Style Variants
@@ -56,39 +56,39 @@ impl ButtonColor {
 /// and treatment of button components.
 #[derive(Clone, Debug, Default)]
 pub enum ButtonStyle {
-    /// Default filled button style
+/// Default filled button style
 
-    #[default]
-    Default,
+#[default]
+Default,
 
-    /// Transparent background with colored border
-    Outline,
+/// Transparent background with colored border
+Outline,
 
-    /// Dashed border style
-    Dash,
+/// Dashed border style
+Dash,
 
-    /// Subtle background with soft appearance
-    Soft,
+/// Subtle background with soft appearance
+Soft,
 
-    /// Transparent background, shows color on hover
-    Ghost,
+/// Transparent background, shows color on hover
+Ghost,
 
-    /// Styled like a text link
-    Link,
+/// Styled like a text link
+Link,
 }
 
 impl ButtonStyle {
-    /// CSS class string
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ButtonStyle::Default => "",
-            ButtonStyle::Outline => "btn-outline",
-            ButtonStyle::Dash => "btn-dash",
-            ButtonStyle::Soft => "btn-soft",
-            ButtonStyle::Ghost => "btn-ghost",
-            ButtonStyle::Link => "btn-link",
-        }
-    }
+/// CSS class string
+pub fn as_str(&self) -> &'static str {
+match self {
+ButtonStyle::Default => "",
+ButtonStyle::Outline => "btn-outline",
+ButtonStyle::Dash => "btn-dash",
+ButtonStyle::Soft => "btn-soft",
+ButtonStyle::Ghost => "btn-ghost",
+ButtonStyle::Link => "btn-link",
+}
+}
 }
 
 /// # Button Size Variants
@@ -97,35 +97,35 @@ impl ButtonStyle {
 /// and typography scale of button components.
 #[derive(Clone, Debug, Default)]
 pub enum ButtonSize {
-    /// Extra small button size
-    Xs,
+/// Extra small button size
+Xs,
 
-    /// Small button size
-    Sm,
+/// Small button size
+Sm,
 
-    /// Medium button size (default)
+/// Medium button size (default)
 
-    #[default]
-    Md,
+#[default]
+Md,
 
-    /// Large button size
-    Lg,
+/// Large button size
+Lg,
 
-    /// Extra large button size
-    Xl,
+/// Extra large button size
+Xl,
 }
 
 impl ButtonSize {
-    /// CSS class string
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ButtonSize::Xs => "btn-xs",
-            ButtonSize::Sm => "btn-sm",
-            ButtonSize::Md => "btn-md",
-            ButtonSize::Lg => "btn-lg",
-            ButtonSize::Xl => "btn-xl",
-        }
-    }
+/// CSS class string
+pub fn as_str(&self) -> &'static str {
+match self {
+ButtonSize::Xs => "btn-xs",
+ButtonSize::Sm => "btn-sm",
+ButtonSize::Md => "btn-md",
+ButtonSize::Lg => "btn-lg",
+ButtonSize::Xl => "btn-xl",
+}
+}
 }
 
 /// # Button Shape Variants
@@ -134,33 +134,33 @@ impl ButtonSize {
 /// and layout behavior of button components.
 #[derive(Clone, Debug, Default)]
 pub enum ButtonShape {
-    /// Default button shape
+/// Default button shape
 
-    #[default]
-    Default,
+#[default]
+Default,
 
-    /// Wider than normal button
-    Wide,
+/// Wider than normal button
+Wide,
 
-    /// Full width button (block-level)
-    Block,
+/// Full width button (block-level)
+Block,
 
-    /// Square aspect ratio button
-    Square,
+/// Square aspect ratio button
+Square,
 
-    /// Circular button shape
-    Circle,
+/// Circular button shape
+Circle,
 }
 
 impl ButtonShape {
-    /// CSS class string
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ButtonShape::Default => "",
-            ButtonShape::Wide => "btn-wide",
-            ButtonShape::Block => "btn-block",
-            ButtonShape::Square => "btn-square",
-            ButtonShape::Circle => "btn-circle",
-        }
-    }
+/// CSS class string
+pub fn as_str(&self) -> &'static str {
+match self {
+ButtonShape::Default => "",
+ButtonShape::Wide => "btn-wide",
+ButtonShape::Block => "btn-block",
+ButtonShape::Square => "btn-square",
+ButtonShape::Circle => "btn-circle",
+}
+}
 }

@@ -1,4 +1,4 @@
-use crate::filter_builder_methods;
+﻿use crate::filter_builder_methods;
 use crate::utils::{create_filter_wrapper, DebounceOptions, FilterOptions, ThrottleOptions};
 use default_struct_builder::DefaultBuilder;
 use leptos::*;
@@ -15,8 +15,7 @@ use std::rc::Rc;
 /// If it's `false`, the `callback` will run only after
 /// the first change is detected of any signal that is accessed in `deps`.
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos::logging::log;
 /// # use leptos_use::{watch_with_options, WatchOptions};
 /// #
@@ -34,15 +33,13 @@ use std::rc::Rc;
 /// set_num.set(1); // > "Number 1"
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Filters
 ///
 /// The callback can be throttled or debounced. Please see [`fn@crate::watch_throttled`]
 /// and [`fn@crate::watch_debounced`] for details.
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos::logging::log;
 /// # use leptos_use::{watch_with_options, WatchOptions};
 /// #
@@ -58,10 +55,8 @@ use std::rc::Rc;
 /// );
 /// #    view! { }
 /// # }
-/// ```
-///
-/// ```
-/// # use leptos::*;
+/// ///
+/// /// # use leptos::*;
 /// # use leptos::logging::log;
 /// # use leptos_use::{watch_with_options, WatchOptions};
 /// #
@@ -77,8 +72,7 @@ use std::rc::Rc;
 /// );
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// On the server this works just fine except if you throttle or debounce in which case the callback
@@ -90,114 +84,114 @@ use std::rc::Rc;
 /// * [`fn@crate::watch_throttled`]
 /// * [`fn@crate::watch_debounced`]
 pub fn watch_with_options<W, T, DFn, CFn>(
-    deps: DFn,
-    callback: CFn,
-    options: WatchOptions,
+deps: DFn,
+callback: CFn,
+options: WatchOptions,
 ) -> impl Fn() + Clone
 where
-    DFn: Fn() -> W + 'static,
-    CFn: Fn(&W, Option<&W>, Option<T>) -> T + Clone + 'static,
-    W: Clone + 'static,
-    T: Clone + 'static,
+DFn: Fn() -> W + 'static,
+CFn: Fn(&W, Option<&W>, Option<T>) -> T + Clone + 'static,
+W: Clone + 'static,
+T: Clone + 'static,
 {
-    let cur_deps_value: Rc<RefCell<Option<W>>> = Rc::new(RefCell::new(None));
-    let prev_deps_value: Rc<RefCell<Option<W>>> = Rc::new(RefCell::new(None));
-    let prev_callback_value: Rc<RefCell<Option<T>>> = Rc::new(RefCell::new(None));
+let cur_deps_value: Rc<RefCell<Option<W>>> = Rc::new(RefCell::new(None));
+let prev_deps_value: Rc<RefCell<Option<W>>> = Rc::new(RefCell::new(None));
+let prev_callback_value: Rc<RefCell<Option<T>>> = Rc::new(RefCell::new(None));
 
-    let wrapped_callback = {
-        let cur_deps_value = Rc::clone(&cur_deps_value);
-        let prev_deps_value = Rc::clone(&prev_deps_value);
-        let prev_callback_val = Rc::clone(&prev_callback_value);
+let wrapped_callback = {
+let cur_deps_value = Rc::clone(&cur_deps_value);
+let prev_deps_value = Rc::clone(&prev_deps_value);
+let prev_callback_val = Rc::clone(&prev_callback_value);
 
-        move || {
-            #[cfg(debug_assertions)]
-            let prev = SpecialNonReactiveZone::enter();
+move || {
+#[cfg(debug_assertions)]
+let prev = SpecialNonReactiveZone::enter();
 
-            let ret = callback(
-                cur_deps_value
-                    .borrow()
-                    .as_ref()
-                    .expect("this will not be called before there is deps value"),
-                prev_deps_value.borrow().as_ref(),
-                prev_callback_val.take(),
-            );
+let ret = callback(
+cur_deps_value
+.borrow()
+.as_ref()
+.expect("this will not be called before there is deps value"),
+prev_deps_value.borrow().as_ref(),
+prev_callback_val.take(),
+);
 
-            #[cfg(debug_assertions)]
-            SpecialNonReactiveZone::exit(prev);
+#[cfg(debug_assertions)]
+SpecialNonReactiveZone::exit(prev);
 
-            ret
-        }
-    };
+ret
+}
+};
 
-    let filtered_callback =
-        create_filter_wrapper(options.filter.filter_fn(), wrapped_callback.clone());
+let filtered_callback =
+create_filter_wrapper(options.filter.filter_fn(), wrapped_callback.clone());
 
-    leptos::watch(
-        deps,
-        move |deps_value, previous_deps_value, did_run_before| {
-            cur_deps_value.replace(Some(deps_value.clone()));
-            prev_deps_value.replace(previous_deps_value.cloned());
+leptos::watch(
+deps,
+move |deps_value, previous_deps_value, did_run_before| {
+cur_deps_value.replace(Some(deps_value.clone()));
+prev_deps_value.replace(previous_deps_value.cloned());
 
-            let callback_value = if options.immediate && did_run_before.is_none() {
-                Some(wrapped_callback())
-            } else {
-                filtered_callback().take()
-            };
+let callback_value = if options.immediate && did_run_before.is_none() {
+Some(wrapped_callback())
+} else {
+filtered_callback().take()
+};
 
-            prev_callback_value.replace(callback_value);
-        },
-        options.immediate,
-    )
+prev_callback_value.replace(callback_value);
+},
+options.immediate,
+)
 
-    // create_effect(move |did_run_before| {
-    //     if !is_active.get() {
-    //         return;
-    //     }
-    //
-    //     let deps_value = deps();
-    //
-    //     if !options.immediate && did_run_before.is_none() {
-    //         prev_deps_value.replace(Some(deps_value));
-    //         return;
-    //     }
-    //
-    //     cur_deps_value.replace(Some(deps_value.clone()));
-    //
-    //
-    //     prev_deps_value.replace(Some(deps_value));
-    // });
-    //
-    //
+// create_effect(move |did_run_before| {
+//     if !is_active.get() {
+//         return;
+//     }
+//
+//     let deps_value = deps();
+//
+//     if !options.immediate && did_run_before.is_none() {
+//         prev_deps_value.replace(Some(deps_value));
+//         return;
+//     }
+//
+//     cur_deps_value.replace(Some(deps_value.clone()));
+//
+//
+//     prev_deps_value.replace(Some(deps_value));
+// });
+//
+//
 }
 
 /// Options for `watch_with_options`
 #[derive(DefaultBuilder, Default)]
 pub struct WatchOptions {
-    /// If `immediate` is true, the `callback` will run immediately.
-    /// If it's `false, the `callback` will run only after
-    /// the first change is detected of any signal that is accessed in `deps`.
-    /// Defaults to `false`.
-    immediate: bool,
+/// If `immediate` is true, the `callback` will run immediately.
+/// If it's `false, the `callback` will run only after
+/// the first change is detected of any signal that is accessed in `deps`.
+/// Defaults to `false`.
+immediate: bool,
 
-    /// Allows to debounce or throttle the callback. Defaults to no filter.
-    filter: FilterOptions,
+/// Allows to debounce or throttle the callback. Defaults to no filter.
+filter: FilterOptions,
 }
 
 impl WatchOptions {
-    filter_builder_methods!(
-        /// the watch callback
-        filter
-    );
+filter_builder_methods!(
+/// the watch callback
+filter
+);
 }
 
 #[deprecated(since = "0.7.0", note = "Use `leptos::watch` instead")]
 #[inline(always)]
 pub fn watch<W, T, DFn, CFn>(deps: DFn, callback: CFn) -> impl Fn() + Clone
 where
-    DFn: Fn() -> W + 'static,
-    CFn: Fn(&W, Option<&W>, Option<T>) -> T + Clone + 'static,
-    W: Clone + 'static,
-    T: Clone + 'static,
+DFn: Fn() -> W + 'static,
+CFn: Fn(&W, Option<&W>, Option<T>) -> T + Clone + 'static,
+W: Clone + 'static,
+T: Clone + 'static,
 {
-    leptos::watch(deps, callback, false)
+leptos::watch(deps, callback, false)
 }

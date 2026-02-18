@@ -1,11 +1,11 @@
-[package]
+﻿[package]
 name = "leptos_macro"
 version = "0.8.0"
 edition = "2024"
 [lib]
 proc-macro = true
 [dependencies]
-attribute-derive = { version = "0.8.0", features = ["syn-full" ], default-features = true }
+attribute-derive = { version = "*", features = ["syn-full" ], default-features = true }
 cfg-if = { version = "*", default-features = true }
 html-escape = { version = "*", default-features = true }
 itertools = { version = "*", default-features = true }
@@ -25,7 +25,7 @@ log = { version = "*", default-features = true }
 typed-builder = { version = "*", default-features = true }
 trybuild = { version = "*", default-features = true }
 leptos = { path = "../leptos", version = "*" }
-router = { path = "../router", version = "*", features = ["ssr"] }
+leptos_router = { path = "../router", version = "*", features = ["ssr"] }
 server_fn = { path = "../server_fn", version = "*", features = ["cbor"] }
 insta = { version = "*", default-features = true }
 serde = { version = "*", default-features = true }

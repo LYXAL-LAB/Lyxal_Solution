@@ -1,17 +1,17 @@
-//! Leptos port of shadcn/ui collapsible
+﻿//! Leptos port of shadcn/ui collapsible
 
 mod signal_managed;
 mod default;
 mod new_york;
 
 pub use default::{
-    Collapsible, CollapsibleTrigger, CollapsibleContent,
+Collapsible, CollapsibleTrigger, CollapsibleContent,
 };
 
 pub use new_york::{
-    Collapsible as CollapsibleNewYork,
-    CollapsibleTrigger as CollapsibleTriggerNewYork,
-    CollapsibleContent as CollapsibleContentNewYork,
+Collapsible as CollapsibleNewYork,
+CollapsibleTrigger as CollapsibleTriggerNewYork,
+CollapsibleContent as CollapsibleContentNewYork,
 };
 
 mod tests;

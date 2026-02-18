@@ -1,4 +1,4 @@
-// Implementation tests for Card component
+﻿// Implementation tests for Card component
 // These tests focus on actual implementation logic and component behavior
 
 pub mod class_constants;

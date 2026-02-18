@@ -1,4 +1,4 @@
-#![warn(missing_docs)]
+﻿#![warn(missing_docs)]
 //! Welcome to Chartistry! This crate provides a flexible way to build charts in [Leptos](https://github.com/leptos-rs/leptos).
 //!
 //! All charts are built using the [Chart] fn. If you understand this function, you understand this library.
@@ -10,8 +10,7 @@
 //!
 //! Below is an example chart:
 //!
-//! ```rust
-//! use leptos::prelude::*;
+//! //! use leptos::prelude::*;
 //! use leptos_chartistry::*;
 //!
 //! # use chrono::prelude::*;
@@ -49,9 +48,7 @@
 //!     />
 //! }
 //! # }
-//! ```
-
-mod aspect_ratio;
+//! mod aspect_ratio;
 mod bounds;
 mod chart;
 mod colours;
@@ -72,43 +69,22 @@ pub use chart::Chart;
 pub use colours::{Colour, ColourScheme, DivergingGradient, SequentialGradient};
 pub use edge::Edge;
 pub use inner::{
-    axis_marker::{AxisMarker, AxisPlacement, AXIS_MARKER_COLOUR},
-    grid_line::{XGridLine, YGridLine, GRID_LINE_COLOUR},
-    guide_line::{AlignOver, XGuideLine, YGuideLine, GUIDE_LINE_COLOUR},
-    legend::InsetLegend,
-    InnerLayout, IntoInner, IntoInner as _,
+axis_marker::{AxisMarker, AxisPlacement, AXIS_MARKER_COLOUR},
+grid_line::{XGridLine, YGridLine, GRID_LINE_COLOUR},
+guide_line::{AlignOver, XGuideLine, YGuideLine, GUIDE_LINE_COLOUR},
+legend::InsetLegend,
+InnerLayout, IntoInner, IntoInner as _,
 };
 pub use layout::{
-    legend::Legend,
-    rotated_label::{Anchor, RotatedLabel},
-    tick_labels::TickLabels,
-    EdgeLayout, IntoEdge, IntoEdge as _,
+legend::Legend,
+rotated_label::{Anchor, RotatedLabel},
+tick_labels::TickLabels,
+EdgeLayout, IntoEdge, IntoEdge as _,
 };
 pub use overlay::tooltip::{Tooltip, TooltipPlacement, TooltipSortBy, TOOLTIP_CURSOR_DISTANCE};
 pub use padding::Padding;
 pub use series::{
-    Bar, BarPlacement, Interpolation, Line, Marker, MarkerShape, Series, Stack, Step, BAR_GAP,
-    BAR_GAP_INNER, DIVERGING_GRADIENT, LINEAR_GRADIENT, SERIES_COLOUR_SCHEME, STACK_COLOUR_SCHEME,
+Bar, BarPlacement, Interpolation, Line, Marker, MarkerShape, Series, Stack, Step, BAR_GAP,
+BAR_GAP_INNER, DIVERGING_GRADIENT, LINEAR_GRADIENT, SERIES_COLOUR_SCHEME, STACK_COLOUR_SCHEME,
 };
 pub use ticks::{AlignedFloats, Period, Tick, TickFormat, Timestamps};
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

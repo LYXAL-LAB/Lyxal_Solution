@@ -1,4 +1,4 @@
-mod icon_macro;
+﻿mod icon_macro;
 mod installation;
 mod introduction;
 mod theme_provider;

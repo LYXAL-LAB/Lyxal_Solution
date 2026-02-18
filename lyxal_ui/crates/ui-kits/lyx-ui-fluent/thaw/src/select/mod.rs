@@ -1,4 +1,4 @@
-mod rule;
+﻿mod rule;
 mod select;
 mod types;
 

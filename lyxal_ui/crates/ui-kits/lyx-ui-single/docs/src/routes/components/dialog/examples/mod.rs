@@ -1,4 +1,4 @@
-mod dialog;
+﻿mod dialog;
 mod dialog_alert;
 
 pub use dialog::*;

@@ -1,4 +1,4 @@
-use crate::utils::get_header;
+﻿use crate::utils::get_header;
 use default_struct_builder::DefaultBuilder;
 use leptos::prelude::*;
 use std::sync::Arc;
@@ -17,8 +17,7 @@ use std::sync::Arc;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use lyx_logic_use::use_locales;
 /// #
 /// # #[component]
@@ -27,8 +26,7 @@ use std::sync::Arc;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

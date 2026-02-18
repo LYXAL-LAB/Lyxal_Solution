@@ -1,4 +1,4 @@
-//! # daisyUI Drawer Component
+﻿//! # daisyUI Drawer Component
 //!
 //! For more information, see: https://daisyui.com/components/drawer/
 

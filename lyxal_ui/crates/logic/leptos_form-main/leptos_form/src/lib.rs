@@ -1,4 +1,4 @@
-#![doc = include_str!("../README.md")]
+﻿#![doc = include_str!("../README.md")]
 #![cfg_attr(CHANNEL_NIGHTLY, feature(doc_auto_cfg))]
 #![forbid(unsafe_code)]
 
@@ -23,21 +23,21 @@ pub use ::leptos_form_core::FormField;
 pub use ::leptos_form_core::DefaultHtmlElement;
 
 pub mod prelude {
-    #[cfg(feature = "chrono")]
-    pub use super::config::chrono::*;
-    pub use super::config::collections::*;
-    pub use super::*;
+#[cfg(feature = "chrono")]
+pub use super::config::chrono::*;
+pub use super::config::collections::*;
+pub use super::*;
 }
 
 #[doc(hidden)]
 pub mod internal {
-    pub use leptos;
-    pub use leptos_router;
-    pub use wasm_bindgen;
+pub use leptos;
+pub use leptos_router;
+pub use wasm_bindgen;
 
-    #[cfg(feature = "cache-local-storage")]
-    pub use js_sys;
+#[cfg(feature = "cache-local-storage")]
+pub use js_sys;
 
-    #[cfg(feature = "cache-local-storage")]
-    pub use web_sys;
+#[cfg(feature = "cache-local-storage")]
+pub use web_sys;
 }

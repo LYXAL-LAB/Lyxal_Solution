@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx-ui-tailwind-rs-core"
 version = "0.8.0"
 edition = "2024"
@@ -15,7 +15,7 @@ indexmap = { version = "*" }
 # For dynamic class generation
 once_cell = { version = "*" }
 # Leptos integration (optional)
-leptos = { path = "../core/lyx-core-leptos/leptos", optional = true }
+leptos = { path = "../../../../core/lyx-core-leptos/leptos", optional = true }
 # Macros (optional) - use local path to avoid circular dependency
 tailwind-rs-core-macros = { path = "../tailwind-rs-core-macros", optional = true }
 [dev-dependencies]

@@ -1,4 +1,4 @@
-use crate::merge_classes;
+﻿use crate::merge_classes;
 use leptos::{html::Div, prelude::*, tachys::html::class::class as class_fn};
 
 /// # Validator Wrapper Component
@@ -7,10 +7,10 @@ use leptos::{html::Div, prelude::*, tachys::html::class::class as class_fn};
 /// As such, it is intended to be used with form elements such as `Input` and `Select`.
 #[component]
 pub fn Validator(
-    /// Form element children (such as input, select, textarea etc...)
-    children: Children,
+/// Form element children (such as input, select, textarea etc...)
+children: Children,
 ) -> impl IntoView {
-    children().add_any_attr(class_fn(("validator", true)));
+children().add_any_attr(class_fn(("validator", true)));
 }
 
 /// # Validator Hint Component
@@ -22,35 +22,20 @@ pub fn Validator(
 /// - `node_ref` - References the hint `<div>` element ([HTMLDivElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLDivElement))
 #[component]
 pub fn ValidatorHint(
-    /// Additional CSS classes to apply to the hint
-    #[prop(optional, into)]
-    class: &'static str,
+/// Additional CSS classes to apply to the hint
+#[prop(optional, into)]
+class: &'static str,
 
-    /// Node reference for the hint `<div>` element
-    #[prop(optional)]
-    node_ref: NodeRef<Div>,
+/// Node reference for the hint `<div>` element
+#[prop(optional)]
+node_ref: NodeRef<Div>,
 
-    /// Hint or error message content
-    children: Children,
+/// Hint or error message content
+children: Children,
 ) -> impl IntoView {
-    view! {
-        <div node_ref=node_ref class=move || merge_classes!("validator-text", class)>
-            {children()}
-        </div>
-    }
+view! {
+<div node_ref=node_ref class=move || merge_classes!("validator-text", class)>
+{children()}
+</div>
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-
+}

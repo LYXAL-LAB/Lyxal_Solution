@@ -1,10 +1,10 @@
-[package]
+﻿[package]
 name = "lyx-ui-lazy-loading"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
 [dev-dependencies]
-leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr"] }
+leptos = { path = "../../../../../core/lyx-core-leptos/leptos", features = ["csr"] }
 
 
 

@@ -1,15 +1,15 @@
-[package]
+﻿[package]
 name = "lyx-ui-demo-simple"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
 # Leptos framework with SSR
-leptos = { path = "../core/lyx-core-leptos/leptos", features = ["ssr"] }
-leptos_axum = { path = "../../../core/leptos/integrations/axum", features = ["ssr"] }
-leptos_meta = { path = "../core/lyx-core-leptos/meta", features = ["ssr"] }
-leptos_router = { path = "../core/lyx-core-leptos/router", features = ["ssr"] }
+leptos = { path = "../../../core/lyx-core-leptos/leptos", features = ["ssr"] }
+leptos_axum = { path = "../../../core/lyx-core-leptos/integrations/axum", features = ["ssr"] }
+leptos_meta = { path = "../../../core/lyx-core-leptos/meta", features = ["ssr"] }
+leptos_router = { path = "../../../core/lyx-core-leptos/router", features = ["ssr"] }
 # Server dependencies
-axum = { version = "*" }
+leptos_axum = { version = "*" }
 tokio = { version = "*", features = ["full"] }
 tower = { version = "*" }
 tower-http = { version = "*", features = ["fs", "cors"] }
@@ -28,6 +28,7 @@ uuid = { version = "*", features = ["v4"] }
 [[bin]]
 name = "lyx-ui-demo-simple"
 path = "src/lib.rs"
+
 
 
 

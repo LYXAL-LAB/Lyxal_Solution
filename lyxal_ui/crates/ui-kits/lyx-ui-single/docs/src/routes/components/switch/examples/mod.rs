@@ -1,4 +1,4 @@
-mod switch;
+﻿mod switch;
 mod switch_group;
 
 pub use switch::*;

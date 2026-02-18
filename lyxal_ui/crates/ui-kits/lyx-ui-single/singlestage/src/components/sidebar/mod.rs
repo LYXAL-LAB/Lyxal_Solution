@@ -1,4 +1,4 @@
-mod collapsible;
+﻿mod collapsible;
 mod content;
 mod footer;
 mod group;
@@ -32,78 +32,59 @@ const SIDEBAR_MOBILE_WIDTH_REM: usize = 18; // main.css
 
 #[derive(Clone)]
 pub struct SidebarContext {
-    close_if_small_screen: Arc<dyn Fn() + Send + Sync>,
-    pub hidden: Reactive<bool>,
-    pub side: Reactive<String>,
+close_if_small_screen: Arc<dyn Fn() + Send + Sync>,
+pub hidden: Reactive<bool>,
+pub side: Reactive<String>,
 }
 
 impl SidebarContext {
-    pub fn close_if_small_screen(&self) {
-        (self.close_if_small_screen)()
-    }
+pub fn close_if_small_screen(&self) {
+(self.close_if_small_screen)()
+}
 }
 
 /// Get current viewport width
 fn get_screen_width() -> Option<f64> {
-    if let Ok(js_width) = window().inner_width()
-        && let Some(f64_width) = js_width.as_f64()
-    {
-        return Some(f64_width);
-    }
+if let Ok(js_width) = window().inner_width()
+&& let Some(f64_width) = js_width.as_f64()
+{
+return Some(f64_width);
+}
 
-    None
+None
 }
 
 /// Get the font size setting of the browser viewing the page
 fn get_font_size() -> Option<usize> {
-    if let Some(dom) = document().document_element()
-        && let Ok(Some(css)) = window().get_computed_style(&dom)
-        && let Ok(mut font_size) = css.get_property_value("font-size")
-    {
-        // Cut off "px"
-        let _ = font_size.split_off(font_size.len() - 2);
+if let Some(dom) = document().document_element()
+&& let Ok(Some(css)) = window().get_computed_style(&dom)
+&& let Ok(mut font_size) = css.get_property_value("font-size")
+{
+// Cut off "px"
+let _ = font_size.split_off(font_size.len() - 2);
 
-        if let Ok(parsed_font_size) = font_size.parse::<usize>() {
-            return Some(parsed_font_size);
-        }
-    }
+if let Ok(parsed_font_size) = font_size.parse::<usize>() {
+return Some(parsed_font_size);
+}
+}
 
-    None
+None
 }
 
 /// Determine if the viewport is smaller than 48rem wide
 fn screen_is_small() -> bool {
-    let breakpoint;
-    if let Some(font_size) = get_font_size() {
-        breakpoint = font_size * BREAKPOINT_REM;
-    } else {
-        breakpoint = BREAKPOINT_PX;
-    }
-
-    if let Some(screen_width) = get_screen_width()
-        && screen_width < breakpoint as f64
-    {
-        return true;
-    }
-
-    false
+let breakpoint;
+if let Some(font_size) = get_font_size() {
+breakpoint = font_size * BREAKPOINT_REM;
+} else {
+breakpoint = BREAKPOINT_PX;
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
 
+if let Some(screen_width) = get_screen_width()
+&& screen_width < breakpoint as f64
+{
+return true;
+}
+
+false
+}

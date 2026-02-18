@@ -1,4 +1,4 @@
-use crate::core::impl_ssr_safe_method;
+﻿use crate::core::impl_ssr_safe_method;
 use crate::{UseDocument, use_document};
 use cfg_if::cfg_if;
 use std::ops::Deref;
@@ -15,8 +15,7 @@ use leptos::prelude::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::use_window;
 /// #
 /// # #[component]
@@ -28,8 +27,7 @@ use leptos::prelude::*;
 /// #
 /// # view! { }
 /// # }
-/// ```
-pub fn use_window() -> UseWindow {
+/// pub fn use_window() -> UseWindow {
 cfg_if! { if #[cfg(feature = "ssr")] {
 UseWindow(None)
 } else {

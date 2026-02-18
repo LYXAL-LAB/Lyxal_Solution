@@ -1,5 +1,5 @@
-//! Data table component for the Table package
-//! 
+﻿//! Data table component for the Table package
+//!
 //! This module contains a comprehensive data table component with sorting,
 //! filtering, pagination, and selection capabilities.
 

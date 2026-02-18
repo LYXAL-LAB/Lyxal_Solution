@@ -1,4 +1,4 @@
-//! # daisyUI Kbd Component
+﻿//! # daisyUI Kbd Component
 //!
 //! For more information, see: https://daisyui.com/components/kbd/
 
@@ -7,22 +7,3 @@ mod style;
 
 pub use component::*;
 pub use style::*;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx-tool-cli"
 version = "0.8.0"
 edition = "2024"
@@ -15,7 +15,7 @@ log = { version = "*" }
 lightningcss = { version = "*", features = ["browserslist"] }
 flexi_logger = { version = "*" }
 tokio = { version = "*", default-features = false, features = ["full"] }
-axum = { version = "*", features = ["ws"] }
+leptos_axum = { version = "*", features = ["ws"] }
 # not using notify 5.0 because it uses Crossbeam which has an issue with tokio
 notify = { version = "*" }
 lazy_static = { version = "*" }
@@ -37,7 +37,7 @@ zip = { version = "*", default-features = false, features = ["deflate"] }
 tar = { version = "*" }
 dunce = { version = "*" }
 bytes = { version = "*" }
-leptos_hot_reload = { path = "../../core/leptos/leptos_hot_reload" }
+leptos_hot_reload = { path = "../../core/lyx-core-leptos/leptos_hot_reload" }
 pathdiff = { version = "*", features = ["camino"] }
 semver = { version = "*" }
 async-trait = { version = "*" }

@@ -1,4 +1,4 @@
-// TDD tests for Card component
+﻿// TDD tests for Card component
 // These tests focus on Test-Driven Development implementation
 
 mod tdd_red_tests;

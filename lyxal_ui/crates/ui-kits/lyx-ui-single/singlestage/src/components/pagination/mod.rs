@@ -1,4 +1,4 @@
-mod content;
+﻿mod content;
 mod ellipsis;
 mod item;
 mod link;
@@ -13,22 +13,3 @@ pub use link::*;
 pub use next::*;
 pub use pagination::*;
 pub use previous::*;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

@@ -1,4 +1,4 @@
-#[cfg(feature = "actix")]
+﻿#[cfg(feature = "actix")]
 use http0_2::HeaderName;
 #[cfg(any(feature = "axum", feature = "spin"))]
 use http1::HeaderName;
@@ -12,65 +12,64 @@ use leptos::*;
 ///
 /// ## Example
 ///
-/// ```ignore
+/// ignore
 /// # use leptos_use::utils::header;
 /// #
 /// let content_len = header(http::header::CONTENT_LENGTH);
-/// ```
-pub fn header<N>(name: N) -> Option<String>
+/// pub fn header<N>(name: N) -> Option<String>
 where
-    N: Into<HeaderName>,
+N: Into<HeaderName>,
 {
-    let name = name.into();
+let name = name.into();
 
-    #[cfg(all(feature = "actix", feature = "axum"))]
-    compile_error!("You can only enable one of features \"actix\" and \"axum\" at the same time");
+#[cfg(all(feature = "actix", feature = "axum"))]
+compile_error!("You can only enable one of features \"actix\" and \"axum\" at the same time");
 
-    #[cfg(all(feature = "actix", feature = "spin"))]
-    compile_error!("You can only enable one of features \"actix\" and \"spin\" at the same time");
+#[cfg(all(feature = "actix", feature = "spin"))]
+compile_error!("You can only enable one of features \"actix\" and \"spin\" at the same time");
 
-    #[cfg(all(feature = "axum", feature = "spin"))]
-    compile_error!("You can only enable one of features \"axum\" and \"spin\" at the same time");
+#[cfg(all(feature = "axum", feature = "spin"))]
+compile_error!("You can only enable one of features \"axum\" and \"spin\" at the same time");
 
-    #[cfg(feature = "actix")]
-    type HeaderValue = http0_2::HeaderValue;
-    #[cfg(feature = "axum")]
-    type HeaderValue = http1::HeaderValue;
+#[cfg(feature = "actix")]
+type HeaderValue = http0_2::HeaderValue;
+#[cfg(feature = "axum")]
+type HeaderValue = http1::HeaderValue;
 
-    #[cfg(any(feature = "axum", feature = "actix", feature = "spin"))]
-    let headers;
-    #[cfg(feature = "actix")]
-    {
-        headers = use_context::<actix_web::HttpRequest>().map(|req| req.headers().clone());
-    }
-    #[cfg(feature = "axum")]
-    {
-        headers = use_context::<http1::request::Parts>().map(|parts| parts.headers);
-    }
-    #[cfg(feature = "spin")]
-    {
-        headers = use_context::<leptos_spin::RequestParts>().map(|parts| parts.headers().clone());
-    }
+#[cfg(any(feature = "axum", feature = "actix", feature = "spin"))]
+let headers;
+#[cfg(feature = "actix")]
+{
+headers = use_context::<actix_web::HttpRequest>().map(|req| req.headers().clone());
+}
+#[cfg(feature = "axum")]
+{
+headers = use_context::<http1::request::Parts>().map(|parts| parts.headers);
+}
+#[cfg(feature = "spin")]
+{
+headers = use_context::<leptos_spin::RequestParts>().map(|parts| parts.headers().clone());
+}
 
-    #[cfg(any(feature = "axum", feature = "actix"))]
-    {
-        headers.map(|headers| {
-            headers
-                .get(name)
-                .cloned()
-                .unwrap_or_else(|| HeaderValue::from_static(""))
-                .to_str()
-                .unwrap_or_default()
-                .to_owned()
-        })
-    }
-    #[cfg(feature = "spin")]
-    {
-        headers.and_then(|headers| {
-            headers
-                .iter()
-                .find(|(key, _)| **key == name)
-                .and_then(|(_, value)| String::from_utf8(value.to_vec()).ok())
-        })
-    }
+#[cfg(any(feature = "axum", feature = "actix"))]
+{
+headers.map(|headers| {
+headers
+.get(name)
+.cloned()
+.unwrap_or_else(|| HeaderValue::from_static(""))
+.to_str()
+.unwrap_or_default()
+.to_owned()
+})
+}
+#[cfg(feature = "spin")]
+{
+headers.and_then(|headers| {
+headers
+.iter()
+.find(|(key, _)| **key == name)
+.and_then(|(_, value)| String::from_utf8(value.to_vec()).ok())
+})
+}
 }

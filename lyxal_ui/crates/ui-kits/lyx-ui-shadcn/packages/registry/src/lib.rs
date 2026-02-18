@@ -1,4 +1,4 @@
-pub mod registry_base_colors;
+﻿pub mod registry_base_colors;
 pub mod registry_blocks;
 pub mod registry_charts;
 pub mod registry_colors;
@@ -24,24 +24,24 @@ use crate::registry_ui::UI;
 use crate::schema::{FrameworkName, Registry};
 
 pub static REGISTRY: LazyLock<HashMap<FrameworkName, Registry>> = LazyLock::new(|| {
-    let mut registry = HashMap::new();
+let mut registry = HashMap::new();
 
-    for map in [
-        BLOCKS.clone(),
-        CHARTS.clone(),
-        EXAMPLES.clone(),
-        HOOKS.clone(),
-        LIB.clone(),
-        THEMES.clone(),
-        UI.clone(),
-    ] {
-        for (framework, entries) in map {
-            registry
-                .entry(framework)
-                .or_insert_with(Vec::new)
-                .extend(entries);
-        }
-    }
+for map in [
+BLOCKS.clone(),
+CHARTS.clone(),
+EXAMPLES.clone(),
+HOOKS.clone(),
+LIB.clone(),
+THEMES.clone(),
+UI.clone(),
+] {
+for (framework, entries) in map {
+registry
+.entry(framework)
+.or_insert_with(Vec::new)
+.extend(entries);
+}
+}
 
-    registry
+registry
 });

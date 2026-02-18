@@ -1,22 +1,22 @@
-[package]
+﻿[package]
 name = "app-1"
 version = "0.8.0"
 edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
-console_error_panic_hook = { version = "0.8.0" }
-meta = { path = "../../../meta", version = "*", optional = true }
-router = { path = "../../../router", version = "*", optional = true }
+console_error_panic_hook = { version = "*" }
+leptos_meta = { path = "../../../meta", version = "*", optional = true }
+leptos_router = { path = "../../../router", version = "*", optional = true }
 tower = { version = "*", optional = true }
 tower-http = { version = "*", optional = true, features = ["fs", "trace"] }
 wasm-bindgen = { version = "*" }
 thiserror = { version = "*" }
 tracing = { version = "*", optional = true }
 http = { version = "*" }
-axum = { version = "*", optional = true }
+leptos_axum = { version = "*", optional = true }
 leptos = { path = "../leptos", version = "*", optional = true }
-axum = { path = "../../../integrations/axum", version = "*", optional = true }
+leptos_axum = { path = "../../../integrations/axum", version = "*", optional = true }
 tokio = { version = "*", optional = true, features = ["rt-multi-thread"] }
 shared-server = { version = "*", default-features = false }
 shared-server-2 = { path = "../shared-server-2", version = "*", optional = true }

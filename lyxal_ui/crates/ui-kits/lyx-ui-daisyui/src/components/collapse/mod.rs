@@ -1,4 +1,4 @@
-//! # daisyUI Collapse Component
+﻿//! # daisyUI Collapse Component
 //!
 //! For more information, see: https://daisyui.com/components/collapse/
 

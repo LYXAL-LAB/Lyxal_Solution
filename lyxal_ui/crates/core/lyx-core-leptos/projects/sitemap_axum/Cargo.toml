@@ -1,16 +1,16 @@
-[package]
+﻿[package]
 name = "sitemap_axum"
 version = "0.8.0"
 edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 [dependencies]
-axum = { optional = true, version = "0.8.0" }
+leptos_axum = { optional = true, version = "0.8.0" }
 console_error_panic_hook = { version = "*" }
 leptos = { path = "../leptos", version = "*", features = ["nightly"], optional = true }
-axum = { path = "../../integrations/axum", version = "*", optional = true }
-meta = { path = "../../meta", version = "*", features = ["nightly"], optional = true }
-router = { path = "../../router", version = "*", features = ["nightly"], optional = true }
+leptos_axum = { path = "../../integrations/axum", version = "*", optional = true }
+leptos_meta = { path = "../../meta", version = "*", features = ["nightly"], optional = true }
+leptos_router = { path = "../../router", version = "*", features = ["nightly"], optional = true }
 tokio = { optional = true, version = "*", features = ["rt-multi-thread"] }
 tower = { optional = true, version = "*" }
 tower-http = { optional = true, version = "*", features = ["fs"] }

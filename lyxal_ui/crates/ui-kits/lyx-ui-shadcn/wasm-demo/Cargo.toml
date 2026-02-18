@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx-ui-wasm-demo"
 version = "0.8.0"
 edition = "2024"
@@ -6,7 +6,7 @@ edition = "2024"
 crate-type = ["cdylib"]
 [dependencies]
 # Leptos framework (using workspace dependencies)
-leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr"] }
+leptos = { path = "../../../core/lyx-core-leptos/leptos", features = ["csr"] }
 leptos-shadcn-ui-wasm = { path = "../packages/leptos-shadcn-ui-wasm" }
 # WASM-specific dependencies (using workspace where available)
 wasm-bindgen = { version = "*" }

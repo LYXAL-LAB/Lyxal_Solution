@@ -1,4 +1,4 @@
-use crate::filter_builder_methods;
+﻿use crate::filter_builder_methods;
 use crate::utils::{DebounceOptions, FilterOptions, ThrottleOptions, create_filter_wrapper};
 use default_struct_builder::DefaultBuilder;
 use leptos::prelude::*;
@@ -15,8 +15,7 @@ use std::rc::Rc;
 /// If it's `false`, the `callback` will run only after
 /// the first change is detected of any signal that is accessed in `deps`.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::{watch_with_options, WatchOptions};
 /// #
@@ -34,15 +33,13 @@ use std::rc::Rc;
 /// set_num.set(1); // > "Number 1"
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Filters
 ///
 /// The callback can be throttled or debounced. Please see [`fn@crate::watch_throttled`]
 /// and [`fn@crate::watch_debounced`] for details.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::{watch_with_options, WatchOptions};
 /// #
@@ -58,10 +55,8 @@ use std::rc::Rc;
 /// );
 /// #    view! { }
 /// # }
-/// ```
-///
-/// ```
-/// # use leptos::prelude::*;
+/// ///
+/// /// # use leptos::prelude::*;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::{watch_with_options, WatchOptions};
 /// #
@@ -77,8 +72,7 @@ use std::rc::Rc;
 /// );
 /// #    view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

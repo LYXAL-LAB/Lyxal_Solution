@@ -1,5 +1,5 @@
-//! Signal-managed Input component types and constants
-//! 
+﻿//! Signal-managed Input component types and constants
+//!
 //! This module contains the core types and constants for the signal-managed Input component.
 
 use crate::validation::ValidationResult;
@@ -13,27 +13,27 @@ pub const INPUT_ERROR_CLASS: &str = "border-destructive focus-visible:ring-destr
 /// Signal-managed input state
 #[derive(Debug, Clone, PartialEq)]
 pub struct SignalManagedInputState {
-    pub value: String,
-    pub placeholder: String,
-    pub disabled: bool,
-    pub input_type: String,
-    pub validation_result: ValidationResult,
-    pub is_validating: bool,
-    pub has_error: bool,
-    pub focus_count: u32,
+pub value: String,
+pub placeholder: String,
+pub disabled: bool,
+pub input_type: String,
+pub validation_result: ValidationResult,
+pub is_validating: bool,
+pub has_error: bool,
+pub focus_count: u32,
 }
 
 impl Default for SignalManagedInputState {
-    fn default() -> Self {
-        Self {
-            value: String::new(),
-            placeholder: String::new(),
-            disabled: false,
-            input_type: "text".to_string(),
-            validation_result: ValidationResult::new(),
-            is_validating: false,
-            has_error: false,
-            focus_count: 0,
-        }
-    }
+fn default() -> Self {
+Self {
+value: String::new(),
+placeholder: String::new(),
+disabled: false,
+input_type: "text".to_string(),
+validation_result: ValidationResult::new(),
+is_validating: false,
+has_error: false,
+focus_count: 0,
+}
+}
 }

@@ -1,4 +1,4 @@
-use crate::core::IntoElementsMaybeSignal;
+﻿use crate::core::IntoElementsMaybeSignal;
 use cfg_if::cfg_if;
 use default_struct_builder::DefaultBuilder;
 use leptos::reactive::wrappers::read::Signal;
@@ -22,8 +22,7 @@ use leptos::prelude::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::{html::Div, prelude::*};
+/// /// # use leptos::{html::Div, prelude::*};
 /// # use lyx_logic_use::use_resize_observer;
 /// #
 /// # #[component]
@@ -43,8 +42,7 @@ use leptos::prelude::*;
 ///     <div node_ref=el>{ move || text.get() }</div>
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// ## SendWrapped Return
 ///
 /// The returned closure `stop` is a sendwrapped function. It can

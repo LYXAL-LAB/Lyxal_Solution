@@ -1,4 +1,4 @@
-use leptos::{ev::Event, prelude::*};
+﻿use leptos::{ev::Event, prelude::*};
 use leptos_style::Style;
 use leptos::wasm_bindgen::JsCast;
 
@@ -6,40 +6,40 @@ const INPUT_CLASS: &str = "flex h-10 w-full rounded-md border border-input bg-ba
 
 #[component]
 pub fn Input(
-    #[prop(into, optional)] value: MaybeProp<String>,
-    #[prop(into, optional)] on_change: Option<Callback<String>>,
-    #[prop(into, optional)] placeholder: MaybeProp<String>,
-    #[prop(into, optional)] disabled: Signal<bool>,
-    #[prop(into, optional)] input_type: MaybeProp<String>,
-    #[prop(into, optional)] class: MaybeProp<String>,
-    #[prop(into, optional)] id: MaybeProp<String>,
-    #[prop(into, optional)] style: Signal<Style>,
+#[prop(into, optional)] value: MaybeProp<String>,
+#[prop(into, optional)] on_change: Option<Callback<String>>,
+#[prop(into, optional)] placeholder: MaybeProp<String>,
+#[prop(into, optional)] disabled: Signal<bool>,
+#[prop(into, optional)] input_type: MaybeProp<String>,
+#[prop(into, optional)] class: MaybeProp<String>,
+#[prop(into, optional)] id: MaybeProp<String>,
+#[prop(into, optional)] style: Signal<Style>,
 ) -> impl IntoView {
-    let handle_input = {
-        let on_change = on_change.clone();
-        move |event: Event| {
-            if let Some(callback) = &on_change {
-                let target = event.target().unwrap();
-                let input = target.unchecked_into::<web_sys::HtmlInputElement>();
-                callback.run(input.value());
-            }
-        }
-    };
+let handle_input = {
+let on_change = on_change.clone();
+move |event: Event| {
+if let Some(callback) = &on_change {
+let target = event.target().unwrap();
+let input = target.unchecked_into::<web_sys::HtmlInputElement>();
+callback.run(input.value());
+}
+}
+};
 
-    let computed_class = Signal::derive(move || {
-        format!("{} {}", INPUT_CLASS, class.get().unwrap_or_default())
-    });
+let computed_class = Signal::derive(move || {
+format!("{} {}", INPUT_CLASS, class.get().unwrap_or_default())
+});
 
-    view! {
-        <input
-            r#type=move || input_type.get().unwrap_or_else(|| "text".to_string())
-            value=move || value.get().unwrap_or_default()
-            placeholder=move || placeholder.get().unwrap_or_default()
-            disabled=move || disabled.get()
-            class=move || computed_class.get()
-            id=move || id.get().unwrap_or_default()
-            style=move || style.get().to_string()
-            on:input=handle_input
-        />
-    }
+view! {
+<input
+r#type=move || input_type.get().unwrap_or_else(|| "text".to_string())
+value=move || value.get().unwrap_or_default()
+placeholder=move || placeholder.get().unwrap_or_default()
+disabled=move || disabled.get()
+class=move || computed_class.get()
+id=move || id.get().unwrap_or_default()
+style=move || style.get().to_string()
+on:input=handle_input
+/>
+}
 }

@@ -1,4 +1,4 @@
-//! Leptos port of [shadcn/ui utils](https://ui.shadcn.com/docs/installation/manual#add-a-cn-helper).
+﻿//! Leptos port of [shadcn/ui utils](https://ui.shadcn.com/docs/installation/manual#add-a-cn-helper).
 //!
 //! Utility for Tailwind CSS classes.
 //!

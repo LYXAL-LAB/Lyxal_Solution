@@ -1,4 +1,4 @@
-//! Allows rendering user interfaces based on a statically-typed view tree.
+﻿//! Allows rendering user interfaces based on a statically-typed view tree.
 //!
 //! This view tree is generic over rendering backends, and agnostic about reactivity/change
 //! detection.
@@ -7,8 +7,8 @@
 // this allows us to use const generic &'static str for static text nodes and attributes
 #![allow(incomplete_features)]
 #![cfg_attr(
-    all(feature = "nightly", rustc_nightly),
-    feature(unsized_const_params)
+all(feature = "nightly", rustc_nightly),
+feature(unsized_const_params)
 )]
 // support for const generic &'static str has now moved back and forth between
 // these two features a couple times; we'll just enable both
@@ -17,30 +17,30 @@
 
 /// Commonly-used traits.
 pub mod prelude {
-    pub use crate::{
-        html::{
-            attribute::{
-                any_attribute::IntoAnyAttribute,
-                aria::AriaAttributes,
-                custom::CustomAttribute,
-                global::{
-                    ClassAttribute, GlobalAttributes, GlobalOnAttributes,
-                    OnAttribute, OnTargetAttribute, PropAttribute,
-                    StyleAttribute,
-                },
-                IntoAttributeValue,
-            },
-            directive::DirectiveAttribute,
-            element::{ElementChild, ElementExt, InnerHtmlAttribute},
-            node_ref::NodeRefAttribute,
-        },
-        renderer::{dom::Dom, Renderer},
-        view::{
-            add_attr::AddAnyAttr,
-            any_view::{AnyView, IntoAny, IntoMaybeErased},
-            IntoRender, Mountable, Render, RenderHtml,
-        },
-    };
+pub use crate::{
+html::{
+attribute::{
+any_attribute::IntoAnyAttribute,
+aria::AriaAttributes,
+custom::CustomAttribute,
+global::{
+ClassAttribute, GlobalAttributes, GlobalOnAttributes,
+OnAttribute, OnTargetAttribute, PropAttribute,
+StyleAttribute,
+},
+IntoAttributeValue,
+},
+directive::DirectiveAttribute,
+element::{ElementChild, ElementExt, InnerHtmlAttribute},
+node_ref::NodeRefAttribute,
+},
+renderer::{dom::Dom, Renderer},
+view::{
+add_attr::AddAnyAttr,
+any_view::{AnyView, IntoAny, IntoMaybeErased},
+IntoRender, Mountable, Render, RenderHtml,
+},
+};
 }
 
 use wasm_bindgen::JsValue;
@@ -82,90 +82,90 @@ pub mod reactive_graph;
 pub mod erased;
 
 pub(crate) trait UnwrapOrDebug {
-    type Output;
+type Output;
 
-    fn or_debug(self, el: &Node, label: &'static str);
+fn or_debug(self, el: &Node, label: &'static str);
 
-    fn ok_or_debug(
-        self,
-        el: &Node,
-        label: &'static str,
-    ) -> Option<Self::Output>;
+fn ok_or_debug(
+self,
+el: &Node,
+label: &'static str,
+) -> Option<Self::Output>;
 }
 
 impl<T> UnwrapOrDebug for Result<T, JsValue> {
-    type Output = T;
+type Output = T;
 
-    #[track_caller]
-    fn or_debug(self, el: &Node, name: &'static str) {
-        #[cfg(any(debug_assertions, leptos_debuginfo))]
-        {
-            if let Err(err) = self {
-                let location = std::panic::Location::caller();
-                web_sys::console::warn_3(
-                    &JsValue::from_str(&format!(
-                        "[WARNING] Non-fatal error at {location}, while \
-                         calling {name} on "
-                    )),
-                    el,
-                    &err,
-                );
-            }
-        }
-        #[cfg(not(any(debug_assertions, leptos_debuginfo)))]
-        {
-            _ = self;
-        }
-    }
+#[track_caller]
+fn or_debug(self, el: &Node, name: &'static str) {
+#[cfg(any(debug_assertions, leptos_debuginfo))]
+{
+if let Err(err) = self {
+let location = std::panic::Location::caller();
+web_sys::console::warn_3(
+&JsValue::from_str(&format!(
+"[WARNING] Non-fatal error at {location}, while \
+calling {name} on "
+)),
+el,
+&err,
+);
+}
+}
+#[cfg(not(any(debug_assertions, leptos_debuginfo)))]
+{
+_ = self;
+}
+}
 
-    #[track_caller]
-    fn ok_or_debug(
-        self,
-        el: &Node,
-        name: &'static str,
-    ) -> Option<Self::Output> {
-        #[cfg(any(debug_assertions, leptos_debuginfo))]
-        {
-            if let Err(err) = &self {
-                let location = std::panic::Location::caller();
-                web_sys::console::warn_3(
-                    &JsValue::from_str(&format!(
-                        "[WARNING] Non-fatal error at {location}, while \
-                         calling {name} on "
-                    )),
-                    el,
-                    err,
-                );
-            }
-            self.ok()
-        }
-        #[cfg(not(any(debug_assertions, leptos_debuginfo)))]
-        {
-            self.ok()
-        }
-    }
+#[track_caller]
+fn ok_or_debug(
+self,
+el: &Node,
+name: &'static str,
+) -> Option<Self::Output> {
+#[cfg(any(debug_assertions, leptos_debuginfo))]
+{
+if let Err(err) = &self {
+let location = std::panic::Location::caller();
+web_sys::console::warn_3(
+&JsValue::from_str(&format!(
+"[WARNING] Non-fatal error at {location}, while \
+calling {name} on "
+)),
+el,
+err,
+);
+}
+self.ok()
+}
+#[cfg(not(any(debug_assertions, leptos_debuginfo)))]
+{
+self.ok()
+}
+}
 }
 
 #[doc(hidden)]
 #[macro_export]
 macro_rules! or_debug {
-    ($action:expr, $el:expr, $label:literal) => {
-        if cfg!(any(debug_assertions, leptos_debuginfo)) {
-            $crate::UnwrapOrDebug::or_debug($action, $el, $label);
-        } else {
-            _ = $action;
-        }
-    };
+($action:expr, $el:expr, $label:literal) => {
+if cfg!(any(debug_assertions, leptos_debuginfo)) {
+$crate::UnwrapOrDebug::or_debug($action, $el, $label);
+} else {
+_ = $action;
+}
+};
 }
 
 #[doc(hidden)]
 #[macro_export]
 macro_rules! ok_or_debug {
-    ($action:expr, $el:expr, $label:literal) => {
-        if cfg!(any(debug_assertions, leptos_debuginfo)) {
-            $crate::UnwrapOrDebug::ok_or_debug($action, $el, $label)
-        } else {
-            $action.ok()
-        }
-    };
+($action:expr, $el:expr, $label:literal) => {
+if cfg!(any(debug_assertions, leptos_debuginfo)) {
+$crate::UnwrapOrDebug::ok_or_debug($action, $el, $label)
+} else {
+$action.ok()
+}
+};
 }

@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx-ui-utils"
 version = "0.8.0"
 edition = "2024"
@@ -6,7 +6,7 @@ edition = "2024"
 [dev-dependencies]
 shadcn-ui-test-utils = { path = "../../test-utils" }
 wasm-bindgen-test = { version = "*" }
-leptos = { path = "../core/lyx-core-leptos/leptos" }
+leptos = { path = "../../../../../core/lyx-core-leptos/leptos" }
 
 
 

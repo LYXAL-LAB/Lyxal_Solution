@@ -1,13 +1,13 @@
-[package]
+﻿[package]
 name = "lyx-found-multi-drag"
 version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr", "nightly"] }
-leptos_meta = { path = "../core/lyx-core-leptos/meta", features = ["csr", "nightly"] }
-leptos_router = { path = "../core/lyx-core-leptos/router", features = ["csr", "nightly"] }
-leptos-use = { path = "../logic/lyx-logic-use" }
+leptos = { path = "../../core/lyx-core-leptos/leptos", features = ["csr", "nightly"] }
+leptos_meta = { path = "../../core/lyx-core-leptos/meta", features = ["csr", "nightly"] }
+leptos_router = { path = "../../core/lyx-core-leptos/router", features = ["csr", "nightly"] }
+leptos-use = { path = "../../logic/lyx-logic-use" }
 log = { version = "*" }
 gloo-net = { version = "*", features = ["http"] }
 gloo-console = { version = "*" }

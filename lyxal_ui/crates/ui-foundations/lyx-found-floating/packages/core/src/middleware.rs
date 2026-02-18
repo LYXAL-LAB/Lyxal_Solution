@@ -1,4 +1,4 @@
-//! Middleware implementations for [`compute_position`][`crate::compute_position::compute_position`].
+﻿//! Middleware implementations for [`compute_position`][`crate::compute_position::compute_position`].
 //!
 //! See [the Rust Floating UI book](https://floating-ui.rustforweb.org/middleware/index.html) for more documentation.
 

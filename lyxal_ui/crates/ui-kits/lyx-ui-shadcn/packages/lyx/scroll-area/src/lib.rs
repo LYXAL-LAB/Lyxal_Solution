@@ -1,4 +1,4 @@
-//! Leptos port of shadcn/ui scroll-area
+﻿//! Leptos port of shadcn/ui scroll-area
 
 mod signal_managed;
 mod default;

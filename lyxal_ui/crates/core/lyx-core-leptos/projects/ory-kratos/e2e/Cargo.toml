@@ -1,9 +1,9 @@
-[package]
+﻿[package]
 name = "e2e"
 version = "0.8.0"
 edition = "2024"
 [dev-dependencies]
-anyhow = { version = "0.8.0" }
+anyhow = { version = "*" }
 async-trait = { version = "*" }
 cucumber = { version = "*", features = ["tracing", "macros"] }
 pretty_assertions = { version = "*" }

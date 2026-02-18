@@ -1,4 +1,4 @@
-use super::{Patch, Post, Put};
+﻿use super::{Patch, Post, Put};
 use crate::{ContentType, Decodes, Encodes, Format, FormatType};
 use bytes::Bytes;
 use serde::{de::DeserializeOwned, Serialize};
@@ -7,35 +7,35 @@ use serde::{de::DeserializeOwned, Serialize};
 pub struct CborEncoding;
 
 impl ContentType for CborEncoding {
-    const CONTENT_TYPE: &'static str = "application/cbor";
+const CONTENT_TYPE: &'static str = "application/cbor";
 }
 
 impl FormatType for CborEncoding {
-    const FORMAT_TYPE: Format = Format::Binary;
+const FORMAT_TYPE: Format = Format::Binary;
 }
 
 impl<T> Encodes<T> for CborEncoding
 where
-    T: Serialize,
+T: Serialize,
 {
-    type Error = ciborium::ser::Error<std::io::Error>;
+type Error = ciborium::ser::Error<std::io::Error>;
 
-    fn encode(value: &T) -> Result<Bytes, Self::Error> {
-        let mut buffer: Vec<u8> = Vec::new();
-        ciborium::ser::into_writer(value, &mut buffer)?;
-        Ok(Bytes::from(buffer))
-    }
+fn encode(value: &T) -> Result<Bytes, Self::Error> {
+let mut buffer: Vec<u8> = Vec::new();
+ciborium::ser::into_writer(value, &mut buffer)?;
+Ok(Bytes::from(buffer))
+}
 }
 
 impl<T> Decodes<T> for CborEncoding
 where
-    T: DeserializeOwned,
+T: DeserializeOwned,
 {
-    type Error = ciborium::de::Error<std::io::Error>;
+type Error = ciborium::de::Error<std::io::Error>;
 
-    fn decode(bytes: Bytes) -> Result<T, Self::Error> {
-        ciborium::de::from_reader(bytes.as_ref())
-    }
+fn decode(bytes: Bytes) -> Result<T, Self::Error> {
+ciborium::de::from_reader(bytes.as_ref())
+}
 }
 
 /// Pass arguments and receive responses using `cbor` in a `POST` request.

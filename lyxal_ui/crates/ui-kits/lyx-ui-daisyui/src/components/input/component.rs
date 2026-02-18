@@ -1,4 +1,4 @@
-use super::style::{InputColor, InputSize, InputStyle};
+﻿use super::style::{InputColor, InputSize, InputStyle};
 use crate::merge_classes;
 use leptos::{html::Input as HtmlInput, prelude::*};
 
@@ -8,65 +8,45 @@ use leptos::{html::Input as HtmlInput, prelude::*};
 /// text input fields with customizable size, color, and style.
 ///
 /// ### Add to `input.css`
-/// ```css
+/// css
 /// @source inline("input input-neutral input-primary input-secondary input-accent input-info input-success input-warning input-error input-ghost input-xs input-sm input-md input-lg input-xl");
-/// ```
-///
+/// ///
 /// ## Node References
 /// - `node_ref` - References the input element ([HTMLInputElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement))
 #[component]
 pub fn Input(
-    /// Input style variant
-    #[prop(optional, into)]
-    style: Signal<InputStyle>,
+/// Input style variant
+#[prop(optional, into)]
+style: Signal<InputStyle>,
 
-    /// Input color variant
-    #[prop(optional, into)]
-    color: Signal<InputColor>,
+/// Input color variant
+#[prop(optional, into)]
+color: Signal<InputColor>,
 
-    /// Input size variant
-    #[prop(optional, into)]
-    size: Signal<InputSize>,
+/// Input size variant
+#[prop(optional, into)]
+size: Signal<InputSize>,
 
-    /// Additional CSS classes
-    #[prop(optional, into)]
-    class: &'static str,
+/// Additional CSS classes
+#[prop(optional, into)]
+class: &'static str,
 
-    /// Node reference for the input element
-    #[prop(optional)]
-    node_ref: NodeRef<HtmlInput>,
+/// Node reference for the input element
+#[prop(optional)]
+node_ref: NodeRef<HtmlInput>,
 ) -> impl IntoView {
-    view! {
-        <input
-            node_ref=node_ref
-            class=move || {
-                merge_classes!(
-                    "input",
-                    style.get().as_str(),
-                    color.get().as_str(),
-                    size.get().as_str(),
-                    class
-                )
-            }
-        />
-    }
+view! {
+<input
+node_ref=node_ref
+class=move || {
+merge_classes!(
+"input",
+style.get().as_str(),
+color.get().as_str(),
+size.get().as_str(),
+class
+)
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-
+/>
+}
+}

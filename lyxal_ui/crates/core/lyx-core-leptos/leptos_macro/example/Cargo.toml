@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "example"
 version = "0.8.0"
 edition = "2024"
@@ -7,7 +7,7 @@ leptos.path = "../../leptos"
 
 
 [build-dependencies]
-rustc_version = "0.8.0"
+rustc_version = "*"
 
 
 

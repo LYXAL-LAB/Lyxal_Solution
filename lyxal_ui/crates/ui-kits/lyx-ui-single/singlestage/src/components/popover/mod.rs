@@ -1,4 +1,4 @@
-mod content;
+﻿mod content;
 mod popover;
 mod trigger;
 
@@ -10,28 +10,9 @@ use leptos::prelude::*;
 
 #[derive(Clone)]
 pub struct PopoverContext {
-    pub menu_id: RwSignal<String>,
-    pub trigger_id: RwSignal<String>,
+pub menu_id: RwSignal<String>,
+pub trigger_id: RwSignal<String>,
 }
 
 #[derive(Clone)]
 pub struct PopoverTriggerContext {}
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

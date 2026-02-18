@@ -1,4 +1,4 @@
-mod progress_bar;
+﻿mod progress_bar;
 mod progress_circle;
 
 pub use progress_bar::*;

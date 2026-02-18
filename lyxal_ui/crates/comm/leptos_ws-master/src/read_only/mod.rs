@@ -1,4 +1,4 @@
-mod client;
+﻿mod client;
 #[cfg(feature = "ssr")]
 mod server;
 
@@ -16,33 +16,29 @@ mod server;
 /// # Usage
 ///
 /// On the server:
-/// ```rust,ignore
+/// ,ignore
 /// #[cfg(feature = "ssr")]
 /// fn create_server_signal() -> ReadOnlySignal<i32> {
 ///     ReadOnlySignal::new("counter", 0).unwrap()
 /// }
-/// ```
-/// On the server, while outside of a leptos server function context, eg in an Actix or Axum
+/// /// On the server, while outside of a leptos server function context, eg in an Actix or Axum
 /// handler:
-/// ```rust
-/// #[cfg(feature = "ssr")]
+/// /// #[cfg(feature = "ssr")]
 /// use leptos_ws::ReadOnlySignal;
 /// fn create_server_signal() -> ReadOnlySignal<i32> {
 ///     # fn get_signals_from_actix_or_axum() -> leptos_ws::WsSignals { leptos_ws::WsSignals::new() }
 ///     let mut signals = get_signals_from_actix_or_axum(); // get it from app state
 ///     ReadOnlySignal::new_with_context(&mut signals, "counter", 0).unwrap()
 /// }
-/// ```
-///
+/// ///
 /// On the client:
-/// ```rust,ignore
+/// ,ignore
 /// #[cfg(any(feature = "csr", feature = "hydrate"))]
 /// fn use_server_signal() {
 ///     let counter = ReadOnlySignal::<i32>::new("counter", 0);
 ///     // Use `counter.get()` to read the current value
 /// }
-/// ```
-///
+/// ///
 /// # Note
 ///
 /// When using `ReadOnlySignal`, ensure that you've set up the WebSocket connection
@@ -51,4 +47,3 @@ mod server;
 pub type ReadOnlySignal<T> = server::ServerReadOnlySignal<T>;
 #[cfg(all(any(feature = "csr", feature = "hydrate"), not(feature = "ssr")))]
 pub type ReadOnlySignal<T> = client::ClientReadOnlySignal<T>;
-

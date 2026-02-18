@@ -1,4 +1,4 @@
-//! By default, attempting to [`Track`](crate::traits::Track) a signal when you are not in a
+﻿//! By default, attempting to [`Track`](crate::traits::Track) a signal when you are not in a
 //! reactive tracking context will cause a warning when you are in debug mode.
 //!
 //! In some cases, this warning is a false positive. For example, inside an event listener in a
@@ -18,78 +18,78 @@ pub struct SpecialNonReactiveZoneGuard(bool);
 
 use pin_project_lite::pin_project;
 use std::{
-    cell::Cell,
-    future::Future,
-    pin::Pin,
-    task::{Context, Poll},
+cell::Cell,
+future::Future,
+pin::Pin,
+task::{Context, Poll},
 };
 
 thread_local! {
-    static IS_SPECIAL_ZONE: Cell<bool> = const { Cell::new(false) };
+static IS_SPECIAL_ZONE: Cell<bool> = const { Cell::new(false) };
 }
 
 impl SpecialNonReactiveZone {
-    /// Suppresses warnings about non-reactive accesses until the guard is dropped.
-    pub fn enter() -> SpecialNonReactiveZoneGuard {
-        let prev = IS_SPECIAL_ZONE.replace(true);
-        SpecialNonReactiveZoneGuard(prev)
-    }
+/// Suppresses warnings about non-reactive accesses until the guard is dropped.
+pub fn enter() -> SpecialNonReactiveZoneGuard {
+let prev = IS_SPECIAL_ZONE.replace(true);
+SpecialNonReactiveZoneGuard(prev)
+}
 
-    #[cfg(all(debug_assertions, feature = "effects"))]
-    #[inline(always)]
-    pub(crate) fn is_inside() -> bool {
-        if cfg!(debug_assertions) {
-            IS_SPECIAL_ZONE.get()
-        } else {
-            false
-        }
-    }
+#[cfg(all(debug_assertions, feature = "effects"))]
+#[inline(always)]
+pub(crate) fn is_inside() -> bool {
+if cfg!(debug_assertions) {
+IS_SPECIAL_ZONE.get()
+} else {
+false
+}
+}
 }
 
 impl Drop for SpecialNonReactiveZoneGuard {
-    fn drop(&mut self) {
-        IS_SPECIAL_ZONE.set(self.0);
-    }
+fn drop(&mut self) {
+IS_SPECIAL_ZONE.set(self.0);
+}
 }
 
 pin_project! {
-    #[doc(hidden)]
-    pub struct SpecialNonReactiveFuture<Fut> {
-        #[pin]
-        inner: Fut
-    }
+#[doc(hidden)]
+pub struct SpecialNonReactiveFuture<Fut> {
+#[pin]
+inner: Fut
+}
 }
 
 impl<Fut> SpecialNonReactiveFuture<Fut> {
-    pub fn new(inner: Fut) -> Self {
-        Self { inner }
-    }
+pub fn new(inner: Fut) -> Self {
+Self { inner }
+}
 }
 
 impl<Fut> Future for SpecialNonReactiveFuture<Fut>
 where
-    Fut: Future,
+Fut: Future,
 {
-    type Output = Fut::Output;
+type Output = Fut::Output;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        #[cfg(debug_assertions)]
-        let _rw = SpecialNonReactiveZone::enter();
-        let this = self.project();
-        this.inner.poll(cx)
-    }
+fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+#[cfg(debug_assertions)]
+let _rw = SpecialNonReactiveZone::enter();
+let this = self.project();
+this.inner.poll(cx)
+}
 }
 
 thread_local! {
-    static SUPPRESS_RESOURCE_LOAD: Cell<bool> = const { Cell::new(false) };
+static SUPPRESS_RESOURCE_LOAD: Cell<bool> = const { Cell::new(false) };
 }
 
 #[doc(hidden)]
 pub fn suppress_resource_load(suppress: bool) {
-    SUPPRESS_RESOURCE_LOAD.with(|w| w.set(suppress));
+SUPPRESS_RESOURCE_LOAD.with(|w| w.set(suppress));
 }
 
 #[doc(hidden)]
 pub fn is_suppressing_resource_load() -> bool {
-    SUPPRESS_RESOURCE_LOAD.with(|w| w.get())
+SUPPRESS_RESOURCE_LOAD.with(|w| w.get())
 }

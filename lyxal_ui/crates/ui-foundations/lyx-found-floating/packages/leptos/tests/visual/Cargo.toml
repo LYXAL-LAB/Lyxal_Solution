@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "lyx-ui-foundations-visual"
 version = "0.8.0"
 edition = "2024"
@@ -7,7 +7,7 @@ edition = "2024"
 
 convert_case = { version = "*" }
 
-leptos = { path = "../core/lyx-core-leptos/leptos", features = ["csr"] }
+leptos = { path = "../../../../../../core/lyx-core-leptos/leptos", features = ["csr"] }
 
 
 

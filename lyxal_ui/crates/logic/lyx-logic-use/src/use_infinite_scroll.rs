@@ -1,4 +1,4 @@
-use crate::core::{Direction, Directions, IntoElementMaybeSignal};
+﻿use crate::core::{Direction, Directions, IntoElementMaybeSignal};
 use crate::{
 ScrollOffset, UseEventListenerOptions, UseScrollOptions, UseScrollReturn,
 use_element_visibility, use_scroll_with_options,
@@ -22,8 +22,7 @@ use wasm_bindgen::JsCast;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// use leptos::html::Div;
 /// # use lyx_logic_use::{use_infinite_scroll_with_options, UseInfiniteScrollOptions};
 /// #
@@ -48,8 +47,7 @@ use wasm_bindgen::JsCast;
 ///     </div>
 /// }
 /// # }
-/// ```
-///
+/// ///
 /// The returned signal is `true` while new data is being loaded.
 pub fn use_infinite_scroll<El, M, LFn, LFut>(el: El, on_load_more: LFn) -> Signal<bool>
 where

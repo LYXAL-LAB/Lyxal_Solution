@@ -1,4 +1,4 @@
-// TDD tests for Combobox component
+﻿// TDD tests for Combobox component
 // These tests focus on Test-Driven Development implementation
 
 mod basic_rendering_tests;

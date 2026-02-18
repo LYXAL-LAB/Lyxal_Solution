@@ -1,4 +1,4 @@
-mod actions;
+﻿mod actions;
 mod content;
 mod description;
 mod footer;
@@ -19,22 +19,3 @@ pub use item::*;
 pub use media::*;
 pub use separator::*;
 pub use title::*;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

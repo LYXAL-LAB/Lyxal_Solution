@@ -1,28 +1,28 @@
-use std::str::FromStr;
+﻿use std::str::FromStr;
 
 use crop::Rope;
 use leptosfmt_pretty_printer::Printer;
 use rstml::{
-    node::{Node, NodeAttribute, NodeComment, NodeDoctype, NodeElement, NodeFragment},
-    Infallible,
+node::{Node, NodeAttribute, NodeComment, NodeDoctype, NodeElement, NodeFragment},
+Infallible,
 };
 
 macro_rules! attribute {
-    ($($tt:tt)*) => {
-        {
-        let tokens = quote::quote! { <tag $($tt)* /> };
-        let nodes = rstml::parse2(tokens).unwrap();
-        crate::test_helpers::get_element_attribute(nodes, 0, 0)
-    }};
+($($tt:tt)*) => {
+{
+let tokens = quote::quote! { <tag $($tt)* /> };
+let nodes = rstml::parse2(tokens).unwrap();
+crate::test_helpers::get_element_attribute(nodes, 0, 0)
+}};
 }
 
 macro_rules! element {
-    ($($tt:tt)*) => {
-        {
-        let tokens = quote::quote! { $($tt)* };
-        let nodes = rstml::parse2(tokens).unwrap();
-        crate::test_helpers::get_element(nodes, 0)
-    }};
+($($tt:tt)*) => {
+{
+let tokens = quote::quote! { $($tt)* };
+let nodes = rstml::parse2(tokens).unwrap();
+crate::test_helpers::get_element(nodes, 0)
+}};
 }
 
 // Same as element, but use string representation of token stream.
@@ -30,38 +30,38 @@ macro_rules! element {
 // because current `quote!` implementation cannot provide `Span::source_text`
 // that is used in `raw_text` handler
 macro_rules! element_from_string {
-    ($val: expr) => {{
-        let tokens = <proc_macro2::TokenStream as std::str::FromStr>::from_str($val).unwrap();
-        let nodes = rstml::parse2(tokens).unwrap();
-        crate::test_helpers::get_element(nodes, 0)
-    }};
+($val: expr) => {{
+let tokens = <proc_macro2::TokenStream as std::str::FromStr>::from_str($val).unwrap();
+let nodes = rstml::parse2(tokens).unwrap();
+crate::test_helpers::get_element(nodes, 0)
+}};
 }
 
 macro_rules! fragment {
-    ($($tt:tt)*) => {
-        {
-        let tokens = quote::quote! { $($tt)* };
-        let nodes = rstml::parse2(tokens).unwrap();
-        crate::test_helpers::get_fragment(nodes, 0)
-    }};
+($($tt:tt)*) => {
+{
+let tokens = quote::quote! { $($tt)* };
+let nodes = rstml::parse2(tokens).unwrap();
+crate::test_helpers::get_fragment(nodes, 0)
+}};
 }
 
 macro_rules! comment {
-    ($($tt:tt)*) => {
-        {
-        let tokens = quote::quote! { $($tt)* };
-        let nodes = rstml::parse2(tokens).unwrap();
-        crate::test_helpers::get_comment(nodes, 0)
-    }};
+($($tt:tt)*) => {
+{
+let tokens = quote::quote! { $($tt)* };
+let nodes = rstml::parse2(tokens).unwrap();
+crate::test_helpers::get_comment(nodes, 0)
+}};
 }
 
 macro_rules! doctype {
-    ($($tt:tt)*) => {
-        {
-        let tokens = quote::quote! { $($tt)* };
-        let nodes = rstml::parse2(tokens).unwrap();
-        crate::test_helpers::get_doctype(nodes, 0)
-    }};
+($($tt:tt)*) => {
+{
+let tokens = quote::quote! { $($tt)* };
+let nodes = rstml::parse2(tokens).unwrap();
+crate::test_helpers::get_doctype(nodes, 0)
+}};
 }
 
 pub(crate) use attribute;
@@ -74,72 +74,72 @@ pub(crate) use fragment;
 use crate::{Formatter, FormatterSettings};
 
 pub fn get_element_attribute(
-    mut nodes: Vec<Node>,
-    element_index: usize,
-    attribute_index: usize,
+mut nodes: Vec<Node>,
+element_index: usize,
+attribute_index: usize,
 ) -> NodeAttribute {
-    let Node::Element(element) = nodes.swap_remove(element_index) else {
-        panic!("expected element")
-    };
-    element
-        .attributes()
-        .get(attribute_index)
-        .expect("attribute exist")
-        .clone()
+let Node::Element(element) = nodes.swap_remove(element_index) else {
+panic!("expected element")
+};
+element
+.attributes()
+.get(attribute_index)
+.expect("attribute exist")
+.clone()
 }
 
 pub fn get_element(mut nodes: Vec<Node>, element_index: usize) -> NodeElement<Infallible> {
-    let Node::Element(element) = nodes.swap_remove(element_index) else {
-        panic!("expected element")
-    };
-    element
+let Node::Element(element) = nodes.swap_remove(element_index) else {
+panic!("expected element")
+};
+element
 }
 
 pub fn get_fragment(mut nodes: Vec<Node>, fragment_index: usize) -> NodeFragment<Infallible> {
-    let Node::Fragment(fragment) = nodes.swap_remove(fragment_index) else {
-        panic!("expected fragment")
-    };
-    fragment
+let Node::Fragment(fragment) = nodes.swap_remove(fragment_index) else {
+panic!("expected fragment")
+};
+fragment
 }
 
 pub fn get_comment(mut nodes: Vec<Node>, comment_index: usize) -> NodeComment {
-    let Node::Comment(comment) = nodes.swap_remove(comment_index) else {
-        panic!("expected comment")
-    };
-    comment
+let Node::Comment(comment) = nodes.swap_remove(comment_index) else {
+panic!("expected comment")
+};
+comment
 }
 
 pub fn get_doctype(mut nodes: Vec<Node>, doctype_index: usize) -> NodeDoctype {
-    let Node::Doctype(doctype) = nodes.swap_remove(doctype_index) else {
-        panic!("expected doctype")
-    };
-    doctype
+let Node::Doctype(doctype) = nodes.swap_remove(doctype_index) else {
+panic!("expected doctype")
+};
+doctype
 }
 
 pub fn format_with_source(
-    settings: FormatterSettings,
-    source: &str,
-    run: impl FnOnce(&mut Formatter),
+settings: FormatterSettings,
+source: &str,
+run: impl FnOnce(&mut Formatter),
 ) -> String {
-    let rope = Rope::from_str(source).unwrap();
-    let mut printer = Printer::new(settings.to_printer_settings(Some(&rope)));
-    let tokens = <proc_macro2::TokenStream as std::str::FromStr>::from_str(source).unwrap();
-    let whitespace = crate::collect_comments::extract_whitespace_and_comments(&rope, tokens);
-    let mut formatter = Formatter::with_source(&settings, &mut printer, &rope, whitespace);
-    run(&mut formatter);
-    printer.eof()
+let rope = Rope::from_str(source).unwrap();
+let mut printer = Printer::new(settings.to_printer_settings(Some(&rope)));
+let tokens = <proc_macro2::TokenStream as std::str::FromStr>::from_str(source).unwrap();
+let whitespace = crate::collect_comments::extract_whitespace_and_comments(&rope, tokens);
+let mut formatter = Formatter::with_source(&settings, &mut printer, &rope, whitespace);
+run(&mut formatter);
+printer.eof()
 }
 
 pub fn format_with(settings: FormatterSettings, run: impl FnOnce(&mut Formatter)) -> String {
-    let mut printer = Printer::new(settings.to_printer_settings(None));
-    let mut formatter = Formatter::new(&settings, &mut printer);
-    run(&mut formatter);
-    printer.eof()
+let mut printer = Printer::new(settings.to_printer_settings(None));
+let mut formatter = Formatter::new(&settings, &mut printer);
+run(&mut formatter);
+printer.eof()
 }
 
 pub fn format_element_from_string(settings: FormatterSettings, source: &str) -> String {
-    let element = element_from_string!(source);
-    format_with_source(settings, source, |formatter| {
-        formatter.element(&element);
-    })
+let element = element_from_string!(source);
+format_with_source(settings, source, |formatter| {
+formatter.element(&element);
+})
 }

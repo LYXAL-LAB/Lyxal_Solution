@@ -1,4 +1,4 @@
-use crate::{children::TypedChildren, component, IntoView};
+﻿use crate::{children::TypedChildren, component, IntoView};
 use reactive_graph::owner::{provide_context, Owner};
 use tachys::reactive_graph::OwnedView;
 
@@ -6,10 +6,9 @@ use tachys::reactive_graph::OwnedView;
 /// Uses the context API to [`provide_context`] to its children and descendants,
 /// without overwriting any contexts of the same type in its own reactive scope.
 ///
-/// This prevents issues related to “context shadowing.”
+/// This prevents issues related to â€œcontext shadowing.â€
 ///
-/// ```rust
-/// use leptos::{context::Provider, prelude::*};
+/// /// use leptos::{context::Provider, prelude::*};
 ///
 /// #[component]
 /// pub fn App() -> impl IntoView {
@@ -27,24 +26,22 @@ use tachys::reactive_graph::OwnedView;
 ///         {use_context::<u8>().unwrap_or(0)}
 ///     }
 /// }
-/// ```
-pub fn Provider<T, Chil>(
-    /// The value to be provided via context.
-    value: T,
-    children: TypedChildren<Chil>,
+/// pub fn Provider<T, Chil>(
+/// The value to be provided via context.
+value: T,
+children: TypedChildren<Chil>,
 ) -> impl IntoView
 where
-    T: Send + Sync + 'static,
-    Chil: IntoView + 'static,
+T: Send + Sync + 'static,
+Chil: IntoView + 'static,
 {
-    let owner = Owner::current()
-        .expect("no current reactive Owner found")
-        .child();
-    let children = children.into_inner();
-    let children = owner.with(|| {
-        provide_context(value);
-        children()
-    });
-    OwnedView::new_with_owner(children, owner)
+let owner = Owner::current()
+.expect("no current reactive Owner found")
+.child();
+let children = children.into_inner();
+let children = owner.with(|| {
+provide_context(value);
+children()
+});
+OwnedView::new_with_owner(children, owner)
 }
-

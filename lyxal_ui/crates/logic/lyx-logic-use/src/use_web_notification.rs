@@ -1,4 +1,4 @@
-use crate::core::OptionLocalRwSignal;
+﻿use crate::core::OptionLocalRwSignal;
 use crate::{core::OptionLocalSignal, use_supported, use_window};
 use cfg_if::cfg_if;
 use default_struct_builder::DefaultBuilder;
@@ -17,8 +17,7 @@ use wasm_bindgen::JsValue;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_web_notification_with_options, UseWebNotificationOptions, ShowOptions, UseWebNotificationReturn, NotificationDirection};
 /// #
 /// # #[component]
@@ -39,8 +38,7 @@ use wasm_bindgen::JsValue;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

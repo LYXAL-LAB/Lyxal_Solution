@@ -1,5 +1,5 @@
-//! Leptos port of shadcn/ui Combobox component
-//! 
+﻿//! Leptos port of shadcn/ui Combobox component
+//!
 //! Provides an autocomplete input component with a list of suggestions.
 
 pub mod signal_managed;

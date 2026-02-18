@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "src-orig"
 version = "0.8.0"
 edition = "2024"
@@ -8,12 +8,12 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 name = "src-orig"
 path = "src/lib.rs"
 [dependencies]
-axum = { version = "0.8.0", optional = true }
+leptos_axum = { version = "0.8.0", optional = true }
 axum-macros = { version = "*", optional = true }
 console_error_panic_hook = { version = "*", optional = true }
 leptos = { path = "../leptos", version = "*", optional = true }
-axum = { path = "../../../integrations/axum", version = "*", optional = true }
-meta = { path = "../../../meta", version = "*", optional = true }
+leptos_axum = { path = "../../../integrations/axum", version = "*", optional = true }
+leptos_meta = { path = "../../../meta", version = "*", optional = true }
 server_fn = { path = "../server_fn", version = "*", optional = true }
 tokio = { version = "*", optional = true, features = ["rt-multi-thread"] }
 tower = { version = "*", optional = true }

@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+﻿use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +15,7 @@ pub const WEBSOCKET_CHANNEL_URL: &str = "/socket-msg";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) enum ChannelMsg {
-    Msg { key: Value, msg: Value },
-    Subscribe { key: Value },
-    Unsubscribe { key: Value },
+Msg { key: Value, msg: Value },
+Subscribe { key: Value },
+Unsubscribe { key: Value },
 }

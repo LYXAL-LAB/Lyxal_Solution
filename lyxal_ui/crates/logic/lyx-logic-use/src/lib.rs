@@ -1,4 +1,4 @@
-#![allow(unexpected_cfgs)]
+﻿#![allow(unexpected_cfgs)]
 // #![feature(doc_cfg)]
 //! Collection of essential Leptos utilities inspired by SolidJS USE / VueUse
 

@@ -1,31 +1,30 @@
-//! # tailwind-rs-core
-//! 
+﻿//! # tailwind-rs-core
+//!
 //! Type-safe Tailwind CSS class generation for Rust web frameworks.
-//! 
+//!
 //! This crate provides compile-time validation and type-safe generation of Tailwind CSS classes,
 //! with support for dynamic styling, responsive design, and theme systems.
-//! 
+//!
 //! ## Features
-//! 
-//! - 🛡️ **Type Safety**: Compile-time validation of Tailwind classes
-//! - ⚡ **Performance**: Optimized class generation and merging
-//! - 🎨 **Dynamic Styling**: Runtime class generation with type safety
-//! - 📱 **Responsive**: Type-safe responsive design utilities
-//! - 🎭 **Theming**: Built-in theme and variant system
-//! - 🔧 **Framework Agnostic**: Works with any Rust web framework
-//! 
+//!
+//! - ðŸ›¡ï¸ **Type Safety**: Compile-time validation of Tailwind classes
+//! - âš¡ **Performance**: Optimized class generation and merging
+//! - ðŸŽ¨ **Dynamic Styling**: Runtime class generation with type safety
+//! - ðŸ“± **Responsive**: Type-safe responsive design utilities
+//! - ðŸŽ­ **Theming**: Built-in theme and variant system
+//! - ðŸ”§ **Framework Agnostic**: Works with any Rust web framework
+//!
 //! ## Quick Start
-//! 
-//! ```rust
-//! use tailwind_rs_core::*;
-//! 
+//!
+//! //! use tailwind_rs_core::*;
+//!
 //! // Type-safe class generation
 //! let classes = classes! {
 //!     base: "px-4 py-2 rounded-md font-medium",
 //!     variant: "bg-blue-600 text-white hover:bg-blue-700",
 //!     responsive: "sm:text-sm md:text-base lg:text-lg",
 //! };
-//! 
+//!
 //! // Dynamic styling with type safety
 //! let color = Color::Blue;
 //! let dynamic_classes = classes! {
@@ -33,14 +32,12 @@
 //!     text: color.text(),
 //!     hover: color.hover(700),
 //! };
-//! ```
-//! 
+//! //!
 //! ## Integration with Leptos
-//! 
-//! ```rust
-//! use leptos::*;
+//!
+//! //! use leptos::*;
 //! use tailwind_rs_core::*;
-//! 
+//!
 //! #[component]
 //! pub fn Button(variant: ButtonVariant) -> impl IntoView {
 //!     let classes = classes! {
@@ -50,12 +47,10 @@
 //!             ButtonVariant::Secondary => "bg-gray-200 text-gray-900 hover:bg-gray-300",
 //!         },
 //!     };
-//!     
+//!
 //!     view! { <button class=classes>"Click me"</button> }
 //! }
-//! ```
-
-pub mod classes;
+//! pub mod classes;
 pub mod colors;
 pub mod responsive;
 pub mod themes;
@@ -83,18 +78,3 @@ pub mod leptos_integration;
 
 #[cfg(feature = "leptos")]
 pub use leptos_integration::*;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

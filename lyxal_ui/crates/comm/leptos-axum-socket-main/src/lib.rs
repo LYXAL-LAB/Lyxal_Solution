@@ -1,9 +1,8 @@
-//! Realtime pub/sub communication for Leptos + Axum applications.
+﻿//! Realtime pub/sub communication for Leptos + Axum applications.
 //!
 //! ## Usage
 //!
-//! ```
-//! # use leptos::prelude::*;
+//! //! # use leptos::prelude::*;
 //! # use leptos_axum_socket::{expect_socket_context, ServerSocket, SocketMsg};
 //! # use serde::{Serialize, Deserialize};
 //! # use axum::extract::{State, FromRef};
@@ -75,14 +74,12 @@
 //!
 //!     Ok(())
 //! }
-//! ```
-//!
+//! //!
 //! For this to work you have to prepare a little bit.
 //!
 //! Define your app state in your lib.rs:
 //!
-//! ```
-//! use leptos::prelude::*;
+//! //! use leptos::prelude::*;
 //!
 //! #[cfg(feature = "ssr")]
 //! #[derive(Clone, axum::extract::FromRef)]
@@ -93,12 +90,10 @@
 //!     // this is required for Leptos to work with axum
 //!     pub leptos_options: LeptosOptions,
 //! }
-//! ```
-//!
+//! //!
 //! Initialize your Axum app (probably in main.rs):
 //!
-//! ```
-//! # use leptos::prelude::*;
+//! //! # use leptos::prelude::*;
 //! # use leptos_axum_socket::{ServerSocket, SocketMsg, SocketRoute, handlers::upgrade_websocket};
 //! # use serde::{Deserialize, Serialize};
 //! # use axum::{Router, extract::{State, WebSocketUpgrade, FromRef}, response::Response};
@@ -190,12 +185,10 @@
 //!
 //!     upgrade_websocket(ws, socket, ctx)
 //! }
-//! ```
-//!
+//! //!
 //! And finally provide the context in your root Leptos component:
 //!
-//! ```
-//! # use leptos::prelude::*;
+//! //! # use leptos::prelude::*;
 //! # use leptos_axum_socket::provide_socket_context;
 //! #
 //! #[component]
@@ -204,8 +197,7 @@
 //!
 //!     view! { "..." }
 //! }
-//! ```
-//!
+//! //!
 //! ### Axum Handlers
 //!
 //! You can also send messages from inside axum handlers.
@@ -222,8 +214,7 @@ pub use crate::channel::*;
 ///
 /// On the server you have to provide the application state as well.
 ///
-/// ```
-/// # use leptos_axum_socket::{ServerSocket, SocketMsg};
+/// /// # use leptos_axum_socket::{ServerSocket, SocketMsg};
 /// # use serde::{Serialize, Deserialize};
 /// # use axum::extract::FromRef;
 /// #
@@ -249,42 +240,41 @@ pub use crate::channel::*;
 ///     #[cfg(feature = "ssr")]
 ///     type AppState = AppState;
 /// }
-/// ```
-pub trait SocketMsg {
-    type Key;
-    #[cfg(feature = "ssr")]
-    type AppState;
+/// pub trait SocketMsg {
+type Key;
+#[cfg(feature = "ssr")]
+type AppState;
 }
 
 /// Trait to extend the Axum router
 #[cfg(feature = "ssr")]
 pub trait SocketRoute<S>
 where
-    S: Clone + Send + Sync + 'static,
+S: Clone + Send + Sync + 'static,
 {
-    /// Add the necessary websocket route to the Axum router
-    fn socket_route<H, T>(self, handler: H) -> Self
-    where
-        H: axum::handler::Handler<T, S>,
-        T: 'static;
+/// Add the necessary websocket route to the Axum router
+fn socket_route<H, T>(self, handler: H) -> Self
+where
+H: axum::handler::Handler<T, S>,
+T: 'static;
 }
 
 #[cfg(feature = "ssr")]
 impl<S> SocketRoute<S> for axum::Router<S>
 where
-    S: Clone + Send + Sync + 'static,
-    ServerSocket: axum::extract::FromRef<S>,
+S: Clone + Send + Sync + 'static,
+ServerSocket: axum::extract::FromRef<S>,
 {
-    fn socket_route<H, T>(self, handler: H) -> Self
-    where
-        H: axum::handler::Handler<T, S>,
-        T: 'static,
-    {
-        use axum::routing::get;
-        use tracing::debug;
+fn socket_route<H, T>(self, handler: H) -> Self
+where
+H: axum::handler::Handler<T, S>,
+T: 'static,
+{
+use axum::routing::get;
+use tracing::debug;
 
-        debug!("Adding websocket route to {WEBSOCKET_CHANNEL_URL}");
+debug!("Adding websocket route to {WEBSOCKET_CHANNEL_URL}");
 
-        self.route(WEBSOCKET_CHANNEL_URL, get(handler))
-    }
+self.route(WEBSOCKET_CHANNEL_URL, get(handler))
+}
 }

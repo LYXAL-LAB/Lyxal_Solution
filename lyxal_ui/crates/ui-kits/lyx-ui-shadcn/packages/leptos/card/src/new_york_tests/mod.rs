@@ -1,4 +1,4 @@
-// New York variant tests for Card component
+﻿// New York variant tests for Card component
 // These tests focus on the New York theme variant implementation
 
 pub mod variant_tests;

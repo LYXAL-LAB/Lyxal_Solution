@@ -1,11 +1,10 @@
-use crate::{WatchOptions, watch_with_options};
+﻿use crate::{WatchOptions, watch_with_options};
 
 /// Shorthand for watching a signal to be `true`.
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::whenever;
 /// #
@@ -16,14 +15,12 @@ use crate::{WatchOptions, watch_with_options};
 /// #
 /// #     view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ### Callback Function
 ///
 /// Same as [`fn@crate::watch`], the callback will be called with `callback(input, prev_input, prev_return)`.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::whenever;
 /// #
@@ -35,14 +32,12 @@ use crate::{WatchOptions, watch_with_options};
 /// #
 /// #     view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ### Computed
 ///
 /// Same as [`fn@crate::watch`], you can pass a getter function to calculate on each change.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::whenever;
 /// #
@@ -55,14 +50,12 @@ use crate::{WatchOptions, watch_with_options};
 /// #
 /// #     view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ### Options
 ///
 /// Options and defaults are same as [`fn@watch_with_options`].
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use leptos::logging::log;
 /// # use lyx_logic_use::{WatchOptions, whenever_with_options};
 /// #
@@ -76,8 +69,7 @@ use crate::{WatchOptions, watch_with_options};
 /// #
 /// #     view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// > Make sure you follow the [instructions in Server-Side Rendering](https://use.rs/server_side_rendering.html).

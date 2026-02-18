@@ -1,4 +1,4 @@
-#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
+﻿#![cfg_attr(feature = "ssr", allow(unused_variables, unused_imports))]
 
 use crate::{use_document, use_event_listener_with_options, use_window, UseEventListenerOptions};
 use leptos::ev::{blur, focus};
@@ -13,8 +13,7 @@ use leptos::*;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos::logging::log;
 /// use leptos_use::use_active_element;
 /// #
@@ -28,43 +27,42 @@ use leptos::*;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// On the server this returns a `Signal` that always contains the value `None`.
 pub fn use_active_element() -> Signal<Option<HtmlElement<AnyElement>>> {
-    let get_active_element = move || {
-        use_document()
-            .active_element()
-            .map(|el| el.to_leptos_element())
-    };
+let get_active_element = move || {
+use_document()
+.active_element()
+.map(|el| el.to_leptos_element())
+};
 
-    let (active_element, set_active_element) = create_signal(get_active_element());
+let (active_element, set_active_element) = create_signal(get_active_element());
 
-    let listener_options = UseEventListenerOptions::default().capture(true);
+let listener_options = UseEventListenerOptions::default().capture(true);
 
-    let _ = use_event_listener_with_options(
-        use_window(),
-        blur,
-        move |event| {
-            if event.related_target().is_some() {
-                return;
-            }
+let _ = use_event_listener_with_options(
+use_window(),
+blur,
+move |event| {
+if event.related_target().is_some() {
+return;
+}
 
-            set_active_element.update(|el| *el = get_active_element());
-        },
-        listener_options,
-    );
+set_active_element.update(|el| *el = get_active_element());
+},
+listener_options,
+);
 
-    let _ = use_event_listener_with_options(
-        use_window(),
-        focus,
-        move |_| {
-            set_active_element.update(|el| *el = get_active_element());
-        },
-        listener_options,
-    );
+let _ = use_event_listener_with_options(
+use_window(),
+focus,
+move |_| {
+set_active_element.update(|el| *el = get_active_element());
+},
+listener_options,
+);
 
-    active_element.into()
+active_element.into()
 }

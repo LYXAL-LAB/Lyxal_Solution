@@ -1,12 +1,11 @@
-use std::cell::Cell;
+﻿use std::cell::Cell;
 
 /// Disable or enable query loading.
 ///
 /// Useful for disabling query loads during App introspection, such as SSR Router integrations for Actix/Axum.
 ///
 /// Example for `generate_route_list`
-/// ```
-/// use leptos::*;
+/// /// use leptos::*;
 /// use leptos_query::*;
 /// use leptos_axum::*;
 ///
@@ -23,9 +22,8 @@ use std::cell::Cell;
 /// fn App() -> impl IntoView {
 ///     ()
 /// }
-/// ```
-pub fn suppress_query_load(suppress: bool) {
-    SUPPRESS_QUERY_LOAD.with(|w| w.set(suppress));
+/// pub fn suppress_query_load(suppress: bool) {
+SUPPRESS_QUERY_LOAD.with(|w| w.set(suppress));
 }
 
 /// Run a closure with query loading suppressed.
@@ -33,8 +31,7 @@ pub fn suppress_query_load(suppress: bool) {
 /// Useful for disabling query loads during App introspection, such as SSR Router integrations for Actix/Axum.
 ///
 /// Example for `generate_route_list`
-/// ```
-/// use leptos::*;
+/// /// use leptos::*;
 /// use leptos_query::*;
 /// use leptos_axum::*;
 ///
@@ -46,20 +43,19 @@ pub fn suppress_query_load(suppress: bool) {
 /// fn App() -> impl IntoView {
 ///     ()
 /// }
-/// ```
-pub fn with_query_suppression<T>(f: impl FnOnce() -> T) -> T {
-    SUPPRESS_QUERY_LOAD.with(|w| {
-        w.set(true);
-        let result = f();
-        w.set(false);
-        result
-    })
+/// pub fn with_query_suppression<T>(f: impl FnOnce() -> T) -> T {
+SUPPRESS_QUERY_LOAD.with(|w| {
+w.set(true);
+let result = f();
+w.set(false);
+result
+})
 }
 
 pub(crate) fn query_is_suppressed() -> bool {
-    SUPPRESS_QUERY_LOAD.get()
+SUPPRESS_QUERY_LOAD.get()
 }
 
 thread_local! {
-    static SUPPRESS_QUERY_LOAD: Cell<bool> = const { Cell::new(false) };
+static SUPPRESS_QUERY_LOAD: Cell<bool> = const { Cell::new(false) };
 }

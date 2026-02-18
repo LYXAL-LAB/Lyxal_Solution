@@ -1,4 +1,4 @@
-mod content;
+﻿mod content;
 mod group;
 mod label;
 
@@ -10,20 +10,5 @@ use leptos::prelude::*;
 
 #[derive(Clone)]
 pub struct SidebarGroupContext {
-    pub label_id: RwSignal<String>,
+pub label_id: RwSignal<String>,
 }
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

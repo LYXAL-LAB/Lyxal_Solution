@@ -1,4 +1,4 @@
-
+﻿
 # need to be applied only to wasm build
 [profile.release]
 codegen-units = 1

@@ -1,4 +1,4 @@
-mod avatar;
+﻿mod avatar;
 mod avatar_fallback;
 mod avatar_group;
 

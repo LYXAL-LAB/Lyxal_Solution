@@ -1,4 +1,4 @@
-/// Look for the configuration in the cargo manifest `Cargo.toml` at the root of the project and load the given locales.
+﻿/// Look for the configuration in the cargo manifest `Cargo.toml` at the root of the project and load the given locales.
 ///
 /// It creates multiple types allowing to easily incorporate translations in you application such as:
 ///
@@ -7,25 +7,25 @@
 #[macro_export]
 #[deprecated = "Deprecated in favor of build.rs code gen"]
 macro_rules! load_locales {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::load_locales!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::load_locales!{$($tt)*}
+};
 }
 
 /// This is for a private use writing tests.
 #[macro_export]
 #[doc(hidden)]
 macro_rules! declare_locales {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::declare_locales!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::declare_locales!{$($tt)*}
+};
 }
 
 /// Utility macro to easily put translation in your application.
 ///
 /// Usage:
 ///s
-/// ```rust, no_run
+/// , no_run
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -47,13 +47,12 @@ macro_rules! declare_locales {
 ///     <p>{t!(i18n, interpolate_key, variable = var, <component> = comp)}</p>
 /// }
 /// # ;
-/// ```
-///
+/// ///
 /// # Notes
 ///
 /// If your variable/component value is the same as the key, you remove the assignment, such that this:
 ///
-/// ```rust, no_run
+/// , no_run
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -68,14 +67,13 @@ macro_rules! declare_locales {
 /// # let var = "";
 /// # let comp = |_: leptos::children::ChildrenFn| {};
 /// # let i18n = use_i18n();
-/// # let _ =  
+/// # let _ =
 /// t!(i18n, key, variable = var, <component> = comp)
 /// # ;
-/// ```
-///
+/// ///
 /// can be shortened to:
 ///
-/// ```rust, no_run
+/// , no_run
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -90,23 +88,22 @@ macro_rules! declare_locales {
 /// # let variable = "";
 /// # let component = |_: leptos::children::ChildrenFn| {};
 /// # let i18n = use_i18n();
-/// # let _ =  
+/// # let _ =
 /// t!(i18n, key, variable, <component>)
 /// # ;
-/// ```
-#[macro_export]
+/// #[macro_export]
 macro_rules! t {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::t!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::t!{$($tt)*}
+};
 }
 
 /// Just like the `t!` macro but instead of taking `I18nContext` as the first argument it takes the desired locale.
 ///
 /// Usage:
 ///
-#[cfg_attr(feature = "dynamic_load", doc = "```rust, no_run")]
-#[cfg_attr(not(feature = "dynamic_load"), doc = "```rust")]
+#[cfg_attr(feature = "dynamic_load", doc = ", no_run")]
+#[cfg_attr(not(feature = "dynamic_load"), doc = "")]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -128,30 +125,29 @@ macro_rules! t {
 ///     <p>{td!(Locale::fr, interpolate_key, variable = "some value", <component> = |child| { /* ... */} )}</p>
 /// }
 /// # ;
-/// ```
-///
+/// ///
 /// This let you use a specific locale regardless of the current one.
 #[macro_export]
 macro_rules! td {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::td!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::td!{$($tt)*}
+};
 }
 
 /// Same as the `t!` macro but untracked.
 #[macro_export]
 macro_rules! tu {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::tu!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::tu!{$($tt)*}
+};
 }
 
 /// Just like the `t!` macro but return a `&'static str` or a `String` instead of a view.
 ///
 /// Usage:
 ///
-#[cfg_attr(feature = "dynamic_load", doc = "```rust, ignore")]
-#[cfg_attr(not(feature = "dynamic_load"), doc = "```rust, no_run")]
+#[cfg_attr(feature = "dynamic_load", doc = ", ignore")]
+#[cfg_attr(not(feature = "dynamic_load"), doc = ", no_run")]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       interpolate_display,
@@ -175,23 +171,22 @@ macro_rules! tu {
 ///     t_string!(i18n, click_count, count = "a lot of"),
 ///     "You clicked a lot of times"
 /// );
-/// ```
-///
+/// ///
 /// If you want to avoid a temporary `String` to format in a buffer, you can use `t_display!` which return the raw builder which implement `Display`.
 /// In fact, `t_string!(args)` internally is `t_display!(args).to_string()` (when using interpolation, else it just returns a `&'static str`).
 #[macro_export]
 macro_rules! t_string {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::t_string!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::t_string!{$($tt)*}
+};
 }
 
 /// Just like the `t_string!` macro but takes the `Locale` as an argument instead of the context.
 ///
 /// Usage:
 ///
-#[cfg_attr(feature = "dynamic_load", doc = "```rust, ignore")]
-#[cfg_attr(not(feature = "dynamic_load"), doc = "```rust")]
+#[cfg_attr(feature = "dynamic_load", doc = ", ignore")]
+#[cfg_attr(not(feature = "dynamic_load"), doc = "")]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       interpolate_display,
@@ -213,20 +208,19 @@ macro_rules! t_string {
 ///     td_string!(Locale::en, click_count, count = "a lot of"),
 ///     "You clicked a lot of times"
 /// );
-/// ```
-#[macro_export]
+/// #[macro_export]
 macro_rules! td_string {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::td_string!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::td_string!{$($tt)*}
+};
 }
 
 /// Same as the `t_string!` macro but untracked.
 #[macro_export]
 macro_rules! tu_string {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::tu_string!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::tu_string!{$($tt)*}
+};
 }
 
 /// Just like the `t_string!` macro but return either a struct implementing `Display` or a `&'static str` instead.
@@ -235,8 +229,8 @@ macro_rules! tu_string {
 ///
 /// Usage:
 ///
-#[cfg_attr(feature = "dynamic_load", doc = "```rust, ignore")]
-#[cfg_attr(not(feature = "dynamic_load"), doc = "```rust, no_run")]
+#[cfg_attr(feature = "dynamic_load", doc = ", ignore")]
+#[cfg_attr(not(feature = "dynamic_load"), doc = ", no_run")]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       interpolate_display,
@@ -257,14 +251,13 @@ macro_rules! tu_string {
 /// let t_str = t.to_string(); // can call `to_string` as the value impl `Display`
 ///
 /// assert_eq!(t_str, "You clicked 10 times");
-/// ```
-///
+/// ///
 /// Note that this is only usefull with interpolations, as with plain strings `t_display!` and `t_string!` both just returns the inner `&'static str`.
 #[macro_export]
 macro_rules! t_display {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::t_display!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::t_display!{$($tt)*}
+};
 }
 
 /// Just like the `t_display!` macro but takes the `Locale` as an argument instead of the context.
@@ -273,8 +266,8 @@ macro_rules! t_display {
 ///
 /// Usage:
 ///
-#[cfg_attr(feature = "dynamic_load", doc = "```rust, ignore")]
-#[cfg_attr(not(feature = "dynamic_load"), doc = "```rust")]
+#[cfg_attr(feature = "dynamic_load", doc = ", ignore")]
+#[cfg_attr(not(feature = "dynamic_load"), doc = "")]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       interpolate_display,
@@ -294,27 +287,26 @@ macro_rules! t_display {
 /// let t_str = t.to_string(); // can call `to_string` as the value impl `Display`
 ///
 /// assert_eq!(t_str, "You clicked 10 times");
-/// ```
-#[macro_export]
+/// #[macro_export]
 macro_rules! td_display {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::td_display!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::td_display!{$($tt)*}
+};
 }
 
 /// Same as the `t_display!` macro but untracked.
 #[macro_export]
 macro_rules! tu_display {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::tu_display!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::tu_display!{$($tt)*}
+};
 }
 
 /// Like `use_i18n` but enable to scope the context:
 ///
 /// Instead of
 ///
-/// ```rust, no_run
+/// , no_run
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -330,11 +322,10 @@ macro_rules! tu_display {
 /// # use i18n::*;
 /// let i18n = use_i18n();
 /// t!(i18n, namespace.subkeys.value);
-/// ```
-///
+/// ///
 /// You can do
 ///
-/// ```rust, no_run
+/// , no_run
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -350,11 +341,10 @@ macro_rules! tu_display {
 /// # use i18n::*;
 /// let i18n = use_i18n_scoped!(namespace);
 /// t!(i18n, subkeys.value);
-/// ```
-///
+/// ///
 /// Or
 ///
-/// ```rust, no_run
+/// , no_run
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -370,11 +360,10 @@ macro_rules! tu_display {
 /// # use i18n::*;
 /// let i18n = use_i18n_scoped!(namespace.subkeys);
 /// t!(i18n, value);
-/// ```
-///
+/// ///
 /// This macro is the equivalent to do
 ///
-/// ```rust, no_run
+/// , no_run
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -390,19 +379,18 @@ macro_rules! tu_display {
 /// # use i18n::*;
 /// let i18n = use_i18n();
 /// let i18n = scope_i18n!(i18n, namespace.subkeys);
-/// ```
-#[macro_export]
+/// #[macro_export]
 macro_rules! use_i18n_scoped {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::use_i18n_scoped!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::use_i18n_scoped!{$($tt)*}
+};
 }
 
 /// Scope a context to the given keys
 ///
 /// Instead of
 ///
-/// ```rust, no_run
+/// , no_run
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -418,11 +406,10 @@ macro_rules! use_i18n_scoped {
 /// # use i18n::*;
 /// let i18n = use_i18n();
 /// t!(i18n, namespace.subkeys.value);
-/// ```
-///
+/// ///
 /// You can do
 ///
-/// ```rust, no_run
+/// , no_run
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -445,20 +432,19 @@ macro_rules! use_i18n_scoped {
 /// //  subkeys_i18n = scope_i18n!(i18n, namespace.subkeys);
 ///
 /// t!(subkeys_i18n, value);
-/// ```
-#[macro_export]
+/// #[macro_export]
 macro_rules! scope_i18n {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::scope_i18n!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::scope_i18n!{$($tt)*}
+};
 }
 
 /// Scope a locale to the given keys
 ///
 /// Instead of
 ///
-#[cfg_attr(feature = "dynamic_load", doc = "```rust, ignore")]
-#[cfg_attr(not(feature = "dynamic_load"), doc = "```rust")]
+#[cfg_attr(feature = "dynamic_load", doc = ", ignore")]
+#[cfg_attr(not(feature = "dynamic_load"), doc = "")]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -474,12 +460,11 @@ macro_rules! scope_i18n {
 /// # use i18n::*;
 /// let locale = Locale::en;
 /// td!(locale, namespace.subkeys.value);
-/// ```
-///
+/// ///
 /// You can do
 ///
-#[cfg_attr(feature = "dynamic_load", doc = "```rust, ignore")]
-#[cfg_attr(not(feature = "dynamic_load"), doc = "```rust")]
+#[cfg_attr(feature = "dynamic_load", doc = ", ignore")]
+#[cfg_attr(not(feature = "dynamic_load"), doc = "")]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -502,23 +487,22 @@ macro_rules! scope_i18n {
 /// //  subkeys_locale = scope_locale!(locale, namespace.subkeys);
 ///
 /// td!(subkeys_locale, value);
-/// ```
-#[macro_export]
+/// #[macro_export]
 macro_rules! scope_locale {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::scope_locale!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::scope_locale!{$($tt)*}
+};
 }
 
 /// Format a given value with a given formatter and return a `impl IntoView`.
 ///
 #[cfg_attr(
-    all(feature = "format_list", feature = "format_nums"),
-    doc = "```rust, no_run"
+all(feature = "format_list", feature = "format_nums"),
+doc = ", no_run"
 )]
 #[cfg_attr(
-    not(all(feature = "format_list", feature = "format_nums")),
-    doc = "```rust, ignore"
+not(all(feature = "format_list", feature = "format_nums")),
+doc = ", ignore"
 )]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
@@ -534,26 +518,24 @@ macro_rules! scope_locale {
 /// t_format!(i18n, num, formatter: number);
 /// let list = || ["A", "B", "C"];
 /// t_format!(i18n, list, formatter: list(list_type: and; list_style: wide));
-/// ```
-/// This function does exactly the same as if you had "{{ var, formatter_name(formatter_arg: value; ...) }}"
+/// /// This function does exactly the same as if you had "{{ var, formatter_name(formatter_arg: value; ...) }}"
 /// for a translation and do
 ///
-/// ```rust,ignore
+/// ,ignore
 /// t!(i18n, key, var = ...)
-/// ```
-#[macro_export]
+/// #[macro_export]
 macro_rules! t_format {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::t_format!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::t_format!{$($tt)*}
+};
 }
 
 /// Same as the `t_format!` macro but takes the desired `Locale` as the first argument.
 ///
-#[cfg_attr(all(feature = "format_list", feature = "format_nums"), doc = "```rust")]
+#[cfg_attr(all(feature = "format_list", feature = "format_nums"), doc = "")]
 #[cfg_attr(
-    not(all(feature = "format_list", feature = "format_nums")),
-    doc = "```rust, ignore"
+not(all(feature = "format_list", feature = "format_nums")),
+doc = ", ignore"
 )]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
@@ -568,31 +550,30 @@ macro_rules! t_format {
 /// td_format!(Locale::en, num, formatter: number);
 /// let list = || ["A", "B", "C"];
 /// td_format!(Locale::en, list, formatter: list(list_type: and; list_style: wide));
-/// ```
-#[macro_export]
+/// #[macro_export]
 macro_rules! td_format {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::td_format!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::td_format!{$($tt)*}
+};
 }
 
 /// Same as the `t_format!` macro but untracked.
 #[macro_export]
 macro_rules! tu_format {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::tu_format!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::tu_format!{$($tt)*}
+};
 }
 
 /// Format a given value with a given formatter and return a `String`.
 ///
 #[cfg_attr(
-    all(feature = "format_list", feature = "format_nums"),
-    doc = "```rust, no_run"
+all(feature = "format_list", feature = "format_nums"),
+doc = ", no_run"
 )]
 #[cfg_attr(
-    not(all(feature = "format_list", feature = "format_nums")),
-    doc = "```rust, ignore"
+not(all(feature = "format_list", feature = "format_nums")),
+doc = ", ignore"
 )]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
@@ -611,26 +592,24 @@ macro_rules! tu_format {
 /// let list = ["A", "B", "C"];
 ///
 /// t_format_string!(i18n, list, formatter: list(list_type: and; list_style: wide));
-/// ```
-/// This function does exactly the same as if you had "{{ var, formatter_name(formatter_arg: value; ...) }}"
+/// /// This function does exactly the same as if you had "{{ var, formatter_name(formatter_arg: value; ...) }}"
 /// for a translation and do
 ///
-/// ```rust,ignore
+/// ,ignore
 /// t_string!(i18n, key, var = ...)
-/// ```
-#[macro_export]
+/// #[macro_export]
 macro_rules! t_format_string {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::t_format_string!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::t_format_string!{$($tt)*}
+};
 }
 
 /// Same as the `t_format_string!` macro but takes the desired `Locale` as the first argument.
 ///
-#[cfg_attr(all(feature = "format_list", feature = "format_nums"), doc = "```rust")]
+#[cfg_attr(all(feature = "format_list", feature = "format_nums"), doc = "")]
 #[cfg_attr(
-    not(all(feature = "format_list", feature = "format_nums")),
-    doc = "```rust, ignore"
+not(all(feature = "format_list", feature = "format_nums")),
+doc = ", ignore"
 )]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
@@ -655,31 +634,30 @@ macro_rules! t_format_string {
 /// assert_eq!(formated_list, "A, B, and C");
 /// let formated_list = td_format_string!(Locale::fr, list, formatter: list(list_type: and; list_style: wide));
 /// assert_eq!(formated_list, "A, B et C");
-/// ```
-#[macro_export]
+/// #[macro_export]
 macro_rules! td_format_string {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::td_format_string!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::td_format_string!{$($tt)*}
+};
 }
 
 /// Same as the `t_format_string!` macro but untracked.
 #[macro_export]
 macro_rules! tu_format_string {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::tu_format_string!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::tu_format_string!{$($tt)*}
+};
 }
 
 /// Format a given value with a given formatter and return a `impl Display`:
 ///
 #[cfg_attr(
-    all(feature = "format_list", feature = "format_nums"),
-    doc = "```rust, no_run"
+all(feature = "format_list", feature = "format_nums"),
+doc = ", no_run"
 )]
 #[cfg_attr(
-    not(all(feature = "format_list", feature = "format_nums")),
-    doc = "```rust, ignore"
+not(all(feature = "format_list", feature = "format_nums")),
+doc = ", ignore"
 )]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
@@ -699,26 +677,24 @@ macro_rules! tu_format_string {
 /// let list = ["A", "B", "C"];
 ///
 /// t_format_display!(i18n, list, formatter: list(list_type: and; list_style: wide));
-/// ```
-/// This function does exactly the same as if you had "{{ var, formatter_name(formatter_arg: value; ...) }}"
+/// /// This function does exactly the same as if you had "{{ var, formatter_name(formatter_arg: value; ...) }}"
 /// for a translation and do
 ///
-/// ```rust,ignore
+/// ,ignore
 /// t_display!(i18n, key, var = ...)
-/// ```
-#[macro_export]
+/// #[macro_export]
 macro_rules! t_format_display {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::t_format_display!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::t_format_display!{$($tt)*}
+};
 }
 
 /// Same as the `t_format_display!` macro but takes the desired `Locale` as the first argument.
 ///
-#[cfg_attr(all(feature = "format_list", feature = "format_nums"), doc = "```rust")]
+#[cfg_attr(all(feature = "format_list", feature = "format_nums"), doc = "")]
 #[cfg_attr(
-    not(all(feature = "format_list", feature = "format_nums")),
-    doc = "```rust, ignore"
+not(all(feature = "format_list", feature = "format_nums")),
+doc = ", ignore"
 )]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
@@ -745,23 +721,23 @@ macro_rules! t_format_display {
 /// assert_eq!(format!("valeurs: {}.", list_formatter), "valeurs: A, B et C.");
 #[macro_export]
 macro_rules! td_format_display {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::td_format_display!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::td_format_display!{$($tt)*}
+};
 }
 
 /// Same as the `t_format_display!` macro but untracked.
 #[macro_export]
 macro_rules! tu_format_display {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::tu_format_display!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::tu_format_display!{$($tt)*}
+};
 }
 
 /// Match against the plural form of a given count:
 ///
-#[cfg_attr(feature = "plurals", doc = "```rust, no_run")]
-#[cfg_attr(not(feature = "plurals"), doc = "```rust, ignore")]
+#[cfg_attr(feature = "plurals", doc = ", no_run")]
+#[cfg_attr(not(feature = "plurals"), doc = ", ignore")]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -787,8 +763,7 @@ macro_rules! tu_format_display {
 ///     let s = form();
 ///     log!("{}", s);
 /// });
-/// ```
-///
+/// ///
 /// This will log "one" with locale "fr" but "other" with locale "en".
 ///
 /// Accepted forms are: `zero`, `one`, `two`, `few`, `many`, `other` and `_`.
@@ -796,16 +771,16 @@ macro_rules! tu_format_display {
 /// This is for the cardinal form of plurals, for ordinal form see `t_plural_ordinal!`.
 #[macro_export]
 macro_rules! t_plural {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::t_plural!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::t_plural!{$($tt)*}
+};
 }
 
 /// Same as the `t_plural!` macro but takes the desired `Locale` as the first argument.
 /// Directly return the value instead of wrapping it in a closure.
 ///
-#[cfg_attr(feature = "plurals", doc = "```rust")]
-#[cfg_attr(not(feature = "plurals"), doc = "```rust, ignore")]
+#[cfg_attr(feature = "plurals", doc = "")]
+#[cfg_attr(not(feature = "plurals"), doc = ", ignore")]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -835,27 +810,26 @@ macro_rules! t_plural {
 /// };
 ///
 /// assert_eq!(form_fr, "one");
-/// ```
-#[macro_export]
+/// #[macro_export]
 macro_rules! td_plural {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::td_plural!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::td_plural!{$($tt)*}
+};
 }
 
 /// Same as the `t_plural!` macro but untracked.
 /// Directly return the value instead of wrapping it in a closure.
 #[macro_export]
 macro_rules! tu_plural {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::tu_plural!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::tu_plural!{$($tt)*}
+};
 }
 
 /// Match against the plural form of a given count:
 ///
-#[cfg_attr(feature = "plurals", doc = "```rust, no_run")]
-#[cfg_attr(not(feature = "plurals"), doc = "```rust, ignore")]
+#[cfg_attr(feature = "plurals", doc = ", no_run")]
+#[cfg_attr(not(feature = "plurals"), doc = ", ignore")]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -881,8 +855,7 @@ macro_rules! tu_plural {
 ///     let s = form();
 ///     log!("{}", s);
 /// });
-/// ```
-///
+/// ///
 /// This will log "other" with locale "fr" but "two" with locale "en".
 ///
 /// Accepted forms are: `zero`, `one`, `two`, `few`, `many`, `other` and `_`.
@@ -890,16 +863,16 @@ macro_rules! tu_plural {
 /// This is for the ordinal form of plurals, for cardinal form see `t_plural!`.
 #[macro_export]
 macro_rules! t_plural_ordinal {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::t_plural_ordinal!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::t_plural_ordinal!{$($tt)*}
+};
 }
 
 /// Same as the `t_plural_ordinal!` macro but takes the desired `Locale` as the first argument.
 /// Directly return the value instead of wrapping it in a closure.
 ///
-#[cfg_attr(feature = "plurals", doc = "```rust")]
-#[cfg_attr(not(feature = "plurals"), doc = "```rust, ignore")]
+#[cfg_attr(feature = "plurals", doc = "")]
+#[cfg_attr(not(feature = "plurals"), doc = ", ignore")]
 /// #   leptos_i18n::declare_locales! {
 /// #       path: leptos_i18n,
 /// #       default: "en",
@@ -929,20 +902,18 @@ macro_rules! t_plural_ordinal {
 /// };
 ///
 /// assert_eq!(form_fr, "other");
-/// ```
-#[macro_export]
+/// #[macro_export]
 macro_rules! td_plural_ordinal {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::td_plural_ordinal!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::td_plural_ordinal!{$($tt)*}
+};
 }
 
 /// Same as the `t_plural_ordinal!` macro but untracked.
 /// Directly return the value instead of wrapping it in a closure.
 #[macro_export]
 macro_rules! tu_plural_ordinal {
-    ($($tt:tt)*) => {
-        $crate::__private::macros_reexport::tu_plural_ordinal!{$($tt)*}
-    };
+($($tt:tt)*) => {
+$crate::__private::macros_reexport::tu_plural_ordinal!{$($tt)*}
+};
 }
-

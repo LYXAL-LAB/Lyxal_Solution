@@ -1,4 +1,4 @@
-use leptos::prelude::*;
+﻿use leptos::prelude::*;
 
 /// You can pass this to a [`TableContent`] component's `reload_controller` prop to trigger a reload.
 ///
@@ -8,17 +8,17 @@ use leptos::prelude::*;
 pub struct ReloadController(Trigger);
 
 impl Default for ReloadController {
-    fn default() -> Self {
-        Self(Trigger::new())
-    }
+fn default() -> Self {
+Self(Trigger::new())
+}
 }
 
 impl ReloadController {
-    pub fn reload(&self) {
-        self.0.notify();
-    }
+pub fn reload(&self) {
+self.0.notify();
+}
 
-    pub fn track(&self) {
-        self.0.track();
-    }
+pub fn track(&self) {
+self.0.track();
+}
 }

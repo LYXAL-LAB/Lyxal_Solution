@@ -1,4 +1,4 @@
-mod components;
+﻿mod components;
 
 // #[cfg(feature = "alert")]
 // mod alert;
@@ -13,38 +13,38 @@ mod card;
 
 use leptos::prelude::*;
 use leptos_router::{
-    MatchNestedRoutes,
-    components::{Outlet, ParentRoute},
-    path,
+MatchNestedRoutes,
+components::{Outlet, ParentRoute},
+path,
 };
 
 #[component(transparent)]
 pub fn NewYork() -> impl MatchNestedRoutes + Clone {
-    let children = (
-        // #[cfg(feature = "alert")]
-        // {
-        //     component_view(self::alert::AlertRoutes, ())
-        // },
-        // #[cfg(feature = "badge")]
-        // {
-        //     component_view(self::badge::BadgeRoutes, ())
-        // },
-        #[cfg(feature = "button")]
-        {
-            component_view(self::button::ButtonRoutes, ())
-        },
-        #[cfg(feature = "card")]
-        {
-            component_view(self::card::CardRoutes, ())
-        },
-        // #[cfg(feature = "radio-group")]
-        // {
-        //     component_view(self::radio_group::RadioGroupRoutes, ())
-        // },
-    );
+let children = (
+// #[cfg(feature = "alert")]
+// {
+//     component_view(self::alert::AlertRoutes, ())
+// },
+// #[cfg(feature = "badge")]
+// {
+//     component_view(self::badge::BadgeRoutes, ())
+// },
+#[cfg(feature = "button")]
+{
+component_view(self::button::ButtonRoutes, ())
+},
+#[cfg(feature = "card")]
+{
+component_view(self::card::CardRoutes, ())
+},
+// #[cfg(feature = "radio-group")]
+// {
+//     component_view(self::radio_group::RadioGroupRoutes, ())
+// },
+);
 
-    view! {
-        <ParentRoute path=path!("new-york") view=Outlet children=ToChildren::to_children(move || children) />
-    }
-    .into_inner()
+view! {
+<ParentRoute path=path!("new-york") view=Outlet children=ToChildren::to_children(move || children) />
+}
+.into_inner()
 }

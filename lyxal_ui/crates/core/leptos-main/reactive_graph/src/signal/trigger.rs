@@ -1,13 +1,13 @@
-use super::{subscriber_traits::AsSubscriberSet, ArcTrigger};
+﻿use super::{subscriber_traits::AsSubscriberSet, ArcTrigger};
 use crate::{
-    graph::{ReactiveNode, SubscriberSet},
-    owner::ArenaItem,
-    traits::{DefinedAt, Dispose, IsDisposed, Notify},
+graph::{ReactiveNode, SubscriberSet},
+owner::ArenaItem,
+traits::{DefinedAt, Dispose, IsDisposed, Notify},
 };
 use std::{
-    fmt::{Debug, Formatter, Result},
-    panic::Location,
-    sync::{Arc, RwLock},
+fmt::{Debug, Formatter, Result},
+panic::Location,
+sync::{Arc, RwLock},
 };
 
 /// A trigger is a data-less signal with the sole purpose of notifying other reactive code of a change.
@@ -18,86 +18,86 @@ use std::{
 /// [`Owner`](crate::owner::Owner) cleans up. For a reference-counted trigger that lives
 /// as long as a reference to it is alive, see [`ArcTrigger`].
 pub struct Trigger {
-    #[cfg(any(debug_assertions, leptos_debuginfo))]
-    pub(crate) defined_at: &'static Location<'static>,
-    pub(crate) inner: ArenaItem<ArcTrigger>,
+#[cfg(any(debug_assertions, leptos_debuginfo))]
+pub(crate) defined_at: &'static Location<'static>,
+pub(crate) inner: ArenaItem<ArcTrigger>,
 }
 
 impl Trigger {
-    /// Creates a new trigger.
-    #[track_caller]
-    pub fn new() -> Self {
-        Self {
-            #[cfg(any(debug_assertions, leptos_debuginfo))]
-            defined_at: Location::caller(),
-            inner: ArenaItem::new(ArcTrigger::new()),
-        }
-    }
+/// Creates a new trigger.
+#[track_caller]
+pub fn new() -> Self {
+Self {
+#[cfg(any(debug_assertions, leptos_debuginfo))]
+defined_at: Location::caller(),
+inner: ArenaItem::new(ArcTrigger::new()),
+}
+}
 }
 
 impl Default for Trigger {
-    fn default() -> Self {
-        Self::new()
-    }
+fn default() -> Self {
+Self::new()
+}
 }
 
 impl Clone for Trigger {
-    #[track_caller]
-    fn clone(&self) -> Self {
-        *self
-    }
+#[track_caller]
+fn clone(&self) -> Self {
+*self
+}
 }
 
 impl Copy for Trigger {}
 
 impl Debug for Trigger {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.debug_struct("Trigger").finish()
-    }
+fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+f.debug_struct("Trigger").finish()
+}
 }
 
 impl Dispose for Trigger {
-    fn dispose(self) {
-        self.inner.dispose()
-    }
+fn dispose(self) {
+self.inner.dispose()
+}
 }
 
 impl IsDisposed for Trigger {
-    #[inline(always)]
-    fn is_disposed(&self) -> bool {
-        self.inner.is_disposed()
-    }
+#[inline(always)]
+fn is_disposed(&self) -> bool {
+self.inner.is_disposed()
+}
 }
 
 impl AsSubscriberSet for Trigger {
-    type Output = Arc<RwLock<SubscriberSet>>;
+type Output = Arc<RwLock<SubscriberSet>>;
 
-    #[inline(always)]
-    fn as_subscriber_set(&self) -> Option<Self::Output> {
-        self.inner
-            .try_get_value()
-            .and_then(|arc_trigger| arc_trigger.as_subscriber_set())
-    }
+#[inline(always)]
+fn as_subscriber_set(&self) -> Option<Self::Output> {
+self.inner
+.try_get_value()
+.and_then(|arc_trigger| arc_trigger.as_subscriber_set())
+}
 }
 
 impl DefinedAt for Trigger {
-    #[inline(always)]
-    fn defined_at(&self) -> Option<&'static Location<'static>> {
-        #[cfg(any(debug_assertions, leptos_debuginfo))]
-        {
-            Some(self.defined_at)
-        }
-        #[cfg(not(any(debug_assertions, leptos_debuginfo)))]
-        {
-            None
-        }
-    }
+#[inline(always)]
+fn defined_at(&self) -> Option<&'static Location<'static>> {
+#[cfg(any(debug_assertions, leptos_debuginfo))]
+{
+Some(self.defined_at)
+}
+#[cfg(not(any(debug_assertions, leptos_debuginfo)))]
+{
+None
+}
+}
 }
 
 impl Notify for Trigger {
-    fn notify(&self) {
-        if let Some(inner) = self.inner.try_get_value() {
-            inner.mark_dirty();
-        }
-    }
+fn notify(&self) {
+if let Some(inner) = self.inner.try_get_value() {
+inner.mark_dirty();
+}
+}
 }

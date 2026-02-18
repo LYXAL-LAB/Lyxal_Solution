@@ -1,9 +1,9 @@
-[package]
+﻿[package]
 name = "server"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
-app = { version = "0.8.0", path = "../../../../../platform/lyx-plat-tauri/app", optional = false, default-features = false, features = ["ssr"] }
+app = { version = "*", path = "../../../../../platform/lyx-plat-tauri/app", optional = false, default-features = false, features = ["ssr"] }
 leptos = { version = "*", path = "../../../leptos", optional = false, features = [ "ssr" ] }
 
 

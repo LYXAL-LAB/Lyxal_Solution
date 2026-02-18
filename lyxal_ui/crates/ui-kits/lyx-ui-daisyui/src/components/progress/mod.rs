@@ -1,4 +1,4 @@
-//! # daisyUI Progress Component
+﻿//! # daisyUI Progress Component
 //!
 //! For more information, see: https://daisyui.com/components/progress/
 
@@ -7,22 +7,3 @@ mod style;
 
 pub use component::*;
 pub use style::*;
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

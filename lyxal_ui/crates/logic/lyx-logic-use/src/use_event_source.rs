@@ -1,4 +1,4 @@
-use crate::ReconnectLimit;
+﻿use crate::ReconnectLimit;
 use crate::core::ConnectionReadyState;
 use codee::Decoder;
 use default_struct_builder::DefaultBuilder;
@@ -24,8 +24,7 @@ use wasm_bindgen::JsCast;
 /// > Please check [the codec chapter](https://use.rs/codecs.html) to see what codecs are
 /// > available and what feature flags they require.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_event_source, UseEventSourceReturn};
 /// # use codee::string::JsonSerdeCodec;
 /// # use serde::{Deserialize, Serialize};
@@ -44,14 +43,12 @@ use wasm_bindgen::JsCast;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ### Named Events
 ///
 /// You can define named events when using `use_event_source_with_options`.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_event_source_with_options, UseEventSourceReturn, UseEventSourceOptions};
 /// # use codee::string::FromToStringCodec;
 /// #
@@ -67,8 +64,7 @@ use wasm_bindgen::JsCast;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ### Custom Event Handler
 ///
 /// You can provide a custom `on_event` handler using `use_event_source_with_options`.
@@ -81,8 +77,7 @@ use wasm_bindgen::JsCast;
 ///
 /// By default, the handler returns `UseEventSourceOnEventReturn::ProcessMessage`.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_event_source_with_options, UseEventSourceReturn, UseEventSourceOptions, UseEventSourceMessage, UseEventSourceOnEventReturn};
 /// # use codee::string::FromToStringCodec;
 /// #
@@ -113,8 +108,7 @@ use wasm_bindgen::JsCast;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ### Immediate
 ///
 /// Auto-connect (enabled by default).
@@ -128,8 +122,7 @@ use wasm_bindgen::JsCast;
 /// You can control the number of reconnection attempts by setting `reconnect_limit` and the
 /// interval between them by setting `reconnect_interval`.
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_event_source_with_options, UseEventSourceReturn, UseEventSourceOptions, ReconnectLimit};
 /// # use codee::string::FromToStringCodec;
 /// #
@@ -146,8 +139,7 @@ use wasm_bindgen::JsCast;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 ///
 /// ## SendWrapped Return
 ///

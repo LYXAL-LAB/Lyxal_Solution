@@ -1,4 +1,4 @@
-use crate::core::now;
+﻿use crate::core::now;
 use crate::utils::Pausable;
 use crate::{
 UseIntervalFnOptions, UseRafFnOptions, use_interval_fn_with_options, use_raf_fn_with_options,
@@ -17,8 +17,7 @@ use std::sync::Arc;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::use_timestamp;
 /// #
 /// # #[component]
@@ -27,12 +26,10 @@ use std::sync::Arc;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// With controls:
 ///
-/// ```
-/// # use leptos::prelude::*;
+/// /// # use leptos::prelude::*;
 /// # use lyx_logic_use::{use_timestamp_with_controls, UseTimestampReturn};
 /// #
 /// # #[component]
@@ -46,8 +43,7 @@ use std::sync::Arc;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## SendWrapped Return
 ///
 /// The returned closures `pause` and `resume` of the `..._with_controls` versions are

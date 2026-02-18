@@ -1,7 +1,7 @@
-//! # Leptos ShadCN Signal Management
-//! 
+﻿//! # Leptos ShadCN Signal Management
+//!
 //! Signal lifecycle management utilities for Leptos 0.8.8+ with tailwind-rs integration.
-//! 
+//!
 //! This crate provides utilities for managing signal lifecycles, implementing batched updates,
 //! and ensuring proper memory management in Leptos applications.
 
@@ -34,23 +34,3 @@ mod lifecycle_tests;
 
 #[cfg(test)]
 mod memory_management_tests;
-
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-```
-

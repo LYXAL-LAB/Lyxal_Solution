@@ -1,39 +1,39 @@
-use leptos::{prelude::*, svg::Svg};
+﻿use leptos::{prelude::*, svg::Svg};
 #[component]
 pub fn ChessKnight(
-    #[prop(default = 24.into(), into)] size: Signal<usize>,
-    #[prop(default = "currentColor".into(), into)] color: Signal<String>,
-    #[prop(default = "none".into(), into)] fill: Signal<String>,
-    #[prop(default = 2.into(), into)] stroke_width: Signal<usize>,
-    #[prop(default = false.into(), into)] absolute_stroke_width: Signal<bool>,
-    #[prop(optional)] node_ref: NodeRef<Svg>,
+#[prop(default = 24.into(), into)] size: Signal<usize>,
+#[prop(default = "currentColor".into(), into)] color: Signal<String>,
+#[prop(default = "none".into(), into)] fill: Signal<String>,
+#[prop(default = 2.into(), into)] stroke_width: Signal<usize>,
+#[prop(default = false.into(), into)] absolute_stroke_width: Signal<bool>,
+#[prop(optional)] node_ref: NodeRef<Svg>,
 ) -> impl IntoView {
-    let stroke_width = Signal::derive(move || {
-        if absolute_stroke_width.get() {
-            stroke_width.get() * 24 / size.get()
-        } else {
-            stroke_width.get()
-        }
-    });
-    view! {
-        <svg
-            node_ref=node_ref
-            class:lucide=true
-            xmlns="http://www.w3.org/2000/svg"
-            width=size
-            height=size
-            viewBox="0 0 24 24"
-            fill=fill
-            stroke=color
-            stroke-width=stroke_width
-            stroke-linecap="round"
-            stroke-linejoin="round"
-        >
-            <path d="M5 20a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z" />
-            <path d="M16.5 18c1-2 2.5-5 2.5-9a7 7 0 0 0-7-7H6.635a1 1 0 0 0-.768 1.64L7 5l-2.32 5.802a2 2 0 0 0 .95 2.526l2.87 1.456" />
-            <path d="m15 5 1.425-1.425" />
-            <path d="m17 8 1.53-1.53" />
-            <path d="M9.713 12.185 7 18" />
-        </svg>
-    }
+let stroke_width = Signal::derive(move || {
+if absolute_stroke_width.get() {
+stroke_width.get() * 24 / size.get()
+} else {
+stroke_width.get()
+}
+});
+view! {
+<svg
+node_ref=node_ref
+class:lucide=true
+xmlns="http://www.w3.org/2000/svg"
+width=size
+height=size
+viewBox="0 0 24 24"
+fill=fill
+stroke=color
+stroke-width=stroke_width
+stroke-linecap="round"
+stroke-linejoin="round"
+>
+<path d="M5 20a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z" />
+<path d="M16.5 18c1-2 2.5-5 2.5-9a7 7 0 0 0-7-7H6.635a1 1 0 0 0-.768 1.64L7 5l-2.32 5.802a2 2 0 0 0 .95 2.526l2.87 1.456" />
+<path d="m15 5 1.425-1.425" />
+<path d="m17 8 1.53-1.53" />
+<path d="M9.713 12.185 7 18" />
+</svg>
+}
 }

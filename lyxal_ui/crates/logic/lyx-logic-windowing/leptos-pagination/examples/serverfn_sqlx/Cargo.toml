@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "serverfn_sqlx"
 version = "0.8.0"
 edition = "2024"
@@ -11,15 +11,15 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 
 
-axum = { version = "*", optional = true }
+leptos_axum = { version = "*", optional = true }
 console_error_panic_hook = { version = "*" }
 http = { version = "*" }
-leptos = { path = "../core/lyx-core-leptos/leptos", optional = true }
+leptos = { path = "../../../../../core/lyx-core-leptos/leptos", optional = true }
 leptos-use = { path = "../../../../use", optional = true }
 leptos-pagination = { path = "../../" }
-leptos_axum = { path = "../../../../../core/leptos/integrations/axum", optional = true }
-leptos_meta = { path = "../core/lyx-core-leptos/meta", optional = true }
-leptos_router = { path = "../core/lyx-core-leptos/router", optional = true }
+leptos_axum = { path = "../../../../../core/lyx-core-leptos/integrations/axum", optional = true }
+leptos_meta = { path = "../../../../../core/lyx-core-leptos/meta", optional = true }
+leptos_router = { path = "../../../../../core/lyx-core-leptos/router", optional = true }
 serde = { version = "*", features = ["derive"] }
 sqlx = { version = "*", optional = true, features = ["sqlite"] }
 thiserror = { version = "*" }
@@ -112,6 +112,7 @@ lib-default-features = false
 lib-profile-release = { version = "*" }
 
 tailwind-input-file = { version = "*" }
+
 
 
 

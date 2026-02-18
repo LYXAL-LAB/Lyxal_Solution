@@ -1,4 +1,4 @@
-use crate::{use_locales_with_options, UseLocalesOptions};
+﻿use crate::{use_locales_with_options, UseLocalesOptions};
 use leptos::*;
 use unic_langid::LanguageIdentifier;
 
@@ -18,8 +18,7 @@ use unic_langid::LanguageIdentifier;
 ///
 /// ## Usage
 ///
-/// ```
-/// # use leptos::*;
+/// /// # use leptos::*;
 /// # use leptos_use::use_locale;
 /// use unic_langid::langid_slice;
 /// #
@@ -29,63 +28,62 @@ use unic_langid::LanguageIdentifier;
 /// #
 /// # view! { }
 /// # }
-/// ```
-///
+/// ///
 /// ## Server-Side Rendering
 ///
 /// See [`fn@crate::use_locales`]
 pub fn use_locale<S>(supported: S) -> Signal<LanguageIdentifier>
 where
-    S: IntoIterator,
-    S::Item: AsRef<LanguageIdentifier>,
+S: IntoIterator,
+S::Item: AsRef<LanguageIdentifier>,
 {
-    use_locale_with_options(supported, UseLocaleOptions::default())
+use_locale_with_options(supported, UseLocaleOptions::default())
 }
 
 /// Version of [`fn@crate::use_locale`] that takes a `UseLocaleOptions`. See [`fn@crate::use_locale`] for how to use.
 pub fn use_locale_with_options<S>(
-    supported: S,
-    options: UseLocaleOptions,
+supported: S,
+options: UseLocaleOptions,
 ) -> Signal<LanguageIdentifier>
 where
-    S: IntoIterator,
-    S::Item: AsRef<LanguageIdentifier>,
+S: IntoIterator,
+S::Item: AsRef<LanguageIdentifier>,
 {
-    let client_locales = use_locales_with_options(options);
+let client_locales = use_locales_with_options(options);
 
-    let supported = supported
-        .into_iter()
-        .map(|l| l.as_ref().clone())
-        .collect::<Vec<_>>();
+let supported = supported
+.into_iter()
+.map(|l| l.as_ref().clone())
+.collect::<Vec<_>>();
 
-    const EMPTY_ERR_MSG: &str = "Empty supported list. You have to provide at least one locale in the `supported` parameter";
+const EMPTY_ERR_MSG: &str = "Empty supported list. You have to provide at least one locale in the `supported` parameter";
 
-    assert!(!supported.is_empty(), "{}", EMPTY_ERR_MSG);
+assert!(!supported.is_empty(), "{}", EMPTY_ERR_MSG);
 
-    Signal::derive(move || {
-        let supported = supported.clone();
+Signal::derive(move || {
+let supported = supported.clone();
 
-        client_locales.with(|client_locales| {
-            let mut first_supported = None;
+client_locales.with(|client_locales| {
+let mut first_supported = None;
 
-            for s in supported {
-                if first_supported.is_none() {
-                    first_supported = Some(s.clone());
-                }
+for s in supported {
+if first_supported.is_none() {
+first_supported = Some(s.clone());
+}
 
-                for client_locale in client_locales {
-                    let client_locale: LanguageIdentifier = client_locale
-                        .parse()
-                        .expect("Client should provide a list of valid unicode locales");
-                    if client_locale.matches(&s, true, true) {
-                        return s;
-                    }
-                }
-            }
+for client_locale in client_locales {
+let client_locale: LanguageIdentifier = client_locale
+.parse()
+.expect("Client should provide a list of valid unicode locales");
+if client_locale.matches(&s, true, true) {
+return s;
+}
+}
+}
 
-            unreachable!("{}", EMPTY_ERR_MSG);
-        })
-    })
+unreachable!("{}", EMPTY_ERR_MSG);
+})
+})
 }
 
 pub type UseLocaleOptions = UseLocalesOptions;
