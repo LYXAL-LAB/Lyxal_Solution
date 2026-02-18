@@ -1,6 +1,6 @@
 ### C:\Users\Administrator\Downloads\zed-0.222.1-pre\lyxal_ui\crates\core\leptos\router\Cargo.toml
 [package]
-name = "router"
+name = "leptos_router"
 version = "0.8.0"
 edition = "2024"
 
@@ -24,6 +24,7 @@ csr = []
 
 [build-dependencies]
 rustc_version = "*"
+
 
 
 

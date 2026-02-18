@@ -11,7 +11,7 @@ members = [
 exclude = ["examples"]
 
 [workspace.package]
-rust-version = "*"
+rust-version = "1.75.0"
 
 [workspace.dependencies]
 thaw = { ${2} }
@@ -54,6 +54,7 @@ or_poisoned = { path = "../core/lyx-core-leptos/or_poisoned" }
 next_tuple = { path = "../../core/leptos/next_tuple" }
 leptos-use = { path = "../logic/lyx-logic-use" }
 tailwind_fuse = { path = "../../ui-foundations/lyx-found-tailwind/fuse" }
+
 
 
 

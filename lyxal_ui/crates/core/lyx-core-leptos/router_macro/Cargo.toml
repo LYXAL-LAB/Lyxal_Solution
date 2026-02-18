@@ -1,5 +1,5 @@
 [package]
-name = "router_macro"
+name = "leptos_router_macro"
 version = "0.8.0"
 edition = "2024"
 [lib]
@@ -17,6 +17,7 @@ leptos_macro = { path = "../leptos_macro", version = "*" }
 
 [build-dependencies]
 rustc_version = "*"
+
 
 
 

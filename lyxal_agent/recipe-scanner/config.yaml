@@ -1,0 +1,10 @@
+LYXAL_MODEL: gpt-4o
+LYXAL_PROVIDER: openai
+extensions:
+  developer:
+    bundled: true
+    display_name: Developer
+    enabled: true
+    name: developer
+    timeout: 300
+    type: builtin

@@ -1,5 +1,5 @@
 [package]
-name = "actix"
+name = "leptos_actix"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
@@ -31,6 +31,7 @@ tracing = ["dep:tracing"]
 
 [build-dependencies]
 rustc_version = "*"
+
 
 
 

@@ -1,0 +1,37 @@
+﻿cargo : error: failed to load manifest 
+for workspace member `C:\Users\Administrat
+or\Downloads\Lyxal_Solution-main\lyxal_ui\
+crates\ui-foundations\lyx-found-theme`
+At line:1 char:45
++ ... ound-theme"; cargo metadata 
+--format-version 1 --no-deps 2>&1 | Out-F 
+...
++                  ~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifie 
+   d: (error: failed t...yx-found-theme`  
+  :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeComma 
+   ndError
+ 
+referenced by workspace at `C:\Users\Admin
+istrator\Downloads\Lyxal_Solution-main\lyx
+al_ui\Cargo.toml`
+
+Caused by:
+  failed to load manifest for dependency 
+`leptos-use`
+
+Caused by:
+  failed to load manifest for dependency 
+`leptos`
+
+Caused by:
+  failed to read `C:\Users\Administrator\D
+ownloads\Lyxal_Solution-main\lyxal_ui\crat
+es\logic\core\lyx-core-leptos\leptos\Cargo
+.toml`
+
+Caused by:
+  The system cannot find the path 
+specified. (os error 3)

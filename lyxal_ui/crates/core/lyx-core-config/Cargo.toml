@@ -6,7 +6,7 @@ package.repository = "https://github.com/juspay/superposition"
 package.readme = "README.md"
 package.authors = ["superposition@juspay.in"]
 package.version = "*"
-package.rust-version = "*"
+package.rust-version = "1.75.0"
 package.edition = "2024"
 
 members = [
@@ -120,6 +120,7 @@ or_poisoned = { path = "../leptos/or_poisoned" }
 next_tuple = { path = "../leptos/next_tuple" }
 leptos-use = { path = "../logic/lyx-logic-use" }
 tailwind_fuse = { path = "../../ui-foundations/lyx-found-tailwind/fuse" }
+
 
 
 

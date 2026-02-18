@@ -1,5 +1,5 @@
 [package]
-name = "meta"
+name = "leptos_meta"
 version = "0.8.0"
 edition = "2024"
 
@@ -23,6 +23,7 @@ csr = []
 
 [build-dependencies]
 rustc_version = "*"
+
 
 
 

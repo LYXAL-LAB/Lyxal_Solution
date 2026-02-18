@@ -1,5 +1,5 @@
 [package]
-name = "axum"
+name = "leptos_axum"
 version = "0.8.0"
 edition = "2024"
 [dependencies]
@@ -39,6 +39,7 @@ tracing = ["dep:tracing"]
 
 [build-dependencies]
 rustc_version = "*"
+
 
 
 

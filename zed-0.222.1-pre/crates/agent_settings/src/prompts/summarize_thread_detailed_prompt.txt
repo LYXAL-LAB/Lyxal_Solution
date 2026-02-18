@@ -1,0 +1,21 @@
+## Task Context
+- An LLM context limit was reached during an agentic work session.
+- Generate a technical summary of the conversation that will allow an agent (you) to continue perfectly on the next turn.
+- The summary will only be read by an agent, so be extremely technical and precise. Use Markdown.
+
+Wrap reasoning in `<analysis>` tags:
+- Review conversation chronologically.
+- Log: User goals, method/solution used, key technical decisions, file names, code signatures, errors encountered, and fixes applied.
+- PRESERVE: Any "WORK-CHECKPOINT" or "Checkpoint" information mentioned in the conversation.
+- Highlight unresolved requests.
+
+### Required Sections:
+1. **User Intent** - All goals and requests.
+2. **Technical State** - Discussed tools, methods, and established technical conventions.
+3. **Files & Code** - List all modified/viewed files with their corresponding line ranges or key changes.
+4. **Errors & Fixes** - Document all bugs encountered and how they were resolved.
+5. **Pending Tasks** - Unresolved user requests or steps in the current plan.
+6. **Current Work Focus** - Exactly what was being worked on at the moment of summarization.
+7. **Next Immediate Step** - The very next thing the agent should do.
+
+> IMPORTANT: Do not lose any crucial technical detail. It is better to have a long technical summary than a short, vague one.
