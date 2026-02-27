@@ -1,0 +1,56 @@
+﻿[package]
+name = "superposition_types"
+version = { workspace = true }
+edition = "2021"
+rust-version.workspace = true
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+readme = "README.md"
+description = "Types, type aliases and diesel ORM definitions for superposition"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# env
+actix-web = { workspace = true, optional = true }
+anyhow = { workspace = true, optional = true }
+base64 = { workspace = true, optional = true }
+bigdecimal = { workspace = true }
+chrono = { workspace = true }
+derive_more = { workspace = true }
+diesel = { workspace = true, optional = true }
+diesel-derive-enum = { version = "2.0.1", features = [
+    "postgres",
+], optional = true }
+jsonlogic = { workspace = true }
+log = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_urlencoded = { version = "0.7.1" }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+superposition_derives = { workspace = true }
+thiserror = { version = "1.0.57", optional = true }
+uuid = { workspace = true }
+uniffi = { workspace = true }
+
+[dev-dependencies]
+uniffi = { workspace = true }
+
+[features]
+diesel_derives = [
+    "dep:diesel",
+    "superposition_derives/diesel_derives",
+    "dep:diesel-derive-enum",
+    "dep:base64",
+]
+disable_db_data_validation = []
+result = ["dep:diesel", "dep:anyhow", "dep:thiserror", "dep:actix-web"]
+server = ["dep:actix-web"]
+experimentation = []
+api = []
+
+[lints]
+workspace = true

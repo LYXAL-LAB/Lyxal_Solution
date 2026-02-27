@@ -1,0 +1,10 @@
+[package]
+name = "lyxal_telemetry"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+opentelemetry = { version = "0.21", features = ["metrics", "trace"] }
+serde = { version = "1.0", features = ["derive"] }

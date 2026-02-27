@@ -1,0 +1,19 @@
+[package]
+name = "leptos-fluent-csr-minimal-example"
+edition = "2021"
+version = "0.1.0"
+publish = false
+
+[lib]
+name = "leptos_fluent_csr_minimal_example"
+path = "src/lib.rs"
+
+[dependencies]
+leptos = { version = "0.8", features = ["csr"] }
+leptos-fluent = { workspace = true }
+console_error_panic_hook = "0.1"
+
+[[bin]]
+name = "main"
+path = "src/main.rs"
+doc = false

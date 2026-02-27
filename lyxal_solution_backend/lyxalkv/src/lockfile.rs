@@ -76,14 +76,11 @@ impl LockFile {
 			.map_err(|e| Error::Io(Arc::new(e)))?;
 
 		// Try to lock the file exclusively using fs2
+		// On Windows, ERROR_LOCK_VIOLATION (code 33) means the file is already locked
+		// by another process — treat it the same as WouldBlock.
 		file.try_lock_exclusive().map_err(|e| {
-			let mut is_locked = e.kind() == ErrorKind::WouldBlock;
-			#[cfg(windows)]
-			{
-				if e.raw_os_error() == Some(33) {
-					is_locked = true;
-				}
-			}
+			let is_locked = e.kind() == ErrorKind::WouldBlock
+				|| (cfg!(windows) && e.raw_os_error() == Some(33));
 
 			if is_locked {
 				Error::Other(format!(
@@ -109,12 +106,8 @@ impl LockFile {
 	/// Releases the lock
 	#[cfg(not(target_arch = "wasm32"))]
 	pub fn release(&mut self) -> Result<()> {
-		if let Some(_file) = self.file.take() {
-			eprintln!("DEBUG: LockFile::release() actually taking file");
-			// File will be closed when dropped
-		} else {
-			eprintln!("DEBUG: LockFile::release() file already taken");
-		}
+		// Dropping the file handle releases the OS-level lock automatically.
+		let _ = self.file.take();
 		Ok(())
 	}
 
@@ -148,7 +141,6 @@ mod tests {
 	use test_log::test;
 
 	use super::*;
-	use crate::error::Error;
 	use crate::lsm::TreeBuilder;
 
 	#[test]

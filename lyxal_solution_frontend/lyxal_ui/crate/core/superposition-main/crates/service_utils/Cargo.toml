@@ -1,0 +1,48 @@
+﻿[package]
+name = "service_utils"
+description = "utility functions used across crates"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-web = { workspace = true }
+aes-gcm = "0.10.3"
+anyhow = { workspace = true }
+aws-config = { version = "1.1.7", features = ["behavior-version-latest"] }
+aws-sdk-kms = { workspace = true }
+base64 = { workspace = true }
+chrono = { workspace = true }
+derive_more = { workspace = true }
+diesel = { workspace = true }
+fred = { workspace = true, optional = true }
+futures-util = { workspace = true }
+log = { workspace = true }
+once_cell = { workspace = true }
+openidconnect = "3.5.0"
+rand = "0.8"
+tracing = { workspace = true }
+regex = { workspace = true }
+reqwest = { workspace = true }
+rs-snowflake = { workspace = true }
+secrecy = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+strum_macros = { workspace = true }
+superposition_macros = { workspace = true }
+superposition_types = { workspace = true, features = [
+    "result",
+    "api",
+    "diesel_derives",
+] }
+url = { workspace = true }
+urlencoding = "~2.1.2"
+tracing-actix-web = { workspace = true }
+
+[features]
+high-performance-mode = ["dep:fred"]
+
+[lints]
+workspace = true

@@ -2185,6 +2185,7 @@ mod tests {
 			opts.vlog_max_file_size = 950; // Small size to force frequent rotations
 			opts.vlog_gc_discard_ratio = 0.0; // Disable discard ratio to preserve all values
 			opts.level_count = 2; // Two levels for compaction strategy
+			opts.enable_vlog = true;
 		})
 	}
 

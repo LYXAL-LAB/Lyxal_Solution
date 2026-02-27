@@ -1,0 +1,50 @@
+[workspace]
+members = [
+  "leptos-fluent",
+  "leptos-fluent-macros",
+  "examples/csr-complete",
+  "examples/csr-minimal",
+  "examples/ssr-hydrate-actix",
+  "examples/ssr-hydrate-axum",
+  "tests",
+  "tests/end2end/csr",
+  "tests/end2end/csr/helpers",
+  "tests/end2end/csr/initial-language-from-navigator",
+  "tests/end2end/csr/set-language-to-cookie",
+  "tests/end2end/csr/set-language-to-local-storage",
+  "tests/end2end/csr/set-language-to-session-storage",
+  "tests/end2end/ssr",
+  "tests/end2end/ssr/helpers",
+  "tests/end2end/ssr/helpers/macros",
+  "tests/end2end/ssr/src/app-helpers",
+  "tests/end2end/ssr/src/apps/*",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+documentation = "https://docs.rs/leptos-fluent"
+repository = "https://github.com/mondeja/leptos-fluent"
+homepage = "https://mondeja.github.io/leptos-fluent"
+keywords = ["leptos", "fluent", "i18n", "localization", "wasm"]
+
+[profile.wasm-release]
+inherits = "release"
+opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[workspace.dependencies]
+leptos-fluent = { path = "./leptos-fluent" }
+end2end-csr-helpers = { path = "./tests/end2end/csr/helpers" }
+wasm-bindgen = "0.2"
+wasm-bindgen-test = "0.3"
+gloo-utils = { version = "0.2", default-features = false }
+fluent-templates = { version = "0.13", default-features = false, features = [
+  "macros",
+  "walkdir",
+] }
+leptos-fluent-csr-minimal-example = { path = "./examples/csr-minimal" }
+leptos-fluent-csr-complete-example = { path = "./examples/csr-complete" }
+web-sys-ec = "0.1.0"

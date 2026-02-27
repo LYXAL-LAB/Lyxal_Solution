@@ -1,0 +1,255 @@
+---
+description: 通过集成 Logto，快速启动你的身份和访问管理系统。尽享认证 (Authentication)、授权 (Authorization) 和多租户管理于一体的体验。
+---
+
+import AuditLogIcon from '@site/src/assets/audit-log.svg';
+import AuthorizationIcon from '@site/src/assets/authorization.svg';
+import BlockUserIcon from '@site/src/assets/block-user.svg';
+import CheckboxIcon from '@site/src/assets/checkbox.svg';
+import CloudIcon from '@site/src/assets/cloud.svg';
+import LogtoConsoleIcon from '@site/src/assets/console.svg';
+import ExperienceIcon from '@site/src/assets/experience.svg';
+import GearPlusIcon from '@site/src/assets/gear-plus.svg';
+import GearIcon from '@site/src/assets/gear.svg';
+import ImpersonationIcon from '@site/src/assets/impersonation.svg';
+import KeyIcon from '@site/src/assets/key.svg';
+import LinkIcon from '@site/src/assets/link.svg';
+import LockIcon from '@site/src/assets/lock.svg';
+import LockoutIcon from '@site/src/assets/lockout.svg';
+import LogtoApiIcon from '@site/src/assets/logto-api.svg';
+import McpIcon from '@site/src/assets/mcp.svg';
+import OpenSourceIcon from '@site/src/assets/open-source.svg';
+import OrganizationIcon from '@site/src/assets/organization.svg';
+import ScreenIcon from '@site/src/assets/screen.svg';
+import SdkIcon from '@site/src/assets/sdk.svg';
+import SecurityIcon from '@site/src/assets/security.svg';
+import SignInIcon from '@site/src/assets/sign-in.svg';
+import SignOutIcon from '@site/src/assets/sign-out.svg';
+import SsoIcon from '@site/src/assets/sso.svg';
+import UserManagementIcon from '@site/src/assets/user-management.svg';
+import VaultIcon from '@site/src/assets/vault.svg';
+import WebhookIcon from '@site/src/assets/webhook.svg';
+
+# 简介
+
+欢迎来到 Logto 文档！Logto 是为现代应用和 SaaS 产品设计的身份与访问管理 (IAM) 解决方案。它为你的应用程序提供安全、可扩展且可定制的认证 (Authentication) 和授权 (Authorization) 系统。
+
+## 按功能探索 \{#explore-by-features}
+
+<NavGroup
+  label="终端用户流程"
+  items={[
+    {
+      icon: <SignInIcon />,
+      docId: 'end-user-flows/sign-up-and-sign-in/README',
+    },
+    {
+      icon: <SsoIcon />,
+      docId: 'end-user-flows/enterprise-sso/README',
+    },
+    {
+      icon: <LockIcon />,
+      docId: 'end-user-flows/mfa/README',
+    },
+    {
+      icon: <ScreenIcon />,
+      docId: 'end-user-flows/authentication-parameters/README',
+    },
+    {
+      icon: <LinkIcon />,
+      docId: 'end-user-flows/one-time-token',
+    },
+    {
+      icon: <SecurityIcon />,
+      docId: 'end-user-flows/consent-screen',
+    },
+    {
+      icon: <SignOutIcon />,
+      docId: 'end-user-flows/sign-out',
+    },
+    {
+      icon: <GearIcon />,
+      docId: 'end-user-flows/account-settings/README',
+    },
+    {
+      icon: <SecurityIcon />,
+      docId: 'end-user-flows/security-verification/README',
+    },
+    {
+      icon: <OrganizationIcon />,
+      docId: 'end-user-flows/organization-experience/README',
+    },
+    {
+      icon: <VaultIcon />,
+      docId: 'secret-vault/federated-token-set',
+    },
+  ]}
+/>
+<br />
+<NavGroup
+  label="安全"
+  items={[
+    {
+      icon: <KeyIcon />,
+      docId: 'security/password-policy',
+    },
+    {
+      icon: <CheckboxIcon />,
+      docId: 'security/captcha/README',
+    },
+    {
+      icon: <BlockUserIcon />,
+      docId: 'security/blocklist',
+    },
+    {
+      icon: <LockoutIcon />,
+      docId: 'security/identifier-lockout',
+    },
+  ]}
+/>
+<br />
+<NavGroup
+  label="授权 (Authorization)"
+  items={[
+    {
+      icon: <AuthorizationIcon />,
+      docId: 'authorization/role-based-access-control',
+    },
+    {
+      icon: <AuthorizationIcon />,
+      docId: 'authorization/organization-template',
+    },
+  ]}
+/>
+<br />
+<NavGroup
+  label="管理"
+  items={[
+    {
+      icon: <UserManagementIcon />,
+      docId: 'user-management/README',
+    },
+    {
+      icon: <OrganizationIcon />,
+      docId: 'organizations/README',
+    },
+  ]}
+/>
+<br />
+<NavGroup
+  label="开发者专区"
+  items={[
+    {
+      icon: <GearPlusIcon />,
+      docId: 'developers/custom-token-claims/README',
+    },
+    {
+      icon: <ImpersonationIcon />,
+      docId: 'developers/user-impersonation',
+    },
+    {
+      icon: <WebhookIcon />,
+      docId: 'developers/webhooks/README',
+    },
+    {
+      icon: <AuditLogIcon />,
+      docId: 'developers/audit-logs/README',
+    },
+  ]}
+/>
+
+## 按支持工具包探索 \{#explore-by-support-toolkit}
+
+Logto 的能力基于四大支柱，为你轻松集成到产品或业务中提供坚实基础。
+
+<DocCardList
+  items={[
+    {
+      type: 'link',
+      label: 'Logto 控制台',
+      href: 'https://cloud.logto.io',
+      description: '基于 Web 的资源配置与管理界面，快速搭建登录体验，轻松进行身份管理。',
+      customProps: {
+        icon: <LogtoConsoleIcon />,
+      },
+    },
+    {
+      type: 'link',
+      label: '终端用户体验',
+      href: '/end-user-flows',
+      description:
+        '提供完整的认证 (Authentication) 流程和用户界面，并可通过 Logto 控制台和 API 进行深度定制。',
+      customProps: {
+        icon: <ExperienceIcon />,
+      },
+    },
+    {
+      type: 'link',
+      label: 'Logto API',
+      href: 'https://openapi.logto.io',
+      description:
+        'Logto 后端提供一套 API，支持多种认证 (Authentication) 和授权 (Authorization) 功能，包括 Logto Management API、Experience API 和 Account API。',
+      customProps: {
+        icon: <LogtoApiIcon />,
+      },
+    },
+    {
+      type: 'link',
+      label: 'SDKs',
+      href: '/quick-starts',
+      description: '探索我们的端到端教程和 SDK，快速上手你喜欢的开发框架。',
+      customProps: {
+        icon: <SdkIcon />,
+      },
+    },
+    {
+      type: 'link',
+      label: 'Logto MCP Server',
+      href: '/logto-cloud/logto-mcp-server',
+      description:
+        '连接 AI 工具和 IDE 到 Logto Cloud 的远程 MCP 服务器，实现资源管理和认证 (Authentication) 集成。',
+      customProps: {
+        icon: <McpIcon />,
+      },
+    },
+  ]}
+/>
+
+## 按部署类型探索 \{#explore-by-deployment-types}
+
+<DocCardList
+  items={[
+    {
+      type: 'link',
+      label: 'Logto Cloud',
+      href: '/logto-cloud',
+      description:
+        '我们的云服务包含 Free、Pro 和 Enterprise 计划，满足不同客户需求。由 Logto 托管和运维，并提供包含全部功能的开发租户用于测试。',
+      customProps: {
+        icon: <CloudIcon />,
+      },
+    },
+    {
+      type: 'link',
+      label: '开源 (OSS)',
+      href: '/logto-oss',
+      description:
+        '在你自己的基础设施上自托管 Logto。访问我们的 GitHub 页面和开源专区了解更多详情。',
+      customProps: {
+        icon: <OpenSourceIcon />,
+      },
+    },
+  ]}
+/>
+
+## 加入我们的社区 \{#join-our-community}
+
+加入 [Logto Discord](https://discord.com/invite/UEPaF3j5e6) 服务器 —— 这里是开发者和企业的活跃社区。参与讨论、获取最新动态并分享你的反馈。
+
+<br />
+
+如果你是身份系统新手，请先阅读这些基础概念：
+
+<Url href="/concepts/sign-in-experience">登录体验</Url>
+<Url href="/concepts/authn-vs-authz">认证 (Authentication) 与授权 (Authorization)</Url>
+<Url href="/concepts/core-service">Logto 核心服务</Url>

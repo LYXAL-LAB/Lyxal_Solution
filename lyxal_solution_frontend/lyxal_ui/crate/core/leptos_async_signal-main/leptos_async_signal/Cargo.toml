@@ -1,0 +1,17 @@
+﻿[package]
+name = "leptos_async_signal"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Async signal support for Leptos."
+
+[dependencies]
+leptos = { workspace = true }
+futures = { workspace = true }
+serde = { workspace = true }
+
+[features]
+ssr = []

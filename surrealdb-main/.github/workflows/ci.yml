@@ -1,0 +1,1023 @@
+name: CI
+
+run-name: "CI run '${{ github.head_ref || github.ref_name }}'"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+  merge_group:
+
+concurrency:
+  # Use github.run_id on main branch
+  # Use github.event.pull_request.number on pull requests, so it's unique per pull request
+  # Use github.ref on other branches, so it's unique per branch
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+
+jobs:
+  # ----------------------------------------
+  # Server build
+  # ----------------------------------------
+
+  build:
+    name: Build binary (${{ matrix.name }})
+    strategy:
+      matrix:
+        include:
+          - name: amd64
+            runner: runner-amd64-large
+            target: x86_64-unknown-linux-gnu
+          - name: arm64
+            runner: runner-arm64-large
+            target: aarch64-unknown-linux-gnu
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build binary
+        run: cargo build --target ${{ matrix.target }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # (Actions must be pinned by commit hash) v4.6.2
+        with:
+          name: surreal-${{ matrix.name }}
+          path: target/${{ matrix.target }}/debug/surreal
+
+  # ----------------------------------------
+  # Code quality checks
+  # ----------------------------------------
+
+  format:
+    name: Check format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Lookup the nightly toolchain
+        id: info
+        run: |
+          set -x
+          echo "toolchain=$(cat rust-toolchain.nightly)" >> $GITHUB_OUTPUT
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          toolchain: ${{ steps.info.outputs.toolchain }}
+          components: rustfmt
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+
+      - name: Check format
+        run: cargo make ci-fmt
+
+  clippy:
+    name: Check clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          components: clippy
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+
+      - name: Run clippy
+        run: cargo make ci-clippy
+
+  clippy-release:
+    name: Check clippy (release)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          components: clippy
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+
+      - name: Run clippy release
+        run: cargo make ci-clippy-release
+
+  check:
+    name: Check workspace
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+
+      - name: Check workspace
+        run: cargo make ci-check
+
+  check-release:
+    name: Check workspace (release)
+    runs-on: [self-hosted, benchmarking]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+
+      - name: Check workspace release
+        run: cargo make ci-check-release
+
+  check-msrv:
+    name: Check workspace (MSRV)
+    runs-on: ubuntu-latest
+    env:
+      msrv: "1.90" # This should be updated if the MSRV is updated.
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          toolchain: ${{ env.msrv }}
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install cargo-make
+        run: cargo +${{ env.msrv }} install --debug --locked cargo-make
+
+      - name: Check workspace on MSRV
+        run: cargo +${{ env.msrv }} make ci-check
+
+  check-wasm:
+    name: Check Wasm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          targets: wasm32-unknown-unknown
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+
+      - name: Check wasm
+        run: cargo make ci-check-wasm
+
+  check-revision:
+    name: Check revision
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install revision-lock
+        run: cargo install revision-lock
+
+      - name: Check revision.lock
+        run: revision-lock --check
+
+  check-docs:
+    name: Check docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+
+      - name: Check docs
+        run: cargo make ci-docs
+
+  feature-check:
+    name: Check feature combinations
+    runs-on: ubuntu-latest
+    # Only run on main branch to avoid slowing down PR CI
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+
+      - name: Install cargo-hack
+        run: cargo install cargo-hack
+
+      - name: Check feature combinations
+        run: cargo make ci-feature-check
+
+  unused-deps:
+    name: Check unused dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+
+      - name: Install cargo-machete
+        run: cargo install cargo-machete
+
+      - name: Check unused dependencies
+        run: cargo make ci-unused-deps
+
+  # ----------------------------------------
+  # Integration tests
+  # ----------------------------------------
+
+  cli-integration:
+    name: CLI integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+
+      - name: Run CLI integration tests
+        run: cargo make ci-cli-integration
+
+  http-integration:
+    name: HTTP integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+
+      - name: Run HTTP integration tests
+        run: cargo make ci-http-integration
+
+  ws-integration:
+    name: WebSocket integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+
+      - name: Run WebSocket integration tests
+        run: cargo make ci-ws-integration
+
+  ml-integration:
+    name: ML integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+
+      - name: Run ML integration tests
+        run: cargo make ci-ml-integration
+
+  graphql-integration:
+    name: GraphQL integration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+
+      - name: Run GraphQL integration tests
+        run: cargo make ci-graphql-integration
+
+  # ----------------------------------------
+  # Workspace tests
+  # ----------------------------------------
+
+  test:
+    name: Test workspace
+    runs-on: [runner-amd64-2xlarge]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Test workspace
+        uses: ./.github/actions/test-workspace
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+  # ----------------------------------------
+  # Storage engine tests
+  # ----------------------------------------
+
+  kvs-engines:
+    name: KVS - ${{ matrix.engine }} engine
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [mem, rocksdb, surrealkv, tikv]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          cache-key: kvs-${{ matrix.engine }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+        with:
+          tools: cargo-nextest,cargo-make
+
+      - name: Setup databases
+        uses: ./.github/actions/setup-databases
+        with:
+          tikv: ${{ matrix.engine == 'tikv' }}
+
+      - name: Test engine
+        run: cargo make ci-kvs-${{ matrix.engine }}
+
+  # ----------------------------------------
+  # Rust SDK tests
+  # ----------------------------------------
+
+  sdk-build:
+    name: Test SDK build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build local
+        working-directory: tests/sdk/local
+        run: cargo build
+
+      - name: Build remote
+        working-directory: tests/sdk/remote
+        run: cargo build
+
+  sdk-engines:
+    name: Rust SDK - ${{ matrix.engine }} engine
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [any, ws, http, mem, rocksdb, surrealkv, tikv]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          cache-key: sdk-${{ matrix.engine }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+        with:
+          tools: cargo-nextest,cargo-make
+
+      - name: Setup databases
+        uses: ./.github/actions/setup-databases
+        with:
+          tikv: ${{ matrix.engine == 'tikv' }}
+
+      - name: Test engine
+        run: cargo make ci-api-integration-${{ matrix.engine }}
+
+  # ----------------------------------------
+  # Database upgrade tests
+  # ----------------------------------------
+
+  db-upgrade:
+    name: Database upgrade from previous versions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+
+  # ----------------------------------------
+  # SurrealQL language tests
+  # ----------------------------------------
+
+  lang-tests:
+    name: SurrealQL tests - ${{ matrix.engine }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [mem, surrealkv, rocksdb, tikv]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          workspaces: language-tests
+          cache-key: lang-${{ matrix.engine }}
+
+      - name: Install tools
+        uses: ./.github/actions/install-tools
+        with:
+          tools: ${{ matrix.engine == 'mem' && 'cargo-make,cargo-llvm-cov' || 'cargo-make' }}
+
+      - name: Setup databases
+        uses: ./.github/actions/setup-databases
+        with:
+          tikv: ${{ matrix.engine == 'tikv' }}
+
+      - name: Run language tests
+        if: matrix.engine != 'mem'
+        run: cargo make ci-lang-test-${{ matrix.engine }}
+
+      - name: Run language tests with coverage
+        if: matrix.engine == 'mem'
+        run: cargo make ci-lang-test-coverage
+
+      - name: Upload language test coverage to Codecov
+        if: matrix.engine == 'mem'
+        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # (Actions must be pinned by commit hash) v5.5.1
+        with:
+          files: language-tests-lcov.info
+          fail_ci_if_error: false
+          flags: language-tests
+          name: language-test-coverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  upgrade-tests:
+    name: SurrealQL upgrade tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          save-cache: ${{ github.ref == 'refs/heads/main' }}
+          workspaces: |
+            language-tests
+            ./
+          cache-directories: language-tests/.binary-cache
+
+      - name: Build SurrealQL test tool
+        run: |
+          cd language-tests
+          cargo build --features upgrade
+
+  #    - name: Run SurrealQL test suite
+  #run: |
+  #  cd language-tests
+  #  ./target/debug/surrealql-test --color always upgrade --allow-download --from 2.2.0,2.1.0,2.0.0 --to ../..
+
+  # ----------------------------------------
+  # Other SDK tests
+  # ----------------------------------------
+
+  sdk-javascript:
+    name: SDK - JavaScript (${{ matrix.version }}, ${{ matrix.protocol }})
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - latest
+        protocol:
+          - http
+          - ws
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # (Actions must be pinned by commit hash) v6.0.2
+        with:
+          repository: "surrealdb/surrealdb.js"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # (Actions must be pinned by commit hash) v4.3.0
+        with:
+          name: surreal-amd64
+          path: ${{ github.workspace }}/artifacts
+
+      - name: Set file permissions
+        run: chmod +x ${{ github.workspace }}/artifacts/surreal
+
+      - name: Setup JavaScript
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ matrix.version }}
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run JavaScript tests (${{ matrix.protocol }})
+        run: bun test --timeout 10000
+        env:
+          SURREAL_PROTOCOL: ${{ matrix.protocol }}
+          SURREAL_EXECUTABLE_PATH: ${{ github.workspace }}/artifacts/surreal
+
+  sdk-golang:
+    name: SDK - Golang (${{ matrix.version }}, ${{ matrix.protocol }})
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - 1.23
+        protocol:
+          - http
+          - ws
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # (Actions must be pinned by commit hash) v6.0.2
+        with:
+          repository: "surrealdb/surrealdb.go"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # (Actions must be pinned by commit hash) v4.3.0
+        with:
+          name: surreal-amd64
+          path: ${{ github.workspace }}/artifacts
+
+      - name: Set file permissions
+        run: chmod +x ${{ github.workspace }}/artifacts/surreal
+
+      - name: Setup Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.version }}
+          check-latest: true
+          cache-dependency-path: go.sum
+
+      - name: Start SurrealDB
+        run: ${{ github.workspace }}/artifacts/surreal start --allow-all -u root -p root &
+
+      - name: Wait for startup
+        timeout-minutes: 1
+        run: |
+          # Wait for SurrealDB to be ready
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+              echo "SurrealDB is ready"
+              break
+            fi
+            echo "Waiting for SurrealDB to start... (attempt $i/30)"
+            sleep 2
+          done
+
+          # Final check
+          if ! curl -s http://localhost:8000/health > /dev/null 2>&1; then
+            echo "SurrealDB failed to start"
+            exit 1
+          fi
+
+      - name: Run Golang tests (${{ matrix.protocol }})
+        timeout-minutes: 5
+        run: go test -v -cover ./...
+        env:
+          SURREALDB_URL: ${{ matrix.protocol }}://localhost:8000/rpc
+
+  sdk-python:
+    name: SDK - Python (${{ matrix.version }}, ${{ matrix.protocol }})
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - 3.13
+        protocol:
+          - http
+          - ws
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # (Actions must be pinned by commit hash) v6.0.2
+        with:
+          repository: "surrealdb/surrealdb.py"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # (Actions must be pinned by commit hash) v4.3.0
+        with:
+          name: surreal-amd64
+          path: ${{ github.workspace }}/artifacts
+
+      - name: Set file permissions
+        run: chmod +x ${{ github.workspace }}/artifacts/surreal
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.version }}
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Start SurrealDB
+        run: ${{ github.workspace }}/artifacts/surreal start --allow-all -u root -p root &
+
+      - name: Wait for startup
+        timeout-minutes: 1
+        run: |
+          # Wait for SurrealDB to be ready
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+              echo "SurrealDB is ready"
+              break
+            fi
+            echo "Waiting for SurrealDB to start... (attempt $i/30)"
+            sleep 2
+          done
+
+          # Final check
+          if ! curl -s http://localhost:8000/health > /dev/null 2>&1; then
+            echo "SurrealDB failed to start"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run Python tests (${{ matrix.protocol }})
+        timeout-minutes: 5
+        run: uv run pytest
+        env:
+          PYTHONPATH: ./src
+          SURREALDB_URL: ${{ matrix.protocol }}://localhost:8000
+          SURREALDB_VERSION: ${{ matrix.version }}
+          PYTHONWARNINGS: ignore::ResourceWarning,ignore::UserWarning
+
+  sdk-php:
+    name: SDK - PHP (${{ matrix.version }})
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - 8.2
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # (Actions must be pinned by commit hash) v6.0.2
+        with:
+          repository: "surrealdb/surrealdb.php"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # (Actions must be pinned by commit hash) v4.3.0
+        with:
+          name: surreal-amd64
+          path: ${{ github.workspace }}/artifacts
+
+      - name: Set file permissions
+        run: chmod +x ${{ github.workspace }}/artifacts/surreal
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@cf4cade2721270509d5b1c766ab3549210a39a2a # (Actions must be pinned by commit hash) v2
+        with:
+          php-version: ${{ matrix.version }}
+
+      - name: Setup Composer
+        uses: php-actions/composer@8a65f0d3c6a1d17ca4800491a40b5756a4c164f3 # (Actions must be pinned by commit hash) v6.1.2
+        with:
+          php_version: ${{ matrix.version }}
+
+      - name: Start SurrealDB
+        run: ${{ github.workspace }}/artifacts/surreal start --allow-all -u root -p root &
+
+      - name: Wait for startup
+        timeout-minutes: 1
+        run: |
+          # Wait for SurrealDB to be ready
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+              echo "SurrealDB is ready"
+              break
+            fi
+            echo "Waiting for SurrealDB to start... (attempt $i/30)"
+            sleep 2
+          done
+
+          # Final check
+          if ! curl -s http://localhost:8000/health > /dev/null 2>&1; then
+            echo "SurrealDB failed to start"
+            exit 1
+          fi
+
+      - name: Run PHP tests
+        timeout-minutes: 5
+        continue-on-error: true
+        run: composer test-coverage-v2
+
+  sdk-dotnet:
+    name: SDK - .NET (${{ matrix.version }})
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - 10.0.x
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # (Actions must be pinned by commit hash) v6.0.2
+        with:
+          repository: "surrealdb/surrealdb.net"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # (Actions must be pinned by commit hash) v4.3.0
+        with:
+          name: surreal-amd64
+          path: ${{ github.workspace }}/artifacts
+
+      - name: Set file permissions
+        run: chmod +x ${{ github.workspace }}/artifacts/surreal
+
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # (Actions must be pinned by commit hash) v4.3.1
+        with:
+          dotnet-version: ${{ matrix.version }}
+
+      - name: Install dependencies
+        run: dotnet restore
+
+      - name: Disable embedded mode
+        run: sudo bash disable_embedded_mode.sh
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Start SurrealDB
+        run: ${{ github.workspace }}/artifacts/surreal start --allow-all -u root -p root &
+
+      - name: Wait for startup
+        timeout-minutes: 1
+        run: |
+          # Wait for SurrealDB to be ready
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+              echo "SurrealDB is ready"
+              break
+            fi
+            echo "Waiting for SurrealDB to start... (attempt $i/30)"
+            sleep 2
+          done
+
+          # Final check
+          if ! curl -s http://localhost:8000/health > /dev/null 2>&1; then
+            echo "SurrealDB failed to start"
+            exit 1
+          fi
+
+      - name: Run .NET tests
+        timeout-minutes: 5
+        continue-on-error: true
+        run: >
+          dotnet run
+          --project ./SurrealDb.Net.Tests/SurrealDb.Net.Tests.csproj
+          --no-restore
+          --no-build
+
+      - name: Run .NET tests (Live Query)
+        timeout-minutes: 5
+        continue-on-error: true
+        run: >
+          dotnet run
+          --project ./SurrealDb.Net.LiveQuery.Tests/SurrealDb.Net.LiveQuery.Tests.csproj
+          --no-restore
+          --no-build
+
+  # ----------------------------------------
+  # SDK summary (fails if any SDK test job failed; not in required-checks yet)
+  # ----------------------------------------
+
+  sdk-output:
+    name: SDK test summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - sdk-javascript
+      - sdk-golang
+      - sdk-python
+      - sdk-php
+      - sdk-dotnet
+    steps:
+      - name: SDK test results
+        run: |
+          echo "JavaScript: ${{ needs.sdk-javascript.result == 'success' && '✅ Passed' || '❌ Failed' }}"
+          echo "Golang: ${{ needs.sdk-golang.result == 'success' && '✅ Passed' || '❌ Failed' }}"
+          echo "Python: ${{ needs.sdk-python.result == 'success' && '✅ Passed' || '❌ Failed' }}"
+          echo "PHP: ${{ needs.sdk-php.result == 'success' && '✅ Passed' || '❌ Failed' }}"
+          echo ".NET: ${{ needs.sdk-dotnet.result == 'success' && '✅ Passed' || '❌ Failed' }}"
+
+      - name: Fail if any SDK tests failed
+        run: |
+          if [[ "${{ needs.sdk-javascript.result }}" == "failure" ]] || \
+             [[ "${{ needs.sdk-golang.result }}" == "failure" ]] || \
+             [[ "${{ needs.sdk-python.result }}" == "failure" ]] || \
+             [[ "${{ needs.sdk-php.result }}" == "failure" ]] || \
+             [[ "${{ needs.sdk-dotnet.result }}" == "failure" ]]; then
+            echo "❌ One or more SDK test jobs failed"
+            exit 1
+          fi
+          echo "✅ All SDK tests passed"
+
+  # ----------------------------------------
+  # Required checks
+  # ----------------------------------------
+
+  required-checks:
+    name: Required checks
+    runs-on: ubuntu-latest
+    if: success() || failure()
+    needs:
+      # Server build
+      - build
+      # Quality checks
+      - format
+      - clippy
+      - clippy-release
+      - check
+      - check-release
+      - check-msrv
+      - check-wasm
+      - check-revision
+      - check-docs
+      - unused-deps
+      # Integration tests
+      - cli-integration
+      - http-integration
+      - ws-integration
+      - ml-integration
+      - graphql-integration
+      # Workspace tests
+      - test
+      # SDK tests
+      - sdk-build
+      - sdk-engines
+      # KVS tests
+      - kvs-engines
+      # Database upgrade tests
+      - db-upgrade
+      # SurrealQL language tests
+      - lang-tests
+      - upgrade-tests
+    steps:
+      - name: Check for failures
+        run: |
+          echo "Checking results of all required jobs..."
+
+          # List of all job results
+          results=(
+            "${{ needs.build.result }}"
+            "${{ needs.format.result }}"
+            "${{ needs.clippy.result }}"
+            "${{ needs.clippy-release.result }}"
+            "${{ needs.check.result }}"
+            "${{ needs.check-release.result }}"
+            "${{ needs.check-msrv.result }}"
+            "${{ needs.check-wasm.result }}"
+            "${{ needs.check-revision.result }}"
+            "${{ needs.check-docs.result }}"
+            "${{ needs.unused-deps.result }}"
+            "${{ needs.cli-integration.result }}"
+            "${{ needs.http-integration.result }}"
+            "${{ needs.ws-integration.result }}"
+            "${{ needs.ml-integration.result }}"
+            "${{ needs.graphql-integration.result }}"
+            "${{ needs.test.result }}"
+            "${{ needs.sdk-build.result }}"
+            "${{ needs.sdk-engines.result }}"
+            "${{ needs.kvs-engines.result }}"
+            "${{ needs.db-upgrade.result }}"
+            "${{ needs.lang-tests.result }}"
+            "${{ needs.upgrade-tests.result }}"
+          )
+
+          # Check if any job failed (skipped is ok for conditional jobs)
+          failed=false
+          for result in "${results[@]}"; do
+            if [[ "$result" != "success" && "$result" != "skipped" ]]; then
+              echo "❌ A required job had result: $result"
+              failed=true
+            fi
+          done
+
+          if [[ "$failed" == "true" ]]; then
+            echo "❌ One or more required checks failed"
+            exit 1
+          else
+            echo "✅ All required CI checks have passed successfully!"
+          fi

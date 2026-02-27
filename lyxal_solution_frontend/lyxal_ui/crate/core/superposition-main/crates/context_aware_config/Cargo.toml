@@ -1,0 +1,46 @@
+﻿[package]
+name = "context_aware_config"
+description = "context-aware-config introduces a safe/reliable way to think about application configuration by defines dimensions, default configs and overrides."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[dependencies]
+actix-http = { workspace = true }
+actix-web = { workspace = true }
+anyhow = { workspace = true }
+bigdecimal = { workspace = true }
+blake3 = { workspace = true }
+cac_client = { path = "../cac_client" }
+chrono = { workspace = true }
+diesel = { workspace = true, features = ["numeric"] }
+fred = { workspace = true, optional = true, features = ["metrics"] }
+itertools = { workspace = true }
+jsonlogic = { workspace = true }
+jsonschema = { workspace = true }
+log = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+secrecy = { workspace = true }
+service_utils = { workspace = true }
+superposition_core = { workspace = true }
+superposition_derives = { workspace = true }
+superposition_macros = { workspace = true }
+superposition_types = { workspace = true, features = [
+    "api",
+    "result",
+    "diesel_derives",
+    "server",
+] }
+uuid = { workspace = true }
+
+[features]
+disable_db_data_validation = ["superposition_types/disable_db_data_validation"]
+high-performance-mode = ["dep:fred"]
+
+
+[lints]
+workspace = true

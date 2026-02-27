@@ -1,0 +1,17 @@
+﻿[workspace]
+resolver = "2"
+members = ["leptos_async_signal"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88.0"
+authors = ["Leptos Contributors"]
+license = "MIT"
+repository = "https://github.com/leptos-rs/leptos_async_signal"
+
+[workspace.dependencies]
+leptos = { path = "../leptos-main/leptos", version = "0.8.16" }
+futures = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+

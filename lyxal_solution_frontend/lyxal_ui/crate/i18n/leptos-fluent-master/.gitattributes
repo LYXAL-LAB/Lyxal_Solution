@@ -1,0 +1,11 @@
+* text=auto
+Cargo.lock -diff
+
+# Auto-generated files
+/README.md -diff linguist-generated
+/leptos-fluent-macros/README.md -diff linguist-generated
+/leptos-fluent/README.md -diff linguist-generated
+/book/mdbook-admonish.css -diff linguist-generated
+
+# Don't export/archive these files
+.github            export-ignore

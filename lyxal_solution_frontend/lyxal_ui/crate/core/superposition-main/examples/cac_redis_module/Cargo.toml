@@ -1,0 +1,17 @@
+[package]
+name = "redis_module_cac"
+description = "redis_module_cac"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "redis_module_cac"
+crate-type = ["cdylib"]
+
+[dependencies]
+log = { version = "0.4.20", features = ["kv_unstable_serde"] }
+redis-module = "*"
+serde = { workspace = true }
+serde_json = { workspace = true }
+strum_macros = { workspace = true }
+superposition_types = { workspace = true }

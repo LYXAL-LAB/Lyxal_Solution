@@ -1,0 +1,101 @@
+﻿[workspace]
+resolver = "2"
+members = [
+    "crates/cac_client",
+    "crates/cac_toml",
+    "crates/context_aware_config",
+    "crates/experimentation_client",
+    "crates/experimentation_platform",
+    "crates/frontend",
+    "crates/service_utils",
+    "crates/superposition",
+    "crates/superposition_core",
+    "crates/superposition_derives",
+    "crates/superposition_macros",
+    "crates/superposition_provider",
+    "crates/superposition_sdk",
+    "crates/superposition_types",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88.0"
+authors = ["superposition@juspay.in"]
+license = "Apache-2.0"
+homepage = "https://github.com/juspay/superposition"
+repository = "https://github.com/juspay/superposition"
+
+[workspace.dependencies]
+# Local siblings
+cac_client = { path = "crates/cac_client" }
+cac_toml = { path = "crates/cac_toml" }
+context_aware_config = { path = "crates/context_aware_config" }
+experimentation_client = { path = "crates/experimentation_client" }
+experimentation_platform = { path = "crates/experimentation_platform" }
+frontend = { path = "crates/frontend" }
+service_utils = { path = "crates/service_utils" }
+superposition_core = { path = "crates/superposition_core" }
+superposition_derives = { path = "crates/superposition_derives" }
+superposition_macros = { path = "crates/superposition_macros" }
+superposition_provider = { path = "crates/superposition_provider" }
+superposition_sdk = { path = "crates/superposition_sdk" }
+superposition_types = { path = "crates/superposition_types" }
+
+# Leptos linkage (pointing to local leptos-main)
+leptos = { path = "../leptos-main/leptos" }
+leptos_meta = { path = "../leptos-main/meta" }
+leptos_router = { path = "../leptos-main/router" }
+
+# Common dependencies
+actix-codec = "0.5"
+actix-http = "3.6.0"
+actix-macros = "0.2"
+actix-rt = "2.8"
+actix-router = "0.5"
+actix-service = "2.0"
+actix-utils = "3.0"
+actix-web = "4.5.1"
+actix-web-codegen = "4.2"
+anyhow = "1.0.75"
+aws-config = "1.1.7"
+aws-sdk-kms = "1.38.0"
+base64 = "0.21.2"
+bigdecimal = { version = "0.3", features = ["serde"] }
+blake3 = "1.3"
+chrono = { version = "0.4", features = ["serde"] }
+cfg-if = "1.0"
+derive_more = "0.99.17"
+diesel = { version = "2.1", features = ["postgres", "chrono", "serde_json"] }
+fred = "9.2.1"
+futures = "0.3"
+futures-util = "0.3.30"
+hex = "0.4"
+itertools = "0.12.1"
+js-sys = "0.3.65"
+jsonlogic = "0.5"
+jsonschema = "0.17"
+log = "0.4"
+once_cell = "1.18"
+paste = "1.0"
+regex = "1.10"
+reqwest = { version = "0.11", features = ["json"] }
+rs-snowflake = "0.6.0"
+secrecy = "0.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+strum = "0.25"
+strum_macros = "0.25"
+thiserror = "1.0"
+tokio = "1.40"
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-actix-web = "0.7"
+uniffi = "0.29"
+url = "2.5"
+uuid = { version = "1.20", features = ["serde"] }
+wasm-bindgen = "0.2"
+
+[workspace.lints.rust]
+# unexpected_cfgs = { level = "warn", check-cfg = ['cfg(high-performance-mode)'] }

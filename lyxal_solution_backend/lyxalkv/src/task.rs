@@ -375,6 +375,8 @@ mod tests {
 
 		// Wake up memtable and immediately try again while it's still running
 		task_manager.wake_up_memtable();
+		// Small sleep to ensure the task has time to start and set the running flag
+		time::sleep(Duration::from_millis(10)).await;
 		task_manager.wake_up_memtable(); // This should be ignored as task is already running
 
 		// Wait for first task to complete but not the second (if it were scheduled)
@@ -385,8 +387,9 @@ mod tests {
 
 		// Do the same test with level compaction
 		time::sleep(Duration::from_millis(150)).await; // Ensure previous level compaction is done
-
 		task_manager.wake_up_level();
+		// Small sleep to ensure the task has time to start and set the running flag
+		time::sleep(Duration::from_millis(10)).await;
 		task_manager.wake_up_level(); // This should be ignored
 
 		time::sleep(Duration::from_millis(150)).await;

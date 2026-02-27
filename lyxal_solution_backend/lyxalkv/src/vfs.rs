@@ -108,7 +108,7 @@ impl SysFile {
         loop {
             match opts.open(path) {
                 Ok(f) => return Ok(Self::new(f)),
-                Err(e) if (attempts < 20) && (e.kind() == std::io::ErrorKind::PermissionDenied) => {
+                Err(e) if (attempts < 100) && (e.kind() == std::io::ErrorKind::PermissionDenied) => {
                     attempts += 1;
                     std::thread::sleep(std::time::Duration::from_millis(20 * attempts));
                 }
@@ -123,7 +123,7 @@ impl SysFile {
         loop {
             match StdFile::create(path) {
                 Ok(f) => return Ok(Self::new(f)),
-                Err(e) if (attempts < 20) && (e.kind() == std::io::ErrorKind::PermissionDenied) => {
+                Err(e) if (attempts < 100) && (e.kind() == std::io::ErrorKind::PermissionDenied) => {
                     attempts += 1;
                     std::thread::sleep(std::time::Duration::from_millis(20 * attempts));
                 }
@@ -444,9 +444,22 @@ pub trait File: Send + Sync {
 			handle.tombstone();
 			Ok(())
 		} else {
-			std::fs::remove_file(path).map_err(|e| {
-				Error::Io(e.into())
-			})
+			// On Windows, a file may be temporarily locked by antivirus or another
+			// process. Retry with exponential backoff before giving up.
+			let mut attempts = 0u64;
+			loop {
+				match std::fs::remove_file(path) {
+					Ok(()) => return Ok(()),
+					Err(e) if attempts < 50 && (
+						e.kind() == std::io::ErrorKind::PermissionDenied ||
+						(cfg!(windows) && e.raw_os_error() == Some(1224))
+					) => {
+						attempts += 1;
+						std::thread::sleep(std::time::Duration::from_millis(20 * attempts));
+					}
+					Err(e) => return Err(Error::Io(e.into())),
+				}
+			}
 		}
 	}
 

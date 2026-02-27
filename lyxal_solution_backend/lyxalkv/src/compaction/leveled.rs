@@ -1316,14 +1316,21 @@ mod tests {
 			)
 			.unwrap();
 
-		// Create a table with the same ID as one in source level to trigger the bug
-		let table_dup = env
+		// Create a table with a unique file ID but set its logical ID to the same as table1
+		// to trigger the bug without hitting Windows file locks for mapped files.
+		let id_dup = 999;
+		let mut table_dup = env
 			.create_test_table(
-				1, // Same ID as table1 in source_level
+				id_dup,
 				create_ordered_entries("a", 5, 8, 90, None), /* a-00005 to a-00012 (overlaps
-				    * with table1) */
+				                                             * with table1) */
 			)
 			.unwrap();
+
+		// Manually set ID to 1 to trigger the bug condition (duplicate IDs in selected set)
+		if let Some(t) = Arc::get_mut(&mut table_dup) {
+			t.id = 1;
+		}
 
 		next_level.insert(table10);
 		next_level.insert(table11);

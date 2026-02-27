@@ -1,0 +1,23 @@
+[package]
+name = "leptos-fluent-csr-complete-example"
+edition = "2021"
+version = "0.1.0"
+publish = false
+
+[lib]
+name = "leptos_fluent_csr_complete_example"
+path = "src/lib.rs"
+
+[dependencies]
+leptos = { version = "0.8", features = ["csr"] }
+leptos-fluent = { workspace = true, features = ["json"] }
+fluent-templates = { version = ">=0.13", default-features = false, features = [
+  "macros",
+  "walkdir",
+] }
+console_error_panic_hook = "0"
+
+[[bin]]
+name = "main"
+path = "src/main.rs"
+doc = false

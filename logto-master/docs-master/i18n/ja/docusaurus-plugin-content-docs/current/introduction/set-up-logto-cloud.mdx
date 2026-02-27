@@ -1,0 +1,43 @@
+---
+description: Logto Cloud サービスを OAuth 2、OIDC、SAML プロバイダーとして利用開始するための基本ステップ。
+sidebar_position: 1
+---
+
+# Logto Cloud のセットアップ
+
+このセクションでは、製品を効果的に提供し、開発ワークフローを管理するための基本的なセットアップ手順と主要なアクションについて説明します。
+
+## Logto テナントの作成 \{#create-logto-tenant}
+
+まず、ビジネスにサインアップし、Logto テナントを作成します。Logto Cloud のテナントは、ユーザーアイデンティティ、アプリケーション、その他すべての Logto リソースを管理できる分離された環境です。
+
+最初のテナントは自動的に [**開発**](/logto-cloud/tenant-settings#development) 環境としてセットアップされます。これはテストや開発用途に最適で、無料で利用できます。
+
+テナント設定を確認し、Logto クラウドサービスについて [さらに詳しく](/logto-cloud) 学んでください。
+
+## コラボレーターの招待 \{#invite-collaborators}
+
+オンボーディング中に、共同開発者を招待して一緒に開発作業を行うことができます。さらに招待したい場合や後から追加したい場合は、<CloudLink to="/tenant-settings/members">テナント設定 > メンバー</CloudLink>
+に移動してください。現在のメンバーが表示され、さらに招待できます。メールアドレスを入力し、ロールを割り当てて（まとめて操作可能）、送信してください。
+
+## 本番テナントへの移行 \{#move-to-production-tenant}
+
+Logto の機能や特徴を開発・テストして、PoC（概念実証）をまとめるのに時間をかけることができます。
+
+プロジェクトのテストが完了し、次のフェーズに進む準備ができたら、新しい [本番タイプのテナント](/logto-cloud/tenant-settings#production) を作成することを忘れないでください（[Free または Pro テナント](https://logto.io/pricing) が必要です）。開発テナントは [制限事項](/logto-cloud/tenant-settings#development) のため、本番利用には適していません。
+
+:::note
+
+本番テナントを作成したらすぐに [カスタムドメイン](/logto-cloud/custom-domain) を入力してください。次の設定に影響します。
+
+:::
+
+このセットアップにより、開発テスト環境と本番環境の両方をプロジェクトで持つことができ、開発ワークフローをスムーズに管理できます。
+
+## 既存システムからの移行 \{#migrate-from-the-existing-system}
+
+既存プロジェクトで認証プロバイダーの切り替えが必要な場合、Logto は他のプラットフォームからのユーザー移行をサポートしています。[基本データ](/user-management/user-data#basic-data)、[カスタムデータ](/user-management/user-data#custom-data)、[ソーシャルアイデンティティ](/user-management/user-data#social-identities)、パスワードハッシュを移行できます。詳細は [Logto への移行](../user-management/user-migration.mdx) ガイドを参照してください。
+
+## Logto MCP Server を AI ツールと連携して利用する \{#use-logto-mcp-server-with-ai-tools}
+
+VS Code with Copilot、Cursor、Claude Desktop などの AI 搭載開発ツールを利用している場合は、[Logto MCP Server](/logto-cloud/logto-mcp-server) に接続することで、AI アシスタントから直接 Logto とやり取りできます。AI がフレームワークを検出し、アプリケーションを作成し、動作する統合コードを生成してくれます。

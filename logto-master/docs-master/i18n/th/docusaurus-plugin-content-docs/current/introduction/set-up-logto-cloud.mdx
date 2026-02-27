@@ -1,0 +1,42 @@
+---
+description: ขั้นตอนพื้นฐานในการเริ่มต้นใช้บริการ Logto Cloud เป็นผู้ให้บริการ OAuth 2, OIDC, และ SAML ของคุณ
+sidebar_position: 1
+---
+
+# ตั้งค่า Logto Cloud
+
+ส่วนนี้ครอบคลุมขั้นตอนการตั้งค่าพื้นฐานและการดำเนินการสำคัญ เพื่อให้คุณสามารถส่งมอบผลิตภัณฑ์และจัดการเวิร์กโฟลว์การพัฒนาได้อย่างมีประสิทธิภาพ
+
+## สร้าง Logto tenant \{#create-logto-tenant}
+
+ก่อนอื่น สมัครสมาชิกสำหรับธุรกิจและสร้าง tenant ของ Logto ขึ้นมา tenant ของ Logto Cloud คือสภาพแวดล้อมที่แยกออกจากกัน ซึ่งคุณสามารถจัดการเอกลักษณ์ผู้ใช้ แอปพลิเคชัน และทรัพยากร Logto อื่น ๆ ทั้งหมดได้
+
+tenant แรกของคุณจะถูกตั้งค่าเป็น [**สภาพแวดล้อมสำหรับการพัฒนา (Development)**](/logto-cloud/tenant-settings#development) โดยอัตโนมัติ เหมาะสำหรับการทดสอบและพัฒนา และใช้งานได้ฟรี
+
+ตรวจสอบการตั้งค่า tenant และ [เรียนรู้เพิ่มเติม](/logto-cloud) เกี่ยวกับบริการ Logto Cloud
+
+## เชิญผู้ร่วมงาน \{#invite-collaborators}
+
+ระหว่างขั้นตอน onboarding คุณจะมีโอกาสเชิญผู้ร่วมงานเพื่อทำงานพัฒนาร่วมกัน หากต้องการเชิญเพิ่มเติมหรือในภายหลัง ให้ไปที่ <CloudLink to="/tenant-settings/members">การตั้งค่า Tenant > สมาชิก</CloudLink> คุณจะเห็นสมาชิกปัจจุบันและสามารถเชิญเพิ่มได้ เพียงกรอกอีเมลและกำหนดบทบาท (สามารถทำแบบกลุ่มได้) แล้วกดส่ง
+
+## ย้ายไปยัง tenant สำหรับการใช้งานจริง \{#move-to-production-tenant}
+
+คุณอาจใช้เวลาพัฒนาและทดสอบความสามารถและฟีเจอร์ของ Logto เพื่อสร้าง proof of concept
+
+หลังจากโครงการของคุณผ่านการทดสอบและพร้อมเข้าสู่ขั้นตอนถัดไป อย่าลืมสร้าง [tenant ประเภท production](/logto-cloud/tenant-settings#production) ใหม่ (ต้องใช้ [Free หรือ Pro tenant](https://logto.io/pricing)) เนื่องจาก dev tenant ไม่ได้ออกแบบมาเพื่อใช้งานจริง เพราะมี [ข้อจำกัดและเงื่อนไข](/logto-cloud/tenant-settings#development)
+
+:::note
+
+โปรดระบุ [custom domain](/logto-cloud/custom-domain) ทันทีที่คุณสร้าง production tenant เพราะจะมีผลต่อการตั้งค่าขั้นตอนถัดไปของคุณ
+
+:::
+
+การตั้งค่านี้จะช่วยให้โครงการของคุณมีทั้งสภาพแวดล้อมสำหรับการทดสอบและการใช้งานจริง ช่วยให้คุณจัดการเวิร์กโฟลว์การพัฒนาได้อย่างราบรื่น
+
+## ย้ายข้อมูลจากระบบเดิม \{#migrate-from-the-existing-system}
+
+หากคุณกำลังทำงานกับโครงการที่มีอยู่และต้องการเปลี่ยนผู้ให้บริการ auth, Logto รองรับการย้ายผู้ใช้จากแพลตฟอร์มอื่น คุณสามารถย้าย [ข้อมูลพื้นฐาน](/user-management/user-data#basic-data), [ข้อมูลกำหนดเอง](/user-management/user-data#custom-data), [โซเชียลไอดี](/user-management/user-data#social-identities) และ password hash ได้ สำหรับรายละเอียด ดูคู่มือ [ย้ายไปยัง Logto](../user-management/user-migration.mdx)
+
+## ใช้ Logto MCP Server กับเครื่องมือ AI \{#use-logto-mcp-server-with-ai-tools}
+
+หากคุณใช้เครื่องมือพัฒนาที่ขับเคลื่อนด้วย AI เช่น VS Code ร่วมกับ Copilot, Cursor หรือ Claude Desktop คุณสามารถเชื่อมต่อกับ [Logto MCP Server](/logto-cloud/logto-mcp-server) เพื่อโต้ตอบกับ Logto ได้โดยตรงจากผู้ช่วย AI ของคุณ AI จะตรวจจับ framework ของคุณ สร้างแอปพลิเคชัน และสร้างโค้ดสำหรับการเชื่อมต่อที่ใช้งานได้ให้คุณโดยอัตโนมัติ

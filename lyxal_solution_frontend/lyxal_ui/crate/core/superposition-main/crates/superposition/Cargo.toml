@@ -1,0 +1,53 @@
+﻿[package]
+name = "superposition"
+description = "The main server runtime. Also home to modules that don't fall into other crates"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-files = { version = "0.6" }
+actix-web = { workspace = true }
+anyhow = { workspace = true }
+aws-sdk-kms = { workspace = true }
+chrono = { workspace = true }
+context_aware_config = { path = "../context_aware_config" }
+diesel = { workspace = true }
+dotenv = "0.15.0"
+experimentation_platform = { path = "../experimentation_platform" }
+fred = { workspace = true, optional = true }
+frontend = { path = "../frontend" }
+idgenerator = "2.0.0"
+leptos = { workspace = true }
+leptos_actix = { version = "0.6.11" }
+log = { workspace = true }
+regex = { workspace = true }
+reqwest = { workspace = true }
+rs-snowflake = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+service_utils = { workspace = true }
+superposition_derives = { workspace = true }
+superposition_macros = { workspace = true }
+superposition_types = { workspace = true, features = [
+    "api",
+    "diesel_derives",
+    "server",
+] }
+actix-http = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-actix-web = { workspace = true }
+json-subscriber = { version = "0.2.7", features = ["tracing-log"] }
+
+[features]
+high-performance-mode = [
+    "context_aware_config/high-performance-mode",
+    "service_utils/high-performance-mode",
+    "dep:fred",
+]
+
+[lints]
+workspace = true

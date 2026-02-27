@@ -1,0 +1,19 @@
+2026-02-20T15:15:57Z INFO Starting Stalwart Server v0.15.4 (server.startup) version = "0.15.4"
+2026-02-20T15:15:57Z INFO Spam classifier model not found (spam.model-not-found) 
+2026-02-20T15:15:57Z INFO Webadmin resource unpacked (resource.webadmin-unpacked) path = "C:\\Users\\Admin\\AppData\\Local\\Temp\\STALWART_WEBADMIN"
+2026-02-20T15:15:58Z INFO Housekeeper process started (housekeeper.start) 
+2026-02-20T15:15:58Z INFO Network listener started (network.listen-start) listenerId = "http", localIp = 127.0.0.1, localPort = 8081, tls = false
+2026-02-20T15:15:58Z INFO Network listener started (network.listen-start) listenerId = "https", localIp = ::, localPort = 443, tls = true
+2026-02-20T15:15:58Z INFO Network listener started (network.listen-start) listenerId = "imap", localIp = ::, localPort = 143, tls = false
+2026-02-20T15:15:58Z INFO Network listener started (network.listen-start) listenerId = "imaptls", localIp = ::, localPort = 993, tls = true
+2026-02-20T15:15:58Z INFO Network listener started (network.listen-start) listenerId = "pop3", localIp = ::, localPort = 110, tls = false
+2026-02-20T15:15:58Z INFO Network listener started (network.listen-start) listenerId = "pop3s", localIp = ::, localPort = 995, tls = true
+2026-02-20T15:15:58Z INFO Network listener started (network.listen-start) listenerId = "sieve", localIp = ::, localPort = 4190, tls = false
+2026-02-20T15:15:58Z INFO Network listener started (network.listen-start) listenerId = "smtp", localIp = ::, localPort = 25, tls = false
+2026-02-20T15:15:58Z INFO Network listener started (network.listen-start) listenerId = "submission", localIp = ::, localPort = 587, tls = false
+2026-02-20T15:15:58Z INFO Network listener started (network.listen-start) listenerId = "submissions", localIp = ::, localPort = 465, tls = true
+2026-02-20T15:16:02Z INFO Downloading external resource (resource.download-external) details = "Downloaded ASN/Geo data", url = "https://cdn.jsdelivr.net/npm/@ip-location-db/asn/asn-ipv4.csv", elapsed = 5445ms
+2026-02-20T15:16:03Z INFO Downloading external resource (resource.download-external) details = "Downloaded ASN/Geo data", url = "https://cdn.jsdelivr.net/npm/@ip-location-db/asn/asn-ipv6.csv", elapsed = 1102ms
+2026-02-20T15:16:05Z INFO Downloading external resource (resource.download-external) details = "Downloaded ASN/Geo data", url = "https://cdn.jsdelivr.net/npm/@ip-location-db/geolite2-geo-whois-asn-country/geolite2-geo-whois-asn-country-ipv4.csv", elapsed = 2009ms
+2026-02-20T15:16:09Z INFO Downloading external resource (resource.download-external) details = "Downloaded ASN/Geo data", url = "https://cdn.jsdelivr.net/npm/@ip-location-db/geolite2-geo-whois-asn-country/geolite2-geo-whois-asn-country-ipv6.csv", elapsed = 3399ms
+2026-02-20T15:20:12Z INFO Authentication successful (auth.success) listenerId = "http", localPort = 8081, remoteIp = 127.0.0.1, remotePort = 52113, accountName = "admin"

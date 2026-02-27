@@ -1,0 +1,7 @@
+DEFINE TABLE organization_invitation_role_relations SCHEMAFULL;
+
+DEFINE FIELD tenant_id ON TABLE organization_invitation_role_relations TYPE string;
+DEFINE FIELD organization_invitation_id ON TABLE organization_invitation_role_relations TYPE record<organization_invitations>;
+DEFINE FIELD organization_role_id ON TABLE organization_invitation_role_relations TYPE record<organization_roles>;
+
+DEFINE INDEX organization_invitation_role_relations_pk ON TABLE organization_invitation_role_relations COLUMNS tenant_id, organization_invitation_id, organization_role_id UNIQUE;

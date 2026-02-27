@@ -1,0 +1,18 @@
+﻿[package]
+name = "leptos_tea"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Elm architecture for Leptos."
+
+[dependencies]
+leptos = { workspace = true }
+leptos_tea_macros = { workspace = true }
+futures = { workspace = true }
+smallvec = { workspace = true }
+
+[features]
+nightly = ["leptos/nightly"]

@@ -607,7 +607,12 @@ mod tests {
 			}
 
 			// Finish writing the table
-			writer.finish()?
+			let sz = writer.finish()?;
+			// Explicitly close the write handle before opening for reading.
+			// On Windows, a file open for writing cannot be re-opened for reading
+			// until the write handle is released (PermissionDenied / code 5).
+			drop(file);
+			sz
 		};
 
 		// Open the file for reading
@@ -947,6 +952,9 @@ mod tests {
 		opts: Arc<Options>,
 	) -> Result<Arc<Table>> {
 		let table_file_path = opts.sstable_file_path(table_id);
+		if let Some(parent) = table_file_path.parent() {
+			std::fs::create_dir_all(parent)?;
+		}
 
 		let size = {
 			let mut file = SysFile::create(&table_file_path)?;
@@ -966,12 +974,16 @@ mod tests {
 			}
 
 			// Finish writing the table
-			writer.finish()?
+			let sz = writer.finish()?;
+			// Explicitly close the write handle before opening for reading.
+			// On Windows, a file open for writing cannot be re-opened for reading
+			// until the write handle is released (PermissionDenied / code 5).
+			drop(file);
+			sz
 		};
 
 		// Open the file for reading
 		let file = SysFile::open_with_hint(&table_file_path, crate::vfs::IoHint::Random)?;
-		file.sync_all()?;
 		let file: Arc<dyn File> = Arc::new(file);
 
 		// Create the table

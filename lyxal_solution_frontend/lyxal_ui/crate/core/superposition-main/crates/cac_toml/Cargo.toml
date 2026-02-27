@@ -1,0 +1,22 @@
+﻿[package]
+name = "cac_toml"
+description = "cac_toml is a DSL built to help use context-aware-config concepts at the file level "
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "cac_toml"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cac"
+path = "src/bin.rs"
+
+[dependencies]
+clap = { version = "4.3.0", features = ["derive"] }
+pest = "2.6"
+pest_derive = "2.6"
+toml = { workspace = true }
