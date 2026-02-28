@@ -181,73 +181,69 @@ DEFINE FIELD IF NOT EXISTS sign_in_experiences ON TABLE lyxal_identity
                 DEFAULT false
                 COMMENT "Activer le SSO";
 
+            DEFINE FIELD IF NOT EXISTS sign_in_experiences.sign_in_sign_up.sign_in_mode_register ON TABLE lyxal_identity 
+                TYPE bool 
+                DEFAULT false
+                COMMENT "Active la creation de compte";
 
-    DEFINE FIELD sign_in_experiences.content ON TABLE lyxal_identity 
+    DEFINE FIELD IF NOT EXISTS sign_in_experiences.content ON TABLE lyxal_identity 
         TYPE object FLEXIBLE
         DEFAULT {}
         COMMENT "Configuration du contenu de la page de connexion";   
 
-        DEFINE FIELD sign_in_experiences.content.language_info ON TABLE lyxal_identity 
+        DEFINE FIELD IF NOT EXISTS sign_in_experiences.content.language_info ON TABLE lyxal_identity 
             TYPE object FLEXIBLE 
             DEFAULT {}
             COMMENT "Configuration des langues de la page de connexion";
 
-            DEFINE FIELD sign_in_experiences.content.language_info.auto_detect ON TABLE lyxal_identity 
+            DEFINE FIELD IF NOT EXISTS sign_in_experiences.content.language_info.auto_detect ON TABLE lyxal_identity 
                 TYPE bool 
                 DEFAULT true
                 COMMENT "Détection automatique de la langue";
 
-            DEFINE FIELD sign_in_experiences.content.language_info.default_language ON TABLE lyxal_identity 
+            DEFINE FIELD IF NOT EXISTS sign_in_experiences.content.language_info.default_language ON TABLE lyxal_identity 
                 TYPE string 
                 DEFAULT 'fr'
                 COMMENT "Langue par défaut";
 
-        DEFINE FIELD sign_in_experiences.content.terms ON TABLE lyxal_identity 
+        DEFINE FIELD IF NOT EXISTS sign_in_experiences.content.terms ON TABLE lyxal_identity 
             TYPE object FLEXIBLE 
             DEFAULT {}
             COMMENT "Configuration des termes de la page de connexion";
 
-            DEFINE FIELD sign_in_experiences.content.terms.terms_of_use_url ON TABLE lyxal_identity 
+            DEFINE FIELD IF NOT EXISTS sign_in_experiences.content.terms.terms_of_use_url ON TABLE lyxal_identity 
                 TYPE option<string>
                 ASSERT $value.is_url()
                 DEFAULT none
                 COMMENT "url des conditions d\'utilisation";
 
-            DEFINE FIELD sign_in_experiences.content.terms.privacy_policy_url ON TABLE lyxal_identity 
+            DEFINE FIELD IF NOT EXISTS sign_in_experiences.content.terms.privacy_policy_url ON TABLE lyxal_identity 
                 TYPE option<string>
                 ASSERT $value.is_url() 
                 DEFAULT none
                 COMMENT "url de la politique de confidentialité";
 
-            DEFINE FIELD sign_in_experiences.content.terms.agree_to_terms_policy ON TABLE lyxal_identity 
+            DEFINE FIELD IF NOT EXISTS sign_in_experiences.content.terms.agree_to_terms_policy ON TABLE lyxal_identity 
                 TYPE record(agree_to_terms_policy)
                 DEFAULT 'Automatic'
                 COMMENT "Type d'accord aux conditions d'utilisation et à la politique de confidentialité";
 
-        DEFINE FIELD sign_in_experiences.content.support ON TABLE lyxal_identity 
+        DEFINE FIELD IF NOT EXISTS sign_in_experiences.content.support ON TABLE lyxal_identity 
             TYPE object FLEXIBLE 
             DEFAULT {}
             COMMENT "Configuration du support de la page de connexion";
 
-            DEFINE FIELD sign_in_experiences.content.support.email ON TABLE lyxal_identity 
+            DEFINE FIELD IF NOT EXISTS sign_in_experiences.content.support.email ON TABLE lyxal_identity 
                 TYPE option<string>
                 ASSERT $value.is_email()
                 DEFAULT none
                 COMMENT "Adresse email du support de la page de connexion";
 
-            DEFINE FIELD sign_in_experiences.content.support.website_url ON TABLE lyxal_identity 
+            DEFINE FIELD IF NOT EXISTS sign_in_experiences.content.support.website_url ON TABLE lyxal_identity 
                 TYPE option<string>
                 ASSERT $value.is_url() 
                 DEFAULT none
                 COMMENT "Url du site web du support de la page de connexion";
-
-
-
-
-    DEFINE FIELD sign_in_experiences.sign_in_mode ON TABLE lyxal_identity 
-        TYPE string 
-        DEFAULT 'SignInAndRegister'
-        COMMENT "Sign in experiences sign in mode";
 
     DEFINE FIELD sign_in_experiences.custom_css ON TABLE lyxal_identity 
         TYPE string 
@@ -325,9 +321,7 @@ DEFINE FIELD IF NOT EXISTS sign_in_experiences ON TABLE lyxal_identity
         COMMENT "Sign in experiences passkey sign in";
 
 
- 
 
- sign_in_mode sign_in_mode not null default 'SignInAndRegister',
   custom_css text,
   custom_content jsonb /* @use CustomContent */ not null default '{}'::jsonb,
   custom_ui_assets jsonb /* @use CustomUiAssets */,
