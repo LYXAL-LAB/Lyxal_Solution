@@ -1,5 +1,0 @@
-exclude = [
-  '^https://github\.com/mondeja/leptos-fluent/compare',
-  'https://mondeja\.github\.io/leptos-fluent/advanced-usage.html'
-]
-exclude_path = ["lychee.toml"]

@@ -1,0 +1,2 @@
+[build]
+rustdocflags = ["--cfg=web_sys_unstable_apis"]

@@ -7,5 +7,5 @@ create table account_centers (
   /** Control each fields */
   fields jsonb /* @use AccountCenterFieldControl */ not null default '{}'::jsonb,
   webauthn_related_origins jsonb /* @use WebauthnRelatedOrigins */ not null default '[]'::jsonb,
-  primary key (tenant_id, id)
+  primary key (tenant_id, id
 );

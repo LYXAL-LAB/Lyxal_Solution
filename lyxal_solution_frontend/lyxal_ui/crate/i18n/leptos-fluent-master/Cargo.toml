@@ -22,7 +22,8 @@ members = [
 resolver = "2"
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
+rust-version = "1.88.0"
 documentation = "https://docs.rs/leptos-fluent"
 repository = "https://github.com/mondeja/leptos-fluent"
 homepage = "https://mondeja.github.io/leptos-fluent"
@@ -48,3 +49,4 @@ fluent-templates = { version = "0.13", default-features = false, features = [
 leptos-fluent-csr-minimal-example = { path = "./examples/csr-minimal" }
 leptos-fluent-csr-complete-example = { path = "./examples/csr-complete" }
 web-sys-ec = "0.1.0"
+leptos = { path = "../../core/leptos-main/leptos", default-features = false }

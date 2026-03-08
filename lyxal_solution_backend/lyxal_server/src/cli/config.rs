@@ -42,15 +42,6 @@ impl ConfigCheck for CommunityComposer {
 }
 impl ConfigCheckRequirements for CommunityComposer {}
 
-#[cfg_attr(target_family = "wasm", async_trait::async_trait(?Send))]
-#[cfg_attr(not(target_family = "wasm"), async_trait::async_trait)]
-impl ConfigCheck for surrealdb_core::LyxalComposer {
-	async fn check_config(&mut self, _cfg: &Config) -> Result<()> {
-		Ok(())
-	}
-}
-impl ConfigCheckRequirements for surrealdb_core::LyxalComposer {}
-
 #[derive(Clone, Debug)]
 pub struct Config {
 	pub bind: SocketAddr,
@@ -62,4 +53,5 @@ pub struct Config {
 	pub key: Option<PathBuf>,
 	pub engine: EngineOptions,
 	pub no_identification_headers: bool,
+	pub allow_origin: Vec<String>,
 }

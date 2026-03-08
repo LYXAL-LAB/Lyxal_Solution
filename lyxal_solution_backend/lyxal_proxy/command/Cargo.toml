@@ -1,0 +1,61 @@
+[package]
+name = "lyxal_proxy-command-lib"
+description = "configuration library to command a lyxal_proxy instance"
+repository = "https://github.com/lyxal_proxy-proxy/lyxal_proxy"
+readme = "README.md"
+documentation = "https://docs.rs/lyxal_proxy-command-lib"
+homepage = "https://lyxal_proxy.io"
+version = "1.1.1"
+license = "LGPL-3.0"
+authors = [
+  "Geoffroy Couprie <geo.couprie@gmail.com>",
+  "Eloi Demolis <eloi.demolis@clever-cloud.com>",
+  "Emmanuel Bosquet <emmanuel.bosquet@clever-cloud.com>",
+  "Florentin Dubois <florentin.dubois@clever-cloud.com>",
+]
+categories = ["network-programming"]
+edition = "2024"
+rust-version = "1.85.0"
+include = [
+  "./README.md",
+  "Cargo.toml",
+  "src/**/*",
+  "assets/certificate.pem",
+  "assets/key.pem",
+  "assets/404.html",
+  "assets/503.html",
+]
+
+[dependencies]
+hex = { workspace = true }
+libc = { workspace = true }
+log = { workspace = true }
+time = { workspace = true }
+toml = { workspace = true }
+memchr = { workspace = true }
+mio = { workspace = true, features = ["os-poll", "net"] }
+nix = { workspace = true, features = ["socket", "uio"] }
+nom = { workspace = true }
+prost = { workspace = true }
+rand = { workspace = true }
+rusty_ulid = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+trailer = { workspace = true }
+prettytable-rs = { workspace = true }
+pool = { workspace = true }
+poule = { workspace = true }
+thiserror = { workspace = true }
+x509-parser = { workspace = true }
+
+[features]
+unstable = []
+logs-debug = []
+logs-trace = []
+
+[badges]
+travis-ci = { repository = "lyxal_proxy-proxy/lyxal_proxy" }
+
+[build-dependencies]
+prost-build = { workspace = true }

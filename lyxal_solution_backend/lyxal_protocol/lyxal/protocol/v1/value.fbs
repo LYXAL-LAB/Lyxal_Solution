@@ -1,0 +1,385 @@
+
+namespace lyxal.protocol.v1;
+
+/// Decimal value represented as a string.
+table Decimal { value: string (id: 0); }
+
+/// Bytes value.
+table Bytes { value:[ubyte] (id: 0); }
+
+/// Duration value.
+table Duration {
+    seconds: uint64 (id: 0);
+    nanos: uint32 (id: 1);
+}
+
+/// Timestamp represented as seconds and nanoseconds since epoch.
+table Timestamp {
+    seconds: int64 (id: 0);
+    nanos: uint32 (id: 1);
+}
+
+/// UUID value.
+table Uuid {
+    bytes: [ubyte] (id: 0);
+}
+
+/// Null value.
+table NullValue {}
+
+/// Boolean value.
+table BoolValue { value: bool (id: 0); }
+
+/// 64-bit integer value.
+table Int64Value { value: int64 (id: 0); }
+
+/// 64-bit unsigned integer value.
+table UInt64Value { value: uint64 (id: 0); }
+
+/// 64-bit floating point value.
+table Float64Value { value: double (id: 0); }
+
+/// String value.
+table StringValue { value: string (id: 0); }
+
+// Geometry types
+
+/// A single point in 2D space.
+table Point {
+    x: double (id: 0);
+    y: double (id: 1);
+}
+
+/// An ordered collection of Points, representing a path between locations. To be valid, a LineString must be empty, or have two or more coords.
+table LineString {
+    points: [Point] (id: 0);
+}
+
+/// A bounded two-dimensional area.
+///
+/// A Polygon’s outer boundary (exterior ring) is represented by a LineString. It may contain zero or more holes (interior rings), also represented by LineStrings.
+table Polygon {
+    exterior: LineString (id: 0);
+    interiors: [LineString] (id: 1);
+}
+
+/// A collection of Points.
+table MultiPoint {
+    points: [Point] (id: 0);
+}
+
+/// A collection of LineStrings.
+table MultiLineString {
+    lines: [LineString] (id: 0);
+}
+
+/// A collection of Polygons.
+table MultiPolygon {
+    polygons: [Polygon] (id: 0);
+}
+
+/// A collection of Geometry objects.
+table GeometryCollection {
+    geometries: [Geometry] (id: 0);
+}
+
+/// A union of all geometry types.
+union GeometryType {
+    Point (id: 1),
+    LineString (id: 2),
+    Polygon (id: 3),
+    MultiPoint (id: 4),
+    MultiLineString (id: 5),
+    MultiPolygon (id: 6),
+    Collection: GeometryCollection (id: 7),
+}
+
+/// A Geometry object.
+table Geometry {
+    geometry: GeometryType (id: 1);
+}
+
+/// An identifier for a record in a table.
+table RecordId {
+    table: string (id: 0);
+    id: RecordIdKey (id: 1);
+}
+
+/// A file in a bucket.
+table File {
+    bucket: string (id: 0);
+    key: string (id: 1);
+}
+
+/// A collection of values.
+table Array {
+    values:[Value] (id: 0);
+}
+
+/// A unique collection of values.
+table Set {
+    values:[Value] (id: 0);
+}
+
+/// A key-value pair.
+table KeyValue {
+    key: string (id: 0);
+    value: Value (id: 1);
+}
+
+/// A collection of key-value pairs.
+table Object {
+    items:[KeyValue] (id: 0);
+}
+
+/// A bound for a range value, which can be inclusive, exclusive, or unbounded.
+union ValueBound {
+    Inclusive: Value (id: 1),
+    Exclusive: Value (id: 2),
+    Unbounded: NullValue (id: 3),
+}
+
+/// A range with start and end bounds.
+table Range {
+    start: ValueBound (id: 1);
+    end: ValueBound (id: 3);
+}
+
+/// A union of all possible value types in Lyxal.
+union ValueType {
+    Null: NullValue (id: 1),
+    Bool: BoolValue (id: 2),
+    Int64: Int64Value (id: 3),
+    Float64: Float64Value (id: 4),
+    Decimal: lyxal.protocol.v1.Decimal (id: 5),
+    String: StringValue (id: 6),
+    Bytes: lyxal.protocol.v1.Bytes (id: 7),
+    Duration: lyxal.protocol.v1.Duration (id: 8),
+    Datetime: lyxal.protocol.v1.Timestamp (id: 9),
+    Uuid: lyxal.protocol.v1.Uuid (id: 10),
+    Geometry (id: 11),
+    Table: StringValue (id: 12),
+    /// A fully-qualified record ID.
+    RecordId (id: 13),
+    /// An unparsed record ID which will be parsed by the server.
+    StringRecordId: StringValue (id: 14),
+    File (id: 15),
+    Range (id: 16),
+    Regex: StringValue (id: 17),
+    Object (id: 18),
+    Array (id: 19),
+    Set (id: 20),
+}
+
+/// A value container that can hold any Lyxal value type.
+table Value {
+    value: ValueType (id: 1);
+}
+
+/// A bound for a record ID key range, which can be inclusive, exclusive, or unbounded.
+union RecordIdKeyBound {
+    Inclusive: RecordIdKey (id: 1),
+    Exclusive: RecordIdKey (id: 2),
+    Unbounded: NullValue (id: 3),
+}
+
+/// A range of record ID keys with start and end bounds.
+table RecordIdKeyRange {
+    start: RecordIdKeyBound (id: 1);
+    end: RecordIdKeyBound (id: 3);
+}
+
+/// A union of all possible record ID key types.
+union RecordIdKeyType {
+    Int64: Int64Value (id: 1),
+    String: StringValue (id: 2),
+    Uuid: lyxal.protocol.v1.Uuid (id: 3),
+    Array (id: 4),
+    Range: RecordIdKeyRange (id: 5),
+    Object: Object (id: 6),
+}
+
+/// A record ID key that can be an integer, string, UUID, array, or range.
+table RecordIdKey {
+    id: RecordIdKeyType (id: 1);
+}
+
+/// Represents the 'any' type, which matches any value.
+table AnyKind {}
+
+/// Represents the 'null' type.
+table NullKind {}
+
+/// Represents the 'bool' type.
+table BoolKind {}
+
+/// Represents the 'bytes' type.
+table BytesKind {}
+
+/// Represents the 'datetime' type.
+table DatetimeKind {}
+
+/// Represents the 'decimal' type.
+table DecimalKind {}
+
+/// Represents the 'duration' type.
+table DurationKind {}
+
+/// Represents the 'float' type.
+table FloatKind {}
+
+/// Represents the 'int' type.
+table IntKind {}
+
+/// Represents the 'number' type (includes int, float, and decimal).
+table NumberKind {}
+
+/// Represents the 'object' type.
+table ObjectKind {}
+
+/// Represents the 'string' type.
+table StringKind {}
+
+/// Represents the 'uuid' type.
+table UuidKind {}
+
+/// Represents the 'regex' type.
+table RegexKind {}
+
+/// Represents the 'range' type.
+table RangeKind {}
+
+/// Represents the 'table' type.
+table TableKind {
+    tables: [string] (id: 0);
+}
+
+/// Represents the 'record' type, optionally constrained to specific tables.
+table RecordKind {
+    tables: [string] (id: 0);
+}
+
+/// Enum of geometry types for type constraints.
+enum GeometryKindType: byte {
+    Point = 1,
+    Line = 2,
+    Polygon = 3,
+    MultiPoint = 4,
+    MultiLineString = 5,
+    MultiPolygon = 6,
+    Collection = 7,
+}
+
+/// Represents the 'geometry' type, optionally constrained to specific geometry types.
+table GeometryKind {
+    types: [GeometryKindType] (id: 0);
+}
+
+/// Represents the 'file' type, optionally constrained to specific buckets.
+table FileKind {
+    buckets: [string] (id: 0);
+}
+
+/// Represents the 'option' type (nullable/optional values).
+table OptionKind {
+    inner: Kind (id: 0);
+}
+
+/// Represents the 'either' type (a union of multiple types).
+table EitherKind {
+    kinds: [Kind] (id: 0);
+}
+
+/// Represents the 'set' type (unique collection of values).
+table SetKind {
+    inner: Kind (id: 0);
+    size: UInt64Value (id: 1);
+}
+
+/// Represents the 'array' type.
+table ArrayKind {
+    inner: Kind (id: 0);
+    size: UInt64Value (id: 1);
+}
+
+/// Represents the 'function' type with argument types and return type.
+table FunctionKind {
+    args: [Kind] (id: 0);
+    return_type: Kind (id: 1);
+}
+
+
+/// A literal array type with specific kinds for each element.
+table LiteralArray {
+    kinds: [Kind] (id: 0);
+}
+
+/// A field in a literal object type definition.
+table ObjectField {
+    key: string (id: 0);
+    kind: Kind (id: 1);
+}
+
+/// A literal object type with specific fields and their types.
+table LiteralObject {
+    fields: [ObjectField] (id: 0);
+}
+
+/// A discriminated object type (tagged union) with variants distinguished by a discriminant field.
+table LiteralDiscriminatedObject {
+    discriminant_key: string (id: 0);
+    variants: [LiteralObject] (id: 1);
+}
+
+/// A union of all possible literal type values.
+union LiteralType {
+    String: StringValue (id: 1),
+    Int64: Int64Value (id: 2),
+    UInt64: UInt64Value (id: 3),
+    Float64: Float64Value (id: 4),
+    Decimal: lyxal.protocol.v1.Decimal (id: 5),
+    Duration: lyxal.protocol.v1.Duration (id: 6),
+    Bool: BoolValue (id: 7),
+    Array: LiteralArray (id: 8),
+    Object: LiteralObject (id: 9),
+    DiscriminatedObject: LiteralDiscriminatedObject (id: 10),
+}
+
+/// Represents a literal type (specific constant values or structured types).
+table LiteralKind {
+    literal: LiteralType (id: 1);
+}
+
+/// A union of all possible type kinds in Lyxal's type system.
+union KindType {
+    Any: AnyKind (id: 1),
+    Null: NullKind (id: 2),
+    Bool: BoolKind (id: 3),
+    Bytes: BytesKind (id: 4),
+    Datetime: DatetimeKind (id: 5),
+    Decimal: DecimalKind (id: 6),
+    Duration: DurationKind (id: 7),
+    Float: FloatKind (id: 8),
+    Int: IntKind (id: 9),
+    Number: NumberKind (id: 10),
+    Object: ObjectKind (id: 11),
+    String: StringKind (id: 13),
+    Uuid: UuidKind (id: 14),
+    Regex: RegexKind (id: 15),
+    Table: TableKind (id: 16),
+    Record: RecordKind (id: 17),
+    Geometry: GeometryKind (id: 18),
+    Option: OptionKind (id: 19),
+    Either: EitherKind (id: 20),
+    Set: SetKind (id: 21),
+    Array: ArrayKind (id: 22),
+    Function: FunctionKind (id: 23),
+    Range: RangeKind (id: 24),
+    Literal: LiteralKind (id: 25),
+    File: FileKind (id: 26),
+}
+
+/// A type kind container that represents a type in Lyxal's type system.
+table Kind {
+    kind: KindType (id: 1);
+}

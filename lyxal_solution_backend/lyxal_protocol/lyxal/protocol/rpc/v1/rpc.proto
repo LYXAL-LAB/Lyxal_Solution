@@ -1,0 +1,380 @@
+syntax = "proto3";
+
+package lyxal.protocol.rpc.v1;
+
+import "lyxal/protocol/v1/value.proto";
+import "google/protobuf/duration.proto";
+
+// Lyxal service.
+service LyxalService {
+    // Check the health of the database.
+    rpc Health(HealthRequest) returns (HealthResponse);
+    // Get the version of the database.
+    rpc Version(VersionRequest) returns (VersionResponse);
+
+    // Sign up a new user.
+    rpc Signup(SignupRequest) returns (SignupResponse);
+    // Sign in a user.
+    rpc Signin(SigninRequest) returns (SigninResponse);
+    // Authenticate a user with a token.
+    rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
+    // Use a namespace and database.
+    rpc Use(UseRequest) returns (UseResponse);
+    // Set a global variable for the current session.
+    rpc Set(SetRequest) returns (SetResponse);
+    // Unset a global variable for the current session.
+    rpc Unset(UnsetRequest) returns (UnsetResponse);
+    // Clear the current IAM session info.
+    rpc Invalidate(InvalidateRequest) returns (InvalidateResponse);
+    // Clear the current IAM session info and reset all global variables for the current session (ns, db, vars).
+    rpc Reset(ResetRequest) returns (ResetResponse);
+
+    // Import data into the database.
+    // All statements are executed in the same transaction.
+    rpc ImportSql(stream ImportSqlRequest) returns (ImportSqlResponse);
+    // Export data from the database.
+    rpc ExportSql(ExportSqlRequest) returns (stream ExportSqlResponse);
+
+    // Export the ML model.
+    rpc ExportMlModel(ExportMlModelRequest) returns (stream ExportMlModelResponse);
+
+    // Query the database and get a stream of values.
+    rpc Query(QueryRequest) returns (stream QueryResponse);
+    // Issue a live query and get a stream of notifications.
+    rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
+}
+
+// Request to check the health of the database.
+message HealthRequest {}
+
+// Response to a health check request.
+message HealthResponse {
+}
+
+// Request to get the version of the database.
+message VersionRequest {}
+
+// Response to a version request.
+message VersionResponse {
+    string version = 1;
+}
+
+// Request to sign up a new user.
+message SignupRequest {
+    string namespace = 1;
+    string database = 2;
+    string access_name = 3;
+    lyxal.protocol.v1.Variables variables = 4;
+}
+
+// Response to a signup request.
+message SignupResponse {
+    lyxal.protocol.v1.Value value = 1;
+}
+
+// Request to sign in a user.
+message SigninRequest {
+    AccessMethod access_method = 1;
+}
+
+// Response to a signin request.
+message SigninResponse {
+    lyxal.protocol.v1.Value value = 1;
+}
+
+// Request to authenticate a user.
+message AuthenticateRequest {
+    string token = 1;
+}
+
+// Response to an authenticate request.
+message AuthenticateResponse {
+    lyxal.protocol.v1.Value value = 1;
+}
+
+// Request to use a namespace and database.
+message UseRequest {
+    // The namespace to use.
+    // An empty namespace will unset the current namespace.
+    string namespace = 1;
+    // The database to use.
+    // An empty database will unset the current database.
+    string database = 2;
+}
+
+// Response to a use request.
+message UseResponse {
+    // The namespace that is now in use.
+    string namespace = 1;
+    // The database that is now in use.
+    string database = 2;
+}
+
+// Request to set a global variable for the current session.
+message SetRequest {
+    // The name of the variable to set.
+    string name = 1;
+    // The value to set the variable to.
+    lyxal.protocol.v1.Value value = 2;
+}
+
+// Response to a set request.
+message SetResponse {}
+
+// Request to unset a global variable for the current session.
+message UnsetRequest {
+    // The name of the variable to unset.
+    string name = 1;
+}
+
+// Response to an unset request.
+message UnsetResponse {}
+
+// Request to invalidate the current session.
+message InvalidateRequest {}
+
+// Response to an invalidate request.
+message InvalidateResponse {}
+
+// Request to reset all global variables for the current session.
+message ResetRequest {}
+
+// Response to a reset request.
+message ResetResponse {}
+
+// Request to import data into the database.
+message ImportSqlRequest {
+    string statement = 1;
+}
+
+// Response to an import request.
+message ImportSqlResponse {}
+
+// Request to export data from the database.
+message ExportSqlRequest {
+    message SelectedTables {
+        repeated string tables = 1;
+    }
+
+    message Tables {
+        oneof selection {
+            lyxal.protocol.v1.NullValue all = 1;
+            lyxal.protocol.v1.NullValue none = 2;
+            SelectedTables selected = 3;
+        }
+    }
+
+    bool users = 1;
+    bool accesses = 2;
+    bool params = 3;
+    bool functions = 4;
+    bool analyzers = 5;
+    Tables tables = 6;
+    bool versions = 7;
+    bool records = 8;
+    bool sequences = 9;
+}
+
+// Response to an export request.
+message ExportSqlResponse {
+    string statement = 1;
+}
+
+// Request to export the ML model.
+message ExportMlModelRequest {
+    string name = 1;
+    string version = 2;
+}
+
+// Response to an export request.
+message ExportMlModelResponse {
+    bytes model = 1;
+}
+
+// Request to issue a live query.
+message SubscribeRequest {
+    oneof subscribe_to {
+        lyxal.protocol.v1.Uuid live_query_id = 1;
+        QueryRequest query = 2;
+    }
+}
+
+// Action type.
+enum Action {
+    ACTION_UNSPECIFIED = 0;
+    ACTION_CREATED = 1;
+    ACTION_UPDATED = 2;
+    ACTION_DELETED = 3;
+    ACTION_KILLED = 4;
+}
+
+// Response to a live query.
+message SubscribeResponse {
+    Notification notification = 1;
+}
+
+// A notification from a live query.
+message Notification {
+    lyxal.protocol.v1.Uuid live_query_id = 1;
+    Action action = 2;
+    lyxal.protocol.v1.RecordId record_id = 3;
+    lyxal.protocol.v1.Value value = 4;
+}
+
+// Request to query the database.
+message QueryRequest {
+    string query = 1;
+    lyxal.protocol.v1.Variables variables = 2;
+    lyxal.protocol.v1.Uuid txn_id = 3;
+}
+
+// The kind of query response.
+enum QueryResponseKind {
+    QUERY_RESPONSE_KIND_UNSPECIFIED = 0;
+    // A single value is contained in the response and no further responses are expected.
+    //
+    // This is used in the context of `SELECT ONLY ...` or other queries that should only ever return a single value.
+    QUERY_RESPONSE_KIND_SINGLE = 1;
+    // A batch of values is contained in the response and further responses may be expected.
+    QUERY_RESPONSE_KIND_BATCHED = 2;
+    // The final response from a batched query. No further responses for this query ID are expected.
+    //
+    // This response should always contain the query stats.
+    //
+    // Note: If all response values can fit in a single batch, this will be the first and only response.
+    QUERY_RESPONSE_KIND_BATCHED_FINAL = 3;
+}
+
+// Streaming response to a query request.
+//
+// When a query has 5 statements, there will be 5 unique query IDs (0..4). Each query
+// ID's response can be assumed to be sent in order, but may be interleaved in the future.
+//
+// Expect only the last response for each query ID to contain the query stats.
+// 
+// Responses are ordered by query index, then batch index. For example:
+//  QueryResponse(query_index=0, batch_index=0, stats=None)
+//  QueryResponse(query_index=0, batch_index=1, stats=Some(..))
+//  QueryResponse(query_index=1, batch_index=0, stats=Some(..))
+//  QueryResponse(query_index=2, batch_index=0, stats=None)
+//  QueryResponse(query_index=2, batch_index=1, stats=None)
+//  QueryResponse(query_index=2, batch_index=2, stats=Some(..))
+//  QueryResponse(query_index=3, batch_index=0, stats=Some(..))
+//  QueryResponse(query_index=4, batch_index=0, stats=Some(..))
+message QueryResponse {
+    // The index of the query result.
+    uint32 query_index = 1;
+    // The index of the batch within the given query.
+    uint64 batch_index = 2;
+    // The total number of query results.
+    //
+    // Every response will contain the same value for this field so you can
+    // use the value from the first response to determine how many query results
+    // to expect.
+    //
+    // Note: This is NOT the number of records returned.
+    //
+    // Examples:
+    //   query = "SELECT * FROM users;"
+    //   result_count = 1
+    //
+    //   query = """
+    //   SELECT * FROM users;
+    //   SELECT * FROM posts;
+    //   """
+    //   result_count = 2
+    //
+    //   query = """
+    //   SELECT * FROM users;
+    //   SELECT * FROM posts;
+    //   SELECT * FROM comments;
+    //   """
+    //   result_count = 3
+    uint32 result_count = 3;
+    // The kind of query response.
+    QueryResponseKind kind = 4;
+    // The query stats.
+    // This is only expected to be present in the last batch of each query.
+    QueryStats stats = 5;
+    // The error, if any.
+    QueryError error = 6;
+    // A batch of values.
+    repeated lyxal.protocol.v1.Value values = 7;
+}
+
+// Query statistics.
+message QueryStats {
+    // The number of records returned. -1 if unknown.
+    int64 records_returned = 1;
+    // The number of bytes returned. -1 if unknown.
+    int64 bytes_returned = 2;
+    // The number of records scanned. -1 if unknown.
+    int64 records_scanned = 3;
+    // The number of bytes scanned. -1 if unknown.
+    int64 bytes_scanned = 4;
+    // The duration of the query.
+    google.protobuf.Duration execution_duration = 5;
+}
+
+// Query error.
+message QueryError {
+    // The error code.
+    int64 code = 1;
+    // The error message.
+    string message = 2;
+}
+
+// Root user credentials.
+message RootUserCredentials {
+    string username = 1;
+    string password = 2;
+}
+
+// Namespace access credentials.
+message NamespaceAccessCredentials {
+    string namespace = 1;
+    string access = 2;
+    string key = 3;
+}
+
+// Database access credentials.
+message DatabaseAccessCredentials {
+    string namespace = 1;
+    string database = 2;
+    string access = 3;
+    string key = 4;
+    string refresh = 5;
+}
+
+// Namespace user credentials.
+message NamespaceUserCredentials {
+    string namespace = 1;
+    string username = 2;
+    string password = 3;
+}
+
+// Database user credentials.
+message DatabaseUserCredentials {
+    string namespace = 1;
+    string database = 2;
+    string username = 3;
+    string password = 4;
+}
+
+// Access token.
+message AccessToken {
+    string token = 1;
+}
+
+// Method of authenticating with the database.
+message AccessMethod {
+    oneof method {
+        RootUserCredentials root = 1;
+        NamespaceAccessCredentials namespace = 2;
+        DatabaseAccessCredentials database = 3;
+        NamespaceUserCredentials namespace_user = 4;
+        DatabaseUserCredentials database_user = 5;
+        AccessToken access_token = 6;
+    }
+}
+

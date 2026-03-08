@@ -1,0 +1,43 @@
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "**"
+      - "!/*.md"
+      - "!/**.md"
+  workflow_dispatch:
+
+name: Tests
+
+permissions: write-all
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal
+          override: true
+          components: rustfmt, clippy, rust-src
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run tests (general)
+        run: RUSTFLAGS="--cfg=web_sys_unstable_apis" cargo test --features math,docs,ssr
+
+      - name: Run tests (axum) use_cookie
+        run: RUSTFLAGS="--cfg=web_sys_unstable_apis" cargo test --features math,docs,ssr,axum --doc use_cookie
+
+      - name: Run tests (axum) use_locale
+        run: RUSTFLAGS="--cfg=web_sys_unstable_apis" cargo test --features math,docs,ssr,axum --doc use_locale
+
+      - name: Run tests (actix) use_cookie
+        run: RUSTFLAGS="--cfg=web_sys_unstable_apis" cargo test --features math,docs,ssr,actix --doc use_cookie
+
+      - name: Run tests (actix) use_locale
+        run: RUSTFLAGS="--cfg=web_sys_unstable_apis" cargo test --features math,docs,ssr,actix --doc use_locale

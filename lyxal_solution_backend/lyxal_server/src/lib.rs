@@ -1,19 +1,21 @@
 //! Library entrypoints for embedding SurrealDB server inside another Rust application.
 //! Exposes the same init() used by the `surreal` binary so external apps can
 //! start SurrealDB within their own `main()`.
+//!
+//! <section class="warning">
+//! <h3>Unstable!</h3>
+//! This crate is <b>SurrealDB internal API</b>. It does not adhere to SemVer and its API is
+//! free to change and break code even between patch versions. If you are looking for a stable
+//! interface to the SurrealDB library please have a look at
+//! <a href="https://crates.io/crates/surrealdb">the Rust SDK</a>.
+//! </section>
 
 // Temporarily allow deprecated items until version 3.0 for backward compatibility
 #![allow(deprecated)]
 #![deny(clippy::mem_forget)]
 
 #[macro_use]
-pub extern crate surrealdb_core;
-
-#[macro_use]
 extern crate tracing;
-
-pub use base64;
-pub use lyxal_net;
 
 mod cli;
 mod cnf;
@@ -33,15 +35,22 @@ use std::future::Future;
 use std::process::ExitCode;
 
 pub use cli::{Config, ConfigCheck, ConfigCheckRequirements};
+/// Re-export `RouterFactory` for convenience so embedders can `use surreal::RouterFactory`.
+#[doc(inline)]
+pub use ntw::RouterFactory;
 /// Re-export `RpcState` for convenience so embedders can `use surreal::RpcState`.
+#[doc(inline)]
 pub use rpc::RpcState;
+#[doc(inline)]
+pub use surrealdb as sdk;
+/// Re-export `core` for convenience so embedders can `use surreal::core::...`.
+#[doc(inline)]
 pub use surrealdb_core as core;
 use surrealdb_core::buc::BucketStoreProvider;
 use surrealdb_core::kvs::TransactionBuilderFactory;
 
 // Re-export the core crate in the same path used across internal modules
 // so that `crate::core::...` keeps working when used as a library target.
-use crate::ntw::RouterFactory;
 
 /// Initialize SurrealDB CLI/server with the same behavior as the `surreal` binary.
 /// This spins up a Tokio runtime with a larger stack size and then runs the CLI
@@ -64,7 +73,7 @@ pub fn init<C: TransactionBuilderFactory + RouterFactory + ConfigCheck + BucketS
 /// Rust's default thread stack size of 2MiB doesn't allow sufficient recursion depth
 /// for SurrealDB's query parser and execution engine. This function creates a Tokio
 /// runtime with a larger stack size configured via `cnf::RUNTIME_STACK_SIZE`.
-fn with_enough_stack(fut: impl Future<Output = ExitCode> + Send + 'static) -> ExitCode {
+fn with_enough_stack(fut: impl Future<Output = ExitCode> + Send) -> ExitCode {
 	// Start a Tokio runtime with custom configuration
 	let runtime = tokio::runtime::Builder::new_multi_thread()
 		.enable_all()
@@ -82,18 +91,7 @@ fn with_enough_stack(fut: impl Future<Output = ExitCode> + Send + 'static) -> Ex
 		.build();
 	// Check the success of the runtime creation
 	match runtime {
-		Ok(r) => {
-			// Run the future in a separate thread with a large stack size
-			// because block_on runs on the current thread's stack, which
-			// is often too small on Windows (default 1MB).
-			std::thread::Builder::new()
-				.stack_size(*cnf::RUNTIME_STACK_SIZE)
-				.name("surrealdb-main".to_string())
-				.spawn(move || r.block_on(fut))
-				.expect("Failed to spawn main server thread")
-				.join()
-				.expect("Main server thread panicked")
-		}
+		Ok(r) => r.block_on(fut),
 		Err(e) => {
 			// The runtime creation failed (e.g. insufficient system resources)
 			error!("Failed to build runtime: {e}");

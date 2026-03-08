@@ -6,7 +6,6 @@ mod export;
 mod fix;
 mod import;
 mod isready;
-mod lyxal;
 mod ml;
 #[cfg(feature = "surrealism")]
 mod module;
@@ -32,7 +31,6 @@ use export::ExportCommandArguments;
 use fix::FixCommandArguments;
 use import::ImportCommandArguments;
 use isready::IsReadyCommandArguments;
-use lyxal::LyxalCommand;
 use ml::MlCommand;
 #[cfg(feature = "surrealism")]
 use module::ModuleCommand;
@@ -178,8 +176,6 @@ enum Commands {
 	Sql(SqlCommandArguments),
 	#[command(subcommand, about = "Manage SurrealML models within an existing database")]
 	Ml(MlCommand),
-	#[command(subcommand, about = "Manage LyxalOS infrastructure")]
-	Lyxal(LyxalCommand),
 	#[cfg(feature = "surrealism")]
 	#[command(subcommand, about = "Manage and execute WASM modules", name = "module")]
 	Module(ModuleCommand),
@@ -298,7 +294,6 @@ pub async fn init<
 		Commands::Ml(args) => ml::init(args).await,
 		#[cfg(feature = "surrealism")]
 		Commands::Module(args) => module::init(args).await,
-		Commands::Lyxal(args) => lyxal::init(args).await,
 		Commands::IsReady(args) => isready::init(args).await,
 		Commands::Validate(args) => validate::init(args).await,
 		Commands::Fix(args) => fix::init::<C>(args).await,

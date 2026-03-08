@@ -1,23 +1,38 @@
 [workspace]
 members = [
-    "lyxal_core",
-    "lyxal_schema",
-    "lyxal_iam",
-    "lyxal_auth",
-    "lyxal_oauth",
-    "lyxal_rbac",
-    "lyxal_mfa",
-    "lyxal_session",
-    "lyxal_connectors",
-    "lyxal_telemetry",
-    "lyxal_api_client",
-    "lyxal_cli",
-    "lyxal_shared",
-    "lyxal_toolkit",
-    "lyxal_experience",
-    "lyxal_console",
-    "lyxal_account",
-    "lyxal_tunnel",
-    "lyxal_server"
+    "lyxal_*",
+    "lyxalkv"
 ]
 resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+description = "Lyxal Solution - Infrastructure Backend"
+repository = "https://github.com/lyxal/lyxal_solution"
+homepage = "https://lyxal.io"
+keywords = ["lyxal", "database", "proxy"]
+categories = ["database", "network-programming"]
+
+[workspace.dependencies]
+anyhow = "1"
+async-trait = "0.1"
+assert-json-diff = "2.0"
+bytes = { version = "1", features = ["serde"] }
+chrono = "0"
+flatbuffers = { version = "25.2.10", features = ["serde"] }
+futures = "0.3"
+geo = "0"
+proc-macro2 = "1.0"
+prost = "0.14.1"
+prost-types = "0.14.1"
+quote = "1.0"
+rstest = "0.26"
+rust_decimal = "1.30"
+semver = "1"
+serde = "1.0.228"
+serde_json = "1.0"
+syn = { version = "2.0", features = ["full", "extra-traits"] }
+tonic = "0.14.2"
+tonic-prost = "0.14.2"
+uuid = "1"

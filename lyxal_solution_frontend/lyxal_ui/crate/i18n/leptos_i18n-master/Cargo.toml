@@ -12,6 +12,8 @@ exclude = ["examples", "tests"]
 
 [workspace.package]
 version = "0.6.0"
+edition = "2024"
+rust-version = "1.88.0"
 
 [workspace.dependencies]
 # members
@@ -25,9 +27,9 @@ leptos_i18n_build = { path = "./leptos_i18n_build", version = "0.6.0", default-f
 
 # non-members
 # leptos
-leptos = { version = "0.8", default-features = false }
-leptos_router = { version = "0.8", default-features = false }
-leptos_meta = { version = "0.8", default-features = false }
+leptos = { path = "../../core/leptos-main/leptos", default-features = false }
+leptos_router = { path = "../../core/leptos-main/router", default-features = false }
+leptos_meta = { path = "../../core/leptos-main/meta", default-features = false }
 
 # icu
 icu = { version = "2.1", default-features = false }
@@ -63,3 +65,17 @@ typed-builder = { default-features = false, version = "0.23" }
 proc-macro2 = { default-features = false, version = "1.0" }
 serde = { default-features = false, version = "1.0" }
 js-sys = { default-features = false, version = "0.3" }
+proc-macro-error2 = { default-features = false, version = "2.0" }
+
+[patch.crates-io]
+leptos = { path = "../../core/leptos-main/leptos" }
+leptos_meta = { path = "../../core/leptos-main/meta" }
+leptos_router = { path = "../../core/leptos-main/router" }
+reactive_graph = { path = "../../core/leptos-main/reactive_graph" }
+tachys = { path = "../../core/leptos-main/tachys" }
+leptos_macro = { path = "../../core/leptos-main/leptos_macro" }
+server_fn = { path = "../../core/leptos-main/server_fn" }
+leptos_server = { path = "../../core/leptos-main/leptos_server" }
+leptos_dom = { path = "../../core/leptos-main/leptos_dom" }
+leptos-use = { path = "../../logic/leptos-use-main" }
+

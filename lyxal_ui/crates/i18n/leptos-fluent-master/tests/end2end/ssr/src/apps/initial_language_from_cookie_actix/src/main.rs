@@ -1,1 +1,0 @@
-﻿app_helpers::actix_main_impl!(ssr_test_initial_language_from_cookie_actix);

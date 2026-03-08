@@ -1,0 +1,60 @@
+[package]
+name = "lyxal_proxy"
+description = "lyxal_proxy, a fast, reliable, hot reconfigurable HTTP reverse proxy"
+repository = "https://github.com/lyxal_proxy-proxy/lyxal_proxy"
+readme = "README.md"
+documentation = "https://docs.rs/lyxal_proxy"
+homepage = "https://lyxal_proxy.io"
+version = "1.1.1"
+license = "AGPL-3.0"
+authors = [
+  "Geoffroy Couprie <geo.couprie@gmail.com>",
+  "Eloi Demolis <eloi.demolis@clever-cloud.com>",
+  "Emmanuel Bosquet <emmanuel.bosquet@clever-cloud.com>",
+  "Florentin Dubois <florentin.dubois@clever-cloud.com>",
+]
+categories = ["network-programming"]
+edition = "2024"
+rust-version = "1.85.0"
+include = ["README.md", "Cargo.toml", "src/**/*"]
+
+[lib]
+name = "lyxal_proxy"
+path = "src/lib.rs"
+
+[[bin]]
+name = "lyxal_proxy"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true, features = ["derive"] }
+jemallocator = { workspace = true, optional = true }
+libc = { workspace = true }
+log = { workspace = true }
+mio = { workspace = true, features = ["os-poll", "net"] }
+nix = { workspace = true, features = ["signal", "fs"] }
+nom = { workspace = true }
+paw = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+prost = { workspace = true }
+tempfile = { workspace = true }
+termion = { workspace = true }
+thiserror = { workspace = true }
+
+lyxal_proxy-command-lib = { workspace = true }
+lyxal_proxy-lib = { workspace = true }
+
+[target.'cfg(target_os="linux")'.dependencies]
+num_cpus = "^1.17.0"
+
+[features]
+default = ["jemallocator"]
+unstable = []
+logs-debug = ["lyxal_proxy-lib/logs-debug", "lyxal_proxy-command-lib/logs-debug"]
+logs-trace = ["lyxal_proxy-lib/logs-trace", "lyxal_proxy-command-lib/logs-trace"]
+opentelemetry = ["lyxal_proxy-lib/opentelemetry"]
+tolerant-http1-parser = ["lyxal_proxy-lib/tolerant-http1-parser"]
+
+[badges]
+travis-ci = { repository = "lyxal_proxy-proxy/lyxal_proxy" }

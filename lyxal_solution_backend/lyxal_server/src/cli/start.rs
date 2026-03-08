@@ -3,10 +3,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-#[cfg(feature = "ml")]
-use anyhow::Context;
 use anyhow::Result;
 use clap::Args;
+use rustls::crypto::CryptoProvider;
 use surrealdb::engine::{any, tasks};
 use surrealdb_core::buc::BucketStoreProvider;
 use surrealdb_core::kvs::TransactionBuilderFactory;
@@ -70,6 +69,9 @@ pub struct StartCommandArguments {
 	#[arg(env = "SURREAL_INDEX_COMPACTION_INTERVAL", long = "index-compaction-interval", value_parser = super::validator::duration)]
 	#[arg(default_value = "5s")]
 	index_compaction_interval: Duration,
+	#[arg(env = "SURREAL_ASYNC_EVENT_PROCESSING_INTERVAL", long = "async-event-interval", value_parser = super::validator::duration)]
+	#[arg(default_value = "5s")]
+	event_processing_interval: Duration,
 	//
 	// Authentication
 	#[arg(
@@ -118,6 +120,10 @@ pub struct StartCommandArguments {
 	#[arg(env = "SURREAL_NO_IDENTIFICATION_HEADERS", long)]
 	#[arg(default_value_t = false)]
 	no_identification_headers: bool,
+	#[arg(help = "The allowed origins for CORS requests. Defaults to allow all origins")]
+	#[arg(env = "SURREAL_ALLOW_ORIGIN", long = "allow-origin")]
+	#[arg(value_delimiter = ',', value_parser = super::validator::cors_origin)]
+	allow_origin: Vec<String>,
 	//
 	// Database options
 	#[command(flatten)]
@@ -179,11 +185,15 @@ pub async fn init<
 		node_membership_cleanup_interval,
 		changefeed_gc_interval,
 		index_compaction_interval,
+		event_processing_interval,
 		no_banner,
 		no_identification_headers,
+		allow_origin,
 		..
 	}: StartCommandArguments,
 ) -> Result<()> {
+	// Install the crypto provider before any TLS operations occur
+	let _ = CryptoProvider::install_default(rustls::crypto::aws_lc_rs::default_provider());
 	// Check the path is valid
 	C::path_valid(&path)?;
 	// Check if we should output a banner
@@ -209,7 +219,8 @@ pub async fn init<
 		.with_node_membership_check_interval(node_membership_check_interval)
 		.with_node_membership_cleanup_interval(node_membership_cleanup_interval)
 		.with_changefeed_gc_interval(changefeed_gc_interval)
-		.with_index_compaction_interval(index_compaction_interval);
+		.with_index_compaction_interval(index_compaction_interval)
+		.with_event_processing_interval(event_processing_interval);
 	// Configure the config
 	let Some(bind) = listen_addresses.first().copied() else {
 		return Err(anyhow::anyhow!("No listen address provided"));
@@ -221,6 +232,7 @@ pub async fn init<
 		user,
 		pass,
 		no_identification_headers,
+		allow_origin,
 		engine,
 		crt,
 		key,
@@ -230,48 +242,10 @@ pub async fn init<
 	// Initiate environment
 	env::init()?;
 
-	#[cfg(feature = "lyxal-kernel")]
-	{
-		info!("Lyxal OS Kernel integration enabled (pre-init)");
-		// Remove protocol prefix for Windows path compatibility (e.g. lyxalkv://test.db -> test.db)
-		let raw_path = &config.path;
-		let clean_path = if let Some((_, path)) = raw_path.split_once("://") {
-			path
-		} else {
-			raw_path
-		};
-		let lyxal_path = std::path::PathBuf::from(clean_path);
-
-		// Synchronous boot: We must wait for the kernel to be ready before starting the datastore
-		// This ensures Raft consensus and network sync are active for the storage layer.
-		lyxal_os::kernel::boot_minimal(lyxal_path)
-			.await
-			.map_err(|e| anyhow::anyhow!("Lyxal OS Kernel boot failed: {}", e))?;
-
-		info!("Lyxal OS Kernel is now READY, proceeding with SurrealDB startup.");
-	}
-
-	// if ML feature is enabled load the ONNX runtime lib that is embedded
-	#[cfg(feature = "ml")]
-	crate::core::ml::execution::session::set_environment()
-		.context("Failed to initialize ML library")?;
-
 	// Create a token to cancel tasks
 	let canceller = CancellationToken::new();
 	// Start the datastore
 	let datastore = Arc::new(dbs::init::<C>(composer, &config, canceller.clone(), dbs).await?);
-
-	#[cfg(feature = "lyxal-kernel")]
-	{
-		// P25: Hook User DB for Replication
-		// We extract the underlying LyxalKV tree from the datastore and register it with the Kernel.
-		// This enables the replication engine (LyxalStore) to intercept WAL writes without opening a second file handle.
-		if let Some(tree) = datastore.lyxalkv_tree() {
-			info!("LyxalOS: Hooking User DB into Replication Engine...");
-			lyxal_os::register_user_db(tree);
-		}
-	}
-
 	// Register datastore metrics
 	register_datastore_metrics(datastore.clone());
 	// Start the node agent
