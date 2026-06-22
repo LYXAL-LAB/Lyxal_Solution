@@ -78,28 +78,11 @@ impl Writer {
 	pub fn add_record(&mut self, slice: &[u8]) -> Result<()> {
 		// Compress data if compression is enabled
 		let compressed;
-		let data_to_write = match self.compression_type {
-			CompressionType::Lz4 => {
-				let start = std::time::Instant::now();
-				compressed = lz4_flex::compress_prepend_size(slice);
-				crate::metrics::EngineMetrics::get().lz4_compressions.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-				crate::metrics::EngineMetrics::get().lz4_compression_time_ns.fetch_add(start.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
-				&compressed[..]
-			}
-			CompressionType::Zstd => {
-				let start = std::time::Instant::now();
-				let mut buf = Vec::with_capacity(slice.len());
-				buf.extend_from_slice(&(slice.len() as u32).to_le_bytes());
-				let comp = zstd::bulk::compress(slice, 1).map_err(|e| {
-					Error::from(io::Error::new(io::ErrorKind::Other, e.to_string()))
-				})?;
-				buf.extend_from_slice(&comp);
-				compressed = buf;
-				crate::metrics::EngineMetrics::get().zstd_compressions.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-				crate::metrics::EngineMetrics::get().zstd_compression_time_ns.fetch_add(start.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
-				&compressed[..]
-			}
-			CompressionType::None => slice,
+		let data_to_write = if self.compression_type == CompressionType::Lz4 {
+			compressed = lz4_flex::compress_prepend_size(slice);
+			&compressed[..]
+		} else {
+			slice
 		};
 
 		let mut ptr = data_to_write;
@@ -243,13 +226,10 @@ impl Writer {
 		header.extend_from_slice(&(length as u16).to_be_bytes());
 		header.push(record_type as u8);
 
-		let bytes_to_write = HEADER_SIZE + length;
 		self.dest.append(&header)?;
 		self.dest.append(data)?;
 
-		crate::metrics::EngineMetrics::get().wal_bytes_written.fetch_add(bytes_to_write as u64, std::sync::atomic::Ordering::Relaxed);
-
-		self.block_offset += bytes_to_write;
+		self.block_offset += HEADER_SIZE + length;
 
 		Ok(())
 	}
@@ -257,7 +237,7 @@ impl Writer {
 
 #[cfg(test)]
 mod tests {
-	use crate::vfs::SysFile as File;
+	use std::fs::File;
 
 	use tempdir::TempDir;
 

@@ -1,0 +1,50 @@
+use anyhow::Result;
+use reblessive::tree::Stk;
+use lyxal_types_core::{SqlFormat, ToSql};
+
+use super::FlowResultExt as _;
+use crate::lyxal_core_db::ctx::FrozenContext;
+use crate::lyxal_core_db::dbs::Options;
+use crate::lyxal_core_db::doc::CursorDoc;
+use crate::lyxal_core_error::Error;
+use crate::lyxal_core_db::expr::Expr;
+use crate::lyxal_core_db::val::{Number, Value};
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub(crate) struct Start(pub(crate) Expr);
+
+impl Start {
+	pub(crate) async fn process(
+		&self,
+		stk: &mut Stk,
+		ctx: &FrozenContext,
+		opt: &Options,
+		doc: Option<&CursorDoc>,
+	) -> Result<u32> {
+		match stk.run(|stk| self.0.compute(stk, ctx, opt, doc)).await.catch_return() {
+			// This is a valid starting number
+			Ok(Value::Number(Number::Int(v))) if v >= 0 => {
+				if v > u32::MAX as i64 {
+					Err(anyhow::Error::new(Error::InvalidStart {
+						value: v.to_string(),
+					}))
+				} else {
+					Ok(v as u32)
+				}
+			}
+			// An invalid value was specified
+			Ok(v) => Err(anyhow::Error::new(Error::InvalidStart {
+				value: v.into_raw_string(),
+			})),
+			// A different error occurred
+			Err(e) => Err(e),
+		}
+	}
+}
+
+impl ToSql for Start {
+	fn fmt_sql(&self, f: &mut String, fmt: SqlFormat) {
+		let sql_start: crate::lyxal_core_db::sql::Start = self.clone().into();
+		sql_start.fmt_sql(f, fmt);
+	}
+}

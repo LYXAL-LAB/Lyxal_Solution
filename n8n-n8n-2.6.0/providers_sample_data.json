@@ -1,0 +1,672 @@
+[
+  {
+    "name": "ActionNetwork",
+    "iconPath": "packages\\nodes-base\\nodes\\ActionNetwork\\actionNetwork.svg",
+    "categories": [
+      "Sales",
+      "Marketing"
+    ],
+    "metadata": {
+      "node": "n8n-nodes-base.actionNetwork",
+      "nodeVersion": "1.0",
+      "codexVersion": "1.0",
+      "categories": [
+        "Sales",
+        "Marketing"
+      ],
+      "resources": {
+        "credentialDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/credentials/actionnetwork/"
+          }
+        ],
+        "primaryDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.actionnetwork/"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "ActiveCampaign",
+    "iconPath": "packages\\nodes-base\\nodes\\ActiveCampaign\\activeCampaign.dark.svg",
+    "categories": [
+      "Marketing"
+    ],
+    "metadata": {
+      "node": "n8n-nodes-base.activeCampaign",
+      "nodeVersion": "1.0",
+      "codexVersion": "1.0",
+      "details": "ActiveCampaign is a cloud software platform that allows customer experience automation, which combines email marketing, marketing automation, sales automation, and CRM categories. Use this node when you want to interact with your ActiveCampaign account.",
+      "categories": [
+        "Marketing"
+      ],
+      "resources": {
+        "credentialDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/credentials/activecampaign/"
+          }
+        ],
+        "primaryDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.activecampaign/"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "Airtable",
+    "iconPath": "packages\\nodes-base\\nodes\\Airtable\\airtable.svg",
+    "categories": [
+      "Data & Storage"
+    ],
+    "metadata": {
+      "node": "n8n-nodes-base.airtable",
+      "nodeVersion": "1.0",
+      "codexVersion": "1.0",
+      "categories": [
+        "Data & Storage"
+      ],
+      "resources": {
+        "credentialDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+          }
+        ],
+        "primaryDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/"
+          }
+        ],
+        "generic": [
+          {
+            "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n",
+            "icon": "🎯",
+            "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/"
+          },
+          {
+            "label": "2021: The Year to Automate the New You with n8n",
+            "icon": "☀️",
+            "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/"
+          },
+          {
+            "label": "How to build a low-code, self-hosted URL shortener in 3 steps",
+            "icon": "🔗",
+            "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/"
+          },
+          {
+            "label": "How to get started with CRM automation (with 3 no-code workflow ideas",
+            "icon": "👥",
+            "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/"
+          },
+          {
+            "label": "15 Google apps you can combine and automate to increase productivity",
+            "icon": "💡",
+            "url": "https://n8n.io/blog/automate-google-apps-for-productivity/"
+          },
+          {
+            "label": "Building an expense tracking app in 10 minutes",
+            "icon": "📱",
+            "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/"
+          },
+          {
+            "label": "Why this Product Manager loves workflow automation with n8n",
+            "icon": "🧠",
+            "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/"
+          },
+          {
+            "label": "Learn to Build Powerful API Endpoints Using Webhooks",
+            "icon": "🧰",
+            "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/"
+          },
+          {
+            "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n",
+            "icon": "📱",
+            "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/"
+          },
+          {
+            "label": "Automating Conference Organization Processes with n8n",
+            "icon": "🙋‍♀️",
+            "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/"
+          },
+          {
+            "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin",
+            "icon": "🎖",
+            "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/"
+          },
+          {
+            "label": "How Goomer automated their operations with over 200 n8n workflows",
+            "icon": "🛵",
+            "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/"
+          },
+          {
+            "label": "7 no-code workflow automations for Amazon Web Services",
+            "url": "https://n8n.io/blog/aws-workflow-automation/"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "Asana",
+    "iconPath": "packages\\nodes-base\\nodes\\Asana\\asana.svg",
+    "categories": [
+      "Productivity"
+    ],
+    "metadata": {
+      "node": "n8n-nodes-base.asana",
+      "nodeVersion": "1.0",
+      "codexVersion": "1.0",
+      "categories": [
+        "Productivity"
+      ],
+      "resources": {
+        "credentialDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/credentials/asana/"
+          }
+        ],
+        "primaryDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.asana/"
+          }
+        ],
+        "generic": [
+          {
+            "label": "How a digital strategist uses n8n for online marketing",
+            "icon": "💻",
+            "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "ClickUp",
+    "iconPath": "packages\\nodes-base\\nodes\\ClickUp\\clickup.svg",
+    "categories": [
+      "Productivity",
+      "Communication"
+    ],
+    "metadata": {
+      "node": "n8n-nodes-base.clickUp",
+      "nodeVersion": "1.0",
+      "codexVersion": "1.0",
+      "categories": [
+        "Productivity",
+        "Communication"
+      ],
+      "resources": {
+        "credentialDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/credentials/clickup/"
+          }
+        ],
+        "primaryDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.clickup/"
+          }
+        ],
+        "generic": [
+          {
+            "label": "2021: The Year to Automate the New You with n8n",
+            "icon": "☀️",
+            "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "Discord",
+    "iconPath": "packages\\nodes-base\\nodes\\Discord\\discord.svg",
+    "categories": [
+      "Communication",
+      "HITL"
+    ],
+    "metadata": {
+      "node": "n8n-nodes-base.discord",
+      "nodeVersion": "1.0",
+      "codexVersion": "1.0",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "subcategories": {
+        "HITL": [
+          "Human in the Loop"
+        ]
+      },
+      "resources": {
+        "credentialDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/credentials/discord/"
+          }
+        ],
+        "primaryDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.discord/"
+          }
+        ]
+      },
+      "alias": [
+        "human",
+        "form",
+        "wait",
+        "hitl",
+        "approval"
+      ]
+    }
+  },
+  {
+    "name": "Github",
+    "iconPath": "packages\\nodes-base\\nodes\\Github\\github.dark.svg",
+    "categories": [
+      "Development"
+    ],
+    "metadata": {
+      "node": "n8n-nodes-base.github",
+      "nodeVersion": "1.0",
+      "codexVersion": "1.0",
+      "categories": [
+        "Development"
+      ],
+      "resources": {
+        "credentialDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/credentials/github/"
+          }
+        ],
+        "primaryDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.github/"
+          }
+        ],
+        "generic": [
+          {
+            "label": "Automatically pulling and visualizing data with n8n",
+            "icon": "📈",
+            "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/"
+          },
+          {
+            "label": "How to automatically manage contributions to open-source projects",
+            "icon": "🏷️",
+            "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/"
+          },
+          {
+            "label": "5 workflow automations for Mattermost that we love at n8n",
+            "icon": "🤖",
+            "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/"
+          },
+          {
+            "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI",
+            "icon": "🎡",
+            "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "Sheet",
+    "iconPath": "packages\\nodes-base\\nodes\\Google\\Sheet\\googleSheets.svg",
+    "categories": [
+      "Data & Storage",
+      "Productivity"
+    ],
+    "metadata": {
+      "node": "n8n-nodes-base.googleSheets",
+      "nodeVersion": "1.0",
+      "codexVersion": "1.0",
+      "categories": [
+        "Data & Storage",
+        "Productivity"
+      ],
+      "resources": {
+        "credentialDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+          }
+        ],
+        "primaryDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+          }
+        ],
+        "generic": [
+          {
+            "label": "Love at first sight: Ricardo’s n8n journey",
+            "icon": "❤️",
+            "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/"
+          },
+          {
+            "label": "Why business process automation with n8n can change your daily life",
+            "icon": "🧬",
+            "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/"
+          },
+          {
+            "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n",
+            "icon": "🧾",
+            "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/"
+          },
+          {
+            "label": "Supercharging your conference registration process with n8n",
+            "icon": "🎫",
+            "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/"
+          },
+          {
+            "label": "Creating triggers for n8n workflows using polling",
+            "icon": "⏲",
+            "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/"
+          },
+          {
+            "label": "6 e-commerce workflows to power up your Shopify s",
+            "icon": "store",
+            "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/"
+          },
+          {
+            "label": "Migrating Community Metrics to Orbit using n8n",
+            "icon": "📈",
+            "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/"
+          },
+          {
+            "label": "15 Google apps you can combine and automate to increase productivity",
+            "icon": "💡",
+            "url": "https://n8n.io/blog/automate-google-apps-for-productivity/"
+          },
+          {
+            "label": "Hey founders! Your business doesn't need you to operate",
+            "icon": " 🖥️",
+            "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/"
+          },
+          {
+            "label": "How Honest Burgers Use Automation to Save $100k per year",
+            "icon": "🍔",
+            "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/"
+          },
+          {
+            "label": "How a digital strategist uses n8n for online marketing",
+            "icon": "💻",
+            "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/"
+          },
+          {
+            "label": "Why this Product Manager loves workflow automation with n8n",
+            "icon": "🧠",
+            "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/"
+          },
+          {
+            "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n ",
+            "icon": "🙌",
+            "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/"
+          },
+          {
+            "label": "How a Membership Development Manager automates his work and investments",
+            "icon": "📈",
+            "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/"
+          },
+          {
+            "label": "7 no-code workflow automations for Amazon Web Services",
+            "url": "https://n8n.io/blog/aws-workflow-automation/"
+          }
+        ]
+      },
+      "alias": [
+        "CSV",
+        "Sheet",
+        "Spreadsheet",
+        "GS"
+      ]
+    }
+  },
+  {
+    "name": "Hubspot",
+    "iconPath": "packages\\nodes-base\\nodes\\Hubspot\\hubspot.svg",
+    "categories": [
+      "Sales"
+    ],
+    "metadata": {
+      "node": "n8n-nodes-base.hubspot",
+      "nodeVersion": "1.0",
+      "codexVersion": "1.0",
+      "categories": [
+        "Sales"
+      ],
+      "resources": {
+        "credentialDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/credentials/hubspot/"
+          }
+        ],
+        "primaryDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.hubspot/"
+          }
+        ],
+        "generic": [
+          {
+            "label": "How to synchronize data between two systems (one-way vs. two-way sync",
+            "icon": "🏬",
+            "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/"
+          },
+          {
+            "label": "How to get started with CRM automation (with 3 no-code workflow ideas",
+            "icon": "👥",
+            "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/"
+          },
+          {
+            "label": "Hey founders! Your business doesn't need you to operate",
+            "icon": " 🖥️",
+            "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/"
+          },
+          {
+            "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin",
+            "icon": "🎖",
+            "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/"
+          },
+          {
+            "label": "How Goomer automated their operations with over 200 n8n workflows",
+            "icon": "🛵",
+            "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "Slack",
+    "iconPath": "packages\\nodes-base\\nodes\\Slack\\slack.svg",
+    "categories": [
+      "Communication",
+      "HITL"
+    ],
+    "metadata": {
+      "node": "n8n-nodes-base.slack",
+      "nodeVersion": "1.0",
+      "codexVersion": "1.0",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "subcategories": {
+        "HITL": [
+          "Human in the Loop"
+        ]
+      },
+      "alias": [
+        "human",
+        "form",
+        "wait",
+        "hitl",
+        "approval"
+      ],
+      "resources": {
+        "credentialDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/credentials/slack/"
+          }
+        ],
+        "primaryDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/"
+          }
+        ],
+        "generic": [
+          {
+            "label": "6 e-commerce workflows to power up your Shopify s",
+            "icon": "store",
+            "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/"
+          },
+          {
+            "label": "Automate your data processing pipeline in 9 steps",
+            "icon": "⚙️",
+            "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/"
+          },
+          {
+            "label": "How to get started with CRM automation (with 3 no-code workflow ideas",
+            "icon": "👥",
+            "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/"
+          },
+          {
+            "label": "5 tasks you can automate with the new Notion API ",
+            "icon": "⚡️",
+            "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/"
+          },
+          {
+            "label": "Build your own virtual assistant with n8n: A step by step guide",
+            "icon": "👦",
+            "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/"
+          },
+          {
+            "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n",
+            "icon": "👏",
+            "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/"
+          },
+          {
+            "label": "How Common Knowledge use workflow automation for activism",
+            "icon": "✨",
+            "url": "https://n8n.io/blog/automations-for-activists/"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "Stripe",
+    "iconPath": "packages\\nodes-base\\nodes\\Stripe\\stripe.svg",
+    "categories": [
+      "Finance & Accounting",
+      "Sales"
+    ],
+    "metadata": {
+      "node": "n8n-nodes-base.stripe",
+      "nodeVersion": "1.0",
+      "codexVersion": "1.0",
+      "categories": [
+        "Finance & Accounting",
+        "Sales"
+      ],
+      "resources": {
+        "credentialDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/credentials/stripe/"
+          }
+        ],
+        "primaryDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.stripe/"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "Trello",
+    "iconPath": "packages\\nodes-base\\nodes\\Trello\\trello.svg",
+    "categories": [
+      "Productivity"
+    ],
+    "metadata": {
+      "node": "n8n-nodes-base.trello",
+      "nodeVersion": "1.0",
+      "codexVersion": "1.0",
+      "categories": [
+        "Productivity"
+      ],
+      "resources": {
+        "credentialDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/credentials/trello/"
+          }
+        ],
+        "primaryDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.trello/"
+          }
+        ],
+        "generic": [
+          {
+            "label": "6 e-commerce workflows to power up your Shopify s",
+            "icon": "store",
+            "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/"
+          },
+          {
+            "label": "5 tasks you can automate with the new Notion API ",
+            "icon": "⚡️",
+            "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/"
+          },
+          {
+            "label": "Hey founders! Your business doesn't need you to operate",
+            "icon": " 🖥️",
+            "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/"
+          },
+          {
+            "label": "How a digital strategist uses n8n for online marketing",
+            "icon": "💻",
+            "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/"
+          },
+          {
+            "label": "Automating Conference Organization Processes with n8n",
+            "icon": "🙋‍♀️",
+            "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "Zendesk",
+    "iconPath": "packages\\nodes-base\\nodes\\Zendesk\\zendesk.svg",
+    "categories": [
+      "Communication"
+    ],
+    "metadata": {
+      "node": "n8n-nodes-base.zendesk",
+      "nodeVersion": "1.0",
+      "codexVersion": "1.0",
+      "categories": [
+        "Communication"
+      ],
+      "resources": {
+        "credentialDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/credentials/zendesk/"
+          }
+        ],
+        "primaryDocumentation": [
+          {
+            "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.zendesk/"
+          }
+        ],
+        "generic": [
+          {
+            "label": "Hey founders! Your business doesn't need you to operate",
+            "icon": " 🖥️",
+            "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/"
+          }
+        ]
+      }
+    }
+  }
+]

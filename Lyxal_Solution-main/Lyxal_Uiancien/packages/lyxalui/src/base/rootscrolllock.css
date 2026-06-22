@@ -1,4 +1,0 @@
-/* force higher specificity */
-:root:not(span) {
-  overflow: var(--page-overflow);
-}

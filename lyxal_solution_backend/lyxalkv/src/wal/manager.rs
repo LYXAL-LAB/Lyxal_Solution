@@ -1,7 +1,7 @@
-use std::fs;
-use crate::vfs::SysFile as File;
+use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use super::writer::Writer;
 use super::{
@@ -22,6 +22,10 @@ use super::{
 pub struct Wal {
 	/// The currently active Writer for writing records.
 	active_writer: Writer,
+
+	/// Cloned file descriptor for the active WAL file, used to perform
+	/// fsync outside the write lock so concurrent appends are not blocked.
+	sync_fd: Arc<File>,
 
 	/// The log number of the currently active Writer.
 	active_log_number: u64,
@@ -51,11 +55,12 @@ impl Wal {
 		// Determine the active log number
 		let active_log_number = Self::calculate_active_log_number(dir)?;
 
-		// Create the active Writer
-		let active_writer = Self::create_writer(dir, active_log_number, &opts)?;
+		// Create the active Writer and sync fd
+		let (active_writer, sync_fd) = Self::create_writer(dir, active_log_number, &opts)?;
 
 		Ok(Self {
 			active_writer,
+			sync_fd,
 			active_log_number,
 			dir: dir.to_path_buf(),
 			opts,
@@ -113,11 +118,12 @@ impl Wal {
 			);
 		}
 
-		// Create the active Writer at the calculated log number
-		let active_writer = Self::create_writer(dir, active_log_number, &opts)?;
+		// Create the active Writer and sync fd at the calculated log number
+		let (active_writer, sync_fd) = Self::create_writer(dir, active_log_number, &opts)?;
 
 		Ok(Self {
 			active_writer,
+			sync_fd,
 			active_log_number,
 			dir: dir.to_path_buf(),
 			opts,
@@ -125,16 +131,25 @@ impl Wal {
 		})
 	}
 
-	/// Creates a new Writer for the given log number.
+	/// Creates a new Writer and sync fd for the given log number.
 	/// If the segment file already exists, appends to it instead of
 	/// overwriting.
-	fn create_writer(dir: &Path, log_number: u64, opts: &Options) -> Result<Writer> {
+	///
+	/// Returns the Writer and an `Arc<File>` cloned from the same underlying
+	/// file. The sync fd can be used to perform fsync outside the WAL write
+	/// lock, allowing concurrent appends to proceed during the slow fsync.
+	fn create_writer(dir: &Path, log_number: u64, opts: &Options) -> Result<(Writer, Arc<File>)> {
 		let extension = opts.file_extension.as_deref().unwrap_or("wal");
 		let file_name = segment_name(log_number, extension);
 		let file_path = dir.join(&file_name);
 
 		// Open or create the file (append mode ensures writes go to end)
 		let file = Self::open_wal_file(&file_path, opts)?;
+
+		// Clone the fd before BufWriter consumes ownership. This cloned fd
+		// points to the same inode, so sync_all() on it will fsync all dirty
+		// pages for this file regardless of which fd wrote them.
+		let sync_fd = Arc::new(file.try_clone()?);
 
 		// Get file size from the opened file handle
 		let existing_size = file.metadata()?.len();
@@ -151,7 +166,7 @@ impl Wal {
 			// Create buffered file writer
 			let buffered_writer = BufferedFileWriter::new(file, BLOCK_SIZE);
 
-			Ok(Writer::new(buffered_writer, false, detected_compression, block_offset))
+			Ok((Writer::new(buffered_writer, false, detected_compression, block_offset), sync_fd))
 		} else {
 			// New file - use compression type from options
 			let compression_type = opts.compression_type;
@@ -163,7 +178,7 @@ impl Wal {
 			if compression_type != CompressionType::None {
 				writer.add_compression_type_record()?;
 			}
-			Ok(writer)
+			Ok((writer, sync_fd))
 		}
 	}
 
@@ -204,38 +219,32 @@ impl Wal {
 		Ok(CompressionType::None)
 	}
 
-	fn open_wal_file(file_path: &Path, _opts: &Options) -> Result<File> {
-		let mut open_options = crate::vfs::SysFile::options_with_hint(crate::vfs::IoHint::SequentialWriteThrough);
+	#[allow(unused_variables)] // opts used on Unix via #[cfg(unix)] below
+	fn open_wal_file(file_path: &Path, opts: &Options) -> Result<File> {
+		let mut open_options = OpenOptions::new();
 		open_options.read(true).write(true).create(true).append(true);
 
 		#[cfg(unix)]
 		{
 			use std::os::unix::fs::OpenOptionsExt;
-			if let Some(file_mode) = _opts.file_mode {
+			if let Some(file_mode) = opts.file_mode {
 				open_options.mode(file_mode);
 			}
 		}
 
-		Ok(File::new(open_options.open(file_path)?))
+		Ok(open_options.open(file_path)?)
 	}
 
-	fn prepare_directory(dir: &Path, _opts: &Options) -> Result<()> {
+	#[allow(unused_variables)] // Parameters used on Unix via #[cfg(unix)] below
+	fn prepare_directory(dir: &Path, opts: &Options) -> Result<()> {
 		// Directory should already be created by Tree::new()
-		// Just set permissions if needed
+		// Set permissions on Unix only; Windows NTFS uses ACLs and
+		// set_permissions on directories can fail with ERROR_ACCESS_DENIED.
+		#[cfg(unix)]
 		if let Ok(metadata) = fs::metadata(dir) {
 			let mut permissions = metadata.permissions();
-
-			#[cfg(unix)]
-			{
-				use std::os::unix::fs::PermissionsExt;
-				permissions.set_mode(_opts.dir_mode.unwrap_or(0o750));
-			}
-
-			#[cfg(windows)]
-			{
-				permissions.set_readonly(false);
-			}
-
+			use std::os::unix::fs::PermissionsExt;
+			permissions.set_mode(opts.dir_mode.unwrap_or(0o750));
 			fs::set_permissions(dir, permissions)?;
 		}
 
@@ -278,7 +287,7 @@ impl Wal {
 				let filename_str = filename.to_string_lossy();
 
 				if filename_str.ends_with(".wal.repair") {
-					match crate::remove_file(&path).map_err(|e| Error::IO(IOError::new(io::ErrorKind::Other, &e.to_string()))) {
+					match fs::remove_file(&path) {
 						Ok(()) => {
 							removed_count += 1;
 							log::warn!(
@@ -344,6 +353,25 @@ impl Wal {
 		self.active_writer.sync()
 	}
 
+	/// Flushes buffered WAL data to OS cache (not to disk).
+	/// For durability, call sync() instead.
+	pub(crate) fn flush(&mut self) -> Result<()> {
+		if self.closed {
+			return Ok(());
+		}
+		self.active_writer.write_buffer()
+	}
+
+	/// Returns a clone of the sync file descriptor Arc.
+	///
+	/// The caller can use this to perform `sync_all()` outside the WAL write
+	/// lock, allowing concurrent appends to proceed during the slow fsync.
+	/// This is safe because fsync operates on the inode — all dirty pages
+	/// from any fd pointing to the same file are persisted.
+	pub(crate) fn sync_fd(&self) -> Arc<File> {
+		Arc::clone(&self.sync_fd)
+	}
+
 	pub(crate) fn close(&mut self) -> Result<()> {
 		if self.closed {
 			return Ok(());
@@ -386,9 +414,11 @@ impl Wal {
 
 		log::debug!("WAL rotating: {:020} -> {:020}", old_log_number, self.active_log_number);
 
-		// Create a new Writer for the new log number
-		let new_writer = Self::create_writer(&self.dir, self.active_log_number, &self.opts)?;
+		// Create a new Writer and sync fd for the new log number
+		let (new_writer, new_sync_fd) =
+			Self::create_writer(&self.dir, self.active_log_number, &self.opts)?;
 		self.active_writer = new_writer;
+		self.sync_fd = new_sync_fd;
 
 		// Fsync the directory to ensure new file is visible after crash
 		crate::lsm::fsync_directory(&self.dir)
@@ -410,6 +440,54 @@ impl Drop for Wal {
 		if !self.closed {
 			self.close().ok();
 		}
+	}
+}
+
+/// Thread-safe WAL handle that encapsulates lock management.
+///
+/// Provides `sync()` and `flush()` methods that manage the internal
+/// RwLock, matching VLog's pattern. The expensive fsync in `sync()`
+/// is performed outside the write lock using a pre-cloned file
+/// descriptor, allowing concurrent WAL appends to proceed.
+pub(crate) struct WalManager {
+	inner: parking_lot::RwLock<Wal>,
+}
+
+impl WalManager {
+	pub(crate) fn new(wal: Wal) -> Self {
+		Self {
+			inner: parking_lot::RwLock::new(wal),
+		}
+	}
+
+	/// Syncs WAL data to disk using two-phase pattern:
+	/// 1. Under write lock: flush BufWriter to OS page cache
+	/// 2. Outside lock: fsync to disk via pre-cloned fd
+	pub(crate) fn sync(&self) -> Result<()> {
+		let sync_fd = {
+			let mut wal = self.inner.write();
+			wal.flush()?;
+			wal.sync_fd()
+		};
+		sync_fd.sync_all().map_err(|e| Error::IO(IOError::new(e.kind(), &e.to_string())))?;
+		Ok(())
+	}
+
+	/// Flushes WAL buffer to OS page cache (no fsync).
+	pub(crate) fn flush(&self) -> Result<()> {
+		let mut wal = self.inner.write();
+		wal.flush()?;
+		Ok(())
+	}
+
+	/// Returns a write guard for direct WAL access (append, rotate, close).
+	pub(crate) fn write(&self) -> parking_lot::RwLockWriteGuard<'_, Wal> {
+		self.inner.write()
+	}
+
+	/// Returns a read guard for read-only WAL access.
+	pub(crate) fn read(&self) -> parking_lot::RwLockReadGuard<'_, Wal> {
+		self.inner.read()
 	}
 }
 
@@ -513,11 +591,11 @@ mod tests {
 	#[test]
 	fn test_wal_append_to_existing() {
 		let temp_dir = create_temp_directory();
-		let opts = Options::default();
 
 		// First session - write some data
 		{
-			let mut wal = Wal::open(temp_dir.path(), opts.clone()).unwrap();
+			let opts = Options::default();
+			let mut wal = Wal::open(temp_dir.path(), opts).unwrap();
 			wal.append(&[1, 2, 3, 4]).unwrap();
 			wal.close().unwrap();
 		}
@@ -529,6 +607,7 @@ mod tests {
 
 		// Second session - should append to same file
 		{
+			let opts = Options::default();
 			let mut wal = Wal::open(temp_dir.path(), opts).unwrap();
 			wal.append(&[5, 6, 7, 8]).unwrap();
 			wal.close().unwrap();
@@ -549,12 +628,11 @@ mod tests {
 
 	#[test]
 	fn test_wal_block_offset_across_sessions() {
-			use crate::vfs::SysFile as File;
+		use std::fs::File;
 
 		use crate::wal::reader::Reader;
 
 		let temp_dir = create_temp_directory();
-		let opts = Options::default();
 
 		// Create test data of varying lengths to stress block alignment
 		let test_records: Vec<Vec<u8>> = vec![
@@ -573,7 +651,8 @@ mod tests {
 		// Write records across multiple sessions (close and reopen between each)
 		// This tests that block_offset is correctly restored each time
 		for (i, record) in test_records.iter().enumerate() {
-			let mut wal = Wal::open(temp_dir.path(), opts.clone()).unwrap();
+			let opts = Options::default();
+			let mut wal = Wal::open(temp_dir.path(), opts).unwrap();
 			wal.append(record).unwrap();
 			wal.close().unwrap();
 
@@ -633,7 +712,7 @@ mod tests {
 	/// causing the reader to fail to decompress them correctly.
 	#[test]
 	fn test_wal_compression_type_detected_on_reopen() {
-			use crate::vfs::SysFile as File;
+		use std::fs::File;
 
 		use crate::wal::reader::Reader;
 
@@ -683,7 +762,7 @@ mod tests {
 	/// when reopening a compressed WAL.
 	#[test]
 	fn test_wal_compressed_file_detected_on_reopen() {
-			use crate::vfs::SysFile as File;
+		use std::fs::File;
 
 		use crate::wal::reader::Reader;
 
@@ -734,7 +813,7 @@ mod tests {
 	/// that the Reader correctly detects the compression type from the file.
 	#[test]
 	fn test_wal_compression_type_readable_by_reader() {
-			use crate::vfs::SysFile as File;
+		use std::fs::File;
 
 		use crate::wal::reader::Reader;
 
@@ -777,7 +856,7 @@ mod tests {
 	/// the Reader correctly reports no compression type.
 	#[test]
 	fn test_wal_no_compression_type_when_disabled() {
-			use crate::vfs::SysFile as File;
+		use std::fs::File;
 
 		use crate::wal::reader::Reader;
 
@@ -820,12 +899,12 @@ mod tests {
 	fn test_open_with_min_log_number_uses_highest_segment() {
 		let temp_dir = create_temp_directory();
 		let wal_path = temp_dir.path();
-		let opts = Options::default();
 
 		// Step 1: Create WAL segments 1, 2, 3 using the WAL API
 		// Create segment 1 (00000000000000000001.wal)
 		{
-			let mut wal = Wal::open_with_min_log_number(wal_path, 1, opts.clone()).unwrap();
+			let opts = Options::default();
+			let mut wal = Wal::open_with_min_log_number(wal_path, 1, opts).unwrap();
 			assert_eq!(wal.get_active_log_number(), 1);
 			wal.append(b"data_in_segment_1").unwrap();
 			wal.close().unwrap();
@@ -833,7 +912,8 @@ mod tests {
 
 		// Create segment 2
 		{
-			let mut wal = Wal::open_with_min_log_number(wal_path, 2, opts.clone()).unwrap();
+			let opts = Options::default();
+			let mut wal = Wal::open_with_min_log_number(wal_path, 2, opts).unwrap();
 			// At this point, highest on disk is 1, min is 2, so max(2, 1) = 2
 			assert_eq!(wal.get_active_log_number(), 2);
 			wal.append(b"data_in_segment_2").unwrap();
@@ -842,7 +922,8 @@ mod tests {
 
 		// Create segment 3
 		{
-			let mut wal = Wal::open_with_min_log_number(wal_path, 3, opts.clone()).unwrap();
+			let opts = Options::default();
+			let mut wal = Wal::open_with_min_log_number(wal_path, 3, opts).unwrap();
 			assert_eq!(wal.get_active_log_number(), 3);
 			wal.append(b"data_in_segment_3").unwrap();
 			wal.close().unwrap();
@@ -869,7 +950,8 @@ mod tests {
 		// after crash) The fix should cause WAL to open at segment 3 (highest on
 		// disk), not 1
 		{
-			let mut wal = Wal::open_with_min_log_number(wal_path, 1, opts.clone()).unwrap();
+			let opts = Options::default();
+			let mut wal = Wal::open_with_min_log_number(wal_path, 1, opts).unwrap();
 
 			let active = wal.get_active_log_number();
 			log::info!("After open_with_min_log_number(1): active_log_number = {}", active);
@@ -886,6 +968,7 @@ mod tests {
 		// Step 3: Edge case - open with min_log_number higher than any segment on disk
 		// max(5, 3) = 5, so should open at 5
 		{
+			let opts = Options::default();
 			let mut wal = Wal::open_with_min_log_number(wal_path, 5, opts).unwrap();
 
 			assert_eq!(

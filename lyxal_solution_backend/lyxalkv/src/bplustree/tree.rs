@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::fs::File;
 use std::io;
+use std::ops::{Bound, RangeBounds};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -9,7 +10,7 @@ use quick_cache::sync::Cache;
 use quick_cache::Weighter;
 
 use crate::vfs::File as VfsFile;
-use crate::Comparator;
+use crate::{Comparator, InternalKeyRef, LSMIterator};
 
 // These are type aliases for convenience
 pub type DiskBPlusTree = BPlusTree<File>;
@@ -136,25 +137,26 @@ const OVERFLOW_PTR_SIZE: usize = 8;
 const OVERFLOW_PAGE_CAPACITY: usize = PAGE_SIZE - 13; // = 4083
 
 // Pre-computed constants (no runtime calculation needed)
-const LEAF_MIN_LOCAL: usize = 486; // ((4075 - 12) * 32 / 255) - 23
-const LEAF_MAX_LOCAL: usize = 996; // ((4075 - 12) * 64 / 255) - 23
-const INTERNAL_MIN_LOCAL: usize = 488; // ((4087 - 12) * 32 / 255) - 23
-const INTERNAL_MAX_LOCAL: usize = 999; // ((4087 - 12) * 64 / 255) - 23
+const LEAF_USABLE: usize = PAGE_SIZE - LEAF_HEADER_SIZE;
+const INTERNAL_USABLE: usize = PAGE_SIZE - INTERNAL_HEADER_SIZE;
+
+const LEAF_MIN_LOCAL: usize = ((LEAF_USABLE - 12) * 32 / 255) - 23;
+const LEAF_MAX_LOCAL: usize = ((LEAF_USABLE - 12) * 64 / 255) - 23;
+const INTERNAL_MIN_LOCAL: usize = ((INTERNAL_USABLE - 12) * 32 / 255) - 23;
+const INTERNAL_MAX_LOCAL: usize = ((INTERNAL_USABLE - 12) * 64 / 255) - 23;
 
 // Helper functions for reading integer types from byte slices without unwrap()
 // These are safe to use when bounds have already been checked
 #[inline(always)]
 fn read_u32_be(buffer: &[u8], offset: usize) -> u32 {
-	// SAFE: Slice indexing panics if out of bounds, preventing UB.
-	let slice = &buffer[offset..offset + 4];
-	u32::from_be_bytes(slice.try_into().unwrap())
+	// SAFETY: Caller must ensure buffer has at least offset + 4 bytes
+	unsafe { u32::from_be_bytes(*(buffer.as_ptr().add(offset) as *const [u8; 4])) }
 }
 
 #[inline(always)]
 fn read_u64_be(buffer: &[u8], offset: usize) -> u64 {
-	// SAFE: Slice indexing panics if out of bounds, preventing UB.
-	let slice = &buffer[offset..offset + 8];
-	u64::from_be_bytes(slice.try_into().unwrap())
+	// SAFETY: Caller must ensure buffer has at least offset + 8 bytes
+	unsafe { u64::from_be_bytes(*(buffer.as_ptr().add(offset) as *const [u8; 8])) }
 }
 
 #[derive(Debug)]
@@ -2688,8 +2690,22 @@ impl<F: VfsFile> BPlusTree<F> {
 		Ok(())
 	}
 
-	pub fn range(&self, start_key: &[u8], end_key: &[u8]) -> Result<RangeScanIterator<'_, F>> {
-		RangeScanIterator::new(self, start_key, end_key)
+	pub fn range<'a, R: RangeBounds<&'a [u8]>>(
+		&self,
+		range: R,
+	) -> Result<RangeScanIterator<'_, F>> {
+		// Convert Bound<&&[u8]> to Bound<&[u8]> by dereferencing
+		let start = match range.start_bound() {
+			Bound::Included(k) => Bound::Included(*k),
+			Bound::Excluded(k) => Bound::Excluded(*k),
+			Bound::Unbounded => Bound::Unbounded,
+		};
+		let end = match range.end_bound() {
+			Bound::Included(k) => Bound::Included(*k),
+			Bound::Excluded(k) => Bound::Excluded(*k),
+			Bound::Unbounded => Bound::Unbounded,
+		};
+		RangeScanIterator::new(self, start, end)
 	}
 
 	/// Calculate the height of the B+ tree.
@@ -2987,14 +3003,30 @@ impl<F: VfsFile> BPlusTree<F> {
 pub struct RangeScanIterator<'a, F: VfsFile> {
 	tree: &'a BPlusTree<F>,
 	current_leaf: Option<LeafNode>,
-	end_key: Bytes,
+	end: Bound<Bytes>, // Included/Excluded/Unbounded
 	current_idx: usize,
 	current_end_idx: usize, // Pre-calculated end position in current leaf
 	reached_end: bool,
 }
 
 impl<'a, F: VfsFile> RangeScanIterator<'a, F> {
-	pub(crate) fn new(tree: &'a BPlusTree<F>, start_key: &[u8], end_key: &[u8]) -> Result<Self> {
+	pub(crate) fn new(
+		tree: &'a BPlusTree<F>,
+		start: Bound<&[u8]>,
+		end: Bound<&[u8]>,
+	) -> Result<Self> {
+		// Handle start bound
+		let start_key = match start {
+			Bound::Included(key) => key,
+			Bound::Excluded(key) => {
+				// For excluded start, we need to find the next key after this one
+				// This is handled by partition_point which finds first key >= start_key
+				// So we can use the key as-is and skip it if it matches exactly
+				key
+			}
+			Bound::Unbounded => &[] as &[u8], // Empty slice means start from beginning
+		};
+
 		// Find the leaf containing the start key
 		let mut node_offset = tree.header.root_offset;
 
@@ -3002,7 +3034,11 @@ impl<'a, F: VfsFile> RangeScanIterator<'a, F> {
 		let leaf = loop {
 			match tree.read_node(node_offset)?.as_ref() {
 				NodeType::Internal(internal) => {
-					let idx = internal.find_child_index(start_key, tree.compare.as_ref());
+					let idx = if start_key.is_empty() {
+						0 // Start from first child for unbounded
+					} else {
+						internal.find_child_index(start_key, tree.compare.as_ref())
+					};
 					node_offset = internal.children[idx];
 				}
 				NodeType::Leaf(leaf) => {
@@ -3015,17 +3051,45 @@ impl<'a, F: VfsFile> RangeScanIterator<'a, F> {
 		};
 
 		// Find the first key >= start_key in the leaf
-		let current_idx =
-			leaf.keys.partition_point(|k| tree.compare.compare(k, start_key) == Ordering::Less);
+		let current_idx = if start_key.is_empty() {
+			0 // Start from beginning for unbounded
+		} else {
+			match start {
+				Bound::Included(key) => {
+					leaf.keys.partition_point(|k| tree.compare.compare(k, key) == Ordering::Less)
+				}
+				Bound::Excluded(key) => {
+					// Find first key > start_key
+					// partition_point returns first index where compare(k, key) ==
+					// Ordering::Greater
+					leaf.keys.partition_point(|k| tree.compare.compare(k, key) != Ordering::Greater)
+				}
+				Bound::Unbounded => 0,
+			}
+		};
+
+		// Handle end bound
+		let end = match end {
+			Bound::Included(key) => Bound::Included(Bytes::copy_from_slice(key)),
+			Bound::Excluded(key) => Bound::Excluded(Bytes::copy_from_slice(key)),
+			Bound::Unbounded => Bound::Unbounded,
+		};
 
 		// Pre-calculate end index in this leaf
-		let current_end_idx =
-			leaf.keys.partition_point(|k| tree.compare.compare(k, end_key) != Ordering::Greater);
+		let current_end_idx = match &end {
+			Bound::Included(end_k) => leaf
+				.keys
+				.partition_point(|k| tree.compare.compare(k, end_k.as_ref()) != Ordering::Greater),
+			Bound::Excluded(end_k) => leaf
+				.keys
+				.partition_point(|k| tree.compare.compare(k, end_k.as_ref()) == Ordering::Less),
+			Bound::Unbounded => leaf.keys.len(), // Unbounded: include all keys in leaf
+		};
 
 		Ok(RangeScanIterator {
 			tree,
 			current_leaf: Some(leaf),
-			end_key: Bytes::copy_from_slice(end_key),
+			end,
 			current_idx,
 			current_end_idx,
 			reached_end: false,
@@ -3055,10 +3119,18 @@ impl<F: VfsFile> Iterator for RangeScanIterator<'_, F> {
 					match self.tree.read_node(leaf.next_leaf) {
 						Ok(arc_node) => match arc_node.as_ref() {
 							NodeType::Leaf(next_leaf) => {
-								let next_end_idx = next_leaf.keys.partition_point(|k| {
-									self.tree.compare.compare(k, self.end_key.as_ref())
-										!= Ordering::Greater
-								});
+								let next_end_idx = match &self.end {
+									Bound::Included(end_k) => next_leaf.keys.partition_point(|k| {
+										self.tree.compare.compare(k, end_k.as_ref())
+											!= Ordering::Greater
+									}),
+									Bound::Excluded(end_k) => next_leaf.keys.partition_point(|k| {
+										self.tree.compare.compare(k, end_k.as_ref())
+											== Ordering::Less
+									}),
+									Bound::Unbounded => next_leaf.keys.len(), /* Unbounded:
+									                                           * include all keys */
+								};
 
 								self.current_leaf = Some(next_leaf.clone());
 								self.current_idx = 0;
@@ -3087,6 +3159,334 @@ impl<F: VfsFile> Iterator for RangeScanIterator<'_, F> {
 	}
 }
 
+/// Cursor-based iterator over a BPlusTree that implements LSMIterator.
+///
+/// The BPlusTree stores encoded internal keys directly (when used as versioned index),
+/// so this iterator provides zero-copy access to those keys and values.
+pub struct BPlusTreeIterator<'a, F: VfsFile> {
+	/// Reference to the tree being iterated
+	tree: &'a BPlusTree<F>,
+
+	/// Current leaf node (cloned from cache for efficient access)
+	current_leaf: Option<LeafNode>,
+
+	/// Current position within the leaf's keys array
+	current_idx: usize,
+
+	/// Whether the iterator has been exhausted
+	exhausted: bool,
+}
+
+impl<'a, F: VfsFile> BPlusTreeIterator<'a, F> {
+	/// Create a new unpositioned iterator over the tree
+	pub fn new(tree: &'a BPlusTree<F>) -> Self {
+		BPlusTreeIterator {
+			tree,
+			current_leaf: None,
+			current_idx: 0,
+			exhausted: false,
+		}
+	}
+
+	/// Check if positioned on a valid entry
+	fn is_valid(&self) -> bool {
+		if self.exhausted {
+			return false;
+		}
+		match &self.current_leaf {
+			Some(leaf) => self.current_idx < leaf.keys.len(),
+			None => false,
+		}
+	}
+
+	/// Navigate from root to the first (leftmost) leaf
+	fn navigate_to_first_leaf(&mut self) -> Result<()> {
+		let first_leaf_offset = self.tree.header.first_leaf_offset;
+		if first_leaf_offset == 0 {
+			self.current_leaf = None;
+			return Ok(());
+		}
+
+		let node = self.tree.read_node(first_leaf_offset)?;
+
+		match node.as_ref() {
+			NodeType::Leaf(leaf) => {
+				self.current_leaf = Some(leaf.clone());
+				Ok(())
+			}
+			_ => Err(BPlusTreeError::InvalidNodeType),
+		}
+	}
+
+	/// Navigate from root to the last (rightmost) leaf
+	fn navigate_to_last_leaf(&mut self) -> Result<()> {
+		let mut node_offset = self.tree.header.root_offset;
+		if node_offset == 0 {
+			self.current_leaf = None;
+			return Ok(());
+		}
+
+		loop {
+			let node = self.tree.read_node(node_offset)?;
+
+			match node.as_ref() {
+				NodeType::Internal(internal) => {
+					// Navigate to rightmost child
+					node_offset =
+						*internal.children.last().ok_or(BPlusTreeError::InvalidNodeType)?;
+				}
+				NodeType::Leaf(leaf) => {
+					self.current_leaf = Some(leaf.clone());
+					return Ok(());
+				}
+				NodeType::Overflow(_) => {
+					return Err(BPlusTreeError::UnexpectedOverflowPage(node_offset));
+				}
+			}
+		}
+	}
+
+	/// Navigate to the leaf containing the target key
+	fn navigate_to_key(&mut self, target: &[u8]) -> Result<()> {
+		let mut node_offset = self.tree.header.root_offset;
+		if node_offset == 0 {
+			self.current_leaf = None;
+			return Ok(());
+		}
+
+		loop {
+			let node = self.tree.read_node(node_offset)?;
+
+			match node.as_ref() {
+				NodeType::Internal(internal) => {
+					let idx = internal.find_child_index(target, self.tree.compare.as_ref());
+					node_offset = internal.children[idx];
+				}
+				NodeType::Leaf(leaf) => {
+					self.current_leaf = Some(leaf.clone());
+					return Ok(());
+				}
+				NodeType::Overflow(_) => {
+					return Err(BPlusTreeError::UnexpectedOverflowPage(node_offset));
+				}
+			}
+		}
+	}
+
+	/// Load the next leaf using the doubly-linked list
+	fn advance_to_next_leaf(&mut self) -> Result<bool> {
+		if let Some(leaf) = &self.current_leaf {
+			if leaf.next_leaf == 0 {
+				return Ok(false);
+			}
+
+			let node = self.tree.read_node(leaf.next_leaf)?;
+
+			match node.as_ref() {
+				NodeType::Leaf(next_leaf) => {
+					self.current_leaf = Some(next_leaf.clone());
+					self.current_idx = 0;
+					Ok(true)
+				}
+				_ => Err(BPlusTreeError::InvalidNodeType),
+			}
+		} else {
+			Ok(false)
+		}
+	}
+
+	/// Load the previous leaf using the doubly-linked list
+	fn retreat_to_prev_leaf(&mut self) -> Result<bool> {
+		if let Some(leaf) = &self.current_leaf {
+			if leaf.prev_leaf == 0 {
+				return Ok(false);
+			}
+
+			let node = self.tree.read_node(leaf.prev_leaf)?;
+
+			match node.as_ref() {
+				NodeType::Leaf(prev_leaf) => {
+					self.current_leaf = Some(prev_leaf.clone());
+					self.current_idx = prev_leaf.keys.len().saturating_sub(1);
+					Ok(true)
+				}
+				_ => Err(BPlusTreeError::InvalidNodeType),
+			}
+		} else {
+			Ok(false)
+		}
+	}
+}
+
+impl<F: VfsFile> LSMIterator for BPlusTreeIterator<'_, F> {
+	/// Seek to first key >= target.
+	/// Target is an encoded internal key.
+	fn seek(&mut self, target: &[u8]) -> crate::error::Result<bool> {
+		self.exhausted = false;
+
+		// Navigate to the leaf that might contain the target
+		self.navigate_to_key(target).map_err(|e| crate::error::Error::BPlusTree(e.to_string()))?;
+
+		if let Some(leaf) = &self.current_leaf {
+			// Binary search for first key >= target
+			self.current_idx = leaf
+				.keys
+				.partition_point(|k| self.tree.compare.compare(k, target) == Ordering::Less);
+
+			// If we're past the end of this leaf, advance to next
+			if self.current_idx >= leaf.keys.len()
+				&& !self
+					.advance_to_next_leaf()
+					.map_err(|e| crate::error::Error::BPlusTree(e.to_string()))?
+			{
+				self.exhausted = true;
+				return Ok(false);
+			}
+		}
+
+		Ok(self.is_valid())
+	}
+
+	/// Seek to first entry.
+	fn seek_first(&mut self) -> crate::error::Result<bool> {
+		self.exhausted = false;
+
+		self.navigate_to_first_leaf().map_err(|e| crate::error::Error::BPlusTree(e.to_string()))?;
+		self.current_idx = 0;
+
+		// Handle empty tree or empty first leaf
+		if let Some(leaf) = &self.current_leaf {
+			if leaf.keys.is_empty() {
+				// Try to find first non-empty leaf
+				while self
+					.advance_to_next_leaf()
+					.map_err(|e| crate::error::Error::BPlusTree(e.to_string()))?
+				{
+					if let Some(l) = &self.current_leaf {
+						if !l.keys.is_empty() {
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		Ok(self.is_valid())
+	}
+
+	/// Seek to last entry.
+	fn seek_last(&mut self) -> crate::error::Result<bool> {
+		self.exhausted = false;
+
+		self.navigate_to_last_leaf().map_err(|e| crate::error::Error::BPlusTree(e.to_string()))?;
+
+		if let Some(leaf) = &self.current_leaf {
+			if leaf.keys.is_empty() {
+				// Try to find last non-empty leaf
+				while self
+					.retreat_to_prev_leaf()
+					.map_err(|e| crate::error::Error::BPlusTree(e.to_string()))?
+				{
+					if let Some(l) = &self.current_leaf {
+						if !l.keys.is_empty() {
+							self.current_idx = l.keys.len() - 1;
+							break;
+						}
+					}
+				}
+			} else {
+				self.current_idx = leaf.keys.len() - 1;
+			}
+		}
+
+		Ok(self.is_valid())
+	}
+
+	/// Move to next entry.
+	fn next(&mut self) -> crate::error::Result<bool> {
+		// Auto-position on first call (following TableIterator pattern)
+		if !self.is_valid() && !self.exhausted {
+			return self.seek_first();
+		}
+
+		if !self.is_valid() {
+			return Ok(false);
+		}
+
+		self.current_idx += 1;
+
+		// Check if we need to advance to next leaf
+		if let Some(leaf) = &self.current_leaf {
+			if self.current_idx >= leaf.keys.len()
+				&& !self
+					.advance_to_next_leaf()
+					.map_err(|e| crate::error::Error::BPlusTree(e.to_string()))?
+			{
+				self.exhausted = true;
+				return Ok(false);
+			}
+		}
+
+		Ok(self.is_valid())
+	}
+
+	/// Move to previous entry.
+	fn prev(&mut self) -> crate::error::Result<bool> {
+		// Auto-position on first call (following TableIterator pattern)
+		if !self.is_valid() && !self.exhausted {
+			return self.seek_last();
+		}
+
+		if !self.is_valid() {
+			return Ok(false);
+		}
+
+		if self.current_idx == 0 {
+			// Need to retreat to previous leaf
+			if !self
+				.retreat_to_prev_leaf()
+				.map_err(|e| crate::error::Error::BPlusTree(e.to_string()))?
+			{
+				self.exhausted = true;
+				return Ok(false);
+			}
+		} else {
+			self.current_idx -= 1;
+		}
+
+		Ok(self.is_valid())
+	}
+
+	/// Check if positioned on valid entry.
+	fn valid(&self) -> bool {
+		self.is_valid()
+	}
+
+	/// Get current key (zero-copy).
+	/// The BPlusTree stores encoded internal keys directly.
+	fn key(&self) -> InternalKeyRef<'_> {
+		debug_assert!(self.is_valid());
+		let leaf = self.current_leaf.as_ref().expect("valid() should be true");
+		InternalKeyRef::from_encoded(&leaf.keys[self.current_idx])
+	}
+
+	/// Get current value (zero-copy).
+	fn value_encoded(&self) -> crate::error::Result<&[u8]> {
+		debug_assert!(self.is_valid());
+		let leaf = self.current_leaf.as_ref().expect("valid() should be true");
+		Ok(&leaf.values[self.current_idx])
+	}
+}
+
+impl<F: VfsFile> BPlusTree<F> {
+	/// Creates a new cursor-based iterator implementing LSMIterator.
+	/// The iterator starts unpositioned; call seek(), seek_first(), or
+	/// seek_last() to position it.
+	pub fn internal_iterator(&self) -> BPlusTreeIterator<'_, F> {
+		BPlusTreeIterator::new(self)
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use std::fs::File;
@@ -3098,6 +3498,7 @@ mod tests {
 	use test_log::test;
 
 	use super::*;
+	use crate::{BytewiseComparator, InternalKey, InternalKeyKind, TimestampComparator};
 
 	#[derive(Clone)]
 	struct TestComparator;
@@ -3201,9 +3602,9 @@ mod tests {
 		let mut tree = create_test_tree(true);
 
 		// Test insertions
-		tree.insert(b"key1".to_vec(), b"value1".to_vec()).unwrap();
-		tree.insert(b"key2".to_vec(), b"value2".to_vec()).unwrap();
-		tree.insert(b"key3".to_vec(), b"value3".to_vec()).unwrap();
+		tree.insert(b"key1", b"value1").unwrap();
+		tree.insert(b"key2", b"value2").unwrap();
+		tree.insert(b"key3", b"value3").unwrap();
 
 		// Test retrievals
 		assert_eq!(tree.get(b"key1").unwrap().unwrap().as_ref(), b"value1");
@@ -3523,7 +3924,7 @@ mod tests {
 	#[test]
 	fn test_single_insert_search() {
 		let mut tree = create_test_tree(true);
-		tree.insert(b"key1".to_vec(), b"value1".to_vec()).unwrap();
+		tree.insert(b"key1", b"value1").unwrap();
 		assert_eq!(tree.get(b"key1").unwrap().as_deref(), Some(b"value1".as_ref()));
 	}
 
@@ -3532,12 +3933,12 @@ mod tests {
 		let mut tree = create_test_tree(true);
 
 		// Insert multiple keys to ensure we're working with a leaf node
-		tree.insert(b"key1".to_vec(), b"value1".to_vec()).unwrap();
-		tree.insert(b"key2".to_vec(), b"value2".to_vec()).unwrap();
-		tree.insert(b"key3".to_vec(), b"value3".to_vec()).unwrap();
+		tree.insert(b"key1", b"value1").unwrap();
+		tree.insert(b"key2", b"value2").unwrap();
+		tree.insert(b"key3", b"value3").unwrap();
 
 		// Update existing key in the same leaf
-		tree.insert(b"key2".to_vec(), b"updated_value2".to_vec()).unwrap();
+		tree.insert(b"key2", b"updated_value2").unwrap();
 
 		// Verify the update
 		assert_eq!(tree.get(b"key1").unwrap().as_deref(), Some(b"value1".as_ref()));
@@ -3550,17 +3951,17 @@ mod tests {
 		let mut tree = create_test_tree(true);
 
 		// Insert initial key
-		tree.insert(b"key".to_vec(), b"value1".to_vec()).unwrap();
+		tree.insert(b"key", b"value1").unwrap();
 		assert_eq!(tree.get(b"key").unwrap().as_deref(), Some(b"value1".as_ref()));
 
 		// Update multiple times
-		tree.insert(b"key".to_vec(), b"value2".to_vec()).unwrap();
+		tree.insert(b"key", b"value2").unwrap();
 		assert_eq!(tree.get(b"key").unwrap().as_deref(), Some(b"value2".as_ref()));
 
-		tree.insert(b"key".to_vec(), b"value3".to_vec()).unwrap();
+		tree.insert(b"key", b"value3").unwrap();
 		assert_eq!(tree.get(b"key").unwrap().as_deref(), Some(b"value3".as_ref()));
 
-		tree.insert(b"key".to_vec(), b"final_value".to_vec()).unwrap();
+		tree.insert(b"key", b"final_value").unwrap();
 		assert_eq!(tree.get(b"key").unwrap().as_deref(), Some(b"final_value".as_ref()));
 	}
 
@@ -3569,18 +3970,18 @@ mod tests {
 		let mut tree = create_test_tree(true);
 
 		// Insert initial keys to create some tree structure
-		tree.insert(b"key1".to_vec(), b"value1".to_vec()).unwrap();
-		tree.insert(b"key2".to_vec(), b"value2".to_vec()).unwrap();
-		tree.insert(b"key3".to_vec(), b"value3".to_vec()).unwrap();
+		tree.insert(b"key1", b"value1").unwrap();
+		tree.insert(b"key2", b"value2").unwrap();
+		tree.insert(b"key3", b"value3").unwrap();
 
 		// Get initial tree stats
 		let (height_before, nodes_before, keys_before, leaves_before) =
 			tree.calculate_tree_stats().unwrap();
 
 		// Update existing keys - should not create new nodes
-		tree.insert(b"key1".to_vec(), b"updated_value1".to_vec()).unwrap();
-		tree.insert(b"key2".to_vec(), b"updated_value2".to_vec()).unwrap();
-		tree.insert(b"key3".to_vec(), b"updated_value3".to_vec()).unwrap();
+		tree.insert(b"key1", b"updated_value1").unwrap();
+		tree.insert(b"key2", b"updated_value2").unwrap();
+		tree.insert(b"key3", b"updated_value3").unwrap();
 
 		// Get stats after updates
 		let (height_after, nodes_after, keys_after, leaves_after) =
@@ -3635,7 +4036,7 @@ mod tests {
 		let keys = vec![b"b".to_vec(), b"d".to_vec(), b"f".to_vec(), b"h".to_vec(), b"j".to_vec()];
 
 		for key in &keys {
-			tree.insert(key.clone(), b"value".to_vec()).unwrap();
+			tree.insert(key.clone(), b"value").unwrap();
 		}
 
 		// Delete middle key to force predecessor/successor use
@@ -3659,7 +4060,7 @@ mod tests {
 		}
 
 		for key in &keys {
-			tree.insert(key.clone(), b"value".to_vec()).unwrap();
+			tree.insert(key.clone(), b"value").unwrap();
 		}
 
 		// Delete first and last keys in sequence
@@ -3710,7 +4111,7 @@ mod tests {
 			assert_eq!(tree.get(b"mango")?, None, "Non-existent key found unexpectedly");
 
 			// Add new data and verify
-			tree.insert(b"mango".to_vec(), b"orange".to_vec())?;
+			tree.insert(b"mango", b"orange")?;
 			assert_eq!(
 				tree.get(b"mango")?.as_ref().map(|b| b.as_ref()),
 				Some(b"orange".as_ref()),
@@ -3739,9 +4140,9 @@ mod tests {
 		// Insert test data
 		{
 			let mut tree = BPlusTree::disk(path, Arc::new(TestComparator))?;
-			tree.insert(b"one".to_vec(), b"1".to_vec())?;
-			tree.insert(b"two".to_vec(), b"2".to_vec())?;
-			tree.insert(b"three".to_vec(), b"3".to_vec())?;
+			tree.insert(b"one", b"1")?;
+			tree.insert(b"two", b"2")?;
+			tree.insert(b"three", b"3")?;
 		}
 
 		// Delete and verify
@@ -3769,9 +4170,9 @@ mod tests {
 	fn test_concurrent_operations() {
 		let mut tree = create_test_tree(true);
 		// Insert and delete same key repeatedly
-		tree.insert(b"key".to_vec(), b"v1".to_vec()).unwrap();
+		tree.insert(b"key", b"v1").unwrap();
 		tree.delete(b"key").unwrap();
-		tree.insert(b"key".to_vec(), b"v2".to_vec()).unwrap();
+		tree.insert(b"key", b"v2").unwrap();
 		assert_eq!(tree.get(b"key").unwrap().as_deref(), Some(b"v2".as_ref()));
 	}
 
@@ -3783,7 +4184,7 @@ mod tests {
 		// Create and immediately drop
 		{
 			let mut tree = BPlusTree::disk(path, Arc::new(TestComparator)).unwrap();
-			tree.insert(b"test".to_vec(), b"value".to_vec()).unwrap();
+			tree.insert(b"test", b"value").unwrap();
 			// Explicit drop before end of scope
 			drop(tree);
 		}
@@ -3801,7 +4202,7 @@ mod tests {
 		let path = file.path();
 
 		let mut tree = BPlusTree::disk(path, Arc::new(TestComparator)).unwrap();
-		tree.insert(b"close".to_vec(), b"test".to_vec()).unwrap();
+		tree.insert(b"close", b"test").unwrap();
 		tree.close().unwrap(); // Explicit close
 	}
 
@@ -3927,7 +4328,8 @@ mod tests {
 		}
 
 		// Test range 3-7
-		let results = tree.range(&serialize_u32(3), &serialize_u32(7)).unwrap();
+		let results =
+			tree.range(serialize_u32(3).as_slice()..=serialize_u32(7).as_slice()).unwrap();
 		let expected: Vec<_> = (3..=7).map(|i| (i, i * 10)).collect();
 		assert_eq!(
 			results.into_iter().map(|res| deserialize_pair(res.unwrap())).collect::<Vec<_>>(),
@@ -3946,7 +4348,8 @@ mod tests {
 		}
 
 		// Test range 5-15
-		let results = tree.range(&serialize_u32(5), &serialize_u32(15)).unwrap();
+		let results =
+			tree.range(serialize_u32(5).as_slice()..=serialize_u32(15).as_slice()).unwrap();
 		let expected: Vec<_> = (5..=15).map(|i| (i, i * 10)).collect();
 		assert_eq!(
 			results.into_iter().map(|res| deserialize_pair(res.unwrap())).collect::<Vec<_>>(),
@@ -3963,7 +4366,10 @@ mod tests {
 			tree.insert(serialize_u32(i), serialize_u32(i * 10)).unwrap();
 		}
 
-		let results: Vec<_> = tree.range(&serialize_u32(1), &serialize_u32(10)).unwrap().collect();
+		let results: Vec<_> = tree
+			.range(serialize_u32(1).as_slice()..=serialize_u32(10).as_slice())
+			.unwrap()
+			.collect();
 
 		assert_eq!(results.len(), 10);
 	}
@@ -3978,7 +4384,8 @@ mod tests {
 		}
 
 		// Start > end should return empty
-		let results: Vec<_> = tree.range(&serialize_u32(3), &serialize_u32(1)).unwrap().collect();
+		let results: Vec<_> =
+			tree.range(serialize_u32(3).as_slice()..serialize_u32(1).as_slice()).unwrap().collect();
 		assert!(results.is_empty());
 	}
 
@@ -3993,7 +4400,8 @@ mod tests {
 		}
 
 		// Range covering missing start/end
-		let results = tree.range(&serialize_u32(2), &serialize_u32(9)).unwrap();
+		let results =
+			tree.range(serialize_u32(2).as_slice()..=serialize_u32(9).as_slice()).unwrap();
 		let expected = vec![3, 5, 7, 9];
 		assert_eq!(
 			results
@@ -4012,11 +4420,17 @@ mod tests {
 		tree.insert(serialize_u32(5), vec![]).unwrap();
 
 		// Single key range
-		let results: Vec<_> = tree.range(&serialize_u32(5), &serialize_u32(5)).unwrap().collect();
+		let results: Vec<_> = tree
+			.range(serialize_u32(5).as_slice()..=serialize_u32(5).as_slice())
+			.unwrap()
+			.collect();
 		assert_eq!(results.len(), 1);
 
 		// Non-existent exact range
-		let results: Vec<_> = tree.range(&serialize_u32(3), &serialize_u32(3)).unwrap().collect();
+		let results: Vec<_> = tree
+			.range(serialize_u32(3).as_slice()..=serialize_u32(3).as_slice())
+			.unwrap()
+			.collect();
 		assert!(results.is_empty());
 	}
 
@@ -4039,7 +4453,8 @@ mod tests {
 		tree.insert(serialize_u32(15), vec![]).unwrap();
 
 		// Test range scan
-		let results = tree.range(&serialize_u32(5), &serialize_u32(15)).unwrap();
+		let results =
+			tree.range(serialize_u32(5).as_slice()..=serialize_u32(15).as_slice()).unwrap();
 		let expected = vec![5, 6, 8, 9, 10, 12, 15];
 		assert_eq!(
 			results
@@ -4053,11 +4468,11 @@ mod tests {
 	#[test]
 	fn test_range() {
 		let mut tree = create_test_tree(true);
-		tree.insert(b"key1".to_vec(), b"value1".to_vec()).unwrap();
-		tree.insert(b"key3".to_vec(), b"value3".to_vec()).unwrap();
-		tree.insert(b"key2".to_vec(), b"value2".to_vec()).unwrap();
+		tree.insert(b"key1", b"value1").unwrap();
+		tree.insert(b"key3", b"value3").unwrap();
+		tree.insert(b"key2", b"value2").unwrap();
 
-		let mut iter = tree.range(b"key2", b"key3").unwrap();
+		let mut iter = tree.range(b"key2".as_slice()..=b"key3".as_slice()).unwrap();
 		let (k1, v1) = iter.next().unwrap().unwrap();
 		assert_eq!((k1.as_ref(), v1.as_ref()), (b"key2".as_ref(), b"value2".as_ref()));
 		let (k2, v2) = iter.next().unwrap().unwrap();
@@ -4068,9 +4483,9 @@ mod tests {
 	#[test]
 	fn test_range_empty() {
 		let mut tree = create_test_tree(true);
-		tree.insert(b"a".to_vec(), b"1".to_vec()).unwrap();
-		tree.insert(b"c".to_vec(), b"3".to_vec()).unwrap();
-		let mut iter = tree.range(b"b", b"b").unwrap();
+		tree.insert(b"a", b"1").unwrap();
+		tree.insert(b"c", b"3").unwrap();
+		let mut iter = tree.range(b"b".as_slice()..b"b".as_slice()).unwrap();
 		assert!(iter.next().is_none());
 	}
 
@@ -4087,7 +4502,7 @@ mod tests {
 		// Range scan from key_05009 to key_05500
 		let start = b"key_05000";
 		let end = b"key_05500";
-		let mut iter = tree.range(start, end).unwrap();
+		let mut iter = tree.range(start.as_slice()..=end.as_slice()).unwrap();
 		for i in 5000..=5500 {
 			let expected_key = format!("key_{:05}", i).into_bytes();
 			let expected_value = format!("value_{:05}", i).into_bytes();
@@ -4940,5 +5355,862 @@ mod tests {
 			assert!(result.is_some(), "Key {:?} should exist", key);
 			assert_eq!(&result.unwrap(), expected_value);
 		}
+	}
+
+	// ==================== BPlusTreeIterator Tests ====================
+
+	// Helper to create an encoded internal key for testing
+	fn make_internal_key(user_key: &[u8], seq_num: u64) -> Vec<u8> {
+		InternalKey::new(
+			user_key.to_vec(),
+			seq_num,
+			InternalKeyKind::Set,
+			seq_num, // use seq_num as timestamp for simplicity
+		)
+		.encode()
+	}
+
+	// Helper to collect all entries from an iterator (forward)
+	fn collect_forward(iter: &mut BPlusTreeIterator<'_, std::fs::File>) -> Vec<(Vec<u8>, Vec<u8>)> {
+		let mut result = Vec::new();
+		if !iter.seek_first().unwrap() {
+			return result;
+		}
+		while iter.valid() {
+			result.push((iter.key().user_key().to_vec(), iter.value().unwrap()));
+			if !iter.next().unwrap() {
+				break;
+			}
+		}
+		result
+	}
+
+	// Helper to collect all entries from an iterator (backward)
+	fn collect_backward(
+		iter: &mut BPlusTreeIterator<'_, std::fs::File>,
+	) -> Vec<(Vec<u8>, Vec<u8>)> {
+		let mut result = Vec::new();
+		if !iter.seek_last().unwrap() {
+			return result;
+		}
+		while iter.valid() {
+			result.push((iter.key().user_key().to_vec(), iter.value().unwrap()));
+			if !iter.prev().unwrap() {
+				break;
+			}
+		}
+		result
+	}
+
+	// ========== Empty Tree Tests ==========
+
+	#[test]
+	fn test_internal_iterator_empty_tree() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		let mut iter = tree.internal_iterator();
+
+		// All positioning operations should return false on empty tree
+		assert!(!iter.seek_first().unwrap());
+		assert!(!iter.valid());
+
+		assert!(!iter.seek_last().unwrap());
+		assert!(!iter.valid());
+
+		assert!(!iter.seek(b"any_key").unwrap());
+		assert!(!iter.valid());
+	}
+
+	#[test]
+	fn test_internal_iterator_empty_tree_next_prev() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		let mut iter = tree.internal_iterator();
+
+		// next() on unpositioned empty iterator should try seek_first and fail
+		assert!(!iter.next().unwrap());
+		assert!(!iter.valid());
+
+		// prev() on unpositioned empty iterator should try seek_last and fail
+		let mut iter2 = tree.internal_iterator();
+		assert!(!iter2.prev().unwrap());
+		assert!(!iter2.valid());
+	}
+
+	// ========== Single Element Tests ==========
+
+	#[test]
+	fn test_internal_iterator_single_element_seek_first() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"only_key", 1), b"only_value").unwrap();
+
+		let mut iter = tree.internal_iterator();
+		assert!(iter.seek_first().unwrap());
+		assert!(iter.valid());
+		assert_eq!(iter.key().user_key(), b"only_key");
+		assert_eq!(iter.value_encoded().unwrap(), b"only_value");
+	}
+
+	#[test]
+	fn test_internal_iterator_single_element_seek_last() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"only_key", 1), b"only_value").unwrap();
+
+		let mut iter = tree.internal_iterator();
+		assert!(iter.seek_last().unwrap());
+		assert!(iter.valid());
+		assert_eq!(iter.key().user_key(), b"only_key");
+		assert_eq!(iter.value_encoded().unwrap(), b"only_value");
+	}
+
+	#[test]
+	fn test_internal_iterator_single_element_next_exhausts() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"only_key", 1), b"only_value").unwrap();
+
+		let mut iter = tree.internal_iterator();
+		assert!(iter.seek_first().unwrap());
+		assert!(iter.valid());
+
+		// next() should exhaust the iterator
+		assert!(!iter.next().unwrap());
+		assert!(!iter.valid());
+	}
+
+	#[test]
+	fn test_internal_iterator_single_element_prev_exhausts() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"only_key", 1), b"only_value").unwrap();
+
+		let mut iter = tree.internal_iterator();
+		assert!(iter.seek_first().unwrap());
+		assert!(iter.valid());
+
+		// prev() at first element should exhaust the iterator
+		assert!(!iter.prev().unwrap());
+		assert!(!iter.valid());
+	}
+
+	// ========== Forward Iteration Tests ==========
+
+	#[test]
+	fn test_internal_iterator_forward_basic() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"aaa", 1), b"val1").unwrap();
+		tree.insert(make_internal_key(b"bbb", 2), b"val2").unwrap();
+		tree.insert(make_internal_key(b"ccc", 3), b"val3").unwrap();
+
+		let mut iter = tree.internal_iterator();
+		let collected = collect_forward(&mut iter);
+
+		assert_eq!(collected.len(), 3);
+		assert_eq!(collected[0], (b"aaa".to_vec(), b"val1".to_vec()));
+		assert_eq!(collected[1], (b"bbb".to_vec(), b"val2".to_vec()));
+		assert_eq!(collected[2], (b"ccc".to_vec(), b"val3".to_vec()));
+	}
+
+	#[test]
+	fn test_internal_iterator_forward_ordering() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		// Insert in random order
+		tree.insert(make_internal_key(b"charlie", 1), b"3").unwrap();
+		tree.insert(make_internal_key(b"alpha", 2), b"1").unwrap();
+		tree.insert(make_internal_key(b"delta", 3), b"4").unwrap();
+		tree.insert(make_internal_key(b"bravo", 4), b"2").unwrap();
+
+		let mut iter = tree.internal_iterator();
+		let collected = collect_forward(&mut iter);
+
+		// Should be in sorted order
+		assert_eq!(collected.len(), 4);
+		assert_eq!(collected[0].0, b"alpha".to_vec());
+		assert_eq!(collected[1].0, b"bravo".to_vec());
+		assert_eq!(collected[2].0, b"charlie".to_vec());
+		assert_eq!(collected[3].0, b"delta".to_vec());
+	}
+
+	// ========== Backward Iteration Tests ==========
+
+	#[test]
+	fn test_internal_iterator_backward_basic() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"aaa", 1), b"val1").unwrap();
+		tree.insert(make_internal_key(b"bbb", 2), b"val2").unwrap();
+		tree.insert(make_internal_key(b"ccc", 3), b"val3").unwrap();
+
+		let mut iter = tree.internal_iterator();
+		let collected = collect_backward(&mut iter);
+
+		// Should be in reverse order
+		assert_eq!(collected.len(), 3);
+		assert_eq!(collected[0], (b"ccc".to_vec(), b"val3".to_vec()));
+		assert_eq!(collected[1], (b"bbb".to_vec(), b"val2".to_vec()));
+		assert_eq!(collected[2], (b"aaa".to_vec(), b"val1".to_vec()));
+	}
+
+	#[test]
+	fn test_internal_iterator_backward_from_seek_last() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		for i in 0..10 {
+			let key = format!("key{:02}", i);
+			let val = format!("val{:02}", i);
+			tree.insert(make_internal_key(key.as_bytes(), i as u64), val.as_bytes()).unwrap();
+		}
+
+		let mut iter = tree.internal_iterator();
+		assert!(iter.seek_last().unwrap());
+		assert_eq!(iter.key().user_key(), b"key09");
+
+		// Iterate backward
+		let mut count = 0;
+		while iter.valid() {
+			count += 1;
+			if !iter.prev().unwrap() {
+				break;
+			}
+		}
+		assert_eq!(count, 10);
+	}
+
+	// ========== Bidirectional Movement Tests ==========
+
+	#[test]
+	fn test_internal_iterator_next_then_prev() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"aaa", 1), b"val1").unwrap();
+		tree.insert(make_internal_key(b"bbb", 2), b"val2").unwrap();
+		tree.insert(make_internal_key(b"ccc", 3), b"val3").unwrap();
+
+		let mut iter = tree.internal_iterator();
+		assert!(iter.seek_first().unwrap());
+		assert_eq!(iter.key().user_key(), b"aaa");
+
+		// Move forward
+		assert!(iter.next().unwrap());
+		assert_eq!(iter.key().user_key(), b"bbb");
+
+		// Move back
+		assert!(iter.prev().unwrap());
+		assert_eq!(iter.key().user_key(), b"aaa");
+	}
+
+	#[test]
+	fn test_internal_iterator_prev_then_next() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"aaa", 1), b"val1").unwrap();
+		tree.insert(make_internal_key(b"bbb", 2), b"val2").unwrap();
+		tree.insert(make_internal_key(b"ccc", 3), b"val3").unwrap();
+
+		let mut iter = tree.internal_iterator();
+		assert!(iter.seek_last().unwrap());
+		assert_eq!(iter.key().user_key(), b"ccc");
+
+		// Move backward
+		assert!(iter.prev().unwrap());
+		assert_eq!(iter.key().user_key(), b"bbb");
+
+		// Move forward
+		assert!(iter.next().unwrap());
+		assert_eq!(iter.key().user_key(), b"ccc");
+	}
+
+	#[test]
+	fn test_internal_iterator_zigzag_movement() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		for i in 0..5 {
+			let key = format!("key{}", i);
+			tree.insert(make_internal_key(key.as_bytes(), i as u64), b"value").unwrap();
+		}
+
+		let mut iter = tree.internal_iterator();
+		assert!(iter.seek_first().unwrap());
+
+		// key0 -> key1 -> key0 -> key1 -> key2 -> key1
+		assert_eq!(iter.key().user_key(), b"key0");
+		assert!(iter.next().unwrap());
+		assert_eq!(iter.key().user_key(), b"key1");
+		assert!(iter.prev().unwrap());
+		assert_eq!(iter.key().user_key(), b"key0");
+		assert!(iter.next().unwrap());
+		assert_eq!(iter.key().user_key(), b"key1");
+		assert!(iter.next().unwrap());
+		assert_eq!(iter.key().user_key(), b"key2");
+		assert!(iter.prev().unwrap());
+		assert_eq!(iter.key().user_key(), b"key1");
+	}
+
+	#[test]
+	fn test_internal_iterator_full_forward_then_backward() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		let keys: Vec<String> = (0..10).map(|i| format!("key{:02}", i)).collect();
+		for (i, key) in keys.iter().enumerate() {
+			tree.insert(make_internal_key(key.as_bytes(), i as u64), b"value").unwrap();
+		}
+
+		let mut iter = tree.internal_iterator();
+
+		// Forward to end
+		assert!(iter.seek_first().unwrap());
+		let mut forward_keys = vec![iter.key().user_key().to_vec()];
+		while iter.next().unwrap() {
+			forward_keys.push(iter.key().user_key().to_vec());
+		}
+		assert_eq!(forward_keys.len(), 10);
+
+		// Now backward to start
+		assert!(iter.seek_last().unwrap());
+		let mut backward_keys = vec![iter.key().user_key().to_vec()];
+		while iter.prev().unwrap() {
+			backward_keys.push(iter.key().user_key().to_vec());
+		}
+		assert_eq!(backward_keys.len(), 10);
+
+		// Should be reverse of each other
+		backward_keys.reverse();
+		assert_eq!(forward_keys, backward_keys);
+	}
+
+	// ========== Seek Behavior Tests ==========
+
+	#[test]
+	fn test_internal_iterator_seek_exact_match() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"aaa", 1), b"val1").unwrap();
+		tree.insert(make_internal_key(b"bbb", 2), b"val2").unwrap();
+		tree.insert(make_internal_key(b"ccc", 3), b"val3").unwrap();
+
+		let mut iter = tree.internal_iterator();
+
+		// Seek to exact key
+		assert!(iter.seek(&make_internal_key(b"bbb", 0)).unwrap());
+		assert!(iter.valid());
+		assert_eq!(iter.key().user_key(), b"bbb");
+		assert_eq!(iter.value_encoded().unwrap(), b"val2");
+	}
+
+	#[test]
+	fn test_internal_iterator_seek_between_keys() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"aaa", 1), b"val1").unwrap();
+		tree.insert(make_internal_key(b"ccc", 2), b"val3").unwrap();
+		tree.insert(make_internal_key(b"eee", 3), b"val5").unwrap();
+
+		let mut iter = tree.internal_iterator();
+
+		// Seek to key between aaa and ccc - should land on ccc
+		assert!(iter.seek(&make_internal_key(b"bbb", 0)).unwrap());
+		assert!(iter.valid());
+		assert_eq!(iter.key().user_key(), b"ccc");
+
+		// Seek to key between ccc and eee - should land on eee
+		assert!(iter.seek(&make_internal_key(b"ddd", 0)).unwrap());
+		assert!(iter.valid());
+		assert_eq!(iter.key().user_key(), b"eee");
+	}
+
+	#[test]
+	fn test_internal_iterator_seek_before_first() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"bbb", 1), b"val2").unwrap();
+		tree.insert(make_internal_key(b"ccc", 2), b"val3").unwrap();
+
+		let mut iter = tree.internal_iterator();
+
+		// Seek before first key should land on first
+		assert!(iter.seek(&make_internal_key(b"aaa", 0)).unwrap());
+		assert!(iter.valid());
+		assert_eq!(iter.key().user_key(), b"bbb");
+	}
+
+	#[test]
+	fn test_internal_iterator_seek_after_last() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"aaa", 1), b"val1").unwrap();
+		tree.insert(make_internal_key(b"bbb", 2), b"val2").unwrap();
+
+		let mut iter = tree.internal_iterator();
+
+		// Seek past last key should fail
+		assert!(!iter.seek(&make_internal_key(b"zzz", 0)).unwrap());
+		assert!(!iter.valid());
+	}
+
+	#[test]
+	fn test_internal_iterator_seek_then_iterate_forward() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		for i in 0..10 {
+			let key = format!("key{:02}", i);
+			tree.insert(make_internal_key(key.as_bytes(), i as u64), b"value").unwrap();
+		}
+
+		let mut iter = tree.internal_iterator();
+
+		// Seek to middle
+		assert!(iter.seek(&make_internal_key(b"key05", 0)).unwrap());
+		assert_eq!(iter.key().user_key(), b"key05");
+
+		// Iterate forward from there
+		let mut count = 1; // already at key05
+		while iter.next().unwrap() {
+			count += 1;
+		}
+		assert_eq!(count, 5); // key05, key06, key07, key08, key09
+	}
+
+	#[test]
+	fn test_internal_iterator_seek_then_iterate_backward() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		for i in 0..10 {
+			let key = format!("key{:02}", i);
+			tree.insert(make_internal_key(key.as_bytes(), i as u64), b"value").unwrap();
+		}
+
+		let mut iter = tree.internal_iterator();
+
+		// Seek to middle
+		assert!(iter.seek(&make_internal_key(b"key05", 0)).unwrap());
+		assert_eq!(iter.key().user_key(), b"key05");
+
+		// Iterate backward from there
+		let mut count = 1; // already at key05
+		while iter.prev().unwrap() {
+			count += 1;
+		}
+		assert_eq!(count, 6); // key05, key04, key03, key02, key01, key00
+	}
+
+	#[test]
+	fn test_internal_iterator_multiple_seeks() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"aaa", 1), b"val1").unwrap();
+		tree.insert(make_internal_key(b"bbb", 2), b"val2").unwrap();
+		tree.insert(make_internal_key(b"ccc", 3), b"val3").unwrap();
+		tree.insert(make_internal_key(b"ddd", 4), b"val4").unwrap();
+		tree.insert(make_internal_key(b"eee", 5), b"val5").unwrap();
+
+		let mut iter = tree.internal_iterator();
+
+		// Multiple seeks should all work
+		assert!(iter.seek(&make_internal_key(b"ccc", 0)).unwrap());
+		assert_eq!(iter.key().user_key(), b"ccc");
+
+		assert!(iter.seek(&make_internal_key(b"aaa", 0)).unwrap());
+		assert_eq!(iter.key().user_key(), b"aaa");
+
+		assert!(iter.seek(&make_internal_key(b"eee", 0)).unwrap());
+		assert_eq!(iter.key().user_key(), b"eee");
+
+		assert!(iter.seek(&make_internal_key(b"bbb", 0)).unwrap());
+		assert_eq!(iter.key().user_key(), b"bbb");
+	}
+
+	// ========== Exhaustion and State Tests ==========
+
+	#[test]
+	fn test_internal_iterator_exhaustion_forward() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"key1", 1), b"val1").unwrap();
+		tree.insert(make_internal_key(b"key2", 2), b"val2").unwrap();
+
+		let mut iter = tree.internal_iterator();
+		assert!(iter.seek_first().unwrap());
+
+		// Exhaust the iterator
+		assert!(iter.next().unwrap()); // key1 -> key2
+		assert!(!iter.next().unwrap()); // past end
+		assert!(!iter.valid());
+
+		// Multiple next() calls should continue returning false
+		for _ in 0..3 {
+			assert!(!iter.next().unwrap());
+			assert!(!iter.valid());
+		}
+	}
+
+	#[test]
+	fn test_internal_iterator_exhaustion_backward() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"key1", 1), b"val1").unwrap();
+		tree.insert(make_internal_key(b"key2", 2), b"val2").unwrap();
+
+		let mut iter = tree.internal_iterator();
+		assert!(iter.seek_last().unwrap());
+
+		// Exhaust the iterator backward
+		assert!(iter.prev().unwrap()); // key2 -> key1
+		assert!(!iter.prev().unwrap()); // before start
+		assert!(!iter.valid());
+
+		// Multiple prev() calls should continue returning false
+		for _ in 0..3 {
+			assert!(!iter.prev().unwrap());
+			assert!(!iter.valid());
+		}
+	}
+
+	#[test]
+	fn test_internal_iterator_seek_resets_after_exhaustion() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"aaa", 1), b"val1").unwrap();
+		tree.insert(make_internal_key(b"bbb", 2), b"val2").unwrap();
+		tree.insert(make_internal_key(b"ccc", 3), b"val3").unwrap();
+
+		let mut iter = tree.internal_iterator();
+
+		// Exhaust forward
+		assert!(iter.seek_first().unwrap());
+		while iter.next().unwrap() {}
+		assert!(!iter.valid());
+
+		// seek() should reset and work
+		assert!(iter.seek(&make_internal_key(b"bbb", 0)).unwrap());
+		assert!(iter.valid());
+		assert_eq!(iter.key().user_key(), b"bbb");
+	}
+
+	#[test]
+	fn test_internal_iterator_seek_first_resets_after_exhaustion() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"aaa", 1), b"val1").unwrap();
+		tree.insert(make_internal_key(b"bbb", 2), b"val2").unwrap();
+
+		let mut iter = tree.internal_iterator();
+
+		// Exhaust forward
+		assert!(iter.seek_first().unwrap());
+		while iter.next().unwrap() {}
+		assert!(!iter.valid());
+
+		// seek_first() should reset and work
+		assert!(iter.seek_first().unwrap());
+		assert!(iter.valid());
+		assert_eq!(iter.key().user_key(), b"aaa");
+	}
+
+	#[test]
+	fn test_internal_iterator_seek_last_resets_after_exhaustion() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"aaa", 1), b"val1").unwrap();
+		tree.insert(make_internal_key(b"bbb", 2), b"val2").unwrap();
+
+		let mut iter = tree.internal_iterator();
+
+		// Exhaust backward
+		assert!(iter.seek_last().unwrap());
+		while iter.prev().unwrap() {}
+		assert!(!iter.valid());
+
+		// seek_last() should reset and work
+		assert!(iter.seek_last().unwrap());
+		assert!(iter.valid());
+		assert_eq!(iter.key().user_key(), b"bbb");
+	}
+
+	// ========== Large Dataset Tests ==========
+
+	#[test]
+	fn test_internal_iterator_many_entries() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		let count = 100;
+		for i in 0..count {
+			let key = format!("key{:04}", i);
+			let val = format!("val{:04}", i);
+			tree.insert(make_internal_key(key.as_bytes(), i as u64), val.as_bytes()).unwrap();
+		}
+
+		let mut iter = tree.internal_iterator();
+		let collected = collect_forward(&mut iter);
+
+		assert_eq!(collected.len(), count);
+
+		// Verify ordering
+		for (i, item) in collected.iter().enumerate().take(count) {
+			let expected_key = format!("key{:04}", i);
+			assert_eq!(item.0, expected_key.as_bytes());
+		}
+	}
+
+	#[test]
+	fn test_internal_iterator_many_entries_backward() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		let count = 100;
+		for i in 0..count {
+			let key = format!("key{:04}", i);
+			let val = format!("val{:04}", i);
+			tree.insert(make_internal_key(key.as_bytes(), i as u64), val.as_bytes()).unwrap();
+		}
+
+		let mut iter = tree.internal_iterator();
+		let collected = collect_backward(&mut iter);
+
+		assert_eq!(collected.len(), count);
+
+		// Verify reverse ordering
+		for (i, item) in collected.iter().enumerate().take(count) {
+			let expected_key = format!("key{:04}", count - 1 - i);
+			assert_eq!(item.0, expected_key.as_bytes());
+		}
+	}
+
+	#[test]
+	fn test_internal_iterator_forward_backward_match() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		for i in 0..50 {
+			let key = format!("key{:04}", i);
+			tree.insert(make_internal_key(key.as_bytes(), i as u64), b"value").unwrap();
+		}
+
+		let mut iter = tree.internal_iterator();
+		let forward = collect_forward(&mut iter);
+
+		let mut iter2 = tree.internal_iterator();
+		let mut backward = collect_backward(&mut iter2);
+		backward.reverse();
+
+		assert_eq!(forward, backward);
+	}
+
+	#[test]
+	fn test_internal_iterator_across_multiple_leaves() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		// Insert enough data to span multiple leaves
+		// Larger values force more leaf splits
+		for i in 0..100 {
+			let key = format!("key{:04}", i);
+			let val = vec![i as u8; 100]; // 100 byte values
+			tree.insert(make_internal_key(key.as_bytes(), i as u64), &val).unwrap();
+		}
+
+		let mut iter = tree.internal_iterator();
+
+		// Forward iteration
+		assert!(iter.seek_first().unwrap());
+		let mut forward_count = 1;
+		while iter.next().unwrap() {
+			forward_count += 1;
+		}
+		assert_eq!(forward_count, 100);
+
+		// Backward iteration
+		assert!(iter.seek_last().unwrap());
+		let mut backward_count = 1;
+		while iter.prev().unwrap() {
+			backward_count += 1;
+		}
+		assert_eq!(backward_count, 100);
+	}
+
+	#[test]
+	fn test_internal_iterator_bidirectional_at_leaf_boundary() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		// Insert data that will span multiple leaves
+		for i in 0..50 {
+			let key = format!("key{:04}", i);
+			let val = vec![0u8; 200]; // Large values to force splits
+			tree.insert(make_internal_key(key.as_bytes(), i as u64), &val).unwrap();
+		}
+
+		let mut iter = tree.internal_iterator();
+
+		// Navigate to somewhere in the middle
+		assert!(iter.seek(&make_internal_key(b"key0025", 0)).unwrap());
+
+		// Zigzag across potential leaf boundaries
+		for _ in 0..10 {
+			let key_before = iter.key().user_key().to_vec();
+			if iter.next().unwrap() {
+				let key_after = iter.key().user_key().to_vec();
+				assert!(iter.prev().unwrap());
+				assert_eq!(iter.key().user_key(), key_before.as_slice());
+				assert!(iter.next().unwrap());
+				assert_eq!(iter.key().user_key(), key_after.as_slice());
+			} else {
+				break;
+			}
+		}
+	}
+
+	// ========== Edge Cases ==========
+
+	#[test]
+	fn test_internal_iterator_two_elements() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"first", 1), b"val1").unwrap();
+		tree.insert(make_internal_key(b"second", 2), b"val2").unwrap();
+
+		let mut iter = tree.internal_iterator();
+
+		// Forward
+		assert!(iter.seek_first().unwrap());
+		assert_eq!(iter.key().user_key(), b"first");
+		assert!(iter.next().unwrap());
+		assert_eq!(iter.key().user_key(), b"second");
+		assert!(!iter.next().unwrap());
+
+		// Backward
+		assert!(iter.seek_last().unwrap());
+		assert_eq!(iter.key().user_key(), b"second");
+		assert!(iter.prev().unwrap());
+		assert_eq!(iter.key().user_key(), b"first");
+		assert!(!iter.prev().unwrap());
+	}
+
+	#[test]
+	fn test_internal_iterator_values_correct() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		tree.insert(make_internal_key(b"key1", 1), b"value_one").unwrap();
+		tree.insert(make_internal_key(b"key2", 2), b"value_two").unwrap();
+		tree.insert(make_internal_key(b"key3", 3), b"value_three").unwrap();
+
+		let mut iter = tree.internal_iterator();
+		assert!(iter.seek_first().unwrap());
+
+		assert_eq!(iter.value_encoded().unwrap(), b"value_one");
+		assert!(iter.next().unwrap());
+		assert_eq!(iter.value_encoded().unwrap(), b"value_two");
+		assert!(iter.next().unwrap());
+		assert_eq!(iter.value_encoded().unwrap(), b"value_three");
+	}
+
+	#[test]
+	fn test_internal_iterator_multiple_independent_iterators() {
+		let temp_file = NamedTempFile::new().unwrap();
+		let mut tree = BPlusTree::disk(temp_file.path(), Arc::new(TestComparator)).unwrap();
+
+		for i in 0..10 {
+			let key = format!("key{:02}", i);
+			tree.insert(make_internal_key(key.as_bytes(), i as u64), b"value").unwrap();
+		}
+
+		// Create two iterators
+		let mut iter1 = tree.internal_iterator();
+		let mut iter2 = tree.internal_iterator();
+
+		// Position them at different locations
+		assert!(iter1.seek_first().unwrap());
+		assert!(iter2.seek_last().unwrap());
+
+		assert_eq!(iter1.key().user_key(), b"key00");
+		assert_eq!(iter2.key().user_key(), b"key09");
+
+		// Moving one shouldn't affect the other
+		assert!(iter1.next().unwrap());
+		assert_eq!(iter1.key().user_key(), b"key01");
+		assert_eq!(iter2.key().user_key(), b"key09"); // Unchanged
+
+		assert!(iter2.prev().unwrap());
+		assert_eq!(iter2.key().user_key(), b"key08");
+		assert_eq!(iter1.key().user_key(), b"key01"); // Unchanged
+	}
+
+	#[test]
+	fn test_full_range_scan_with_timestamp_comparator() {
+		let file = NamedTempFile::new().unwrap();
+		let cmp = Arc::new(TimestampComparator::new(Arc::new(BytewiseComparator::default())));
+		let mut tree = BPlusTree::disk(file.path(), cmp).unwrap();
+
+		// Insert entries out of timestamp order to prove the comparator sorts correctly.
+		// TimestampComparator orders: user_key ASC, timestamp DESC.
+		let entries = [
+			(b"alpha".to_vec(), 300u64),
+			(b"alpha".to_vec(), 100),
+			(b"alpha".to_vec(), 200),
+			(b"beta".to_vec(), 500),
+			(b"beta".to_vec(), 400),
+			(b"gamma".to_vec(), 600),
+		];
+
+		for (user_key, ts) in &entries {
+			let key = InternalKey::new(user_key.clone(), *ts, InternalKeyKind::Set, *ts).encode();
+			tree.insert(key, format!("{}-{}", String::from_utf8_lossy(user_key), ts).into_bytes())
+				.unwrap();
+		}
+
+		// Full range scan using the empty-slice pattern
+		let empty: &[u8] = &[];
+		let iter = tree.range(empty..).unwrap();
+		let results: Vec<(Vec<u8>, u64)> = iter
+			.map(|entry| {
+				let (k, _v) = entry.unwrap();
+				let ikey = InternalKey::decode(&k);
+				(ikey.user_key.clone(), ikey.timestamp)
+			})
+			.collect();
+
+		// Expected: user_key ASC, timestamp DESC within each user_key
+		let expected: Vec<(Vec<u8>, u64)> = vec![
+			(b"alpha".to_vec(), 300),
+			(b"alpha".to_vec(), 200),
+			(b"alpha".to_vec(), 100),
+			(b"beta".to_vec(), 500),
+			(b"beta".to_vec(), 400),
+			(b"gamma".to_vec(), 600),
+		];
+
+		assert_eq!(results, expected);
 	}
 }

@@ -1,3 +1,88 @@
+//! # Block Implementation
+//!
+//! This module implements the basic building block of SSTables: the Block.
+//! Blocks are the fundamental unit of I/O and caching in the storage engine.
+//!
+//! ## Block Format Overview
+//!
+//! ```text
+//! ┌────────────────────────────────────────────────────────────────────────┐
+//! │                           Block Layout                                  │
+//! ├────────────────────────────────────────────────────────────────────────┤
+//! │                                                                         │
+//! │  ┌─────────────────────────────────────────────────────────────────┐   │
+//! │  │                     Key-Value Entries                            │   │
+//! │  │  ┌───────────────────────────────────────────────────────────┐  │   │
+//! │  │  │ Entry 0: shared=0 | unshared=5 | vlen=6 | "apple" | "fruit" │  │   │
+//! │  │  ├───────────────────────────────────────────────────────────┤  │   │
+//! │  │  │ Entry 1: shared=2 | unshared=5 | vlen=6 | "ricot" | "fruit" │  │   │
+//! │  │  │          (full key = "ap" + "ricot" = "apricot")            │  │   │
+//! │  │  ├───────────────────────────────────────────────────────────┤  │   │
+//! │  │  │ Entry 2: shared=0 | unshared=6 | vlen=9 | "banana"| "yellow" │  │   │
+//! │  │  │          ↑ RESTART POINT (shared=0, full key stored)        │  │   │
+//! │  │  └───────────────────────────────────────────────────────────┘  │   │
+//! │  └─────────────────────────────────────────────────────────────────┘   │
+//! │                                                                         │
+//! │  ┌─────────────────────────────────────────────────────────────────┐   │
+//! │  │                     Restart Points Array                         │   │
+//! │  │  [0x0000]  ← Offset of entry 0 (always 0)                       │   │
+//! │  │  [0x001A]  ← Offset of entry 2 (first entry after restart)      │   │
+//! │  └─────────────────────────────────────────────────────────────────┘   │
+//! │                                                                         │
+//! │  ┌─────────────────────────────────────────────────────────────────┐   │
+//! │  │  Number of Restarts: 2                                          │   │
+//! │  └─────────────────────────────────────────────────────────────────┘   │
+//! │                                                                         │
+//! └────────────────────────────────────────────────────────────────────────┘
+//! ```
+//!
+//! ## Entry Format
+//!
+//! Each key-value entry is encoded as:
+//!
+//! ```text
+//! +----------------+------------------+------------------+
+//! | shared (varint)| unshared (varint)| value_len (varint)|
+//! +----------------+------------------+------------------+
+//! | key_suffix (unshared bytes)       | value            |
+//! +-----------------------------------+------------------+
+//! ```
+//!
+//! - `shared`: Number of bytes shared with previous key
+//! - `unshared`: Number of new bytes in this key
+//! - `value_len`: Length of the value
+//! - `key_suffix`: The non-shared portion of the key
+//! - `value`: The value bytes
+//!
+//! ## Prefix Compression Example
+//!
+//! ```text
+//! Key sequence: "apple", "apricot", "banana"
+//! Restart interval: 2
+//!
+//! Entry 0 (restart point):
+//!   shared=0, unshared=5, key_suffix="apple"
+//!   Full key: "" + "apple" = "apple"
+//!
+//! Entry 1:
+//!   shared=2, unshared=5, key_suffix="ricot"
+//!   Full key: "ap" + "ricot" = "apricot"
+//!
+//! Entry 2 (new restart point because interval=2):
+//!   shared=0, unshared=6, key_suffix="banana"
+//!   Full key: "" + "banana" = "banana"
+//! ```
+//!
+//! ## Why Restart Points?
+//!
+//! Restart points enable efficient binary search within the block:
+//!
+//! 1. Binary search on restart points (O(log R) where R = restart count)
+//! 2. Linear scan from closest restart point (O(I) where I = restart interval)
+//!
+//! Without restart points, we'd need to scan from the beginning
+//! to reconstruct keys due to prefix compression.
+
 use std::cmp::Ordering;
 use std::sync::Arc;
 
@@ -5,12 +90,28 @@ use integer_encoding::{FixedInt, FixedIntWriter, VarInt, VarIntWriter};
 
 use crate::error::{Error, Result};
 use crate::sstable::error::SSTableError;
-use crate::sstable::InternalKey;
-use crate::data::DataRef;
-use crate::{Comparator, InternalKeyComparator, Key, Value};
+use crate::{Comparator, InternalKey, InternalKeyRef, LSMIterator};
 
-pub(crate) type BlockData = DataRef;
+/// Raw block data as a byte vector.
+pub(crate) type BlockData = Vec<u8>;
 
+// =============================================================================
+// BLOCK HANDLE
+// =============================================================================
+
+/// Points to a block's location in a file.
+///
+/// ## Fields
+///
+/// - `offset`: Byte offset from start of file
+/// - `size`: Size of the block data (excluding trailer)
+///
+/// ## Encoding
+///
+/// BlockHandles are varint-encoded for space efficiency:
+/// ```text
+/// [varint: offset] [varint: size]
+/// ```
 #[derive(Eq, PartialEq, Debug, Clone, Default)]
 pub(crate) struct BlockHandle {
 	pub(crate) offset: usize,
@@ -33,7 +134,7 @@ impl BlockHandle {
 		self.size
 	}
 
-	/// Appends varint encoded offset and size into given `dst`
+	/// Encodes the handle into a byte slice, returns bytes written.
 	#[inline]
 	pub(crate) fn encode_into(&self, dst: &mut [u8]) -> usize {
 		assert!(dst.len() >= self.offset.required_space() + self.size.required_space());
@@ -43,17 +144,16 @@ impl BlockHandle {
 		off + size
 	}
 
-	/// Returns bytes for a encoded BlockHandle
+	/// Encodes the handle into a new byte vector.
 	#[inline]
 	pub(crate) fn encode(&self) -> Vec<u8> {
 		let cap = self.offset.required_space() + self.size.required_space();
-		let mut v = vec![0; cap]; // Initialize v with zeros
+		let mut v = vec![0; cap];
 		self.encode_into(&mut v);
 		v
 	}
 
-	/// Decodes a block handle from `from` and returns a block handle
-	/// together with how many bytes were read from the slice.
+	/// Decodes a handle from bytes, returns (handle, bytes_read).
 	pub(crate) fn decode(src: &[u8]) -> Result<(Self, usize)> {
 		let (off, offsize) = usize::decode_var(src).ok_or(SSTableError::CorruptedBlockHandle)?;
 		let (sz, szsize) =
@@ -69,31 +169,44 @@ impl BlockHandle {
 	}
 }
 
-/// `Block` is consist of one or more key/value entries and a block trailer.
-/// Block entry shares key prefix with its preceding key until a `restart`
-/// point reached. A block should contains at least one restart point.
-/// First restart point are always zero.
+// =============================================================================
+// BLOCK
+// =============================================================================
+
+/// An immutable block of sorted key-value pairs.
 ///
-/// Block Key/value entry:
+/// ## Structure
 ///
-/// ```text
-/// 
-///     +-------+---------+-----------+---------+--------------------+--------------+----------------+
-///     | shared (varint) | not shared (varint) | value len (varint) | key (varlen) | value (varlen) |
-///     +-----------------+---------------------+--------------------+--------------+----------------+
+/// A block consists of:
+/// 1. Key-value entries with prefix compression
+/// 2. Restart points array (4 bytes each)
+/// 3. Number of restart points (4 bytes)
+///
+/// ## Usage
+///
+/// ```ignore
+/// let block = Block::new(data, comparator);
+/// let mut iter = block.iter()?;
+/// iter.seek_internal(target)?;
+/// if iter.is_valid() {
+///     println!("Found: {:?} = {:?}", iter.key(), iter.value());
+/// }
 /// ```
 #[derive(Clone)]
 pub(crate) struct Block {
+	/// Raw block data
 	pub(crate) block: BlockData,
-	comparator: Arc<InternalKeyComparator>,
+	/// Comparator for key ordering
+	comparator: Arc<dyn Comparator>,
 }
 
 impl Block {
-	pub(crate) fn iter(&self, keys_only: bool) -> Result<BlockIterator> {
-		BlockIterator::new(Arc::clone(&self.comparator), self.block.clone(), keys_only)
-	}
-
-	pub(crate) fn new(data: BlockData, comparator: Arc<InternalKeyComparator>) -> Block {
+	/// Creates a new Block from raw data.
+	///
+	/// ## Panics
+	///
+	/// Panics if data is too small (< 4 bytes for restart count).
+	pub(crate) fn new(data: BlockData, comparator: Arc<dyn Comparator>) -> Block {
 		assert!(data.len() > 4);
 		Block {
 			block: data,
@@ -101,128 +214,156 @@ impl Block {
 		}
 	}
 
+	/// Creates an iterator over this block.
+	pub(crate) fn iter(&self) -> Result<BlockIterator> {
+		BlockIterator::new(Arc::clone(&self.comparator), self.block.clone())
+	}
+
 	pub(crate) fn size(&self) -> usize {
 		self.block.len()
 	}
 }
 
+// =============================================================================
+// BLOCK WRITER
+// =============================================================================
+
+/// Builds a block from key-value pairs.
+///
+/// ## Usage Example
+///
+/// ```ignore
+/// let mut writer = BlockWriter::new(4096, 16, comparator);
+/// writer.add(b"apple", b"fruit")?;
+/// writer.add(b"apricot", b"fruit")?;
+/// writer.add(b"banana", b"yellow")?;
+/// let data = writer.finish()?;
+/// ```
+///
+/// ## Prefix Compression
+///
+/// Keys are prefix-compressed against the previous key:
+///
+/// ```text
+/// add("apple"):   shared=0, suffix="apple"   (restart point)
+/// add("apricot"): shared=2, suffix="ricot"   (shares "ap")
+/// add("banana"):  shared=0, suffix="banana"  (new restart point)
+/// ```
+///
+/// ## Restart Interval
+///
+/// Every `restart_interval` entries, compression restarts (shared=0).
+/// This enables binary search within the block.
 pub(crate) struct BlockWriter {
+	/// How often to create restart points
 	restart_interval: usize,
-	// Destination buffer
+	/// Destination buffer for encoded entries
 	buffer: Vec<u8>,
-	// Restart points
+	/// Offsets of restart points
 	restart_points: Vec<u32>,
-	// Number of entries since last restart
+	/// Entries since last restart
 	restart_counter: usize,
+	/// Last key added (for prefix calculation)
 	pub(crate) last_key: Vec<u8>,
+	/// Total entries in block
 	num_entries: usize,
-	/// internal key comparator
-	internal_cmp: Arc<InternalKeyComparator>,
+	/// Key comparator
+	internal_cmp: Arc<dyn Comparator>,
 }
 
-// Block writer logic:
-//
-// 1. Initial state:
-// buffer: []
-// restart_points: [0]
-// restart_counter: 0
-// last_key: []
-//
-// 2. Add key-value pair ("apple", "fruit"):
-// - No shared prefix with previous key.
-// - Serialized entry: [0, 5, 5, "apple", "fruit"].
-//
-// buffer: [0, 5, 5, "apple", "fruit"]
-// restart_points: [0]
-// restart_counter: 1
-// last_key: "apple"
-//
-// Buffer length: 22 (4 byte for shared prefix, 4 byte for non-shared key
-// length, 4 byte for value length, 5 bytes for key, 5 bytes for value)
-//
-// 3. Add key-value pair ("apricot", "fruit"):
-// - Shared prefix with previous key "apple" is "ap" (2 characters).
-// - Serialized entry: [2, 4, 5, "ricot", "fruit"].
-//
-// buffer: [0, 5, 5, "apple", "fruit", 2, 4, 5, "ricot", "fruit"]
-// restart_points: [0]
-// restart_counter: 2
-// last_key: "apricot"
-//
-// Buffer length: 44 (22 bytes + 4 byte for shared prefix, 4 byte for non-shared
-// key length, 4 byte for value length, 5 bytes for key suffix, 5 bytes for
-// value)
-//
-// 4. Add key-value pair ("banana", "fruit"):
-// - No shared prefix with previous key.
-// - Restart compression (new restart point at this position).
-// - Serialized entry: [0, 6, 5, "banana", "fruit"].
-//
-// buffer: [0, 5, 5, "apple", "fruit", 2, 4, 5, "ricot", "fruit", 0, 6, 5,
-// "banana", "fruit"] restart_points: [0, 26]  // new restart point at offset 25
-// restart_counter: 1
-// last_key: "banana"
-//
-// Buffer length: 67 (44 bytes + 4 byte for shared prefix, 4 byte for non-shared
-// key length, 4 byte for value length, 6 bytes for key, 5 bytes for value)
-//
-//
-// Finalize:
-//
-// 67 + 4 * restart_points.len() + 4 = 67 + 4 * 2 + 4 = 79 bytes
-//
 impl BlockWriter {
-	// Constructor for BlockWriter
 	pub(crate) fn new(
 		size: usize,
 		restart_interval: usize,
-		internal_cmp: Arc<InternalKeyComparator>,
+		internal_cmp: Arc<dyn Comparator>,
 	) -> Self {
 		BlockWriter {
 			internal_cmp,
 			buffer: Vec::with_capacity(size),
 			restart_interval,
-			restart_points: vec![0],
+			restart_points: vec![0], // First entry is always a restart point
 			last_key: Vec::new(),
 			restart_counter: 0,
 			num_entries: 0,
 		}
 	}
 
-	// Adds a key-value pair to the block
+	/// Adds a key-value pair to the block.
+	///
+	/// ## Requirements
+	///
+	/// - Keys MUST be added in strictly ascending order
+	/// - Violating order returns an error
+	///
+	/// ## Process
+	///
+	/// ```text
+	/// 1. Validate key > last_key
+	/// 2. If restart_counter >= restart_interval:
+	///    - Record new restart point
+	///    - Reset restart_counter
+	///    - shared_prefix = 0
+	/// 3. Else:
+	///    - Calculate shared_prefix with last_key
+	/// 4. Encode and append entry
+	/// 5. Update last_key and counters
+	/// ```
+	///
+	/// ## Example
+	///
+	/// ```text
+	/// Initial: buffer=[], restarts=[0], counter=0, last_key=""
+	///
+	/// add("apple", "fruit"):
+	///   counter=0 < interval=2, so use prefix compression
+	///   shared=0 (no previous key)
+	///   Encode: [0, 5, 5, "apple", "fruit"]
+	///   buffer=[...22 bytes...], restarts=[0], counter=1
+	///
+	/// add("apricot", "fruit"):
+	///   counter=1 < interval=2, use prefix compression
+	///   shared=2 ("ap" shared with "apple")
+	///   Encode: [2, 5, 5, "ricot", "fruit"]
+	///   buffer=[...44 bytes...], restarts=[0], counter=2
+	///
+	/// add("banana", "yellow"):
+	///   counter=2 >= interval=2, NEW RESTART POINT
+	///   Record restart at current offset (44)
+	///   shared=0 (restart means no prefix sharing)
+	///   Encode: [0, 6, 6, "banana", "yellow"]
+	///   buffer=[...66 bytes...], restarts=[0, 44], counter=1
+	/// ```
 	pub(crate) fn add(&mut self, key: &[u8], value: &[u8]) -> Result<()> {
-		// println!("key: {:?}", key);
-		// Ensure the restart counter is within the interval limit
 		assert!(self.restart_counter <= self.restart_interval);
 
-		// Ensure keys are added in sorted order
+		// Validate key ordering
 		if !self.buffer.is_empty() {
 			let cmp_result = self.internal_cmp.compare(self.last_key.as_slice(), key);
 			if cmp_result != Ordering::Less {
-				// Decode both keys for detailed logging
+				// Detailed logging for debugging
 				let last_internal_key = InternalKey::decode(self.last_key.as_slice());
 				let current_internal_key = InternalKey::decode(key);
 
 				log::error!(
 					"[BLOCK] Key ordering violation detected!\n\
-					Last Key:\n\
-					  User Key (UTF-8): {:?}\n\
-					  User Key (bytes): {:?}\n\
-					  Seq Num: {}\n\
-					  Kind: {:?}\n\
-					  Timestamp: {}\n\
-					  Full InternalKey: {:?}\n\
-					Current Key:\n\
-					  User Key (UTF-8): {:?}\n\
-					  User Key (bytes): {:?}\n\
-					  Seq Num: {}\n\
-					  Kind: {:?}\n\
-					  Timestamp: {}\n\
-					  Full InternalKey: {:?}\n\
-					Comparison result: {:?} (expected: Less)\n\
-					Block state:\n\
-					  Entries in block: {}\n\
-					  Buffer size: {} bytes",
+                    Last Key:\n\
+                      User Key (UTF-8): {:?}\n\
+                      User Key (bytes): {:?}\n\
+                      Seq Num: {}\n\
+                      Kind: {:?}\n\
+                      Timestamp: {}\n\
+                      Full InternalKey: {:?}\n\
+                    Current Key:\n\
+                      User Key (UTF-8): {:?}\n\
+                      User Key (bytes): {:?}\n\
+                      Seq Num: {}\n\
+                      Kind: {:?}\n\
+                      Timestamp: {}\n\
+                      Full InternalKey: {:?}\n\
+                    Comparison result: {:?} (expected: Less)\n\
+                    Block state:\n\
+                      Entries in block: {}\n\
+                      Buffer size: {} bytes",
 					String::from_utf8_lossy(&last_internal_key.user_key),
 					last_internal_key.user_key.as_slice(),
 					last_internal_key.seq_num(),
@@ -244,36 +385,42 @@ impl BlockWriter {
 			assert!(cmp_result == Ordering::Less);
 		}
 
+		// Determine shared prefix length
 		let mut shared_prefix_length = 0;
 		if self.restart_counter < self.restart_interval {
-			// Calculate shared prefix length with previous key
+			// Continue compression from last key
 			shared_prefix_length = self.calculate_shared_prefix_length(&self.last_key, key);
 		} else {
-			// Create a new restart point
+			// New restart point: no prefix sharing
 			self.restart_points.push(self.buffer.len() as u32);
 			self.restart_counter = 0;
 		}
 
-		// Write the key-value pair to the buffer
+		// Encode and write the entry
 		self.write_key_value_pair_to_buffer(shared_prefix_length, key, value)?;
 
-		// Update previous key to current key
+		// Update state
 		self.last_key.clear();
 		self.last_key.extend_from_slice(key);
-
-		// Update counters
 		self.restart_counter += 1;
 		self.num_entries += 1;
 
 		Ok(())
 	}
 
-	// Calculates the number of shared bytes between the last key and the new key
+	/// Calculates the number of shared prefix bytes between two keys.
 	fn calculate_shared_prefix_length(&self, a: &[u8], b: &[u8]) -> usize {
 		a.iter().zip(b.iter()).take_while(|&(a, b)| a == b).count()
 	}
 
-	// Writes the key-value pair to the buffer
+	/// Encodes and writes a key-value entry to the buffer.
+	///
+	/// ## Entry Format
+	///
+	/// ```text
+	/// [shared: varint] [unshared: varint] [value_len: varint]
+	/// [key_suffix: unshared bytes] [value: value_len bytes]
+	/// ```
 	fn write_key_value_pair_to_buffer(
 		&mut self,
 		shared_prefix_length: usize,
@@ -282,21 +429,29 @@ impl BlockWriter {
 	) -> Result<()> {
 		let non_shared_key_length = key.len() - shared_prefix_length;
 
-		// Write shared prefix length, non-shared key length, and value length as
-		// varints
+		// Write header (all varints)
 		self.buffer.write_varint(shared_prefix_length as u64)?;
 		self.buffer.write_varint(non_shared_key_length as u64)?;
 		self.buffer.write_varint(value.len() as u64)?;
-		// Write non-shared part of the key and the value
+
+		// Write key suffix (non-shared part)
 		self.buffer.extend_from_slice(&key[shared_prefix_length..]);
+
+		// Write value
 		self.buffer.extend_from_slice(value);
 
 		Ok(())
 	}
 
-	// Finalizes the block and returns the block data
+	/// Finalizes the block by appending restart points and count.
+	///
+	/// ## Final Layout
+	///
+	/// ```text
+	/// [entries...] [restart_0: u32] [restart_1: u32] ... [num_restarts: u32]
+	/// ```
 	pub(crate) fn finish(mut self) -> Result<BlockData> {
-		// 1. Append RESTARTS
+		// Append restart point offsets (fixed 4 bytes each)
 		for &r in self.restart_points.iter() {
 			self.buffer.write_fixedint(r).map_err(|e| {
 				let err = Error::Io(Arc::new(std::io::Error::other(format!(
@@ -308,48 +463,105 @@ impl BlockWriter {
 			})?;
 		}
 
-		// 2. Append N_RESTARTS
+		// Append number of restart points
 		self.buffer.write_fixedint(self.restart_points.len() as u32).expect("block write failed");
 
-		Ok(DataRef::from_heap(self.buffer.into()))
+		Ok(self.buffer)
 	}
 
-	// Estimates the current size of the block
+	/// Estimates the current size including restart array.
 	pub(crate) fn size_estimate(&self) -> usize {
 		self.buffer.len() + self.restart_points.len() * 4 + 4
 	}
 
-	// Returns the number of entries in the block
+	/// Returns the number of entries in the block.
 	pub(crate) fn entries(&self) -> usize {
 		self.num_entries
 	}
 }
 
+// =============================================================================
+// BLOCK ITERATOR
+// =============================================================================
+
+/// Iterates over entries in a block.
+///
+/// ## Seeking Algorithm
+///
+/// ```text
+/// seek("banana"):
+///
+/// Step 1: Binary search on restart points
+///   restarts = [0, 44]  (offsets of restart entries)
+///
+///   Decode key at restart[0]=0: "apple"
+///   "apple" < "banana"? Yes → search right
+///
+///   Decode key at restart[1]=44: "date"
+///   "date" < "banana"? No → search left
+///
+///   Binary search converges to restart[0]
+///
+/// Step 2: Linear scan from restart[0]
+///   Position at offset 0, decode "apple"
+///   "apple" < "banana"? Yes → continue
+///
+///   Advance to offset 22, decode "apricot"
+///   "apricot" < "banana"? Yes → continue
+///
+///   Advance to offset 44, decode "date"
+///   "date" < "banana"? No → STOP
+///
+/// Result: Iterator positioned at "date"
+/// ```
+///
+/// ## Key Reconstruction
+///
+/// Due to prefix compression, keys must be reconstructed:
+///
+/// ```text
+/// current_key starts empty: []
+///
+/// At entry (shared=0, unshared=5, suffix="apple"):
+///   current_key.truncate(0) → []
+///   current_key.extend("apple") → [apple]
+///
+/// At entry (shared=2, unshared=5, suffix="ricot"):
+///   current_key.truncate(2) → [ap]
+///   current_key.extend("ricot") → [apricot]
+/// ```
 pub(crate) struct BlockIterator {
+	/// Raw block data
 	block: BlockData,
+	/// Decoded restart point offsets
 	restart_points: Vec<u32>,
+	/// Current position in block
 	offset: usize,
+	/// Reconstructed current key
 	current_key: Vec<u8>,
-	/// offset of the current entry used for prev iteration
+	/// Offset where current entry starts (for prev())
 	current_entry_offset: usize,
+	/// Current restart point index
 	current_restart_index: usize,
+	/// Offset where entries end (start of restart array)
 	restart_offset: usize,
-	/// offset of value
+	/// Current value start offset
 	current_value_offset_start: usize,
+	/// Current value end offset
 	current_value_offset_end: usize,
-	/// internal key comparator
-	internal_cmp: Arc<InternalKeyComparator>,
-	/// When true, only return keys without allocating values
-	keys_only: bool,
+	/// Key comparator
+	internal_cmp: Arc<dyn Comparator>,
 }
 
 impl BlockIterator {
-	// Constructor for BlockIterator
-	pub(crate) fn new(
-		comparator: Arc<InternalKeyComparator>,
-		block: BlockData,
-		keys_only: bool,
-	) -> Result<Self> {
+	/// Creates a new iterator over a block.
+	///
+	/// ## Initialization
+	///
+	/// 1. Read number of restarts from last 4 bytes
+	/// 2. Calculate restart array offset
+	/// 3. Decode all restart point offsets
+	pub(crate) fn new(comparator: Arc<dyn Comparator>, block: BlockData) -> Result<Self> {
 		if block.len() < 4 {
 			let err = Error::from(SSTableError::BlockTooSmall {
 				size: block.len(),
@@ -359,12 +571,14 @@ impl BlockIterator {
 			return Err(err);
 		}
 
+		// Decode number of restarts from last 4 bytes
 		let num_restarts = u32::decode_fixed(&block[block.len() - 4..]).ok_or_else(|| {
 			Error::from(SSTableError::FailedToDecodeRestartCount {
 				block_size: block.len(),
 			})
 		})? as usize;
 
+		// Calculate where entry data ends (before restart array)
 		let restart_offset = block.len().checked_sub(4 * (num_restarts + 1)).ok_or_else(|| {
 			Error::from(SSTableError::InvalidRestartCount {
 				count: num_restarts,
@@ -372,6 +586,7 @@ impl BlockIterator {
 			})
 		})?;
 
+		// Decode all restart point offsets
 		let mut restart_points = vec![0; num_restarts];
 		for (i, restart_point) in restart_points.iter_mut().enumerate().take(num_restarts) {
 			let start_point = restart_offset + (i * 4);
@@ -405,14 +620,15 @@ impl BlockIterator {
 			current_value_offset_start: 0,
 			current_value_offset_end: 0,
 			internal_cmp: comparator,
-			keys_only,
 		})
 	}
 
+	/// Gets a restart point offset by index.
 	fn get_restart_point(&self, index: usize) -> usize {
 		self.restart_points[index] as usize
 	}
 
+	/// Positions the iterator at a restart point.
 	fn seek_to_restart_point(&mut self, restart_index: usize) {
 		self.current_restart_index = restart_index;
 		let offset = self.restart_points[restart_index] as usize;
@@ -420,12 +636,12 @@ impl BlockIterator {
 		self.current_entry_offset = offset;
 	}
 
-	// Decodes the shared prefix length, non-shared key length, and value size from
-	// the block
+	/// Decodes entry header: (shared, unshared, value_len, header_size).
 	fn decode_entry_lengths(&self, offset: usize) -> Result<(usize, usize, usize, usize)> {
 		let mut i = 0;
+
 		let (shared_prefix_length, shared_prefix_length_size) =
-			usize::decode_var(&self.block.as_slice()[offset..]).ok_or_else(|| {
+			usize::decode_var(&self.block[offset..]).ok_or_else(|| {
 				Error::from(SSTableError::FailedToDecodeSharedPrefix {
 					offset,
 				})
@@ -433,14 +649,14 @@ impl BlockIterator {
 		i += shared_prefix_length_size;
 
 		let (non_shared_key_length, non_shared_key_length_size) =
-			usize::decode_var(&self.block.as_slice()[offset + i..]).ok_or_else(|| {
+			usize::decode_var(&self.block[offset + i..]).ok_or_else(|| {
 				Error::from(SSTableError::FailedToDecodeNonSharedKeyLength {
 					offset: offset + i,
 				})
 			})?;
 		i += non_shared_key_length_size;
 
-		let (value_size, value_size_size) = usize::decode_var(&self.block.as_slice()[offset + i..])
+		let (value_size, value_size_size) = usize::decode_var(&self.block[offset + i..])
 			.ok_or_else(|| {
 				Error::from(SSTableError::FailedToDecodeValueSize {
 					offset: offset + i,
@@ -451,7 +667,20 @@ impl BlockIterator {
 		Ok((shared_prefix_length, non_shared_key_length, value_size, i))
 	}
 
-	// Read the current entry and seek to the next entry
+	/// Decodes current entry and advances offset to next entry.
+	///
+	/// ## Key Reconstruction
+	///
+	/// ```text
+	/// current_key = [previous key, possibly truncated]
+	/// shared_prefix = 2
+	/// key_suffix = "ricot"
+	///
+	/// current_key.truncate(2) → keeps first 2 bytes
+	/// current_key.extend("ricot") → appends suffix
+	///
+	/// Result: current_key = "apricot"
+	/// ```
 	fn seek_next_entry(&mut self) -> Result<()> {
 		if self.offset >= self.restart_offset {
 			return Err(Error::from(SSTableError::OffsetExceedsRestartOffset {
@@ -463,7 +692,7 @@ impl BlockIterator {
 		let (shared_prefix, non_shared_key, value_size, i) =
 			self.decode_entry_lengths(self.offset)?;
 
-		// Bounds validation: ensure we won't read past the restart_offset
+		// Bounds validation
 		let key_end =
 			self.offset.checked_add(i).and_then(|sum| sum.checked_add(non_shared_key)).ok_or_else(
 				|| {
@@ -492,11 +721,13 @@ impl BlockIterator {
 			return Err(err);
 		}
 
+		// Reconstruct key: truncate to shared prefix, then append suffix
 		self.current_key.truncate(shared_prefix);
-		self.current_key.extend_from_slice(&self.block.as_slice()[self.offset + i..key_end]);
+		self.current_key.extend_from_slice(&self.block[self.offset + i..key_end]);
 
 		self.offset = key_end;
 
+		// Track value location
 		self.current_value_offset_start = self.offset;
 		self.current_value_offset_end = self.offset + value_size;
 		self.offset = value_end;
@@ -504,6 +735,7 @@ impl BlockIterator {
 		Ok(())
 	}
 
+	/// Resets the iterator to initial state.
 	pub(crate) fn reset(&mut self) {
 		self.offset = 0;
 		self.current_restart_index = 0;
@@ -513,60 +745,72 @@ impl BlockIterator {
 	}
 }
 
-impl Iterator for BlockIterator {
-	type Item = Result<(Key, Value)>;
+// =============================================================================
+// INTERNAL ITERATOR IMPLEMENTATION
+// =============================================================================
 
-	fn next(&mut self) -> Option<Self::Item> {
-		match self.advance() {
-			Ok(true) => {
-				let value = if self.keys_only {
-					Vec::new()
-				} else {
-					self.block.as_slice()[self.current_value_offset_start..self.current_value_offset_end]
-						.to_vec()
-				};
-				Some(Ok((self.current_key.clone(), value)))
-			}
-			Ok(false) => None,
-			Err(e) => {
-				log::error!("[BLOCK] Iterator error in next(): {}", e);
-				Some(Err(e))
-			}
-		}
+impl LSMIterator for BlockIterator {
+	/// Seeks to the first entry >= target.
+	fn seek(&mut self, target: &[u8]) -> Result<bool> {
+		self.seek_internal(target)?;
+		Ok(self.is_valid())
 	}
-}
 
-impl DoubleEndedIterator for BlockIterator {
-	fn next_back(&mut self) -> Option<Self::Item> {
-		match self.prev() {
-			Ok(true) => {
-				let value = if self.keys_only {
-					Vec::new()
-				} else {
-					self.block.as_slice()[self.current_value_offset_start..self.current_value_offset_end]
-						.to_vec()
-				};
-				Some(Ok((self.current_key.clone(), value)))
-			}
-			Ok(false) => None,
-			Err(e) => {
-				log::error!("[BLOCK] Iterator error in next_back(): {}", e);
-				Some(Err(e))
-			}
+	/// Seeks to the first entry.
+	fn seek_first(&mut self) -> Result<bool> {
+		self.seek_to_first()?;
+		Ok(self.is_valid())
+	}
+
+	/// Seeks to the last entry.
+	fn seek_last(&mut self) -> Result<bool> {
+		self.seek_to_last()?;
+		Ok(self.is_valid())
+	}
+
+	/// Advances to the next entry.
+	fn next(&mut self) -> Result<bool> {
+		if !self.is_valid() {
+			return Ok(false);
 		}
+		self.advance()
+	}
+
+	/// Moves to the previous entry.
+	fn prev(&mut self) -> Result<bool> {
+		if !self.is_valid() {
+			return Ok(false);
+		}
+		self.prev_internal()
+	}
+
+	fn valid(&self) -> bool {
+		self.is_valid()
+	}
+
+	/// Returns the current key as an InternalKeyRef.
+	fn key(&self) -> InternalKeyRef<'_> {
+		debug_assert!(self.valid());
+		InternalKeyRef::from_encoded(&self.current_key)
+	}
+
+	/// Returns the current value.
+	fn value_encoded(&self) -> Result<&[u8]> {
+		debug_assert!(self.valid());
+		Ok(&self.block[self.current_value_offset_start..self.current_value_offset_end])
 	}
 }
 
 impl BlockIterator {
-	// Checks if the iterator is valid (has a current entry)
-	pub(crate) fn valid(&self) -> bool {
+	/// Checks if the iterator is positioned on a valid entry.
+	pub(crate) fn is_valid(&self) -> bool {
 		!self.current_key.is_empty()
 			&& self.current_value_offset_start != 0
 			&& self.current_value_offset_end != 0
 			&& self.offset <= self.restart_offset
 	}
 
-	// Move to the first entry
+	/// Positions at the first entry.
 	pub(crate) fn seek_to_first(&mut self) -> Result<()> {
 		if self.restart_points.is_empty() {
 			let err = Error::from(SSTableError::BlockHasNoRestartPoints);
@@ -575,16 +819,21 @@ impl BlockIterator {
 		}
 		self.seek_to_restart_point(0);
 
-		// Check if block has any entries before trying to decode
+		// Handle empty block
 		if self.offset >= self.restart_offset {
 			self.reset();
-			return Ok(()); // Empty block
+			return Ok(());
 		}
 
 		self.seek_next_entry()
 	}
 
-	// Move to the last entry
+	/// Positions at the last entry.
+	///
+	/// ## Algorithm
+	///
+	/// 1. Go to last restart point
+	/// 2. Scan forward to find last entry before restart array
 	pub(crate) fn seek_to_last(&mut self) -> Result<()> {
 		if self.restart_points.is_empty() {
 			self.reset();
@@ -592,24 +841,57 @@ impl BlockIterator {
 			log::error!("[BLOCK] {}", err);
 			return Err(err);
 		}
+
+		// Start from last restart point
 		self.seek_to_restart_point(self.restart_points.len() - 1);
 
+		// Scan to find the last entry
 		let mut last_entry_start = self.offset;
 		while self.offset < self.restart_offset {
 			last_entry_start = self.offset;
 			self.seek_next_entry()?;
 		}
 
-		// Set current_entry_offset to the start of the last entry
 		self.current_entry_offset = last_entry_start;
 		Ok(())
 	}
 
-	// Move to a specific key or the next larger key
-	pub(crate) fn seek(&mut self, target: &[u8]) -> Result<Option<()>> {
+	/// Seeks to first entry >= target using binary search + linear scan.
+	///
+	/// ## Algorithm
+	///
+	/// ```text
+	/// 1. Binary search restart points to find closest one < target
+	/// 2. Linear scan from that restart point until key >= target
+	/// ```
+	///
+	/// ## Example: seek("banana")
+	///
+	/// ```text
+	/// Block contents:
+	///   Entry 0 @ offset 0:  "apple"
+	///   Entry 1 @ offset 22: "apricot"
+	///   Entry 2 @ offset 44: "date"     ← restart point
+	///   Entry 3 @ offset 66: "elderberry"
+	///
+	/// restart_points = [0, 44]
+	///
+	/// Binary search:
+	///   left=0, right=1
+	///   mid=1, key at restart[1]="date"
+	///   "date" < "banana"? No → right=0
+	///   left=0, right=0 → converged at restart[0]
+	///
+	/// Linear scan from restart[0]:
+	///   "apple" < "banana"? Yes → continue
+	///   "apricot" < "banana"? Yes → continue
+	///   "date" < "banana"? No → STOP
+	///
+	/// Result: positioned at "date" (first key >= "banana")
+	/// ```
+	pub(crate) fn seek_internal(&mut self, target: &[u8]) -> Result<Option<()>> {
 		self.reset();
 
-		// Guard against empty blocks (corrupt or malformed)
 		if self.restart_points.is_empty() {
 			let err = Error::from(SSTableError::EmptyCorruptBlockSeek {
 				block_size: self.block.len(),
@@ -619,16 +901,19 @@ impl BlockIterator {
 			return Err(err);
 		}
 
+		// Binary search on restart points
 		let mut left = 0;
 		let mut right = self.restart_points.len() - 1;
 
-		// Binary search to find the closest restart point
 		while left < right {
 			let mid = (left + right).div_ceil(2);
 			self.seek_to_restart_point(mid);
+
+			// Decode key at this restart point
 			let (shared_prefix, non_shared_key, _, i) = self.decode_entry_lengths(self.offset)?;
 			let key_start = self.offset + i;
 			let key_end = key_start + shared_prefix + non_shared_key;
+
 			if key_end > self.block.len() {
 				let err = Error::from(SSTableError::KeyExtendsBeyondBounds {
 					offset: self.offset,
@@ -638,7 +923,8 @@ impl BlockIterator {
 				log::error!("[BLOCK] {}", err);
 				return Err(err);
 			}
-			let current_key = &self.block.as_slice()[key_start..key_end];
+
+			let current_key = &self.block[key_start..key_end];
 
 			match self.internal_cmp.compare(current_key, target) {
 				Ordering::Less => left = mid,
@@ -649,6 +935,7 @@ impl BlockIterator {
 		assert_eq!(left, right);
 		self.seek_to_restart_point(left);
 
+		// Linear scan from restart point
 		while self.advance()? {
 			if self.internal_cmp.compare(&self.current_key, target) != Ordering::Less {
 				break;
@@ -658,7 +945,7 @@ impl BlockIterator {
 		Ok(Some(()))
 	}
 
-	// Move to the next entry
+	/// Advances to the next entry.
 	pub(crate) fn advance(&mut self) -> Result<bool> {
 		if self.offset >= self.restart_offset {
 			self.reset();
@@ -675,15 +962,28 @@ impl BlockIterator {
 		}
 	}
 
-	// Move to the previous entry
-	pub(crate) fn prev(&mut self) -> Result<bool> {
+	/// Moves to the previous entry.
+	///
+	/// ## Challenge
+	///
+	/// Due to prefix compression, we can't decode entries backward.
+	/// We must re-scan from a restart point.
+	///
+	/// ## Algorithm
+	///
+	/// ```text
+	/// 1. Find the restart point at or before current position
+	/// 2. Scan forward from restart point
+	/// 3. Stop at entry just before original position
+	/// ```
+	pub(crate) fn prev_internal(&mut self) -> Result<bool> {
 		let original = self.current_entry_offset;
 		if original == 0 {
 			self.reset();
 			return Ok(false);
 		}
 
-		// Find the first restart point that is just less than the current offset
+		// Find restart point before current position
 		while self.get_restart_point(self.current_restart_index) >= original {
 			if self.current_restart_index == 0 {
 				self.offset = self.restart_points[self.current_restart_index] as usize;
@@ -694,822 +994,50 @@ impl BlockIterator {
 		}
 
 		self.seek_to_restart_point(self.current_restart_index);
-		// Iterate forward to find the entry just before the original position
+
+		// Scan forward to find entry just before original position
 		let mut prev_offset = self.offset;
 		loop {
 			match self.seek_next_entry() {
 				Ok(()) => {
 					if self.offset >= original {
-						// We overshot, so the previous entry starts at prev_offset
-						// Position at the previous entry and decode it
+						// Overshot: prev_offset is the entry we want
 						self.offset = prev_offset;
 						self.current_entry_offset = prev_offset;
-						self.seek_next_entry()?; // Decode the previous entry
+						self.seek_next_entry()?;
 						return Ok(true);
 					}
 					prev_offset = self.offset;
 				}
 				Err(e) => {
-					// Check if this is the expected "end of block" error
-					// vs corruption errors that should be propagated
 					if let Error::SSTable(SSTableError::OffsetExceedsRestartOffset {
 						..
 					}) = e
 					{
-						// Expected EOF - no previous entry found
+						// Expected EOF
 						return Ok(false);
 					}
-					// Corruption or other error - propagate it
 					return Err(e);
 				}
 			}
 		}
 	}
 
-	// Get the current key
-	#[inline]
-	pub(crate) fn key(&self) -> InternalKey {
-		InternalKey::decode(&self.current_key)
-	}
-
-	// Get the current value
-	#[inline]
-	pub(crate) fn value(&self) -> Value {
-		if self.keys_only {
-			Vec::new()
-		} else {
-			self.block.as_slice()[self.current_value_offset_start..self.current_value_offset_end].to_vec()
-		}
-	}
-
-	/// Returns the raw encoded key bytes without allocation
+	/// Returns the raw encoded key bytes.
 	#[inline]
 	pub(crate) fn key_bytes(&self) -> &[u8] {
 		&self.current_key
 	}
 
-	/// Returns the raw value bytes without allocation
+	/// Returns the raw value bytes.
 	#[inline]
 	pub(crate) fn value_bytes(&self) -> &[u8] {
-		&self.block.as_slice()[self.current_value_offset_start..self.current_value_offset_end]
+		&self.block[self.current_value_offset_start..self.current_value_offset_end]
 	}
 
-	/// Returns a zero-copy DataRef pointing to the value's location in the block.
-	#[cfg(test)]
-	pub(crate) fn value_dataref(&self) -> DataRef {
-		self.block.slice(
-			self.current_value_offset_start, 
-			self.current_value_offset_end - self.current_value_offset_start
-		)
-	}
-
-	/// Returns user key slice from current key without allocation
+	/// Returns just the user key portion.
 	#[inline]
 	pub(crate) fn user_key(&self) -> &[u8] {
 		InternalKey::user_key_from_encoded(&self.current_key)
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use test_log::test;
-
-	use super::*;
-	use crate::sstable::{InternalKey, InternalKeyKind};
-	use crate::Options;
-
-	fn generate_data() -> Vec<(&'static [u8], &'static [u8])> {
-		vec![
-			("key1".as_bytes(), "value1".as_bytes()),
-			("loooongkey1".as_bytes(), "value2".as_bytes()),
-			("medium_key2".as_bytes(), "value3".as_bytes()),
-			("pkey1".as_bytes(), "value".as_bytes()),
-			("pkey2".as_bytes(), "value".as_bytes()),
-			("pkey3".as_bytes(), "value".as_bytes()),
-		]
-	}
-
-	fn make_opts(block_restart_interval: Option<usize>) -> Arc<Options> {
-		let mut opt = Options::default();
-		if let Some(interval) = block_restart_interval {
-			opt.block_restart_interval = interval;
-		}
-		Arc::new(opt)
-	}
-
-	fn make_internal_key(key: &[u8], kind: InternalKeyKind) -> Vec<u8> {
-		InternalKey::new(key.to_vec(), 0, kind, 0).encode()
-	}
-
-	#[test]
-	fn test_block_empty() {
-		let o = make_opts(None);
-		let builder = BlockWriter::new(
-			o.block_size,
-			o.block_restart_interval,
-			Arc::clone(&o.internal_comparator),
-		);
-
-		let blockc = builder.finish().unwrap();
-		assert_eq!(blockc.len(), 8);
-		assert_eq!(blockc.as_slice(), &[0, 0, 0, 0, 1, 0, 0, 0]);
-
-		let mut block_iter = Block::new(blockc, o.internal_comparator.clone()).iter(false).unwrap();
-
-		let mut i = 0;
-		while block_iter.advance().unwrap() {
-			i += 1;
-		}
-
-		assert_eq!(i, 0);
-	}
-
-	#[test]
-	fn test_block_iter() {
-		let data = generate_data();
-		let o = make_opts(None);
-		let mut builder = BlockWriter::new(
-			o.block_size,
-			o.block_restart_interval,
-			Arc::clone(&o.internal_comparator),
-		);
-
-		for &(k, v) in data.iter() {
-			builder.add(&make_internal_key(k, InternalKeyKind::Set), v).unwrap();
-		}
-
-		let block_contents = builder.finish().unwrap();
-
-		let mut block_iter =
-			Block::new(block_contents, Arc::clone(&o.internal_comparator)).iter(false).unwrap();
-
-		let mut i = 0;
-		while block_iter.advance().unwrap() {
-			assert_eq!(block_iter.key().user_key.as_slice(), data[i].0);
-			assert_eq!(block_iter.value(), data[i].1.to_vec());
-			i += 1;
-		}
-
-		assert_eq!(i, data.len());
-	}
-
-	#[test]
-	fn test_block_iter_reverse() {
-		let data = generate_data();
-		let o = make_opts(Some(3));
-		let mut builder = BlockWriter::new(
-			o.block_size,
-			o.block_restart_interval,
-			Arc::clone(&o.internal_comparator),
-		);
-
-		for &(k, v) in data.iter() {
-			builder.add(&make_internal_key(k, InternalKeyKind::Set), v).unwrap();
-		}
-
-		let block_contents = builder.finish().unwrap();
-		let mut iter =
-			Block::new(block_contents, Arc::clone(&o.internal_comparator)).iter(false).unwrap();
-
-		iter.next().unwrap().unwrap();
-		assert_eq!(iter.key().user_key.as_slice(), "key1".as_bytes());
-		assert_eq!(iter.value(), b"value1".to_vec());
-
-		iter.next().unwrap().unwrap();
-		assert!(iter.valid());
-
-		iter.prev().unwrap();
-		assert!(iter.valid());
-		assert_eq!(iter.key().user_key.as_slice(), "key1".as_bytes());
-		assert_eq!(iter.value(), b"value1".to_vec());
-
-		// Go to the last entry
-		while iter.advance().unwrap() {}
-
-		iter.prev().unwrap();
-		assert!(iter.valid());
-		assert_eq!(iter.key().user_key.as_slice(), "pkey2".as_bytes());
-		assert_eq!(iter.value(), b"value".to_vec());
-	}
-
-	#[test]
-	fn test_block_seek() {
-		let data = generate_data();
-		let o = make_opts(Some(3));
-		let mut builder =
-			BlockWriter::new(o.block_size, o.block_restart_interval, o.internal_comparator.clone());
-
-		for &(k, v) in data.iter() {
-			builder.add(&make_internal_key(k, InternalKeyKind::Set), v).unwrap();
-		}
-
-		let block_contents = builder.finish().unwrap();
-
-		let mut block_iter =
-			Block::new(block_contents, o.internal_comparator.clone()).iter(false).unwrap();
-
-		let key = InternalKey::new(b"pkey2".to_vec(), 1, InternalKeyKind::Set, 0);
-		block_iter.seek(&key.encode()).unwrap();
-		assert!(block_iter.valid());
-		assert_eq!(
-			Some((block_iter.key().user_key, block_iter.value(),)),
-			Some(("pkey2".as_bytes().to_vec(), "value".as_bytes().to_vec()))
-		);
-
-		let key = InternalKey::new(b"pkey0".to_vec(), 1, InternalKeyKind::Set, 0);
-		block_iter.seek(&key.encode()).unwrap();
-		assert!(block_iter.valid());
-		assert_eq!(
-			Some((block_iter.key().user_key, block_iter.value(),)),
-			Some(("pkey1".as_bytes().to_vec(), "value".as_bytes().to_vec()))
-		);
-
-		let key = InternalKey::new(b"key1".to_vec(), 1, InternalKeyKind::Set, 0);
-		block_iter.seek(&key.encode()).unwrap();
-		assert!(block_iter.valid());
-		assert_eq!(
-			Some((block_iter.key().user_key, block_iter.value(),)),
-			Some(("key1".as_bytes().to_vec(), "value1".as_bytes().to_vec()))
-		);
-
-		let key = InternalKey::new(b"pkey3".to_vec(), 1, InternalKeyKind::Set, 0);
-		block_iter.seek(&key.encode()).unwrap();
-		assert!(block_iter.valid());
-		assert_eq!(
-			Some((block_iter.key().user_key, block_iter.value(),)),
-			Some(("pkey3".as_bytes().to_vec(), "value".as_bytes().to_vec()))
-		);
-
-		let key = InternalKey::new(b"pkey8".to_vec(), 1, InternalKeyKind::Set, 0);
-		block_iter.seek(&key.encode()).unwrap();
-		assert!(!block_iter.valid());
-	}
-
-	#[test]
-	fn test_block_seek_to_last() {
-		// Test with different number of restarts
-		for block_restart_interval in [2, 6, 10] {
-			let data = generate_data();
-			let o = make_opts(Some(block_restart_interval));
-			let mut builder = BlockWriter::new(
-				o.block_size,
-				o.block_restart_interval,
-				o.internal_comparator.clone(),
-			);
-
-			for &(k, v) in data.iter() {
-				builder.add(&make_internal_key(k, InternalKeyKind::Set), v).unwrap();
-			}
-
-			let block_contents = builder.finish().unwrap();
-
-			let mut block_iter =
-				Block::new(block_contents, o.internal_comparator.clone()).iter(false).unwrap();
-
-			block_iter.seek_to_last().unwrap();
-			assert!(block_iter.valid());
-			assert_eq!(block_iter.key().user_key.as_slice(), "pkey3".as_bytes());
-			assert_eq!(block_iter.value(), b"value".to_vec());
-
-			block_iter.seek_to_first().unwrap();
-			assert!(block_iter.valid());
-			assert_eq!(block_iter.key().user_key.as_slice(), "key1".as_bytes());
-			assert_eq!(block_iter.value(), b"value1".to_vec());
-
-			block_iter.next().unwrap().unwrap();
-			assert!(block_iter.valid());
-			block_iter.next().unwrap().unwrap();
-			assert!(block_iter.valid());
-			block_iter.next().unwrap().unwrap();
-			assert!(block_iter.valid());
-
-			assert_eq!(block_iter.key().user_key.as_slice(), "pkey1".as_bytes());
-			assert_eq!(block_iter.value(), b"value".to_vec());
-		}
-	}
-
-	#[test]
-	fn test_block_prev() {
-		// Test backward iteration using prev()
-		let data = generate_data();
-		let o = make_opts(Some(2)); // Small restart interval to test restart logic
-		let mut builder =
-			BlockWriter::new(o.block_size, o.block_restart_interval, o.internal_comparator.clone());
-
-		for &(k, v) in data.iter() {
-			builder.add(&make_internal_key(k, InternalKeyKind::Set), v).unwrap();
-		}
-
-		let block_contents = builder.finish().unwrap();
-		let mut block_iter =
-			Block::new(block_contents, o.internal_comparator.clone()).iter(false).unwrap();
-
-		// Test prev() from the end
-		block_iter.seek_to_last().unwrap();
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "pkey3".as_bytes());
-
-		// Go backward one step
-		assert!(block_iter.prev().unwrap());
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "pkey2".as_bytes());
-
-		// Go backward another step
-		assert!(block_iter.prev().unwrap());
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "pkey1".as_bytes());
-
-		// Go backward one more step
-		assert!(block_iter.prev().unwrap());
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "medium_key2".as_bytes());
-
-		// Go backward to the beginning
-		assert!(block_iter.prev().unwrap());
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "loooongkey1".as_bytes());
-
-		// Go backward to the first key
-		assert!(block_iter.prev().unwrap());
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "key1".as_bytes());
-
-		// Try to go past the beginning
-		assert!(!block_iter.prev().unwrap());
-		assert!(!block_iter.valid());
-	}
-
-	#[test]
-	fn test_block_double_ended_iteration() {
-		// Test using both next() and next_back() (DoubleEndedIterator)
-		let data = generate_data();
-		let o = make_opts(Some(3));
-		let mut builder =
-			BlockWriter::new(o.block_size, o.block_restart_interval, o.internal_comparator.clone());
-
-		for &(k, v) in data.iter() {
-			builder.add(&make_internal_key(k, InternalKeyKind::Set), v).unwrap();
-		}
-
-		let block_contents = builder.finish().unwrap();
-
-		// Test forward iteration with next()
-		let forward_iter =
-			Block::new(block_contents.clone(), o.internal_comparator.clone()).iter(false).unwrap();
-		let mut forward_keys = Vec::new();
-		for item in forward_iter {
-			let (key, _) = item.unwrap();
-			let internal_key = InternalKey::decode(&key);
-			forward_keys.push(String::from_utf8(internal_key.user_key.clone()).unwrap());
-		}
-		assert_eq!(
-			forward_keys,
-			vec!["key1", "loooongkey1", "medium_key2", "pkey1", "pkey2", "pkey3"]
-		);
-
-		// Test backward iteration using prev()
-		let mut backward_iter =
-			Block::new(block_contents, o.internal_comparator.clone()).iter(false).unwrap();
-		backward_iter.seek_to_last().unwrap();
-		let mut backward_keys = Vec::new();
-		while backward_iter.valid() {
-			let key = backward_iter.key().user_key.clone();
-			backward_keys.push(String::from_utf8(key.clone()).unwrap());
-			if !backward_iter.prev().unwrap() {
-				break;
-			}
-		}
-		assert_eq!(
-			backward_keys,
-			vec!["pkey3", "pkey2", "pkey1", "medium_key2", "loooongkey1", "key1"]
-		);
-
-		// Verify they are complementary
-		assert_eq!(forward_keys, backward_keys.iter().rev().cloned().collect::<Vec<_>>());
-	}
-
-	#[test]
-	fn test_block_prev_from_middle() {
-		// Test prev() starting from the middle of the block
-		let data = generate_data();
-		let o = make_opts(Some(2));
-		let mut builder = BlockWriter::new(
-			o.block_size,
-			o.block_restart_interval,
-			Arc::clone(&o.internal_comparator),
-		);
-
-		for &(k, v) in data.iter() {
-			builder.add(&make_internal_key(k, InternalKeyKind::Set), v).unwrap();
-		}
-
-		let block_contents = builder.finish().unwrap();
-		let mut block_iter =
-			Block::new(block_contents, Arc::clone(&o.internal_comparator)).iter(false).unwrap();
-
-		// Seek to "pkey1"
-		let seek_key = InternalKey::new(b"pkey1".to_vec(), 1, InternalKeyKind::Set, 0);
-		block_iter.seek(&seek_key.encode()).unwrap();
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "pkey1".as_bytes());
-
-		// Go backward from here
-		assert!(block_iter.prev().unwrap());
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "medium_key2".as_bytes());
-
-		assert!(block_iter.prev().unwrap());
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "loooongkey1".as_bytes());
-
-		assert!(block_iter.prev().unwrap());
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "key1".as_bytes());
-
-		// Can't go further back
-		assert!(!block_iter.prev().unwrap());
-		assert!(!block_iter.valid());
-	}
-
-	#[test]
-	fn test_block_mixed_next_prev() {
-		// Test basic prev() functionality after positioning
-		let data = generate_data();
-		let o = make_opts(Some(3));
-		let mut builder = BlockWriter::new(
-			o.block_size,
-			o.block_restart_interval,
-			Arc::clone(&o.internal_comparator),
-		);
-
-		for &(k, v) in data.iter() {
-			builder.add(&make_internal_key(k, InternalKeyKind::Set), v).unwrap();
-		}
-
-		let block_contents = builder.finish().unwrap();
-		let mut block_iter =
-			Block::new(block_contents, Arc::clone(&o.internal_comparator)).iter(false).unwrap();
-
-		// Position at "pkey1"
-		let seek_key = InternalKey::new(b"pkey1".to_vec(), 1, InternalKeyKind::Set, 0);
-		block_iter.seek(&seek_key.encode()).unwrap();
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "pkey1".as_bytes());
-
-		// Go backward
-		assert!(block_iter.prev().unwrap());
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "medium_key2".as_bytes());
-
-		assert!(block_iter.prev().unwrap());
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "loooongkey1".as_bytes());
-
-		assert!(block_iter.prev().unwrap());
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "key1".as_bytes());
-
-		// Can't go further
-		assert!(!block_iter.prev().unwrap());
-		assert!(!block_iter.valid());
-	}
-
-	#[test]
-	fn test_block_prev_edge_cases() {
-		// Test edge cases for prev()
-		let data = generate_data();
-		let o = make_opts(Some(5)); // Large restart interval
-		let mut builder = BlockWriter::new(
-			o.block_size,
-			o.block_restart_interval,
-			Arc::clone(&o.internal_comparator),
-		);
-
-		for &(k, v) in data.iter() {
-			builder.add(&make_internal_key(k, InternalKeyKind::Set), v).unwrap();
-		}
-
-		let block_contents = builder.finish().unwrap();
-		let mut block_iter =
-			Block::new(block_contents, Arc::clone(&o.internal_comparator)).iter(false).unwrap();
-
-		// Test prev() on empty block (shouldn't happen but let's test robustness)
-		let empty_block = BlockWriter::new(
-			o.block_size,
-			o.block_restart_interval,
-			Arc::clone(&o.internal_comparator),
-		)
-		.finish()
-		.unwrap();
-		let mut empty_iter =
-			Block::new(empty_block, Arc::clone(&o.internal_comparator)).iter(false).unwrap();
-		assert!(!empty_iter.prev().unwrap());
-		assert!(!empty_iter.valid());
-
-		// Test prev() when at first entry
-		block_iter.seek_to_first().unwrap();
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "key1".as_bytes());
-
-		assert!(!block_iter.prev().unwrap()); // Can't go before first
-		assert!(!block_iter.valid());
-
-		// Test prev() after seek_to_last()
-		block_iter.seek_to_last().unwrap();
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "pkey3".as_bytes());
-
-		// Should be able to go backward
-		assert!(block_iter.prev().unwrap());
-		assert!(block_iter.valid());
-		assert_eq!(block_iter.key().user_key.as_slice(), "pkey2".as_bytes());
-	}
-
-	#[test]
-	fn test_block_seek_key_not_found_past_end() {
-		// Scenario: Seek for a key greater than all keys in the block
-		// Expected: Iterator should be invalid (valid() returns false)
-		let o = make_opts(Some(3));
-		let mut builder =
-			BlockWriter::new(o.block_size, o.block_restart_interval, o.internal_comparator.clone());
-
-		// Add some keys
-		for i in 0..5 {
-			let key = format!("key_{:02}", i);
-			let value = format!("value_{}", i);
-			builder
-				.add(&make_internal_key(key.as_bytes(), InternalKeyKind::Set), value.as_bytes())
-				.unwrap();
-		}
-
-		let block = Block::new(builder.finish().unwrap(), o.internal_comparator.clone());
-		let mut iter = block.iter(false).unwrap();
-
-		// Seek for a key that is greater than all keys
-		let target = InternalKey::new(b"zzz_past_end".to_vec(), 1, InternalKeyKind::Set, 0);
-		iter.seek(&target.encode()).unwrap();
-
-		assert!(!iter.valid(), "Iterator should be invalid when seeking past all keys");
-	}
-
-	#[test]
-	fn test_block_seek_key_not_found_before_start() {
-		// Scenario: Seek for a key less than all keys in the block
-		// Expected: Iterator should land on the first key
-		let o = make_opts(Some(3));
-		let mut builder =
-			BlockWriter::new(o.block_size, o.block_restart_interval, o.internal_comparator.clone());
-
-		// Add keys starting from "bbb"
-		for i in 0..5 {
-			let key = format!("key_{:02}", i);
-			let value = format!("value_{}", i);
-			builder
-				.add(&make_internal_key(key.as_bytes(), InternalKeyKind::Set), value.as_bytes())
-				.unwrap();
-		}
-
-		let block = Block::new(builder.finish().unwrap(), o.internal_comparator.clone());
-		let mut iter = block.iter(false).unwrap();
-
-		// Seek for a key that is less than all keys
-		let target = InternalKey::new(b"aaa_before_all".to_vec(), 1, InternalKeyKind::Set, 0);
-		iter.seek(&target.encode()).unwrap();
-
-		assert!(iter.valid(), "Iterator should be valid");
-		let found_key = iter.key();
-		assert_eq!(found_key.user_key, b"key_00".to_vec(), "Should land on first key");
-	}
-
-	#[test]
-	fn test_block_seek_exact_match() {
-		// Scenario: Seek for a key that exists exactly
-		// Expected: Iterator lands on that exact key
-		let o = make_opts(Some(3));
-		let mut builder =
-			BlockWriter::new(o.block_size, o.block_restart_interval, o.internal_comparator.clone());
-
-		for i in 0..10 {
-			let key = format!("key_{:02}", i);
-			let value = format!("value_{}", i);
-			builder
-				.add(&make_internal_key(key.as_bytes(), InternalKeyKind::Set), value.as_bytes())
-				.unwrap();
-		}
-
-		let block = Block::new(builder.finish().unwrap(), o.internal_comparator.clone());
-		let mut iter = block.iter(false).unwrap();
-
-		// Seek for key_05 which exists
-		let target = InternalKey::new(b"key_05".to_vec(), 1, InternalKeyKind::Set, 0);
-		iter.seek(&target.encode()).unwrap();
-
-		assert!(iter.valid());
-		let found_key = iter.key();
-		assert_eq!(found_key.user_key, b"key_05".to_vec());
-	}
-
-	#[test]
-	fn test_block_seek_between_keys() {
-		// Scenario: Seek for a key that falls between two existing keys
-		// Expected: Iterator lands on the first key >= target
-		let o = make_opts(Some(3));
-		let mut builder =
-			BlockWriter::new(o.block_size, o.block_restart_interval, o.internal_comparator.clone());
-
-		builder.add(&make_internal_key(b"apple", InternalKeyKind::Set), b"v1").unwrap();
-		builder.add(&make_internal_key(b"cherry", InternalKeyKind::Set), b"v2").unwrap();
-		builder.add(&make_internal_key(b"grape", InternalKeyKind::Set), b"v3").unwrap();
-
-		let block = Block::new(builder.finish().unwrap(), o.internal_comparator.clone());
-		let mut iter = block.iter(false).unwrap();
-
-		// Seek for "banana" which is between "apple" and "cherry"
-		let target = InternalKey::new(b"banana".to_vec(), 1, InternalKeyKind::Set, 0);
-		iter.seek(&target.encode()).unwrap();
-
-		assert!(iter.valid());
-		let found_key = iter.key();
-		assert_eq!(
-			found_key.user_key,
-			b"cherry".to_vec(),
-			"Should land on 'cherry' which is first key >= 'banana'"
-		);
-	}
-
-	#[test]
-	fn test_block_seek_same_user_key_different_seq_nums() {
-		// Scenario: Multiple versions of the same user key with different seq_nums
-		// Verify descending seq_num ordering works correctly
-		let o = make_opts(Some(3));
-		let mut builder =
-			BlockWriter::new(o.block_size, o.block_restart_interval, o.internal_comparator.clone());
-
-		// Add same user key with descending seq_nums (as stored in SSTable)
-		// In InternalKey ordering: (foo, 100) < (foo, 50) < (foo, 1)
-		for seq in [100u64, 75, 50, 25, 1] {
-			let key = InternalKey::new(b"foo".to_vec(), seq, InternalKeyKind::Set, 0);
-			let value = format!("value_seq_{}", seq);
-			builder.add(&key.encode(), value.as_bytes()).unwrap();
-		}
-
-		let block = Block::new(builder.finish().unwrap(), o.internal_comparator.clone());
-
-		// Test 1: Seek for seq=80, should find seq=75 (first key >= (foo, 80))
-		let mut iter = block.iter(false).unwrap();
-		let target = InternalKey::new(b"foo".to_vec(), 80, InternalKeyKind::Set, 0);
-		iter.seek(&target.encode()).unwrap();
-		assert!(iter.valid());
-		let found = iter.key();
-		assert_eq!(found.user_key, b"foo".to_vec());
-		assert_eq!(
-			found.seq_num(),
-			75,
-			"Seeking for seq=80 should find seq=75 (latest visible version)"
-		);
-
-		// Test 2: Seek for seq=50, should find exactly seq=50
-		iter.seek(&InternalKey::new(b"foo".to_vec(), 50, InternalKeyKind::Set, 0).encode())
-			.unwrap();
-		assert!(iter.valid());
-		assert_eq!(iter.key().seq_num(), 50);
-
-		// Test 3: Seek for seq=200 (newer than all), should find seq=100
-		iter.seek(&InternalKey::new(b"foo".to_vec(), 200, InternalKeyKind::Set, 0).encode())
-			.unwrap();
-		assert!(iter.valid());
-		assert_eq!(iter.key().seq_num(), 100, "Should find newest version seq=100");
-	}
-
-	#[test]
-	fn test_block_single_restart_point() {
-		// Scenario: Block with only 1 entry (1 restart point)
-		// Verify binary search handles this edge case
-		let o = make_opts(Some(10)); // Large interval, so only 1 restart point
-		let mut builder =
-			BlockWriter::new(o.block_size, o.block_restart_interval, o.internal_comparator.clone());
-
-		builder.add(&make_internal_key(b"only_key", InternalKeyKind::Set), b"only_value").unwrap();
-
-		let block = Block::new(builder.finish().unwrap(), o.internal_comparator.clone());
-		let mut iter = block.iter(false).unwrap();
-
-		// Seek for the exact key
-		let target = InternalKey::new(b"only_key".to_vec(), 1, InternalKeyKind::Set, 0);
-		iter.seek(&target.encode()).unwrap();
-		assert!(iter.valid());
-		assert_eq!(iter.key().user_key, b"only_key".to_vec());
-
-		// Seek for key before
-		iter.seek(&InternalKey::new(b"aaa".to_vec(), 1, InternalKeyKind::Set, 0).encode()).unwrap();
-		assert!(iter.valid());
-		assert_eq!(iter.key().user_key, b"only_key".to_vec());
-
-		// Seek for key after
-		iter.seek(&InternalKey::new(b"zzz".to_vec(), 1, InternalKeyKind::Set, 0).encode()).unwrap();
-		assert!(!iter.valid(), "Should be invalid when seeking past single entry");
-	}
-
-	#[test]
-	fn test_block_seek_at_restart_point_boundaries() {
-		// Scenario: Seek for keys exactly at restart point boundaries
-		let o = make_opts(Some(2)); // Restart every 2 entries
-		let mut builder =
-			BlockWriter::new(o.block_size, o.block_restart_interval, o.internal_comparator.clone());
-
-		// Add 6 entries = 3 restart points (at entries 0, 2, 4)
-		for i in 0..6 {
-			let key = format!("key_{:02}", i);
-			builder
-				.add(&make_internal_key(key.as_bytes(), InternalKeyKind::Set), b"value")
-				.unwrap();
-		}
-
-		let block = Block::new(builder.finish().unwrap(), o.internal_comparator.clone());
-		let mut iter = block.iter(false).unwrap();
-
-		// Seek for each restart point key
-		for i in [0, 2, 4] {
-			let target_key = format!("key_{:02}", i);
-			let target =
-				InternalKey::new(target_key.as_bytes().to_vec(), 1, InternalKeyKind::Set, 0);
-			iter.seek(&target.encode()).unwrap();
-			assert!(iter.valid(), "Should find key at restart point {}", i);
-			assert_eq!(iter.key().user_key, target_key.as_bytes().to_vec());
-		}
-	}
-
-	#[test]
-	fn test_block_iterator_valid_after_exhaustion() {
-		// Scenario: Iterate through all entries, then check valid()
-		let o = make_opts(Some(3));
-		let mut builder =
-			BlockWriter::new(o.block_size, o.block_restart_interval, o.internal_comparator.clone());
-
-		for i in 0..5 {
-			builder
-				.add(
-					&make_internal_key(format!("key_{}", i).as_bytes(), InternalKeyKind::Set),
-					b"value",
-				)
-				.unwrap();
-		}
-
-		let block = Block::new(builder.finish().unwrap(), o.internal_comparator.clone());
-		let mut iter = block.iter(false).unwrap();
-
-		iter.seek_to_first().unwrap();
-		let mut count = 0;
-		while iter.valid() {
-			count += 1;
-			iter.advance().unwrap();
-		}
-		assert_eq!(count, 5);
-		assert!(!iter.valid(), "Iterator should be invalid after exhaustion");
-	}
-
-	#[test]
-	fn test_seek_to_last_empty_block() {
-		// Test that seek_to_last handles empty blocks gracefully
-		let o = make_opts(Some(3));
-		let builder =
-			BlockWriter::new(o.block_size, o.block_restart_interval, o.internal_comparator.clone());
-
-		// Create empty block (just restart points, no entries)
-		let block = Block::new(builder.finish().unwrap(), o.internal_comparator.clone());
-		let mut iter = block.iter(false).unwrap();
-
-		iter.seek_to_last().unwrap();
-
-		// Should be invalid, not panic
-		assert!(!iter.valid(), "Empty block iterator should be invalid after seek_to_last");
-	}
-
-	#[test]
-	fn test_prev_at_first_entry() {
-		// Test that prev() at first entry correctly returns false
-		let o = make_opts(Some(3));
-		let mut builder =
-			BlockWriter::new(o.block_size, o.block_restart_interval, o.internal_comparator.clone());
-
-		for i in 0..5 {
-			let key =
-				InternalKey::new(format!("key_{:02}", i).into_bytes(), 1, InternalKeyKind::Set, 0);
-			builder.add(&key.encode(), b"value").unwrap();
-		}
-
-		let block = Block::new(builder.finish().unwrap(), o.internal_comparator.clone());
-		let mut iter = block.iter(false).unwrap();
-
-		iter.seek_to_first().unwrap();
-		assert!(iter.valid());
-
-		let first_key = iter.key();
-		assert_eq!(first_key.user_key, b"key_00".to_vec());
-
-		// prev() at first entry should return false
-		let result = iter.prev().unwrap();
-		assert!(!result, "prev() at first entry should return false");
-		assert!(!iter.valid(), "Iterator should be invalid after prev() at first entry");
 	}
 }

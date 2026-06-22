@@ -76,20 +76,12 @@ impl LockFile {
 			.map_err(|e| Error::Io(Arc::new(e)))?;
 
 		// Try to lock the file exclusively using fs2
-		// On Windows, ERROR_LOCK_VIOLATION (code 33) means the file is already locked
-		// by another process — treat it the same as WouldBlock.
-		file.try_lock_exclusive().map_err(|e| {
-			let is_locked = e.kind() == ErrorKind::WouldBlock
-				|| (cfg!(windows) && e.raw_os_error() == Some(33));
-
-			if is_locked {
-				Error::Other(format!(
-					"Database at {} is already locked by another process",
-					self.path.display()
-				))
-			} else {
-				Error::Io(Arc::new(e))
-			}
+		file.try_lock_exclusive().map_err(|e| match e.kind() {
+			ErrorKind::WouldBlock => Error::Other(format!(
+				"Database at {} is already locked by another process",
+				self.path.display()
+			)),
+			_ => Error::Io(Arc::new(e)),
 		})?;
 
 		// Write process ID to lock file for debugging
@@ -106,8 +98,9 @@ impl LockFile {
 	/// Releases the lock
 	#[cfg(not(target_arch = "wasm32"))]
 	pub fn release(&mut self) -> Result<()> {
-		// Dropping the file handle releases the OS-level lock automatically.
-		let _ = self.file.take();
+		if let Some(_file) = self.file.take() {
+			// File will be closed when dropped
+		}
 		Ok(())
 	}
 
@@ -141,6 +134,7 @@ mod tests {
 	use test_log::test;
 
 	use super::*;
+	use crate::error::Error;
 	use crate::lsm::TreeBuilder;
 
 	#[test]
@@ -181,7 +175,6 @@ mod tests {
 		let mut lock = LockFile::new(temp_dir.path());
 
 		assert!(lock.acquire().is_ok());
-		lock.release().unwrap();
 
 		// Check that process ID is written to file
 		let lock_path = temp_dir.path().join(LockFile::LOCK_FILE_NAME);
@@ -224,13 +217,14 @@ mod tests {
         );
 
 		// Verify the PID was updated to current process
-		lock.release().unwrap();
 		let content = fs::read_to_string(&lock_path).unwrap();
 		let current_pid = process::id().to_string();
 		assert!(
 			content.trim() == current_pid,
 			"Lock file should contain current PID, not stale PID"
 		);
+
+		lock.release().unwrap();
 	}
 
 	// Integration tests with Tree
@@ -247,15 +241,11 @@ mod tests {
 			.expect("First tree should be created successfully");
 
 		// Second instance should fail with lock error
-		let result = TreeBuilder::new()
-			.with_path(temp_path.clone())
-			.with_internal_bypass_registry(true)
-			.build();
+		let result = TreeBuilder::new().with_path(temp_path.clone()).build();
 
 		assert!(result.is_err(), "Second tree should fail to acquire lock");
-		if let Err(e) = result {
-			let msg = format!("{:?}", e);
-			assert!(msg.contains("already locked"), "Error should indicate database is locked, but got: {:?}", e);
+		if let Err(Error::Other(msg)) = result {
+			assert!(msg.contains("already locked"), "Error should indicate database is locked");
 		} else {
 			panic!("Expected a lock error");
 		}
@@ -265,7 +255,6 @@ mod tests {
 
 		let tree2 = TreeBuilder::new()
 			.with_path(temp_path)
-			.with_internal_bypass_registry(true)
 			.build()
 			.expect("After closing first tree, second should succeed");
 
@@ -285,17 +274,14 @@ mod tests {
 
 		for i in 0..threads {
 			let path = temp_path.clone();
-			let thread_barrier = barrier.clone();
+			let thread_barrier = Arc::clone(&barrier);
 
 			let handle = tokio::task::spawn_blocking(move || {
 				// Wait for all threads to be ready
 				thread_barrier.wait();
 
 				// Try to open the database
-				let result = TreeBuilder::new()
-					.with_path(path)
-					.with_internal_bypass_registry(true)
-					.build();
+				let result = TreeBuilder::new().with_path(path).build();
 
 				(i, result)
 			});
@@ -333,7 +319,7 @@ mod tests {
 
 	// 	for i in 0..tasks {
 	// 		let path = temp_path.clone();
-	// 		let task_barrier = barrier.clone();
+	// 		let task_barrier = Arc::clone(&barrier);
 
 	// 		let handle = tokio::task::spawn(async move {
 	// 			// Wait for all tasks to be ready

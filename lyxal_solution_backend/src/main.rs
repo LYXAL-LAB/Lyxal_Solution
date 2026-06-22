@@ -6,8 +6,8 @@
 
 use std::process::ExitCode;
 
-use surrealdb_core::LyxalComposer;
-use surrealdb_server::init;
+use lyxal_core::LyxalComposer;
+use lyxal_server::init;
 
 fn main() -> ExitCode {
 	// Use the default storage flavor and default HTTP router shipped with the binary

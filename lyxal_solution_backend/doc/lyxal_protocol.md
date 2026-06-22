@@ -1,4 +1,4 @@
-# lyxal_protocol
+# lyxal-protocol
 
 ## Rôle
 Crate interne de **sérialisation** pour Lyxal Solution.  
@@ -13,7 +13,7 @@ Définit le format binaire (Protobuf, FlatBuffers) et les services gRPC utilisé
 
 ## Destiné à
 Consommé **uniquement** par les autres crates internes du backend Lyxal :
-- `lyxal_types_db` — qui importe les types FlatBuffers pour la sérialisation des valeurs
+- `lyxal-types` — qui importe les types FlatBuffers pour la sérialisation des valeurs
 - Le futur moteur DB — qui utilisera le service gRPC pour les appels réseau internes
 
 > **Ce n'est PAS un SDK client.** Ce crate n'est pas publié ni destiné à des développeurs externes.

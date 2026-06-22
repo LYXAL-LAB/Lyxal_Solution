@@ -1,0 +1,4 @@
+include "lyxal/protocol/v1/value.fbs";
+include "lyxal/protocol/v1/lyxalism.fbs";
+
+namespace lyxal.protocol.v1;

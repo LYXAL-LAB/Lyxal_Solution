@@ -1,0 +1,28 @@
+[package]
+name = "lyxalism-types"
+version.workspace = true
+description = "Types for Lyxalism"
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+license-file.workspace = true
+
+[features]
+# Enable this feature for the host side (runtime) to make traits async
+host = []
+
+[dependencies]
+
+# Lyxal internal crates
+lyxal-types.workspace = true
+
+# External crates
+anyhow.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+
+[lints]
+workspace = true

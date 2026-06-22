@@ -1,0 +1,4453 @@
+{
+  "count": 429,
+  "providers": [
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Asana/asana.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.asana/",
+      "directory": "packages/nodes-base/nodes/Asana"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/BambooHr/bambooHr.png",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.bamboohr/",
+      "directory": "packages/nodes-base/nodes/BambooHr"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/ClickUp/clickup.svg",
+      "categories": [
+        "Productivity",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.clickup/",
+      "directory": "packages/nodes-base/nodes/ClickUp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Freshservice/freshservice.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.freshservice/",
+      "directory": "packages/nodes-base/nodes/Freshservice"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Github/github.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.github/",
+      "directory": "packages/nodes-base/nodes/Github"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Mailchimp/mailchimp.dark.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mailchimp/",
+      "directory": "packages/nodes-base/nodes/Mailchimp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Pipedrive/pipedrive.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.pipedrive/",
+      "directory": "packages/nodes-base/nodes/Pipedrive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Salesforce/salesforce.svg",
+      "categories": [
+        "Sales",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.salesforce/",
+      "directory": "packages/nodes-base/nodes/Salesforce"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Telegram/telegram.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.telegram/",
+      "directory": "packages/nodes-base/nodes/Telegram"
+    },
+    {
+      "displayName": "",
+      "name": "logs",
+      "icon": "packages/nodes-base/nodes/TheHive/thehive.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.thehive/",
+      "directory": "packages/nodes-base/nodes/TheHive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/TheHiveProject/thehiveproject.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.thehive5/",
+      "directory": "packages/nodes-base/nodes/TheHiveProject"
+    },
+    {
+      "displayName": "Action Network",
+      "name": "actionNetwork",
+      "icon": "packages/nodes-base/nodes/ActionNetwork/actionNetwork.svg",
+      "categories": [
+        "Sales",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.actionnetwork/",
+      "directory": "packages/nodes-base/nodes/ActionNetwork"
+    },
+    {
+      "displayName": "ActiveCampaign",
+      "name": "activeCampaign",
+      "icon": "packages/nodes-base/nodes/ActiveCampaign/activeCampaign.dark.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.activecampaign/",
+      "directory": "packages/nodes-base/nodes/ActiveCampaign"
+    },
+    {
+      "displayName": "ActiveCampaign Trigger",
+      "name": "activeCampaignTrigger",
+      "icon": "packages/nodes-base/nodes/ActiveCampaign/activeCampaign.dark.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.activecampaigntrigger/",
+      "directory": "packages/nodes-base/nodes/ActiveCampaign"
+    },
+    {
+      "displayName": "Acuity Scheduling Trigger",
+      "name": "acuitySchedulingTrigger",
+      "icon": "packages/nodes-base/nodes/AcuityScheduling/acuityScheduling.png",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.acuityschedulingtrigger/",
+      "directory": "packages/nodes-base/nodes/AcuityScheduling"
+    },
+    {
+      "displayName": "Adalo",
+      "name": "adalo",
+      "icon": "packages/nodes-base/nodes/Adalo/adalo.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.adalo/",
+      "directory": "packages/nodes-base/nodes/Adalo"
+    },
+    {
+      "displayName": "Affinity",
+      "name": "affinity",
+      "icon": "packages/nodes-base/nodes/Affinity/affinity.dark.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.affinity/",
+      "directory": "packages/nodes-base/nodes/Affinity"
+    },
+    {
+      "displayName": "Affinity Trigger",
+      "name": "affinityTrigger",
+      "icon": "packages/nodes-base/nodes/Affinity/affinity.dark.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.affinitytrigger/",
+      "directory": "packages/nodes-base/nodes/Affinity"
+    },
+    {
+      "displayName": "Aggregate",
+      "name": "aggregate",
+      "icon": "packages/nodes-base/nodes/Transform/Aggregate/aggregate.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/",
+      "directory": "packages/nodes-base/nodes/Transform/Aggregate"
+    },
+    {
+      "displayName": "Agile CRM",
+      "name": "agileCrm",
+      "icon": "packages/nodes-base/nodes/AgileCrm/agilecrm.png",
+      "categories": [
+        "Marketing",
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.agilecrm/",
+      "directory": "packages/nodes-base/nodes/AgileCrm"
+    },
+    {
+      "displayName": "AI Transform",
+      "name": "aiTransform",
+      "icon": "packages/nodes-base/nodes/AiTransform/aitransform.svg",
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aitransform/",
+      "directory": "packages/nodes-base/nodes/AiTransform"
+    },
+    {
+      "displayName": "Airtable",
+      "name": "airtable",
+      "icon": "packages/nodes-base/nodes/Airtable/airtable.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/",
+      "directory": "packages/nodes-base/nodes/Airtable"
+    },
+    {
+      "displayName": "Airtable Trigger",
+      "name": "airtableTrigger",
+      "icon": "packages/nodes-base/nodes/Airtable/airtable.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.airtabletrigger/",
+      "directory": "packages/nodes-base/nodes/Airtable"
+    },
+    {
+      "displayName": "Airtop",
+      "name": "airtop",
+      "icon": "packages/nodes-base/nodes/Airtop/airtop.svg",
+      "categories": [
+        "Productivity",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtop/",
+      "directory": "packages/nodes-base/nodes/Airtop"
+    },
+    {
+      "displayName": "AMQP Sender",
+      "name": "amqp",
+      "icon": "packages/nodes-base/nodes/Amqp/amqp.svg",
+      "categories": [
+        "Development",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.amqp/",
+      "directory": "packages/nodes-base/nodes/Amqp"
+    },
+    {
+      "displayName": "AMQP Trigger",
+      "name": "amqpTrigger",
+      "icon": "packages/nodes-base/nodes/Amqp/amqp.svg",
+      "categories": [
+        "Development",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.amqptrigger/",
+      "directory": "packages/nodes-base/nodes/Amqp"
+    },
+    {
+      "displayName": "APITemplate.io",
+      "name": "apiTemplateIo",
+      "icon": "packages/nodes-base/nodes/ApiTemplateIo/apiTemplateIo.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.apitemplateio/",
+      "directory": "packages/nodes-base/nodes/ApiTemplateIo"
+    },
+    {
+      "displayName": "Asana Trigger",
+      "name": "asanaTrigger",
+      "icon": "packages/nodes-base/nodes/Asana/asana.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.asanatrigger/",
+      "directory": "packages/nodes-base/nodes/Asana"
+    },
+    {
+      "displayName": "Autopilot",
+      "name": "autopilot",
+      "icon": "packages/nodes-base/nodes/Autopilot/autopilot.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.autopilot/",
+      "directory": "packages/nodes-base/nodes/Autopilot"
+    },
+    {
+      "displayName": "Autopilot Trigger",
+      "name": "autopilotTrigger",
+      "icon": "packages/nodes-base/nodes/Autopilot/autopilot.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.autopilottrigger/",
+      "directory": "packages/nodes-base/nodes/Autopilot"
+    },
+    {
+      "displayName": "AWS Certificate Manager",
+      "name": "awsCertificateManager",
+      "icon": "packages/nodes-base/nodes/Aws/CertificateManager/acm.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awscertificatemanager/",
+      "directory": "packages/nodes-base/nodes/Aws/CertificateManager"
+    },
+    {
+      "displayName": "AWS Cognito",
+      "name": "awsCognito",
+      "icon": "packages/nodes-base/nodes/Aws/Cognito/cognito.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awscognito/",
+      "directory": "packages/nodes-base/nodes/Aws/Cognito"
+    },
+    {
+      "displayName": "AWS Comprehend",
+      "name": "awsComprehend",
+      "icon": "packages/nodes-base/nodes/Aws/Comprehend/comprehend.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awscomprehend/",
+      "directory": "packages/nodes-base/nodes/Aws/Comprehend"
+    },
+    {
+      "displayName": "AWS DynamoDB",
+      "name": "awsDynamoDb",
+      "icon": "packages/nodes-base/nodes/Aws/DynamoDB/dynamodb.svg",
+      "categories": [
+        "Data & Storage",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awsdynamodb/",
+      "directory": "packages/nodes-base/nodes/Aws/DynamoDB"
+    },
+    {
+      "displayName": "AWS ELB",
+      "name": "awsElb",
+      "icon": "packages/nodes-base/nodes/Aws/ELB/elb.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awselb/",
+      "directory": "packages/nodes-base/nodes/Aws/ELB"
+    },
+    {
+      "displayName": "AWS IAM",
+      "name": "awsIam",
+      "icon": "packages/nodes-base/nodes/Aws/IAM/AwsIam.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awsiam/",
+      "directory": "packages/nodes-base/nodes/Aws/IAM"
+    },
+    {
+      "displayName": "AWS Lambda",
+      "name": "awsLambda",
+      "icon": "packages/nodes-base/nodes/Aws/lambda.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awslambda/",
+      "directory": "packages/nodes-base/nodes/Aws"
+    },
+    {
+      "displayName": "AWS Rekognition",
+      "name": "awsRekognition",
+      "icon": "packages/nodes-base/nodes/Aws/Rekognition/rekognition.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awsrekognition/",
+      "directory": "packages/nodes-base/nodes/Aws/Rekognition"
+    },
+    {
+      "displayName": "AWS SES",
+      "name": "awsSes",
+      "icon": "packages/nodes-base/nodes/Aws/SES/ses.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awsses/",
+      "directory": "packages/nodes-base/nodes/Aws/SES"
+    },
+    {
+      "displayName": "AWS SNS",
+      "name": "awsSns",
+      "icon": "packages/nodes-base/nodes/Aws/lambda.svg",
+      "categories": [
+        "Development",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awssns/",
+      "directory": "packages/nodes-base/nodes/Aws"
+    },
+    {
+      "displayName": "AWS SNS Trigger",
+      "name": "awsSnsTrigger",
+      "icon": "packages/nodes-base/nodes/Aws/lambda.svg",
+      "categories": [
+        "Development",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.awssnstrigger/",
+      "directory": "packages/nodes-base/nodes/Aws"
+    },
+    {
+      "displayName": "AWS SQS",
+      "name": "awsSqs",
+      "icon": "packages/nodes-base/nodes/Aws/SQS/sqs.svg",
+      "categories": [
+        "Development",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awssqs/",
+      "directory": "packages/nodes-base/nodes/Aws/SQS"
+    },
+    {
+      "displayName": "AWS Textract",
+      "name": "awsTextract",
+      "icon": "packages/nodes-base/nodes/Aws/Textract/textract.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awstextract/",
+      "directory": "packages/nodes-base/nodes/Aws/Textract"
+    },
+    {
+      "displayName": "AWS Transcribe",
+      "name": "awsTranscribe",
+      "icon": "packages/nodes-base/nodes/Aws/Transcribe/transcribe.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awstranscribe/",
+      "directory": "packages/nodes-base/nodes/Aws/Transcribe"
+    },
+    {
+      "displayName": "AwsS3",
+      "name": "awsS3",
+      "icon": "packages/nodes-base/nodes/Aws/S3/s3.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awss3/",
+      "directory": "packages/nodes-base/nodes/Aws/S3"
+    },
+    {
+      "displayName": "Azure Cosmos DB",
+      "name": "azureCosmosDb",
+      "icon": "packages/nodes-base/nodes/Microsoft/AzureCosmosDb/AzureCosmosDb.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.azurecosmosdb/",
+      "directory": "packages/nodes-base/nodes/Microsoft/AzureCosmosDb"
+    },
+    {
+      "displayName": "Azure Storage",
+      "name": "azureStorage",
+      "icon": "packages/nodes-base/nodes/Microsoft/Storage/azureStorage.dark.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.azurestorage/",
+      "directory": "packages/nodes-base/nodes/Microsoft/Storage"
+    },
+    {
+      "displayName": "Background Color",
+      "name": "Blur",
+      "icon": null,
+      "categories": [
+        "Marketing",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.editimage/",
+      "directory": "packages/nodes-base/nodes/EditImage"
+    },
+    {
+      "displayName": "Bannerbear",
+      "name": "bannerbear",
+      "icon": "packages/nodes-base/nodes/Bannerbear/bannerbear.png",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.bannerbear/",
+      "directory": "packages/nodes-base/nodes/Bannerbear"
+    },
+    {
+      "displayName": "Baserow",
+      "name": "baserow",
+      "icon": "packages/nodes-base/nodes/Baserow/baserow.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.baserow/",
+      "directory": "packages/nodes-base/nodes/Baserow"
+    },
+    {
+      "displayName": "Beeminder",
+      "name": "beeminder",
+      "icon": "packages/nodes-base/nodes/Beeminder/beeminder.png",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.beeminder/",
+      "directory": "packages/nodes-base/nodes/Beeminder"
+    },
+    {
+      "displayName": "Bitbucket Trigger",
+      "name": "bitbucketTrigger",
+      "icon": "packages/nodes-base/nodes/Bitbucket/bitbucket.svg",
+      "categories": [
+        "Development",
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.bitbuckettrigger/",
+      "directory": "packages/nodes-base/nodes/Bitbucket"
+    },
+    {
+      "displayName": "Bitly",
+      "name": "bitly",
+      "icon": "packages/nodes-base/nodes/Bitly/bitly.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.bitly/",
+      "directory": "packages/nodes-base/nodes/Bitly"
+    },
+    {
+      "displayName": "Bitwarden",
+      "name": "bitwarden",
+      "icon": "packages/nodes-base/nodes/Bitwarden/bitwarden.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.bitwarden/",
+      "directory": "packages/nodes-base/nodes/Bitwarden"
+    },
+    {
+      "displayName": "Box",
+      "name": "box",
+      "icon": "packages/nodes-base/nodes/Box/box.png",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.box/",
+      "directory": "packages/nodes-base/nodes/Box"
+    },
+    {
+      "displayName": "Box Trigger",
+      "name": "boxTrigger",
+      "icon": "packages/nodes-base/nodes/Box/box.png",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.boxtrigger/",
+      "directory": "packages/nodes-base/nodes/Box"
+    },
+    {
+      "displayName": "Brandfetch",
+      "name": "Brandfetch",
+      "icon": "packages/nodes-base/nodes/Brandfetch/brandfetch.png",
+      "categories": [
+        "Utility",
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.brandfetch/",
+      "directory": "packages/nodes-base/nodes/Brandfetch"
+    },
+    {
+      "displayName": "Brevo",
+      "name": "sendInBlue",
+      "icon": "packages/nodes-base/nodes/Brevo/brevo.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.brevo/",
+      "directory": "packages/nodes-base/nodes/Brevo"
+    },
+    {
+      "displayName": "Brevo Trigger",
+      "name": "sendInBlueApi",
+      "icon": "packages/nodes-base/nodes/Brevo/brevo.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.brevotrigger/",
+      "directory": "packages/nodes-base/nodes/Brevo"
+    },
+    {
+      "displayName": "Bubble",
+      "name": "bubble",
+      "icon": "packages/nodes-base/nodes/Bubble/bubble.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.bubble/",
+      "directory": "packages/nodes-base/nodes/Bubble"
+    },
+    {
+      "displayName": "Cal.com Trigger",
+      "name": "calTrigger",
+      "icon": "packages/nodes-base/nodes/Cal/cal.dark.svg",
+      "categories": [
+        "Productivity",
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.caltrigger/",
+      "directory": "packages/nodes-base/nodes/Cal"
+    },
+    {
+      "displayName": "Calendly Trigger",
+      "name": "calendlyTrigger",
+      "icon": "packages/nodes-base/nodes/Calendly/calendly.svg",
+      "categories": [
+        "Productivity",
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.calendlytrigger/",
+      "directory": "packages/nodes-base/nodes/Calendly"
+    },
+    {
+      "displayName": "Chargebee",
+      "name": "chargebee",
+      "icon": "packages/nodes-base/nodes/Chargebee/chargebee.png",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.chargebee/",
+      "directory": "packages/nodes-base/nodes/Chargebee"
+    },
+    {
+      "displayName": "Chargebee Trigger",
+      "name": "chargebeeTrigger",
+      "icon": "packages/nodes-base/nodes/Chargebee/chargebee.png",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.chargebeetrigger/",
+      "directory": "packages/nodes-base/nodes/Chargebee"
+    },
+    {
+      "displayName": "CircleCI",
+      "name": "circleCi",
+      "icon": "packages/nodes-base/nodes/CircleCi/circleCi.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.circleci/",
+      "directory": "packages/nodes-base/nodes/CircleCi"
+    },
+    {
+      "displayName": "Clearbit",
+      "name": "clearbit",
+      "icon": "packages/nodes-base/nodes/Clearbit/clearbit.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.clearbit/",
+      "directory": "packages/nodes-base/nodes/Clearbit"
+    },
+    {
+      "displayName": "ClickUp Trigger",
+      "name": "clickUpTrigger",
+      "icon": "packages/nodes-base/nodes/ClickUp/clickup.svg",
+      "categories": [
+        "Productivity",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.clickuptrigger/",
+      "directory": "packages/nodes-base/nodes/ClickUp"
+    },
+    {
+      "displayName": "Clockify",
+      "name": "clockify",
+      "icon": "packages/nodes-base/nodes/Clockify/clockify.dark.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.clockify/",
+      "directory": "packages/nodes-base/nodes/Clockify"
+    },
+    {
+      "displayName": "Clockify Trigger",
+      "name": "clockifyTrigger",
+      "icon": "packages/nodes-base/nodes/Clockify/clockify.dark.svg",
+      "categories": [
+        "Utility",
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.clockifytrigger/",
+      "directory": "packages/nodes-base/nodes/Clockify"
+    },
+    {
+      "displayName": "Cloudflare",
+      "name": "cloudflare",
+      "icon": "packages/nodes-base/nodes/Cloudflare/cloudflare.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.cloudflare/",
+      "directory": "packages/nodes-base/nodes/Cloudflare"
+    },
+    {
+      "displayName": "Cockpit",
+      "name": "cockpit",
+      "icon": "packages/nodes-base/nodes/Cockpit/cockpit.dark.svg",
+      "categories": [
+        "Marketing",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.cockpit/",
+      "directory": "packages/nodes-base/nodes/Cockpit"
+    },
+    {
+      "displayName": "Coda",
+      "name": "coda",
+      "icon": "packages/nodes-base/nodes/Coda/coda.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.coda/",
+      "directory": "packages/nodes-base/nodes/Coda"
+    },
+    {
+      "displayName": "Code",
+      "name": "code",
+      "icon": "packages/nodes-base/nodes/Code/code.svg",
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/",
+      "directory": "packages/nodes-base/nodes/Code"
+    },
+    {
+      "displayName": "CoinGecko",
+      "name": "coinGecko",
+      "icon": "packages/nodes-base/nodes/CoinGecko/coinGecko.svg",
+      "categories": [
+        "Productivity",
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.coingecko/",
+      "directory": "packages/nodes-base/nodes/CoinGecko"
+    },
+    {
+      "displayName": "Compare Datasets",
+      "name": "compareDatasets",
+      "icon": "packages/nodes-base/nodes/CompareDatasets/compare.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.comparedatasets/",
+      "directory": "packages/nodes-base/nodes/CompareDatasets"
+    },
+    {
+      "displayName": "Compression",
+      "name": "compression",
+      "icon": null,
+      "categories": [
+        "Core Nodes",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.compression/",
+      "directory": "packages/nodes-base/nodes/Compression"
+    },
+    {
+      "displayName": "Contentful",
+      "name": "contentful",
+      "icon": "packages/nodes-base/nodes/Contentful/contentful.png",
+      "categories": [
+        "Marketing",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.contentful/",
+      "directory": "packages/nodes-base/nodes/Contentful"
+    },
+    {
+      "displayName": "Convert to File",
+      "name": "convertToFile",
+      "icon": "packages/nodes-base/nodes/Files/ConvertToFile/convertToFile.dark.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/",
+      "directory": "packages/nodes-base/nodes/Files/ConvertToFile"
+    },
+    {
+      "displayName": "Convert to/from binary data",
+      "name": "moveBinaryData",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/",
+      "directory": "packages/nodes-base/nodes/MoveBinaryData"
+    },
+    {
+      "displayName": "ConvertKit",
+      "name": "convertKit",
+      "icon": "packages/nodes-base/nodes/ConvertKit/convertKit.svg",
+      "categories": [
+        "Marketing",
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.convertkit/",
+      "directory": "packages/nodes-base/nodes/ConvertKit"
+    },
+    {
+      "displayName": "ConvertKit Trigger",
+      "name": "convertKitTrigger",
+      "icon": "packages/nodes-base/nodes/ConvertKit/convertKit.svg",
+      "categories": [
+        "Marketing",
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.convertkittrigger/",
+      "directory": "packages/nodes-base/nodes/ConvertKit"
+    },
+    {
+      "displayName": "Copper",
+      "name": "copper",
+      "icon": "packages/nodes-base/nodes/Copper/copper.svg",
+      "categories": [
+        "Marketing",
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.copper/",
+      "directory": "packages/nodes-base/nodes/Copper"
+    },
+    {
+      "displayName": "Copper Trigger",
+      "name": "copperTrigger",
+      "icon": "packages/nodes-base/nodes/Copper/copper.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.coppertrigger/",
+      "directory": "packages/nodes-base/nodes/Copper"
+    },
+    {
+      "displayName": "Cortex",
+      "name": "cortex",
+      "icon": "packages/nodes-base/nodes/Cortex/cortex.svg",
+      "categories": [
+        "Development",
+        "Analytics"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.cortex/",
+      "directory": "packages/nodes-base/nodes/Cortex"
+    },
+    {
+      "displayName": "CrateDB",
+      "name": "crateDb",
+      "icon": "packages/nodes-base/nodes/CrateDb/cratedb.png",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.cratedb/",
+      "directory": "packages/nodes-base/nodes/CrateDb"
+    },
+    {
+      "displayName": "Cron",
+      "name": "cron",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/",
+      "directory": "packages/nodes-base/nodes/Cron"
+    },
+    {
+      "displayName": "Crypto",
+      "name": "crypto",
+      "icon": null,
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.crypto/",
+      "directory": "packages/nodes-base/nodes/Crypto"
+    },
+    {
+      "displayName": "Customer.io",
+      "name": "customerIo",
+      "icon": "packages/nodes-base/nodes/CustomerIo/customerio.dark.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.customerio/",
+      "directory": "packages/nodes-base/nodes/CustomerIo"
+    },
+    {
+      "displayName": "Customer.io Trigger",
+      "name": "customerIoTrigger",
+      "icon": "packages/nodes-base/nodes/CustomerIo/customerio.dark.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.customeriotrigger/",
+      "directory": "packages/nodes-base/nodes/CustomerIo"
+    },
+    {
+      "displayName": "Data table",
+      "name": "dataTable",
+      "icon": null,
+      "categories": [
+        "Core Nodes",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datatable/",
+      "directory": "packages/nodes-base/nodes/DataTable"
+    },
+    {
+      "displayName": "Date & Time",
+      "name": "dateTime",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datetime/",
+      "directory": "packages/nodes-base/nodes/DateTime"
+    },
+    {
+      "displayName": "DebugHelper",
+      "name": "debugHelper",
+      "icon": "packages/nodes-base/nodes/DebugHelper/DebugHelper.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.debughelper/",
+      "directory": "packages/nodes-base/nodes/DebugHelper"
+    },
+    {
+      "displayName": "DeepL",
+      "name": "deepL",
+      "icon": "packages/nodes-base/nodes/DeepL/deepL.dark.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.deepl/",
+      "directory": "packages/nodes-base/nodes/DeepL"
+    },
+    {
+      "displayName": "Demio",
+      "name": "demio",
+      "icon": "packages/nodes-base/nodes/Demio/demio.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.demio/",
+      "directory": "packages/nodes-base/nodes/Demio"
+    },
+    {
+      "displayName": "DHL",
+      "name": "dhl",
+      "icon": "packages/nodes-base/nodes/Dhl/dhl.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.dhl/",
+      "directory": "packages/nodes-base/nodes/Dhl"
+    },
+    {
+      "displayName": "Discord",
+      "name": "discord",
+      "icon": "packages/nodes-base/nodes/Discord/discord.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.discord/",
+      "directory": "packages/nodes-base/nodes/Discord"
+    },
+    {
+      "displayName": "Discourse",
+      "name": "discourse",
+      "icon": "packages/nodes-base/nodes/Discourse/discourse.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.discourse/",
+      "directory": "packages/nodes-base/nodes/Discourse"
+    },
+    {
+      "displayName": "Disqus",
+      "name": "disqus",
+      "icon": "packages/nodes-base/nodes/Disqus/disqus.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.disqus/",
+      "directory": "packages/nodes-base/nodes/Disqus"
+    },
+    {
+      "displayName": "Document",
+      "name": "documentId",
+      "icon": "packages/nodes-base/nodes/Google/Sheet/googleSheets.svg",
+      "categories": [
+        "Data & Storage",
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.googlesheetstrigger/",
+      "directory": "packages/nodes-base/nodes/Google/Sheet"
+    },
+    {
+      "displayName": "Drift",
+      "name": "drift",
+      "icon": "packages/nodes-base/nodes/Drift/drift.dark.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.drift/",
+      "directory": "packages/nodes-base/nodes/Drift"
+    },
+    {
+      "displayName": "Dropbox",
+      "name": "dropbox",
+      "icon": "packages/nodes-base/nodes/Dropbox/dropbox.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.dropbox/",
+      "directory": "packages/nodes-base/nodes/Dropbox"
+    },
+    {
+      "displayName": "Dropcontact",
+      "name": "dropcontact",
+      "icon": "packages/nodes-base/nodes/Dropcontact/dropcontact.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.dropcontact/",
+      "directory": "packages/nodes-base/nodes/Dropcontact"
+    },
+    {
+      "displayName": "E-goi",
+      "name": "egoi",
+      "icon": "packages/nodes-base/nodes/Egoi/egoi.svg",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.egoi/",
+      "directory": "packages/nodes-base/nodes/Egoi"
+    },
+    {
+      "displayName": "E2E Test",
+      "name": "e2eTest",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.editimage/",
+      "directory": "packages/nodes-base/nodes/E2eTest"
+    },
+    {
+      "displayName": "Elastic Security",
+      "name": "elasticSecurity",
+      "icon": "packages/nodes-base/nodes/Elastic/ElasticSecurity/elasticSecurity.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.elasticsecurity/",
+      "directory": "packages/nodes-base/nodes/Elastic/ElasticSecurity"
+    },
+    {
+      "displayName": "Elasticsearch",
+      "name": "elasticsearch",
+      "icon": "packages/nodes-base/nodes/Elastic/Elasticsearch/elasticsearch.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.elasticsearch/",
+      "directory": "packages/nodes-base/nodes/Elastic/Elasticsearch"
+    },
+    {
+      "displayName": "Email Trigger (IMAP)",
+      "name": "emailReadImap",
+      "icon": null,
+      "categories": [
+        "Communication",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.emailimap/",
+      "directory": "packages/nodes-base/nodes/EmailReadImap"
+    },
+    {
+      "displayName": "Emelia",
+      "name": "emelia",
+      "icon": "packages/nodes-base/nodes/Emelia/emelia.svg",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.emelia/",
+      "directory": "packages/nodes-base/nodes/Emelia"
+    },
+    {
+      "displayName": "Emelia Trigger",
+      "name": "emeliaTrigger",
+      "icon": "packages/nodes-base/nodes/Emelia/emelia.svg",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.emeliatrigger/",
+      "directory": "packages/nodes-base/nodes/Emelia"
+    },
+    {
+      "displayName": "ERPNext",
+      "name": "erpNext",
+      "icon": "packages/nodes-base/nodes/ERPNext/erpnext.svg",
+      "categories": [
+        "Finance & Accounting",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.erpnext/",
+      "directory": "packages/nodes-base/nodes/ERPNext"
+    },
+    {
+      "displayName": "Error Trigger",
+      "name": "errorTrigger",
+      "icon": null,
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.errortrigger/",
+      "directory": "packages/nodes-base/nodes/ErrorTrigger"
+    },
+    {
+      "displayName": "Eventbrite Trigger",
+      "name": "eventbriteTrigger",
+      "icon": "packages/nodes-base/nodes/Eventbrite/eventbrite.png",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.eventbritetrigger/",
+      "directory": "packages/nodes-base/nodes/Eventbrite"
+    },
+    {
+      "displayName": "Execute Command",
+      "name": "executeCommand",
+      "icon": null,
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executecommand/",
+      "directory": "packages/nodes-base/nodes/ExecuteCommand"
+    },
+    {
+      "displayName": "Execute Sub-workflow",
+      "name": "executeWorkflow",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/",
+      "directory": "packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow"
+    },
+    {
+      "displayName": "Execute Workflow Trigger",
+      "name": "executeWorkflowTrigger",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/",
+      "directory": "packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger"
+    },
+    {
+      "displayName": "Execution Data",
+      "name": "executionData",
+      "icon": null,
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executiondata/",
+      "directory": "packages/nodes-base/nodes/ExecutionData"
+    },
+    {
+      "displayName": "Extract from File",
+      "name": "extractFromFile",
+      "icon": "packages/nodes-base/nodes/Files/ExtractFromFile/extractFromFile.dark.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.extractfromfile/",
+      "directory": "packages/nodes-base/nodes/Files/ExtractFromFile"
+    },
+    {
+      "displayName": "Extraction Values",
+      "name": "extractionValues",
+      "icon": "packages/nodes-base/nodes/Html/html.dark.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.html/",
+      "directory": "packages/nodes-base/nodes/Html"
+    },
+    {
+      "displayName": "Facebook Graph API",
+      "name": "facebookGraphApi",
+      "icon": "packages/nodes-base/nodes/Facebook/facebook.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.facebookgraphapi/",
+      "directory": "packages/nodes-base/nodes/Facebook"
+    },
+    {
+      "displayName": "Facebook Lead Ads Trigger",
+      "name": "facebookLeadAdsTrigger",
+      "icon": "packages/nodes-base/nodes/FacebookLeadAds/facebook.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.facebookleadadstrigger/",
+      "directory": "packages/nodes-base/nodes/FacebookLeadAds"
+    },
+    {
+      "displayName": "Facebook Trigger",
+      "name": "facebookTrigger",
+      "icon": "packages/nodes-base/nodes/Facebook/facebook.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.facebooktrigger/",
+      "directory": "packages/nodes-base/nodes/Facebook"
+    },
+    {
+      "displayName": "Figma Trigger (Beta)",
+      "name": "figmaTrigger",
+      "icon": "packages/nodes-base/nodes/Figma/figma.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.figmatrigger/",
+      "directory": "packages/nodes-base/nodes/Figma"
+    },
+    {
+      "displayName": "FileMaker",
+      "name": "filemaker",
+      "icon": "packages/nodes-base/nodes/FileMaker/filemaker.png",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.filemaker/",
+      "directory": "packages/nodes-base/nodes/FileMaker"
+    },
+    {
+      "displayName": "Filter",
+      "name": "filter",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/",
+      "directory": "packages/nodes-base/nodes/Filter"
+    },
+    {
+      "displayName": "Flow",
+      "name": "flow",
+      "icon": "packages/nodes-base/nodes/Flow/flow.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.flow/",
+      "directory": "packages/nodes-base/nodes/Flow"
+    },
+    {
+      "displayName": "Flow Trigger",
+      "name": "flowTrigger",
+      "icon": "packages/nodes-base/nodes/Flow/flow.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.flowtrigger/",
+      "directory": "packages/nodes-base/nodes/Flow"
+    },
+    {
+      "displayName": "Form.io Trigger",
+      "name": "formIoTrigger",
+      "icon": "packages/nodes-base/nodes/FormIo/formio.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.formiotrigger/",
+      "directory": "packages/nodes-base/nodes/FormIo"
+    },
+    {
+      "displayName": "Formstack Trigger",
+      "name": "formstackTrigger",
+      "icon": "packages/nodes-base/nodes/Formstack/formstack.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.formstacktrigger/",
+      "directory": "packages/nodes-base/nodes/Formstack"
+    },
+    {
+      "displayName": "Freshdesk",
+      "name": "freshdesk",
+      "icon": "packages/nodes-base/nodes/Freshdesk/freshdesk.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.freshdesk/",
+      "directory": "packages/nodes-base/nodes/Freshdesk"
+    },
+    {
+      "displayName": "Freshworks CRM",
+      "name": "freshworksCrm",
+      "icon": "packages/nodes-base/nodes/FreshworksCrm/freshworksCrm.svg",
+      "categories": [
+        "Marketing",
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.freshworkscrm/",
+      "directory": "packages/nodes-base/nodes/FreshworksCrm"
+    },
+    {
+      "displayName": "Function",
+      "name": "function",
+      "icon": null,
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/",
+      "directory": "packages/nodes-base/nodes/Function"
+    },
+    {
+      "displayName": "Function Item",
+      "name": "functionItem",
+      "icon": null,
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/",
+      "directory": "packages/nodes-base/nodes/FunctionItem"
+    },
+    {
+      "displayName": "GetResponse",
+      "name": "getResponse",
+      "icon": "packages/nodes-base/nodes/GetResponse/getResponse.png",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.getresponse/",
+      "directory": "packages/nodes-base/nodes/GetResponse"
+    },
+    {
+      "displayName": "GetResponse Trigger",
+      "name": "getResponseTrigger",
+      "icon": "packages/nodes-base/nodes/GetResponse/getResponse.png",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.getresponsetrigger/",
+      "directory": "packages/nodes-base/nodes/GetResponse"
+    },
+    {
+      "displayName": "Ghost",
+      "name": "ghost",
+      "icon": "packages/nodes-base/nodes/Ghost/ghost.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.ghost/",
+      "directory": "packages/nodes-base/nodes/Ghost"
+    },
+    {
+      "displayName": "Git",
+      "name": "git",
+      "icon": "packages/nodes-base/nodes/Git/git.svg",
+      "categories": [
+        "Core Nodes",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.git/",
+      "directory": "packages/nodes-base/nodes/Git"
+    },
+    {
+      "displayName": "Github Trigger",
+      "name": "githubTrigger",
+      "icon": "packages/nodes-base/nodes/Github/github.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.githubtrigger/",
+      "directory": "packages/nodes-base/nodes/Github"
+    },
+    {
+      "displayName": "GitLab",
+      "name": "gitlab",
+      "icon": "packages/nodes-base/nodes/Gitlab/gitlab.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gitlab/",
+      "directory": "packages/nodes-base/nodes/Gitlab"
+    },
+    {
+      "displayName": "GitLab Trigger",
+      "name": "Comment",
+      "icon": "packages/nodes-base/nodes/Gitlab/gitlab.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.gitlabtrigger/",
+      "directory": "packages/nodes-base/nodes/Gitlab"
+    },
+    {
+      "displayName": "Gmail",
+      "name": "gmail",
+      "icon": "packages/nodes-base/nodes/Google/Gmail/gmail.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/",
+      "directory": "packages/nodes-base/nodes/Google/Gmail"
+    },
+    {
+      "displayName": "Gmail Trigger",
+      "name": "gmailTrigger",
+      "icon": "packages/nodes-base/nodes/Google/Gmail/gmail.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.gmailtrigger/",
+      "directory": "packages/nodes-base/nodes/Google/Gmail"
+    },
+    {
+      "displayName": "Gong",
+      "name": "gong",
+      "icon": "packages/nodes-base/nodes/Gong/gong.svg",
+      "categories": [
+        "Development",
+        "Developer Tools"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gong/",
+      "directory": "packages/nodes-base/nodes/Gong"
+    },
+    {
+      "displayName": "Google Ads",
+      "name": "googleAds",
+      "icon": "packages/nodes-base/nodes/Google/Ads/googleAds.svg",
+      "categories": [
+        "Analytics"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googleads/",
+      "directory": "packages/nodes-base/nodes/Google/Ads"
+    },
+    {
+      "displayName": "Google Analytics",
+      "name": "googleAnalytics",
+      "icon": "packages/nodes-base/nodes/Google/Analytics/analytics.svg",
+      "categories": [
+        "Analytics"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googleanalytics/",
+      "directory": "packages/nodes-base/nodes/Google/Analytics"
+    },
+    {
+      "displayName": "Google BigQuery",
+      "name": "googleBigQuery",
+      "icon": "packages/nodes-base/nodes/Google/BigQuery/googleBigQuery.svg",
+      "categories": [
+        "Data & Storage",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlebigquery/",
+      "directory": "packages/nodes-base/nodes/Google/BigQuery"
+    },
+    {
+      "displayName": "Google Books",
+      "name": "googleBooks",
+      "icon": "packages/nodes-base/nodes/Google/Books/googlebooks.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlebooks/",
+      "directory": "packages/nodes-base/nodes/Google/Books"
+    },
+    {
+      "displayName": "Google Business Profile",
+      "name": "googleBusinessProfile",
+      "icon": "packages/nodes-base/nodes/Google/BusinessProfile/googleBusinessProfile.svg",
+      "categories": [
+        "Marketing",
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlebusinessprofile/",
+      "directory": "packages/nodes-base/nodes/Google/BusinessProfile"
+    },
+    {
+      "displayName": "Google Business Profile Trigger",
+      "name": "googleBusinessProfileTrigger",
+      "icon": "packages/nodes-base/nodes/Google/BusinessProfile/googleBusinessProfile.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.googlebusinessprofiletrigger/",
+      "directory": "packages/nodes-base/nodes/Google/BusinessProfile"
+    },
+    {
+      "displayName": "Google Calendar",
+      "name": "googleCalendar",
+      "icon": "packages/nodes-base/nodes/Google/Calendar/googleCalendar.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlecalendar/",
+      "directory": "packages/nodes-base/nodes/Google/Calendar"
+    },
+    {
+      "displayName": "Google Calendar Trigger",
+      "name": "googleCalendarTrigger",
+      "icon": "packages/nodes-base/nodes/Google/Calendar/googleCalendar.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.googlecalendartrigger/",
+      "directory": "packages/nodes-base/nodes/Google/Calendar"
+    },
+    {
+      "displayName": "Google Chat",
+      "name": "googleChat",
+      "icon": "packages/nodes-base/nodes/Google/Chat/googleChat.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlechat/",
+      "directory": "packages/nodes-base/nodes/Google/Chat"
+    },
+    {
+      "displayName": "Google Cloud Firestore",
+      "name": "googleFirebaseCloudFirestore",
+      "icon": "packages/nodes-base/nodes/Google/Firebase/CloudFirestore/googleFirebaseCloudFirestore.png",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlecloudfirestore/",
+      "directory": "packages/nodes-base/nodes/Google/Firebase/CloudFirestore"
+    },
+    {
+      "displayName": "Google Cloud Natural Language",
+      "name": "googleCloudNaturalLanguage",
+      "icon": "packages/nodes-base/nodes/Google/CloudNaturalLanguage/googlecloudnaturallanguage.png",
+      "categories": [
+        "Analytics"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlecloudnaturallanguage/",
+      "directory": "packages/nodes-base/nodes/Google/CloudNaturalLanguage"
+    },
+    {
+      "displayName": "Google Cloud Realtime Database",
+      "name": "googleFirebaseRealtimeDatabase",
+      "icon": "packages/nodes-base/nodes/Google/Firebase/RealtimeDatabase/googleFirebaseRealtimeDatabase.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlecloudrealtimedatabase/",
+      "directory": "packages/nodes-base/nodes/Google/Firebase/RealtimeDatabase"
+    },
+    {
+      "displayName": "Google Cloud Storage",
+      "name": "googleCloudStorage",
+      "icon": "packages/nodes-base/nodes/Google/CloudStorage/googleCloudStorage.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlecloudstorage/",
+      "directory": "packages/nodes-base/nodes/Google/CloudStorage"
+    },
+    {
+      "displayName": "Google Contacts",
+      "name": "googleContacts",
+      "icon": "packages/nodes-base/nodes/Google/Contacts/googleContacts.png",
+      "categories": [
+        "Miscellaneous "
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlecontacts/",
+      "directory": "packages/nodes-base/nodes/Google/Contacts"
+    },
+    {
+      "displayName": "Google Docs",
+      "name": "googleDocs",
+      "icon": "packages/nodes-base/nodes/Google/Docs/googleDocs.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googledocs/",
+      "directory": "packages/nodes-base/nodes/Google/Docs"
+    },
+    {
+      "displayName": "Google Drive",
+      "name": "googleDrive",
+      "icon": "packages/nodes-base/nodes/Google/Drive/googleDrive.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googledrive/",
+      "directory": "packages/nodes-base/nodes/Google/Drive"
+    },
+    {
+      "displayName": "Google Drive Trigger",
+      "name": "googleDriveTrigger",
+      "icon": "packages/nodes-base/nodes/Google/Drive/googleDrive.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.googledrivetrigger/",
+      "directory": "packages/nodes-base/nodes/Google/Drive"
+    },
+    {
+      "displayName": "Google Perspective",
+      "name": "googlePerspective",
+      "icon": "packages/nodes-base/nodes/Google/Perspective/googlePerspective.dark.svg",
+      "categories": [
+        "Analytics",
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googleperspective/",
+      "directory": "packages/nodes-base/nodes/Google/Perspective"
+    },
+    {
+      "displayName": "Google Sheets",
+      "name": "googleSheets",
+      "icon": "packages/nodes-base/nodes/Google/Sheet/googleSheets.svg",
+      "categories": [
+        "Data & Storage",
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/",
+      "directory": "packages/nodes-base/nodes/Google/Sheet"
+    },
+    {
+      "displayName": "Google Slides",
+      "name": "googleSlides",
+      "icon": "packages/nodes-base/nodes/Google/Slides/googleslides.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googleslides/",
+      "directory": "packages/nodes-base/nodes/Google/Slides"
+    },
+    {
+      "displayName": "Google Tasks",
+      "name": "googleTasks",
+      "icon": "packages/nodes-base/nodes/Google/Task/googleTasks.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googletasks/",
+      "directory": "packages/nodes-base/nodes/Google/Task"
+    },
+    {
+      "displayName": "Google Translate",
+      "name": "googleTranslate",
+      "icon": "packages/nodes-base/nodes/Google/Translate/googletranslate.png",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googletranslate/",
+      "directory": "packages/nodes-base/nodes/Google/Translate"
+    },
+    {
+      "displayName": "Google Workspace Admin",
+      "name": "gSuiteAdmin",
+      "icon": "packages/nodes-base/nodes/Google/GSuiteAdmin/gSuiteAdmin.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gsuiteadmin/",
+      "directory": "packages/nodes-base/nodes/Google/GSuiteAdmin"
+    },
+    {
+      "displayName": "Gotify",
+      "name": "gotify",
+      "icon": "packages/nodes-base/nodes/Gotify/gotify.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gotify/",
+      "directory": "packages/nodes-base/nodes/Gotify"
+    },
+    {
+      "displayName": "GoToWebinar",
+      "name": "goToWebinar",
+      "icon": "packages/nodes-base/nodes/GoToWebinar/gotowebinar.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gotowebinar/",
+      "directory": "packages/nodes-base/nodes/GoToWebinar"
+    },
+    {
+      "displayName": "Grafana",
+      "name": "grafana",
+      "icon": "packages/nodes-base/nodes/Grafana/grafana.svg",
+      "categories": [
+        "Development",
+        "Analytics"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.grafana/",
+      "directory": "packages/nodes-base/nodes/Grafana"
+    },
+    {
+      "displayName": "GraphQL",
+      "name": "graphql",
+      "icon": "packages/nodes-base/nodes/GraphQL/graphql.png",
+      "categories": [
+        "Data & Storage",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.graphql/",
+      "directory": "packages/nodes-base/nodes/GraphQL"
+    },
+    {
+      "displayName": "Grist",
+      "name": "grist",
+      "icon": "packages/nodes-base/nodes/Grist/grist.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.grist/",
+      "directory": "packages/nodes-base/nodes/Grist"
+    },
+    {
+      "displayName": "Gumroad Trigger",
+      "name": "gumroadTrigger",
+      "icon": "packages/nodes-base/nodes/Gumroad/gumroad.png",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.gumroadtrigger/",
+      "directory": "packages/nodes-base/nodes/Gumroad"
+    },
+    {
+      "displayName": "Hacker News",
+      "name": "hackerNews",
+      "icon": "packages/nodes-base/nodes/HackerNews/hackernews.png",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.hackernews/",
+      "directory": "packages/nodes-base/nodes/HackerNews"
+    },
+    {
+      "displayName": "HaloPSA",
+      "name": "haloPSA",
+      "icon": "packages/nodes-base/nodes/HaloPSA/halopsa.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.halopsa/",
+      "directory": "packages/nodes-base/nodes/HaloPSA"
+    },
+    {
+      "displayName": "Harvest",
+      "name": "harvest",
+      "icon": "packages/nodes-base/nodes/Harvest/harvest.png",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.harvest/",
+      "directory": "packages/nodes-base/nodes/Harvest"
+    },
+    {
+      "displayName": "Help Scout",
+      "name": "helpScout",
+      "icon": "packages/nodes-base/nodes/HelpScout/helpScout.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.helpscout/",
+      "directory": "packages/nodes-base/nodes/HelpScout"
+    },
+    {
+      "displayName": "Help Scout Trigger",
+      "name": "helpScoutTrigger",
+      "icon": "packages/nodes-base/nodes/HelpScout/helpScout.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.helpscouttrigger/",
+      "directory": "packages/nodes-base/nodes/HelpScout"
+    },
+    {
+      "displayName": "HighLevel",
+      "name": "highLevel",
+      "icon": "packages/nodes-base/nodes/HighLevel/highLevel.svg",
+      "categories": [
+        "Marketing",
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.highlevel/",
+      "directory": "packages/nodes-base/nodes/HighLevel"
+    },
+    {
+      "displayName": "Home Assistant",
+      "name": "homeAssistant",
+      "icon": "packages/nodes-base/nodes/HomeAssistant/homeAssistant.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.homeassistant/",
+      "directory": "packages/nodes-base/nodes/HomeAssistant"
+    },
+    {
+      "displayName": "HTML Extract",
+      "name": "htmlExtract",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.html/",
+      "directory": "packages/nodes-base/nodes/HtmlExtract"
+    },
+    {
+      "displayName": "HTTP Request",
+      "name": "httpRequest",
+      "icon": "packages/nodes-base/nodes/HttpRequest/httprequest.dark.svg",
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/",
+      "directory": "packages/nodes-base/nodes/HttpRequest"
+    },
+    {
+      "displayName": "HubSpot",
+      "name": "hubspot",
+      "icon": "packages/nodes-base/nodes/Hubspot/hubspot.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.hubspot/",
+      "directory": "packages/nodes-base/nodes/Hubspot"
+    },
+    {
+      "displayName": "HubSpot Trigger",
+      "name": "hubspotTrigger",
+      "icon": "packages/nodes-base/nodes/Hubspot/hubspot.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.hubspottrigger/",
+      "directory": "packages/nodes-base/nodes/Hubspot"
+    },
+    {
+      "displayName": "Humantic AI",
+      "name": "humanticAi",
+      "icon": "packages/nodes-base/nodes/HumanticAI/humanticai.svg",
+      "categories": [
+        "Analytics"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.humanticai/",
+      "directory": "packages/nodes-base/nodes/HumanticAI"
+    },
+    {
+      "displayName": "Hunter",
+      "name": "hunter",
+      "icon": "packages/nodes-base/nodes/Hunter/hunter.png",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.hunter/",
+      "directory": "packages/nodes-base/nodes/Hunter"
+    },
+    {
+      "displayName": "iCalendar",
+      "name": "iCal",
+      "icon": null,
+      "categories": [
+        "Core Nodes",
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/",
+      "directory": "packages/nodes-base/nodes/ICalendar"
+    },
+    {
+      "displayName": "If",
+      "name": "if",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/",
+      "directory": "packages/nodes-base/nodes/If"
+    },
+    {
+      "displayName": "Intercom",
+      "name": "intercom",
+      "icon": "packages/nodes-base/nodes/Intercom/intercom.svg",
+      "categories": [
+        "Communication",
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.intercom/",
+      "directory": "packages/nodes-base/nodes/Intercom"
+    },
+    {
+      "displayName": "Interval",
+      "name": "interval",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.interval/",
+      "directory": "packages/nodes-base/nodes/Interval"
+    },
+    {
+      "displayName": "Invoice Ninja",
+      "name": "invoiceNinja",
+      "icon": "packages/nodes-base/nodes/InvoiceNinja/invoiceNinja.svg",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.invoiceninja/",
+      "directory": "packages/nodes-base/nodes/InvoiceNinja"
+    },
+    {
+      "displayName": "Invoice Ninja Trigger",
+      "name": "invoiceNinjaTrigger",
+      "icon": "packages/nodes-base/nodes/InvoiceNinja/invoiceNinja.svg",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.invoiceninjatrigger/",
+      "directory": "packages/nodes-base/nodes/InvoiceNinja"
+    },
+    {
+      "displayName": "Item Lists",
+      "name": "itemLists",
+      "icon": "packages/nodes-base/nodes/ItemLists/itemLists.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.itemlists/",
+      "directory": "packages/nodes-base/nodes/ItemLists"
+    },
+    {
+      "displayName": "Iterable",
+      "name": "iterable",
+      "icon": "packages/nodes-base/nodes/Iterable/iterable.png",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.iterable/",
+      "directory": "packages/nodes-base/nodes/Iterable"
+    },
+    {
+      "displayName": "Jenkins",
+      "name": "jenkins",
+      "icon": "packages/nodes-base/nodes/Jenkins/jenkins.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.jenkins/",
+      "directory": "packages/nodes-base/nodes/Jenkins"
+    },
+    {
+      "displayName": "Jina AI",
+      "name": "jinaAi",
+      "icon": "packages/nodes-base/nodes/JinaAI/jinaAi.dark.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.jinaai/",
+      "directory": "packages/nodes-base/nodes/JinaAI"
+    },
+    {
+      "displayName": "Jira Software",
+      "name": "jira",
+      "icon": "packages/nodes-base/nodes/Jira/jira.svg",
+      "categories": [
+        "Development",
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.jira/",
+      "directory": "packages/nodes-base/nodes/Jira"
+    },
+    {
+      "displayName": "Jira Trigger",
+      "name": "jiraTrigger",
+      "icon": "packages/nodes-base/nodes/Jira/jira.svg",
+      "categories": [
+        "Development",
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.jiratrigger/",
+      "directory": "packages/nodes-base/nodes/Jira"
+    },
+    {
+      "displayName": "Jotform Trigger",
+      "name": "jotFormTrigger",
+      "icon": "packages/nodes-base/nodes/JotForm/jotform.dark.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.jotformtrigger/",
+      "directory": "packages/nodes-base/nodes/JotForm"
+    },
+    {
+      "displayName": "JWT",
+      "name": "jwt",
+      "icon": "packages/nodes-base/nodes/Jwt/jwt.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.jwt/",
+      "directory": "packages/nodes-base/nodes/Jwt"
+    },
+    {
+      "displayName": "Kafka",
+      "name": "kafka",
+      "icon": "packages/nodes-base/nodes/Kafka/kafka.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.kafka/",
+      "directory": "packages/nodes-base/nodes/Kafka"
+    },
+    {
+      "displayName": "Kafka Trigger",
+      "name": "kafkaTrigger",
+      "icon": "packages/nodes-base/nodes/Kafka/kafka.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.kafkatrigger/",
+      "directory": "packages/nodes-base/nodes/Kafka"
+    },
+    {
+      "displayName": "Keap",
+      "name": "keap",
+      "icon": "packages/nodes-base/nodes/Keap/keap.png",
+      "categories": [
+        "Sales",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.keap/",
+      "directory": "packages/nodes-base/nodes/Keap"
+    },
+    {
+      "displayName": "Keap Trigger",
+      "name": "keapTrigger",
+      "icon": "packages/nodes-base/nodes/Keap/keap.png",
+      "categories": [
+        "Sales",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.keaptrigger/",
+      "directory": "packages/nodes-base/nodes/Keap"
+    },
+    {
+      "displayName": "KoBoToolbox",
+      "name": "koBoToolbox",
+      "icon": "packages/nodes-base/nodes/KoBoToolbox/koBoToolbox.svg",
+      "categories": [
+        "Communication",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.kobotoolbox/",
+      "directory": "packages/nodes-base/nodes/KoBoToolbox"
+    },
+    {
+      "displayName": "KoBoToolbox Trigger",
+      "name": "koBoToolboxTrigger",
+      "icon": "packages/nodes-base/nodes/KoBoToolbox/koBoToolbox.svg",
+      "categories": [
+        "Communication",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.kobotoolboxtrigger/",
+      "directory": "packages/nodes-base/nodes/KoBoToolbox"
+    },
+    {
+      "displayName": "Ldap",
+      "name": "ldap",
+      "icon": "packages/nodes-base/nodes/Ldap/ldap.dark.svg",
+      "categories": [
+        "Development",
+        "Developer Tools"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ldap/",
+      "directory": "packages/nodes-base/nodes/Ldap"
+    },
+    {
+      "displayName": "Lemlist",
+      "name": "lemlist",
+      "icon": "packages/nodes-base/nodes/Lemlist/lemlist.svg",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.lemlist/",
+      "directory": "packages/nodes-base/nodes/Lemlist"
+    },
+    {
+      "displayName": "Lemlist Trigger",
+      "name": "lemlistTrigger",
+      "icon": "packages/nodes-base/nodes/Lemlist/lemlist.svg",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.lemlisttrigger/",
+      "directory": "packages/nodes-base/nodes/Lemlist"
+    },
+    {
+      "displayName": "Limit",
+      "name": "limit",
+      "icon": "packages/nodes-base/nodes/Transform/Limit/limit.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.limit/",
+      "directory": "packages/nodes-base/nodes/Transform/Limit"
+    },
+    {
+      "displayName": "Limit Wait Time",
+      "name": "limitWaitTime",
+      "icon": "packages/nodes-base/nodes/Form/form.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.form/",
+      "directory": "packages/nodes-base/nodes/Form"
+    },
+    {
+      "displayName": "Line",
+      "name": "line",
+      "icon": "packages/nodes-base/nodes/Line/line.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.line/",
+      "directory": "packages/nodes-base/nodes/Line"
+    },
+    {
+      "displayName": "Linear",
+      "name": "linear",
+      "icon": "packages/nodes-base/nodes/Linear/linear.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.linear/",
+      "directory": "packages/nodes-base/nodes/Linear"
+    },
+    {
+      "displayName": "Linear Trigger",
+      "name": "linearTrigger",
+      "icon": "packages/nodes-base/nodes/Linear/linear.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.lineartrigger/",
+      "directory": "packages/nodes-base/nodes/Linear"
+    },
+    {
+      "displayName": "LingvaNex",
+      "name": "lingvaNex",
+      "icon": "packages/nodes-base/nodes/LingvaNex/lingvanex.png",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.lingvanex/",
+      "directory": "packages/nodes-base/nodes/LingvaNex"
+    },
+    {
+      "displayName": "LinkedIn",
+      "name": "linkedIn",
+      "icon": "packages/nodes-base/nodes/LinkedIn/linkedin.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.linkedin/",
+      "directory": "packages/nodes-base/nodes/LinkedIn"
+    },
+    {
+      "displayName": "Local File Trigger",
+      "name": "localFileTrigger",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.localfiletrigger/",
+      "directory": "packages/nodes-base/nodes/LocalFileTrigger"
+    },
+    {
+      "displayName": "LoneScale",
+      "name": "loneScale",
+      "icon": "packages/nodes-base/nodes/LoneScale/loneScale.dark.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.lonescale/",
+      "directory": "packages/nodes-base/nodes/LoneScale"
+    },
+    {
+      "displayName": "LoneScale Trigger",
+      "name": "loneScaleTrigger",
+      "icon": "packages/nodes-base/nodes/LoneScale/loneScale.dark.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.lonescaletrigger/",
+      "directory": "packages/nodes-base/nodes/LoneScale"
+    },
+    {
+      "displayName": "Magento 2",
+      "name": "magento2",
+      "icon": "packages/nodes-base/nodes/Magento/magento.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.magento2/",
+      "directory": "packages/nodes-base/nodes/Magento"
+    },
+    {
+      "displayName": "Mailcheck",
+      "name": "mailcheck",
+      "icon": "packages/nodes-base/nodes/Mailcheck/mailcheck.svg",
+      "categories": [
+        "Utility",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mailcheck/",
+      "directory": "packages/nodes-base/nodes/Mailcheck"
+    },
+    {
+      "displayName": "Mailchimp Trigger",
+      "name": "mailchimpTrigger",
+      "icon": "packages/nodes-base/nodes/Mailchimp/mailchimp.dark.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.mailchimptrigger/",
+      "directory": "packages/nodes-base/nodes/Mailchimp"
+    },
+    {
+      "displayName": "MailerLite",
+      "name": "mailerLite",
+      "icon": "packages/nodes-base/nodes/MailerLite/MailerLite.svg",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mailerlite/",
+      "directory": "packages/nodes-base/nodes/MailerLite"
+    },
+    {
+      "displayName": "MailerLite Trigger",
+      "name": "mailerLiteTrigger",
+      "icon": "packages/nodes-base/nodes/MailerLite/MailerLite.svg",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.mailerlitetrigger/",
+      "directory": "packages/nodes-base/nodes/MailerLite"
+    },
+    {
+      "displayName": "Mailgun",
+      "name": "mailgun",
+      "icon": "packages/nodes-base/nodes/Mailgun/mailgun.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mailgun/",
+      "directory": "packages/nodes-base/nodes/Mailgun"
+    },
+    {
+      "displayName": "Mailjet",
+      "name": "mailjet",
+      "icon": "packages/nodes-base/nodes/Mailjet/mailjet.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mailjet/",
+      "directory": "packages/nodes-base/nodes/Mailjet"
+    },
+    {
+      "displayName": "Mailjet Trigger",
+      "name": "mailjetTrigger",
+      "icon": "packages/nodes-base/nodes/Mailjet/mailjet.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.mailjettrigger/",
+      "directory": "packages/nodes-base/nodes/Mailjet"
+    },
+    {
+      "displayName": "Mandrill",
+      "name": "mandrill",
+      "icon": "packages/nodes-base/nodes/Mandrill/mandrill.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mandrill/",
+      "directory": "packages/nodes-base/nodes/Mandrill"
+    },
+    {
+      "displayName": "Manual Trigger",
+      "name": "manualTrigger",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/",
+      "directory": "packages/nodes-base/nodes/ManualTrigger"
+    },
+    {
+      "displayName": "Markdown",
+      "name": "markdown",
+      "icon": "packages/nodes-base/nodes/Markdown/markdown.dark.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.markdown/",
+      "directory": "packages/nodes-base/nodes/Markdown"
+    },
+    {
+      "displayName": "Marketstack",
+      "name": "marketstack",
+      "icon": "packages/nodes-base/nodes/Marketstack/marketstack.dark.svg",
+      "categories": [
+        "Analytics",
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.marketstack/",
+      "directory": "packages/nodes-base/nodes/Marketstack"
+    },
+    {
+      "displayName": "Matrix",
+      "name": "matrix",
+      "icon": "packages/nodes-base/nodes/Matrix/matrix.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.matrix/",
+      "directory": "packages/nodes-base/nodes/Matrix"
+    },
+    {
+      "displayName": "Mattermost",
+      "name": "mattermost",
+      "icon": "packages/nodes-base/nodes/Mattermost/mattermost.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mattermost/",
+      "directory": "packages/nodes-base/nodes/Mattermost"
+    },
+    {
+      "displayName": "Mautic",
+      "name": "mautic",
+      "icon": "packages/nodes-base/nodes/Mautic/mautic.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mautic/",
+      "directory": "packages/nodes-base/nodes/Mautic"
+    },
+    {
+      "displayName": "Mautic Trigger",
+      "name": "mauticTrigger",
+      "icon": "packages/nodes-base/nodes/Mautic/mautic.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.mautictrigger/",
+      "directory": "packages/nodes-base/nodes/Mautic"
+    },
+    {
+      "displayName": "Medium",
+      "name": "medium",
+      "icon": "packages/nodes-base/nodes/Medium/medium.png",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.medium/",
+      "directory": "packages/nodes-base/nodes/Medium"
+    },
+    {
+      "displayName": "Merge",
+      "name": "merge",
+      "icon": "packages/nodes-base/nodes/Merge/merge.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/",
+      "directory": "packages/nodes-base/nodes/Merge"
+    },
+    {
+      "displayName": "MessageBird",
+      "name": "messageBird",
+      "icon": "packages/nodes-base/nodes/MessageBird/messagebird.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.messagebird/",
+      "directory": "packages/nodes-base/nodes/MessageBird"
+    },
+    {
+      "displayName": "Metabase",
+      "name": "metabase",
+      "icon": "packages/nodes-base/nodes/Metabase/metabase.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.metabase/",
+      "directory": "packages/nodes-base/nodes/Metabase"
+    },
+    {
+      "displayName": "Microsoft Dynamics CRM",
+      "name": "microsoftDynamicsCrm",
+      "icon": "packages/nodes-base/nodes/Microsoft/Dynamics/microsoftDynamicsCrm.dark.svg",
+      "categories": [
+        "Marketing",
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftdynamicscrm/",
+      "directory": "packages/nodes-base/nodes/Microsoft/Dynamics"
+    },
+    {
+      "displayName": "Microsoft Entra ID",
+      "name": "microsoftEntra",
+      "icon": "packages/nodes-base/nodes/Microsoft/Entra/microsoftEntra.dark.svg",
+      "categories": [
+        "Development",
+        "Developer Tools"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftentra/",
+      "directory": "packages/nodes-base/nodes/Microsoft/Entra"
+    },
+    {
+      "displayName": "Microsoft Excel 365",
+      "name": "microsoftExcel",
+      "icon": "packages/nodes-base/nodes/Microsoft/Excel/excel.svg",
+      "categories": [
+        "Data & Storage",
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftexcel/",
+      "directory": "packages/nodes-base/nodes/Microsoft/Excel"
+    },
+    {
+      "displayName": "Microsoft Graph Security",
+      "name": "microsoftGraphSecurity",
+      "icon": "packages/nodes-base/nodes/Microsoft/GraphSecurity/microsoftGraph.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftgraphsecurity/",
+      "directory": "packages/nodes-base/nodes/Microsoft/GraphSecurity"
+    },
+    {
+      "displayName": "Microsoft OneDrive",
+      "name": "microsoftOneDrive",
+      "icon": "packages/nodes-base/nodes/Microsoft/OneDrive/oneDrive.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftonedrive/",
+      "directory": "packages/nodes-base/nodes/Microsoft/OneDrive"
+    },
+    {
+      "displayName": "Microsoft OneDrive Trigger",
+      "name": "microsoftOneDriveTrigger",
+      "icon": "packages/nodes-base/nodes/Microsoft/OneDrive/oneDrive.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.microsoftonedrivetrigger/",
+      "directory": "packages/nodes-base/nodes/Microsoft/OneDrive"
+    },
+    {
+      "displayName": "Microsoft Outlook",
+      "name": "microsoftOutlook",
+      "icon": "packages/nodes-base/nodes/Microsoft/Outlook/outlook.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftoutlook/",
+      "directory": "packages/nodes-base/nodes/Microsoft/Outlook"
+    },
+    {
+      "displayName": "Microsoft Outlook Trigger",
+      "name": "microsoftOutlookTrigger",
+      "icon": "packages/nodes-base/nodes/Microsoft/Outlook/outlook.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.microsoftoutlooktrigger/",
+      "directory": "packages/nodes-base/nodes/Microsoft/Outlook"
+    },
+    {
+      "displayName": "Microsoft SharePoint",
+      "name": "microsoftSharePoint",
+      "icon": "packages/nodes-base/nodes/Microsoft/SharePoint/microsoftSharePoint.svg",
+      "categories": [
+        "ECM"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftsharepoint/",
+      "directory": "packages/nodes-base/nodes/Microsoft/SharePoint"
+    },
+    {
+      "displayName": "Microsoft SQL",
+      "name": "microsoftSql",
+      "icon": "packages/nodes-base/nodes/Microsoft/Sql/mssql.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftsql/",
+      "directory": "packages/nodes-base/nodes/Microsoft/Sql"
+    },
+    {
+      "displayName": "Microsoft Teams",
+      "name": "microsoftTeams",
+      "icon": "packages/nodes-base/nodes/Microsoft/Teams/teams.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftteams/",
+      "directory": "packages/nodes-base/nodes/Microsoft/Teams"
+    },
+    {
+      "displayName": "Microsoft Teams Trigger",
+      "name": "microsoftTeamsTrigger",
+      "icon": "packages/nodes-base/nodes/Microsoft/Teams/teams.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.microsoftteamstrigger/",
+      "directory": "packages/nodes-base/nodes/Microsoft/Teams"
+    },
+    {
+      "displayName": "Microsoft To Do",
+      "name": "microsoftToDo",
+      "icon": "packages/nodes-base/nodes/Microsoft/ToDo/todo.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsofttodo/",
+      "directory": "packages/nodes-base/nodes/Microsoft/ToDo"
+    },
+    {
+      "displayName": "Mindee",
+      "name": "mindee",
+      "icon": "packages/nodes-base/nodes/Mindee/mindee.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mindee/",
+      "directory": "packages/nodes-base/nodes/Mindee"
+    },
+    {
+      "displayName": "MISP",
+      "name": "misp",
+      "icon": "packages/nodes-base/nodes/Misp/misp.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.misp/",
+      "directory": "packages/nodes-base/nodes/Misp"
+    },
+    {
+      "displayName": "Mistral AI",
+      "name": "mistralAi",
+      "icon": "packages/nodes-base/nodes/MistralAI/mistralAi.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mistralai/",
+      "directory": "packages/nodes-base/nodes/MistralAI"
+    },
+    {
+      "displayName": "Mocean",
+      "name": "mocean",
+      "icon": "packages/nodes-base/nodes/Mocean/mocean.dark.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mocean/",
+      "directory": "packages/nodes-base/nodes/Mocean"
+    },
+    {
+      "displayName": "Monday.com",
+      "name": "mondayCom",
+      "icon": "packages/nodes-base/nodes/MondayCom/mondayCom.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mondaycom/",
+      "directory": "packages/nodes-base/nodes/MondayCom"
+    },
+    {
+      "displayName": "MongoDB",
+      "name": "mongoDb",
+      "icon": "packages/nodes-base/nodes/MongoDb/mongodb.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mongodb/",
+      "directory": "packages/nodes-base/nodes/MongoDb"
+    },
+    {
+      "displayName": "Monica CRM",
+      "name": "monicaCrm",
+      "icon": "packages/nodes-base/nodes/MonicaCrm/monicaCrm.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.monicacrm/",
+      "directory": "packages/nodes-base/nodes/MonicaCrm"
+    },
+    {
+      "displayName": "MQTT",
+      "name": "mqtt",
+      "icon": "packages/nodes-base/nodes/MQTT/mqtt.svg",
+      "categories": [
+        "Development",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mqtt/",
+      "directory": "packages/nodes-base/nodes/MQTT"
+    },
+    {
+      "displayName": "MQTT Trigger",
+      "name": "mqttTrigger",
+      "icon": "packages/nodes-base/nodes/MQTT/mqtt.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.mqtttrigger/",
+      "directory": "packages/nodes-base/nodes/MQTT"
+    },
+    {
+      "displayName": "MSG91",
+      "name": "msg91",
+      "icon": "packages/nodes-base/nodes/Msg91/msg91.dark.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.msg91/",
+      "directory": "packages/nodes-base/nodes/Msg91"
+    },
+    {
+      "displayName": "MySQL",
+      "name": "mySql",
+      "icon": "packages/nodes-base/nodes/MySql/mysql.dark.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mysql/",
+      "directory": "packages/nodes-base/nodes/MySql"
+    },
+    {
+      "displayName": "n8n",
+      "name": "n8n",
+      "icon": "packages/nodes-base/nodes/N8n/n8n.svg",
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.n8n/",
+      "directory": "packages/nodes-base/nodes/N8n"
+    },
+    {
+      "displayName": "n8n Form Trigger",
+      "name": "formTrigger",
+      "icon": "packages/nodes-base/nodes/Form/form.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger/",
+      "directory": "packages/nodes-base/nodes/Form"
+    },
+    {
+      "displayName": "n8n Trigger",
+      "name": "n8nTrigger",
+      "icon": "packages/nodes-base/nodes/N8nTrigger/n8nTrigger.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.n8ntrigger/",
+      "directory": "packages/nodes-base/nodes/N8nTrigger"
+    },
+    {
+      "displayName": "NASA",
+      "name": "nasa",
+      "icon": "packages/nodes-base/nodes/Nasa/nasa.png",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.nasa/",
+      "directory": "packages/nodes-base/nodes/Nasa"
+    },
+    {
+      "displayName": "Netlify",
+      "name": "netlify",
+      "icon": "packages/nodes-base/nodes/Netlify/netlify.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.netlify/",
+      "directory": "packages/nodes-base/nodes/Netlify"
+    },
+    {
+      "displayName": "Netlify Trigger",
+      "name": "netlifyTrigger",
+      "icon": "packages/nodes-base/nodes/Netlify/netlify.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.netlifytrigger/",
+      "directory": "packages/nodes-base/nodes/Netlify"
+    },
+    {
+      "displayName": "Netscaler ADC",
+      "name": "citrixAdc",
+      "icon": "packages/nodes-base/nodes/Netscaler/ADC/netscaler.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.netscaleradc/",
+      "directory": "packages/nodes-base/nodes/Netscaler/ADC"
+    },
+    {
+      "displayName": "Nextcloud",
+      "name": "nextCloud",
+      "icon": "packages/nodes-base/nodes/NextCloud/nextcloud.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.nextcloud/",
+      "directory": "packages/nodes-base/nodes/NextCloud"
+    },
+    {
+      "displayName": "No Operation, do nothing",
+      "name": "noOp",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/",
+      "directory": "packages/nodes-base/nodes/NoOp"
+    },
+    {
+      "displayName": "NocoDB",
+      "name": "nocoDb",
+      "icon": "packages/nodes-base/nodes/NocoDB/nocodb.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.nocodb/",
+      "directory": "packages/nodes-base/nodes/NocoDB"
+    },
+    {
+      "displayName": "Notion",
+      "name": "notion",
+      "icon": "packages/nodes-base/nodes/Notion/notion.dark.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.notion/",
+      "directory": "packages/nodes-base/nodes/Notion"
+    },
+    {
+      "displayName": "Notion Trigger",
+      "name": "notionTrigger",
+      "icon": "packages/nodes-base/nodes/Notion/notion.dark.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.notiontrigger/",
+      "directory": "packages/nodes-base/nodes/Notion"
+    },
+    {
+      "displayName": "Npm",
+      "name": "npm",
+      "icon": "packages/nodes-base/nodes/Npm/npm.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.npm/",
+      "directory": "packages/nodes-base/nodes/Npm"
+    },
+    {
+      "displayName": "Odoo",
+      "name": "odoo",
+      "icon": "packages/nodes-base/nodes/Odoo/odoo.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.odoo/",
+      "directory": "packages/nodes-base/nodes/Odoo"
+    },
+    {
+      "displayName": "Okta",
+      "name": "okta",
+      "icon": "packages/nodes-base/nodes/Okta/Okta.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.okta/",
+      "directory": "packages/nodes-base/nodes/Okta"
+    },
+    {
+      "displayName": "One Simple API",
+      "name": "oneSimpleApi",
+      "icon": "packages/nodes-base/nodes/OneSimpleApi/onesimpleapi.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.onesimpleapi/",
+      "directory": "packages/nodes-base/nodes/OneSimpleApi"
+    },
+    {
+      "displayName": "Onfleet",
+      "name": "onfleet",
+      "icon": "packages/nodes-base/nodes/Onfleet/Onfleet.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.onfleet/",
+      "directory": "packages/nodes-base/nodes/Onfleet"
+    },
+    {
+      "displayName": "Onfleet Trigger",
+      "name": "onfleetTrigger",
+      "icon": "packages/nodes-base/nodes/Onfleet/Onfleet.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.onfleettrigger/",
+      "directory": "packages/nodes-base/nodes/Onfleet"
+    },
+    {
+      "displayName": "OpenAI",
+      "name": "openAi",
+      "icon": "packages/nodes-base/nodes/OpenAi/openAi.dark.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/",
+      "directory": "packages/nodes-base/nodes/OpenAi"
+    },
+    {
+      "displayName": "OpenThesaurus",
+      "name": "openThesaurus",
+      "icon": "packages/nodes-base/nodes/OpenThesaurus/openthesaurus.png",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.openthesaurus/",
+      "directory": "packages/nodes-base/nodes/OpenThesaurus"
+    },
+    {
+      "displayName": "OpenWeatherMap",
+      "name": "openWeatherMap",
+      "icon": "packages/nodes-base/nodes/OpenWeatherMap/openWeatherMap.svg",
+      "categories": [
+        "Miscellaneous",
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.openweathermap/",
+      "directory": "packages/nodes-base/nodes/OpenWeatherMap"
+    },
+    {
+      "displayName": "Orbit",
+      "name": "orbit",
+      "icon": "packages/nodes-base/nodes/Orbit/orbit.dark.svg",
+      "categories": [
+        "Analytics"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.orbit/",
+      "directory": "packages/nodes-base/nodes/Orbit"
+    },
+    {
+      "displayName": "Oura",
+      "name": "oura",
+      "icon": "packages/nodes-base/nodes/Oura/oura.dark.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.oura/",
+      "directory": "packages/nodes-base/nodes/Oura"
+    },
+    {
+      "displayName": "Paddle",
+      "name": "paddle",
+      "icon": "packages/nodes-base/nodes/Paddle/paddle.png",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.paddle/",
+      "directory": "packages/nodes-base/nodes/Paddle"
+    },
+    {
+      "displayName": "PagerDuty",
+      "name": "pagerDuty",
+      "icon": "packages/nodes-base/nodes/PagerDuty/pagerDuty.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.pagerduty/",
+      "directory": "packages/nodes-base/nodes/PagerDuty"
+    },
+    {
+      "displayName": "PayPal",
+      "name": "payPal",
+      "icon": "packages/nodes-base/nodes/PayPal/paypal.svg",
+      "categories": [
+        "Finance & Accounting",
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.paypal/",
+      "directory": "packages/nodes-base/nodes/PayPal"
+    },
+    {
+      "displayName": "PayPal Trigger",
+      "name": "payPalTrigger",
+      "icon": "packages/nodes-base/nodes/PayPal/paypal.svg",
+      "categories": [
+        "Finance & Accounting",
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.paypaltrigger/",
+      "directory": "packages/nodes-base/nodes/PayPal"
+    },
+    {
+      "displayName": "Peekalink",
+      "name": "peekalink",
+      "icon": "packages/nodes-base/nodes/Peekalink/peekalink.png",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.peekalink/",
+      "directory": "packages/nodes-base/nodes/Peekalink"
+    },
+    {
+      "displayName": "Perplexity",
+      "name": "perplexity",
+      "icon": "packages/nodes-base/nodes/Perplexity/perplexity.dark.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.perplexity/",
+      "directory": "packages/nodes-base/nodes/Perplexity"
+    },
+    {
+      "displayName": "Phantombuster",
+      "name": "phantombuster",
+      "icon": "packages/nodes-base/nodes/Phantombuster/phantombuster.png",
+      "categories": [
+        "Sales",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.phantombuster/",
+      "directory": "packages/nodes-base/nodes/Phantombuster"
+    },
+    {
+      "displayName": "Philips Hue",
+      "name": "philipsHue",
+      "icon": "packages/nodes-base/nodes/PhilipsHue/philipshue.png",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.philipshue/",
+      "directory": "packages/nodes-base/nodes/PhilipsHue"
+    },
+    {
+      "displayName": "Pipedrive Trigger",
+      "name": "Activity",
+      "icon": "packages/nodes-base/nodes/Pipedrive/pipedrive.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.pipedrivetrigger/",
+      "directory": "packages/nodes-base/nodes/Pipedrive"
+    },
+    {
+      "displayName": "Plivo",
+      "name": "plivo",
+      "icon": "packages/nodes-base/nodes/Plivo/plivo.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.plivo/",
+      "directory": "packages/nodes-base/nodes/Plivo"
+    },
+    {
+      "displayName": "PostBin",
+      "name": "postBin",
+      "icon": "packages/nodes-base/nodes/PostBin/postbin.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postbin/",
+      "directory": "packages/nodes-base/nodes/PostBin"
+    },
+    {
+      "displayName": "Postgres",
+      "name": "postgres",
+      "icon": "packages/nodes-base/nodes/Postgres/postgres.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/",
+      "directory": "packages/nodes-base/nodes/Postgres"
+    },
+    {
+      "displayName": "Postgres Trigger",
+      "name": "postgresTrigger",
+      "icon": "packages/nodes-base/nodes/Postgres/postgres.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.postgrestrigger/",
+      "directory": "packages/nodes-base/nodes/Postgres"
+    },
+    {
+      "displayName": "PostHog",
+      "name": "postHog",
+      "icon": "packages/nodes-base/nodes/PostHog/postHog.svg",
+      "categories": [
+        "Analytics",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.posthog/",
+      "directory": "packages/nodes-base/nodes/PostHog"
+    },
+    {
+      "displayName": "Postmark Trigger",
+      "name": "postmarkTrigger",
+      "icon": "packages/nodes-base/nodes/Postmark/postmark.png",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.postmarktrigger/",
+      "directory": "packages/nodes-base/nodes/Postmark"
+    },
+    {
+      "displayName": "ProfitWell",
+      "name": "profitWell",
+      "icon": "packages/nodes-base/nodes/ProfitWell/profitwell.dark.svg",
+      "categories": [
+        "Analytics"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.profitwell/",
+      "directory": "packages/nodes-base/nodes/ProfitWell"
+    },
+    {
+      "displayName": "Pushbullet",
+      "name": "pushbullet",
+      "icon": "packages/nodes-base/nodes/Pushbullet/pushbullet.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.pushbullet/",
+      "directory": "packages/nodes-base/nodes/Pushbullet"
+    },
+    {
+      "displayName": "Pushcut",
+      "name": "pushcut",
+      "icon": "packages/nodes-base/nodes/Pushcut/pushcut.png",
+      "categories": [
+        "Communication",
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.pushcut/",
+      "directory": "packages/nodes-base/nodes/Pushcut"
+    },
+    {
+      "displayName": "Pushcut Trigger",
+      "name": "pushcutTrigger",
+      "icon": "packages/nodes-base/nodes/Pushcut/pushcut.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.pushcuttrigger/",
+      "directory": "packages/nodes-base/nodes/Pushcut"
+    },
+    {
+      "displayName": "Pushover",
+      "name": "pushover",
+      "icon": "packages/nodes-base/nodes/Pushover/pushover.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.pushover/",
+      "directory": "packages/nodes-base/nodes/Pushover"
+    },
+    {
+      "displayName": "QuestDB",
+      "name": "questDb",
+      "icon": "packages/nodes-base/nodes/QuestDb/questdb.png",
+      "categories": [
+        "Data & Storage",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.questdb/",
+      "directory": "packages/nodes-base/nodes/QuestDb"
+    },
+    {
+      "displayName": "Quick Base",
+      "name": "quickbase",
+      "icon": "packages/nodes-base/nodes/QuickBase/quickbase.png",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.quickbase/",
+      "directory": "packages/nodes-base/nodes/QuickBase"
+    },
+    {
+      "displayName": "QuickBooks Online",
+      "name": "quickbooks",
+      "icon": "packages/nodes-base/nodes/QuickBooks/quickbooks.svg",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.quickbooks/",
+      "directory": "packages/nodes-base/nodes/QuickBooks"
+    },
+    {
+      "displayName": "QuickChart",
+      "name": "quickChart",
+      "icon": "packages/nodes-base/nodes/QuickChart/quickChart.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.quickchart/",
+      "directory": "packages/nodes-base/nodes/QuickChart"
+    },
+    {
+      "displayName": "RabbitMQ",
+      "name": "rabbitmq",
+      "icon": "packages/nodes-base/nodes/RabbitMQ/rabbitmq.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.rabbitmq/",
+      "directory": "packages/nodes-base/nodes/RabbitMQ"
+    },
+    {
+      "displayName": "RabbitMQ Trigger",
+      "name": "rabbitmqTrigger",
+      "icon": "packages/nodes-base/nodes/RabbitMQ/rabbitmq.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.rabbitmqtrigger/",
+      "directory": "packages/nodes-base/nodes/RabbitMQ"
+    },
+    {
+      "displayName": "Raindrop",
+      "name": "raindrop",
+      "icon": "packages/nodes-base/nodes/Raindrop/raindrop.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.raindrop/",
+      "directory": "packages/nodes-base/nodes/Raindrop"
+    },
+    {
+      "displayName": "Read Binary File",
+      "name": "readBinaryFile",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.readwritefile/",
+      "directory": "packages/nodes-base/nodes/ReadBinaryFile"
+    },
+    {
+      "displayName": "Read Binary Files",
+      "name": "readBinaryFiles",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.readwritefile/",
+      "directory": "packages/nodes-base/nodes/ReadBinaryFiles"
+    },
+    {
+      "displayName": "Read PDF",
+      "name": "readPDF",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.extractfromfile/",
+      "directory": "packages/nodes-base/nodes/ReadPdf"
+    },
+    {
+      "displayName": "Read/Write Files from Disk",
+      "name": "readWriteFile",
+      "icon": "packages/nodes-base/nodes/Files/ReadWriteFile/readWriteFile.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.readwritefile/",
+      "directory": "packages/nodes-base/nodes/Files/ReadWriteFile"
+    },
+    {
+      "displayName": "Reddit",
+      "name": "reddit",
+      "icon": "packages/nodes-base/nodes/Reddit/reddit.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.reddit/",
+      "directory": "packages/nodes-base/nodes/Reddit"
+    },
+    {
+      "displayName": "Redis",
+      "name": "redis",
+      "icon": "packages/nodes-base/nodes/Redis/redis.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.redis/",
+      "directory": "packages/nodes-base/nodes/Redis"
+    },
+    {
+      "displayName": "Redis Trigger",
+      "name": "redisTrigger",
+      "icon": "packages/nodes-base/nodes/Redis/redis.svg",
+      "categories": [
+        "Communication",
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.redistrigger/",
+      "directory": "packages/nodes-base/nodes/Redis"
+    },
+    {
+      "displayName": "Remove Duplicates",
+      "name": "removeDuplicates",
+      "icon": "packages/nodes-base/nodes/Transform/RemoveDuplicates/removeDuplicates.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.removeduplicates/",
+      "directory": "packages/nodes-base/nodes/Transform/RemoveDuplicates"
+    },
+    {
+      "displayName": "Rename Keys",
+      "name": "renameKeys",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.renamekeys/",
+      "directory": "packages/nodes-base/nodes/RenameKeys"
+    },
+    {
+      "displayName": "Respond With",
+      "name": "respondWith",
+      "icon": "packages/nodes-base/nodes/RespondToWebhook/webhook.dark.svg",
+      "categories": [
+        "Core Nodes",
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/",
+      "directory": "packages/nodes-base/nodes/RespondToWebhook"
+    },
+    {
+      "displayName": "RocketChat",
+      "name": "rocketchat",
+      "icon": "packages/nodes-base/nodes/Rocketchat/rocketchat.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.rocketchat/",
+      "directory": "packages/nodes-base/nodes/Rocketchat"
+    },
+    {
+      "displayName": "RSS Feed Trigger",
+      "name": "rssFeedReadTrigger",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.rssfeedreadtrigger/",
+      "directory": "packages/nodes-base/nodes/RssFeedRead"
+    },
+    {
+      "displayName": "RSS Read",
+      "name": "rssFeedRead",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.rssfeedread/",
+      "directory": "packages/nodes-base/nodes/RssFeedRead"
+    },
+    {
+      "displayName": "Rundeck",
+      "name": "rundeck",
+      "icon": "packages/nodes-base/nodes/Rundeck/rundeck.png",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.rundeck/",
+      "directory": "packages/nodes-base/nodes/Rundeck"
+    },
+    {
+      "displayName": "S3",
+      "name": "s3",
+      "icon": "packages/nodes-base/nodes/S3/s3.png",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.s3/",
+      "directory": "packages/nodes-base/nodes/S3"
+    },
+    {
+      "displayName": "Salesforce Trigger",
+      "name": "salesforceTrigger",
+      "icon": "packages/nodes-base/nodes/Salesforce/salesforce.svg",
+      "categories": [
+        "Sales",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.salesforcetrigger/",
+      "directory": "packages/nodes-base/nodes/Salesforce"
+    },
+    {
+      "displayName": "Salesmate",
+      "name": "salesmate",
+      "icon": "packages/nodes-base/nodes/Salesmate/salesmate.png",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.salesmate/",
+      "directory": "packages/nodes-base/nodes/Salesmate"
+    },
+    {
+      "displayName": "Schedule Trigger",
+      "name": "scheduleTrigger",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/",
+      "directory": "packages/nodes-base/nodes/Schedule"
+    },
+    {
+      "displayName": "SeaTable",
+      "name": "seaTable",
+      "icon": "packages/nodes-base/nodes/SeaTable/seaTable.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.seatable/",
+      "directory": "packages/nodes-base/nodes/SeaTable"
+    },
+    {
+      "displayName": "SeaTable Trigger",
+      "name": "seaTableTrigger",
+      "icon": "packages/nodes-base/nodes/SeaTable/seaTable.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.seatabletrigger/",
+      "directory": "packages/nodes-base/nodes/SeaTable"
+    },
+    {
+      "displayName": "SecurityScorecard",
+      "name": "securityScorecard",
+      "icon": "packages/nodes-base/nodes/SecurityScorecard/securityScorecard.svg",
+      "categories": [
+        "Analytics"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.securityscorecard/",
+      "directory": "packages/nodes-base/nodes/SecurityScorecard"
+    },
+    {
+      "displayName": "Segment",
+      "name": "segment",
+      "icon": "packages/nodes-base/nodes/Segment/segment.svg",
+      "categories": [
+        "Analytics",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.segment/",
+      "directory": "packages/nodes-base/nodes/Segment"
+    },
+    {
+      "displayName": "Send Email",
+      "name": "emailSend",
+      "icon": null,
+      "categories": [
+        "Communication",
+        "HITL",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sendemail/",
+      "directory": "packages/nodes-base/nodes/EmailSend"
+    },
+    {
+      "displayName": "SendGrid",
+      "name": "sendGrid",
+      "icon": "packages/nodes-base/nodes/SendGrid/sendGrid.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.sendgrid/",
+      "directory": "packages/nodes-base/nodes/SendGrid"
+    },
+    {
+      "displayName": "Sendy",
+      "name": "sendy",
+      "icon": "packages/nodes-base/nodes/Sendy/sendy.png",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.sendy/",
+      "directory": "packages/nodes-base/nodes/Sendy"
+    },
+    {
+      "displayName": "Sentry.io",
+      "name": "sentryIo",
+      "icon": "packages/nodes-base/nodes/SentryIo/sentryio.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.sentryio/",
+      "directory": "packages/nodes-base/nodes/SentryIo"
+    },
+    {
+      "displayName": "ServiceNow",
+      "name": "serviceNow",
+      "icon": "packages/nodes-base/nodes/ServiceNow/servicenow.svg",
+      "categories": [
+        "Productivity",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.servicenow/",
+      "directory": "packages/nodes-base/nodes/ServiceNow"
+    },
+    {
+      "displayName": "Set",
+      "name": "set",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/",
+      "directory": "packages/nodes-base/nodes/Set"
+    },
+    {
+      "displayName": "seven",
+      "name": "sms77",
+      "icon": "packages/nodes-base/nodes/Sms77/seven.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.sms77/",
+      "directory": "packages/nodes-base/nodes/Sms77"
+    },
+    {
+      "displayName": "Shopify",
+      "name": "shopify",
+      "icon": "packages/nodes-base/nodes/Shopify/shopify.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.shopify/",
+      "directory": "packages/nodes-base/nodes/Shopify"
+    },
+    {
+      "displayName": "Shopify Trigger",
+      "name": "shopifyTrigger",
+      "icon": "packages/nodes-base/nodes/Shopify/shopify.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.shopifytrigger/",
+      "directory": "packages/nodes-base/nodes/Shopify"
+    },
+    {
+      "displayName": "SIGNL4",
+      "name": "signl4",
+      "icon": "packages/nodes-base/nodes/Signl4/signl4.png",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.signl4/",
+      "directory": "packages/nodes-base/nodes/Signl4"
+    },
+    {
+      "displayName": "Simulate",
+      "name": "simulate",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Simulate"
+    },
+    {
+      "displayName": "Simulate Trigger",
+      "name": "simulateTrigger",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Simulate"
+    },
+    {
+      "displayName": "Slack",
+      "name": "slack",
+      "icon": "packages/nodes-base/nodes/Slack/slack.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/",
+      "directory": "packages/nodes-base/nodes/Slack"
+    },
+    {
+      "displayName": "Slack Trigger",
+      "name": "slackTrigger",
+      "icon": "packages/nodes-base/nodes/Slack/slack.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/",
+      "directory": "packages/nodes-base/nodes/Slack"
+    },
+    {
+      "displayName": "Snowflake",
+      "name": "snowflake",
+      "icon": "packages/nodes-base/nodes/Snowflake/snowflake.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.snowflake/",
+      "directory": "packages/nodes-base/nodes/Snowflake"
+    },
+    {
+      "displayName": "Sort",
+      "name": "sort",
+      "icon": "packages/nodes-base/nodes/Transform/Sort/sort.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sort/",
+      "directory": "packages/nodes-base/nodes/Transform/Sort"
+    },
+    {
+      "displayName": "Split In Batches",
+      "name": "splitInBatches",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/",
+      "directory": "packages/nodes-base/nodes/SplitInBatches"
+    },
+    {
+      "displayName": "Split Out",
+      "name": "splitOut",
+      "icon": "packages/nodes-base/nodes/Transform/SplitOut/splitOut.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/",
+      "directory": "packages/nodes-base/nodes/Transform/SplitOut"
+    },
+    {
+      "displayName": "Splunk",
+      "name": "splunk",
+      "icon": "packages/nodes-base/nodes/Splunk/splunk.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.splunk/",
+      "directory": "packages/nodes-base/nodes/Splunk"
+    },
+    {
+      "displayName": "Spotify",
+      "name": "spotify",
+      "icon": "packages/nodes-base/nodes/Spotify/spotify.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.spotify/",
+      "directory": "packages/nodes-base/nodes/Spotify"
+    },
+    {
+      "displayName": "Spreadsheet File",
+      "name": "spreadsheetFile",
+      "icon": null,
+      "categories": [
+        "Data & Storage",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/",
+      "directory": "packages/nodes-base/nodes/SpreadsheetFile"
+    },
+    {
+      "displayName": "SSE Trigger",
+      "name": "sseTrigger",
+      "icon": null,
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ssetrigger/",
+      "directory": "packages/nodes-base/nodes/SseTrigger"
+    },
+    {
+      "displayName": "SSH",
+      "name": "ssh",
+      "icon": null,
+      "categories": [
+        "Core Nodes",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ssh/",
+      "directory": "packages/nodes-base/nodes/Ssh"
+    },
+    {
+      "displayName": "Stackby",
+      "name": "stackby",
+      "icon": "packages/nodes-base/nodes/Stackby/stackby.png",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.stackby/",
+      "directory": "packages/nodes-base/nodes/Stackby"
+    },
+    {
+      "displayName": "Sticky Note",
+      "name": "stickyNote",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/StickyNote"
+    },
+    {
+      "displayName": "Stop and Error",
+      "name": "stopAndError",
+      "icon": null,
+      "categories": [
+        "Core Nodes",
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.stopanderror/",
+      "directory": "packages/nodes-base/nodes/StopAndError"
+    },
+    {
+      "displayName": "Storyblok",
+      "name": "storyblok",
+      "icon": "packages/nodes-base/nodes/Storyblok/storyblok.svg",
+      "categories": [
+        "Data & Storage",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.storyblok/",
+      "directory": "packages/nodes-base/nodes/Storyblok"
+    },
+    {
+      "displayName": "Strapi",
+      "name": "strapi",
+      "icon": "packages/nodes-base/nodes/Strapi/strapi.svg",
+      "categories": [
+        "Data & Storage",
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.strapi/",
+      "directory": "packages/nodes-base/nodes/Strapi"
+    },
+    {
+      "displayName": "Strava",
+      "name": "strava",
+      "icon": "packages/nodes-base/nodes/Strava/strava.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.strava/",
+      "directory": "packages/nodes-base/nodes/Strava"
+    },
+    {
+      "displayName": "Strava Trigger",
+      "name": "stravaTrigger",
+      "icon": "packages/nodes-base/nodes/Strava/strava.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.stravatrigger/",
+      "directory": "packages/nodes-base/nodes/Strava"
+    },
+    {
+      "displayName": "Stripe",
+      "name": "stripe",
+      "icon": "packages/nodes-base/nodes/Stripe/stripe.svg",
+      "categories": [
+        "Finance & Accounting",
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.stripe/",
+      "directory": "packages/nodes-base/nodes/Stripe"
+    },
+    {
+      "displayName": "Stripe Trigger",
+      "name": "stripeTrigger",
+      "icon": "packages/nodes-base/nodes/Stripe/stripe.svg",
+      "categories": [
+        "Finance & Accounting",
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.stripetrigger/",
+      "directory": "packages/nodes-base/nodes/Stripe"
+    },
+    {
+      "displayName": "Summarize",
+      "name": "summarize",
+      "icon": "packages/nodes-base/nodes/Transform/Summarize/summarize.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.summarize/",
+      "directory": "packages/nodes-base/nodes/Transform/Summarize"
+    },
+    {
+      "displayName": "Supabase",
+      "name": "supabase",
+      "icon": "packages/nodes-base/nodes/Supabase/supabase.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.supabase/",
+      "directory": "packages/nodes-base/nodes/Supabase"
+    },
+    {
+      "displayName": "SurveyMonkey Trigger",
+      "name": "surveyMonkeyTrigger",
+      "icon": "packages/nodes-base/nodes/SurveyMonkey/surveyMonkey.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.surveymonkeytrigger/",
+      "directory": "packages/nodes-base/nodes/SurveyMonkey"
+    },
+    {
+      "displayName": "Switch",
+      "name": "switch",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/",
+      "directory": "packages/nodes-base/nodes/Switch"
+    },
+    {
+      "displayName": "SyncroMSP",
+      "name": "syncroMsp",
+      "icon": "packages/nodes-base/nodes/SyncroMSP/syncromsp.png",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.syncromsp/",
+      "directory": "packages/nodes-base/nodes/SyncroMSP"
+    },
+    {
+      "displayName": "Taiga",
+      "name": "taiga",
+      "icon": "packages/nodes-base/nodes/Taiga/taiga.svg",
+      "categories": [
+        "Development",
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.taiga/",
+      "directory": "packages/nodes-base/nodes/Taiga"
+    },
+    {
+      "displayName": "Taiga Trigger",
+      "name": "taigaTrigger",
+      "icon": "packages/nodes-base/nodes/Taiga/taiga.svg",
+      "categories": [
+        "Development",
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.taigatrigger/",
+      "directory": "packages/nodes-base/nodes/Taiga"
+    },
+    {
+      "displayName": "Tapfiliate",
+      "name": "tapfiliate",
+      "icon": "packages/nodes-base/nodes/Tapfiliate/tapfiliate.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.tapfiliate/",
+      "directory": "packages/nodes-base/nodes/Tapfiliate"
+    },
+    {
+      "displayName": "Telegram Trigger",
+      "name": "telegramTrigger",
+      "icon": "packages/nodes-base/nodes/Telegram/telegram.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.telegramtrigger/",
+      "directory": "packages/nodes-base/nodes/Telegram"
+    },
+    {
+      "displayName": "TheHive 5 Trigger",
+      "name": "theHiveProjectTrigger",
+      "icon": "packages/nodes-base/nodes/TheHiveProject/thehiveproject.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.thehive5trigger/",
+      "directory": "packages/nodes-base/nodes/TheHiveProject"
+    },
+    {
+      "displayName": "TheHive Trigger",
+      "name": "theHiveTrigger",
+      "icon": "packages/nodes-base/nodes/TheHive/thehive.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.thehivetrigger/",
+      "directory": "packages/nodes-base/nodes/TheHive"
+    },
+    {
+      "displayName": "Timeout",
+      "name": "timeout",
+      "icon": null,
+      "categories": [
+        "Core Nodes",
+        "Data & Storage",
+        "Development",
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ftp/",
+      "directory": "packages/nodes-base/nodes/Ftp"
+    },
+    {
+      "displayName": "TimescaleDB",
+      "name": "timescaleDb",
+      "icon": "packages/nodes-base/nodes/TimescaleDb/timescaleDb.dark.svg",
+      "categories": [
+        "Data & Storage",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.timescaledb/",
+      "directory": "packages/nodes-base/nodes/TimescaleDb"
+    },
+    {
+      "displayName": "Todoist",
+      "name": "todoist",
+      "icon": "packages/nodes-base/nodes/Todoist/todoist.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.todoist/",
+      "directory": "packages/nodes-base/nodes/Todoist"
+    },
+    {
+      "displayName": "Toggl Trigger",
+      "name": "togglTrigger",
+      "icon": "packages/nodes-base/nodes/Toggl/toggl.png",
+      "categories": [
+        "Productivity",
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.toggltrigger/",
+      "directory": "packages/nodes-base/nodes/Toggl"
+    },
+    {
+      "displayName": "TOTP",
+      "name": "totp",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.totp/",
+      "directory": "packages/nodes-base/nodes/Totp"
+    },
+    {
+      "displayName": "Track Time Saved",
+      "name": "timeSaved",
+      "icon": null,
+      "categories": [
+        "Core Nodes",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.savedTime/",
+      "directory": "packages/nodes-base/nodes/TimeSaved"
+    },
+    {
+      "displayName": "TravisCI",
+      "name": "travisCi",
+      "icon": "packages/nodes-base/nodes/TravisCi/travisci.png",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.travisci/",
+      "directory": "packages/nodes-base/nodes/TravisCi"
+    },
+    {
+      "displayName": "Trello",
+      "name": "trello",
+      "icon": "packages/nodes-base/nodes/Trello/trello.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.trello/",
+      "directory": "packages/nodes-base/nodes/Trello"
+    },
+    {
+      "displayName": "Trello Trigger",
+      "name": "trelloTrigger",
+      "icon": "packages/nodes-base/nodes/Trello/trello.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.trellotrigger/",
+      "directory": "packages/nodes-base/nodes/Trello"
+    },
+    {
+      "displayName": "Twake",
+      "name": "twake",
+      "icon": "packages/nodes-base/nodes/Twake/twake.png",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.twake/",
+      "directory": "packages/nodes-base/nodes/Twake"
+    },
+    {
+      "displayName": "Twilio",
+      "name": "twilio",
+      "icon": "packages/nodes-base/nodes/Twilio/twilio.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.twilio/",
+      "directory": "packages/nodes-base/nodes/Twilio"
+    },
+    {
+      "displayName": "Twilio Trigger",
+      "name": "twilioTrigger",
+      "icon": "packages/nodes-base/nodes/Twilio/twilio.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.twiliotrigger/",
+      "directory": "packages/nodes-base/nodes/Twilio"
+    },
+    {
+      "displayName": "Twist",
+      "name": "twist",
+      "icon": "packages/nodes-base/nodes/Twist/twist.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.twist/",
+      "directory": "packages/nodes-base/nodes/Twist"
+    },
+    {
+      "displayName": "Typeform Trigger",
+      "name": "typeformTrigger",
+      "icon": "packages/nodes-base/nodes/Typeform/typeform.dark.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.typeformtrigger/",
+      "directory": "packages/nodes-base/nodes/Typeform"
+    },
+    {
+      "displayName": "Unleashed Software",
+      "name": "unleashedSoftware",
+      "icon": "packages/nodes-base/nodes/UnleashedSoftware/unleashedSoftware.png",
+      "categories": [
+        "Sales",
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.unleashedsoftware/",
+      "directory": "packages/nodes-base/nodes/UnleashedSoftware"
+    },
+    {
+      "displayName": "Uplead",
+      "name": "uplead",
+      "icon": "packages/nodes-base/nodes/Uplead/uplead.png",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.uplead/",
+      "directory": "packages/nodes-base/nodes/Uplead"
+    },
+    {
+      "displayName": "uProc",
+      "name": "uproc",
+      "icon": "packages/nodes-base/nodes/UProc/uproc.png",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.uproc/",
+      "directory": "packages/nodes-base/nodes/UProc"
+    },
+    {
+      "displayName": "UptimeRobot",
+      "name": "uptimeRobot",
+      "icon": "packages/nodes-base/nodes/UptimeRobot/uptimerobot.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.uptimerobot/",
+      "directory": "packages/nodes-base/nodes/UptimeRobot"
+    },
+    {
+      "displayName": "urlscan.io",
+      "name": "urlScanIo",
+      "icon": "packages/nodes-base/nodes/UrlScanIo/urlScanIo.svg",
+      "categories": [
+        "Development",
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.urlscanio/",
+      "directory": "packages/nodes-base/nodes/UrlScanIo"
+    },
+    {
+      "displayName": "Venafi TLS Protect Cloud",
+      "name": "venafiTlsProtectCloud",
+      "icon": null,
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.venafitlsprotectcloud/",
+      "directory": "packages/nodes-base/nodes/Venafi/ProtectCloud"
+    },
+    {
+      "displayName": "Venafi TLS Protect Cloud Trigger",
+      "name": "venafiTlsProtectCloudTrigger",
+      "icon": null,
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.venafitlsprotectcloudtrigger/",
+      "directory": "packages/nodes-base/nodes/Venafi/ProtectCloud"
+    },
+    {
+      "displayName": "Venafi TLS Protect Datacenter",
+      "name": "venafiTlsProtectDatacenter",
+      "icon": null,
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.venafitlsprotectdatacenter/",
+      "directory": "packages/nodes-base/nodes/Venafi/Datacenter"
+    },
+    {
+      "displayName": "Vero",
+      "name": "vero",
+      "icon": "packages/nodes-base/nodes/Vero/vero.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.vero/",
+      "directory": "packages/nodes-base/nodes/Vero"
+    },
+    {
+      "displayName": "Vonage",
+      "name": "vonage",
+      "icon": "packages/nodes-base/nodes/Vonage/vonage.dark.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.vonage/",
+      "directory": "packages/nodes-base/nodes/Vonage"
+    },
+    {
+      "displayName": "Wait Amount",
+      "name": "amount",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/",
+      "directory": "packages/nodes-base/nodes/Wait"
+    },
+    {
+      "displayName": "Webex by Cisco",
+      "name": "ciscoWebex",
+      "icon": "packages/nodes-base/nodes/Cisco/Webex/ciscoWebex.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.ciscowebex/",
+      "directory": "packages/nodes-base/nodes/Cisco/Webex"
+    },
+    {
+      "displayName": "Webex by Cisco Trigger",
+      "name": "ciscoWebexTrigger",
+      "icon": "packages/nodes-base/nodes/Cisco/Webex/ciscoWebex.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.ciscowebextrigger/",
+      "directory": "packages/nodes-base/nodes/Cisco/Webex"
+    },
+    {
+      "displayName": "Webflow",
+      "name": "webflow",
+      "icon": "packages/nodes-base/nodes/Webflow/webflow.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.webflow/",
+      "directory": "packages/nodes-base/nodes/Webflow"
+    },
+    {
+      "displayName": "Webflow Trigger",
+      "name": "webflowTrigger",
+      "icon": "packages/nodes-base/nodes/Webflow/webflow.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.webflowtrigger/",
+      "directory": "packages/nodes-base/nodes/Webflow"
+    },
+    {
+      "displayName": "Webhook",
+      "name": "webhook",
+      "icon": "packages/nodes-base/nodes/Webhook/webhook.dark.svg",
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/",
+      "directory": "packages/nodes-base/nodes/Webhook"
+    },
+    {
+      "displayName": "Wekan",
+      "name": "wekan",
+      "icon": "packages/nodes-base/nodes/Wekan/wekan.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.wekan/",
+      "directory": "packages/nodes-base/nodes/Wekan"
+    },
+    {
+      "displayName": "WhatsApp Business Cloud",
+      "name": "whatsApp",
+      "icon": "packages/nodes-base/nodes/WhatsApp/whatsapp.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.whatsapp/",
+      "directory": "packages/nodes-base/nodes/WhatsApp"
+    },
+    {
+      "displayName": "WhatsApp Trigger",
+      "name": "whatsAppTrigger",
+      "icon": "packages/nodes-base/nodes/WhatsApp/whatsapp.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.whatsapptrigger/",
+      "directory": "packages/nodes-base/nodes/WhatsApp"
+    },
+    {
+      "displayName": "Wise",
+      "name": "wise",
+      "icon": "packages/nodes-base/nodes/Wise/wise.svg",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.wise/",
+      "directory": "packages/nodes-base/nodes/Wise"
+    },
+    {
+      "displayName": "Wise Trigger",
+      "name": "wiseTrigger",
+      "icon": "packages/nodes-base/nodes/Wise/wise.svg",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.wisetrigger/",
+      "directory": "packages/nodes-base/nodes/Wise"
+    },
+    {
+      "displayName": "WooCommerce",
+      "name": "wooCommerce",
+      "icon": "packages/nodes-base/nodes/WooCommerce/wooCommerce.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.woocommerce/",
+      "directory": "packages/nodes-base/nodes/WooCommerce"
+    },
+    {
+      "displayName": "WooCommerce Trigger",
+      "name": "wooCommerceTrigger",
+      "icon": "packages/nodes-base/nodes/WooCommerce/wooCommerce.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.woocommercetrigger/",
+      "directory": "packages/nodes-base/nodes/WooCommerce"
+    },
+    {
+      "displayName": "Wordpress",
+      "name": "wordpress",
+      "icon": "packages/nodes-base/nodes/Wordpress/wordpress.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.wordpress/",
+      "directory": "packages/nodes-base/nodes/Wordpress"
+    },
+    {
+      "displayName": "Workable Trigger",
+      "name": "workableTrigger",
+      "icon": "packages/nodes-base/nodes/Workable/workable.png",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.workabletrigger/",
+      "directory": "packages/nodes-base/nodes/Workable"
+    },
+    {
+      "displayName": "Workflow Trigger",
+      "name": "workflowTrigger",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.workflowtrigger/",
+      "directory": "packages/nodes-base/nodes/WorkflowTrigger"
+    },
+    {
+      "displayName": "Write Binary File",
+      "name": "writeBinaryFile",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.readwritefile/",
+      "directory": "packages/nodes-base/nodes/WriteBinaryFile"
+    },
+    {
+      "displayName": "Wufoo Trigger",
+      "name": "wufooTrigger",
+      "icon": "packages/nodes-base/nodes/Wufoo/wufoo.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.wufootrigger/",
+      "directory": "packages/nodes-base/nodes/Wufoo"
+    },
+    {
+      "displayName": "X (Formerly Twitter)",
+      "name": "twitter",
+      "icon": "packages/nodes-base/nodes/Twitter/x.dark.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.twitter/",
+      "directory": "packages/nodes-base/nodes/Twitter"
+    },
+    {
+      "displayName": "Xero",
+      "name": "xero",
+      "icon": "packages/nodes-base/nodes/Xero/xero.svg",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.xero/",
+      "directory": "packages/nodes-base/nodes/Xero"
+    },
+    {
+      "displayName": "XML",
+      "name": "xml",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.xml/",
+      "directory": "packages/nodes-base/nodes/Xml"
+    },
+    {
+      "displayName": "Yourls",
+      "name": "yourls",
+      "icon": "packages/nodes-base/nodes/Yourls/yourls.png",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.yourls/",
+      "directory": "packages/nodes-base/nodes/Yourls"
+    },
+    {
+      "displayName": "YouTube",
+      "name": "youTube",
+      "icon": "packages/nodes-base/nodes/Google/YouTube/youTube.png",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.youtube/",
+      "directory": "packages/nodes-base/nodes/Google/YouTube"
+    },
+    {
+      "displayName": "Zammad",
+      "name": "zammad",
+      "icon": "packages/nodes-base/nodes/Zammad/zammad.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.zammad/",
+      "directory": "packages/nodes-base/nodes/Zammad"
+    },
+    {
+      "displayName": "Zendesk",
+      "name": "zendesk",
+      "icon": "packages/nodes-base/nodes/Zendesk/zendesk.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.zendesk/",
+      "directory": "packages/nodes-base/nodes/Zendesk"
+    },
+    {
+      "displayName": "Zendesk Trigger",
+      "name": "zendeskTrigger",
+      "icon": "packages/nodes-base/nodes/Zendesk/zendesk.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.zendesktrigger/",
+      "directory": "packages/nodes-base/nodes/Zendesk"
+    },
+    {
+      "displayName": "Zoho CRM",
+      "name": "zohoCrm",
+      "icon": "packages/nodes-base/nodes/Zoho/zoho.svg",
+      "categories": [
+        "Communication",
+        "Sales"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.zohocrm/",
+      "directory": "packages/nodes-base/nodes/Zoho"
+    },
+    {
+      "displayName": "Zoom",
+      "name": "zoom",
+      "icon": "packages/nodes-base/nodes/Zoom/zoom.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.zoom/",
+      "directory": "packages/nodes-base/nodes/Zoom"
+    },
+    {
+      "displayName": "Zulip",
+      "name": "zulip",
+      "icon": "packages/nodes-base/nodes/Zulip/zulip.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.zulip/",
+      "directory": "packages/nodes-base/nodes/Zulip"
+    }
+  ]
+}

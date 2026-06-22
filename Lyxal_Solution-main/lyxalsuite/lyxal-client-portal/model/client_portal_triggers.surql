@@ -1,2 +1,0 @@
--- Aucun trigger métier requis pour ce module pour le moment.
--- Tu peux ajouter ici des logs ou interactions IA si besoin plus tard.

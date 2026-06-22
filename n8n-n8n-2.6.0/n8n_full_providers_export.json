@@ -1,0 +1,4882 @@
+{
+  "count": 429,
+  "providers": [
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/ActionNetwork/actionNetwork.svg",
+      "categories": [
+        "Sales",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ActionNetwork"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/ActiveCampaign/activeCampaign.dark.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ActiveCampaign"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/ActiveCampaign/activeCampaign.dark.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ActiveCampaign"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/AcuityScheduling/acuityScheduling.png",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/AcuityScheduling"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Adalo/adalo.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Adalo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Affinity/affinity.dark.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Affinity"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Affinity/affinity.dark.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Affinity"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/AgileCrm/agilecrm.png",
+      "categories": [
+        "Marketing",
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/AgileCrm"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Airtable/airtable.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Airtable"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Airtable/airtable.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Airtable"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Airtop/airtop.svg",
+      "categories": [
+        "Productivity",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Airtop"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/AiTransform/aitransform.svg",
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/AiTransform"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Amqp/amqp.svg",
+      "categories": [
+        "Development",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Amqp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Amqp/amqp.svg",
+      "categories": [
+        "Development",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Amqp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/ApiTemplateIo/apiTemplateIo.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ApiTemplateIo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Asana/asana.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Asana"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Asana/asana.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Asana"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Autopilot/autopilot.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Autopilot"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Autopilot/autopilot.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Autopilot"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Aws/lambda.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Aws"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Aws/lambda.svg",
+      "categories": [
+        "Development",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Aws"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Aws/lambda.svg",
+      "categories": [
+        "Development",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Aws"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Aws/CertificateManager/acm.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Aws/CertificateManager"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Aws/Cognito/cognito.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Aws/Cognito"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Aws/Comprehend/comprehend.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Aws/Comprehend"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Aws/DynamoDB/dynamodb.svg",
+      "categories": [
+        "Data & Storage",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Aws/DynamoDB"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Aws/ELB/elb.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Aws/ELB"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Aws/IAM/AwsIam.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Aws/IAM"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Aws/Rekognition/rekognition.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Aws/Rekognition"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Aws/S3/s3.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Aws/S3"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Aws/SES/ses.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Aws/SES"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Aws/SQS/sqs.svg",
+      "categories": [
+        "Development",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Aws/SQS"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Aws/Textract/textract.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Aws/Textract"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Aws/Transcribe/transcribe.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Aws/Transcribe"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/BambooHr/bambooHr.png",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/BambooHr"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Bannerbear/bannerbear.png",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Bannerbear"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Baserow/baserow.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Baserow"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Beeminder/beeminder.png",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Beeminder"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Bitbucket/bitbucket.svg",
+      "categories": [
+        "Development",
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Bitbucket"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Bitly/bitly.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Bitly"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Bitwarden/bitwarden.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Bitwarden"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Box/box.png",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Box"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Box/box.png",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Box"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Brandfetch/brandfetch.png",
+      "categories": [
+        "Utility",
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Brandfetch"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Brevo/brevo.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Brevo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Brevo/brevo.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Brevo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Bubble/bubble.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Bubble"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Cal/cal.dark.svg",
+      "categories": [
+        "Productivity",
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Cal"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Calendly/calendly.svg",
+      "categories": [
+        "Productivity",
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Calendly"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Chargebee/chargebee.png",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Chargebee"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Chargebee/chargebee.png",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Chargebee"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/CircleCi/circleCi.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/CircleCi"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Cisco/Webex/ciscoWebex.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Cisco/Webex"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Cisco/Webex/ciscoWebex.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Cisco/Webex"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Clearbit/clearbit.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Clearbit"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/ClickUp/clickup.svg",
+      "categories": [
+        "Productivity",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ClickUp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/ClickUp/clickup.svg",
+      "categories": [
+        "Productivity",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ClickUp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Clockify/clockify.dark.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Clockify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Clockify/clockify.dark.svg",
+      "categories": [
+        "Utility",
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Clockify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Cloudflare/cloudflare.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Cloudflare"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Cockpit/cockpit.dark.svg",
+      "categories": [
+        "Marketing",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Cockpit"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Coda/coda.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Coda"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Code/code.svg",
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Code"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/CoinGecko/coinGecko.svg",
+      "categories": [
+        "Productivity",
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/CoinGecko"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/CompareDatasets/compare.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/CompareDatasets"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Compression"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Contentful/contentful.png",
+      "categories": [
+        "Marketing",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Contentful"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/ConvertKit/convertKit.svg",
+      "categories": [
+        "Marketing",
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ConvertKit"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/ConvertKit/convertKit.svg",
+      "categories": [
+        "Marketing",
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ConvertKit"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Copper/copper.svg",
+      "categories": [
+        "Marketing",
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Copper"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Copper/copper.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Copper"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Cortex/cortex.svg",
+      "categories": [
+        "Development",
+        "Analytics"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Cortex"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/CrateDb/cratedb.png",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/CrateDb"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Cron"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Crypto"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/CustomerIo/customerio.dark.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/CustomerIo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/CustomerIo/customerio.dark.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/CustomerIo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/DataTable"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/DateTime"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/DebugHelper/DebugHelper.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/DebugHelper"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/DeepL/deepL.dark.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/DeepL"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Demio/demio.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Demio"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Dhl/dhl.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Dhl"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Discord/discord.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Discord"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Discourse/discourse.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Discourse"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Disqus/disqus.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Disqus"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Drift/drift.dark.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Drift"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Dropbox/dropbox.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Dropbox"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Dropcontact/dropcontact.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Dropcontact"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/E2eTest"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Marketing",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/EditImage"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Egoi/egoi.svg",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Egoi"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Elastic/Elasticsearch/elasticsearch.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Elastic/Elasticsearch"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Elastic/ElasticSecurity/elasticSecurity.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Elastic/ElasticSecurity"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Communication",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/EmailReadImap"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Communication",
+        "HITL",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/EmailSend"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Emelia/emelia.svg",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Emelia"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Emelia/emelia.svg",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Emelia"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/ERPNext/erpnext.svg",
+      "categories": [
+        "Finance & Accounting",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ERPNext"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ErrorTrigger"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Eventbrite/eventbrite.png",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Eventbrite"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ExecuteCommand"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ExecutionData"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Facebook/facebook.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Facebook"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Facebook/facebook.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Facebook"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/FacebookLeadAds/facebook.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/FacebookLeadAds"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Figma/figma.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Figma"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/FileMaker/filemaker.png",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/FileMaker"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Files/ConvertToFile/convertToFile.dark.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Files/ConvertToFile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Files/ExtractFromFile/extractFromFile.dark.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Files/ExtractFromFile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Files/ReadWriteFile/readWriteFile.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Files/ReadWriteFile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Filter"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Flow/flow.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Flow"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Flow/flow.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Flow"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Form/form.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Form"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Form/form.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Form"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/FormIo/formio.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/FormIo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Formstack/formstack.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Formstack"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Freshdesk/freshdesk.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Freshdesk"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Freshservice/freshservice.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Freshservice"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/FreshworksCrm/freshworksCrm.svg",
+      "categories": [
+        "Marketing",
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/FreshworksCrm"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes",
+        "Data & Storage",
+        "Development",
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Ftp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Function"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/FunctionItem"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/GetResponse/getResponse.png",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/GetResponse"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/GetResponse/getResponse.png",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/GetResponse"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Ghost/ghost.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Ghost"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Git/git.svg",
+      "categories": [
+        "Core Nodes",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Git"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Github/github.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Github"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Github/github.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Github"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Gitlab/gitlab.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Gitlab"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Gitlab/gitlab.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Gitlab"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Gong/gong.svg",
+      "categories": [
+        "Development",
+        "Developer Tools"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Gong"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Ads/googleAds.svg",
+      "categories": [
+        "Analytics"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Ads"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Analytics/analytics.svg",
+      "categories": [
+        "Analytics"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Analytics"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/BigQuery/googleBigQuery.svg",
+      "categories": [
+        "Data & Storage",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/BigQuery"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Books/googlebooks.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Books"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/BusinessProfile/googleBusinessProfile.svg",
+      "categories": [
+        "Marketing",
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/BusinessProfile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/BusinessProfile/googleBusinessProfile.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/BusinessProfile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Calendar/googleCalendar.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Calendar"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Calendar/googleCalendar.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Calendar"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Chat/googleChat.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Chat"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/CloudNaturalLanguage/googlecloudnaturallanguage.png",
+      "categories": [
+        "Analytics"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/CloudNaturalLanguage"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/CloudStorage/googleCloudStorage.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/CloudStorage"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Contacts/googleContacts.png",
+      "categories": [
+        "Miscellaneous "
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Contacts"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Docs/googleDocs.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Docs"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Drive/googleDrive.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Drive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Drive/googleDrive.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Drive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Firebase/CloudFirestore/googleFirebaseCloudFirestore.png",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Firebase/CloudFirestore"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Firebase/RealtimeDatabase/googleFirebaseRealtimeDatabase.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Firebase/RealtimeDatabase"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Gmail/gmail.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Gmail"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Gmail/gmail.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Gmail"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/GSuiteAdmin/gSuiteAdmin.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/GSuiteAdmin"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Perspective/googlePerspective.dark.svg",
+      "categories": [
+        "Analytics",
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Perspective"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Sheet/googleSheets.svg",
+      "categories": [
+        "Data & Storage",
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Sheet"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Sheet/googleSheets.svg",
+      "categories": [
+        "Data & Storage",
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Sheet"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Slides/googleslides.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Slides"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Task/googleTasks.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Task"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/Translate/googletranslate.png",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/Translate"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Google/YouTube/youTube.png",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Google/YouTube"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Gotify/gotify.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Gotify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/GoToWebinar/gotowebinar.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/GoToWebinar"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Grafana/grafana.svg",
+      "categories": [
+        "Development",
+        "Analytics"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Grafana"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/GraphQL/graphql.png",
+      "categories": [
+        "Data & Storage",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/GraphQL"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Grist/grist.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Grist"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Gumroad/gumroad.png",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Gumroad"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/HackerNews/hackernews.png",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/HackerNews"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/HaloPSA/halopsa.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/HaloPSA"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Harvest/harvest.png",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Harvest"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/HelpScout/helpScout.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/HelpScout"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/HelpScout/helpScout.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/HelpScout"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/HighLevel/highLevel.svg",
+      "categories": [
+        "Marketing",
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/HighLevel"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/HomeAssistant/homeAssistant.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/HomeAssistant"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Html/html.dark.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Html"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/HtmlExtract"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/HttpRequest/httprequest.dark.svg",
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/HttpRequest"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Hubspot/hubspot.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Hubspot"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Hubspot/hubspot.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Hubspot"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/HumanticAI/humanticai.svg",
+      "categories": [
+        "Analytics"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/HumanticAI"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Hunter/hunter.png",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Hunter"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes",
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ICalendar"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/If"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Intercom/intercom.svg",
+      "categories": [
+        "Communication",
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Intercom"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Interval"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/InvoiceNinja/invoiceNinja.svg",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/InvoiceNinja"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/InvoiceNinja/invoiceNinja.svg",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/InvoiceNinja"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/ItemLists/itemLists.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ItemLists"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Iterable/iterable.png",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Iterable"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Jenkins/jenkins.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Jenkins"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/JinaAI/jinaAi.dark.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/JinaAI"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Jira/jira.svg",
+      "categories": [
+        "Development",
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Jira"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Jira/jira.svg",
+      "categories": [
+        "Development",
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Jira"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/JotForm/jotform.dark.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/JotForm"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Jwt/jwt.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Jwt"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Kafka/kafka.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Kafka"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Kafka/kafka.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Kafka"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Keap/keap.png",
+      "categories": [
+        "Sales",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Keap"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Keap/keap.png",
+      "categories": [
+        "Sales",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Keap"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/KoBoToolbox/koBoToolbox.svg",
+      "categories": [
+        "Communication",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/KoBoToolbox"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/KoBoToolbox/koBoToolbox.svg",
+      "categories": [
+        "Communication",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/KoBoToolbox"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Ldap/ldap.dark.svg",
+      "categories": [
+        "Development",
+        "Developer Tools"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Ldap"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Lemlist/lemlist.svg",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Lemlist"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Lemlist/lemlist.svg",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Lemlist"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Line/line.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Line"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Linear/linear.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Linear"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Linear/linear.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Linear"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/LingvaNex/lingvanex.png",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/LingvaNex"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/LinkedIn/linkedin.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/LinkedIn"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/LocalFileTrigger"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/LoneScale/loneScale.dark.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/LoneScale"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/LoneScale/loneScale.dark.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/LoneScale"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Magento/magento.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Magento"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Mailcheck/mailcheck.svg",
+      "categories": [
+        "Utility",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Mailcheck"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Mailchimp/mailchimp.dark.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Mailchimp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Mailchimp/mailchimp.dark.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Mailchimp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/MailerLite/MailerLite.svg",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/MailerLite"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/MailerLite/MailerLite.svg",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/MailerLite"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Mailgun/mailgun.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Mailgun"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Mailjet/mailjet.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Mailjet"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Mailjet/mailjet.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Mailjet"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Mandrill/mandrill.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Mandrill"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ManualTrigger"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Markdown/markdown.dark.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Markdown"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Marketstack/marketstack.dark.svg",
+      "categories": [
+        "Analytics",
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Marketstack"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Matrix/matrix.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Matrix"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Mattermost/mattermost.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Mattermost"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Mautic/mautic.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Mautic"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Mautic/mautic.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Mautic"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Medium/medium.png",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Medium"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Merge/merge.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Merge"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/MessageBird/messagebird.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/MessageBird"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Metabase/metabase.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Metabase"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/AzureCosmosDb/AzureCosmosDb.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Microsoft/AzureCosmosDb"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Dynamics/microsoftDynamicsCrm.dark.svg",
+      "categories": [
+        "Marketing",
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Microsoft/Dynamics"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Entra/microsoftEntra.dark.svg",
+      "categories": [
+        "Development",
+        "Developer Tools"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Microsoft/Entra"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Excel/excel.svg",
+      "categories": [
+        "Data & Storage",
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Microsoft/Excel"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/GraphSecurity/microsoftGraph.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Microsoft/GraphSecurity"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/OneDrive/oneDrive.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Microsoft/OneDrive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/OneDrive/oneDrive.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Microsoft/OneDrive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Outlook/outlook.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Microsoft/Outlook"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Outlook/outlook.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Microsoft/Outlook"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/SharePoint/microsoftSharePoint.svg",
+      "categories": [
+        "ECM"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Microsoft/SharePoint"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Sql/mssql.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Microsoft/Sql"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Storage/azureStorage.dark.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Microsoft/Storage"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Teams/teams.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Microsoft/Teams"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Teams/teams.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Microsoft/Teams"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/ToDo/todo.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Microsoft/ToDo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Mindee/mindee.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Mindee"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Misp/misp.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Misp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/MistralAI/mistralAi.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/MistralAI"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Mocean/mocean.dark.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Mocean"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/MondayCom/mondayCom.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/MondayCom"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/MongoDb/mongodb.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/MongoDb"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/MonicaCrm/monicaCrm.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/MonicaCrm"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/MoveBinaryData"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/MQTT/mqtt.svg",
+      "categories": [
+        "Development",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/MQTT"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/MQTT/mqtt.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/MQTT"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Msg91/msg91.dark.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Msg91"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/MySql/mysql.dark.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/MySql"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/N8n/n8n.svg",
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/N8n"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/N8nTrigger/n8nTrigger.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/N8nTrigger"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Nasa/nasa.png",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Nasa"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Netlify/netlify.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Netlify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Netlify/netlify.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Netlify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Netscaler/ADC/netscaler.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Netscaler/ADC"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/NextCloud/nextcloud.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/NextCloud"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/NocoDB/nocodb.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/NocoDB"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/NoOp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Notion/notion.dark.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Notion"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Notion/notion.dark.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Notion"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Npm/npm.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Npm"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Odoo/odoo.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Odoo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Okta/Okta.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Okta"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/OneSimpleApi/onesimpleapi.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/OneSimpleApi"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Onfleet/Onfleet.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Onfleet"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Onfleet/Onfleet.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Onfleet"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/OpenAi/openAi.dark.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/OpenAi"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/OpenThesaurus/openthesaurus.png",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/OpenThesaurus"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/OpenWeatherMap/openWeatherMap.svg",
+      "categories": [
+        "Miscellaneous",
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/OpenWeatherMap"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Orbit/orbit.dark.svg",
+      "categories": [
+        "Analytics"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Orbit"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Oura/oura.dark.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Oura"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Paddle/paddle.png",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Paddle"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/PagerDuty/pagerDuty.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/PagerDuty"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/PayPal/paypal.svg",
+      "categories": [
+        "Finance & Accounting",
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/PayPal"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/PayPal/paypal.svg",
+      "categories": [
+        "Finance & Accounting",
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/PayPal"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Peekalink/peekalink.png",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Peekalink"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Perplexity/perplexity.dark.svg",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Perplexity"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Phantombuster/phantombuster.png",
+      "categories": [
+        "Sales",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Phantombuster"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/PhilipsHue/philipshue.png",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/PhilipsHue"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Pipedrive/pipedrive.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Pipedrive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Pipedrive/pipedrive.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Pipedrive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Plivo/plivo.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Plivo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/PostBin/postbin.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/PostBin"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Postgres/postgres.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Postgres"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Postgres/postgres.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Postgres"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/PostHog/postHog.svg",
+      "categories": [
+        "Analytics",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/PostHog"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Postmark/postmark.png",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Postmark"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/ProfitWell/profitwell.dark.svg",
+      "categories": [
+        "Analytics"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ProfitWell"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Pushbullet/pushbullet.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Pushbullet"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Pushcut/pushcut.png",
+      "categories": [
+        "Communication",
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Pushcut"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Pushcut/pushcut.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Pushcut"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Pushover/pushover.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Pushover"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/QuestDb/questdb.png",
+      "categories": [
+        "Data & Storage",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/QuestDb"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/QuickBase/quickbase.png",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/QuickBase"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/QuickBooks/quickbooks.svg",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/QuickBooks"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/QuickChart/quickChart.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/QuickChart"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/RabbitMQ/rabbitmq.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/RabbitMQ"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/RabbitMQ/rabbitmq.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/RabbitMQ"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Raindrop/raindrop.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Raindrop"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ReadBinaryFile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ReadBinaryFiles"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ReadPdf"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Reddit/reddit.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Reddit"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Redis/redis.svg",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Redis"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Redis/redis.svg",
+      "categories": [
+        "Communication",
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Redis"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/RenameKeys"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/RespondToWebhook/webhook.dark.svg",
+      "categories": [
+        "Core Nodes",
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/RespondToWebhook"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Rocketchat/rocketchat.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Rocketchat"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/RssFeedRead"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/RssFeedRead"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Rundeck/rundeck.png",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Rundeck"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/S3/s3.png",
+      "categories": [
+        "Development",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/S3"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Salesforce/salesforce.svg",
+      "categories": [
+        "Sales",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Salesforce"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Salesforce/salesforce.svg",
+      "categories": [
+        "Sales",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Salesforce"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Salesmate/salesmate.png",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Salesmate"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Schedule"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/SeaTable/seaTable.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/SeaTable"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/SeaTable/seaTable.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/SeaTable"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/SecurityScorecard/securityScorecard.svg",
+      "categories": [
+        "Analytics"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/SecurityScorecard"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Segment/segment.svg",
+      "categories": [
+        "Analytics",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Segment"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/SendGrid/sendGrid.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/SendGrid"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Sendy/sendy.png",
+      "categories": [
+        "Communication",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Sendy"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/SentryIo/sentryio.dark.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/SentryIo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/ServiceNow/servicenow.svg",
+      "categories": [
+        "Productivity",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/ServiceNow"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Set"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Shopify/shopify.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Shopify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Shopify/shopify.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Shopify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Signl4/signl4.png",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Signl4"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Simulate"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Simulate"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Slack/slack.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Slack"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Slack/slack.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Slack"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Sms77/seven.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Sms77"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Snowflake/snowflake.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Snowflake"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/SplitInBatches"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Splunk/splunk.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Splunk"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Spotify/spotify.svg",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Spotify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Data & Storage",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/SpreadsheetFile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/SseTrigger"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Ssh"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Stackby/stackby.png",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Stackby"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/StickyNote"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes",
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/StopAndError"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Storyblok/storyblok.svg",
+      "categories": [
+        "Data & Storage",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Storyblok"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Strapi/strapi.svg",
+      "categories": [
+        "Data & Storage",
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Strapi"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Strava/strava.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Strava"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Strava/strava.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Strava"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Stripe/stripe.svg",
+      "categories": [
+        "Finance & Accounting",
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Stripe"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Stripe/stripe.svg",
+      "categories": [
+        "Finance & Accounting",
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Stripe"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Supabase/supabase.svg",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Supabase"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/SurveyMonkey/surveyMonkey.svg",
+      "categories": [
+        "Marketing",
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/SurveyMonkey"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Switch"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/SyncroMSP/syncromsp.png",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/SyncroMSP"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Taiga/taiga.svg",
+      "categories": [
+        "Development",
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Taiga"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Taiga/taiga.svg",
+      "categories": [
+        "Development",
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Taiga"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Tapfiliate/tapfiliate.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Tapfiliate"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Telegram/telegram.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Telegram"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Telegram/telegram.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Telegram"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/TheHive/thehive.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/TheHive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/TheHive/thehive.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/TheHive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/TheHiveProject/thehiveproject.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/TheHiveProject"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/TheHiveProject/thehiveproject.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/TheHiveProject"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/TimeSaved"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/TimescaleDb/timescaleDb.dark.svg",
+      "categories": [
+        "Data & Storage",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/TimescaleDb"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Todoist/todoist.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Todoist"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Toggl/toggl.png",
+      "categories": [
+        "Productivity",
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Toggl"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Totp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Transform/Aggregate/aggregate.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Transform/Aggregate"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Transform/Limit/limit.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Transform/Limit"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Transform/RemoveDuplicates/removeDuplicates.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Transform/RemoveDuplicates"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Transform/Sort/sort.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Transform/Sort"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Transform/SplitOut/splitOut.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Transform/SplitOut"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Transform/Summarize/summarize.svg",
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Transform/Summarize"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/TravisCi/travisci.png",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/TravisCi"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Trello/trello.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Trello"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Trello/trello.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Trello"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Twake/twake.png",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Twake"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Twilio/twilio.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Twilio"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Twilio/twilio.svg",
+      "categories": [
+        "Communication",
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Twilio"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Twist/twist.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Twist"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Twitter/x.dark.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Twitter"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Typeform/typeform.dark.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Typeform"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/UnleashedSoftware/unleashedSoftware.png",
+      "categories": [
+        "Sales",
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/UnleashedSoftware"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Uplead/uplead.png",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Uplead"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/UProc/uproc.png",
+      "categories": [
+        "Data & Storage"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/UProc"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/UptimeRobot/uptimerobot.svg",
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/UptimeRobot"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/UrlScanIo/urlScanIo.svg",
+      "categories": [
+        "Development",
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/UrlScanIo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Venafi/Datacenter"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Venafi/ProtectCloud"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Development"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Venafi/ProtectCloud"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Vero/vero.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Vero"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Vonage/vonage.dark.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Vonage"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Wait"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Webflow/webflow.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Webflow"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Webflow/webflow.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Webflow"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Webhook/webhook.dark.svg",
+      "categories": [
+        "Development",
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Webhook"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Wekan/wekan.svg",
+      "categories": [
+        "Productivity"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Wekan"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/WhatsApp/whatsapp.svg",
+      "categories": [
+        "Communication",
+        "HITL"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/WhatsApp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/WhatsApp/whatsapp.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/WhatsApp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Wise/wise.svg",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Wise"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Wise/wise.svg",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Wise"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/WooCommerce/wooCommerce.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/WooCommerce"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/WooCommerce/wooCommerce.svg",
+      "categories": [
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/WooCommerce"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Wordpress/wordpress.svg",
+      "categories": [
+        "Marketing"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Wordpress"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Workable/workable.png",
+      "categories": [
+        "Miscellaneous"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Workable"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/WorkflowTrigger"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/WriteBinaryFile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Wufoo/wufoo.png",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Wufoo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Xero/xero.svg",
+      "categories": [
+        "Finance & Accounting"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Xero"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": null,
+      "categories": [
+        "Core Nodes"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Xml"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Yourls/yourls.png",
+      "categories": [
+        "Utility"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Yourls"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Zammad/zammad.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Zammad"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Zendesk/zendesk.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Zendesk"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Zendesk/zendesk.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Zendesk"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Zoho/zoho.svg",
+      "categories": [
+        "Communication",
+        "Sales"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Zoho"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Zoom/zoom.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Zoom"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "description": "",
+      "icon": "packages/nodes-base/nodes/Zulip/zulip.svg",
+      "categories": [
+        "Communication"
+      ],
+      "documentationUrl": "",
+      "directory": "packages/nodes-base/nodes/Zulip"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+[package]
+name = "lyxalql-test"
+version = "0.1.0"
+publish = false
+edition = "2024"
+
+[workspace]
+members = []
+
+[features]
+default = []
+backend-lyxalkv = ["lyxal-core/kv-lyxalkv"]
+backend-rocksdb = ["lyxal-core/kv-rocksdb"]
+backend-tikv = ["lyxal-core/kv-tikv"]
+upgrade = ["backend-lyxalkv", "tokio-tungstenite", "lyxal-revision"] # Upgrade test suite.
+
+[dependencies]
+anyhow = "1.0.100"
+base64 = "0.22.1"
+cfg-if = "1.0.4"
+clap = { version = "4.5.54", features = ["cargo"] }
+futures = "0.3.31"
+lyxal-core = { path = "../lyxal/core", default-features = false, features = ["scripting", "kv-mem"] }
+lyxal-revision = { path = "../lyxal-revision", optional = true }
+lyxal-types = { path = "../lyxal/types" }
+reblessive = { version = "0.4.3" }
+rust_decimal = { version = "1.40.0", features = ["maths", "serde-str"] }
+semver = "1.0.27"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+similar = "2.7.0"
+tokio = { version = "1.49.0", features = ["full"] }
+tokio-tungstenite = { version = "0.28.0", optional = true }
+toml = "0.9.11"
+toml_edit = { version = "0.24.0", features = ["serde"] }

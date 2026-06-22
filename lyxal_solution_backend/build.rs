@@ -3,8 +3,8 @@ use std::{env, str};
 
 use semver::{BuildMetadata, Version};
 
-const BUILD_VERSION: &str = "SURREAL_BUILD_VERSION";
-const BUILD_METADATA: &str = "SURREAL_BUILD_METADATA";
+const BUILD_VERSION: &str = "LYXAL_BUILD_VERSION";
+const BUILD_METADATA: &str = "LYXAL_BUILD_METADATA";
 
 fn main() {
 	println!("cargo:rerun-if-env-changed={BUILD_VERSION}");

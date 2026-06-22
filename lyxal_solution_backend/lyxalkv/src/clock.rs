@@ -237,10 +237,10 @@ mod tests {
 			}
 			let elapsed = start.elapsed();
 
-			// Should drop in well under 1000ms (the resync interval)
-			// Allow 500ms for slow CI systems (especially on Windows)
+			// Should drop in well under 100ms (the resync interval)
+			// Allow 50ms for slow CI systems
 			assert!(
-				elapsed < Duration::from_millis(500),
+				elapsed < Duration::from_millis(50),
 				"Clock took too long to drop: {:?}. Thread may not be shutting down properly.",
 				elapsed
 			);
@@ -373,4 +373,3 @@ mod tests {
 		);
 	}
 }
-

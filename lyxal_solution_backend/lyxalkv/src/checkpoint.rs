@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::error::{Error, Result};
-use crate::lsm::{CompactionOperations, CoreInner};
+use crate::lsm::CoreInner;
 
 /// Recursively copies a directory and all its contents
 fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
@@ -15,15 +15,8 @@ fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
 
 	for entry in fs::read_dir(src)? {
 		let entry = entry?;
-		let file_name = entry.file_name();
-
-		// Skip LOCK files
-		if file_name == crate::lockfile::LockFile::LOCK_FILE_NAME {
-			continue;
-		}
-
 		let src_path = entry.path();
-		let dst_path = dst.join(&file_name);
+		let dst_path = dst.join(entry.file_name());
 
 		if src_path.is_dir() {
 			copy_dir_all(&src_path, &dst_path)?;
@@ -187,13 +180,11 @@ impl DatabaseCheckpoint {
 		// Step 1: Flush all memtables to ensure consistency
 		self.flush_all_memtables()?;
 
-		// Hold the manifest lock for the entire duration of the checkpoint process.
-		// This ensures that no compactions or flushes can modify the manifest or
-		// delete SSTables while we are copying them.
-		let levels_guard = self.core.level_manifest.read()?;
-
 		// Step 2: Get current sequence number from the manifest
-		let sequence_number = levels_guard.get_last_sequence();
+		let sequence_number = {
+			let levels_guard = self.core.level_manifest.read()?;
+			levels_guard.get_last_sequence()
+		};
 
 		// Step 3: Create checkpoint subdirectories
 		let sstables_dir = checkpoint_path.join("sstables");
@@ -201,15 +192,14 @@ impl DatabaseCheckpoint {
 		fs::create_dir_all(&sstables_dir).map_err(|e| Error::Io(Arc::new(e)))?;
 		fs::create_dir_all(&wal_dir).map_err(|e| Error::Io(Arc::new(e)))?;
 
-		// Step 4: Copy all SSTables using the locked manifest
-		let (sstable_count, sstables_size) =
-			self.copy_sstables_locked(&levels_guard, &sstables_dir)?;
+		// Step 4: Copy all SSTables
+		let (sstable_count, sstables_size) = self.copy_sstables(&sstables_dir)?;
 
 		// Step 5: Copy WAL segments
 		self.create_new_wal(&wal_dir)?;
 
-		// Step 6: Copy level manifest using the locked manifest
-		let manifest_size = self.copy_level_manifest_locked(&levels_guard, checkpoint_path)?;
+		// Step 6: Copy level manifest
+		let manifest_size = self.copy_level_manifest(checkpoint_path)?;
 
 		// Step 7: Copy VLog directories if enabled
 		let vlog_size = self.copy_vlog_directories(checkpoint_path)?;
@@ -276,38 +266,22 @@ impl DatabaseCheckpoint {
 
 	/// Flushes all memtables to ensure checkpoint consistency
 	fn flush_all_memtables(&self) -> Result<()> {
-		// Keep calling compact_memtable until all memtables (active + immutable) are
-		// flushed compact_memtable already handles the logic of checking if there's
-		// anything to flush
-		loop {
-			// Check if there are any memtables to flush
-			let has_active = {
-				let active_guard = self.core.active_memtable.read()?;
-				!active_guard.is_empty()
-			};
-
-			let has_immutable = {
-				let immutable_guard = self.core.immutable_memtables.read()?;
-				!immutable_guard.is_empty()
-			};
-
-			if !has_active && !has_immutable {
-				break; // All memtables are flushed
+		// Step 1: Rotate active memtable if it has data
+		{
+			let active = self.core.active_memtable.read()?;
+			if !active.is_empty() {
+				drop(active); // Release read lock before acquiring write lock
+				self.core.rotate_memtable()?;
 			}
-
-			// Flush one memtable (active or immutable)
-			self.core.compact_memtable()?;
 		}
 
-		Ok(())
+		// Step 2: Flush all immutable memtables synchronously
+		self.core.flush_all_immutables_sync()
 	}
 
 	/// Copies all SSTables to the checkpoint directory
-	fn copy_sstables_locked(
-		&self,
-		levels_guard: &crate::levels::LevelManifest,
-		dest_dir: &Path,
-	) -> Result<(usize, u64)> {
+	fn copy_sstables(&self, dest_dir: &Path) -> Result<(usize, u64)> {
+		let levels_guard = self.core.level_manifest.read()?;
 		let mut total_size = 0u64;
 		let mut count = 0usize;
 
@@ -354,11 +328,7 @@ impl DatabaseCheckpoint {
 	}
 
 	/// Copies the level manifest directory to the checkpoint directory
-	fn copy_level_manifest_locked(
-		&self,
-		_levels_guard: &crate::levels::LevelManifest,
-		dest_dir: &Path,
-	) -> Result<u64> {
+	fn copy_level_manifest(&self, dest_dir: &Path) -> Result<u64> {
 		let source_path = self.core.opts.manifest_dir();
 		let dest_path = dest_dir.join("manifest");
 
@@ -399,24 +369,6 @@ impl DatabaseCheckpoint {
 			total_size += Self::calculate_directory_size(&vlog_dest)?;
 		}
 
-		// Copy discard stats directory
-		let discard_stats_source = self.core.opts.discard_stats_dir();
-		let discard_stats_dest = dest_dir.join("discard_stats");
-		if discard_stats_source.exists() {
-			copy_dir_all(&discard_stats_source, &discard_stats_dest)
-				.map_err(|e| Error::Io(Arc::new(e)))?;
-			total_size += Self::calculate_directory_size(&discard_stats_dest)?;
-		}
-
-		// Copy delete list directory
-		let delete_list_source = self.core.opts.delete_list_dir();
-		let delete_list_dest = dest_dir.join("delete_list");
-		if delete_list_source.exists() {
-			copy_dir_all(&delete_list_source, &delete_list_dest)
-				.map_err(|e| Error::Io(Arc::new(e)))?;
-			total_size += Self::calculate_directory_size(&delete_list_dest)?;
-		}
-
 		Ok(total_size)
 	}
 
@@ -450,28 +402,6 @@ impl DatabaseCheckpoint {
 				fs::remove_dir_all(&vlog_dest).map_err(|e| Error::Io(Arc::new(e)))?;
 			}
 			copy_dir_all(&vlog_source, &vlog_dest).map_err(|e| Error::Io(Arc::new(e)))?;
-		}
-
-		// Restore discard stats directory
-		let discard_stats_source = checkpoint_path.join("discard_stats");
-		let discard_stats_dest = self.core.opts.discard_stats_dir();
-		if discard_stats_source.exists() {
-			if discard_stats_dest.exists() {
-				fs::remove_dir_all(&discard_stats_dest).map_err(|e| Error::Io(Arc::new(e)))?;
-			}
-			copy_dir_all(&discard_stats_source, &discard_stats_dest)
-				.map_err(|e| Error::Io(Arc::new(e)))?;
-		}
-
-		// Restore delete list directory
-		let delete_list_source = checkpoint_path.join("delete_list");
-		let delete_list_dest = self.core.opts.delete_list_dir();
-		if delete_list_source.exists() {
-			if delete_list_dest.exists() {
-				fs::remove_dir_all(&delete_list_dest).map_err(|e| Error::Io(Arc::new(e)))?;
-			}
-			copy_dir_all(&delete_list_source, &delete_list_dest)
-				.map_err(|e| Error::Io(Arc::new(e)))?;
 		}
 
 		Ok(())
@@ -514,15 +444,9 @@ impl DatabaseCheckpoint {
 
 		for entry in fs::read_dir(source).map_err(|e| Error::Io(Arc::new(e)))? {
 			let entry = entry.map_err(|e| Error::Io(Arc::new(e)))?;
-			let file_name = entry.file_name();
-
-			// Skip LOCK files
-			if file_name == crate::lockfile::LockFile::LOCK_FILE_NAME {
-				continue;
-			}
 
 			let source_path = entry.path();
-			let dest_path = dest.join(&file_name);
+			let dest_path = dest.join(entry.file_name());
 
 			if source_path.is_file() {
 				// Create hard link if possible, otherwise copy
@@ -561,21 +485,11 @@ impl DatabaseCheckpoint {
 			fs::remove_dir_all(&manifest_path).map_err(|e| Error::Io(Arc::new(e)))?;
 		}
 
-		// Clear VLog directories if VLog is enabled
+		// Clear VLog directory if VLog is enabled
 		if self.core.opts.enable_vlog {
 			let vlog_dir = self.core.opts.vlog_dir();
 			if vlog_dir.exists() {
 				fs::remove_dir_all(&vlog_dir).map_err(|e| Error::Io(Arc::new(e)))?;
-			}
-
-			let discard_stats_dir = self.core.opts.discard_stats_dir();
-			if discard_stats_dir.exists() {
-				fs::remove_dir_all(&discard_stats_dir).map_err(|e| Error::Io(Arc::new(e)))?;
-			}
-
-			let delete_list_dir = self.core.opts.delete_list_dir();
-			if delete_list_dir.exists() {
-				fs::remove_dir_all(&delete_list_dir).map_err(|e| Error::Io(Arc::new(e)))?;
 			}
 		}
 

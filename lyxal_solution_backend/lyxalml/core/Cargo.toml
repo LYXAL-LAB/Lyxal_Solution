@@ -1,0 +1,35 @@
+[package]
+name = "lyxalml-core"
+version.workspace = true
+edition.workspace = true
+description = "The core machine learning library for LyxalML that enables Lyxal to store and load ML models"
+repository.workspace = true
+homepage.workspace = true
+license-file.workspace = true
+
+[features]
+default = []
+sklearn-tests = []
+onnx-tests = []
+torch-tests = []
+tensorflow-tests = []
+gpu = []
+
+[dependencies]
+
+# External crates
+bytes.workspace = true
+futures.workspace = true
+hyper.workspace = true
+ndarray.workspace = true
+ort.workspace = true
+regex.workspace = true
+serde = { workspace = true, features = ["derive"] }
+thiserror.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }
+
+[lib]
+name = "lyxalml_core"
+path = "src/lib.rs"

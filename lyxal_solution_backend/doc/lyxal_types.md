@@ -6,22 +6,22 @@ Regroupe tous les crates de définition de types utilisés par les différents c
 
 ## Sous-crates
 
-### lyxal_types_db
+### lyxal-types
 **Types primitifs de la base de données.**
 
-Contient les structures Rust (`LyxalValue`, `Array`, `RecordId`, `Regex`, etc.) utilisées par le parseur et l'évaluateur SQL du moteur Lyxal DB. C'est le fork des types originaux SurrealDB, entièrement rebrandé.
+Contient les structures Rust (`LyxalValue`, `Array`, `RecordId`, `Regex`, etc.) utilisées par le parseur et l'évaluateur SQL du moteur Lyxal DB. C'est le fork des types originaux Lyxal, entièrement rebrandé.
 
-- **Chemin** : `lyxal_types/lyxal_types_db/`
+- **Chemin** : `lyxal_types/lyxal-types/`
 - **Destiné à** : Le moteur DB (`lyxal_db`), le futur crate `lyxal_function`
-- **Dépendances clés** : `serde`, `chrono`, `rust_decimal`, `uuid`, `geo`, `lyxal_protocol` (feature flatbuffers)
+- **Dépendances clés** : `serde`, `chrono`, `rust_decimal`, `uuid`, `geo`, `lyxal-protocol` (feature flatbuffers)
 
-### lyxal_types_db_derive
-**Macros procédurales pour lyxal_types_db.**
+### lyxal-types_derive
+**Macros procédurales pour lyxal-types.**
 
 Fournit les `#[derive(...)]` macros pour générer automatiquement des implémentations de traits sur les types DB.
 
-- **Chemin** : `lyxal_types/lyxal_types_db/derive/`
-- **Destiné à** : Utilisé uniquement par `lyxal_types_db`
+- **Chemin** : `lyxal_types/lyxal-types/derive/`
+- **Destiné à** : Utilisé uniquement par `lyxal-types`
 - **Dépendances clés** : `syn`, `quote`, `proc-macro2`
 
 ### lyxal_types_proxy
@@ -34,10 +34,28 @@ Contient les structures Rust générées depuis le Protobuf de Lyxal Proxy (`com
 - **Dépendances clés** : `prost`, `serde`
 - **Fichier clé** : `src/command.rs` — Code statique généré depuis `lyxal_proxy/command/src/command.proto`
 
+### lyxal_types_lism
+**Marshalling des arguments de fonction pour Lyxal DB.**
+
+Anciennement "Lyxal_lism", ce crate gère le transfert et l'interprétation des arguments (marshalling) pour l'exécution des fonctions externes. Il permet d'éviter l'implémentation du trait `Serializable` sur chaque type individuel de la DB.
+
+- **Chemin** : `lyxal_types/lyxal_types_lism/`
+- **Destiné à** : L'évaluateur de fonctions du moteur (`lyxal_db`) et les plugins/fonctions WASM ou natives (`lyxal_function`).
+- **Dépendances clés** : `lyxal-protocol` (pour la sérialisation des arguments via FlatBuffers).
+
+### lyxal_macros_lism
+**Macros pour lyxal_types_lism.**
+
+Fournit les macros procédurales utilisées par le crate LISM pour simplifier la déclaration des arguments de fonction.
+
+- **Chemin** : `lyxal_macros/lyxal_macros_lism/`
+- **Destiné à** : Utilisé uniquement par `lyxal_types_lism`.
+
+
 ## Architecture des dépendances
 
 ```
-lyxal_types_db ──────► lyxal_protocol (flatbuffers)
+lyxal-types ──────► lyxal-protocol (flatbuffers)
 lyxal_types_proxy ───► lyxal_proxy (command.proto)
 
          ┌─────────────────┐
@@ -46,5 +64,5 @@ lyxal_types_proxy ───► lyxal_proxy (command.proto)
          └──┬──────────┬───┘
             │          │
             ▼          ▼
-   lyxal_types_db   lyxal_types_proxy
+   lyxal-types   lyxal_types_proxy
 ```

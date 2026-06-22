@@ -1,4 +1,4 @@
-use crate::vfs::SysFile as File;
+use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::vec::Vec;
 
@@ -163,7 +163,6 @@ impl Reader {
 				Ok(false)
 			}
 			Ok(n) => {
-				crate::metrics::EngineMetrics::get().wal_bytes_read.fetch_add(n as u64, std::sync::atomic::Ordering::Relaxed);
 				self.buffer.truncate(n);
 				self.buffer_offset = 0;
 				self.end_of_buffer_offset += n;
@@ -358,42 +357,13 @@ impl Reader {
 		}
 
 		// Decompress if compression is enabled
-		match self.compression_type {
-			CompressionType::Lz4 if !self.rec.is_empty() => {
-				let start = std::time::Instant::now();
-				self.rec = lz4_flex::decompress_size_prepended(&self.rec).map_err(|e| {
-					Error::from(io::Error::new(
-						io::ErrorKind::InvalidData,
-						format!("LZ4 decompression failed: {}", e),
-					))
-				})?;
-				crate::metrics::EngineMetrics::get().lz4_decompressions.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-				crate::metrics::EngineMetrics::get().lz4_decompression_time_ns.fetch_add(start.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
-			}
-			CompressionType::Zstd if !self.rec.is_empty() => {
-				let start = std::time::Instant::now();
-				if self.rec.len() < 4 {
-					return Err(Error::from(io::Error::new(
-						io::ErrorKind::InvalidData,
-						"Invalid ZSTD compressed data",
-					)));
-				}
-				let original_size = u32::from_le_bytes([
-					self.rec[0],
-					self.rec[1],
-					self.rec[2],
-					self.rec[3],
-				]) as usize;
-				self.rec = zstd::bulk::decompress(&self.rec[4..], original_size).map_err(|e| {
-					Error::from(io::Error::new(
-						io::ErrorKind::InvalidData,
-						format!("ZSTD decompression failed: {}", e),
-					))
-				})?;
-				crate::metrics::EngineMetrics::get().zstd_decompressions.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-				crate::metrics::EngineMetrics::get().zstd_decompression_time_ns.fetch_add(start.elapsed().as_nanos() as u64, std::sync::atomic::Ordering::Relaxed);
-			}
-			_ => {}
+		if self.compression_type == CompressionType::Lz4 && !self.rec.is_empty() {
+			self.rec = lz4_flex::decompress_size_prepended(&self.rec).map_err(|e| {
+				Error::IO(IOError::new(
+					io::ErrorKind::InvalidData,
+					&format!("LZ4 decompression failed: {}", e),
+				))
+			})?;
 		}
 
 		Ok(())
@@ -402,7 +372,7 @@ impl Reader {
 
 #[cfg(test)]
 mod tests {
-	use crate::vfs::SysFile as File;
+	use std::fs::File;
 	use std::io::{BufReader, Read, Write};
 	use std::vec::Vec;
 

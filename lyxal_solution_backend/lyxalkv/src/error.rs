@@ -31,26 +31,32 @@ pub enum Error {
 	BatchTooLarge,
 	InvalidBatchRecord,
 	TransactionWriteConflict,
-	TransactionReadConflict(String),
+	TransactionRetry,
 	TransactionClosed,
 	EmptyKey,
 	TransactionWriteOnly,
 	TransactionReadOnly,
 	TransactionWithoutSavepoint,
 	KeyNotFound,
-	WriteStall,
+	WriteStall {
+		reason: WriteStallReason,
+	},
+	ArenaFull, // Memtable arena is full, need rotation
 	FileDescriptorNotFound,
 	TableIDCollision(u64),
+	TableNotFound(u64),
 	PipelineStall,
 	Other(String), // Other errors
 	NoSnapshot,
 	CommitFail(String),
 	LoadManifestFail(String),
 	Corruption(String), // Data corruption detected
-	VlogGCAlreadyInProgress,
+	ManifestCorruption(String), /* Manifest inconsistency detected (e.g., log_number exceeds
+	                     * WAL segments) */
 	InvalidArgument(String),
 	InvalidTag(String),
-	BPlusTree(String), // B+ tree specific errors
+	BPlusTree(String),    // B+ tree specific errors
+	InterleavedIteration, // Interleaved iteration not supported
 	/// WAL corruption detected during recovery, includes location for repair
 	WalCorruption {
 		segment_id: usize,
@@ -58,11 +64,6 @@ pub enum Error {
 		message: String,
 	},
 	SSTable(crate::sstable::error::SSTableError), // SSTable-specific errors
-	LogMissing {
-		requested_seq: u64,
-		oldest_available_seq: u64,
-	},
-	VLogDisabled,
 }
 
 // Implementation of Display trait for Error
@@ -87,38 +88,35 @@ impl fmt::Display for Error {
             Self::BatchTooLarge => write!(f, "Batch too large"),
             Self::InvalidBatchRecord => write!(f, "Invalid batch record"),
             Self::TransactionWriteConflict => write!(f, "Transaction write conflict"),
-            Self::TransactionReadConflict(err) => write!(f, "Transaction read conflict: {err}"),
+            Self::TransactionRetry => write!(f, "Transaction retry required: memtable history insufficient for conflict detection"),
             Self::TransactionClosed => write!(f, "Transaction closed"),
             Self::EmptyKey => write!(f, "Empty key"),
             Self::TransactionWriteOnly => write!(f, "Transaction is write-only"),
             Self::TransactionReadOnly => write!(f, "Transaction is read-only"),
             Self::TransactionWithoutSavepoint => write!(f, "Transaction has no savepoint to rollback to"),
             Self::KeyNotFound => write!(f, "Key not found"),
-            Self::WriteStall => write!(f, "Write stall"),
+            Self::WriteStall { reason } => write!(f, "Write stall: {:?}", reason),
+            Self::ArenaFull => write!(f, "Memtable arena is full"),
             Self::FileDescriptorNotFound => write!(f, "File descriptor not found"),
-            Self::TableIDCollision(id) => write!(f, "CRITICAL ERROR: Table ID collision detected. New table ID {id} conflicts with a table ID in the merge list."),
-            Self::PipelineStall => write!(f, "Pipeline stall"),
+			Self::TableIDCollision(id) => write!(f, "CRITICAL ERROR: Table ID collision detected. New table ID {id} conflicts with a table ID in the merge list."),
+			Self::TableNotFound(id) => write!(f, "Table not found: {id}"),
+			Self::PipelineStall => write!(f, "Pipeline stall"),
             Self::Other(err) => write!(f, "Other error: {err}"),
             Self::NoSnapshot => write!(f, "No snapshot available"),
             Self::CommitFail(err) => write!(f, "Commit failed: {err}"),
             Self::LoadManifestFail(err) => write!(f, "Failed to load manifest: {err}"),
             Self::Corruption(err) => write!(f, "Data corruption detected: {err}"),
-            Self::VlogGCAlreadyInProgress => write!(f, "Vlog garbage collection already in progress"),
+            Self::ManifestCorruption(err) => write!(f, "Manifest corruption detected: {err}"),
             Self::InvalidArgument(err) => write!(f, "Invalid argument: {err}"),
             Self::InvalidTag(err) => write!(f, "Invalid tag: {err}"),
             Self::BPlusTree(err) => write!(f, "B+ tree error: {err}"),
+            Self::InterleavedIteration => write!(f, "Interleaved iteration not supported: cannot mix next() and next_back() on same iterator"),
             Self::WalCorruption { segment_id, offset, message } => write!(
                 f,
                 "WAL corruption in segment {} at offset {}: {}",
                 segment_id, offset, message
             ),
             Self::SSTable(err) => write!(f, "SSTable error: {err}"),
-            Self::LogMissing { requested_seq, oldest_available_seq } => write!(
-                f,
-                "WAL log missing: requested seq {}, oldest available is {}",
-                requested_seq, oldest_available_seq
-            ),
-            Self::VLogDisabled => write!(f, "Value Log (VLog) is disabled"),
         }
 	}
 }
@@ -148,18 +146,6 @@ impl From<io::Error> for Error {
 impl From<crate::wal::Error> for Error {
 	fn from(err: crate::wal::Error) -> Self {
 		Error::Wal(err.to_string())
-	}
-}
-
-impl From<async_channel::SendError<std::result::Result<(), Error>>> for Error {
-	fn from(error: async_channel::SendError<std::result::Result<(), Error>>) -> Self {
-		Error::Send(format!("Async channel send error: {error}"))
-	}
-}
-
-impl From<async_channel::RecvError> for Error {
-	fn from(error: async_channel::RecvError) -> Self {
-		Error::Receive(format!("Async channel receive error: {error}"))
 	}
 }
 
@@ -204,7 +190,15 @@ pub enum BackgroundErrorReason {
 	MemtablaFlush,
 	Compaction,
 	ManifestWrite,
-	VLogGC,
+}
+
+/// Reason for write stall - used for logging and metrics.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WriteStallReason {
+	/// Too many immutable memtables queued for flush
+	MemtableLimit,
+	/// Too many L0 files awaiting compaction
+	L0FileLimit,
 }
 
 /// Represents a background error with its severity and context
@@ -240,7 +234,9 @@ impl BackgroundErrorHandler {
 	fn classify_error(error: &Error, reason: BackgroundErrorReason) -> ErrorSeverity {
 		match (reason, error) {
 			// Corruption errors are unrecoverable
-			(_, Error::Corruption(_) | Error::CorruptedBlock(_)) => ErrorSeverity::Unrecoverable,
+			(_, Error::Corruption(_) | Error::CorruptedBlock(_) | Error::ManifestCorruption(_)) => {
+				ErrorSeverity::Unrecoverable
+			}
 
 			// Table ID collision is a critical consistency error
 			(_, Error::TableIDCollision(_)) => ErrorSeverity::Unrecoverable,
@@ -256,9 +252,6 @@ impl BackgroundErrorHandler {
 
 			// Manifest write I/O is fatal
 			(BackgroundErrorReason::ManifestWrite, Error::Io(_)) => ErrorSeverity::FatalError,
-
-			// VLog GC I/O is hard error (can retry, but stops writes for safety)
-			(BackgroundErrorReason::VLogGC, Error::Io(_)) => ErrorSeverity::HardError,
 
 			// Default: treat as hard error for safety
 			_ => ErrorSeverity::HardError,
@@ -394,7 +387,7 @@ mod tests {
 
 		// Set a hard error
 		handler.set_error(
-			Error::Io(Arc::new(std::io::Error::new(std::io::ErrorKind::Other, "test error"))),
+			Error::Io(Arc::new(std::io::Error::other("test error"))),
 			BackgroundErrorReason::MemtablaFlush,
 		);
 
@@ -404,37 +397,20 @@ mod tests {
 	}
 
 	#[test]
-	fn test_soft_error_does_not_stop_db() {
-		let handler = BackgroundErrorHandler::new();
-
-		// This test is kept to verify HardError behavior.
-
-		// VLog GC I/O is HardError - stops writes but less severe than FatalError
-		handler.set_error(
-			Error::Io(Arc::new(std::io::Error::new(std::io::ErrorKind::Other, "test error"))),
-			BackgroundErrorReason::VLogGC,
-		);
-
-		// Hard errors stop the database
-		assert!(handler.is_db_stopped());
-		assert!(handler.check_error().is_err());
-	}
-
-	#[test]
 	fn test_error_severity_upgrade() {
 		let handler = BackgroundErrorHandler::new();
 
-		// Set a hard error first (VLog GC I/O)
+		// Set a hard error first
 		handler.set_error(
-			Error::Io(Arc::new(std::io::Error::new(std::io::ErrorKind::Other, "hard error"))),
-			BackgroundErrorReason::VLogGC,
+			Error::Io(Arc::new(std::io::Error::other("hard error"))),
+			BackgroundErrorReason::ManifestWrite,
 		);
 
 		assert!(handler.is_db_stopped());
 
 		// Set a fatal error - should upgrade
 		handler.set_error(
-			Error::Io(Arc::new(std::io::Error::new(std::io::ErrorKind::Other, "fatal error"))),
+			Error::Io(Arc::new(std::io::Error::other("fatal error"))),
 			BackgroundErrorReason::MemtablaFlush,
 		);
 
@@ -450,15 +426,15 @@ mod tests {
 
 		// Set a hard error first
 		handler.set_error(
-			Error::Io(Arc::new(std::io::Error::new(std::io::ErrorKind::Other, "hard error"))),
+			Error::Io(Arc::new(std::io::Error::other("hard error"))),
 			BackgroundErrorReason::MemtablaFlush,
 		);
 
-		let first_error = handler.get_error().unwrap().error.clone();
+		let first_error = handler.get_error().unwrap().error;
 
 		// Try to set a soft error - should not downgrade
 		handler.set_error(
-			Error::Io(Arc::new(std::io::Error::new(std::io::ErrorKind::Other, "soft error"))),
+			Error::Io(Arc::new(std::io::Error::other("soft error"))),
 			BackgroundErrorReason::Compaction,
 		);
 
@@ -472,7 +448,7 @@ mod tests {
 		let handler = BackgroundErrorHandler::new();
 
 		handler.set_error(
-			Error::Io(Arc::new(std::io::Error::new(std::io::ErrorKind::Other, "test error"))),
+			Error::Io(Arc::new(std::io::Error::other("test error"))),
 			BackgroundErrorReason::MemtablaFlush,
 		);
 

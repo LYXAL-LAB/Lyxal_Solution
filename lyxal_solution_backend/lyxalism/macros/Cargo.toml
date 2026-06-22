@@ -1,0 +1,24 @@
+[package]
+name = "lyxalism-macros"
+version.workspace = true
+description = "Macros for Lyxalism"
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+license-file.workspace = true
+
+[dependencies]
+
+# External crates
+proc-macro2.workspace = true
+quote.workspace = true
+syn = { workspace = true, features = ["full"] }
+
+[lib]
+proc-macro = true
+
+[lints]
+workspace = true

@@ -136,9 +136,7 @@ impl FilterBlockReader {
 		// Directly use the provided block offset as the block index.
 		let block_index = block_offset >> self.base_lg;
 
-		// If the block index is out of bounds, we return true to be safe.
-		// This results in a false positive (checking the SSTable), which is acceptable for a Bloom filter,
-		// whereas a false negative (skipping the SSTable) would be incorrect.
+		// TODO: What to do in this scenario?
 		if block_index >= self.filter_offsets.len() {
 			return true;
 		}
@@ -166,7 +164,7 @@ mod tests {
 
 	use super::*;
 	use crate::sstable::bloom::LevelDBBloomFilter;
-	use crate::sstable::{InternalKey, InternalKeyKind};
+	use crate::{InternalKey, InternalKeyKind};
 
 	#[test]
 	fn test_empty() {
@@ -260,7 +258,8 @@ mod tests {
 		let filter_policy = Arc::new(LevelDBBloomFilter::new(bits_per_key));
 
 		// Create a FilterBlockWriter
-		let mut filter_writer = FilterBlockWriter::new(filter_policy.clone());
+		let mut filter_writer =
+			FilterBlockWriter::new(Arc::clone(&filter_policy) as Arc<dyn FilterPolicy>);
 
 		// Start a single block
 		filter_writer.start_block(0);
@@ -328,7 +327,7 @@ mod tests {
 	#[test]
 	fn test_basic_bloom_filter() {
 		let policy = Arc::new(LevelDBBloomFilter::new(10));
-		let mut w = FilterBlockWriter::new(policy.clone());
+		let mut w = FilterBlockWriter::new(Arc::clone(&policy) as Arc<dyn FilterPolicy>);
 
 		w.start_block(0);
 		w.add_key("foo".as_bytes());

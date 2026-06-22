@@ -1,0 +1,27 @@
+# TODO: WebRTC-rs v0.20.0-alpha.1 Hardening (Google Grade)
+
+## Phase 1: Stabilisation de l'Abstraction Runtime & Architecture
+- [x] **0.0 Initial Compilation Fixes** : Résolution des conflits multi-runtime et API ICE.
+- [x] **1.1 Unification de l'interface réseau** : Isolation et renforcement des traits `AsyncUdpSocket`.
+- [x] **1.2 Audit des primitives de synchronisation** : Remplacement des Mutex bloquants.
+- [x] **1.3 Validation WASM** : Vérification de la compatibilité des traits avec `wasm32-unknown-unknown`.
+
+## Phase 2: Audit de Sécurité et Robustesse Mémoire
+- [/] **2.1 Élimination des `unwrap()` et `panic!()`** : Remplacement par une gestion d'erreurs structurée (`thiserror`). [EN COURS]
+- [ ] **2.2 Audit des buffers (Zero-copy)** : Optimisation des allocations via `Bytes` ou `SmallVec`.
+- [ ] **2.3 Mise à jour DTLS/SRTP** : Alignement sur RFC 8826 et renforcement de `rtc-dtls`.
+
+## Phase 3: Endurcissement du Protocole (Hardening)
+- [ ] **3.1 State Machine Validation** : Tests basés sur les propriétés (`proptest`) pour ICE/DTLS.
+- [ ] **3.2 Congestion Control (BWE)** : Validation des algorithmes GCC/TWCC en conditions dégradées.
+- [ ] **3.3 Fuzzing** : Mise en place de `cargo-fuzz` sur les parseurs STUN/TURN/RTP.
+
+## Phase 4: Performance et Observabilité
+- [ ] **4.1 Benchmarks de Charge** : Simulation de 1000+ connexions simultanées.
+- [ ] **4.2 Métriques standard (getStats)** : Implémentation complète de la RFC 8830.
+- [ ] **4.3 Tracing Distribué** : Intégration `tracing-opentelemetry`.
+
+## Phase 5: QA et Interopérabilité Finale
+- [ ] **5.1 KITE Integration** : Tests automatisés Chrome/Firefox/Safari.
+- [ ] **5.2 Documentation Technique** : Diagrammes de séquence et doc d'architecture.
+- [ ] **5.3 Freeze des dépendances** : Audit du `Cargo.lock`.

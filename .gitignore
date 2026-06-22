@@ -1,8 +1,10 @@
 # Rust
 **/target/
 **/target_diag/
+**/target_tmp/
 target/
 target_diag/
+target_tmp/
 **/*.rs.bk
 
 # Node/JS

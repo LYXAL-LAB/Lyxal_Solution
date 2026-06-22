@@ -1,0 +1,2579 @@
+{
+  "count": 429,
+  "providers": [
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/ActionNetwork/actionNetwork.svg",
+      "directory": "packages/nodes-base/nodes/ActionNetwork"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/ActiveCampaign/activeCampaign.dark.svg",
+      "directory": "packages/nodes-base/nodes/ActiveCampaign"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/ActiveCampaign/activeCampaign.dark.svg",
+      "directory": "packages/nodes-base/nodes/ActiveCampaign"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/AcuityScheduling/acuityScheduling.png",
+      "directory": "packages/nodes-base/nodes/AcuityScheduling"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Adalo/adalo.svg",
+      "directory": "packages/nodes-base/nodes/Adalo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Affinity/affinity.dark.svg",
+      "directory": "packages/nodes-base/nodes/Affinity"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Affinity/affinity.dark.svg",
+      "directory": "packages/nodes-base/nodes/Affinity"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/AgileCrm/agilecrm.png",
+      "directory": "packages/nodes-base/nodes/AgileCrm"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Airtable/airtable.svg",
+      "directory": "packages/nodes-base/nodes/Airtable"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Airtable/airtable.svg",
+      "directory": "packages/nodes-base/nodes/Airtable"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Airtop/airtop.svg",
+      "directory": "packages/nodes-base/nodes/Airtop"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/AiTransform/aitransform.svg",
+      "directory": "packages/nodes-base/nodes/AiTransform"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Amqp/amqp.svg",
+      "directory": "packages/nodes-base/nodes/Amqp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Amqp/amqp.svg",
+      "directory": "packages/nodes-base/nodes/Amqp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/ApiTemplateIo/apiTemplateIo.svg",
+      "directory": "packages/nodes-base/nodes/ApiTemplateIo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Asana/asana.svg",
+      "directory": "packages/nodes-base/nodes/Asana"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Asana/asana.svg",
+      "directory": "packages/nodes-base/nodes/Asana"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Autopilot/autopilot.svg",
+      "directory": "packages/nodes-base/nodes/Autopilot"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Autopilot/autopilot.svg",
+      "directory": "packages/nodes-base/nodes/Autopilot"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Aws/lambda.svg",
+      "directory": "packages/nodes-base/nodes/Aws"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Aws/lambda.svg",
+      "directory": "packages/nodes-base/nodes/Aws"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Aws/lambda.svg",
+      "directory": "packages/nodes-base/nodes/Aws"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Aws/CertificateManager/acm.svg",
+      "directory": "packages/nodes-base/nodes/Aws/CertificateManager"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Aws/Cognito/cognito.svg",
+      "directory": "packages/nodes-base/nodes/Aws/Cognito"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Aws/Comprehend/comprehend.svg",
+      "directory": "packages/nodes-base/nodes/Aws/Comprehend"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Aws/DynamoDB/dynamodb.svg",
+      "directory": "packages/nodes-base/nodes/Aws/DynamoDB"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Aws/ELB/elb.svg",
+      "directory": "packages/nodes-base/nodes/Aws/ELB"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Aws/IAM/AwsIam.svg",
+      "directory": "packages/nodes-base/nodes/Aws/IAM"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Aws/Rekognition/rekognition.svg",
+      "directory": "packages/nodes-base/nodes/Aws/Rekognition"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Aws/S3/s3.svg",
+      "directory": "packages/nodes-base/nodes/Aws/S3"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Aws/SES/ses.svg",
+      "directory": "packages/nodes-base/nodes/Aws/SES"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Aws/SQS/sqs.svg",
+      "directory": "packages/nodes-base/nodes/Aws/SQS"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Aws/Textract/textract.svg",
+      "directory": "packages/nodes-base/nodes/Aws/Textract"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Aws/Transcribe/transcribe.svg",
+      "directory": "packages/nodes-base/nodes/Aws/Transcribe"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/BambooHr/bambooHr.png",
+      "directory": "packages/nodes-base/nodes/BambooHr"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Bannerbear/bannerbear.png",
+      "directory": "packages/nodes-base/nodes/Bannerbear"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Baserow/baserow.svg",
+      "directory": "packages/nodes-base/nodes/Baserow"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Beeminder/beeminder.png",
+      "directory": "packages/nodes-base/nodes/Beeminder"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Bitbucket/bitbucket.svg",
+      "directory": "packages/nodes-base/nodes/Bitbucket"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Bitly/bitly.svg",
+      "directory": "packages/nodes-base/nodes/Bitly"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Bitwarden/bitwarden.svg",
+      "directory": "packages/nodes-base/nodes/Bitwarden"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Box/box.png",
+      "directory": "packages/nodes-base/nodes/Box"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Box/box.png",
+      "directory": "packages/nodes-base/nodes/Box"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Brandfetch/brandfetch.png",
+      "directory": "packages/nodes-base/nodes/Brandfetch"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Brevo/brevo.svg",
+      "directory": "packages/nodes-base/nodes/Brevo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Brevo/brevo.svg",
+      "directory": "packages/nodes-base/nodes/Brevo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Bubble/bubble.dark.svg",
+      "directory": "packages/nodes-base/nodes/Bubble"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Cal/cal.dark.svg",
+      "directory": "packages/nodes-base/nodes/Cal"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Calendly/calendly.svg",
+      "directory": "packages/nodes-base/nodes/Calendly"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Chargebee/chargebee.png",
+      "directory": "packages/nodes-base/nodes/Chargebee"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Chargebee/chargebee.png",
+      "directory": "packages/nodes-base/nodes/Chargebee"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/CircleCi/circleCi.dark.svg",
+      "directory": "packages/nodes-base/nodes/CircleCi"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Cisco/Webex/ciscoWebex.png",
+      "directory": "packages/nodes-base/nodes/Cisco/Webex"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Cisco/Webex/ciscoWebex.png",
+      "directory": "packages/nodes-base/nodes/Cisco/Webex"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Clearbit/clearbit.svg",
+      "directory": "packages/nodes-base/nodes/Clearbit"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/ClickUp/clickup.svg",
+      "directory": "packages/nodes-base/nodes/ClickUp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/ClickUp/clickup.svg",
+      "directory": "packages/nodes-base/nodes/ClickUp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Clockify/clockify.dark.svg",
+      "directory": "packages/nodes-base/nodes/Clockify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Clockify/clockify.dark.svg",
+      "directory": "packages/nodes-base/nodes/Clockify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Cloudflare/cloudflare.svg",
+      "directory": "packages/nodes-base/nodes/Cloudflare"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Cockpit/cockpit.dark.svg",
+      "directory": "packages/nodes-base/nodes/Cockpit"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Coda/coda.svg",
+      "directory": "packages/nodes-base/nodes/Coda"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Code/code.svg",
+      "directory": "packages/nodes-base/nodes/Code"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/CoinGecko/coinGecko.svg",
+      "directory": "packages/nodes-base/nodes/CoinGecko"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/CompareDatasets/compare.svg",
+      "directory": "packages/nodes-base/nodes/CompareDatasets"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Compression"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Contentful/contentful.png",
+      "directory": "packages/nodes-base/nodes/Contentful"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/ConvertKit/convertKit.svg",
+      "directory": "packages/nodes-base/nodes/ConvertKit"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/ConvertKit/convertKit.svg",
+      "directory": "packages/nodes-base/nodes/ConvertKit"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Copper/copper.svg",
+      "directory": "packages/nodes-base/nodes/Copper"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Copper/copper.svg",
+      "directory": "packages/nodes-base/nodes/Copper"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Cortex/cortex.svg",
+      "directory": "packages/nodes-base/nodes/Cortex"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/CrateDb/cratedb.png",
+      "directory": "packages/nodes-base/nodes/CrateDb"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Cron"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Crypto"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/CustomerIo/customerio.dark.svg",
+      "directory": "packages/nodes-base/nodes/CustomerIo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/CustomerIo/customerio.dark.svg",
+      "directory": "packages/nodes-base/nodes/CustomerIo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/DataTable"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/DateTime"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/DebugHelper/DebugHelper.dark.svg",
+      "directory": "packages/nodes-base/nodes/DebugHelper"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/DeepL/deepL.dark.svg",
+      "directory": "packages/nodes-base/nodes/DeepL"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Demio/demio.svg",
+      "directory": "packages/nodes-base/nodes/Demio"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Dhl/dhl.svg",
+      "directory": "packages/nodes-base/nodes/Dhl"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Discord/discord.svg",
+      "directory": "packages/nodes-base/nodes/Discord"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Discourse/discourse.svg",
+      "directory": "packages/nodes-base/nodes/Discourse"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Disqus/disqus.png",
+      "directory": "packages/nodes-base/nodes/Disqus"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Drift/drift.dark.svg",
+      "directory": "packages/nodes-base/nodes/Drift"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Dropbox/dropbox.svg",
+      "directory": "packages/nodes-base/nodes/Dropbox"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Dropcontact/dropcontact.svg",
+      "directory": "packages/nodes-base/nodes/Dropcontact"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/E2eTest"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/EditImage"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Egoi/egoi.svg",
+      "directory": "packages/nodes-base/nodes/Egoi"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Elastic/Elasticsearch/elasticsearch.svg",
+      "directory": "packages/nodes-base/nodes/Elastic/Elasticsearch"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Elastic/ElasticSecurity/elasticSecurity.svg",
+      "directory": "packages/nodes-base/nodes/Elastic/ElasticSecurity"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/EmailReadImap"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/EmailSend"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Emelia/emelia.svg",
+      "directory": "packages/nodes-base/nodes/Emelia"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Emelia/emelia.svg",
+      "directory": "packages/nodes-base/nodes/Emelia"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/ERPNext/erpnext.svg",
+      "directory": "packages/nodes-base/nodes/ERPNext"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/ErrorTrigger"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Eventbrite/eventbrite.png",
+      "directory": "packages/nodes-base/nodes/Eventbrite"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/ExecuteCommand"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/ExecutionData"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Facebook/facebook.svg",
+      "directory": "packages/nodes-base/nodes/Facebook"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Facebook/facebook.svg",
+      "directory": "packages/nodes-base/nodes/Facebook"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/FacebookLeadAds/facebook.svg",
+      "directory": "packages/nodes-base/nodes/FacebookLeadAds"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Figma/figma.svg",
+      "directory": "packages/nodes-base/nodes/Figma"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/FileMaker/filemaker.png",
+      "directory": "packages/nodes-base/nodes/FileMaker"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Files/ConvertToFile/convertToFile.dark.svg",
+      "directory": "packages/nodes-base/nodes/Files/ConvertToFile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Files/ExtractFromFile/extractFromFile.dark.svg",
+      "directory": "packages/nodes-base/nodes/Files/ExtractFromFile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Files/ReadWriteFile/readWriteFile.svg",
+      "directory": "packages/nodes-base/nodes/Files/ReadWriteFile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Filter"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Flow/flow.svg",
+      "directory": "packages/nodes-base/nodes/Flow"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Flow/flow.svg",
+      "directory": "packages/nodes-base/nodes/Flow"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Form/form.svg",
+      "directory": "packages/nodes-base/nodes/Form"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Form/form.svg",
+      "directory": "packages/nodes-base/nodes/Form"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/FormIo/formio.svg",
+      "directory": "packages/nodes-base/nodes/FormIo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Formstack/formstack.svg",
+      "directory": "packages/nodes-base/nodes/Formstack"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Freshdesk/freshdesk.svg",
+      "directory": "packages/nodes-base/nodes/Freshdesk"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Freshservice/freshservice.svg",
+      "directory": "packages/nodes-base/nodes/Freshservice"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/FreshworksCrm/freshworksCrm.svg",
+      "directory": "packages/nodes-base/nodes/FreshworksCrm"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Ftp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Function"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/FunctionItem"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/GetResponse/getResponse.png",
+      "directory": "packages/nodes-base/nodes/GetResponse"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/GetResponse/getResponse.png",
+      "directory": "packages/nodes-base/nodes/GetResponse"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Ghost/ghost.svg",
+      "directory": "packages/nodes-base/nodes/Ghost"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Git/git.svg",
+      "directory": "packages/nodes-base/nodes/Git"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Github/github.dark.svg",
+      "directory": "packages/nodes-base/nodes/Github"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Github/github.dark.svg",
+      "directory": "packages/nodes-base/nodes/Github"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Gitlab/gitlab.svg",
+      "directory": "packages/nodes-base/nodes/Gitlab"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Gitlab/gitlab.svg",
+      "directory": "packages/nodes-base/nodes/Gitlab"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Gong/gong.svg",
+      "directory": "packages/nodes-base/nodes/Gong"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Ads/googleAds.svg",
+      "directory": "packages/nodes-base/nodes/Google/Ads"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Analytics/analytics.svg",
+      "directory": "packages/nodes-base/nodes/Google/Analytics"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/BigQuery/googleBigQuery.svg",
+      "directory": "packages/nodes-base/nodes/Google/BigQuery"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Books/googlebooks.svg",
+      "directory": "packages/nodes-base/nodes/Google/Books"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/BusinessProfile/googleBusinessProfile.svg",
+      "directory": "packages/nodes-base/nodes/Google/BusinessProfile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/BusinessProfile/googleBusinessProfile.svg",
+      "directory": "packages/nodes-base/nodes/Google/BusinessProfile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Calendar/googleCalendar.svg",
+      "directory": "packages/nodes-base/nodes/Google/Calendar"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Calendar/googleCalendar.svg",
+      "directory": "packages/nodes-base/nodes/Google/Calendar"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Chat/googleChat.svg",
+      "directory": "packages/nodes-base/nodes/Google/Chat"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/CloudNaturalLanguage/googlecloudnaturallanguage.png",
+      "directory": "packages/nodes-base/nodes/Google/CloudNaturalLanguage"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/CloudStorage/googleCloudStorage.svg",
+      "directory": "packages/nodes-base/nodes/Google/CloudStorage"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Contacts/googleContacts.png",
+      "directory": "packages/nodes-base/nodes/Google/Contacts"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Docs/googleDocs.svg",
+      "directory": "packages/nodes-base/nodes/Google/Docs"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Drive/googleDrive.svg",
+      "directory": "packages/nodes-base/nodes/Google/Drive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Drive/googleDrive.svg",
+      "directory": "packages/nodes-base/nodes/Google/Drive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Firebase/CloudFirestore/googleFirebaseCloudFirestore.png",
+      "directory": "packages/nodes-base/nodes/Google/Firebase/CloudFirestore"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Firebase/RealtimeDatabase/googleFirebaseRealtimeDatabase.svg",
+      "directory": "packages/nodes-base/nodes/Google/Firebase/RealtimeDatabase"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Gmail/gmail.svg",
+      "directory": "packages/nodes-base/nodes/Google/Gmail"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Gmail/gmail.svg",
+      "directory": "packages/nodes-base/nodes/Google/Gmail"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/GSuiteAdmin/gSuiteAdmin.svg",
+      "directory": "packages/nodes-base/nodes/Google/GSuiteAdmin"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Perspective/googlePerspective.dark.svg",
+      "directory": "packages/nodes-base/nodes/Google/Perspective"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Sheet/googleSheets.svg",
+      "directory": "packages/nodes-base/nodes/Google/Sheet"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Sheet/googleSheets.svg",
+      "directory": "packages/nodes-base/nodes/Google/Sheet"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Slides/googleslides.svg",
+      "directory": "packages/nodes-base/nodes/Google/Slides"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Task/googleTasks.svg",
+      "directory": "packages/nodes-base/nodes/Google/Task"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/Translate/googletranslate.png",
+      "directory": "packages/nodes-base/nodes/Google/Translate"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Google/YouTube/youTube.png",
+      "directory": "packages/nodes-base/nodes/Google/YouTube"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Gotify/gotify.png",
+      "directory": "packages/nodes-base/nodes/Gotify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/GoToWebinar/gotowebinar.svg",
+      "directory": "packages/nodes-base/nodes/GoToWebinar"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Grafana/grafana.svg",
+      "directory": "packages/nodes-base/nodes/Grafana"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/GraphQL/graphql.png",
+      "directory": "packages/nodes-base/nodes/GraphQL"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Grist/grist.svg",
+      "directory": "packages/nodes-base/nodes/Grist"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Gumroad/gumroad.png",
+      "directory": "packages/nodes-base/nodes/Gumroad"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/HackerNews/hackernews.png",
+      "directory": "packages/nodes-base/nodes/HackerNews"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/HaloPSA/halopsa.svg",
+      "directory": "packages/nodes-base/nodes/HaloPSA"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Harvest/harvest.png",
+      "directory": "packages/nodes-base/nodes/Harvest"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/HelpScout/helpScout.svg",
+      "directory": "packages/nodes-base/nodes/HelpScout"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/HelpScout/helpScout.svg",
+      "directory": "packages/nodes-base/nodes/HelpScout"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/HighLevel/highLevel.svg",
+      "directory": "packages/nodes-base/nodes/HighLevel"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/HomeAssistant/homeAssistant.svg",
+      "directory": "packages/nodes-base/nodes/HomeAssistant"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Html/html.dark.svg",
+      "directory": "packages/nodes-base/nodes/Html"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/HtmlExtract"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/HttpRequest/httprequest.dark.svg",
+      "directory": "packages/nodes-base/nodes/HttpRequest"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Hubspot/hubspot.svg",
+      "directory": "packages/nodes-base/nodes/Hubspot"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Hubspot/hubspot.svg",
+      "directory": "packages/nodes-base/nodes/Hubspot"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/HumanticAI/humanticai.svg",
+      "directory": "packages/nodes-base/nodes/HumanticAI"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Hunter/hunter.png",
+      "directory": "packages/nodes-base/nodes/Hunter"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/ICalendar"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/If"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Intercom/intercom.svg",
+      "directory": "packages/nodes-base/nodes/Intercom"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Interval"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/InvoiceNinja/invoiceNinja.svg",
+      "directory": "packages/nodes-base/nodes/InvoiceNinja"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/InvoiceNinja/invoiceNinja.svg",
+      "directory": "packages/nodes-base/nodes/InvoiceNinja"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/ItemLists/itemLists.svg",
+      "directory": "packages/nodes-base/nodes/ItemLists"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Iterable/iterable.png",
+      "directory": "packages/nodes-base/nodes/Iterable"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Jenkins/jenkins.svg",
+      "directory": "packages/nodes-base/nodes/Jenkins"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/JinaAI/jinaAi.dark.svg",
+      "directory": "packages/nodes-base/nodes/JinaAI"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Jira/jira.svg",
+      "directory": "packages/nodes-base/nodes/Jira"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Jira/jira.svg",
+      "directory": "packages/nodes-base/nodes/Jira"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/JotForm/jotform.dark.svg",
+      "directory": "packages/nodes-base/nodes/JotForm"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Jwt/jwt.svg",
+      "directory": "packages/nodes-base/nodes/Jwt"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Kafka/kafka.dark.svg",
+      "directory": "packages/nodes-base/nodes/Kafka"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Kafka/kafka.dark.svg",
+      "directory": "packages/nodes-base/nodes/Kafka"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Keap/keap.png",
+      "directory": "packages/nodes-base/nodes/Keap"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Keap/keap.png",
+      "directory": "packages/nodes-base/nodes/Keap"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/KoBoToolbox/koBoToolbox.svg",
+      "directory": "packages/nodes-base/nodes/KoBoToolbox"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/KoBoToolbox/koBoToolbox.svg",
+      "directory": "packages/nodes-base/nodes/KoBoToolbox"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Ldap/ldap.dark.svg",
+      "directory": "packages/nodes-base/nodes/Ldap"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Lemlist/lemlist.svg",
+      "directory": "packages/nodes-base/nodes/Lemlist"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Lemlist/lemlist.svg",
+      "directory": "packages/nodes-base/nodes/Lemlist"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Line/line.png",
+      "directory": "packages/nodes-base/nodes/Line"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Linear/linear.svg",
+      "directory": "packages/nodes-base/nodes/Linear"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Linear/linear.svg",
+      "directory": "packages/nodes-base/nodes/Linear"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/LingvaNex/lingvanex.png",
+      "directory": "packages/nodes-base/nodes/LingvaNex"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/LinkedIn/linkedin.svg",
+      "directory": "packages/nodes-base/nodes/LinkedIn"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/LocalFileTrigger"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/LoneScale/loneScale.dark.svg",
+      "directory": "packages/nodes-base/nodes/LoneScale"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/LoneScale/loneScale.dark.svg",
+      "directory": "packages/nodes-base/nodes/LoneScale"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Magento/magento.svg",
+      "directory": "packages/nodes-base/nodes/Magento"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Mailcheck/mailcheck.svg",
+      "directory": "packages/nodes-base/nodes/Mailcheck"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Mailchimp/mailchimp.dark.svg",
+      "directory": "packages/nodes-base/nodes/Mailchimp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Mailchimp/mailchimp.dark.svg",
+      "directory": "packages/nodes-base/nodes/Mailchimp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/MailerLite/MailerLite.svg",
+      "directory": "packages/nodes-base/nodes/MailerLite"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/MailerLite/MailerLite.svg",
+      "directory": "packages/nodes-base/nodes/MailerLite"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Mailgun/mailgun.svg",
+      "directory": "packages/nodes-base/nodes/Mailgun"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Mailjet/mailjet.svg",
+      "directory": "packages/nodes-base/nodes/Mailjet"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Mailjet/mailjet.svg",
+      "directory": "packages/nodes-base/nodes/Mailjet"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Mandrill/mandrill.svg",
+      "directory": "packages/nodes-base/nodes/Mandrill"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/ManualTrigger"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Markdown/markdown.dark.svg",
+      "directory": "packages/nodes-base/nodes/Markdown"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Marketstack/marketstack.dark.svg",
+      "directory": "packages/nodes-base/nodes/Marketstack"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Matrix/matrix.png",
+      "directory": "packages/nodes-base/nodes/Matrix"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Mattermost/mattermost.svg",
+      "directory": "packages/nodes-base/nodes/Mattermost"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Mautic/mautic.svg",
+      "directory": "packages/nodes-base/nodes/Mautic"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Mautic/mautic.svg",
+      "directory": "packages/nodes-base/nodes/Mautic"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Medium/medium.png",
+      "directory": "packages/nodes-base/nodes/Medium"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Merge/merge.svg",
+      "directory": "packages/nodes-base/nodes/Merge"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/MessageBird/messagebird.svg",
+      "directory": "packages/nodes-base/nodes/MessageBird"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Metabase/metabase.svg",
+      "directory": "packages/nodes-base/nodes/Metabase"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/AzureCosmosDb/AzureCosmosDb.svg",
+      "directory": "packages/nodes-base/nodes/Microsoft/AzureCosmosDb"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Dynamics/microsoftDynamicsCrm.dark.svg",
+      "directory": "packages/nodes-base/nodes/Microsoft/Dynamics"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Entra/microsoftEntra.dark.svg",
+      "directory": "packages/nodes-base/nodes/Microsoft/Entra"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Excel/excel.svg",
+      "directory": "packages/nodes-base/nodes/Microsoft/Excel"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/GraphSecurity/microsoftGraph.svg",
+      "directory": "packages/nodes-base/nodes/Microsoft/GraphSecurity"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/OneDrive/oneDrive.svg",
+      "directory": "packages/nodes-base/nodes/Microsoft/OneDrive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/OneDrive/oneDrive.svg",
+      "directory": "packages/nodes-base/nodes/Microsoft/OneDrive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Outlook/outlook.svg",
+      "directory": "packages/nodes-base/nodes/Microsoft/Outlook"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Outlook/outlook.svg",
+      "directory": "packages/nodes-base/nodes/Microsoft/Outlook"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/SharePoint/microsoftSharePoint.svg",
+      "directory": "packages/nodes-base/nodes/Microsoft/SharePoint"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Sql/mssql.svg",
+      "directory": "packages/nodes-base/nodes/Microsoft/Sql"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Storage/azureStorage.dark.svg",
+      "directory": "packages/nodes-base/nodes/Microsoft/Storage"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Teams/teams.svg",
+      "directory": "packages/nodes-base/nodes/Microsoft/Teams"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/Teams/teams.svg",
+      "directory": "packages/nodes-base/nodes/Microsoft/Teams"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Microsoft/ToDo/todo.svg",
+      "directory": "packages/nodes-base/nodes/Microsoft/ToDo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Mindee/mindee.svg",
+      "directory": "packages/nodes-base/nodes/Mindee"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Misp/misp.svg",
+      "directory": "packages/nodes-base/nodes/Misp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/MistralAI/mistralAi.svg",
+      "directory": "packages/nodes-base/nodes/MistralAI"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Mocean/mocean.dark.svg",
+      "directory": "packages/nodes-base/nodes/Mocean"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/MondayCom/mondayCom.svg",
+      "directory": "packages/nodes-base/nodes/MondayCom"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/MongoDb/mongodb.svg",
+      "directory": "packages/nodes-base/nodes/MongoDb"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/MonicaCrm/monicaCrm.png",
+      "directory": "packages/nodes-base/nodes/MonicaCrm"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/MoveBinaryData"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/MQTT/mqtt.svg",
+      "directory": "packages/nodes-base/nodes/MQTT"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/MQTT/mqtt.svg",
+      "directory": "packages/nodes-base/nodes/MQTT"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Msg91/msg91.dark.svg",
+      "directory": "packages/nodes-base/nodes/Msg91"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/MySql/mysql.dark.svg",
+      "directory": "packages/nodes-base/nodes/MySql"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/N8n/n8n.svg",
+      "directory": "packages/nodes-base/nodes/N8n"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/N8nTrigger/n8nTrigger.svg",
+      "directory": "packages/nodes-base/nodes/N8nTrigger"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Nasa/nasa.png",
+      "directory": "packages/nodes-base/nodes/Nasa"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Netlify/netlify.svg",
+      "directory": "packages/nodes-base/nodes/Netlify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Netlify/netlify.svg",
+      "directory": "packages/nodes-base/nodes/Netlify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Netscaler/ADC/netscaler.dark.svg",
+      "directory": "packages/nodes-base/nodes/Netscaler/ADC"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/NextCloud/nextcloud.svg",
+      "directory": "packages/nodes-base/nodes/NextCloud"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/NocoDB/nocodb.svg",
+      "directory": "packages/nodes-base/nodes/NocoDB"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/NoOp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Notion/notion.dark.svg",
+      "directory": "packages/nodes-base/nodes/Notion"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Notion/notion.dark.svg",
+      "directory": "packages/nodes-base/nodes/Notion"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Npm/npm.svg",
+      "directory": "packages/nodes-base/nodes/Npm"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Odoo/odoo.svg",
+      "directory": "packages/nodes-base/nodes/Odoo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Okta/Okta.dark.svg",
+      "directory": "packages/nodes-base/nodes/Okta"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/OneSimpleApi/onesimpleapi.svg",
+      "directory": "packages/nodes-base/nodes/OneSimpleApi"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Onfleet/Onfleet.svg",
+      "directory": "packages/nodes-base/nodes/Onfleet"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Onfleet/Onfleet.svg",
+      "directory": "packages/nodes-base/nodes/Onfleet"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/OpenAi/openAi.dark.svg",
+      "directory": "packages/nodes-base/nodes/OpenAi"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/OpenThesaurus/openthesaurus.png",
+      "directory": "packages/nodes-base/nodes/OpenThesaurus"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/OpenWeatherMap/openWeatherMap.svg",
+      "directory": "packages/nodes-base/nodes/OpenWeatherMap"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Orbit/orbit.dark.svg",
+      "directory": "packages/nodes-base/nodes/Orbit"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Oura/oura.dark.svg",
+      "directory": "packages/nodes-base/nodes/Oura"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Paddle/paddle.png",
+      "directory": "packages/nodes-base/nodes/Paddle"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/PagerDuty/pagerDuty.svg",
+      "directory": "packages/nodes-base/nodes/PagerDuty"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/PayPal/paypal.svg",
+      "directory": "packages/nodes-base/nodes/PayPal"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/PayPal/paypal.svg",
+      "directory": "packages/nodes-base/nodes/PayPal"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Peekalink/peekalink.png",
+      "directory": "packages/nodes-base/nodes/Peekalink"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Perplexity/perplexity.dark.svg",
+      "directory": "packages/nodes-base/nodes/Perplexity"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Phantombuster/phantombuster.png",
+      "directory": "packages/nodes-base/nodes/Phantombuster"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/PhilipsHue/philipshue.png",
+      "directory": "packages/nodes-base/nodes/PhilipsHue"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Pipedrive/pipedrive.svg",
+      "directory": "packages/nodes-base/nodes/Pipedrive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Pipedrive/pipedrive.svg",
+      "directory": "packages/nodes-base/nodes/Pipedrive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Plivo/plivo.svg",
+      "directory": "packages/nodes-base/nodes/Plivo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/PostBin/postbin.svg",
+      "directory": "packages/nodes-base/nodes/PostBin"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Postgres/postgres.svg",
+      "directory": "packages/nodes-base/nodes/Postgres"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Postgres/postgres.svg",
+      "directory": "packages/nodes-base/nodes/Postgres"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/PostHog/postHog.svg",
+      "directory": "packages/nodes-base/nodes/PostHog"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Postmark/postmark.png",
+      "directory": "packages/nodes-base/nodes/Postmark"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/ProfitWell/profitwell.dark.svg",
+      "directory": "packages/nodes-base/nodes/ProfitWell"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Pushbullet/pushbullet.svg",
+      "directory": "packages/nodes-base/nodes/Pushbullet"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Pushcut/pushcut.png",
+      "directory": "packages/nodes-base/nodes/Pushcut"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Pushcut/pushcut.png",
+      "directory": "packages/nodes-base/nodes/Pushcut"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Pushover/pushover.svg",
+      "directory": "packages/nodes-base/nodes/Pushover"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/QuestDb/questdb.png",
+      "directory": "packages/nodes-base/nodes/QuestDb"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/QuickBase/quickbase.png",
+      "directory": "packages/nodes-base/nodes/QuickBase"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/QuickBooks/quickbooks.svg",
+      "directory": "packages/nodes-base/nodes/QuickBooks"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/QuickChart/quickChart.svg",
+      "directory": "packages/nodes-base/nodes/QuickChart"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/RabbitMQ/rabbitmq.svg",
+      "directory": "packages/nodes-base/nodes/RabbitMQ"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/RabbitMQ/rabbitmq.svg",
+      "directory": "packages/nodes-base/nodes/RabbitMQ"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Raindrop/raindrop.svg",
+      "directory": "packages/nodes-base/nodes/Raindrop"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/ReadBinaryFile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/ReadBinaryFiles"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/ReadPdf"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Reddit/reddit.svg",
+      "directory": "packages/nodes-base/nodes/Reddit"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Redis/redis.svg",
+      "directory": "packages/nodes-base/nodes/Redis"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Redis/redis.svg",
+      "directory": "packages/nodes-base/nodes/Redis"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/RenameKeys"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/RespondToWebhook/webhook.dark.svg",
+      "directory": "packages/nodes-base/nodes/RespondToWebhook"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Rocketchat/rocketchat.svg",
+      "directory": "packages/nodes-base/nodes/Rocketchat"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/RssFeedRead"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/RssFeedRead"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Rundeck/rundeck.png",
+      "directory": "packages/nodes-base/nodes/Rundeck"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/S3/s3.png",
+      "directory": "packages/nodes-base/nodes/S3"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Salesforce/salesforce.svg",
+      "directory": "packages/nodes-base/nodes/Salesforce"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Salesforce/salesforce.svg",
+      "directory": "packages/nodes-base/nodes/Salesforce"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Salesmate/salesmate.png",
+      "directory": "packages/nodes-base/nodes/Salesmate"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Schedule"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/SeaTable/seaTable.svg",
+      "directory": "packages/nodes-base/nodes/SeaTable"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/SeaTable/seaTable.svg",
+      "directory": "packages/nodes-base/nodes/SeaTable"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/SecurityScorecard/securityScorecard.svg",
+      "directory": "packages/nodes-base/nodes/SecurityScorecard"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Segment/segment.svg",
+      "directory": "packages/nodes-base/nodes/Segment"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/SendGrid/sendGrid.svg",
+      "directory": "packages/nodes-base/nodes/SendGrid"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Sendy/sendy.png",
+      "directory": "packages/nodes-base/nodes/Sendy"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/SentryIo/sentryio.dark.svg",
+      "directory": "packages/nodes-base/nodes/SentryIo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/ServiceNow/servicenow.svg",
+      "directory": "packages/nodes-base/nodes/ServiceNow"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Set"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Shopify/shopify.svg",
+      "directory": "packages/nodes-base/nodes/Shopify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Shopify/shopify.svg",
+      "directory": "packages/nodes-base/nodes/Shopify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Signl4/signl4.png",
+      "directory": "packages/nodes-base/nodes/Signl4"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Simulate"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Simulate"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Slack/slack.svg",
+      "directory": "packages/nodes-base/nodes/Slack"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Slack/slack.svg",
+      "directory": "packages/nodes-base/nodes/Slack"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Sms77/seven.svg",
+      "directory": "packages/nodes-base/nodes/Sms77"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Snowflake/snowflake.svg",
+      "directory": "packages/nodes-base/nodes/Snowflake"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/SplitInBatches"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Splunk/splunk.svg",
+      "directory": "packages/nodes-base/nodes/Splunk"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Spotify/spotify.svg",
+      "directory": "packages/nodes-base/nodes/Spotify"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/SpreadsheetFile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/SseTrigger"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Ssh"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Stackby/stackby.png",
+      "directory": "packages/nodes-base/nodes/Stackby"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/StickyNote"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/StopAndError"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Storyblok/storyblok.svg",
+      "directory": "packages/nodes-base/nodes/Storyblok"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Strapi/strapi.svg",
+      "directory": "packages/nodes-base/nodes/Strapi"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Strava/strava.svg",
+      "directory": "packages/nodes-base/nodes/Strava"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Strava/strava.svg",
+      "directory": "packages/nodes-base/nodes/Strava"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Stripe/stripe.svg",
+      "directory": "packages/nodes-base/nodes/Stripe"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Stripe/stripe.svg",
+      "directory": "packages/nodes-base/nodes/Stripe"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Supabase/supabase.svg",
+      "directory": "packages/nodes-base/nodes/Supabase"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/SurveyMonkey/surveyMonkey.svg",
+      "directory": "packages/nodes-base/nodes/SurveyMonkey"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Switch"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/SyncroMSP/syncromsp.png",
+      "directory": "packages/nodes-base/nodes/SyncroMSP"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Taiga/taiga.svg",
+      "directory": "packages/nodes-base/nodes/Taiga"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Taiga/taiga.svg",
+      "directory": "packages/nodes-base/nodes/Taiga"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Tapfiliate/tapfiliate.svg",
+      "directory": "packages/nodes-base/nodes/Tapfiliate"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Telegram/telegram.svg",
+      "directory": "packages/nodes-base/nodes/Telegram"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Telegram/telegram.svg",
+      "directory": "packages/nodes-base/nodes/Telegram"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/TheHive/thehive.svg",
+      "directory": "packages/nodes-base/nodes/TheHive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/TheHive/thehive.svg",
+      "directory": "packages/nodes-base/nodes/TheHive"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/TheHiveProject/thehiveproject.svg",
+      "directory": "packages/nodes-base/nodes/TheHiveProject"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/TheHiveProject/thehiveproject.svg",
+      "directory": "packages/nodes-base/nodes/TheHiveProject"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/TimeSaved"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/TimescaleDb/timescaleDb.dark.svg",
+      "directory": "packages/nodes-base/nodes/TimescaleDb"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Todoist/todoist.svg",
+      "directory": "packages/nodes-base/nodes/Todoist"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Toggl/toggl.png",
+      "directory": "packages/nodes-base/nodes/Toggl"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Totp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Transform/Aggregate/aggregate.svg",
+      "directory": "packages/nodes-base/nodes/Transform/Aggregate"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Transform/Limit/limit.svg",
+      "directory": "packages/nodes-base/nodes/Transform/Limit"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Transform/RemoveDuplicates/removeDuplicates.svg",
+      "directory": "packages/nodes-base/nodes/Transform/RemoveDuplicates"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Transform/Sort/sort.svg",
+      "directory": "packages/nodes-base/nodes/Transform/Sort"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Transform/SplitOut/splitOut.svg",
+      "directory": "packages/nodes-base/nodes/Transform/SplitOut"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Transform/Summarize/summarize.svg",
+      "directory": "packages/nodes-base/nodes/Transform/Summarize"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/TravisCi/travisci.png",
+      "directory": "packages/nodes-base/nodes/TravisCi"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Trello/trello.svg",
+      "directory": "packages/nodes-base/nodes/Trello"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Trello/trello.svg",
+      "directory": "packages/nodes-base/nodes/Trello"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Twake/twake.png",
+      "directory": "packages/nodes-base/nodes/Twake"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Twilio/twilio.svg",
+      "directory": "packages/nodes-base/nodes/Twilio"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Twilio/twilio.svg",
+      "directory": "packages/nodes-base/nodes/Twilio"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Twist/twist.png",
+      "directory": "packages/nodes-base/nodes/Twist"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Twitter/x.dark.svg",
+      "directory": "packages/nodes-base/nodes/Twitter"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Typeform/typeform.dark.svg",
+      "directory": "packages/nodes-base/nodes/Typeform"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/UnleashedSoftware/unleashedSoftware.png",
+      "directory": "packages/nodes-base/nodes/UnleashedSoftware"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Uplead/uplead.png",
+      "directory": "packages/nodes-base/nodes/Uplead"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/UProc/uproc.png",
+      "directory": "packages/nodes-base/nodes/UProc"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/UptimeRobot/uptimerobot.svg",
+      "directory": "packages/nodes-base/nodes/UptimeRobot"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/UrlScanIo/urlScanIo.svg",
+      "directory": "packages/nodes-base/nodes/UrlScanIo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Venafi/Datacenter"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Venafi/ProtectCloud"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Venafi/ProtectCloud"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Vero/vero.svg",
+      "directory": "packages/nodes-base/nodes/Vero"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Vonage/vonage.dark.svg",
+      "directory": "packages/nodes-base/nodes/Vonage"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Wait"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Webflow/webflow.svg",
+      "directory": "packages/nodes-base/nodes/Webflow"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Webflow/webflow.svg",
+      "directory": "packages/nodes-base/nodes/Webflow"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Webhook/webhook.dark.svg",
+      "directory": "packages/nodes-base/nodes/Webhook"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Wekan/wekan.svg",
+      "directory": "packages/nodes-base/nodes/Wekan"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/WhatsApp/whatsapp.svg",
+      "directory": "packages/nodes-base/nodes/WhatsApp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/WhatsApp/whatsapp.svg",
+      "directory": "packages/nodes-base/nodes/WhatsApp"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Wise/wise.svg",
+      "directory": "packages/nodes-base/nodes/Wise"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Wise/wise.svg",
+      "directory": "packages/nodes-base/nodes/Wise"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/WooCommerce/wooCommerce.svg",
+      "directory": "packages/nodes-base/nodes/WooCommerce"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/WooCommerce/wooCommerce.svg",
+      "directory": "packages/nodes-base/nodes/WooCommerce"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Wordpress/wordpress.svg",
+      "directory": "packages/nodes-base/nodes/Wordpress"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Workable/workable.png",
+      "directory": "packages/nodes-base/nodes/Workable"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/WorkflowTrigger"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/WriteBinaryFile"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Wufoo/wufoo.png",
+      "directory": "packages/nodes-base/nodes/Wufoo"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Xero/xero.svg",
+      "directory": "packages/nodes-base/nodes/Xero"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": null,
+      "directory": "packages/nodes-base/nodes/Xml"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Yourls/yourls.png",
+      "directory": "packages/nodes-base/nodes/Yourls"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Zammad/zammad.svg",
+      "directory": "packages/nodes-base/nodes/Zammad"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Zendesk/zendesk.svg",
+      "directory": "packages/nodes-base/nodes/Zendesk"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Zendesk/zendesk.svg",
+      "directory": "packages/nodes-base/nodes/Zendesk"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Zoho/zoho.svg",
+      "directory": "packages/nodes-base/nodes/Zoho"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Zoom/zoom.svg",
+      "directory": "packages/nodes-base/nodes/Zoom"
+    },
+    {
+      "displayName": "",
+      "name": "",
+      "icon": "packages/nodes-base/nodes/Zulip/zulip.svg",
+      "directory": "packages/nodes-base/nodes/Zulip"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+[package]
+name = "lyxal-types-derive"
+version.workspace = true
+publish = false
+authors.workspace = true
+edition.workspace = true
+license-file.workspace = true
+description.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+proc-macro = true
+
+[features]
+default = []
+# Enabled by the SDK (lyxal crate): default path is `::lyxal::types`.
+sdk-path = []
+
+[dependencies]
+proc-macro2.workspace = true
+quote.workspace = true
+syn.workspace = true

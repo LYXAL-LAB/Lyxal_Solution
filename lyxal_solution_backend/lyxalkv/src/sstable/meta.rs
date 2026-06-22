@@ -3,8 +3,7 @@ use bytes::{Buf, BufMut, BytesMut};
 use crate::error::Error;
 use crate::sstable::error::SSTableError;
 use crate::sstable::table::TableFormat;
-use crate::sstable::InternalKey;
-use crate::{CompressionType, Result};
+use crate::{CompressionType, InternalKey, Result};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Properties {
@@ -13,7 +12,7 @@ pub(crate) struct Properties {
 	pub(crate) num_entries: u64,
 	pub(crate) num_deletions: u64,
 	pub(crate) data_size: u64,
-	pub(crate) global_seq_num: u64,
+	pub(crate) oldest_vlog_file_id: u64,
 	pub(crate) num_data_blocks: u64,
 
 	// Index metrics
@@ -43,8 +42,8 @@ pub(crate) struct Properties {
 	pub(crate) seqnos: (u64, u64),
 
 	// Time metrics
-	pub(crate) oldest_key_time: u64,
-	pub(crate) newest_key_time: u64,
+	pub(crate) oldest_key_time: Option<u64>,
+	pub(crate) newest_key_time: Option<u64>,
 }
 
 impl Properties {
@@ -55,7 +54,7 @@ impl Properties {
 			num_entries: 0,
 			num_deletions: 0,
 			data_size: 0,
-			global_seq_num: 0,
+			oldest_vlog_file_id: 0,
 			num_data_blocks: 0,
 			index_size: 0,
 			index_partitions: 0,
@@ -73,8 +72,8 @@ impl Properties {
 			block_count: 0,
 			compression: CompressionType::None,
 			seqnos: (0, 0),
-			oldest_key_time: 0,
-			newest_key_time: 0,
+			oldest_key_time: None,
+			newest_key_time: None,
 		}
 	}
 
@@ -85,7 +84,7 @@ impl Properties {
 		buf.put_u64(self.num_entries);
 		buf.put_u64(self.num_deletions);
 		buf.put_u64(self.data_size);
-		buf.put_u64(self.global_seq_num);
+		buf.put_u64(self.oldest_vlog_file_id);
 		buf.put_u64(self.num_data_blocks);
 		buf.put_u64(self.index_size);
 		buf.put_u64(self.index_partitions);
@@ -104,8 +103,8 @@ impl Properties {
 		buf.put_u8(self.compression as u8);
 		buf.put_u64(self.seqnos.0);
 		buf.put_u64(self.seqnos.1);
-		buf.put_u64(self.oldest_key_time);
-		buf.put_u64(self.newest_key_time);
+		buf.put_u64(self.oldest_key_time.unwrap_or(0));
+		buf.put_u64(self.newest_key_time.unwrap_or(0));
 		buf.to_vec()
 	}
 
@@ -116,7 +115,7 @@ impl Properties {
 		let num_entries = buf.get_u64();
 		let num_deletions = buf.get_u64();
 		let data_size = buf.get_u64();
-		let global_seq_num = buf.get_u64();
+		let oldest_vlog_file_id = buf.get_u64();
 		let num_data_blocks = buf.get_u64();
 		let index_size = buf.get_u64();
 		let index_partitions = buf.get_u64();
@@ -135,8 +134,8 @@ impl Properties {
 		let compression = buf.get_u8();
 		let seqno_start = buf.get_u64();
 		let seqno_end = buf.get_u64();
-		let oldest_key_time = buf.get_u64();
-		let newest_key_time = buf.get_u64();
+		let oldest_key_time = Some(buf.get_u64());
+		let newest_key_time = Some(buf.get_u64());
 
 		Ok(Self {
 			id,
@@ -144,7 +143,7 @@ impl Properties {
 			num_entries,
 			num_deletions,
 			data_size,
-			global_seq_num,
+			oldest_vlog_file_id,
 			num_data_blocks,
 			index_size,
 			index_partitions,
@@ -169,10 +168,10 @@ impl Properties {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct TableMetadata {
+pub struct TableMetadata {
 	pub(crate) has_point_keys: Option<bool>,
-	pub(crate) smallest_seq_num: u64,
-	pub(crate) largest_seq_num: u64,
+	pub(crate) smallest_seq_num: Option<u64>,
+	pub(crate) largest_seq_num: Option<u64>,
 	pub(crate) properties: Properties,
 	pub(crate) smallest_point: Option<InternalKey>,
 	pub(crate) largest_point: Option<InternalKey>,
@@ -184,8 +183,8 @@ impl TableMetadata {
 			smallest_point: None,
 			largest_point: None,
 			has_point_keys: None,
-			smallest_seq_num: 0,
-			largest_seq_num: 0,
+			smallest_seq_num: None,
+			largest_seq_num: None,
 			properties: Properties::new(),
 		}
 	}
@@ -201,18 +200,8 @@ impl TableMetadata {
 	}
 
 	pub(crate) fn update_seq_num(&mut self, seq_num: u64) {
-		// Handle first sequence number specially
-		if self.largest_seq_num == 0 && self.smallest_seq_num == 0 {
-			self.smallest_seq_num = seq_num;
-			self.largest_seq_num = seq_num;
-		} else {
-			if self.smallest_seq_num > seq_num {
-				self.smallest_seq_num = seq_num;
-			}
-			if self.largest_seq_num < seq_num {
-				self.largest_seq_num = seq_num;
-			}
-		}
+		self.smallest_seq_num = Some(self.smallest_seq_num.map_or(seq_num, |s| s.min(seq_num)));
+		self.largest_seq_num = Some(self.largest_seq_num.map_or(seq_num, |l| l.max(seq_num)));
 	}
 
 	pub(crate) fn encode(&self) -> Vec<u8> {
@@ -226,8 +215,9 @@ impl TableMetadata {
 		}
 
 		// Encode smallest_seq_num and largest_seq_num as u64
-		buf.put_u64(self.smallest_seq_num);
-		buf.put_u64(self.largest_seq_num);
+		// Write 0 if not set (only happens for empty tables which aren't persisted)
+		buf.put_u64(self.smallest_seq_num.unwrap_or(0));
+		buf.put_u64(self.largest_seq_num.unwrap_or(0));
 
 		let properties_encoded = self.properties.encode();
 		let properties_encoded_len = properties_encoded.len() as u64;
@@ -274,8 +264,9 @@ impl TableMetadata {
 		};
 
 		// Decode smallest_seq_num and largest_seq_num
-		let smallest_seq_num = cursor.get_u64();
-		let largest_seq_num = cursor.get_u64();
+		// Always Some since persisted tables have entries
+		let smallest_seq_num = Some(cursor.get_u64());
+		let largest_seq_num = Some(cursor.get_u64());
 
 		// Decode properties
 		let properties_len = cursor.get_u64() as usize;

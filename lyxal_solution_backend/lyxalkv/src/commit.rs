@@ -8,6 +8,7 @@ use tokio::sync::{oneshot, Semaphore};
 
 use crate::batch::Batch;
 use crate::error::{Error, Result};
+use crate::stall::WriteStallController;
 
 const MAX_CONCURRENT_COMMITS: usize = 8;
 const DEQUEUE_BITS: u32 = 32;
@@ -153,7 +154,6 @@ impl CommitQueue {
 			}
 
 			// Check if batch is applied (safely through raw pointer)
-			// SAFETY: Valid raw pointer from ARC management in commit pipeline
 			let is_applied = unsafe { (*batch_ptr).is_applied() };
 			if !is_applied {
 				return None;
@@ -168,7 +168,6 @@ impl CommitQueue {
 				// We now own slot.
 				slot.store(std::ptr::null_mut(), Ordering::Release);
 
-				// SAFETY: Reclaiming ownership of Arc from raw pointer after successful CAS
 				let batch = unsafe { Arc::from_raw(batch_ptr) };
 				return Some(batch);
 			}
@@ -188,18 +187,25 @@ pub(crate) struct CommitPipeline {
 	// Semaphore for flow control
 	commit_sem: Arc<Semaphore>,
 	shutdown: AtomicBool,
+	// Write stall controller - checked before acquiring write_mutex
+	write_stall: Arc<WriteStallController>,
 }
 
 impl CommitPipeline {
-	pub(crate) fn new(env: Arc<dyn CommitEnv>) -> Arc<Self> {
+	pub(crate) fn new(
+		env: Arc<dyn CommitEnv>,
+		visible_seq_num: Arc<AtomicU64>,
+		write_stall: Arc<WriteStallController>,
+	) -> Arc<Self> {
 		Arc::new(Self {
 			env,
 			log_seq_num: AtomicU64::new(1),
-			visible_seq_num: Arc::new(AtomicU64::new(0)),
+			visible_seq_num,
 			write_mutex: Mutex::new(()),
 			pending: CommitQueue::new(),
 			commit_sem: Arc::new(Semaphore::new(MAX_CONCURRENT_COMMITS - 1)),
 			shutdown: AtomicBool::new(false),
+			write_stall,
 		})
 	}
 
@@ -208,52 +214,6 @@ impl CommitPipeline {
 			self.visible_seq_num.store(seq_num, Ordering::Release);
 			self.log_seq_num.store(seq_num + 1, Ordering::Release);
 		}
-	}
-
-	pub fn sync_commit(&self, mut batch: Batch, sync_wal: bool) -> Result<()> {
-		if self.shutdown.load(Ordering::Acquire) {
-			return Err(Error::PipelineStall);
-		}
-
-		// Check for background errors before proceeding
-		self.env.check_background_error()?;
-
-		if batch.is_empty() {
-			return Ok(());
-		}
-
-		// Acquire write lock to ensure serialization
-		let _guard = self.write_mutex.lock();
-
-		// Assign sequence number
-		let count = batch.count() as u64;
-		let seq_num = self.log_seq_num.fetch_add(count, Ordering::SeqCst);
-
-		// Set the starting sequence number in the batch
-		batch.set_starting_seq_num(seq_num);
-
-		// Write to WAL and get processed batch
-		let processed_batch = self.env.write(&batch, seq_num, sync_wal)?;
-
-		// Apply processed batch to memtable
-		self.env.apply(&processed_batch)?;
-
-		// Update visible sequence number
-		let new_visible = seq_num + count - 1;
-		let mut current = self.visible_seq_num.load(Ordering::Acquire);
-		while new_visible > current {
-			match self.visible_seq_num.compare_exchange_weak(
-				current,
-				new_visible,
-				Ordering::Release,
-				Ordering::Relaxed,
-			) {
-				Ok(_) => break,
-				Err(actual) => current = actual,
-			}
-		}
-
-		Ok(())
 	}
 
 	pub(crate) async fn commit(&self, mut batch: Batch, sync: bool) -> Result<()> {
@@ -267,6 +227,10 @@ impl CommitPipeline {
 		if batch.is_empty() {
 			return Ok(());
 		}
+
+		// Check write stall BEFORE acquiring any locks.
+		// This ensures stalled writers wait here without blocking others.
+		self.write_stall.check().await?;
 
 		// Acquire permit for flow control
 		let _permit = self.commit_sem.acquire().await.map_err(|_| Error::PipelineStall)?;
@@ -282,17 +246,51 @@ impl CommitPipeline {
 			env.apply(&processed_batch)
 		};
 
-		match apply_result {
-			Ok(_) => {
-				commit_batch.mark_applied();
-				// Phase 3: Publish (multi-consumer)
-				self.publish();
-			}
-			Err(e) => {
-				let err = Error::CommitFail(e.to_string());
-				commit_batch.complete(Err(err.clone()));
-				return Err(err);
-			}
+		// =========================================================================
+		// NOTE: We mark batch as applied and call publish(), even on failure.
+		// =========================================================================
+		//
+		// Issue:
+		//   On apply() failure, we returned early without calling mark_applied()
+		//   or publish(). The batch remained in the queue as a "zombie" but the
+		//   semaphore permit was released. After ~8 failures, zombies
+		//   filled the queue and new enqueues panicked with "queue overflow".
+		//
+		// FIX:
+		//   Always mark_applied() and publish() regardless of success/failure.
+		//   This ensures batches are dequeueable before their permit is released,
+		//   maintaining the condition: batches_in_queue <= permits_held < queue_capacity
+		//
+		// LIMITATION - SEQUENCE NUMBER GAPS:
+		//   Sequence numbers are allocated in prepare() before apply() is called.
+		//   When apply() fails, those sequence numbers are not used but also cannot
+		//   be reclaimed. Example:
+		//
+		//     Batch A: seq 1-3, apply succeeds → entries 1,2,3 exist in memtable
+		//     Batch B: seq 4-6, apply FAILS    → entries 4,5,6 do NOT exist
+		//     Batch C: seq 7-9, apply succeeds → entries 7,8,9 exist in memtable
+		//     visible_seq_num: 3 → 6 → 9
+		//
+		//   Entries for sequence numbers 4,5,6 do not exist in the memtable.
+		// =========================================================================
+
+		commit_batch.mark_applied();
+
+		// If apply failed, send error to waiter now (before publish)
+		let apply_err = if let Err(ref e) = apply_result {
+			let err = Error::CommitFail(e.to_string());
+			commit_batch.complete(Err(err.clone()));
+			Some(err)
+		} else {
+			None
+		};
+
+		// Phase 3: Publish (multi-consumer) - MUST always run to drain queue
+		self.publish();
+
+		// Return error if apply failed
+		if let Some(err) = apply_err {
+			return Err(err);
 		}
 
 		// Wait for completion
@@ -388,7 +386,31 @@ mod tests {
 	use test_log::test;
 
 	use super::*;
-	use crate::sstable::InternalKeyKind;
+	use crate::InternalKeyKind;
+
+	fn test_visible_seq_num() -> Arc<AtomicU64> {
+		Arc::new(AtomicU64::new(0))
+	}
+
+	struct MockStallProvider;
+
+	impl crate::stall::WriteStallCountProvider for MockStallProvider {
+		fn get_stall_counts(&self) -> crate::stall::StallCounts {
+			crate::stall::StallCounts {
+				immutable_memtables: 0,
+				l0_files: 0,
+			}
+		}
+	}
+
+	fn test_write_stall() -> Arc<crate::stall::WriteStallController> {
+		let provider: Arc<dyn crate::stall::WriteStallCountProvider> = Arc::new(MockStallProvider);
+		let thresholds = crate::stall::StallThresholds {
+			memtable_limit: 2,
+			l0_file_limit: 12,
+		};
+		Arc::new(crate::stall::WriteStallController::new(provider, thresholds))
+	}
 
 	struct MockEnv;
 
@@ -418,7 +440,8 @@ mod tests {
 
 	#[test(tokio::test)]
 	async fn test_single_commit() {
-		let pipeline = CommitPipeline::new(Arc::new(MockEnv));
+		let pipeline =
+			CommitPipeline::new(Arc::new(MockEnv), test_visible_seq_num(), test_write_stall());
 
 		let mut batch = Batch::new(0);
 		batch
@@ -439,7 +462,8 @@ mod tests {
 
 	#[test(tokio::test(flavor = "multi_thread", worker_threads = 4))]
 	async fn test_sequential_commits() {
-		let pipeline = CommitPipeline::new(Arc::new(MockEnv));
+		let pipeline =
+			CommitPipeline::new(Arc::new(MockEnv), test_visible_seq_num(), test_write_stall());
 
 		// First test sequential commits to verify basic functionality
 		for i in 0..5 {
@@ -463,11 +487,12 @@ mod tests {
 
 	#[test(tokio::test(flavor = "multi_thread", worker_threads = 4))]
 	async fn test_concurrent_commits() {
-		let pipeline = CommitPipeline::new(Arc::new(MockEnv));
+		let pipeline =
+			CommitPipeline::new(Arc::new(MockEnv), test_visible_seq_num(), test_write_stall());
 
 		let mut handles = vec![];
 		for i in 0..10 {
-			let pipeline = pipeline.clone();
+			let pipeline = Arc::clone(&pipeline);
 			let handle = tokio::spawn(async move {
 				let mut batch = Batch::new(0);
 				batch
@@ -537,11 +562,15 @@ mod tests {
 
 	#[test(tokio::test(flavor = "multi_thread"))]
 	async fn test_concurrent_commits_with_delays() {
-		let pipeline = CommitPipeline::new(Arc::new(DelayedMockEnv));
+		let pipeline = CommitPipeline::new(
+			Arc::new(DelayedMockEnv),
+			test_visible_seq_num(),
+			test_write_stall(),
+		);
 
 		let mut handles = vec![];
 		for i in 0..5 {
-			let pipeline = pipeline.clone();
+			let pipeline = Arc::clone(&pipeline);
 			let handle = tokio::spawn(async move {
 				let mut batch = Batch::new(0);
 				batch
@@ -568,162 +597,28 @@ mod tests {
 		pipeline.shutdown();
 	}
 
-	// ===== Sync Commit Tests =====
+	// ==========================================================================
+	// TESTS FOR QUEUE OVERFLOW BUG FIX
+	// ==========================================================================
+	//
+	// Add these tests to your existing #[cfg(test)] mod tests { ... }
+	//
+	// To verify the bug exists (before fix):
+	//   1. Comment out your fix
+	//   2. Run: cargo test test_queue_overflow --nocapture
+	//   3. Should panic with "commit queue overflow - should not be reached"
+	//
+	// To verify the fix works (after fix):
+	//   1. Apply the fix
+	//   2. Run: cargo test test_queue_overflow
+	//   3. Should pass
+	// ==========================================================================
 
-	#[test]
-	fn test_sync_commit_single() {
-		let pipeline = CommitPipeline::new(Arc::new(MockEnv));
+	struct AlwaysFailApplyEnv;
 
-		let mut batch = Batch::new(0);
-		batch
-			.add_record(InternalKeyKind::Set, b"key1".to_vec(), Some(b"value1".to_vec()), 0)
-			.unwrap();
-
-		let result = pipeline.sync_commit(batch, false);
-		assert!(result.is_ok(), "Sync commit failed: {result:?}");
-
-		let visible = pipeline.get_visible_seq_num();
-		assert_eq!(visible, 1, "Expected visible=1 after sync commit");
-
-		pipeline.shutdown();
-	}
-
-	#[test]
-	fn test_sync_commit_multiple_sequential() {
-		let pipeline = CommitPipeline::new(Arc::new(MockEnv));
-
-		// Test multiple sequential sync commits
-		for i in 0..5 {
-			let mut batch = Batch::new(0);
-			batch
-				.add_record(
-					InternalKeyKind::Set,
-					format!("key{i}").into_bytes(),
-					Some(vec![1, 2, 3]),
-					i as u64,
-				)
-				.unwrap();
-
-			let result = pipeline.sync_commit(batch, false);
-			assert!(result.is_ok(), "Sync commit {i} failed: {result:?}");
-		}
-
-		// Verify final sequence number
-		assert_eq!(pipeline.get_visible_seq_num(), 5);
-
-		pipeline.shutdown();
-	}
-
-	#[test]
-	fn test_sync_commit_empty_batch() {
-		let pipeline = CommitPipeline::new(Arc::new(MockEnv));
-
-		let batch = Batch::new(0);
-		let result = pipeline.sync_commit(batch, false);
-		assert!(result.is_ok(), "Empty batch sync commit should succeed");
-
-		// Sequence number should not change for empty batch
-		assert_eq!(pipeline.get_visible_seq_num(), 0);
-
-		pipeline.shutdown();
-	}
-
-	#[test]
-	fn test_sync_commit_with_sync_wal() {
-		let pipeline = CommitPipeline::new(Arc::new(MockEnv));
-
-		let mut batch = Batch::new(0);
-		batch
-			.add_record(InternalKeyKind::Set, b"key1".to_vec(), Some(b"value1".to_vec()), 0)
-			.unwrap();
-
-		let result = pipeline.sync_commit(batch, true); // sync_wal = true
-		assert!(result.is_ok(), "Sync commit with sync_wal failed: {result:?}");
-
-		pipeline.shutdown();
-	}
-
-	#[test]
-	fn test_sync_commit_sequence_number_consistency() {
-		let pipeline = CommitPipeline::new(Arc::new(MockEnv));
-
-		// Set initial sequence number
-		pipeline.set_seq_num(100);
-
-		let mut batch1 = Batch::new(0);
-		batch1
-			.add_record(InternalKeyKind::Set, b"key1".to_vec(), Some(b"value1".to_vec()), 0)
-			.unwrap();
-
-		let mut batch2 = Batch::new(0);
-		batch2
-			.add_record(InternalKeyKind::Set, b"key2".to_vec(), Some(b"value2".to_vec()), 1)
-			.unwrap();
-		batch2
-			.add_record(InternalKeyKind::Set, b"key3".to_vec(), Some(b"value3".to_vec()), 2)
-			.unwrap();
-
-		// Commit first batch
-		pipeline.sync_commit(batch1, false).unwrap();
-		assert_eq!(pipeline.get_visible_seq_num(), 101); // 100 + 1 - 1
-
-		// Commit second batch (2 records)
-		pipeline.sync_commit(batch2, false).unwrap();
-		assert_eq!(pipeline.get_visible_seq_num(), 103); // 101 + 2 - 1
-
-		pipeline.shutdown();
-	}
-
-	#[test]
-	fn test_sync_commit_after_shutdown() {
-		let pipeline = CommitPipeline::new(Arc::new(MockEnv));
-		pipeline.shutdown();
-
-		let mut batch = Batch::new(0);
-		batch
-			.add_record(InternalKeyKind::Set, b"key1".to_vec(), Some(b"value1".to_vec()), 0)
-			.unwrap();
-
-		let result = pipeline.sync_commit(batch, false);
-		assert!(result.is_err(), "Sync commit after shutdown should fail");
-	}
-
-	// Mock environment that tracks calls for testing
-	struct TrackingMockEnv {
-		write_calls: std::sync::atomic::AtomicU64,
-		apply_calls: std::sync::atomic::AtomicU64,
-		last_sync_wal: std::sync::atomic::AtomicBool,
-	}
-
-	impl TrackingMockEnv {
-		fn new() -> Self {
-			Self {
-				write_calls: std::sync::atomic::AtomicU64::new(0),
-				apply_calls: std::sync::atomic::AtomicU64::new(0),
-				last_sync_wal: std::sync::atomic::AtomicBool::new(false),
-			}
-		}
-
-		fn write_calls(&self) -> u64 {
-			self.write_calls.load(std::sync::atomic::Ordering::Relaxed)
-		}
-
-		fn apply_calls(&self) -> u64 {
-			self.apply_calls.load(std::sync::atomic::Ordering::Relaxed)
-		}
-
-		fn last_sync_wal(&self) -> bool {
-			self.last_sync_wal.load(std::sync::atomic::Ordering::Relaxed)
-		}
-	}
-
-	impl CommitEnv for TrackingMockEnv {
-		fn write(&self, batch: &Batch, _seq_num: u64, sync_wal: bool) -> Result<Batch> {
-			self.write_calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-			self.last_sync_wal.store(sync_wal, std::sync::atomic::Ordering::Relaxed);
-
-			// Create a copy of the batch for testing (like MockEnv does)
-			let mut new_batch = Batch::new(_seq_num);
+	impl CommitEnv for AlwaysFailApplyEnv {
+		fn write(&self, batch: &Batch, seq_num: u64, _sync: bool) -> Result<Batch> {
+			let mut new_batch = Batch::new(seq_num);
 			for entry in batch.entries() {
 				new_batch.add_record(
 					entry.kind,
@@ -736,8 +631,7 @@ mod tests {
 		}
 
 		fn apply(&self, _batch: &Batch) -> Result<()> {
-			self.apply_calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-			Ok(())
+			Err(Error::CommitFail("simulated apply failure".into()))
 		}
 
 		fn check_background_error(&self) -> Result<()> {
@@ -745,105 +639,118 @@ mod tests {
 		}
 	}
 
-	#[test]
-	fn test_sync_commit_calls_write_and_apply() {
-		let env = Arc::new(TrackingMockEnv::new());
-		let pipeline = CommitPipeline::new(env.clone());
+	/// Minimal reproduction: all applies fail.
+	///
+	/// WITHOUT FIX: panics at iteration 8 with "commit queue overflow"
+	/// WITH FIX: completes all 20 iterations, returning errors
+	#[test(tokio::test)]
+	async fn test_queue_overflow_all_fail() {
+		let pipeline = CommitPipeline::new(
+			Arc::new(AlwaysFailApplyEnv),
+			test_visible_seq_num(),
+			test_write_stall(),
+		);
 
-		let mut batch = Batch::new(0);
-		batch
-			.add_record(InternalKeyKind::Set, b"key1".to_vec(), Some(b"value1".to_vec()), 0)
-			.unwrap();
-
-		// Verify initial state
-		assert_eq!(env.write_calls(), 0);
-		assert_eq!(env.apply_calls(), 0);
-
-		// Perform sync commit
-		pipeline.sync_commit(batch, true).unwrap();
-
-		// Verify both write and apply were called
-		assert_eq!(env.write_calls(), 1);
-		assert_eq!(env.apply_calls(), 1);
-		assert!(env.last_sync_wal());
-
-		pipeline.shutdown();
-	}
-
-	#[test]
-	fn test_sync_commit_multiple_batches_tracking() {
-		let env = Arc::new(TrackingMockEnv::new());
-		let pipeline = CommitPipeline::new(env.clone());
-
-		// Commit multiple batches
-		for i in 0..3 {
+		for i in 0..20 {
 			let mut batch = Batch::new(0);
 			batch
 				.add_record(
 					InternalKeyKind::Set,
 					format!("key{i}").into_bytes(),
-					Some(vec![1, 2, 3]),
-					i as u64,
+					Some(b"value".to_vec()),
+					0,
 				)
 				.unwrap();
 
-			pipeline.sync_commit(batch, i % 2 == 0).unwrap(); // Alternate sync_wal
+			let result = pipeline.commit(batch, false).await;
+			assert!(result.is_err(), "Expected error at iteration {i}");
 		}
-
-		// Verify correct number of calls
-		assert_eq!(env.write_calls(), 3);
-		assert_eq!(env.apply_calls(), 3);
 
 		pipeline.shutdown();
 	}
 
-	#[test]
-	fn test_sync_commit_concurrent_access() {
-		let env = Arc::new(TrackingMockEnv::new());
-		let pipeline_clone = CommitPipeline::new(env.clone());
-		let pipeline = Arc::new(pipeline_clone);
+	struct FailNTimesEnv {
+		// Track how many calls have been made
+		call_count: std::sync::atomic::AtomicUsize,
+		// Fail the first N calls
+		fail_until: usize,
+	}
 
-		// Test concurrent access to sync_commit
-		let mut handles = vec![];
-		let num_threads = 8;
-		let batches_per_thread = 5;
+	impl FailNTimesEnv {
+		fn new(fail_count: usize) -> Self {
+			Self {
+				call_count: std::sync::atomic::AtomicUsize::new(0),
+				fail_until: fail_count,
+			}
+		}
+	}
 
-		for thread_id in 0..num_threads {
-			let pipeline = pipeline.clone();
-			let _env = env.clone();
-
-			let handle = std::thread::spawn(move || {
-				for batch_id in 0..batches_per_thread {
-					let mut batch = Batch::new(0);
-					batch
-						.add_record(
-							InternalKeyKind::Set,
-							format!("thread_{thread_id}_batch_{batch_id}").into_bytes(),
-							Some(vec![thread_id as u8, batch_id as u8]),
-							batch_id,
-						)
-						.unwrap();
-
-					// This should be safe even under concurrency due to write_mutex
-					pipeline.sync_commit(batch, false).unwrap();
-				}
-			});
-			handles.push(handle);
+	impl CommitEnv for FailNTimesEnv {
+		fn write(&self, batch: &Batch, seq_num: u64, _sync: bool) -> Result<Batch> {
+			let mut new_batch = Batch::new(seq_num);
+			for entry in batch.entries() {
+				new_batch.add_record(
+					entry.kind,
+					entry.key.clone(),
+					entry.value.clone(),
+					entry.timestamp,
+				)?;
+			}
+			Ok(new_batch)
 		}
 
-		// Wait for all threads to complete
-		for handle in handles {
-			handle.join().unwrap();
+		fn apply(&self, _batch: &Batch) -> Result<()> {
+			// Increment call count and get previous value
+			let call_num = self.call_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+			// Fail if we haven't reached fail_until yet
+			if call_num < self.fail_until {
+				Err(Error::CommitFail("simulated failure".into()))
+			} else {
+				Ok(())
+			}
 		}
 
-		// Verify all operations were processed
-		let expected_calls = num_threads * batches_per_thread;
-		assert_eq!(env.write_calls(), expected_calls);
-		assert_eq!(env.apply_calls(), expected_calls);
+		fn check_background_error(&self) -> Result<()> {
+			Ok(())
+		}
+	}
 
-		// Verify sequence numbers are continuous and correct
-		let final_visible = pipeline.get_visible_seq_num();
-		assert_eq!(final_visible, expected_calls);
+	/// Reproduction: first N fail, then succeed.
+	///
+	/// WITHOUT FIX: panics when attempting commit after failures fill queue
+	/// WITH FIX: fails N times, then succeeds
+	#[test(tokio::test)]
+	async fn test_queue_overflow_partial_fail() {
+		let fail_count = 10; // Fail first 10, then succeed
+		let env = Arc::new(FailNTimesEnv::new(fail_count));
+		let pipeline = CommitPipeline::new(env, test_visible_seq_num(), test_write_stall());
+
+		for i in 0..20 {
+			let mut batch = Batch::new(0);
+			batch
+				.add_record(
+					InternalKeyKind::Set,
+					format!("key{i}").into_bytes(),
+					Some(b"value".to_vec()),
+					i as u64,
+				)
+				.unwrap();
+
+			let result = pipeline.commit(batch, false).await;
+
+			if i < fail_count {
+				assert!(result.is_err(), "Expected error at iteration {i}");
+			} else {
+				assert!(result.is_ok(), "Expected success at iteration {i}, got {result:?}");
+			}
+		}
+
+		// Verify visible_seq_num advanced for successful commits
+		// Successful commits: 10..20, each with 1 entry
+		// Sequence numbers: fails consumed 1-10, successes got 11-20
+		let visible = pipeline.get_visible_seq_num();
+		assert_eq!(visible, 20, "Expected visible_seq_num=20");
 
 		pipeline.shutdown();
 	}

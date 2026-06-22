@@ -1,0 +1,1 @@
+./lyxalism build -o demo.surli ../demo

@@ -1,0 +1,35 @@
+[package]
+name = "demo"
+version.workspace = true
+description = "Demo for Lyxalism"
+publish = false
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+license-file.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+
+# Lyxal internal crates
+# lyxal is not required for Lyxalism itself — only needed in this workspace so
+# #[derive(LyxalValue)] expands to ::lyxal::types. Omit when using
+# Lyxalism outside this repo.
+lyxal.workspace = true
+lyxal-types.workspace = true
+lyxalism.workspace = true
+
+# External crates
+anyhow.workspace = true
+
+[package.metadata.cargo-machete]
+# Only referenced in macro-expanded code; omit lyxal when outside this repo.
+ignored = ["lyxal"]
+
+[lints]
+workspace = true

@@ -1,0 +1,24 @@
+[package]
+name = "lyxal-revision-derive"
+publish = false
+edition.workspace = true
+version.workspace = true
+description = "Procedural macros for lyxal-revision"
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+license-file.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+
+# External crates
+proc-macro2.workspace = true
+quote.workspace = true
+syn = { workspace = true, features = ["full", "extra-traits", "parsing"] }
+
+[lints]
+workspace = true

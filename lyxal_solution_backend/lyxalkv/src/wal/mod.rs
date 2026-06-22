@@ -1,6 +1,5 @@
 use std::fmt;
-use std::fs::read_dir;
-use crate::vfs::SysFile as File;
+use std::fs::{self, read_dir, File};
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::PoisonError;
@@ -13,9 +12,7 @@ pub mod recovery;
 pub mod writer;
 
 pub use manager::Wal;
-
-#[cfg(test)]
-mod tests;
+pub(crate) use manager::WalManager;
 
 // ===== Format Constants and Types =====
 
@@ -118,9 +115,6 @@ pub enum CompressionType {
 
 	/// LZ4 compression using lz4_flex.
 	Lz4 = 1,
-
-	/// Zstd compression using zstd.
-	Zstd = 2,
 }
 
 impl CompressionType {
@@ -129,7 +123,6 @@ impl CompressionType {
 		match value {
 			0 => Ok(CompressionType::None),
 			1 => Ok(CompressionType::Lz4),
-			2 => Ok(CompressionType::Zstd),
 			_ => Err(Error::IO(IOError::new(
 				io::ErrorKind::InvalidInput,
 				"Invalid Compression Type",
@@ -152,12 +145,12 @@ const DEFAULT_FILE_SIZE: u64 = 100 * 1024 * 1024;
 /// file permissions, compression settings, metadata, and file size limits.
 #[derive(Clone)]
 pub struct Options {
-	/// The permission mode for creating directories.
-	#[allow(dead_code)]
+	/// The permission mode for creating directories (Unix only).
+	#[allow(dead_code)] // Used on Unix via #[cfg(unix)] in Wal::prepare_directory
 	pub(crate) dir_mode: Option<u32>,
 
-	/// The file mode to set for the segment file.
-	#[allow(dead_code)]
+	/// The file mode to set for the segment file (Unix only).
+	#[allow(dead_code)] // Used on Unix via #[cfg(unix)] in Wal::open_wal_file
 	pub(crate) file_mode: Option<u32>,
 
 	/// The compression type to apply to the segment's data.
@@ -439,7 +432,7 @@ impl SegmentRef {
 			}
 		}
 
-		segment_refs.sort_by(|a, b| a.id.cmp(&b.id));
+		segment_refs.sort_by_key(|a| a.id);
 		Ok(segment_refs)
 	}
 }
@@ -597,7 +590,7 @@ pub(crate) fn cleanup_old_segments(wal_dir: &Path, min_wal_number: u64) -> Resul
 		if segment_id < min_wal_number {
 			let segment_path = wal_dir.join(format!("{segment_id:020}.wal"));
 
-			match crate::remove_file(&segment_path).map_err(|e| Error::IO(IOError::new(io::ErrorKind::Other, &e.to_string()))) {
+			match fs::remove_file(&segment_path) {
 				Ok(_) => {
 					removed_count += 1;
 					log::debug!(

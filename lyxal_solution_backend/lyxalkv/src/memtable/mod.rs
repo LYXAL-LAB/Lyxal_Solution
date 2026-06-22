@@ -1,16 +1,22 @@
 use std::fs::File as SysFile;
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use crossbeam_skiplist::SkipMap;
+mod arena;
+mod skiplist;
+
+use arena::Arena;
+use skiplist::{Compare, Error as SkiplistError, Skiplist, SkiplistIterator};
 
 use crate::batch::Batch;
 use crate::error::Result;
-use crate::iter::CompactionIterator;
 use crate::sstable::table::{Table, TableWriter};
-use crate::sstable::{InternalKey, InternalKeyKind, INTERNAL_KEY_SEQ_NUM_MAX};
 use crate::vfs::File;
-use crate::{InternalKeyRange, Options, Value};
+use crate::vlog::{VLog, ValueLocation};
+use crate::{InternalKey, InternalKeyRef, LSMIterator, Options, Value, INTERNAL_KEY_SEQ_NUM_MAX};
+
+/// Encoded bplustree entries: Vec of (encoded_key, encoded_value) pairs.
+pub(crate) type BPTreeEntries = Vec<(Vec<u8>, Vec<u8>)>;
 
 /// Entry in the immutable memtables list, tracking both the table ID
 /// and the WAL number that contains this memtable's data.
@@ -53,12 +59,19 @@ impl ImmutableMemtables {
 	pub(crate) fn is_empty(&self) -> bool {
 		self.0.is_empty()
 	}
+
+	/// Returns the oldest (first) immutable memtable entry.
+	/// Entries are sorted by table_id, so the first entry is the oldest.
+	pub(crate) fn first(&self) -> Option<&ImmutableEntry> {
+		self.0.first()
+	}
 }
 
 pub(crate) struct MemTable {
-	map: SkipMap<InternalKey, Value>,
+	skiplist: Skiplist,
 	latest_seq_num: AtomicU64,
-	map_size: AtomicU32,
+	/// Sequence number when this memtable was created.
+	earliest_seq: u64,
 	/// WAL number that was current when this memtable started receiving writes.
 	/// Used to determine which WALs can be safely deleted after flush.
 	wal_number: AtomicU64,
@@ -66,19 +79,25 @@ pub(crate) struct MemTable {
 
 impl Default for MemTable {
 	fn default() -> Self {
-		Self::new()
+		Self::new(1024 * 1024, 0)
 	}
 }
 
 impl MemTable {
-	#[allow(unused)]
-	pub(crate) fn new() -> Self {
+	pub(crate) fn new(arena_capacity: usize, earliest_seq: u64) -> Self {
+		let arena = Arc::new(Arena::new(arena_capacity));
+		let cmp: Compare = |a, b| a.cmp(b);
+		let skiplist = Skiplist::new(arena, cmp);
 		MemTable {
-			map: SkipMap::new(),
+			skiplist,
 			latest_seq_num: AtomicU64::new(0),
-			map_size: AtomicU32::new(0),
+			earliest_seq,
 			wal_number: AtomicU64::new(0),
 		}
+	}
+
+	pub(crate) fn earliest_seq(&self) -> u64 {
+		self.earliest_seq
 	}
 
 	/// Sets the WAL number associated with this memtable.
@@ -95,24 +114,44 @@ impl MemTable {
 	}
 
 	pub(crate) fn get(&self, key: &[u8], seq_no: Option<u64>) -> Option<(InternalKey, Value)> {
-		let seq_no = seq_no.unwrap_or(INTERNAL_KEY_SEQ_NUM_MAX);
-		let range = InternalKey::new(
-			key.to_vec(),
-			seq_no,
-			InternalKeyKind::Set, // This field is not checked in the comparator
-			0,                    // This field is not checked in the comparator
-		)..;
+		let max_seq = seq_no.unwrap_or(INTERNAL_KEY_SEQ_NUM_MAX);
+		let mut iter = self.skiplist.iter();
+		iter.seek_ge(key);
 
-		let mut iter = self.map.range(range).take_while(|entry| &entry.key().user_key[..] == key);
-		iter.next().map(|entry| (entry.key().clone(), entry.value().clone()))
+		// Find the entry with highest sequence number <= max_seq
+		while iter.is_valid() {
+			let found_key = iter.key_bytes();
+			if found_key != key {
+				break; // Moved past our key
+			}
+
+			let found_trailer = iter.trailer();
+			let found_seq = found_trailer >> 8;
+
+			// Check if this entry's sequence number is <= requested seq_no
+			if found_seq <= max_seq {
+				// This is the newest version with seq <= max_seq
+				let internal_key = InternalKey {
+					user_key: found_key.to_vec(),
+					timestamp: 0,
+					trailer: found_trailer,
+				};
+				return Some((internal_key, iter.value_bytes().to_vec()));
+			}
+
+			iter.advance();
+		}
+		None
 	}
 
 	pub(crate) fn is_empty(&self) -> bool {
-		self.map.is_empty()
+		let mut iter = self.skiplist.iter();
+		iter.first();
+		!iter.is_valid()
 	}
 
 	pub(crate) fn size(&self) -> usize {
-		self.map_size.load(Ordering::Acquire) as usize
+		self.skiplist.size() as usize
 	}
 
 	/// Adds a batch of operations to the memtable.
@@ -124,18 +163,15 @@ impl MemTable {
 	/// * `batch` - The batch of operations to apply
 	/// * `starting_seq_num` - The starting sequence number for this batch (records get consecutive
 	///   numbers)
-	pub(crate) fn add(&self, batch: &Batch) -> Result<(u32, u32)> {
-		let (record_size, highest_seq_num) = self.apply_batch_to_memtable(batch)?;
-		let size_before = self.update_memtable_size(record_size);
+	pub(crate) fn add(&self, batch: &Batch) -> Result<()> {
+		let highest_seq_num = self.apply_batch_to_memtable(batch)?;
 		self.update_latest_sequence_number(highest_seq_num);
-		Ok((record_size, size_before + record_size))
+		Ok(())
 	}
 
 	/// Applies the batch of operations to the in-memory table (memtable).
 	/// Returns (total_record_size, highest_seq_num_used).
-	pub(crate) fn apply_batch_to_memtable(&self, batch: &Batch) -> Result<(u32, u64)> {
-		let mut record_size = 0;
-
+	fn apply_batch_to_memtable(&self, batch: &Batch) -> Result<u64> {
 		// Pre-allocate empty value Bytes for delete operations to avoid repeated
 		// allocations
 		let empty_val = Value::new();
@@ -152,35 +188,25 @@ impl MemTable {
 				empty_val.clone()
 			};
 
-			let entry_size = self.insert_into_memtable(&ikey, &val);
-			record_size += entry_size;
+			self.insert_into_memtable(&ikey, &val)?;
 		}
 
 		// Get the highest sequence number used from the batch
 		let highest_seq_num = batch.get_highest_seq_num();
 
-		Ok((record_size, highest_seq_num))
-	}
-
-	/// Updates the memtable with the results from `apply_batch_to_memtable`.
-	/// Useful for recovery where we replay batches without writing to WAL.
-	pub(crate) fn update_stats(&self, record_size: u32, highest_seq_num: u64) {
-		self.update_memtable_size(record_size);
-		self.update_latest_sequence_number(highest_seq_num);
+		Ok(highest_seq_num)
 	}
 
 	/// Inserts a key-value pair into the memtable.
-	fn insert_into_memtable(&self, key: &InternalKey, value: &Value) -> u32 {
-		let size = key.size() as u32 + value.len() as u32;
-		self.map.insert(key.clone(), value.clone());
-		crate::metrics::EngineMetrics::get().memtable_bytes_added.fetch_add(size as u64, std::sync::atomic::Ordering::Relaxed);
-		size
-	}
+	/// Returns Err(ArenaFull) if there's not enough space.
+	fn insert_into_memtable(&self, key: &InternalKey, value: &Value) -> Result<()> {
+		let trailer = (key.seq_num() << 8) | (key.kind() as u64);
 
-	/// Updates the size of the memtable by adding the size of the newly added
-	/// records.
-	fn update_memtable_size(&self, record_size: u32) -> u32 {
-		self.map_size.fetch_add(record_size, std::sync::atomic::Ordering::AcqRel)
+		match self.skiplist.add(&key.user_key, trailer, key.timestamp, value) {
+			Ok(()) => Ok(()),
+			Err(SkiplistError::RecordExists) => Ok(()), // Duplicate is not an error in memtable
+			Err(SkiplistError::ArenaFull) => Err(crate::Error::ArenaFull),
+		}
 	}
 
 	/// Updates the latest sequence number in the memtable.
@@ -206,693 +232,147 @@ impl MemTable {
 		self.latest_seq_num.load(Ordering::Acquire)
 	}
 
-	pub(crate) fn flush(&self, table_id: u64, lsm_opts: Arc<Options>) -> Result<Arc<Table>> {
+	pub(crate) fn flush(
+		&self,
+		table_id: u64,
+		lsm_opts: Arc<Options>,
+		vlog: Option<&Arc<VLog>>,
+		vlog_threshold: usize,
+		collect_bptree_entries: bool,
+	) -> Result<(Arc<Table>, BPTreeEntries)> {
 		let table_file_path = lsm_opts.sstable_file_path(table_id);
+		let mut bptree_entries = Vec::new();
 
 		{
-			let mut file = SysFile::create(&table_file_path)?;
-			let mut table_writer = TableWriter::new(&mut file, table_id, Arc::clone(&lsm_opts), 0); // Memtables always flush to L0
+			let file = SysFile::create(&table_file_path)?;
+			let mut table_writer = TableWriter::new(file, table_id, Arc::clone(&lsm_opts), 0); // Memtables always flush to L0
 
-			let iter = self.iter(false);
-			let iter = Box::new(iter);
-			let mut comp_iter = CompactionIterator::new(
-				vec![iter],
-				false,                       // not bottom level (L0 flush)
-				None,                        // no vlog access in flush context
-				false,                       // versioning disabled in flush context
-				0,                           // retention period is 0 in flush context
-				Arc::clone(&lsm_opts.clock), // clock is the system clock
-			);
-			for item in comp_iter.by_ref() {
-				let (key, encoded_val) = item?;
-				// The memtable already contains the correct ValueLocation encoding
-				// (either inline or with VLog pointer), so we can use it directly
-				table_writer.add(key, &encoded_val)?;
+			let mut iter = self.iter();
+			iter.seek_first()?;
+			while iter.valid() {
+				let key = iter.key().to_owned();
+				let raw_encoded = iter.value_encoded()?;
+
+				// Separate large values to VLog during flush
+				let sst_value = maybe_separate_to_vlog(raw_encoded, &key, vlog, vlog_threshold)?;
+
+				if collect_bptree_entries {
+					bptree_entries.push((key.encode(), sst_value.clone()));
+				}
+
+				table_writer.add(key, &sst_value)?;
+				iter.next()?;
 			}
 			table_writer.finish()?;
-			file.sync_all()?;
 		}
 
-		let file = SysFile::open(&table_file_path)?;
+		// Sync VLog after all entries written (one fsync for the entire flush)
+		if let Some(vlog) = vlog {
+			vlog.sync()?;
+		}
+
+		let file = crate::vfs::open_for_sync(&table_file_path)?;
+		file.sync_all()?;
 		let file: Arc<dyn File> = Arc::new(file);
 		let file_size = file.size()?;
 
-		let created_table = Arc::new(Table::new(table_id, lsm_opts, file, file_size, Some(table_file_path))?);
-		Ok(created_table)
+		let created_table = Arc::new(Table::new(table_id, lsm_opts, file, file_size)?);
+		Ok((created_table, bptree_entries))
 	}
 
-	pub(crate) fn iter(
-		&self,
-		keys_only: bool,
-	) -> impl DoubleEndedIterator<Item = Result<(InternalKey, Value)>> + '_ {
-		self.map.iter().map(move |entry| {
-			let key = entry.key().clone();
-			let value = if keys_only {
-				Value::new()
-			} else {
-				entry.value().clone()
-			};
-			Ok((key, value))
-		})
+	pub(crate) fn iter(&self) -> MemTableIterator<'_> {
+		self.range(None, None)
 	}
 
+	/// Returns an iterator over keys in [lower, upper)
+	/// Lower is inclusive, upper is exclusive
 	pub(crate) fn range(
 		&self,
-		range: InternalKeyRange,
-		keys_only: bool,
-	) -> impl DoubleEndedIterator<Item = Result<(InternalKey, Value)>> + '_ {
-		self.map.range(range).map(move |entry| {
-			let key = entry.key().clone();
-			let value = if keys_only {
-				Value::new()
-			} else {
-				entry.value().clone()
-			};
-			Ok((key, value))
-		})
+		lower: Option<&[u8]>, // Inclusive, None = unbounded
+		upper: Option<&[u8]>, // Exclusive, None = unbounded
+	) -> MemTableIterator<'_> {
+		let mut iter = self.skiplist.new_iter(lower, upper);
+
+		// Pre-position for forward iteration
+		if let Some(lower_key) = lower {
+			iter.seek_ge(lower_key);
+		} else {
+			iter.first();
+		}
+
+		MemTableIterator {
+			iter,
+		}
 	}
 }
 
-#[cfg(test)]
-mod tests {
-	use std::collections::HashMap;
-
-	use test_log::test;
-
-	use super::*;
-	use crate::user_range_to_internal_range;
-
-	fn assert_value(encoded_value: &Value, expected_value: &[u8]) {
-		// Skip the tag byte (first byte) and compare the actual value content
-		let value_content = &encoded_value[..];
-		assert_eq!(value_content, expected_value);
+/// During flush, decide whether to separate a value to VLog or keep inline in SST.
+/// Handles backward compat: entries already containing VLog pointers pass through.
+fn maybe_separate_to_vlog(
+	encoded_value: &[u8],
+	key: &InternalKey,
+	vlog: Option<&Arc<VLog>>,
+	vlog_threshold: usize,
+) -> Result<Vec<u8>> {
+	if encoded_value.is_empty() {
+		return Ok(encoded_value.to_vec());
 	}
 
-	#[test]
-	fn memtable_get() {
-		let memtable = MemTable::new();
-		let key = b"foo".to_vec();
-		let value = b"value".to_vec();
+	let location = ValueLocation::decode(encoded_value)?;
 
-		let mut batch = Batch::new(1);
-		batch.set(key, value.clone(), 0).unwrap();
-
-		memtable.add(&batch).unwrap();
-
-		let res = memtable.get(b"foo", None).unwrap();
-		assert_value(&res.1, &value);
+	// Already a VLog pointer (e.g. from pre-upgrade WAL recovery) — pass through
+	if location.is_value_pointer() {
+		return Ok(encoded_value.to_vec());
 	}
 
-	#[test]
-	fn memtable_size() {
-		let memtable = MemTable::new();
-		let key = b"foo".to_vec();
-		let value = b"value".to_vec();
-
-		let mut batch = Batch::new(1);
-		batch.set(key, value, 0).unwrap();
-
-		memtable.add(&batch).unwrap();
-
-		assert!(memtable.size() > 0);
-	}
-
-	#[test]
-	fn memtable_lsn() {
-		let memtable = MemTable::new();
-		let key = b"foo".to_vec();
-		let value = b"value".to_vec();
-		let seq_num = 100;
-
-		let mut batch = Batch::new(seq_num);
-		batch.set(key, value, 0).unwrap();
-
-		memtable.add(&batch).unwrap();
-
-		assert_eq!(seq_num, memtable.lsn());
-	}
-
-	#[test]
-	fn memtable_add_and_get() {
-		let memtable = MemTable::new();
-		let key1 = b"key1".to_vec();
-		let value1 = b"value1".to_vec();
-
-		let mut batch1 = Batch::new(1);
-		batch1.set(key1, value1.clone(), 0).unwrap();
-
-		memtable.add(&batch1).unwrap();
-
-		let key2 = b"key2".to_vec();
-		let value2 = b"value2".to_vec();
-
-		let mut batch2 = Batch::new(2);
-		batch2.set(key2, value2.clone(), 0).unwrap();
-
-		memtable.add(&batch2).unwrap();
-
-		let res = memtable.get(b"key1", None).unwrap();
-		assert_value(&res.1, &value1);
-
-		let res = memtable.get(b"key2", None).unwrap();
-		assert_value(&res.1, &value2);
-	}
-
-	#[test]
-	fn memtable_get_latest_seq_no() {
-		let memtable = MemTable::new();
-		let key1 = b"key1".to_vec();
-		let value1 = b"value1".to_vec();
-		let value2 = b"value2".to_vec();
-		let value3 = b"value3".to_vec();
-
-		let mut batch1 = Batch::new(1);
-		batch1.set(key1.clone(), value1, 0).unwrap();
-		memtable.add(&batch1).unwrap();
-
-		let mut batch2 = Batch::new(2);
-		batch2.set(key1.clone(), value2, 0).unwrap();
-		memtable.add(&batch2).unwrap();
-
-		let mut batch3 = Batch::new(3);
-		batch3.set(key1, value3.clone(), 0).unwrap();
-		memtable.add(&batch3).unwrap();
-
-		let res = memtable.get(b"key1", None).unwrap();
-		assert_value(&res.1, &value3);
-	}
-
-	#[test]
-	fn memtable_prefix() {
-		let memtable = MemTable::new();
-		let key1 = b"foo".to_vec();
-		let value1 = b"value1".to_vec();
-
-		let key2 = b"foo1".to_vec();
-		let value2 = b"value2".to_vec();
-
-		let mut batch1 = Batch::new(0);
-		batch1.set(key1, value1.clone(), 0).unwrap();
-		memtable.add(&batch1).unwrap();
-
-		let mut batch2 = Batch::new(1);
-		batch2.set(key2, value2.clone(), 0).unwrap();
-		memtable.add(&batch2).unwrap();
-
-		let res = memtable.get(b"foo", None).unwrap();
-		assert_value(&res.1, &value1);
-
-		let res = memtable.get(b"foo1", None).unwrap();
-		assert_value(&res.1, &value2);
-	}
-
-	type TestEntry = (Vec<u8>, Vec<u8>, InternalKeyKind, Option<u64>);
-
-	fn create_test_memtable(entries: Vec<TestEntry>) -> (Arc<MemTable>, u64) {
-		let memtable = Arc::new(MemTable::new());
-
-		let mut last_seq = 0;
-
-		// For test purposes, if custom sequence numbers are provided, we need to add
-		// each entry individually to ensure they get the exact sequence number
-		// specified
-		for (key, value, kind, custom_seq) in entries {
-			let seq_num = custom_seq.unwrap_or_else(|| {
-				last_seq += 1;
-				last_seq
-			});
-
-			// Create a single-entry batch for each record to ensure exact sequence number
-			// assignment
-			let mut batch = Batch::new(seq_num);
-			match kind {
-				InternalKeyKind::Set => {
-					batch.set(key.clone(), value.clone(), 0).unwrap();
-				}
-				InternalKeyKind::Delete => {
-					batch.delete(key.clone(), 0).unwrap();
-				}
-				_ => {
-					// For other kinds, use add_record directly
-					batch.add_record(kind, key.clone(), Some(value.clone()), 0).unwrap();
-				}
-			}
-
-			memtable.add(&batch).unwrap();
-
-			if custom_seq.is_some() {
-				last_seq = std::cmp::max(last_seq, seq_num);
-			}
+	// Separate large values to VLog
+	let value = &location.value;
+	if let Some(vlog) = vlog {
+		if value.len() > vlog_threshold {
+			let encoded_key = key.encode();
+			let pointer = vlog.append(&encoded_key, value)?;
+			return Ok(ValueLocation::with_pointer(pointer).encode());
 		}
-
-		(memtable, last_seq)
 	}
 
-	#[test]
-	fn test_empty_memtable() {
-		let memtable = Arc::new(MemTable::new());
+	// Keep inline
+	Ok(encoded_value.to_vec())
+}
 
-		// Test that iterator is empty
-		let entries: Vec<_> = memtable.iter(false).map(|r| r.unwrap()).collect();
-		assert!(entries.is_empty());
+pub(crate) struct MemTableIterator<'a> {
+	iter: SkiplistIterator<'a>,
+}
 
-		// Test that is_empty returns true
-		assert!(memtable.is_empty());
-
-		// Test that size returns 0
-		assert_eq!(memtable.size(), 0);
+impl LSMIterator for MemTableIterator<'_> {
+	fn seek(&mut self, target: &[u8]) -> Result<bool> {
+		self.iter.seek(target)
 	}
 
-	#[test]
-	fn test_single_key() {
-		let (memtable, _) = create_test_memtable(vec![(
-			b"key1".to_vec(),
-			b"value1".to_vec(),
-			InternalKeyKind::Set,
-			None,
-		)]);
-
-		// Collect all entries
-		let entries: Vec<_> = memtable.iter(false).map(|r| r.unwrap()).collect();
-		assert_eq!(entries.len(), 1);
-
-		let (key, encoded_value) = &entries[0];
-		let user_key = &key.user_key;
-		assert_eq!(user_key, b"key1");
-
-		assert_value(encoded_value, &b"value1"[..]);
-
-		// Test get method
-		let result = memtable.get(b"key1", None);
-		assert!(result.is_some());
-		let (ikey, encoded_val) = result.unwrap();
-		assert_eq!(&ikey.user_key, b"key1");
-
-		assert_value(&encoded_val, b"value1");
+	fn seek_first(&mut self) -> Result<bool> {
+		self.iter.seek_first()
 	}
 
-	#[test]
-	fn test_multiple_keys() {
-		let (memtable, _) = create_test_memtable(vec![
-			(b"key1".to_vec(), b"value1".to_vec(), InternalKeyKind::Set, None),
-			(b"key3".to_vec(), b"value3".to_vec(), InternalKeyKind::Set, None),
-			(b"key5".to_vec(), b"value5".to_vec(), InternalKeyKind::Set, None),
-		]);
-
-		// Collect all entries
-		let entries: Vec<_> = memtable.iter(false).map(|r| r.unwrap()).collect();
-		assert_eq!(entries.len(), 3);
-
-		// Extract user keys for comparison
-		let user_keys: Vec<_> = entries.iter().map(|(key, _)| key.user_key.clone()).collect();
-
-		// Keys should be in lexicographic order
-		assert_eq!(&user_keys[0], b"key1");
-		assert_eq!(&user_keys[1], b"key3");
-		assert_eq!(&user_keys[2], b"key5");
-
-		// Test individual gets
-		assert!(memtable.get(b"key1", None).is_some());
-		assert!(memtable.get(b"key3", None).is_some());
-		assert!(memtable.get(b"key5", None).is_some());
-		assert!(memtable.get(b"key2", None).is_none());
-		assert!(memtable.get(b"key4", None).is_none());
+	fn seek_last(&mut self) -> Result<bool> {
+		self.iter.seek_last()
 	}
 
-	#[test]
-	fn test_sequence_number_ordering() {
-		// Create test with multiple sequence numbers for the same key
-		let (memtable, _) = create_test_memtable(vec![
-			(b"key1".to_vec(), b"value1".to_vec(), InternalKeyKind::Set, Some(10)),
-			(b"key1".to_vec(), b"value2".to_vec(), InternalKeyKind::Set, Some(20)), /* Higher sequence number */
-			(b"key1".to_vec(), b"value3".to_vec(), InternalKeyKind::Set, Some(5)), /* Lower sequence number */
-		]);
-
-		// Collect all entries
-		let entries: Vec<_> = memtable.iter(false).map(|r| r.unwrap()).collect();
-		assert_eq!(entries.len(), 3);
-
-		// Extract sequence numbers and values
-		let mut key1_entries = Vec::new();
-		for (key, encoded_value) in &entries {
-			let (user_key, seq_num, _) = (key.user_key.clone(), key.seq_num(), key.kind());
-			if &user_key == b"key1" {
-				key1_entries.push((seq_num, encoded_value));
-			}
-		}
-
-		// Verify ordering - higher sequence numbers should come first
-		assert_eq!(key1_entries.len(), 3);
-		assert_eq!(key1_entries[0].0, 20);
-		assert_eq!(key1_entries[0].1, b"value2");
-		assert_eq!(key1_entries[1].0, 10);
-		assert_eq!(key1_entries[1].1, b"value1");
-		assert_eq!(key1_entries[2].0, 5);
-		assert_eq!(key1_entries[2].1, b"value3");
-
-		// Test get method - should return the highest sequence number
-		let result = memtable.get(b"key1", None);
-		assert!(result.is_some());
-		let (ikey, encoded_val) = result.unwrap();
-		assert_eq!(ikey.seq_num(), 20);
-		assert_eq!(&encoded_val, b"value2");
+	fn next(&mut self) -> Result<bool> {
+		self.iter.next()
 	}
 
-	#[test]
-	fn test_key_updates_with_sequence_numbers() {
-		// Create test with key updates
-		let (memtable, _) = create_test_memtable(vec![
-			(b"key1".to_vec(), b"old_value".to_vec(), InternalKeyKind::Set, Some(5)),
-			(b"key1".to_vec(), b"new_value".to_vec(), InternalKeyKind::Set, Some(10)),
-			(b"key2".to_vec(), b"value2".to_vec(), InternalKeyKind::Set, Some(7)),
-		]);
-
-		// Test get returns the latest value
-		let result = memtable.get(b"key1", None);
-		assert!(result.is_some());
-		let (_, encoded_val) = result.unwrap();
-		assert_value(&encoded_val, b"new_value");
-
-		// Test get with specific sequence number
-		let result = memtable.get(b"key1", Some(8));
-		assert!(result.is_some());
-		let (_, encoded_val) = result.unwrap();
-		assert_value(&encoded_val, b"old_value"); // Should get the value with seq_num
-		                                    // <= 8
+	fn prev(&mut self) -> Result<bool> {
+		self.iter.prev()
 	}
 
-	#[test]
-	fn test_tombstones() {
-		// Create test with deleted entries
-		let (memtable, _) = create_test_memtable(vec![
-			(b"key1".to_vec(), b"value1".to_vec(), InternalKeyKind::Set, Some(1)),
-			(b"key2".to_vec(), b"value2".to_vec(), InternalKeyKind::Set, Some(2)),
-			(b"key3".to_vec(), b"value3".to_vec(), InternalKeyKind::Set, Some(3)),
-			(b"key2".to_vec(), vec![], InternalKeyKind::Delete, Some(4)), // Delete key2
-		]);
-
-		// Iterator should see all entries including tombstones
-		let entries: Vec<_> = memtable.iter(false).map(|r| r.unwrap()).collect();
-
-		// Count entries for each key
-		let mut key_counts = HashMap::new();
-		for (key, _) in &entries {
-			let user_key = &key.user_key;
-			*key_counts.entry(user_key).or_insert(0) += 1;
-		}
-
-		assert_eq!(key_counts[&b"key1".to_vec()], 1);
-		assert_eq!(key_counts[&b"key2".to_vec()], 2); // Original + tombstone
-		assert_eq!(key_counts[&b"key3".to_vec()], 1);
+	fn valid(&self) -> bool {
+		self.iter.valid()
 	}
 
-	#[test]
-	fn test_key_kinds() {
-		// Test different key kinds
-		let (memtable, _) = create_test_memtable(vec![
-			(b"key1".to_vec(), b"value1".to_vec(), InternalKeyKind::Set, Some(10)),
-			(b"key2".to_vec(), vec![], InternalKeyKind::Delete, Some(20)),
-			(b"key3".to_vec(), b"value3".to_vec(), InternalKeyKind::Set, Some(30)),
-			(b"key4".to_vec(), vec![], InternalKeyKind::Delete, Some(40)),
-		]);
-
-		// All key types should be visible in the iterator
-		let entries: Vec<_> = memtable.iter(false).map(|r| r.unwrap()).collect();
-		assert_eq!(entries.len(), 4);
-
-		// Extract and verify key information
-		let mut key_info = Vec::new();
-		for (key, encoded_value) in &entries {
-			let (user_key, seq_num, kind) = (key.user_key.clone(), key.seq_num(), key.kind());
-			key_info.push((user_key, seq_num, kind, encoded_value.len()));
-		}
-
-		// Verify all keys are present with correct kinds
-		assert_eq!(&key_info[0].0, b"key1");
-		assert_eq!(key_info[0].2, InternalKeyKind::Set);
-		assert!(key_info[0].3 > 0); // Has value
-
-		assert_eq!(&key_info[1].0, b"key2");
-		assert_eq!(key_info[1].2, InternalKeyKind::Delete);
-		assert_eq!(key_info[1].3, 0); // No value for delete
-
-		assert_eq!(&key_info[2].0, b"key3");
-		assert_eq!(key_info[2].2, InternalKeyKind::Set);
-		assert!(key_info[2].3 > 0); // Has value
-
-		assert_eq!(&key_info[3].0, b"key4");
-		assert_eq!(key_info[3].2, InternalKeyKind::Delete);
-		assert_eq!(key_info[3].3, 0); // No value for delete
-
-		// Test get method behavior with different kinds
-		let result = memtable.get(b"key1", None);
-		assert!(result.is_some());
-		let (ikey, _) = result.unwrap();
-		assert_eq!(ikey.kind(), InternalKeyKind::Set);
-
-		let result = memtable.get(b"key2", None);
-		assert!(result.is_some());
-		let (ikey, encoded_val) = result.unwrap();
-		assert_eq!(ikey.kind(), InternalKeyKind::Delete);
-		assert_eq!(encoded_val.len(), 0);
+	fn key(&self) -> InternalKeyRef<'_> {
+		self.iter.key()
 	}
 
-	#[test]
-	fn test_range_query() {
-		// Create a memtable with many keys
-		let (memtable, _) = create_test_memtable(vec![
-			(b"a".to_vec(), b"value-a".to_vec(), InternalKeyKind::Set, None),
-			(b"c".to_vec(), b"value-c".to_vec(), InternalKeyKind::Set, None),
-			(b"e".to_vec(), b"value-e".to_vec(), InternalKeyKind::Set, None),
-			(b"g".to_vec(), b"value-g".to_vec(), InternalKeyKind::Set, None),
-			(b"i".to_vec(), b"value-i".to_vec(), InternalKeyKind::Set, None),
-			(b"k".to_vec(), b"value-k".to_vec(), InternalKeyKind::Set, None),
-			(b"m".to_vec(), b"value-m".to_vec(), InternalKeyKind::Set, None),
-		]);
-
-		// Test inclusive range
-		use std::ops::Bound;
-		let range_entries: Vec<_> = memtable
-			.range(
-				user_range_to_internal_range(
-					Bound::Included("c".as_bytes()),
-					Bound::Included("k".as_bytes()),
-				),
-				false,
-			)
-			.map(|r| r.unwrap())
-			.collect();
-
-		let user_keys: Vec<_> = range_entries.iter().map(|(key, _)| key.user_key.clone()).collect();
-
-		assert_eq!(user_keys.len(), 5);
-		assert_eq!(&user_keys[0], b"c");
-		assert_eq!(&user_keys[1], b"e");
-		assert_eq!(&user_keys[2], b"g");
-		assert_eq!(&user_keys[3], b"i");
-		assert_eq!(&user_keys[4], b"k");
-
-		// Test exclusive range
-		let range_entries: Vec<_> = memtable
-			.range(
-				user_range_to_internal_range(
-					Bound::Included("c".as_bytes()),
-					Bound::Excluded("k".as_bytes()),
-				),
-				false,
-			)
-			.map(|r| r.unwrap())
-			.collect();
-
-		let user_keys: Vec<_> = range_entries.iter().map(|(key, _)| key.user_key.clone()).collect();
-
-		assert_eq!(user_keys.len(), 4); // Excludes "k"
-		assert_eq!(&user_keys[0], b"c");
-		assert_eq!(&user_keys[1], b"e");
-		assert_eq!(&user_keys[2], b"g");
-		assert_eq!(&user_keys[3], b"i");
-	}
-
-	#[test]
-	fn test_range_query_with_sequence_numbers() {
-		// Create a memtable with overlapping sequence numbers
-		let (memtable, _) = create_test_memtable(vec![
-			(b"a".to_vec(), b"value-a1".to_vec(), InternalKeyKind::Set, Some(10)),
-			(b"a".to_vec(), b"value-a2".to_vec(), InternalKeyKind::Set, Some(20)), // Updated value
-			(b"c".to_vec(), b"value-c1".to_vec(), InternalKeyKind::Set, Some(15)),
-			(b"e".to_vec(), b"value-e1".to_vec(), InternalKeyKind::Set, Some(25)),
-			(b"e".to_vec(), b"value-e2".to_vec(), InternalKeyKind::Set, Some(15)), // Older version
-		]);
-
-		// Perform a range query from "a" to "f"
-		use std::ops::Bound;
-		let range_entries: Vec<_> = memtable
-			.range(
-				user_range_to_internal_range(
-					Bound::Included("a".as_bytes()),
-					Bound::Excluded("f".as_bytes()),
-				),
-				false,
-			)
-			.map(|r| r.unwrap())
-			.collect();
-
-		// Extract user keys, sequence numbers and values
-		let mut entries_info = Vec::new();
-		for (key, encoded_value) in &range_entries {
-			let (user_key, seq_num, _) = (key.user_key.clone(), key.seq_num(), key.kind());
-			entries_info.push((user_key, seq_num, encoded_value));
-		}
-
-		// Verify we get keys in order, with highest sequence numbers first for each key
-		assert_eq!(entries_info.len(), 5);
-
-		// Key "a" entries (seq 20 then seq 10)
-		assert_eq!(&entries_info[0].0, b"a");
-		assert_eq!(entries_info[0].1, 20);
-		assert_eq!(entries_info[0].2, b"value-a2");
-
-		assert_eq!(entries_info[1].0, b"a");
-		assert_eq!(entries_info[1].1, 10);
-		assert_eq!(entries_info[1].2, b"value-a1");
-
-		// Key "c" entry
-		assert_eq!(entries_info[2].0, b"c");
-		assert_eq!(entries_info[2].1, 15);
-		assert_eq!(entries_info[2].2, b"value-c1");
-
-		// Key "e" entries (seq 25 then seq 15)
-		assert_eq!(entries_info[3].0, b"e");
-		assert_eq!(entries_info[3].1, 25);
-		assert_eq!(entries_info[3].2, b"value-e1");
-
-		assert_eq!(entries_info[4].0, b"e");
-		assert_eq!(entries_info[4].1, 15);
-		assert_eq!(entries_info[4].2, b"value-e2");
-	}
-
-	#[test]
-	fn test_binary_keys() {
-		// Test with binary keys containing nulls and various byte values
-		let (memtable, _) = create_test_memtable(vec![
-			(vec![0, 0, 1], b"value1".to_vec(), InternalKeyKind::Set, None),
-			(vec![0, 1, 0], b"value2".to_vec(), InternalKeyKind::Set, None),
-			(vec![1, 0, 0], b"value3".to_vec(), InternalKeyKind::Set, None),
-			(vec![0xFF, 0xFE, 0xFD], b"value4".to_vec(), InternalKeyKind::Set, None),
-		]);
-
-		let entries: Vec<_> = memtable.iter(false).map(|r| r.unwrap()).collect();
-		assert_eq!(entries.len(), 4);
-
-		// Extract and verify user keys are in correct order
-		let user_keys: Vec<_> = entries.iter().map(|(key, _)| key.user_key.clone()).collect();
-
-		assert_eq!(user_keys[0].as_ref(), vec![0, 0, 1]);
-		assert_eq!(user_keys[1].as_ref(), vec![0, 1, 0]);
-		assert_eq!(user_keys[2].as_ref(), vec![1, 0, 0]);
-		assert_eq!(user_keys[3].as_ref(), vec![0xFF, 0xFE, 0xFD]);
-	}
-
-	#[test]
-	fn test_large_dataset() {
-		// Create a larger dataset to test performance and correctness
-		let mut entries = Vec::new();
-		for i in 0..1000 {
-			let key = format!("key{i:04}").as_bytes().to_vec();
-			let value = format!("value{i:04}").as_bytes().to_vec();
-			entries.push((key, value, InternalKeyKind::Set, None));
-		}
-
-		let (memtable, _) = create_test_memtable(entries);
-
-		// Test that all entries exist
-		let all_entries: Vec<_> = memtable.iter(false).collect::<Vec<_>>();
-		assert_eq!(all_entries.len(), 1000);
-
-		// Test specific gets
-		let result = memtable.get(b"key0000", None);
-		assert!(result.is_some());
-		let (_, encoded_val) = result.unwrap();
-		assert_value(&encoded_val, b"value0000");
-
-		let result = memtable.get(b"key0500", None);
-		assert!(result.is_some());
-		let (_, encoded_val) = result.unwrap();
-		assert_value(&encoded_val, b"value0500");
-
-		let result = memtable.get(b"key0999", None);
-		assert!(result.is_some());
-		let (_, encoded_val) = result.unwrap();
-		assert_value(&encoded_val, b"value0999");
-
-		// Test non-existent key
-		let result = memtable.get(b"key1000", None);
-		assert!(result.is_none());
-	}
-
-	#[test]
-	fn test_memtable_size_tracking() {
-		let memtable = Arc::new(MemTable::new());
-
-		// Initially empty
-		assert_eq!(memtable.size(), 0);
-
-		// Add some data
-		let mut batch = Batch::new(1);
-		batch.set(b"key1".to_vec(), b"value1".to_vec(), 0).unwrap();
-		batch.set(b"key2".to_vec(), b"value2".to_vec(), 0).unwrap();
-
-		let (record_size, total_size) = memtable.add(&batch).unwrap();
-		assert!(record_size > 0);
-		assert_eq!(total_size, record_size);
-		assert_eq!(memtable.size(), total_size as usize);
-
-		// Add more data
-		let mut batch2 = Batch::new(2);
-		batch2.set(b"key3".to_vec(), b"value3".to_vec(), 0).unwrap();
-
-		let (record_size2, total_size2) = memtable.add(&batch2).unwrap();
-		assert!(record_size2 > 0);
-		assert_eq!(total_size2, total_size + record_size2);
-		assert_eq!(memtable.size(), total_size2 as usize);
-	}
-
-	#[test]
-	fn test_latest_sequence_number() {
-		let memtable = Arc::new(MemTable::new());
-
-		// Initially 0
-		assert_eq!(memtable.lsn(), 0);
-
-		// Add batch with seq_num 10
-		let mut batch1 = Batch::new(10);
-		batch1.set(b"key1".to_vec(), b"value1".to_vec(), 0).unwrap();
-		memtable.add(&batch1).unwrap();
-		assert_eq!(memtable.lsn(), 10);
-
-		// Add batch with lower seq_num - should not update
-		let mut batch2 = Batch::new(5);
-		batch2.set(b"key2".to_vec(), b"value2".to_vec(), 0).unwrap();
-		memtable.add(&batch2).unwrap();
-		assert_eq!(memtable.lsn(), 10); // Should still be 10
-
-		// Add batch with higher seq_num
-		let mut batch3 = Batch::new(20);
-		batch3.set(b"key3".to_vec(), b"value3".to_vec(), 0).unwrap();
-		memtable.add(&batch3).unwrap();
-		assert_eq!(memtable.lsn(), 20);
-	}
-
-	#[test]
-	fn test_get_highest_seq_num() {
-		// Add a batch with 5 entries
-		let mut batch = Batch::new(10);
-		batch.set(b"key1".to_vec(), b"value1".to_vec(), 0).unwrap();
-		batch.set(b"key2".to_vec(), b"value2".to_vec(), 0).unwrap();
-		batch.set(b"key3".to_vec(), b"value3".to_vec(), 0).unwrap();
-		batch.set(b"key4".to_vec(), b"value4".to_vec(), 0).unwrap();
-		batch.set(b"key5".to_vec(), b"value5".to_vec(), 0).unwrap();
-
-		assert_eq!(batch.get_highest_seq_num(), 14);
+	fn value_encoded(&self) -> Result<&[u8]> {
+		self.iter.value_encoded()
 	}
 }

@@ -1,0 +1,41 @@
+[package]
+name = "lyxal-bridge"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+license-file.workspace = true
+
+[dependencies]
+# HTTP Client
+reqwest.workspace = true
+
+# Async runtime
+tokio.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Error handling
+anyhow.workspace = true
+thiserror.workspace = true
+
+# Logging
+tracing.workspace = true
+
+# Concurrent data structures (cache)
+dashmap.workspace = true
+
+# Time
+chrono.workspace = true
+
+# Base64 (for Basic auth)
+base64.workspace = true
+
+# URL encoding
+urlencoding.workspace = true

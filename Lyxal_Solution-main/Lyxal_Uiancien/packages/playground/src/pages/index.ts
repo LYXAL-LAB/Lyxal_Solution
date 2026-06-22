@@ -1,9 +1,0 @@
-export { default as IndexPage } from './index';
-export { default as AllPage } from './all';
-export { default as DemoPage } from './demo';
-export { default as CalendarPage } from './calendar';
-export { default as LightPage } from './light';
-export { default as DarkPage } from './dark';
-export { default as LTRPage } from './LTR';
-export { default as RTLPage } from './RTL';
-export { default as PrefixPage } from './prefix';

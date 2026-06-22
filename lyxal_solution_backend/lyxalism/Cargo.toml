@@ -1,0 +1,25 @@
+[package]
+name = "lyxalism"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+license-file.workspace = true
+
+[dependencies]
+
+# Lyxal internal crates
+lyxal-types.workspace = true
+lyxalism-macros = { workspace = true, default-features = false }
+lyxalism-types = { workspace = true, default-features = false }
+
+# External crates
+anyhow.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

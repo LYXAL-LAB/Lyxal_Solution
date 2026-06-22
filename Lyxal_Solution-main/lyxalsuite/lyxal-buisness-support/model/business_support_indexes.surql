@@ -1,4 +1,0 @@
-DEFINE INDEX announcement_date_idx ON project_announcement FIELDS date;
-DEFINE INDEX announcement_project_idx ON project_announcement FIELDS project;
-DEFINE INDEX app_support_company_idx ON app_business_support FIELDS providerCompany;
-DEFINE INDEX task_template_idx ON task_template FIELDS internalDescription;

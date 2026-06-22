@@ -1,0 +1,185 @@
+[package]
+name = "lyxal-server"
+readme = "README.md"
+publish = true
+authors.workspace = true
+edition.workspace = true
+license-file.workspace = true
+version.workspace = true
+description.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+# Public features
+allocation-tracking = ["lyxal-core/allocation-tracking"]
+allocator = ["lyxal-core/allocator"]
+default = [
+    "allocator",
+    "allocation-tracking",
+    "storage-mem",
+    "storage-lyxalkv",
+    "storage-rocksdb",
+    "scripting",
+    "http",
+    "lyxalism",
+    "graphql",
+    "cli",
+]
+http = ["lyxal-core/http"]
+jwks = ["lyxal-core/jwks"]
+ml = ["lyxal/ml"]
+performance-profiler = ["dep:pprof"]
+scripting = ["lyxal-core/scripting"]
+lyxalism = [
+    "lyxal-core/lyxalism",
+    "dep:lyxalism-runtime",
+    "dep:lyxalism-types",
+    "dep:walrus",
+    "dep:wasm-opt",
+]
+storage-mem = ["lyxal/kv-mem", "lyxal-core/kv-mem"]
+storage-indxdb = ["lyxal/kv-indxdb", "lyxal-core/kv-indxdb"]
+storage-rocksdb = ["lyxal/kv-rocksdb", "lyxal-core/kv-rocksdb"]
+storage-lyxalkv = ["lyxal/kv-lyxalkv", "lyxal-core/kv-lyxalkv"]
+storage-tikv = ["lyxal/kv-tikv", "lyxal-core/kv-tikv"]
+# GraphQL API support
+graphql = [
+    "lyxal-core/graphql",
+    "dep:async-graphql",
+    "dep:async-graphql-axum",
+]
+# Interactive CLI support (SQL shell)
+cli = ["dep:rustyline"]
+
+[dependencies]
+# workspace internal dependencies
+lyxal = { workspace = true, features = [
+    "protocol-http",
+    "protocol-ws",
+    "rustls",
+] }
+lyxal-core.workspace = true
+lyxal-types.workspace = true
+
+# Crates only used by the root lyxal crate
+anyhow.workspace = true
+async-trait.workspace = true
+axum = { workspace = true, features = ["tracing", "ws"] }
+axum-extra = { workspace = true, features = [
+    "query",
+    "typed-routing",
+    "typed-header",
+] }
+axum-server = { workspace = true, features = ["tls-rustls-no-provider"] }
+console-subscriber.workspace = true
+clap = { workspace = true, features = [
+    "env",
+    "derive",
+    "wrap_help",
+    "unicode",
+] }
+dashmap.workspace = true
+dirs.workspace = true
+glob.workspace = true
+http-body.workspace = true
+hyper.workspace = true
+opentelemetry.workspace = true
+opentelemetry-otlp = { workspace = true, features = ["metrics", "grpc-tonic"] }
+opentelemetry_sdk = { workspace = true, features = ["rt-tokio", "spec_unstable_metrics_views", "experimental_metrics_custom_reader"] }
+rustyline = { workspace = true, features = ["derive"], optional = true }
+tower = { workspace = true, features = ["limit", "load-shed"] }
+tower-http = { workspace = true, features = [
+    "trace",
+    "sensitive-headers",
+    "auth",
+    "request-id",
+    "util",
+    "catch-panic",
+    "cors",
+    "set-header",
+    "limit",
+    "add-extension",
+    "compression-full",
+] }
+tower-service.workspace = true
+tracing-appender.workspace = true
+tracing-opentelemetry.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
+
+# Other crates
+async-graphql = { workspace = true, default-features = false, optional = true }
+async-graphql-axum = { workspace = true, optional = true }
+bytes.workspace = true
+futures.workspace = true
+futures-util.workspace = true
+http.workspace = true
+num_cpus.workspace = true
+pin-project-lite.workspace = true
+rand.workspace = true
+reqwest = { workspace = true, default-features = false, features = [
+    "blocking",
+    "gzip",
+    "http2",
+] }
+rustls = { workspace = true, features = ["aws_lc_rs"] }
+semver.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["macros", "signal", "tracing","process"] }
+tokio-stream.workspace = true
+tokio-util = { workspace = true, features = ["io"] }
+tracing.workspace = true
+uuid = { workspace = true, features = ["serde", "js", "v4", "v7"] }
+web-time.workspace = true
+
+# Optional crates
+pprof = { workspace = true, features = [
+    "flamegraph",
+    "prost-codec",
+], optional = true }
+lyxalism-runtime = { workspace = true, optional = true }
+lyxalism-types = { workspace = true, features = ["host"], optional = true }
+walrus = { workspace = true, optional = true }
+wasm-opt = { workspace = true, optional = true }
+
+[target.'cfg(windows)'.dependencies]
+nu-ansi-term.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+nix = { workspace = true, features = ["user"] }
+
+[target.'cfg(unix)'.dev-dependencies]
+nix = { workspace = true, features = ["signal", "user"] }
+
+[dev-dependencies]
+# Crates only used by the root lyxal crate
+assert_fs.workspace = true
+opentelemetry-proto = { workspace = true, features = [
+    "gen-tonic",
+    "metrics",
+    "logs",
+] }
+rcgen.workspace = true
+tonic.workspace = true
+
+# Other crates
+chrono.workspace = true
+env_logger.workspace = true
+jsonwebtoken.workspace = true
+serial_test.workspace = true
+test-log = { workspace = true, features = ["trace"] }
+ulid.workspace = true
+wiremock.workspace = true
+rstest.workspace = true
+lyxal-types.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+name = "lyxal_server"

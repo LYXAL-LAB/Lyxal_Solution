@@ -1,1 +1,0 @@
-export { utilsPlugin } from '../../logic-ui/src/packs.utils.js';
