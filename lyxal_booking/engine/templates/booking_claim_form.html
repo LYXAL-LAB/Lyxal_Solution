@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}{{ t("claim-page-title") }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>{{ t("claim-heading") }}</h1>
+  <p class="subtitle">{{ t("claim-subtitle") }}</p>
+  <div class="detail"><strong>{{ t("confirmed-detail-event") }}</strong> {{ event_title }}</div>
+  <div class="detail"><strong>{{ t("confirmed-detail-date") }}</strong> {{ date_label }}</div>
+  <div class="detail"><strong>{{ t("confirmed-detail-time") }}</strong> {{ start_time }} – {{ end_time }}</div>
+  <div class="detail"><strong>{{ t("common-detail-guest") }}</strong> {{ guest_name }} &lt;{{ guest_email }}&gt;</div>
+  <div class="detail"><strong>{{ t("claim-assigned-to") }}</strong> {{ assigned_to }}</div>
+</div>
+<div class="card">
+  <form method="post">
+    <input type="hidden" name="token" value="{{ token }}">
+    <button type="submit" class="btn">{{ t("claim-button") }}</button>
+  </form>
+</div>
+{% endblock %}

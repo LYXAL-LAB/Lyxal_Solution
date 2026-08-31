@@ -1,0 +1,849 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Admin — calrs{% endblock %}
+{% block dashboard_content %}
+<div class="card">
+  <h1>Admin dashboard</h1>
+</div>
+
+{% if error_message %}
+<div class="card" style="border-color: var(--error-text); background: rgba(239, 68, 68, 0.05);">
+  <div style="color: var(--error-text); font-size: 0.9rem;"><strong>Action refused:</strong> {{ error_message }}</div>
+</div>
+{% endif %}
+
+<!-- Logo -->
+<div class="card">
+  <h2>Company logo</h2>
+  <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">Displayed on public booking pages. Recommended: PNG or SVG, max 2 MB.</p>
+  {% if has_logo %}
+  <div style="margin-bottom: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); text-align: center;">
+    <img src="/logo" alt="Company logo" style="max-height: 80px; max-width: 280px; object-fit: contain;">
+  </div>
+  {% endif %}
+  <div style="display: flex; gap: 0.75rem; align-items: flex-start; flex-wrap: wrap;">
+    <form method="post" action="/dashboard/admin/logo" enctype="multipart/form-data" style="margin: 0; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+      <input type="file" name="logo" accept="image/*" required style="font-size: 0.85rem;">
+      <button type="submit" class="slot-btn" style="cursor: pointer; font-weight: 600; color: var(--accent); border-color: var(--accent);">Upload</button>
+    </form>
+    {% if has_logo %}
+    <form method="post" action="/dashboard/admin/logo/delete" style="margin: 0;">
+      <button type="submit" class="slot-btn" style="cursor: pointer; font-size: 0.85rem; color: var(--error-text); border-color: var(--error-text);">Remove</button>
+    </form>
+    {% endif %}
+  </div>
+  <div style="margin-top: 1rem;">
+    <form method="post" action="/dashboard/admin/company-link" style="margin: 0; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+      <label for="company_link" style="font-size: 0.875rem; font-weight: 500; white-space: nowrap;">Company link</label>
+      <input type="url" id="company_link" name="company_link" value="{{ company_link }}" placeholder="https://yourcompany.com" style="flex: 1; min-width: 200px; padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.85rem;">
+      <button type="submit" class="slot-btn" style="cursor: pointer; font-weight: 600; color: var(--accent); border-color: var(--accent);">Save</button>
+    </form>
+    <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">Logo links to this URL on public booking pages. Leave empty for no link.</span>
+  </div>
+</div>
+
+<!-- Theme -->
+<div class="card">
+  <h2>Theme</h2>
+  <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">Choose a color theme for all pages. The dark/light toggle is separate — themes adapt to both modes.</p>
+  <form id="theme-form" method="post" action="/dashboard/admin/accent" style="margin: 0;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
+      {% set themes = [
+        {"id": "default", "label": "Default", "desc": "Clean blue", "colors": ["#2563eb", "#eff6ff", "#f4f4f5", "#18181b"]},
+        {"id": "nord", "label": "Nord", "desc": "Arctic frost", "colors": ["#5e81ac", "#e8eef5", "#eceff4", "#2e3440"]},
+        {"id": "dracula", "label": "Dracula", "desc": "Dark purple", "colors": ["#bd93f9", "#f3eefe", "#f0edf5", "#282a36"]},
+        {"id": "gruvbox", "label": "Gruvbox", "desc": "Retro warm", "colors": ["#d65d0e", "#fabd2f", "#f9f5d7", "#282828"]},
+        {"id": "solarized", "label": "Solarized", "desc": "Ethan's classic", "colors": ["#268bd2", "#859900", "#fdf6e3", "#002b36"]},
+        {"id": "tokyo-night", "label": "Tokyo Night", "desc": "Neon cityscape", "colors": ["#7a5af5", "#7aa2f7", "#f0f0f5", "#1a1b26"]},
+        {"id": "vates", "label": "Vates", "desc": "Rouge & Bleu Spatial", "colors": ["#be1621", "#ef7f18", "#1a1b38", "#2ca878"]},
+        {"id": "custom", "label": "Custom", "desc": "Your colors", "colors": []}
+      ] %}
+      {% for t in themes %}
+      <label style="cursor: pointer;">
+        <input type="radio" name="theme" value="{{ t.id }}" {% if current_theme == t.id %}checked{% endif %} style="display: none;" onchange="themeChanged(this.value)">
+        <div class="theme-card{% if current_theme == t.id %} theme-card-active{% endif %}" data-theme="{{ t.id }}" style="border: 2px solid {% if current_theme == t.id %}var(--accent){% else %}var(--border){% endif %}; border-radius: var(--radius); padding: 0.75rem; transition: border-color 0.15s, box-shadow 0.15s;">
+          {% if t.colors %}
+          <div style="display: flex; gap: 4px; margin-bottom: 0.5rem;">
+            {% for c in t.colors %}
+            <span style="width: 18px; height: 18px; border-radius: 50%; background: {{ c }}; border: 1px solid rgba(0,0,0,0.1);"></span>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div style="display: flex; gap: 4px; margin-bottom: 0.5rem;">
+            <span style="width: 18px; height: 18px; border-radius: 50%; background: conic-gradient(#ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6, #ef4444); border: 1px solid rgba(0,0,0,0.1);"></span>
+            <span style="width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(135deg, #ddd, #888); border: 1px solid rgba(0,0,0,0.1);"></span>
+          </div>
+          {% endif %}
+          <div style="font-weight: 600; font-size: 0.875rem;">{{ t.label }}</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">{{ t.desc }}</div>
+        </div>
+      </label>
+      {% endfor %}
+    </div>
+
+    <!-- Custom color pickers (shown only when custom is selected) -->
+    <div id="custom-colors" style="display: {% if current_theme == 'custom' %}block{% else %}none{% endif %}; border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 1rem;">
+      <div style="font-weight: 600; font-size: 0.875rem; margin-bottom: 0.75rem;">Custom colors</div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem;">
+        <div>
+          <label style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">Accent</label>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="color" name="custom_accent" value="{{ custom_colors.accent }}" style="width: 32px; height: 32px; border: none; cursor: pointer; background: none;">
+            <input type="text" value="{{ custom_colors.accent }}" style="width: 80px; font-size: 0.8rem; padding: 0.25rem 0.4rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-family: monospace;" oninput="this.previousElementSibling.value=this.value" data-sync="custom_accent">
+          </div>
+        </div>
+        <div>
+          <label style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">Accent hover</label>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="color" name="custom_accent_hover" value="{{ custom_colors.accent_hover }}" style="width: 32px; height: 32px; border: none; cursor: pointer; background: none;">
+            <input type="text" value="{{ custom_colors.accent_hover }}" style="width: 80px; font-size: 0.8rem; padding: 0.25rem 0.4rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-family: monospace;" oninput="this.previousElementSibling.value=this.value" data-sync="custom_accent_hover">
+          </div>
+        </div>
+        <div>
+          <label style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">Background</label>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="color" name="custom_bg" value="{{ custom_colors.bg }}" style="width: 32px; height: 32px; border: none; cursor: pointer; background: none;">
+            <input type="text" value="{{ custom_colors.bg }}" style="width: 80px; font-size: 0.8rem; padding: 0.25rem 0.4rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-family: monospace;" oninput="this.previousElementSibling.value=this.value" data-sync="custom_bg">
+          </div>
+        </div>
+        <div>
+          <label style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">Surface</label>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="color" name="custom_surface" value="{{ custom_colors.surface }}" style="width: 32px; height: 32px; border: none; cursor: pointer; background: none;">
+            <input type="text" value="{{ custom_colors.surface }}" style="width: 80px; font-size: 0.8rem; padding: 0.25rem 0.4rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-family: monospace;" oninput="this.previousElementSibling.value=this.value" data-sync="custom_surface">
+          </div>
+        </div>
+        <div>
+          <label style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">Text</label>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="color" name="custom_text" value="{{ custom_colors.text }}" style="width: 32px; height: 32px; border: none; cursor: pointer; background: none;">
+            <input type="text" value="{{ custom_colors.text }}" style="width: 80px; font-size: 0.8rem; padding: 0.25rem 0.4rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-family: monospace;" oninput="this.previousElementSibling.value=this.value" data-sync="custom_text">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn" style="font-size: 0.875rem; padding: 0.5rem 1.25rem;">Save theme</button>
+  </form>
+</div>
+<script>
+function themeChanged(val) {
+  document.getElementById('custom-colors').style.display = val === 'custom' ? 'block' : 'none';
+  document.querySelectorAll('.theme-card').forEach(function(c) {
+    var active = c.dataset.theme === val;
+    c.classList.toggle('theme-card-active', active);
+    c.style.borderColor = active ? 'var(--accent)' : 'var(--border)';
+  });
+}
+// Sync color picker → text input
+document.querySelectorAll('input[type="color"]').forEach(function(picker) {
+  picker.addEventListener('input', function() {
+    var text = this.nextElementSibling;
+    if (text) text.value = this.value;
+  });
+});
+</script>
+<style>
+.theme-card:hover { border-color: var(--border-hover) !important; box-shadow: var(--shadow); }
+.theme-card-active:hover { border-color: var(--accent) !important; }
+.user-item .user-actions { opacity: 0; max-height: 0; overflow: hidden; transition: opacity 0.15s ease, max-height 0.15s ease; padding-top: 0; padding-bottom: 0; }
+.user-item:hover .user-actions, .user-item:focus-within .user-actions { opacity: 1; max-height: 4rem; overflow: visible; }
+@media (max-width: 768px) {
+  .user-item .user-actions { opacity: 1; max-height: none; overflow: visible; }
+}
+</style>
+
+<!-- Users -->
+<div class="card">
+  <h2>Users ({{ user_count }})</h2>
+  <div style="margin-bottom: 1rem;">
+    <input type="text" id="user-search" placeholder="Filter by name or email…" oninput="filterUsers()" style="width: 100%; max-width: 360px; padding: 0.5rem 0.875rem; border: 1px solid var(--border); border-radius: 9999px; font-size: 0.875rem; font-family: inherit; background: var(--surface); color: var(--text); outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease;" onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px var(--accent-subtle)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+  </div>
+  {% if users %}
+  <div id="user-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+    {% for u in users %}
+    <div class="user-item" data-name="{{ u.name | lower }}" data-email="{{ u.email | lower }}" style="border: 1px solid var(--border); border-radius: var(--radius); padding: 0.875rem 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+        <div style="min-width: 0; flex: 1;">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;">
+            <span style="font-weight: 600; font-size: 0.925rem;">{{ u.name }}</span>
+            <span style="font-size: 0.825rem; color: var(--text-secondary); overflow-wrap: break-word;">{{ u.email }}</span>
+            {% if u.role == "admin" %}<span class="badge badge-info">admin</span>{% endif %}
+            {% if not u.enabled %}<span class="badge badge-error">disabled</span>{% endif %}
+            <span style="font-size: 0.75rem; color: var(--text-muted);">{{ u.auth_provider }}</span>
+          </div>
+          {% if u.groups %}
+          <div style="margin-top: 0.25rem; display: flex; flex-wrap: wrap; gap: 0.25rem;">
+            {% for g in u.groups %}
+            <span class="badge badge-info">{{ g }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% if u.id != current_user_id %}
+      <div class="user-actions" style="margin-top: 0.25rem; display: flex; flex-wrap: wrap; gap: 0.375rem; justify-content: flex-end;">
+        <form method="post" action="/dashboard/admin/impersonate/{{ u.id }}" style="margin: 0;">
+          <button type="submit" class="slot-btn" style="font-size: 0.8rem; cursor: pointer; color: #d97706; border-color: #d97706;">Impersonate</button>
+        </form>
+        <form method="post" action="/dashboard/admin/users/{{ u.id }}/toggle-role" style="margin: 0;">
+          <button type="submit" class="slot-btn" style="font-size: 0.8rem; cursor: pointer;">{% if u.role == "admin" %}Demote{% else %}Promote{% endif %}</button>
+        </form>
+        <form method="post" action="/dashboard/admin/users/{{ u.id }}/toggle-enabled" style="margin: 0;">
+          <button type="submit" class="slot-btn" style="font-size: 0.8rem; cursor: pointer; {% if u.enabled %}color: var(--error-text);{% else %}color: var(--success);{% endif %}">{% if u.enabled %}Disable{% else %}Enable{% endif %}</button>
+        </form>
+        <form method="post" action="/dashboard/admin/users/{{ u.id }}/delete" style="margin: 0;" onsubmit="return confirm('Permanently delete user {{ u.email }}?\n\nThis removes their user record, scheduling account, calendar sources, event types, and all data uniquely owned by them. Past bookings will be deleted with their event types.\n\nFor OIDC/SSO users: if auto-register is enabled, this person will be re-created on their next login.\n\nThis cannot be undone.');">
+          <button type="submit" class="slot-btn" style="font-size: 0.8rem; cursor: pointer; color: var(--error-text); border-color: var(--error-text);">Delete</button>
+        </form>
+      </div>
+      {% else %}
+      <div style="margin-top: 0.25rem; text-align: right;">
+        <span style="font-size: 0.8rem; color: var(--text-muted);">(you)</span>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <div id="user-pagination" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 1rem;"></div>
+  <div id="user-no-results" style="display: none; padding: 1rem; color: var(--text-muted); font-size: 0.875rem;">No users match your filter.</div>
+  {% else %}
+  <p class="empty" style="padding: 1rem;">No users yet.</p>
+  {% endif %}
+</div>
+
+<!-- Groups -->
+<div class="card">
+  <h2>Groups ({{ group_count }})</h2>
+  {% if groups %}
+  <div style="margin-bottom: 1rem;">
+    <input type="text" id="group-search" placeholder="Filter by group name…" oninput="filterGroups()" style="width: 100%; max-width: 360px; padding: 0.5rem 0.875rem; border: 1px solid var(--border); border-radius: 9999px; font-size: 0.875rem; font-family: inherit; background: var(--surface); color: var(--text); outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease;" onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px var(--accent-subtle)'" onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+  </div>
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem;">
+      <thead>
+        <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+          <th style="padding: 0.5rem 0.5rem 0.5rem 0;">Group name</th>
+          <th style="padding: 0.5rem;">Members</th>
+        </tr>
+      </thead>
+      <tbody id="group-list">
+        {% for g in groups %}
+        <tr class="group-item" data-name="{{ g.name | lower }}" style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 0.5rem 0.5rem 0.5rem 0; vertical-align: top;">{{ g.name }}</td>
+          <td style="padding: 0.5rem;">
+            {% if g.members %}
+            <div class="group-members" style="display: flex; flex-direction: column; gap: 0.25rem;">
+              {% for m in g.members %}
+              <form method="POST" action="/dashboard/admin/groups/{{ g.id }}/members/{{ m.user_id }}/weight"{% if loop.index > 5 %} class="group-member-extra" data-group="{{ g.id }}" style="display: none; align-items: center; gap: 0.5rem;"{% else %} style="display: flex; align-items: center; gap: 0.5rem;"{% endif %}>
+                <span style="min-width: 100px;">{{ m.name }}</span>
+                <label style="font-size: 0.8rem; color: var(--text-muted);">weight:</label>
+                <input type="number" name="weight" value="{{ m.weight }}" min="1" max="100" style="width: 60px; padding: 0.25rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.8rem; background: var(--surface); color: var(--text);">
+                <button type="submit" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; background: var(--accent); color: white; border: none; border-radius: var(--radius); cursor: pointer;">Save</button>
+              </form>
+              {% endfor %}
+              {% if g.members | length > 5 %}
+              <button type="button" class="group-expand-btn" data-group="{{ g.id }}" onclick="toggleGroupMembers('{{ g.id }}')" style="background: none; border: none; color: var(--accent); font-size: 0.8rem; cursor: pointer; padding: 0.25rem 0; text-align: left;">Show {{ g.members | length - 5 }} more&hellip;</button>
+              {% endif %}
+            </div>
+            {% else %}
+            {{ g.member_count }}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div id="group-pagination" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 1rem;"></div>
+  <div id="group-no-results" style="display: none; padding: 1rem; color: var(--text-muted); font-size: 0.875rem;">No groups match your filter.</div>
+  {% else %}
+  <p class="empty" style="padding: 1rem; color: var(--text-muted); font-size: 0.875rem;">No groups synced yet. Groups are automatically synced from your OIDC provider.</p>
+  {% endif %}
+</div>
+
+<!-- Auth settings -->
+<div class="card">
+  <h2>Auth settings</h2>
+  <form method="post" action="/dashboard/admin/auth">
+    <div style="margin-bottom: 1rem;">
+      <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.925rem; cursor: pointer;">
+        <input type="checkbox" name="registration_enabled" value="on" {% if registration_enabled %}checked{% endif %} style="width: 1rem; height: 1rem;">
+        Registration enabled
+      </label>
+    </div>
+    <div class="form-group">
+      <label>Allowed email domains <span class="hint">(comma-separated, leave empty for any)</span></label>
+      <input type="text" name="allowed_email_domains" value="{{ allowed_email_domains }}" placeholder="example.com, company.org">
+    </div>
+    <button type="submit" class="slot-btn" style="cursor: pointer; font-weight: 600; color: var(--accent); border-color: var(--accent);">Save auth settings</button>
+  </form>
+</div>
+
+<!-- System settings (base URL, SSRF private-host allowlist) -->
+<div class="card">
+  <h2>System settings</h2>
+  <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1rem;">
+    Public URL and network-security settings. These can also be set with the environment variables
+    <code>CALRS_BASE_URL</code> and <code>CALRS_ALLOW_PRIVATE_HOSTS</code>. When an environment variable is set it
+    <strong>takes precedence</strong> over the value below.
+  </p>
+  <form method="post" action="/dashboard/admin/general">
+    <div class="form-group">
+      <label>Base URL
+        {% if base_url_from_env %}<span class="hint" style="color: var(--warning-text, #b45309);">— set by environment (CALRS_BASE_URL), overriding the stored value</span>{% endif %}
+      </label>
+      <input type="url" name="base_url"
+        value="{% if base_url_from_env %}{{ base_url }}{% else %}{{ base_url_db }}{% endif %}"
+        placeholder="https://cal.example.com"
+        {% if base_url_from_env %}readonly style="opacity: 0.6; cursor: not-allowed;"{% endif %}>
+      <span style="font-size: 0.8rem; color: var(--text-muted);">
+        Public URL of this instance. Used for OIDC redirects and links in emails (approve/decline, cancel, reminders).
+        {% if base_url_from_env %}Unset the environment variable to edit this from here.{% endif %}
+      </span>
+    </div>
+    <div class="form-group">
+      <label>Private-host allowlist
+        {% if allow_private_hosts_from_env %}<span class="hint" style="color: var(--warning-text, #b45309);">— set by environment (CALRS_ALLOW_PRIVATE_HOSTS), overriding the stored value</span>{% endif %}
+      </label>
+      <input type="text" name="allow_private_hosts"
+        value="{% if allow_private_hosts_from_env %}{{ allow_private_hosts }}{% else %}{{ allow_private_hosts_db }}{% endif %}"
+        placeholder="radicale, 127.0.0.1"
+        {% if allow_private_hosts_from_env %}readonly style="opacity: 0.6; cursor: not-allowed;"{% endif %}>
+      <span style="font-size: 0.8rem; color: var(--text-muted);">
+        Comma-separated hostnames allowed to resolve to private/reserved IPs for CalDAV/EWS sources (SSRF guard opt-out).
+        Only add hosts you control (e.g. a calendar server on the same Docker network). Leave empty to keep the guard active for all hosts.
+        {% if allow_private_hosts_from_env %}Unset the environment variable to edit this from here.{% endif %}
+      </span>
+    </div>
+    <button type="submit" class="slot-btn" style="cursor: pointer; font-weight: 600; color: var(--accent); border-color: var(--accent);">Save system settings</button>
+  </form>
+</div>
+
+<!-- OIDC settings -->
+<div class="card">
+  <h2>OIDC settings</h2>
+  <div style="margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-secondary);">
+    Status: {% if oidc_enabled %}<strong style="color: var(--success);">enabled</strong>{% else %}<span style="color: var(--text-muted);">disabled</span>{% endif %}
+    {% if oidc_issuer_url %}&middot; Issuer: <span style="color: var(--text-muted);">{{ oidc_issuer_url }}</span>{% endif %}
+    {% if oidc_client_id %}&middot; Client ID: <span style="color: var(--text-muted);">{{ oidc_client_id }}</span>{% endif %}
+  </div>
+  <form method="post" action="/dashboard/admin/oidc">
+    <div style="margin-bottom: 1rem;">
+      <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.925rem; cursor: pointer;">
+        <input type="checkbox" name="oidc_enabled" value="on" {% if oidc_enabled %}checked{% endif %} style="width: 1rem; height: 1rem;">
+        OIDC enabled
+      </label>
+    </div>
+    <div class="form-group">
+      <label>Issuer URL</label>
+      <input type="url" name="oidc_issuer_url" value="{{ oidc_issuer_url }}" placeholder="https://auth.example.com">
+    </div>
+    <div class="form-group">
+      <label>Client ID</label>
+      <input type="text" name="oidc_client_id" value="{{ oidc_client_id }}" placeholder="calrs">
+    </div>
+    <div class="form-group">
+      <label>Client secret <span class="hint">(leave empty to keep current)</span></label>
+      <input type="password" name="oidc_client_secret" value="" placeholder="Leave empty to keep unchanged">
+    </div>
+    <div style="margin-bottom: 1rem;">
+      <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.925rem; cursor: pointer;">
+        <input type="checkbox" name="oidc_auto_register" value="on" {% if oidc_auto_register %}checked{% endif %} style="width: 1rem; height: 1rem;">
+        Auto-register new users from OIDC
+      </label>
+    </div>
+    <button type="submit" class="slot-btn" style="cursor: pointer; font-weight: 600; color: var(--accent); border-color: var(--accent);">Save OIDC settings</button>
+  </form>
+</div>
+
+<!-- Google Calendar OAuth2 -->
+<div class="card">
+  <h2>Google Calendar (OAuth2)</h2>
+  <div style="margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-secondary);">
+    Status: {% if google_oauth2_configured %}<strong style="color: var(--success);">configured</strong>{% else %}<span style="color: var(--text-muted);">not configured</span>{% endif %}
+    {% if google_oauth2_client_id %}&middot; Client ID: <span style="color: var(--text-muted);">{{ google_oauth2_client_id }}</span>{% endif %}
+  </div>
+  <form method="post" action="/dashboard/admin/google-oauth2">
+    <p style="font-size: 0.825rem; color: var(--text-muted); margin-bottom: 1rem;">
+      To enable Google Calendar integration, create OAuth2 credentials at
+      <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: var(--accent);">Google Cloud Console</a>.
+      Enable the <strong>Google Calendar API</strong>, then add
+      <code>{{ base_url }}/dashboard/sources/google/callback</code>
+      as an authorized redirect URI.
+    </p>
+    <div class="form-group">
+      <label>Client ID</label>
+      <input type="text" name="google_oauth2_client_id" value="{{ google_oauth2_client_id }}" placeholder="123456789.apps.googleusercontent.com">
+    </div>
+    <div class="form-group">
+      <label>Client secret <span class="hint">(leave empty to keep current)</span></label>
+      <input type="password" name="google_oauth2_client_secret" value="" placeholder="Leave empty to keep unchanged">
+    </div>
+    <button type="submit" class="slot-btn" style="cursor: pointer; font-weight: 600; color: var(--accent); border-color: var(--accent);">Save Google OAuth2 settings</button>
+  </form>
+</div>
+
+<!-- Captcha settings -->
+<div class="card">
+  <h2>Captcha</h2>
+  <div style="margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-secondary);">
+    Status: {% if captcha_configured %}<strong style="color: var(--success);">enabled</strong>{% else %}<span style="color: var(--text-muted);">disabled</span>{% endif %}
+    {% if captcha_instance_url %}&middot; Instance: <span style="color: var(--text-muted);">{{ captcha_instance_url }}</span>{% endif %}
+  </div>
+  <form method="post" action="/dashboard/admin/captcha">
+    <div class="form-group">
+      <label>Instance URL</label>
+      <input type="url" name="captcha_instance_url" value="{{ captcha_instance_url }}" placeholder="https://captcha.example.com">
+    </div>
+    <div class="form-group">
+      <label>Site key</label>
+      <input type="text" name="captcha_site_key" value="{{ captcha_site_key }}" placeholder="your-site-key">
+    </div>
+    <div class="form-group">
+      <label>Secret <span class="hint">(leave empty to keep current)</span></label>
+      <input type="password" name="captcha_secret" value="" placeholder="Leave empty to keep unchanged">
+    </div>
+    <div class="form-group">
+      <label>Widget script URL <span class="hint">(optional)</span></label>
+      <input type="url" name="captcha_widget_url" value="{{ captcha_widget_url }}" placeholder="https://cdn.jsdelivr.net/npm/cap-widget">
+      <span style="font-size: 0.8rem; color: var(--text-muted);">Override if the CDN is blocked. Changes take effect immediately after saving.</span>
+    </div>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">Leave instance URL, site key and secret empty to disable captcha on booking pages.</p>
+    <button type="submit" class="slot-btn" style="cursor: pointer; font-weight: 600; color: var(--accent); border-color: var(--accent);">Save captcha settings</button>
+  </form>
+</div>
+
+<!-- Shared bookable resources -->
+<div class="card">
+  <h2>Resources</h2>
+  <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1rem;">
+    Shared bookable resources (demo lab, meeting rooms) backed by a calendar feed. Attached to event types, a busy resource blocks bookings.
+  </p>
+  {% if resource_notice %}
+  <p style="color: var(--success); font-size: 0.875rem; margin-bottom: 1rem;">{{ resource_notice }}</p>
+  {% endif %}
+  {% if resource_error %}
+  <p style="color: var(--error-text); font-size: 0.875rem; margin-bottom: 1rem;">{{ resource_error }}</p>
+  {% endif %}
+
+  {% if resources %}
+  <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem;">
+    {% for r in resources %}
+    <div style="border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem;">
+      <div style="font-weight: 600; font-size: 0.925rem;">{{ r.name }}</div>
+      <div style="color: var(--text-muted); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ r.feed_url }}</div>
+      <div style="font-size: 0.825rem; color: var(--text-secondary); margin-top: 0.25rem;">
+        Events cached: {{ r.event_count }} &middot; Attached to {{ r.attached_count }} event type(s) &middot; Last sync: {% if r.last_synced_at %}{{ r.last_synced_at }}{% else %}never{% endif %}{% if r.last_sync_error %} <span style="color: var(--error-text);">(last attempt failed: {{ r.last_sync_error }})</span>{% endif %}
+      </div>
+      <div style="font-size: 0.825rem; margin-top: 0.25rem;">
+        {% if r.write_configured %}<span style="color: var(--success);">Write-back: enabled ({{ r.write_via }})</span>{% else %}<span style="color: var(--text-muted);">Write-back: read-only</span>{% endif %}
+      </div>
+      <div style="font-size: 0.825rem; margin-top: 0.25rem; color: var(--text-secondary);">
+        Teams allowed: {% if r.allowed_team_names %}{{ r.allowed_team_names }}{% else %}<span style="color: var(--text-muted);">none (global admins only)</span>{% endif %}
+      </div>
+      <div style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.375rem;">
+        <form method="post" action="/dashboard/admin/resources/{{ r.id }}/sync" style="margin: 0;">
+          <button type="submit" class="slot-btn" style="font-size: 0.8rem; cursor: pointer;">Sync now</button>
+        </form>
+        {% if r.write_configured %}
+        <form method="post" action="/dashboard/admin/resources/{{ r.id }}/test-write" style="margin: 0;">
+          <button type="submit" class="slot-btn" style="font-size: 0.8rem; cursor: pointer;">Test write</button>
+        </form>
+        {% endif %}
+        <form method="post" action="/dashboard/admin/resources/{{ r.id }}/delete" style="margin: 0;">
+          <button type="submit" class="slot-btn" style="font-size: 0.8rem; cursor: pointer; color: var(--error-text); border-color: var(--error-text);" onclick="return confirm('Delete this resource? Event types using it will stop checking it.')">Delete</button>
+        </form>
+      </div>
+      <details style="margin-top: 0.5rem;">
+        <summary style="cursor: pointer; font-size: 0.825rem; color: var(--accent);">Edit</summary>
+        <form method="post" action="/dashboard/admin/resources/{{ r.id }}" style="margin-top: 0.75rem;">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" name="name" value="{{ r.name }}">
+          </div>
+          <div class="form-group">
+            <label>ICS feed URL (publish address)</label>
+            <input type="url" name="feed_url" value="{{ r.feed_url }}">
+          </div>
+          <div class="form-group">
+            <label>CalDAV collection URL (for write-back)</label>
+            <input type="url" name="caldav_url" value="{{ r.caldav_url }}">
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Optional. For BlueMind it is derived automatically from the feed URL.</span>
+          </div>
+          <div class="form-group">
+            <label>CalDAV username</label>
+            <input type="text" name="caldav_username" value="{{ r.caldav_username }}">
+          </div>
+          <div class="form-group">
+            <label>CalDAV password</label>
+            <input type="password" name="caldav_password" value="" placeholder="Leave empty to keep unchanged">
+          </div>
+          <div class="form-group">
+            <label>Teams allowed to use this resource</label>
+            {% if resource_teams_all %}
+            {% set allowed_padded = "," ~ r.allowed_team_ids ~ "," %}
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem 1rem;">
+              {% for t in resource_teams_all %}
+              <label style="display: flex; align-items: center; gap: 0.375rem; font-weight: 400; font-size: 0.875rem;">
+                <input type="checkbox" class="res-team-check" value="{{ t.id }}" {% if ("," ~ t.id ~ ",") in allowed_padded %}checked{% endif %}>
+                {{ t.name }}
+              </label>
+              {% endfor %}
+            </div>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Team admins of these teams can attach this resource to their team event types. Empty: global admins only.</span>
+            {% else %}
+            <span style="font-size: 0.8rem; color: var(--text-muted);">No teams yet.</span>
+            {% endif %}
+            <input type="hidden" name="team_ids" value="{{ r.allowed_team_ids }}">
+          </div>
+          <button type="submit" class="slot-btn" style="cursor: pointer; font-weight: 600; color: var(--accent); border-color: var(--accent);">Save resource</button>
+        </form>
+      </details>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <h3 style="font-size: 0.95rem; margin-bottom: 0.75rem;">Add resource</h3>
+  <form method="post" action="/dashboard/admin/resources">
+    <div class="form-group">
+      <label>ICS feed URL (publish address)</label>
+      <input type="url" name="feed_url" required placeholder="https://mail.example.com/calendar/publish/...">
+      <span style="font-size: 0.8rem; color: var(--text-muted);">BlueMind: the resource calendar's public or private calendar address.</span>
+    </div>
+    <div class="form-group">
+      <label>Name <span class="hint">(optional)</span></label>
+      <input type="text" name="name" value="">
+      <span style="font-size: 0.8rem; color: var(--text-muted);">Leave empty to fetch the name from the feed.</span>
+    </div>
+    <div class="form-group">
+      <label>CalDAV collection URL (for write-back)</label>
+      <input type="url" name="caldav_url" value="">
+      <span style="font-size: 0.8rem; color: var(--text-muted);">Optional. For BlueMind it is derived automatically from the feed URL.</span>
+    </div>
+    <div class="form-group">
+      <label>CalDAV username</label>
+      <input type="text" name="caldav_username" value="">
+    </div>
+    <div class="form-group">
+      <label>CalDAV password</label>
+      <input type="password" name="caldav_password" value="">
+    </div>
+    <div class="form-group">
+      <label>Teams allowed to use this resource</label>
+      {% if resource_teams_all %}
+      <div style="display: flex; flex-wrap: wrap; gap: 0.5rem 1rem;">
+        {% for t in resource_teams_all %}
+        <label style="display: flex; align-items: center; gap: 0.375rem; font-weight: 400; font-size: 0.875rem;">
+          <input type="checkbox" class="res-team-check" value="{{ t.id }}">
+          {{ t.name }}
+        </label>
+        {% endfor %}
+      </div>
+      <span style="font-size: 0.8rem; color: var(--text-muted);">Team admins of these teams can attach this resource to their team event types. Empty: global admins only.</span>
+      {% else %}
+      <span style="font-size: 0.8rem; color: var(--text-muted);">No teams yet.</span>
+      {% endif %}
+      <input type="hidden" name="team_ids" value="">
+    </div>
+    <button type="submit" class="slot-btn" style="cursor: pointer; font-weight: 600; color: var(--accent); border-color: var(--accent);">Add resource</button>
+  </form>
+  <script>
+    document.querySelectorAll('.res-team-check').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        var form = cb.closest('form');
+        var ids = Array.prototype.filter.call(
+          form.querySelectorAll('.res-team-check'),
+          function (c) { return c.checked; }
+        ).map(function (c) { return c.value; }).join(',');
+        form.querySelector('input[name="team_ids"]').value = ids;
+      });
+    });
+  </script>
+</div>
+
+<!-- Jitsi auto-generated meeting links -->
+<div class="card">
+  <h2>Jitsi (auto-generated meeting links)</h2>
+  <div style="margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-secondary);">
+    Status: {% if jitsi_configured %}<strong style="color: var(--success);">enabled</strong>{% else %}<span style="color: var(--text-muted);">disabled</span>{% endif %}
+    {% if jitsi_base_url %}&middot; Base URL: <span style="color: var(--text-muted);">{{ jitsi_base_url }}</span>{% endif %}
+  </div>
+  <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 0.75rem;">
+    When an event type's location is set to "Jitsi (auto-generated room)", calrs builds a fresh room URL per booking by appending the pattern below to your Jitsi base URL. No external API call is needed.
+  </p>
+  <form method="post" action="/dashboard/admin/jitsi">
+    <div class="form-group">
+      <label>Base URL</label>
+      <input type="url" name="jitsi_base_url" value="{{ jitsi_base_url }}" placeholder="https://meet.example.com">
+    </div>
+    <div class="form-group">
+      <label>Display name <span class="hint">(optional)</span></label>
+      <input type="text" name="jitsi_display_name" value="{{ jitsi_display_name }}" placeholder="e.g. Meet DYB">
+      <span style="font-size: 0.8rem; color: var(--text-muted);">Shown to guests on the slot picker and booking form. Defaults to "Video call" if empty.</span>
+    </div>
+    <div class="form-group">
+      <label>Room name pattern</label>
+      <input type="text" id="jitsi_pattern" name="jitsi_pattern" value="{{ jitsi_pattern }}" placeholder="{{ jitsi_default_pattern }}" oninput="updateJitsiRandomWarning()">
+      <span style="font-size: 0.8rem; color: var(--text-muted);">
+        Available tokens: <code>{username}</code> (host), <code>{event}</code> (event type slug), <code>{date}</code> (YYYYMMDD), <code>{random}</code> (8 chars). Default: <code>{{ jitsi_default_pattern }}</code>.
+      </span>
+      <span id="jitsi_pattern_random_warning" style="display: none; font-size: 0.8rem; color: var(--warning-text, #b45309); margin-top: 0.25rem;">
+        ⚠ Without <code>{random}</code> the room name is predictable: two guests booking the same event type on the same day end up sharing a room and can see each other's meeting. Stable rooms are allowed (e.g. one personal room per host), but only enable this if you understand the trade-off.
+      </span>
+    </div>
+    <script>
+      function updateJitsiRandomWarning() {
+        var v = document.getElementById('jitsi_pattern').value || '';
+        var def = {{ jitsi_default_pattern | tojson }};
+        var effective = v.trim() === '' ? def : v;
+        document.getElementById('jitsi_pattern_random_warning').style.display =
+          effective.indexOf('{random}') === -1 ? '' : 'none';
+      }
+      updateJitsiRandomWarning();
+    </script>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">Leave the base URL empty to disable Jitsi auto-generation.</p>
+    <button type="submit" class="slot-btn" style="cursor: pointer; font-weight: 600; color: var(--accent); border-color: var(--accent);">Save Jitsi settings</button>
+  </form>
+</div>
+
+<!-- Generic meeting webhook -->
+<div class="card">
+  <h2>Meeting webhook (bring-your-own provider)</h2>
+  <div style="margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-secondary);">
+    Status: {% if meeting_webhook_configured %}<strong style="color: var(--success);">enabled</strong>{% else %}<span style="color: var(--text-muted);">disabled</span>{% endif %}
+    {% if meeting_webhook_url %}&middot; URL: <span style="color: var(--text-muted);">{{ meeting_webhook_url }}</span>{% endif %}
+  </div>
+  <p style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 0.75rem;">
+    When an event type's location is set to "Webhook (custom provider)", calrs POSTs the booking payload to this URL on confirmation and expects a JSON body <code>{"url": "https://..."}</code> back.
+  </p>
+  <form method="post" action="/dashboard/admin/meeting-webhook">
+    <div class="form-group">
+      <label>Webhook URL</label>
+      <input type="url" name="meeting_webhook_url" value="{{ meeting_webhook_url }}" placeholder="https://hooks.example.com/calrs">
+    </div>
+    <div class="form-group">
+      <label>Display name <span class="hint">(optional)</span></label>
+      <input type="text" name="meeting_webhook_display_name" value="{{ meeting_webhook_display_name }}" placeholder="e.g. Zoom, Whereby, Custom Meet">
+      <span style="font-size: 0.8rem; color: var(--text-muted);">Shown to guests instead of the generic "Video call" badge.</span>
+    </div>
+    <div class="form-group">
+      <label>Authentication</label>
+      <select name="meeting_webhook_auth_mode">
+        <option value="none"{% if meeting_webhook_auth_mode == "none" %} selected{% endif %}>None</option>
+        <option value="hmac"{% if meeting_webhook_auth_mode == "hmac" %} selected{% endif %}>HMAC-SHA256 (X-Calrs-Signature header)</option>
+      </select>
+      <span style="font-size: 0.8rem; color: var(--text-muted);">With HMAC, calrs sends <code>X-Calrs-Signature: sha256=&lt;hex&gt;</code> over the raw request body.</span>
+    </div>
+    <div class="form-group">
+      <label>Shared secret <span class="hint">(leave empty to keep current{% if meeting_webhook_has_secret %} — currently set{% endif %})</span></label>
+      <input type="password" name="meeting_webhook_secret" value="" placeholder="Leave empty to keep unchanged">
+    </div>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">Leave the URL empty to disable the meeting webhook.</p>
+    <button type="submit" class="slot-btn" style="cursor: pointer; font-weight: 600; color: var(--accent); border-color: var(--accent);">Save webhook settings</button>
+  </form>
+</div>
+
+<!-- SMTP settings -->
+<div class="card">
+  <h2>SMTP settings</h2>
+
+  {% if smtp_test_result == "sent" %}
+  <p style="color: var(--success); font-size: 0.875rem;">✓ Test email sent.</p>
+  {% elif smtp_test_result == "error" %}
+  <p style="color: var(--error-text); font-size: 0.875rem;">✗ Test email could not be sent. Check the server logs and your SMTP settings.</p>
+  {% endif %}
+
+  {% if smtp_error %}
+  <p style="color: var(--error-text); font-size: 0.875rem;">SMTP environment configuration error: {{ smtp_error }}</p>
+  <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.75rem;">Fix the <code>CALRS_SMTP_*</code> environment variables, or unset them to manage SMTP from the database here.</p>
+
+  {% elif smtp_from_env %}
+  <div style="border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-secondary);">
+    Managed via <strong>environment variables</strong> (overrides the database). Edit the <code>CALRS_SMTP_*</code> variables to change it, or unset them to manage SMTP from here.
+  </div>
+  <div style="font-size: 0.875rem; color: var(--text-secondary); line-height: 1.8;">
+    <div>Status: <strong style="color: var(--success);">configured</strong>{% if not smtp_enabled %} <span style="color: var(--error-text);">(disabled)</span>{% endif %} <span style="color: var(--text-muted);">(via environment)</span></div>
+    <div>Host: <span style="color: var(--text-muted);">{{ smtp_host }}:{{ smtp_port }}</span> ({{ smtp_tls_mode }})</div>
+    <div>From: <span style="color: var(--text-muted);">{% if smtp_from_name %}{{ smtp_from_name }} {% endif %}&lt;{{ smtp_from_email }}&gt;</span></div>
+  </div>
+  <form method="post" action="/dashboard/admin/smtp/test" style="margin-top: 1rem;">
+    <div class="form-group">
+      <label>Send a test email to <span class="hint">(defaults to your account email)</span></label>
+      <input type="email" name="to" value="" placeholder="you@example.com">
+    </div>
+    <button type="submit" class="slot-btn" style="cursor: pointer; font-weight: 600;">Send test email</button>
+  </form>
+
+  {% else %}
+  <div style="margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-secondary);">
+    Status: {% if smtp_configured %}<strong style="color: var(--success);">configured</strong>{% if not smtp_enabled %} <span style="color: var(--error-text);">(disabled)</span>{% endif %}{% else %}<span style="color: var(--text-muted);">not configured</span>{% endif %}
+  </div>
+  <form method="post" action="/dashboard/admin/smtp">
+    <div style="margin-bottom: 1rem;">
+      <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.925rem; cursor: pointer;">
+        <input type="checkbox" name="enabled" value="on" {% if smtp_enabled or not smtp_configured %}checked{% endif %} style="width: 1rem; height: 1rem;">
+        SMTP enabled
+      </label>
+    </div>
+    <div class="form-group">
+      <label>Host</label>
+      <input type="text" name="host" value="{{ smtp_host }}" placeholder="smtp.example.com" required>
+    </div>
+    <div class="form-group">
+      <label>Port</label>
+      <input type="number" name="port" min="1" max="65535" value="{% if smtp_configured %}{{ smtp_port }}{% else %}587{% endif %}" placeholder="587">
+    </div>
+    <div class="form-group">
+      <label>TLS mode</label>
+      <select name="tls_mode">
+        <option value="starttls" {% if smtp_tls_mode != "tls" %}selected{% endif %}>STARTTLS (port 587)</option>
+        <option value="tls" {% if smtp_tls_mode == "tls" %}selected{% endif %}>Implicit TLS (port 465)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" name="username" value="{{ smtp_username }}" placeholder="user@example.com">
+    </div>
+    <div class="form-group">
+      <label>Password <span class="hint">(leave empty to keep current)</span></label>
+      <input type="password" name="password" value="" placeholder="Leave empty to keep unchanged">
+    </div>
+    <div class="form-group">
+      <label>From email</label>
+      <input type="email" name="from_email" value="{{ smtp_from_email }}" placeholder="noreply@example.com" required>
+    </div>
+    <div class="form-group">
+      <label>From name <span class="hint">(optional)</span></label>
+      <input type="text" name="from_name" value="{{ smtp_from_name }}" placeholder="calrs">
+    </div>
+    <button type="submit" class="slot-btn" style="cursor: pointer; font-weight: 600; color: var(--accent); border-color: var(--accent);">Save SMTP settings</button>
+  </form>
+
+  {% if smtp_configured %}
+  <form method="post" action="/dashboard/admin/smtp/test" style="margin-top: 1.25rem;">
+    <div class="form-group">
+      <label>Send a test email to <span class="hint">(defaults to your account email)</span></label>
+      <input type="email" name="to" value="" placeholder="you@example.com">
+    </div>
+    <button type="submit" class="slot-btn" style="cursor: pointer; font-weight: 600;">Send test email</button>
+  </form>
+  <form method="post" action="/dashboard/admin/smtp/clear" style="margin-top: 1rem;" onsubmit="return confirm('Delete the database SMTP configuration?');">
+    <button type="submit" class="slot-btn" style="cursor: pointer; color: var(--error-text); border-color: var(--error-text);">Clear database config</button>
+  </form>
+  {% endif %}
+
+  <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 1rem;">Alternatively, configure via environment variables (which override this): <code>CALRS_SMTP_HOST</code>, <code>CALRS_SMTP_PORT</code>, <code>CALRS_SMTP_TLS_MODE</code> (<code>starttls</code> or <code>tls</code>), <code>CALRS_SMTP_USERNAME</code>, <code>CALRS_SMTP_PASSWORD</code>, <code>CALRS_SMTP_FROM_EMAIL</code>, <code>CALRS_SMTP_FROM_NAME</code>.</p>
+  {% endif %}
+</div>
+
+<script>
+(function() {
+  var USER_PAGE_SIZE = 5;
+  var userPage = 1;
+
+  function getFilteredUsers() {
+    var q = document.getElementById('user-search').value.toLowerCase();
+    var items = document.querySelectorAll('.user-item');
+    var filtered = [];
+    items.forEach(function(el) {
+      if (!q || el.dataset.name.indexOf(q) !== -1 || el.dataset.email.indexOf(q) !== -1) {
+        filtered.push(el);
+      }
+    });
+    return filtered;
+  }
+
+  function renderUserPage() {
+    var items = document.querySelectorAll('.user-item');
+    var filtered = getFilteredUsers();
+    var totalPages = Math.max(1, Math.ceil(filtered.length / USER_PAGE_SIZE));
+    if (userPage > totalPages) userPage = totalPages;
+    var start = (userPage - 1) * USER_PAGE_SIZE;
+    var end = start + USER_PAGE_SIZE;
+
+    items.forEach(function(el) { el.style.display = 'none'; });
+    filtered.forEach(function(el, i) {
+      el.style.display = (i >= start && i < end) ? '' : 'none';
+    });
+
+    var noResults = document.getElementById('user-no-results');
+    if (noResults) noResults.style.display = (items.length > 0 && filtered.length === 0) ? '' : 'none';
+
+    var pag = document.getElementById('user-pagination');
+    if (!pag) return;
+    if (totalPages <= 1) { pag.innerHTML = ''; return; }
+
+    var html = '<span style="font-size:0.8rem;color:var(--text-muted);">Page ' + userPage + ' of ' + totalPages + '</span> ';
+    if (userPage > 1) html += '<button onclick="window._userPageNav(-1)" class="slot-btn" style="font-size:0.8rem;cursor:pointer;padding:0.3rem 0.6rem;">&larr;</button> ';
+    if (userPage < totalPages) html += '<button onclick="window._userPageNav(1)" class="slot-btn" style="font-size:0.8rem;cursor:pointer;padding:0.3rem 0.6rem;">&rarr;</button>';
+    pag.innerHTML = html;
+  }
+
+  window._userPageNav = function(dir) { userPage += dir; renderUserPage(); };
+
+  window.filterUsers = function() { userPage = 1; renderUserPage(); };
+
+  // Initial render
+  if (document.getElementById('user-list')) renderUserPage();
+})();
+
+(function() {
+  var GROUP_PAGE_SIZE = 5;
+  var groupPage = 1;
+
+  function getFilteredGroups() {
+    var q = document.getElementById('group-search').value.toLowerCase();
+    var items = document.querySelectorAll('.group-item');
+    var filtered = [];
+    items.forEach(function(el) {
+      if (!q || el.dataset.name.indexOf(q) !== -1) {
+        filtered.push(el);
+      }
+    });
+    return filtered;
+  }
+
+  function renderGroupPage() {
+    var items = document.querySelectorAll('.group-item');
+    var filtered = getFilteredGroups();
+    var totalPages = Math.max(1, Math.ceil(filtered.length / GROUP_PAGE_SIZE));
+    if (groupPage > totalPages) groupPage = totalPages;
+    var start = (groupPage - 1) * GROUP_PAGE_SIZE;
+    var end = start + GROUP_PAGE_SIZE;
+
+    items.forEach(function(el) { el.style.display = 'none'; });
+    filtered.forEach(function(el, i) {
+      el.style.display = (i >= start && i < end) ? '' : 'none';
+    });
+
+    var noResults = document.getElementById('group-no-results');
+    if (noResults) noResults.style.display = (items.length > 0 && filtered.length === 0) ? '' : 'none';
+
+    var pag = document.getElementById('group-pagination');
+    if (!pag) return;
+    if (totalPages <= 1) { pag.innerHTML = ''; return; }
+
+    var html = '<span style="font-size:0.8rem;color:var(--text-muted);">Page ' + groupPage + ' of ' + totalPages + '</span> ';
+    if (groupPage > 1) html += '<button onclick="window._groupPageNav(-1)" class="slot-btn" style="font-size:0.8rem;cursor:pointer;padding:0.3rem 0.6rem;">&larr;</button> ';
+    if (groupPage < totalPages) html += '<button onclick="window._groupPageNav(1)" class="slot-btn" style="font-size:0.8rem;cursor:pointer;padding:0.3rem 0.6rem;">&rarr;</button>';
+    pag.innerHTML = html;
+  }
+
+  window._groupPageNav = function(dir) { groupPage += dir; renderGroupPage(); };
+  window.filterGroups = function() { groupPage = 1; renderGroupPage(); };
+
+  if (document.getElementById('group-list')) renderGroupPage();
+})();
+
+window.toggleGroupMembers = function(groupId) {
+  var extras = document.querySelectorAll('.group-member-extra[data-group="' + groupId + '"]');
+  var btn = document.querySelector('.group-expand-btn[data-group="' + groupId + '"]');
+  if (!btn) return;
+  var hidden = extras[0] && extras[0].style.display === 'none';
+  extras.forEach(function(el) {
+    el.style.display = hidden ? 'flex' : 'none';
+  });
+  btn.textContent = hidden ? 'Show fewer' : 'Show ' + extras.length + ' more\u2026';
+};
+</script>
+{% endblock dashboard_content %}

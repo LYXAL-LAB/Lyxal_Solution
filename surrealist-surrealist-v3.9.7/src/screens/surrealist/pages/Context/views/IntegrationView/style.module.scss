@@ -1,0 +1,53 @@
+.card {
+	position: relative;
+	height: 148px;
+	overflow: hidden;
+	transition: border-color 150ms ease;
+
+	&.card-coming-soon {
+		height: 118px;
+	}
+
+	&:hover {
+		border-color: color-mix(
+			in srgb,
+			var(--mantine-color-violet-5) 45%,
+			var(--mantine-color-default-border)
+		);
+	}
+}
+
+.card-icon {
+	position: absolute;
+	right: -10px;
+	top: 50%;
+	transform: translateY(-50%);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+	filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.35));
+	transition: transform 250ms ease;
+	will-change: transform;
+}
+
+.card:hover .card-icon {
+	transform: translateY(-50%) scale(1.05);
+}
+
+.card:hover .pill {
+	border-color: color-mix(
+		in srgb,
+		var(--mantine-color-violet-5) 60%,
+		var(--mantine-color-default-border)
+	);
+	color: var(--mantine-color-bright);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.card,
+	.card-icon,
+	.pill {
+		transition: none;
+	}
+}

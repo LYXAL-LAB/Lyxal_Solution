@@ -1,0 +1,65 @@
+//! lyxal-server: orchestrates the full Lyxal scheduler runtime.
+//!
+//! # Architecture
+//!
+//! ```text
+//!                          ┌──────────────────────────────────────────┐
+//!    Lyxalfile ──parse──► │              lyxal-server               │
+//!                          │                                          │
+//!                          │  ┌────────────┐   ┌──────────────────┐  │
+//!                          │  │ Scheduler  │   │   Completion     │  │
+//!                          │  │   Loop     │──►│   Processor      │  │
+//!                          │  │ (tick/1s)  │   │ (retry / DL)     │  │
+//!                          │  └─────┬──────┘   └──────────────────┘  │
+//!                          │        │              ┌───────────────┐  │
+//!                          │        │              │   Watchdog    │  │
+//!                          │        │              │  (sweep/30s)  │  │
+//!                          │        │              └───────────────┘  │
+//!                          │        │ enqueue             ▲           │
+//!                          │        ▼                     │           │
+//!                          │  ┌─────────────────────────────────────┐ │
+//!                          │  │       HTTP Pull-API (axum)          │ │
+//!                          │  │  POST /v1/poll  POST /v1/complete   │ │
+//!                          │  │  GET  /health                       │ │
+//!                          │  └─────────────────────────────────────┘ │
+//!                          │                     ▲                    │
+//!                          └─────────────────────┼────────────────────┘
+//!                                                │
+//!                                          Runner agents
+//! ```
+
+pub mod alerts;
+pub mod api;
+pub mod completion;
+pub mod dashboard;
+pub mod diagnostics;
+pub mod email;
+pub mod env_secret;
+pub mod init_api_key;
+pub mod live_console;
+pub mod loader;
+pub mod mcp;
+pub mod metrics;
+pub mod notify;
+pub mod oidc;
+pub mod quota;
+pub mod reload;
+pub mod scheduler;
+pub mod store;
+pub mod telemetry;
+pub mod trace_propagation;
+pub mod watchdog;
+pub mod watcher;
+
+pub use api::ServerState;
+pub use completion::{CompletionEvent, CompletionProcessor, ProcessedOutcome};
+pub use loader::{
+    LoadError, LoadedConfig, load_file, load_str, restore_queued_executions, restore_trigger_states,
+};
+pub use reload::{
+    ApplyError, ReloadCounters, ReloadDiff, ReloadError, ReloadPlan, apply_plan, apply_plan_direct,
+    build_plan,
+};
+pub use scheduler::{FiredExecution, SchedulerLoop, TickResult};
+pub use store::{DynStore, dyn_store};
+pub use watchdog::{WatchdogLoop, WatchdogResult};

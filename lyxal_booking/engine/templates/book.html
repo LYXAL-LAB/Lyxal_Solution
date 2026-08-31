@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("book-page-title", title=event_type.title) }}{% endblock %}
+
+{% block content %}
+{# Compute base path: /t/token, /team/team_slug/slug, /u/username/slug, or /slug #}
+{% if team_token is defined and team_token %}
+  {% set base = "/t/" ~ team_token %}
+{% elif team_slug is defined and team_slug %}
+  {% set base = "/team/" ~ team_slug ~ "/" ~ event_type.slug %}
+{% elif username is defined and username %}
+  {% set base = "/u/" ~ username ~ "/" ~ event_type.slug %}
+{% else %}
+  {% set base = "/" ~ event_type.slug %}
+{% endif %}
+
+<div class="logo">{% if company_link %}<a href="{{ company_link }}" target="_blank" rel="noopener noreferrer">{% endif %}<img src="/logo" alt="" onerror="this.closest('.logo').style.display='none'">{% if company_link %}</a>{% endif %}</div>
+
+<a href="{{ base }}{{ embed_qs_q | default('') }}" class="back-link">&larr; {{ t("book-back-to-times") }}</a>
+
+<div class="card">
+  <h1>{{ event_type.title }}</h1>
+  <div class="meta">
+    <span>{{ event_type.duration_min }} min</span>
+    <span>{{ host_name }}</span>
+    {% if event_type.location_value or event_type.location_type == "jitsi_auto" or event_type.location_type == "webhook_auto" %}
+      {% if event_type.location_type is defined and event_type.location_type == "in_person" %}
+        <span>{{ event_type.location_value }}</span>
+      {% else %}
+        <span>{% if event_type.location_type == "jitsi_auto" %}{% if meeting_jitsi_label %}{{ meeting_jitsi_label }}{% else %}{{ t("slots-location-video") }}{% endif %}{% elif event_type.location_type == "webhook_auto" %}{% if meeting_webhook_label %}{{ meeting_webhook_label }}{% else %}{{ t("slots-location-video") }}{% endif %}{% elif event_type.location_type == "link" %}{{ t("slots-location-video") }}{% elif event_type.location_type == "phone" %}{{ t("slots-location-phone") }}{% else %}{{ event_type.location_type }}{% endif %}</span>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <div class="selected-summary">
+    <strong>{{ date_label }}</strong> &middot; <span class="book-time" data-time="{{ time_start }}">{{ time_start }}</span> – <span class="book-time" data-time="{{ time_end }}">{{ time_end }}</span>
+  </div>
+
+  {% if error %}
+    <div class="error">{{ error }}</div>
+  {% endif %}
+
+  <form method="POST" action="{{ base }}/book{{ embed_qs_q | default('') }}">
+    <input type="hidden" name="date" value="{{ date }}">
+    <input type="hidden" name="time" value="{{ time_start }}">
+    {% if guest_tz is defined and guest_tz %}<input type="hidden" name="tz" value="{{ guest_tz }}">{% endif %}
+    {% if invite_token is defined and invite_token %}<input type="hidden" name="invite_token" value="{{ invite_token }}">{% endif %}
+
+    <div class="form-group">
+      <label for="name">{{ t("book-name-label") }}</label>
+      <input type="text" id="name" name="name" required maxlength="255" value="{{ form_name }}" placeholder="{{ t('book-name-placeholder') }}">
+    </div>
+
+    <div class="form-group">
+      <label for="email">{{ t("book-email-label") }}</label>
+      <input type="email" id="email" name="email" required maxlength="255" value="{{ form_email }}" placeholder="{{ t('book-email-placeholder') }}" pattern="[^@\s]+@[^@\s]+\.[^@\s]{2,}" title="{{ t('book-email-invalid') }}">
+    </div>
+    <script>
+    (function() {
+      var email = document.getElementById('email');
+      if (!email) return;
+      var msg = {{ t("book-email-invalid") | tojson }};
+      function update() {
+        if (email.validity.typeMismatch || email.validity.patternMismatch) {
+          email.setCustomValidity(msg);
+        } else {
+          email.setCustomValidity('');
+        }
+      }
+      email.addEventListener('input', update);
+      email.addEventListener('blur', update);
+    })();
+    </script>
+
+    <div class="form-group">
+      <label for="notes">{{ t("book-notes-label") }} <span class="hint">{{ t("book-notes-optional") }}</span></label>
+      <textarea id="notes" name="notes" maxlength="5000" placeholder="{{ t('book-notes-placeholder') }}">{{ form_notes }}</textarea>
+    </div>
+
+    {% if max_additional_guests is defined and max_additional_guests > 0 %}
+    <div class="form-group">
+      <label>{{ t("book-additional-guests-label") }} <span class="hint">{{ t("book-additional-guests-hint", max=max_additional_guests) }}</span></label>
+      <div id="guest-list" style="display: flex; flex-direction: column; gap: 0.375rem;"></div>
+      <input type="hidden" name="additional_guests" id="additional-guests-hidden" value="">
+      <button type="button" id="add-guest-btn" style="margin-top: 0.375rem; background: none; border: 1px dashed var(--border); border-radius: var(--radius); padding: 0.5rem; cursor: pointer; color: var(--text-muted); font-size: 0.85rem; font-family: inherit; width: 100%; transition: all 0.15s ease;">{{ t("book-add-guest-btn") }}</button>
+    </div>
+    <script>
+    (function() {
+      var max = {{ max_additional_guests }};
+      var guestEmailPlaceholder = {{ t("book-guest-email-placeholder") | tojson }};
+      var list = document.getElementById('guest-list');
+      var hidden = document.getElementById('additional-guests-hidden');
+      var addBtn = document.getElementById('add-guest-btn');
+      var count = 0;
+
+      function syncHidden() {
+        var emails = [];
+        list.querySelectorAll('input[type="email"]').forEach(function(inp) {
+          var v = inp.value.trim();
+          if (v) emails.push(v);
+        });
+        hidden.value = emails.join(',');
+      }
+
+      function addRow() {
+        if (count >= max) return;
+        count++;
+        var row = document.createElement('div');
+        row.style.cssText = 'display: flex; gap: 0.375rem; align-items: center;';
+        var inp = document.createElement('input');
+        inp.type = 'email';
+        inp.placeholder = guestEmailPlaceholder;
+        inp.maxLength = 255;
+        inp.style.cssText = 'flex: 1; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.9rem; font-family: inherit; background: var(--surface); color: var(--text);';
+        inp.addEventListener('input', syncHidden);
+        var removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.textContent = '\u00d7';
+        removeBtn.style.cssText = 'background: none; border: none; color: var(--text-muted); font-size: 1.25rem; cursor: pointer; padding: 0 0.25rem; line-height: 1;';
+        removeBtn.addEventListener('click', function() {
+          row.remove();
+          count--;
+          addBtn.style.display = count < max ? '' : 'none';
+          syncHidden();
+        });
+        row.appendChild(inp);
+        row.appendChild(removeBtn);
+        list.appendChild(row);
+        inp.focus();
+        if (count >= max) addBtn.style.display = 'none';
+      }
+
+      addBtn.addEventListener('click', addRow);
+    })();
+    </script>
+    {% endif %}
+
+    {% if captcha_enabled %}
+    <div class="form-group">
+      <label>{{ t("captcha-label") }}</label>
+      <script src="{{ captcha_widget_url }}"></script>
+      <cap-widget
+        data-cap-api-endpoint="{{ captcha_api_endpoint }}"
+        data-cap-i18n-initial-state="{{ t('captcha-initial-state') }}"
+        data-cap-i18n-verifying-label="{{ t('captcha-verifying') }}"
+        data-cap-i18n-solved-label="{{ t('captcha-solved') }}"
+        data-cap-i18n-error-label="{{ t('captcha-error') }}"
+        data-cap-i18n-troubleshooting-label="{{ t('captcha-troubleshooting') }}"
+        data-cap-i18n-wasm-disabled="{{ t('captcha-wasm-disabled') }}"
+        data-cap-i18n-verify-aria-label="{{ t('captcha-verify-aria') }}"
+        data-cap-i18n-verifying-aria-label="{{ t('captcha-verifying-aria') }}"
+        data-cap-i18n-verified-aria-label="{{ t('captcha-verified-aria') }}"
+        data-cap-i18n-required-label="{{ t('captcha-required') }}"
+        data-cap-i18n-error-aria-label="{{ t('captcha-error-aria') }}"
+      ></cap-widget>
+    </div>
+    {% endif %}
+
+    <button type="submit" class="btn">{{ t("book-confirm-button") }}</button>
+  </form>
+</div>
+<script>
+(function() {
+  var fmt = localStorage.getItem('calrs_time_format') || '24';
+  if (fmt !== '12') return;
+  document.querySelectorAll('.book-time').forEach(function(el) {
+    el.textContent = calrsFormat12h(el.dataset.time);
+  });
+})();
+</script>
+{% endblock %}

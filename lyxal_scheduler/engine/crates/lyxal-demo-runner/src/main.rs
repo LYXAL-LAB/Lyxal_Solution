@@ -1,0 +1,129 @@
+//! Lyxal demo runner.
+//!
+//! Connects to a Lyxal server, registers a set of demo jobs, and handles
+//! them with a simulated workload: random sleep + configurable fail rate.
+//!
+//! Environment variables:
+//!   LYXAL_SERVER_URL       — server base URL  (default: http://localhost:4000)
+//!   LYXAL_API_KEY          — bearer token     (optional for open dev setups)
+//!   RUNNER_ID               — explicit runner name override. If unset, the
+//!                             runner reads/persists a stable ID at
+//!                             `${LYXAL_RUNNER_DATA_DIR}/runner-id` so the
+//!                             same identity survives container recreates
+//!                             (issue #103).
+//!   LYXAL_RUNNER_DATA_DIR  — directory for persistent runner state
+//!                             (default: /var/lib/lyxal-runner)
+//!   RUNNER_FAIL_RATE        — fraction 0.0–1.0 that fail (default: 0.05)
+//!   RUNNER_MAX_INFLIGHT     — concurrency cap  (default: 4)
+//!   RUNNER_TAGS             — comma-separated free-form filter tags (optional)
+
+use std::time::Duration;
+
+use lyxal_runner_sdk::{LyxalRunner, ExecutionContext, HandlerError, resolve_runner_id};
+use rand::Rng as _; // for gen_range
+use tracing::{info, warn};
+
+#[tokio::main]
+async fn main() {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+        )
+        .init();
+
+    let server_url =
+        std::env::var("LYXAL_SERVER_URL").unwrap_or_else(|_| "http://localhost:4000".into());
+    let runner_id = resolve_runner_id("demo-runner");
+    let fail_rate: f64 = std::env::var("RUNNER_FAIL_RATE")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0.05);
+    let max_inflight: u32 = std::env::var("RUNNER_MAX_INFLIGHT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(4);
+
+    info!(
+        server_url = %server_url,
+        runner_id = %runner_id,
+        fail_rate,
+        max_inflight,
+        "croniq demo runner starting"
+    );
+
+    let tags: Vec<String> = std::env::var("RUNNER_TAGS")
+        .ok()
+        .map(|s| {
+            s.split(',')
+                .map(str::trim)
+                .filter(|x| !x.is_empty())
+                .map(String::from)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let mut builder = LyxalRunner::builder(&server_url, &runner_id)
+        .capabilities(vec!["demo".into()])
+        .tags(tags)
+        .max_inflight(max_inflight);
+
+    if let Ok(key) = std::env::var("LYXAL_API_KEY") {
+        builder = builder.api_key(&key);
+    }
+
+    let runner = builder.build();
+
+    // Register demo jobs with schedules. If the server already has these jobs
+    // defined in a Lyxalfile, the registration is silently skipped and the
+    // DSL definition takes precedence.
+    let demo_jobs = [
+        ("demo:heartbeat", "every 1 minute"),
+        ("demo:data-sync", "every 5 minutes"),
+        ("demo:report", "every 15 minutes"),
+        ("demo:cleanup", "every 1 hour"),
+    ];
+
+    for (job_key, schedule) in demo_jobs {
+        let fr = fail_rate;
+        runner
+            .register_with_schedule(job_key, schedule, move |ctx| simulate(ctx, fr))
+            .await;
+    }
+
+    // Catch-all: handles any job the server sends that isn't registered above.
+    runner
+        .set_default_handler(move |ctx: ExecutionContext| simulate(ctx, fail_rate))
+        .await;
+
+    if let Err(e) = runner.start().await {
+        tracing::error!(error = %e, "runner exited with error");
+        std::process::exit(1);
+    }
+}
+
+async fn simulate(ctx: ExecutionContext, fail_rate: f64) -> Result<(), HandlerError> {
+    let sleep_ms = rand::thread_rng().gen_range(50u64..=2_000);
+    info!(
+        job_key = %ctx.job_key,
+        execution_id = %ctx.execution_id,
+        attempt = ctx.attempt,
+        sleep_ms,
+        "executing"
+    );
+    tokio::time::sleep(Duration::from_millis(sleep_ms)).await;
+
+    if rand::random::<f64>() < fail_rate {
+        warn!(
+            job_key = %ctx.job_key,
+            attempt = ctx.attempt,
+            "simulated failure"
+        );
+        return Err(HandlerError::msg(
+            "simulated failure — set RUNNER_FAIL_RATE=0 to disable",
+        ));
+    }
+
+    info!(job_key = %ctx.job_key, "done");
+    Ok(())
+}

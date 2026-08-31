@@ -1,0 +1,3 @@
+[observability]
+log_filter = "debug,hyper=info,tower_http=debug"
+json_logs = false

@@ -1,0 +1,13 @@
+pub mod admin;
+pub mod availability;
+pub mod bookings;
+pub mod calendar_sources;
+pub mod event_types;
+pub mod integrations;
+pub mod oauth;
+pub mod platform_admin;
+pub mod resources;
+pub mod settings;
+pub mod slots;
+pub mod teams;
+pub mod users;

@@ -1,0 +1,429 @@
+use crate::lexer::Span;
+use serde::Serialize;
+
+/// A complete Lyxalfile AST.
+#[derive(Debug, Clone, Serialize)]
+pub struct Lyxalfile {
+    pub items: Vec<Item>,
+    pub span: Span,
+}
+
+/// Top-level item in a Lyxalfile.
+#[derive(Debug, Clone, Serialize)]
+pub enum Item {
+    Import(Import),
+    Server(ServerBlock),
+    Smtp(SmtpBlock),
+    PullApi(PullApiBlock),
+    Observability(ObservabilityBlock),
+    Mcp(McpBlock),
+    Oidc(OidcBlock),
+    Auth(AuthBlock),
+    Policy(PolicyBlock),
+    Alerts(AlertsBlock),
+    Vars(VarsBlock),
+    Defaults(DefaultsBlock),
+    Calendar(CalendarBlock),
+    Job(JobBlock),
+    Comment(CommentNode),
+}
+
+// ─── Comments ───
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CommentNode {
+    pub text: String,
+    pub span: Span,
+}
+
+// ─── Import ───
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Import {
+    pub path: StringValue,
+    pub span: Span,
+}
+
+// ─── Server ───
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ServerBlock {
+    pub directives: Vec<Directive>,
+    pub span: Span,
+}
+
+// ─── SMTP (outbound email transport) ───
+
+/// `smtp { host "…"; port 587; security starttls; from "Lyxal <noreply@…>" }`
+///
+/// Operator-facing SMTP transport config, mirroring `oidc {}` in shape:
+/// every directive is optional in the AST and merged with the
+/// `LYXAL_SMTP_*` env vars at server boot (DSL wins where both are set).
+///
+/// Credentials (`username` / `password`) are intentionally NOT DSL
+/// directives — the Lyxalfile is typically a read-only mount and must
+/// not carry plaintext secrets. Those stay in `LYXAL_SMTP_USERNAME` /
+/// `LYXAL_SMTP_PASSWORD` (or their `_FILE` siblings).
+#[derive(Debug, Clone, Serialize)]
+pub struct SmtpBlock {
+    pub directives: Vec<Directive>,
+    pub span: Span,
+}
+
+// ─── Pull API ───
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PullApiBlock {
+    pub directives: Vec<Directive>,
+    pub span: Span,
+}
+
+// ─── Observability ───
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ObservabilityBlock {
+    pub sub_blocks: Vec<NamedBlock>,
+    pub span: Span,
+}
+
+// ─── MCP (HTTP transport) ───
+
+#[derive(Debug, Clone, Serialize)]
+pub struct McpBlock {
+    pub directives: Vec<Directive>,
+    pub span: Span,
+}
+
+// ─── OIDC (SSO provider config) ───
+
+/// `oidc { issuer "…"; client_id "…"; redirect_url "…"; default_role
+/// "viewer"; provider_name "authentik"; post_login_redirect "/" }`
+///
+/// `client_secret` is intentionally NOT a DSL directive — Lyxalfiles
+/// are infrastructure-as-code, secrets stay in `LYXAL_OIDC_CLIENT_SECRET`.
+/// All other fields are optional in the AST and validated at server-
+/// boot; missing required fields fall back to the equivalent env vars
+/// (`LYXAL_OIDC_ISSUER`, etc.).
+#[derive(Debug, Clone, Serialize)]
+pub struct OidcBlock {
+    pub directives: Vec<Directive>,
+    pub span: Span,
+}
+
+// ─── Auth (UI sign-in method gates) ───
+
+/// `auth { password { enabled false } }`
+///
+/// Container for sub-blocks gating individual UI sign-in methods. Today
+/// only the `password { enabled bool }` sub-block is recognised; future
+/// versions may nest the `oidc { … }` provider config here too.
+///
+/// The outer block has no directives — only sub-blocks — so it mirrors
+/// `ObservabilityBlock` in shape.
+#[derive(Debug, Clone, Serialize)]
+pub struct AuthBlock {
+    pub sub_blocks: Vec<NamedBlock>,
+    pub span: Span,
+}
+
+// ─── Policy (server-wide opt-in flags) ───
+
+/// Server-wide policy block. Currently carries the adoption opt-in flag
+/// (`dsl_adopt_on_mutate`); future flags can be added without breaking
+/// existing Lyxalfiles.
+#[derive(Debug, Clone, Serialize)]
+pub struct PolicyBlock {
+    pub directives: Vec<Directive>,
+    pub span: Span,
+}
+
+// ─── Alerts (failure-notification rules + channels, issue #140) ───
+
+/// `alerts { channel "…" { … } rule "…" { … } }` — operator-managed
+/// failure notifications. Holds two kinds of named sub-block:
+///
+///   - `channel "name" { … }`  — delivery target. Channel type is
+///     determined by the *kind* directive inside the block (e.g.
+///     `shell "/usr/bin/page-oncall.sh"`).
+///   - `rule "name" { … }`  — trigger predicate + the named channels
+///     it dispatches to (`channels "a" "b"`).
+///
+/// Mixed order of `channel` and `rule` sub-blocks is allowed; the
+/// compile step resolves channel-name references after both have
+/// been collected.
+#[derive(Debug, Clone, Serialize)]
+pub struct AlertsBlock {
+    pub sub_blocks: Vec<NamedBlock>,
+    pub span: Span,
+}
+
+// ─── Vars ───
+
+#[derive(Debug, Clone, Serialize)]
+pub struct VarsBlock {
+    pub entries: Vec<Directive>,
+    pub span: Span,
+}
+
+// ─── Defaults ───
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DefaultsBlock {
+    pub directives: Vec<DirectiveOrBlock>,
+    pub span: Span,
+}
+
+// ─── Calendar ───
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CalendarBlock {
+    pub name: StringValue,
+    pub rules: Vec<CalendarRule>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CalendarRule {
+    pub kind: CalendarRuleKind,
+    pub rule_type: StringValue,
+    pub args: Vec<StringValue>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum CalendarRuleKind {
+    Include,
+    Exclude,
+}
+
+// ─── Job ───
+
+#[derive(Debug, Clone, Serialize)]
+pub struct JobBlock {
+    pub key: JobKey,
+    pub schedule: Option<ScheduleNode>,
+    pub directives: Vec<DirectiveOrBlock>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct JobKey {
+    pub raw: String,
+    pub namespace: String,
+    pub name: String,
+    pub variant: Option<String>,
+    pub span: Span,
+}
+
+// ─── Schedule ───
+
+/// Optional execution-mode prefix on a schedule line.
+///
+/// ```text
+/// ephemeral every 1 seconds     # fire-and-forget, no persistence
+/// queued    every day at 02:00   # guaranteed delivery (default)
+///           every 15 minutes     # no prefix → queued
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum ScheduleMode {
+    Queued,
+    Ephemeral,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ScheduleNode {
+    pub kind: ScheduleKind,
+    /// Explicit execution-mode prefix (`ephemeral` / `queued`), if present.
+    pub mode: Option<ScheduleMode>,
+    pub options: Vec<Directive>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum ScheduleKind {
+    /// `every N seconds/minutes/hours`
+    Interval { count: u32, unit: IntervalUnit },
+
+    /// `every day at HH:MM`
+    Daily { time: TimeValue },
+
+    /// `every monday [tuesday ...] at HH:MM`
+    /// `every weekday at HH:MM`
+    /// `every weekend at HH:MM`
+    Weekdays { days: Vec<Weekday>, time: TimeValue },
+
+    /// `every 1st [15th ...] of month at HH:MM`
+    Monthly {
+        ordinals: Vec<MonthOrdinal>,
+        time: TimeValue,
+    },
+
+    /// `once at <datetime>`
+    Once { at: StringValue },
+
+    /// `disabled`
+    Disabled,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum IntervalUnit {
+    Seconds,
+    Minutes,
+    Hours,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TimeValue {
+    pub hour: u8,
+    pub minute: u8,
+    pub raw: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum Weekday {
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+    Sunday,
+}
+
+impl Weekday {
+    /// All seven days in canonical week order (Monday..Sunday).
+    pub const ALL: &'static [Weekday; 7] = &[
+        Self::Monday,
+        Self::Tuesday,
+        Self::Wednesday,
+        Self::Thursday,
+        Self::Friday,
+        Self::Saturday,
+        Self::Sunday,
+    ];
+
+    /// Accepts both full names (`monday`) and 3-letter abbreviations
+    /// (`mon`), case-insensitively. The Lyxalfile DSL canonicalises
+    /// to lower-case full names on output, but the parser is generous
+    /// with input so users can paste `Mon` or `MON` from a crontab.
+    pub fn parse(s: &str) -> Option<Self> {
+        match s.to_ascii_lowercase().as_str() {
+            "monday" | "mon" => Some(Self::Monday),
+            "tuesday" | "tue" => Some(Self::Tuesday),
+            "wednesday" | "wed" => Some(Self::Wednesday),
+            "thursday" | "thu" => Some(Self::Thursday),
+            "friday" | "fri" => Some(Self::Friday),
+            "saturday" | "sat" => Some(Self::Saturday),
+            "sunday" | "sun" => Some(Self::Sunday),
+            _ => None,
+        }
+    }
+
+    /// Expand the `weekday`/`weekend` group aliases (case-insensitive).
+    /// Returns `None` for anything else, including single day names.
+    /// Aliases stay full-length only — a 3-letter form would be
+    /// ambiguous (`wee`?).
+    pub fn parse_group(s: &str) -> Option<&'static [Weekday]> {
+        match s.to_ascii_lowercase().as_str() {
+            "weekday" => Some(&Self::ALL[0..5]),
+            "weekend" => Some(&Self::ALL[5..7]),
+            _ => None,
+        }
+    }
+
+    /// Parse a token that is either a single day name (`monday`, `Mon`)
+    /// or a group alias (`weekday`, `weekend`). Single days come back
+    /// as a one-element slice.
+    pub fn parse_token(s: &str) -> Option<&'static [Weekday]> {
+        Self::parse_group(s)
+            .or_else(|| Self::parse(s).map(|d| &Self::ALL[d as usize..d as usize + 1]))
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Monday => "monday",
+            Self::Tuesday => "tuesday",
+            Self::Wednesday => "wednesday",
+            Self::Thursday => "thursday",
+            Self::Friday => "friday",
+            Self::Saturday => "saturday",
+            Self::Sunday => "sunday",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum MonthOrdinal {
+    /// 1st, 2nd, 3rd, ... 31st
+    Day(u8),
+    /// Last day of month
+    Last,
+}
+
+// ─── Shared types ───
+
+/// A value that is either an unquoted ident, a quoted string, or a placeholder.
+#[derive(Debug, Clone, Serialize)]
+pub struct StringValue {
+    pub value: String,
+    pub quoted: bool,
+    pub is_placeholder: bool,
+    pub span: Span,
+}
+
+/// A simple directive: `key value1 value2 ...`
+#[derive(Debug, Clone, Serialize)]
+pub struct Directive {
+    pub key: StringValue,
+    pub args: Vec<StringValue>,
+    pub span: Span,
+}
+
+/// Either a directive or a named sub-block.
+#[derive(Debug, Clone, Serialize)]
+pub enum DirectiveOrBlock {
+    Directive(Directive),
+    Block(NamedBlock),
+    Comment(CommentNode),
+}
+
+/// A named block: `name [qualifier] { ... }`
+#[derive(Debug, Clone, Serialize)]
+pub struct NamedBlock {
+    pub name: StringValue,
+    pub qualifier: Option<StringValue>,
+    pub directives: Vec<DirectiveOrBlock>,
+    pub span: Span,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Weekday;
+
+    #[test]
+    fn parse_group_expands_aliases() {
+        assert_eq!(Weekday::parse_group("weekday"), Some(&Weekday::ALL[0..5]));
+        assert_eq!(Weekday::parse_group("weekend"), Some(&Weekday::ALL[5..7]));
+        // Case-insensitive.
+        assert_eq!(Weekday::parse_group("WEEKDAY"), Some(&Weekday::ALL[0..5]));
+        // Single day names are not groups.
+        assert_eq!(Weekday::parse_group("monday"), None);
+        // No 3-letter alias forms.
+        assert_eq!(Weekday::parse_group("wee"), None);
+        assert_eq!(Weekday::parse_group("funday"), None);
+    }
+
+    #[test]
+    fn parse_token_accepts_days_and_aliases() {
+        assert_eq!(Weekday::parse_token("weekday"), Some(&Weekday::ALL[0..5]));
+        assert_eq!(
+            Weekday::parse_token("weekend"),
+            Some(&[Weekday::Saturday, Weekday::Sunday][..])
+        );
+        assert_eq!(Weekday::parse_token("Mon"), Some(&[Weekday::Monday][..]));
+        assert_eq!(Weekday::parse_token("sunday"), Some(&[Weekday::Sunday][..]));
+        assert_eq!(Weekday::parse_token("funday"), None);
+        assert_eq!(Weekday::parse_token("wee"), None);
+    }
+}

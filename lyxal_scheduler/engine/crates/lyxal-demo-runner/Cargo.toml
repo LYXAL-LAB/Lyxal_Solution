@@ -1,0 +1,17 @@
+[package]
+name = "lyxal-demo-runner"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Lyxal demo runner — simulates job execution for quickstart and testing"
+
+[[bin]]
+name = "lyxal-demo-runner"
+path = "src/main.rs"
+
+[dependencies]
+lyxal-runner-sdk = { path = "../lyxal-runner-sdk" }
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rand = "0.8"

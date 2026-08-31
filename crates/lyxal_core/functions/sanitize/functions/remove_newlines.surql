@@ -1,0 +1,21 @@
+-- ============================================================================
+-- LYXAL OS — CORE SANITIZE
+-- ============================================================================
+-- Fonction : fn::sanitize_remove_newlines
+-- Version  : 1.0.0
+-- Statut   : Stable
+-- ============================================================================
+
+DEFINE FUNCTION OVERWRITE fn::sanitize_remove_newlines($value:option<any>,$field:string,$replacement:string)->string{
+    LET $clean_field = string::trim($field);
+    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
+    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
+    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
+    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
+
+ LET $v=string::replace($value,"\r\n",$replacement);
+ LET $v=string::replace($v,"\n",$replacement);
+ RETURN string::replace($v,"\r",$replacement);
+}
+COMMENT "Remplace les retours à la ligne par une chaîne configurable."
+PERMISSIONS FULL;

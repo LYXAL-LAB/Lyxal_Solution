@@ -1,0 +1,17 @@
+[package]
+name = "lyxal-bridge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Bridges the DSL (lyxal-config) with the runtime (lyxal-execution, lyxal-runner)"
+
+[dependencies]
+lyxal-config   = { path = "../lyxal-config" }
+lyxal-execution = { path = "../lyxal-execution" }
+lyxal-runner   = { path = "../lyxal-runner" }
+chrono = { version = "0.4", features = ["serde"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+pretty_assertions = "1"

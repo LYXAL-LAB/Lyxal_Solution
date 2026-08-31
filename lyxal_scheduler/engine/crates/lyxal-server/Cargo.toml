@@ -1,0 +1,103 @@
+[package]
+name = "lyxal-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Lyxal server: orchestrates scheduler loop, runner Pull-API, and execution lifecycle"
+
+[[bin]]
+name = "lyxal-server"
+path = "src/main.rs"
+
+[dependencies]
+lyxal-config    = { path = "../lyxal-config" }
+lyxal-scheduler = { path = "../lyxal-scheduler" }
+lyxal-store     = { path = "../lyxal-store" }
+lyxal-execution = { path = "../lyxal-execution" }
+lyxal-runner    = { path = "../lyxal-runner" }
+lyxal-bridge    = { path = "../lyxal-bridge" }
+lyxal-auth      = { path = "../lyxal-auth" }
+lyxal-mcp       = { path = "../lyxal-mcp" }
+
+axum = { version = "0.8", features = ["json", "macros"] }
+tower-http = { version = "0.6", features = ["cors", "fs"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
+futures-core = "0.3"
+async-stream = "0.3"
+tokio = { version = "1", features = ["full"] }
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+anyhow = "1"
+uuid = { version = "1", features = ["v4"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+clap = { version = "4", features = ["derive", "env"] }
+notify = "8"
+
+# OIDC/SSO support (PR-A5). Manual Authorization-Code-Flow on top of
+# reqwest + jsonwebtoken (already a transitive dep via lyxal-auth).
+# The openidconnect crate's heavy generic API was a poor fit for the
+# tight integration with ServerState + the JIT-provisioning logic.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+url = "2"
+jsonwebtoken = { version = "10", features = ["rust_crypto"] }
+base64 = "0.22"
+rand = "0.9"
+
+# #140 PR-2: HMAC-SHA256 signing for outbound webhook alert channels.
+# Standard pairing (hmac 0.12 ⇄ sha2 0.10) and same versions as
+# lyxal-auth so the workspace resolves to a single copy of each crate.
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+
+# PR-A6: optional SMTP transport for invitations + password resets.
+# Off by default — NoopSender keeps working and the API still returns
+# the token URL in the JSON response. Enable the `smtp` cargo feature
+# to drop in a lettre-backed sender.
+lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "rustls-tls", "tokio1-rustls-tls", "builder"], optional = true }
+
+# OTLP exporter (issue #121). Off by default — when disabled, behaviour is
+# identical to plain tracing-subscriber fmt on stderr. When enabled and
+# OTEL_EXPORTER_OTLP_ENDPOINT is set at runtime, scheduler spans and
+# tracing events are exported to a configured collector (Aspire Dashboard,
+# OTel-Collector, …) in parallel with stderr.
+opentelemetry = { version = "0.32", optional = true }
+opentelemetry_sdk = { version = "0.32", features = ["rt-tokio"], optional = true }
+opentelemetry-otlp = { version = "0.32", default-features = false, features = ["grpc-tonic", "http-proto", "trace", "logs"], optional = true }
+opentelemetry-appender-tracing = { version = "0.32", optional = true }
+tracing-opentelemetry = { version = "0.33", optional = true }
+
+[features]
+default = []
+
+otlp = [
+    "dep:opentelemetry",
+    "dep:opentelemetry_sdk",
+    "dep:opentelemetry-otlp",
+    "dep:opentelemetry-appender-tracing",
+    "dep:tracing-opentelemetry",
+]
+# Outbound SMTP via lettre for invitations + password-reset email
+# delivery. When off (default), NoopSender is used and tokens come
+# back in the API response only.
+smtp = ["dep:lettre"]
+
+[dev-dependencies]
+pretty_assertions = "1"
+tokio = { version = "1", features = ["full", "test-util"] }
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
+tempfile = "3"
+# Tests compute currently-valid TOTP codes so "wrong code" assertions are
+# deterministic instead of failing ~3e-6 of runs on a random collision.
+# Same major as lyxal-auth so both resolve to one copy.
+totp-rs = { version = "5", default-features = false }
+
+[[bench]]
+name = "scheduler_bench"
+harness = false

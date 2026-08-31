@@ -1,0 +1,27 @@
+.library {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-direction: column;
+	transition: box-shadow 0.1s;
+	cursor: pointer;
+	aspect-ratio: 1;
+	gap: 8;
+
+	&:hover {
+		background-color: var(--mantine-color-obsidian-6);
+	}
+}
+
+.library-active {
+	background: var(--surreal-gradient) !important;
+	color: white;
+
+	svg * {
+		fill: white !important;
+	}
+}
+
+.library-disabled svg {
+	filter: grayscale(100%);
+}

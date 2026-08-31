@@ -1,0 +1,104 @@
+[package]
+name = "lyxal-booking"
+version = "1.0.0"
+edition = "2021"
+description = "Lyxal Booking — Engine Native SurrealDB pour la réservation d'agendas"
+license = "AGPL-3.0"
+
+[lib]
+name = "lyxal_booking"
+path = "src/lib.rs"
+
+[[bin]]
+name = "lyxal-booking"
+path = "src/main.rs"
+
+[dependencies]
+# SurrealDB Client
+surrealdb = { version = "2.2", features = ["protocol-ws", "protocol-http", "kv-mem"] }
+
+# CLI
+clap = { version = "4", features = ["derive", "env"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+async-trait = "0.1"
+
+# HTTP client (for CalDAV)
+reqwest = { version = "0.11", features = ["rustls-tls", "json"], default-features = false }
+
+# Time & timezone
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.8"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# IDs
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Error handling & SurrealDB Client Abstraction
+anyhow = "1"
+thiserror = "1"
+lyxal_error = { path = "../../lyxal_error" }
+lyxal_surreal = { path = "../../lyxal_surreal" }
+lyxal_crypto = { path = "../../lyxal_crypto" }
+
+# Secrets / config
+directories = "5"
+
+# Terminal output
+colored = "2"
+tabled = "0.15"
+hex = "0.4"
+rpassword = "7"
+
+# Email (SMTP)
+lettre = { version = "0.11", default-features = false, features = ["tokio1-rustls-tls", "builder", "smtp-transport", "hostname"] }
+
+# Web server
+axum = { version = "0.8", features = ["macros", "multipart"] }
+axum-extra = { version = "0.10", features = ["cookie", "form"] }
+minijinja = { version = "2", features = ["loader", "json"] }
+tower-http = { version = "0.6", features = ["trace", "set-header"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Encryption (credential storage)
+aes-gcm = "0.10"
+zeroize = "1"
+
+# HMAC-SHA256 for outbound webhook signatures
+hmac = "0.12"
+sha2 = "0.10"
+
+# Auth
+argon2 = { version = "0.5", features = ["rand"] }
+rand = "0.8"
+base64 = "0.22"
+subtle = "2"
+openidconnect = { version = "4.0.1", default-features = false, features = ["reqwest", "rustls-tls"] }
+iana-time-zone = "0.1.65"
+urlencoding = "2"
+
+# Markdown (bio rendering)
+pulldown-cmark = { version = "0.12", default-features = false, features = ["html"] }
+
+# Browser launch (CLI OAuth2)
+open = "5"
+url = "2"
+
+# Localization (Fluent)
+fluent-bundle = "0.15"
+unic-langid = "0.9"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin)'] }

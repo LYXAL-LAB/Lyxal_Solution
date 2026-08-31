@@ -1,0 +1,640 @@
+-- ============================================================================
+-- LYXAL OS — CORE VALIDATION
+-- ============================================================================
+-- Fichier      : core/validation/not_blank.surql
+-- Fonction     : fn::validation_not_blank
+-- Domaine      : Core / Validation
+-- Version      : 1.0.0
+-- Statut       : Stable
+--
+-- Description
+-- -----------
+-- Vérifie qu'une valeur obligatoire est strictement de type string et qu'elle
+-- contient au moins un caractère après suppression des espaces périphériques.
+--
+-- Cette fonction distingue :
+--
+--   - une valeur absente ;
+--   - une valeur NULL ;
+--   - une valeur d'un type incorrect ;
+--   - une chaîne vide ;
+--   - une chaîne composée uniquement d'espaces ;
+--   - une chaîne contenant réellement du texte.
+--
+-- La valeur est nettoyée avec :
+--
+--   string::trim()
+--
+-- puis la chaîne nettoyée est retournée.
+--
+-- Exemples
+-- --------
+-- Valeur valide :
+--
+--   "Lyxal"
+--
+-- Valeur valide avec espaces périphériques :
+--
+--   "   Lyxal   "
+--
+-- valeur retournée :
+--
+--   "Lyxal"
+--
+-- Valeur vide :
+--
+--   ""
+--
+-- produit :
+--
+--   <FIELD>_BLANK_NOT_ALLOWED
+--
+-- Valeur composée uniquement d'espaces :
+--
+--   "       "
+--
+-- produit également :
+--
+--   <FIELD>_BLANK_NOT_ALLOWED
+--
+-- Cas d'utilisation
+-- -----------------
+-- Cette fonction peut notamment valider :
+--
+--   - un nom ;
+--   - un titre ;
+--   - une description obligatoire ;
+--   - une référence textuelle ;
+--   - un libellé ;
+--   - un commentaire obligatoire ;
+--   - un code ;
+--   - un nom d'équipe ;
+--   - un nom de workspace ;
+--   - une raison ou justification.
+--
+-- Validation stricte
+-- ------------------
+-- Cette fonction accepte uniquement une véritable valeur string SurrealDB.
+--
+-- Exemples acceptés :
+--
+--   "Lyxal"
+--   "  Lyxal  "
+--   "0"
+--   "false"
+--   "-"
+--   "é"
+--
+-- Exemples refusés :
+--
+--   NONE
+--   NULL
+--   0
+--   42
+--   false
+--   true
+--   []
+--   {}
+--   identity_user:user_001
+--
+-- La fonction n'effectue aucune conversion automatique.
+--
+-- Ainsi :
+--
+--   42
+--
+-- ne devient jamais :
+--
+--   "42"
+--
+-- Pour convertir explicitement une valeur en chaîne, utiliser auparavant :
+--
+--   type::string($value)
+--
+-- Exemple :
+--
+--   LET $text = type::string(42);
+--
+--   RETURN fn::validation_not_blank(
+--       $text,
+--       "VALUE"
+--   );
+--
+-- Différence entre vide et blanc
+-- -------------------------------
+-- Une chaîne vide ne contient aucun caractère :
+--
+--   ""
+--
+-- Une chaîne blanche contient uniquement des caractères supprimés par
+-- string::trim() :
+--
+--   "     "
+--   "\t"
+--   "\n"
+--   "  \n\t  "
+--
+-- Dans les deux cas, la chaîne nettoyée devient :
+--
+--   ""
+--
+-- et la fonction produit :
+--
+--   <FIELD>_BLANK_NOT_ALLOWED
+--
+-- Nettoyage de la valeur
+-- ----------------------
+-- La valeur retournée est la chaîne nettoyée.
+--
+-- Exemple :
+--
+--   "   Projet Lyxal   "
+--
+-- devient :
+--
+--   "Projet Lyxal"
+--
+-- La fonction retire uniquement les espaces situés au début et à la fin.
+--
+-- Elle ne modifie pas :
+--
+--   - les espaces internes ;
+--   - la casse ;
+--   - les accents ;
+--   - la ponctuation ;
+--   - les retours à la ligne internes ;
+--   - les caractères spéciaux ;
+--   - la normalisation Unicode.
+--
+-- Exemple :
+--
+--   "Projet   Lyxal"
+--
+-- reste :
+--
+--   "Projet   Lyxal"
+--
+-- Les transformations plus avancées appartiennent au domaine :
+--
+--   core/sanitize
+--
+-- Différence avec validation_required_string
+-- ------------------------------------------
+-- Selon sa définition dans le projet, fn::validation_required_string() peut
+-- déjà vérifier :
+--
+--   - la présence ;
+--   - le type string ;
+--   - la longueur ;
+--   - le nettoyage.
+--
+-- fn::validation_not_blank() constitue une primitive spécialisée dont la seule
+-- responsabilité métier est :
+--
+--   la chaîne doit contenir au moins un caractère après trim.
+--
+-- Elle est utile :
+--
+--   - comme validation autonome ;
+--   - après une conversion explicite ;
+--   - dans une chaîne de validations ;
+--   - lorsque les limites de longueur sont gérées séparément.
+--
+-- Exemple d'enchaînement :
+--
+--   LET $name = fn::validation_not_blank(
+--       $name,
+--       "NAME"
+--   );
+--
+--   LET $name = fn::validation_min_length(
+--       $name,
+--       "NAME",
+--       2
+--   );
+--
+--   LET $name = fn::validation_max_length(
+--       $name,
+--       "NAME",
+--       100
+--   );
+--
+-- Chaînes contenant des valeurs visuellement fausses
+-- ---------------------------------------------------
+-- Les chaînes suivantes sont valides :
+--
+--   "0"
+--   "false"
+--   "null"
+--   "none"
+--
+-- Elles contiennent des caractères et ne sont pas considérées comme vides.
+--
+-- Cette fonction ne tente jamais d'interpréter le sens de la chaîne.
+--
+-- Chaînes Unicode
+-- ---------------
+-- Les chaînes Unicode sont acceptées.
+--
+-- Exemples :
+--
+--   "Équipe"
+--   "مرحبا"
+--   "東京"
+--   "🚀"
+--
+-- Cette fonction vérifie uniquement que la chaîne nettoyée n'est pas vide.
+--
+-- Caractères invisibles
+-- ---------------------
+-- string::trim() retire les caractères considérés comme des espaces
+-- périphériques par SurrealDB.
+--
+-- Toutefois, certains caractères Unicode invisibles peuvent ne pas être
+-- considérés comme des espaces classiques.
+--
+-- Par exemple, une chaîne contenant uniquement certains caractères de largeur
+-- nulle pourrait ne pas être vide après string::trim().
+--
+-- Une validation Unicode plus stricte pourra être ajoutée ultérieurement dans :
+--
+--   fn::sanitize_remove_invisible_characters()
+--
+-- ou :
+--
+--   fn::validation_visible_text()
+--
+-- Cette fonction reste volontairement limitée au comportement natif de
+-- string::trim().
+--
+-- Longueur
+-- --------
+-- Cette fonction n'impose aucune longueur minimale au-delà d'un caractère
+-- après nettoyage.
+--
+-- Ainsi :
+--
+--   "a"
+--   "é"
+--   "🚀"
+--
+-- sont acceptés.
+--
+-- Pour une longueur minimale supérieure, utiliser :
+--
+--   fn::validation_min_length()
+--
+-- Pour une longueur maximale, utiliser :
+--
+--   fn::validation_max_length()
+--
+-- Exemple :
+--
+--   LET $title = fn::validation_not_blank(
+--       $title,
+--       "TITLE"
+--   );
+--
+--   LET $title = fn::validation_min_length(
+--       $title,
+--       "TITLE",
+--       3
+--   );
+--
+--   LET $title = fn::validation_max_length(
+--       $title,
+--       "TITLE",
+--       150
+--   );
+--
+-- Valeurs NONE et NULL
+-- --------------------
+-- NONE représente l'absence de valeur.
+--
+-- Il produit :
+--
+--   <FIELD>_REQUIRED
+--
+-- NULL représente une valeur explicitement vide.
+--
+-- Il produit :
+--
+--   <FIELD>_NULL_NOT_ALLOWED
+--
+-- Une chaîne vide produit une erreur différente :
+--
+--   <FIELD>_BLANK_NOT_ALLOWED
+--
+-- Cette distinction permet aux fonctions métier et aux API de diagnostiquer
+-- précisément la cause de l'échec.
+--
+-- Conservation et transformation
+-- -------------------------------
+-- Contrairement à plusieurs validateurs strictement conservateurs, cette
+-- fonction retourne une version nettoyée de la chaîne.
+--
+-- Elle effectue donc une transformation limitée :
+--
+--   string::trim()
+--
+-- Cette transformation est volontaire, car une chaîne contenant uniquement
+-- des espaces doit être évaluée selon son contenu réellement utile.
+--
+-- La fonction ne réalise cependant :
+--
+--   - aucune conversion de type ;
+--   - aucune mise en minuscules ;
+--   - aucune mise en majuscules ;
+--   - aucune suppression des espaces internes ;
+--   - aucun remplacement de caractères ;
+--   - aucune normalisation métier ;
+--   - aucune suppression de HTML ;
+--   - aucun échappement.
+--
+-- Limites de la validation
+-- ------------------------
+-- Cette fonction vérifie uniquement :
+--
+--   - la présence de la valeur ;
+--   - le refus de NULL ;
+--   - le type string ;
+--   - la présence d'au moins un caractère après trim.
+--
+-- Elle ne vérifie pas :
+--
+--   - une longueur maximale ;
+--   - une longueur minimale supérieure à un caractère ;
+--   - un format particulier ;
+--   - une expression régulière ;
+--   - la présence de mots interdits ;
+--   - la présence de HTML ;
+--   - la présence de caractères de contrôle internes ;
+--   - la normalisation Unicode ;
+--   - la casse ;
+--   - l'unicité ;
+--   - la validité métier du texte.
+--
+-- Ces contrôles doivent être réalisés par les fonctions spécialisées.
+--
+-- Règles appliquées
+-- -----------------
+--   1. Le nom technique du champ doit être renseigné ;
+--   2. La valeur doit être présente ;
+--   3. La valeur ne doit pas être NULL ;
+--   4. La valeur doit être strictement de type string ;
+--   5. La chaîne est nettoyée avec string::trim() ;
+--   6. La chaîne nettoyée ne doit pas être vide ;
+--   7. La chaîne nettoyée est retournée.
+--
+-- Paramètres
+-- ----------
+-- $value:
+--   Type : option<any>
+--
+--   Valeur obligatoire à contrôler.
+--
+--   Le type option<any> permet de produire des erreurs explicites pour :
+--
+--     - une valeur absente ;
+--     - une valeur NULL ;
+--     - une valeur d'un type incorrect ;
+--     - une chaîne vide ou blanche.
+--
+-- $field:
+--   Type : string
+--
+--   Nom technique utilisé pour construire les codes d'erreur.
+--
+--   Convention recommandée :
+--
+--     - NAME
+--     - TITLE
+--     - DESCRIPTION
+--     - LABEL
+--     - REFERENCE
+--     - COMMENT
+--     - REASON
+--     - TEAM_NAME
+--     - WORKSPACE_NAME
+--
+-- Valeur retournée
+-- ----------------
+-- Type : string
+--
+-- Retourne la chaîne nettoyée avec string::trim().
+--
+-- Exemple :
+--
+--   fn::validation_not_blank(
+--       "   Lyxal OS   ",
+--       "NAME"
+--   )
+--
+-- retourne :
+--
+--   "Lyxal OS"
+--
+-- Erreurs générées
+-- ----------------
+-- <FIELD>_REQUIRED
+--   La valeur est absente ou égale à NONE.
+--
+-- <FIELD>_NULL_NOT_ALLOWED
+--   La valeur est explicitement égale à NULL.
+--
+-- <FIELD>_INVALID_TYPE
+--   La valeur fournie n'est pas strictement de type string.
+--
+-- <FIELD>_BLANK_NOT_ALLOWED
+--   La chaîne est vide ou ne contient que des espaces après string::trim().
+--
+-- VALIDATION_INVALID_FIELD_NAME
+--   Le nom technique du champ est vide ou composé uniquement d'espaces.
+--
+-- Permissions
+-- -----------
+-- PERMISSIONS FULL
+--
+-- Cette fonction est une primitive pure :
+--
+--   - elle ne consulte aucune table ;
+--   - elle ne crée aucune donnée ;
+--   - elle ne modifie aucune donnée persistante ;
+--   - elle ne supprime aucune donnée ;
+--   - elle ne contacte aucun service externe ;
+--   - elle ne dépend pas du contexte d'authentification ;
+--   - elle agit uniquement sur les paramètres transmis ;
+--   - elle ne possède aucun effet secondaire persistant.
+--
+-- Elle retourne toutefois une chaîne nettoyée avec string::trim().
+--
+-- Elle peut être appelée par toutes les fonctions métier autorisées.
+--
+-- Dépendances natives SurrealDB
+-- -----------------------------
+--   - string::trim()
+--   - string::concat()
+--   - string::len()
+--   - type::is_null()
+--   - type::is_string()
+--
+-- Dépendances Lyxal
+-- -----------------
+-- Aucune.
+--
+-- Ordre de chargement
+-- -------------------
+-- Cette fonction est autonome.
+--
+-- Elle est toutefois logiquement liée aux fonctions :
+--
+--   - fn::validation_required_string()
+--   - fn::validation_optional_string()
+--   - fn::validation_min_length()
+--   - fn::validation_max_length()
+--   - fn::validation_regex()
+--   - fn::validation_forbidden_values()
+--   - fn::validation_reserved_words()
+--
+-- Exemples d'utilisation
+-- ----------------------
+-- Nom obligatoire :
+--
+-- LET $name = fn::validation_not_blank(
+--     $name,
+--     "NAME"
+-- );
+--
+-- Titre avec limites de longueur :
+--
+-- LET $title = fn::validation_not_blank(
+--     $title,
+--     "TITLE"
+-- );
+--
+-- LET $title = fn::validation_min_length(
+--     $title,
+--     "TITLE",
+--     3
+-- );
+--
+-- LET $title = fn::validation_max_length(
+--     $title,
+--     "TITLE",
+--     150
+-- );
+--
+-- Nom d'équipe puis contrôle d'unicité :
+--
+-- LET $team_name = fn::validation_not_blank(
+--     $team_name,
+--     "TEAM_NAME"
+-- );
+--
+-- LET $team_name = fn::validation_unique(
+--     $team_name,
+--     "TEAM_NAME",
+--     "booking_team",
+--     "name",
+--     NONE
+-- );
+--
+-- Conversion explicite avant validation :
+--
+-- LET $text_value = type::string(
+--     $value
+-- );
+--
+-- LET $text_value = fn::validation_not_blank(
+--     $text_value,
+--     "TEXT_VALUE"
+-- );
+-- ============================================================================
+
+DEFINE FUNCTION OVERWRITE fn::validation_not_blank(
+    $value: option<any>,
+    $field: string
+) -> string {
+
+    -- ------------------------------------------------------------------------
+    -- 1. Validation du nom technique du champ
+    -- ------------------------------------------------------------------------
+
+    LET $clean_field = string::trim($field);
+
+    IF $clean_field = "" {
+        THROW "VALIDATION_INVALID_FIELD_NAME";
+    };
+
+    -- ------------------------------------------------------------------------
+    -- 2. Vérification de la présence de la valeur
+    -- ------------------------------------------------------------------------
+    -- NONE représente l'absence complète de valeur.
+
+    IF $value IS NONE {
+        THROW string::concat(
+            $clean_field,
+            "_REQUIRED"
+        );
+    };
+
+    -- ------------------------------------------------------------------------
+    -- 3. Refus explicite de NULL
+    -- ------------------------------------------------------------------------
+    -- NULL représente une valeur explicitement vide et reste différent d'une
+    -- chaîne vide.
+
+    IF type::is_null($value) {
+        THROW string::concat(
+            $clean_field,
+            "_NULL_NOT_ALLOWED"
+        );
+    };
+
+    -- ------------------------------------------------------------------------
+    -- 4. Vérification stricte du type string
+    -- ------------------------------------------------------------------------
+    -- Aucune conversion automatique n'est réalisée.
+    --
+    -- Les nombres, booléens, Record IDs, objets et tableaux sont refusés.
+
+    IF !type::is_string($value) {
+        THROW string::concat(
+            $clean_field,
+            "_INVALID_TYPE"
+        );
+    };
+
+    -- ------------------------------------------------------------------------
+    -- 5. Nettoyage des espaces périphériques
+    -- ------------------------------------------------------------------------
+
+    LET $clean_value = string::trim($value);
+
+    -- ------------------------------------------------------------------------
+    -- 6. Refus d'une chaîne vide ou composée uniquement d'espaces
+    -- ------------------------------------------------------------------------
+    -- Après string::trim(), une chaîne blanche devient une chaîne vide.
+    --
+    -- string::len() mesure la chaîne en caractères.
+
+    IF string::len($clean_value) = 0 {
+        THROW string::concat(
+            $clean_field,
+            "_BLANK_NOT_ALLOWED"
+        );
+    };
+
+    -- ------------------------------------------------------------------------
+    -- 7. Retour de la chaîne nettoyée
+    -- ------------------------------------------------------------------------
+
+    RETURN $clean_value;
+}
+COMMENT "
+Valide qu'une valeur obligatoire est strictement de type string et contient au
+moins un caractère après suppression des espaces périphériques. Distingue NONE,
+NULL, type incorrect et chaîne blanche, puis retourne la chaîne nettoyée avec
+string::trim().
+"
+PERMISSIONS FULL;

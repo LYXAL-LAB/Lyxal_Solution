@@ -1,0 +1,111 @@
+//! `croniq quickstart` — zero-to-running in one command.
+
+use std::path::Path;
+
+use lyxal_auth::api_key::generate_api_key;
+use miette::{Result, miette};
+use uuid::Uuid;
+
+use super::secret_output::CredentialSink;
+
+const SAMPLE_CRONIQFILE: &str = r#"# Lyxalfile — Quickstart
+
+server {
+  listen :4000
+  data_dir .data
+}
+
+observability {
+  metrics { listen :9900; path /metrics }
+}
+
+defaults {
+  timeout 5m
+  retry exponential { max_attempts 3; base 2s; cap 30s }
+}
+
+# Your first job — runs every minute
+job hello:world {
+  every 1 minute
+  timeout 30s
+  metadata { created_by quickstart }
+}
+
+# A health check every 5 minutes
+job ops:heartbeat {
+  every 5 minutes
+  timeout 10s
+}
+"#;
+
+pub fn quickstart(
+    data_dir: &Path,
+    croniqfile: &Path,
+    password: Option<&str>,
+    print_secrets: bool,
+) -> Result<()> {
+    // 1. Create Lyxalfile if it doesn't exist
+    if !croniqfile.exists() {
+        std::fs::write(croniqfile, SAMPLE_CRONIQFILE)
+            .map_err(|e| miette!("Failed to write Lyxalfile: {e}"))?;
+        println!("Created {}", croniqfile.display());
+    } else {
+        println!("Using existing {}", croniqfile.display());
+    }
+
+    let password = password
+        .map(|p| p.to_string())
+        .unwrap_or_else(|| Uuid::new_v4().simple().to_string());
+
+    // Quickstart is explicit tutorial mode — seed a default API key so the
+    // demo runner snippet below works end-to-end without a follow-up step.
+    let (api_key, _, _) = generate_api_key();
+
+    let mut sink = CredentialSink::new(print_secrets);
+    sink.add("Admin login", format!("admin / {password}"));
+
+    // 2. Init database
+    super::init::init(
+        data_dir,
+        "admin",
+        Some(&password),
+        Some(&api_key),
+        None,
+        false,
+        &mut sink,
+    )?;
+
+    // 3. Print next steps
+    println!();
+    println!("=== Quickstart complete! ===");
+    println!();
+    println!("Start the server:");
+    println!(
+        "  lyxal-server --config {} --data-dir {} --ui-dir ui/dist",
+        croniqfile.display(),
+        data_dir.display()
+    );
+    println!();
+    println!("Or without UI:");
+    println!(
+        "  lyxal-server --config {} --data-dir {}",
+        croniqfile.display(),
+        data_dir.display()
+    );
+    println!();
+    println!("Then open: http://localhost:4000");
+    println!();
+    println!("Your first job (hello:world) fires every minute.");
+    println!("Connect a runner to process it:");
+    println!();
+    println!("  // In your runner code:");
+    println!("  let runner = LyxalRunner::builder(\"http://localhost:4000\", \"my-runner\")");
+    println!("      .api_key(\"<your-api-key>\")");
+    println!("      .build();");
+    println!("  runner.register(\"hello:world\", |ctx| async {{ Ok(()) }}).await;");
+    println!("  runner.start().await;");
+
+    sink.flush(data_dir)?;
+
+    Ok(())
+}

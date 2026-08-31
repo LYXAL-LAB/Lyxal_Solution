@@ -1,0 +1,207 @@
+name: Draft Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        required: true
+        type: boolean
+        description: "Is this a pre-release? If not, this will be considered the latest release"
+        default: false
+      version:
+        required: false
+        type: string
+        description: "Optionally input a custom version. If not, the version string will automatically be generated based on the version in package.json"
+
+env:
+  UPDATE_URL_STABLE: "https://app.surrealdb.com/latest.json"
+  UPDATE_URL_BETA: "https://beta-app.surrealdb.com/latest.json"
+  AUTH0_CALLBACK_HOST_STABLE: "https://app.surrealdb.com"
+  AUTH0_CALLBACK_HOST_BETA: "https://beta-app.surrealdb.com"
+  AUTH0_CLIENT_ID: OuFa4OeeKveeRq1G6xIPgrl6EBUJtxLR
+  AUTH0_DOMAIN: https://auth.surrealdb.com
+  AUTH0_AUDIENCE: https://surrealdb.us.auth0.com/api/v2/
+  CLOUD_API_BASE: https://api.cloud.surrealdb.com/api/v1
+  CLOUD_API_TICKETS_BASE: https://nlsmye6spqokxdxevwqramvqri0dtbto.lambda-url.us-east-1.on.aws
+  SURREALIST_WEBSITE_BASE: https://surrealdb.com
+  SCOUT_COPILOT_ID: copilot_cm3gcpzxw00020cs66takkem5
+  SCOUT_WORKFLOW_ID: wf_cm3gbr8vk00010ds6b1g0vnvv
+  INTERCOM_APP_ID: xaac4vhr
+
+jobs:
+  version:
+    name: Extract version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a5ad31d6a139d249332a2605b85202e8c0b78450 # v2.19.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Setup jq
+        uses: dcarbone/install-jq-action@8867ddb4788346d7c22b72ea2e2ffe4d514c7bcb # v2.1.0
+
+      - name: Overwrite version
+        if: ${{ inputs.version }}
+        run: |
+          jq --arg version "${{ inputs.version }}" '.version = $version' package.json > package.tmp.json
+          rm package.json
+          mv package.tmp.json package.json
+
+      - name: Validate unique version
+        run: |
+          v=$(jq -r '.version' package.json)
+          TAG="surrealist-v$v"
+          if git ls-remote --tags --exit-code origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "ERR: Tag ${TAG} already exists! Please bump the version."
+            exit 1
+          else
+            echo "OK: All clear! No such tag as ${TAG} found."
+          fi
+
+      - name: Extract package version
+        id: extract
+        run: |
+          echo "version=$(jq -r '.version' package.json)" >> "$GITHUB_OUTPUT"
+
+  draft:
+    name: Draft release
+    needs:
+      - version
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: true
+      matrix:
+        settings:
+          - platform: "macos-latest"
+            id: "macos-aarch64"
+            args: "--target aarch64-apple-darwin --verbose"
+          - platform: "macos-latest"
+            id: "macos-x86_64"
+            args: "--target x86_64-apple-darwin --verbose"
+          - platform: "ubuntu-22.04"
+            id: "linux"
+            args: "--verbose"
+          - platform: "windows-latest"
+            id: "windows"
+            args: "--verbose"
+
+    runs-on: ${{ matrix.settings.platform }}
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@a5ad31d6a139d249332a2605b85202e8c0b78450 # v2.19.1
+        with:
+          egress-policy: audit
+
+      - name: Information
+        run: echo "Building Surrealist Desktop v${{ needs.version.outputs.version }} for ${{ matrix.settings.id }}"
+
+      - name: Code checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Install dependencies (ubuntu only)
+        if: matrix.settings.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Setup jq
+        uses: dcarbone/install-jq-action@8867ddb4788346d7c22b72ea2e2ffe4d514c7bcb # v2.1.0
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.2.8
+
+      - name: Setup Rust stable
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          targets: ${{ matrix.settings.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Install frontend dependencies
+        run: bun install
+
+      - name: Generate license report
+        run: bun run license-report
+
+      - name: Set version
+        run: |
+          jq --arg version "${{ needs.version.outputs.version }}" '.version = $version' package.json > package.tmp.json
+          rm package.json
+          mv package.tmp.json package.json
+
+      - name: Persist Apple API Key
+        if: matrix.settings.platform == 'macos-latest'
+        env:
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
+        shell: bash
+        run: echo "$APPLE_API_KEY_CONTENT" >> ${{ github.workspace }}/apple-api-key.p8
+
+      - name: Configure variables
+        shell: bash
+        run: |
+          if [ "${{ inputs.prerelease }}" == "true" ]; then
+            echo "UPDATE_URL=${{ env.UPDATE_URL_BETA }}" >> $GITHUB_ENV
+            echo "AUTH0_CALLBACK_HOST=${{ env.AUTH0_CALLBACK_HOST_BETA }}" >> $GITHUB_ENV
+          else
+            echo "UPDATE_URL=${{ env.UPDATE_URL_STABLE }}" >> $GITHUB_ENV
+            echo "AUTH0_CALLBACK_HOST=${{ env.AUTH0_CALLBACK_HOST_STABLE }}" >> $GITHUB_ENV
+          fi
+
+      - name: Debug environment
+        run: |
+          echo "Update URL: ${{ env.UPDATE_URL }}"
+          echo "Callback Host: ${{ env.AUTH0_CALLBACK_HOST }}"
+
+      - name: Configure update endpoint
+        shell: bash
+        run: |
+          jq '.plugins.updater.endpoints[0] = "${{ env.UPDATE_URL }}"' ./src-tauri/tauri.conf.json > ./src-tauri/tauri.conf.temp
+          mv -f ./src-tauri/tauri.conf.temp ./src-tauri/tauri.conf.json
+
+      - name: Build and draft release
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0.6.2
+        id: build
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          VITE_SURREALIST_PREVIEW: "${{ inputs.prerelease }}"
+          VITE_AUTH0_CALLBACK_HOST: "${{ env.AUTH0_CALLBACK_HOST }}"
+          VITE_AUTH0_CLIENT_ID: ${{ env.AUTH0_CLIENT_ID }}
+          VITE_AUTH0_DOMAIN: "${{ env.AUTH0_DOMAIN }}"
+          VITE_AUTH0_AUDIENCE: "${{ env.AUTH0_AUDIENCE }}"
+          VITE_CLOUD_API_BASE: ${{ env.CLOUD_API_BASE }}
+          VITE_CLOUD_API_TICKETS_BASE: ${{ env.CLOUD_API_TICKETS_BASE }}
+          VITE_SURREALIST_WEBSITE_BASE: ${{ env.SURREALIST_WEBSITE_BASE }}
+          VITE_SCOUT_COPILOT_ID: ${{ env.SCOUT_COPILOT_ID }}
+          VITE_SCOUT_WORKFLOW_ID: ${{ env.SCOUT_WORKFLOW_ID }}
+          VITE_INTERCOM_APP_ID: ${{ env.INTERCOM_APP_ID }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_PATH: ${{ github.workspace }}/apple-api-key.p8
+          CI: false
+        with:
+          appVersion: surrealist-v${{ needs.version.outputs.version }}
+          releaseId: surrealist-v${{ needs.version.outputs.version }}
+          tagName: surrealist-v${{ needs.version.outputs.version }}
+          args: "${{ matrix.settings.args }}"
+          releaseName: "Surrealist v${{ needs.version.outputs.version }}"
+          releaseBody: Surrealist update v${{ needs.version.outputs.version }}
+          releaseDraft: true
+          prerelease: ${{ inputs.prerelease }}

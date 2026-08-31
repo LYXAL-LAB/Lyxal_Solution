@@ -1,0 +1,25 @@
+[package]
+name = "lyxal-shell-runner"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Lyxal generic shell/exec runner — runs jobs declared with `runner shell { ... }` or `runner exec { ... }` in the Lyxalfile"
+
+[[bin]]
+name = "lyxal-shell-runner"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+lyxal-runner-sdk = { path = "../lyxal-runner-sdk" }
+lyxal-config = { path = "../lyxal-config" }
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+serde_json = "1"
+thiserror = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util", "macros"] }

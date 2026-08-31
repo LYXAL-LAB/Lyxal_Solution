@@ -1,0 +1,219 @@
+$sidebar-thin: 74px;
+$sidebar-wide: 225px;
+
+.root {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	background-color: rgba(from var(--mantine-color-obsidian-8) r g b / 0.25);
+
+	@include light {
+		background-color: rgba(from var(--mantine-color-obsidian-0) r g b / 0.5);
+	}
+
+	&::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		background-image: var(--bg-image);
+		background-position: cover;
+		background-repeat: no-repeat;
+		background-size: cover;
+		opacity: var(--bg-opacity);
+		z-index: 0;
+
+		@include light {
+			display: none;
+		}
+	}
+}
+
+.wrapper {
+	gap: 16px;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	flex-wrap: nowrap;
+
+	@include md-and-up {
+		transition: margin-left .15s ease-out;
+
+		&[data-sidebar-mode="wide"] {
+			margin-left: $sidebar-wide;
+		}
+
+		&[data-sidebar-mode="compact"] {
+			margin-left: $sidebar-thin;
+		}
+	}
+}
+
+.titlebar {
+	user-select: none;
+	cursor: default;
+	color: var(--mantine-color-bright);
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 32px;
+	z-index: 10000;
+
+	@include md-and-up {
+		padding-left: var(--sidebar-offset) !important;
+	}
+}
+
+.toolbar {
+	container-type: inline-size;
+	container-name: toolbar;
+	z-index: 1;
+	padding: var(--mantine-spacing-md);
+
+	@include md-and-up {
+		padding-left: 0;
+	}
+}
+
+.sidebar {
+	z-index: 10;
+	transition: all .15s ease-out;
+	padding-top: var(--titlebar-offset);
+	width: $sidebar-wide;
+
+	&[data-fill] {
+		width: 100%;
+	}
+
+	&[data-is-compact] {
+		width: $sidebar-thin;
+	}
+}
+
+.sidebar-navigation {
+	--fade-amount: 18px;
+
+	mask: linear-gradient(to bottom, transparent, black var(--fade-amount), black calc(100% - var(--fade-amount)), transparent);
+}
+
+.sidebar-update {
+	overflow: visible;
+
+	:global(.mantine-Button-section):where([data-position="left"]) {
+		position: relative;
+
+		>div {
+			animation: update-wiggle 4s linear infinite;
+			transform-origin: center bottom;
+			transition: none;
+		}
+
+		&::before {
+			content: "●";
+			position: absolute;
+			inset: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			color: var(--mantine-color-violet-light);
+			pointer-events: none;
+			animation: update-ripple 4s linear infinite;
+		}
+	}
+}
+
+.logo {
+	&-hat {
+		z-index: 1;
+		transition: all 0.2s ease;
+	}
+
+	&:is(:hover, :focus) &-hat {
+		filter: brightness(1.2);
+		transform: translateY(-1px);
+	}
+
+	&:active &-hat {
+		filter: brightness(0.9);
+		transform: translateY(0);
+	}
+
+	&-hat[data-greet] {
+		transform: translateY(-12px) translateX(-6px) rotate(-25deg) scale(0.6) !important;
+	}
+}
+
+.page-content {
+	padding-top: var(--titlebar-offset);
+}
+
+.page-content-inner {
+	background-color: color-mix(in srgb, var(--mantine-color-obsidian-9) 75%, transparent);
+	border-top: 1px solid var(--mantine-color-obsidian-7);
+	overflow: hidden;
+
+	// Reserve space for the fixed mobile bottom card (matches DOCK_HEIGHT)
+	@include md-and-down {
+		padding-bottom: calc(72px + env(safe-area-inset-bottom));
+	}
+
+	@include md-and-up {
+		border-top-left-radius: var(--mantine-radius-md);
+		border-left: 1px solid var(--mantine-color-obsidian-7);
+	}
+
+	@include light {
+		background-color: var(--mantine-color-obsidian-1);
+		border-color: var(--mantine-color-obsidian-2);
+	}
+}
+
+@keyframes update-ripple {
+	0% {
+		transform: scale(0);
+		opacity: 1;
+	}
+
+	14%,
+	100% {
+		transform: scale(6);
+		opacity: 0;
+	}
+}
+
+@keyframes update-wiggle {
+
+	0%,
+	18%,
+	100% {
+		transform: rotate(0deg);
+	}
+
+	2% {
+		transform: rotate(10deg);
+	}
+
+	4% {
+		transform: rotate(-8deg);
+	}
+
+	6% {
+		transform: rotate(5deg);
+	}
+
+	8% {
+		transform: rotate(-3deg);
+	}
+
+	10% {
+		transform: rotate(1.5deg);
+	}
+
+	12% {
+		transform: rotate(-0.75deg);
+	}
+
+	14% {
+		transform: rotate(0deg);
+	}
+}

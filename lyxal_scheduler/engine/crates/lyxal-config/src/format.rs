@@ -1,0 +1,889 @@
+//! Round-trip safe formatter for Lyxalfile AST.
+//! Preserves comments, blank lines, and quoting style.
+
+use crate::ast::*;
+
+/// Format a Lyxalfile AST back to source text.
+pub fn format(ast: &Lyxalfile) -> String {
+    let mut out = String::new();
+    let mut first = true;
+
+    for item in &ast.items {
+        if !first && !matches!(item, Item::Comment(_)) {
+            out.push('\n');
+        }
+        first = false;
+        format_item(&mut out, item, 0);
+    }
+
+    if !out.ends_with('\n') {
+        out.push('\n');
+    }
+    out
+}
+
+fn format_item(out: &mut String, item: &Item, indent: usize) {
+    match item {
+        Item::Comment(c) => {
+            write_indent(out, indent);
+            out.push_str(&format!("# {}\n", c.text));
+        }
+        Item::Import(i) => {
+            out.push_str(&format!("import {}\n", format_string_value(&i.path)));
+        }
+        Item::Server(s) => {
+            out.push_str("server {\n");
+            format_directives(out, &s.directives, indent + 1);
+            out.push_str("}\n");
+        }
+        Item::Smtp(s) => {
+            out.push_str("smtp {\n");
+            format_directives(out, &s.directives, indent + 1);
+            out.push_str("}\n");
+        }
+        Item::PullApi(p) => {
+            out.push_str("pull_api {\n");
+            format_directives(out, &p.directives, indent + 1);
+            out.push_str("}\n");
+        }
+        Item::Mcp(m) => {
+            out.push_str("mcp {\n");
+            format_directives(out, &m.directives, indent + 1);
+            out.push_str("}\n");
+        }
+        Item::Oidc(o) => {
+            out.push_str("oidc {\n");
+            format_directives(out, &o.directives, indent + 1);
+            out.push_str("}\n");
+        }
+        Item::Auth(a) => {
+            out.push_str("auth {\n");
+            for block in &a.sub_blocks {
+                format_named_block(out, block, indent + 1);
+            }
+            out.push_str("}\n");
+        }
+        Item::Policy(p) => {
+            out.push_str("policy {\n");
+            format_directives(out, &p.directives, indent + 1);
+            out.push_str("}\n");
+        }
+        Item::Alerts(a) => {
+            out.push_str("alerts {\n");
+            for block in &a.sub_blocks {
+                format_named_block(out, block, indent + 1);
+            }
+            out.push_str("}\n");
+        }
+        Item::Observability(o) => {
+            out.push_str("observability {\n");
+            for block in &o.sub_blocks {
+                format_named_block(out, block, indent + 1);
+            }
+            out.push_str("}\n");
+        }
+        Item::Vars(v) => {
+            out.push_str("vars {\n");
+            format_directives(out, &v.entries, indent + 1);
+            out.push_str("}\n");
+        }
+        Item::Defaults(d) => {
+            out.push_str("defaults {\n");
+            format_directives_or_blocks(out, &d.directives, indent + 1);
+            out.push_str("}\n");
+        }
+        Item::Calendar(c) => {
+            out.push_str(&format!("calendar {} {{\n", format_string_value(&c.name)));
+            for rule in &c.rules {
+                format_calendar_rule(out, rule, indent + 1);
+            }
+            out.push_str("}\n");
+        }
+        Item::Job(j) => {
+            format_job(out, j, indent);
+        }
+    }
+}
+
+fn format_job(out: &mut String, job: &JobBlock, indent: usize) {
+    out.push_str(&format!("job {} {{\n", job.key.raw));
+
+    // Description first if present
+    for dob in &job.directives {
+        if let DirectiveOrBlock::Directive(d) = dob
+            && d.key.value == "description"
+        {
+            write_indent(out, indent + 1);
+            out.push_str("description ");
+            out.push_str(&format_string_value(&d.args[0]));
+            out.push('\n');
+            out.push('\n');
+            break;
+        }
+    }
+
+    // Schedule
+    if let Some(ref sched) = job.schedule {
+        format_schedule(out, sched, indent + 1);
+    }
+
+    // Other directives
+    for dob in &job.directives {
+        match dob {
+            DirectiveOrBlock::Directive(d) if d.key.value == "description" => continue,
+            _ => format_directive_or_block(out, dob, indent + 1),
+        }
+    }
+
+    out.push_str("}\n");
+}
+
+fn format_schedule(out: &mut String, sched: &ScheduleNode, indent: usize) {
+    write_indent(out, indent);
+    // Emit the explicit execution-mode prefix (`ephemeral` / `queued`) if the
+    // source carried one. Dropping it is not cosmetic: the schedule-prefix
+    // mode is the semantic source for `execution_mode` and takes precedence
+    // over the `execution_mode` directive and `defaults` (see
+    // compile::compile_job), so a lost prefix silently flips a job's runtime
+    // semantics (issue #336). `queued` must be preserved too — with a
+    // `defaults { execution_mode ephemeral }` block, dropping it would flip
+    // the job to ephemeral.
+    if let Some(mode) = sched.mode {
+        out.push_str(match mode {
+            ScheduleMode::Ephemeral => "ephemeral ",
+            ScheduleMode::Queued => "queued ",
+        });
+    }
+    out.push_str(&format_schedule_line(&sched.kind));
+
+    if sched.options.is_empty() {
+        out.push('\n');
+    } else {
+        out.push_str(" {\n");
+        format_directives(out, &sched.options, indent + 1);
+        write_indent(out, indent);
+        out.push_str("}\n");
+    }
+}
+
+/// Format just the schedule expression line — `every 5 minutes`,
+/// `every day at 09:00`, `once at 2026-…`, `disabled`, … — with no
+/// indentation and no trailing options block.
+///
+/// Public so the WASM bridge (in-browser generator) can reuse the
+/// canonical emitter instead of hand-rolling its own, which drifted
+/// from this one (force-quoted `once`, a dead singular-unit branch).
+pub fn format_schedule_line(kind: &ScheduleKind) -> String {
+    match kind {
+        ScheduleKind::Interval { count, unit } => {
+            let unit_str = match unit {
+                IntervalUnit::Seconds => "second",
+                IntervalUnit::Minutes => "minute",
+                IntervalUnit::Hours => "hour",
+            };
+            // Grammatical singular for a count of 1 (`every 1 minute`, not
+            // `every 1 minutes`); pluralise otherwise. Both forms parse, so
+            // singular input round-trips unchanged (issue #336). The
+            // count-of-1 rule lives in `plural` so every emitter shares it.
+            format!(
+                "every {}",
+                crate::plural::interval_phrase(*count as u64, unit_str)
+            )
+        }
+        ScheduleKind::Daily { time } => format!("every day at {}", time.raw),
+        ScheduleKind::Weekdays { days, time } => {
+            format!("every {} at {}", format_weekday_list(days), time.raw)
+        }
+        ScheduleKind::Monthly { ordinals, time } => {
+            let ords: Vec<String> = ordinals
+                .iter()
+                .map(|o| match o {
+                    MonthOrdinal::Day(d) => format_ordinal(*d),
+                    MonthOrdinal::Last => "last".to_string(),
+                })
+                .collect();
+            format!("every {} of month at {}", ords.join(" "), time.raw)
+        }
+        ScheduleKind::Once { at } => format!("once at {}", format_string_value(at)),
+        ScheduleKind::Disabled => "disabled".to_string(),
+    }
+}
+
+/// 3-letter capitalised weekday name, e.g. `Monday → "Mon"`. Used in
+/// formatter output where the DSL convention since #60 is "3-letter,
+/// no quotes, full names accepted on input."
+pub fn weekday_short(day: Weekday) -> &'static str {
+    match day {
+        Weekday::Monday => "Mon",
+        Weekday::Tuesday => "Tue",
+        Weekday::Wednesday => "Wed",
+        Weekday::Thursday => "Thu",
+        Weekday::Friday => "Fri",
+        Weekday::Saturday => "Sat",
+        Weekday::Sunday => "Sun",
+    }
+}
+
+/// Format a list of weekdays into the canonical compact DSL form.
+///
+/// Rules, applied in order:
+///   1. Mon–Fri (any order, deduped) → `"weekday"` alias.
+///   2. Sat + Sun (any order, deduped) → `"weekend"` alias.
+///   3. Otherwise: dedupe + sort by week order, then collapse any
+///      contiguous run of ≥ 3 days to `Start..End` and emit the rest
+///      as 3-letter singletons. So `[Mon, Tue, Wed]` becomes
+///      `"Mon..Wed"`, `[Mon, Wed, Fri]` stays `"Mon Wed Fri"`, and
+///      `[Mon, Fri, Sat, Sun]` becomes `"Mon Fri..Sun"`.
+///
+/// Wrap-around collapsing (e.g. `Sat..Mon`) is intentionally **not**
+/// performed — emitting an inverse range when the user typed three
+/// scattered days felt surprising. Round-tripping a wrap-around input
+/// (`Fri..Mon`) yields a non-collapsed list (`Mon Fri..Sun`) which is
+/// still semantically equivalent and readable.
+pub fn format_weekday_list(days: &[Weekday]) -> String {
+    if days.is_empty() {
+        return String::new();
+    }
+    // Dedupe via canonical-order index.
+    const ORDER: [Weekday; 7] = [
+        Weekday::Monday,
+        Weekday::Tuesday,
+        Weekday::Wednesday,
+        Weekday::Thursday,
+        Weekday::Friday,
+        Weekday::Saturday,
+        Weekday::Sunday,
+    ];
+    let mut present = [false; 7];
+    for d in days {
+        if let Some(i) = ORDER.iter().position(|x| *x == *d) {
+            present[i] = true;
+        }
+    }
+    let indices: Vec<usize> = present
+        .iter()
+        .enumerate()
+        .filter_map(|(i, p)| if *p { Some(i) } else { None })
+        .collect();
+
+    // Aliases.
+    if indices.as_slice() == [0, 1, 2, 3, 4] {
+        return "weekday".into();
+    }
+    if indices.as_slice() == [5, 6] {
+        return "weekend".into();
+    }
+
+    // Walk for runs.
+    let mut parts: Vec<String> = Vec::new();
+    let mut run_start = indices[0];
+    let mut run_end = indices[0];
+    for &i in &indices[1..] {
+        if i == run_end + 1 {
+            run_end = i;
+        } else {
+            parts.push(emit_run(&ORDER, run_start, run_end));
+            run_start = i;
+            run_end = i;
+        }
+    }
+    parts.push(emit_run(&ORDER, run_start, run_end));
+    parts.join(" ")
+}
+
+fn emit_run(order: &[Weekday; 7], start: usize, end: usize) -> String {
+    let len = end - start + 1;
+    if len >= 3 {
+        format!(
+            "{}..{}",
+            weekday_short(order[start]),
+            weekday_short(order[end])
+        )
+    } else {
+        (start..=end)
+            .map(|i| weekday_short(order[i]))
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+}
+
+fn format_ordinal(day: u8) -> String {
+    let suffix = match day {
+        1 | 21 | 31 => "st",
+        2 | 22 => "nd",
+        3 | 23 => "rd",
+        _ => "th",
+    };
+    format!("{day}{suffix}")
+}
+
+fn format_directives(out: &mut String, directives: &[Directive], indent: usize) {
+    for d in directives {
+        write_indent(out, indent);
+        out.push_str(&format_string_value(&d.key));
+        for arg in &d.args {
+            out.push(' ');
+            out.push_str(&format_string_value(arg));
+        }
+        out.push('\n');
+    }
+}
+
+fn format_directives_or_blocks(out: &mut String, items: &[DirectiveOrBlock], indent: usize) {
+    for item in items {
+        format_directive_or_block(out, item, indent);
+    }
+}
+
+fn format_directive_or_block(out: &mut String, item: &DirectiveOrBlock, indent: usize) {
+    match item {
+        DirectiveOrBlock::Directive(d) => {
+            write_indent(out, indent);
+            out.push_str(&format_string_value(&d.key));
+            for arg in &d.args {
+                out.push(' ');
+                out.push_str(&format_string_value(arg));
+            }
+            out.push('\n');
+        }
+        DirectiveOrBlock::Block(b) => {
+            format_named_block(out, b, indent);
+        }
+        DirectiveOrBlock::Comment(c) => {
+            write_indent(out, indent);
+            out.push_str(&format!("# {}\n", c.text));
+        }
+    }
+}
+
+fn format_named_block(out: &mut String, block: &NamedBlock, indent: usize) {
+    write_indent(out, indent);
+    out.push_str(&format_string_value(&block.name));
+    if let Some(ref q) = block.qualifier {
+        out.push(' ');
+        out.push_str(&format_string_value(q));
+    }
+
+    // Check if block is short enough for inline
+    let all_directives = block
+        .directives
+        .iter()
+        .all(|d| matches!(d, DirectiveOrBlock::Directive(_)));
+    let total_args: usize = block
+        .directives
+        .iter()
+        .map(|d| match d {
+            DirectiveOrBlock::Directive(d) => 1 + d.args.len(),
+            _ => 10, // force multi-line
+        })
+        .sum();
+
+    if all_directives && block.directives.len() <= 4 && total_args <= 8 {
+        // Inline: { key val; key val }
+        out.push_str(" {");
+        for (i, dob) in block.directives.iter().enumerate() {
+            if let DirectiveOrBlock::Directive(d) = dob {
+                if i > 0 {
+                    out.push(';');
+                }
+                out.push(' ');
+                out.push_str(&format_string_value(&d.key));
+                for arg in &d.args {
+                    out.push(' ');
+                    out.push_str(&format_string_value(arg));
+                }
+            }
+        }
+        out.push_str(" }\n");
+    } else {
+        out.push_str(" {\n");
+        format_directives_or_blocks(out, &block.directives, indent + 1);
+        write_indent(out, indent);
+        out.push_str("}\n");
+    }
+}
+
+fn format_calendar_rule(out: &mut String, rule: &CalendarRule, indent: usize) {
+    write_indent(out, indent);
+    out.push_str(&format_calendar_rule_line(rule));
+    out.push('\n');
+}
+
+/// Format a single calendar rule as its canonical DSL line, without
+/// indentation or a trailing newline.
+///
+/// Public so the WASM bridge reuses this instead of hand-rolling its
+/// own emitter (which incorrectly prefixed the `timezone` directive
+/// with `include`/`exclude`).
+pub fn format_calendar_rule_line(rule: &CalendarRule) -> String {
+    let rule_type_lower = rule.rule_type.value.to_ascii_lowercase();
+
+    // `timezone` is a bare directive (`timezone "Europe/Vienna"`), not
+    // an include/exclude rule. The parser stores it as a synthetic
+    // `Include` rule with `rule_type == "timezone"` (see
+    // parser::parse_calendar_rule), so drop the spurious action prefix
+    // here — otherwise round-tripping yields the invalid-looking
+    // `include timezone …`.
+    if rule_type_lower == "timezone" {
+        let mut s = format_string_value(&rule.rule_type);
+        for arg in &rule.args {
+            s.push(' ');
+            s.push_str(&format_string_value(arg));
+        }
+        return s;
+    }
+
+    let kind = match rule.kind {
+        CalendarRuleKind::Include => "include",
+        CalendarRuleKind::Exclude => "exclude",
+    };
+    let mut s = String::from(kind);
+    s.push(' ');
+    s.push_str(&format_string_value(&rule.rule_type));
+
+    // Special case `weekly`: re-collapse the expanded list back to
+    // 3-letter capitalised tokens, dropping quotes and emitting
+    // `Mon..Fri` for runs ≥ 3. This matches the DSL convention from
+    // #60 — pre-expansion the parser stored args like `["monday",
+    // "tuesday", …]` (lowercase full, after PR-D's range expansion).
+    if rule_type_lower == "weekly" {
+        let parsed: Option<Vec<Weekday>> =
+            rule.args.iter().map(|a| Weekday::parse(&a.value)).collect();
+        if let Some(days) = parsed
+            && !days.is_empty()
+        {
+            s.push(' ');
+            s.push_str(&format_weekday_list(&days));
+            return s;
+        }
+        // Fall-through if any arg failed to parse — preserve verbatim
+        // so the user still sees what they wrote and can fix the typo.
+    }
+
+    // Special case `window`: the parser splits `"08:00".."18:00"` into
+    // two endpoint args (the runtime compiler re-splits on `..`), so
+    // re-join them with the range syntax instead of emitting two
+    // space-separated tokens.
+    if rule_type_lower == "window" && rule.args.len() == 2 {
+        s.push(' ');
+        s.push_str(&format_string_value(&rule.args[0]));
+        s.push_str("..");
+        s.push_str(&format_string_value(&rule.args[1]));
+        return s;
+    }
+
+    for arg in &rule.args {
+        s.push(' ');
+        s.push_str(&format_string_value(arg));
+    }
+    s
+}
+
+/// Format a calendar rule given as loose, already-resolved parts —
+/// action (`"include"`/`"exclude"`), rule type, and plain-string args —
+/// as its canonical DSL line: build the loose source line, re-parse it
+/// wrapped in a synthetic calendar block, and re-emit it via
+/// [`format_calendar_rule_line`]. The output therefore matches `croniq
+/// fmt` (weekly collapses to `weekday`/`Mon..Fri`, window endpoints use
+/// the quoted range syntax, `timezone` stays a bare directive). Falls
+/// back to the loose line when it doesn't parse, so callers still
+/// surface what was written.
+///
+/// Shared by the server's DSL-calendar synthesizer
+/// (`dsl_calendar_rules_text`) and the WASM bridge's form-builder
+/// formatter.
+pub fn format_calendar_rule_parts(action: &str, rule_type: &str, args: &[String]) -> String {
+    let loose = loose_calendar_rule_line(action, rule_type, args);
+    reparse_calendar_rule_line(&loose).unwrap_or(loose)
+}
+
+/// Build the loose DSL line for one rule from resolved string parts.
+///
+/// `timezone` is emitted as the bare directive `timezone "<tz>"` — it
+/// is not an include/exclude rule, so the action is ignored. `window`
+/// endpoints are quoted so times like `08:00` survive the lexer
+/// unambiguously. Everything else is a space-joined
+/// `<action> <rule_type> <args…>`.
+fn loose_calendar_rule_line(action: &str, rule_type: &str, args: &[String]) -> String {
+    let rule_type_lower = rule_type.to_ascii_lowercase();
+
+    if rule_type_lower == "timezone" {
+        return match args.first() {
+            Some(tz) => format!("timezone \"{tz}\""),
+            None => "timezone".to_string(),
+        };
+    }
+
+    let action = if action == "exclude" {
+        "exclude"
+    } else {
+        "include"
+    };
+    let body = if args.is_empty() {
+        String::new()
+    } else if rule_type_lower == "window" && args.len() == 2 {
+        format!("\"{}\"..\"{}\"", args[0], args[1])
+    } else {
+        args.join(" ")
+    };
+    if body.is_empty() {
+        format!("{action} {rule_type}")
+    } else {
+        format!("{action} {rule_type} {body}")
+    }
+}
+
+/// Parse a single loose rule line (wrapped in a synthetic calendar) and
+/// re-emit it via the canonical formatter. `None` if it doesn't parse.
+fn reparse_calendar_rule_line(loose: &str) -> Option<String> {
+    let wrapped = format!("calendar preview {{\n{loose}\n}}\n");
+    let ast = crate::parser::Parser::parse(&wrapped).ok()?;
+    let rule = ast.items.iter().find_map(|i| match i {
+        Item::Calendar(c) => c.rules.first(),
+        _ => None,
+    })?;
+    Some(format_calendar_rule_line(rule))
+}
+
+fn format_string_value(val: &StringValue) -> String {
+    if val.is_placeholder {
+        format!("{{{}}}", val.value)
+    } else if val.quoted {
+        format!(
+            "\"{}\"",
+            val.value.replace('\\', "\\\\").replace('"', "\\\"")
+        )
+    } else {
+        val.value.clone()
+    }
+}
+
+fn write_indent(out: &mut String, level: usize) {
+    for _ in 0..level {
+        out.push_str("  ");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::Parser;
+
+    #[test]
+    fn format_roundtrip() {
+        let src = r#"server {
+  listen :9090
+  db sqlite
+}
+
+job etl:sync {
+  every 15 minutes
+  timeout 10m
+}
+"#;
+        let ast = Parser::parse(src).unwrap();
+        let formatted = format(&ast);
+        // Should parse back without error
+        Parser::parse(&formatted).unwrap();
+    }
+
+    #[test]
+    fn format_job_with_runner() {
+        let ast = Parser::parse(
+            r#"job ops:check {
+  every 5 minutes
+  runner { require health-check; require eu-west }
+  timeout 30s
+}"#,
+        )
+        .unwrap();
+        let formatted = format(&ast);
+        assert!(formatted.contains("runner"));
+        assert!(formatted.contains("require health-check"));
+    }
+
+    #[test]
+    fn weekday_list_aliases_take_priority() {
+        assert_eq!(
+            format_weekday_list(&[
+                Weekday::Monday,
+                Weekday::Tuesday,
+                Weekday::Wednesday,
+                Weekday::Thursday,
+                Weekday::Friday,
+            ]),
+            "weekday"
+        );
+        assert_eq!(
+            format_weekday_list(&[Weekday::Saturday, Weekday::Sunday]),
+            "weekend"
+        );
+        // Order of input doesn't matter.
+        assert_eq!(
+            format_weekday_list(&[Weekday::Sunday, Weekday::Saturday]),
+            "weekend"
+        );
+    }
+
+    #[test]
+    fn weekday_list_collapses_runs_of_three_or_more() {
+        // Three-day run → range.
+        assert_eq!(
+            format_weekday_list(&[Weekday::Monday, Weekday::Tuesday, Weekday::Wednesday]),
+            "Mon..Wed"
+        );
+        // Two-day run stays uncollapsed.
+        assert_eq!(
+            format_weekday_list(&[Weekday::Monday, Weekday::Tuesday]),
+            "Mon Tue"
+        );
+        // Singleton.
+        assert_eq!(format_weekday_list(&[Weekday::Wednesday]), "Wed");
+    }
+
+    #[test]
+    fn weekday_list_mixed_runs_and_singletons() {
+        // `Mon Wed Thu Fri` → singleton + 3-run.
+        assert_eq!(
+            format_weekday_list(&[
+                Weekday::Monday,
+                Weekday::Wednesday,
+                Weekday::Thursday,
+                Weekday::Friday,
+            ]),
+            "Mon Wed..Fri"
+        );
+    }
+
+    #[test]
+    fn weekday_list_dedupes() {
+        assert_eq!(
+            format_weekday_list(&[Weekday::Monday, Weekday::Monday, Weekday::Tuesday]),
+            "Mon Tue"
+        );
+    }
+
+    #[test]
+    fn schedule_weekdays_round_trip_to_short_form() {
+        // Long-form input parses correctly, the formatter emits the
+        // canonical short form, and a second parse pass yields the
+        // same Weekdays list.
+        let src = "job demo:k { every monday tuesday wednesday at 09:00 }";
+        let ast = Parser::parse(src).unwrap();
+        let formatted = format(&ast);
+        assert!(formatted.contains("every Mon..Wed at 09:00"));
+        // Re-parse to confirm the new short form is a valid input.
+        let ast2 = Parser::parse(&formatted).unwrap();
+        if let Item::Job(ref j) = ast2.items[0] {
+            if let ScheduleKind::Weekdays { ref days, .. } = j.schedule.as_ref().unwrap().kind {
+                assert_eq!(
+                    *days,
+                    vec![Weekday::Monday, Weekday::Tuesday, Weekday::Wednesday]
+                );
+            } else {
+                panic!("expected Weekdays after round-trip");
+            }
+        }
+    }
+
+    #[test]
+    fn calendar_weekly_round_trip_to_short_form() {
+        let src = r#"calendar biz { include weekly "Mon".."Fri" }"#;
+        let ast = Parser::parse(src).unwrap();
+        let formatted = format(&ast);
+        // "weekday" alias since Mon..Fri is the full business week.
+        assert!(formatted.contains("include weekly weekday"));
+        Parser::parse(&formatted).unwrap();
+    }
+
+    #[test]
+    fn calendar_weekly_alias_round_trip_idempotent() {
+        // #356: the parser now expands `weekday` to five days, the
+        // formatter re-collapses them — the alias must survive fmt
+        // stably in both directions.
+        for alias in ["weekday", "weekend"] {
+            let src = format!("calendar biz {{ include weekly {alias} }}");
+            let once = format(&Parser::parse(&src).unwrap());
+            assert!(
+                once.contains(&format!("include weekly {alias}")),
+                "got:\n{once}"
+            );
+            let twice = format(&Parser::parse(&once).unwrap());
+            assert_eq!(once, twice);
+        }
+    }
+
+    #[test]
+    fn calendar_weekly_three_days_collapses_to_range() {
+        let src = "calendar biz { include weekly Mon Tue Wed }";
+        let ast = Parser::parse(src).unwrap();
+        let formatted = format(&ast);
+        assert!(formatted.contains("include weekly Mon..Wed"));
+    }
+
+    #[test]
+    fn calendar_window_round_trips_with_range_syntax() {
+        let src = r#"calendar biz { include window "08:00".."18:00" }"#;
+        let formatted = format(&Parser::parse(src).unwrap());
+        assert!(
+            formatted.contains(r#"include window "08:00".."18:00""#),
+            "got:\n{formatted}"
+        );
+        // Idempotent and still parses.
+        let twice = format(&Parser::parse(&formatted).unwrap());
+        assert_eq!(formatted, twice);
+    }
+
+    #[test]
+    fn calendar_rule_parts_emit_canonical_lines() {
+        // The loose-parts shape used by the server's CalendarRuleConfig
+        // and the WASM bridge's CalendarRulePayload.
+        assert_eq!(
+            format_calendar_rule_parts("include", "window", &["08:00".into(), "18:00".into()]),
+            r#"include window "08:00".."18:00""#
+        );
+        assert_eq!(
+            format_calendar_rule_parts(
+                "include",
+                "weekly",
+                &[
+                    "monday".into(),
+                    "tuesday".into(),
+                    "wednesday".into(),
+                    "thursday".into(),
+                    "friday".into(),
+                ],
+            ),
+            "include weekly weekday"
+        );
+        assert_eq!(
+            format_calendar_rule_parts("exclude", "annual", &["12-25".into(), "12-26".into()]),
+            "exclude annual 12-25 12-26"
+        );
+        assert_eq!(
+            format_calendar_rule_parts("include", "timezone", &["Europe/Vienna".into()]),
+            r#"timezone "Europe/Vienna""#
+        );
+    }
+
+    #[test]
+    fn calendar_rule_parts_fall_back_verbatim_when_unparseable() {
+        // An embedded quote breaks the lexer — the loose line is
+        // returned as-is so the caller still sees what was written.
+        let line = format_calendar_rule_parts("include", "weekly", &["mon\"day".into()]);
+        assert_eq!(line, "include weekly mon\"day");
+    }
+
+    #[test]
+    fn calendar_timezone_stays_bare_directive() {
+        // The parser stores `timezone "…"` as a synthetic Include rule.
+        // The formatter must NOT re-emit it as `include timezone …`.
+        let src = r#"calendar biz {
+  timezone "Europe/Vienna"
+  include weekly Mon Tue Wed Thu Fri
+}"#;
+        let ast = Parser::parse(src).unwrap();
+        let formatted = format(&ast);
+        assert!(
+            formatted.contains("timezone \"Europe/Vienna\""),
+            "got:\n{formatted}"
+        );
+        assert!(
+            !formatted.contains("include timezone"),
+            "timezone must not be prefixed with include:\n{formatted}"
+        );
+        // And it must round-trip cleanly.
+        Parser::parse(&formatted).unwrap();
+    }
+
+    #[test]
+    fn format_preserves_ephemeral_prefix() {
+        // Issue #336: `fmt` dropped the `ephemeral` schedule prefix, which
+        // silently flipped the compiled `execution_mode` from ephemeral to
+        // queued. The prefix must survive a round-trip.
+        let src = r#"job demo:poll {
+  ephemeral every 1 minute
+  runner { require worker }
+  timeout 2 minutes
+}"#;
+        let ast = Parser::parse(src).unwrap();
+        let formatted = format(&ast);
+        assert!(
+            formatted.contains("ephemeral every 1 minute"),
+            "ephemeral prefix must be retained:\n{formatted}"
+        );
+        // Re-parse and confirm the mode survived at the AST level (this is
+        // what compile reads to set execution_mode).
+        let ast2 = Parser::parse(&formatted).unwrap();
+        if let Item::Job(ref j) = ast2.items[0] {
+            assert_eq!(
+                j.schedule.as_ref().unwrap().mode,
+                Some(ScheduleMode::Ephemeral),
+                "mode must round-trip as Ephemeral:\n{formatted}"
+            );
+        } else {
+            panic!("expected a job item");
+        }
+    }
+
+    #[test]
+    fn format_preserves_queued_prefix() {
+        // The `queued` prefix must survive too: it takes precedence over a
+        // `defaults { execution_mode ephemeral }` block, so dropping it is
+        // not a semantic no-op (issue #336).
+        let src = "job demo:beat { queued every 5 minutes }";
+        let ast = Parser::parse(src).unwrap();
+        let formatted = format(&ast);
+        assert!(
+            formatted.contains("queued every 5 minutes"),
+            "queued prefix must be retained:\n{formatted}"
+        );
+    }
+
+    #[test]
+    fn format_interval_uses_singular_unit_for_count_one() {
+        // Issue #336: `every 1 minute` must not be rewritten to the
+        // ungrammatical `every 1 minutes`. Counts other than 1 stay plural.
+        assert_eq!(
+            format_schedule_line(&ScheduleKind::Interval {
+                count: 1,
+                unit: IntervalUnit::Minutes,
+            }),
+            "every 1 minute"
+        );
+        assert_eq!(
+            format_schedule_line(&ScheduleKind::Interval {
+                count: 1,
+                unit: IntervalUnit::Seconds,
+            }),
+            "every 1 second"
+        );
+        assert_eq!(
+            format_schedule_line(&ScheduleKind::Interval {
+                count: 1,
+                unit: IntervalUnit::Hours,
+            }),
+            "every 1 hour"
+        );
+        assert_eq!(
+            format_schedule_line(&ScheduleKind::Interval {
+                count: 2,
+                unit: IntervalUnit::Minutes,
+            }),
+            "every 2 minutes"
+        );
+    }
+
+    #[test]
+    fn schedule_once_stays_unquoted() {
+        // `once at <datetime>` is canonical unquoted; the formatter must
+        // preserve that (the WASM bridge previously force-quoted it).
+        let src = "job migration:v2 { once at 2026-04-01T03:00:00Z }";
+        let ast = Parser::parse(src).unwrap();
+        let formatted = format(&ast);
+        assert!(
+            formatted.contains("once at 2026-04-01T03:00:00Z"),
+            "got:\n{formatted}"
+        );
+    }
+}

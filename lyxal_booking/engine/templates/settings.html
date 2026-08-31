@@ -1,0 +1,350 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Settings — calrs{% endblock %}
+{% block dashboard_content %}
+<div class="card">
+  <h1>Profile & Settings</h1>
+
+  {% if success %}
+    <div class="success" style="margin-top: 1rem; padding: 0.75rem 1rem; border-radius: var(--radius); background: var(--success-bg, #e6f9e6); color: var(--success, #2d7a2d); border: 1px solid var(--success, #2d7a2d);">{{ success }}</div>
+  {% endif %}
+
+  {% if error %}
+    <div class="error" style="margin-top: 1rem;">{{ error }}</div>
+  {% endif %}
+
+  {% if username %}
+  <div style="margin-top: 1.25rem; margin-bottom: 1.5rem; padding: 1rem; border-radius: var(--radius); background: var(--accent-subtle, rgba(99,102,241,0.06)); border: 1px solid var(--accent-border, rgba(99,102,241,0.2));">
+    <label style="display: block; font-weight: 500; margin-bottom: 0.5rem; font-size: 0.875rem;">Your public booking page</label>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+      <input type="text" id="public-url" readonly value="" style="flex: 1; font-size: 0.85rem; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-family: monospace;">
+      <button type="button" id="copy-url-btn" class="slot-btn" style="cursor: pointer; font-weight: 600; color: var(--accent); border-color: var(--accent); white-space: nowrap;">Copy</button>
+      <a id="open-url-link" href="" target="_blank" rel="noopener noreferrer" class="slot-btn" style="text-decoration: none; font-size: 0.85rem; white-space: nowrap;">Open &#8599;</a>
+    </div>
+  </div>
+  <script>
+  (function() {
+    var url = window.location.origin + '/u/{{ username }}';
+    document.getElementById('public-url').value = url;
+    document.getElementById('open-url-link').href = url;
+    document.getElementById('copy-url-btn').addEventListener('click', function() {
+      var btn = this;
+      navigator.clipboard.writeText(url).then(function() {
+        btn.textContent = 'Copied!';
+        btn.style.color = 'var(--success)';
+        btn.style.borderColor = 'var(--success)';
+        setTimeout(function() { btn.textContent = 'Copy'; btn.style.color = 'var(--accent)'; btn.style.borderColor = 'var(--accent)'; }, 1500);
+      });
+    });
+  })();
+  </script>
+  {% endif %}
+
+  <!-- Avatar -->
+  <div style="margin-top: 1.25rem; margin-bottom: 1.5rem;">
+    <label style="display: block; font-weight: 500; margin-bottom: 0.5rem; font-size: 0.875rem;">Avatar</label>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 1.25rem; flex-shrink: 0; overflow: hidden;">
+        {% if has_avatar %}
+          <img src="/avatar/{{ user_id }}" alt="" style="width: 100%; height: 100%; object-fit: cover;">
+        {% else %}
+          {{ form_initials }}
+        {% endif %}
+      </div>
+      <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+        <form method="post" action="/dashboard/settings/avatar" enctype="multipart/form-data" style="margin: 0; display: flex; gap: 0.5rem; align-items: center;">
+          <input type="file" name="avatar" accept="image/*" required style="font-size: 0.85rem;">
+          <button type="submit" class="slot-btn" style="cursor: pointer; font-weight: 600; color: var(--accent); border-color: var(--accent);">Upload</button>
+        </form>
+        {% if has_avatar %}
+        <form method="post" action="/dashboard/settings/avatar/delete" style="margin: 0;">
+          <button type="submit" class="slot-btn" style="cursor: pointer; font-size: 0.85rem; color: var(--error-text);">Remove</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <form method="POST" style="margin-top: 0;">
+    <div class="form-group">
+      <label for="name">Display name</label>
+      <input type="text" id="name" name="name" required maxlength="255" value="{{ form_name }}" placeholder="Your name">
+    </div>
+
+    <div class="form-group">
+      <label for="username">Username <span class="hint">(used in your booking URL)</span></label>
+      <input type="text" id="username" name="username" required maxlength="100" value="{{ username }}" placeholder="alice-martin" pattern="[a-z0-9\-]+" title="Lowercase letters, numbers, and dashes only">
+      <span class="hint" style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">Your public booking page: /u/{{ username }}</span>
+    </div>
+
+    <div class="form-group">
+      <label for="title">Title</label>
+      <input type="text" id="title" name="title" value="{{ form_title }}" placeholder="e.g. Software Engineer, Product Manager">
+      <span class="hint" style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">Shown on your public profile and in the sidebar.</span>
+    </div>
+
+    <div class="form-group" style="opacity: 0.7;">
+      <label for="bio">Bio <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">(Champ non pris en charge temporairement)</span></label>
+      <div style="border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface-hover);">
+        <textarea id="bio" name="bio" rows="3" disabled placeholder="Bio temporairement désactivée dans cette version..." style="border: none; border-radius: 0; width: 100%; resize: none; padding: 0.5rem 0.75rem; font-family: inherit; font-size: 0.9rem; background: var(--surface-hover); color: var(--text-muted); box-sizing: border-box; cursor: not-allowed;">{{ form_bio }}</textarea>
+      </div>
+      <span class="hint" style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">La persistance de la bio fera l'objet d'une migration de schéma dédiée dans une version ultérieure.</span>
+    </div>
+
+    <div class="form-group">
+      <label for="booking_email">Booking email</label>
+      <input type="email" id="booking_email" name="booking_email" maxlength="255" value="{{ form_booking_email }}" placeholder="{{ user_email }}">
+      <span class="hint" style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">This email will appear on your public booking pages and in email notifications. Leave empty to use your login email.</span>
+      <span style="font-size: 0.8rem; color: var(--warning, #b08800); display: block; margin-top: 0.25rem;">Make sure this email exists on your mail provider. If it doesn't, notifications won't be delivered.</span>
+    </div>
+
+    <div class="form-group">
+      <label for="timezone">Timezone</label>
+      <select id="timezone" name="timezone" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 0.9rem;">
+        {% for tz in tz_options %}
+          <option value="{{ tz.value }}" {% if tz.value == form_timezone %}selected{% endif %}>{{ tz.label }}</option>
+        {% endfor %}
+      </select>
+      <span class="hint" style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">Your availability rules and booking times are computed in this timezone.</span>
+    </div>
+
+    <div class="form-group">
+      <label for="language">Language</label>
+      <select id="language" name="language" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 0.9rem;">
+        <option value="auto" {% if not form_language %}selected{% endif %}>Auto (browser default)</option>
+        {% for lang in lang_options %}
+          <option value="{{ lang.value }}" {% if lang.value == form_language %}selected{% endif %}>{{ lang.label }}</option>
+        {% endfor %}
+      </select>
+      <span class="hint" style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">Pick a UI language, or leave on Auto to follow your browser's setting.</span>
+    </div>
+
+    <div class="form-group" style="margin-top: 1rem;">
+      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+        <input type="checkbox" name="allow_dynamic_group" {% if allow_dynamic_group %}checked{% endif %} style="width: auto;">
+        Allow others to include me in dynamic group links
+      </label>
+      <span class="hint" style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">When enabled, other users can create ad-hoc collective meeting URLs that include you (e.g. <code>/u/you+them/meeting</code>).</span>
+    </div>
+
+    <div class="form-group" style="margin-top: 1rem;">
+      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+        <input type="checkbox" name="lend_resource_write" {% if lend_resource_write %}checked{% endif %} style="width: auto;">
+        Lend my calendar access for resource reservations
+      </label>
+      <span class="hint" style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">When a booking needs to reserve a shared resource (demo lab, meeting room) that your calendar account can write to, allow calrs to use your stored calendar credentials for that write.</span>
+    </div>
+
+    <div id="availability" style="border-top: 1px solid var(--border); padding-top: 1.25rem; margin-top: 1.25rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <h3 style="font-size: 0.95rem; margin-bottom: 0;">Default availability</h3>
+        <button type="button" id="copy-to-all-btn" style="padding: 0.25rem 0.625rem; border: 1px solid var(--border); border-radius: var(--radius); background: transparent; color: var(--text-muted); cursor: pointer; font-size: 0.75rem; transition: all 0.15s ease;" title="Copy the first enabled day's windows to all other enabled days">Copy to all days</button>
+      </div>
+      <span class="hint" style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.75rem;">Your default working hours. Used for dynamic group links when others include you in a meeting.</span>
+      <div id="schedule-container" style="display: flex; flex-direction: column; gap: 0.25rem;"></div>
+      <input type="hidden" name="avail_schedule" id="avail_schedule" value="{{ form_avail_schedule | default(value='') }}">
+    </div>
+
+    <button type="submit" class="btn" style="margin-top: 1.5rem;">Save settings</button>
+  </form>
+</div>
+
+<div class="card" style="margin-top: 1.25rem;">
+  <h2 style="font-size: 1rem; margin-bottom: 0.75rem;">Appearance</h2>
+  <div id="theme-picker" style="display: flex; gap: 0.5rem;">
+    <button type="button" data-theme="system" class="slot-btn" style="cursor: pointer; font-size: 0.85rem; padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.375rem;">
+      <span style="font-size: 0.9rem;">&#128187;</span> System
+    </button>
+    <button type="button" data-theme="light" class="slot-btn" style="cursor: pointer; font-size: 0.85rem; padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.375rem;">
+      <span style="font-size: 0.9rem;">&#9728;&#65039;</span> Light
+    </button>
+    <button type="button" data-theme="dark" class="slot-btn" style="cursor: pointer; font-size: 0.85rem; padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.375rem;">
+      <span style="font-size: 0.9rem;">&#127769;</span> Dark
+    </button>
+  </div>
+  <script>
+  (function() {
+    var current = localStorage.getItem('calrs_theme') || 'system';
+    var btns = document.querySelectorAll('#theme-picker button');
+    function applyActive() {
+      btns.forEach(function(b) {
+        if (b.dataset.theme === current) {
+          b.style.borderColor = 'var(--accent)';
+          b.style.color = 'var(--accent)';
+          b.style.fontWeight = '600';
+        } else {
+          b.style.borderColor = '';
+          b.style.color = '';
+          b.style.fontWeight = '';
+        }
+      });
+    }
+    btns.forEach(function(b) {
+      b.addEventListener('click', function() {
+        current = b.dataset.theme;
+        if (current === 'system') {
+          localStorage.removeItem('calrs_theme');
+        } else {
+          localStorage.setItem('calrs_theme', current);
+        }
+        applyActive();
+        // Apply theme immediately
+        var isDark = current === 'dark' || (current === 'system' && matchMedia('(prefers-color-scheme:dark)').matches);
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+        // Update footer toggle icon if present
+        var icon = document.getElementById('theme-icon');
+        if (icon) icon.textContent = isDark ? '\u2600\uFE0F' : '\uD83C\uDF19';
+      });
+    });
+    applyActive();
+  })();
+
+  </script>
+</div>
+
+<script>
+// --- Per-day default availability schedule ---
+(function() {
+  var container = document.getElementById('schedule-container');
+  if (!container) return;
+  var hidden = document.getElementById('avail_schedule');
+  var dayShort = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var schedule = {};
+
+  function parseSchedule(str) {
+    var s = {};
+    if (!str || !str.trim()) return s;
+    str.trim().split(';').forEach(function(seg) {
+      seg = seg.trim();
+      if (!seg) return;
+      var parts = seg.split(':');
+      if (parts.length < 2) return;
+      var day = parseInt(parts[0], 10);
+      if (isNaN(day) || day < 0 || day > 6) return;
+      var wins = parts.slice(1).join(':').split(',').map(function(w) {
+        var t = w.trim().split('-');
+        return t.length === 2 && t[0] && t[1] ? { start: t[0].trim(), end: t[1].trim() } : null;
+      }).filter(Boolean);
+      if (wins.length) s[day] = wins;
+    });
+    return s;
+  }
+
+  function serializeSchedule() {
+    var parts = [];
+    for (var d = 0; d <= 6; d++) {
+      if (schedule[d] && schedule[d].length) {
+        var ws = schedule[d].map(function(w) { return w.start + '-' + w.end; }).join(',');
+        parts.push(d + ':' + ws);
+      }
+    }
+    hidden.value = parts.join(';');
+  }
+
+  function timeSelectHtml(cls, val) {
+    var opts = '';
+    for (var h = 0; h < 24; h++) {
+      for (var m = 0; m < 60; m += 30) {
+        var t = (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+        opts += '<option value="' + t + '"' + (t === val ? ' selected' : '') + '>' + t + '</option>';
+      }
+    }
+    return '<select class="' + cls + '" style="padding:0.4rem 0.5rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);font-family:inherit;font-size:0.85rem;min-width:90px;">' + opts + '</select>';
+  }
+
+  function renderSchedule() {
+    container.innerHTML = '';
+    for (var d = 0; d <= 6; d++) {
+      var enabled = !!schedule[d];
+      var dayRow = document.createElement('div');
+      dayRow.style.cssText = 'display:flex;align-items:flex-start;gap:0.75rem;padding:0.5rem 0;' + (d < 6 ? 'border-bottom:1px solid var(--border);' : '');
+
+      var toggle = document.createElement('input');
+      toggle.type = 'checkbox';
+      toggle.checked = enabled;
+      toggle.style.cssText = 'accent-color:var(--accent);width:1rem;height:1rem;margin-top:0.3rem;cursor:pointer;flex-shrink:0;';
+      toggle.addEventListener('change', (function(day) {
+        return function() {
+          if (this.checked) { schedule[day] = [{ start: '09:00', end: '17:00' }]; }
+          else { delete schedule[day]; }
+          renderSchedule(); serializeSchedule();
+        };
+      })(d));
+      dayRow.appendChild(toggle);
+
+      var label = document.createElement('div');
+      label.style.cssText = 'width:80px;font-size:0.875rem;font-weight:500;padding-top:0.25rem;flex-shrink:0;' + (!enabled ? 'color:var(--text-muted);' : '');
+      label.textContent = dayShort[d];
+      dayRow.appendChild(label);
+
+      var winsDiv = document.createElement('div');
+      winsDiv.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:0.375rem;min-width:0;';
+
+      if (enabled) {
+        schedule[d].forEach(function(w, wi) {
+          var winRow = document.createElement('div');
+          winRow.style.cssText = 'display:flex;align-items:center;gap:0.375rem;flex-wrap:wrap;';
+          winRow.innerHTML = timeSelectHtml('tw-s', w.start) + '<span style="color:var(--text-muted);font-size:0.8rem;">\u2013</span>' + timeSelectHtml('tw-e', w.end);
+          winRow.querySelector('.tw-s').addEventListener('change', (function(day, idx) {
+            return function() { schedule[day][idx].start = this.value; serializeSchedule(); };
+          })(d, wi));
+          winRow.querySelector('.tw-e').addEventListener('change', (function(day, idx) {
+            return function() { schedule[day][idx].end = this.value; serializeSchedule(); };
+          })(d, wi));
+          if (wi === schedule[d].length - 1) {
+            var addBtn = document.createElement('button');
+            addBtn.type = 'button'; addBtn.textContent = '+'; addBtn.title = 'Add time window';
+            addBtn.style.cssText = 'padding:0.2rem 0.5rem;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text-muted);cursor:pointer;font-size:0.85rem;line-height:1;';
+            addBtn.addEventListener('click', (function(day) {
+              return function() { schedule[day].push({ start: '09:00', end: '17:00' }); renderSchedule(); serializeSchedule(); };
+            })(d));
+            winRow.appendChild(addBtn);
+          }
+          if (schedule[d].length > 1) {
+            var rmBtn = document.createElement('button');
+            rmBtn.type = 'button'; rmBtn.innerHTML = '&times;'; rmBtn.title = 'Remove window';
+            rmBtn.style.cssText = 'padding:0.2rem 0.4rem;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:1rem;line-height:1;';
+            rmBtn.addEventListener('click', (function(day, idx) {
+              return function() { schedule[day].splice(idx, 1); renderSchedule(); serializeSchedule(); };
+            })(d, wi));
+            winRow.appendChild(rmBtn);
+          }
+          winsDiv.appendChild(winRow);
+        });
+      }
+      dayRow.appendChild(winsDiv);
+      container.appendChild(dayRow);
+    }
+  }
+
+  document.getElementById('copy-to-all-btn').addEventListener('click', function() {
+    var source = null;
+    for (var d = 0; d <= 6; d++) { if (schedule[d] && schedule[d].length) { source = d; break; } }
+    if (source === null) return;
+    var windows = JSON.parse(JSON.stringify(schedule[source]));
+    for (var d = 0; d <= 6; d++) { if (schedule[d]) { schedule[d] = JSON.parse(JSON.stringify(windows)); } }
+    renderSchedule(); serializeSchedule();
+    var btn = document.getElementById('copy-to-all-btn');
+    btn.textContent = 'Copied!'; btn.style.color = 'var(--success)'; btn.style.borderColor = 'var(--success)';
+    setTimeout(function() { btn.textContent = 'Copy to all days'; btn.style.color = ''; btn.style.borderColor = ''; }, 1500);
+  });
+
+  var savedSchedule = hidden.value.trim();
+  if (savedSchedule) { schedule = parseSchedule(savedSchedule); }
+  if (!Object.keys(schedule).length) {
+    for (var d = 1; d <= 5; d++) { schedule[d] = [{ start: '09:00', end: '17:00' }]; }
+  }
+  renderSchedule();
+  serializeSchedule();
+})();
+
+// Scroll to #availability anchor if present
+if (window.location.hash === '#availability') {
+  var el = document.getElementById('availability');
+  if (el) setTimeout(function() { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+}
+</script>
+{% endblock %}

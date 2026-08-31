@@ -1,0 +1,5 @@
+.scroller {
+	--fade-amount: 25px;
+
+	mask: linear-gradient(to bottom, transparent, black var(--fade-amount), black calc(100% - var(--fade-amount)), transparent);
+}

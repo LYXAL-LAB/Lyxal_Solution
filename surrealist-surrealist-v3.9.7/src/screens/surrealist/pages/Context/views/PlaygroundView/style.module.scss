@@ -1,0 +1,166 @@
+.root {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+.workspace {
+	flex: 1;
+	min-height: 0;
+	display: grid;
+	grid-template-columns: 1fr;
+	grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr);
+	gap: var(--mantine-spacing-md);
+	padding: var(--mantine-spacing-md);
+	height: 100%;
+
+	@include lg-and-up {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		grid-template-rows: minmax(0, 1fr);
+	}
+}
+
+.chat-pane,
+.activity-pane {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	height: 100%;
+	overflow: hidden;
+}
+
+.chat-body {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.thread {
+	flex: 1;
+	min-height: 0;
+}
+
+.thread-inner {
+	display: flex;
+	flex-direction: column;
+	gap: var(--mantine-spacing-md);
+	padding: var(--mantine-spacing-xl);
+}
+
+.composer {
+	flex-shrink: 0;
+}
+
+.activity-scroll {
+	flex: 1;
+	min-height: 0;
+}
+
+.activity-section {
+	min-height: 0;
+}
+
+.hit-card {
+	@include light {
+		background: var(--mantine-color-slate-0);
+	}
+}
+
+.message {
+	position: relative;
+}
+
+.message-action {
+	opacity: 0;
+	transition: opacity 120ms ease;
+
+	.message:hover &,
+	.message:focus-within & {
+		opacity: 1;
+	}
+}
+
+// Pointer-less devices can't hover, so keep the action reachable there.
+@media (hover: none) {
+	.message-action {
+		opacity: 1;
+	}
+}
+
+.drop-overlay {
+	position: absolute;
+	inset: var(--mantine-spacing-sm);
+	z-index: 5;
+	border-radius: var(--mantine-radius-lg);
+	border: 2px dashed var(--mantine-color-violet-5);
+	background: color-mix(in srgb, var(--mantine-color-violet-5) 12%, transparent);
+	backdrop-filter: blur(2px);
+	// Let drag/drop events fall through to the chat-body handler underneath.
+	pointer-events: none;
+}
+
+.clamp {
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.pulse-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--mantine-color-violet-4);
+	box-shadow: 0 0 0 0 color-mix(in srgb, var(--mantine-color-violet-4) 60%, transparent);
+	animation: playground-pulse 1.8s ease-in-out infinite;
+	flex-shrink: 0;
+}
+
+.trace {
+	font-family: var(--mantine-font-family-monospace);
+	font-size: 10px;
+	letter-spacing: 0.02em;
+	overflow-wrap: anywhere;
+}
+
+.fade-in {
+	animation: bubble-in 220ms ease-out;
+}
+
+@keyframes bubble-in {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes playground-pulse {
+	0% {
+		box-shadow: 0 0 0 0 color-mix(in srgb, var(--mantine-color-violet-4) 55%, transparent);
+	}
+
+	70% {
+		box-shadow: 0 0 0 7px color-mix(in srgb, var(--mantine-color-violet-4) 0%, transparent);
+	}
+
+	100% {
+		box-shadow: 0 0 0 0 color-mix(in srgb, var(--mantine-color-violet-4) 0%, transparent);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.pulse-dot,
+	.fade-in {
+		animation: none;
+	}
+}

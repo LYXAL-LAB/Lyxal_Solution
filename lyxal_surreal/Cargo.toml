@@ -1,0 +1,18 @@
+[package]
+name = "lyxal_surreal"
+version = "0.1.0"
+edition = "2021"
+description = "Client générique et exécuteur de fonctions SurrealQL pour l'écosystème Lyxal OS"
+
+[dependencies]
+surrealdb = { version = "2.2", features = ["protocol-ws", "kv-mem"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+async-trait = "0.1"
+thiserror = "1.0"
+lyxal_error = { path = "../lyxal_error" }
+axum = { version = "0.7", optional = true }
+
+[features]
+default = []
+axum = ["dep:axum", "lyxal_error/axum"]

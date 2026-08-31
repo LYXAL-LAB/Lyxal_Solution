@@ -1,0 +1,31 @@
+.hero {
+	position: relative;
+	overflow: hidden;
+}
+
+.hero-art {
+	position: absolute;
+	bottom: -58px;
+	right: 10px;
+	width: 220px;
+	pointer-events: none;
+	mix-blend-mode: plus-lighter;
+	opacity: 0.1;
+
+	@include md-and-up {
+		opacity: 0.5;
+	}
+}
+
+.preview {
+	background-color: var(--surreal-glass-subtle);
+	border-radius: var(--mantine-radius-xs);
+	cursor: pointer;
+	// user-select: text;
+
+	input {
+		// user-select: text;
+		font-family: var(--mantine-font-family-monospace);
+		color: var(--mantine-color-bright);
+	}
+}

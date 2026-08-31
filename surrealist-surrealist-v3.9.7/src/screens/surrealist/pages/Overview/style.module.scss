@@ -1,0 +1,88 @@
+.start-blog,
+.start-cloud,
+.start-connection,
+.start-creator,
+.start-instance,
+.start-placeholder,
+.start-resource {
+	position: relative;
+	overflow: hidden;
+}
+
+.start-creator,
+.start-connection,
+.start-instance,
+.start-placeholder {
+	height: 112px;
+	display: flex;
+	flex-direction: column;
+}
+
+.start-creator {
+	color: var(--mantine-color-text);
+}
+
+.start-blog {
+	background: unset !important;
+	background-color: var(--mantine-color-body) !important;
+}
+
+.start-blog-arrow {
+	transition: transform 0.2s;
+	transform: scaleX(-1);
+}
+
+.start-resource {
+	height: 82px;
+}
+
+.start-blog-header {
+	background-position: center;
+	background-size: cover;
+	background-image: linear-gradient(to bottom, transparent, var(--mantine-color-obsidian-9)), var(--image-url);
+}
+
+.start-blog:hover .start-blog-arrow {
+	transform: scaleX(-1) translateX(-0.25rem);
+}
+
+.cloud-image {
+	width: 275px;
+	height: 275px;
+	position: absolute;
+	right: 0px;
+	opacity: 0.2;
+	bottom: -88px;
+	z-index: 0;
+	transition: bottom 0.5s ease;
+	filter: grayscale(100%);
+	mix-blend-mode: plus-lighter;
+
+	@include sm-and-up {
+		opacity: 1;
+		right: 50px;
+		filter: none;
+		mix-blend-mode: normal;
+	}
+}
+
+.cloud-glow {
+	width: 900px;
+	height: 900px;
+	position: absolute;
+	right: -400px;
+	bottom: -450px;
+	z-index: 0;
+	opacity: 0.3;
+	transition: opacity 0.5s ease;
+}
+
+.start-cloud:hover {
+	.cloud-image {
+		bottom: -78px;
+	}
+
+	.cloud-glow {
+		opacity: 0.5;
+	}
+}

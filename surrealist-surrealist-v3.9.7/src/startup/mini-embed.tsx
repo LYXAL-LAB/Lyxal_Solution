@@ -1,0 +1,55 @@
+import "@mantine/core/styles.layer.css";
+import "@mantine/notifications/styles.css";
+import "@surrealdb/ui/styles.css";
+import "@surrealdb/ui/fonts.css";
+
+import "../assets/styles/layers.scss";
+import "../assets/styles/global.scss";
+import "../assets/styles/override.scss";
+import "../assets/styles/variants.scss";
+
+import "../adapter";
+
+import { createRoot } from "react-dom/client";
+import { MiniRunScreen } from "~/screens/mini-embed";
+import { openConnection } from "~/screens/surrealist/pages/Connection/connection/connection";
+import { startConfigSync } from "~/util/config";
+import { handleWindowMessage } from "~/util/messaging";
+import { configureDayjs } from "~/util/timezone";
+import { adapter } from "../adapter";
+import type { MiniAdapter } from "../adapter/mini";
+
+(async () => {
+	configureDayjs();
+
+	// Synchronize the config to the store
+	await startConfigSync();
+
+	// Initialize adapter
+	await adapter.initialize();
+
+	// Render the app component
+	const root = document.querySelector("#root");
+
+	if (!root) {
+		throw new Error("Root element not found");
+	}
+
+	createRoot(root).render(<MiniRunScreen />);
+
+	// Connect and initialize the dataset
+	openConnection().then(() => {
+		setTimeout(async () => {
+			const adp = adapter as MiniAdapter;
+
+			// Load dataset / setup queries, then autorun (if configured)
+			await adp.initializeContent();
+
+			// Notify the parent window that the app is ready
+			adp.broadcastReady();
+		}, 150);
+	});
+
+	// Listen for window messages
+	window.addEventListener("message", handleWindowMessage, false);
+})();

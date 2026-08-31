@@ -1,0 +1,740 @@
+import type { MantineColor, MantineColorScheme } from "@mantine/core";
+import {
+	iconAPI,
+	iconAuth,
+	iconBraces,
+	iconChart,
+	iconChat,
+	iconCheck,
+	iconChevronUp,
+	iconCog,
+	iconCombined,
+	iconDatabase,
+	iconDataTable,
+	iconDesigner,
+	iconErrorCircle,
+	iconExplorer,
+	iconEye,
+	iconEyeOff,
+	iconFile,
+	iconFolderSecure,
+	iconFunction,
+	iconGraphql,
+	iconGrid,
+	iconHelp,
+	iconIntegration,
+	iconKey,
+	iconLive,
+	iconMemory,
+	iconPause,
+	iconQuery,
+	iconReferral,
+	iconRefresh,
+	iconRelation,
+	iconSandbox,
+	iconSearch,
+	iconTable,
+	iconTag,
+	iconTransfer,
+	iconVariable,
+	iconWarning,
+	iconXml,
+} from "@surrealdb/ui";
+import { satisfies } from "compare-versions";
+import flagIE from "flag-icons/flags/4x3/ie.svg";
+import flagIN from "flag-icons/flags/4x3/in.svg";
+import flagUS from "flag-icons/flags/4x3/us.svg";
+import type {
+	AuthMode,
+	ConnectionSettingsTab,
+	ContextSettingsTab,
+	ContextViewPage,
+	ContextViewPageInfo,
+	DiagramAlgorithm,
+	DiagramDirection,
+	DiagramHoverFocus,
+	DiagramLineStyle,
+	DiagramLinks,
+	DiagramMode,
+	DiagramStrategy,
+	Driver,
+	EditorKeymap,
+	GlobalPage,
+	GlobalPageInfo,
+	Listable,
+	Monitor,
+	MonitorSeverity,
+	NoneResultMode,
+	Orientation,
+	PlanPeriod,
+	Protocol,
+	ResultFormat,
+	ResultMode,
+	ScaleStep,
+	SchemaMode,
+	Selectable,
+	SidebarMode,
+	SupportRequestType,
+	SyntaxTheme,
+	TableVariant,
+	ViewPage,
+	ViewPageInfo,
+} from "./types";
+import {
+	CIcon,
+	DotNetIcon,
+	GoLangIcon,
+	JavaIcon,
+	JavaScriptIcon,
+	PhpIcon,
+	PythonIcon,
+	RustIcon,
+	SurrealIcon,
+} from "./util/drivers";
+
+export type StructureTab = "graph" | "builder";
+export type ProtocolOption = Selectable<Protocol> & { remote: boolean };
+
+export const SANDBOX = "sandbox";
+export const MAX_HISTORY_SIZE = 50;
+export const MAX_HISTORY_QUERY_LENGTH = 7500;
+export const MAX_LIVE_MESSAGES = 50;
+export const SALES_ENQUIRY_TAG = "11403616";
+export const INSTANCE_CONFIG = "instance.json";
+export const SENSITIVE_ACCESS_FIELDS = new Set(["password", "pass", "secret"]);
+export const ML_SUPPORTED = new Set<Protocol>(["ws", "wss", "http", "https"]);
+export const GQL_SUPPORTED = new Set<Protocol>(["ws", "wss", "http", "https"]);
+export const LQ_SUPPORTED = new Set<Protocol>(["ws", "wss", "mem", "indxdb"]);
+export const CLOUD_ROLES = [
+	"restricted_member",
+	"member",
+	"restricted_support_member",
+	"support_member",
+	"restricted_admin",
+	"admin",
+	"restricted_owner",
+	"owner",
+];
+
+export const SCALE_STEPS: Selectable<ScaleStep>[] = [
+	{ label: "125%", value: "125" },
+	{ label: "110%", value: "110" },
+	{ label: "100%", value: "100" },
+	{ label: "90%", value: "90" },
+	{ label: "75%", value: "75" },
+];
+
+export const THEMES: Selectable<MantineColorScheme>[] = [
+	{ label: "Automatic", value: "auto" },
+	{ label: "Light", value: "light" },
+	{ label: "Dark", value: "dark" },
+];
+
+export const EDITOR_KEYMAPS: Selectable<EditorKeymap>[] = [
+	{ label: "Default", value: "default" },
+	{ label: "Vim", value: "vim" },
+];
+
+export const SYNTAX_THEMES: Selectable<SyntaxTheme>[] = [
+	{ label: "Default", value: "default" },
+	{ label: "Vivid", value: "vivid" },
+];
+
+export const RESULT_MODES: Listable<ResultMode>[] = [
+	{
+		label: "Combined",
+		value: "combined",
+		icon: iconCombined,
+		description: "View all results in a single list",
+	},
+	{
+		label: "Individual",
+		value: "single",
+		icon: iconQuery,
+		description: "Inspect each result individually",
+	},
+	{
+		label: "Graph",
+		value: "graph",
+		icon: iconRelation,
+		description: "Visualize query results in a graph",
+	},
+	{
+		label: "Table",
+		value: "table",
+		icon: iconDataTable,
+		description: "Render query results in a table",
+	},
+	{
+		label: "Live",
+		value: "live",
+		icon: iconLive,
+		description: "Subscribe to live query results",
+	},
+];
+
+export const SUPPORT_REQUEST_TYPES: Listable<SupportRequestType>[] = [
+	{
+		label: "Conversation",
+		value: "conversation",
+		icon: iconChat,
+		description: "Raise a sales or billing question",
+	},
+	{
+		label: "Ticket",
+		value: "ticket",
+		icon: iconTag,
+		description: "Request expedited support",
+	},
+];
+
+export const NONE_RESULT_MODES: Listable<NoneResultMode>[] = [
+	{
+		label: "Show",
+		value: "show",
+		icon: iconEye,
+		description: "Show NONE results",
+	},
+	{
+		label: "Hide",
+		value: "hide",
+		icon: iconEyeOff,
+		description: "Hide NONE results",
+	},
+	{
+		label: "Collapse",
+		value: "collapse",
+		icon: iconChevronUp,
+		description: "Collapse NONE results",
+	},
+];
+
+export const RESULT_FORMATS: Listable<ResultFormat>[] = [
+	{
+		label: "SurrealQL",
+		value: "sql",
+		icon: iconDatabase,
+		description: "Format results in full SurrealQL",
+	},
+	{
+		label: "JSON",
+		value: "json",
+		icon: iconBraces,
+		description: "Format results in classic JSON",
+	},
+];
+
+export const CONNECTION_PROTOCOLS: ProtocolOption[] = [
+	{ label: "HTTP", value: "http", remote: true },
+	{ label: "HTTPS", value: "https", remote: true },
+	{ label: "WS", value: "ws", remote: true },
+	{ label: "WSS", value: "wss", remote: true },
+	{ label: "Memory", value: "mem", remote: false },
+	{ label: "IndexedDB", value: "indxdb", remote: false },
+];
+
+export const AUTH_MODES: Selectable<AuthMode>[] = [
+	{ label: "Root", value: "root" },
+	{ label: "Namespace", value: "namespace" },
+	{ label: "Database", value: "database" },
+	{ label: "Record Access", value: "access" },
+	{ label: "Token", value: "token" },
+	{ label: "Anonymous", value: "none" },
+];
+
+export const SIDEBAR_MODES: Selectable<SidebarMode>[] = [
+	{ label: "Compact", value: "compact" },
+	{ label: "Wide", value: "wide" },
+];
+
+export const GLOBAL_PAGES: Record<GlobalPage, GlobalPageInfo> = {
+	"/": {
+		id: "/",
+		name: "Overview",
+		icon: iconExplorer,
+		aliases: ["/overview", "/o/*"],
+	},
+	"/signin": {
+		id: "/signin",
+		name: "Authenticate",
+		icon: iconAuth,
+	},
+	"/referrals": {
+		id: "/referrals",
+		name: "Referral Program",
+		icon: iconReferral,
+		disabled: ({ flags }) => !flags.cloud_enabled,
+	},
+	"/mini/new": {
+		id: "/mini/new",
+		name: "Embed Creator",
+		icon: iconXml,
+	},
+	"/support": {
+		id: "/support",
+		name: "Support Centre",
+		aliases: ["/support/*"],
+		icon: iconChat,
+	},
+	"/datasets": {
+		id: "/datasets",
+		name: "Datasets",
+		icon: iconSandbox,
+	},
+};
+
+export const VIEW_PAGES: Record<ViewPage, ViewPageInfo> = {
+	dashboard: {
+		id: "dashboard",
+		name: "Dashboard",
+		icon: iconGrid,
+		disabled: ({ isCloud }) => !isCloud,
+	},
+	monitor: {
+		id: "monitor",
+		name: "Monitoring",
+		icon: iconChart,
+		disabled: ({ isCloud }) => !isCloud,
+	},
+	query: {
+		id: "query",
+		name: "Query",
+		icon: iconQuery,
+		anim: import("~/assets/animation/query.json").then((x) => x.default),
+		disabled: ({ flags }) => !flags.query_view,
+	},
+	explorer: {
+		id: "explorer",
+		name: "Explorer",
+		icon: iconExplorer,
+		anim: import("~/assets/animation/explorer.json").then((x) => x.default),
+		disabled: ({ flags }) => !flags.explorer_view,
+	},
+	graphql: {
+		id: "graphql",
+		name: "GraphQL",
+		icon: iconGraphql,
+		disabled: ({ flags }) => !flags.graphql_view,
+	},
+	designer: {
+		id: "designer",
+		name: "Designer",
+		icon: iconDesigner,
+		anim: import("~/assets/animation/designer.json").then((x) => x.default),
+		disabled: ({ flags }) => !flags.designer_view,
+	},
+	authentication: {
+		id: "authentication",
+		name: "Authentication",
+		icon: iconAuth,
+		anim: import("~/assets/animation/auth.json").then((x) => x.default),
+		disabled: ({ flags }) => !flags.auth_view,
+	},
+	parameters: {
+		id: "parameters",
+		name: "Parameters",
+		icon: iconVariable,
+		disabled: ({ flags }) => !flags.parameters_view,
+	},
+	functions: {
+		id: "functions",
+		name: "Functions",
+		icon: iconFunction,
+		disabled: ({ flags }) => !flags.functions_view,
+	},
+	documentation: {
+		id: "documentation",
+		name: "API Docs",
+		icon: iconAPI,
+		disabled: ({ flags }) => !flags.apidocs_view,
+	},
+	migrations: {
+		id: "migrations",
+		name: "3.0 Migration",
+		icon: iconTransfer,
+		disabled: ({ flags, version, instanceVersion }) => {
+			// Prefer the live database version, but fall back to the Cloud instance
+			// version so the view remains reachable before the connection is
+			// established (e.g. when opening the migration flow from the dashboard).
+			const target = version || instanceVersion;
+			return !flags.v3_migration_tooling || !target || !satisfies(target, ">=2.6.1 <3.0.0-0");
+		},
+	},
+	scheduler: {
+		id: "scheduler",
+		name: "Scheduler",
+		icon: iconCombined,
+		disabled: () => false,
+	},
+	booking: {
+		id: "booking",
+		name: "Lyxal Booking",
+		icon: iconDataTable,
+		disabled: () => false,
+	},
+	"settings/general": {
+		id: "settings/general",
+		name: "General",
+		icon: iconCog,
+		disabled: () => true,
+	},
+	"settings/databases": {
+		id: "settings/databases",
+		name: "Databases",
+		icon: iconCog,
+		disabled: () => true,
+	},
+	"settings/data": {
+		id: "settings/data",
+		name: "Data",
+		icon: iconCog,
+		disabled: () => true,
+	},
+	"settings/capabilities": {
+		id: "settings/capabilities",
+		name: "Capabilities",
+		icon: iconCog,
+		disabled: () => true,
+	},
+	"settings/version": {
+		id: "settings/version",
+		name: "Version",
+		icon: iconCog,
+		disabled: () => true,
+	},
+	"settings/compute": {
+		id: "settings/compute",
+		name: "Instance configuration",
+		icon: iconCog,
+		disabled: () => true,
+	},
+	"settings/backups": {
+		id: "settings/backups",
+		name: "Backups",
+		icon: iconCog,
+		disabled: () => true,
+	},
+};
+
+export const CONNECTION_SETTINGS_TABS = [
+	"general",
+	"databases",
+	"data",
+	"capabilities",
+	"version",
+	"compute",
+	"backups",
+] as const satisfies readonly ConnectionSettingsTab[];
+
+export const CLOUD_CONNECTION_SETTINGS_TABS = [
+	"capabilities",
+	"compute",
+	"backups",
+] as const satisfies readonly ConnectionSettingsTab[];
+
+export const CONNECTION_SETTINGS_TAB_LABELS: Record<ConnectionSettingsTab, string> = {
+	general: "General",
+	databases: "Databases",
+	data: "Data",
+	capabilities: "Capabilities",
+	version: "Version",
+	compute: "Instance configuration",
+	backups: "Backups",
+};
+
+export const CONTEXT_VIEW_PAGES: Record<ContextViewPage, ContextViewPageInfo> = {
+	dashboard: {
+		id: "dashboard",
+		name: "Overview",
+		icon: iconGrid,
+		description: "Your principal, access, and a summary of what lives in this context.",
+	},
+	playground: {
+		id: "playground",
+		name: "Playground",
+		icon: iconChat,
+		description: "Chat with the agent and watch memories recalled and learned in real time.",
+	},
+	memory: {
+		id: "memory",
+		name: "Memory",
+		icon: iconMemory,
+		description: "Explore the agent-learned memory graph: state, entities, and traces.",
+	},
+	documents: {
+		id: "documents",
+		name: "Documents",
+		icon: iconFile,
+		description: "Upload, browse, and search the documents grounding this context.",
+	},
+	scopes: {
+		id: "scopes",
+		name: "Scopes",
+		icon: iconFolderSecure,
+		description: "Browse and manage the scope hierarchy that partitions and gates memory.",
+	},
+	integration: {
+		id: "integration",
+		name: "Integrations",
+		icon: iconIntegration,
+		description: "SDKs, REST, MCP, and framework quickstarts for connecting to this context.",
+	},
+	"api-keys": {
+		id: "api-keys",
+		name: "API Keys",
+		icon: iconKey,
+		description: "Manage the API keys you use to authenticate with this context.",
+	},
+	settings: {
+		id: "settings",
+		name: "Settings",
+		icon: iconCog,
+		description: "Administer principals, configuration, and usage for this context.",
+	},
+};
+
+export const CONTEXT_SETTINGS_TAB_LABELS: Record<ContextSettingsTab, string> = {
+	general: "General",
+	users: "Users",
+	"service-accounts": "Service Accounts",
+	configuration: "Configuration",
+	usage: "Usage",
+};
+
+export const SURREAL_KINDS = [
+	{ label: "No kind specified", value: "" },
+	{ label: "Any", value: "any" },
+	{ label: "Array", value: "array" },
+	{ label: "Bool", value: "bool" },
+	{ label: "Datetime", value: "datetime" },
+	{ label: "Decimal", value: "decimal" },
+	{ label: "Duration", value: "duration" },
+	{ label: "Float", value: "float" },
+	{ label: "Int", value: "int" },
+	{ label: "Number", value: "number" },
+	{ label: "Object", value: "object" },
+	{ label: "String", value: "string" },
+	{ label: "Record", value: "record" },
+	{ label: "Geometry", value: "geometry" },
+];
+
+export const GEOMETRY_TYPES = [
+	{ label: "Feature", value: "feature" },
+	{ label: "Point", value: "point" },
+	{ label: "Line", value: "line" },
+	{ label: "Polygon", value: "polygon" },
+	{ label: "MultiPoint", value: "multipoint" },
+	{ label: "MultiLine", value: "multiline" },
+	{ label: "MultiPolygon", value: "multipolygon" },
+	{ label: "Collection", value: "collection" },
+];
+
+export const DESIGNER_NODE_MODES: Selectable<DiagramMode>[] = [
+	{ label: "Default", value: "default" },
+	{ label: "Fields", value: "fields" },
+	{ label: "Summary", value: "summary" },
+	{ label: "Simple", value: "simple" },
+];
+
+export const DESIGNER_DIRECTIONS: Selectable<DiagramDirection>[] = [
+	{ label: "Default", value: "default" },
+	{ label: "Left to right", value: "ltr" },
+	{ label: "Right to left", value: "rtl" },
+];
+
+export const DESIGNER_STRATEGIES: Selectable<DiagramStrategy>[] = [
+	{ label: "Network Simplex", value: "NETWORK_SIMPLEX" },
+	{ label: "Brandes Koepf", value: "BRANDES_KOEPF" },
+	{ label: "Linear Segments", value: "LINEAR_SEGMENTS" },
+];
+
+export const DESIGNER_LINKS: Selectable<DiagramLinks>[] = [
+	{ label: "Default", value: "default" },
+	{ label: "Hide record links", value: "hidden" },
+	{ label: "Show record links", value: "visible" },
+];
+
+export const SURQL_FILTER = {
+	name: "SurrealDB Schema",
+	extensions: ["surql", "sql", "surrealql"],
+};
+
+export const JSON_FILTER = {
+	name: "JSON File",
+	extensions: ["json"],
+};
+
+export const CSV_FILTER = {
+	name: "CSV File",
+	extensions: ["csv"],
+};
+
+export const PDF_FILTER = {
+	name: "PDF Document",
+	extensions: ["pdf"],
+};
+
+export const ORIENTATIONS: Selectable<Orientation>[] = [
+	{ label: "Horizontal", value: "horizontal" },
+	{ label: "Vertical", value: "vertical" },
+];
+
+export const DESIGNER_LINE_STYLES: Selectable<DiagramLineStyle>[] = [
+	{ label: "Default", value: "default" },
+	{ label: "Metro", value: "metro" },
+	{ label: "Straight", value: "straight" },
+	{ label: "Smooth", value: "smooth" },
+];
+
+export const DESIGNER_ALGORITHMS: Selectable<DiagramAlgorithm>[] = [
+	{ label: "Default", value: "default" },
+	{ label: "Aligned", value: "aligned" },
+	{ label: "Spaced", value: "spaced" },
+];
+
+export const DESIGNER_HOVER_FOCUS: Selectable<DiagramHoverFocus>[] = [
+	{ label: "Default", value: "default" },
+	{ label: "None", value: "none" },
+	{ label: "Neighbours", value: "neighbours" },
+	{ label: "Chain", value: "chain" },
+	{ label: "Recursive", value: "recursive" },
+];
+
+export const SCHEMA_MODES: Selectable<SchemaMode>[] = [
+	{ label: "Schemaless", value: "schemaless" },
+	{ label: "Schemafull", value: "schemafull" },
+];
+
+export const REGION_FLAGS: Record<string, string> = {
+	"aws-euw1": flagIE,
+	"aws-use1": flagUS,
+	"aws-use2": flagUS,
+	"aws-usw2": flagUS,
+	"aws-aps1": flagIN,
+};
+
+export const TABLE_VARIANT_ICONS: Record<TableVariant, string> = {
+	normal: iconTable,
+	relation: iconRelation,
+	view: iconSearch,
+};
+
+export const DRIVERS: Driver[] = [
+	{
+		id: "cli",
+		name: "CLI",
+		icon: SurrealIcon,
+		link: "https://surrealdb.com/docs/reference/cli",
+	},
+	{
+		id: "rust",
+		name: "Rust",
+		icon: RustIcon,
+		link: "https://surrealdb.com/docs/languages/rust/overview",
+	},
+	{
+		id: "js",
+		name: "JavaScript",
+		icon: JavaScriptIcon,
+		link: "https://surrealdb.com/docs/languages/javascript/overview",
+	},
+
+	{
+		id: "py",
+		name: "Python",
+		icon: PythonIcon,
+		link: "https://surrealdb.com/docs/languages/python",
+	},
+	{
+		id: "csharp",
+		name: ".NET",
+		icon: DotNetIcon,
+		link: "https://surrealdb.com/docs/languages/dotnet",
+	},
+	{
+		id: "php",
+		name: "PHP",
+		icon: PhpIcon,
+		link: "https://surrealdb.com/docs/languages/php",
+	},
+	{
+		id: "go",
+		name: "GoLang",
+		icon: GoLangIcon,
+		link: "https://surrealdb.com/docs/languages/golang",
+	},
+	{
+		id: "java",
+		name: "Java",
+		icon: JavaIcon,
+		link: "https://surrealdb.com/docs/languages/java",
+	},
+	{
+		id: "c",
+		name: "C",
+		icon: CIcon,
+		link: "https://github.com/surrealdb/surrealdb.c",
+	},
+];
+
+export const MONITORS: Record<string, Monitor> = {
+	system: {
+		id: "system",
+		type: "metrics",
+		name: "System",
+	},
+	connections: {
+		id: "connections",
+		type: "metrics",
+		name: "Connections",
+	},
+	network: {
+		id: "network",
+		type: "metrics",
+		name: "Network traffic",
+	},
+	surrealdb: {
+		id: "surrealdb",
+		type: "logs",
+		name: "SurrealDB",
+	},
+};
+
+export const MONITOR_LOG_LEVEL_INFO: Record<string, [string, MantineColor, MonitorSeverity]> = {
+	INFO: [iconHelp, "violet", "info"],
+	WARN: [iconWarning, "orange", "warning"],
+	ERROR: [iconErrorCircle, "red", "error"],
+	FATAL: [iconErrorCircle, "red", "error"],
+};
+
+export const SUPPORT_STATES = [
+	{
+		label: "Resolved",
+		value: "resolved",
+		icon: iconCheck,
+		color: "green",
+	},
+	{
+		label: "Submitted",
+		value: "submitted",
+		icon: iconChat,
+		color: "blue",
+	},
+	{
+		label: "In progress",
+		value: "in_progress",
+		icon: iconRefresh,
+		color: "orange",
+	},
+	{
+		label: "Waiting on you",
+		value: "waiting_on_customer",
+		icon: iconPause,
+		color: "red",
+	},
+];
+
+export const PLAN_PERIOD_LABELS: Record<PlanPeriod, string> = {
+	monthly: "month",
+	yearly: "year",
+};

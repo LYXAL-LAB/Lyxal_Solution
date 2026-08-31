@@ -1,0 +1,225 @@
+import {
+	Alert,
+	AlertProps,
+	Box,
+	Button,
+	Divider,
+	Group,
+	SimpleGrid,
+	Stack,
+	Text,
+} from "@mantine/core";
+import { Icon, iconChevronRight, iconWarning } from "@surrealdb/ui";
+import { useMemo } from "react";
+import { isScalePlan } from "~/cloud/helpers";
+import { EstimatedCost } from "~/components/EstimatedCost";
+import { Spacer } from "~/components/Spacer";
+import { isProduction } from "~/util/environment";
+import { ComputeNodesSection } from "../sections/compute-nodes";
+import { DataOptionsSection } from "../sections/data-opts";
+import { DeploymentSection } from "../sections/instance";
+import { NetworkAccessSection } from "../sections/network-access";
+import { StartingDataSection } from "../sections/start-data";
+import { StorageOptionsSection } from "../sections/storage";
+import { InstanceTypeSection } from "../sections/type";
+import classes from "../style.module.scss";
+import { StepProps } from "../types";
+
+interface WarningAlertProps extends AlertProps {
+	title: string;
+}
+
+function WarningAlert({ title, children, ...other }: WarningAlertProps) {
+	return (
+		<Alert
+			color="red"
+			mt="xl"
+			mb="-1.5rem"
+			title={title}
+			icon={<Icon path={iconWarning} />}
+			{...other}
+		>
+			<Text className="selectable">{children}</Text>
+		</Alert>
+	);
+}
+
+export function ConfigureStep({
+	organisation,
+	details,
+	backups,
+	instances,
+	setDetails,
+	setStep,
+}: StepProps) {
+	const isNotFree = details.computeType !== "free";
+	const isScale = isScalePlan(details.plan);
+	const regionMismatch =
+		details.startingData.type === "restore" &&
+		details.startingData.backupOptions?.instance &&
+		details.region !== details.startingData.backupOptions.instance.region;
+
+	const storageMismatch =
+		details.startingData.backupOptions?.instance &&
+		details.storageAmount < details.startingData.backupOptions.instance.storage_size;
+
+	const restoreBlocked = !isNotFree && details.startingData.type === "restore";
+
+	const checkoutDisabled = useMemo(() => {
+		if (!details.name || details.name.length > 30) return true;
+		if (!details.region) return true;
+		if (!details.computeType) return true;
+		if (!details.version) return true;
+
+		if (isNotFree && !details.computeUnits) return true;
+
+		if (!details.public_traffic && !details.private_traffic) return true;
+
+		if (details.startingData.type === "restore") {
+			if (!details.startingData.backupOptions) return true;
+			if (!details.startingData.backupOptions.instance) return true;
+			if (!details.startingData.backupOptions.backup) return true;
+
+			if (regionMismatch) return true;
+			if (storageMismatch) return true;
+			if (restoreBlocked) return true;
+		}
+
+		if (isScale) {
+			if (!details.computeUnits) return true;
+			if (!details.storageAmount) return true;
+
+			// TODO Remove when higher node counts are available
+			if (details.computeUnits > 5 && isProduction) return true;
+		}
+
+		return false;
+	}, [details, isNotFree, isScale, regionMismatch, storageMismatch, restoreBlocked]);
+
+	return (
+		<>
+			<InstanceTypeSection
+				organisation={organisation}
+				instances={instances}
+				details={details}
+				setDetails={setDetails}
+				setStep={setStep}
+			/>
+
+			<Divider my={36} />
+
+			{regionMismatch && (
+				<WarningAlert
+					title="Region mismatch"
+					mb="xl"
+				>
+					You can only restore a backup from an instance in the same region
+				</WarningAlert>
+			)}
+
+			{storageMismatch && (
+				<WarningAlert
+					title="Too little storage"
+					mb="xl"
+				>
+					You cannot have a smaller storage capacity than the instance you are restoring
+					from
+				</WarningAlert>
+			)}
+
+			<Box>
+				<SimpleGrid
+					spacing={{ base: 36, xl: 64 }}
+					cols={{ base: 1, xl: 2 }}
+					className={classes.content}
+				>
+					<Stack gap={36}>
+						<DeploymentSection
+							organisation={organisation}
+							instances={instances}
+							backups={backups}
+							details={details}
+							setDetails={setDetails}
+							setStep={setStep}
+						/>
+
+						{isScale && (
+							<ComputeNodesSection
+								organisation={organisation}
+								instances={instances}
+								details={details}
+								setDetails={setDetails}
+								setStep={setStep}
+							/>
+						)}
+
+						{organisation.privatelink_enabled && (
+							<NetworkAccessSection
+								organisation={organisation}
+								instances={instances}
+								details={details}
+								setDetails={setDetails}
+								setStep={setStep}
+							/>
+						)}
+
+						{isNotFree && (
+							<StorageOptionsSection
+								organisation={organisation}
+								instances={instances}
+								details={details}
+								setDetails={setDetails}
+								setStep={setStep}
+							/>
+						)}
+					</Stack>
+					<Stack gap={36}>
+						<StartingDataSection
+							organisation={organisation}
+							details={details}
+							instances={instances}
+							backups={backups}
+							setDetails={setDetails}
+							setStep={setStep}
+						/>
+						<DataOptionsSection
+							organisation={organisation}
+							backups={backups}
+							details={details}
+							instances={instances}
+							setDetails={setDetails}
+							setStep={setStep}
+						/>
+					</Stack>
+				</SimpleGrid>
+			</Box>
+
+			<Divider my={36} />
+
+			<Group>
+				<Button
+					color="obsidian"
+					variant="light"
+					onClick={() => setStep(0)}
+				>
+					Back
+				</Button>
+				<Button
+					type="submit"
+					variant="gradient"
+					disabled={checkoutDisabled}
+					onClick={() => setStep(3)}
+					rightSection={<Icon path={iconChevronRight} />}
+				>
+					Continue to checkout
+				</Button>
+				<Spacer />
+				<EstimatedCost
+					ta="right"
+					organisation={organisation}
+					config={details}
+				/>
+			</Group>
+		</>
+	);
+}

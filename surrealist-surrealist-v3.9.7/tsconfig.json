@@ -1,0 +1,36 @@
+{
+	"compilerOptions": {
+		"strict": true,
+		"forceConsistentCasingInFileNames": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"target": "ESNext",
+		"sourceMap": true,
+		"lib": ["dom", "dom.iterable", "esnext"],
+		"useDefineForClassFields": true,
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+		"module": "esnext",
+		"moduleResolution": "Bundler",
+		"allowJs": false,
+		"noEmit": true,
+		"jsx": "react-jsx",
+		"paths": {
+			"~/*": ["./src/*"],
+			"@mantine/core": ["./node_modules/@mantine/core"],
+			"@mantine/hooks": ["./node_modules/@mantine/hooks"]
+		}
+	},
+	"include": [
+		"src",
+		"env.d.ts",
+		"shims/node-crypto-web-shim.tsx",
+		"shims/node-fs-postcss-shim.tsx",
+		"shims/node-url-postcss-shim.tsx"
+	],
+	"references": [
+		{
+			"path": "./tsconfig.node.json"
+		}
+	]
+}

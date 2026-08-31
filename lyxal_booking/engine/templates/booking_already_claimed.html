@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ t("already-claimed-page-title") }}{% endblock %}
+{% block content %}
+<div class="card" style="text-align: center;">
+  <div class="check" style="background: var(--text-muted);">!</div>
+  <h1>{{ t("already-claimed-heading") }}</h1>
+  <p class="subtitle">{{ t("already-claimed-subtitle", name=claimed_by_name) }}</p>
+</div>
+{% endblock %}

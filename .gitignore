@@ -20,3 +20,11 @@ node_modules/
 # OS junk
 .DS_Store
 Thumbs.db
+
+# Executables & Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+surreal.exe
+surreal

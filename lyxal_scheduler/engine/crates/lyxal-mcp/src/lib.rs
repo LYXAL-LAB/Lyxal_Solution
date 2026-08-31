@@ -1,0 +1,159 @@
+//! lyxal-mcp: MCP Server for the Lyxal distributed job scheduler.
+//!
+//! Exposes Lyxal's work queue and runner registry to AI assistants via the
+//! [Model Context Protocol](https://modelcontextprotocol.io).
+//!
+//! # Tools
+//!
+//! | Tool               | Description                                    |
+//! |--------------------|------------------------------------------------|
+//! | `list_runners`     | All runners with liveness + capabilities       |
+//! | `get_runner`       | Single runner detail                           |
+//! | `queue_status`     | Queue depth + online runner count              |
+//! | `list_jobs`        | List job states from the store (requires --data-dir) |
+//! | `get_job`          | Fetch one job (DSL fallback) (requires --data-dir) |
+//! | `create_job`       | Create a store-managed job (requires --mutations + --data-dir) |
+//! | `update_job`       | Patch mutable job metadata (requires --mutations + --data-dir) |
+//! | `delete_job`       | Delete a store-managed job (requires --mutations + --data-dir) |
+//! | `activate_job`     | Mark a job active (requires --mutations + --data-dir) |
+//! | `deactivate_job`   | Mark a job inactive (requires --mutations + --data-dir) |
+//! | `list_executions`  | List recent executions (requires --data-dir) |
+//! | `get_execution_logs` | Read captured logs for an execution (requires --data-dir) |
+//! | `enqueue_job`      | Schedule a new execution (requires --mutations) |
+//! | `cancel_execution` | Remove a pending execution (requires --mutations) |
+//! | `job_trigger`      | Fire a job immediately (requires --mutations) |
+//! | `list_schedules`   | List store-managed trigger definitions (requires --data-dir) |
+//! | `get_schedule`     | Fetch one schedule by trigger UUID (requires --data-dir) |
+//! | `create_schedule`  | Create a schedule (requires --mutations + --data-dir) |
+//! | `update_schedule`  | Patch a schedule (requires --mutations + --data-dir) |
+//! | `delete_schedule`  | Delete a schedule (requires --mutations + --data-dir) |
+//! | `list_calendars`   | List persisted calendar definitions (requires --data-dir) |
+//! | `get_calendar`     | Fetch one calendar by UUID (requires --data-dir) |
+//! | `create_calendar`  | Create a calendar (requires --mutations + --data-dir) |
+//! | `update_calendar`  | Patch a calendar (requires --mutations + --data-dir) |
+//! | `delete_calendar`  | Delete a calendar (requires --mutations + --data-dir) |
+//! | `delete_runner`    | Remove a runner from the registry (requires --mutations) |
+//! | `dashboard_forecast` | Project upcoming fires into time buckets (HTTP transport only) |
+//! | `list_dead_letters` | List dead-lettered executions (requires --data-dir) |
+//! | `get_dead_letter`  | Fetch one dead-letter entry (requires --data-dir) |
+//! | `delete_dead_letter` | Drop a dead-letter entry (requires --mutations + --data-dir) |
+//! | `dlq_retry`        | Retry a dead-lettered execution (requires --mutations + --data-dir) |
+//!
+//! # Usage
+//!
+//! ```rust,no_run
+//! use std::sync::Arc;
+//! use lyxal_mcp::tools::LyxalMcp;
+//! use lyxal_runner::AppState;
+//! use rmcp::{ServiceExt, transport::stdio};
+//!
+//! #[tokio::main]
+//! async fn main() -> anyhow::Result<()> {
+//!     let state = AppState::new();
+//!     let server = LyxalMcp::new(Arc::clone(&state));
+//!     let service = server.serve(stdio()).await?;
+//!     service.waiting().await?;
+//!     Ok(())
+//! }
+//! ```
+
+pub mod tools;
+
+pub use tools::{LyxalMcp, DynStore};
+
+// ─── HTTP transport (Streamable HTTP for in-process embedding) ────────────────
+
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use lyxal_config::compile::JobConfig;
+use lyxal_runner::AppState;
+use lyxal_scheduler::trigger::Trigger;
+use rmcp::transport::streamable_http_server::{
+    StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
+};
+
+/// Names of the mutation tools, in the order they're registered. Server-side
+/// auth middleware uses this list to require an `admin` JWT scope on
+/// `tools/call` for any of these — keeping the gating list authoritative in
+/// this crate so it stays in sync with [`tools::LyxalMcp`].
+pub const MUTATION_TOOL_NAMES: &[&str] = &[
+    // Execution / queue mutations
+    "enqueue_job",
+    "cancel_execution",
+    "job_trigger",
+    // Job CRUD
+    "create_job",
+    "update_job",
+    "delete_job",
+    "activate_job",
+    "deactivate_job",
+    // Schedule (TriggerDefinition) CRUD
+    "create_schedule",
+    "update_schedule",
+    "delete_schedule",
+    // Calendar CRUD
+    "create_calendar",
+    "update_calendar",
+    "delete_calendar",
+    // Runner cleanup
+    "delete_runner",
+    // Dead-letter operations
+    "delete_dead_letter",
+    "dlq_retry",
+];
+
+/// Build a Streamable-HTTP MCP service ready to be `.nest_service`'d under an
+/// axum route (e.g. `/mcp`). Each session creates its own [`LyxalMcp`]
+/// instance sharing the given `state`/`store`/`jobs` — mutations are wired in
+/// at the factory level; per-call scope gating is enforced by the embedding
+/// server's auth middleware (see [`MUTATION_TOOL_NAMES`]).
+///
+/// The `jobs` snapshot is captured at build time. Lyxalfile reloads do not
+/// propagate to in-flight MCP sessions; restart `lyxal-server` to refresh.
+///
+/// `extra_allowed_hosts` is **additive** on top of rmcp's loopback-only
+/// default (`localhost`, `127.0.0.1`, `::1`) — see issue #114. `None` or an
+/// empty `Some(vec![])` keeps the v0.10.1 loopback-only behaviour intact.
+pub fn streamable_http_service(
+    state: Arc<AppState>,
+    store: Option<DynStore>,
+    jobs: Vec<JobConfig>,
+    triggers: Option<Arc<tokio::sync::RwLock<HashMap<String, Trigger>>>>,
+    extra_allowed_hosts: Option<Vec<String>>,
+) -> StreamableHttpService<LyxalMcp, LocalSessionManager> {
+    let factory = move || {
+        let mut server = match store.as_ref() {
+            Some(s) => {
+                LyxalMcp::new_with_store(Arc::clone(&state), Arc::clone(s), jobs.clone(), true)
+            }
+            None => LyxalMcp::new_mutations_only(Arc::clone(&state)),
+        };
+        if let Some(ref t) = triggers {
+            server = server.with_triggers(Arc::clone(t));
+        }
+        Ok::<_, std::io::Error>(server)
+    };
+
+    // APPEND-not-replace semantics for `allowed_hosts` per issue #114
+    // ("entries are appended to rmcp's allowlist"). Keep the loopback
+    // defaults so an operator who lists only their public hostname does
+    // not accidentally lose local debugging access; this also guards
+    // against the rmcp footgun where an empty `with_allowed_hosts(vec![])`
+    // would silently flip to allow-all (tower.rs:196).
+    let cfg = match extra_allowed_hosts {
+        Some(extra) if !extra.is_empty() => {
+            let default_cfg = StreamableHttpServerConfig::default();
+            let mut merged = default_cfg.allowed_hosts.clone();
+            for host in extra {
+                if !merged.contains(&host) {
+                    merged.push(host);
+                }
+            }
+            default_cfg.with_allowed_hosts(merged)
+        }
+        _ => StreamableHttpServerConfig::default(),
+    };
+
+    StreamableHttpService::new(factory, Arc::new(LocalSessionManager::default()), cfg)
+}

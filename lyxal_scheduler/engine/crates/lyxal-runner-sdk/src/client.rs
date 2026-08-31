@@ -1,0 +1,269 @@
+//! HTTP client for the Lyxal server API.
+
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum ClientError {
+    #[error("HTTP error: {0}")]
+    Http(#[from] reqwest::Error),
+
+    #[error("server error: {status} — {body}")]
+    Server { status: u16, body: String },
+
+    /// The server returned `409 Conflict` from the poll endpoint —
+    /// another runner process is already registered under the same
+    /// `runner_id`. Reported separately so the runner loop can count
+    /// consecutive occurrences and bail with a clear diagnostic
+    /// instead of masking an operator misconfiguration as a transient
+    /// error (see issue #134 sub-item 1).
+    #[error(
+        "poll instance conflict — another runner is already registered with this runner_id: {body}"
+    )]
+    PollInstanceConflict { body: String },
+}
+
+/// Low-level HTTP client for Lyxal API endpoints.
+pub struct LyxalClient {
+    http: Client,
+    base_url: String,
+    auth_header: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct PollRequest {
+    pub runner_id: String,
+    pub capabilities: Vec<String>,
+    pub max_inflight: u32,
+    pub inflight: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instance_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
+}
+
+#[derive(Deserialize)]
+pub struct PollResponse {
+    pub work: Vec<WorkAssignment>,
+    #[serde(default)]
+    pub cancel: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct WorkAssignment {
+    pub execution_id: String,
+    pub job_key: String,
+    pub fire_at: String,
+    /// Original logical fire time (RFC 3339). `None` when the server predates
+    /// the field — the SDK must not fall back to `fire_at`.
+    #[serde(default)]
+    pub scheduled_for: Option<String>,
+    pub attempt: u32,
+    pub metadata: serde_json::Value,
+    pub timeout: String,
+}
+
+#[derive(Serialize)]
+pub struct AckRequest {
+    pub runner_id: String,
+    pub execution_id: String,
+    pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duration_ms: Option<i64>,
+    pub attempt: u32,
+}
+
+#[derive(Serialize)]
+pub struct RenewRequest {
+    pub runner_id: String,
+    pub execution_id: String,
+}
+
+#[derive(Clone, Serialize)]
+pub struct WorkEvent {
+    pub level: Option<String>,
+    pub message: String,
+    #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+    pub fields: std::collections::HashMap<String, String>,
+}
+
+impl LyxalClient {
+    pub fn new(base_url: &str) -> Self {
+        Self {
+            http: Client::new(),
+            base_url: base_url.trim_end_matches('/').to_string(),
+            auth_header: None,
+        }
+    }
+
+    pub fn with_api_key(mut self, key: &str) -> Self {
+        self.auth_header = Some(format!("ApiKey {key}"));
+        self
+    }
+
+    pub fn with_bearer(mut self, token: &str) -> Self {
+        self.auth_header = Some(format!("Bearer {token}"));
+        self
+    }
+
+    fn add_auth(&self, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        if let Some(ref auth) = self.auth_header {
+            req.header("authorization", auth)
+        } else {
+            req
+        }
+    }
+
+    /// Poll for work with long-poll support.
+    pub async fn poll(&self, req: &PollRequest) -> Result<PollResponse, ClientError> {
+        let resp = self
+            .add_auth(self.http.post(format!("{}/v1/work/poll", self.base_url)))
+            .json(req)
+            .timeout(std::time::Duration::from_secs(35))
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            let status = resp.status().as_u16();
+            let body = resp.text().await.unwrap_or_default();
+            // 409 on the poll endpoint specifically means another
+            // runner already holds this runner_id — surface it as a
+            // dedicated variant so the runner loop can distinguish
+            // "transient" from "operator must intervene".
+            if status == 409 {
+                return Err(ClientError::PollInstanceConflict { body });
+            }
+            return Err(ClientError::Server { status, body });
+        }
+
+        Ok(resp.json().await?)
+    }
+
+    /// Acknowledge execution completion.
+    pub async fn ack(&self, req: &AckRequest) -> Result<(), ClientError> {
+        let resp = self
+            .add_auth(self.http.post(format!("{}/v1/work/ack", self.base_url)))
+            .json(req)
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            let status = resp.status().as_u16();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(ClientError::Server { status, body });
+        }
+
+        Ok(())
+    }
+
+    /// Renew a work item lease.
+    pub async fn renew(&self, req: &RenewRequest) -> Result<(), ClientError> {
+        let resp = self
+            .add_auth(self.http.post(format!("{}/v1/work/renew", self.base_url)))
+            .json(req)
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            let status = resp.status().as_u16();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(ClientError::Server { status, body });
+        }
+
+        Ok(())
+    }
+
+    /// Push structured log events for an execution.
+    pub async fn push_events(
+        &self,
+        execution_id: &str,
+        events: &[WorkEvent],
+    ) -> Result<(), ClientError> {
+        let resp = self
+            .add_auth(
+                self.http
+                    .post(format!("{}/v1/work/{}/events", self.base_url, execution_id)),
+            )
+            .json(events)
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            let status = resp.status().as_u16();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(ClientError::Server { status, body });
+        }
+
+        Ok(())
+    }
+
+    /// Register a job on the server (runner self-registration).
+    pub async fn register_job(&self, req: &RegisterJobRequest) -> Result<(), ClientError> {
+        let resp = self
+            .add_auth(
+                self.http
+                    .post(format!("{}/v1/jobs/register", self.base_url)),
+            )
+            .json(req)
+            .send()
+            .await?;
+
+        if !resp.status().is_success() {
+            let status = resp.status().as_u16();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(ClientError::Server { status, body });
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Serialize)]
+pub struct RegisterJobRequest {
+    pub job_key: String,
+    pub schedule: String,
+    pub timezone: Option<String>,
+    pub timeout: Option<String>,
+    pub runner_id: Option<String>,
+    #[serde(default)]
+    pub capabilities: Vec<String>,
+    pub description: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn work_assignment_parses_scheduled_for() {
+        let json = serde_json::json!({
+            "execution_id": "e1",
+            "job_key": "billing:report",
+            "fire_at": "2026-06-08T00:05:00Z",
+            "scheduled_for": "2026-06-01T06:00:00Z",
+            "attempt": 3,
+            "metadata": {},
+            "timeout": "15m"
+        });
+        let wa: WorkAssignment = serde_json::from_value(json).unwrap();
+        assert_eq!(wa.scheduled_for.as_deref(), Some("2026-06-01T06:00:00Z"));
+    }
+
+    #[test]
+    fn work_assignment_scheduled_for_absent_is_none() {
+        // A poll response from an older server that never emits the field.
+        let json = serde_json::json!({
+            "execution_id": "e1",
+            "job_key": "billing:report",
+            "fire_at": "2026-06-08T00:05:00Z",
+            "attempt": 1,
+            "metadata": {},
+            "timeout": "5m"
+        });
+        let wa: WorkAssignment = serde_json::from_value(json).unwrap();
+        assert!(wa.scheduled_for.is_none());
+    }
+}

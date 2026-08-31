@@ -1,0 +1,10 @@
+[application]
+environment = "production"
+
+[observability]
+log_filter = "info"
+json_logs = true
+
+[cors]
+enabled = false
+allowed_origins = []

@@ -1,0 +1,29 @@
+.settings-list {
+
+	:global(.mantine-Select-root),
+	:global(.mantine-TextInput-root),
+	:global(.mantine-NumberInput-root) {
+		width: 250px;
+	}
+
+	:global(.mantine-Checkbox-label) {
+		font-size: var(--mantine-font-size-md);
+	}
+
+}
+
+.version {
+	cursor: pointer;
+	user-select: text;
+	-webkit-user-select: text;
+}
+
+.update-icon {
+	border: 1px solid rgba(255, 255, 255, 0.3);
+	background-origin: border-box;
+}
+
+.about-value {
+	user-select: all;
+	-webkit-user-select: all;
+}

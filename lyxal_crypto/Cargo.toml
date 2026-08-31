@@ -1,0 +1,16 @@
+[package]
+name = "lyxal_crypto"
+version = "0.1.0"
+edition = "2021"
+description = "Moteur de chiffrement AES-256-GCM et gestion des clés du Noyau Technique Lyxal OS"
+
+[dependencies]
+aes-gcm = "0.10"
+zeroize = "1.8"
+base64 = "0.22"
+thiserror = "2.0"
+rand = "0.8"
+hex = "0.4"
+
+[dev-dependencies]
+tempfile = "3.17"
