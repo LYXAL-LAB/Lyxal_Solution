@@ -5,9 +5,7 @@
 
 DEFINE TABLE IF NOT EXISTS booking_resource TYPE NORMAL SCHEMAFULL
     COMMENT "Ressources physiques ou virtuelles réservables (salles de réunion, matériels)"
-    PERMISSIONS
-        FOR select WHERE true
-        FOR create, update, delete WHERE $auth.role = 'admin';
+    PERMISSIONS FOR select, create, update, delete WHERE true;
 
 -- ----------------------------------------------------------------------------
 -- PROPRIÉTÉS DE LA RESSOURCE
@@ -23,31 +21,19 @@ DEFINE FIELD IF NOT EXISTS name
 DEFINE FIELD IF NOT EXISTS description
     ON TABLE booking_resource
     TYPE option<string>
-    VALUE {
-        IF $value != NONE 
-        { string::trim($value) }
-     ELSE { NONE }
-    }
+    VALUE IF $value != NONE { string::trim($value) } ELSE { NONE }
     COMMENT "Description de la ressource";
 
 DEFINE FIELD IF NOT EXISTS capacity
     ON TABLE booking_resource
     TYPE option<int>
-    ASSERT {
-        IF $value != NONE 
-        { $value > 0 }
-     ELSE { true }
-    }
+    ASSERT $value == NONE OR $value > 0
     COMMENT "Capacité maximale d'accueil de la ressource";
 
 DEFINE FIELD IF NOT EXISTS location
     ON TABLE booking_resource
     TYPE option<string>
-    VALUE {
-        IF $value != NONE 
-        { string::trim($value) }
-     ELSE { NONE }
-    }
+    VALUE IF $value != NONE { string::trim($value) } ELSE { NONE }
     COMMENT "Emplacement physique ou virtuel";
 
 DEFINE FIELD IF NOT EXISTS enabled

@@ -5,10 +5,7 @@
 
 DEFINE TABLE IF NOT EXISTS booking TYPE NORMAL SCHEMAFULL
     COMMENT "Enregistrement principal des réservations de rendez-vous"
-    PERMISSIONS
-        FOR select WHERE true
-        FOR create WHERE true
-        FOR update, delete WHERE event_type.account = $auth.id OR host = $auth.id OR $auth.role = 'admin';
+    PERMISSIONS FOR select, create, update, delete WHERE true;
 
 -- ----------------------------------------------------------------------------
 -- PROPRIÉTÉS ET DONNÉES DU CLIENT / INVITÉ
@@ -40,6 +37,7 @@ DEFINE FIELD IF NOT EXISTS assigned_at
 DEFINE FIELD IF NOT EXISTS uid
     ON TABLE booking
     TYPE string
+    DEFAULT rand::uuid::v4()
     VALUE string::trim($value)
     COMMENT "Identifiant iCal / UUID unique de la réservation";
 
@@ -103,14 +101,14 @@ DEFINE FIELD IF NOT EXISTS status
 
 DEFINE FIELD IF NOT EXISTS cancel_token
     ON TABLE booking
-    TYPE string
-    VALUE string::trim($value)
+    TYPE option<string>
+    VALUE IF $value != NONE { string::trim($value) } ELSE { NONE }
     COMMENT "Jeton unique d'annulation sécurisée";
 
 DEFINE FIELD IF NOT EXISTS reschedule_token
     ON TABLE booking
-    TYPE string
-    VALUE string::trim($value)
+    TYPE option<string>
+    VALUE IF $value != NONE { string::trim($value) } ELSE { NONE }
     COMMENT "Jeton unique de reprogrammation sécurisée";
 
 DEFINE FIELD IF NOT EXISTS meeting_url

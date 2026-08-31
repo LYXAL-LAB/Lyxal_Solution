@@ -343,18 +343,17 @@ fn test_smtp_config_debug_redacts_password() {
 #[test]
 fn test_smtp_legacy_migration_and_decryption() {
     use base64::Engine;
-    use lyxal_crypto::{CryptoEngine, EncryptionKey, EnvironmentKeyProvider};
-    use std::sync::Arc;
+    use lyxal_crypto::EncryptionKey;
 
-    let provider = Arc::new(EnvironmentKeyProvider::new(
-        "LYXAL_TEST_SECRET_KEY_FOR_SMTP_MIGRATION_1234",
-    ));
-    let crypto = CryptoEngine::new(provider);
+    let crypto = crate::crypto_helpers::create_test_crypto_engine();
 
     let legacy_key_bytes = [9u8; 32];
-    let legacy_key = EncryptionKey::from_bytes("legacy_key", &legacy_key_bytes);
+    let legacy_key = EncryptionKey::from_bytes(legacy_key_bytes);
 
-    let raw_aes_b64 = base64::engine::general_purpose::STANDARD.encode(&legacy_key_bytes);
+    let secret = b"my_smtp_password";
+    let cipher_payload = lyxal_crypto::cipher::encrypt_aes_gcm(&legacy_key, secret, &[]).unwrap();
+    let raw_aes_b64 = base64::engine::general_purpose::STANDARD.encode(&cipher_payload);
+
     let setting_id = surrealdb::RecordId::from(("booking_setting", "smtp_config"));
     let ctx = crate::crypto_helpers::smtp_password_context("default", &setting_id).unwrap();
 
@@ -364,18 +363,12 @@ fn test_smtp_legacy_migration_and_decryption() {
     assert!(migrated.starts_with("enc:v1:"));
 
     let decrypted = crypto.decrypt_secret(&migrated, &ctx).unwrap();
-    assert_eq!(decrypted.as_ref(), raw_aes_b64.as_bytes());
+    assert_eq!(decrypted.as_slice(), secret);
 }
 
 #[test]
 fn test_smtp_legacy_without_key_errors() {
-    use lyxal_crypto::{CryptoEngine, CryptoError, EncryptionKey, EnvironmentKeyProvider};
-    use std::sync::Arc;
-
-    let provider = Arc::new(EnvironmentKeyProvider::new(
-        "LYXAL_TEST_SECRET_KEY_FOR_MISSING_KEY_TEST_0123",
-    ));
-    let _crypto = CryptoEngine::new(provider);
+    use lyxal_crypto::{CryptoError, EncryptionKey};
 
     let no_legacy_key: Option<&EncryptionKey> = None;
     assert!(no_legacy_key.ok_or(CryptoError::MissingActiveKey).is_err());
@@ -383,13 +376,7 @@ fn test_smtp_legacy_without_key_errors() {
 
 #[test]
 fn test_smtp_modern_envelope_direct_read() {
-    use lyxal_crypto::{CryptoEngine, EnvironmentKeyProvider};
-    use std::sync::Arc;
-
-    let provider = Arc::new(EnvironmentKeyProvider::new(
-        "LYXAL_TEST_SECRET_KEY_FOR_MODERN_DIRECT_READ_987",
-    ));
-    let crypto = CryptoEngine::new(provider);
+    let crypto = crate::crypto_helpers::create_test_crypto_engine();
 
     let id = surrealdb::RecordId::from(("booking_setting", "smtp_config"));
     let ctx = crate::crypto_helpers::smtp_password_context("default", &id).unwrap();
@@ -402,5 +389,5 @@ fn test_smtp_modern_envelope_direct_read() {
         StoredSmtpPasswordFormat::LyxalEnvelope
     );
     let decrypted = crypto.decrypt_secret(&encrypted, &ctx).unwrap();
-    assert_eq!(decrypted.as_ref(), secret);
+    assert_eq!(decrypted.as_slice(), secret);
 }

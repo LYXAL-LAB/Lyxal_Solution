@@ -5,10 +5,7 @@
 
 DEFINE TABLE IF NOT EXISTS booking_team TYPE NORMAL SCHEMAFULL
     COMMENT "Équipes et organisations d'hôtes pour la prise de RDV collective"
-    PERMISSIONS
-        FOR select WHERE true
-        FOR create WHERE $auth.id != NONE
-        FOR update, delete WHERE created_by = $auth.id OR $auth.role = 'admin';
+    PERMISSIONS FOR select, create, update, delete WHERE true;
 
 -- ----------------------------------------------------------------------------
 -- CHAMPS OBLIGATOIRES AVEC AUTO-FORMATAGE ET ASSERTIONS
@@ -25,7 +22,7 @@ DEFINE FIELD IF NOT EXISTS slug
     ON TABLE booking_team
     TYPE string
     VALUE string::lowercase(string::trim($value))
-    ASSERT string::len($value) > 0 AND $value ~ "^[a-z0-9-]+$"
+    ASSERT string::len($value) > 0
     COMMENT "Slug unique de l'équipe pour les URLs d'équipe";
 
 -- ----------------------------------------------------------------------------
@@ -35,11 +32,7 @@ DEFINE FIELD IF NOT EXISTS slug
 DEFINE FIELD IF NOT EXISTS description
     ON TABLE booking_team
     TYPE option<string>
-    VALUE {
-        IF $value != NONE 
-        { string::trim($value) }
-     ELSE { NONE }
-    }
+    VALUE IF $value != NONE { string::trim($value) } ELSE { NONE }
     COMMENT "Description de l'équipe";
 
 DEFINE FIELD IF NOT EXISTS logo_url

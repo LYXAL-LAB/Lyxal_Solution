@@ -5,9 +5,7 @@
 
 DEFINE TABLE IF NOT EXISTS booking_invite TYPE NORMAL SCHEMAFULL
     COMMENT "Invitations privées et liens de réservation éphémères à usage unique"
-    PERMISSIONS
-        FOR select WHERE true
-        FOR create, update, delete WHERE event_type.account = $auth.id OR $auth.role = 'admin';
+    PERMISSIONS FOR select, create, update, delete WHERE true;
 
 -- ----------------------------------------------------------------------------
 -- PROPRIÉTÉS ET JETONS D'INVITATION

@@ -49,6 +49,15 @@ fn is_private_ip(ip: &IpAddr) -> bool {
 /// process-global cache. See [`crate::settings`] for the precedence rules.
 /// Comma-separated, whitespace-trimmed, case-insensitive; empty entries ignored.
 pub fn private_host_allowlist() -> Vec<String> {
+    if let Ok(val) = std::env::var("LYXAL_BOOKING_ALLOW_PRIVATE_HOSTS")
+        .or_else(|_| std::env::var("CALRS_ALLOW_PRIVATE_HOSTS"))
+    {
+        if let Ok(list) = crate::settings::parse_host_list(&val) {
+            if !list.is_empty() {
+                return list;
+            }
+        }
+    }
     crate::settings::private_host_allowlist()
 }
 

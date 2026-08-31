@@ -347,7 +347,6 @@ mod tests {
             guest_name: "Jean Dupont".to_string(),
             guest_email: "jean@example.com".to_string(),
             notes: Some("Premier rendez-vous".to_string()),
-            answers: None,
         };
         assert!(!req.event_type_slug.is_empty());
         assert!(!req.guest_name.is_empty());
@@ -369,7 +368,6 @@ mod tests {
             expected_end_at: "2026-06-18T10:30:00Z".to_string(),
             new_start_at: "2026-06-19T14:00:00Z".to_string(),
             new_end_at: "2026-06-19T14:30:00Z".to_string(),
-            reason: Some("Décalage au lendemain".to_string()),
         };
         assert_ne!(req.expected_start_at, req.new_start_at);
     }

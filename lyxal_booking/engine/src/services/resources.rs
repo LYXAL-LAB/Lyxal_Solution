@@ -113,6 +113,16 @@ pub async fn get_resource(
     Ok(resource)
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct UpdateResourceParams {
+    resource_id: RecordId,
+    name: Option<String>,
+    description: Option<String>,
+    capacity: Option<i32>,
+    location: Option<String>,
+    enabled: Option<bool>,
+}
+
 /// Met à jour les informations d'une ressource via primitive scalaire fn::booking_update_resource.
 pub async fn update_resource(
     store: &SurrealBookingStore,
@@ -120,24 +130,19 @@ pub async fn update_resource(
     resource_id: &RecordId,
     request: &UpdateResourceRequest,
 ) -> Result<ResourceResponse> {
-    let mut response = store
-        .client()
-        .query("RETURN fn::booking_update_resource($resource_id, $name, $description, $capacity, $location, $enabled);")
-        .bind(("resource_id", resource_id.clone()))
-        .bind(("name", request.name.clone()))
-        .bind(("description", request.description.clone()))
-        .bind(("capacity", request.capacity))
-        .bind(("location", request.location.clone()))
-        .bind(("enabled", Option::<bool>::None))
+    let params = UpdateResourceParams {
+        resource_id: resource_id.clone(),
+        name: Some(request.name.clone()),
+        description: request.description.clone(),
+        capacity: request.capacity,
+        location: request.location.clone(),
+        enabled: None,
+    };
+    let res: ResourceResponse = store
+        .call_fn("booking_update_resource", params)
         .await?;
 
-    let raw: Option<lyxal_error::LyxalResult<Vec<ResourceResponse>>> = response.take(0)?;
-    let list = match raw {
-        Some(res) => res.into_result("booking_update_resource")?,
-        None => Vec::new(),
-    };
-
-    list.into_iter().next().ok_or_else(|| anyhow::anyhow!("Resource update returned no data"))
+    Ok(res)
 }
 
 /// Supprime une ressource de manière atomique.

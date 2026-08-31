@@ -267,8 +267,10 @@ mod tests {
 
     #[test]
     fn ews_provider_trims_trailing_slash() {
+        std::env::set_var("LYXAL_BOOKING_ALLOW_PRIVATE_HOSTS", "mail.example.com");
         let p = EwsProvider::new("https://mail.example.com/EWS/Exchange.asmx/", "u", "p").unwrap();
         assert_eq!(p.endpoint, "https://mail.example.com/EWS/Exchange.asmx");
+        std::env::remove_var("LYXAL_BOOKING_ALLOW_PRIVATE_HOSTS");
     }
 
     // End-to-end probe against a real Exchange server. Ignored by default

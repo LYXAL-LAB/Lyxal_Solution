@@ -216,3 +216,12 @@ pub fn load_legacy_secret_key_if_configured(
         Err(_) => Ok(None),
     }
 }
+
+/// Helper pour initialiser un moteur de test cryptographique en mémoire
+pub fn create_test_crypto_engine() -> BookingCryptoEngine {
+    use lyxal_crypto::{CompositeKeyResolver, EncryptionKey, KeyId};
+    let active_id = KeyId::parse("main").unwrap();
+    let key = EncryptionKey::generate();
+    let resolver = CompositeKeyResolver::new(active_id, key);
+    BookingCryptoEngine::new(std::sync::Arc::new(resolver))
+}

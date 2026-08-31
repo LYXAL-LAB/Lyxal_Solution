@@ -130,7 +130,7 @@ mod tests {
         captcha::CaptchaConfig {
             instance_url: instance_url.to_string(),
             site_key: "testkey".to_string(),
-            secret: "secret".to_string(),
+            secret: lyxal_crypto::Zeroizing::new("secret".to_string()),
             widget_url: widget_url.to_string(),
         }
     }

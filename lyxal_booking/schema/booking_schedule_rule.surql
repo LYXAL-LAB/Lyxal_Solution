@@ -5,9 +5,7 @@
 
 DEFINE TABLE IF NOT EXISTS booking_schedule_rule TYPE NORMAL SCHEMAFULL
     COMMENT "Règles d'horaires hebdomadaires récurrentes associées à un planning réutilisable"
-    PERMISSIONS
-        FOR select WHERE true
-        FOR create, update, delete WHERE schedule.account = $auth.id OR $auth.role = 'admin';
+    PERMISSIONS FOR select, create, update, delete WHERE true;
 
 -- ----------------------------------------------------------------------------
 -- PROPRIÉTÉS ET PLAGES HORAIRES
@@ -28,14 +26,14 @@ DEFINE FIELD IF NOT EXISTS start_time
     ON TABLE booking_schedule_rule
     TYPE string
     VALUE string::trim($value)
-    ASSERT $value ~ "^[0-9]{2}:[0-9]{2}$"
+    ASSERT string::len($value) = 5
     COMMENT "Heure de début de la plage (format HH:MM, ex: 09:00)";
 
 DEFINE FIELD IF NOT EXISTS end_time
     ON TABLE booking_schedule_rule
     TYPE string
     VALUE string::trim($value)
-    ASSERT $value ~ "^[0-9]{2}:[0-9]{2}$" AND $value > start_time
+    ASSERT string::len($value) = 5 AND $value > start_time
     COMMENT "Heure de fin de la plage (format HH:MM, ex: 17:00, doit être > start_time)";
 
 -- ----------------------------------------------------------------------------

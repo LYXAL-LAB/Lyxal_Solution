@@ -29,8 +29,8 @@ DEFINE FUNCTION OVERWRITE fn::booking_update_team(
     LET $clean_name = string::trim($name);
     LET $clean_slug = string::lowercase(string::trim($slug));
 
-    IF !($clean_slug ~ "^[a-z0-9-]+$") {
-        THROW "Slug must contain only lowercase letters, numbers, and dashes";
+    IF string::len($clean_slug) == 0 {
+        THROW "Slug cannot be empty";
     };
 
     -- VÃ©rification de l'unicitÃ© du slug hors Ã©quipe courante

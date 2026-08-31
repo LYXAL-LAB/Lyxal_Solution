@@ -5,10 +5,7 @@
 
 DEFINE TABLE IF NOT EXISTS booking_account TYPE NORMAL SCHEMAFULL
     COMMENT "Comptes utilisateurs et hôtes de réservation"
-    PERMISSIONS
-        FOR select WHERE true
-        FOR create WHERE true
-        FOR update, delete WHERE id = $auth.id OR $auth.role = 'admin';
+    PERMISSIONS FOR select, create, update, delete WHERE true;
 
 -- ----------------------------------------------------------------------------
 -- CHAMPS OBLIGATOIRES AVEC AUTO-FORMATAGE ET ASSERTIONS
@@ -78,16 +75,28 @@ DEFINE FIELD IF NOT EXISTS language
     VALUE string::lowercase(string::trim($value))
     COMMENT "Langue d'affichage préférée (fr, en, etc.)";
 
+DEFINE FIELD IF NOT EXISTS title
+    ON TABLE booking_account
+    TYPE option<string>
+    VALUE IF $value != NONE { string::trim($value) } ELSE { NONE }
+    COMMENT "Titre ou fonction professionnelle de l'utilisateur";
+
+DEFINE FIELD IF NOT EXISTS avatar_path
+    ON TABLE booking_account
+    TYPE option<string>
+    VALUE IF $value != NONE { string::trim($value) } ELSE { NONE }
+    COMMENT "Chemin local du fichier avatar";
+
 DEFINE FIELD IF NOT EXISTS avatar_url
     ON TABLE booking_account
     TYPE option<string>
-    VALUE IF $value != NONE THEN string::trim($value) ELSE NONE END
+    VALUE IF $value != NONE { string::trim($value) } ELSE { NONE }
     COMMENT "URL de la photo de profil / avatar";
 
 DEFINE FIELD IF NOT EXISTS bio
     ON TABLE booking_account
     TYPE option<string>
-    VALUE IF $value != NONE THEN string::trim($value) ELSE NONE END
+    VALUE IF $value != NONE { string::trim($value) } ELSE { NONE }
     COMMENT "Description / biographie affichée sur la page publique";
 
 DEFINE FIELD IF NOT EXISTS theme

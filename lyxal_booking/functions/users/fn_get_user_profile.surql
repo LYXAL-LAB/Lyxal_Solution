@@ -9,8 +9,8 @@ DEFINE FUNCTION OVERWRITE fn::booking_get_user_profile($params: object) {
         RETURN fn::result_error("USER_ID_REQUIRED", "fr", "L'identifiant utilisateur est obligatoire");
     };
 
-    LET $users = SELECT id, name, email, booking_email, time_zone, avatar_path, role, created_at 
-                 FROM users 
+    LET $users = SELECT id, name, email, booking_email, time_zone, avatar_path, role, enabled, created_at 
+                 FROM booking_account 
                  WHERE id = type::record($raw_user_id) OR id = $raw_user_id 
                  LIMIT 1;
 
@@ -28,6 +28,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_get_user_profile($params: object) {
         booking_email: $u.booking_email,
         time_zone: IF $u.time_zone != NONE { $u.time_zone } ELSE { "UTC" },
         avatar_path: $u.avatar_path,
-        role: $u.role
+        role: $u.role,
+        enabled: IF $u.enabled != NONE { $u.enabled } ELSE { true }
     });
 } COMMENT "Récupère les informations de profil utilisateur et ses préférences de paramètres";

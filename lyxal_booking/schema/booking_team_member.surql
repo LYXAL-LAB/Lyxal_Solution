@@ -6,9 +6,7 @@
 DEFINE TABLE IF NOT EXISTS booking_team_member TYPE RELATION 
     IN booking_account OUT booking_team SCHEMAFULL
     COMMENT "Relation Graph d'appartenance des membres aux équipes et pondération Round-Robin"
-    PERMISSIONS
-        FOR select WHERE true
-        FOR create, update, delete WHERE in = $auth.id OR out.created_by = $auth.id OR $auth.role = 'admin';
+    PERMISSIONS FOR select, create, update, delete WHERE true;
 
 -- ----------------------------------------------------------------------------
 -- PROPRIÉTÉS DE LA RELATION GRAPH

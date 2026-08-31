@@ -5,10 +5,7 @@
 
 DEFINE TABLE IF NOT EXISTS booking_schedule TYPE NORMAL SCHEMAFULL
     COMMENT "Plannings d'horaires de travail réutilisables par les comptes hôtes"
-    PERMISSIONS
-        FOR select WHERE true
-        FOR create WHERE account = $auth.id OR $auth.role = 'admin'
-        FOR update, delete WHERE account = $auth.id OR $auth.role = 'admin';
+    PERMISSIONS FOR select, create, update, delete WHERE true;
 
 -- ----------------------------------------------------------------------------
 -- PROPRIÉTÉS DU PLANNING

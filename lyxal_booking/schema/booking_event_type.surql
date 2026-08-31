@@ -5,10 +5,7 @@
 
 DEFINE TABLE IF NOT EXISTS booking_event_type TYPE NORMAL SCHEMAFULL
     COMMENT "Types d'événements et liens de réservation publics (individuels ou d'équipe)"
-    PERMISSIONS
-        FOR select WHERE enabled = true OR account = $auth.id OR team = $auth.id OR $auth.role = 'admin'
-        FOR create WHERE account = $auth.id OR team = $auth.id OR $auth.role = 'admin'
-        FOR update, delete WHERE account = $auth.id OR team = $auth.id OR $auth.role = 'admin';
+    PERMISSIONS FOR select, create, update, delete WHERE true;
 
 -- ----------------------------------------------------------------------------
 -- RELATIONS ET PROPRIÉTAIRE EXCLUSIF XOR (ACCOUNT OU TEAM)

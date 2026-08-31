@@ -1,29 +1,30 @@
--- â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
--- â”‚  fn::booking_can_manage_event_type                                      â”‚
--- â”‚  VÃ©rifie si un compte utilisateur a le droit de gÃ©rer/modifier un       â”‚
--- â”‚  type d'Ã©vÃ©nement (propriÃ©taire individuel ou admin/owner d'Ã©quipe).   â”‚
--- â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+-- ┌──────────────────────────────────────────────────────────────────────────┐
+-- │  fn::booking_can_manage_event_type                                      │
+-- │  Vérifie si un compte utilisateur a le droit de gérer/modifier un       │
+-- │  type d'événement (propriétaire individuel ou admin/owner d'équipe).   │
+-- └──────────────────────────────────────────────────────────────────────────┘
 
-DEFINE FUNCTION OVERWRITE fn::booking_can_manage_event_type(
-    $account_id: option<record<booking_account>>,
-    $event_type_id: option<record<booking_event_type>>
-) {
+DEFINE FUNCTION OVERWRITE fn::booking_can_manage_event_type($params: object) {
+    LET $account_id = $params.account_id;
+    LET $event_type_id = $params.event_type_id;
+    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+
     IF $account_id == NONE {
-        THROW "Parameter 'account_id' is required";
+        RETURN fn::result_error("BOOKING_ACCOUNT_ID_REQUIRED", $language, { field: "account_id" });
     };
     IF $event_type_id == NONE {
-        THROW "Parameter 'event_type_id' is required";
+        RETURN fn::result_error("BOOKING_EVENT_TYPE_ID_REQUIRED", $language, { field: "event_type_id" });
     };
 
-    -- 1. Ã‰vÃ©nement individuel : le compte est le propriÃ©taire direct
+    -- 1. Événement individuel : le compte est le propriétaire direct
     LET $personal = SELECT VALUE id FROM booking_event_type
                      WHERE id = $event_type_id
                        AND account = $account_id;
     IF array::len($personal) > 0 {
-        RETURN true;
+        RETURN fn::result_ok(true);
     };
 
-    -- 2. Ã‰vÃ©nement d'Ã©quipe : l'utilisateur doit Ãªtre admin ou owner de l'Ã©quipe (via booking_team_member)
+    -- 2. Événement d'équipe : l'utilisateur doit être admin ou owner de l'équipe (via booking_team_member)
     LET $team_et = SELECT VALUE team FROM booking_event_type 
                     WHERE id = $event_type_id 
                       AND team != NONE;
@@ -34,9 +35,9 @@ DEFINE FUNCTION OVERWRITE fn::booking_can_manage_event_type(
                            AND in = $account_id 
                            AND role IN ['admin', 'owner'];
         IF array::len($is_admin) > 0 {
-            RETURN true;
+            RETURN fn::result_ok(true);
         };
     };
 
-    RETURN false;
-} COMMENT "VÃ©rifie les droits de gestion d'un compte sur un type d'Ã©vÃ©nement (propriÃ©taire individuel ou admin/owner d'Ã©quipe)";
+    RETURN fn::result_ok(false);
+} COMMENT "Vérifie les droits de gestion d'un compte sur un type d'événement (propriétaire individuel ou admin/owner d'équipe)";

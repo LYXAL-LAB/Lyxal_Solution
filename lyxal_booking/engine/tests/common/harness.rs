@@ -338,10 +338,10 @@ impl TestHarness {
     }
 
     /// Exécute un appel typé vers une fonction SurrealQL canonique via `LyxalSurrealCall`.
-    pub async fn call_fn<T, P>(&self, name: &str, params: P) -> Result<T, LyxalSurrealError>
+    pub async fn call_fn<T, P>(&self, name: &'static str, params: P) -> Result<T, LyxalSurrealError>
     where
-        T: DeserializeOwned,
-        P: Serialize,
+        T: DeserializeOwned + Send,
+        P: Serialize + Send + 'static,
     {
         self.store.call_fn(name, params).await
     }
@@ -350,22 +350,24 @@ impl TestHarness {
     async fn init_result_helpers(&self) -> Result<()> {
         let result_helpers = r#"
             DEFINE FUNCTION OVERWRITE fn::result_ok($data: any) {
-                RETURN { ok: true, data: $data, error: NONE };
+                RETURN { ok: true, data: IF $data == NONE { NULL } ELSE { $data }, error: NONE };
             };
-            DEFINE FUNCTION OVERWRITE fn::result_error($code: string, $language: string, $details: object) {
+            DEFINE FUNCTION OVERWRITE fn::result_error($code: string, $language: string, $details: any) {
                 RETURN {
                     ok: false,
                     data: NONE,
                     error: {
                         code: $code,
-                        module: "booking",
-                        domain: "common",
+                        message: $code,
+                        label: $code,
+                        description: NONE,
+                        resolution: NONE,
                         category: "validation",
                         severity: "error",
-                        message: $code,
                         http_status: 400,
                         retryable: false,
-                        timestamp: time::now(),
+                        documentation: {},
+                        metadata: {},
                         details: $details
                     }
                 };

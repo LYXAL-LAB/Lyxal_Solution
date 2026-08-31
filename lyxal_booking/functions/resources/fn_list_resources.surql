@@ -9,9 +9,9 @@
 DEFINE FUNCTION OVERWRITE fn::booking_list_resources($params: object) {
     LET $resources = SELECT * FROM booking_resource ORDER BY created_at DESC;
 
-    RETURN array::map($resources, |$r| {
+    LET $items = array::map($resources, |$r| {
         RETURN {
-            id: string::concat("", $r.id),
+            id: $r.id,
             name: $r.name,
             resource_type: IF $r.resource_type != NONE { $r.resource_type } ELSE { "ROOM" },
             capacity: $r.capacity,
@@ -21,4 +21,6 @@ DEFINE FUNCTION OVERWRITE fn::booking_list_resources($params: object) {
             enabled: IF $r.enabled != NONE { $r.enabled } ELSE { true }
         };
     });
-};
+
+    RETURN fn::result_ok($items);
+} COMMENT "Liste l'ensemble des ressources physiques enregistrées";

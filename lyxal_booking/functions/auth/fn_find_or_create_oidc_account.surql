@@ -40,18 +40,18 @@ DEFINE FUNCTION OVERWRITE fn::booking_find_or_create_oidc_account(
     IF array::len($by_sub) > 0 {
         LET $acc = $by_sub[0];
         IF $acc.enabled == false {
-            RETURN fn::result_error("BOOKING_AUTH_USER_DISABLED", $language, { user_id: $acc.id });
+            RETURN fn::result_error("BOOKING_AUTH_USER_DISABLED", $language, { user_id: type::string($acc.id) });
         };
 
-        -- Synchronisation du nom et du titre OIDC (AUDIT-003)
-        IF $title != NONE AND string::len(string::trim($title)) > 0 {
-            UPDATE $acc.id SET title = string::trim($title), updated_at = time::now();
-        };
+        -- Synchronisation du nom, email et du titre OIDC (AUDIT-003)
+        LET $clean_name = string::trim($name);
+        LET $clean_title = IF $title != NONE AND string::len(string::trim($title)) > 0 { string::trim($title) } ELSE { $acc.title };
+        UPDATE ONLY $acc.id SET email = $clean_email, name = $clean_name, title = $clean_title, updated_at = time::now();
 
         RETURN fn::result_ok({
             id: $acc.id,
-            name: $acc.name,
-            email: $acc.email,
+            name: $clean_name,
+            email: $clean_email,
             username: $acc.username,
             role: $acc.role,
             timezone: $acc.timezone,
@@ -60,23 +60,20 @@ DEFINE FUNCTION OVERWRITE fn::booking_find_or_create_oidc_account(
         });
     };
 
-    -- 2. Recherche par email pour lier un compte existant (REFUS SI NON VERIFIE OU DESACTIVE)
+    -- 2. Recherche par email pour lier un compte existant (REFUS SI DESACTIVE OU NON VERIFIE)
     LET $by_email = SELECT * FROM booking_account WHERE email = $clean_email LIMIT 1;
     IF array::len($by_email) > 0 {
+        LET $existing = $by_email[0];
+        IF $existing.enabled == false {
+            RETURN fn::result_error("BOOKING_AUTH_USER_DISABLED", $language, { user_id: type::string($existing.id) });
+        };
+
         IF $email_verified == false {
             RETURN fn::result_error("BOOKING_AUTH_OIDC_EMAIL_NOT_VERIFIED", $language, { email: $clean_email });
         };
 
-        LET $existing = $by_email[0];
-        IF $existing.enabled == false {
-            RETURN fn::result_error("BOOKING_AUTH_USER_DISABLED", $language, { user_id: $existing.id });
-        };
-
-        IF $title != NONE AND string::len(string::trim($title)) > 0 {
-            UPDATE $existing.id SET oidc_issuer = $issuer, oidc_sub = $sub, title = string::trim($title), updated_at = time::now();
-        } ELSE {
-            UPDATE $existing.id SET oidc_issuer = $issuer, oidc_sub = $sub, updated_at = time::now();
-        };
+        LET $clean_title = IF $title != NONE AND string::len(string::trim($title)) > 0 { string::trim($title) } ELSE { $existing.title };
+        UPDATE ONLY $existing.id SET oidc_issuer = $issuer, oidc_sub = $sub, title = $clean_title, updated_at = time::now();
 
         RETURN fn::result_ok({
             id: $existing.id,

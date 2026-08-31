@@ -33,16 +33,16 @@ DEFINE FUNCTION OVERWRITE fn::booking_update_event_type(
     LET $current = $existing[0];
 
     -- ------------------------------------------------------------------------
-    -- 2. VALEURS NETTOYÃ‰ES ET VALIDATION DU SLUG (SI MODIFIÃ‰)
+    -- 2. VALEURS NETTOYÉES ET VALIDATION DU SLUG (SI MODIFIÉ)
     -- ------------------------------------------------------------------------
     LET $clean_title = IF $title != NONE { string::trim($title) } ELSE { $current.title };
     LET $clean_slug = IF $slug != NONE { string::lowercase(string::trim($slug)) } ELSE { $current.slug };
 
-    IF !($clean_slug ~ "^[a-z0-9-]+$") {
-        THROW "Slug must contain only lowercase letters, numbers, and dashes";
+    IF $slug != NONE AND string::len($clean_slug) == 0 {
+        THROW "Slug cannot be empty";
     };
 
-    -- UnicitÃ© du slug si modifiÃ©
+    -- Unicité du slug si modifié
     IF $clean_slug != $current.slug {
         LET $check = IF $current.account != NONE {
             SELECT VALUE id FROM booking_event_type WHERE account = $current.account AND slug = $clean_slug AND id != $event_type_id LIMIT 1

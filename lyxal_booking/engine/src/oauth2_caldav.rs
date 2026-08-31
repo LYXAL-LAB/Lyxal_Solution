@@ -707,10 +707,7 @@ mod tests {
 
     #[test]
     fn test_oauth_migration_tracking_logic() {
-        let provider = Arc::new(EnvironmentKeyProvider::new(
-            "LYXAL_TEST_SECRET_KEY_FOR_CALDAV_OAUTH_TRACKING_123",
-        ));
-        let crypto = BookingCryptoEngine::new(provider);
+        let crypto = crate::crypto_helpers::create_test_crypto_engine();
 
         let source_id = RecordId::from(("booking_caldav_source", "test_source"));
         let aad = caldav_oauth_token_context("default", &source_id, "refresh_token").unwrap();

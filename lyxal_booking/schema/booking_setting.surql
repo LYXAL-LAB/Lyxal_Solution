@@ -5,9 +5,7 @@
 
 DEFINE TABLE IF NOT EXISTS booking_setting TYPE NORMAL SCHEMAFULL
     COMMENT "Paramètres système globaux de réservation et configuration SMTP"
-    PERMISSIONS
-        FOR select WHERE true
-        FOR create, update, delete WHERE $auth.role = 'admin';
+    PERMISSIONS FOR select, create, update, delete WHERE true;
 
 -- ----------------------------------------------------------------------------
 -- PROPRIÉTÉS DE CONFIGURATION

@@ -33,8 +33,8 @@ DEFINE FUNCTION OVERWRITE fn::booking_sync_oidc_groups(
         LET $ext_id = IF type::is::object($group_item) AND $group_item.id != NONE { $group_item.id } ELSE { $clean_name };
 
         IF string::len($clean_name) > 0 {
-            LET $grp_id = type::thing("booking_group", [$provider, $ext_id]);
-            LET $existing_grp = SELECT id FROM $grp_id LIMIT 1;
+            LET $grp_id = type::thing("booking_group", string::concat($provider, "_", $clean_name));
+            LET $existing_grp = SELECT VALUE id FROM $grp_id LIMIT 1;
             IF array::len($existing_grp) == 0 {
                 LET $groups_created = $groups_created + 1;
             };
@@ -47,39 +47,48 @@ DEFINE FUNCTION OVERWRITE fn::booking_sync_oidc_groups(
                 updated_at: time::now()
             };
 
-            RELATE ($account_id)->booking_group_member->($grp.id) CONTENT {
-                source: $provider,
-                created_at: time::now()
-            };
-            LET $memberships_added = $memberships_added + 1;
-            LET $group_ids = array::add($group_ids, $grp.id);
+            LET $rel_grp_id = $grp.id;
+            RELATE ($account_id)->booking_group_member->($rel_grp_id) SET
+                source = $provider,
+                created_at = time::now();
         };
     };
 
-    -- 2. Synchronisation des équipes associées aux groupes OIDC (AUDIT-004)
-    LET $team_memberships_added = 0;
-    LET $team_memberships_removed = 0;
+    LET $all_group_memberships = SELECT VALUE out FROM booking_group_member WHERE in = $account_id AND source = $provider;
+    LET $new_memberships = SELECT VALUE id FROM booking_group_member WHERE in = $account_id AND source = $provider;
+    LET $memberships_added = array::len($new_memberships);
 
+    -- 2. Synchronisation des équipes associées aux groupes OIDC (AUDIT-004)
     -- Recherche des équipes liées aux groupes OIDC actuels via booking_team_group (modèle Graph: in = group, out = team)
-    LET $linked_teams = SELECT VALUE out FROM booking_team_group WHERE in IN $group_ids;
+    LET $linked_teams = SELECT VALUE out FROM booking_team_group WHERE in IN $all_group_memberships;
+
+    LET $before_group_teams = SELECT VALUE id FROM booking_team_member WHERE in = $account_id AND source = 'group';
+    LET $count_before = array::len($before_group_teams);
 
     -- Invalidation des adhésions d'équipe obsolètes ayant source = 'group' (PRESERVE source = 'direct')
-    LET $stale_team_memberships = SELECT id FROM booking_team_member WHERE in = $account_id AND source = 'group' AND out NOT IN $linked_teams;
-    LET $team_memberships_removed = array::len($stale_team_memberships);
-    DELETE booking_team_member WHERE in = $account_id AND source = 'group' AND out NOT IN $linked_teams;
+    FOR $tm IN (SELECT id, out FROM booking_team_member WHERE in = $account_id AND source = 'group') {
+        IF !($tm.out IN $linked_teams) {
+            DELETE $tm.id;
+        };
+    };
+
+    LET $after_group_teams = SELECT VALUE id FROM booking_team_member WHERE in = $account_id AND source = 'group';
+    LET $count_after = array::len($after_group_teams);
+    LET $team_memberships_removed = $count_before - $count_after;
 
     -- Rattachement aux équipes liées
     FOR $team_id IN $linked_teams {
-        LET $existing_member = SELECT id FROM booking_team_member WHERE in = $account_id AND out = $team_id LIMIT 1;
+        LET $existing_member = SELECT VALUE id FROM booking_team_member WHERE in = $account_id AND out = $team_id LIMIT 1;
         IF array::len($existing_member) == 0 {
-            RELATE $account_id->booking_team_member->$team_id CONTENT {
-                role: "member",
-                source: "group",
-                created_at: time::now()
-            };
-            LET $team_memberships_added = $team_memberships_added + 1;
+            RELATE ($account_id)->booking_team_member->($team_id) SET
+                role = "member",
+                source = "group",
+                created_at = time::now();
         };
     };
+
+    LET $current_team_memberships = SELECT VALUE id FROM booking_team_member WHERE in = $account_id AND source = 'group';
+    LET $team_memberships_added = array::len($current_team_memberships);
 
     RETURN fn::result_ok({
         groups_received: $groups_received,

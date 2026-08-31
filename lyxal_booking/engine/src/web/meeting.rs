@@ -589,11 +589,7 @@ mod tests {
 
     #[test]
     fn test_meeting_webhook_aad_context_integrity() {
-        use lyxal_crypto::{CryptoEngine, EnvironmentKeyProvider};
-        use std::sync::Arc;
-
-        let provider = Arc::new(EnvironmentKeyProvider::new("LYXAL_TEST_SECRET_KEY_FOR_MEETING_AAD_5678"));
-        let crypto = CryptoEngine::new(provider);
+        let crypto = crate::crypto_helpers::create_test_crypto_engine();
 
         let setting_id = RecordId::from(("booking_setting", "meeting_webhook_secret"));
         let ctx = crate::crypto_helpers::meeting_webhook_secret_context("default", &setting_id).unwrap();
@@ -603,7 +599,7 @@ mod tests {
         assert!(encrypted.starts_with("enc:v1:"));
 
         let decrypted = crypto.decrypt_secret(&encrypted, &ctx).unwrap();
-        assert_eq!(decrypted.as_ref(), secret);
+        assert_eq!(decrypted.as_slice(), secret);
 
         let wrong_ctx = lyxal_crypto::SecretContext::with_tenant("default", "booking", "booking_setting", "meeting_webhook_secret", "wrong_field").unwrap();
         assert!(crypto.decrypt_secret(&encrypted, &wrong_ctx).is_err());
@@ -611,14 +607,12 @@ mod tests {
 
     #[test]
     fn test_meeting_webhook_aes_base64_migration() {
-        use lyxal_crypto::{CryptoEngine, EnvironmentKeyProvider, EncryptionKey};
-        use std::sync::Arc;
+        use lyxal_crypto::EncryptionKey;
 
-        let provider = Arc::new(EnvironmentKeyProvider::new("LYXAL_TEST_SECRET_KEY_FOR_MEETING_MIGRATION_777"));
-        let crypto = CryptoEngine::new(provider);
+        let crypto = crate::crypto_helpers::create_test_crypto_engine();
 
         let legacy_key_bytes = [3u8; 32];
-        let legacy_key = EncryptionKey::from_bytes("legacy_key", &legacy_key_bytes);
+        let legacy_key = EncryptionKey::from_bytes(legacy_key_bytes);
 
         let setting_id = RecordId::from(("booking_setting", "meeting_webhook_secret"));
         let ctx = crate::crypto_helpers::meeting_webhook_secret_context("default", &setting_id).unwrap();
@@ -630,22 +624,16 @@ mod tests {
         let cipher_payload = lyxal_crypto::cipher::encrypt_aes_gcm(&legacy_key, secret, &[]).unwrap();
         let stored_b64 = base64::engine::general_purpose::STANDARD.encode(&cipher_payload);
 
-        let dec = crypto.migrate_calrs_aes_base64(&legacy_key, &stored_b64, &ctx).unwrap();
-        assert_eq!(dec.plaintext.as_ref(), secret);
-        let migrated_envelope = dec.migrated_envelope.unwrap();
+        let migrated_envelope = crypto.migrate_calrs_aes_base64(&legacy_key, &stored_b64, &ctx).unwrap();
         assert!(migrated_envelope.starts_with("enc:v1:"));
 
         let read_back = crypto.decrypt_secret(&migrated_envelope, &ctx).unwrap();
-        assert_eq!(read_back.as_ref(), secret);
+        assert_eq!(read_back.as_slice(), secret);
     }
 
     #[test]
     fn test_meeting_webhook_tenant_isolation() {
-        use lyxal_crypto::{CryptoEngine, EnvironmentKeyProvider};
-        use std::sync::Arc;
-
-        let provider = Arc::new(EnvironmentKeyProvider::new("LYXAL_TEST_SECRET_KEY_FOR_MEETING_TENANT_ISO_000"));
-        let crypto = CryptoEngine::new(provider);
+        let crypto = crate::crypto_helpers::create_test_crypto_engine();
 
         let id = RecordId::from(("booking_setting", "meeting_webhook_secret"));
         let ctx_a = crate::crypto_helpers::meeting_webhook_secret_context("tenant-a", &id).unwrap();

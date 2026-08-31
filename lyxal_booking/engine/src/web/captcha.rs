@@ -405,11 +405,7 @@ mod tests {
 
     #[test]
     fn test_captcha_aad_context_integrity() {
-        use lyxal_crypto::{CryptoEngine, EnvironmentKeyProvider};
-        use std::sync::Arc;
-
-        let provider = Arc::new(EnvironmentKeyProvider::new("LYXAL_TEST_SECRET_KEY_FOR_CAPTCHA_AAD_1234"));
-        let crypto = CryptoEngine::new(provider);
+        let crypto = crate::crypto_helpers::create_test_crypto_engine();
 
         let setting_id = RecordId::from(("booking_setting", "captcha_secret"));
         let ctx = crate::crypto_helpers::captcha_secret_context("default", &setting_id).unwrap();
@@ -419,7 +415,7 @@ mod tests {
         assert!(encrypted.starts_with("enc:v1:"));
 
         let decrypted = crypto.decrypt_secret(&encrypted, &ctx).unwrap();
-        assert_eq!(decrypted.as_ref(), secret);
+        assert_eq!(decrypted.as_slice(), secret);
 
         let wrong_ctx = lyxal_crypto::SecretContext::with_tenant("default", "booking", "booking_setting", "captcha_secret", "wrong_field").unwrap();
         assert!(crypto.decrypt_secret(&encrypted, &wrong_ctx).is_err());
@@ -427,11 +423,7 @@ mod tests {
 
     #[test]
     fn test_captcha_hex_migration_and_re_encryption() {
-        use lyxal_crypto::{CryptoEngine, EnvironmentKeyProvider};
-        use std::sync::Arc;
-
-        let provider = Arc::new(EnvironmentKeyProvider::new("LYXAL_TEST_SECRET_KEY_FOR_HEX_MIGRATION_1111"));
-        let crypto = CryptoEngine::new(provider);
+        let crypto = crate::crypto_helpers::create_test_crypto_engine();
 
         let setting_id = RecordId::from(("booking_setting", "captcha_secret"));
         let ctx = crate::crypto_helpers::captcha_secret_context("default", &setting_id).unwrap();
@@ -441,22 +433,16 @@ mod tests {
 
         assert_eq!(determine_integration_secret_format(&stored_hex).unwrap(), StoredIntegrationSecretFormat::CalrsHexPlaintext);
 
-        let dec = crypto.migrate_legacy_calrs_hex(&stored_hex, &ctx).unwrap();
-        assert_eq!(dec.plaintext.as_ref(), raw_secret.as_bytes());
-        let migrated_envelope = dec.migrated_envelope.unwrap();
+        let migrated_envelope = crypto.migrate_legacy_calrs_hex(&stored_hex, &ctx).unwrap();
         assert!(migrated_envelope.starts_with("enc:v1:"));
 
         let read_back = crypto.decrypt_secret(&migrated_envelope, &ctx).unwrap();
-        assert_eq!(read_back.as_ref(), raw_secret.as_bytes());
+        assert_eq!(read_back.as_slice(), raw_secret.as_bytes());
     }
 
     #[test]
     fn test_captcha_tenant_isolation() {
-        use lyxal_crypto::{CryptoEngine, EnvironmentKeyProvider};
-        use std::sync::Arc;
-
-        let provider = Arc::new(EnvironmentKeyProvider::new("LYXAL_TEST_SECRET_KEY_FOR_TENANT_ISOLATION_9999"));
-        let crypto = CryptoEngine::new(provider);
+        let crypto = crate::crypto_helpers::create_test_crypto_engine();
 
         let id = RecordId::from(("booking_setting", "captcha_secret"));
         let ctx_a = crate::crypto_helpers::captcha_secret_context("tenant-a", &id).unwrap();

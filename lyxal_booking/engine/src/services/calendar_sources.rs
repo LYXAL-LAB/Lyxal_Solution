@@ -206,26 +206,26 @@ pub async fn get_google_oauth_url(
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_caldav_url_validation() {
-        assert!(validate_outbound_url("https://caldav.example.com/dav").is_ok());
-        assert!(validate_outbound_url("http://localhost:8000/dav").is_err());
-        assert!(validate_outbound_url("javascript:alert(1)").is_err());
+    #[tokio::test]
+    async fn test_caldav_url_validation() {
+        assert!(validate_outbound_url("https://caldav.example.com/dav", &["caldav.example.com".to_string()]).await.is_ok());
+        assert!(validate_outbound_url("http://localhost:8000/dav", &[]).await.is_err());
+        assert!(validate_outbound_url("javascript:alert(1)", &[]).await.is_err());
     }
 
     #[test]
     fn test_create_calendar_source_params_serialization() {
         let rec = RecordId::from(("booking_caldav_source", "src123"));
         let params = CreateCalendarSourceParams {
-            id: &rec,
-            user_id: "usr1",
-            name: "Mon CalDAV",
-            provider_type: "caldav",
-            auth_type: "basic",
-            server_url: Some("https://caldav.example.com"),
-            username: Some("user"),
-            encrypted_secret: Some("enc:v1:secret"),
-            status: "active",
+            id: rec,
+            user_id: "usr1".to_string(),
+            name: "Mon CalDAV".to_string(),
+            provider_type: "caldav".to_string(),
+            auth_type: "basic".to_string(),
+            server_url: Some("https://caldav.example.com".to_string()),
+            username: Some("user".to_string()),
+            encrypted_secret: Some("enc:v1:secret".to_string()),
+            status: "active".to_string(),
         };
         let val = serde_json::to_value(&params).unwrap();
         assert_eq!(val["name"], "Mon CalDAV");
