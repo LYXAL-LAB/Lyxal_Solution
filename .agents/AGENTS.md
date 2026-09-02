@@ -114,7 +114,9 @@ Implémenter :
 ```text
 module_name/
 
-├── schema/                  <-- Tables, index, assertions SurrealDB
+├── manifest.toml            <-- Contrat Runtime (id, version, deps, schemas, migrations, workers)
+├── schema/                  <-- Schémas déclaratifs SurrealDB (tables, index, assertions)
+├── migrations/              <-- Scripts de migration ordonnés (ex: 0001_initial.surql)
 ├── functions/               <-- Fonctions métier SurrealQL ($params: object)
 ├── events/                  <-- Déclencheurs DEFINE EVENT & handlers
 ├── error/                   <-- Définitions d'erreurs master data par thèmes
@@ -122,7 +124,7 @@ module_name/
 │   ├── bookings/
 │   └── ...
 ├── seeds/                   <-- Données de démonstration ou initiales
-├── src/                     <-- Code source Rust (Types, Wrappers, Protocoles)
+├── src/                     <-- Code source Rust (Types, Wrappers, LyxalModule, Workers)
 ├── README.md                <-- Documentation du module
 ├── CHANGELOG.md             <-- Historique des versions
 └── implementation_plan.md   <-- Plan courant d'implémentation
@@ -262,15 +264,65 @@ AUTH_*
 
 ---
 
-## 5.6. Règle sur les Événements (`DEFINE EVENT`)
+## 5.6. Standard Universel d'Événements avec `lyxal_event`
 
-Un `DEFINE EVENT` SurrealDB **produit uniquement des données** dans `event_outbox`.
+`lyxal_event` est le moteur d'événements asynchrone officiel de Lyxal OS (Transactional Outbox).
 
-Il ne :
+### 5.6.1. Règle du Producteur (Découplage Absolu)
 
-* modifie jamais directement un autre module ;
-* n'appelle pas directement un service externe ;
-* n'exécute aucun effet de bord direct.
+* Un module producteur (ex: `lyxal_booking`) **ne connaît JAMAIS ses consommateurs** (ex: `lyxal_notification`). Il lui est strictement interdit d'importer ou de référencer un autre module métier.
+* **Émission SurrealQL (`DEFINE EVENT`)** : Tout événement déclenché par une mutation en base appelle exclusivement `fn::event_publish` :
+
+```surql
+DEFINE EVENT IF NOT EXISTS booking_created_event ON TABLE booking WHEN $event = "CREATE" THEN (
+    fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "booking.created",
+        producer: "lyxal_booking",
+        payload: {
+            booking_id: <string> $after.id,
+            customer_email: $after.customer_email
+        },
+        metadata: {}
+    })
+);
+```
+
+* **Émission Rust** : Les producteurs utilisent la façade `publisher.publish(&event).await`.
+* Un `DEFINE EVENT` SurrealDB **produit uniquement des données** dans `event_outbox` via `fn::event_publish`. Il ne :
+  * modifie jamais directement un autre module ;
+  * n'appelle pas directement un service externe ;
+  * n'exécute aucun effet de bord direct.
+
+### 5.6.2. Règle du Consommateur (Handlers Typés & Extension Découplée)
+
+* Chaque structure d'événement de domaine implémente le contrat officiel `lyxal_event::Event` :
+
+```rust
+impl Event for BookingCreated {
+    const EVENT_TYPE: &'static str = "booking.created";
+}
+```
+
+* Les gestionnaires implémentent `#[async_trait] impl Handler<E> for MyHandler`.
+* Les modules consommateurs déclarent leurs handlers au Runtime via le trait neutre :
+
+```rust
+impl EventConsumerModule for NotificationModule {
+    fn register_event_handlers(&self, registry: &mut HandlerRegistry) -> Result<(), RuntimeError> {
+        registry.register(BookingCreatedHandler)?;
+        Ok(())
+    }
+}
+```
+
+* Les abonnements persistants sont déclarés en SurrealDB via `EventSubscription` (`event_subscription`).
+
+### 5.6.3. Idempotence & Garantie At-Least-Once
+
+* Le transport d'événements garantit une livraison **At-Least-Once**.
+* Tout handler de domaine **DOIT être idempotent** (déduplication par `event_id`, `correlation_id` ou clé métier).
+* En cas d'échec transitoire (ex: API externe indisponible), le handler retourne `Err(LyxalEventError::Handler(...))` pour déclencher le retry exponentiel + Full Jitter automatique. **Il est strictement interdit de masquer silencieusement une erreur.**
 
 ---
 
@@ -474,6 +526,139 @@ Une nouvelle fonction ne doit être ajoutée au Core que si :
 
 ---
 
+# ⚙️ 5.8. Contrat d'Intégration avec `lyxal_runtime`
+
+`lyxal_runtime` est le moteur d'exécution officiel de Lyxal OS. Il est responsable de l'installation, de l'exécution, de la supervision et de la réconciliation continue de l'ensemble des modules.
+
+Tout module développé pour la suite Lyxal OS doit respecter les 5 contrats suivants :
+
+### 5.8.1. Contrat de Manifeste (`manifest.toml`)
+
+Chaque module déclare formellement ses métadonnées, sa compatibilité SemVer, ses dépendances et ses ressources dans un fichier `manifest.toml` situé à la racine du module :
+
+```toml
+manifest_version = 1
+id = "lyxal_booking"
+name = "Lyxal Booking Engine"
+version = "1.0.0"
+runtime_version = ">=0.1.0"
+description = "Moteur de réservation et gestion de calendriers Lyxal"
+
+[dependencies]
+lyxal_auth = ">=1.0.0"
+lyxal_notification = ">=1.0.0"
+
+[resources]
+schemas = ["schema/tables.surql", "schema/indexes.surql"]
+migrations = ["migrations/0001_initial.surql"]
+```
+
+### 5.8.2. Contrat Rust du Cycle de Vie (`LyxalModule`)
+
+Chaque module expose une structure principale implémentant le trait officiel `lyxal_runtime::LyxalModule` :
+
+```rust
+use async_trait::async_trait;
+use lyxal_runtime::types::ModuleId;
+use lyxal_runtime::{InstallContext, LyxalModule, RuntimeError, RuntimeContext};
+
+pub struct BookingModule;
+
+#[async_trait]
+impl LyxalModule for BookingModule {
+    fn id(&self) -> ModuleId {
+        ModuleId::new("lyxal_booking")
+    }
+
+    fn version(&self) -> &str {
+        "1.0.0"
+    }
+
+    /// Hook d'installation mutationnel garanti d'être exécuté exactement UNE fois
+    /// par le Runtime (install_hook_count == 1 sous concurrence distribuée).
+    async fn install(&self, _ctx: &InstallContext) -> Result<(), RuntimeError> {
+        Ok(())
+    }
+
+    async fn start(&self, _ctx: &RuntimeContext) -> Result<(), RuntimeError> {
+        Ok(())
+    }
+
+    async fn stop(&self, _ctx: &RuntimeContext) -> Result<(), RuntimeError> {
+        Ok(())
+    }
+}
+```
+
+### 5.8.3. Contrat des Processus de Fond (`LyxalWorker`)
+
+Les modules ne doivent **JAMAIS** lancer de tâches `tokio::spawn` sauvages ou de boucles non supervisées. Tout processus continu d'arrière-plan doit implémenter `lyxal_runtime::worker::LyxalWorker` et coopérer obligatoirement avec le `CancellationToken` :
+
+```rust
+use async_trait::async_trait;
+use lyxal_runtime::types::ModuleId;
+use lyxal_runtime::worker::{LyxalWorker, RestartPolicy, WorkerContext, WorkerId};
+use lyxal_runtime::RuntimeError;
+use std::time::Duration;
+
+pub struct BookingReminderWorker;
+
+#[async_trait]
+impl LyxalWorker for BookingReminderWorker {
+    fn id(&self) -> WorkerId {
+        WorkerId::new("lyxal_booking", "reminder_processor")
+    }
+
+    fn module_id(&self) -> ModuleId {
+        ModuleId::new("lyxal_booking")
+    }
+
+    fn restart_policy(&self) -> RestartPolicy {
+        RestartPolicy::on_failure(5, Duration::from_secs(1), Duration::from_secs(60))
+    }
+
+    async fn run(&self, ctx: WorkerContext) -> Result<(), RuntimeError> {
+        while !ctx.cancellation_token().is_cancelled() {
+            tokio::select! {
+                _ = ctx.cancellation_token().cancelled() => break,
+                _ = tokio::time::sleep(Duration::from_secs(10)) => {
+                    // Traitement périodique du worker
+                }
+            }
+        }
+        Ok(())
+    }
+}
+```
+
+### 5.8.4. Contrat des Sondes de Santé (`HealthCheck`)
+
+Pour permettre au `HealthEngine` d'agréger la santé du système sans impacter les performances, les modules fournissent des sondes implémentant `HealthCheck` :
+
+```rust
+use async_trait::async_trait;
+use lyxal_runtime::health::{HealthCheck, HealthSnapshot, HealthStatus};
+use lyxal_runtime::RuntimeError;
+
+pub struct BookingHealthCheck;
+
+#[async_trait]
+impl HealthCheck for BookingHealthCheck {
+    async fn check(&self) -> Result<HealthStatus, RuntimeError> {
+        // Retourne HealthStatus::Healthy, Degraded ou Unhealthy
+        Ok(HealthStatus::Healthy)
+    }
+}
+```
+
+### 5.8.5. Règle de Séparation : Modules vs `lyxal_server` (Hôte)
+
+* Les modules métiers (`lyxal_booking`, `lyxal_crm`, etc.) dépendent **uniquement des traits et contrats** de `lyxal_runtime`.
+* Les modules métiers **n'instancient jamais le Runtime** eux-mêmes.
+* C'est le binaire hôte (`lyxal_server` ou CLI) qui instancie le `LyxalRuntime`, enregistre les modules dans le `ModuleRegistry`, exécute les réconciliations et démarre le serveur réseau.
+
+---
+
 # 🏗️ 6. Hiérarchie des Dépendances Inter-Modules
 
 La hiérarchie générale devient :
@@ -484,12 +669,14 @@ lyxal_core
 (validation / sanitize / security / utils)
         │
         ▼
-Noyau Technique
+Noyau Technique & Moteur
 lyxal_error
 lyxal_surreal
 lyxal_event
+lyxal_runtime (Manifest, Lifecycle, Workers, Health, Locks)
 lyxal_auth
 lyxal_notification
+lyxal_scheduler
         │
         ▼
 Modules Métiers
@@ -500,11 +687,10 @@ lyxal_btp
 ...
         │
         ▼
-UI / Interfaces
-Console Web
+UI / Process Host
+lyxal_server (Axum Handlers, HTTP API, Process Boot)
+Console Web / Mobile
 CLI
-Axum Handlers
-Mobile
 ```
 
 > ❌ **Aucune dépendance circulaire n'est tolérée.**
@@ -1043,11 +1229,15 @@ Avant toute implémentation, Antigravity doit vérifier les points suivants.
 * [ ] Master data prévue.
 * [ ] Aucune erreur silencieuse.
 
-## Events
+## Events (lyxal_event)
 
-* [ ] Les événements ne produisent que des données.
-* [ ] Passage par `event_outbox`.
-* [ ] Aucun effet de bord inter-module direct.
+* [ ] Le module émetteur ne référence aucun module consommateur (zéro couplage).
+* [ ] Les `DEFINE EVENT` SurrealDB passent exclusivement par `fn::event_publish`.
+* [ ] Les structures d'événements implémentent `lyxal_event::Event` (`EVENT_TYPE`).
+* [ ] Les handlers consommateurs implémentent `Handler<E>` et `EventConsumerModule`.
+* [ ] L'idempotence du handler de domaine est garantie (transport At-Least-Once).
+* [ ] Les abonnements persistants `EventSubscription` sont déclarés.
+* [ ] Aucune erreur de handler n'est masquée silencieusement.
 
 ## Validation CTO
 

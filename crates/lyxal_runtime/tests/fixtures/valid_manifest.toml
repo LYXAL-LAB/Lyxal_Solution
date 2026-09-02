@@ -1,0 +1,17 @@
+manifest_version = 1
+id = "calendar"
+name = "Lyxal Calendar"
+version = "1.2.0"
+description = "Calendar scheduling engine for Lyxal OS"
+capabilities = ["database", "workers", "events"]
+
+[runtime]
+min_version = ">=0.1.0"
+
+[[dependencies]]
+id = "timezone"
+version = ">=1.0.0"
+
+[[dependencies]]
+id = "scheduler"
+version = "^0.5"

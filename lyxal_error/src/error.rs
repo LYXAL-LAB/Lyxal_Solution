@@ -28,10 +28,7 @@ pub enum LyxalCallError {
     Business(LyxalError),
 
     #[error("Business error code: {code}")]
-    BusinessCode {
-        code: &'static str,
-        details: Value,
-    },
+    BusinessCode { code: &'static str, details: Value },
 
     #[error("Invalid result contract from function: {function}")]
     InvalidContract { function: &'static str },

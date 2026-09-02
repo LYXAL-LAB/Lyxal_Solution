@@ -10,9 +10,9 @@ use crate::error::LyxalSurrealError;
 /// Valide que le nom de la fonction ne contient que des minuscules alphanumériques et des underscores ASCII.
 pub fn validate_function_name(name: &str) -> bool {
     !name.is_empty()
-        && name.bytes().all(|byte| {
-            byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_'
-        })
+        && name
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
 }
 
 /// Trait universel fournissant la méthode d'extension `call_fn` à tous les stores de l'écosystème Lyxal OS.

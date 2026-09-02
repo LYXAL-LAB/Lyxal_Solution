@@ -1,0 +1,4 @@
+manifest_version = 999
+id = "invalid_mod"
+name = "Invalid"
+version = "1.0.0"

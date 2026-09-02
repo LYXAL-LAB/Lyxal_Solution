@@ -1,0 +1,25 @@
+pub mod context;
+pub mod definition;
+pub mod descriptor;
+pub mod handle;
+pub mod id;
+pub mod metrics;
+pub mod registry;
+pub mod report;
+pub mod restart;
+pub mod state;
+pub mod store;
+pub mod supervisor;
+
+pub use context::{CancellationToken, WorkerContext};
+pub use definition::LyxalWorker;
+pub use descriptor::{WorkerCriticality, WorkerDescriptor};
+pub use handle::WorkerHandle;
+pub use id::WorkerId;
+pub use metrics::{WorkerHealth, WorkerMetrics};
+pub use registry::WorkerRegistry;
+pub use report::{WorkerBatchReport, WorkerOperationReport};
+pub use restart::{RestartPolicy, WorkerRestartBackoff};
+pub use state::{WorkerExitReason, WorkerState};
+pub use store::{MemoryWorkerStore, SurrealWorkerStore, WorkerStore, WorkerStoreRow};
+pub use supervisor::WorkerSupervisor;

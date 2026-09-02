@@ -1,0 +1,29 @@
+[package]
+name = "lyxal_runtime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Noyau d'orchestration et de gestion du cycle de vie des modules pour Lyxal OS"
+
+[dependencies]
+lyxal_error = { workspace = true }
+lyxal_surreal = { workspace = true }
+lyxal_event = { workspace = true }
+surrealdb = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+semver = { workspace = true }
+toml = { workspace = true }
+sha2 = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+fastrand = { workspace = true }
+
+[dev-dependencies]
+tokio = { version = "1.38", features = ["full"] }
+tempfile = { workspace = true }

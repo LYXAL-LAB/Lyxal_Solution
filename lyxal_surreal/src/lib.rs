@@ -35,13 +35,19 @@ mod tests {
 
     #[test]
     fn test_param_structs_serialize_cleanly() {
-        let p1 = PrimitiveParams { email: "test@example.com" };
+        let p1 = PrimitiveParams {
+            email: "test@example.com",
+        };
         assert!(serde_json::to_value(&p1).is_ok());
 
-        let p2 = RecordParams { account: surrealdb::RecordId::from(("account", "yaniss")) };
+        let p2 = RecordParams {
+            account: surrealdb::RecordId::from(("account", "yaniss")),
+        };
         assert!(serde_json::to_value(&p2).is_ok());
 
-        let p3 = DateParams { start_at: surrealdb::Datetime::default() };
+        let p3 = DateParams {
+            start_at: surrealdb::Datetime::default(),
+        };
         assert!(serde_json::to_value(&p3).is_ok());
     }
 }

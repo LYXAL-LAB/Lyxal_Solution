@@ -1,3 +1,5 @@
+#![allow(clippy::large_enum_variant, clippy::result_large_err)]
+
 pub mod error;
 pub mod result;
 
@@ -27,7 +29,9 @@ mod tests {
         };
         assert!(matches!(
             res.into_result("test_func"),
-            Err(LyxalCallError::InvalidContract { function: "test_func" })
+            Err(LyxalCallError::InvalidContract {
+                function: "test_func"
+            })
         ));
     }
 
@@ -55,7 +59,9 @@ mod tests {
         };
         assert!(matches!(
             res.into_result("test_func"),
-            Err(LyxalCallError::InvalidContract { function: "test_func" })
+            Err(LyxalCallError::InvalidContract {
+                function: "test_func"
+            })
         ));
     }
 }

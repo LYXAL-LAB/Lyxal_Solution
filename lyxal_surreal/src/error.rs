@@ -3,6 +3,7 @@ use thiserror::Error;
 
 /// Enumération typée des erreurs d'appel et d'exécution SurrealDB.
 #[derive(Debug, Error)]
+#[allow(clippy::large_enum_variant)]
 pub enum LyxalSurrealError {
     #[error(transparent)]
     Call(#[from] LyxalCallError),

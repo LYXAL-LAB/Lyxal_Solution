@@ -1,0 +1,24 @@
+[package]
+name = "lyxal_event"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Moteur d'événements asynchrone, persistance Transactional Outbox, Fan-out et distribution pour Lyxal OS"
+
+[dependencies]
+lyxal_error = { workspace = true }
+lyxal_surreal = { workspace = true }
+surrealdb = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+uuid = { workspace = true }
+fastrand = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
