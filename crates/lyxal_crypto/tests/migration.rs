@@ -16,7 +16,9 @@ fn test_true_calrs_legacy_hex_plaintext_migration() {
     let decoded = decode_calrs_legacy_hex(&stored_legacy_hex).unwrap();
     assert_eq!(&*decoded, raw_plaintext);
 
-    let migrated_envelope = engine.migrate_legacy_calrs_hex(&stored_legacy_hex, &ctx).unwrap();
+    let migrated_envelope = engine
+        .migrate_legacy_calrs_hex(&stored_legacy_hex, &ctx)
+        .unwrap();
     assert!(migrated_envelope.starts_with("enc:v1:main:"));
 
     let decrypted = engine.decrypt_secret(&migrated_envelope, &ctx).unwrap();
@@ -41,10 +43,14 @@ fn test_calrs_aes_base64_migration_with_legacy_key() {
     let stored_b64 = base64::engine::general_purpose::STANDARD.encode(payload);
 
     // Déchiffrement et migration avec l'ancienne clé legacy_key
-    let decrypted_legacy = engine.decrypt_calrs_aes_base64(&legacy_key, &stored_b64).unwrap();
+    let decrypted_legacy = engine
+        .decrypt_calrs_aes_base64(&legacy_key, &stored_b64)
+        .unwrap();
     assert_eq!(&*decrypted_legacy, secret);
 
-    let migrated_envelope = engine.migrate_calrs_aes_base64(&legacy_key, &stored_b64, &ctx).unwrap();
+    let migrated_envelope = engine
+        .migrate_calrs_aes_base64(&legacy_key, &stored_b64, &ctx)
+        .unwrap();
     assert!(migrated_envelope.starts_with("enc:v1:main:"));
 
     let decrypted = engine.decrypt_secret(&migrated_envelope, &ctx).unwrap();
@@ -56,5 +62,8 @@ fn test_invalid_legacy_hex_fails() {
     let invalid_hex = "not-a-valid-hex-string-!!!";
     let result = decode_calrs_legacy_hex(invalid_hex);
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), CryptoError::InvalidLegacyValue));
+    assert!(matches!(
+        result.unwrap_err(),
+        CryptoError::InvalidLegacyValue
+    ));
 }

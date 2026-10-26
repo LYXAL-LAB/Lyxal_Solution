@@ -15,12 +15,23 @@ pub struct SecretContext {
 
 impl SecretContext {
     /// Crée un nouveau contexte d'authentification canonique avec tenant par défaut (utilitaire mono-tenant / tests).
-    pub fn new(module: impl AsRef<str>, resource: impl AsRef<str>, record_id: impl AsRef<str>, field: impl AsRef<str>) -> Result<Self, CryptoError> {
+    pub fn new(
+        module: impl AsRef<str>,
+        resource: impl AsRef<str>,
+        record_id: impl AsRef<str>,
+        field: impl AsRef<str>,
+    ) -> Result<Self, CryptoError> {
         Self::with_tenant("default", module, resource, record_id, field)
     }
 
     /// Crée un nouveau contexte d'authentification canonique avec tenant explicite et validation stricte.
-    pub fn with_tenant(tenant: impl AsRef<str>, module: impl AsRef<str>, resource: impl AsRef<str>, record_id: impl AsRef<str>, field: impl AsRef<str>) -> Result<Self, CryptoError> {
+    pub fn with_tenant(
+        tenant: impl AsRef<str>,
+        module: impl AsRef<str>,
+        resource: impl AsRef<str>,
+        record_id: impl AsRef<str>,
+        field: impl AsRef<str>,
+    ) -> Result<Self, CryptoError> {
         let t = tenant.as_ref().trim();
         let m = module.as_ref().trim();
         let r = resource.as_ref().trim();
@@ -28,19 +39,29 @@ impl SecretContext {
         let f = field.as_ref().trim();
 
         if t.is_empty() {
-            return Err(CryptoError::InvalidContext("tenant cannot be empty".to_string()));
+            return Err(CryptoError::InvalidContext(
+                "tenant cannot be empty".to_string(),
+            ));
         }
         if m.is_empty() {
-            return Err(CryptoError::InvalidContext("module cannot be empty".to_string()));
+            return Err(CryptoError::InvalidContext(
+                "module cannot be empty".to_string(),
+            ));
         }
         if r.is_empty() {
-            return Err(CryptoError::InvalidContext("resource cannot be empty".to_string()));
+            return Err(CryptoError::InvalidContext(
+                "resource cannot be empty".to_string(),
+            ));
         }
         if id.is_empty() {
-            return Err(CryptoError::InvalidContext("record_id cannot be empty".to_string()));
+            return Err(CryptoError::InvalidContext(
+                "record_id cannot be empty".to_string(),
+            ));
         }
         if f.is_empty() {
-            return Err(CryptoError::InvalidContext("field cannot be empty".to_string()));
+            return Err(CryptoError::InvalidContext(
+                "field cannot be empty".to_string(),
+            ));
         }
 
         Ok(Self {

@@ -1,5 +1,0 @@
-error: Invalid value for 'url_param' of leptos_fluent! macro. Expected literal string or valid expression.
-  --> tests/ui/leptos_fluent/stable/fail/empty_value.rs:18:20
-   |
-18 |         url_param: ,
-   |                    ^

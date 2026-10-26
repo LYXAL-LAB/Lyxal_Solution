@@ -53,7 +53,11 @@ impl EnvironmentKeyProvider {
         let trimmed = val.trim();
 
         // Accepte STRICTEMENT et UNIQUEMENT du Base64 standard de 32 octets avec effacement mémoire (Zeroizing)
-        let bytes = Zeroizing::new(STANDARD.decode(trimmed).map_err(|_| CryptoError::InvalidKeyEncoding)?);
+        let bytes = Zeroizing::new(
+            STANDARD
+                .decode(trimmed)
+                .map_err(|_| CryptoError::InvalidKeyEncoding)?,
+        );
         if bytes.len() != 32 {
             return Err(CryptoError::InvalidKeyLength);
         }
@@ -80,7 +84,9 @@ impl KeyResolver for EnvironmentKeyProvider {
         if id == &self.key_id {
             Ok(Arc::clone(&self.cached_key))
         } else {
-            Err(CryptoError::KeyNotFound { key_id: id.to_string() })
+            Err(CryptoError::KeyNotFound {
+                key_id: id.to_string(),
+            })
         }
     }
 }
@@ -105,18 +111,30 @@ impl FileKeyProvider {
 
     pub fn default_dev(dir: impl AsRef<Path>) -> Result<Self, CryptoError> {
         let key_id = KeyId::parse("main")?;
-        Ok(Self::new(dir.as_ref().join("lyxal-master.key"), key_id, KeyGenerationPolicy::AllowGenerate))
+        Ok(Self::new(
+            dir.as_ref().join("lyxal-master.key"),
+            key_id,
+            KeyGenerationPolicy::AllowGenerate,
+        ))
     }
 
     pub fn default_strict(dir: impl AsRef<Path>) -> Result<Self, CryptoError> {
         let key_id = KeyId::parse("main")?;
-        Ok(Self::new(dir.as_ref().join("lyxal-master.key"), key_id, KeyGenerationPolicy::RequireExisting))
+        Ok(Self::new(
+            dir.as_ref().join("lyxal-master.key"),
+            key_id,
+            KeyGenerationPolicy::RequireExisting,
+        ))
     }
 
     fn read_key_from_path(&self) -> Result<EncryptionKey, CryptoError> {
         let content = fs::read_to_string(&self.path)?;
         let trimmed = content.trim();
-        let bytes = Zeroizing::new(STANDARD.decode(trimmed).map_err(|_| CryptoError::InvalidKeyEncoding)?);
+        let bytes = Zeroizing::new(
+            STANDARD
+                .decode(trimmed)
+                .map_err(|_| CryptoError::InvalidKeyEncoding)?,
+        );
         EncryptionKey::try_from_slice(&bytes)
     }
 }
@@ -128,17 +146,25 @@ impl KeyResolver for FileKeyProvider {
 
     fn resolve(&self, id: &KeyId) -> Result<Arc<EncryptionKey>, CryptoError> {
         if id != &self.key_id {
-            return Err(CryptoError::KeyNotFound { key_id: id.to_string() });
+            return Err(CryptoError::KeyNotFound {
+                key_id: id.to_string(),
+            });
         }
 
         {
-            let lock = self.cached_key.read().map_err(|_| CryptoError::KeyStoreUnavailable)?;
+            let lock = self
+                .cached_key
+                .read()
+                .map_err(|_| CryptoError::KeyStoreUnavailable)?;
             if let Some(ref k) = *lock {
                 return Ok(Arc::clone(k));
             }
         }
 
-        let mut lock = self.cached_key.write().map_err(|_| CryptoError::KeyStoreUnavailable)?;
+        let mut lock = self
+            .cached_key
+            .write()
+            .map_err(|_| CryptoError::KeyStoreUnavailable)?;
         if let Some(ref k) = *lock {
             return Ok(Arc::clone(k));
         }
@@ -207,7 +233,10 @@ impl CompositeKeyResolver {
     }
 
     pub fn add_historical_key(&self, id: KeyId, key: EncryptionKey) -> Result<(), CryptoError> {
-        let mut map = self.keys.write().map_err(|_| CryptoError::KeyStoreUnavailable)?;
+        let mut map = self
+            .keys
+            .write()
+            .map_err(|_| CryptoError::KeyStoreUnavailable)?;
         map.insert(id, Arc::new(key));
         Ok(())
     }
@@ -219,11 +248,16 @@ impl KeyResolver for CompositeKeyResolver {
     }
 
     fn resolve(&self, id: &KeyId) -> Result<Arc<EncryptionKey>, CryptoError> {
-        let map = self.keys.read().map_err(|_| CryptoError::KeyStoreUnavailable)?;
+        let map = self
+            .keys
+            .read()
+            .map_err(|_| CryptoError::KeyStoreUnavailable)?;
         if let Some(key) = map.get(id) {
             Ok(Arc::clone(key))
         } else {
-            Err(CryptoError::KeyNotFound { key_id: id.to_string() })
+            Err(CryptoError::KeyNotFound {
+                key_id: id.to_string(),
+            })
         }
     }
 }

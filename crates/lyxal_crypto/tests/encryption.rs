@@ -52,7 +52,10 @@ fn test_decrypt_fails_with_mismatched_aad() {
 
     let result = engine.decrypt_secret(&encrypted, &ctx2);
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), CryptoError::AuthenticationFailed));
+    assert!(matches!(
+        result.unwrap_err(),
+        CryptoError::AuthenticationFailed
+    ));
 }
 
 #[test]
@@ -91,7 +94,10 @@ fn test_unsupported_version_error_preserved() {
 
     let result = engine.decrypt_secret(invalid_version_envelope, &ctx);
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), CryptoError::UnsupportedVersion { .. }));
+    assert!(matches!(
+        result.unwrap_err(),
+        CryptoError::UnsupportedVersion { .. }
+    ));
 }
 
 #[test]

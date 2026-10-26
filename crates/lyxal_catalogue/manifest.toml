@@ -1,0 +1,67 @@
+manifest_version = 1
+id = "lyxal_catalogue"
+name = "Lyxal Catalogue"
+version = "1.0.0"
+description = "Référentiel universel des produits, services, ouvrages, ressources et ensembles de LYXAL OS"
+capabilities = ["database"]
+
+[runtime]
+min_version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_core"
+version = ">=1.0.0"
+
+[[dependencies]]
+id = "lyxal_base"
+version = ">=1.0.0"
+
+[resources]
+schemas = [
+    "schema/00_catalogue_session.surql",
+    "schema/01_catalogue_type.surql",
+    "schema/02_catalogue_item.surql",
+    "schema/03_catalogue_categorie.surql",
+    "schema/04_catalogue_item_categorie.surql",
+    "schema/05_catalogue_attribut.surql",
+    "schema/06_catalogue_attribut_valeur.surql",
+    "schema/07_catalogue_variante.surql",
+    "schema/08_catalogue_variante_attribut.surql",
+    "schema/09_catalogue_composition.surql",
+    "schema/10_catalogue_composition_ligne.surql",
+    "schema/11_catalogue_relation_type.surql",
+    "schema/12_catalogue_relation.surql"
+]
+
+functions = [
+    "functions/type/catalogue_type_list.surql",
+    "functions/categorie/catalogue_categorie_create.surql",
+    "functions/categorie/catalogue_categorie_tree.surql",
+    "functions/categorie/catalogue_categorie_update.surql",
+    "functions/categorie/catalogue_categorie_delete.surql",
+    "functions/item/catalogue_item_create.surql",
+    "functions/item/catalogue_item_get.surql",
+    "functions/item/catalogue_item_list.surql",
+    "functions/item/catalogue_item_update.surql",
+    "functions/item/catalogue_item_delete.surql",
+    "functions/item/catalogue_validate_gtin.surql",
+    "functions/attribut/catalogue_attribut_create.surql",
+    "functions/attribut/catalogue_attribut_valeur_create.surql",
+    "functions/attribut/catalogue_attribut_set_static.surql",
+    "functions/variante/catalogue_variante_create.surql",
+    "functions/variante/catalogue_variante_set_attributs.surql",
+    "functions/composition/catalogue_composition_check_cycle.surql",
+    "functions/composition/catalogue_composition_create.surql",
+    "functions/composition/catalogue_composition_add_line.surql",
+    "functions/composition/catalogue_composition_publish.surql",
+    "functions/composition/catalogue_composition_clone_version.surql",
+    "functions/relation/catalogue_relation_check_cycle.surql",
+    "functions/relation/catalogue_relation_create.surql",
+    "functions/relation/catalogue_relation_delete.surql"
+]
+
+seeds = [
+    "seeds/error_definitions.surql",
+    "seeds/catalogue_type_initial.surql",
+    "seeds/catalogue_relation_type_initial.surql"
+]

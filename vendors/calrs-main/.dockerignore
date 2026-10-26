@@ -1,8 +1,0 @@
-target/
-*.db
-*.db-shm
-*.db-wal
-.env
-.git/
-assets/screenshot.png
-assets/screenshots/

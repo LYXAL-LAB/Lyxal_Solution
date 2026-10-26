@@ -507,13 +507,7 @@ pub async fn generate_and_persist(
 
 /// Hex-encoded HMAC-SHA256 of `body` keyed by `secret`.
 pub fn sign_hmac_sha256(secret: &[u8], body: &[u8]) -> String {
-    use hmac::{Hmac, Mac};
-    use sha2::Sha256;
-    type HmacSha256 = Hmac<Sha256>;
-    let mut mac = HmacSha256::new_from_slice(secret).expect("HMAC accepts any key length");
-    mac.update(body);
-    let tag = mac.finalize().into_bytes();
-    hex::encode(tag)
+    lyxal_crypto::sign_hmac_sha256_hex(secret, body)
 }
 
 /// Restrict an expanded room string to URL-safe chars.

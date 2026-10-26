@@ -30,8 +30,8 @@ pub fn build_router(context: AppContext) -> Result<Router, ServerError> {
         .route("/health", get(handlers::health))
         .route("/metrics", get(handlers::metrics))
         .nest("/api/v1", api)
-        .merge(module_routes)
         .with_state(context.clone())
+        .merge(module_routes)
         .layer(from_fn_with_state(
             context.clone(),
             middleware::request_context,
@@ -42,10 +42,10 @@ pub fn build_router(context: AppContext) -> Result<Router, ServerError> {
                 .layer(RequestBodyLimitLayer::new(
                     context.config.server.body_limit_bytes,
                 ))
+                .layer(TraceLayer::new_for_http())
                 .layer(TimeoutLayer::new(Duration::from_secs(
                     context.config.server.request_timeout_seconds,
                 )))
-                .layer(TraceLayer::new_for_http())
                 .concurrency_limit(context.config.server.max_concurrency),
         );
 

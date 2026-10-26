@@ -26,7 +26,10 @@ fn test_file_key_provider_strict_policy_prohibits_generation() {
     let res = provider.resolve(&active_id);
 
     assert!(res.is_err());
-    assert!(matches!(res.unwrap_err(), CryptoError::GenerationProhibited));
+    assert!(matches!(
+        res.unwrap_err(),
+        CryptoError::GenerationProhibited
+    ));
 }
 
 #[test]
@@ -38,7 +41,9 @@ fn test_composite_key_resolver_supports_rotation() {
     let key_2025 = KeyId::parse("key-2025").unwrap();
 
     let composite = CompositeKeyResolver::new(key_2026.clone(), active_key);
-    composite.add_historical_key(key_2025.clone(), old_key).unwrap();
+    composite
+        .add_historical_key(key_2025.clone(), old_key)
+        .unwrap();
 
     let engine = CryptoEngine::new(composite);
     let ctx = SecretContext::new("booking", "setting", "rec_1", "secret").unwrap();
@@ -47,7 +52,9 @@ fn test_composite_key_resolver_supports_rotation() {
     let old_composite = CompositeKeyResolver::new(key_2025.clone(), old_key_copy);
     let old_engine = CryptoEngine::new(old_composite);
 
-    let old_encrypted = old_engine.encrypt_secret(b"historical-secret", &ctx).unwrap();
+    let old_encrypted = old_engine
+        .encrypt_secret(b"historical-secret", &ctx)
+        .unwrap();
     assert!(old_encrypted.starts_with("enc:v1:key-2025:"));
 
     let decrypted = engine.decrypt_secret(&old_encrypted, &ctx).unwrap();

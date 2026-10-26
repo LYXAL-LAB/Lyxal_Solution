@@ -1,5 +1,5 @@
+use lyxal_crypto::hash::Sha256Hasher;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::fmt;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -17,7 +17,7 @@ impl RuntimeEventId {
         Self(id.into().trim().to_string())
     }
 
-    /// Génère un nouvel identifiant d'événement unique combinant horodatage nanoseconde, PID, compteur atomique et entropie SHA-256.
+    /// Génère un nouvel identifiant d'événement unique combinant horodatage nanoseconde, PID, compteur atomique et entropie SHA-256 via `lyxal_crypto`.
     pub fn generate() -> Self {
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -26,11 +26,11 @@ impl RuntimeEventId {
         let pid = std::process::id();
         let count = EVENT_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-        let mut hasher = Sha256::new();
-        hasher.update(nanos.to_le_bytes());
-        hasher.update(pid.to_le_bytes());
-        hasher.update(count.to_le_bytes());
-        let hash = format!("{:x}", hasher.finalize());
+        let mut hasher = Sha256Hasher::new();
+        hasher.update(&nanos.to_le_bytes());
+        hasher.update(&pid.to_le_bytes());
+        hasher.update(&count.to_le_bytes());
+        let hash = hasher.finalize_hex();
 
         Self(format!("evt-{}-{:06x}-{}", pid, count, &hash[..8]))
     }

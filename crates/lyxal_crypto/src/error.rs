@@ -50,4 +50,13 @@ pub enum CryptoError {
 
     #[error("key store lock unavailable or poisoned")]
     KeyStoreUnavailable,
+
+    #[error("password hashing failed")]
+    PasswordHashError,
+
+    #[error("invalid password hash format")]
+    InvalidPasswordHash,
+
+    #[error("HKDF derivation failed")]
+    HkdfError,
 }

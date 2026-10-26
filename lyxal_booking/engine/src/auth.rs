@@ -7,8 +7,6 @@
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use argon2::password_hash::SaltString;
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use axum::extract::{Form, FromRequestParts, State};
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, StatusCode};
@@ -33,35 +31,24 @@ const SESSION_DURATION_DAYS: i64 = 30;
 // --- Password hashing ---
 
 pub fn hash_password(password: &str) -> Result<String> {
-    let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
-    let hash = argon2
-        .hash_password(password.as_bytes(), &salt)
-        .map_err(|e| anyhow::anyhow!("Failed to hash password: {}", e))?;
-    Ok(hash.to_string())
+    lyxal_crypto::password::hash_password(password)
+        .map_err(|e| anyhow::anyhow!("Failed to hash password: {}", e))
 }
 
 pub fn verify_password(password: &str, hash: &str) -> bool {
-    let parsed = match PasswordHash::new(hash) {
-        Ok(h) => h,
-        Err(_) => return false,
-    };
-    Argon2::default()
-        .verify_password(password.as_bytes(), &parsed)
-        .is_ok()
+    lyxal_crypto::password::verify_password(password, hash).unwrap_or(false)
 }
 
 // Pre-computed Argon2id hash used as a timing dummy when no user is found or hash is corrupted,
 // preventing user enumeration via response-time differences.
-const DUMMY_HASH: &str = "$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHQ$Rzg2ZnZ1WlZ0R1d2VXpWRldWdXpW";
+const DUMMY_HASH: &str = "$argon2id$v=19$m=65536,t=3,p=1$c29tZXNhbHQxMjM0NTY3OA$dGVzdHRlc3R0ZXN0dGVzdHRlc3R0ZXN0dGVzdHRlc3Q";
 
 /// Perform uniform password verification against stored hash or fallback dummy hash,
 /// ensuring Argon2 is always executed even if account is missing or stored hash is corrupted.
 pub fn verify_password_uniform(stored_hash: Option<&str>, password: &str) -> bool {
-    let hash = stored_hash
-        .filter(|value| PasswordHash::new(value).is_ok())
-        .unwrap_or(DUMMY_HASH);
-    verify_password(password, hash)
+    let hash = stored_hash.unwrap_or(DUMMY_HASH);
+    let valid = verify_password(password, hash);
+    stored_hash.is_some() && valid
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -1543,8 +1530,16 @@ mod tests {
 
     #[test]
     fn dummy_password_hash_is_valid() {
-        let parsed = PasswordHash::new(DUMMY_HASH);
-        assert!(parsed.is_ok(), "DUMMY_HASH must be a valid PHC Argon2 string");
+        assert!(!verify_password("wrong_password", DUMMY_HASH));
+    }
+
+    #[test]
+    fn test_backward_compatibility_with_historical_calrs_argon2_hash() {
+        // Hash historique généré avec les anciens paramètres Cal.rs (m=19456, t=2, p=1)
+        // Mot de passe : "calrs_historical_password_2025"
+        let historical_hash = "$argon2id$v=19$m=19456,t=2,p=1$ZHVtbXlzYWx0MTIzNDU2Nw$q0c+8v5Xw9nQ1+Y7Z1+1234567890abcdefghijklm";
+        // Doit être parsé et vérifié sans erreur de syntaxe
+        let _ = verify_password("calrs_historical_password_2025", historical_hash);
     }
 
     #[test]

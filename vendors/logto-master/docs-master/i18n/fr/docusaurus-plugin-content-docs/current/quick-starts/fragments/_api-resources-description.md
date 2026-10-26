@@ -1,1 +1,0 @@
-Nous vous recommandons de lire d'abord [🔐 Contrôle d’accès basé sur les rôles (RBAC)](/authorization/role-based-access-control) pour comprendre les concepts de base de Logto RBAC et comment configurer correctement les ressources API.

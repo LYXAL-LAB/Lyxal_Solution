@@ -1,5 +1,0 @@
-packages:
-  - packages/*
-  - packages/toolkit/*
-  - packages/connectors/*
-  - "!packages/connectors/templates"

@@ -1,1 +1,0 @@
-Definiere die notwendigen Konstanten und Hilfsfunktionen in deinem Code, um die Extraktion und Validierung von Tokens zu handhaben. Eine gültige Anfrage muss einen `Authorization`-Header in der Form `Bearer <Zugangstoken (Access token)>` enthalten.

@@ -1,0 +1,82 @@
+manifest_version = 1
+id = "lyxal_pipeline_ingestion"
+name = "Lyxal Pipeline Ingestion"
+version = "1.0.0"
+status = "FUNCTIONALLY COMPLETE — STAGING VALIDATED — PRODUCTION NOT AUTHORIZED"
+description = "Moteur industriel d'ingestion, normalisation, qualification et préparation des catalogues fabricants pour Lyxal OS"
+capabilities = ["database", "workers", "events"]
+
+[runtime]
+min_version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_core"
+version = ">=1.0.0"
+
+[[dependencies]]
+id = "lyxal_base"
+version = ">=1.0.0"
+
+[[dependencies]]
+id = "lyxal_crypto"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_error"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_event"
+version = ">=0.1.0"
+
+[resources]
+schemas = [
+    "schema/00_ingestion_session.surql",
+    "schema/01_ingestion_batch.surql",
+    "schema/02_ingestion_raw_record.surql",
+    "schema/03_ingestion_staged_item.surql",
+    "schema/04_ingestion_quarantine_record.surql",
+    "schema/05_ingestion_publication_manifest.surql",
+    "schema/06_ingestion_family_rule.surql",
+    "schema/07_ingestion_specification.surql",
+    "schema/08_ingestion_manufacturer_alias.surql",
+    "schema/09_ingestion_unit_alias.surql",
+    "schema/10_ingestion_substitution_rule.surql"
+]
+migrations = [
+    "migrations/0001_initial_schema.surql"
+]
+functions = [
+    "functions/batch/ingestion_batch_create.surql",
+    "functions/batch/ingestion_batch_checkpoint.surql",
+    "functions/batch/ingestion_batch_transition.surql",
+    "functions/staged/ingestion_staged_save.surql",
+    "functions/quarantine/ingestion_quarantine_log.surql",
+    "functions/manifest/ingestion_manifest_save.surql",
+    "functions/manifest/ingestion_manifest_approve.surql",
+    "functions/manifest/ingestion_manifest_record_exec.surql",
+    "functions/rule/ingestion_resolve_unit.surql",
+    "functions/rule/ingestion_resolve_manufacturer.surql",
+    "functions/rule/ingestion_rule_family_add.surql",
+    "functions/rule/ingestion_rule_spec_add.surql",
+    "functions/rule/ingestion_rule_substitution_add.surql",
+    "functions/dashboard/ingestion_dashboard_metrics.surql",
+    "functions/staged/ingestion_staged_list.surql",
+    "functions/staged/ingestion_staged_requalify.surql",
+    "functions/quarantine/ingestion_quarantine_list.surql",
+    "functions/quarantine/ingestion_quarantine_resolve.surql",
+    "functions/manifest/ingestion_manifest_list.surql",
+    "functions/manifest/ingestion_manifest_get_detail.surql"
+]
+events = [
+    "events/01_events.surql"
+]
+seeds = [
+    "seeds/01_initial_families.surql",
+    "seeds/02_initial_specifications.surql",
+    "seeds/03_initial_aliases.surql",
+    "seeds/04_carrelage_demo.surql"
+]
+error_definitions = [
+    "error/ingestion/error_definitions.surql"
+]

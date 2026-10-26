@@ -1,4 +1,0 @@
-// eslint-disable-next-line import/no-unassigned-import
-import 'vite/client';
-// eslint-disable-next-line import/no-unassigned-import
-import 'vite-plugin-svgr/client';

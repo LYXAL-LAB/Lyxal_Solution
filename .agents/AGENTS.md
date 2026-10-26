@@ -150,12 +150,18 @@ Il est également interdit de recopier une primitive générique déjà disponib
 lyxal_error
      ▲
      │
-lyxal_surreal
-     ▲
-     │
-Modules Métiers
+lyxal_surreal       lyxal_crypto
+     ▲                    ▲
+     │                    │
+     └────────┬───────────┘
+              │
+      Modules Métiers
 (lyxal_booking, lyxal_notification, lyxal_scheduler...)
 ```
+
+`lyxal_crypto` est le crate cryptographique fondamental de Lyxal OS.
+
+Il se situe au même niveau que `lyxal_surreal` dans la hiérarchie : c'est une **fondation technique** consommée par les modules métiers, pas un module métier lui-même.
 
 Les responsabilités restent strictement séparées.
 
@@ -193,7 +199,7 @@ fn::result_ok($data)
 ou :
 
 ```surql
-fn::result_error($code, $language, $details)
+fn::error_result($code, $language, $details)
 ```
 
 ### Taille maximale
@@ -243,13 +249,16 @@ Les définitions d'erreurs sont classées par sous-domaines :
 <module>/error/<thème>/
 ```
 
-Les directives sont **déterministes et idempotentes** :
+Les directives de seeds et master data utilisent la méthode canonique `CREATE` :
 
 ```surql
-UPSERT ONLY error_definition:<id> CONTENT {
+CREATE error_definition CONTENT {
+    code: "<MODULE>_<DOMAINE>_<CAUSE>",
     ...
 };
 ```
+
+Cette méthode `CREATE` est le standard officiel à utiliser pour tous les seeds de la suite Lyxal OS (`seeds/*.surql`).
 
 Tous les codes d'erreurs sont strictement préfixés par leur module propriétaire.
 
@@ -672,6 +681,7 @@ lyxal_core
 Noyau Technique & Moteur
 lyxal_error
 lyxal_surreal
+lyxal_crypto (AES-256-GCM, SHA-256, BLAKE3, Argon2id, HMAC, HKDF)
 lyxal_event
 lyxal_runtime (Manifest, Lifecycle, Workers, Health, Locks)
 lyxal_auth
@@ -681,6 +691,8 @@ lyxal_scheduler
         ▼
 Modules Métiers
 lyxal_booking
+lyxal_catalogue (Master Catalogue & Référentiel Commercial V1.1)
+lyxal_pipeline_ingestion (Ingestion, Normalisation, Qualification Catalogues V1.0.0 — Clôturé Staging)
 lyxal_crm
 lyxal_documents
 lyxal_btp
@@ -922,6 +934,24 @@ memory
 
 ## 11.3. Cryptographie Centralisée avec `lyxal_crypto`
 
+`lyxal_crypto` est le **crate cryptographique officiel et unique** de Lyxal OS.
+
+Son API publique est **FIGÉE** (CORE FREEZE, STATUS: STABLE).
+
+Le contrat complet est documenté dans `crates/lyxal_crypto/API_CONTRACT.md`.
+
+### Primitives STABLE Disponibles
+
+| Primitive | Module | Fonctions Principales |
+| :--- | :--- | :--- |
+| **AES-256-GCM** | `cipher`, `envelope`, `context` | `CryptoEngine::encrypt_secret`, `CryptoEngine::decrypt_secret`, `CryptoEngine::reencrypt_secret` |
+| **SHA-256** | `hash` | `sha256()`, `sha256_hex()`, `Sha256Hasher` |
+| **BLAKE3** | `hash` | `blake3()`, `blake3_hex()`, `Blake3Hasher` |
+| **Argon2id** | `password` | `hash_password()`, `verify_password()`, `needs_rehash()` |
+| **HMAC-SHA256** | `hmac` | `sign_hmac_sha256()`, `sign_hmac_sha256_hex()`, `verify_hmac_sha256()`, `verify_hmac_sha256_hex()` |
+| **HKDF-SHA256** | `kdf` | `hkdf_sha256()`, `hkdf_sha256_32()` |
+| **Gestion de clés** | `key`, `key_resolver` | `EncryptionKey`, `KeyId`, `KeyResolver`, `CompositeKeyResolver`, `EnvironmentKeyProvider`, `FileKeyProvider` |
+
 ### Chiffrement des Secrets
 
 Tous les secrets :
@@ -929,12 +959,27 @@ Tous les secrets :
 * mots de passe ;
 * tokens ;
 * clés API ;
+* données sensibles
 
 sont gérés exclusivement via :
 
 ```text
 lyxal_crypto
 ```
+
+### Règles d'Usage Obligatoires
+
+1. **Hachage de mots de passe** : utiliser `lyxal_crypto::password::{hash_password, verify_password}`. Il est interdit d'importer directement `argon2`, `bcrypt` ou toute autre crate de hachage de mots de passe dans un module métier.
+
+2. **Signature HMAC** : utiliser `lyxal_crypto::hmac::{sign_hmac_sha256, verify_hmac_sha256}`. Il est interdit d'importer directement `hmac` ou `sha2` dans un module métier pour signer ou vérifier des MACs.
+
+3. **Hachage cryptographique** : utiliser `lyxal_crypto::hash::{sha256, blake3}`. Il est interdit d'importer directement `sha2` ou `blake3` dans un module métier.
+
+4. **Dérivation de clés** : utiliser `lyxal_crypto::kdf::{hkdf_sha256, hkdf_sha256_32}`. Il est interdit d'importer directement `hkdf` dans un module métier.
+
+5. **Chiffrement de secrets** : utiliser `CryptoEngine` avec `SecretContext` et `EncryptedEnvelope`. Il est interdit d'appeler directement les primitives bas niveau `encrypt_aes_gcm` / `decrypt_aes_gcm` dans un module métier.
+
+6. **CSPRNG** : utiliser `rand_core::OsRng`. Il est interdit d'utiliser `rand::thread_rng()` ou tout PRNG déterministe pour la génération de matériel cryptographique.
 
 ### Contextes AAD Déterministes
 
@@ -948,12 +993,69 @@ record_id
 field
 ```
 
+Le format AAD canonique `lyxal:v1` est **DÉFINITIVEMENT FIGÉ**. Sa spécification complète est documentée dans `crates/lyxal_crypto/ENVELOPE_FORMAT_V1.md`.
+
 ### Format d'Enveloppe Moderne
 
 Toute nouvelle écriture est scellée directement sous le format :
 
 ```text
-enc:v1:
+enc:v1:<key_id>:<base64url_payload>
+```
+
+Ce format est **DÉFINITIVEMENT FIGÉ**. Toute modification future du schéma d'enveloppe devra introduire une version explicite (`enc:v2`).
+
+### Interdiction Absolue de Duplication Cryptographique
+
+Il est **strictement interdit** :
+
+* d'importer directement dans un module métier une crate crypto (`argon2`, `hmac`, `sha2`, `blake3`, `aes-gcm`, `hkdf`) si la primitive équivalente existe dans `lyxal_crypto` ;
+* de réimplémenter localement une primitive déjà fournie par `lyxal_crypto` ;
+* de créer une variante locale pour éviter d'appeler `lyxal_crypto`.
+
+### Extension Cryptographique — Validation CTO Obligatoire
+
+> [!IMPORTANT]
+>
+> **RÈGLE INVIOLABLE : Toute fonctionnalité cryptographique supplémentaire nécessaire pour un module Lyxal OS doit impérativement passer par la validation explicite du CTO avant toute implémentation.**
+
+Si un module métier identifie un besoin cryptographique non couvert par les primitives STABLE de `lyxal_crypto`, le processus suivant s'applique :
+
+1. **Signaler le besoin** au CTO avec une justification produit réelle.
+2. **Attendre la validation CTO** avant toute modification de `lyxal_crypto` ou tout ajout de dépendance crypto.
+3. **Ne jamais ajouter** de nouvelle primitive cryptographique dans `lyxal_crypto` sans validation explicite.
+4. **Ne jamais contourner** `lyxal_crypto` en important directement une crate crypto dans un module métier.
+
+Les primitives actuellement **HORS SCOPE** (et qui le resteront jusqu'à validation CTO d'un besoin produit réel) :
+
+* Ed25519 / X25519 (cryptographie asymétrique)
+* ChaCha20-Poly1305
+* Cryptographie post-quantique
+* KMS / HSM natif
+
+```text
+Besoin crypto dans un module
+        │
+        ▼
+Existe dans lyxal_crypto ?
+        │
+   ┌────┴────┐
+   │         │
+  OUI       NON
+   │         │
+   ▼         ▼
+Utiliser   Signaler au CTO
+lyxal_crypto   │
+               ▼
+         Validation CTO
+               │
+          ┌────┴────┐
+          │         │
+       VALIDÉ    REFUSÉ
+          │         │
+          ▼         ▼
+    Implémenter   STOP
+    dans lyxal_crypto
 ```
 
 ---
@@ -1239,12 +1341,23 @@ Avant toute implémentation, Antigravity doit vérifier les points suivants.
 * [ ] Les abonnements persistants `EventSubscription` sont déclarés.
 * [ ] Aucune erreur de handler n'est masquée silencieusement.
 
+## Cryptographie (`lyxal_crypto`)
+
+* [ ] Toute opération crypto utilise exclusivement `lyxal_crypto`.
+* [ ] Aucune crate crypto (`argon2`, `hmac`, `sha2`, `blake3`, `aes-gcm`, `hkdf`) n'est importée directement dans le module métier.
+* [ ] Les mots de passe sont hashés via `lyxal_crypto::password`.
+* [ ] Les signatures HMAC passent par `lyxal_crypto::hmac`.
+* [ ] Les secrets chiffrés utilisent `CryptoEngine` avec `SecretContext` et `EncryptedEnvelope`.
+* [ ] Aucun `rand::thread_rng()` — uniquement `rand_core::OsRng`.
+* [ ] Si un besoin crypto non couvert est identifié : signalé au CTO, **aucune implémentation avant validation**.
+
 ## Validation CTO
 
 * [ ] `implementation_plan.md` rédigé.
 * [ ] Fonctions Core réutilisées documentées.
 * [ ] Fonctions nouvelles documentées.
 * [ ] Éventuels besoins Core signalés.
+* [ ] Éventuels besoins crypto signalés.
 * [ ] Validation explicite du CTO obtenue.
 
 > Tant que cette checklist n'est pas satisfaite et que le CTO n'a pas validé le plan, **aucune implémentation applicative ne doit commencer**.
@@ -1264,7 +1377,7 @@ L'architecture Lyxal OS suit la hiérarchie suivante :
                       ▼
 ┌───────────────────────────────────────────┐
 │             NOYAU TECHNIQUE               │
-│ error · surreal · event · auth · etc.     │
+│ error · surreal · crypto · event · auth   │
 └─────────────────────┬─────────────────────┘
                       │
                       ▼
@@ -1298,3 +1411,38 @@ Chaque modification est planifiée et validée avant implémentation.
 > LYXAL EVENT orchestre.
 > LES MODULES composent.
 > L'UI présente.**
+
+---
+
+# 🎨 12. Charte d'Extension UI & Console (`surrealist`) — Lyxal OS
+
+Pour toute extension ou adaptation de l'interface graphique (basée sur le fork Surrealist v3.9.x), les règles suivantes sont strictement obligatoires :
+
+### 12.1. Respect Strict du Design System & Stack Existante
+* **Framework UI & Composants** : Utiliser exclusivement Mantine v9 (`@mantine/core`, `@mantine/hooks`, `@mantine/notifications`). Aucun framework CSS tiers (ex: Tailwind) ne doit être introduit.
+* **Iconographie Unifiée** :
+  - Consommer les icônes officielles `@surrealdb/ui` (ex: `iconCog`, `iconDatabase`, `iconPlus`).
+  - Pour toute icône supplémentaire (ex: unités, référentiels), utiliser les chemins vectoriels SVG MDI issus de `@mdi/js` (ex: `mdiRuler`, `mdiShapeOutline`) rendus via le composant canonique `<Icon path={...} />`.
+* **Thématisation & Design Tokens** :
+  - L'interface supporte nativement les modes Clair (Light) et Sombre (Dark).
+  - Interdiction d'utiliser des couleurs CSS codées en dur (`#ffffff`, `black`, etc.).
+  - Utiliser systématiquement les variables Mantine (`var(--mantine-color-...)`) ou les classes CSS Modules (`style.module.scss`).
+
+### 12.2. Frontière Données & Consommation SurrealQL
+* **Pas de logique métier dans l'UI** : L'UI est un pur récepteur de présentation.
+* **Consommation exclusive des fonctions SurrealQL publiques** :
+  - Toute action de mutation ou lecture de données métier consomme les fonctions `fn::<module>_<action>` (ex: `fn::unite_type_create`, `fn::unite_create`).
+  - L'UI ne doit jamais forger de requêtes complexes `UPDATE`/`DELETE` ad-hoc en direct si une fonction métier SurrealQL est définie.
+* **Gestion du Cache & État** : Utiliser `@tanstack/react-query` pour les requêtes asynchrones et invalidations de cache (`useQuery`, `useMutation`, `useQueryClient`).
+* **Contrat de retour universel** :
+  - Traitement systématique du standard Lyxal : `fn::result_ok($data)` et `fn::error_result($code, $language, $details)`.
+  - Notification contextuelle d'erreur utilisateur via `@mantine/notifications` en exploitant le message d'erreur résolu.
+
+### 12.3. Structure Modulaire des Écrans Métiers
+* Les vues et paramètres spécifiques à Lyxal OS sont isolés dans des modules dédiés (ex: `src/screens/surrealist/pages/Connection/settings/tabs/referentials.tsx`).
+* Tout ajout d'onglet dans les paramètres respecte la chaîne de typage :
+  1. `src/types.tsx` (`ConnectionSettingsTab`, `ConnectionView`)
+  2. `src/constants.tsx` (`CONNECTION_SETTINGS_TABS`, `CONNECTION_SETTINGS_TAB_LABELS`, `SETTINGS_VIEWS`)
+  3. `src/screens/surrealist/pages/Connection/sidebar.tsx` (`ALWAYS_SETTINGS_TABS`)
+  4. `src/screens/surrealist/pages/Connection/index.tsx` (`SETTINGS_COMPONENTS`, `SETTINGS_VIEW_COMPONENTS`)
+

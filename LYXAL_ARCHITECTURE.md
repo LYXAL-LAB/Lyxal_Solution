@@ -112,10 +112,17 @@ Modules Métiers  (lyxal_booking, lyxal_notification, lyxal_scheduler...)
   }
   ```
 
-### 5.5. Master Data d'Erreurs (`<module>/error/<thème>/`)
+### 5.5. Master Data d'Erreurs & Seeds (`<module>/error/<thème>/`, `seeds/`)
 - Les définitions d'erreurs sont classées par sous-domaines dans `<module>/error/<thème>/`.
-- Les directives doivent être **déterministes et idempotentes** : `UPSERT ONLY error_definition:<id> CONTENT { ... };`.
-- Tous les codes d'erreurs sont strictly préfixés par leur module propriétaire (ex: `BOOKING_*`, `NOTIFICATION_*`).
+- Les directives de seeds et master data utilisent la **méthode canonique `CREATE`** conformément à `AGENTS.md`.
+- L'exigence de réentrance et d'**idempotence non destructrice** est garantie par une protection contre les doublons :
+  ```surql
+  IF !record::exists(error_definition:<id>) THEN (
+      CREATE error_definition:<id> CONTENT { ... }
+  ) END;
+  ```
+- Les données existantes ou personnalisées ne doivent jamais être écrasées ou supprimées lors d'une réexécution de seed.
+- Tous les codes d'erreurs sont strictement préfixés par leur module propriétaire (ex: `BOOKING_*`, `NOTIFICATION_*`, `INGESTION_*`).
 
 ### 5.6. Règle sur les Événements (`DEFINE EVENT`)
 - Un `DEFINE EVENT` SurrealDB **produit uniquement des données** (`event_outbox`).
@@ -129,13 +136,13 @@ Modules Métiers  (lyxal_booking, lyxal_notification, lyxal_scheduler...)
 Les dépendances sont strictement unidirectionnelles :
 
 ```text
-Noyau Technique (lyxal_core: error, surreal, event, auth, storage, notification)
+Noyau Technique (lyxal_core: error, surreal, crypto, event, runtime, auth, storage, notification, scheduler)
   │
   ▼
-Modules Métiers (lyxal_booking, lyxal_crm, lyxal_documents, lyxal_btp)
+Modules Métiers (lyxal_booking, lyxal_catalogue, lyxal_pipeline_ingestion, lyxal_crm, lyxal_documents, lyxal_btp)
   │
   ▼
-Interfaces Applicatives (Console Web, CLI, Axum API Handlers, Desktop, Mobile)
+Interfaces Applicatives (Console Web, CLI, Axum API Handlers: lyxal_server, Desktop, Mobile)
 ```
 
 > ❌ **Aucune dépendance circulaire n'est tolérée.**
@@ -173,6 +180,12 @@ Interfaces Applicatives (Console Web, CLI, Axum API Handlers, Desktop, Mobile)
 1. **V1 Fonctionnel** : Tables, CRUD, Fonctions SurrealQL, Crate Rust, `LyxalResult<T>`.
 2. **V2 Observabilité & Console UI** : Table `error_statistics`, dashboards UI, métriques d'erreur par heure/module.
 3. **V3 Événementiel & IA** : Pub/Sub `DEFINE EVENT` -> `event_outbox` -> `lyxal_event`, alertes automatiques et diagnostic IA.
+
+Les feuilles de route officielles par module et transversales sont documentées sous [`docs/14-roadmap/`](file:///c:/Users/HP/Desktop/Lyxal_OS/docs/14-roadmap/) :
+- **Intégration Transversale LYXAL SPACE :** [`docs/14-roadmap/ROADMAP_LYXAL_SPACE.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/docs/14-roadmap/ROADMAP_LYXAL_SPACE.md)
+- **Master Catalogue Universel :** [`crates/lyxal_catalogue/ROADMAP.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/ROADMAP.md)
+- **Pipeline d'Ingestion :** [`crates/lyxal_pipeline_ingestion/ROADMAP.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/ROADMAP.md)
+- **Gestionnaire d'Erreurs :** [`crates/lyxal_error/ROADMAP.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_error/ROADMAP.md)
 
 ---
 

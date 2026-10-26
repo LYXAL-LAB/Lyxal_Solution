@@ -37,7 +37,12 @@ impl EncryptedEnvelope {
     /// Encode l'enveloppe sous le format canonique : `enc:v1:<key_id>:<base64url>`
     pub fn encode(&self) -> String {
         let b64 = URL_SAFE_NO_PAD.encode(&self.payload);
-        format!("enc:{}:{}:{}", self.version.as_str(), self.key_id.as_str(), b64)
+        format!(
+            "enc:{}:{}:{}",
+            self.version.as_str(),
+            self.key_id.as_str(),
+            b64
+        )
     }
 
     /// Tente de parser une chaîne sous le format enveloppé `enc:v1:<key_id>:<base64url>`.
@@ -54,7 +59,11 @@ impl EncryptedEnvelope {
 
         let version = match parts[1] {
             "v1" => EnvelopeVersion::V1,
-            other => return Err(CryptoError::UnsupportedVersion { version: other.to_string() }),
+            other => {
+                return Err(CryptoError::UnsupportedVersion {
+                    version: other.to_string(),
+                })
+            }
         };
 
         let key_id = KeyId::parse(parts[2])?;

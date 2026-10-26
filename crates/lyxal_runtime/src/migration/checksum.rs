@@ -1,6 +1,6 @@
 use crate::error::RuntimeError;
+use lyxal_crypto::hash::sha256_hex;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::fmt;
 
 /// Somme de contrôle cryptographique SHA-256 garantissant l'immuabilité d'un script de migration.
@@ -8,13 +8,9 @@ use std::fmt;
 pub struct MigrationChecksum(String);
 
 impl MigrationChecksum {
-    /// Calcule la somme de contrôle SHA-256 à partir d'un flux d'octets.
+    /// Calcule la somme de contrôle SHA-256 à partir d'un flux d'octets via la façade officielle `lyxal_crypto`.
     pub fn from_bytes(bytes: &[u8]) -> Self {
-        let mut hasher = Sha256::new();
-        hasher.update(bytes);
-        let result = hasher.finalize();
-        let hex = format!("{:x}", result);
-        Self(hex)
+        Self(sha256_hex(bytes))
     }
 
     /// Calcule la somme de contrôle SHA-256 à partir du contenu d'un script SurrealQL.

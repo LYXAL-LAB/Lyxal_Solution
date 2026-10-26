@@ -1,5 +1,5 @@
+use lyxal_crypto::hash::Sha256Hasher;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::fmt;
 use std::ops::Deref;
 use std::time::SystemTime;
@@ -14,7 +14,7 @@ impl NodeId {
         Self(id.into().trim().to_string())
     }
 
-    /// Génère un identifiant de nœud unique et déterministe combinant horodatage et entropie SHA-256.
+    /// Génère un identifiant de nœud unique et déterministe combinant horodatage et entropie SHA-256 via `lyxal_crypto`.
     pub fn generate() -> Self {
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -22,10 +22,10 @@ impl NodeId {
         let nanos = now.as_nanos();
         let pid = std::process::id();
 
-        let mut hasher = Sha256::new();
-        hasher.update(nanos.to_le_bytes());
-        hasher.update(pid.to_le_bytes());
-        let hash = format!("{:x}", hasher.finalize());
+        let mut hasher = Sha256Hasher::new();
+        hasher.update(&nanos.to_le_bytes());
+        hasher.update(&pid.to_le_bytes());
+        let hash = hasher.finalize_hex();
 
         Self(format!("node-{}-{}", pid, &hash[..8]))
     }

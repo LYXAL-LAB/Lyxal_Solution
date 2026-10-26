@@ -1,1 +1,0 @@
-ALTER TABLE event_types ADD COLUMN first_slot_only INTEGER NOT NULL DEFAULT 0;

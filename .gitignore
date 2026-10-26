@@ -28,3 +28,16 @@ Thumbs.db
 *.dylib
 surreal.exe
 surreal
+
+# Secrets & Environment
+.env
+.env.*
+staging_db/
+history.txt
+
+# Temporary tools & binaries
+surrealdb-3.3.4/
+surrealist-surrealist-v3.9.13/
+scratch/
+*.pdb
+

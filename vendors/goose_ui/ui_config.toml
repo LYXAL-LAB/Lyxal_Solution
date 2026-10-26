@@ -1,3 +1,0 @@
-base_color = "neutral"
-base_path_components = "app/src/components"
-tailwind_input_file = "style/tailwind.css"

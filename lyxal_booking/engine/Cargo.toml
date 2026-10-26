@@ -1,3 +1,5 @@
+[workspace]
+
 [package]
 name = "lyxal-booking"
 version = "1.0.0"
@@ -44,7 +46,7 @@ anyhow = "1"
 thiserror = "1"
 lyxal_error = { path = "../../lyxal_error" }
 lyxal_surreal = { path = "../../lyxal_surreal" }
-lyxal_crypto = { path = "../../lyxal_crypto" }
+lyxal_crypto = { path = "../../crates/lyxal_crypto" }
 
 # Secrets / config
 directories = "5"

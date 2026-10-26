@@ -27,8 +27,8 @@ pub async fn connect_database(config: &DatabaseConfig) -> Result<Database, Serve
     if let (Some(username), Some(password)) = (&config.username, &config.password) {
         client
             .signin(Root {
-                username: username.clone(),
-                password: password.clone(),
+                username: username.as_str(),
+                password: password.as_str(),
             })
             .await
             .map_err(|error| ServerError::Database(error.to_string()))?;

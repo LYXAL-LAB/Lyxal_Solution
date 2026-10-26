@@ -1,10 +1,13 @@
 [workspace]
 resolver = "2"
 members = [
-    "lyxal_error",
+    "crates/lyxal_error",
     "lyxal_surreal",
     "crates/lyxal_runtime",
     "crates/lyxal_event",
+    "crates/lyxal_crypto",
+    "crates/lyxal_pipeline_ingestion",
+    "apps/lyxal-server",
 ]
 
 [workspace.package]
@@ -14,16 +17,18 @@ rust-version = "1.80"
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
-lyxal_error = { path = "lyxal_error" }
+lyxal_error = { path = "crates/lyxal_error" }
 lyxal_surreal = { path = "lyxal_surreal" }
 lyxal_runtime = { path = "crates/lyxal_runtime" }
 lyxal_event = { path = "crates/lyxal_event" }
-surrealdb = { version = "2.2", features = ["protocol-ws", "kv-mem"] }
+lyxal_crypto = { path = "crates/lyxal_crypto" }
+lyxal_pipeline_ingestion = { path = "crates/lyxal_pipeline_ingestion" }
+surrealdb = { version = "2.2", features = ["protocol-ws", "protocol-http", "kv-mem"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
 async-trait = "0.1"
-tokio = { version = "1.38", features = ["time", "sync", "macros", "rt", "rt-multi-thread"] }
+tokio = { version = "1.38", features = ["time", "sync", "macros", "rt", "rt-multi-thread", "signal"] }
 tokio-util = { version = "0.7", features = ["rt"] }
 semver = { version = "1.0", features = ["serde"] }
 toml = "0.8"
@@ -32,3 +37,11 @@ tempfile = "3.10"
 uuid = { version = "1.10", features = ["v4", "v7", "serde"] }
 fastrand = "2.1"
 tracing = "0.1"
+anyhow = "1.0"
+axum = "0.7"
+chrono = { version = "0.4", features = ["serde"] }
+config = "0.14"
+http = "1.1"
+tower = { version = "0.4", features = ["limit"] }
+tower-http = { version = "0.5", features = ["trace", "cors", "catch-panic", "limit", "timeout"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }

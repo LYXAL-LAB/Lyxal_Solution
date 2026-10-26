@@ -1,8 +1,0 @@
-.tabContainer {
-  flex-direction: column;
-  flex-grow: 1;
-
-  &[data-active='true'] {
-    display: flex;
-  }
-}

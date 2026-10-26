@@ -16,15 +16,17 @@ name = "lyxal-server"
 path = "src/main.rs"
 
 [features]
-default = ["surreal-ws"]
+default = ["surreal-ws", "module-ingestion"]
 surreal-ws = ["surrealdb/protocol-ws"]
 surreal-http = ["surrealdb/protocol-http"]
+module-ingestion = ["dep:lyxal_pipeline_ingestion"]
 module-timezone = []
 module-scheduler = []
 module-calendar = ["module-timezone"]
 module-booking = ["module-calendar", "module-scheduler"]
 full = [
     "surreal-ws",
+    "module-ingestion",
     "module-timezone",
     "module-scheduler",
     "module-calendar",
@@ -48,6 +50,7 @@ tower-http.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
+lyxal_pipeline_ingestion = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true

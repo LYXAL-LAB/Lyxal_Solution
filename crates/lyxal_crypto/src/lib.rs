@@ -2,18 +2,28 @@ pub mod cipher;
 pub mod context;
 pub mod envelope;
 pub mod error;
+pub mod hash;
+pub mod hmac;
+pub mod kdf;
 pub mod key;
 pub mod key_resolver;
+pub mod password;
 
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 pub use context::SecretContext;
 pub use envelope::EncryptedEnvelope;
 pub use error::CryptoError;
+pub use hash::{blake3, blake3_hex, sha256, sha256_hex, Blake3Hasher, Sha256Hasher};
+pub use hmac::{
+    sign_hmac_sha256, sign_hmac_sha256_hex, verify_hmac_sha256, verify_hmac_sha256_hex,
+};
+pub use kdf::{hkdf_sha256, hkdf_sha256_32};
 pub use key::{EncryptionKey, KeyId};
 pub use key_resolver::{
     CompositeKeyResolver, EnvironmentKeyProvider, FileKeyProvider, KeyGenerationPolicy, KeyResolver,
 };
+pub use password::{hash_password, needs_rehash, verify_password};
 pub use zeroize::Zeroizing;
 
 /// Type protégé en mémoire pour les secrets déchiffrés (octets).
@@ -52,7 +62,11 @@ impl<R: KeyResolver> CryptoEngine<R> {
     }
 
     /// Chiffre un secret en utilisant le contexte d'authentification AAD et la clé active.
-    pub fn encrypt_secret(&self, plaintext: &[u8], context: &SecretContext) -> Result<String, CryptoError> {
+    pub fn encrypt_secret(
+        &self,
+        plaintext: &[u8],
+        context: &SecretContext,
+    ) -> Result<String, CryptoError> {
         let active_id = self.resolver.active_key_id()?;
         let key = self.resolver.resolve(&active_id)?;
         let aad = context.to_aad_bytes();
@@ -66,7 +80,11 @@ impl<R: KeyResolver> CryptoEngine<R> {
     /// Déchiffre une enveloppe en vérifiant le contexte AAD et la clé d'enveloppe spécifiée.
     ///
     /// Conserve strictement la propagation de l'erreur d'enveloppe si le préfixe `enc:` est présent.
-    pub fn decrypt_secret(&self, envelope_str: &str, context: &SecretContext) -> Result<SecretBytes, CryptoError> {
+    pub fn decrypt_secret(
+        &self,
+        envelope_str: &str,
+        context: &SecretContext,
+    ) -> Result<SecretBytes, CryptoError> {
         let trimmed = envelope_str.trim();
         if trimmed.starts_with("enc:") {
             let envelope = EncryptedEnvelope::parse(trimmed)?;
@@ -102,7 +120,11 @@ impl<R: KeyResolver> CryptoEngine<R> {
     }
 
     /// Déchiffre un secret legacy Cal.rs au format Base64 brut AES-256-GCM (sans enveloppe ni AAD) à l'aide de l'ancienne clé.
-    pub fn decrypt_calrs_aes_base64(&self, legacy_key: &EncryptionKey, stored_b64: &str) -> Result<SecretBytes, CryptoError> {
+    pub fn decrypt_calrs_aes_base64(
+        &self,
+        legacy_key: &EncryptionKey,
+        stored_b64: &str,
+    ) -> Result<SecretBytes, CryptoError> {
         let payload = Zeroizing::new(
             STANDARD
                 .decode(stored_b64.trim())
@@ -112,19 +134,32 @@ impl<R: KeyResolver> CryptoEngine<R> {
     }
 
     /// Migre un secret legacy Cal.rs au format Base64 brut AES-256-GCM vers l'enveloppe moderne enc:v1 avec AAD et la clé active.
-    pub fn migrate_calrs_aes_base64(&self, legacy_key: &EncryptionKey, stored_b64: &str, context: &SecretContext) -> Result<String, CryptoError> {
+    pub fn migrate_calrs_aes_base64(
+        &self,
+        legacy_key: &EncryptionKey,
+        stored_b64: &str,
+        context: &SecretContext,
+    ) -> Result<String, CryptoError> {
         let plaintext = self.decrypt_calrs_aes_base64(legacy_key, stored_b64)?;
         self.encrypt_secret(&plaintext, context)
     }
 
     /// Migre un ancien secret legacy Cal.rs (hex de la chaîne en clair) vers le format d'enveloppe AES-256-GCM v1.
-    pub fn migrate_legacy_calrs_hex(&self, stored_hex: &str, context: &SecretContext) -> Result<String, CryptoError> {
+    pub fn migrate_legacy_calrs_hex(
+        &self,
+        stored_hex: &str,
+        context: &SecretContext,
+    ) -> Result<String, CryptoError> {
         let plaintext = decode_calrs_legacy_hex(stored_hex)?;
         self.encrypt_secret(&plaintext, context)
     }
 
     /// Vérifie si l'enveloppe utilise une ancienne clé et la rechiffre avec la clé active si nécessaire.
-    pub fn reencrypt_if_needed(&self, envelope_str: &str, context: &SecretContext) -> Result<ReencryptResult, CryptoError> {
+    pub fn reencrypt_if_needed(
+        &self,
+        envelope_str: &str,
+        context: &SecretContext,
+    ) -> Result<ReencryptResult, CryptoError> {
         let envelope = EncryptedEnvelope::parse(envelope_str)?;
         let active_id = self.resolver.active_key_id()?;
 

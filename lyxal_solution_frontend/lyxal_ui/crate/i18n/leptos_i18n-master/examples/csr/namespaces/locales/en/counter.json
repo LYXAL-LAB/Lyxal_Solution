@@ -1,4 +1,0 @@
-{
-    "click_count": "You clicked {{ count }} times",
-    "click_to_inc": "Click to increment the counter"
-}

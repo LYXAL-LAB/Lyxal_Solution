@@ -1,1 +1,0 @@
-Recomendamos ler [🔐 Controle de Acesso Baseado em Papel (RBAC)](/authorization/role-based-access-control) primeiro para entender os conceitos básicos do RBAC do Logto e como configurar corretamente os recursos de API.

@@ -1,0 +1,21 @@
+[package]
+name = "lyxal_pipeline_ingestion"
+version = "0.1.0"
+edition = "2021"
+description = "Moteur industriel d'ingestion, normalisation, qualification et préparation des catalogues fabricants pour Lyxal OS"
+
+[dependencies]
+lyxal_error = { path = "../lyxal_error" }
+lyxal_surreal = { path = "../../lyxal_surreal" }
+lyxal_runtime = { path = "../lyxal_runtime" }
+lyxal_event = { path = "../lyxal_event" }
+lyxal_crypto = { path = "../lyxal_crypto" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+async-trait = "0.1"
+tokio = { version = "1.38", features = ["time", "sync", "macros", "rt", "rt-multi-thread"] }
+surrealdb = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.10"

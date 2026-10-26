@@ -1,1 +1,0 @@
-ALTER TABLE users ADD COLUMN allow_dynamic_group INTEGER NOT NULL DEFAULT 1;

@@ -1,5 +1,0 @@
-
-# build for both native and riscv targets
-integration-tests:
-  cargo test --features speculos-tests
-

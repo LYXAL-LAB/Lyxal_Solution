@@ -1,8 +1,0 @@
-target/
-node_modules/
-dist/
-.prettier-cache
-/book/book
-/leptos-fluent-macros/wip/
-*.txt
-*.log

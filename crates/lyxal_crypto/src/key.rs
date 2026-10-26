@@ -1,5 +1,5 @@
 use crate::error::CryptoError;
-use rand::RngCore;
+use rand_core::{OsRng, RngCore};
 use std::fmt;
 use std::ops::Deref;
 use zeroize::Zeroizing;
@@ -73,10 +73,10 @@ impl EncryptionKey {
         Ok(Self::from_bytes(buf))
     }
 
-    /// Génère une clé cryptographique aléatoire de 32 octets de haute qualité.
+    /// Génère une clé cryptographique aléatoire de 32 octets de haute qualité via le CSPRNG système (OsRng).
     pub fn generate() -> Self {
         let mut buf = [0u8; 32];
-        rand::thread_rng().fill_bytes(&mut buf);
+        OsRng.fill_bytes(&mut buf);
         Self::from_bytes(buf)
     }
 

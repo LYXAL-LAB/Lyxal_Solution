@@ -1,9 +1,0 @@
-{
-  "extends": "./tsconfig",
-  "compilerOptions": {
-    "declaration": false,
-  },
-  "include": [
-    "src/gen"
-  ]
-}

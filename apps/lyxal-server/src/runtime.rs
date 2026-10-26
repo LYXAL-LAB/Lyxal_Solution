@@ -1,8 +1,7 @@
 use crate::{
     config::{ModulesConfig, RuntimeConfig},
     error::ServerError,
-    health::{HealthRegistry, HealthState},
-    metrics::Metrics,
+    health::HealthState,
     modules::{LyxalModule, ModuleContext, ModuleDescriptor, ModuleId, ModuleState, SharedModule},
 };
 use axum::Router;
