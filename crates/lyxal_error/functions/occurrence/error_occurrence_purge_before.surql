@@ -4,14 +4,10 @@
 -- └──────────────────────────────────────────────────────────────────────────┘
 
 DEFINE FUNCTION OVERWRITE fn::error_occurrence_purge_before(
-    $params: any
+    $params: object
 ) {
-    LET $language = IF type::is::object($params) AND $params.language != NONE { $params.language } ELSE { "fr" };
-    LET $raw_dt = IF type::is::object($params) {
-        $params.before_date ?? $params.before
-    } ELSE {
-        $params
-    };
+    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+    LET $raw_dt = $params.before_date ?? $params.before;
 
     LET $before_date = IF type::is::datetime($raw_dt) {
         $raw_dt

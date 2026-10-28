@@ -2,7 +2,7 @@
 
 [![Status](https://img.shields.io/badge/Status-Production--Ready-success.svg)](#)
 [![Charte](https://img.shields.io/badge/Conformit%C3%A9-AGENTS.md%20100%25-blue.svg)](#)
-[![Tests](https://img.shields.io/badge/Tests-20%20passed%20%7C%200%20failed-brightgreen.svg)](#)
+[![Tests](https://img.shields.io/badge/Tests-21%20passed%20%7C%200%20failed-brightgreen.svg)](#)
 [![SurrealDB](https://img.shields.io/badge/SurrealDB-2.x%20Compatible-orange.svg)](#)
 
 Le module **`lyxal_error`** constitue le référentiel centralisé, le moteur de résolution linguistique et le socle du contrat de résultat universel pour l'ensemble des modules de la suite **Lyxal OS** (`lyxal_surreal`, `lyxal_booking`, `lyxal_auth`, `lyxal_notification`, `lyxal_scheduler`, etc.).
@@ -167,14 +167,18 @@ seeds = [
 ]
 ```
 
-### Idempotence des Migrations
-Toute migration s'enregistre de manière atomique dans la table `schema_migration` :
+### Exécution & Idempotence des Migrations
+Les migrations séquentielles sont gérées et tracées par `MigrationRunner` de `lyxal_runtime` :
+1. **Phase Schéma** : Importation ordonnée des schémas déclaratifs idempotents (`schema/*.surql`).
+2. **Phase Migration** : Exécution de `migrations/0001_initial_schema.surql` avec calcul de checksum SHA-256 et enregistrement automatisé dans le `RuntimeStore` (`system_migration`).
+
 ```surql
-LET $record = type::thing("schema_migration", ["lyxal_error", "0001_initial_schema"]);
-CREATE ONLY $record CONTENT {
+-- migrations/0001_initial_schema.surql
+RETURN {
+    migration: "0001_initial_schema",
     module: "lyxal_error",
-    name: "0001_initial_schema",
-    status: "APPLIED"
+    status: "APPLIED",
+    executed_at: time::now()
 };
 ```
 

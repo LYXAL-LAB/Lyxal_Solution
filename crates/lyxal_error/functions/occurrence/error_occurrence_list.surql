@@ -4,11 +4,11 @@
 -- └──────────────────────────────────────────────────────────────────────────┘
 
 DEFINE FUNCTION OVERWRITE fn::error_occurrence_list(
-    $params: any
+    $params: object
 ) {
-    LET $code = IF type::is::object($params) { $params.code } ELSE { NONE };
-    LET $source_module = IF type::is::object($params) { $params.source_module } ELSE { NONE };
-    LET $limit_count = IF type::is::object($params) { $params.limit } ELSE { NONE };
+    LET $code = $params.code;
+    LET $source_module = $params.source_module;
+    LET $limit_count = $params.limit;
 
     LET $clean_code = IF $code != NONE AND string::len(string::trim($code)) > 0 {
         string::uppercase(string::trim($code))

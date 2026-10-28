@@ -4,14 +4,13 @@
 -- └──────────────────────────────────────────────────────────────────────────┘
 
 DEFINE FUNCTION OVERWRITE fn::error_mapping_list(
-    $params: any
+    $params: object
 ) {
-    LET $p = IF type::is::object($params) { $params } ELSE IF type::is::string($params) { { provider: $params } } ELSE { {} };
-    LET $provider = $p.provider;
-    LET $service = $p.service;
-    LET $enabled_only = IF $p.enabled_only != NONE { $p.enabled_only } ELSE { true };
-    LET $limit = IF $p.limit != NONE { $p.limit } ELSE { 50 };
-    LET $start = IF $p.start != NONE { $p.start } ELSE { 0 };
+    LET $provider = $params.provider;
+    LET $service = $params.service;
+    LET $enabled_only = IF $params.enabled_only != NONE { $params.enabled_only } ELSE { true };
+    LET $limit = IF $params.limit != NONE { $params.limit } ELSE { 50 };
+    LET $start = IF $params.start != NONE { $params.start } ELSE { 0 };
 
     LET $clean_provider = IF $provider != NONE AND string::len(string::trim($provider)) > 0 {
         string::lowercase(string::trim($provider))

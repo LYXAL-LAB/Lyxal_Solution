@@ -4,15 +4,14 @@
 -- └──────────────────────────────────────────────────────────────────────────┘
 
 DEFINE FUNCTION OVERWRITE fn::error_definition_list(
-    $params: any
+    $params: object
 ) {
-    LET $p = IF type::is::object($params) { $params } ELSE { {} };
-    LET $module = $p.module;
-    LET $category = $p.category;
-    LET $domain = $p.domain;
-    LET $enabled_only = IF $p.enabled_only != NONE { $p.enabled_only } ELSE { true };
-    LET $limit = IF $p.limit != NONE { $p.limit } ELSE { 50 };
-    LET $start = IF $p.start != NONE { $p.start } ELSE { 0 };
+    LET $module = $params.module;
+    LET $category = $params.category;
+    LET $domain = $params.domain;
+    LET $enabled_only = IF $params.enabled_only != NONE { $params.enabled_only } ELSE { true };
+    LET $limit = IF $params.limit != NONE { $params.limit } ELSE { 50 };
+    LET $start = IF $params.start != NONE { $params.start } ELSE { 0 };
 
     LET $clean_mod = IF $module != NONE AND string::len(string::trim($module)) > 0 {
         string::lowercase(string::trim($module))

@@ -4,23 +4,17 @@
 -- └──────────────────────────────────────────────────────────────────────────┘
 
 DEFINE FUNCTION OVERWRITE fn::error_occurrence_get(
-    $params: any
+    $params: object
 ) {
-    LET $language = IF type::is::object($params) AND $params.language != NONE { $params.language } ELSE { "fr" };
-    LET $raw_id = IF type::is::object($params) {
-        $params.occurrence_id ?? $params.id
-    } ELSE {
-        $params
-    };
+    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+    LET $raw_id = $params.occurrence_id ?? $params.id;
+    LET $raw_str = IF $raw_id != NONE { string::trim(<string>$raw_id) } ELSE { "" };
+    LET $id_part = string::replace($raw_str, "error_occurrence:", "");
 
     LET $occurrence_id = IF type::is::record($raw_id) {
         $raw_id
-    } ELSE IF type::is::string($raw_id) {
-        IF string::starts_with($raw_id, "error_occurrence:") {
-            type::thing("error_occurrence", string::slice($raw_id, 17))
-        } ELSE {
-            type::thing("error_occurrence", $raw_id)
-        }
+    } ELSE IF string::len($id_part) > 0 {
+        type::thing("error_occurrence", $id_part)
     } ELSE {
         NONE
     };
@@ -29,9 +23,9 @@ DEFINE FUNCTION OVERWRITE fn::error_occurrence_get(
         RETURN fn::error_result("ERROR_PARAM_REQUIRED", $language, { field: "occurrence_id" });
     };
 
-    LET $res = SELECT * FROM $occurrence_id;
+    LET $res = SELECT * FROM error_occurrence WHERE id = $occurrence_id;
     IF array::len($res) == 0 {
-        RETURN fn::error_result("ERROR_OCCURRENCE_NOT_FOUND", $language, { occurrence_id: $occurrence_id });
+        RETURN fn::error_result("ERROR_OCCURRENCE_NOT_FOUND", $language, { occurrence_id: <string>$occurrence_id });
     };
 
     RETURN fn::result_ok($res[0]);
