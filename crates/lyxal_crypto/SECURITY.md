@@ -9,7 +9,7 @@ Ce document formalise les règles strictes d'ingénierie de sécurité et les en
 `lyxal_crypto` a été conçu pour se prémunir contre les vecteurs d'attaques suivants :
 
 1. **Compromission par Fuite Mémoire (Memory Scraping / Dumps)** :
-   - Les clés secrètes (`EncryptionKey`), textes clairs (`Plaintext`) et clés dérivées (`Zeroizing<[u8; 32]>`) implémentent le trait `Zeroize` / `ZeroizeOnDrop` de la fondation RustCrypto.
+   - Les clés secrètes (`EncryptionKey`), buffers déchiffrés (`SecretBytes`, `SecretString`) et clés dérivées (`Zeroizing<[u8; 32]>`) implémentent le trait `Zeroize` / `ZeroizeOnDrop` de la fondation RustCrypto.
    - Dès la libération de la mémoire (`drop`), les octets sont écrasés de façon déterministe avec des zéros.
    - Les traits `Debug` et `Display` de tous les conteneurs de secrets sont masqués (`[REDACTED]`).
    - L'interdiction du trait `Clone` sur `EncryptionKey` limite drastiquement le nombre de copies en mémoire.
@@ -19,11 +19,12 @@ Ce document formalise les règles strictes d'ingénierie de sécurité et les en
    - Aucune comparaison d'octets naïve (`==` ou `memcmp`) n'est autorisée sur des données sensibles ou des condensats d'authentification.
 
 3. **Confusion Multi-Tenant & Rejeu Inter-Domaine** :
-   - Tout chiffrement AES-256-GCM intègre obligatoirement un contexte canonique de Données Associées Authentifiées (**AAD** - *Additional Authenticated Data*).
-   - L'AAD lie de façon cryptographique et indissociable le chiffrement au `tenant_id`, au `purpose` et aux métadonnées contextuelles. Un ciphertext déplacé vers un autre tenant ou un autre usage métier échouera systématiquement lors du déchiffrement (`DecryptionFailed`).
+   - **Chiffrement lié (`encrypt_secret` / `decrypt_secret`)** : Le chiffrement applicatif standard intègre obligatoirement un contexte canonique de Données Associées Authentifiées (**AAD** - *Additional Authenticated Data*) via `SecretContext`. L'AAD lie de façon cryptographique et indissociable le ciphertext au `tenant`, au `module`, à la `resource`, au `record_id` et au `field`. Toute tentative de réassignation d'un secret à un autre tenant, un autre enregistrement ou un autre champ échouera systématiquement à la validation de l'AEAD (`CryptoError::AuthenticationFailed`).
+   - **Chiffrement non lié (`encrypt_unbound` / `decrypt_unbound`)** : Pour les données ne dépendant pas d'un enregistrement ou d'un tenant spécifique (ex : secrets d'infrastructure globaux, jetons système autonomes), le moteur fournit un mode non lié utilisant un AAD vide (`&[]`). Dans ce mode, la confidentialité et l'intégrité/authenticité du contenu restent strictement garanties par le tag AES-256-GCM, mais la protection contre la confusion inter-domaines incombe à la couche applicative.
 
-4. **Attaques par Réutilisation de Nonce (Nonce Reuse Attacks)** :
-   - Chaque opération de chiffrement génère un nonce aléatoire frais et unique de 96 bits (12 octets) issu directement du CSPRNG noyau (`rand_core::OsRng`).
+4. **Génération et Gestion des Nonces AES-GCM** :
+   - Chaque opération de chiffrement génère un nonce aléatoire de 96 bits (12 octets) à partir du CSPRNG système (`rand_core::OsRng`).
+   - Conformément aux recommandations du NIST SP 800-38D (§8.2.2) concernant les nonces aléatoires de 96 bits, la probabilité de collision reste négligeable ($< 2^{-32}$) pour un volume allant jusqu'à $2^{32}$ chiffrements sous la même clé. Pour garantir cette marge de sécurité en environnement distribué, la rotation périodique des clés (`reencrypt_if_needed`) permet de renouveler la clé active bien avant d'approcher ce seuil opérationnel.
 
 ---
 
@@ -33,8 +34,9 @@ Ce document formalise les règles strictes d'ingénierie de sécurité et les en
 - **Algorithme** : AES-256-GCM (NIST SP 800-38D).
 - **Taille de Clé** : 256 bits (32 octets).
 - **Nonce** : 96 bits (12 octets) cryptographiquement aléatoire via `OsRng`.
-- **Format d'Enveloppe** : `enc:v1:<key_id>:<base64url_payload>` (Payload binaire : `Nonce (12B) | Ciphertext (NB) | Tag (16B)`).
-- **Format du Contexte AAD** : `lyxal:v1:<len_t>:<tenant>:<len_m>:<module>:<len_r>:<resource>:<len_id>:<record_id>:<len_f>:<field>`.
+- **Format d'Enveloppe** : `enc:v1:<key_id>:<base64url_payload>` (Payload binaire Base64URL : `Nonce (12B) | Ciphertext (NB) | Tag (16B)`, spécification formelle dans [`ENVELOPE_FORMAT_V1.md`](ENVELOPE_FORMAT_V1.md)).
+- **Format du Contexte AAD lié** : `lyxal:v1:<len_t>:<tenant>:<len_m>:<module>:<len_r>:<resource>:<len_id>:<record_id>:<len_f>:<field>`.
+- **Contexte AAD non lié** : AAD vide (`&[]`).
 
 ### 2.2. Hachage de Mots de Passe
 - **Algorithme** : Argon2id (RFC 9106, version 19 `0x13`).

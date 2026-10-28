@@ -20,7 +20,7 @@
 
 | Module | Classification | Rôle & Périmètre | Consommateurs |
 | :--- | :--- | :--- | :--- |
-| `pub mod cipher` | `INTERNAL-CANDIDATE` | Primitives brutes AES-256-GCM (utilisé en interne et pour tests bas niveau). Préférer `CryptoEngine`. | `lyxal_crypto`, tests |
+| `pub mod cipher` | `CONTROLLED-USAGE` | Primitives cryptographiques pures AES-256-GCM (NIST SP 800-38D). Usage contrôlé pour adaptateurs de transport et migrations. Préférer `CryptoEngine` pour le stockage applicatif. | Modules d'infrastructure, adaptateurs Booking |
 | `pub mod context` | `STABLE` | Contexte d'authentification AAD multi-tenant `SecretContext`. | `lyxal_booking`, modules métiers |
 | `pub mod envelope` | `STABLE` | Structure et encodage d'enveloppe `enc:v1` (`EncryptedEnvelope`). | `lyxal_booking`, moteurs de stockage |
 | `pub mod error` | `STABLE` | Types d'erreurs fortement typées `CryptoError`. | Tout le workspace |
@@ -57,10 +57,16 @@
 
 ---
 
-### 2.3. Fonctions Publiques (`pub fn`)
+### 2.3. Fonctions & Méthodes Publiques
 
-| Fonction | Module | Classification | Description & Règle d'usage |
+| Fonction / Méthode | Module | Classification | Description & Règle d'usage |
 | :--- | :--- | :--- | :--- |
+| `CryptoEngine::new(resolver: R) -> Self` | `lib` | `STABLE` | Constructeur du moteur principal acceptant tout `KeyResolver`. |
+| `CryptoEngine::encrypt_secret(&self, plaintext: &[u8], context: &SecretContext) -> Result<String, CryptoError>` | `lib` | `STABLE` | Chiffrement lié canonique avec AAD `lyxal:v1` sous enveloppe `enc:v1:<key_id>:<base64url>`. |
+| `CryptoEngine::decrypt_secret(&self, envelope_str: &str, context: &SecretContext) -> Result<SecretBytes, CryptoError>` | `lib` | `STABLE` | Déchiffrement lié canonique avec vérification stricte de l'AAD. |
+| `CryptoEngine::encrypt_unbound(&self, plaintext: &[u8]) -> Result<String, CryptoError>` | `lib` | `STABLE` | Chiffrement non lié (sans AAD contextuel, AAD vide) sous enveloppe `enc:v1:<key_id>:<base64url>`. |
+| `CryptoEngine::decrypt_unbound(&self, envelope_str: &str) -> Result<SecretBytes, CryptoError>` | `lib` | `STABLE` | Déchiffrement non lié (sans AAD contextuel). |
+| `CryptoEngine::reencrypt_if_needed(&self, envelope_str: &str, context: &SecretContext) -> Result<ReencryptResult, CryptoError>` | `lib` | `STABLE` | Rotation transparente de clé vers la clé active courante. |
 | `sha256(data: &[u8]) -> [u8; 32]` | `hash` | `STABLE` | Hachage SHA-256 direct renvoyant 32 octets bruts. |
 | `sha256_hex(data: &[u8]) -> String` | `hash` | `STABLE` | Hachage SHA-256 direct renvoyant une chaîne hexadécimale 64 chars en minuscules. |
 | `blake3(data: &[u8]) -> [u8; 32]` | `hash` | `STABLE` | Hachage BLAKE3 direct renvoyant 32 octets bruts. |
@@ -74,5 +80,5 @@
 | `hash_password(password: &str) -> Result<String, CryptoError>` | `password` | `STABLE` | Hachage Argon2id politique Lyxal v1 (`m=65536, t=3, p=1, salt=OsRng`). Sortie PHC. |
 | `verify_password(password: &str, encoded_hash: &str) -> Result<bool, CryptoError>` | `password` | `STABLE` | Vérification temps constant d'un mot de passe contre un hash PHC. |
 | `needs_rehash(encoded_hash: &str) -> bool` | `password` | `STABLE` | Détecte si un hash nécessite une mise à niveau vers les paramètres Lyxal v1. |
-| `encrypt_aes_gcm(key, plaintext, aad) -> Result<Vec<u8>, CryptoError>` | `cipher` | `INTERNAL-CANDIDATE` | Primitive bas niveau. Utiliser `CryptoEngine::encrypt_secret` en priorité. |
-| `decrypt_aes_gcm(key, payload, aad) -> Result<Zeroizing<Vec<u8>>, CryptoError>` | `cipher` | `INTERNAL-CANDIDATE` | Primitive bas niveau. Utiliser `CryptoEngine::decrypt_secret` en priorité. |
+| `encrypt_aes_gcm(key: &EncryptionKey, plaintext: &[u8], aad: &[u8]) -> Result<Vec<u8>, CryptoError>` | `cipher` | `CONTROLLED-USAGE` | Primitive AEAD bas niveau produisant `Nonce (12B) \| Ciphertext \| Tag (16B)`. Usage contrôlé (adaptateurs de transport, migrations de protocoles). Préférer `CryptoEngine::encrypt_secret` pour le stockage applicatif standard. |
+| `decrypt_aes_gcm(key: &EncryptionKey, payload: &[u8], aad: &[u8]) -> Result<Zeroizing<Vec<u8>>, CryptoError>` | `cipher` | `CONTROLLED-USAGE` | Primitive AEAD bas niveau consommant `Nonce (12B) \| Ciphertext \| Tag (16B)` avec vérification en temps constant. Usage contrôlé (adaptateurs de transport, migrations historiques). Préférer `CryptoEngine::decrypt_secret`. |

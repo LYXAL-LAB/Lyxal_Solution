@@ -41,6 +41,30 @@ pub enum ReencryptResult {
 
 
 /// Moteur principal de chiffrement et déchiffrement de secrets Lyxal OS.
+///
+/// # Exemples
+/// ```rust
+/// use lyxal_crypto::{CompositeKeyResolver, CryptoEngine, EncryptionKey, KeyId, SecretContext};
+///
+/// // Initialisation en mémoire
+/// let key = EncryptionKey::generate();
+/// let key_id = KeyId::parse("main").unwrap();
+/// let resolver = CompositeKeyResolver::new(key_id, key);
+/// let engine = CryptoEngine::new(resolver);
+///
+/// // Chiffrement lié avec AAD
+/// let ctx = SecretContext::with_tenant("tenant_a", "booking", "setting", "s1", "secret").unwrap();
+/// let envelope = engine.encrypt_secret(b"valeur confidentielle", &ctx).unwrap();
+/// assert!(envelope.starts_with("enc:v1:main:"));
+///
+/// let decrypted = engine.decrypt_secret(&envelope, &ctx).unwrap();
+/// assert_eq!(decrypted.as_slice(), b"valeur confidentielle");
+///
+/// // Chiffrement non lié
+/// let unbound = engine.encrypt_unbound(b"secret libre").unwrap();
+/// let read_unbound = engine.decrypt_unbound(&unbound).unwrap();
+/// assert_eq!(read_unbound.as_slice(), b"secret libre");
+/// ```
 pub struct CryptoEngine<R: KeyResolver> {
     resolver: R,
 }

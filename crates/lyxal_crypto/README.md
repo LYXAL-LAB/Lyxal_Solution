@@ -27,7 +27,7 @@
 - Tag d'authentification 128-bit (16 octets) garantissant l'intégrité et l'authenticité.
 - Contexte AAD canonique (`lyxal:v1:<tenant_id>:<purpose>`) liant le chiffrement au tenant et au domaine métier.
 - Format d'enveloppe sérialisé canonique : `enc:v1:<key_id>:<base64url_payload>` où le payload binaire Base64URL est :
-  `NONCE (12 octets) | CIPHERTEXT | TAG (16 octets)`.
+  `NONCE (12 octets) | CIPHERTEXT | TAG (16 octets)` (voir [`ENVELOPE_FORMAT_V1.md`](ENVELOPE_FORMAT_V1.md)).
 - Rotation de clés et ré-encryption sans déchiffrement applicatif intermédiaire (`reencrypt_if_needed`).
 
 ### 2. Hachage & Empreintes Cryptographiques (`hash`)
@@ -52,28 +52,63 @@
 
 ### Chiffrement & Déchiffrement AES-256-GCM
 
+#### Mode lié (avec AAD contextuel canonique — Recommandé)
+
 ```rust
-use lyxal_crypto::{CryptoEngine, EnvironmentKeyProvider, KeyGenerationPolicy, SecretContext};
+use lyxal_crypto::{CompositeKeyResolver, CryptoEngine, EncryptionKey, KeyId, SecretContext};
 
-// Initialisation d'un provider de clé (ex: variable d'environnement ou fichier)
-let provider = EnvironmentKeyProvider::new(
-    "APP_SECRET_KEY",
-    "key-prod-01",
-    KeyGenerationPolicy::AllowGenerate,
+// Initialisation d'une clé 256 bits et d'un résolveur en mémoire
+let key = EncryptionKey::generate();
+let key_id = KeyId::parse("key-prod-01")?;
+let resolver = CompositeKeyResolver::new(key_id, key);
+let engine = CryptoEngine::new(resolver);
+
+// Contexte AAD canonique multi-tenant ("lyxal:v1:...")
+let ctx = SecretContext::with_tenant(
+    "tenant_lyxal_corp",
+    "booking",
+    "customer",
+    "cust_123",
+    "pii",
 )?;
-let engine = CryptoEngine::new(provider);
-
-// Contexte AAD canonique multi-tenant ("lyxal:v1:tenant_lyxal_corp:customer_pii")
-let ctx = SecretContext::new("tenant_lyxal_corp", "customer_pii");
 
 // Chiffrement -> "enc:v1:key-prod-01:<base64url_payload>"
 let envelope = engine.encrypt_secret(b"donnée secrète", &ctx)?;
 println!("Enveloppe sécurisée : {}", envelope);
 
-// Déchiffrement protégé en mémoire (Zeroizing<Vec<u8>>)
+// Déchiffrement protégé en mémoire (SecretBytes = Zeroizing<Vec<u8>>)
 let decrypted_bytes = engine.decrypt_secret(&envelope, &ctx)?;
 let decrypted_str = std::str::from_utf8(&decrypted_bytes).expect("UTF-8 valide");
 assert_eq!(decrypted_str, "donnée secrète");
+```
+
+#### Mode non lié (sans contexte AAD — Pour secrets génériques ou infrastructure)
+
+```rust
+// Chiffrement non lié (sans contexte AAD spécifique, AAD vide)
+let unbound_env = engine.encrypt_unbound(b"secret d'infrastructure")?;
+
+// Déchiffrement non lié
+let decrypted_unbound = engine.decrypt_unbound(&unbound_env)?;
+assert_eq!(decrypted_unbound.as_slice(), b"secret d'infrastructure");
+```
+
+#### Résolution de clé via variable d'environnement ou fichier
+
+```rust
+use lyxal_crypto::{EnvironmentKeyProvider, FileKeyProvider, KeyGenerationPolicy, KeyId};
+
+let key_id = KeyId::parse("key-prod-01")?;
+
+// Fournisseur basé sur variable d'environnement (Base64 standard 32 octets)
+let env_provider = EnvironmentKeyProvider::new("APP_SECRET_KEY", key_id.clone())?;
+
+// Fournisseur basé sur fichier local avec politique de génération
+let file_provider = FileKeyProvider::new(
+    "secrets/master.key",
+    key_id,
+    KeyGenerationPolicy::AllowGenerate,
+);
 ```
 
 ### Hachage & Vérification de Mots de Passe

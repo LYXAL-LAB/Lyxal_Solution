@@ -42,6 +42,15 @@ where
 }
 
 /// Fournisseur de clé via variable d'environnement (`LYXAL_CRYPTO_MASTER_KEY`).
+///
+/// # Exemples
+/// ```rust
+/// use lyxal_crypto::{EnvironmentKeyProvider, KeyId};
+///
+/// std::env::set_var("TEST_MASTER_KEY", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
+/// let key_id = KeyId::parse("env-key-01").unwrap();
+/// let provider = EnvironmentKeyProvider::new("TEST_MASTER_KEY", key_id).unwrap();
+/// ```
 pub struct EnvironmentKeyProvider {
     key_id: KeyId,
     cached_key: Arc<EncryptionKey>,
@@ -92,6 +101,16 @@ impl KeyResolver for EnvironmentKeyProvider {
 }
 
 /// Fournisseur de clé via fichier local (`lyxal-master.key`).
+///
+/// # Exemples
+/// ```rust
+/// use lyxal_crypto::{FileKeyProvider, KeyGenerationPolicy, KeyId};
+///
+/// let temp_dir = tempfile::tempdir().unwrap();
+/// let key_path = temp_dir.path().join("master.key");
+/// let key_id = KeyId::parse("file-key-01").unwrap();
+/// let provider = FileKeyProvider::new(key_path, key_id, KeyGenerationPolicy::AllowGenerate);
+/// ```
 pub struct FileKeyProvider {
     path: PathBuf,
     key_id: KeyId,

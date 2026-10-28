@@ -3,7 +3,18 @@ use crate::error::CryptoError;
 /// Contexte d'authentification lié (AAD - Additional Authenticated Data)
 /// pour lier un secret chiffré à son tenant, son module, sa ressource et son identifiant.
 ///
-/// Les champs sont encapsulés et validés lors de la construction pour empêcher les valeurs vides.
+/// # Exemples
+/// ```rust
+/// use lyxal_crypto::SecretContext;
+///
+/// // Contexte multi-tenant explicite
+/// let ctx = SecretContext::with_tenant("tenant_a", "booking", "setting", "s1", "secret").unwrap();
+/// assert_eq!(ctx.tenant(), "tenant_a");
+///
+/// // Contexte mono-tenant par défaut ("default")
+/// let default_ctx = SecretContext::new("booking", "setting", "s1", "secret").unwrap();
+/// assert_eq!(default_ctx.tenant(), "default");
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SecretContext {
     tenant: String,
