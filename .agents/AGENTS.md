@@ -948,7 +948,7 @@ Le contrat complet est documenté dans `crates/lyxal_crypto/API_CONTRACT.md`.
 
 | Primitive | Module | Fonctions Principales |
 | :--- | :--- | :--- |
-| **AES-256-GCM** | `cipher`, `envelope`, `context` | `CryptoEngine::encrypt_secret`, `CryptoEngine::decrypt_secret`, `CryptoEngine::reencrypt_secret` |
+| **AES-256-GCM** | `cipher`, `envelope`, `context` | `CryptoEngine::encrypt_secret`, `CryptoEngine::decrypt_secret`, `CryptoEngine::encrypt_unbound`, `CryptoEngine::decrypt_unbound`, `CryptoEngine::reencrypt_if_needed` |
 | **SHA-256** | `hash` | `sha256()`, `sha256_hex()`, `Sha256Hasher` |
 | **BLAKE3** | `hash` | `blake3()`, `blake3_hex()`, `Blake3Hasher` |
 | **Argon2id** | `password` | `hash_password()`, `verify_password()`, `needs_rehash()` |
@@ -981,13 +981,13 @@ lyxal_crypto
 
 4. **Dérivation de clés** : utiliser `lyxal_crypto::kdf::{hkdf_sha256, hkdf_sha256_32}`. Il est interdit d'importer directement `hkdf` dans un module métier.
 
-5. **Chiffrement de secrets** : utiliser `CryptoEngine` avec `SecretContext` et `EncryptedEnvelope`. Il est interdit d'appeler directement les primitives bas niveau `encrypt_aes_gcm` / `decrypt_aes_gcm` dans un module métier.
+5. **Chiffrement de secrets** : utiliser `CryptoEngine` avec `SecretContext` (ou mode non lié `encrypt_unbound`/`decrypt_unbound`) et `EncryptedEnvelope`. Il est interdit d'appeler directement les primitives bas niveau `encrypt_aes_gcm` / `decrypt_aes_gcm` dans un module métier.
 
 6. **CSPRNG** : utiliser `rand_core::OsRng`. Il est interdit d'utiliser `rand::thread_rng()` ou tout PRNG déterministe pour la génération de matériel cryptographique.
 
 ### Contextes AAD Déterministes
 
-Chaque valeur chiffrée doit dériver son AAD d'un `SecretContext` strict :
+En mode lié (recommandé pour toute donnée multi-tenant et applicative), chaque valeur chiffrée doit dériver son AAD d'un `SecretContext` strict :
 
 ```text
 tenant
@@ -998,6 +998,8 @@ field
 ```
 
 Le format AAD canonique `lyxal:v1` est **DÉFINITIVEMENT FIGÉ**. Sa spécification complète est documentée dans `crates/lyxal_crypto/ENVELOPE_FORMAT_V1.md`.
+
+Le mode non lié (`encrypt_unbound` / `decrypt_unbound`, AAD vide) est réservé aux secrets d'infrastructure globaux dépourvus de contexte d'enregistrement ou de tenant.
 
 ### Format d'Enveloppe Moderne
 
