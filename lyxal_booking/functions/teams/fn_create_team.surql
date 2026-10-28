@@ -14,13 +14,13 @@ DEFINE FUNCTION OVERWRITE fn::booking_create_team($params: object) {
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $name == NONE OR string::len(string::trim($name)) == 0 {
-        RETURN fn::result_error("BOOKING_TEAM_NAME_REQUIRED", $language, { field: "name" });
+        RETURN fn::error_result("BOOKING_TEAM_NAME_REQUIRED", $language, { field: "name" });
     };
     IF $slug == NONE OR string::len(string::trim($slug)) == 0 {
-        RETURN fn::result_error("BOOKING_TEAM_SLUG_REQUIRED", $language, { field: "slug" });
+        RETURN fn::error_result("BOOKING_TEAM_SLUG_REQUIRED", $language, { field: "slug" });
     };
     IF $user_id == NONE {
-        RETURN fn::result_error("BOOKING_USER_ID_REQUIRED", $language, { field: "user_id" });
+        RETURN fn::error_result("BOOKING_USER_ID_REQUIRED", $language, { field: "user_id" });
     };
 
     LET $clean_name = string::trim($name);
@@ -29,7 +29,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_create_team($params: object) {
 
     LET $existing = SELECT VALUE id FROM booking_team WHERE slug = $clean_slug LIMIT 1;
     IF array::len($existing) > 0 {
-        RETURN fn::result_error("BOOKING_TEAM_SLUG_ALREADY_EXISTS", $language, { slug: $clean_slug });
+        RETURN fn::error_result("BOOKING_TEAM_SLUG_ALREADY_EXISTS", $language, { slug: $clean_slug });
     };
 
     LET $team = CREATE ONLY booking_team CONTENT {

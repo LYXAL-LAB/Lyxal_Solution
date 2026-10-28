@@ -6,12 +6,12 @@
 DEFINE FUNCTION OVERWRITE fn::booking_decline_by_token($params: object) {
     LET $raw_token = IF $params.token != NONE { string::trim($params.token) } ELSE { NONE };
     IF $raw_token == NONE {
-        RETURN fn::result_error("BOOKING_TOKEN_REQUIRED", "fr", "Le jeton de refus est obligatoire");
+        RETURN fn::error_result("BOOKING_TOKEN_REQUIRED", "fr", "Le jeton de refus est obligatoire");
     };
 
     LET $records = SELECT * FROM booking WHERE decline_token = $raw_token OR confirm_token = $raw_token LIMIT 1;
     IF array::len($records) == 0 {
-        RETURN fn::result_error("BOOKING_TOKEN_INVALID", "fr", "Jeton de refus invalide ou expiré");
+        RETURN fn::error_result("BOOKING_TOKEN_INVALID", "fr", "Jeton de refus invalide ou expiré");
     };
 
     LET $b = $records[0];

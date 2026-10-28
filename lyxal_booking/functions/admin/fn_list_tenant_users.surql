@@ -12,7 +12,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_admin_list_tenant_users(
     LET $limit = $params.limit OR 20;
 
     IF $tenant_id IS NONE OR $tenant_id = "" {
-        RETURN fn::result_error("ADMIN_TENANT_ID_REQUIRED", "fr", NONE);
+        RETURN fn::error_result("ADMIN_TENANT_ID_REQUIRED", "fr", NONE);
     };
 
     LET $users = SELECT id, email, name, role, created_at FROM user WHERE tenant_id = $tenant_id ORDER BY created_at DESC, id DESC LIMIT $limit;

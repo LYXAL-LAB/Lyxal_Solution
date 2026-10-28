@@ -14,7 +14,9 @@ pub struct LyxalError {
     pub severity: String,
     pub http_status: Option<u16>,
     pub retryable: bool,
+    #[serde(default)]
     pub documentation: Value,
+    #[serde(default)]
     pub metadata: Value,
 
     #[serde(default)]

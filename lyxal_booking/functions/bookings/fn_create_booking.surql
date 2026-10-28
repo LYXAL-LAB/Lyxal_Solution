@@ -16,20 +16,20 @@ DEFINE FUNCTION OVERWRITE fn::booking_create_booking($params: object) {
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $event_type_slug IS NONE OR string::len(string::trim($event_type_slug)) = 0 {
-        RETURN fn::result_error("BOOKING_SLUG_REQUIRED", $language, { field: "event_type_slug" });
+        RETURN fn::error_result("BOOKING_SLUG_REQUIRED", $language, { field: "event_type_slug" });
     };
     IF $guest_name IS NONE OR string::len(string::trim($guest_name)) = 0 {
-        RETURN fn::result_error("BOOKING_GUEST_NAME_REQUIRED", $language, { field: "guest_name" });
+        RETURN fn::error_result("BOOKING_GUEST_NAME_REQUIRED", $language, { field: "guest_name" });
     };
     IF $guest_email IS NONE OR string::len(string::trim($guest_email)) = 0 {
-        RETURN fn::result_error("BOOKING_GUEST_EMAIL_REQUIRED", $language, { field: "guest_email" });
+        RETURN fn::error_result("BOOKING_GUEST_EMAIL_REQUIRED", $language, { field: "guest_email" });
     };
 
     -- 1. Chargement du type d'événement
     LET $clean_slug = string::lowercase(string::trim($event_type_slug));
     LET $et_list = SELECT * FROM booking_event_type WHERE slug = $clean_slug LIMIT 1;
     IF array::len($et_list) = 0 {
-        RETURN fn::result_error("BOOKING_EVENT_TYPE_NOT_FOUND", $language, { slug: $clean_slug });
+        RETURN fn::error_result("BOOKING_EVENT_TYPE_NOT_FOUND", $language, { slug: $clean_slug });
     };
     LET $et = $et_list[0];
 

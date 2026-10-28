@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- FONCTION : fn::ingestion_manifest_get_detail
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Consultation détaillée d'un manifeste avec intégrité de scellement

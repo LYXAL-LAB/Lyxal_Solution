@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- FONCTION : fn::ingestion_staged_requalify
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Requalification formelle et auditable d'un article par le Data Steward

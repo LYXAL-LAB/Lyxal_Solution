@@ -6,7 +6,7 @@
 DEFINE FUNCTION OVERWRITE fn::booking_approve_booking($params: object) {
     LET $id_param = IF $params.booking_id != NONE { $params.booking_id } ELSE IF $params.id != NONE { $params.id } ELSE { $params.token };
     IF $id_param == NONE {
-        RETURN fn::result_error("BOOKING_ID_OR_TOKEN_REQUIRED", "fr", "Paramètre booking_id ou token obligatoire");
+        RETURN fn::error_result("BOOKING_ID_OR_TOKEN_REQUIRED", "fr", "Paramètre booking_id ou token obligatoire");
     };
 
     LET $token_val = string::trim(type::string($id_param));
@@ -18,13 +18,13 @@ DEFINE FUNCTION OVERWRITE fn::booking_approve_booking($params: object) {
                    LIMIT 1;
 
     IF array::len($records) == 0 {
-        RETURN fn::result_error("BOOKING_NOT_FOUND", "fr", "Réservation introuvable");
+        RETURN fn::error_result("BOOKING_NOT_FOUND", "fr", "Réservation introuvable");
     };
 
     LET $b = $records[0];
 
     IF $b.status != 'pending' {
-        RETURN fn::result_error("BOOKING_NOT_PENDING", "fr", "Seule une réservation en attente (pending) peut être approuvée");
+        RETURN fn::error_result("BOOKING_NOT_PENDING", "fr", "Seule une réservation en attente (pending) peut être approuvée");
     };
 
     LET $resource_id = IF $params.assigned_resource_id != NONE { type::record(string::trim(type::string($params.assigned_resource_id))) } ELSE { $b.assigned_resource_id };

@@ -13,27 +13,27 @@ DEFINE FUNCTION OVERWRITE fn::booking_reschedule_with_resource_assignment($param
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $booking_id == NONE OR $new_start_at == NONE OR $new_end_at == NONE {
-        RETURN fn::result_error("BOOKING_INVALID_PARAMS", $language, { field: "booking_id, new_start_at or new_end_at" });
+        RETURN fn::error_result("BOOKING_INVALID_PARAMS", $language, { field: "booking_id, new_start_at or new_end_at" });
     };
 
     LET $b = SELECT id, event_type, status, start_at, end_at, updated_at, assigned_resource_id FROM ONLY $booking_id;
     IF $b == NONE {
-        RETURN fn::result_error("BOOKING_NOT_FOUND", $language, { record_id: $booking_id });
+        RETURN fn::error_result("BOOKING_NOT_FOUND", $language, { record_id: $booking_id });
     };
 
     -- Contrôle du statut compatible avec un report
     IF $b.status != NONE AND string::lowercase($b.status) IN ['cancelled', 'rejected'] {
-        RETURN fn::result_error("BOOKING_STATUS_INVALID_FOR_RESCHEDULE", $language, { status: $b.status });
+        RETURN fn::error_result("BOOKING_STATUS_INVALID_FOR_RESCHEDULE", $language, { status: $b.status });
     };
 
     -- Contrôle de verrouillage optimiste sur les anciennes dates si fournies
     IF $expected_start_at != NONE AND $b.start_at != $expected_start_at {
-        RETURN fn::result_error("BOOKING_CONCURRENT_MODIFICATION", $language, { field: "start_at" });
+        RETURN fn::error_result("BOOKING_CONCURRENT_MODIFICATION", $language, { field: "start_at" });
     };
 
     -- Contrôle de verrouillage optimiste sur updated_at si fourni
     IF $expected_updated_at != NONE AND $b.updated_at != NONE AND $b.updated_at != $expected_updated_at {
-        RETURN fn::result_error("BOOKING_CONCURRENT_MODIFICATION", $language, { field: "updated_at" });
+        RETURN fn::error_result("BOOKING_CONCURRENT_MODIFICATION", $language, { field: "updated_at" });
     };
 
     LET $event_type_id = $b.event_type;
@@ -59,11 +59,11 @@ DEFINE FUNCTION OVERWRITE fn::booking_reschedule_with_resource_assignment($param
             );
 
             IF $mode == "all" AND count($free_resources) < count($resources) {
-                RETURN fn::result_error("BOOKING_RESOURCE_BUSY", $language, { mode: "all" });
+                RETURN fn::error_result("BOOKING_RESOURCE_BUSY", $language, { mode: "all" });
             };
 
             IF count($free_resources) == 0 {
-                RETURN fn::result_error("BOOKING_RESOURCE_BUSY", $language, { mode: $mode });
+                RETURN fn::error_result("BOOKING_RESOURCE_BUSY", $language, { mode: $mode });
             };
 
             $assigned_resource = $free_resources[0];

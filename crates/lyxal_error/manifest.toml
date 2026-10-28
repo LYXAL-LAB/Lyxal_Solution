@@ -1,0 +1,51 @@
+manifest_version = 1
+id = "lyxal_error"
+name = "Lyxal Error Engine"
+version = "0.1.0"
+description = "Moteur canonique de gestion des erreurs, résolution multilingue et contrats de retour pour Lyxal OS"
+capabilities = ["database"]
+
+[runtime]
+min_version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_core"
+version = ">=1.0.0"
+
+[resources]
+schemas = [
+    "schema/error_definition.surql",
+    "schema/error_external_mapping.surql",
+    "schema/error_occurrence.surql"
+]
+migrations = [
+    "migrations/0001_initial_schema.surql"
+]
+functions = [
+    "functions/service/result_ok.surql",
+    "functions/service/error_get.surql",
+    "functions/service/error_resolve.surql",
+    "functions/service/error_result.surql",
+    "functions/service/error_log.surql",
+    "functions/service/error_map_external.surql",
+    "functions/definition/error_definition_create.surql",
+    "functions/definition/error_definition_get.surql",
+    "functions/definition/error_definition_list.surql",
+    "functions/definition/error_definition_update.surql",
+    "functions/definition/error_definition_disable.surql",
+    "functions/mapping/error_mapping_create.surql",
+    "functions/mapping/error_mapping_get.surql",
+    "functions/mapping/error_mapping_list.surql",
+    "functions/mapping/error_mapping_update.surql",
+    "functions/mapping/error_mapping_disable.surql",
+    "functions/occurrence/error_occurrence_create.surql",
+    "functions/occurrence/error_occurrence_get.surql",
+    "functions/occurrence/error_occurrence_list.surql",
+    "functions/occurrence/error_occurrence_purge_before.surql"
+]
+seeds = [
+    "seeds/error_mappings.surql"
+]
+error_definitions = [
+    "error/error_definitions.surql"
+]

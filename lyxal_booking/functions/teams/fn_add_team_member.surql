@@ -13,10 +13,10 @@ DEFINE FUNCTION OVERWRITE fn::booking_add_team_member($params: object) {
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $team_id == NONE {
-        RETURN fn::result_error("BOOKING_TEAM_ID_REQUIRED", $language, { field: "team_id" });
+        RETURN fn::error_result("BOOKING_TEAM_ID_REQUIRED", $language, { field: "team_id" });
     };
     IF $account_id == NONE {
-        RETURN fn::result_error("BOOKING_ACCOUNT_ID_REQUIRED", $language, { field: "user_id" });
+        RETURN fn::error_result("BOOKING_ACCOUNT_ID_REQUIRED", $language, { field: "user_id" });
     };
 
     LET $clean_role = IF $role != NONE { string::lowercase(string::trim($role)) } ELSE { 'member' };

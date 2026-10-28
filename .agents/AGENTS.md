@@ -202,6 +202,10 @@ ou :
 fn::error_result($code, $language, $details)
 ```
 
+> [!IMPORTANT]
+> **Règle absolue** : La fonction d'échec universelle officielle unique est exclusivement `fn::error_result($code, $language, $details)`. L'utilisation ou la définition de `fn::result_error` est **strictement interdite** dans tous les modules de la suite Lyxal OS (aucun alias, aucun doublon toléré).
+
+
 ### Taille maximale
 
 Une fonction SurrealQL ne dépasse pas environ **300 lignes**.
@@ -1309,7 +1313,7 @@ Avant toute implémentation, Antigravity doit vérifier les points suivants.
 
 * [ ] Signature publique conforme.
 * [ ] `$params: object` unique.
-* [ ] Retour `result_ok` / `result_error`.
+* [ ] Retour `result_ok` / `error_result`.
 * [ ] `COMMENT` présent.
 * [ ] Fonction inférieure à environ 300 lignes.
 * [ ] Tests prévus.

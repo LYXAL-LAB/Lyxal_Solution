@@ -11,7 +11,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_commit_oauth_token_refresh($params: object
     LET $new_refresh_token_enc = $params.new_refresh_token_enc;
 
     IF $record_id == NONE OR $access_token_enc == NONE OR $token_expires_at == NONE OR $expected_refresh_token_enc == NONE {
-        RETURN fn::result_error("BOOKING_INVALID_PARAMS", "fr", { field: "required parameters missing" });
+        RETURN fn::error_result("BOOKING_INVALID_PARAMS", "fr", { field: "required parameters missing" });
     };
 
     LET $updated = UPDATE ONLY $record_id SET

@@ -10,15 +10,15 @@ DEFINE FUNCTION OVERWRITE fn::booking_update_setting_secret($params: object) {
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $record_id == NONE {
-        RETURN fn::result_error("BOOKING_INVALID_PARAMS", $language, { field: "record_id" });
+        RETURN fn::error_result("BOOKING_INVALID_PARAMS", $language, { field: "record_id" });
     };
 
     IF $expected_old == NONE {
-        RETURN fn::result_error("BOOKING_SECRET_EXPECTED_VALUE_REQUIRED", $language, { field: "expected_old_value" });
+        RETURN fn::error_result("BOOKING_SECRET_EXPECTED_VALUE_REQUIRED", $language, { field: "expected_old_value" });
     };
 
     IF $new_envelope == NONE OR !string::starts_with($new_envelope, "enc:") {
-        RETURN fn::result_error("BOOKING_SECRET_ENVELOPE_INVALID", $language, { field: "new_envelope" });
+        RETURN fn::error_result("BOOKING_SECRET_ENVELOPE_INVALID", $language, { field: "new_envelope" });
     };
 
     LET $updated = UPDATE ONLY $record_id SET

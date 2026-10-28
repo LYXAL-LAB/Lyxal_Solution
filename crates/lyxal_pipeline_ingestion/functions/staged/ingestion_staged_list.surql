@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- FONCTION : fn::ingestion_staged_list
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Recherche paginée et filtrée des articles en staging pour la console

@@ -18,19 +18,19 @@ DEFINE FUNCTION OVERWRITE fn::booking_find_or_create_oidc_account(
 
     -- Validation explicite séparée des champs obligatoires
     IF $issuer == NONE OR string::len(string::trim($issuer)) == 0 {
-        RETURN fn::result_error("BOOKING_AUTH_OIDC_INVALID_ISSUER", $language, { field: "issuer" });
+        RETURN fn::error_result("BOOKING_AUTH_OIDC_INVALID_ISSUER", $language, { field: "issuer" });
     };
 
     IF $sub == NONE OR string::len(string::trim($sub)) == 0 {
-        RETURN fn::result_error("BOOKING_AUTH_OIDC_INVALID_SUBJECT", $language, { field: "sub" });
+        RETURN fn::error_result("BOOKING_AUTH_OIDC_INVALID_SUBJECT", $language, { field: "sub" });
     };
 
     IF $email == NONE OR string::len(string::trim($email)) == 0 {
-        RETURN fn::result_error("BOOKING_USERNAME_EMAIL_REQUIRED", $language, { field: "email" });
+        RETURN fn::error_result("BOOKING_USERNAME_EMAIL_REQUIRED", $language, { field: "email" });
     };
 
     IF $name == NONE OR string::len(string::trim($name)) == 0 {
-        RETURN fn::result_error("BOOKING_AUTH_OIDC_NAME_REQUIRED", $language, { field: "name" });
+        RETURN fn::error_result("BOOKING_AUTH_OIDC_NAME_REQUIRED", $language, { field: "name" });
     };
 
     LET $clean_email = string::lowercase(string::trim($email));
@@ -40,7 +40,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_find_or_create_oidc_account(
     IF array::len($by_sub) > 0 {
         LET $acc = $by_sub[0];
         IF $acc.enabled == false {
-            RETURN fn::result_error("BOOKING_AUTH_USER_DISABLED", $language, { user_id: type::string($acc.id) });
+            RETURN fn::error_result("BOOKING_AUTH_USER_DISABLED", $language, { user_id: type::string($acc.id) });
         };
 
         -- Synchronisation du nom, email et du titre OIDC (AUDIT-003)
@@ -65,11 +65,11 @@ DEFINE FUNCTION OVERWRITE fn::booking_find_or_create_oidc_account(
     IF array::len($by_email) > 0 {
         LET $existing = $by_email[0];
         IF $existing.enabled == false {
-            RETURN fn::result_error("BOOKING_AUTH_USER_DISABLED", $language, { user_id: type::string($existing.id) });
+            RETURN fn::error_result("BOOKING_AUTH_USER_DISABLED", $language, { user_id: type::string($existing.id) });
         };
 
         IF $email_verified == false {
-            RETURN fn::result_error("BOOKING_AUTH_OIDC_EMAIL_NOT_VERIFIED", $language, { email: $clean_email });
+            RETURN fn::error_result("BOOKING_AUTH_OIDC_EMAIL_NOT_VERIFIED", $language, { email: $clean_email });
         };
 
         LET $clean_title = IF $title != NONE AND string::len(string::trim($title)) > 0 { string::trim($title) } ELSE { $existing.title };
@@ -89,11 +89,11 @@ DEFINE FUNCTION OVERWRITE fn::booking_find_or_create_oidc_account(
 
     -- 3. Inscription automatique (REFUS SI DESACTIVEE OU EMAIL NON VERIFIE)
     IF $email_verified == false {
-        RETURN fn::result_error("BOOKING_AUTH_OIDC_EMAIL_NOT_VERIFIED", $language, { email: $clean_email });
+        RETURN fn::error_result("BOOKING_AUTH_OIDC_EMAIL_NOT_VERIFIED", $language, { email: $clean_email });
     };
 
     IF $auto_register == false {
-        RETURN fn::result_error("BOOKING_AUTH_OIDC_ACCOUNT_NOT_LINKED", $language, { email: $clean_email });
+        RETURN fn::error_result("BOOKING_AUTH_OIDC_ACCOUNT_NOT_LINKED", $language, { email: $clean_email });
     };
 
     -- Génération déterministe d'un pseudo unique (Propagation d'erreur stricte)

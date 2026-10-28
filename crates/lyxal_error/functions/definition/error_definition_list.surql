@@ -3,10 +3,17 @@
 -- │  Liste les définitions d'erreurs filtrées par module ou catégorie      │
 -- └──────────────────────────────────────────────────────────────────────────┘
 
-DEFINE FUNCTION IF NOT EXISTS fn::error_definition_list(
-    $module: option<string>,
-    $category: option<string>
+DEFINE FUNCTION OVERWRITE fn::error_definition_list(
+    $params: any
 ) {
+    LET $p = IF type::is::object($params) { $params } ELSE { {} };
+    LET $module = $p.module;
+    LET $category = $p.category;
+    LET $domain = $p.domain;
+    LET $enabled_only = IF $p.enabled_only != NONE { $p.enabled_only } ELSE { true };
+    LET $limit = IF $p.limit != NONE { $p.limit } ELSE { 50 };
+    LET $start = IF $p.start != NONE { $p.start } ELSE { 0 };
+
     LET $clean_mod = IF $module != NONE AND string::len(string::trim($module)) > 0 {
         string::lowercase(string::trim($module))
     } ELSE {
@@ -19,15 +26,20 @@ DEFINE FUNCTION IF NOT EXISTS fn::error_definition_list(
         NONE
     };
 
-    LET $list = IF $clean_mod != NONE AND $clean_cat != NONE {
-        SELECT * FROM error_definition WHERE module = $clean_mod AND category = $clean_cat ORDER BY code ASC
-    } ELSE IF $clean_mod != NONE {
-        SELECT * FROM error_definition WHERE module = $clean_mod ORDER BY code ASC
-    } ELSE IF $clean_cat != NONE {
-        SELECT * FROM error_definition WHERE category = $clean_cat ORDER BY code ASC
+    LET $clean_dom = IF $domain != NONE AND string::len(string::trim($domain)) > 0 {
+        string::lowercase(string::trim($domain))
     } ELSE {
-        SELECT * FROM error_definition ORDER BY code ASC
+        NONE
     };
+
+    LET $list = SELECT * FROM error_definition 
+                 WHERE ($clean_mod = NONE OR module = $clean_mod)
+                   AND ($clean_cat = NONE OR category = $clean_cat)
+                   AND ($clean_dom = NONE OR domain = $clean_dom)
+                   AND ($enabled_only = false OR enabled = true)
+                 ORDER BY code ASC
+                 LIMIT $limit
+                 START $start;
 
     RETURN fn::result_ok($list);
 } COMMENT "Liste et filtre les définitions d'erreurs du catalogue canonique au format universel";

@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- FONCTION : fn::ingestion_manifest_list
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Consultation paginée et filtrée des manifestes de publication

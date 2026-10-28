@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- FONCTION : fn::ingestion_quarantine_list
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Consultation paginée et filtrée des anomalies en quarantaine

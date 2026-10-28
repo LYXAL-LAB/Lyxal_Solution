@@ -10,7 +10,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_create_session(
     LET $language = $params.language OR "fr";
 
     IF $account_id == NONE {
-        RETURN fn::result_error("BOOKING_ACCOUNT_NOT_FOUND", $language, { field: "account_id" });
+        RETURN fn::error_result("BOOKING_ACCOUNT_NOT_FOUND", $language, { field: "account_id" });
     };
 
     LET $now = time::now();

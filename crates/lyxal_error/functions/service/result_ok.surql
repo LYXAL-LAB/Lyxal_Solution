@@ -3,7 +3,7 @@
 -- │  Construit la réponse de succès conforme au contrat universel LyxalResult│
 -- └──────────────────────────────────────────────────────────────────────────┘
 
-DEFINE FUNCTION IF NOT EXISTS fn::result_ok(
+DEFINE FUNCTION OVERWRITE fn::result_ok(
     $data: any
 ) {
     RETURN {

@@ -8,12 +8,12 @@ DEFINE FUNCTION OVERWRITE fn::booking_reschedule_by_token($params: object) {
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $raw_token == NONE {
-        RETURN fn::result_error("BOOKING_TOKEN_REQUIRED", $language, { field: "token" });
+        RETURN fn::error_result("BOOKING_TOKEN_REQUIRED", $language, { field: "token" });
     };
 
     LET $records = SELECT * FROM booking WHERE reschedule_token = $raw_token AND status != 'cancelled' LIMIT 1;
     IF array::len($records) == 0 {
-        RETURN fn::result_error("BOOKING_TOKEN_INVALID", $language, { token: $raw_token });
+        RETURN fn::error_result("BOOKING_TOKEN_INVALID", $language, { token: $raw_token });
     };
 
     LET $b = $records[0];
@@ -21,7 +21,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_reschedule_by_token($params: object) {
     LET $new_end = IF $params.new_end_at != NONE { type::datetime($params.new_end_at) } ELSE { NONE };
 
     IF $new_start == NONE OR $new_end == NONE {
-        RETURN fn::result_error("BOOKING_TIMES_REQUIRED", $language, { fields: ["new_start_at", "new_end_at"] });
+        RETURN fn::error_result("BOOKING_TIMES_REQUIRED", $language, { fields: ["new_start_at", "new_end_at"] });
     };
 
     UPDATE $b.id SET start_at = $new_start, end_at = $new_end, updated_at = time::now();

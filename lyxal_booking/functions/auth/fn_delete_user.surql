@@ -11,16 +11,16 @@ DEFINE FUNCTION OVERWRITE fn::booking_delete_user(
     LET $language = $params.language OR "fr";
 
     IF $target_id == NONE {
-        RETURN fn::result_error("BOOKING_ACCOUNT_NOT_FOUND", $language, { field: "target_id" });
+        RETURN fn::error_result("BOOKING_ACCOUNT_NOT_FOUND", $language, { field: "target_id" });
     };
 
     IF $requester_id != NONE AND $target_id == $requester_id {
-        RETURN fn::result_error("BOOKING_AUTH_CANNOT_DELETE_SELF", $language, { target_id: type::string($target_id) });
+        RETURN fn::error_result("BOOKING_AUTH_CANNOT_DELETE_SELF", $language, { target_id: type::string($target_id) });
     };
 
     LET $target_res = SELECT * FROM booking_account WHERE id = $target_id LIMIT 1;
     IF array::len($target_res) == 0 {
-        RETURN fn::result_error("BOOKING_ACCOUNT_NOT_FOUND", $language, { target_id: type::string($target_id) });
+        RETURN fn::error_result("BOOKING_ACCOUNT_NOT_FOUND", $language, { target_id: type::string($target_id) });
     };
 
     LET $target = $target_res[0];
@@ -29,7 +29,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_delete_user(
     IF $target.role == 'admin' {
         LET $admins = SELECT VALUE count() FROM booking_account WHERE role = 'admin' AND enabled = true;
         IF array::len($admins) > 0 AND $admins[0] <= 1 {
-            RETURN fn::result_error("BOOKING_AUTH_LAST_ADMIN_DELETE_PROHIBITED", $language, { target_id: type::string($target_id) });
+            RETURN fn::error_result("BOOKING_AUTH_LAST_ADMIN_DELETE_PROHIBITED", $language, { target_id: type::string($target_id) });
         };
     };
 
@@ -41,7 +41,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_delete_user(
     LET $total_future = $host_cnt + $assigned_cnt;
 
     IF $total_future > 0 {
-        RETURN fn::result_error("BOOKING_AUTH_HAS_FUTURE_BOOKINGS", $language, { count: $total_future });
+        RETURN fn::error_result("BOOKING_AUTH_HAS_FUTURE_BOOKINGS", $language, { count: $total_future });
     };
 
     -- Capture du chemin d'avatar pour nettoyage par l'adaptateur Rust

@@ -3,7 +3,7 @@
 -- │  Résolution et traduction d'une erreur canonique complète avec repli     │
 -- └──────────────────────────────────────────────────────────────────────────┘
 
-DEFINE FUNCTION IF NOT EXISTS fn::error_resolve(
+DEFINE FUNCTION OVERWRITE fn::error_resolve(
     $code: option<string>,
     $language: option<string>,
     $details: option<object>
@@ -33,6 +33,8 @@ DEFINE FUNCTION IF NOT EXISTS fn::error_resolve(
             severity: "error",
             http_status: 500,
             retryable: false,
+            documentation: {},
+            metadata: {},
             details: $fallback_det
         };
     };

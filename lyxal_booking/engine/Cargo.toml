@@ -44,7 +44,7 @@ uuid = { version = "1", features = ["v4", "serde"] }
 # Error handling & SurrealDB Client Abstraction
 anyhow = "1"
 thiserror = "1"
-lyxal_error = { path = "../../lyxal_error" }
+lyxal_error = { path = "../../crates/lyxal_error" }
 lyxal_surreal = { path = "../../lyxal_surreal" }
 lyxal_crypto = { path = "../../crates/lyxal_crypto" }
 

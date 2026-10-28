@@ -8,12 +8,12 @@ DEFINE FUNCTION OVERWRITE fn::booking_get_event_type_resources($params: object) 
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $event_type_id == NONE {
-        RETURN fn::result_error("BOOKING_INVALID_PARAMS", $language, { field: "event_type_id" });
+        RETURN fn::error_result("BOOKING_INVALID_PARAMS", $language, { field: "event_type_id" });
     };
 
     LET $et = SELECT id, resource_scheduling_mode FROM ONLY $event_type_id;
     IF $et == NONE {
-        RETURN fn::result_error("BOOKING_NOT_FOUND", $language, { record_id: $event_type_id });
+        RETURN fn::error_result("BOOKING_NOT_FOUND", $language, { record_id: $event_type_id });
     };
 
     LET $resources = SELECT id, name FROM booking_resource

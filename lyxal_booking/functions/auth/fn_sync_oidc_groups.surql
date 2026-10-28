@@ -12,7 +12,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_sync_oidc_groups(
     LET $language = $params.language OR "fr";
 
     IF $account_id == NONE {
-        RETURN fn::result_error("BOOKING_ACCOUNT_NOT_FOUND", $language, { field: "account_id" });
+        RETURN fn::error_result("BOOKING_ACCOUNT_NOT_FOUND", $language, { field: "account_id" });
     };
 
     LET $groups_received = array::len($groups);

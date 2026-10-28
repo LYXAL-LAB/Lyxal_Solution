@@ -3,16 +3,35 @@
 -- │  Lecture d'une règle de correspondance d'erreur externe par son ID      │
 -- └──────────────────────────────────────────────────────────────────────────┘
 
-DEFINE FUNCTION IF NOT EXISTS fn::error_mapping_get(
-    $mapping_id: option<record<error_external_mapping>>
+DEFINE FUNCTION OVERWRITE fn::error_mapping_get(
+    $params: any
 ) {
+    LET $language = IF type::is::object($params) AND $params.language != NONE { $params.language } ELSE { "fr" };
+    LET $raw_id = IF type::is::object($params) {
+        $params.mapping_id ?? $params.id
+    } ELSE {
+        $params
+    };
+
+    LET $mapping_id = IF type::is::record($raw_id) {
+        $raw_id
+    } ELSE IF type::is::string($raw_id) {
+        IF string::starts_with($raw_id, "error_external_mapping:") {
+            type::thing("error_external_mapping", string::slice($raw_id, 23))
+        } ELSE {
+            type::thing("error_external_mapping", $raw_id)
+        }
+    } ELSE {
+        NONE
+    };
+
     IF $mapping_id == NONE {
-        RETURN fn::result_error("CORE_ERROR_DEFINITION_NOT_FOUND", "fr", { field: "mapping_id" });
+        RETURN fn::error_result("ERROR_PARAM_REQUIRED", $language, { field: "mapping_id" });
     };
 
     LET $res = SELECT * FROM $mapping_id;
     IF array::len($res) == 0 {
-        RETURN fn::result_error("CORE_ERROR_DEFINITION_NOT_FOUND", "fr", { id: $mapping_id });
+        RETURN fn::error_result("ERROR_MAPPING_NOT_FOUND", $language, { mapping_id: $mapping_id });
     };
 
     RETURN fn::result_ok($res[0]);

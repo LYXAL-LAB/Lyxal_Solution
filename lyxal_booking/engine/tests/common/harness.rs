@@ -323,7 +323,7 @@ impl TestHarness {
             database: db.to_string(),
         };
 
-        // Chargement des helpers universels de retour fn::result_ok / fn::result_error
+        // Chargement des helpers universels de retour fn::result_ok / fn::error_result
         harness.init_result_helpers().await?;
 
         // Chargement de l'ensemble des 209 fichiers .surql
@@ -352,14 +352,16 @@ impl TestHarness {
             DEFINE FUNCTION OVERWRITE fn::result_ok($data: any) {
                 RETURN { ok: true, data: IF $data == NONE { NULL } ELSE { $data }, error: NONE };
             };
-            DEFINE FUNCTION OVERWRITE fn::result_error($code: string, $language: string, $details: any) {
+            DEFINE FUNCTION OVERWRITE fn::error_result($code: option<string>, $language: option<string>, $details: any) {
+                LET $c = IF $code != NONE { <string> $code } ELSE { "UNKNOWN_ERROR" };
+                LET $det = IF $details != NONE { $details } ELSE { {} };
                 RETURN {
                     ok: false,
                     data: NONE,
                     error: {
-                        code: $code,
-                        message: $code,
-                        label: $code,
+                        code: $c,
+                        message: $c,
+                        label: $c,
                         description: NONE,
                         resolution: NONE,
                         category: "validation",
@@ -368,7 +370,7 @@ impl TestHarness {
                         retryable: false,
                         documentation: {},
                         metadata: {},
-                        details: $details
+                        details: $det
                     }
                 };
             };
@@ -377,7 +379,7 @@ impl TestHarness {
             .client()
             .query(result_helpers)
             .await
-            .context("Échec d'enregistrement des helpers fn::result_ok / fn::result_error")?;
+            .context("Échec d'enregistrement des helpers fn::result_ok / fn::error_result")?;
         Ok(())
     }
 

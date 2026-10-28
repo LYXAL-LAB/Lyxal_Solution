@@ -10,7 +10,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_validate_session(
     LET $language = $params.language OR "fr";
 
     IF $input_token == NONE OR string::len(string::trim(type::string($input_token))) == 0 {
-        RETURN fn::result_error("BOOKING_SESSION_NOT_FOUND", $language, { field: "token" });
+        RETURN fn::error_result("BOOKING_SESSION_NOT_FOUND", $language, { field: "token" });
     };
 
     LET $clean_token = string::trim(type::string($input_token));
@@ -19,20 +19,20 @@ DEFINE FUNCTION OVERWRITE fn::booking_validate_session(
     LET $sess_res = SELECT * FROM booking_session WHERE token = $clean_token AND expires_at > $now LIMIT 1;
 
     IF array::len($sess_res) == 0 {
-        RETURN fn::result_error("BOOKING_SESSION_NOT_FOUND", $language, { token: $clean_token });
+        RETURN fn::error_result("BOOKING_SESSION_NOT_FOUND", $language, { token: $clean_token });
     };
 
     LET $sess = $sess_res[0];
     LET $acc_res = SELECT * FROM booking_account WHERE id = $sess.account LIMIT 1;
 
     IF array::len($acc_res) == 0 {
-        RETURN fn::result_error("BOOKING_ACCOUNT_NOT_FOUND", $language, { account: type::string($sess.account) });
+        RETURN fn::error_result("BOOKING_ACCOUNT_NOT_FOUND", $language, { account: type::string($sess.account) });
     };
 
     LET $user = $acc_res[0];
 
     IF $user.enabled == false {
-        RETURN fn::result_error("BOOKING_AUTH_USER_DISABLED", $language, { user_id: type::string($user.id) });
+        RETURN fn::error_result("BOOKING_AUTH_USER_DISABLED", $language, { user_id: type::string($user.id) });
     };
 
     RETURN fn::result_ok({

@@ -51,12 +51,10 @@ DEFINE FIELD OVERWRITE module
 DEFINE FIELD OVERWRITE domain
     ON TABLE error_definition
     TYPE option<string>
-    VALUE {
-        IF $value = NONE OR $value = "" {
-            NONE
-        } ELSE {
-            string::lowercase(string::trim($value))
-        }
+    VALUE IF $value != NONE AND $value != "" {
+        string::lowercase(string::trim($value))
+    } ELSE {
+        NONE
     }
     ASSERT
         $value = NONE
@@ -265,13 +263,15 @@ DEFINE FIELD OVERWRITE version
 DEFINE FIELD OVERWRITE created_at
     ON TABLE error_definition
     TYPE datetime
-    VALUE $before OR time::now()
+    DEFAULT time::now()
+    READONLY
     COMMENT "Date de création immuable";
 
 
 DEFINE FIELD OVERWRITE updated_at
     ON TABLE error_definition
     TYPE datetime
+    DEFAULT time::now()
     VALUE time::now()
     COMMENT "Date de dernière modification";
 

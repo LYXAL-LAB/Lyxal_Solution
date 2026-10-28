@@ -7,7 +7,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_create_resource($params: object) {
     LET $name = $params.name;
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
     IF $name == NONE OR string::len(string::trim($name)) == 0 {
-        RETURN fn::result_error("BOOKING_RESOURCE_NAME_REQUIRED", $language, { field: "name" });
+        RETURN fn::error_result("BOOKING_RESOURCE_NAME_REQUIRED", $language, { field: "name" });
     };
 
     LET $clean_name = string::trim($name);

@@ -9,7 +9,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_cli_set_user_role($params: object) {
 
     LET $target = (SELECT * FROM booking_account WHERE email = $email LIMIT 1);
     IF array::len($target) == 0 {
-        RETURN fn::result_error("BOOKING_USER_NOT_FOUND", "fr", { email: $email });
+        RETURN fn::error_result("BOOKING_USER_NOT_FOUND", "fr", { email: $email });
     };
     LET $acc = $target[0];
 
@@ -17,7 +17,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_cli_set_user_role($params: object) {
         LET $active_admins = (SELECT count() FROM booking_account WHERE role = "admin" AND enabled = true GROUP ALL);
         LET $admin_count = IF array::len($active_admins) > 0 { $active_admins[0].count } ELSE { 0 };
         IF $admin_count <= 1 {
-            RETURN fn::result_error("BOOKING_CANNOT_DEMOTE_LAST_ADMIN", "fr", { email: $email });
+            RETURN fn::error_result("BOOKING_CANNOT_DEMOTE_LAST_ADMIN", "fr", { email: $email });
         };
     };
 

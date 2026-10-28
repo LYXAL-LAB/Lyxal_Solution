@@ -11,7 +11,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_get_resource_busy_context($params: object)
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $resource_id == NONE {
-        RETURN fn::result_error("BOOKING_INVALID_PARAMS", $language, { field: "resource_id" });
+        RETURN fn::error_result("BOOKING_INVALID_PARAMS", $language, { field: "resource_id" });
     };
 
     -- 1. Événements ICS cachés de la ressource (statut non annulé)

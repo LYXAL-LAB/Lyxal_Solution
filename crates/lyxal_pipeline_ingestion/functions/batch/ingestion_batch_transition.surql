@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- FONCTION : fn::ingestion_batch_transition
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Transition d'état contrôlée d'un lot d'ingestion avec audit trail

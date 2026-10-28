@@ -9,7 +9,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_cli_set_user_password($params: object) {
 
     LET $target = (SELECT * FROM booking_account WHERE email = $email LIMIT 1);
     IF array::len($target) == 0 {
-        RETURN fn::result_error("BOOKING_USER_NOT_FOUND", "fr", { email: $email });
+        RETURN fn::error_result("BOOKING_USER_NOT_FOUND", "fr", { email: $email });
     };
     LET $acc = $target[0];
 

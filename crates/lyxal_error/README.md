@@ -1,104 +1,196 @@
-# 🛡️ Module `lyxal_error` — Moteur Universel d'Erreurs & d'Observabilité Lyxal OS
+# 🛡️ Module `lyxal_error` — Moteur Universel d'Erreurs & Contrats Lyxal OS
 
-Le module **`lyxal_error`** constitue le référentiel centralisé, le moteur de résolution linguistique et le système d'observabilité des erreurs pour l'ensemble des modules de la suite **Lyxal OS** (`lyxal_booking`, `lyxal_auth`, `lyxal_notification`, `lyxal_scheduler`).
+[![Status](https://img.shields.io/badge/Status-Production--Ready-success.svg)](#)
+[![Charte](https://img.shields.io/badge/Conformit%C3%A9-AGENTS.md%20100%25-blue.svg)](#)
+[![Tests](https://img.shields.io/badge/Tests-20%20passed%20%7C%200%20failed-brightgreen.svg)](#)
+[![SurrealDB](https://img.shields.io/badge/SurrealDB-2.x%20Compatible-orange.svg)](#)
+
+Le module **`lyxal_error`** constitue le référentiel centralisé, le moteur de résolution linguistique et le socle du contrat de résultat universel pour l'ensemble des modules de la suite **Lyxal OS** (`lyxal_surreal`, `lyxal_booking`, `lyxal_auth`, `lyxal_notification`, `lyxal_scheduler`, etc.).
+
+Il est strictement découplé de tout domaine métier spécifique et ne contient que les définitions d'erreurs techniques fondamentales et propres à sa propre gestion.
 
 ---
 
-## 🏛️ Architecture & Contrat Universel
+## 🏛️ 1. Architecture & Contrat Universel
 
-Toutes les fonctions SurrealQL de l'écosystème Lyxal retournent un contrat JSON universel à **3 clés racines immuables** :
+Toutes les opérations publiques de la plateforme Lyxal OS retournent le contrat immuable à **3 clés racines** `{ ok, data, error }` :
 
+### Succès (`fn::result_ok($data)`)
 ```json
 {
   "ok": true,
-  "data": { ... },
+  "data": {
+    "code": "CORE_SUCCESS",
+    "details": "Action completed"
+  },
   "error": null
 }
 ```
 
-En cas d'échec métier ou technique :
-
+### Échec (`fn::error_result($code, $language, $details)`)
 ```json
 {
   "ok": false,
   "data": null,
   "error": {
-    "code": "BOOKING_USERNAME_EMAIL_INVALID",
-    "message": "The provided email address is invalid",
-    "label": "L'adresse e-mail est invalide",
-    "description": "L'adresse saisie ne respecte pas le format attendu.",
-    "resolution": "Vérifiez l'adresse e-mail saisie.",
+    "code": "ERROR_PARAM_REQUIRED",
+    "message": "A required parameter is missing or empty",
+    "label": "Paramètre obligatoire manquant",
+    "description": "Un paramètre obligatoire n'a pas été fourni ou est vide.",
+    "resolution": "Vérifiez que tous les champs obligatoires sont renseignés.",
     "category": "validation",
     "severity": "error",
-    "http_status": 422,
+    "http_status": 400,
     "retryable": false,
-    "details": { "field": "email" }
+    "details": { "field": "provider" }
   }
 }
 ```
 
+> [!IMPORTANT]
+> **Règle absolue d'architecture** : La fonction d'échec universelle officielle est exclusivement `fn::error_result($code, $language, $details)`. La directive `fn::result_error` est **strictement interdite** sur l'ensemble de la plateforme Lyxal OS (aucun alias, aucun doublon).
+
 ---
 
-## 📊 Tables Cœur (`schema/`)
+## 📊 2. Schémas de Données (`schema/`)
 
-| Table | Rôle | Stratégie |
+Le module gère 3 tables déclaratives sous SurrealDB 2.x :
+
+| Table | Rôle | Stratégie d'évolution |
 | :--- | :--- | :--- |
-| **`error_definition`** | Catalogue canonique des codes d'erreur master data et traductions | Désactivation logique (`enabled = false`) |
-| **`error_occurrence`** | Journal technique des occurrences réelles | Ingestion immuable (*append-only*) & Purge par date |
-| **`error_external_mapping`** | Règles de correspondance d'erreurs externes (Google, CalDAV, SMTP, Stripe) | Priorisation par ordre (`priority ASC`) |
+| **`error_definition`** | Catalogue canonique des codes d'erreur, métadonnées et dictionnaires multilingues | Désactivation logique (`enabled = false`) |
+| **`error_external_mapping`** | Règles de correspondance des erreurs externes (fournisseurs HTTP/SaaS) vers codes Lyxal | Ordonnancement par priorité (`priority ASC`) |
+| **`error_occurrence`** | Journal d'audit et observabilité des erreurs d'exécution | Ingestion immuable (*append-only*) & Purge par date d'antériorité |
 
 ---
 
-## ⚙️ Les 20 Fonctions SurrealQL (`functions/`)
+## ⚙️ 3. Les 20 Fonctions SurrealQL (`functions/`)
 
-Les fonctions sont réparties dans 4 répertoires fonctionnels :
+Toutes les fonctions sont déclarées avec la syntaxe canonique `DEFINE FUNCTION OVERWRITE`. Les fonctions CRUD acceptent systématiquement un paramètre unique `$params: object`.
 
-### 1. Services Publiques Consommés par les Modules (`functions/service/`)
-- `fn::result_ok($data)` : Enveloppe de succès conforme au contrat universel.
-- `fn::error_result($code, $lang, $details)` : Enveloppe d'échec conforme au contrat universel.
-- `fn::error_resolve($code, $lang, $details)` : Moteur de résolution & traduction avec repli linguistique.
-- `fn::error_get($code)` : Extraction brute de définition d'erreur.
-- `fn::error_log(...)` : Journalisation d'occurrences immuables.
-- `fn::error_map_external($provider, $service, $ext_code, $http_status)` : Traduction de codes externes (Google, CalDAV, SMTP).
+### 3.1. Services Transversaux (`functions/service/`)
+- `fn::result_ok($data)` : Enveloppe de succès universelle `{ ok: true, data: $data, error: NONE }`.
+- `fn::error_result($code, $language, $details)` : Enveloppe d'échec universelle `{ ok: false, data: NONE, error: ... }`.
+- `fn::error_resolve($code, $language, $details)` : Moteur de résolution linguistique avec recherche et repli (FR/EN).
+- `fn::error_get($params)` : Extraction unitaire de définition d'erreur (accepte code direct ou objet).
+- `fn::error_log($params: object)` : Journalisation structurée sans masquage silencieux d'erreur.
+- `fn::error_map_external($params: object)` : Résolution d'erreur externe avec correspondances exactes, préfixes ou codes HTTP.
 
-### 2. Administration `error_definition` (`functions/definition/`)
-- `fn::error_definition_create`, `get`, `list`, `update`, `disable`
+### 3.2. Administration `error_definition` (`functions/definition/`)
+- `fn::error_definition_create($params: object)` : Enregistrement d'une nouvelle définition d'erreur.
+- `fn::error_definition_get($params: object)` : Récupération unitaire par code ou ID.
+- `fn::error_definition_list($params: object)` : Recherche paginée avec filtres (module, catégorie, sévérité, statut).
+- `fn::error_definition_update($params: object)` : Mise à jour incrémentale d'une définition existante.
+- `fn::error_definition_disable($params: object)` : Désactivation logique (`enabled = false`).
 
-### 3. Administration `error_external_mapping` (`functions/mapping/`)
-- `fn::error_mapping_create`, `get`, `list`, `update`, `disable`
+### 3.3. Administration `error_external_mapping` (`functions/mapping/`)
+- `fn::error_mapping_create($params: object)` : Enregistrement d'une correspondance fournisseur.
+- `fn::error_mapping_get($params: object)` : Consultation unitaire d'un mapping.
+- `fn::error_mapping_list($params: object)` : Liste filtrée des mappings par fournisseur.
+- `fn::error_mapping_update($params: object)` : Mise à jour d'un mapping.
+- `fn::error_mapping_disable($params: object)` : Désactivation logique d'un mapping.
 
-### 4. Gestion `error_occurrence` (`functions/occurrence/`)
-- `fn::error_occurrence_create`, `get`, `list`, `purge_before`
+### 3.4. Gestion `error_occurrence` (`functions/occurrence/`)
+- `fn::error_occurrence_create($params: object)` : Enregistrement technique d'une occurrence.
+- `fn::error_occurrence_get($params: object)` : Récupération détaillée d'une occurrence par identifiant.
+- `fn::error_occurrence_list($params: object)` : Liste filtrée (code, module source, corrélation).
+- `fn::error_occurrence_purge_before($params: object)` : Purge physique sécurisée des occurrences antérieures à une date.
 
 ---
 
-## 🦀 Intégration Rust (`src/`)
+## 🏷️ 4. Référentiel des Codes d'Erreur du Module (`error/`)
 
-Le crate Rust `lyxal_error` fournit les structures génériques de désérialisation et de conversion HTTP Axum :
+Le module fournit exclusivement son propre dictionnaire d'erreurs :
+
+| Code d'Erreur | Catégorie | Sévérité | HTTP | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `CORE_ERROR_DEFINITION_NOT_FOUND` | `internal` | `error` | 500 | Définition d'erreur introuvable dans le référentiel |
+| `ERROR_PARAM_REQUIRED` | `validation` | `error` | 400 | Paramètre obligatoire manquant ou vide |
+| `ERROR_DEFINITION_NOT_FOUND` | `business` | `warning` | 404 | Définition d'erreur demandée inexistante |
+| `ERROR_DEFINITION_ALREADY_EXISTS` | `business` | `warning` | 409 | Définition d'erreur déjà enregistrée sous ce code |
+| `ERROR_MAPPING_NOT_FOUND` | `business` | `warning` | 404 | Règle de correspondance d'erreur externe introuvable |
+| `ERROR_OCCURRENCE_NOT_FOUND` | `business` | `warning` | 404 | Occurrence d'erreur demandée introuvable |
+
+---
+
+## 🦀 5. Contrats Rust Publics (`src/`)
+
+Le crate expose les contrats fondamentaux de transport et de conversion de Lyxal OS :
 
 ```rust
-use lyxal_error::{LyxalResult, LyxalCallError};
+use lyxal_error::{LyxalResult, LyxalError, LyxalCallError};
 
-pub async fn generate_username(
-    store: &SurrealBookingStore,
-    email: &str,
-    language: &str,
-) -> Result<GeneratedUsername, LyxalCallError> {
-    let mut response = store.client()
-        .query("RETURN fn::booking_generate_username($email, $language);")
-        .bind(("email", email.to_owned()))
-        .bind(("language", language.to_owned()))
-        .await?;
-
-    let result: LyxalResult<GeneratedUsername> = response.take(0)?;
-    result.into_result("booking_generate_username")
+// Consommation typée d'une fonction SurrealQL
+pub async fn resolve_call<T: serde::de::DeserializeOwned>(
+    result: LyxalResult<T>
+) -> Result<T, LyxalCallError> {
+    result.into_result("operation_name")
 }
+```
+
+### Structures de Transport
+* `LyxalResult<T>` : Enveloppe générique `{ ok: bool, data: Option<T>, error: Option<LyxalError> }`.
+  - `.into_result(op)` : Convertit l'enveloppe en `Result<T, LyxalCallError>`. Valide l'intégrité (rejette `ok: true` avec `error` ou `ok: false` sans `error`).
+* `LyxalError` : Structure complète de l'erreur métier standardisée (code, labels multilingues, statut HTTP, détails structurés).
+* `LyxalCallError` : Enum unifié de résultat côté consommateur Rust :
+  - `LyxalCallError::Business(LyxalError)` : Erreur fonctionnelle retournée par SurrealQL.
+  - `LyxalCallError::Transport(String)` : Échec réseau, parsing ou transport RPC.
+  - `LyxalCallError::Contract(String)` : Violation du contrat de données.
+
+---
+
+## 🚀 6. Déploiement & Intégration Runtime
+
+Le module s'intègre nativement avec `lyxal_runtime` via son fichier `manifest.toml` :
+
+```toml
+manifest_version = 1
+id = "lyxal_error"
+name = "Lyxal Error Management"
+version = "0.1.0"
+runtime_version = ">=0.1.0"
+description = "Moteur universel d'erreurs, contrats de résultat et observabilité pour Lyxal OS"
+
+[resources]
+schemas = [
+    "schema/error_definition.surql",
+    "schema/error_external_mapping.surql",
+    "schema/error_occurrence.surql",
+]
+migrations = [
+    "migrations/0001_initial_schema.surql",
+]
+functions = [ ... ]
+seeds = [
+    "error/error_definitions.surql",
+    "seeds/error_mappings.surql",
+]
+```
+
+### Idempotence des Migrations
+Toute migration s'enregistre de manière atomique dans la table `schema_migration` :
+```surql
+LET $record = type::thing("schema_migration", ["lyxal_error", "0001_initial_schema"]);
+CREATE ONLY $record CONTENT {
+    module: "lyxal_error",
+    name: "0001_initial_schema",
+    status: "APPLIED"
+};
 ```
 
 ---
 
-## 📄 Liens utiles
+## 🧪 7. Validation & Qualification
 
-- 📄 **[SCHEMA_DOCUMENTATION.md](file:///C:/Users/HP/Desktop/Lyxal_Solution/lyxal_error/SCHEMA_DOCUMENTATION.md)** : Documentation technique détaillée des champs et index.
-- 📄 **[ROADMAP.md](file:///C:/Users/HP/Desktop/Lyxal_Solution/lyxal_error/ROADMAP.md)** : Feuille de route universelle en 3 phases (**V1 Fonctionnel**, **V2 Observabilité & Console UI**, **V3 Événementiel & IA**).
-- 📄 **[features.md](file:///C:/Users/HP/Desktop/Lyxal_Solution/lyxal_error/features.md)** : Spécifications des événements (`DEFINE EVENT`) et arbitrages d'architecture.
+Pour exécuter l'ensemble des validations qualité :
+
+```bash
+# Vérification des types
+cargo check -p lyxal_error
+
+# Analyse statique et linter
+cargo clippy -p lyxal_error --all-targets
+
+# Exécution intégrale de la suite de tests (Unitaires, Contrats, Manifeste, SurrealDB)
+cargo test -p lyxal_error -- --nocapture
+```

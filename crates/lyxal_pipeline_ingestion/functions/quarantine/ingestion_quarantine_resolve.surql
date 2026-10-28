@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- FONCTION : fn::ingestion_quarantine_resolve
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Résolution auditable d'une anomalie en quarantaine par le Data Steward

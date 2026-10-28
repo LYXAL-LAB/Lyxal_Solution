@@ -44,7 +44,7 @@ DEFINE FIELD OVERWRITE code
     ASSERT
         string::len($value) >= 3
         AND string::len($value) <= 128
-        AND $value ~ r"^[A-Z][A-Z0-9_]+$"
+        AND string::matches($value, "^[A-Z][A-Z0-9_]+$")
     COMMENT "Code d'erreur au moment de l'occurrence";
 
 
@@ -59,7 +59,7 @@ DEFINE FIELD OVERWRITE source_module
     ASSERT
         string::len($value) >= 2
         AND string::len($value) <= 64
-        AND $value ~ r"^[a-z][a-z0-9_-]+$"
+        AND string::matches($value, "^[a-z][a-z0-9_-]+$")
     COMMENT "Module ayant produit l'erreur";
 
 
@@ -76,12 +76,10 @@ DEFINE FIELD OVERWRITE source_module
 DEFINE FIELD OVERWRITE operation
     ON TABLE error_occurrence
     TYPE option<string>
-    VALUE {
-        IF $value = NONE OR $value = "" {
-            NONE
-        } ELSE {
-            string::trim($value)
-        }
+    VALUE IF $value != NONE AND $value != "" {
+        string::trim($value)
+    } ELSE {
+        NONE
     }
     ASSERT
         $value = NONE
@@ -253,7 +251,8 @@ DEFINE FIELD OVERWRITE occurrence_count
 DEFINE FIELD OVERWRITE occurred_at
     ON TABLE error_occurrence
     TYPE datetime
-    VALUE $before OR time::now()
+    DEFAULT time::now()
+    READONLY
     COMMENT "Date et heure de l'occurrence";
 
 

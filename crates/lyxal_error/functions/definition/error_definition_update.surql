@@ -3,31 +3,34 @@
 -- │  Mise à jour des métadonnées d'une définition d'erreur canonique        │
 -- └──────────────────────────────────────────────────────────────────────────┘
 
-DEFINE FUNCTION IF NOT EXISTS fn::error_definition_update(
-    $code_or_id: option<string>,
-    $message: option<string>,
-    $category: option<string>,
-    $severity: option<string>,
-    $http_status: option<int>,
-    $translations: option<object>
+DEFINE FUNCTION OVERWRITE fn::error_definition_update(
+    $params: object
 ) {
+    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+    LET $code_or_id = $params.code_or_id ?? $params.id ?? $params.code;
+
     IF $code_or_id == NONE OR string::len(string::trim($code_or_id)) == 0 {
-        RETURN fn::result_error("CORE_ERROR_DEFINITION_NOT_FOUND", "fr", { field: "code_or_id" });
+        RETURN fn::error_result("ERROR_PARAM_REQUIRED", $language, { field: "code_or_id" });
     };
 
     LET $val = string::trim($code_or_id);
-    LET $existing = SELECT * FROM error_definition WHERE id = $val OR code = string::uppercase($val) LIMIT 1;
+    LET $clean_code = string::uppercase($val);
+    LET $existing = SELECT * FROM error_definition 
+                     WHERE id = $val 
+                        OR id = type::thing("error_definition", $clean_code) 
+                        OR code = $clean_code 
+                     LIMIT 1;
 
     IF array::len($existing) == 0 {
-        RETURN fn::result_error("CORE_ERROR_DEFINITION_NOT_FOUND", "fr", { id: $val });
+        RETURN fn::error_result("ERROR_DEFINITION_NOT_FOUND", $language, { code_or_id: $val });
     };
 
     LET $cur = $existing[0];
-    LET $clean_msg = IF $message != NONE AND string::len(string::trim($message)) > 0 { string::trim($message) } ELSE { $cur.message };
-    LET $cat = IF $category != NONE { string::lowercase(string::trim($category)) } ELSE { $cur.category };
-    LET $sev = IF $severity != NONE { string::lowercase(string::trim($severity)) } ELSE { $cur.severity };
-    LET $status = IF $http_status != NONE { $http_status } ELSE { $cur.http_status };
-    LET $trans = IF $translations != NONE { $translations } ELSE { $cur.translations };
+    LET $clean_msg = IF $params.message != NONE AND string::len(string::trim($params.message)) > 0 { string::trim($params.message) } ELSE { $cur.message };
+    LET $cat = IF $params.category != NONE { string::lowercase(string::trim($params.category)) } ELSE { $cur.category };
+    LET $sev = IF $params.severity != NONE { string::lowercase(string::trim($params.severity)) } ELSE { $cur.severity };
+    LET $status = IF $params.http_status != NONE { $params.http_status } ELSE { $cur.http_status };
+    LET $trans = IF $params.translations != NONE { $params.translations } ELSE { $cur.translations };
 
     UPDATE $cur.id MERGE {
         message: $clean_msg,

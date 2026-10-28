@@ -6,13 +6,13 @@
 DEFINE FUNCTION OVERWRITE fn::booking_confirm_pending($params: object) {
     LET $id_param = IF $params.booking_id != NONE { $params.booking_id } ELSE { $params.id };
     IF $id_param == NONE {
-        RETURN fn::result_error("BOOKING_ID_REQUIRED", "fr", "Le paramètre 'booking_id' est obligatoire");
+        RETURN fn::error_result("BOOKING_ID_REQUIRED", "fr", "Le paramètre 'booking_id' est obligatoire");
     };
 
     LET $token_val = string::trim(type::string($id_param));
     LET $bookings = SELECT * FROM booking WHERE id = type::record($token_val) OR id = $token_val LIMIT 1;
     IF array::len($bookings) == 0 {
-        RETURN fn::result_error("BOOKING_NOT_FOUND", "fr", "Réservation introuvable");
+        RETURN fn::error_result("BOOKING_NOT_FOUND", "fr", "Réservation introuvable");
     };
 
     LET $b = $bookings[0];

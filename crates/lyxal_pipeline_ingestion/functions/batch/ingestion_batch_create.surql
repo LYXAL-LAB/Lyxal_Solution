@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- FONCTION : fn::ingestion_batch_create
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Création ou mise à jour idempotente d'un lot d'ingestion fabricant

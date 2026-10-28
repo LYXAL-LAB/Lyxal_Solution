@@ -12,7 +12,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_cli_create_user($params: object) {
     -- Vérifier l'unicité de l'email
     LET $existing = (SELECT id FROM booking_account WHERE email = $email LIMIT 1);
     IF array::len($existing) > 0 {
-        RETURN fn::result_error("BOOKING_USER_EMAIL_EXISTS", "fr", { email: $email });
+        RETURN fn::error_result("BOOKING_USER_EMAIL_EXISTS", "fr", { email: $email });
     };
 
     -- Compter les comptes existants pour auto-promouvoir le 1er utilisateur

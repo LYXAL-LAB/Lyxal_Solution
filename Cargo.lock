@@ -2297,7 +2297,10 @@ dependencies = [
  "axum",
  "serde",
  "serde_json",
+ "surrealdb",
  "thiserror 1.0.69",
+ "tokio",
+ "toml",
 ]
 
 [[package]]

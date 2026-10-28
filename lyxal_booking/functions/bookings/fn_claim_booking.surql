@@ -9,7 +9,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_claim_booking($params: object) {
     LET $raw_user_id = IF $params.user_id != NONE { string::trim(type::string($params.user_id)) } ELSE { NONE };
 
     IF $raw_booking_id == NONE OR $raw_token == NONE OR $raw_user_id == NONE {
-        RETURN fn::result_error("BOOKING_CLAIM_PARAMS_INVALID", "fr", "Paramètres booking_id, token et user_id obligatoires");
+        RETURN fn::error_result("BOOKING_CLAIM_PARAMS_INVALID", "fr", "Paramètres booking_id, token et user_id obligatoires");
     };
 
     -- 1. Recherche et vérification de la validité du token de réclamation
@@ -21,7 +21,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_claim_booking($params: object) {
                          LIMIT 1;
 
     IF array::len($token_records) == 0 {
-        RETURN fn::result_error("BOOKING_CLAIM_TOKEN_INVALID", "fr", "Jeton de réclamation invalide ou expiré");
+        RETURN fn::error_result("BOOKING_CLAIM_TOKEN_INVALID", "fr", "Jeton de réclamation invalide ou expiré");
     };
 
     LET $claim_tok = $token_records[0];
@@ -29,12 +29,12 @@ DEFINE FUNCTION OVERWRITE fn::booking_claim_booking($params: object) {
     -- 2. Recherche et vérification de la réservation
     LET $bookings = SELECT * FROM booking WHERE id = type::record($raw_booking_id) OR id = $raw_booking_id LIMIT 1;
     IF array::len($bookings) == 0 {
-        RETURN fn::result_error("BOOKING_NOT_FOUND", "fr", "Réservation introuvable");
+        RETURN fn::error_result("BOOKING_NOT_FOUND", "fr", "Réservation introuvable");
     };
 
     LET $b = $bookings[0];
     IF $b.claimed_by_user_id != NONE OR $b.claimed_by != NONE {
-        RETURN fn::result_error("BOOKING_ALREADY_CLAIMED", "fr", "Réservation déjà réclamée par un autre membre");
+        RETURN fn::error_result("BOOKING_ALREADY_CLAIMED", "fr", "Réservation déjà réclamée par un autre membre");
     };
 
     -- 3. Mise à jour atomique de l'affectation et du statut du token

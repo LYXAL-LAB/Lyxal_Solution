@@ -12,12 +12,12 @@ DEFINE FUNCTION OVERWRITE fn::booking_create_with_resource_assignment($params: o
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $event_type_id == NONE OR $start_at == NONE OR $end_at == NONE {
-        RETURN fn::result_error("BOOKING_INVALID_PARAMS", $language, { field: "event_type_id, start_at or end_at" });
+        RETURN fn::error_result("BOOKING_INVALID_PARAMS", $language, { field: "event_type_id, start_at or end_at" });
     };
 
     LET $et = SELECT id, resource_scheduling_mode FROM ONLY $event_type_id;
     IF $et == NONE {
-        RETURN fn::result_error("BOOKING_NOT_FOUND", $language, { record_id: $event_type_id });
+        RETURN fn::error_result("BOOKING_NOT_FOUND", $language, { record_id: $event_type_id });
     };
 
     LET $mode = IF $et.resource_scheduling_mode != NONE { $et.resource_scheduling_mode } ELSE { "all" };
@@ -40,11 +40,11 @@ DEFINE FUNCTION OVERWRITE fn::booking_create_with_resource_assignment($params: o
         );
 
         IF $mode == "all" AND count($free_resources) < count($resources) {
-            RETURN fn::result_error("BOOKING_RESOURCE_BUSY", $language, { mode: "all" });
+            RETURN fn::error_result("BOOKING_RESOURCE_BUSY", $language, { mode: "all" });
         };
 
         IF count($free_resources) == 0 {
-            RETURN fn::result_error("BOOKING_RESOURCE_BUSY", $language, { mode: $mode });
+            RETURN fn::error_result("BOOKING_RESOURCE_BUSY", $language, { mode: $mode });
         };
 
         -- Sélection de la ressource la moins chargée en mode round_robin

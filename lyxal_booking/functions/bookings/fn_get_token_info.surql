@@ -8,12 +8,12 @@ DEFINE FUNCTION OVERWRITE fn::booking_get_token_info($params: object) {
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $raw_token == NONE {
-        RETURN fn::result_error("BOOKING_TOKEN_REQUIRED", $language, { field: "token" });
+        RETURN fn::error_result("BOOKING_TOKEN_REQUIRED", $language, { field: "token" });
     };
 
     LET $records = SELECT * FROM booking WHERE cancel_token = $raw_token OR reschedule_token = $raw_token OR confirm_token = $raw_token OR decline_token = $raw_token LIMIT 1;
     IF array::len($records) == 0 {
-        RETURN fn::result_error("BOOKING_TOKEN_INVALID", $language, { token: $raw_token });
+        RETURN fn::error_result("BOOKING_TOKEN_INVALID", $language, { token: $raw_token });
     };
 
     LET $b = $records[0];

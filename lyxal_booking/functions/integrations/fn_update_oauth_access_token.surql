@@ -10,7 +10,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_update_oauth_access_token($params: object)
     LET $expected_old = $params.expected_old_value;
 
     IF $record_id == NONE OR $new_envelope == NONE {
-        RETURN fn::result_error("BOOKING_INVALID_PARAMS", "fr", { field: "record_id or access_token_enc" });
+        RETURN fn::error_result("BOOKING_INVALID_PARAMS", "fr", { field: "record_id or access_token_enc" });
     };
 
     LET $updated = IF $expected_old != NONE {

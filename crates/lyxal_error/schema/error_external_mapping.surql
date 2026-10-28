@@ -4,7 +4,7 @@
 -- RÔLE   : Mapping des erreurs externes vers les erreurs canoniques Lyxal
 -- ============================================================================
 
-DEFINE TABLE IF NOT EXISTS error_external_mapping
+DEFINE TABLE OVERWRITE error_external_mapping
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS NONE
@@ -24,14 +24,14 @@ DEFINE TABLE IF NOT EXISTS error_external_mapping
 -- surrealdb
 -- ----------------------------------------------------------------------------
 
-DEFINE FIELD IF NOT EXISTS provider
+DEFINE FIELD OVERWRITE provider
     ON TABLE error_external_mapping
     TYPE string
     VALUE string::lowercase(string::trim($value))
     ASSERT
         string::len($value) >= 2
         AND string::len($value) <= 64
-        AND $value ~ r"^[a-z][a-z0-9_-]+$"
+        AND string::matches($value, "^[a-z][a-z0-9_-]+$")
     COMMENT "Nom normalisé du fournisseur ou du protocole externe";
 
 
@@ -46,22 +46,20 @@ DEFINE FIELD IF NOT EXISTS provider
 -- api
 -- ----------------------------------------------------------------------------
 
-DEFINE FIELD IF NOT EXISTS service
+DEFINE FIELD OVERWRITE service
     ON TABLE error_external_mapping
     TYPE option<string>
-    VALUE {
-        IF $value = NONE OR $value = "" {
-            NONE
-        } ELSE {
-            string::lowercase(string::trim($value))
-        }
+    VALUE IF $value != NONE AND $value != "" {
+        string::lowercase(string::trim($value))
+    } ELSE {
+        NONE
     }
     ASSERT
         $value = NONE
         OR (
             string::len($value) >= 2
             AND string::len($value) <= 64
-            AND $value ~ r"^[a-z][a-z0-9_-]+$"
+            AND string::matches($value, "^[a-z][a-z0-9_-]+$")
         )
     COMMENT "Sous-service facultatif du fournisseur";
 
@@ -76,7 +74,7 @@ DEFINE FIELD IF NOT EXISTS service
 -- connection_timeout
 -- ----------------------------------------------------------------------------
 
-DEFINE FIELD IF NOT EXISTS external_code
+DEFINE FIELD OVERWRITE external_code
     ON TABLE error_external_mapping
     TYPE string
     VALUE string::trim($value)
@@ -90,7 +88,7 @@ DEFINE FIELD IF NOT EXISTS external_code
 -- Mode de correspondance
 -- ----------------------------------------------------------------------------
 
-DEFINE FIELD IF NOT EXISTS matcher
+DEFINE FIELD OVERWRITE matcher
     ON TABLE error_external_mapping
     TYPE string
     DEFAULT "exact"
@@ -108,7 +106,7 @@ DEFINE FIELD IF NOT EXISTS matcher
 -- Définition Lyxal cible
 -- ----------------------------------------------------------------------------
 
-DEFINE FIELD IF NOT EXISTS definition
+DEFINE FIELD OVERWRITE definition
     ON TABLE error_external_mapping
     TYPE record<error_definition>
     COMMENT "Erreur canonique Lyxal correspondant à l'erreur externe";
@@ -120,7 +118,7 @@ DEFINE FIELD IF NOT EXISTS definition
 -- Les valeurs les plus basses doivent être évaluées en premier.
 -- ----------------------------------------------------------------------------
 
-DEFINE FIELD IF NOT EXISTS priority
+DEFINE FIELD OVERWRITE priority
     ON TABLE error_external_mapping
     TYPE int
     DEFAULT 100
@@ -132,7 +130,7 @@ DEFINE FIELD IF NOT EXISTS priority
 -- Statut HTTP externe facultatif
 -- ----------------------------------------------------------------------------
 
-DEFINE FIELD IF NOT EXISTS external_http_status
+DEFINE FIELD OVERWRITE external_http_status
     ON TABLE error_external_mapping
     TYPE option<int>
     ASSERT
@@ -147,7 +145,7 @@ DEFINE FIELD IF NOT EXISTS external_http_status
 -- Peut compléter ou surcharger la valeur retryable de la définition.
 -- ----------------------------------------------------------------------------
 
-DEFINE FIELD IF NOT EXISTS retryable_override
+DEFINE FIELD OVERWRITE retryable_override
     ON TABLE error_external_mapping
     TYPE option<bool>
     COMMENT "Surcharge facultative du caractère retentable";
@@ -157,7 +155,7 @@ DEFINE FIELD IF NOT EXISTS retryable_override
 -- Activation
 -- ----------------------------------------------------------------------------
 
-DEFINE FIELD IF NOT EXISTS enabled
+DEFINE FIELD OVERWRITE enabled
     ON TABLE error_external_mapping
     TYPE bool
     DEFAULT true
@@ -168,7 +166,7 @@ DEFINE FIELD IF NOT EXISTS enabled
 -- Métadonnées propres au fournisseur
 -- ----------------------------------------------------------------------------
 
-DEFINE FIELD IF NOT EXISTS metadata
+DEFINE FIELD OVERWRITE metadata
     ON TABLE error_external_mapping
     TYPE object FLEXIBLE
     DEFAULT {}
@@ -179,16 +177,18 @@ DEFINE FIELD IF NOT EXISTS metadata
 -- Horodatages
 -- ----------------------------------------------------------------------------
 
-DEFINE FIELD IF NOT EXISTS created_at
+DEFINE FIELD OVERWRITE created_at
     ON TABLE error_external_mapping
     TYPE datetime
-    VALUE $before OR time::now()
+    DEFAULT time::now()
+    READONLY
     COMMENT "Date de création immuable";
 
 
-DEFINE FIELD IF NOT EXISTS updated_at
+DEFINE FIELD OVERWRITE updated_at
     ON TABLE error_external_mapping
     TYPE datetime
+    DEFAULT time::now()
     VALUE time::now()
     COMMENT "Date de dernière modification";
 
@@ -197,27 +197,27 @@ DEFINE FIELD IF NOT EXISTS updated_at
 -- Index
 -- ----------------------------------------------------------------------------
 
-DEFINE INDEX IF NOT EXISTS error_external_mapping_unique
+DEFINE INDEX OVERWRITE error_external_mapping_unique
     ON TABLE error_external_mapping
     FIELDS provider, service, external_code, matcher
     UNIQUE;
 
 
-DEFINE INDEX IF NOT EXISTS error_external_mapping_provider_index
+DEFINE INDEX OVERWRITE error_external_mapping_provider_index
     ON TABLE error_external_mapping
     FIELDS provider;
 
 
-DEFINE INDEX IF NOT EXISTS error_external_mapping_provider_service_index
+DEFINE INDEX OVERWRITE error_external_mapping_provider_service_index
     ON TABLE error_external_mapping
     FIELDS provider, service;
 
 
-DEFINE INDEX IF NOT EXISTS error_external_mapping_definition_index
+DEFINE INDEX OVERWRITE error_external_mapping_definition_index
     ON TABLE error_external_mapping
     FIELDS definition;
 
 
-DEFINE INDEX IF NOT EXISTS error_external_mapping_enabled_priority_index
+DEFINE INDEX OVERWRITE error_external_mapping_enabled_priority_index
     ON TABLE error_external_mapping
     FIELDS enabled, priority;

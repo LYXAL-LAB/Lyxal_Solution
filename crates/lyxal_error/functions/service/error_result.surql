@@ -3,7 +3,7 @@
 -- │  Construit la réponse d'échec conforme au contrat universel LyxalResult  │
 -- └──────────────────────────────────────────────────────────────────────────┘
 
-DEFINE FUNCTION IF NOT EXISTS fn::error_result(
+DEFINE FUNCTION OVERWRITE fn::error_result(
     $code: option<string>,
     $language: option<string>,
     $details: option<object>

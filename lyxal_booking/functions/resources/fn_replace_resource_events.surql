@@ -10,7 +10,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_replace_resource_events($params: object) {
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $resource_id == NONE OR $events == NONE {
-        RETURN fn::result_error("BOOKING_INVALID_PARAMS", $language, { field: "resource_id or events" });
+        RETURN fn::error_result("BOOKING_INVALID_PARAMS", $language, { field: "resource_id or events" });
     };
 
     -- Suppression des événements orphelins de la ressource non présents dans la nouvelle liste

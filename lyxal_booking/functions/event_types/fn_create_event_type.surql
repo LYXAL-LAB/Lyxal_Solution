@@ -13,20 +13,20 @@ DEFINE FUNCTION OVERWRITE fn::booking_create_event_type($params: object) {
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $title == NONE OR string::len(string::trim($title)) == 0 {
-        RETURN fn::result_error("BOOKING_EVENT_TYPE_TITLE_REQUIRED", $language, { field: "title" });
+        RETURN fn::error_result("BOOKING_EVENT_TYPE_TITLE_REQUIRED", $language, { field: "title" });
     };
     IF $slug == NONE OR string::len(string::trim($slug)) == 0 {
-        RETURN fn::result_error("BOOKING_EVENT_TYPE_SLUG_REQUIRED", $language, { field: "slug" });
+        RETURN fn::error_result("BOOKING_EVENT_TYPE_SLUG_REQUIRED", $language, { field: "slug" });
     };
     IF $duration_min == NONE OR $duration_min <= 0 {
-        RETURN fn::result_error("BOOKING_EVENT_TYPE_DURATION_INVALID", $language, { field: "duration_min" });
+        RETURN fn::error_result("BOOKING_EVENT_TYPE_DURATION_INVALID", $language, { field: "duration_min" });
     };
 
     LET $clean_title = string::trim($title);
     LET $clean_slug = string::lowercase(string::trim($slug));
 
     IF string::len($clean_slug) == 0 {
-        RETURN fn::result_error("BOOKING_EVENT_TYPE_SLUG_REQUIRED", $language, { field: "slug" });
+        RETURN fn::error_result("BOOKING_EVENT_TYPE_SLUG_REQUIRED", $language, { field: "slug" });
     };
 
     LET $loc_type = IF $params.location_type != NONE { string::lowercase(string::trim($params.location_type)) } ELSE { 'link' };

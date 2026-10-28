@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- FONCTION : fn::ingestion_dashboard_metrics
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Fournit les métriques et KPIs temps réel pour la console Data Steward

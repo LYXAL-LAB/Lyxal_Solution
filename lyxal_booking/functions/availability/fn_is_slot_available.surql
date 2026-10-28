@@ -16,13 +16,13 @@ DEFINE FUNCTION OVERWRITE fn::booking_is_slot_available(
     -- 1. VÉRIFICATION DES PARAMÈTRES OBLIGATOIRES
     -- ------------------------------------------------------------------------
     IF $start_at == NONE {
-        RETURN fn::result_error("BOOKING_START_AT_REQUIRED", $params.language, NONE);
+        RETURN fn::error_result("BOOKING_START_AT_REQUIRED", $params.language, NONE);
     };
     IF $end_at == NONE {
-        RETURN fn::result_error("BOOKING_END_AT_REQUIRED", $params.language, NONE);
+        RETURN fn::error_result("BOOKING_END_AT_REQUIRED", $params.language, NONE);
     };
     IF $end_at <= $start_at {
-        RETURN fn::result_error("BOOKING_INVALID_TIME_RANGE", $params.language, NONE);
+        RETURN fn::error_result("BOOKING_INVALID_TIME_RANGE", $params.language, NONE);
     };
 
     -- ------------------------------------------------------------------------

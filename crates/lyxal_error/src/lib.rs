@@ -2,9 +2,11 @@
 
 pub mod error;
 pub mod result;
+pub mod types;
 
 pub use error::{LyxalCallError, LyxalError};
 pub use result::LyxalResult;
+pub use types::*;
 
 #[cfg(test)]
 mod tests {

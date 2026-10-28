@@ -14,7 +14,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_create_local_account(
     LET $language = $params.language OR "fr";
 
     IF $email == NONE OR string::len(string::trim($email)) == 0 {
-        RETURN fn::result_error("BOOKING_USERNAME_EMAIL_REQUIRED", $language, { field: "email" });
+        RETURN fn::error_result("BOOKING_USERNAME_EMAIL_REQUIRED", $language, { field: "email" });
     };
 
     LET $clean_email = string::lowercase(string::trim($email));
@@ -22,14 +22,14 @@ DEFINE FUNCTION OVERWRITE fn::booking_create_local_account(
     -- Contrôle d'unicité e-mail
     LET $existing_email = SELECT id FROM booking_account WHERE email = $clean_email LIMIT 1;
     IF array::len($existing_email) > 0 {
-        RETURN fn::result_error("BOOKING_AUTH_EMAIL_ALREADY_EXISTS", $language, { email: $clean_email });
+        RETURN fn::error_result("BOOKING_AUTH_EMAIL_ALREADY_EXISTS", $language, { email: $clean_email });
     };
 
     -- Contrôle d'unicité pseudo
     LET $clean_username = string::lowercase(string::trim($username));
     LET $existing_user = SELECT id FROM booking_account WHERE username = $clean_username LIMIT 1;
     IF array::len($existing_user) > 0 {
-        RETURN fn::result_error("BOOKING_AUTH_USERNAME_ALREADY_TAKEN", $language, { username: $clean_username });
+        RETURN fn::error_result("BOOKING_AUTH_USERNAME_ALREADY_TAKEN", $language, { username: $clean_username });
     };
 
     -- Détermination du rôle (premier compte = admin, ou force_admin interne)

@@ -10,11 +10,11 @@ DEFINE FUNCTION OVERWRITE fn::booking_update_smtp_password($params: object) {
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $record_id == NONE OR $new_envelope == NONE {
-        RETURN fn::result_error("BOOKING_INVALID_PARAMS", $language, { field: "record_id or new_envelope" });
+        RETURN fn::error_result("BOOKING_INVALID_PARAMS", $language, { field: "record_id or new_envelope" });
     };
 
     IF $expected_old == NONE {
-        RETURN fn::result_error("BOOKING_SECRET_EXPECTED_VALUE_REQUIRED", $language, { field: "expected_old_value" });
+        RETURN fn::error_result("BOOKING_SECRET_EXPECTED_VALUE_REQUIRED", $language, { field: "expected_old_value" });
     };
 
     LET $updated = UPDATE ONLY $record_id SET

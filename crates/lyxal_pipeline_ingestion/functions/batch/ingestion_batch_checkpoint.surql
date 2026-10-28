@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- FONCTION : fn::ingestion_batch_checkpoint
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Enregistrement d'un point de reprise (checkpoint) pour le worker supervisé

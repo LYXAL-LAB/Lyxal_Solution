@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- FONCTION : fn::ingestion_staged_save
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Enregistrement d'un article normalisé et qualifié en zone de staging

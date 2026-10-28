@@ -10,7 +10,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_admin_get_tenant_metrics(
 ) -> object {
     LET $tenant_id = $params.tenant_id;
     IF $tenant_id IS NONE OR $tenant_id = "" {
-        RETURN fn::result_error("ADMIN_TENANT_ID_REQUIRED", "fr", NONE);
+        RETURN fn::error_result("ADMIN_TENANT_ID_REQUIRED", "fr", NONE);
     };
 
     LET $total_users = (SELECT COUNT() FROM user WHERE tenant_id = $tenant_id GROUP ALL)[0].count OR 0;

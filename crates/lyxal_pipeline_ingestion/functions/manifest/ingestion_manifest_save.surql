@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- FONCTION : fn::ingestion_manifest_save
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Enregistrement et scellement d'un manifeste de publication

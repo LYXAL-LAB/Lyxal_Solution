@@ -6,12 +6,12 @@
 DEFINE FUNCTION OVERWRITE fn::booking_update_user_profile($params: object) {
     LET $raw_user_id = IF $params.user_id != NONE { string::trim(type::string($params.user_id)) } ELSE { NONE };
     IF $raw_user_id == NONE {
-        RETURN fn::result_error("USER_ID_REQUIRED", "fr", "L'identifiant utilisateur est obligatoire");
+        RETURN fn::error_result("USER_ID_REQUIRED", "fr", "L'identifiant utilisateur est obligatoire");
     };
 
     LET $users = SELECT id FROM booking_account WHERE id = type::record($raw_user_id) OR id = $raw_user_id LIMIT 1;
     IF array::len($users) == 0 {
-        RETURN fn::result_error("USER_NOT_FOUND", "fr", "Utilisateur introuvable");
+        RETURN fn::error_result("USER_NOT_FOUND", "fr", "Utilisateur introuvable");
     };
 
     LET $target_id = $users[0].id;

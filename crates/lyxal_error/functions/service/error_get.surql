@@ -1,11 +1,19 @@
 -- ┌──────────────────────────────────────────────────────────────────────────┐
 -- │  fn::error_get                                                           │
--- │  Récupère la définition canonique brute d'une erreur par son code      │
+-- │  Récupère la définition canonique brute d'une erreur par son code        │
 -- └──────────────────────────────────────────────────────────────────────────┘
 
-DEFINE FUNCTION IF NOT EXISTS fn::error_get(
-    $code: option<string>
+DEFINE FUNCTION OVERWRITE fn::error_get(
+    $params: any
 ) {
+    LET $code = IF type::is::string($params) {
+        $params
+    } ELSE IF type::is::object($params) {
+        $params.code ?? $params.code_or_id ?? $params.id
+    } ELSE {
+        NONE
+    };
+
     IF $code == NONE OR string::len(string::trim($code)) == 0 {
         RETURN NONE;
     };
@@ -13,7 +21,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::error_get(
     LET $clean_code = string::uppercase(string::trim($code));
 
     LET $res = SELECT * FROM error_definition 
-                WHERE code = $clean_code 
+                WHERE (code = $clean_code OR id = type::thing("error_definition", $clean_code))
                   AND enabled = true 
                 LIMIT 1;
 

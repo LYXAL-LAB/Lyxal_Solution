@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- FONCTION : fn::ingestion_quarantine_log
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Consignation d'une anomalie typée dans la table de quarantaine

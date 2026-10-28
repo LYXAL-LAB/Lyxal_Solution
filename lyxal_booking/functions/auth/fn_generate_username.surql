@@ -10,7 +10,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_generate_username(
     LET $language = $params.language OR "fr";
 
     IF $email == NONE OR string::len(string::trim($email)) == 0 {
-        RETURN fn::result_error("BOOKING_USERNAME_EMAIL_REQUIRED", $language, { field: "email" });
+        RETURN fn::error_result("BOOKING_USERNAME_EMAIL_REQUIRED", $language, { field: "email" });
     };
 
     LET $trimmed = string::trim($email);
@@ -39,5 +39,5 @@ DEFINE FUNCTION OVERWRITE fn::booking_generate_username(
         };
     };
 
-    RETURN fn::result_error("BOOKING_USERNAME_GENERATION_FAILED", $language, { base: $base });
+    RETURN fn::error_result("BOOKING_USERNAME_GENERATION_FAILED", $language, { base: $base });
 };

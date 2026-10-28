@@ -3,24 +3,30 @@
 -- │  Création d'une nouvelle définition d'erreur canonique (Admin)          │
 -- └──────────────────────────────────────────────────────────────────────────┘
 
-DEFINE FUNCTION IF NOT EXISTS fn::error_definition_create(
-    $code: option<string>,
-    $module: option<string>,
-    $domain: option<string>,
-    $category: option<string>,
-    $severity: option<string>,
-    $message: option<string>,
-    $http_status: option<int>,
-    $translations: option<object>
+DEFINE FUNCTION OVERWRITE fn::error_definition_create(
+    $params: object
 ) {
-    IF $code == NONE OR string::len(string::trim($code)) == 0 {
-        RETURN fn::result_error("CORE_ERROR_DEFINITION_NOT_FOUND", "fr", { field: "code" });
+    LET $code = $params.code;
+    LET $module = IF $params.module != NONE AND string::len(string::trim($params.module)) > 0 {
+        $params.module
+    } ELSE IF $code != NONE AND string::contains($code, "_") {
+        string::lowercase(string::split($code, "_")[0])
+    } ELSE {
+        "error"
     };
-    IF $module == NONE OR string::len(string::trim($module)) == 0 {
-        RETURN fn::result_error("CORE_ERROR_DEFINITION_NOT_FOUND", "fr", { field: "module" });
+    LET $domain = $params.domain;
+    LET $category = $params.category;
+    LET $severity = $params.severity;
+    LET $message = $params.message;
+    LET $http_status = $params.http_status;
+    LET $translations = $params.translations;
+    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+
+    IF $code == NONE OR string::len(string::trim($code)) == 0 {
+        RETURN fn::error_result("ERROR_PARAM_REQUIRED", $language, { field: "code" });
     };
     IF $message == NONE OR string::len(string::trim($message)) == 0 {
-        RETURN fn::result_error("CORE_ERROR_DEFINITION_NOT_FOUND", "fr", { field: "message" });
+        RETURN fn::error_result("ERROR_PARAM_REQUIRED", $language, { field: "message" });
     };
 
     LET $clean_code = string::uppercase(string::trim($code));
@@ -32,7 +38,7 @@ DEFINE FUNCTION IF NOT EXISTS fn::error_definition_create(
 
     LET $existing = SELECT VALUE id FROM error_definition WHERE code = $clean_code LIMIT 1;
     IF array::len($existing) > 0 {
-        RETURN fn::result_error("BOOKING_SLOT_ALREADY_TAKEN", "fr", { field: "code", reason: "Error code already exists" });
+        RETURN fn::error_result("ERROR_DEFINITION_ALREADY_EXISTS", $language, { field: "code", code: $clean_code });
     };
 
     LET $created = CREATE ONLY error_definition CONTENT {

@@ -10,10 +10,10 @@ DEFINE FUNCTION OVERWRITE fn::booking_find_manageable_event_type_by_slug($params
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $account_id == NONE {
-        RETURN fn::result_error("BOOKING_ACCOUNT_ID_REQUIRED", $language, { field: "account_id" });
+        RETURN fn::error_result("BOOKING_ACCOUNT_ID_REQUIRED", $language, { field: "account_id" });
     };
     IF $slug == NONE OR string::len(string::trim($slug)) == 0 {
-        RETURN fn::result_error("BOOKING_SLUG_REQUIRED", $language, { field: "slug" });
+        RETURN fn::error_result("BOOKING_SLUG_REQUIRED", $language, { field: "slug" });
     };
 
     LET $clean_slug = string::lowercase(string::trim($slug));

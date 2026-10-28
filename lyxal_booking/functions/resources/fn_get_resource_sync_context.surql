@@ -8,12 +8,12 @@ DEFINE FUNCTION OVERWRITE fn::booking_get_resource_sync_context($params: object)
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $record_id == NONE {
-        RETURN fn::result_error("BOOKING_INVALID_PARAMS", $language, { field: "record_id" });
+        RETURN fn::error_result("BOOKING_INVALID_PARAMS", $language, { field: "record_id" });
     };
 
     LET $res = SELECT id, feed_url, last_synced_at, enabled FROM ONLY $record_id;
     IF $res == NONE {
-        RETURN fn::result_error("BOOKING_NOT_FOUND", $language, { record_id: $record_id });
+        RETURN fn::error_result("BOOKING_NOT_FOUND", $language, { record_id: $record_id });
     };
 
     RETURN fn::result_ok({

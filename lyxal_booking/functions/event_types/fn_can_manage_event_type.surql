@@ -10,10 +10,10 @@ DEFINE FUNCTION OVERWRITE fn::booking_can_manage_event_type($params: object) {
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $account_id == NONE {
-        RETURN fn::result_error("BOOKING_ACCOUNT_ID_REQUIRED", $language, { field: "account_id" });
+        RETURN fn::error_result("BOOKING_ACCOUNT_ID_REQUIRED", $language, { field: "account_id" });
     };
     IF $event_type_id == NONE {
-        RETURN fn::result_error("BOOKING_EVENT_TYPE_ID_REQUIRED", $language, { field: "event_type_id" });
+        RETURN fn::error_result("BOOKING_EVENT_TYPE_ID_REQUIRED", $language, { field: "event_type_id" });
     };
 
     -- 1. Événement individuel : le compte est le propriétaire direct

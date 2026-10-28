@@ -10,7 +10,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_mark_resource_sync_failed($params: object)
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $resource_id == NONE {
-        RETURN fn::result_error("BOOKING_INVALID_PARAMS", $language, { field: "resource_id" });
+        RETURN fn::error_result("BOOKING_INVALID_PARAMS", $language, { field: "resource_id" });
     };
 
     UPDATE ONLY $resource_id SET
