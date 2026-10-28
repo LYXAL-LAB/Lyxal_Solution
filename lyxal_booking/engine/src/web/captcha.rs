@@ -179,9 +179,9 @@ pub async fn load_captcha_config(
     let secret_bytes = if secret_enc.trim().starts_with("enc:") {
         crypto.decrypt_secret(&secret_enc, &context)?
     } else if let Some(key) = legacy_key {
-        crypto.decrypt_calrs_aes_base64(key, &secret_enc)?
+        crate::crypto_helpers::decrypt_legacy_calrs_aes_base64(key, &secret_enc)?
     } else {
-        lyxal_crypto::decode_calrs_legacy_hex(&secret_enc)?
+        crate::crypto_helpers::decode_legacy_calrs_hex(&secret_enc)?
     };
 
     let secret_str = String::from_utf8(secret_bytes.to_vec())
@@ -433,7 +433,7 @@ mod tests {
 
         assert_eq!(determine_integration_secret_format(&stored_hex).unwrap(), StoredIntegrationSecretFormat::CalrsHexPlaintext);
 
-        let migrated_envelope = crypto.migrate_legacy_calrs_hex(&stored_hex, &ctx).unwrap();
+        let migrated_envelope = crate::crypto_helpers::migrate_legacy_calrs_hex(&crypto, &stored_hex, &ctx).unwrap();
         assert!(migrated_envelope.starts_with("enc:v1:"));
 
         let read_back = crypto.decrypt_secret(&migrated_envelope, &ctx).unwrap();

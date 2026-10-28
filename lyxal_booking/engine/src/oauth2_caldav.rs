@@ -225,7 +225,7 @@ pub async fn refresh_access_token(
             let key = legacy_key.ok_or_else(|| {
                 anyhow::anyhow!("Legacy AES key required to decrypt legacy refresh token")
             })?;
-            let modern_env = crypto.migrate_calrs_aes_base64(key, &refresh_ctx.refresh_token_enc, &refresh_token_aad)?;
+            let modern_env = crate::crypto_helpers::migrate_legacy_calrs_aes_base64(crypto, key, &refresh_ctx.refresh_token_enc, &refresh_token_aad)?;
             let plain_bytes = crypto.decrypt_secret(&modern_env, &refresh_token_aad)?;
 
             let update_params = serde_json::json!({
@@ -291,7 +291,7 @@ pub async fn refresh_access_token(
             let key = legacy_key.ok_or_else(|| {
                 anyhow::anyhow!("Legacy AES key required to decrypt legacy Google OAuth client secret")
             })?;
-            let modern_env = crypto.migrate_calrs_aes_base64(key, &refresh_ctx.client_secret_enc, &client_secret_aad)?;
+            let modern_env = crate::crypto_helpers::migrate_legacy_calrs_aes_base64(crypto, key, &refresh_ctx.client_secret_enc, &client_secret_aad)?;
             let plain_bytes = crypto.decrypt_secret(&modern_env, &client_secret_aad)?;
 
             let update_params = serde_json::json!({
@@ -425,7 +425,7 @@ pub async fn get_valid_access_token(
                 let key = legacy_key.ok_or_else(|| {
                     anyhow::anyhow!("Legacy AES key required to decrypt legacy access token")
                 })?;
-                let modern_env = crypto.migrate_calrs_aes_base64(key, access_token_enc, &access_token_aad)?;
+                let modern_env = crate::crypto_helpers::migrate_legacy_calrs_aes_base64(crypto, key, access_token_enc, &access_token_aad)?;
                 let plain_bytes = crypto.decrypt_secret(&modern_env, &access_token_aad)?;
                 let plain = secret_bytes_to_string(plain_bytes)?;
 
@@ -540,7 +540,7 @@ pub async fn build_client_for_source(
                     let key = legacy_key.ok_or_else(|| {
                         anyhow::anyhow!("Legacy AES key required to decrypt legacy CalDAV password")
                     })?;
-                    let modern_env = crypto.migrate_calrs_aes_base64(key, enc, &pass_aad)?;
+                    let modern_env = crate::crypto_helpers::migrate_legacy_calrs_aes_base64(crypto, key, enc, &pass_aad)?;
                     let plain_bytes = crypto.decrypt_secret(&modern_env, &pass_aad)?;
 
                     let update_params = serde_json::json!({

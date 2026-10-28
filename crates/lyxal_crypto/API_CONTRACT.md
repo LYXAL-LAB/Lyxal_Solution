@@ -51,7 +51,7 @@
 | `EnvironmentKeyProvider` | `key_resolver` | `STABLE` | Résolveur de clés chargées depuis des variables d'environnement. |
 | `FileKeyProvider` | `key_resolver` | `STABLE` | Résolveur de clés stockées sur le système de fichiers local. |
 | `CompositeKeyResolver` | `key_resolver` | `STABLE` | Résolveur multi-clés en mémoire thread-safe (`RwLock`) supportant l'ajout de clés historiques. |
-| `KeyGenerationPolicy` | `key_resolver` | `STABLE` | Politique de génération de clé locale (`Strict` vs `GenerateIfMissing`). |
+| `KeyGenerationPolicy` | `key_resolver` | `STABLE` | Politique de génération de clé locale (`RequireExisting` vs `AllowGenerate`). |
 | `Sha256Hasher` | `hash` | `STABLE` | Hasher streaming incrémental SHA-256 (`update`, `finalize`, `finalize_hex`). |
 | `Blake3Hasher` | `hash` | `STABLE` | Hasher streaming incrémental BLAKE3 (`update`, `finalize`, `finalize_hex`). |
 
@@ -65,18 +65,14 @@
 | `sha256_hex(data: &[u8]) -> String` | `hash` | `STABLE` | Hachage SHA-256 direct renvoyant une chaîne hexadécimale 64 chars en minuscules. |
 | `blake3(data: &[u8]) -> [u8; 32]` | `hash` | `STABLE` | Hachage BLAKE3 direct renvoyant 32 octets bruts. |
 | `blake3_hex(data: &[u8]) -> String` | `hash` | `STABLE` | Hachage BLAKE3 direct renvoyant une chaîne hexadécimale 64 chars en minuscules. |
-| `sign_hmac_sha256(key, data) -> Result<Vec<u8>, CryptoError>` | `hmac` | `STABLE` | Signature HMAC-SHA256 renvoyant 32 octets bruts. |
-| `sign_hmac_sha256_hex(key, data) -> Result<String, CryptoError>` | `hmac` | `STABLE` | Signature HMAC-SHA256 renvoyant une chaîne hexadécimale en minuscules. |
-| `verify_hmac_sha256(key, data, tag) -> Result<(), CryptoError>` | `hmac` | `STABLE` | Vérification HMAC-SHA256 temps constant native (`verify_slice`). |
-| `verify_hmac_sha256_hex(key, data, tag_hex) -> Result<(), CryptoError>` | `hmac` | `STABLE` | Vérification HMAC-SHA256 temps constant depuis signature hexadécimale. |
-| `hkdf_sha256(salt, ikm, info, okm_out) -> Result<(), CryptoError>` | `kdf` | `STABLE` | Dérivation HKDF-SHA256 générique vers un buffer mutable. |
-| `hkdf_sha256_32(salt, ikm, info) -> Result<Zeroizing<[u8; 32]>, CryptoError>` | `kdf` | `STABLE` | Dérivation HKDF-SHA256 spécialisée 32 octets zéroïsés. |
+| `sign_hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32]` | `hmac` | `STABLE` | Signature HMAC-SHA256 (infaillible) renvoyant 32 octets bruts. |
+| `sign_hmac_sha256_hex(key: &[u8], data: &[u8]) -> String` | `hmac` | `STABLE` | Signature HMAC-SHA256 (infaillible) renvoyant une chaîne hexadécimale en minuscules. |
+| `verify_hmac_sha256(key: &[u8], data: &[u8], expected_tag: &[u8]) -> bool` | `hmac` | `STABLE` | Vérification HMAC-SHA256 temps constant native (`verify_slice`). |
+| `verify_hmac_sha256_hex(key: &[u8], data: &[u8], expected_hex: &str) -> bool` | `hmac` | `STABLE` | Vérification HMAC-SHA256 temps constant depuis signature hexadécimale. |
+| `hkdf_sha256(ikm: &[u8], salt: Option<&[u8]>, info: &[u8], output: &mut [u8]) -> Result<(), CryptoError>` | `kdf` | `STABLE` | Dérivation HKDF-SHA256 générique vers un buffer mutable (RFC 5869). |
+| `hkdf_sha256_32(ikm: &[u8], salt: Option<&[u8]>, info: &[u8]) -> Result<Zeroizing<[u8; 32]>, CryptoError>` | `kdf` | `STABLE` | Dérivation HKDF-SHA256 spécialisée 32 octets zéroïsés. |
 | `hash_password(password: &str) -> Result<String, CryptoError>` | `password` | `STABLE` | Hachage Argon2id politique Lyxal v1 (`m=65536, t=3, p=1, salt=OsRng`). Sortie PHC. |
-| `verify_password(password: &str, hash: &str) -> Result<(), CryptoError>` | `password` | `STABLE` | Vérification temps constant d'un mot de passe contre un hash PHC. |
-| `needs_rehash(hash: &str) -> bool` | `password` | `STABLE` | Détecte si un hash nécessite une mise à niveau vers les paramètres Lyxal v1. |
-| `decode_calrs_legacy_hex(stored_hex: &str) -> Result<SecretBytes, CryptoError>` | `lib` | `MIGRATION-ONLY` | Décodage d'anciennes chaînes hexadécimales en clair (Cal.rs legacy). |
-| `CryptoEngine::decrypt_calrs_aes_base64(...)` | `lib` | `MIGRATION-ONLY` | Déchiffrement d'anciens secrets Cal.rs au format Base64 brut AES-256-GCM. |
-| `CryptoEngine::migrate_calrs_aes_base64(...)` | `lib` | `MIGRATION-ONLY` | Migration d'un secret Cal.rs AES Base64 vers l'enveloppe `enc:v1` avec AAD. |
-| `CryptoEngine::migrate_legacy_calrs_hex(...)` | `lib` | `MIGRATION-ONLY` | Migration d'un secret Cal.rs hex clair vers l'enveloppe `enc:v1` avec AAD. |
+| `verify_password(password: &str, encoded_hash: &str) -> Result<bool, CryptoError>` | `password` | `STABLE` | Vérification temps constant d'un mot de passe contre un hash PHC. |
+| `needs_rehash(encoded_hash: &str) -> bool` | `password` | `STABLE` | Détecte si un hash nécessite une mise à niveau vers les paramètres Lyxal v1. |
 | `encrypt_aes_gcm(key, plaintext, aad) -> Result<Vec<u8>, CryptoError>` | `cipher` | `INTERNAL-CANDIDATE` | Primitive bas niveau. Utiliser `CryptoEngine::encrypt_secret` en priorité. |
 | `decrypt_aes_gcm(key, payload, aad) -> Result<Zeroizing<Vec<u8>>, CryptoError>` | `cipher` | `INTERNAL-CANDIDATE` | Primitive bas niveau. Utiliser `CryptoEngine::decrypt_secret` en priorité. |

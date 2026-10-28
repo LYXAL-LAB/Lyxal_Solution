@@ -9,8 +9,6 @@ pub mod key;
 pub mod key_resolver;
 pub mod password;
 
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine;
 pub use context::SecretContext;
 pub use envelope::EncryptedEnvelope;
 pub use error::CryptoError;
@@ -41,14 +39,6 @@ pub enum ReencryptResult {
     Rotated(String),
 }
 
-/// Décode et valide une chaîne legacy Cal.rs (qui était l'encodage hex de la chaîne UTF-8 en clair).
-///
-/// Valide l'UTF-8 de manière zéro-copie sans créer de String temporaire non protégée.
-pub fn decode_calrs_legacy_hex(stored_hex: &str) -> Result<SecretBytes, CryptoError> {
-    let bytes = hex::decode(stored_hex.trim()).map_err(|_| CryptoError::InvalidLegacyValue)?;
-    std::str::from_utf8(&bytes).map_err(|_| CryptoError::InvalidLegacyValue)?;
-    Ok(Zeroizing::new(bytes))
-}
 
 /// Moteur principal de chiffrement et déchiffrement de secrets Lyxal OS.
 pub struct CryptoEngine<R: KeyResolver> {
@@ -119,40 +109,6 @@ impl<R: KeyResolver> CryptoEngine<R> {
         }
     }
 
-    /// Déchiffre un secret legacy Cal.rs au format Base64 brut AES-256-GCM (sans enveloppe ni AAD) à l'aide de l'ancienne clé.
-    pub fn decrypt_calrs_aes_base64(
-        &self,
-        legacy_key: &EncryptionKey,
-        stored_b64: &str,
-    ) -> Result<SecretBytes, CryptoError> {
-        let payload = Zeroizing::new(
-            STANDARD
-                .decode(stored_b64.trim())
-                .map_err(|_| CryptoError::InvalidLegacyValue)?,
-        );
-        cipher::decrypt_aes_gcm(legacy_key, &payload, &[])
-    }
-
-    /// Migre un secret legacy Cal.rs au format Base64 brut AES-256-GCM vers l'enveloppe moderne enc:v1 avec AAD et la clé active.
-    pub fn migrate_calrs_aes_base64(
-        &self,
-        legacy_key: &EncryptionKey,
-        stored_b64: &str,
-        context: &SecretContext,
-    ) -> Result<String, CryptoError> {
-        let plaintext = self.decrypt_calrs_aes_base64(legacy_key, stored_b64)?;
-        self.encrypt_secret(&plaintext, context)
-    }
-
-    /// Migre un ancien secret legacy Cal.rs (hex de la chaîne en clair) vers le format d'enveloppe AES-256-GCM v1.
-    pub fn migrate_legacy_calrs_hex(
-        &self,
-        stored_hex: &str,
-        context: &SecretContext,
-    ) -> Result<String, CryptoError> {
-        let plaintext = decode_calrs_legacy_hex(stored_hex)?;
-        self.encrypt_secret(&plaintext, context)
-    }
 
     /// Vérifie si l'enveloppe utilise une ancienne clé et la rechiffre avec la clé active si nécessaire.
     pub fn reencrypt_if_needed(

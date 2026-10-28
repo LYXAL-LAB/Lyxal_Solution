@@ -28,7 +28,7 @@ DEFINE FIELD IF NOT EXISTS email
 DEFINE FIELD IF NOT EXISTS password_hash
     ON TABLE booking_account
     TYPE option<string>
-    COMMENT "Hash argon2/pbkdf2 du mot de passe pour l'authentification locale";
+    COMMENT "Hash Argon2id (profil canonique Lyxal v1) du mot de passe pour l'authentification locale";
 
 DEFINE FIELD IF NOT EXISTS role
     ON TABLE booking_account

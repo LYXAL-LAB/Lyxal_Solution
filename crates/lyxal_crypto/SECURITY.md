@@ -33,8 +33,8 @@ Ce document formalise les règles strictes d'ingénierie de sécurité et les en
 - **Algorithme** : AES-256-GCM (NIST SP 800-38D).
 - **Taille de Clé** : 256 bits (32 octets).
 - **Nonce** : 96 bits (12 octets) cryptographiquement aléatoire via `OsRng`.
-- **Tag d'Authentification** : 128 bits (16 octets).
-- **Format d'Enveloppe** : `lyxal:v1:<key_id>:<nonce_hex>:<tag_hex>:<ciphertext_hex>`.
+- **Format d'Enveloppe** : `enc:v1:<key_id>:<base64url_payload>` (Payload binaire : `Nonce (12B) | Ciphertext (NB) | Tag (16B)`).
+- **Format du Contexte AAD** : `lyxal:v1:<len_t>:<tenant>:<len_m>:<module>:<len_r>:<resource>:<len_id>:<record_id>:<len_f>:<field>`.
 
 ### 2.2. Hachage de Mots de Passe
 - **Algorithme** : Argon2id (RFC 9106, version 19 `0x13`).

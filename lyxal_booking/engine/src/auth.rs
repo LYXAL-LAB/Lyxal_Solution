@@ -46,9 +46,19 @@ const DUMMY_HASH: &str = "$argon2id$v=19$m=65536,t=3,p=1$c29tZXNhbHQxMjM0NTY3OA$
 /// Perform uniform password verification against stored hash or fallback dummy hash,
 /// ensuring Argon2 is always executed even if account is missing or stored hash is corrupted.
 pub fn verify_password_uniform(stored_hash: Option<&str>, password: &str) -> bool {
-    let hash = stored_hash.unwrap_or(DUMMY_HASH);
-    let valid = verify_password(password, hash);
-    stored_hash.is_some() && valid
+    match stored_hash {
+        Some(hash) => match lyxal_crypto::password::verify_password(password, hash) {
+            Ok(valid) => valid,
+            Err(_) => {
+                let _ = verify_password(password, DUMMY_HASH);
+                false
+            }
+        },
+        None => {
+            let _ = verify_password(password, DUMMY_HASH);
+            false
+        }
+    }
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -1534,12 +1544,26 @@ mod tests {
     }
 
     #[test]
-    fn test_backward_compatibility_with_historical_calrs_argon2_hash() {
-        // Hash historique généré avec les anciens paramètres Cal.rs (m=19456, t=2, p=1)
-        // Mot de passe : "calrs_historical_password_2025"
-        let historical_hash = "$argon2id$v=19$m=19456,t=2,p=1$ZHVtbXlzYWx0MTIzNDU2Nw$q0c+8v5Xw9nQ1+Y7Z1+1234567890abcdefghijklm";
-        // Doit être parsé et vérifié sans erreur de syntaxe
-        let _ = verify_password("calrs_historical_password_2025", historical_hash);
+    fn test_canonical_lyxal_v1_password_hash_parameters() {
+        let password = "CanonicalPassword!2026";
+        let hash = hash_password(password).unwrap();
+
+        // Le hash généré doit strictement respecter le profil canonique Lyxal v1 (m=65536, t=3, p=1)
+        assert!(
+            hash.starts_with("$argon2id$v=19$m=65536,t=3,p=1$"),
+            "Le hash généré doit strictement respecter le profil canonique Lyxal v1: {}",
+            hash
+        );
+
+        // Le hash canonique ne nécessite aucun rehash
+        assert!(!lyxal_crypto::password::needs_rehash(&hash));
+
+        // Détection formelle : tout profil historique est considéré comme obsolète
+        let legacy_calrs_hash = "$argon2id$v=19$m=19456,t=2,p=1$ZHVtbXlzYWx0MTIzNDU2Nw$q0c+8v5Xw9nQ1+Y7Z1+1234567890abcdefghijklm";
+        assert!(
+            lyxal_crypto::password::needs_rehash(legacy_calrs_hash),
+            "Un hash historique non conforme au profil Lyxal v1 doit être détecté comme nécessitant une mise à niveau"
+        );
     }
 
     #[test]
@@ -1604,5 +1628,9 @@ mod tests {
         assert!(!is_valid, "Dummy hash verification must always return false");
         let invalid_hash_valid = verify_password_uniform(Some("invalid_phc_hash"), "dummy_password_123");
         assert!(!invalid_hash_valid, "Corrupted hash must fallback to dummy verification and return false");
+
+        let valid_hash = hash_password("ValidPassword!2026").unwrap();
+        assert!(verify_password_uniform(Some(&valid_hash), "ValidPassword!2026"));
+        assert!(!verify_password_uniform(Some(&valid_hash), "WrongPassword!2026"));
     }
 }

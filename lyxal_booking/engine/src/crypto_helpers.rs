@@ -76,7 +76,7 @@ pub fn decrypt_caldav_password(
     if stored.trim().starts_with("enc:") {
         crypto.decrypt_secret(stored, &ctx)
     } else if let Some(key) = legacy_key {
-        crypto.decrypt_calrs_aes_base64(key, stored)
+        decrypt_legacy_calrs_aes_base64(key, stored)
     } else {
         Err(CryptoError::MissingActiveKey)
     }
@@ -105,7 +105,7 @@ pub fn decrypt_google_client_secret(
     if stored.trim().starts_with("enc:") {
         crypto.decrypt_secret(stored, &ctx)
     } else if let Some(key) = legacy_key {
-        crypto.decrypt_calrs_aes_base64(key, stored)
+        decrypt_legacy_calrs_aes_base64(key, stored)
     } else {
         Err(CryptoError::MissingActiveKey)
     }
@@ -225,3 +225,91 @@ pub fn create_test_crypto_engine() -> BookingCryptoEngine {
     let resolver = CompositeKeyResolver::new(active_id, key);
     BookingCryptoEngine::new(std::sync::Arc::new(resolver))
 }
+
+// --- Adaptateurs de compatibilité historique Cal.rs (spécifiques à Booking) ---
+
+/// Décode et valide une chaîne legacy Cal.rs (encodage hex de la chaîne UTF-8 en clair).
+pub fn decode_legacy_calrs_hex(stored_hex: &str) -> Result<SecretBytes, CryptoError> {
+    let bytes = hex::decode(stored_hex.trim()).map_err(|_| CryptoError::InvalidLegacyValue)?;
+    std::str::from_utf8(&bytes).map_err(|_| CryptoError::InvalidLegacyValue)?;
+    Ok(zeroize::Zeroizing::new(bytes))
+}
+
+/// Déchiffre un secret legacy Cal.rs au format Base64 brut AES-256-GCM (sans enveloppe ni AAD).
+pub fn decrypt_legacy_calrs_aes_base64(
+    legacy_key: &EncryptionKey,
+    stored_b64: &str,
+) -> Result<SecretBytes, CryptoError> {
+    use base64::Engine;
+    let payload = zeroize::Zeroizing::new(
+        base64::engine::general_purpose::STANDARD
+            .decode(stored_b64.trim())
+            .map_err(|_| CryptoError::InvalidLegacyValue)?,
+    );
+    lyxal_crypto::cipher::decrypt_aes_gcm(legacy_key, &payload, &[])
+}
+
+/// Migre un secret legacy Cal.rs au format Base64 brut AES-256-GCM vers l'enveloppe moderne `enc:v1` avec AAD et la clé active.
+pub fn migrate_legacy_calrs_aes_base64(
+    crypto: &BookingCryptoEngine,
+    legacy_key: &EncryptionKey,
+    stored_b64: &str,
+    context: &SecretContext,
+) -> Result<String, CryptoError> {
+    let plaintext = decrypt_legacy_calrs_aes_base64(legacy_key, stored_b64)?;
+    crypto.encrypt_secret(&plaintext, context)
+}
+
+/// Migre un ancien secret legacy Cal.rs (hex de la chaîne en clair) vers le format d'enveloppe AES-256-GCM v1.
+pub fn migrate_legacy_calrs_hex(
+    crypto: &BookingCryptoEngine,
+    stored_hex: &str,
+    context: &SecretContext,
+) -> Result<String, CryptoError> {
+    let plaintext = decode_legacy_calrs_hex(stored_hex)?;
+    crypto.encrypt_secret(&plaintext, context)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::Engine;
+
+    #[test]
+    fn test_legacy_hex_decoding_and_migration() {
+        let crypto = create_test_crypto_engine();
+        let raw = b"legacy-plain-secret";
+        let stored_hex = hex::encode(raw);
+
+        let decoded = decode_legacy_calrs_hex(&stored_hex).unwrap();
+        assert_eq!(decoded.as_slice(), raw);
+
+        let ctx = SecretContext::with_tenant("tenant-1", "booking", "setting", "s1", "secret").unwrap();
+        let envelope = migrate_legacy_calrs_hex(&crypto, &stored_hex, &ctx).unwrap();
+        assert!(envelope.starts_with("enc:v1:"));
+
+        let read_back = crypto.decrypt_secret(&envelope, &ctx).unwrap();
+        assert_eq!(read_back.as_slice(), raw);
+    }
+
+    #[test]
+    fn test_legacy_aes_base64_decoding_and_migration() {
+        let crypto = create_test_crypto_engine();
+        let legacy_key = EncryptionKey::generate();
+        let raw = b"legacy-aes-secret";
+
+        let cipher_payload = lyxal_crypto::cipher::encrypt_aes_gcm(&legacy_key, raw, &[]).unwrap();
+        let stored_b64 = base64::engine::general_purpose::STANDARD.encode(&cipher_payload);
+
+        let decrypted = decrypt_legacy_calrs_aes_base64(&legacy_key, &stored_b64).unwrap();
+        assert_eq!(decrypted.as_slice(), raw);
+
+        let ctx = SecretContext::with_tenant("tenant-1", "booking", "setting", "s1", "secret").unwrap();
+        let envelope = migrate_legacy_calrs_aes_base64(&crypto, &legacy_key, &stored_b64, &ctx).unwrap();
+        assert!(envelope.starts_with("enc:v1:"));
+
+        let read_back = crypto.decrypt_secret(&envelope, &ctx).unwrap();
+        assert_eq!(read_back.as_slice(), raw);
+    }
+}
+

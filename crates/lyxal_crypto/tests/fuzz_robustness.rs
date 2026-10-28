@@ -1,6 +1,6 @@
 use lyxal_crypto::{
-    decode_calrs_legacy_hex, hash_password, needs_rehash, verify_password, CompositeKeyResolver,
-    CryptoEngine, EncryptionKey, KeyId, SecretContext,
+    hash_password, needs_rehash, verify_password, CompositeKeyResolver, CryptoEngine,
+    EncryptionKey, KeyId, SecretContext,
 };
 
 /// Test de robustesse aléatoire (Randomized Robustness Testing) simulant des milliers
@@ -92,7 +92,6 @@ fn test_randomized_envelope_parsing_and_decryption_robustness() {
 
         // L'appel doit obligatoirement retourner Ok ou Err mais JAMAIS panic
         let _ = engine.decrypt_secret(&corrupted, &ctx);
-        let _ = decode_calrs_legacy_hex(&corrupted);
     }
 }
 

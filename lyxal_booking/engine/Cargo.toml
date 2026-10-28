@@ -70,16 +70,8 @@ tower-http = { version = "0.6", features = ["trace", "set-header"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# Encryption (credential storage)
-aes-gcm = "0.10"
+# Memory security & utilities
 zeroize = "1"
-
-# HMAC-SHA256 for outbound webhook signatures
-hmac = "0.12"
-sha2 = "0.10"
-
-# Auth
-argon2 = { version = "0.5", features = ["rand"] }
 rand = "0.8"
 base64 = "0.22"
 subtle = "2"

@@ -227,7 +227,7 @@ pub async fn load_smtp_config(
                 let key = legacy_key.ok_or_else(|| {
                     anyhow::anyhow!("Legacy AES key required to decrypt legacy SMTP password")
                 })?;
-                let modern_envelope = crypto.migrate_calrs_aes_base64(key, password_enc, &context)?;
+                let modern_envelope = crate::crypto_helpers::migrate_legacy_calrs_aes_base64(crypto, key, password_enc, &context)?;
                 let plaintext_bytes = crypto.decrypt_secret(&modern_envelope, &context)?;
 
                 // Best-effort persistence via SurrealQL fn::booking_update_smtp_password

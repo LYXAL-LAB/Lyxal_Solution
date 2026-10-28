@@ -16,7 +16,7 @@ pub fn encrypt_aes_gcm(
 
     let mut nonce_bytes = [0u8; 12];
     OsRng.fill_bytes(&mut nonce_bytes);
-    let nonce = Nonce::from_slice(&nonce_bytes);
+    let nonce = Nonce::from(nonce_bytes);
 
     let payload = Payload {
         msg: plaintext,
@@ -24,7 +24,7 @@ pub fn encrypt_aes_gcm(
     };
 
     let ciphertext = cipher
-        .encrypt(nonce, payload)
+        .encrypt(&nonce, payload)
         .map_err(|_| CryptoError::EncryptionFailed)?;
 
     // Structure du payload enveloppé : Nonce (12B) + Ciphertext (incluant Tag 16B à la fin)
@@ -49,7 +49,10 @@ pub fn decrypt_aes_gcm(
         Aes256Gcm::new_from_slice(key.expose()).map_err(|_| CryptoError::InvalidKeyLength)?;
 
     let (nonce_bytes, ciphertext) = payload.split_at(12);
-    let nonce = Nonce::from_slice(nonce_bytes);
+    let nonce_array: &[u8; 12] = nonce_bytes
+        .try_into()
+        .map_err(|_| CryptoError::InvalidPayload)?;
+    let nonce = Nonce::from(*nonce_array);
 
     let payload_struct = Payload {
         msg: ciphertext,
@@ -57,7 +60,7 @@ pub fn decrypt_aes_gcm(
     };
 
     let decrypted = cipher
-        .decrypt(nonce, payload_struct)
+        .decrypt(&nonce, payload_struct)
         .map_err(|_| CryptoError::AuthenticationFailed)?;
 
     Ok(Zeroizing::new(decrypted))

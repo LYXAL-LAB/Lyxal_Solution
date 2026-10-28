@@ -9,7 +9,6 @@ use rand::rngs::OsRng;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use rand::RngCore;
-use sha2::{Digest, Sha256};
 
 use crate::contracts::auth::{
     AuthAccountRecord, AuthSessionResponse, CreateSessionParams, CurrentSessionResponse,
@@ -22,7 +21,6 @@ use crate::web::middleware::auth::AuthenticatedUser;
 use crate::web::state::AppState;
 
 pub const SESSION_COOKIE_NAME: &str = "__Host-booking_session";
-const DUMMY_ARGON2_HASH: &str = "$argon2id$v=19$m=19456,t=2,p=1$ZHVtbXlzYWx0MTIzNDU2Nw$q0c+8v5Xw9nQ1+Y7Z1+1234567890abcdefghijklm";
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -39,9 +37,7 @@ fn generate_csprng_session_token() -> String {
 }
 
 fn hash_token(token: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(token.as_bytes());
-    hex::encode(hasher.finalize())
+    lyxal_crypto::hash::sha256_hex(token.as_bytes())
 }
 
 fn extract_token_from_headers(headers: &HeaderMap) -> Result<Option<String>, WebError> {
@@ -110,13 +106,9 @@ pub async fn login(
         .ok()
         .flatten();
 
-    // 2. Hash Argon2 constant-time meme en cas d'utilisateur inconnu
-    let password_hash = account_opt
-        .as_ref()
-        .map(|acc| acc.password_hash.as_str())
-        .unwrap_or(DUMMY_ARGON2_HASH);
-
-    let password_valid = crate::auth::verify_password(&request.password, password_hash);
+    // 2. Hash Argon2 uniforme en temps constant (m=65536, t=3, p=1) même en cas d'utilisateur inconnu
+    let stored_hash = account_opt.as_ref().map(|acc| acc.password_hash.as_str());
+    let password_valid = crate::auth::verify_password_uniform(stored_hash, &request.password);
 
     let account = match (account_opt, password_valid) {
         (Some(account), true) if !account.disabled => account,
@@ -249,5 +241,63 @@ mod tests {
         assert!(cookie_clear.contains("HttpOnly"));
         assert!(cookie_clear.contains("Secure"));
         assert!(cookie_clear.contains("SameSite=Strict"));
+    }
+
+    #[test]
+    fn test_hash_token_uses_lyxal_crypto_sha256() {
+        let sample = "test_session_token_12345";
+        let expected = lyxal_crypto::hash::sha256_hex(sample.as_bytes());
+        let computed = hash_token(sample);
+        assert_eq!(computed, expected);
+        assert_eq!(computed.len(), 64);
+    }
+
+    #[test]
+    fn test_login_uniform_password_verification_branches() {
+        let password = "SecretPassword!2026";
+        let valid_hash = lyxal_crypto::password::hash_password(password).unwrap();
+
+        // 1. Compte existant avec bon mot de passe -> true
+        assert!(crate::auth::verify_password_uniform(Some(&valid_hash), password));
+
+        // 2. Compte existant avec mauvais mot de passe -> false
+        assert!(!crate::auth::verify_password_uniform(Some(&valid_hash), "WrongPassword!"));
+
+        // 3. Compte inexistant (None) -> false
+        assert!(!crate::auth::verify_password_uniform(None, password));
+
+        // 4. Hash stocké corrompu -> false
+        assert!(!crate::auth::verify_password_uniform(Some("corrupted_phc_string"), password));
+    }
+
+    #[test]
+    fn test_login_timing_parity_uniform_argon2() {
+        let password = "ArbitraryPasswordAttempt!2026";
+        let valid_hash = lyxal_crypto::password::hash_password(password).unwrap();
+
+        // Mesure branche compte inexistant (None)
+        let start_none = std::time::Instant::now();
+        let res_none = crate::auth::verify_password_uniform(None, password);
+        let elapsed_none = start_none.elapsed();
+        assert!(!res_none);
+
+        // Mesure branche compte existant avec mauvais mot de passe
+        let start_wrong = std::time::Instant::now();
+        let res_wrong = crate::auth::verify_password_uniform(Some(&valid_hash), "IncorrectPass!999");
+        let elapsed_wrong = start_wrong.elapsed();
+        assert!(!res_wrong);
+
+        // Les deux branches doivent avoir exécuté les itérations complètes d'Argon2id (durée > 10ms sur toute machine)
+        // et ne doivent pas court-circuiter en quelques microsecondes
+        assert!(
+            elapsed_none.as_millis() >= 10,
+            "Verification sur compte inexistant doit exécuter Argon2id (elapsed: {:?})",
+            elapsed_none
+        );
+        assert!(
+            elapsed_wrong.as_millis() >= 10,
+            "Verification avec mot de passe erroné doit exécuter Argon2id (elapsed: {:?})",
+            elapsed_wrong
+        );
     }
 }

@@ -357,9 +357,13 @@ fn test_smtp_legacy_migration_and_decryption() {
     let setting_id = surrealdb::RecordId::from(("booking_setting", "smtp_config"));
     let ctx = crate::crypto_helpers::smtp_password_context("default", &setting_id).unwrap();
 
-    let migrated = crypto
-        .migrate_calrs_aes_base64(&legacy_key, &raw_aes_b64, &ctx)
-        .unwrap();
+    let migrated = crate::crypto_helpers::migrate_legacy_calrs_aes_base64(
+        &crypto,
+        &legacy_key,
+        &raw_aes_b64,
+        &ctx,
+    )
+    .unwrap();
     assert!(migrated.starts_with("enc:v1:"));
 
     let decrypted = crypto.decrypt_secret(&migrated, &ctx).unwrap();

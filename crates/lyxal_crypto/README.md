@@ -15,7 +15,7 @@
   - Types opaques non clonables, non sérialisables et protégés contre les fuites via `Debug` masqué (`[REDACTED]`).
   - Vérifications en temps constant (`Constant-Time`) natives pour les tags HMAC et mots de passe.
   - Dérivation de contexte AAD canonique et obligatoire pour le chiffrement multi-tenant.
-- **Séparation des responsabilités** : `lyxal_crypto` gère les opérations cryptographiques pures et les formats d'enveloppes standardisées (`lyxal:v1:...`). La gestion du coffre-fort distribué (KMS / Vault / HSM) est une responsabilité hôte distincte.
+- **Séparation des responsabilités** : `lyxal_crypto` gère les opérations cryptographiques pures et les formats d'enveloppes standardisées (`enc:v1:...`). La gestion du coffre-fort distribué (KMS / Vault / HSM) est une responsabilité hôte distincte.
 
 ---
 
@@ -25,19 +25,20 @@
 - Chiffrement symétrique AES-256-GCM (NIST SP 800-38D).
 - Nonce 96-bit (12 octets) cryptographiquement aléatoire et unique par opération.
 - Tag d'authentification 128-bit (16 octets) garantissant l'intégrité et l'authenticité.
-- Contexte AAD canonique lié au `tenant_id` et au domaine métier.
-- Format d'enveloppe sérialisé : `lyxal:v1:<key_id>:<nonce_hex>:<tag_hex>:<ciphertext_hex>`.
-- Rotation de clés et ré-encryption sans déchiffrement applicatif intermédiaire.
+- Contexte AAD canonique (`lyxal:v1:<tenant_id>:<purpose>`) liant le chiffrement au tenant et au domaine métier.
+- Format d'enveloppe sérialisé canonique : `enc:v1:<key_id>:<base64url_payload>` où le payload binaire Base64URL est :
+  `NONCE (12 octets) | CIPHERTEXT | TAG (16 octets)`.
+- Rotation de clés et ré-encryption sans déchiffrement applicatif intermédiaire (`reencrypt_if_needed`).
 
 ### 2. Hachage & Empreintes Cryptographiques (`hash`)
 - **SHA-256** (FIPS 180-4) : Digest 256-bit brut et hexadécimal, API streaming (`Sha256Hasher`).
 - **BLAKE3** : Hachage ultra-rapide et hautement sécurisé, API streaming (`Blake3Hasher`).
 
 ### 3. Authentification de Messages (`hmac`)
-- **HMAC-SHA256** (RFC 2104 / RFC 4231) : Signature et vérification en temps constant natif (`verify_hmac_sha256` / `verify_slice`).
+- **HMAC-SHA256** (RFC 2104 / RFC 4231) : Signature (`sign_hmac_sha256`) et vérification en temps constant natif (`verify_hmac_sha256`).
 
 ### 4. Dérivation de Clés (`kdf`)
-- **HKDF-SHA256** (RFC 5869) : Dérivation extract-and-expand pour clés de session ou sous-clés avec sortie `Zeroizing<[u8; 32]>`.
+- **HKDF-SHA256** (RFC 5869) : Dérivation extract-and-expand (`hkdf_sha256_32`) avec sortie protégée `Zeroizing<[u8; 32]>`.
 
 ### 5. Hachage de Mots de Passe (`password`)
 - **Argon2id** (RFC 9106) : Profil durci Lyxal v1 (`m_cost = 64 MiB`, `t_cost = 3`, `p_cost = 1`).
@@ -52,25 +53,27 @@
 ### Chiffrement & Déchiffrement AES-256-GCM
 
 ```rust
-use lyxal_crypto::{EncryptionContext, EncryptionKey, EncryptionService, Plaintext};
+use lyxal_crypto::{CryptoEngine, EnvironmentKeyProvider, KeyGenerationPolicy, SecretContext};
 
-// Clé 256 bits protégée en mémoire
-let key = EncryptionKey::generate();
-let service = EncryptionService::new(key, "key-prod-01");
+// Initialisation d'un provider de clé (ex: variable d'environnement ou fichier)
+let provider = EnvironmentKeyProvider::new(
+    "APP_SECRET_KEY",
+    "key-prod-01",
+    KeyGenerationPolicy::AllowGenerate,
+)?;
+let engine = CryptoEngine::new(provider);
 
-// Contexte AAD multi-tenant
-let ctx = EncryptionContext::builder()
-    .with_tenant("tenant_lyxal_corp")
-    .with_purpose("customer_pii")
-    .build();
+// Contexte AAD canonique multi-tenant ("lyxal:v1:tenant_lyxal_corp:customer_pii")
+let ctx = SecretContext::new("tenant_lyxal_corp", "customer_pii");
 
-// Chiffrement
-let ciphertext = service.encrypt(Plaintext::from("donnée secrète"), &ctx)?;
-println!("Enveloppe sécurisée : {}", ciphertext.as_str());
+// Chiffrement -> "enc:v1:key-prod-01:<base64url_payload>"
+let envelope = engine.encrypt_secret(b"donnée secrète", &ctx)?;
+println!("Enveloppe sécurisée : {}", envelope);
 
-// Déchiffrement
-let decrypted = service.decrypt(&ciphertext, &ctx)?;
-assert_eq!(decrypted.as_str(), "donnée secrète");
+// Déchiffrement protégé en mémoire (Zeroizing<Vec<u8>>)
+let decrypted_bytes = engine.decrypt_secret(&envelope, &ctx)?;
+let decrypted_str = std::str::from_utf8(&decrypted_bytes).expect("UTF-8 valide");
+assert_eq!(decrypted_str, "donnée secrète");
 ```
 
 ### Hachage & Vérification de Mots de Passe
@@ -78,15 +81,15 @@ assert_eq!(decrypted.as_str(), "donnée secrète");
 ```rust
 use lyxal_crypto::password::{hash_password, verify_password, needs_rehash};
 
-// Hachage Argon2id avec politique Lyxal
+// Hachage Argon2id avec politique Lyxal v1
 let hash = hash_password("mot-de-passe-ultra-sécurisé")?;
 
-// Vérification temps constant
+// Vérification en temps constant (Result<bool, CryptoError>)
 let is_valid = verify_password("mot-de-passe-ultra-sécurisé", &hash)?;
 assert!(is_valid);
 
-// Détection de migration de politique
-if needs_rehash(&hash)? {
+// Détection de migration de politique (renvoie bool)
+if needs_rehash(&hash) {
     // Re-hacher avec les nouveaux paramètres
 }
 ```
@@ -100,11 +103,12 @@ use lyxal_crypto::kdf::hkdf_sha256_32;
 let key = b"cle_secrete_hmac_32_octets_minim";
 let data = b"payload_a_signer";
 
-let signature = sign_hmac_sha256(key, data)?;
-let is_authentic = verify_hmac_sha256(key, data, &signature)?;
+// HMAC-SHA256 (infaillible, renvoie [u8; 32] et bool)
+let signature = sign_hmac_sha256(key, data);
+let is_authentic = verify_hmac_sha256(key, data, &signature);
 assert!(is_authentic);
 
-// Dérivation HKDF
+// Dérivation HKDF-SHA256 (ikm, salt, info)
 let ikm = b"entree_de_materiel_cle";
 let salt = b"sel_optionnel";
 let info = b"contexte_applicatif";

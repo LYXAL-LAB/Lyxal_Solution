@@ -168,9 +168,9 @@ pub async fn load_config(
                 let secret_bytes = if enc.trim().starts_with("enc:") {
                     crypto.decrypt_secret(enc, &context)?
                 } else if let Some(key) = legacy_key {
-                    crypto.decrypt_calrs_aes_base64(key, enc)?
+                    crate::crypto_helpers::decrypt_legacy_calrs_aes_base64(key, enc)?
                 } else {
-                    lyxal_crypto::decode_calrs_legacy_hex(enc)?
+                    crate::crypto_helpers::decode_legacy_calrs_hex(enc)?
                 };
 
                 let secret_str = String::from_utf8(secret_bytes.to_vec())
@@ -618,7 +618,7 @@ mod tests {
         let cipher_payload = lyxal_crypto::cipher::encrypt_aes_gcm(&legacy_key, secret, &[]).unwrap();
         let stored_b64 = base64::engine::general_purpose::STANDARD.encode(&cipher_payload);
 
-        let migrated_envelope = crypto.migrate_calrs_aes_base64(&legacy_key, &stored_b64, &ctx).unwrap();
+        let migrated_envelope = crate::crypto_helpers::migrate_legacy_calrs_aes_base64(&crypto, &legacy_key, &stored_b64, &ctx).unwrap();
         assert!(migrated_envelope.starts_with("enc:v1:"));
 
         let read_back = crypto.decrypt_secret(&migrated_envelope, &ctx).unwrap();
