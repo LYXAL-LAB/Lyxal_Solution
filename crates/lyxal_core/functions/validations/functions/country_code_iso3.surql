@@ -82,7 +82,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_country_code_iso3(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allowed_codes: option<array<string>>
 ) -> string {
@@ -136,7 +136,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_country_code_iso3(
             THROW "VALIDATION_INVALID_ALLOWED_COUNTRY_CODE";
         };
 
-        IF !array::contains($clean_allowed, $country_code) {
+        IF !(($clean_allowed) CONTAINS ($country_code)) {
             THROW string::concat(
                 $clean_field,
                 "_COUNTRY_CODE_NOT_ALLOWED"

@@ -222,7 +222,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_uuid(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> uuid {
 

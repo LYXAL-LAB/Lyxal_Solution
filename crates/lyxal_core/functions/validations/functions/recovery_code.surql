@@ -58,7 +58,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_recovery_code(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $group_count: int,
     $group_length: int

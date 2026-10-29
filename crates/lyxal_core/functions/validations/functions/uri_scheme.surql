@@ -65,7 +65,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_uri_scheme(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allowed_schemes: option<array<string>>
 ) -> string {
@@ -122,7 +122,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_uri_scheme(
             THROW "VALIDATION_INVALID_ALLOWED_URI_SCHEME";
         };
 
-        IF !array::contains($normalized_allowed, $scheme) {
+        IF !(($normalized_allowed) CONTAINS ($scheme)) {
             THROW string::concat(
                 $clean_field,
                 "_URI_SCHEME_NOT_ALLOWED"

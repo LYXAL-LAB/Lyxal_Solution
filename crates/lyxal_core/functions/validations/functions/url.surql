@@ -257,7 +257,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_url(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $max_length: option<int>
 ) -> string {

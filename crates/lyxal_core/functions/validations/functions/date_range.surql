@@ -66,8 +66,8 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_date_range(
-    $start_value: option<any>,
-    $end_value: option<any>,
+    $start_value: any,
+    $end_value: any,
     $field: string,
     $allow_same_day: bool,
     $min_days: option<int>,

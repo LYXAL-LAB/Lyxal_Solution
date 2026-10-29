@@ -56,7 +56,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_time_string(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $require_seconds: bool
 ) -> string {

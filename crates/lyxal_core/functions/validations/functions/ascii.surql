@@ -79,7 +79,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_ascii(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $trim_value: bool,
     $allow_blank: bool

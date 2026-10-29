@@ -23,7 +23,7 @@
 --   - string::len()
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::validation_hmac_signature($value: option<any>, $field: string, $encoding: string, $expected_length: option<int>) -> string {
+DEFINE FUNCTION OVERWRITE fn::validation_hmac_signature($value: any, $field: string, $encoding: string, $expected_length: option<int>) -> string {
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     LET $clean_encoding = string::lowercase(string::trim($encoding));

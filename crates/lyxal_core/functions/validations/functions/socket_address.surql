@@ -67,7 +67,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_socket_address(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_hostname: bool,
     $allow_ipv4: bool,
@@ -103,7 +103,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_socket_address(
 
     LET $is_bracketed_ipv6 = string::matches(
         $clean_value,
-        "^\[[^\]]+\]:[0-9]+$"
+        "^\\[[^\\]]+\\]:[0-9]+$"
     );
 
     IF $is_bracketed_ipv6 {

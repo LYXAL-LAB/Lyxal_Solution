@@ -53,7 +53,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_totp_code(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $digits: int
 ) -> string {

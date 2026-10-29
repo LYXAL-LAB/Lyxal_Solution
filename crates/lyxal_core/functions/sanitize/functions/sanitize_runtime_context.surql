@@ -13,7 +13,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_runtime_context(
     $options: option<object>
 ) -> object {
     LET $m = string::lowercase(string::trim($mode));
-    IF !array::contains(["strict","permissive","silent"],$m) {
+    IF !((["strict","permissive","silent"]) CONTAINS ($m)) {
         THROW "SANITIZE_RUNTIME_INVALID_MODE";
     };
     RETURN {

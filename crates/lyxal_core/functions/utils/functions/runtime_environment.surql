@@ -13,10 +13,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_runtime_environment(
 ) -> object {
     LET $clean_name = string::lowercase(string::trim($name));
 
-    IF !array::contains(
-        ["development","test","staging","production"],
-        $clean_name
-    ) {
+    IF !((["development","test","staging","production"]) CONTAINS ($clean_name)) {
         THROW "UTILS_INVALID_RUNTIME_ENVIRONMENT";
     };
 

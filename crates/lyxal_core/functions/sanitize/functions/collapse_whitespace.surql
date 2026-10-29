@@ -48,7 +48,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::sanitize_collapse_whitespace(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> string {
     LET $clean_field = string::trim($field);
@@ -78,7 +78,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_collapse_whitespace(
     RETURN string::trim(
         string::replace(
             $value,
-            <regex>"\s+",
+            <regex>"\\s+",
             " "
         )
     );

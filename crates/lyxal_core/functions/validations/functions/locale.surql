@@ -82,7 +82,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_locale(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $require_region: bool
 ) -> string {

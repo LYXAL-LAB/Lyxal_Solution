@@ -30,7 +30,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_bic(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allowed_countries: option<array<string>>
 ) -> string {
@@ -54,7 +54,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_bic(
             $allowed_countries,
             |$code| string::uppercase(string::trim($code))
         );
-        IF !array::contains($allowed, $country) {
+        IF !(($allowed) CONTAINS ($country)) {
             THROW string::concat($clean_field, "_BIC_COUNTRY_NOT_ALLOWED");
         };
     };

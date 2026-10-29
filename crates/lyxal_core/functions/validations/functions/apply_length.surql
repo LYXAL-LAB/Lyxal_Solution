@@ -54,7 +54,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_apply_length(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_length: option<int>,
     $max_length: option<int>

@@ -47,7 +47,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::sanitize_trim_left(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> string {
     LET $clean_field = string::trim($field);
@@ -76,7 +76,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_trim_left(
 
     RETURN string::replace(
         $value,
-        <regex>"^\s+",
+        <regex>"^\\s+",
         ""
     );
 }

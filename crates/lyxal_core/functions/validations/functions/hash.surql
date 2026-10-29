@@ -4,12 +4,12 @@
 -- ============================================================================
 -- Fonction : fn::validation_hash
 DEFINE FUNCTION OVERWRITE fn::validation_hash(
-    $value: option<any>, $field: string, $algorithm: string
+    $value: any, $field: string, $algorithm: string
 ) -> string {
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     LET $algo = string::lowercase(string::trim($algorithm));
-    IF !array::contains(["md5", "sha1", "sha256", "sha384", "sha512"], $algo) {
+    IF !((["md5", "sha1", "sha256", "sha384", "sha512"]) CONTAINS ($algo)) {
         THROW "VALIDATION_UNSUPPORTED_HASH_ALGORITHM";
     };
     IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };

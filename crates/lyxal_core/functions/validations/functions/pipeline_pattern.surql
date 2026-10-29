@@ -52,7 +52,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_pipeline_pattern(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $pattern: string
 ) -> any {

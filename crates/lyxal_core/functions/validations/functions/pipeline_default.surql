@@ -50,7 +50,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_pipeline_default(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $default_value: any
 ) -> any {

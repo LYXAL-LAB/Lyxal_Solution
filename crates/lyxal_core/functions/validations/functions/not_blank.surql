@@ -552,7 +552,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_not_blank(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> string {
 

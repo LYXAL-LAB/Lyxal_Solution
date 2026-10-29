@@ -53,7 +53,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_time_of_day(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> int {
     LET $clean_field = string::trim($field);

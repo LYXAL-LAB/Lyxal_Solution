@@ -13,7 +13,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_array_intersect(
     RETURN array::distinct(
         array::filter(
             $left,
-            |$item| array::contains($right,$item)
+            |$item| (($right) CONTAINS ($item))
         )
     );
 }

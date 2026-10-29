@@ -4,7 +4,7 @@
 -- ============================================================================
 -- Fonction : fn::validation_base64
 DEFINE FUNCTION OVERWRITE fn::validation_base64(
-    $value: option<any>, $field: string, $url_safe: bool, $require_padding: bool
+    $value: any, $field: string, $url_safe: bool, $require_padding: bool
 ) -> string {
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };

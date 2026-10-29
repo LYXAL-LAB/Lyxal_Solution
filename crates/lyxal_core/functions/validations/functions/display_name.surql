@@ -52,7 +52,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_display_name(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_length: int,
     $max_length: int,
@@ -96,7 +96,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_display_name(
     LET $pattern = IF $allow_emoji {
         "^[^\r\n\t]+$"
     } ELSE {
-        "^[\p{L}\p{M}\p{N} ._'\-]+$"
+        "^[\\p{L}\\p{M}\\p{N} ._'\\-]+$"
     };
 
     IF !string::matches($clean_value, $pattern) {

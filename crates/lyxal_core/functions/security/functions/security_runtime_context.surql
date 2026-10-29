@@ -13,7 +13,7 @@ DEFINE FUNCTION OVERWRITE fn::security_runtime_context(
     $options:option<object>
 )->object{
  LET $m=string::lowercase(string::trim($mode));
- IF !array::contains(["enforce","observe","silent"],$m){THROW "SECURITY_RUNTIME_INVALID_MODE";};
+ IF !((["enforce","observe","silent"]) CONTAINS ($m)){THROW "SECURITY_RUNTIME_INVALID_MODE";};
  RETURN {
   schema_name:string::lowercase(string::trim($schema_name)),
   schema_version:fn::security_schema_version($schema_version),

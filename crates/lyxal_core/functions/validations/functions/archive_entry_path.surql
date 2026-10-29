@@ -60,7 +60,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_archive_entry_path(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $max_length: int
 ) -> string {
@@ -97,9 +97,9 @@ DEFINE FUNCTION OVERWRITE fn::validation_archive_entry_path(
     };
 
     IF string::starts_with($clean_value, "/")
-        OR string::starts_with($clean_value, "\")
+        OR string::starts_with($clean_value, "\\")
         OR string::contains($clean_value, "..")
-        OR string::contains($clean_value, "\")
+        OR string::contains($clean_value, "\\")
         OR string::contains($clean_value, "//")
         OR string::matches($clean_value, "^[A-Za-z]:")
     {

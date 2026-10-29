@@ -62,7 +62,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_checksum(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $algorithm: string
 ) -> string {

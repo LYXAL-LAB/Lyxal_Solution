@@ -49,7 +49,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_array_unique(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> array {
     LET $clean_field = string::trim($field);

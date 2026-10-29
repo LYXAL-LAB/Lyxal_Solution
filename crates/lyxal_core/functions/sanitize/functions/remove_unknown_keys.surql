@@ -13,7 +13,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_remove_unknown_keys(
     RETURN object::from_entries(
         array::filter(
             object::entries($value),
-            |$entry| array::contains($allowed_keys,$entry[0])
+            |$entry| (($allowed_keys) CONTAINS ($entry[0]))
         )
     );
 }

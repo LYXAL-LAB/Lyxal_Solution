@@ -64,7 +64,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_hostname(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_single_label: bool
 ) -> string {

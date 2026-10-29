@@ -67,7 +67,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_allowed_types(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allowed_types: array<string>
 ) -> any {
@@ -103,7 +103,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_allowed_types(
 
     LET $actual_type = string::lowercase(type::of($value));
 
-    IF !array::contains($clean_allowed_types, $actual_type) {
+    IF !(($clean_allowed_types) CONTAINS ($actual_type)) {
         THROW string::concat($clean_field, "_TYPE_NOT_ALLOWED");
     };
 

@@ -63,7 +63,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_cidr(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_ipv4: bool,
     $allow_ipv6: bool

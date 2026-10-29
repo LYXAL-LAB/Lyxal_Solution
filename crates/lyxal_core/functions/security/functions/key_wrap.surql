@@ -13,7 +13,7 @@ DEFINE FUNCTION OVERWRITE fn::security_key_wrap(
 ) -> object {
     LET $algo = string::lowercase(string::trim($algorithm));
 
-    IF !array::contains(["aes-kw","aes-256-gcm"],$algo) {
+    IF !((["aes-kw","aes-256-gcm"]) CONTAINS ($algo)) {
         THROW "SECURITY_UNSUPPORTED_KEY_WRAP_ALGORITHM";
     };
 

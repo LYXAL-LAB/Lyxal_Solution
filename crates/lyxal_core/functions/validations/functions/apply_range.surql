@@ -53,10 +53,10 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_apply_range(
-    $value: option<any>,
+    $value: any,
     $field: string,
-    $min_value: option<any>,
-    $max_value: option<any>
+    $min_value: any,
+    $max_value: any
 ) -> any {
     LET $clean_field = string::trim($field);
 

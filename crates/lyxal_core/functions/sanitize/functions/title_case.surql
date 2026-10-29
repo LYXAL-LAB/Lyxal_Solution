@@ -48,7 +48,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::sanitize_title_case(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> string {
     LET $clean_field = string::trim($field);

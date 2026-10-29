@@ -63,7 +63,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_workflow_delay(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_delay: duration,
     $max_delay: duration,

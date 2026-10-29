@@ -7,7 +7,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::sanitize_step(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> object {
     LET $clean_field = string::trim($field);
@@ -19,11 +19,11 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_step(
         THROW string::concat($clean_field, "_INVALID_SANITIZE_STEP");
     };
     LET $rule = string::lowercase(string::trim($value.rule));
-    IF !array::contains([
+    IF !(([
         "trim","lowercase","uppercase","capitalize","title_case",
         "collapse_whitespace","remove_control_chars","normalize_unicode",
         "slug","safe_identifier","default"
-    ], $rule) {
+    ]) CONTAINS ($rule)) {
         THROW string::concat($clean_field, "_UNKNOWN_SANITIZE_RULE");
     };
     RETURN {

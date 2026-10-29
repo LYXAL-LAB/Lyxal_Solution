@@ -60,7 +60,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_execution_priority(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_priority: int,
     $max_priority: int

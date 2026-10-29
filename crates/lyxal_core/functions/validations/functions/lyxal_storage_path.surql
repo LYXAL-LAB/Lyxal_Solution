@@ -65,7 +65,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_lyxal_storage_path(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $required_root: option<string>,
     $allow_file_extension: bool,
@@ -107,7 +107,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_lyxal_storage_path(
         OR string::ends_with($clean_value, "/")
         OR string::contains($clean_value, "//")
         OR string::contains($clean_value, "..")
-        OR string::contains($clean_value, "\")
+        OR string::contains($clean_value, "\\")
         OR !string::matches(
             $clean_value,
             "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
@@ -122,7 +122,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_lyxal_storage_path(
     IF !$allow_file_extension
         AND string::matches(
             $clean_value,
-            "(?:^|/)[^/]+\.[A-Za-z0-9]+$"
+            "(?:^|/)[^/]+\\.[A-Za-z0-9]+$"
         )
     {
         THROW string::concat(

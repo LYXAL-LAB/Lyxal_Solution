@@ -7,7 +7,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::sanitize_array(
-    $value: option<any>
+    $value: any
 ) -> array<any> {
     IF $value IS NONE OR type::is_null($value) {
         RETURN [];

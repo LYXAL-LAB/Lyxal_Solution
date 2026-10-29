@@ -66,7 +66,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_surql_record_string(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $expected_table: option<string>
 ) -> string {

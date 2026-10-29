@@ -58,8 +58,8 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_compare(
-    $left: option<any>,
-    $right: option<any>,
+    $left: any,
+    $right: any,
     $field: string,
     $operator: string
 ) -> object {
@@ -78,7 +78,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_compare(
     );
 
     LET $valid = IF $clean_operator = "eq" {
-        $left = $right
+        $left == $right
     } ELSE IF $clean_operator = "neq" {
         $left != $right
     } ELSE IF $clean_operator = "gt" {

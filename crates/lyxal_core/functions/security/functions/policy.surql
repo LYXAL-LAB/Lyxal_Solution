@@ -20,7 +20,7 @@ DEFINE FUNCTION OVERWRITE fn::security_policy(
         THROW "SECURITY_INVALID_POLICY_VERSION";
     };
 
-    IF !array::contains(["allow","deny"],$effect) {
+    IF !((["allow","deny"]) CONTAINS ($effect)) {
         THROW "SECURITY_INVALID_POLICY_DEFAULT_EFFECT";
     };
 

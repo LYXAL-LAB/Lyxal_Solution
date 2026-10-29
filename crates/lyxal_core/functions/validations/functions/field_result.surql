@@ -8,7 +8,7 @@
 
 DEFINE FUNCTION OVERWRITE fn::validation_field_result(
     $field: string,
-    $value: option<any>,
+    $value: any,
     $errors: array<object>,
     $warnings: array<object>
 ) -> object {

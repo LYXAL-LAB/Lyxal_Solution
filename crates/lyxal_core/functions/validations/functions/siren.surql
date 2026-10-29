@@ -30,7 +30,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_siren(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> string {
     RETURN fn::validation_luhn($value, $field, 9, 9);

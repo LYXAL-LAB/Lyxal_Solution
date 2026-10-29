@@ -30,7 +30,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_ape_naf_code(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> string {
     LET $clean_field = string::trim($field);

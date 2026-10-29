@@ -24,7 +24,7 @@
 --   - array::contains()
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::validation_content_type($value: option<any>, $field: string, $allowed_media_types: option<array<string>>) -> string {
+DEFINE FUNCTION OVERWRITE fn::validation_content_type($value: any, $field: string, $allowed_media_types: option<array<string>>) -> string {
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
@@ -39,7 +39,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_content_type($value: option<any>, $fiel
     IF $allowed_media_types IS NOT NONE {
         IF array::len($allowed_media_types) = 0 { THROW "VALIDATION_EMPTY_ALLOWED_MEDIA_TYPES"; };
         LET $allowed = array::map($allowed_media_types, |$item| string::lowercase(string::trim($item)));
-        IF !array::contains($allowed, $media_type) { THROW string::concat($clean_field, "_MEDIA_TYPE_NOT_ALLOWED"); };
+        IF !(($allowed) CONTAINS ($media_type)) { THROW string::concat($clean_field, "_MEDIA_TYPE_NOT_ALLOWED"); };
     };
     RETURN $normalized;
 }

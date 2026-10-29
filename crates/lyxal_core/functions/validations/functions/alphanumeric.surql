@@ -76,7 +76,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_alphanumeric(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $trim_value: bool
 ) -> string {

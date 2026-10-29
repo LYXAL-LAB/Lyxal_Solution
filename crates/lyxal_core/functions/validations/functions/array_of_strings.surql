@@ -446,7 +446,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_array_of_strings(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_empty: bool,
     $min_length: option<int>,

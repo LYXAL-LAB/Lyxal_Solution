@@ -53,7 +53,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_pipeline_definition(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $max_steps: int
 ) -> array<object> {

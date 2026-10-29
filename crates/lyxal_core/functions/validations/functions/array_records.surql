@@ -66,7 +66,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_array_records(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $expected_table: option<string>
 ) -> array<record> {

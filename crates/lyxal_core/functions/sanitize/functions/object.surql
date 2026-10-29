@@ -7,7 +7,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::sanitize_object(
-    $value: option<any>
+    $value: any
 ) -> object {
     IF $value IS NONE OR type::is_null($value) {
         RETURN {};

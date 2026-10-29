@@ -5,7 +5,7 @@
 -- Statut   : Stable
 -- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::validation_runtime_execute_field(
- $compiled_schema:object,$field:string,$value:option<any>,$max_steps:int
+ $compiled_schema:object,$field:string,$value:any,$max_steps:int
 ) -> object {
  LET $result=fn::validation_compiled_execute_field($compiled_schema,$field,$value,$max_steps);
  RETURN {field:$field,valid:true,value:$result,errors:[],warnings:[]};

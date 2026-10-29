@@ -55,7 +55,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_record_id(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allowed_tables: option<array<string>>
 ) -> record {
@@ -98,7 +98,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_record_id(
     };
 
     IF $clean_tables IS NOT NONE
-        AND !array::contains($clean_tables, record::tb($value))
+        AND !(($clean_tables) CONTAINS (record::tb($value)))
     {
         THROW string::concat(
             $clean_field,

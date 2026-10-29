@@ -538,7 +538,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_geometry(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allowed_types: option<array<string>>,
     $require_valid: bool
@@ -605,10 +605,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_geometry(
 
         LET $all_configured_types_are_valid = array::all(
             $clean_allowed_types,
-            |$geometry_type| array::contains(
-                $allowed_geometry_type_names,
-                $geometry_type
-            )
+            |$geometry_type| (($allowed_geometry_type_names) CONTAINS ($geometry_type))
         );
 
         IF !$all_configured_types_are_valid {
@@ -698,10 +695,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_geometry(
     -- ------------------------------------------------------------------------
 
     IF $clean_allowed_types IS NOT NONE
-        AND !array::contains(
-            $clean_allowed_types,
-            $short_geometry_type
-        )
+        AND !(($clean_allowed_types) CONTAINS ($short_geometry_type))
     {
         THROW string::concat(
             $clean_field,

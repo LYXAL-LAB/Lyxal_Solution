@@ -622,8 +622,8 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_time_range(
-    $start_value: option<any>,
-    $end_value: option<any>,
+    $start_value: any,
+    $end_value: any,
     $field: string,
     $allow_zero_duration: bool,
     $min_duration: option<duration>,

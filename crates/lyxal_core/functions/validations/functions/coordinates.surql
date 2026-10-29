@@ -81,8 +81,8 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_coordinates(
-    $latitude: option<any>,
-    $longitude: option<any>,
+    $latitude: any,
+    $longitude: any,
     $field: string
 ) -> object {
     LET $clean_field = string::trim($field);

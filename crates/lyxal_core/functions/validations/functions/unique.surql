@@ -476,11 +476,11 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_unique(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $target_table: string,
     $target_field: string,
-    $exclude_record: option<any>
+    $exclude_record: any
 ) -> any {
 
     -- ------------------------------------------------------------------------

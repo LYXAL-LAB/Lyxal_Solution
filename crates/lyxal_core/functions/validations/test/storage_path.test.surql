@@ -54,7 +54,7 @@ RETURN fn::validation_storage_path(
 -- Erreur attendue : STORAGE_PATH_INVALID_STORAGE_PATH
 -- ============================================================================
 RETURN fn::validation_storage_path(
-    "modules\scheduler\file.surql",
+    "modules\\scheduler\\file.surql",
     "STORAGE_PATH",
     false,
     false,

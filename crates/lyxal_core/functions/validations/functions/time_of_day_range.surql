@@ -60,8 +60,8 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_time_of_day_range(
-    $start_minute: option<any>,
-    $end_minute: option<any>,
+    $start_minute: any,
+    $end_minute: any,
     $field: string,
     $allow_overnight: bool,
     $allow_zero_duration: bool

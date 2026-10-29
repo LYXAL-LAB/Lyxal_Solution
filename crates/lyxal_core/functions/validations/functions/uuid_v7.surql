@@ -55,7 +55,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_uuid_v7(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_string: bool
 ) -> any {

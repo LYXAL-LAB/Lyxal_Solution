@@ -9,8 +9,8 @@
 DEFINE FUNCTION OVERWRITE fn::security_debug_trace(
     $field: string,
     $rule: string,
-    $input: option<any>,
-    $output: option<any>,
+    $input: any,
+    $output: any,
     $finding: option<object>,
     $decision: option<object>,
     $started_at: datetime,

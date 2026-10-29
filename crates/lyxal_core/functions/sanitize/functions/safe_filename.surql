@@ -6,7 +6,7 @@
 -- Statut   : Stable
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_safe_filename($value:option<any>,$field:string,$replacement:string)->string{
+DEFINE FUNCTION OVERWRITE fn::sanitize_safe_filename($value:any,$field:string,$replacement:string)->string{
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
@@ -15,7 +15,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_safe_filename($value:option<any>,$field:s
 
  LET $r=IF $replacement=""{"_"}ELSE{$replacement};
  LET $v=string::trim($value);
- LET $v=string::replace($v,<regex>"[<>:\"/\\|?*\x00-\x1F]",$r);
+ LET $v=string::replace($v,<regex>"[<>:\"/\\\\|?*\\x00-\\x1F]",$r);
  LET $v=string::replace($v,<regex>"[. ]+$","");
  RETURN $v;
 }

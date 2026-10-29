@@ -58,7 +58,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_iso8601(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_fractional_seconds: bool
 ) -> string {
@@ -87,7 +87,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_iso8601(
     };
 
     LET $pattern = IF $allow_fractional_seconds {
-        "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+        "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
     } ELSE {
         "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(Z|[+-][0-9]{2}:[0-9]{2})$"
     };

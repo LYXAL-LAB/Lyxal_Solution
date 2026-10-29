@@ -84,7 +84,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_reserved_words(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $reserved_words: array<string>,
     $trim_value: bool

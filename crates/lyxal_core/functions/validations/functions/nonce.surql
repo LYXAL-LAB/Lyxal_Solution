@@ -57,7 +57,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_nonce(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_length: int,
     $max_length: int

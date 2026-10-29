@@ -8,7 +8,7 @@
 
 DEFINE FUNCTION OVERWRITE fn::utils_first_not_none(
     $values: array<any>
-) -> option<any> {
+) -> any {
     LET $matches = array::filter(
         $values,
         |$value|$value IS NOT NONE

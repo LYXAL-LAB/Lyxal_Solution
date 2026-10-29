@@ -30,10 +30,10 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_rib_fr(
-    $bank_code: option<any>,
-    $branch_code: option<any>,
-    $account_number: option<any>,
-    $rib_key: option<any>,
+    $bank_code: any,
+    $branch_code: any,
+    $account_number: any,
+    $rib_key: any,
     $field: string
 ) -> object {
     LET $clean_field = string::trim($field);

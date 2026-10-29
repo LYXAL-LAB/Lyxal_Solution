@@ -60,7 +60,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_content_disposition_filename(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $max_length: int
 ) -> string {
@@ -97,11 +97,10 @@ DEFINE FUNCTION OVERWRITE fn::validation_content_disposition_filename(
     };
 
     IF string::contains($clean_value, "/")
-        OR string::contains($clean_value, "\")
-        OR string::contains($clean_value, """)
-        OR string::contains($clean_value, "")
-        OR string::contains($clean_value, "
-")
+        OR string::contains($clean_value, "\\")
+        OR string::contains($clean_value, "\"")
+        OR string::contains($clean_value, "\r")
+        OR string::contains($clean_value, "\n")
         OR string::starts_with($clean_value, ".")
         OR string::ends_with($clean_value, ".")
     {

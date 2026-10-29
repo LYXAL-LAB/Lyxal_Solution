@@ -82,7 +82,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_currency_code(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allowed_codes: option<array<string>>
 ) -> string {
@@ -136,7 +136,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_currency_code(
             THROW "VALIDATION_INVALID_ALLOWED_CURRENCY";
         };
 
-        IF !array::contains($clean_allowed, $currency_code) {
+        IF !(($clean_allowed) CONTAINS ($currency_code)) {
             THROW string::concat(
                 $clean_field,
                 "_CURRENCY_NOT_ALLOWED"

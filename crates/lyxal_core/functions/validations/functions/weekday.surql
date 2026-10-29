@@ -60,7 +60,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_weekday(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allowed_days: option<array<int>>
 ) -> int {
@@ -97,7 +97,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_weekday(
     };
 
     IF $allowed_days IS NOT NONE
-        AND !array::contains($allowed_days, $value)
+        AND !(($allowed_days) CONTAINS ($value))
     {
         THROW string::concat($clean_field, "_WEEKDAY_NOT_ALLOWED");
     };

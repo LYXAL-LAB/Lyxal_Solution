@@ -62,7 +62,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_business_day(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $holidays: option<array<datetime>>
 ) -> datetime {
@@ -104,7 +104,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_business_day(
     };
 
     IF $holidays IS NOT NONE
-        AND array::contains($holidays, $value)
+        AND (($holidays) CONTAINS ($value))
     {
         THROW string::concat($clean_field, "_HOLIDAY_NOT_ALLOWED");
     };

@@ -68,7 +68,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_cron_expression(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_seconds: bool,
     $allow_macros: bool
@@ -107,10 +107,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_cron_expression(
             );
         };
 
-        IF !array::contains(
-            ["@yearly", "@annually", "@monthly", "@weekly", "@daily", "@midnight", "@hourly"],
-            $cron
-        ) {
+        IF !((["@yearly", "@annually", "@monthly", "@weekly", "@daily", "@midnight", "@hourly"]) CONTAINS ($cron)) {
             THROW string::concat(
                 $clean_field,
                 "_INVALID_CRON_EXPRESSION"

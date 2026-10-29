@@ -5,7 +5,7 @@
 -- Fonction : fn::validation_identifier
 -- Valide un identifiant ASCII : lettre ou _ au début, puis lettres, chiffres ou _.
 DEFINE FUNCTION OVERWRITE fn::validation_identifier(
-    $value: option<any>, $field: string, $min_length: int, $max_length: int
+    $value: any, $field: string, $min_length: int, $max_length: int
 ) -> string {
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };

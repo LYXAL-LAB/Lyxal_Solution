@@ -60,7 +60,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_totp_secret(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_length: int,
     $max_length: int

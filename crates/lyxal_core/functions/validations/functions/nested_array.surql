@@ -7,7 +7,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_nested_array(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $item_schema: object,
     $min_items: option<int>,

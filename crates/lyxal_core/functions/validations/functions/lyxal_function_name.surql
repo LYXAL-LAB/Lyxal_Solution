@@ -63,7 +63,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_lyxal_function_name(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $require_namespace: bool,
     $max_length: int

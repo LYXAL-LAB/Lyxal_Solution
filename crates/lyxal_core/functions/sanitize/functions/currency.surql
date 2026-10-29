@@ -6,7 +6,7 @@
 -- Statut   : Stable
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_currency($value:option<any>,$field:string,$decimal_separator:string)->string{
+DEFINE FUNCTION OVERWRITE fn::sanitize_currency($value:any,$field:string,$decimal_separator:string)->string{
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
@@ -14,7 +14,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_currency($value:option<any>,$field:string
     IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
 
  LET $v=string::trim($value);
- LET $v=string::replace($v,<regex>"[€$£¥A-Za-z\s]","");
+ LET $v=string::replace($v,<regex>"[€$£¥A-Za-z\\s]","");
  RETURN fn::sanitize_float($v,$field,$decimal_separator);
 }
 COMMENT "Retire les symboles et libellés monétaires d'un montant textuel."

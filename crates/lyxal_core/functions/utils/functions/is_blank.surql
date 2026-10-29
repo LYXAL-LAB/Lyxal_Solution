@@ -7,7 +7,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::utils_is_blank(
-    $value: option<any>
+    $value: any
 ) -> bool {
     RETURN $value IS NONE
         OR type::is_null($value)

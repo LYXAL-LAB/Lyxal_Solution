@@ -51,7 +51,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_apply_type(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $expected_type: option<string>
 ) -> any {

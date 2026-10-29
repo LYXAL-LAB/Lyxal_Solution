@@ -49,7 +49,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_birthdate(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_today: bool
 ) -> datetime {

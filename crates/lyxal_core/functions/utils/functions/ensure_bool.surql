@@ -7,7 +7,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::utils_ensure_bool(
-    $value: option<any>,
+    $value: any,
     $default_value: bool
 ) -> bool {
     IF $value IS NONE OR type::is_null($value) {

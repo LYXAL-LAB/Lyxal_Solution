@@ -12,7 +12,7 @@ DEFINE FUNCTION OVERWRITE fn::security_redact_array(
 ) -> array<any> {
     RETURN array::map(
         $value,
-        |$item,$index| IF array::contains($indexes,$index) {
+        |$item,$index| IF (($indexes) CONTAINS ($index)) {
             "***REDACTED***"
         } ELSE {
             $item

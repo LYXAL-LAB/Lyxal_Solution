@@ -62,7 +62,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_money(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_value: option<decimal>,
     $max_value: option<decimal>,

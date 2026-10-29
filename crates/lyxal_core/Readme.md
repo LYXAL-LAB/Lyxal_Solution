@@ -1,6 +1,6 @@
 # Lyxal Core
 
-> Bibliothèque standard de Lyxal OS
+> Bibliothèque standard de Lyxal OS (SurrealDB 3.2.0)
 
 ---
 
@@ -29,13 +29,24 @@ Son rôle est de fournir des briques techniques réutilisables afin d'éviter la
 
 # Architecture
 
-```
+```text
 lyxal_core/
-
-├── validation/
-├── sanitize/
-├── security/
-└── utils/
+├── manifest.toml
+├── README.md
+├── CHANGELOG.md
+└── functions/
+    ├── validations/
+    │   ├── functions/   (339 fonctions)
+    │   └── test/        (339 fichiers de tests)
+    ├── sanitize/
+    │   ├── functions/   (170 fonctions)
+    │   └── tests/       (170 fichiers de tests)
+    ├── security/
+    │   ├── functions/   (170 fonctions)
+    │   └── tests/       (170 fichiers de tests)
+    └── utils/
+        ├── functions/   (120 fonctions)
+        └── tests/       (120 fichiers de tests)
 ```
 
 Chaque dossier représente une bibliothèque indépendante.
@@ -46,9 +57,9 @@ Tous les modules Lyxal peuvent les utiliser.
 
 ---
 
-# Validation
+# Validations (`functions/validations/`)
 
-Le dossier **validation** regroupe les fonctions permettant de vérifier qu'une donnée respecte un contrat.
+Le dossier **validations** regroupe les fonctions permettant de vérifier qu'une donnée respecte un contrat.
 
 Exemples :
 
@@ -60,7 +71,7 @@ Exemples :
 - validation des tableaux
 - validation des objets
 - validation des dates
-- validation métier
+- validation des octets (`bytes`)
 
 Ces fonctions ne modifient jamais les données.
 
@@ -68,7 +79,7 @@ Elles vérifient uniquement leur conformité.
 
 ---
 
-# Sanitize
+# Sanitize (`functions/sanitize/`)
 
 Le dossier **sanitize** contient les fonctions de normalisation.
 
@@ -90,9 +101,9 @@ Ces fonctions transforment une donnée afin qu'elle soit exploitable.
 
 ---
 
-# Security
+# Security (`functions/security/`)
 
-Le dossier **security** fournit les fonctions de sécurité.
+Le dossier **security** fournit les fonctions de sécurité et les descripteurs de politiques.
 
 Il comprend notamment :
 
@@ -108,12 +119,11 @@ Il comprend notamment :
 - validation de politiques
 - helpers de sécurité
 
-Les opérations cryptographiques lourdes sont réalisées par le moteur Rust
-**lyxal_security_native_rust**.
+Les opérations cryptographiques natives (AES-256-GCM, SHA-256, BLAKE3, Argon2id, HMAC-SHA256, HKDF-SHA256) sont réalisées par le crate Rust fondamental **`lyxal_crypto`**.
 
 ---
 
-# Utils
+# Utils (`functions/utils/`)
 
 Le dossier **utils** contient les fonctions techniques génériques.
 
@@ -126,7 +136,7 @@ Il comprend notamment :
 - dates
 - collections
 - comparaisons
-- conversions
+- conversions (hexadécimal, URI RFC 3986)
 - cache
 - runtime
 - pipelines
@@ -138,7 +148,7 @@ Ces fonctions peuvent être utilisées dans tous les modules Lyxal.
 
 # Modules utilisant Lyxal Core
 
-Le Core est utilisé par tous les modules système :
+Le Core est utilisé par tous les modules système et métiers :
 
 - Lyxal Auth
 - Lyxal Scheduler
@@ -146,11 +156,9 @@ Le Core est utilisé par tous les modules système :
 - Lyxal Storage
 - Lyxal Error
 - Lyxal Webhook
-- Lyxal RTC
-- Lyxal PDF
-- Lyxal Image
-- Lyxal Photo
-- Lyxal Workflow
+- Lyxal Catalogue
+- Lyxal Pipeline Ingestion
+- Lyxal Booking
 - ...
 
 ---
@@ -170,24 +178,24 @@ Le Core ne fournit que des briques techniques génériques.
 
 ---
 
-# Statistiques
+# Statistiques (Validées sur SurrealDB 3.2.0)
 
-## Validation
+## Validations (`functions/validations/`)
 
-- 300 fonctions
-- 300 fichiers de tests
+- 339 fonctions
+- 339 fichiers de tests
 
-## Sanitize
-
-- 170 fonctions
-- 170 fichiers de tests
-
-## Security
+## Sanitize (`functions/sanitize/`)
 
 - 170 fonctions
 - 170 fichiers de tests
 
-## Utils
+## Security (`functions/security/`)
+
+- 170 fonctions
+- 170 fichiers de tests
+
+## Utils (`functions/utils/`)
 
 - 120 fonctions
 - 120 fichiers de tests
@@ -198,23 +206,22 @@ Le Core ne fournit que des briques techniques génériques.
 
 Le Core comprend actuellement :
 
-- **760 fonctions SurrealQL**
-- **760 fichiers de tests**
-- **76 lots**
+- **799 fonctions SurrealQL** (100 % validées sur **SurrealDB 3.2.0**)
+- **799 fichiers de tests** (parité stricte 1:1)
 
 Chaque fonction est fournie avec :
 
 - un fichier `.surql`
-- un fichier `.test.surql`
+- un fichier de test `.surql` / `.test.surql`
 
 ---
 
 # Convention
 
-Toutes les fonctions sont déclarées sous la forme :
+Toutes les fonctions de la bibliothèque standard `lyxal_core` sont déclarées sous la forme :
 
 ```surql
-DEFINE FUNCTION fn::<nom>()
+DEFINE FUNCTION OVERWRITE fn::<domaine>_<nom>(...) -> <type>
 ```
 
 Chaque fonction :

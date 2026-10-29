@@ -69,7 +69,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_tuple_types(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $expected_types: array<string>
 ) -> array {

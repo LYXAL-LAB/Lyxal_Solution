@@ -59,7 +59,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_public_key_pem(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $max_length: int
 ) -> string {

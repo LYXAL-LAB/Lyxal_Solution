@@ -66,7 +66,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_origin(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_http: bool,
     $allow_https: bool,
@@ -139,7 +139,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_origin(
     };
 
     LET $has_explicit_port =
-        string::matches($authority, "^\[[^\]]+\]:[0-9]+$")
+        string::matches($authority, "^\\[[^\\]]+\\]:[0-9]+$")
         OR string::matches($authority, "^[^:]+:[0-9]+$");
 
     IF !$allow_port AND $has_explicit_port {

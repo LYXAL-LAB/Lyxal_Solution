@@ -7,7 +7,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_validator_capability(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> string {
     LET $clean_field = string::trim($field);
@@ -20,8 +20,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_validator_capability(
 
     LET $capability = string::lowercase(string::trim($value));
 
-    IF !array::contains(
-        [
+    IF !(([
             "presence",
             "type",
             "format",
@@ -31,9 +30,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_validator_capability(
             "combinator",
             "schema",
             "report"
-        ],
-        $capability
-    ) {
+        ]) CONTAINS ($capability)) {
         THROW string::concat(
             $clean_field,
             "_INVALID_CAPABILITY"

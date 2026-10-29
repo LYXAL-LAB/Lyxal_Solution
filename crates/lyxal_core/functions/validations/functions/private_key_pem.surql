@@ -58,7 +58,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_private_key_pem(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_encrypted: bool,
     $max_length: int

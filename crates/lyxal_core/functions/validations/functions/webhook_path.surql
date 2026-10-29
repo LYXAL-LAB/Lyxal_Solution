@@ -62,7 +62,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_webhook_path(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_parameters: bool,
     $allow_wildcard: bool
@@ -120,11 +120,11 @@ DEFINE FUNCTION OVERWRITE fn::validation_webhook_path(
     };
 
     LET $pattern = IF $allow_parameters AND $allow_wildcard {
-        "^/(?:[A-Za-z0-9._-]+|:[A-Za-z_][A-Za-z0-9_]*|\*)(?:/(?:[A-Za-z0-9._-]+|:[A-Za-z_][A-Za-z0-9_]*|\*))*$"
+        "^/(?:[A-Za-z0-9._-]+|:[A-Za-z_][A-Za-z0-9_]*|\\*)(?:/(?:[A-Za-z0-9._-]+|:[A-Za-z_][A-Za-z0-9_]*|\\*))*$"
     } ELSE IF $allow_parameters {
         "^/(?:[A-Za-z0-9._-]+|:[A-Za-z_][A-Za-z0-9_]*)(?:/(?:[A-Za-z0-9._-]+|:[A-Za-z_][A-Za-z0-9_]*))*$"
     } ELSE IF $allow_wildcard {
-        "^/(?:[A-Za-z0-9._-]+|\*)(?:/(?:[A-Za-z0-9._-]+|\*))*$"
+        "^/(?:[A-Za-z0-9._-]+|\\*)(?:/(?:[A-Za-z0-9._-]+|\\*))*$"
     } ELSE {
         "^/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
     };

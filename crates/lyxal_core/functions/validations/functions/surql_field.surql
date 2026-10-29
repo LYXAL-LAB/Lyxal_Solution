@@ -61,7 +61,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_surql_field(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_id: bool,
     $max_length: int

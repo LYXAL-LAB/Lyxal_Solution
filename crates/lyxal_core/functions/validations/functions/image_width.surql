@@ -57,7 +57,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_image_width(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_width: int,
     $max_width: int

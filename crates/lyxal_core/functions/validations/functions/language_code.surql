@@ -84,7 +84,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_language_code(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_alpha3: bool,
     $allowed_codes: option<array<string>>
@@ -144,7 +144,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_language_code(
             THROW "VALIDATION_INVALID_ALLOWED_LANGUAGE_CODE";
         };
 
-        IF !array::contains($clean_allowed, $language_code) {
+        IF !(($clean_allowed) CONTAINS ($language_code)) {
             THROW string::concat(
                 $clean_field,
                 "_LANGUAGE_CODE_NOT_ALLOWED"

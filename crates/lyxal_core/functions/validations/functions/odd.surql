@@ -52,7 +52,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_odd(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> int {
     LET $clean_field = string::trim($field);

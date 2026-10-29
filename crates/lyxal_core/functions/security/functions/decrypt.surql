@@ -2,7 +2,7 @@
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
 -- Fonction : fn::security_decrypt
--- Version  : 1.0.0
+-- Version  : 1.0.1
 -- Statut   : Stable
 -- ============================================================================
 
@@ -16,10 +16,7 @@ DEFINE FUNCTION OVERWRITE fn::security_decrypt(
 ) -> object {
     LET $algo = string::lowercase(string::trim($algorithm));
 
-    IF !array::contains(
-        ["aes-256-gcm","chacha20-poly1305","xchacha20-poly1305"],
-        $algo
-    ) {
+    IF !(["aes-256-gcm"] CONTAINS $algo) {
         THROW "SECURITY_UNSUPPORTED_CIPHER";
     };
 
@@ -35,5 +32,5 @@ DEFINE FUNCTION OVERWRITE fn::security_decrypt(
         authentication_required: true
     };
 }
-COMMENT "Prépare un déchiffrement authentifié pour le moteur Rust."
+COMMENT "Prépare un déchiffrement authentifié AES-256-GCM pour le moteur Rust (lyxal_crypto)."
 PERMISSIONS FULL;

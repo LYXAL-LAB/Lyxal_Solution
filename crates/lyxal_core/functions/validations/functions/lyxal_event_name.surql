@@ -63,7 +63,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_lyxal_event_name(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_segments: int,
     $max_segments: int
@@ -103,7 +103,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_lyxal_event_name(
 
     IF !string::matches(
         $event_name,
-        "^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$"
+        "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*$"
     ) {
         THROW string::concat(
             $clean_field,

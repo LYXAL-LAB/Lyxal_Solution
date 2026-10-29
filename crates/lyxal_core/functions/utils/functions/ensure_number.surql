@@ -7,7 +7,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::utils_ensure_number(
-    $value: option<any>,
+    $value: any,
     $default_value: number
 ) -> number {
     RETURN IF $value IS NONE OR type::is_null($value) {

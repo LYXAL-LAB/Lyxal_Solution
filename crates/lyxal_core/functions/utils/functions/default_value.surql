@@ -7,7 +7,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::utils_default_value(
-    $value: option<any>,
+    $value: any,
     $default_value: any,
     $replace_null: bool
 ) -> any {

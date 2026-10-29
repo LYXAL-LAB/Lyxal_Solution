@@ -6,7 +6,7 @@
 -- Statut   : Stable
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_e164($value:option<any>,$field:string,$default_country_code:option<string>)->string{
+DEFINE FUNCTION OVERWRITE fn::sanitize_e164($value:any,$field:string,$default_country_code:option<string>)->string{
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };

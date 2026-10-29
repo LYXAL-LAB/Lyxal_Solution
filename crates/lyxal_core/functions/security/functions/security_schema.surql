@@ -13,7 +13,7 @@ DEFINE FUNCTION OVERWRITE fn::security_schema(
     $default_action:string
 )->object{
  LET $action=string::lowercase(string::trim($default_action));
- IF !array::contains(["allow","deny","review"],$action){THROW "SECURITY_INVALID_SCHEMA_DEFAULT_ACTION";};
+ IF !((["allow","deny","review"]) CONTAINS ($action)){THROW "SECURITY_INVALID_SCHEMA_DEFAULT_ACTION";};
  RETURN {
   name:string::lowercase(string::trim($name)),
   version:string::lowercase(string::trim($version)),

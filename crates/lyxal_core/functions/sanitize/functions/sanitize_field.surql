@@ -9,7 +9,7 @@
 DEFINE FUNCTION OVERWRITE fn::sanitize_field(
     $name: string,
     $pipeline: array<object>,
-    $default_value: option<any>,
+    $default_value: any,
     $nullable: bool
 ) -> object {
     LET $clean_name = string::trim($name);

@@ -13,7 +13,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_object_pick(
     RETURN object::from_entries(
         array::filter(
             object::entries($value),
-            |$entry| array::contains($keys,$entry[0])
+            |$entry| (($keys) CONTAINS ($entry[0]))
         )
     );
 }

@@ -52,7 +52,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_positive_number(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> number {
     LET $clean_field = string::trim($field);

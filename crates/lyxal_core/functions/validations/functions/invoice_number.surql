@@ -30,7 +30,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_invoice_number(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allowed_prefixes: option<array<string>>,
     $min_length: int,

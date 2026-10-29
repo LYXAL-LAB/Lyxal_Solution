@@ -49,7 +49,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_pipeline_trim(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> any {
     LET $clean_field = string::trim($field);

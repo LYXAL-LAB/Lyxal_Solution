@@ -54,7 +54,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_full_name(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_words: int,
     $max_words: int,
@@ -95,7 +95,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_full_name(
 
     IF !string::matches(
         $clean_value,
-        "^[\p{L}\p{M}]+(?:[ '\-][\p{L}\p{M}]+)*$"
+        "^[\\p{L}\\p{M}]+(?:[ '\\-][\\p{L}\\p{M}]+)*$"
     ) {
         THROW string::concat(
             $clean_field,

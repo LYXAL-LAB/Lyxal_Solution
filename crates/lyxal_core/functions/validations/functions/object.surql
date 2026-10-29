@@ -47,7 +47,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_object(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> object {
     LET $clean_field = string::trim($field);

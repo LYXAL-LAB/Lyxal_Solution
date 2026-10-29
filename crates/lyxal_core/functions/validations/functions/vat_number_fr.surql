@@ -30,7 +30,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_vat_number_fr(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $validate_numeric_key: bool
 ) -> object {

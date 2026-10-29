@@ -21,7 +21,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_schema(
     IF !string::matches($v,"^v[1-9][0-9]*$") {
         THROW "SANITIZE_INVALID_SCHEMA_VERSION";
     };
-    IF !array::contains(["allow","strip","reject"],$policy) {
+    IF !((["allow","strip","reject"]) CONTAINS ($policy)) {
         THROW "SANITIZE_INVALID_UNKNOWN_KEYS_POLICY";
     };
     IF object::is_empty($fields) { THROW "SANITIZE_EMPTY_SCHEMA"; };

@@ -55,7 +55,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_ipv4(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> string {
     LET $clean_field = string::trim($field);

@@ -61,7 +61,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_validate_object(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $schema: object,
     $allow_unknown_keys: bool
@@ -98,7 +98,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_validate_object(
     IF !$allow_unknown_keys
         AND !array::all(
             $value_keys,
-            |$key| array::contains($schema_keys, $key)
+            |$key| (($schema_keys) CONTAINS ($key))
         )
     {
         THROW string::concat($clean_field, "_UNKNOWN_KEY");

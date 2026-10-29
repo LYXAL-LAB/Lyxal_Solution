@@ -13,10 +13,7 @@ DEFINE FUNCTION OVERWRITE fn::security_key_generate(
 ) -> object {
     LET $algo = string::lowercase(string::trim($algorithm));
 
-    IF !array::contains(
-        ["aes-256-gcm","chacha20-poly1305","xchacha20-poly1305","ed25519","es256","es384"],
-        $algo
-    ) {
+    IF !((["aes-256-gcm","chacha20-poly1305","xchacha20-poly1305","ed25519","es256","es384"]) CONTAINS ($algo)) {
         THROW "SECURITY_UNSUPPORTED_KEY_ALGORITHM";
     };
 

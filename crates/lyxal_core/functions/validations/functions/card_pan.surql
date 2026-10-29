@@ -30,7 +30,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_card_pan(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allowed_networks: option<array<string>>
 ) -> object {
@@ -67,7 +67,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_card_pan(
             $allowed_networks,
             |$item| string::lowercase(string::trim($item))
         );
-        IF !array::contains($allowed, $network) {
+        IF !(($allowed) CONTAINS ($network)) {
             THROW string::concat(string::trim($field), "_NETWORK_NOT_ALLOWED");
         };
     };

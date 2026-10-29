@@ -428,7 +428,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_array_without_null(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> array {
 

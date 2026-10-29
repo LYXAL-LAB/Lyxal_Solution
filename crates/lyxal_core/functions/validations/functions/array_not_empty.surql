@@ -204,7 +204,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_array_not_empty(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> array {
 

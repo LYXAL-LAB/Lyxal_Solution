@@ -11,7 +11,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_compiled_field(
     $field: string
 ) -> array<object> {
     LET $clean_field = string::trim($field);
-    IF !array::contains(object::keys($compiled_schema.fields),$clean_field) {
+    IF !((object::keys($compiled_schema.fields)) CONTAINS ($clean_field)) {
         THROW "VALIDATION_COMPILED_FIELD_NOT_FOUND";
     };
     RETURN $compiled_schema.fields[$clean_field];

@@ -4,7 +4,7 @@
 -- ============================================================================
 -- Fonction : fn::validation_hexadecimal
 DEFINE FUNCTION OVERWRITE fn::validation_hexadecimal(
-    $value: option<any>, $field: string,
+    $value: any, $field: string,
     $min_length: option<int>, $max_length: option<int>, $allow_prefix: bool
 ) -> string {
     LET $clean_field = string::trim($field);

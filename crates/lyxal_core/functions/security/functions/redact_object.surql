@@ -20,10 +20,7 @@ DEFINE FUNCTION OVERWRITE fn::security_redact_object(
             object::entries($value),
             |$entry| [
                 $entry[0],
-                IF array::contains(
-                    $normalized_keys,
-                    string::lowercase($entry[0])
-                ) {
+                IF (($normalized_keys) CONTAINS (string::lowercase($entry[0]))) {
                     "***REDACTED***"
                 } ELSE {
                     $entry[1]

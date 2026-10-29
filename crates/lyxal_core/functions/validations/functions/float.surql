@@ -414,7 +414,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_float(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_value: option<float>,
     $max_value: option<float>

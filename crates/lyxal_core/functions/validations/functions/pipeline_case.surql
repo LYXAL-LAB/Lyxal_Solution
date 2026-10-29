@@ -51,7 +51,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_pipeline_case(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $mode: string
 ) -> any {

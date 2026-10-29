@@ -6,7 +6,7 @@
 -- Statut   : Stable
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_slug($value:option<any>,$field:string,$separator:string)->string{
+DEFINE FUNCTION OVERWRITE fn::sanitize_slug($value:any,$field:string,$separator:string)->string{
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };

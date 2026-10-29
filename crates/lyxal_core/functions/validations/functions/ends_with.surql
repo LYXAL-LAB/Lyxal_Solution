@@ -88,7 +88,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_ends_with(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $suffixes: array<string>,
     $case_sensitive: bool,

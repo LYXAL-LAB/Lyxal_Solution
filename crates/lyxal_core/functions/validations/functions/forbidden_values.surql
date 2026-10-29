@@ -87,7 +87,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_forbidden_values(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $forbidden_values: array<string>,
     $case_sensitive: bool,

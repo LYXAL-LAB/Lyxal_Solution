@@ -66,7 +66,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_lyxal_instance_name(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $environment: option<string>,
     $min_length: int,
@@ -126,10 +126,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_lyxal_instance_name(
     IF $environment IS NOT NONE {
         LET $env = string::lowercase(string::trim($environment));
 
-        IF !array::contains(
-            ["dev", "test", "staging", "prod"],
-            $env
-        ) {
+        IF !((["dev", "test", "staging", "prod"]) CONTAINS ($env)) {
             THROW "VALIDATION_INVALID_INSTANCE_ENVIRONMENT";
         };
 

@@ -63,7 +63,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_object_schema(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $schema: object,
     $required_keys: array<string>,
@@ -92,7 +92,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_object_schema(
 
     IF !array::all(
         $required_keys,
-        |$key| array::contains($schema_keys, $key)
+        |$key| (($schema_keys) CONTAINS ($key))
     ) {
         THROW "VALIDATION_REQUIRED_KEY_NOT_IN_SCHEMA";
     };
@@ -113,7 +113,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_object_schema(
 
     IF !array::all(
         $required_keys,
-        |$key| array::contains($value_keys, $key)
+        |$key| (($value_keys) CONTAINS ($key))
     ) {
         THROW string::concat(
             $clean_field,
@@ -124,7 +124,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_object_schema(
     IF !$allow_unknown_keys
         AND !array::all(
             $value_keys,
-            |$key| array::contains($schema_keys, $key)
+            |$key| (($schema_keys) CONTAINS ($key))
         )
     {
         THROW string::concat(
@@ -136,7 +136,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_object_schema(
     IF !array::all(
         $value_keys,
         |$key|
-            !array::contains($schema_keys, $key)
+            !(($schema_keys) CONTAINS ($key))
             OR string::lowercase(type::of($value[$key]))
                 = string::lowercase(string::trim($schema[$key]))
     ) {

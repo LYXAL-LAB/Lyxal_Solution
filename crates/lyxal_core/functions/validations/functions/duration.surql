@@ -454,7 +454,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_duration(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_value: option<duration>,
     $max_value: option<duration>

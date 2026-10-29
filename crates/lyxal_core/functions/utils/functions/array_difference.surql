@@ -12,7 +12,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_array_difference(
 ) -> array<any> {
     RETURN array::filter(
         $left,
-        |$item| !array::contains($right,$item)
+        |$item| !(($right) CONTAINS ($item))
     );
 }
 COMMENT "Retourne les éléments du premier tableau absents du second."

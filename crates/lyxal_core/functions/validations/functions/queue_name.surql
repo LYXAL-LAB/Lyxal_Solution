@@ -62,7 +62,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_queue_name(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_length: int,
     $max_length: int

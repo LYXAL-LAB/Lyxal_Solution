@@ -244,7 +244,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_integer(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_value: option<int>,
     $max_value: option<int>

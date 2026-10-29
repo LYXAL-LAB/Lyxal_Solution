@@ -57,7 +57,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_etag(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_weak: bool
 ) -> string {
@@ -96,7 +96,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_etag(
 
     IF !string::matches(
         $clean_value,
-        "^(W/)?\"[\x21\x23-\x7E\x80-\xFF]*\"$"
+        "^(W/)?\"[\\x21\\x23-\\x7E\\x80-\\xFF]*\"$"
     ) {
         THROW string::concat($clean_field, "_INVALID_ETAG");
     };

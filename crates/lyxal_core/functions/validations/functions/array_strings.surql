@@ -52,7 +52,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_array_strings(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_blank: bool
 ) -> array<string> {

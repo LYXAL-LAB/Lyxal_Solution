@@ -8,8 +8,8 @@
 
 DEFINE FUNCTION OVERWRITE fn::sanitize_pipeline_report(
     $field: string,
-    $input: option<any>,
-    $output: option<any>,
+    $input: any,
+    $output: any,
     $pipeline: array<object>
 ) -> object {
     RETURN {

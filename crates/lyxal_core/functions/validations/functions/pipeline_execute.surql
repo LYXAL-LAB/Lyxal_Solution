@@ -65,7 +65,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_pipeline_execute(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $pipeline: array<object>,
     $max_steps: int

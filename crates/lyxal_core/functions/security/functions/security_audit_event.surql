@@ -17,10 +17,7 @@ DEFINE FUNCTION OVERWRITE fn::security_audit_event(
 ) -> object {
     LET $clean_outcome = string::lowercase(string::trim($outcome));
 
-    IF !array::contains(
-        ["success","failure","denied","review"],
-        $clean_outcome
-    ) {
+    IF !((["success","failure","denied","review"]) CONTAINS ($clean_outcome)) {
         THROW "SECURITY_INVALID_AUDIT_OUTCOME";
     };
 

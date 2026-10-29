@@ -66,7 +66,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_retry_policy(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $max_attempts_limit: int,
     $max_backoff: duration
@@ -97,7 +97,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_retry_policy(
 
     IF !array::all(
         ["max_attempts", "strategy", "initial_delay"],
-        |$key| array::contains($keys, $key)
+        |$key| (($keys) CONTAINS ($key))
     ) {
         THROW string::concat(
             $clean_field,
@@ -116,10 +116,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_retry_policy(
     };
 
     IF !type::is_string($value.strategy)
-        OR !array::contains(
-            ["fixed", "linear", "exponential"],
-            string::lowercase(string::trim($value.strategy))
-        )
+        OR !((["fixed", "linear", "exponential"]) CONTAINS (string::lowercase(string::trim($value.strategy))))
     {
         THROW string::concat(
             $clean_field,
@@ -137,7 +134,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_retry_policy(
         );
     };
 
-    LET $max_delay = IF array::contains($keys, "max_delay") {
+    LET $max_delay = IF (($keys) CONTAINS ("max_delay")) {
         $value.max_delay
     } ELSE {
         $value.initial_delay

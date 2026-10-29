@@ -4,7 +4,7 @@
 -- ============================================================================
 -- Fonction : fn::validation_mime_type
 DEFINE FUNCTION OVERWRITE fn::validation_mime_type(
-    $value: option<any>, $field: string, $allowed_types: option<array<string>>
+    $value: any, $field: string, $allowed_types: option<array<string>>
 ) -> string {
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
@@ -19,7 +19,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_mime_type(
     IF $allowed_types IS NOT NONE {
         IF array::len($allowed_types) = 0 { THROW "VALIDATION_EMPTY_ALLOWED_MIME_TYPES"; };
         LET $allowed = array::map($allowed_types, |$mime| string::lowercase(string::trim($mime)));
-        IF !array::contains($allowed, $clean_value) {
+        IF !(($allowed) CONTAINS ($clean_value)) {
             THROW string::concat($clean_field, "_MIME_TYPE_NOT_ALLOWED");
         };
     };

@@ -400,7 +400,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_json(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $max_length: option<int>
 ) -> any {

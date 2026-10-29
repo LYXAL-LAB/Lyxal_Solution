@@ -58,7 +58,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_object_keys(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $required_keys: option<array<string>>,
     $allowed_keys: option<array<string>>
@@ -94,7 +94,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_object_keys(
         AND $clean_allowed IS NOT NONE
         AND !array::all(
             $clean_required,
-            |$key| array::contains($clean_allowed, $key)
+            |$key| (($clean_allowed) CONTAINS ($key))
         )
     {
         THROW "VALIDATION_REQUIRED_KEY_NOT_ALLOWED";
@@ -113,7 +113,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_object_keys(
     IF $clean_required IS NOT NONE
         AND !array::all(
             $clean_required,
-            |$key| array::contains($keys, $key)
+            |$key| (($keys) CONTAINS ($key))
         )
     {
         THROW string::concat($clean_field, "_MISSING_REQUIRED_KEY");
@@ -122,7 +122,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_object_keys(
     IF $clean_allowed IS NOT NONE
         AND !array::all(
             $keys,
-            |$key| array::contains($clean_allowed, $key)
+            |$key| (($clean_allowed) CONTAINS ($key))
         )
     {
         THROW string::concat($clean_field, "_UNKNOWN_KEY");

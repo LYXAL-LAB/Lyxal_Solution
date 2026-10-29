@@ -6,7 +6,7 @@
 -- Statut   : Stable
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_domain($value:option<any>,$field:string)->string{
+DEFINE FUNCTION OVERWRITE fn::sanitize_domain($value:any,$field:string)->string{
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
@@ -17,7 +17,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_domain($value:option<any>,$field:string)-
  LET $v=string::replace($v,<regex>"^https?://","");
  LET $v=string::split($v,"/")[0];
  LET $v=string::split($v,":")[0];
- RETURN string::replace($v,<regex>"\.+$","");
+ RETURN string::replace($v,<regex>"\\.+$","");
 }
 COMMENT "Extrait et normalise lexicalement un domaine."
 PERMISSIONS FULL;

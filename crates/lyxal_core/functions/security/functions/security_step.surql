@@ -7,7 +7,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::security_step(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> object {
     LET $f = string::trim($field);
@@ -17,7 +17,7 @@ DEFINE FUNCTION OVERWRITE fn::security_step(
 
     LET $rule = string::lowercase(string::trim($value.rule));
 
-    IF !array::contains([
+    IF !(([
         "detect_payload",
         "detect_file",
         "redact_email",
@@ -27,7 +27,7 @@ DEFINE FUNCTION OVERWRITE fn::security_step(
         "redact_log",
         "redact_object",
         "permission_check"
-    ],$rule) {
+    ]) CONTAINS ($rule)) {
         THROW string::concat($f,"_UNKNOWN_SECURITY_RULE");
     };
 

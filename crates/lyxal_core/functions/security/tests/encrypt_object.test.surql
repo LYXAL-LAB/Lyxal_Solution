@@ -6,6 +6,6 @@
 RETURN fn::security_encrypt_object(
     {name:"Lyxal",secret:true},
     "vault://keys/data",
-    "xchacha20-poly1305",
+    "aes-256-gcm",
     "tenant:acme"
 );

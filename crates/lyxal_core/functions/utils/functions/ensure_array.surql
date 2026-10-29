@@ -7,7 +7,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::utils_ensure_array(
-    $value: option<any>
+    $value: any
 ) -> array<any> {
     RETURN IF $value IS NONE OR type::is_null($value) {
         []

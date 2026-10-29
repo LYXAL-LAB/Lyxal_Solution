@@ -9,7 +9,7 @@
 DEFINE FUNCTION OVERWRITE fn::validation_compiled_execute_field(
     $compiled_schema: object,
     $field: string,
-    $value: option<any>,
+    $value: any,
     $max_steps: int
 ) -> any {
     LET $pipeline = fn::validation_compiled_field($compiled_schema,$field);

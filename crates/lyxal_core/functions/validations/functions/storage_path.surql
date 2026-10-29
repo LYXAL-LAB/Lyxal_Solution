@@ -63,7 +63,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_storage_path(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_leading_slash: bool,
     $allow_trailing_slash: bool,
@@ -105,7 +105,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_storage_path(
         OR (!$allow_trailing_slash AND string::ends_with($clean_value, "/"))
         OR string::contains($clean_value, "//")
         OR string::contains($clean_value, "..")
-        OR string::contains($clean_value, "\")
+        OR string::contains($clean_value, "\\")
         OR !string::matches(
             $clean_value,
             "^/?[A-Za-z0-9._~/-]+/?$"

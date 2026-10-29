@@ -551,7 +551,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_date(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_value: option<datetime>,
     $max_value: option<datetime>

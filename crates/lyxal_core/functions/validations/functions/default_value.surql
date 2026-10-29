@@ -7,7 +7,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_default_value(
-    $value: option<any>,
+    $value: any,
     $default_value: any
 ) -> any {
     RETURN IF $value IS NONE { $default_value } ELSE { $value };

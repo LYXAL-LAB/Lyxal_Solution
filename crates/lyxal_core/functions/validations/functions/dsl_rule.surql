@@ -8,12 +8,11 @@
 
 DEFINE FUNCTION OVERWRITE fn::validation_dsl_rule(
     $name: string,
-    $value: option<any>
+    $value: any
 ) -> object {
     LET $clean_name = string::lowercase(string::trim($name));
 
-    IF !array::contains(
-        [
+    IF !(([
             "required",
             "nullable",
             "type",
@@ -27,9 +26,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_dsl_rule(
             "max",
             "pattern",
             "enum"
-        ],
-        $clean_name
-    ) {
+        ]) CONTAINS ($clean_name)) {
         THROW "VALIDATION_DSL_UNKNOWN_RULE";
     };
 

@@ -62,7 +62,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_enum_any(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allowed_values: array<any>
 ) -> any {
@@ -84,7 +84,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_enum_any(
         THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
     };
 
-    IF !array::contains($allowed_values, $value) {
+    IF !(($allowed_values) CONTAINS ($value)) {
         THROW string::concat($clean_field, "_VALUE_NOT_ALLOWED");
     };
 

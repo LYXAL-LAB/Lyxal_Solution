@@ -25,7 +25,7 @@
 -- Requiert SurrealDB 3.1.0 ou supérieur.
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::validation_json_object_string($value: option<any>, $field: string, $allow_empty: bool) -> object {
+DEFINE FUNCTION OVERWRITE fn::validation_json_object_string($value: any, $field: string, $allow_empty: bool) -> object {
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };

@@ -8,7 +8,7 @@
 
 DEFINE FUNCTION OVERWRITE fn::sanitize_runtime_execute_field(
     $compiled_field: object,
-    $value: option<any>,
+    $value: any,
     $max_steps: int
 ) -> object {
     LET $output = fn::sanitize_pipeline_execute(

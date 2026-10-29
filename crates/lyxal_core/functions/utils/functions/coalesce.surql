@@ -8,7 +8,7 @@
 
 DEFINE FUNCTION OVERWRITE fn::utils_coalesce(
     $values: array<any>
-) -> option<any> {
+) -> any {
     LET $matches = array::filter(
         $values,
         |$value|$value IS NOT NONE AND !type::is_null($value)

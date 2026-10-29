@@ -4,7 +4,7 @@
 -- ============================================================================
 -- Fonction : fn::validation_semantic_version
 DEFINE FUNCTION OVERWRITE fn::validation_semantic_version(
-    $value: option<any>, $field: string, $allow_v_prefix: bool
+    $value: any, $field: string, $allow_v_prefix: bool
 ) -> string {
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };

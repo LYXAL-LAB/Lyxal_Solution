@@ -622,7 +622,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_future_datetime(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $reference_value: option<datetime>,
     $allow_equal: bool,

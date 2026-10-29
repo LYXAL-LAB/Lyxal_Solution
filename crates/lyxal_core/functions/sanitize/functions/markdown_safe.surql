@@ -6,7 +6,7 @@
 -- Statut   : Stable
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_markdown_safe($value:option<any>,$field:string)->string{
+DEFINE FUNCTION OVERWRITE fn::sanitize_markdown_safe($value:any,$field:string)->string{
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
@@ -14,7 +14,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_markdown_safe($value:option<any>,$field:s
     IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
 
  LET $v=fn::sanitize_html($value,$field);
- LET $v=string::replace($v,<regex>"(?i)\]\(\s*(javascript|data):[^\)]*\)","](about:blank)");
+ LET $v=string::replace($v,<regex>"(?i)\\]\\(\\s*(javascript|data):[^\\)]*\\)","](about:blank)");
  RETURN $v;
 }
 COMMENT "Conserve le Markdown tout en neutralisant quelques vecteurs dangereux courants."

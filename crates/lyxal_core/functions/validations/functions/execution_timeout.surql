@@ -61,7 +61,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_execution_timeout(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_timeout: duration,
     $max_timeout: duration

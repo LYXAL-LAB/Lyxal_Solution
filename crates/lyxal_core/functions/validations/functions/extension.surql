@@ -4,7 +4,7 @@
 -- ============================================================================
 -- Fonction : fn::validation_extension
 DEFINE FUNCTION OVERWRITE fn::validation_extension(
-    $value: option<any>, $field: string,
+    $value: any, $field: string,
     $allowed_extensions: option<array<string>>, $allow_leading_dot: bool
 ) -> string {
     LET $clean_field = string::trim($field);
@@ -23,7 +23,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_extension(
     IF $allowed_extensions IS NOT NONE {
         IF array::len($allowed_extensions) = 0 { THROW "VALIDATION_EMPTY_ALLOWED_EXTENSIONS"; };
         LET $allowed = array::map($allowed_extensions, |$ext| string::lowercase(string::trim($ext)));
-        IF !array::contains($allowed, $clean_value) {
+        IF !(($allowed) CONTAINS ($clean_value)) {
             THROW string::concat($clean_field, "_EXTENSION_NOT_ALLOWED");
         };
     };

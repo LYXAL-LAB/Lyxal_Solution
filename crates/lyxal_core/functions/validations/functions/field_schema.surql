@@ -54,7 +54,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_field_schema(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> object {
     LET $clean_field = string::trim($field);
@@ -90,7 +90,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_field_schema(
 
     IF !array::all(
         object::keys($value),
-        |$key| array::contains($allowed_keys, $key)
+        |$key| (($allowed_keys) CONTAINS ($key))
     ) {
         THROW string::concat(
             $clean_field,

@@ -13,8 +13,8 @@ DEFINE FUNCTION OVERWRITE fn::validation_unknown_keys_policy(
     $field: string
 ) -> object {
     LET $clean_policy = string::lowercase(string::trim($policy));
-    LET $unknown = array::filter(object::keys($value), |$k| !array::contains($allowed_keys,$k));
-    IF !array::contains(["allow","reject","strip"],$clean_policy) {
+    LET $unknown = array::filter(object::keys($value), |$k| !(($allowed_keys) CONTAINS ($k)));
+    IF !((["allow","reject","strip"]) CONTAINS ($clean_policy)) {
         THROW "VALIDATION_INVALID_UNKNOWN_KEYS_POLICY";
     };
     IF $clean_policy = "reject" AND array::len($unknown) > 0 {
@@ -22,7 +22,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_unknown_keys_policy(
     };
     IF $clean_policy = "strip" {
         RETURN object::from_entries(
-            array::filter(object::entries($value), |$e| array::contains($allowed_keys,$e[0]))
+            array::filter(object::entries($value), |$e| (($allowed_keys) CONTAINS ($e[0])))
         );
     };
     RETURN $value;

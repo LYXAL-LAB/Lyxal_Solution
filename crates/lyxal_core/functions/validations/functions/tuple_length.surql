@@ -61,7 +61,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_tuple_length(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $expected_length: int
 ) -> array {

@@ -60,7 +60,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_object_no_null(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> object {
     LET $clean_field = string::trim($field);

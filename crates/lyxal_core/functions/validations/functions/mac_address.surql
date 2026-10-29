@@ -60,7 +60,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_mac_address(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_hyphen: bool,
     $allow_colon: bool

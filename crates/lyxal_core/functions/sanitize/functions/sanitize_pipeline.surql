@@ -7,7 +7,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::sanitize_pipeline(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $max_steps: int
 ) -> array<object> {

@@ -55,7 +55,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_pipeline_length(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $mode: string,
     $limit: int

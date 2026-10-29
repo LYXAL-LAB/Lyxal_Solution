@@ -56,7 +56,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_validate_field(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $schema: object
 ) -> any {

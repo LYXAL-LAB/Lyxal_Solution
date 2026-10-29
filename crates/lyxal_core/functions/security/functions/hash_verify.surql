@@ -2,7 +2,7 @@
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
 -- Fonction : fn::security_hash_verify
--- Version  : 1.0.0
+-- Version  : 1.0.1
 -- Statut   : Stable
 -- ============================================================================
 
@@ -16,11 +16,11 @@ DEFINE FUNCTION OVERWRITE fn::security_hash_verify(
     RETURN IF $algo = "argon2" {
         crypto::argon2::compare($hash, $value)
     } ELSE IF $algo = "sha256" {
-        $hash = crypto::sha256($value)
+        $hash == crypto::sha256($value)
     } ELSE IF $algo = "sha512" {
-        $hash = crypto::sha512($value)
+        $hash == crypto::sha512($value)
     } ELSE IF $algo = "blake3" {
-        $hash = crypto::blake3($value)
+        $hash == crypto::blake3($value)
     } ELSE {
         THROW "SECURITY_UNSUPPORTED_HASH_ALGORITHM"
     };

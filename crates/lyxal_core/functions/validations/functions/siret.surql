@@ -30,7 +30,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_siret(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> object {
     LET $siret = fn::validation_luhn($value, $field, 14, 14);

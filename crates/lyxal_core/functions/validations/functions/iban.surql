@@ -34,7 +34,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_iban(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allowed_countries: option<array<string>>
 ) -> string {
@@ -79,7 +79,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_iban(
         IF array::any($allowed, |$code| !string::matches($code, "^[A-Z]{2}$")) {
             THROW "VALIDATION_INVALID_ALLOWED_IBAN_COUNTRY";
         };
-        IF !array::contains($allowed, $country) {
+        IF !(($allowed) CONTAINS ($country)) {
             THROW string::concat($clean_field, "_IBAN_COUNTRY_NOT_ALLOWED");
         };
     };

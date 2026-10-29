@@ -52,7 +52,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_even(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> int {
     LET $clean_field = string::trim($field);

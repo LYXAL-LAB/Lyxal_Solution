@@ -9,7 +9,7 @@
 DEFINE FUNCTION OVERWRITE fn::utils_object_get_path(
     $value: object,
     $path: array<string>,
-    $default_value: option<any>
+    $default_value: any
 ) -> any {
     LET $result = array::fold(
         $path,

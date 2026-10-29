@@ -234,7 +234,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_email(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $max_length: option<int>
 ) -> string {

@@ -57,7 +57,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_timezone(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_utc: bool
 ) -> string {

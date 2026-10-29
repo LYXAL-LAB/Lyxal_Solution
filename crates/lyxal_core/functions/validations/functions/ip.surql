@@ -292,7 +292,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_ip(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $version: option<string>
 ) -> string {

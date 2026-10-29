@@ -61,7 +61,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_lyxal_permission_name(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allowed_actions: option<array<string>>
 ) -> string {
@@ -93,7 +93,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_lyxal_permission_name(
 
     IF !string::matches(
         $permission,
-        "^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$"
+        "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+$"
     ) {
         THROW string::concat(
             $clean_field,
@@ -114,7 +114,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_lyxal_permission_name(
             |$item| string::lowercase(string::trim($item))
         );
 
-        IF !array::contains($actions, $action) {
+        IF !(($actions) CONTAINS ($action)) {
             THROW string::concat(
                 $clean_field,
                 "_PERMISSION_ACTION_NOT_ALLOWED"

@@ -64,7 +64,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_array_objects(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_empty_objects: bool
 ) -> array<object> {

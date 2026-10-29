@@ -25,7 +25,7 @@
 -- Requiert SurrealDB 3.1.0 ou supérieur.
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::validation_json_array_string($value: option<any>, $field: string, $allow_empty: bool, $min_length: option<int>, $max_length: option<int>) -> array {
+DEFINE FUNCTION OVERWRITE fn::validation_json_array_string($value: any, $field: string, $allow_empty: bool, $min_length: option<int>, $max_length: option<int>) -> array {
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     IF $min_length IS NOT NONE AND $min_length < 0 { THROW "VALIDATION_INVALID_JSON_ARRAY_LENGTH_RANGE"; };

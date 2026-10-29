@@ -64,7 +64,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_lyxal_role_name(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $reserved_roles: option<array<string>>,
     $min_length: int,
@@ -125,7 +125,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_lyxal_role_name(
             |$item| string::lowercase(string::trim($item))
         );
 
-        IF array::contains($reserved, $role) {
+        IF (($reserved) CONTAINS ($role)) {
             THROW string::concat(
                 $clean_field,
                 "_RESERVED_ROLE_NAME"

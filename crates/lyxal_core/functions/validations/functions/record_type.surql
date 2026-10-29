@@ -328,7 +328,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_record_type(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $expected_table: string
 ) -> record {

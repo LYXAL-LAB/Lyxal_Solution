@@ -51,7 +51,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_object_schema_v2(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> object {
     LET $clean_field = string::trim($field);

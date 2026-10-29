@@ -5,7 +5,7 @@
 -- Fonction : fn::validation_filename
 -- Valide un nom de fichier simple, sans chemin ni traversée de répertoire.
 DEFINE FUNCTION OVERWRITE fn::validation_filename(
-    $value: option<any>, $field: string, $min_length: int, $max_length: int
+    $value: any, $field: string, $min_length: int, $max_length: int
 ) -> string {
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };

@@ -179,7 +179,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_boolean(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> bool {
 

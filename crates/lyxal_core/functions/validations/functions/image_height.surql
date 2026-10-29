@@ -57,7 +57,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_image_height(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_height: int,
     $max_height: int

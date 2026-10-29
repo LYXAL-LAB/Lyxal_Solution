@@ -24,7 +24,7 @@
 --   - array::contains()
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::validation_http_method($value: option<any>, $field: string, $allowed_methods: option<array<string>>) -> string {
+DEFINE FUNCTION OVERWRITE fn::validation_http_method($value: any, $field: string, $allowed_methods: option<array<string>>) -> string {
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
@@ -37,7 +37,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_http_method($value: option<any>, $field
     IF $allowed_methods IS NOT NONE {
         IF array::len($allowed_methods) = 0 { THROW "VALIDATION_EMPTY_ALLOWED_HTTP_METHODS"; };
         LET $allowed = array::map($allowed_methods, |$item| string::uppercase(string::trim($item)));
-        IF !array::contains($allowed, $method) { THROW string::concat($clean_field, "_HTTP_METHOD_NOT_ALLOWED"); };
+        IF !(($allowed) CONTAINS ($method)) { THROW string::concat($clean_field, "_HTTP_METHOD_NOT_ALLOWED"); };
     };
     RETURN $method;
 }

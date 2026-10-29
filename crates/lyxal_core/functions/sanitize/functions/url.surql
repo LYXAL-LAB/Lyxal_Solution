@@ -6,7 +6,7 @@
 -- Statut   : Stable
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_url($value:option<any>,$field:string)->string{
+DEFINE FUNCTION OVERWRITE fn::sanitize_url($value:any,$field:string)->string{
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
@@ -14,7 +14,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_url($value:option<any>,$field:string)->st
     IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
 
  LET $v=string::trim($value);
- LET $v=string::replace($v,<regex>"[\x00-\x20\x7F]","");
+ LET $v=string::replace($v,<regex>"[\\x00-\\x20\\x7F]","");
  RETURN $v;
 }
 COMMENT "Nettoie lexicalement une URL en supprimant espaces et contrôles."

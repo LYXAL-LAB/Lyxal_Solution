@@ -58,7 +58,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::sanitize_normalize_unicode(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $collapse_whitespace: bool
 ) -> string {
@@ -109,7 +109,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_normalize_unicode(
         string::trim(
             string::replace(
                 $normalized,
-                <regex>"\s+",
+                <regex>"\\s+",
                 " "
             )
         )

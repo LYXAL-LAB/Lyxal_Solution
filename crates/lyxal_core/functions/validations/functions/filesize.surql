@@ -57,7 +57,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_filesize(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_bytes: option<int>,
     $max_bytes: option<int>

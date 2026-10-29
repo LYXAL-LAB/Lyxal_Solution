@@ -57,7 +57,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_datetime_string(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $format: option<string>
 ) -> string {

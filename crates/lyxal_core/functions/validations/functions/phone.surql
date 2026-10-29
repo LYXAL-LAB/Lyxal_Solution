@@ -224,7 +224,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_phone(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> string {
 

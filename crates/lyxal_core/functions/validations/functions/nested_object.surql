@@ -7,7 +7,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_nested_object(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $schema: object,
     $allow_unknown_keys: bool

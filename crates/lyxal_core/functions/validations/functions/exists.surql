@@ -446,7 +446,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_exists(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $target_table: string,
     $target_field: string

@@ -38,7 +38,7 @@ RETURN fn::validation_archive_entry_path(
 -- Erreur attendue : ENTRY_PATH_INVALID_ARCHIVE_ENTRY_PATH
 -- ============================================================================
 RETURN fn::validation_archive_entry_path(
-    "C:\Windows\system.ini",
+    "C:\\Windows\\system.ini",
     "ENTRY_PATH",
     1024
 );

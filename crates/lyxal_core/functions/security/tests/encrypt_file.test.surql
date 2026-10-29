@@ -6,6 +6,6 @@
 RETURN fn::security_encrypt_file(
     "bunny://input/report.pdf",
     "vault://keys/files",
-    "xchacha20-poly1305",
+    "aes-256-gcm",
     "bunny://encrypted/report.pdf.enc"
 );

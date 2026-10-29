@@ -6,7 +6,7 @@
 -- Statut   : Stable
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_safe_extension($value:option<any>,$field:string)->string{
+DEFINE FUNCTION OVERWRITE fn::sanitize_safe_extension($value:any,$field:string)->string{
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
@@ -14,7 +14,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_safe_extension($value:option<any>,$field:
     IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
 
  LET $v=string::lowercase(string::trim($value));
- LET $v=string::replace($v,<regex>"^\.+","");
+ LET $v=string::replace($v,<regex>"^\\.+","");
  RETURN string::replace($v,<regex>"[^a-z0-9]","");
 }
 COMMENT "Nettoie une extension de fichier."

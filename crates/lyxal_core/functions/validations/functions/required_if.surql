@@ -58,7 +58,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_required_if(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $condition: bool,
     $allow_null: bool

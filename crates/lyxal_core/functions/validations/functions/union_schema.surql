@@ -14,7 +14,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_union_schema(
     LET $clean_field = string::trim($field);
     LET $actual = string::lowercase(type::of($value));
     LET $allowed = array::map($allowed_types, |$t| string::lowercase(string::trim($t)));
-    IF !array::contains($allowed, $actual) {
+    IF !(($allowed) CONTAINS ($actual)) {
         THROW string::concat($clean_field, "_UNION_TYPE_NOT_ALLOWED");
     };
     RETURN $value;

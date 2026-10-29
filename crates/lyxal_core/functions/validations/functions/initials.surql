@@ -51,7 +51,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_initials(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_count: int,
     $max_count: int

@@ -49,7 +49,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::sanitize_remove_control_chars(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $preserve_layout: bool
 ) -> string {
@@ -78,9 +78,9 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_remove_control_chars(
     };
 
     LET $pattern = IF $preserve_layout {
-        "[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]"
+        "[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]"
     } ELSE {
-        "[\x00-\x1F\x7F]"
+        "[\\x00-\\x1F\\x7F]"
     };
 
     RETURN string::replace(

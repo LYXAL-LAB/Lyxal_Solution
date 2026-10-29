@@ -9,7 +9,7 @@
 DEFINE FUNCTION OVERWRITE fn::validation_sdk_validate_field(
     $schema: object,
     $field: string,
-    $value: option<any>,
+    $value: any,
     $options: option<object>
 ) -> object {
     LET $request = fn::validation_sdk_request(

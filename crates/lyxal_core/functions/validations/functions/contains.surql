@@ -88,7 +88,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_contains(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $needles: array<string>,
     $case_sensitive: bool,

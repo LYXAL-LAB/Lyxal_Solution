@@ -24,7 +24,7 @@
 --   - array::all()
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::validation_jwt_compact($value: option<any>, $field: string, $max_length: int) -> string {
+DEFINE FUNCTION OVERWRITE fn::validation_jwt_compact($value: any, $field: string, $max_length: int) -> string {
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };

@@ -53,7 +53,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_rule_definition(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> object {
     LET $clean_field = string::trim($field);
@@ -79,7 +79,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_rule_definition(
 
     LET $keys = object::keys($value);
 
-    IF !array::contains($keys, "rule")
+    IF !(($keys) CONTAINS ("rule"))
         OR !type::is_string($value.rule)
         OR string::trim($value.rule) = ""
     {
@@ -91,8 +91,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_rule_definition(
 
     LET $rule = string::lowercase(string::trim($value.rule));
 
-    IF !array::contains(
-        [
+    IF !(([
             "required",
             "type",
             "min_length",
@@ -100,14 +99,12 @@ DEFINE FUNCTION OVERWRITE fn::validation_rule_definition(
             "min",
             "max",
             "enum"
-        ],
-        $rule
-    ) {
+        ]) CONTAINS ($rule)) {
         THROW string::concat($clean_field, "_UNKNOWN_RULE");
     };
 
     IF $rule != "required"
-        AND !array::contains($keys, "value")
+        AND !(($keys) CONTAINS ("value"))
     {
         THROW string::concat(
             $clean_field,
@@ -117,7 +114,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_rule_definition(
 
     RETURN {
         rule: $rule,
-        value: IF array::contains($keys, "value") {
+        value: IF (($keys) CONTAINS ("value")) {
             $value.value
         } ELSE {
             true

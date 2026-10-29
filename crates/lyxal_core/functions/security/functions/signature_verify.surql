@@ -14,10 +14,7 @@ DEFINE FUNCTION OVERWRITE fn::security_signature_verify(
 ) -> object {
     LET $algo = string::lowercase(string::trim($algorithm));
 
-    IF !array::contains(
-        ["ed25519","es256","es384","rs256","ps256"],
-        $algo
-    ) {
+    IF !((["ed25519","es256","es384","rs256","ps256"]) CONTAINS ($algo)) {
         THROW "SECURITY_UNSUPPORTED_SIGNATURE_ALGORITHM";
     };
 

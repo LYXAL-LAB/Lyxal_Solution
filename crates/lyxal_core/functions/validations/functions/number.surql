@@ -252,7 +252,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_number(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_value: option<number>,
     $max_value: option<number>

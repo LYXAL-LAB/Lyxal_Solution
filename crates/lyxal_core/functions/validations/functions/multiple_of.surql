@@ -54,7 +54,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_multiple_of(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $divisor: int
 ) -> int {

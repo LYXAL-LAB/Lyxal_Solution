@@ -4,7 +4,7 @@
 -- ============================================================================
 -- Fonction : fn::validation_domain
 DEFINE FUNCTION OVERWRITE fn::validation_domain(
-    $value: option<any>, $field: string, $allow_subdomains: bool
+    $value: any, $field: string, $allow_subdomains: bool
 ) -> string {
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };

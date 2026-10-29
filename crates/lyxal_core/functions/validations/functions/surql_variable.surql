@@ -59,7 +59,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_surql_variable(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_reserved: bool
 ) -> string {
@@ -105,8 +105,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_surql_variable(
     };
 
     IF !$allow_reserved
-        AND array::contains(
-            [
+        AND (([
                 "auth",
                 "before",
                 "after",
@@ -116,9 +115,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_surql_variable(
                 "input",
                 "parent",
                 "root"
-            ],
-            string::lowercase($clean_value)
-        )
+            ]) CONTAINS (string::lowercase($clean_value)))
     {
         THROW string::concat(
             $clean_field,

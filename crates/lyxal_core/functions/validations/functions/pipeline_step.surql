@@ -52,7 +52,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_pipeline_step(
-    $value: option<any>,
+    $value: any,
     $field: string
 ) -> object {
     LET $clean_field = string::trim($field);
@@ -73,7 +73,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_pipeline_step(
 
     LET $keys = object::keys($value);
 
-    IF !array::contains($keys, "rule")
+    IF !(($keys) CONTAINS ("rule"))
         OR !type::is_string($value.rule)
         OR string::trim($value.rule) = ""
     {
@@ -85,8 +85,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_pipeline_step(
 
     LET $rule = string::lowercase(string::trim($value.rule));
 
-    IF !array::contains(
-        [
+    IF !(([
             "required",
             "trim",
             "lowercase",
@@ -96,20 +95,15 @@ DEFINE FUNCTION OVERWRITE fn::validation_pipeline_step(
             "pattern",
             "enum",
             "default"
-        ],
-        $rule
-    ) {
+        ]) CONTAINS ($rule)) {
         THROW string::concat(
             $clean_field,
             "_UNKNOWN_PIPELINE_RULE"
         );
     };
 
-    IF array::contains(
-        ["min_length", "max_length", "pattern", "enum", "default"],
-        $rule
-    )
-        AND !array::contains($keys, "value")
+    IF ((["min_length", "max_length", "pattern", "enum", "default"]) CONTAINS ($rule))
+        AND !(($keys) CONTAINS ("value"))
     {
         THROW string::concat(
             $clean_field,
@@ -119,7 +113,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_pipeline_step(
 
     RETURN {
         rule: $rule,
-        value: IF array::contains($keys, "value") {
+        value: IF (($keys) CONTAINS ("value")) {
             $value.value
         } ELSE {
             NONE

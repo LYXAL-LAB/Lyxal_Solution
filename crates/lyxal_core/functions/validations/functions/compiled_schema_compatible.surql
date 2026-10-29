@@ -12,7 +12,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_compiled_schema_compatible(
 ) -> bool {
     LET $left_fields = object::keys($left.fields);
     LET $right_fields = object::keys($right.fields);
-    RETURN array::all($left_fields, |$f| array::contains($right_fields,$f));
+    RETURN array::all($left_fields, |$f| (($right_fields) CONTAINS ($f)));
 }
 COMMENT "Vérifie une compatibilité structurelle minimale entre deux schémas compilés."
 PERMISSIONS FULL;

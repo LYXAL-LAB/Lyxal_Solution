@@ -51,7 +51,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_company_name(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $min_length: int,
     $max_length: int
@@ -93,7 +93,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_company_name(
 
     IF !string::matches(
         $clean_value,
-        "^[\p{L}\p{M}\p{N} &+.,'()/_\-]+$"
+        "^[\\p{L}\\p{M}\\p{N} &+.,'()/_\\-]+$"
     ) {
         THROW string::concat(
             $clean_field,

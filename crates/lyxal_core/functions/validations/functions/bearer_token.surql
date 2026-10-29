@@ -24,7 +24,7 @@
 --   - string::matches()
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::validation_bearer_token($value: option<any>, $field: string, $min_length: int, $max_length: int) -> string {
+DEFINE FUNCTION OVERWRITE fn::validation_bearer_token($value: any, $field: string, $min_length: int, $max_length: int) -> string {
     LET $clean_field = string::trim($field);
     IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
     IF $min_length < 1 OR $max_length < 1 OR $min_length > $max_length { THROW "VALIDATION_INVALID_BEARER_LENGTH_RANGE"; };

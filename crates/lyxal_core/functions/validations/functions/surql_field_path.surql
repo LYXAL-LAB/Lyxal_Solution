@@ -71,7 +71,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_surql_field_path(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_array_wildcard: bool,
     $allow_numeric_index: bool,
@@ -115,7 +115,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_surql_field_path(
     };
 
     IF !$allow_numeric_index
-        AND string::matches($clean_value, "\[[0-9]+\]")
+        AND string::matches($clean_value, "\\[[0-9]+\\]")
     {
         THROW string::concat(
             $clean_field,
@@ -124,11 +124,11 @@ DEFINE FUNCTION OVERWRITE fn::validation_surql_field_path(
     };
 
     LET $selector = IF $allow_array_wildcard AND $allow_numeric_index {
-        "(?:\[(?:\*|[0-9]+)\])*"
+        "(?:\\[(?:\\*|[0-9]+)\\])*"
     } ELSE IF $allow_array_wildcard {
-        "(?:\[\*\])*"
+        "(?:\\[\\*\\])*"
     } ELSE IF $allow_numeric_index {
-        "(?:\[[0-9]+\])*"
+        "(?:\\[[0-9]+\\])*"
     } ELSE {
         ""
     };
@@ -136,7 +136,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_surql_field_path(
     LET $pattern = string::concat(
         "^[A-Za-z_][A-Za-z0-9_]*",
         $selector,
-        "(?:\.[A-Za-z_][A-Za-z0-9_]*",
+        "(?:\\.[A-Za-z_][A-Za-z0-9_]*",
         $selector,
         ")*$"
     );

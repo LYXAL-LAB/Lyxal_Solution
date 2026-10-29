@@ -75,7 +75,7 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_postal_code_fr(
-    $value: option<any>,
+    $value: any,
     $field: string,
     $allow_cedex: bool
 ) -> string {

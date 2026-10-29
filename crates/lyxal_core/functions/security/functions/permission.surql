@@ -20,7 +20,7 @@ DEFINE FUNCTION OVERWRITE fn::security_permission(
         THROW "SECURITY_INVALID_PERMISSION";
     };
 
-    IF !array::contains(["allow","deny"], $clean_effect) {
+    IF !((["allow","deny"]) CONTAINS ($clean_effect)) {
         THROW "SECURITY_INVALID_PERMISSION_EFFECT";
     };
 
