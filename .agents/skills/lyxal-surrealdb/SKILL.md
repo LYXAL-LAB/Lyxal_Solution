@@ -35,7 +35,7 @@ Activer ce Skill dès que la tâche implique :
 
 ## 2. Contrôles de Syntaxe & Compatibilité SurrealQL 3.2.0
 
-Avant d'écrire ou de recommander une construction SurrealQL, appliquer ces règles vérifiées sur les modules de référence ([`lyxal_catalogue`](../../../crates/lyxal_catalogue) et [`lyxal_pipeline_ingestion`](../../../crates/lyxal_pipeline_ingestion)) :
+Avant d'écrire ou de recommander une construction SurrealQL, appliquer ces règles vérifiées sur les modules de référence ([`lyxal_error`](../../../crates/lyxal_error), [`lyxal_catalogue`](../../../crates/lyxal_catalogue) et [`lyxal_pipeline_ingestion`](../../../crates/lyxal_pipeline_ingestion)) :
 
 ### 2.1. Tables & Relations (`schema/*.surql`)
 - **Déclaration standard** :
@@ -92,6 +92,7 @@ Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.2.0
    - `time::from::parts(...)` est supprimé $\rightarrow$ construire une chaîne ISO-8601 et la caster via `<datetime>string::concat(...)`.
    - `string::pad(...)`, `encoding::hex::*`, `encoding::uri::*`, `bytes::from_int(...)` n'existent pas $\rightarrow$ utiliser les primitives de `lyxal_core` (`fn::utils_to_hex`, `fn::utils_from_hex`, `fn::utils_encode_uri`, `fn::utils_decode_uri`, `fn::utils_number_format`).
    - `type::thing($tb, $id)` $\rightarrow$ remplacer par `type::record($tb, $id)` ou `<record<table>>$id`.
+   - `type::is::*` est supprimé/invalide en 3.2.0 $\rightarrow$ remplacer impérativement par `type::is_*` (ex. `type::is_string`, `type::is_record`, `type::is_datetime`, `type::is_object`) ou par l'opérateur direct `$val IS <type>`.
 3. **Sémantique des Tranches (`slice`) et Découpages (`split`) en 3.2.0** :
    - `string::slice($s, $start, $end)` et `array::slice($a, $start, $end)` prennent un **index de fin exclusif `$end`** (et **non** une longueur).
    - `string::split("abc", "")` retourne `["", "a", "b", "c", ""]` (chaînes vides aux deux extrémités).
