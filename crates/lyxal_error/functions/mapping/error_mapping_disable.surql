@@ -11,10 +11,10 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_disable(
     LET $raw_str = IF $raw_id != NONE { string::trim(<string>$raw_id) } ELSE { "" };
     LET $id_part = string::replace($raw_str, "error_external_mapping:", "");
 
-    LET $mapping_id = IF type::is::record($raw_id) {
+    LET $mapping_id = IF type::is_record($raw_id) {
         $raw_id
     } ELSE IF string::len($id_part) > 0 {
-        type::thing("error_external_mapping", $id_part)
+        type::record("error_external_mapping", $id_part)
     } ELSE {
         NONE
     };

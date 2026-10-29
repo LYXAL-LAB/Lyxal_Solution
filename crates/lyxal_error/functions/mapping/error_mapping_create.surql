@@ -9,9 +9,12 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_create(
     LET $provider = $params.provider;
     LET $service = $params.service;
     LET $external_code = $params.external_code;
-    LET $matcher = $params.matcher;
-    LET $raw_def = $params.definition_id ?? $params.definition;
+    LET $matcher = $params.matcher ?? $params.match_type;
+    LET $raw_def = $params.definition_id ?? $params.target_code ?? $params.definition;
     LET $priority = $params.priority;
+    LET $ext_http_status = $params.external_http_status ?? $params.http_status;
+    LET $description = $params.description;
+    LET $retryable_override = $params.retryable_override;
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF $provider == NONE OR string::len(string::trim($provider)) == 0 {
@@ -21,17 +24,17 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_create(
         RETURN fn::error_result("ERROR_PARAM_REQUIRED", $language, { field: "external_code" });
     };
 
-    LET $clean_str = IF type::is::string($raw_def) { <string>$raw_def } ELSE { "" };
+    LET $clean_str = IF type::is_string($raw_def) { <string>$raw_def } ELSE { "" };
     LET $id_part = IF string::starts_with($clean_str, "error_definition:") {
         string::slice($clean_str, 17)
     } ELSE {
         $clean_str
     };
 
-    LET $def_rec = IF type::is::record($raw_def) {
+    LET $def_rec = IF type::is_record($raw_def) {
         $raw_def
     } ELSE IF string::len($id_part) > 0 {
-        (SELECT VALUE id FROM error_definition WHERE code = $id_part OR id = type::thing("error_definition", $id_part) LIMIT 1)[0]
+        (SELECT VALUE id FROM error_definition WHERE code = $id_part OR id = type::record("error_definition", $id_part) LIMIT 1)[0]
     } ELSE {
         NONE
     };
@@ -53,6 +56,9 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_create(
         matcher: $m,
         definition: $def_rec,
         priority: $p,
+        external_http_status: $ext_http_status,
+        description: $description,
+        retryable_override: $retryable_override,
         enabled: true
     };
 

@@ -17,7 +17,7 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_update(
     LET $clean_code = string::uppercase($val);
     LET $existing = SELECT * FROM error_definition 
                      WHERE id = $val 
-                        OR id = type::thing("error_definition", $clean_code) 
+                        OR id = type::record("error_definition", $clean_code) 
                         OR code = $clean_code 
                      LIMIT 1;
 
@@ -31,6 +31,11 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_update(
     LET $sev = IF $params.severity != NONE { string::lowercase(string::trim($params.severity)) } ELSE { $cur.severity };
     LET $status = IF $params.http_status != NONE { $params.http_status } ELSE { $cur.http_status };
     LET $trans = IF $params.translations != NONE { $params.translations } ELSE { $cur.translations };
+    LET $ret = IF $params.retryable != NONE { $params.retryable } ELSE { $cur.retryable };
+    LET $log_occ = IF $params.log_occurrence != NONE { $params.log_occurrence } ELSE { $cur.log_occurrence };
+    LET $doc = IF $params.documentation != NONE { $params.documentation } ELSE { $cur.documentation };
+    LET $meta = IF $params.metadata != NONE { $params.metadata } ELSE { $cur.metadata };
+    LET $enab = IF $params.active != NONE { $params.active } ELSE IF $params.enabled != NONE { $params.enabled } ELSE { $cur.enabled };
 
     UPDATE $cur.id MERGE {
         message: $clean_msg,
@@ -38,6 +43,11 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_update(
         severity: $sev,
         http_status: $status,
         translations: $trans,
+        retryable: $ret,
+        log_occurrence: $log_occ,
+        documentation: $doc,
+        metadata: $meta,
+        enabled: $enab,
         updated_at: time::now()
     };
 

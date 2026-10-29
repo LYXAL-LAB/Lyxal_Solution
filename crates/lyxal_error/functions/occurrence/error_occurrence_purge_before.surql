@@ -9,9 +9,9 @@ DEFINE FUNCTION OVERWRITE fn::error_occurrence_purge_before(
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
     LET $raw_dt = $params.before_date ?? $params.before;
 
-    LET $before_date = IF type::is::datetime($raw_dt) {
+    LET $before_date = IF type::is_datetime($raw_dt) {
         $raw_dt
-    } ELSE IF type::is::string($raw_dt) AND string::len($raw_dt) > 0 {
+    } ELSE IF type::is_string($raw_dt) AND string::len($raw_dt) > 0 {
         <datetime>$raw_dt
     } ELSE {
         NONE

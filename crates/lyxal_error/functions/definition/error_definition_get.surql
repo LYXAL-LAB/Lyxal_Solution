@@ -17,7 +17,7 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_get(
     LET $clean_code = string::uppercase($val);
     LET $res = SELECT * FROM error_definition 
                 WHERE id = $val 
-                   OR id = type::thing("error_definition", $clean_code) 
+                   OR id = type::record("error_definition", $clean_code) 
                    OR code = $clean_code 
                 LIMIT 1;
 

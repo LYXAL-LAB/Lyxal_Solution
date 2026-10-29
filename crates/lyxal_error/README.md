@@ -3,7 +3,7 @@
 [![Status](https://img.shields.io/badge/Status-Production--Ready-success.svg)](#)
 [![Charte](https://img.shields.io/badge/Conformit%C3%A9-AGENTS.md%20100%25-blue.svg)](#)
 [![Tests](https://img.shields.io/badge/Tests-21%20passed%20%7C%200%20failed-brightgreen.svg)](#)
-[![SurrealDB](https://img.shields.io/badge/SurrealDB-2.x%20Compatible-orange.svg)](#)
+[![SurrealDB](https://img.shields.io/badge/SurrealDB-3.2.0%20Compatible-blue.svg)](#)
 
 Le module **`lyxal_error`** constitue le référentiel centralisé, le moteur de résolution linguistique et le socle du contrat de résultat universel pour l'ensemble des modules de la suite **Lyxal OS** (`lyxal_surreal`, `lyxal_booking`, `lyxal_auth`, `lyxal_notification`, `lyxal_scheduler`, etc.).
 
@@ -54,7 +54,7 @@ Toutes les opérations publiques de la plateforme Lyxal OS retournent le contrat
 
 ## 📊 2. Schémas de Données (`schema/`)
 
-Le module gère 3 tables déclaratives sous SurrealDB 2.x :
+Le module gère 3 tables déclaratives sous SurrealDB 3.2.0 :
 
 | Table | Rôle | Stratégie d'évolution |
 | :--- | :--- | :--- |

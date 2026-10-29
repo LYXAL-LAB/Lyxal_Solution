@@ -11,10 +11,10 @@ DEFINE FUNCTION OVERWRITE fn::error_occurrence_get(
     LET $raw_str = IF $raw_id != NONE { string::trim(<string>$raw_id) } ELSE { "" };
     LET $id_part = string::replace($raw_str, "error_occurrence:", "");
 
-    LET $occurrence_id = IF type::is::record($raw_id) {
+    LET $occurrence_id = IF type::is_record($raw_id) {
         $raw_id
     } ELSE IF string::len($id_part) > 0 {
-        type::thing("error_occurrence", $id_part)
+        type::record("error_occurrence", $id_part)
     } ELSE {
         NONE
     };

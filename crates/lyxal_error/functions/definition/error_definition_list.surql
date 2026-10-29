@@ -8,6 +8,7 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_list(
 ) {
     LET $module = $params.module;
     LET $category = $params.category;
+    LET $severity = $params.severity;
     LET $domain = $params.domain;
     LET $enabled_only = IF $params.enabled_only != NONE { $params.enabled_only } ELSE { true };
     LET $limit = IF $params.limit != NONE { $params.limit } ELSE { 50 };
@@ -25,6 +26,12 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_list(
         NONE
     };
 
+    LET $clean_sev = IF $severity != NONE AND string::len(string::trim($severity)) > 0 {
+        string::lowercase(string::trim($severity))
+    } ELSE {
+        NONE
+    };
+
     LET $clean_dom = IF $domain != NONE AND string::len(string::trim($domain)) > 0 {
         string::lowercase(string::trim($domain))
     } ELSE {
@@ -34,6 +41,7 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_list(
     LET $list = SELECT * FROM error_definition 
                  WHERE ($clean_mod = NONE OR module = $clean_mod)
                    AND ($clean_cat = NONE OR category = $clean_cat)
+                   AND ($clean_sev = NONE OR severity = $clean_sev)
                    AND ($clean_dom = NONE OR domain = $clean_dom)
                    AND ($enabled_only = false OR enabled = true)
                  ORDER BY code ASC

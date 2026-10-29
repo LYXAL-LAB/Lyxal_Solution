@@ -5,6 +5,49 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [0.2.0] - 2026-10-29 — Conformité SurrealDB 3.2.0 & Réconciliation DTOs Rust
+
+### 🏛️ Élimination de la Dette Technique SurrealDB 2.x
+- **Rupture avec le SDK `surrealdb = "2.2"` obsolète** :
+  - Suppression de la dépendance `surrealdb = { workspace = true }` dans `crates/lyxal_error/Cargo.toml`.
+  - Élimination de tous les faux tests d'intégration en mémoire 2.x incompatibles avec le protocole réseau 3.2.0.
+  - Mise en place d'un harnais d'intégration automatisé `Surreal320` pilotant directement le binaire officiel `surreal.exe 3.2.0` sous `mem://`.
+
+### ⚙️ Migration de Syntaxe SurrealQL 3.2.0
+- **Remplacement systématique de `type::thing(...)` par `type::record(...)`** :
+  - Appliqué sur 9 fonctions : `error_definition_get`, `error_definition_update`, `error_definition_disable`, `error_mapping_create`, `error_mapping_get`, `error_mapping_update`, `error_mapping_disable`, `error_occurrence_get`, `error_get`.
+- **Remplacement des fonctions de typage dépréciées `type::is::*` par `type::is_*`** :
+  - `type::is::string` $\rightarrow$ `type::is_string`, `type::is::record` $\rightarrow$ `type::is_record`, `type::is::datetime` $\rightarrow$ `type::is_datetime`, `type::is::object` $\rightarrow$ `type::is_object`.
+- **Validation syntaxique formelle** :
+  - 100 % des 26 fichiers `.surql` du module validés avec succès sur `surreal.exe validate` (26/26 OK, 0 échec).
+
+### 🔄 Réconciliation Contrats DTOs Rust ↔ Fonctions SurrealQL
+- **Alignement DTOs Rust (`src/types.rs`)** :
+  - `ErrorDefinitionCreateParams` : ajout des champs optionnels `module`, `domain`, `enabled` (avec alias `active`).
+  - `ErrorDefinitionListParams` : ajout des filtres `module`, `domain`, `enabled_only`, et `severity`.
+  - `ErrorDefinitionUpdateParams` : ajout du champ optionnel `enabled` (avec alias `active`).
+  - `ErrorMappingCreateParams` & `ErrorMappingUpdateParams` : ajout de la tolérance bidirectionnelle Serde avec `#[serde(alias = "matcher")] pub match_type` et `#[serde(alias = "definition_id", alias = "definition")] pub target_code`, ainsi que `service`, `external_http_status`, `retryable_override`.
+- **Alignement Fonctions SurrealQL** :
+  - `fn::error_definition_create` & `fn::error_definition_update` : persistance et mise à jour complètes de `retryable`, `log_occurrence`, `documentation`, `metadata`, `enabled`.
+  - `fn::error_definition_list` : ajout du filtrage effectif par `severity`.
+  - `fn::error_mapping_create` & `fn::error_mapping_update` : lecture tolérante `$params.matcher ?? $params.match_type`, `$params.definition_id ?? $params.target_code`, et persistance de `service`, `external_http_status`, `description`, `retryable_override`.
+  - `schema/error_external_mapping.surql` : déclaration explicite du champ SCHEMAFULL `description`.
+
+### 🛡️ Idempotence des Seeds & Master Data
+- `error/error_definitions.surql` : requêtes conditionnelles `IF !record::exists(...) AND array::len((SELECT ... WHERE code = ...)) == 0 THEN CREATE ... END;` pour les 6 codes fondamentaux.
+- `seeds/error_mappings.surql` : vérification d'existence avant création de `error_external_mapping:http_gateway_400_exact` et `404_exact`.
+- Idempotence absolue garantie même en cas de réapplications multiples.
+
+### 🧪 Qualification Dynamique sur Binaire Réel SurrealDB 3.2.0
+- **21 tests exécutés et réussis (100 % passants)** :
+  - 3 tests unitaires internes (`src/lib.rs`).
+  - 10 tests de contrats Rust & roundtrip DTOs (`tests/contracts_tests.rs`).
+  - 2 tests d'intégrité de manifeste et non-orphelins (`tests/manifest_tests.rs`).
+  - 6 tests d'intégration réels sur `surreal.exe 3.2.0` (`tests/surreal_integration_tests.rs`).
+- `cargo clippy -p lyxal_error --all-targets` : 0 avertissement, 0 erreur.
+
+---
+
 ## [0.1.0] - 2026-10-28 — Qualification Production-Ready & Standardisation AGENTS.md
 
 ### 🏛️ Architecture & Alignement Charte Lyxal OS

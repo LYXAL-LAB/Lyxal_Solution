@@ -35,6 +35,11 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_create(
     LET $cat = IF $category != NONE { string::lowercase(string::trim($category)) } ELSE { "business" };
     LET $sev = IF $severity != NONE { string::lowercase(string::trim($severity)) } ELSE { "error" };
     LET $trans = IF $translations != NONE { $translations } ELSE { {} };
+    LET $ret = IF $params.retryable != NONE { $params.retryable } ELSE { false };
+    LET $log_occ = IF $params.log_occurrence != NONE { $params.log_occurrence } ELSE { true };
+    LET $doc = IF $params.documentation != NONE { $params.documentation } ELSE { {} };
+    LET $meta = IF $params.metadata != NONE { $params.metadata } ELSE { {} };
+    LET $enab = IF $params.enabled != NONE { $params.enabled } ELSE IF $params.active != NONE { $params.active } ELSE { true };
 
     LET $existing = SELECT VALUE id FROM error_definition WHERE code = $clean_code LIMIT 1;
     IF array::len($existing) > 0 {
@@ -51,7 +56,11 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_create(
         http_status: $http_status,
         translations: $trans,
         default_language: "en",
-        enabled: true,
+        retryable: $ret,
+        log_occurrence: $log_occ,
+        documentation: $doc,
+        metadata: $meta,
+        enabled: $enab,
         created_at: time::now()
     };
 

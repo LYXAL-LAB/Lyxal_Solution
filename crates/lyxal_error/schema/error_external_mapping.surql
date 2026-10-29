@@ -85,6 +85,16 @@ DEFINE FIELD OVERWRITE external_code
 
 
 -- ----------------------------------------------------------------------------
+-- Description facultative de la règle
+-- ----------------------------------------------------------------------------
+
+DEFINE FIELD OVERWRITE description
+    ON TABLE error_external_mapping
+    TYPE option<string>
+    COMMENT "Description humaine ou documentation de la règle de mapping";
+
+
+-- ----------------------------------------------------------------------------
 -- Mode de correspondance
 -- ----------------------------------------------------------------------------
 

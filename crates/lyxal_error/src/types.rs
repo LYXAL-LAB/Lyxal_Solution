@@ -7,6 +7,10 @@ pub struct ErrorDefinitionCreateParams {
     pub code: String,
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub module: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub domain: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub category: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub severity: Option<String>,
@@ -22,6 +26,8 @@ pub struct ErrorDefinitionCreateParams {
     pub documentation: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none", alias = "active")]
+    pub enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
 }
@@ -38,9 +44,15 @@ pub struct ErrorDefinitionGetParams {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ErrorDefinitionListParams {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub module: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub domain: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub category: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub severity: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enabled_only: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -72,6 +84,8 @@ pub struct ErrorDefinitionUpdateParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub active: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
 }
 
@@ -87,16 +101,24 @@ pub struct ErrorDefinitionDisableParams {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ErrorMappingCreateParams {
     pub provider: String,
+    #[serde(alias = "matcher")]
     pub match_type: String,
+    #[serde(alias = "definition_id", alias = "definition")]
     pub target_code: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub external_code: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub http_status: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_http_status: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub priority: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub retryable_override: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
 }
@@ -115,27 +137,41 @@ pub struct ErrorMappingListParams {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub provider: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub service: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enabled_only: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start: Option<u32>,
 }
 
 /// Paramètres de mise à jour d'un mapping d'erreur (`fn::error_mapping_update`).
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ErrorMappingUpdateParams {
     pub mapping_id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", alias = "definition_id", alias = "definition")]
     pub target_code: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", alias = "matcher")]
     pub match_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub external_code: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub http_status: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_http_status: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub priority: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub retryable_override: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub active: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
 }

@@ -215,14 +215,40 @@ fn test_types_serialization_roundtrip() {
         provider: "stripe".into(),
         match_type: "exact".into(),
         target_code: "PAYMENT_FAILED".into(),
+        service: Some("charges".into()),
         external_code: Some("card_declined".into()),
         http_status: Some(402),
+        external_http_status: Some(402),
+        description: Some("Carte refusée".into()),
+        retryable_override: Some(false),
         ..Default::default()
     };
 
     let val_mapping = serde_json::to_value(&mapping_params).unwrap();
     assert_eq!(val_mapping["provider"], "stripe");
     assert_eq!(val_mapping["match_type"], "exact");
+    assert_eq!(val_mapping["service"], "charges");
+    assert_eq!(val_mapping["external_http_status"], 402);
+    assert_eq!(val_mapping["description"], "Carte refusée");
+    assert_eq!(val_mapping["retryable_override"], false);
+
+    // Test Serde alias deserialization (matcher -> match_type, definition_id -> target_code)
+    let raw_with_aliases = json!({
+        "mapping_id": "error_external_mapping:123",
+        "provider": "stripe",
+        "matcher": "exact",
+        "definition_id": "error_definition:PAYMENT_FAILED",
+        "active": true
+    });
+    let deserialized_mapping: lyxal_error::ErrorMappingUpdateParams =
+        serde_json::from_value(raw_with_aliases).unwrap();
+    assert_eq!(deserialized_mapping.mapping_id, "error_external_mapping:123");
+    assert_eq!(deserialized_mapping.match_type.as_deref(), Some("exact"));
+    assert_eq!(
+        deserialized_mapping.target_code.as_deref(),
+        Some("error_definition:PAYMENT_FAILED")
+    );
+    assert_eq!(deserialized_mapping.active, Some(true));
 
     let log_params = ErrorLogParams {
         code: "ERROR_OCCURRED".into(),
