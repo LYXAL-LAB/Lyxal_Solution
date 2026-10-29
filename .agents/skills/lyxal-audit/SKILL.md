@@ -14,7 +14,7 @@ description: >-
 ## Quand déclencher ce Skill
 
 Activer ce Skill dès que l'utilisateur demande :
-- Un audit de conformité d'un module existant ou nouvellement créé (`crates/lyxal_*`, `lyxal_surreal`, `apps/lyxal-server`) ;
+- Un audit de conformité d'un module existant ou nouvellement créé (`crates/lyxal_*`, `apps/lyxal-server`) ;
 - Une revue de code, de DTOs ou de schémas avant validation CTO ou passage en staging/production ;
 - La vérification de la Checklist Obligatoire Antigravity (Section 13 de [`.agents/rules/lyxal_standards_and_checklist.md`](../../rules/lyxal_standards_and_checklist.md)).
 
@@ -46,7 +46,7 @@ Avant d'exiger l'implémentation de `LyxalModule` ou `LyxalSurrealCall`, situer 
    - **Interdiction absolue** de recommander l'ajout d'une dépendance vers `lyxal_runtime` ou `lyxal_surreal` dans un crate de fondation situé en dessous d'eux (`lyxal_error`, `lyxal_crypto`, `lyxal_surreal`), car cela créerait une dépendance circulaire (**P0**).
 2. **Conventions spécifiques des crates de fondation** :
    - **`lyxal_error`** : crate racine de contrat d'erreur (`LyxalResult<T>`, `LyxalErrorPayload`) sans dépendance vers `lyxal_surreal` ni `lyxal_runtime`. Il expose ses constantes de requêtes (`FN_*_QUERY`) et ses structures DTO (`*Params`), consommées par `lyxal_surreal::LyxalSurrealCall` dans les couches supérieures.
-   - **`lyxal_surreal`** : propriétaire unique de `Surreal<Any>` et du trait [`LyxalSurrealCall`](../../../lyxal_surreal/src/call.rs) (`call_fn`). C'est le seul crate autorisé à encapsuler `.query("RETURN fn::...($params)").bind(("params", params)).take(0)`.
+   - **`lyxal_surreal`** : propriétaire unique de `Surreal<Any>` et du trait [`LyxalSurrealCall`](../../../crates/lyxal_surreal/src/call.rs) (`call_fn`). C'est le seul crate autorisé à encapsuler `.query("RETURN fn::...($params)").bind(("params", params)).take(0)`.
    - **`lyxal_crypto`** : fondation cryptographique pure en mémoire (contrat figé [`API_CONTRACT.md`](../../../crates/lyxal_crypto/API_CONTRACT.md)), sans accès base de données (`Surreal<Any>`) ni dépendance `lyxal_runtime`.
 3. **Signatures positionnelles contractuelles de `lyxal_core` et du noyau d'erreur** :
    - Reconnaître comme conformes par contrat architectural :
@@ -117,7 +117,7 @@ Lorsque le workspace cible **SurrealDB 3.2.0** (binaire local [`c:\Users\HP\Desk
 ### Contrôle 6 — Conformité Rust (`src/`) [OBLIGATOIRE]
 Si le module comporte un crate Rust, inspecter `Cargo.toml` et `src/**/*.rs` :
 1. **Transport & Appels SurrealDB** (selon le niveau du crate vérifié au Contrôle 2) :
-   - Pour un module métier : store enveloppant `Surreal<Any>` et implémentant [`lyxal_surreal::LyxalSurrealCall`](../../../lyxal_surreal/src/call.rs), wrappers 1-ligne `store.call_fn("...", params).await` ;
+   - Pour un module métier : store enveloppant `Surreal<Any>` et implémentant [`lyxal_surreal::LyxalSurrealCall`](../../../crates/lyxal_surreal/src/call.rs), wrappers 1-ligne `store.call_fn("...", params).await` ;
    - Aucun `.query(...).bind(...).take(0)` métier en dehors de `LyxalSurrealCall::call_fn` ;
    - Aucun `raw_query()` public (`pub`) ou utilisé pour de la logique métier ;
    - Zéro `panic!`, `.unwrap()` ou `.expect()` sur les chemins d'exécution runtime/réseau/base de données ;

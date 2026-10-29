@@ -45,7 +45,7 @@ uuid = { version = "1", features = ["v4", "serde"] }
 anyhow = "1"
 thiserror = "1"
 lyxal_error = { path = "../../crates/lyxal_error" }
-lyxal_surreal = { path = "../../lyxal_surreal" }
+lyxal_surreal = { path = "../../crates/lyxal_surreal" }
 lyxal_crypto = { path = "../../crates/lyxal_crypto" }
 
 # Secrets / config

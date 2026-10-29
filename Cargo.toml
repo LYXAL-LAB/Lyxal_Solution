@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "crates/lyxal_error",
-    "lyxal_surreal",
+    "crates/lyxal_surreal",
     "crates/lyxal_runtime",
     "crates/lyxal_event",
     "crates/lyxal_crypto",
@@ -18,7 +18,7 @@ license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
 lyxal_error = { path = "crates/lyxal_error" }
-lyxal_surreal = { path = "lyxal_surreal" }
+lyxal_surreal = { path = "crates/lyxal_surreal" }
 lyxal_runtime = { path = "crates/lyxal_runtime" }
 lyxal_event = { path = "crates/lyxal_event" }
 lyxal_crypto = { path = "crates/lyxal_crypto" }

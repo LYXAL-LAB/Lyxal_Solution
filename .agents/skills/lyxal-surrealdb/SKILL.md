@@ -22,7 +22,7 @@ Activer ce Skill dès que la tâche implique :
 ## 1. Socle Technique Réel du Dépôt (Vérifié)
 
 1. **Moteur cible de référence** : **SurrealDB 3.2.0** (binaire local [`surreal.exe`](../../../surreal.exe) `3.2.0 for windows on x86_64`, persistant ou mémoire `mem://`).
-2. **SDK Rust** : `surrealdb = { version = "2.2", features = ["protocol-ws", "protocol-http", "kv-mem"] }` dans [`Cargo.toml`](../../../Cargo.toml), consommé exclusivement via `Surreal<Any>` et [`lyxal_surreal::LyxalSurrealCall`](../../../lyxal_surreal/src/call.rs).
+2. **SDK Rust** : `surrealdb = { version = "2.2", features = ["protocol-ws", "protocol-http", "kv-mem"] }` dans [`Cargo.toml`](../../../Cargo.toml), consommé exclusivement via `Surreal<Any>` et [`lyxal_surreal::LyxalSurrealCall`](../../../crates/lyxal_surreal/src/call.rs).
 3. **Bibliothèque standard `lyxal_core` (Couche 0 — 799 primitives validées sur SurrealDB 3.2.0)** :
    - Située dans [`crates/lyxal_core`](../../../crates/lyxal_core) (`339` validations, `170` sanitize, `170` security, `120` utils).
    - Par exception de bibliothèque standard de bas niveau, les primitives pures de `lyxal_core` (`fn::validation_*`, `fn::sanitize_*`, `fn::security_*`, `fn::utils_*`) utilisent des **signatures positionnelles typées** et signalent les violations de contrat par `THROW "<CODE>"`.

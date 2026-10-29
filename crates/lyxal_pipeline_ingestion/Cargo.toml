@@ -6,7 +6,7 @@ description = "Moteur industriel d'ingestion, normalisation, qualification et pr
 
 [dependencies]
 lyxal_error = { path = "../lyxal_error" }
-lyxal_surreal = { path = "../../lyxal_surreal" }
+lyxal_surreal = { path = "../lyxal_surreal" }
 lyxal_runtime = { path = "../lyxal_runtime" }
 lyxal_event = { path = "../lyxal_event" }
 lyxal_crypto = { path = "../lyxal_crypto" }

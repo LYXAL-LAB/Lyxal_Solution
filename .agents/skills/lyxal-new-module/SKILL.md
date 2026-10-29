@@ -26,7 +26,7 @@ Activer ce Skill dès que l'utilisateur demande :
 Avant toute proposition d'architecture, inspecter obligatoirement l'existant dans le dépôt :
 
 1. **Workspace Cargo & Crates existants** :
-   - Lire [`Cargo.toml`](../../../Cargo.toml) à la racine pour identifier les membres actifs (`crates/lyxal_error`, `lyxal_surreal`, `crates/lyxal_runtime`, `crates/lyxal_event`, `crates/lyxal_crypto`, `crates/lyxal_pipeline_ingestion`, `apps/lyxal-server`) et les versions partagées dans `[workspace.dependencies]`.
+   - Lire [`Cargo.toml`](../../../Cargo.toml) à la racine pour identifier les membres actifs (`crates/lyxal_error`, `crates/lyxal_surreal`, `crates/lyxal_runtime`, `crates/lyxal_event`, `crates/lyxal_crypto`, `crates/lyxal_pipeline_ingestion`, `apps/lyxal-server`) et les versions partagées dans `[workspace.dependencies]`.
 2. **Modules de référence validés** :
    - **Module Hybride Rust + SurrealQL** : [`crates/lyxal_pipeline_ingestion`](../../../crates/lyxal_pipeline_ingestion/manifest.toml) (`manifest.toml`, `src/module.rs`, `src/storage/store.rs`, `schema/`, `functions/`, `events/`, `error/`, `seeds/`).
    - **Module Déclaratif SurrealQL** : [`crates/lyxal_catalogue`](../../../crates/lyxal_catalogue/manifest.toml) (`manifest.toml`, `schema/`, `functions/`, `seeds/`, `ROADMAP.md`).
@@ -64,7 +64,7 @@ Le plan soumis doit impérativement documenter :
    - Liste exhaustive des codes `<MODULE>_<DOMAINE>_<CAUSE>`, catégories, statuts HTTP, caractère `retryable` et traductions (`fr` / `en`).
 6. **Contrats Rust (si crate Rust)** :
    - Implémentation de [`lyxal_runtime::LyxalModule`](../../../crates/lyxal_runtime/src/module.rs) via `ModuleDescriptorBuilder` ;
-   - Store de persistance implémentant [`lyxal_surreal::LyxalSurrealCall`](../../../lyxal_surreal/src/call.rs) avec structures `*Params` et `*Result` nommées ;
+   - Store de persistance implémentant [`lyxal_surreal::LyxalSurrealCall`](../../../crates/lyxal_surreal/src/call.rs) avec structures `*Params` et `*Result` nommées ;
    - Organisation de `src/models/` (ségrégation `pub` vs `pub(crate)`, masquage `Debug` des secrets) ;
    - Workers éventuels implémentant [`lyxal_runtime::worker::LyxalWorker`](../../../crates/lyxal_runtime/src/worker/mod.rs) avec `CancellationToken` ;
    - Sondes de santé éventuelles (`ModuleHealthCheck`).
