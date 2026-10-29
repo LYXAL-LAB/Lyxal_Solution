@@ -5,13 +5,16 @@ edition = "2021"
 description = "Client générique et exécuteur de fonctions SurrealQL pour l'écosystème Lyxal OS"
 
 [dependencies]
-surrealdb = { version = "2.2", features = ["protocol-ws", "kv-mem"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-async-trait = "0.1"
-thiserror = "1.0"
-lyxal_error = { path = "../crates/lyxal_error" }
-axum = { version = "0.7", optional = true }
+surrealdb = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+lyxal_error = { workspace = true }
+axum = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
 
 [features]
 default = []
