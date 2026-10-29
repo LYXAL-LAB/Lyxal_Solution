@@ -19,7 +19,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_pipeline_cache_key(
     IF !string::matches($v,"^v[1-9][0-9]*$") {
         THROW "SANITIZE_INVALID_PIPELINE_VERSION";
     };
-    RETURN string::concat($n,"@",$v,":",encoding::base64::encode(encoding::json::encode($pipeline)));
+    RETURN string::concat($n,"@",$v,":",encoding::base64::encode(<bytes>encoding::json::encode($pipeline)));
 }
 COMMENT "Construit une clé déterministe pour un pipeline."
 PERMISSIONS FULL;

@@ -20,7 +20,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $expected_table: option<string>
 --

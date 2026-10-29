@@ -24,16 +24,28 @@ DEFINE FUNCTION OVERWRITE fn::validation_benchmark_duration_stats(
         |$sample| $sample.duration
     );
 
-    LET $total = array::reduce(
+    LET $total = array::fold(
         $durations,
-        |$sum, $duration| $sum + $duration,
-        0s
+        0s,
+        |$sum, $duration| $sum + $duration
+    );
+
+    LET $min_dur = array::fold(
+        $durations,
+        $durations[0],
+        |$m, $d| IF $d < $m { $d } ELSE { $m }
+    );
+
+    LET $max_dur = array::fold(
+        $durations,
+        $durations[0],
+        |$m, $d| IF $d > $m { $d } ELSE { $m }
     );
 
     RETURN {
         count: array::len($durations),
-        min: math::min($durations),
-        max: math::max($durations),
+        min: $min_dur,
+        max: $max_dur,
         average: $total / array::len($durations),
         total: $total
     };

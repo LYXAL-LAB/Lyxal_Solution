@@ -21,8 +21,8 @@
 --
 -- Paramètres
 -- ----------
--- $min_value: option<any>
--- $max_value: option<any>
+-- $min_value: any
+-- $max_value: any
 -- $field: string
 -- $allow_equal: bool
 --

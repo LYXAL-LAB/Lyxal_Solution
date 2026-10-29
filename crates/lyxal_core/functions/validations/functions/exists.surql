@@ -250,7 +250,7 @@
 -- Paramètres
 -- ----------
 -- $value:
---   Type : option<any>
+--   Type : any
 --
 --   Valeur obligatoire à rechercher.
 --

@@ -20,7 +20,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $min_port: int
 -- $max_port: int

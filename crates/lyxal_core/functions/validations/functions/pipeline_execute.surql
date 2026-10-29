@@ -20,7 +20,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $pipeline: array<object>
 -- $max_steps: int
@@ -82,8 +82,9 @@ DEFINE FUNCTION OVERWRITE fn::validation_pipeline_execute(
         $max_steps
     );
 
-    RETURN array::reduce(
+    RETURN array::fold(
         $steps,
+        $value,
         |$current, $step| {
             IF $step.rule = "required" {
                 fn::validation_pipeline_required(
@@ -140,8 +141,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_pipeline_execute(
             ELSE {
                 $current
             }
-        },
-        $value
+        }
     );
 }
 COMMENT "

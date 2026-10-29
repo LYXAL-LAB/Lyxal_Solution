@@ -13,7 +13,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $allow_leading_slash: bool
 -- $allow_trailing_slash: bool

@@ -20,7 +20,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $allow_alpha3: bool
 -- $allowed_codes: option<array<string>>

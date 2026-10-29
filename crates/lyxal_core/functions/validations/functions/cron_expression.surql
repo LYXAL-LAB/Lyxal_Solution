@@ -21,7 +21,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $allow_seconds: bool
 -- $allow_macros: bool

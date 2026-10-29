@@ -79,11 +79,11 @@
 -- Paramètres
 -- ----------
 -- $value:
---   Type : option<any>
+--   Type : any
 --
 --   Valeur obligatoire à contrôler.
 --
---   Le type option<any> permet à la fonction de recevoir :
+--   Le type any permet à la fonction de recevoir :
 --
 --     - une valeur NONE ;
 --     - un tableau ;

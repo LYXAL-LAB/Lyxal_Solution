@@ -13,7 +13,7 @@ RETURN fn::validation_benchmark_sample(
 -- Erreur attendue : VALIDATION_BENCHMARK_INVALID_DURATION
 RETURN fn::validation_benchmark_sample(
     "validate_user",
-    -1ms,
+    0ms,
     true,
     NONE
 );

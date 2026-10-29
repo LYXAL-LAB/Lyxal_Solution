@@ -20,7 +20,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $allow_hyphen: bool
 -- $allow_colon: bool

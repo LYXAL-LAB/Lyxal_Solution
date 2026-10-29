@@ -20,7 +20,7 @@
 -- Paramètres
 -- ----------
 -- $success: bool
--- $value: option<any>
+-- $value: any
 -- $error_code: option<string>
 -- $field: string
 --

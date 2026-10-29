@@ -21,7 +21,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $max_attempts_limit: int
 -- $max_backoff: duration

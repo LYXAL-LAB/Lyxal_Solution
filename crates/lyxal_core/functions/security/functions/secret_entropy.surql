@@ -19,8 +19,7 @@ DEFINE FUNCTION OVERWRITE fn::security_secret_entropy(
         0f
     } ELSE {
         type::float(string::len($secret))
-        * math::log(type::float($alphabet))
-        / math::log(2f)
+        * math::log(type::float($alphabet), 2f)
     };
 
     RETURN {

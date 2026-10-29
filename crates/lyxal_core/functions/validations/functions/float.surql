@@ -232,11 +232,11 @@
 -- Paramètres
 -- ----------
 -- $value:
---   Type : option<any>
+--   Type : any
 --
 --   Valeur obligatoire à contrôler.
 --
---   Le type option<any> permet de produire des codes d'erreur explicites pour :
+--   Le type any permet de produire des codes d'erreur explicites pour :
 --
 --     - une valeur absente ;
 --     - une valeur NULL ;

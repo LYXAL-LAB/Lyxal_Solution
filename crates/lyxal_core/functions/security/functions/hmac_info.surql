@@ -9,8 +9,8 @@
 DEFINE FUNCTION OVERWRITE fn::security_hmac_info() -> object {
     RETURN {
         native_surrealql: false,
-        supported_contracts: ["hmac-sha256","hmac-sha512"],
-        signer: "lyxal_security_native_rust",
+        supported_contracts: ["hmac-sha256"],
+        signer: "lyxal_crypto",
         constant_time_verification_required: true,
         secret_storage: "reference_only"
     };

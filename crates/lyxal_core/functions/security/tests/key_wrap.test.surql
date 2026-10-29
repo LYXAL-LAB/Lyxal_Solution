@@ -6,5 +6,12 @@
 RETURN fn::security_key_wrap(
     "vault://keys/data",
     "vault://keys/kek",
+    "aes-256-gcm"
+);
+
+-- Erreur attendue : SECURITY_UNSUPPORTED_KEY_WRAP_ALGORITHM
+RETURN fn::security_key_wrap(
+    "vault://keys/data",
+    "vault://keys/kek",
     "aes-kw"
 );

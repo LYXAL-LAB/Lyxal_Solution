@@ -96,11 +96,11 @@
 -- Paramètres
 -- ----------
 -- $value:
---   Type : option<any>
+--   Type : any
 --
 --   Valeur obligatoire à contrôler.
 --
---   Le type option<any> permet de détecter explicitement :
+--   Le type any permet de détecter explicitement :
 --
 --     - une valeur absente ;
 --     - une valeur NULL ;

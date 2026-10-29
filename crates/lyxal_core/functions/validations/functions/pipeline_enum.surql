@@ -19,7 +19,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $allowed_values: array<any>
 --

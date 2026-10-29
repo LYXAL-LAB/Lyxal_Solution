@@ -257,7 +257,7 @@
 -- Paramètres
 -- ----------
 -- $value:
---   Type : option<any>
+--   Type : any
 --
 --   Valeur obligatoire dont l'unicité doit être vérifiée.
 --
@@ -313,7 +313,7 @@
 --     - external_id
 --
 -- $exclude_record:
---   Type : option<any>
+--   Type : any
 --
 --   Record ID à exclure de la recherche.
 --

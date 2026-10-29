@@ -13,7 +13,7 @@ DEFINE FUNCTION OVERWRITE fn::security_hmac_verify(
     $algorithm: string
 ) -> object {
     LET $algo = string::lowercase(string::trim($algorithm));
-    IF !((["hmac-sha256","hmac-sha512"]) CONTAINS ($algo)) {
+    IF !((["hmac-sha256"]) CONTAINS ($algo)) {
         THROW "SECURITY_UNSUPPORTED_HMAC_ALGORITHM";
     };
 

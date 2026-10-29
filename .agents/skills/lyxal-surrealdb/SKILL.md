@@ -103,6 +103,14 @@ Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.2.0
    - Le moteur `regex` Rust de SurrealDB 3.2.0 **ne supporte pas les backreferences** (`\1`, `\2`), et `string::replace($s, <regex>..., "$1")` n'expanse pas les groupes capturants `$1`.
 6. **Import CLI (`surreal.exe import`)** :
    - En SurrealDB 3.2.0, tout fichier importé via `surreal.exe import` doit débuter par l'instruction `OPTION IMPORT;`.
+7. **Signatures Runtime de la Bibliothèque Standard SurrealDB 3.2.0 (Vérifiées en Lot 4)** :
+   - `array::reduce($arr, $fn)` prend **uniquement 2 arguments** en 3.2.0 (sans valeur initiale). Dès qu'un accumulateur initial `$init` est requis, utiliser **`array::fold($arr, $init, |$acc, $x| ...)`**.
+   - `array::sort::asc($arr)` et `array::sort::desc($arr)` prennent **uniquement 1 argument** en 3.2.0 (pas de second argument de champ `$field`). Pour trier un tableau d'objets par clé, utiliser `fn::utils_collection_sort_by($arr, $field, $direction)`.
+   - `math::min($arr)` et `math::max($arr)` n'acceptent que `array<number>` et rejettent `array<duration>`. En outre, le type `duration` est **non signé** en 3.2.0 (`-1ms` est rejeté et `$a - $b` échoue à l'exécution si `$a < $b` $\rightarrow$ comparer `$a >= $b` avant soustraction).
+   - `math::log($x, $base)` requiert **obligatoirement 2 arguments** (`float`, `float`) en 3.2.0.
+   - `encoding::base64::encode($bytes)` requiert un argument de type **`bytes`** (`<bytes>$str`) et retourne un base64 sans padding `=` en 3.2.0.
+   - `$token` est une **variable système protégée** en 3.2.0 (`'token' is a protected variable and cannot be set`) : ne jamais nommer une variable locale `LET $token = ...`.
+   - Un intervalle `0..$n` doit être explicitement converti en tableau via **`<array>(0..$n)`** avant d'être passé à `array::all`, `array::fold` ou `array::map`.
 
 ---
 

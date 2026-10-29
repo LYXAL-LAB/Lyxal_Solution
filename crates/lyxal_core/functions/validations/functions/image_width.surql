@@ -13,7 +13,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $min_width: int
 -- $max_width: int

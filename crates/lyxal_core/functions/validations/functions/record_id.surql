@@ -13,7 +13,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $allowed_tables: option<array<string>>
 --

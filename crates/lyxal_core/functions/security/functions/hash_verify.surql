@@ -14,11 +14,9 @@ DEFINE FUNCTION OVERWRITE fn::security_hash_verify(
     LET $algo = string::lowercase(string::trim($algorithm));
 
     RETURN IF $algo = "argon2" {
-        crypto::argon2::compare($hash, $value)
+        THROW "SECURITY_NATIVE_PASSWORD_VERIFY_REQUIRED"
     } ELSE IF $algo = "sha256" {
         $hash == crypto::sha256($value)
-    } ELSE IF $algo = "sha512" {
-        $hash == crypto::sha512($value)
     } ELSE IF $algo = "blake3" {
         $hash == crypto::blake3($value)
     } ELSE {
@@ -26,7 +24,7 @@ DEFINE FUNCTION OVERWRITE fn::security_hash_verify(
     };
 }
 COMMENT "
-Vérifie un hash. Argon2 utilise le comparateur natif ; les empreintes simples
-utilisent une égalité ordinaire et ne doivent pas protéger des mots de passe.
+Vérifie une empreinte non secrète (SHA-256 ou BLAKE3). La vérification de mots
+de passe Argon2id est exclusivement déléguée à lyxal_crypto::password::verify_password.
 "
 PERMISSIONS FULL;

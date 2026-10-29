@@ -24,8 +24,10 @@ DEFINE FUNCTION OVERWRITE fn::validation_benchmark_compare(
         OR $candidate_stats.average IS NONE
     {
         NONE
-    } ELSE {
+    } ELSE IF $candidate_stats.average >= $baseline_stats.average {
         $candidate_stats.average - $baseline_stats.average
+    } ELSE {
+        $baseline_stats.average - $candidate_stats.average
     };
 
     RETURN {
@@ -36,9 +38,9 @@ DEFINE FUNCTION OVERWRITE fn::validation_benchmark_compare(
         average_delta: $delta,
         faster: IF $delta IS NONE {
             NONE
-        } ELSE IF $delta < 0s {
+        } ELSE IF $candidate_stats.average < $baseline_stats.average {
             "candidate"
-        } ELSE IF $delta > 0s {
+        } ELSE IF $candidate_stats.average > $baseline_stats.average {
             "baseline"
         } ELSE {
             "equal"

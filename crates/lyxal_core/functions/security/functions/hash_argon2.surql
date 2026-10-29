@@ -12,7 +12,7 @@ DEFINE FUNCTION OVERWRITE fn::security_hash_argon2(
     IF string::len($secret) = 0 {
         THROW "SECURITY_EMPTY_SECRET";
     };
-    RETURN crypto::argon2::generate($secret);
+    THROW "SECURITY_NATIVE_PASSWORD_HASH_REQUIRED";
 }
-COMMENT "Génère un hash Argon2 salé pour un secret ou mot de passe."
+COMMENT "Le hachage de mots de passe Argon2id est exclusivement délégué à lyxal_crypto::password::hash_password en Rust."
 PERMISSIONS FULL;

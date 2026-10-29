@@ -18,7 +18,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_benchmark_sample(
         THROW "VALIDATION_BENCHMARK_INVALID_NAME";
     };
 
-    IF $duration < 0s {
+    IF $duration <= 0s {
         THROW "VALIDATION_BENCHMARK_INVALID_DURATION";
     };
 

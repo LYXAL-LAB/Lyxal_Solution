@@ -21,7 +21,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 --   Chaîne obligatoire à contrôler.
 --
 -- $field: string

@@ -454,12 +454,12 @@
 -- Paramètres
 -- ----------
 -- $min_value:
---   Type : option<any>
+--   Type : any
 --
 --   Durée minimale obligatoire de la plage.
 --
 -- $max_value:
---   Type : option<any>
+--   Type : any
 --
 --   Durée maximale obligatoire de la plage.
 --

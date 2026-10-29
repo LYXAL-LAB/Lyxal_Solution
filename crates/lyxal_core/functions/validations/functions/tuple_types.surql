@@ -20,7 +20,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $expected_types: array<string>
 --
@@ -114,7 +114,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_tuple_types(
         );
     };
 
-    LET $indexes = 0..array::len($value);
+    LET $indexes = <array>(0..array::len($value));
 
     LET $all_types_match = array::all(
         $indexes,

@@ -15,7 +15,7 @@ DEFINE FUNCTION OVERWRITE fn::security_key_derive(
 ) -> object {
     LET $algo = string::lowercase(string::trim($algorithm));
 
-    IF !((["hkdf-sha256","hkdf-sha512"]) CONTAINS ($algo)) {
+    IF !((["hkdf-sha256"]) CONTAINS ($algo)) {
         THROW "SECURITY_UNSUPPORTED_KDF";
     };
 

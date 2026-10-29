@@ -20,8 +20,8 @@
 --
 -- Paramètres
 -- ----------
--- $latitude: option<any>
--- $longitude: option<any>
+-- $latitude: any
+-- $longitude: any
 -- $field: string
 --
 -- Valeur retournée

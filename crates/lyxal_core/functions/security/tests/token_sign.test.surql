@@ -6,6 +6,14 @@
 RETURN fn::security_token_sign(
     {sub:"user:123"},
     "vault://keys/token-signing",
+    "hmac-sha256",
+    "jwt"
+);
+
+-- Erreur attendue : SECURITY_UNSUPPORTED_TOKEN_SIGNATURE_ALGORITHM
+RETURN fn::security_token_sign(
+    {sub:"user:123"},
+    "vault://keys/token-signing",
     "ed25519",
     "jwt"
 );

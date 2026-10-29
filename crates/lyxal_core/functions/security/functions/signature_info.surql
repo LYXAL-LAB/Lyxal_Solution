@@ -9,8 +9,9 @@
 DEFINE FUNCTION OVERWRITE fn::security_signature_info() -> object {
     RETURN {
         native_surrealql: false,
-        supported_algorithms: ["ed25519","es256","es384","rs256","ps256"],
-        engine: "lyxal_security_native_rust",
+        supported_algorithms: [],
+        status: "disabled_until_cto_approval",
+        engine: "lyxal_crypto",
         private_keys_by_reference_only: true,
         canonicalization_required: true
     };

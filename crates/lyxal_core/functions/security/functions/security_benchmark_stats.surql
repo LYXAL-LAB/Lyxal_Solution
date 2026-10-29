@@ -26,10 +26,13 @@ DEFINE FUNCTION OVERWRITE fn::security_benchmark_stats(
         |$sum,$duration|$sum+$duration
     );
 
+    LET $min_dur = array::fold($durations, $durations[0], |$m, $d| IF $d < $m { $d } ELSE { $m });
+    LET $max_dur = array::fold($durations, $durations[0], |$m, $d| IF $d > $m { $d } ELSE { $m });
+
     RETURN {
         count:array::len($durations),
-        min:math::min($durations),
-        max:math::max($durations),
+        min:$min_dur,
+        max:$max_dur,
         average:$total/array::len($durations),
         total:$total
     };

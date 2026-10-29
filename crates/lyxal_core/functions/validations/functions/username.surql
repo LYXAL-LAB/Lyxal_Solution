@@ -21,7 +21,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 --   Nom d'utilisateur obligatoire.
 --
 -- $field: string

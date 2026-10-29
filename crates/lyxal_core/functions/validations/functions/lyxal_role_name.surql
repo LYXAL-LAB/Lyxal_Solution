@@ -19,7 +19,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $reserved_roles: option<array<string>>
 -- $min_length: int

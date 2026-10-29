@@ -17,5 +17,5 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_strip_dangerous_attributes($value:any,$fi
  LET $v2=string::replace($v,<regex>"(?i)href\\s*=\\s*(\"\\s*javascript:[^\"]*\"|'\\s*javascript:[^']*')","href=\"#\"");
  RETURN string::replace($v2,<regex>"(?i)src\\s*=\\s*(\"\\s*javascript:[^\"]*\"|'\\s*javascript:[^']*')","src=\"#\"");
 }
-COMMENT "Supprime quelques attributs HTML dangereux courants."
+COMMENT "Supprime par pré-nettoyage lexical quelques attributs HTML dangereux courants (non anti-XSS complet)."
 PERMISSIONS FULL;

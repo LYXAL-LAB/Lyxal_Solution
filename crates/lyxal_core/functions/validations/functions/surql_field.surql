@@ -19,7 +19,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $allow_id: bool
 -- $max_length: int

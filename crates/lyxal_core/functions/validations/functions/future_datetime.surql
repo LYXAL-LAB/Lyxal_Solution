@@ -422,7 +422,7 @@
 -- Paramètres
 -- ----------
 -- $value:
---   Type : option<any>
+--   Type : any
 --
 --   Datetime obligatoire à valider.
 --

@@ -13,7 +13,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $required_keys: option<array<string>>
 -- $allowed_keys: option<array<string>>

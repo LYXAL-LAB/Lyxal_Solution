@@ -12,18 +12,12 @@ DEFINE FUNCTION OVERWRITE fn::security_signature_sign(
     $algorithm: string
 ) -> object {
     LET $algo = string::lowercase(string::trim($algorithm));
-
-    IF !((["ed25519","es256","es384","rs256","ps256"]) CONTAINS ($algo)) {
+    LET $ref = string::trim($key_reference);
+    IF $canonical IS NONE OR $ref = "" OR $algo = "" {
         THROW "SECURITY_UNSUPPORTED_SIGNATURE_ALGORITHM";
     };
 
-    RETURN {
-        operation: "asymmetric_sign",
-        canonical: $canonical,
-        key_reference: string::trim($key_reference),
-        algorithm: $algo,
-        requires_native_crypto: true
-    };
+    THROW "SECURITY_UNSUPPORTED_SIGNATURE_ALGORITHM";
 }
-COMMENT "Prépare une signature asymétrique pour le moteur Rust."
+COMMENT "Signature asymétrique désactivée tant qu'elle n'est pas validée dans lyxal_crypto STABLE."
 PERMISSIONS FULL;

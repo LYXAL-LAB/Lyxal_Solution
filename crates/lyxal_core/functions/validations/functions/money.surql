@@ -21,7 +21,7 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
 -- $min_value: option<decimal>
 -- $max_value: option<decimal>

@@ -397,12 +397,12 @@
 -- Paramètres
 -- ----------
 -- $start_value:
---   Type : option<any>
+--   Type : any
 --
 --   Datetime obligatoire représentant le début de la plage.
 --
 -- $end_value:
---   Type : option<any>
+--   Type : any
 --
 --   Datetime obligatoire représentant la fin de la plage.
 --

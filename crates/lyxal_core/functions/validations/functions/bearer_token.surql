@@ -33,11 +33,11 @@ DEFINE FUNCTION OVERWRITE fn::validation_bearer_token($value: any, $field: strin
     IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
     LET $clean_value = string::trim($value);
     IF !string::starts_with($clean_value, "Bearer ") { THROW string::concat($clean_field, "_INVALID_BEARER_FORMAT"); };
-    LET $token = string::trim(string::slice($clean_value, 7));
-    IF $token = "" OR !string::matches($token, "^[A-Za-z0-9._~+/-]+=*$") { THROW string::concat($clean_field, "_INVALID_BEARER_FORMAT"); };
-    LET $length = string::len($token);
+    LET $raw_token = string::trim(string::slice($clean_value, 7));
+    IF $raw_token = "" OR !string::matches($raw_token, "^[A-Za-z0-9._~+/-]+=*$") { THROW string::concat($clean_field, "_INVALID_BEARER_FORMAT"); };
+    LET $length = string::len($raw_token);
     IF $length < $min_length { THROW string::concat($clean_field, "_TOKEN_TOO_SHORT"); };
     IF $length > $max_length { THROW string::concat($clean_field, "_TOKEN_TOO_LONG"); };
-    RETURN $token;
+    RETURN $raw_token;
 }
 COMMENT "Valide un en-tête Bearer et retourne le jeton." PERMISSIONS FULL;

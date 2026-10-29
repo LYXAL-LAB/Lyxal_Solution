@@ -13,7 +13,7 @@
 --
 -- Paramètres
 -- ----------
--- $birthdate: option<any>
+-- $birthdate: any
 -- $field: string
 -- $min_age: option<int>
 -- $max_age: option<int>

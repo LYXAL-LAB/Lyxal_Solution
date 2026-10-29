@@ -166,11 +166,11 @@
 -- Paramètres
 -- ----------
 -- $value:
---   Type : option<any>
+--   Type : any
 --
 --   Valeur obligatoire à contrôler.
 --
---   Le type option<any> permet de produire des erreurs métier explicites pour :
+--   Le type any permet de produire des erreurs métier explicites pour :
 --
 --     - une valeur absente ;
 --     - une valeur NULL ;

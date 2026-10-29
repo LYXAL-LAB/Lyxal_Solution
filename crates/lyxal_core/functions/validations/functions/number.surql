@@ -86,11 +86,11 @@
 -- Paramètres
 -- ----------
 -- $value:
---   Type : option<any>
+--   Type : any
 --
 --   Valeur obligatoire à contrôler.
 --
---   Le type option<any> permet à la fonction de recevoir une valeur absente
+--   Le type any permet à la fonction de recevoir une valeur absente
 --   ou d'un type incorrect afin de produire un code d'erreur métier stable.
 --
 -- $field:

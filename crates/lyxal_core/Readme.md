@@ -89,7 +89,7 @@ Exemples :
 - lowercase
 - uppercase
 - slug
-- nettoyage HTML
+- nettoyage HTML lexical léger (`fn::sanitize_html` / `fn::sanitize_strip_dangerous_attributes` — pré-filtrage lexical, ne remplace pas un parseur DOM anti-XSS complet pour du HTML riche non fiable)
 - suppression des caractères interdits
 - normalisation Unicode
 - normalisation téléphone
@@ -202,17 +202,23 @@ Le Core ne fournit que des briques techniques génériques.
 
 ---
 
-# Total
+# Total & Métriques de Vérification (SurrealDB 3.2.0)
 
 Le Core comprend actuellement :
 
-- **799 fonctions SurrealQL** (100 % validées sur **SurrealDB 3.2.0**)
-- **799 fichiers de tests** (parité stricte 1:1)
+- **799 fonctions SurrealQL** (`799 / 799` validées par `surreal validate` et `799 / 799` importées sur `surreal.exe` v3.2.0 avec `0` erreur)
+- **799 fichiers de tests** (parité stricte 1:1, `799 / 799` validés par `surreal validate`)
+- **2 557 instructions de tests exécutées sur `surreal.exe` v3.2.0** :
+  - **1 585** retours nominaux `OK`
+  - **963** tests négatifs levant le `THROW "<CODE>"` métier attendu
+  - **9** rejets négatifs `encoding::json::decode()` sur chaînes JSON malformées (`validations/test/json.surql`, `json_string.test.surql`)
+  - **0 erreur moteur inattendue**
+- **123 assertions de valeurs explicites** vérifiées sur `surreal.exe` v3.2.0 (`81` assertions Lots 1–3 + `42` assertions Lot 4)
 
 Chaque fonction est fournie avec :
 
 - un fichier `.surql`
-- un fichier de test `.surql` / `.test.surql`
+- un fichier de test `.surql` / `.test.surql` (scénarios d'exécution positifs et négatifs)
 
 ---
 

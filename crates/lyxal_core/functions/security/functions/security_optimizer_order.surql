@@ -21,21 +21,28 @@ DEFINE FUNCTION OVERWRITE fn::security_optimizer_order(
         redact_secret:60
     };
 
-    RETURN array::sort::asc(
-        array::map(
-            $pipeline,
-            |$step| object::extend(
-                $step,
-                {
-                    _weight: IF $weights[$step.rule] IS NONE {
-                        100
-                    } ELSE {
-                        $weights[$step.rule]
-                    }
+    LET $weighted = array::map(
+        $pipeline,
+        |$step| object::extend(
+            $step,
+            {
+                _weight: IF $weights[$step.rule] IS NONE {
+                    100
+                } ELSE {
+                    $weights[$step.rule]
                 }
-            )
-        ),
-        "_weight"
+            }
+        )
+    );
+
+    RETURN array::fold(
+        $weighted,
+        [],
+        |$acc, $item| {
+            LET $before = array::filter($acc, |$x| $x._weight <= $item._weight);
+            LET $after  = array::filter($acc, |$x| $x._weight > $item._weight);
+            array::concat(array::append($before, $item), $after)
+        }
     );
 }
 COMMENT "Ordonne les étapes Security selon un ordre canonique."

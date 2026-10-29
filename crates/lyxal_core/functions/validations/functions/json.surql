@@ -216,11 +216,11 @@
 -- Paramètres
 -- ----------
 -- $value:
---   Type : option<any>
+--   Type : any
 --
 --   Chaîne JSON obligatoire à contrôler et à décoder.
 --
---   Le type option<any> permet de produire des erreurs explicites pour :
+--   Le type any permet de produire des erreurs explicites pour :
 --
 --     - une valeur absente ;
 --     - une valeur NULL ;

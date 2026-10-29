@@ -14,8 +14,6 @@ DEFINE FUNCTION OVERWRITE fn::security_hash_string(
 
     RETURN IF $algo = "sha256" {
         crypto::sha256($value)
-    } ELSE IF $algo = "sha512" {
-        crypto::sha512($value)
     } ELSE IF $algo = "blake3" {
         crypto::blake3($value)
     } ELSE {

@@ -19,8 +19,8 @@
 --
 -- Paramètres
 -- ----------
--- $left: option<any>
--- $right: option<any>
+-- $left: any
+-- $right: any
 -- $field: string
 -- $operator: string
 --

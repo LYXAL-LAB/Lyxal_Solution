@@ -366,7 +366,7 @@
 -- Paramètres
 -- ----------
 -- $value:
---   Type : option<any>
+--   Type : any
 --
 --   Date civile obligatoire à contrôler.
 --

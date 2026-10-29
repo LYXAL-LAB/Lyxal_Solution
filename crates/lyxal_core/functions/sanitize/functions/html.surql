@@ -21,5 +21,5 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_html($value:any,$field:string)->string{
  LET $v=fn::sanitize_strip_event_handlers($v,$field);
  RETURN fn::sanitize_strip_dangerous_attributes($v,$field);
 }
-COMMENT "Applique le pipeline lexical HTML du Core Sanitize."
+COMMENT "Applique un pré-nettoyage lexical HTML par expressions régulières (non anti-XSS : toute protection XSS complète requiert un parseur HTML par liste blanche côté Rust)."
 PERMISSIONS FULL;

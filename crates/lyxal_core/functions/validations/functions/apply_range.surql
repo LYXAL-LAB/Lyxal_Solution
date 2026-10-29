@@ -19,10 +19,10 @@
 --
 -- Paramètres
 -- ----------
--- $value: option<any>
+-- $value: any
 -- $field: string
--- $min_value: option<any>
--- $max_value: option<any>
+-- $min_value: any
+-- $max_value: any
 --
 -- Erreurs spécifiques
 -- --------------------

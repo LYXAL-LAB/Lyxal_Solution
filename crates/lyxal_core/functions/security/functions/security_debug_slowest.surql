@@ -14,8 +14,18 @@ DEFINE FUNCTION OVERWRITE fn::security_debug_slowest(
         THROW "SECURITY_DEBUG_INVALID_LIMIT";
     };
 
+    LET $sorted = array::fold(
+        $session.traces,
+        [],
+        |$acc, $t| {
+            LET $before = array::filter($acc, |$x| $x.duration >= $t.duration);
+            LET $after  = array::filter($acc, |$x| $x.duration < $t.duration);
+            array::concat(array::append($before, $t), $after)
+        }
+    );
+
     RETURN array::slice(
-        array::sort::desc($session.traces,"duration"),
+        $sorted,
         0,
         $limit
     );

@@ -75,16 +75,16 @@
 -- Paramètres
 -- ----------
 -- $value:
---   Type : option<any>
+--   Type : any
 --
 --   Valeur obligatoire à contrôler.
 --
---   Le type option<any> permet à la fonction de recevoir une valeur absente
+--   Le type any permet à la fonction de recevoir une valeur absente
 --   ou d'un type incorrect afin de produire des erreurs métier explicites.
 --
 --   Si le paramètre était directement déclaré en option<int>, SurrealDB
 --   pourrait refuser l'appel avant l'exécution du corps de la fonction.
---   L'utilisation de option<any> permet donc de retourner un code d'erreur
+--   L'utilisation de any permet donc de retourner un code d'erreur
 --   stable contrôlé par Lyxal OS.
 --
 -- $field:

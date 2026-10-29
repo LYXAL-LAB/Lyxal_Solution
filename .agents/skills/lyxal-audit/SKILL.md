@@ -106,6 +106,7 @@ Lorsque le workspace cible **SurrealDB 3.2.0** (binaire local [`c:\Users\HP\Desk
      - `type::thing(` (remplacé en SurrealDB 3.x par `type::record($table, $id)` / construction de `record<T>`) ;
      - `type::is::*` (ex. `type::is::string($x)` $\rightarrow$ `type::is_string($x)` ou `$x IS string`) ;
      - Séquences d'échappement regex à simple antislash dans `"..."` (`Invalid escape sequence`), backreferences `\1`/`\2`, réaffectations de variables sans `LET` ou comparaisons `$a = $b` en tête de bloc `{ ... }` ;
+     - Signatures runtime 3.2.0 : `array::reduce` à 3 arguments ($\rightarrow$ `array::fold`), `array::sort::asc`/`desc` à 2 arguments, `math::min`/`max` sur `array<duration>`, soustraction de `duration` pouvant être négative, `math::log` à 1 argument, `encoding::base64::encode` sur `string` sans cast `<bytes>`, affectation `LET $token = ...` (variable protégée), ou `0..$n` non casté en `<array>(0..$n)` ;
      - `IF ... THEN ( ... ) END` vs `IF ... { ... }` dans les blocs procéduraux et `DEFINE EVENT`.
 2. **Interdiction des remplacements mécaniques non vérifiés** :
    - Avant de recommander le remplacement d'une fonction SurrealQL, vérifier la sémantique exacte de l'expression cible (gestion de `NONE` vs `NULL`, comportement lorsque le premier argument de `type::record` contient déjà le préfixe `table:id`, compatibilité avec le SDK Rust si les tests tournent encore sur `surrealdb = "2.2"`).

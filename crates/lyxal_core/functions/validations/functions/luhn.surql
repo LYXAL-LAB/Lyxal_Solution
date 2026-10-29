@@ -57,9 +57,10 @@ DEFINE FUNCTION OVERWRITE fn::validation_luhn(
     IF $length < $min_length { THROW string::concat($clean_field, "_TOO_SHORT"); };
     IF $length > $max_length { THROW string::concat($clean_field, "_TOO_LONG"); };
 
-    LET $indexes = <array>0..$length;
-    LET $sum = array::reduce(
+    LET $indexes = <array>(0..$length);
+    LET $sum = array::fold(
         $indexes,
+        0,
         |$acc, $index| {
             LET $digit = type::int(string::slice($digits, $index, $index + 1));
             LET $double = ($length - $index) % 2 = 0;
@@ -70,8 +71,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_luhn(
                 $digit
             };
             $acc + $processed
-        },
-        0
+        }
     );
 
     IF $sum % 10 != 0 {

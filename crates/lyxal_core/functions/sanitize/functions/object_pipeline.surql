@@ -10,8 +10,9 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_object_pipeline(
     $value: object,
     $steps: array<object>
 ) -> object {
-    RETURN array::reduce(
+    RETURN array::fold(
         $steps,
+        $value,
         |$current,$step| {
             IF $step.rule = "keep_keys" {
                 fn::sanitize_keep_keys($current,$step.value)
@@ -22,8 +23,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_object_pipeline(
             } ELSE {
                 $current
             }
-        },
-        $value
+        }
     );
 }
 COMMENT "Exécute un pipeline fermé de sanitation d'objet."

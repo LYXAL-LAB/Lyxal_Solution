@@ -18,11 +18,11 @@ DEFINE FUNCTION OVERWRITE fn::validation_benchmark_report(
         generated_at: time::now(),
         run_count: array::len($runs),
         summaries: $summaries,
-        total_samples: array::reduce(
+        total_samples: array::fold(
             $summaries,
+            0,
             |$total, $summary|
-                $total + $summary.sample_count,
-            0
+                $total + $summary.sample_count
         )
     };
 }

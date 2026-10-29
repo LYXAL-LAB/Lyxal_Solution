@@ -13,8 +13,8 @@
 --
 -- Paramètres
 -- ----------
--- $width: option<any>
--- $height: option<any>
+-- $width: any
+-- $height: any
 -- $field: string
 -- $min_width: int
 -- $max_width: int
