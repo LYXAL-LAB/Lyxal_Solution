@@ -1,0 +1,12 @@
+[package]
+name = "lyxal-crypto-contract-checks"
+version = "0.0.0"
+publish = false
+edition = "2021"
+[workspace]
+members = ["."]
+resolver = "2"
+[dependencies]
+lyxal_crypto = { path = "../.." }
+serde = "=1.0.229"
+zeroize = "=1.9.0"

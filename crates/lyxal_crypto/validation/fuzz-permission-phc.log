@@ -1,0 +1,10 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 1541738165
+INFO: Loaded 1 modules   (1571 inline 8-bit counters): 1571 [0x5645e2789950, 0x5645e2789f73), 
+INFO: Loaded 1 PC tables (1571 PCs): 1571 [0x5645e2789f78,0x5645e27901a8), 
+INFO:      166 files found in /workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/phc
+INFO: -max_len is not provided; libFuzzer will not generate inputs larger than 4096 bytes
+INFO: seed corpus: files: 166 min: 1b max: 513b total: 9573b rss: 30Mb
+#167	INITED cov: 452 ft: 775 corp: 146/8618b exec/s: 0 rss: 34Mb
+#1000	DONE   cov: 452 ft: 775 corp: 146/8618b lim: 522 exec/s: 0 rss: 36Mb
+Done 1000 runs in 0 second(s)

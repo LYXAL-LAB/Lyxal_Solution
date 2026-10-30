@@ -1,0 +1,6 @@
+{
+  "retained_successful_sessions": 8,
+  "reason": "keep each tooling job below thirty minutes; last ten minutes launched independently with unchanged binary and corpus",
+  "unfinished_sessions_excluded": true,
+  "next_command": "python3 tools/run_fuzz.py --seconds 600 --segments 1"
+}

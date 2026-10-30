@@ -1,0 +1,23 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3905849746
+INFO: Loaded 1 modules   (1571 inline 8-bit counters): 1571 [0x562725a71950, 0x562725a71f73), 
+INFO: Loaded 1 PC tables (1571 PCs): 1571 [0x562725a71f78,0x562725a781a8), 
+INFO:      217 files found in /workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/phc
+INFO: seed corpus: files: 217 min: 1b max: 513b total: 12714b rss: 83Mb
+#218	INITED cov: 452 ft: 781 corp: 149/8723b exec/s: 0 rss: 83Mb
+#1048576	pulse  cov: 452 ft: 781 corp: 149/8723b lim: 8192 exec/s: 349525 rss: 260Mb
+#2097152	pulse  cov: 452 ft: 781 corp: 149/8723b lim: 8192 exec/s: 299593 rss: 447Mb
+#4194304	pulse  cov: 452 ft: 781 corp: 149/8723b lim: 8192 exec/s: 322638 rss: 455Mb
+#8388608	pulse  cov: 452 ft: 781 corp: 149/8723b lim: 8192 exec/s: 310689 rss: 456Mb
+#8494970	NEW    cov: 452 ft: 783 corp: 150/8775b lim: 8192 exec/s: 314628 rss: 456Mb L: 52/513 MS: 2 InsertByte-CrossOver-
+#8506256	REDUCE cov: 452 ft: 783 corp: 150/8774b lim: 8192 exec/s: 315046 rss: 456Mb L: 51/513 MS: 1 EraseBytes-
+#8637718	REDUCE cov: 452 ft: 783 corp: 150/8773b lim: 8192 exec/s: 319915 rss: 457Mb L: 50/513 MS: 2 ShuffleBytes-EraseBytes-
+#8658724	REDUCE cov: 452 ft: 783 corp: 150/8772b lim: 8192 exec/s: 320693 rss: 457Mb L: 49/513 MS: 1 EraseBytes-
+#16777216	pulse  cov: 452 ft: 783 corp: 150/8772b lim: 8192 exec/s: 316551 rss: 545Mb
+#33554432	pulse  cov: 452 ft: 783 corp: 150/8772b lim: 8192 exec/s: 319566 rss: 545Mb
+==70643== libFuzzer: run interrupted; exiting
+stat::number_of_executed_units: 34369565
+stat::average_exec_per_sec:     318236
+stat::new_units_added:          4
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              545

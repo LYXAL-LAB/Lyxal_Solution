@@ -1,0 +1,65 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index b7439b17d..ea95e880d 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -36,6 +36,7 @@ dependencies = [
+  "cfg-if",
+  "cipher",
+  "cpufeatures 0.2.17",
++ "zeroize",
+ ]
+ 
+ [[package]]
+@@ -50,6 +51,7 @@ dependencies = [
+  "ctr",
+  "ghash",
+  "subtle",
++ "zeroize",
+ ]
+ 
+ [[package]]
+@@ -173,6 +175,7 @@ dependencies = [
+  "blake2",
+  "cpufeatures 0.2.17",
+  "password-hash",
++ "zeroize",
+ ]
+ 
+ [[package]]
+@@ -1543,6 +1546,7 @@ checksum = "f0d8a4362ccb29cb0b265253fb0a2728f592895ee6854fd9bc13f2ffda266ff1"
+ dependencies = [
+  "opaque-debug",
+  "polyval",
++ "zeroize",
+ ]
+ 
+ [[package]]
+@@ -2275,16 +2279,20 @@ dependencies = [
+ name = "lyxal_crypto"
+ version = "0.1.0"
+ dependencies = [
++ "aes",
+  "aes-gcm",
+  "argon2",
+  "base64 0.22.1",
+  "blake3",
++ "ghash",
+  "hex",
+  "hkdf",
+  "hmac",
++ "polyval",
+  "proptest",
+  "rand_core 0.6.4",
+  "sha2",
++ "subtle",
+  "tempfile",
+  "thiserror 1.0.69",
+  "zeroize",
+@@ -2990,6 +2998,7 @@ dependencies = [
+  "cpufeatures 0.2.17",
+  "opaque-debug",
+  "universal-hash",
++ "zeroize",
+ ]
+ 
+ [[package]]

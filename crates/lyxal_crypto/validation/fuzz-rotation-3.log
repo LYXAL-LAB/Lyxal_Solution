@@ -1,0 +1,23 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 1653554918
+INFO: Loaded 1 modules   (4997 inline 8-bit counters): 4997 [0x55764c236a60, 0x55764c237de5), 
+INFO: Loaded 1 PC tables (4997 PCs): 4997 [0x55764c237de8,0x55764c24b638), 
+INFO:       77 files found in /workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/rotation
+INFO: seed corpus: files: 77 min: 1b max: 4098b total: 32073b rss: 83Mb
+#78	INITED cov: 746 ft: 2175 corp: 75/27Kb exec/s: 0 rss: 83Mb
+#32768	pulse  cov: 746 ft: 2175 corp: 75/27Kb lim: 4421 exec/s: 16384 rss: 402Mb
+#65536	pulse  cov: 746 ft: 2175 corp: 75/27Kb lim: 4745 exec/s: 13107 rss: 412Mb
+#131072	pulse  cov: 746 ft: 2175 corp: 75/27Kb lim: 5393 exec/s: 13107 rss: 420Mb
+#262144	pulse  cov: 746 ft: 2175 corp: 75/27Kb lim: 6701 exec/s: 11915 rss: 421Mb
+#524288	pulse  cov: 746 ft: 2175 corp: 75/27Kb lim: 8192 exec/s: 13107 rss: 425Mb
+#1048576	pulse  cov: 746 ft: 2175 corp: 75/27Kb lim: 8192 exec/s: 13797 rss: 428Mb
+#2097152	pulse  cov: 746 ft: 2175 corp: 75/27Kb lim: 8192 exec/s: 14266 rss: 430Mb
+#4194304	pulse  cov: 746 ft: 2175 corp: 75/27Kb lim: 8192 exec/s: 14364 rss: 431Mb
+#8388608	pulse  cov: 746 ft: 2175 corp: 75/27Kb lim: 8192 exec/s: 14339 rss: 435Mb
+#8612408	DONE   cov: 746 ft: 2175 corp: 75/27Kb lim: 8192 exec/s: 14330 rss: 435Mb
+Done 8612408 runs in 601 second(s)
+stat::number_of_executed_units: 8612408
+stat::average_exec_per_sec:     14330
+stat::new_units_added:          0
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              435

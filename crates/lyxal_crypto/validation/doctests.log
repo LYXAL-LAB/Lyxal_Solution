@@ -1,0 +1,15 @@
+    Finished `test` profile [unoptimized] target(s) in 0.12s
+   Doc-tests lyxal_crypto
+
+running 8 tests
+test crates/lyxal_crypto/src/password.rs - password::PasswordHash (line 27) - compile fail ... ok
+test crates/lyxal_crypto/src/key.rs - key::EncryptionKey (line 54) - compile fail ... ok
+test crates/lyxal_crypto/src/secret.rs - secret::SecretBytes (line 10) - compile fail ... ok
+test crates/lyxal_crypto/src/secret.rs - secret::SecretBytes (line 15) - compile fail ... ok
+test crates/lyxal_crypto/src/secret.rs - secret::SecretBytes (line 20) - compile fail ... ok
+test crates/lyxal_crypto/src/secret.rs - secret::SecretString (line 81) - compile fail ... ok
+test crates/lyxal_crypto/src/lib.rs - (line 12) ... ok
+test crates/lyxal_crypto/src/secret.rs - secret::SecretString (line 86) - compile fail ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+

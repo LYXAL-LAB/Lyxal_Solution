@@ -1,0 +1,21 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2338902483
+INFO: Loaded 1 modules   (4997 inline 8-bit counters): 4997 [0x55d67c0a6a60, 0x55d67c0a7de5), 
+INFO: Loaded 1 PC tables (4997 PCs): 4997 [0x55d67c0a7de8,0x55d67c0bb638), 
+INFO:       77 files found in /workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/rotation
+INFO: seed corpus: files: 77 min: 1b max: 4098b total: 32073b rss: 83Mb
+#78	INITED cov: 746 ft: 2175 corp: 74/27Kb exec/s: 0 rss: 83Mb
+#32768	pulse  cov: 746 ft: 2175 corp: 74/27Kb lim: 4421 exec/s: 10922 rss: 402Mb
+#65536	pulse  cov: 746 ft: 2175 corp: 74/27Kb lim: 4745 exec/s: 10922 rss: 411Mb
+#131072	pulse  cov: 746 ft: 2175 corp: 74/27Kb lim: 5393 exec/s: 10922 rss: 415Mb
+#262144	pulse  cov: 746 ft: 2175 corp: 74/27Kb lim: 6701 exec/s: 12483 rss: 420Mb
+#524288	pulse  cov: 746 ft: 2175 corp: 74/27Kb lim: 8192 exec/s: 13107 rss: 423Mb
+#1048576	pulse  cov: 746 ft: 2175 corp: 74/27Kb lim: 8192 exec/s: 13797 rss: 427Mb
+#2097152	pulse  cov: 746 ft: 2175 corp: 74/27Kb lim: 8192 exec/s: 14266 rss: 430Mb
+#4194304	pulse  cov: 746 ft: 2175 corp: 74/27Kb lim: 8192 exec/s: 14513 rss: 434Mb
+==58384== libFuzzer: run interrupted; exiting
+stat::number_of_executed_units: 6482661
+stat::average_exec_per_sec:     14470
+stat::new_units_added:          0
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              435

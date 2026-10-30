@@ -1,154 +1,111 @@
-pub mod cipher;
-pub mod context;
-pub mod envelope;
+#![forbid(unsafe_code)]
+#![deny(missing_docs)]
+#![doc = include_str!("../README.md")]
+//! Lyxal cryptographic foundation. Production API V1 uses the enc:v2 protocol.
+//! Secret access is explicit; no database, scheduler or runtime dependency.
 pub mod error;
 pub mod hash;
-pub mod hmac;
-pub mod kdf;
 pub mod key;
-pub mod key_resolver;
-pub mod password;
-
-pub use context::SecretContext;
-pub use envelope::EncryptedEnvelope;
-pub use error::CryptoError;
+pub mod secret;
+pub use error::{ContextField, CryptoError, IoOperation};
 pub use hash::{blake3, blake3_hex, sha256, sha256_hex, Blake3Hasher, Sha256Hasher};
-pub use hmac::{
-    sign_hmac_sha256, sign_hmac_sha256_hex, verify_hmac_sha256, verify_hmac_sha256_hex,
-};
-pub use kdf::{hkdf_sha256, hkdf_sha256_32};
-pub use key::{EncryptionKey, KeyId};
+pub use key::{EncryptionKey, HmacKey, KeyId};
+pub use secret::{SecretBytes, SecretString, MAX_SECRET_BYTES};
+
+mod cipher;
+pub mod context;
+pub mod envelope;
+pub use context::SecretContext;
+pub use envelope::{EncryptedEnvelope, MAX_ENVELOPE_BYTES};
+
+pub mod key_resolver;
 pub use key_resolver::{
-    CompositeKeyResolver, EnvironmentKeyProvider, FileKeyProvider, KeyGenerationPolicy, KeyResolver,
+    KeyResolver, KeyRing, KeyRingBuilder, KeyState, KeyUse, ResolvedKey, StaticKeyResolver,
+    MAX_KEY_IDS,
 };
-pub use password::{hash_password, needs_rehash, verify_password};
-pub use zeroize::Zeroizing;
 
-/// Type protégé en mémoire pour les secrets déchiffrés (octets).
-pub type SecretBytes = Zeroizing<Vec<u8>>;
-
-/// Type protégé en mémoire pour les secrets déchiffrés (chaîne UTF-8).
-pub type SecretString = Zeroizing<String>;
-
-/// Résultat d'une tentative de re-chiffrement pour la rotation de clé.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Result of authenticated rotation, relative to the one captured snapshot.
+#[derive(Debug)]
 pub enum ReencryptResult {
-    /// L'enveloppe utilise déjà la clé active actuelle.
+    /// The envelope authenticated correctly under this snapshot's active key.
     Current,
-    /// L'enveloppe a été ré-empaquetée avec la clé active.
-    Rotated(String),
+    /// Authenticated plaintext was re-sealed with the captured active key.
+    Rotated(EncryptedEnvelope),
 }
-
-
-/// Moteur principal de chiffrement et déchiffrement de secrets Lyxal OS.
-///
-/// # Exemples
-/// ```rust
-/// use lyxal_crypto::{CompositeKeyResolver, CryptoEngine, EncryptionKey, KeyId, SecretContext};
-///
-/// // Initialisation en mémoire
-/// let key = EncryptionKey::generate();
-/// let key_id = KeyId::parse("main").unwrap();
-/// let resolver = CompositeKeyResolver::new(key_id, key);
-/// let engine = CryptoEngine::new(resolver);
-///
-/// // Chiffrement lié avec AAD
-/// let ctx = SecretContext::with_tenant("tenant_a", "booking", "setting", "s1", "secret").unwrap();
-/// let envelope = engine.encrypt_secret(b"valeur confidentielle", &ctx).unwrap();
-/// assert!(envelope.starts_with("enc:v1:main:"));
-///
-/// let decrypted = engine.decrypt_secret(&envelope, &ctx).unwrap();
-/// assert_eq!(decrypted.as_slice(), b"valeur confidentielle");
-///
-/// // Chiffrement non lié
-/// let unbound = engine.encrypt_unbound(b"secret libre").unwrap();
-/// let read_unbound = engine.decrypt_unbound(&unbound).unwrap();
-/// assert_eq!(read_unbound.as_slice(), b"secret libre");
-/// ```
+/// Application cryptography. No distributed nonce quota, identity authorization or remote revocation.
 pub struct CryptoEngine<R: KeyResolver> {
     resolver: R,
 }
-
 impl<R: KeyResolver> CryptoEngine<R> {
-    /// Crée une nouvelle instance de `CryptoEngine` à partir d'un `KeyResolver`.
+    /// Use a host-managed or static snapshot source.
     pub fn new(resolver: R) -> Self {
         Self { resolver }
     }
-
-    /// Chiffre un secret en utilisant le contexte d'authentification AAD et la clé active.
-    pub fn encrypt_secret(
+    /// Seal in exactly one snapshot, with fresh OS randomness and authenticated metadata.
+    pub fn seal(
         &self,
-        plaintext: &[u8],
+        secret: &SecretBytes,
         context: &SecretContext,
-    ) -> Result<String, CryptoError> {
-        let active_id = self.resolver.active_key_id()?;
-        let key = self.resolver.resolve(&active_id)?;
-        let aad = context.to_aad_bytes();
-
-        let payload = cipher::encrypt_aes_gcm(&key, plaintext, &aad)?;
-        let envelope = EncryptedEnvelope::new(active_id, payload);
-
-        Ok(envelope.encode())
+    ) -> Result<EncryptedEnvelope, CryptoError> {
+        let snapshot = self.resolver.snapshot()?;
+        Self::seal_in(&snapshot, secret, context)
     }
-
-    /// Déchiffre une enveloppe en vérifiant le contexte AAD et la clé d'enveloppe spécifiée.
-    ///
-    /// Conserve strictement la propagation de l'erreur d'enveloppe si le préfixe `enc:` est présent.
-    pub fn decrypt_secret(
+    fn seal_in(
+        snapshot: &KeyRing,
+        secret: &SecretBytes,
+        context: &SecretContext,
+    ) -> Result<EncryptedEnvelope, CryptoError> {
+        let active = snapshot.active()?;
+        let aad = context.aad(&active.id);
+        let payload = cipher::encrypt_aes_gcm(&active.key, secret.expose_secret(), &aad)?;
+        Ok(EncryptedEnvelope::from_payload(active.id, payload))
+    }
+    /// Authenticate before exposing any plaintext. No fallback between domains or versions.
+    pub fn open(
         &self,
-        envelope_str: &str,
+        envelope: &EncryptedEnvelope,
         context: &SecretContext,
     ) -> Result<SecretBytes, CryptoError> {
-        let trimmed = envelope_str.trim();
-        if trimmed.starts_with("enc:") {
-            let envelope = EncryptedEnvelope::parse(trimmed)?;
-            let key = self.resolver.resolve(&envelope.key_id)?;
-            let aad = context.to_aad_bytes();
-            cipher::decrypt_aes_gcm(&key, &envelope.payload, &aad)
-        } else {
-            Err(CryptoError::InvalidEnvelope)
-        }
+        let snapshot = self.resolver.snapshot()?;
+        Self::open_in(&snapshot, envelope, context)
     }
-
-    /// Chiffre un secret de manière non liée (sans contexte AAD spécifique).
-    pub fn encrypt_unbound(&self, plaintext: &[u8]) -> Result<String, CryptoError> {
-        let active_id = self.resolver.active_key_id()?;
-        let key = self.resolver.resolve(&active_id)?;
-
-        let payload = cipher::encrypt_aes_gcm(&key, plaintext, &[])?;
-        let envelope = EncryptedEnvelope::new(active_id, payload);
-
-        Ok(envelope.encode())
+    fn open_in(
+        snapshot: &KeyRing,
+        envelope: &EncryptedEnvelope,
+        context: &SecretContext,
+    ) -> Result<SecretBytes, CryptoError> {
+        let key = snapshot.resolve(envelope.key_id())?;
+        cipher::decrypt_aes_gcm(&key, &envelope.payload, &context.aad(envelope.key_id()))
     }
-
-    /// Déchiffre un secret non lié (sans contexte AAD spécifique).
-    pub fn decrypt_unbound(&self, envelope_str: &str) -> Result<SecretBytes, CryptoError> {
-        let trimmed = envelope_str.trim();
-        if trimmed.starts_with("enc:") {
-            let envelope = EncryptedEnvelope::parse(trimmed)?;
-            let key = self.resolver.resolve(&envelope.key_id)?;
-            cipher::decrypt_aes_gcm(&key, &envelope.payload, &[])
-        } else {
-            Err(CryptoError::InvalidEnvelope)
-        }
-    }
-
-
-    /// Vérifie si l'enveloppe utilise une ancienne clé et la rechiffre avec la clé active si nécessaire.
+    /// Authenticate ALWAYS, including the Current branch. Capture source and target once.
     pub fn reencrypt_if_needed(
         &self,
-        envelope_str: &str,
+        envelope: &EncryptedEnvelope,
         context: &SecretContext,
     ) -> Result<ReencryptResult, CryptoError> {
-        let envelope = EncryptedEnvelope::parse(envelope_str)?;
-        let active_id = self.resolver.active_key_id()?;
-
-        if envelope.key_id == active_id {
+        let snapshot = self.resolver.snapshot()?;
+        let plaintext = Self::open_in(&snapshot, envelope, context)?;
+        if envelope.key_id() == snapshot.active_id() {
             Ok(ReencryptResult::Current)
         } else {
-            let decrypted = self.decrypt_secret(envelope_str, context)?;
-            let new_envelope = self.encrypt_secret(&decrypted, context)?;
-            Ok(ReencryptResult::Rotated(new_envelope))
+            Ok(ReencryptResult::Rotated(Self::seal_in(
+                &snapshot, &plaintext, context,
+            )?))
         }
     }
 }
+
+pub mod providers;
+pub use providers::{EnvironmentKeyProvider, FileKeyProvider, KeyGenerationPolicy};
+
+pub mod hmac;
+pub mod kdf;
+pub mod password;
+pub use hmac::{
+    sign_hmac_sha256, sign_hmac_sha256_hex, verify_hmac_sha256, verify_hmac_sha256_hex,
+};
+pub use kdf::hkdf_sha256;
+pub use password::{
+    hash_password, verify_password, PasswordHash, PasswordVerification, MAX_PASSWORD_BYTES,
+    MAX_PHC_BYTES,
+};

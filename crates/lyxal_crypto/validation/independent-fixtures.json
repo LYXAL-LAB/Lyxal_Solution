@@ -1,0 +1,11 @@
+{
+  "cryptography": "50.0.0",
+  "backend": "OpenSSL 4.0.1 9 Jun 2026",
+  "nist_control": "passed",
+  "literal_vectors": [
+    "T1",
+    "T0",
+    "G1"
+  ],
+  "aad_ciphertext_tag_payload_transport_roundtrip": "passed"
+}

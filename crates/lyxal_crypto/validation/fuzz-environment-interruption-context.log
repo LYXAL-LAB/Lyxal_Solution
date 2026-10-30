@@ -1,0 +1,39 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3495572934
+INFO: Loaded 1 modules   (882 inline 8-bit counters): 882 [0x5631fc184ab0, 0x5631fc184e22), 
+INFO: Loaded 1 PC tables (882 PCs): 882 [0x5631fc184e28,0x5631fc188548), 
+INFO:      166 files found in /workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/context
+INFO: seed corpus: files: 166 min: 1b max: 129b total: 3118b rss: 30Mb
+#167	INITED cov: 167 ft: 403 corp: 137/2813b exec/s: 0 rss: 34Mb
+#5839	REDUCE cov: 167 ft: 403 corp: 137/2812b lim: 185 exec/s: 0 rss: 38Mb L: 2/129 MS: 2 CrossOver-EraseBytes-
+#5881	REDUCE cov: 167 ft: 403 corp: 137/2808b lim: 185 exec/s: 0 rss: 38Mb L: 14/129 MS: 2 CMP-EraseBytes- DE: "\007\000"-
+#6967	REDUCE cov: 167 ft: 403 corp: 137/2806b lim: 192 exec/s: 0 rss: 39Mb L: 10/129 MS: 1 EraseBytes-
+#13488	REDUCE cov: 167 ft: 403 corp: 137/2804b lim: 255 exec/s: 0 rss: 40Mb L: 73/129 MS: 1 EraseBytes-
+#13779	REDUCE cov: 167 ft: 403 corp: 137/2803b lim: 255 exec/s: 0 rss: 40Mb L: 13/129 MS: 1 EraseBytes-
+#14270	REDUCE cov: 167 ft: 403 corp: 137/2802b lim: 255 exec/s: 0 rss: 40Mb L: 9/129 MS: 1 EraseBytes-
+#18481	REDUCE cov: 167 ft: 403 corp: 137/2801b lim: 294 exec/s: 0 rss: 41Mb L: 7/129 MS: 1 EraseBytes-
+#28938	REDUCE cov: 167 ft: 403 corp: 137/2799b lim: 390 exec/s: 0 rss: 43Mb L: 11/129 MS: 2 ChangeBit-EraseBytes-
+#36374	REDUCE cov: 167 ft: 403 corp: 137/2798b lim: 462 exec/s: 0 rss: 44Mb L: 10/129 MS: 1 EraseBytes-
+#74640	REDUCE cov: 167 ft: 403 corp: 137/2797b lim: 842 exec/s: 0 rss: 50Mb L: 9/129 MS: 1 EraseBytes-
+#90806	REDUCE cov: 167 ft: 403 corp: 137/2794b lim: 995 exec/s: 0 rss: 53Mb L: 33/129 MS: 1 EraseBytes-
+#92584	REDUCE cov: 167 ft: 403 corp: 137/2792b lim: 1004 exec/s: 0 rss: 53Mb L: 31/129 MS: 3 ShuffleBytes-ChangeByte-EraseBytes-
+#101036	REDUCE cov: 167 ft: 403 corp: 137/2791b lim: 1081 exec/s: 0 rss: 55Mb L: 30/129 MS: 2 ShuffleBytes-EraseBytes-
+#103152	REDUCE cov: 167 ft: 403 corp: 137/2789b lim: 1101 exec/s: 0 rss: 55Mb L: 28/129 MS: 1 EraseBytes-
+#180568	REDUCE cov: 167 ft: 403 corp: 137/2787b lim: 1871 exec/s: 0 rss: 68Mb L: 7/129 MS: 1 EraseBytes-
+#284105	REDUCE cov: 167 ft: 403 corp: 137/2782b lim: 2898 exec/s: 0 rss: 84Mb L: 23/129 MS: 2 ShuffleBytes-EraseBytes-
+#292101	REDUCE cov: 167 ft: 403 corp: 137/2781b lim: 2975 exec/s: 0 rss: 86Mb L: 22/129 MS: 1 EraseBytes-
+#297162	RELOAD cov: 167 ft: 404 corp: 138/2791b lim: 3019 exec/s: 297162 rss: 87Mb
+#661129	REDUCE cov: 167 ft: 404 corp: 138/2790b lim: 6641 exec/s: 661129 rss: 147Mb L: 17/129 MS: 2 ChangeBit-EraseBytes-
+#1048576	pulse  cov: 167 ft: 404 corp: 138/2790b lim: 10489 exec/s: 349525 rss: 211Mb
+#1223411	REDUCE cov: 167 ft: 404 corp: 138/2789b lim: 12231 exec/s: 407803 rss: 240Mb L: 12/129 MS: 2 EraseBytes-ShuffleBytes-
+#1824103	REDUCE cov: 167 ft: 404 corp: 138/2788b lim: 18211 exec/s: 364820 rss: 340Mb L: 14/129 MS: 2 ChangeByte-EraseBytes-
+#2097152	pulse  cov: 167 ft: 404 corp: 138/2788b lim: 20927 exec/s: 419430 rss: 386Mb
+#4194304	pulse  cov: 167 ft: 404 corp: 138/2788b lim: 41816 exec/s: 419430 rss: 489Mb
+#8388608	pulse  cov: 167 ft: 404 corp: 138/2788b lim: 83626 exec/s: 419430 rss: 490Mb
+#16777216	pulse  cov: 167 ft: 404 corp: 138/2788b lim: 167258 exec/s: 430185 rss: 598Mb
+#33554432	pulse  cov: 167 ft: 404 corp: 138/2788b lim: 334548 exec/s: 447392 rss: 602Mb
+#67108864	pulse  cov: 167 ft: 404 corp: 138/2788b lim: 669179 exec/s: 459649 rss: 602Mb
+#134217728	pulse  cov: 167 ft: 404 corp: 138/2788b lim: 1338550 exec/s: 464421 rss: 602Mb
+#268435456	pulse  cov: 167 ft: 404 corp: 138/2788b lim: 1500000 exec/s: 454975 rss: 602Mb
+#536870912	pulse  cov: 167 ft: 404 corp: 138/2788b lim: 1500000 exec/s: 444429 rss: 602Mb
+#553199329	REDUCE cov: 167 ft: 404 corp: 138/2787b lim: 1500000 exec/s: 444336 rss: 602Mb L: 72/129 MS: 1 EraseBytes-

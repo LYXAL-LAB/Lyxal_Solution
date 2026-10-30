@@ -1,7 +1,7 @@
+use super::decrypt_aes_gcm;
+use crate::{EncryptionKey, SecretBytes};
 use aes_gcm::aead::{Aead, KeyInit, Payload};
 use aes_gcm::{Aes256Gcm, Nonce};
-use lyxal_crypto::cipher::decrypt_aes_gcm;
-use lyxal_crypto::key::EncryptionKey;
 
 #[test]
 fn test_nist_sp800_38d_aes256_gcm_vector_13() {
@@ -18,13 +18,13 @@ fn test_nist_sp800_38d_aes256_gcm_vector_13() {
     let ciphertext = cipher.encrypt(nonce, payload).unwrap();
     assert_eq!(hex::encode(&ciphertext), hex::encode(&tag_bytes));
 
-    let key = EncryptionKey::try_from_slice(&key_bytes).unwrap();
+    let key = EncryptionKey::import(SecretBytes::new(key_bytes.clone()).unwrap()).unwrap();
     let mut wrapped_payload = Vec::new();
     wrapped_payload.extend_from_slice(&iv_bytes);
     wrapped_payload.extend_from_slice(&ciphertext);
 
     let decrypted = decrypt_aes_gcm(&key, &wrapped_payload, b"").unwrap();
-    assert_eq!(&*decrypted, b"");
+    assert_eq!(decrypted.expose_secret(), b"");
 }
 
 #[test]
@@ -49,13 +49,13 @@ fn test_nist_sp800_38d_aes256_gcm_vector_14() {
     assert_eq!(hex::encode(ct), expected_ct);
     assert_eq!(hex::encode(tag), expected_tag);
 
-    let key = EncryptionKey::try_from_slice(&key_bytes).unwrap();
+    let key = EncryptionKey::import(SecretBytes::new(key_bytes.clone()).unwrap()).unwrap();
     let mut wrapped = Vec::new();
     wrapped.extend_from_slice(&iv_bytes);
     wrapped.extend_from_slice(&encrypted);
 
     let decrypted = decrypt_aes_gcm(&key, &wrapped, b"").unwrap();
-    assert_eq!(&*decrypted, &pt_bytes);
+    assert_eq!(decrypted.expose_secret(), &pt_bytes);
 }
 
 #[test]
@@ -80,13 +80,13 @@ fn test_nist_sp800_38d_aes256_gcm_vector_15() {
     assert_eq!(hex::encode(ct), expected_ct);
     assert_eq!(hex::encode(tag), expected_tag);
 
-    let key = EncryptionKey::try_from_slice(&key_bytes).unwrap();
+    let key = EncryptionKey::import(SecretBytes::new(key_bytes.clone()).unwrap()).unwrap();
     let mut wrapped = Vec::new();
     wrapped.extend_from_slice(&iv_bytes);
     wrapped.extend_from_slice(&encrypted);
 
     let decrypted = decrypt_aes_gcm(&key, &wrapped, b"").unwrap();
-    assert_eq!(&*decrypted, &pt_bytes);
+    assert_eq!(decrypted.expose_secret(), &pt_bytes);
 }
 
 #[test]
@@ -112,11 +112,11 @@ fn test_nist_sp800_38d_aes256_gcm_vector_16() {
     assert_eq!(hex::encode(ct), expected_ct);
     assert_eq!(hex::encode(tag), expected_tag);
 
-    let key = EncryptionKey::try_from_slice(&key_bytes).unwrap();
+    let key = EncryptionKey::import(SecretBytes::new(key_bytes.clone()).unwrap()).unwrap();
     let mut wrapped = Vec::new();
     wrapped.extend_from_slice(&iv_bytes);
     wrapped.extend_from_slice(&encrypted);
 
     let decrypted = decrypt_aes_gcm(&key, &wrapped, &aad_bytes).unwrap();
-    assert_eq!(&*decrypted, &pt_bytes);
+    assert_eq!(decrypted.expose_secret(), &pt_bytes);
 }

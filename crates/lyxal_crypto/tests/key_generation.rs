@@ -1,36 +1,30 @@
-use lyxal_crypto::{
-    CompositeKeyResolver, CryptoEngine, CryptoError, EncryptionKey, KeyId, SecretContext,
-};
-
-#[test]
-fn test_encryption_key_generate_produces_distinct_functional_keys() {
-    let key1 = EncryptionKey::generate();
-    let key2 = EncryptionKey::generate();
-
-    let id1 = KeyId::parse("key-1").unwrap();
-    let id2 = KeyId::parse("key-2").unwrap();
-
-    let resolver1 = CompositeKeyResolver::new(id1.clone(), key1);
-    let resolver2 = CompositeKeyResolver::new(id2.clone(), key2);
-
-    let engine1 = CryptoEngine::new(resolver1);
-    let engine2 = CryptoEngine::new(resolver2);
-
-    let ctx = SecretContext::new("booking", "setting", "rec_1", "secret").unwrap();
-    let plaintext = b"cryptographic-material-test";
-
-    let encrypted1 = engine1.encrypt_secret(plaintext, &ctx).unwrap();
-
-    // Sanity check : engine2 (avec key2) ne peut pas déchiffrer ce qui a été chiffré par engine1 (key1)
-    let res = engine2.decrypt_secret(&encrypted1, &ctx);
-    assert!(res.is_err());
-    assert!(matches!(res.unwrap_err(), CryptoError::KeyNotFound { .. }));
+use lyxal_crypto::*;
+use std::sync::Arc;
+fn engine(key: EncryptionKey) -> CryptoEngine<StaticKeyResolver> {
+    let mut b = KeyRingBuilder::new();
+    b.insert(KeyId::parse("same-id").unwrap(), key, KeyUse::Active)
+        .unwrap();
+    CryptoEngine::new(StaticKeyResolver::new(Arc::new(b.build().unwrap())))
 }
-
 #[test]
-fn test_encryption_key_debug_redacted() {
-    let key = EncryptionKey::generate();
-    let debug_str = format!("{:?}", key);
-    assert_eq!(debug_str, "EncryptionKey([REDACTED])");
-    assert!(!debug_str.contains("0x"));
+fn different_material_with_the_same_id_fails_authentication() {
+    let a = engine(EncryptionKey::generate().unwrap());
+    let b = engine(EncryptionKey::generate().unwrap());
+    let ctx = SecretContext::global("key.test").unwrap();
+    let e = a
+        .seal(&SecretBytes::new(vec![1, 2, 3]).unwrap(), &ctx)
+        .unwrap();
+    assert!(matches!(
+        b.open(&e, &ctx),
+        Err(CryptoError::AuthenticationFailed)
+    ));
+}
+#[test]
+fn key_identifier_bounds_and_identity_are_exact() {
+    for s in ["", " a", "a ", "a:b", "clé", "\0"] {
+        assert!(KeyId::parse(s).is_err());
+    }
+    assert!(KeyId::parse(&"a".repeat(64)).is_ok());
+    assert!(KeyId::parse(&"a".repeat(65)).is_err());
+    assert_ne!(KeyId::parse("Acme").unwrap(), KeyId::parse("acme").unwrap());
 }

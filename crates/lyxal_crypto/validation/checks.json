@@ -1,0 +1,166 @@
+[
+  {
+    "name": "fmt",
+    "command": [
+      "rustfmt",
+      "--edition",
+      "2021",
+      "--check",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/fuzz_targets/context.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/fuzz_targets/envelope.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/fuzz_targets/phc.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/fuzz_targets/rotation.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/cipher.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/cipher_vectors.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/context.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/envelope.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/error.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/hash.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/hmac.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/hmac_vectors.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/kdf.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/key.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/key_resolver.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/lib.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/password.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/providers/environment.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/providers/file.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/providers/mod.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/src/secret.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/encryption.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/envelope_v2_fixtures.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/file_v2.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/fuzz_robustness.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/hash_vectors.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/key_generation.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/key_resolver.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/mac_kdf_v2.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/negative_tests.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/password_tests.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/password_v2.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/proptests.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/protocol_v2.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/resource_boundaries.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/rotation_v2.rs",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tests/secrets_v2.rs"
+    ],
+    "exit_code": 0,
+    "seconds": 0.077,
+    "log": "fmt.log"
+  },
+  {
+    "name": "tests",
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--locked",
+      "-p",
+      "lyxal_crypto",
+      "--all-targets"
+    ],
+    "exit_code": 0,
+    "seconds": 20.904,
+    "log": "tests.log"
+  },
+  {
+    "name": "doctests",
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--locked",
+      "-p",
+      "lyxal_crypto",
+      "--doc"
+    ],
+    "exit_code": 0,
+    "seconds": 0.332,
+    "log": "doctests.log"
+  },
+  {
+    "name": "clippy",
+    "command": [
+      "cargo",
+      "clippy",
+      "--offline",
+      "--locked",
+      "-p",
+      "lyxal_crypto",
+      "--all-targets",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "exit_code": 0,
+    "seconds": 0.802,
+    "log": "clippy.log"
+  },
+  {
+    "name": "docs",
+    "command": [
+      "cargo",
+      "doc",
+      "--offline",
+      "--locked",
+      "-p",
+      "lyxal_crypto",
+      "--no-deps"
+    ],
+    "exit_code": 0,
+    "seconds": 0.42,
+    "log": "docs.log"
+  },
+  {
+    "name": "msrv-tests",
+    "command": [
+      "cargo",
+      "+1.85.0",
+      "test",
+      "--offline",
+      "--locked",
+      "-p",
+      "lyxal_crypto",
+      "--all-targets"
+    ],
+    "exit_code": 0,
+    "seconds": 22.03,
+    "log": "msrv-tests.log"
+  },
+  {
+    "name": "msrv-doctests",
+    "command": [
+      "cargo",
+      "+1.85.0",
+      "test",
+      "--offline",
+      "--locked",
+      "-p",
+      "lyxal_crypto",
+      "--doc"
+    ],
+    "exit_code": 0,
+    "seconds": 0.453,
+    "log": "msrv-doctests.log"
+  },
+  {
+    "name": "contracts",
+    "command": [
+      "python3",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tools/check_contracts.py"
+    ],
+    "exit_code": 0,
+    "seconds": 3.985,
+    "log": "contracts.log"
+  },
+  {
+    "name": "msrv-contracts",
+    "command": [
+      "python3",
+      "/workspace/Lyxal_Solution/crates/lyxal_crypto/tools/check_contracts.py"
+    ],
+    "exit_code": 0,
+    "seconds": 3.147,
+    "log": "msrv-contracts.log"
+  }
+]

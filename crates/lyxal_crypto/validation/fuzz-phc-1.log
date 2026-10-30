@@ -1,0 +1,29 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3995123957
+INFO: Loaded 1 modules   (1571 inline 8-bit counters): 1571 [0x56364f451950, 0x56364f451f73), 
+INFO: Loaded 1 PC tables (1571 PCs): 1571 [0x56364f451f78,0x56364f4581a8), 
+INFO:      212 files found in /workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/phc
+INFO: seed corpus: files: 212 min: 1b max: 513b total: 12309b rss: 83Mb
+#213	INITED cov: 452 ft: 781 corp: 149/8572b exec/s: 0 rss: 83Mb
+#524288	pulse  cov: 452 ft: 781 corp: 149/8572b lim: 5722 exec/s: 262144 rss: 148Mb
+#1048576	pulse  cov: 452 ft: 781 corp: 149/8572b lim: 8192 exec/s: 262144 rss: 257Mb
+#2097152	pulse  cov: 452 ft: 781 corp: 149/8572b lim: 8192 exec/s: 299593 rss: 447Mb
+#4194304	pulse  cov: 452 ft: 781 corp: 149/8572b lim: 8192 exec/s: 299593 rss: 454Mb
+#8388608	pulse  cov: 452 ft: 781 corp: 149/8572b lim: 8192 exec/s: 310689 rss: 455Mb
+#16777216	pulse  cov: 452 ft: 781 corp: 149/8572b lim: 8192 exec/s: 316551 rss: 456Mb
+#33554432	pulse  cov: 452 ft: 781 corp: 149/8572b lim: 8192 exec/s: 319566 rss: 459Mb
+#42629330	REDUCE cov: 452 ft: 781 corp: 149/8571b lim: 8192 exec/s: 320521 rss: 459Mb L: 97/513 MS: 2 ChangeBinInt-EraseBytes-
+#42683101	RELOAD cov: 452 ft: 782 corp: 150/8673b lim: 8192 exec/s: 318530 rss: 459Mb
+#62380820	REDUCE cov: 452 ft: 782 corp: 150/8672b lim: 8192 exec/s: 319901 rss: 550Mb L: 93/513 MS: 4 ChangeByte-CMP-EraseBytes-CrossOver- DE: "v=64"-
+#67108864	pulse  cov: 452 ft: 782 corp: 150/8672b lim: 8192 exec/s: 321095 rss: 550Mb
+#134217728	pulse  cov: 452 ft: 782 corp: 150/8672b lim: 8192 exec/s: 322638 rss: 550Mb
+#192078605	DONE   cov: 452 ft: 782 corp: 150/8672b lim: 8192 exec/s: 319598 rss: 550Mb
+###### Recommended dictionary. ######
+"v=64" # Uses: 11725971
+###### End of recommended dictionary. ######
+Done 192078605 runs in 601 second(s)
+stat::number_of_executed_units: 192078605
+stat::average_exec_per_sec:     319598
+stat::new_units_added:          2
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              550

@@ -1,93 +1,142 @@
-use crate::error::CryptoError;
-use rand_core::{OsRng, RngCore};
+//! Exact key identities and two deliberately distinct secret key types.
+use crate::{CryptoError, SecretBytes};
+use rand_core::{CryptoRng, OsRng, RngCore};
 use std::fmt;
-use std::ops::Deref;
-use zeroize::Zeroizing;
+use zeroize::{ZeroizeOnDrop, Zeroizing};
 
-/// Identifiant unique et validé d'une clé de chiffrement (ex: "main", "main-2026-01").
-///
-/// Exige des caractères ASCII stricts : `[A-Za-z0-9._-]{1,64}` (sans ':', ni espaces, ni Unicode).
-#[derive(Clone, PartialEq, Eq, Hash)]
+/// Case-sensitive ASCII identifier, validated without trimming; never a file path.
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct KeyId(String);
-
 impl KeyId {
-    pub fn parse(s: impl AsRef<str>) -> Result<Self, CryptoError> {
-        let trimmed = s.as_ref().trim();
-        if trimmed.is_empty() || trimmed.len() > 64 {
-            return Err(CryptoError::InvalidKeyId(trimmed.to_string()));
+    /// Accept exactly `[A-Za-z0-9._-]{1,64}`, without echoing rejected input.
+    pub fn parse(input: &str) -> Result<Self, CryptoError> {
+        if input.is_empty()
+            || input.len() > 64
+            || !input
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
+        {
+            return Err(CryptoError::InvalidKeyId);
         }
-        for ch in trimmed.chars() {
-            if !ch.is_ascii_alphanumeric() && ch != '_' && ch != '-' && ch != '.' {
-                return Err(CryptoError::InvalidKeyId(trimmed.to_string()));
-            }
-        }
-        Ok(Self(trimmed.to_string()))
+        Ok(Self(input.to_owned()))
     }
-
+    /// Read the validated, non-secret ID.
     pub fn as_str(&self) -> &str {
         &self.0
     }
 }
-
 impl fmt::Debug for KeyId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "KeyId({})", self.0)
+        f.debug_tuple("KeyId").field(&self.0).finish()
     }
 }
-
 impl fmt::Display for KeyId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        f.write_str(&self.0)
     }
 }
-
-impl Deref for KeyId {
-    type Target = str;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+fn random_key(rng: &mut (impl CryptoRng + RngCore)) -> Result<Zeroizing<[u8; 32]>, CryptoError> {
+    let mut bytes = Zeroizing::new([0; 32]);
+    rng.try_fill_bytes(bytes.as_mut())
+        .map_err(|_| CryptoError::RandomUnavailable)?;
+    Ok(bytes)
 }
-
-/// Clé de chiffrement symétrique AES-256 (32 octets) sécurisée en mémoire.
+fn import_key(secret: SecretBytes) -> Result<Zeroizing<[u8; 32]>, CryptoError> {
+    if secret.len() != 32 {
+        return Err(CryptoError::InvalidKeyLength);
+    }
+    let mut bytes = Zeroizing::new([0; 32]);
+    bytes.copy_from_slice(secret.expose_secret());
+    Ok(bytes)
+}
+/// AES-256 key. No public raw export, cloning, implicit conversions or serialization.
 ///
-/// Ne peut pas être clônée, ni sérialisée, et masque son affichage `Debug`.
+/// ```compile_fail
+/// use lyxal_crypto::EncryptionKey;
+/// let key = EncryptionKey::generate().unwrap();
+/// let duplicate = key.clone();
+/// ```
 pub struct EncryptionKey {
     bytes: Zeroizing<[u8; 32]>,
 }
-
 impl EncryptionKey {
-    /// Crée une nouvelle clé à partir d'un buffer de 32 octets bruts.
-    pub fn from_bytes(raw: [u8; 32]) -> Self {
-        Self {
-            bytes: Zeroizing::new(raw),
-        }
+    /// Import exactly 32 owned bytes; the source is wiped on every return path.
+    pub fn import(secret: SecretBytes) -> Result<Self, CryptoError> {
+        Ok(Self {
+            bytes: import_key(secret)?,
+        })
     }
-
-    /// Tente de créer une clé depuis un slice d'octets.
-    pub fn try_from_slice(slice: &[u8]) -> Result<Self, CryptoError> {
-        if slice.len() != 32 {
-            return Err(CryptoError::InvalidKeyLength);
-        }
-        let mut buf = [0u8; 32];
-        buf.copy_from_slice(slice);
-        Ok(Self::from_bytes(buf))
+    /// Generate using the fallible OS CSPRNG.
+    pub fn generate() -> Result<Self, CryptoError> {
+        Ok(Self {
+            bytes: random_key(&mut OsRng)?,
+        })
     }
-
-    /// Génère une clé cryptographique aléatoire de 32 octets de haute qualité via le CSPRNG système (OsRng).
-    pub fn generate() -> Self {
-        let mut buf = [0u8; 32];
-        OsRng.fill_bytes(&mut buf);
-        Self::from_bytes(buf)
-    }
-
-    /// Expose les octets de la clé uniquement au module interne de chiffrement.
     pub(crate) fn expose(&self) -> &[u8; 32] {
         &self.bytes
     }
 }
-
 impl fmt::Debug for EncryptionKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("EncryptionKey([REDACTED])")
+    }
+}
+impl ZeroizeOnDrop for EncryptionKey {}
+/// HMAC key, deliberately not interchangeable with an AES key.
+pub struct HmacKey {
+    bytes: Zeroizing<[u8; 32]>,
+}
+impl HmacKey {
+    /// Import exactly 32 owned bytes, wiping the input afterward.
+    pub fn import(secret: SecretBytes) -> Result<Self, CryptoError> {
+        Ok(Self {
+            bytes: import_key(secret)?,
+        })
+    }
+    /// Generate a 256-bit key or return an RNG error.
+    pub fn generate() -> Result<Self, CryptoError> {
+        Ok(Self {
+            bytes: random_key(&mut OsRng)?,
+        })
+    }
+    pub(crate) fn expose(&self) -> &[u8; 32] {
+        &self.bytes
+    }
+}
+impl fmt::Debug for HmacKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("HmacKey([REDACTED])")
+    }
+}
+impl ZeroizeOnDrop for HmacKey {}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::*;
+    pub(crate) struct FailedRandom;
+    impl CryptoRng for FailedRandom {}
+    impl RngCore for FailedRandom {
+        fn next_u32(&mut self) -> u32 {
+            panic!("infallible path forbidden")
+        }
+        fn next_u64(&mut self) -> u64 {
+            panic!("infallible path forbidden")
+        }
+        fn fill_bytes(&mut self, _: &mut [u8]) {
+            panic!("infallible path forbidden")
+        }
+        fn try_fill_bytes(&mut self, bytes: &mut [u8]) -> Result<(), rand_core::Error> {
+            bytes.fill(0x41);
+            Err(rand_core::Error::from(
+                std::num::NonZeroU32::new(rand_core::Error::CUSTOM_START).unwrap(),
+            ))
+        }
+    }
+    #[test]
+    fn partially_filled_rng_error_is_propagated() {
+        assert!(matches!(
+            random_key(&mut FailedRandom),
+            Err(CryptoError::RandomUnavailable)
+        ));
     }
 }

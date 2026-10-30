@@ -1,84 +1,118 @@
-# 🏛️ Contrat d'API Publique & Classification de Stabilité — `lyxal_crypto`
+# Contrat public — API V1 de production / enc:v2
 
-**Statut du Crate** : `CORE FREEZE — STABLE`  
-**Version** : `0.1.0` (Contrat figé en vue de `1.0.0`)  
-**Date d'entrée en vigueur** : 02 Septembre 2026
+Implémentation phase B, soumise à réception CTO. La version Cargo reste 0.1.0 ;
+aucune publication 1.0.0 n'est implicite. L'ancienne API est remplacée, sans shim.
+Le [protocole V2](ENVELOPE_FORMAT_V2.md) est la référence des octets persistants.
+Toutes les erreurs retournent `CryptoError`, sans entrée, PHC, clé ni chemin reflété.
 
----
+## Types sensibles
 
-## 1. Principes Directeurs du Freeze
+| Type | Construction | Accès / conversions nommés |
+|---|---|---|
+| SecretBytes | new(Vec<u8>) -> Result ; longueur ET capacité <=1 Mio | expose_secret -> &[u8], len, is_empty, into_utf8 -> Result<SecretString> |
+| SecretString | new(String) -> Result ; mêmes bornes, UTF-8 | expose_secret -> &str, len en bytes, is_empty, into_bytes -> SecretBytes |
+| EncryptionKey | import(SecretBytes) exige 32 bytes ; generate -> Result via OsRng faillible | aucun export public brut ; partage explicite par Arc |
+| HmacKey | import(SecretBytes) exige 32 bytes ; generate -> Result | type distinct de la clé AES, aucun export brut |
+| PasswordHash | parse(&str) valide PHC et budgets ; hash_password construit un hash | expose_phc -> &str, needs_rehash -> bool |
 
-1. **Aucune régression d'API** : Les signatures et types classés `STABLE` ne subiront aucun breaking change.
-2. **Étanchéité des types** : Les types sensibles implémentent `Zeroize` et masquent leurs représentations via `Debug` (`[REDACTED]`).
-3. **Séparation nette Legacy vs Moderne** : Les fonctions de déchiffrement legacy sont isolées sous la classification `MIGRATION-ONLY`.
+`Debug` donne exactement `<Type>([REDACTED])`. Ces types ne proposent ni Clone/Copy,
+Default, Display, Deref, comparaisons Eq/PartialEq/Ord, Hash, sérialisation implicite,
+ni conversions/emprunts personnalisés vers des buffers bruts. Les implémentations
+identitaires standard From<T> for T / Into<T> / Borrow<T> for T restent permises.
+Send, Sync, Unpin et ZeroizeOnDrop sont vérifiés par le banc de contrats.
+Aucune méthode publique Zeroize ne transforme une clé vivante en clé nulle.
+Les conversions nommées transfèrent l'allocation ; les données invalides sont effacées.
+Une exposition explicite autorise l'appelant à copier : ces copies lui appartiennent.
 
----
+## Identité, contexte et enveloppe
 
-## 2. Matrice Complète des Éléments d'API Publique
+`KeyId::parse(&str)` accepte exactement `[A-Za-z0-9._-]{1,64}`, sans trim.
+KeyId est une métadonnée non secrète : Clone/Eq/Hash/Ord/Debug/Display permis.
+`SecretContext::with_tenant(tenant,module,resource,record_id,field)` exige des valeurs
+exactes selon V2 ; `global(purpose)` crée un domaine distinct, non vide.
+Aucun tenant implicite et aucune normalisation Unicode/casse/espaces.
+`SecretContext` est clonable/comparable ; son Debug masque les identités.
 
-### 2.1. Modules Publics (`pub mod`)
+`EncryptedEnvelope::parse(&str)` valide uniquement format canonique et tailles.
+`encode()` expose volontairement le ciphertext. `key_id()` retourne une métadonnée
+non authentifiée jusqu'à `open`. Champs privés ; aucun constructeur arbitraire,
+Display ou fallback V1. Maximum texte 1 398 211 bytes, payload 1 048 604 bytes.
 
-| Module | Classification | Rôle & Périmètre | Consommateurs |
-| :--- | :--- | :--- | :--- |
-| `pub mod cipher` | `CONTROLLED-USAGE` | Primitives cryptographiques pures AES-256-GCM (NIST SP 800-38D). Usage contrôlé pour adaptateurs de transport et migrations. Préférer `CryptoEngine` pour le stockage applicatif. | Modules d'infrastructure, adaptateurs Booking |
-| `pub mod context` | `STABLE` | Contexte d'authentification AAD multi-tenant `SecretContext`. | `lyxal_booking`, modules métiers |
-| `pub mod envelope` | `STABLE` | Structure et encodage d'enveloppe `enc:v1` (`EncryptedEnvelope`). | `lyxal_booking`, moteurs de stockage |
-| `pub mod error` | `STABLE` | Types d'erreurs fortement typées `CryptoError`. | Tout le workspace |
-| `pub mod hash` | `STABLE` | Hachage cryptographique SHA-256 (FIPS 180-4) et BLAKE3 (oneshot + streaming). | `lyxal_runtime`, modules Lyxal |
-| `pub mod hmac` | `STABLE` | Authentification de messages HMAC-SHA256 (RFC 2104 / RFC 4231). | `lyxal_booking`, webhooks, API tokens |
-| `pub mod kdf` | `STABLE` | Dérivation de clés HKDF-SHA256 (RFC 5869) avec protection `Zeroizing`. | Gestionnaires de session / tokens |
-| `pub mod key` | `STABLE` | Gestion des identifiants et clés de chiffrement (`KeyId`, `EncryptionKey`). | Tout le workspace |
-| `pub mod key_resolver` | `STABLE` | Traits et implémentations de résolution de clés multi-sources. | `lyxal_booking`, serveurs hôtes |
-| `pub mod password` | `STABLE` | Hachage et vérification de mots de passe Argon2id (RFC 9106) avec politique Lyxal v1. | `lyxal_booking`, `lyxal_auth` |
+## Trousseau, résolution et rotation
 
----
+- KeyRingBuilder::new ; insert(KeyId,EncryptionKey,KeyUse) ; insert_resolved(ResolvedKey,KeyUse).
+- insert_revoked(KeyId) importe un tombstone sans matériel, depuis un registre hôte fiable.
+- from_snapshot(&KeyRing) partage les Arc sans copier le matériel et conserve les tombstones.
+- activate(&KeyId) sélectionne une clé connue non révoquée ; l'ancienne devient decrypt-only.
+- revoke(&KeyId) refuse l'active, retire le matériel et conserve l'ID ; revoked est irréversible.
+- build(self) exige exactement une active et <=64 IDs, tombstones compris.
+- Toute insertion dupliquée ou mutation échouée laisse les entrées existantes inchangées.
+- KeyRing::active_id et state exposent des métadonnées ; validate_successor vérifie la succession.
 
-### 2.2. Structures & Types (`pub struct`, `pub type`, `pub enum`)
+Un snapshot est immuable. validate_successor refuse tout ID perdu, tombstone réactivé
+ou matériel remplacé sous un ID existant ; comparaison de clés par subtle.
+Il ne remplace pas le registre durable ID/matériel de l'hôte, en particulier au restart.
 
-| Type | Module | Classification | Description & Contrat |
-| :--- | :--- | :--- | :--- |
-| `SecretContext` | `context` | `STABLE` | Contexte AAD `(tenant, module, resource, record_id, field)`. Normalisation automatique et format déterministe `lyxal:v1`. |
-| `EncryptedEnvelope` | `envelope` | `STABLE` | Représentation d'une enveloppe `enc:v1:<key_id>:<base64url>`. |
-| `EnvelopeVersion` | `envelope` | `STABLE` | Énumération des versions d'enveloppes (actuellement `V1`). |
-| `CryptoError` | `error` | `STABLE` | Énumération exhaustive des erreurs cryptographiques. |
-| `EncryptionKey` | `key` | `STABLE` | Clé 256-bit encapsulée, zéroïsée à l'abandon (`ZeroizeOnDrop`), non-clonable, non-sérialisable, masquée au `Debug`. |
-| `KeyId` | `key` | `STABLE` | Identifiant textuel validé et non-vide d'une clé cryptographique. |
-| `CryptoEngine<R: KeyResolver>` | `lib` | `STABLE` | Moteur applicatif universel pour le chiffrement/déchiffrement de secrets et la rotation. |
-| `SecretBytes` | `lib` | `STABLE` | Alias pour `Zeroizing<Vec<u8>>` protégeant les octets déchiffrés en mémoire vive. |
-| `SecretString` | `lib` | `STABLE` | Alias pour `Zeroizing<String>` protégeant les chaînes déchiffrées en mémoire vive. |
-| `ReencryptResult` | `lib` | `STABLE` | Résultat d'une tentative de rotation (`Current` ou `Rotated(String)`). |
-| `KeyResolver` (trait) | `key_resolver` | `STABLE` | Contrat de résolution `active_key_id()` et `resolve(&KeyId)`. |
-| `EnvironmentKeyProvider` | `key_resolver` | `STABLE` | Résolveur de clés chargées depuis des variables d'environnement. |
-| `FileKeyProvider` | `key_resolver` | `STABLE` | Résolveur de clés stockées sur le système de fichiers local. |
-| `CompositeKeyResolver` | `key_resolver` | `STABLE` | Résolveur multi-clés en mémoire thread-safe (`RwLock`) supportant l'ajout de clés historiques. |
-| `KeyGenerationPolicy` | `key_resolver` | `STABLE` | Politique de génération de clé locale (`RequireExisting` vs `AllowGenerate`). |
-| `Sha256Hasher` | `hash` | `STABLE` | Hasher streaming incrémental SHA-256 (`update`, `finalize`, `finalize_hex`). |
-| `Blake3Hasher` | `hash` | `STABLE` | Hasher streaming incrémental BLAKE3 (`update`, `finalize`, `finalize_hex`). |
+`ResolvedKey::new(KeyId,Arc<EncryptionKey>)` crée une paire explicite ; `id()` expose
+uniquement son identifiant. Les providers remettent cette paire au builder.
+`KeyResolver: Send + Sync` fournit `snapshot() -> Result<Arc<KeyRing>>` uniquement.
+`StaticKeyResolver::new(Arc<KeyRing>)` ne rafraîchit ni fichiers ni environnement.
+`Arc<T: KeyResolver>` délègue sans copie de clé.
 
----
+`CryptoEngine<R>::new(R)` puis :
 
-### 2.3. Fonctions & Méthodes Publiques
+| Méthode | Résultat et garanties |
+|---|---|
+| seal(&SecretBytes,&SecretContext) | Result<EncryptedEnvelope> ; un snapshot, sa clé active, nonce OS neuf |
+| open(&EncryptedEnvelope,&SecretContext) | Result<SecretBytes> ; une capture, refus absent/révoqué, authentification avant sortie |
+| reencrypt_if_needed(&EncryptedEnvelope,&SecretContext) | Result<ReencryptResult> ; authentifie même si ID actif ; Current ou Rotated(EncryptedEnvelope), relatifs au snapshot capturé |
 
-| Fonction / Méthode | Module | Classification | Description & Règle d'usage |
-| :--- | :--- | :--- | :--- |
-| `CryptoEngine::new(resolver: R) -> Self` | `lib` | `STABLE` | Constructeur du moteur principal acceptant tout `KeyResolver`. |
-| `CryptoEngine::encrypt_secret(&self, plaintext: &[u8], context: &SecretContext) -> Result<String, CryptoError>` | `lib` | `STABLE` | Chiffrement lié canonique avec AAD `lyxal:v1` sous enveloppe `enc:v1:<key_id>:<base64url>`. |
-| `CryptoEngine::decrypt_secret(&self, envelope_str: &str, context: &SecretContext) -> Result<SecretBytes, CryptoError>` | `lib` | `STABLE` | Déchiffrement lié canonique avec vérification stricte de l'AAD. |
-| `CryptoEngine::encrypt_unbound(&self, plaintext: &[u8]) -> Result<String, CryptoError>` | `lib` | `STABLE` | Chiffrement non lié (sans AAD contextuel, AAD vide) sous enveloppe `enc:v1:<key_id>:<base64url>`. |
-| `CryptoEngine::decrypt_unbound(&self, envelope_str: &str) -> Result<SecretBytes, CryptoError>` | `lib` | `STABLE` | Déchiffrement non lié (sans AAD contextuel). |
-| `CryptoEngine::reencrypt_if_needed(&self, envelope_str: &str, context: &SecretContext) -> Result<ReencryptResult, CryptoError>` | `lib` | `STABLE` | Rotation transparente de clé vers la clé active courante. |
-| `sha256(data: &[u8]) -> [u8; 32]` | `hash` | `STABLE` | Hachage SHA-256 direct renvoyant 32 octets bruts. |
-| `sha256_hex(data: &[u8]) -> String` | `hash` | `STABLE` | Hachage SHA-256 direct renvoyant une chaîne hexadécimale 64 chars en minuscules. |
-| `blake3(data: &[u8]) -> [u8; 32]` | `hash` | `STABLE` | Hachage BLAKE3 direct renvoyant 32 octets bruts. |
-| `blake3_hex(data: &[u8]) -> String` | `hash` | `STABLE` | Hachage BLAKE3 direct renvoyant une chaîne hexadécimale 64 chars en minuscules. |
-| `sign_hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32]` | `hmac` | `STABLE` | Signature HMAC-SHA256 (infaillible) renvoyant 32 octets bruts. |
-| `sign_hmac_sha256_hex(key: &[u8], data: &[u8]) -> String` | `hmac` | `STABLE` | Signature HMAC-SHA256 (infaillible) renvoyant une chaîne hexadécimale en minuscules. |
-| `verify_hmac_sha256(key: &[u8], data: &[u8], expected_tag: &[u8]) -> bool` | `hmac` | `STABLE` | Vérification HMAC-SHA256 temps constant native (`verify_slice`). |
-| `verify_hmac_sha256_hex(key: &[u8], data: &[u8], expected_hex: &str) -> bool` | `hmac` | `STABLE` | Vérification HMAC-SHA256 temps constant depuis signature hexadécimale. |
-| `hkdf_sha256(ikm: &[u8], salt: Option<&[u8]>, info: &[u8], output: &mut [u8]) -> Result<(), CryptoError>` | `kdf` | `STABLE` | Dérivation HKDF-SHA256 générique vers un buffer mutable (RFC 5869). |
-| `hkdf_sha256_32(ikm: &[u8], salt: Option<&[u8]>, info: &[u8]) -> Result<Zeroizing<[u8; 32]>, CryptoError>` | `kdf` | `STABLE` | Dérivation HKDF-SHA256 spécialisée 32 octets zéroïsés. |
-| `hash_password(password: &str) -> Result<String, CryptoError>` | `password` | `STABLE` | Hachage Argon2id politique Lyxal v1 (`m=65536, t=3, p=1, salt=OsRng`). Sortie PHC. |
-| `verify_password(password: &str, encoded_hash: &str) -> Result<bool, CryptoError>` | `password` | `STABLE` | Vérification temps constant d'un mot de passe contre un hash PHC. |
-| `needs_rehash(encoded_hash: &str) -> bool` | `password` | `STABLE` | Détecte si un hash nécessite une mise à niveau vers les paramètres Lyxal v1. |
-| `encrypt_aes_gcm(key: &EncryptionKey, plaintext: &[u8], aad: &[u8]) -> Result<Vec<u8>, CryptoError>` | `cipher` | `CONTROLLED-USAGE` | Primitive AEAD bas niveau produisant `Nonce (12B) \| Ciphertext \| Tag (16B)`. Usage contrôlé (adaptateurs de transport, migrations de protocoles). Préférer `CryptoEngine::encrypt_secret` pour le stockage applicatif standard. |
-| `decrypt_aes_gcm(key: &EncryptionKey, payload: &[u8], aad: &[u8]) -> Result<Zeroizing<Vec<u8>>, CryptoError>` | `cipher` | `CONTROLLED-USAGE` | Primitive AEAD bas niveau consommant `Nonce (12B) \| Ciphertext \| Tag (16B)` avec vérification en temps constant. Usage contrôlé (adaptateurs de transport, migrations historiques). Préférer `CryptoEngine::decrypt_secret`. |
+Aucune seconde capture lors de rotation, aucun fallback à un ancien snapshot après
+échec du resolver. L'hôte publie un successeur validé sous verrou/CAS et peut devoir
+refaire une migration si une nouvelle génération a été publiée entre-temps.
+Révoquer un nouveau snapshot n'annule pas les anciens Arc détenus ou opérations en vol.
+
+## Providers
+
+`EnvironmentKeyProvider::load(name,KeyId)` charge explicitement 44 caractères Base64
+standard canoniques pour 32 bytes ; aucun trim, reload implicite ou suppression de variable.
+Le contenu source de l'environnement et les copies OS restent hors de l'effacement local.
+
+`FileKeyProvider::new(path,id,policy).load()` suit SECURITY.md : chemin absolu,
+répertoire privé de confiance, fichiers réguliers 0600/0400, pas de symlinks observés,
+44 bytes Base64 plus éventuellement un seul LF. Lecture et allocations bornées.
+RequireExisting ne génère rien ; AllowGenerateDevelopment publie sans remplacement,
+synchronise fichier/répertoire et distingue durabilité incertaine/nettoyage échoué.
+Autres plateformes non qualifiées : UnsupportedStorage, pas de fallback moins sûr.
+Aucune API ne supprime une ancienne clé persistante.
+
+## Passwords, MAC, KDF et hash
+
+Création Argon2id v19 : m=65536 KiB, t=3, p=1, sel=16 bytes, digest=32.
+Mot de passe <=1024 bytes ; minimum métier hors crate. PHC <=512 bytes, algorithme/version
+exacts, paramètres m/t/p uniques, sel décodé 16..32, digest exactement32, Base64 non paddé
+strict. Les ordres de paramètres sont acceptés, mais nombres à zéros initiaux interdits.
+Budgets vérification : 8*p<=m<=131072 KiB, 1<=t<=5, 1<=p<=4, avant workspace Argon2.
+Aucune extension PHC implicite. Mauvais format/coût => erreur, pas mismatch.
+
+hash_password(&SecretString) -> Result<PasswordHash> ;
+verify_password(&SecretString,&PasswordHash) -> Result<PasswordVerification> :
+Mismatch ou Verified { needs_rehash }. Rehash si un coût est inférieur à la cible ;
+aucun downgrade automatique d'un profil compatible au moins aussi élevé dans tous les coûts.
+Profils incomparables signalés sans promesse de renforcement mathématique universel.
+La concurrence, les comptes, sessions et rate limits appartiennent à l'hôte.
+
+HMAC-SHA256 : sign_hmac_sha256(&HmacKey,data)->Result<[u8;32]>,
+verify_hmac_sha256(&HmacKey,data,tag)->Result<bool>. Tag exactement32 ; format invalide
+=> InvalidTagEncoding, mismatch=>false. Variantes hex : sortie minuscule64, vérification64
+sans trim et sans allocation proportionnelle à l'entrée. Les clés arbitrairement courtes
+ne sont pas offertes par l'API publique ; ne pas modifier une clé de protocole externe
+par padding/dérivation improvisée pour satisfaire ce type.
+
+hkdf_sha256(&SecretBytes,salt,info,len)->Result<SecretBytes> : sortie1..8160,
+info non vide<=1024 ; IKM de bonne entropie et admission du salt emprunté à l'hôte.
+Pas une KDF de mot de passe, pas de sortie brute par défaut.
+
+SHA-256/BLAKE3 one-shot/hex/streaming sont conservés ; entrées ordinaires, pas de garantie
+de traitement comme conteneur secret et jamais de remplacement d'Argon2 pour un mot de passe.
+Les fonctions AES bas niveau, nonces choisis et helpers de HMAC à clés courtes sont privés.

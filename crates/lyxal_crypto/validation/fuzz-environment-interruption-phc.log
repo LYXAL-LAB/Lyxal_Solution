@@ -1,0 +1,58 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3169316686
+INFO: Loaded 1 modules   (1571 inline 8-bit counters): 1571 [0x56350767a950, 0x56350767af73), 
+INFO: Loaded 1 PC tables (1571 PCs): 1571 [0x56350767af78,0x5635076811a8), 
+INFO:      166 files found in /workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/phc
+INFO: seed corpus: files: 166 min: 1b max: 513b total: 9573b rss: 30Mb
+#167	INITED cov: 452 ft: 775 corp: 144/8483b exec/s: 0 rss: 34Mb
+#14138	REDUCE cov: 452 ft: 775 corp: 144/8481b lim: 648 exec/s: 0 rss: 41Mb L: 21/513 MS: 1 EraseBytes-
+#29470	REDUCE cov: 452 ft: 775 corp: 144/8480b lim: 792 exec/s: 0 rss: 45Mb L: 109/513 MS: 2 CrossOver-EraseBytes-
+#40837	REDUCE cov: 452 ft: 775 corp: 144/8475b lim: 900 exec/s: 0 rss: 47Mb L: 46/513 MS: 2 ChangeBit-EraseBytes-
+#91678	REDUCE cov: 452 ft: 775 corp: 144/8474b lim: 1396 exec/s: 0 rss: 57Mb L: 95/513 MS: 1 EraseBytes-
+#154364	REDUCE cov: 452 ft: 775 corp: 144/8472b lim: 2016 exec/s: 0 rss: 71Mb L: 19/513 MS: 1 EraseBytes-
+#212605	RELOAD cov: 452 ft: 776 corp: 145/8493b lim: 2595 exec/s: 212605 rss: 84Mb
+#275336	REDUCE cov: 452 ft: 776 corp: 145/8491b lim: 3211 exec/s: 275336 rss: 97Mb L: 30/513 MS: 1 EraseBytes-
+#346948	REDUCE cov: 452 ft: 776 corp: 145/8489b lim: 3915 exec/s: 346948 rss: 112Mb L: 44/513 MS: 2 ChangeBit-EraseBytes-
+#351724	REDUCE cov: 452 ft: 776 corp: 145/8474b lim: 3959 exec/s: 351724 rss: 113Mb L: 33/513 MS: 1 EraseBytes-
+#368025	REDUCE cov: 452 ft: 776 corp: 145/8473b lim: 4114 exec/s: 368025 rss: 117Mb L: 43/513 MS: 1 EraseBytes-
+#498806	REDUCE cov: 452 ft: 776 corp: 145/8471b lim: 5410 exec/s: 498806 rss: 146Mb L: 41/513 MS: 1 EraseBytes-
+#524288	pulse  cov: 452 ft: 776 corp: 145/8471b lim: 5662 exec/s: 262144 rss: 151Mb
+#561144	REDUCE cov: 452 ft: 776 corp: 145/8470b lim: 6022 exec/s: 280572 rss: 160Mb L: 40/513 MS: 1 EraseBytes-
+#571620	REDUCE cov: 452 ft: 776 corp: 145/8468b lim: 6118 exec/s: 285810 rss: 162Mb L: 38/513 MS: 1 EraseBytes-
+#1040396	REDUCE cov: 452 ft: 776 corp: 145/8467b lim: 8192 exec/s: 346798 rss: 265Mb L: 37/513 MS: 1 EraseBytes-
+#1048576	pulse  cov: 452 ft: 776 corp: 145/8467b lim: 8192 exec/s: 349525 rss: 266Mb
+#1072937	REDUCE cov: 452 ft: 776 corp: 145/8466b lim: 8192 exec/s: 357645 rss: 272Mb L: 33/513 MS: 1 EraseBytes-
+#1301246	REDUCE cov: 452 ft: 776 corp: 145/8465b lim: 8192 exec/s: 325311 rss: 322Mb L: 36/513 MS: 1 EraseBytes-
+#1332557	REDUCE cov: 452 ft: 776 corp: 145/8463b lim: 8192 exec/s: 333139 rss: 329Mb L: 107/513 MS: 1 EraseBytes-
+#1798579	REDUCE cov: 452 ft: 776 corp: 145/8462b lim: 8192 exec/s: 299763 rss: 433Mb L: 32/513 MS: 1 EraseBytes-
+#1836736	REDUCE cov: 452 ft: 776 corp: 145/8461b lim: 8192 exec/s: 306122 rss: 441Mb L: 39/513 MS: 2 ChangeASCIIInt-EraseBytes-
+#2097152	pulse  cov: 452 ft: 776 corp: 145/8461b lim: 8192 exec/s: 299593 rss: 452Mb
+#2145257	REDUCE cov: 452 ft: 776 corp: 145/8460b lim: 8192 exec/s: 306465 rss: 452Mb L: 29/513 MS: 1 EraseBytes-
+#2183623	REDUCE cov: 452 ft: 776 corp: 145/8459b lim: 8192 exec/s: 311946 rss: 452Mb L: 106/513 MS: 1 EraseBytes-
+#2408794	REDUCE cov: 452 ft: 776 corp: 145/8458b lim: 8192 exec/s: 301099 rss: 454Mb L: 35/513 MS: 1 EraseBytes-
+#2838926	REDUCE cov: 452 ft: 776 corp: 145/8457b lim: 8192 exec/s: 315436 rss: 456Mb L: 28/513 MS: 2 ShuffleBytes-EraseBytes-
+#2855107	REDUCE cov: 452 ft: 776 corp: 145/8456b lim: 8192 exec/s: 317234 rss: 456Mb L: 29/513 MS: 1 EraseBytes-
+#3108433	REDUCE cov: 452 ft: 776 corp: 145/8455b lim: 8192 exec/s: 310843 rss: 456Mb L: 34/513 MS: 1 EraseBytes-
+#4194304	pulse  cov: 452 ft: 776 corp: 145/8455b lim: 8192 exec/s: 322638 rss: 458Mb
+#4637909	REDUCE cov: 452 ft: 776 corp: 145/8454b lim: 8192 exec/s: 331279 rss: 458Mb L: 33/513 MS: 1 EraseBytes-
+#5663781	REDUCE cov: 452 ft: 779 corp: 146/8485b lim: 8192 exec/s: 333163 rss: 458Mb L: 31/513 MS: 1 EraseBytes-
+#7657688	REDUCE cov: 452 ft: 779 corp: 146/8484b lim: 8192 exec/s: 332942 rss: 462Mb L: 38/513 MS: 2 CrossOver-EraseBytes-
+#8265944	REDUCE cov: 452 ft: 779 corp: 146/8483b lim: 8192 exec/s: 344414 rss: 462Mb L: 39/513 MS: 1 EraseBytes-
+#8388608	pulse  cov: 452 ft: 779 corp: 146/8483b lim: 8192 exec/s: 335544 rss: 462Mb
+#16777216	pulse  cov: 452 ft: 779 corp: 146/8483b lim: 8192 exec/s: 328965 rss: 524Mb
+#33554432	pulse  cov: 452 ft: 779 corp: 146/8483b lim: 8192 exec/s: 332222 rss: 524Mb
+#43466675	REDUCE cov: 452 ft: 779 corp: 146/8482b lim: 8192 exec/s: 334359 rss: 524Mb L: 94/513 MS: 1 EraseBytes-
+#46410296	REDUCE cov: 452 ft: 779 corp: 146/8481b lim: 8192 exec/s: 333887 rss: 524Mb L: 94/513 MS: 1 EraseBytes-
+#55474019	REDUCE cov: 452 ft: 779 corp: 146/8472b lim: 8192 exec/s: 334180 rss: 524Mb L: 96/513 MS: 3 EraseBytes-CrossOver-CMP- DE: "\003\000\000\000\000\000\000\000"-
+#67108864	pulse  cov: 452 ft: 779 corp: 146/8472b lim: 8192 exec/s: 332222 rss: 524Mb
+#103361225	REDUCE cov: 452 ft: 779 corp: 146/8471b lim: 8192 exec/s: 331285 rss: 524Mb L: 95/513 MS: 1 EraseBytes-
+#129440374	REDUCE cov: 452 ft: 779 corp: 146/8470b lim: 8192 exec/s: 330205 rss: 524Mb L: 93/513 MS: 3 ChangeBit-EraseBytes-ChangeBinInt-
+#134217728	pulse  cov: 452 ft: 779 corp: 146/8470b lim: 8192 exec/s: 330585 rss: 524Mb
+#154028920	REDUCE cov: 452 ft: 779 corp: 146/8469b lim: 8192 exec/s: 330534 rss: 524Mb L: 94/513 MS: 1 EraseBytes-
+#175370873	REDUCE cov: 452 ft: 779 corp: 146/8468b lim: 8192 exec/s: 330265 rss: 524Mb L: 93/513 MS: 3 ChangeASCIIInt-ChangeByte-EraseBytes-
+#203769894	REDUCE cov: 452 ft: 779 corp: 146/8467b lim: 8192 exec/s: 318390 rss: 524Mb L: 51/513 MS: 1 EraseBytes-
+#268435456	pulse  cov: 452 ft: 779 corp: 146/8467b lim: 8192 exec/s: 319566 rss: 524Mb
+#274910286	REDUCE cov: 452 ft: 779 corp: 146/8466b lim: 8192 exec/s: 319663 rss: 524Mb L: 93/513 MS: 2 ChangeASCIIInt-EraseBytes-
+#393430851	REDUCE cov: 452 ft: 779 corp: 146/8465b lim: 8192 exec/s: 321168 rss: 524Mb L: 95/513 MS: 5 InsertByte-CrossOver-ShuffleBytes-ShuffleBytes-EraseBytes-
+#536870912	pulse  cov: 452 ft: 779 corp: 146/8465b lim: 8192 exec/s: 321287 rss: 524Mb
+#543214845	REDUCE cov: 452 ft: 779 corp: 146/8464b lim: 8192 exec/s: 321238 rss: 524Mb L: 93/513 MS: 4 CrossOver-CopyPart-ShuffleBytes-EraseBytes-
