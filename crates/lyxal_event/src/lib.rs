@@ -40,6 +40,7 @@ pub mod publisher;
 pub mod store;
 pub mod types;
 pub mod worker;
+pub mod engine;
 
 pub use error::LyxalEventError;
 pub use gc::GarbageCollector;
@@ -55,6 +56,7 @@ pub use store::EventStore;
 pub use types::{CausationId, CorrelationId, EventId};
 pub use worker::{
     compute_lease_duration, compute_next_retry_delay, EventWorker, EventWorkerConfig,
+    EventWorkerMetrics,
 };
 
 /// Prelude pour l'importation concise des types fondamentaux.
@@ -70,5 +72,6 @@ pub mod prelude {
     pub use crate::types::{CausationId, CorrelationId, EventId};
     pub use crate::worker::{
         compute_lease_duration, compute_next_retry_delay, EventWorker, EventWorkerConfig,
+        EventWorkerMetrics,
     };
 }

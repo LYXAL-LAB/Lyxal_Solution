@@ -102,6 +102,10 @@ Activer ce Skill dès qu'une mission implique :
    - Vérifier que l'initialisation (`init_event_engine`) et la boucle de maintenance de `EventWorker` (`fanout_recovery_interval`) exécutent bien `store.recover_pending_fanouts(batch_size)` pour reprendre les événements restés en statut `pending` dans `event_outbox` après un crash.
 5. **[RECOMMANDATION] Choix de `WorkerCriticality` et `RestartPolicy`** :
    - Utiliser `WorkerCriticality::Required` uniquement si la perte définitive du worker (`WorkerState::Failed` / `TimedOut`) doit faire basculer la santé globale du module en `HealthStatus::Unhealthy` ; utiliser `WorkerCriticality::Optional` pour les tâches de nettoyage ou d'optimisation (qui dégradent le statut en `HealthStatus::Degraded`).
+6. **[OBLIGATOIRE] Fencing du Streaming Outbox & Reprise Post-Crash des Livraisons** :
+   - `EventWorker` opère sous bail distribué `event_stream_lease:outbox_leader` avec génération monotone et rejet immédiat `EVENT_STALE_LEADER_FENCED` en cas de split-brain.
+   - La boucle de consommation `fetch_and_enqueue_pending` reprend sans saut de séquence les livraisons non terminées dont le verrou `locked_until` est expiré, en reverrouillant atomiquement la livraison (`status = "processing"`, `locked_until = $now + 30s`) sans réassignation de séquence.
+   - L'avancement de curseur passe obligatoirement par `fn::event_flush_batch` garantissant l'absence de trou (invariant de contiguïté stricte) et la barrière DLQ atomique avant confirmation.
 
 ---
 

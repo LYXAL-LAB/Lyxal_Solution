@@ -338,6 +338,14 @@ impl EventConsumerModule for NotificationModule {
 * Tout handler de domaine **DOIT être idempotent** (déduplication par `event_id`, `correlation_id` ou clé métier).
 * En cas d'échec transitoire (ex: API externe indisponible), le handler retourne `Err(LyxalEventError::Handler(...))` pour déclencher le retry exponentiel + Full Jitter automatique. **Il est strictement interdit de masquer silencieusement une erreur.**
 
+### 5.6.4. Séquencement Streaming In-Process & Invariant de Contiguïté
+
+* Le streaming d'événements est pris en charge par le moteur unifié **LYXAL Event Engine** (`ReliableDispatcher`, `OutboxFeeder`, `HandlerConsumerBridge`).
+* **Fencing Transactionnel Étanche** : Le leader détient un bail distribué (`event_stream_lease:outbox_leader`) à génération monotone. Toute écriture durable (`assign_seq`, `flush_batch`, `dead_letter_transfer`) applique une garde conditionnelle atomique sur le bail et échoue avec `EVENT_STALE_LEADER_FENCED` en cas de split-brain ou de perte de leadership.
+* **Invariant de Contiguïté sans Trou** : Chaque abonnement possède un flux ordonné (`event_subscription_progress`). Le curseur persistant (`last_persisted_cursor`) ne progresse via `fn::event_flush_batch` que si toutes les séquences antérieures sont résolues (`delivered`, `dead_letter`, `dropped`).
+* **Barrière DLQ Atomique** : Tout message empoisonné est persisté dans `event_dead_letter` via `fn::event_dead_letter_transfer` avant toute confirmation du curseur.
+* **Reprise Post-Crash Déterministe** : Lors d'un crash ou redémarrage du serveur, `fetch_and_enqueue_pending` reprend les livraisons en cours dès expiration de leur verrou (`locked_until`). La fonction `fn::event_delivery_assign_seq` reverrouille atomiquement la livraison sans modifier son numéro de séquence `delivery_seq` d'origine.
+
 ---
 
 # 🧱 5.7. Utilisation Obligatoire de `lyxal_core`

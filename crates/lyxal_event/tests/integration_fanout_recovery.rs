@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use surrealdb::engine::any::connect;
 
+mod common;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct InvoiceIssued {
     pub invoice_id: String,
@@ -17,6 +19,8 @@ impl Event for InvoiceIssued {
 async fn test_recover_pending_fanouts_after_crash() {
     let db = connect("mem://").await.unwrap();
     db.use_ns("test_ns").use_db("test_db").await.unwrap();
+
+    common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
     store.init_schema().await.unwrap();

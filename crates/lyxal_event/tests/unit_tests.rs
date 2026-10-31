@@ -64,10 +64,12 @@ fn test_handler_registry_duplicate_rejection() {
 
 #[test]
 fn test_retry_delay_exponential_with_jitter() {
-    let mut cfg = EventWorkerConfig::default();
-    cfg.jitter = false;
-    cfg.retry_base_delay = Duration::from_millis(100);
-    cfg.retry_max_delay = Duration::from_secs(5);
+    let cfg = EventWorkerConfig {
+        jitter: false,
+        retry_base_delay: Duration::from_millis(100),
+        retry_max_delay: Duration::from_secs(5),
+        ..Default::default()
+    };
 
     assert_eq!(
         compute_next_retry_delay(&cfg, 0),
@@ -90,8 +92,10 @@ fn test_retry_delay_exponential_with_jitter() {
 
 #[test]
 fn test_lease_duration_scaling_by_batch() {
-    let mut cfg = EventWorkerConfig::default();
-    cfg.dispatch_timeout = Duration::from_secs(10);
+    let cfg = EventWorkerConfig {
+        dispatch_timeout: Duration::from_secs(10),
+        ..Default::default()
+    };
 
     assert_eq!(compute_lease_duration(&cfg, 1), Duration::from_secs(10));
     assert_eq!(compute_lease_duration(&cfg, 4), Duration::from_secs(40));

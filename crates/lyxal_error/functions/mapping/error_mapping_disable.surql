@@ -1,7 +1,7 @@
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │  fn::error_mapping_disable                                              │
--- │  Désactive logiquement une règle de correspondance d'erreur externe     │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+-- â”‚  fn::error_mapping_disable                                              â”‚
+-- â”‚  DÃ©sactive logiquement une rÃ¨gle de correspondance d'erreur externe     â”‚
+-- â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 
 DEFINE FUNCTION OVERWRITE fn::error_mapping_disable(
     $params: object
@@ -11,7 +11,7 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_disable(
     LET $raw_str = IF $raw_id != NONE { string::trim(<string>$raw_id) } ELSE { "" };
     LET $id_part = string::replace($raw_str, "error_external_mapping:", "");
 
-    LET $mapping_id = IF type::is_record($raw_id) {
+    LET $mapping_id = IF type::is::record($raw_id) {
         $raw_id
     } ELSE IF string::len($id_part) > 0 {
         type::record("error_external_mapping", $id_part)
@@ -30,4 +30,4 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_disable(
 
     UPDATE $existing[0] SET enabled = false, updated_at = time::now();
     RETURN fn::result_ok({ disabled: true, id: <string>$existing[0] });
-} COMMENT "Désactive logiquement une règle de correspondance d'erreur externe";
+} COMMENT "DÃ©sactive logiquement une rÃ¨gle de correspondance d'erreur externe";

@@ -1,29 +1,39 @@
 use std::time::Duration;
 use uuid::Uuid;
 
-/// Configuration du worker d'exécution des événements.
+/// Configuration unifiée d'exécution du LYXAL Event Engine (`EventWorker`).
 #[derive(Debug, Clone)]
 pub struct EventWorkerConfig {
-    /// Identifiant unique de ce worker dans le cluster.
+    /// Identifiant unique du worker / nœud (pour le bail distribué).
     pub worker_id: String,
-    /// Identifiant optionnel d'instance pour restreindre l'exécution à une instance spécifique.
+    /// Identifiant optionnel d'instance de cluster.
     pub instance_id: Option<String>,
-    /// Intervalle de polling lors des cycles vides.
+    /// Intervalle de scrutation (polling) lorsque aucun événement n'est en attente.
     pub poll_interval: Duration,
-    /// Nombre maximal de livraisons réclamées par lot.
+    /// Durée de validité (TTL) du bail distribué de streaming.
+    pub lease_ttl: Duration,
+    /// Intervalle de renouvellement du bail distribué par le leader actif.
+    pub lease_renew_interval: Duration,
+    /// Nombre maximal d'événements outbox récupérés par lot.
     pub batch_size: usize,
-    /// Nombre maximal d'essais avant mise en dead-letter.
-    pub max_attempts: u32,
-    /// Délai maximal d'exécution accordé à un handler unitaire.
+    /// Capacité maximale de messages en vol (fenêtre d'acquittement contiguë).
+    pub max_unacked: usize,
+    /// Délai maximal alloué à l'exécution d'un handler avant interruption.
     pub dispatch_timeout: Duration,
-    /// Délai de base pour le backoff exponentiel.
+    /// Délai maximal d'attente d'acquittement (ACK watchdog).
+    pub ack_timeout: Duration,
+    /// Nombre maximal de tentatives de relivraison avant transfert en Dead Letter Queue.
+    pub max_redelivery_count: u32,
+    /// Nom canonique de l'abonnement supervisé.
+    pub subscription_name: String,
+    /// Topic optionnel de destination pour la Dead Letter Queue.
+    pub dead_letter_topic: Option<String>,
+    /// Délai de base pour le backoff exponentiel des retries.
     pub retry_base_delay: Duration,
     /// Plafond maximal du délai de retry.
     pub retry_max_delay: Duration,
     /// Active le Full Jitter sur les retries pour éviter les réveils synchrones.
     pub jitter: bool,
-    /// Délai de temporisation minimal entre deux cycles de polling consécutifs non vides.
-    pub min_cycle_delay: Duration,
     /// Intervalle d'exécution de la tâche de reprise des fan-outs interrompus.
     pub fanout_recovery_interval: Duration,
 }
@@ -31,16 +41,21 @@ pub struct EventWorkerConfig {
 impl Default for EventWorkerConfig {
     fn default() -> Self {
         Self {
-            worker_id: format!("worker_{}", Uuid::now_v7()),
+            worker_id: format!("event_worker_{}", Uuid::now_v7().simple()),
             instance_id: None,
-            poll_interval: Duration::from_millis(50),
-            batch_size: 20,
-            max_attempts: 5,
-            dispatch_timeout: Duration::from_secs(30),
+            poll_interval: Duration::from_millis(100),
+            lease_ttl: Duration::from_secs(5),
+            lease_renew_interval: Duration::from_secs(2),
+            batch_size: 50,
+            max_unacked: 100,
+            dispatch_timeout: Duration::from_secs(5),
+            ack_timeout: Duration::from_secs(2),
+            max_redelivery_count: 3,
+            subscription_name: "default_subscription".to_string(),
+            dead_letter_topic: None,
             retry_base_delay: Duration::from_secs(1),
             retry_max_delay: Duration::from_secs(300),
             jitter: true,
-            min_cycle_delay: Duration::from_millis(5),
             fanout_recovery_interval: Duration::from_secs(5),
         }
     }
@@ -82,21 +97,70 @@ impl EventWorkerConfig {
         self
     }
 
-    /// Personnalise le nombre maximal d'essais.
+    /// Personnalise la durée TTL du bail distribué.
     #[must_use]
-    pub fn with_max_attempts(mut self, max_attempts: u32) -> Self {
-        self.max_attempts = max_attempts;
+    pub fn with_lease_ttl(mut self, ttl: Duration) -> Self {
+        self.lease_ttl = ttl;
         self
     }
 
-    /// Personnalise le délai de base de retry.
+    /// Personnalise l'intervalle de renouvellement du bail.
+    #[must_use]
+    pub fn with_lease_renew_interval(mut self, interval: Duration) -> Self {
+        self.lease_renew_interval = interval;
+        self
+    }
+
+    /// Personnalise la capacité maximale de messages en vol (fenêtre contiguë).
+    #[must_use]
+    pub fn with_max_unacked(mut self, max: usize) -> Self {
+        self.max_unacked = max;
+        self
+    }
+
+    /// Personnalise le délai d'ACK timeout du watchdog.
+    #[must_use]
+    pub fn with_ack_timeout(mut self, timeout: Duration) -> Self {
+        self.ack_timeout = timeout;
+        self
+    }
+
+    /// Personnalise le nombre maximal de retries avant DLQ.
+    #[must_use]
+    pub fn with_max_redelivery_count(mut self, count: u32) -> Self {
+        self.max_redelivery_count = count;
+        self
+    }
+
+    /// Alias rétrocompatible pour définir le nombre maximal d'essais.
+    #[must_use]
+    pub fn with_max_attempts(mut self, max_attempts: u32) -> Self {
+        self.max_redelivery_count = max_attempts;
+        self
+    }
+
+    /// Personnalise le nom de l'abonnement supervisé.
+    #[must_use]
+    pub fn with_subscription_name(mut self, name: impl Into<String>) -> Self {
+        self.subscription_name = name.into();
+        self
+    }
+
+    /// Personnalise le topic DLQ optionnel.
+    #[must_use]
+    pub fn with_dead_letter_topic(mut self, topic: impl Into<String>) -> Self {
+        self.dead_letter_topic = Some(topic.into());
+        self
+    }
+
+    /// Personnalise le délai de base pour le retry.
     #[must_use]
     pub fn with_retry_base_delay(mut self, delay: Duration) -> Self {
         self.retry_base_delay = delay;
         self
     }
 
-    /// Personnalise le plafond maximal de retry.
+    /// Personnalise le plafond maximal du délai de retry.
     #[must_use]
     pub fn with_retry_max_delay(mut self, delay: Duration) -> Self {
         self.retry_max_delay = delay;

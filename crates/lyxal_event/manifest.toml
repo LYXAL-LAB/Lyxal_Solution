@@ -1,0 +1,52 @@
+manifest_version = 1
+id = "lyxal_event"
+name = "Lyxal Event Engine"
+version = "1.0.0"
+description = "Moteur transactionnel unifié d'événements et de messagerie streaming in-process pour Lyxal OS"
+capabilities = ["event", "outbox", "event_stream"]
+
+[runtime]
+min_version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_core"
+version = ">=1.0.0"
+
+[[dependencies]]
+id = "lyxal_error"
+version = ">=0.1.0"
+
+[resources]
+schemas = [
+    "schema/event_outbox.surql",
+    "schema/event_subscription.surql",
+    "schema/event_delivery.surql",
+    "schema/event_dead_letter.surql",
+    "schema/event_stream_lease.surql",
+    "schema/event_subscription_progress.surql"
+]
+functions = [
+    "functions/event_publish.surql",
+    "functions/event_fanout.surql",
+    "functions/event_recover_pending_fanouts.surql",
+    "functions/event_delivery_assign_seq.surql",
+    "functions/event_flush_batch.surql",
+    "functions/event_dead_letter_transfer.surql",
+    "functions/event_dead_letter_replay.surql",
+    "functions/event_progress_get.surql",
+    "functions/event_lease_acquire.surql",
+    "functions/event_lease_renew.surql",
+    "functions/event_lease_release.surql",
+    "functions/event_delivery_success.surql",
+    "functions/event_delivery_failure.surql",
+    "functions/event_claim_batch.surql",
+    "functions/event_purge_garbage.surql",
+    "functions/event_subscription_register.surql",
+    "functions/event_outbox_get.surql",
+    "functions/event_delivery_get.surql",
+    "functions/event_dead_letter_list.surql",
+    "functions/event_delivery_fetch_pending.surql"
+]
+error_definitions = [
+    "error/events.surql"
+]

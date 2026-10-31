@@ -1,7 +1,7 @@
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │  fn::error_occurrence_get                                                │
--- │  Lecture d'une occurrence d'erreur technique par son ID                 │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+-- â”‚  fn::error_occurrence_get                                                â”‚
+-- â”‚  Lecture d'une occurrence d'erreur technique par son ID                 â”‚
+-- â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 
 DEFINE FUNCTION OVERWRITE fn::error_occurrence_get(
     $params: object
@@ -11,7 +11,7 @@ DEFINE FUNCTION OVERWRITE fn::error_occurrence_get(
     LET $raw_str = IF $raw_id != NONE { string::trim(<string>$raw_id) } ELSE { "" };
     LET $id_part = string::replace($raw_str, "error_occurrence:", "");
 
-    LET $occurrence_id = IF type::is_record($raw_id) {
+    LET $occurrence_id = IF type::is::record($raw_id) {
         $raw_id
     } ELSE IF string::len($id_part) > 0 {
         type::record("error_occurrence", $id_part)
@@ -29,4 +29,4 @@ DEFINE FUNCTION OVERWRITE fn::error_occurrence_get(
     };
 
     RETURN fn::result_ok($res[0]);
-} COMMENT "Récupère les détails d'une occurrence d'erreur au format universel LyxalResult";
+} COMMENT "RÃ©cupÃ¨re les dÃ©tails d'une occurrence d'erreur au format universel LyxalResult";

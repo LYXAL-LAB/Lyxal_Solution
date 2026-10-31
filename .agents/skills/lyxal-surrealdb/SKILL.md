@@ -112,6 +112,9 @@ Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.2.0
    - `encoding::base64::encode($bytes)` requiert un argument de type **`bytes`** (`<bytes>$str`) et retourne un base64 sans padding `=` en 3.2.0.
    - `$token` est une **variable système protégée** en 3.2.0 (`'token' is a protected variable and cannot be set`) : ne jamais nommer une variable locale `LET $token = ...`.
    - Un intervalle `0..$n` doit être explicitement converti en tableau via **`<array>(0..$n)`** avant d'être passé à `array::all`, `array::fold` ou `array::map`.
+8. **Indexation `UNIQUE` et Valeurs `NONE` / `NULL` en 3.2.0** :
+   - Sur SurrealDB 3.2.0, un index `UNIQUE` composite (ex: `DEFINE INDEX idx ON TABLE delivery FIELDS subscription, delivery_seq UNIQUE`) traite plusieurs enregistrements avec `delivery_seq = NONE` comme un conflit d'unicité et lève une violation `IndexExists`.
+   - Dès lors qu'un champ optionnel ou séquentiel peut valoir `NONE`, l'index de table doit être non-unique (`DEFINE INDEX ... FIELDS sub, seq`), et l'unicité de séquence doit être strictement garantie par une fonction transactionnelle atomique (ex: `fn::event_delivery_assign_seq` avec compteur incrémenté sur `event_subscription_progress`).
 
 ---
 

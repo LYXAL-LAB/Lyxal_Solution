@@ -1,7 +1,7 @@
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │  fn::error_occurrence_purge_before                                      │
--- │  Purge technique des anciennes occurrences antérieures à une date       │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+-- â”‚  fn::error_occurrence_purge_before                                      â”‚
+-- â”‚  Purge technique des anciennes occurrences antÃ©rieures Ã  une date       â”‚
+-- â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 
 DEFINE FUNCTION OVERWRITE fn::error_occurrence_purge_before(
     $params: object
@@ -9,9 +9,9 @@ DEFINE FUNCTION OVERWRITE fn::error_occurrence_purge_before(
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
     LET $raw_dt = $params.before_date ?? $params.before;
 
-    LET $before_date = IF type::is_datetime($raw_dt) {
+    LET $before_date = IF type::is::datetime($raw_dt) {
         $raw_dt
-    } ELSE IF type::is_string($raw_dt) AND string::len($raw_dt) > 0 {
+    } ELSE IF type::is::string($raw_dt) AND string::len($raw_dt) > 0 {
         <datetime>$raw_dt
     } ELSE {
         NONE
@@ -25,4 +25,4 @@ DEFINE FUNCTION OVERWRITE fn::error_occurrence_purge_before(
     LET $count = array::len($deleted);
 
     RETURN fn::result_ok({ purged: true, before: <string>$before_date, count: $count });
-} COMMENT "Purge les anciennes occurrences d'erreurs antérieures à une date donnée (rétention technique)";
+} COMMENT "Purge les anciennes occurrences d'erreurs antÃ©rieures Ã  une date donnÃ©e (rÃ©tention technique)";

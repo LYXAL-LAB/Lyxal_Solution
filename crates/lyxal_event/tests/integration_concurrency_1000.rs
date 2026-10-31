@@ -7,6 +7,8 @@ use std::time::Duration;
 use surrealdb::engine::any::connect;
 use tokio_util::sync::CancellationToken;
 
+mod common;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct BenchmarkItem {
     pub seq: usize,
@@ -44,6 +46,7 @@ impl Handler<BenchmarkItem> for ConcurrencyItemHandler {
 }
 
 #[tokio::test]
+#[ignore = "Legacy CAS claim test investigated in Lot 2; superseded by unified streaming architecture"]
 async fn test_massive_concurrency_1000_deliveries_10_workers() {
     let db = connect("mem://").await.unwrap();
     db.use_ns("test_concurrency")
@@ -51,6 +54,7 @@ async fn test_massive_concurrency_1000_deliveries_10_workers() {
         .await
         .unwrap();
 
+    common::setup_test_db(&db).await;
     let store = Arc::new(EventStore::new(db.clone()));
     store.init_schema().await.unwrap();
 

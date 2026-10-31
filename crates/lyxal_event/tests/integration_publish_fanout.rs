@@ -6,6 +6,8 @@ use std::time::Duration;
 use surrealdb::engine::any::connect;
 use tokio_util::sync::CancellationToken;
 
+mod common;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct BookingCreated {
     pub booking_id: String,
@@ -36,6 +38,8 @@ impl Handler<BookingCreated> for NotificationBookingHandler {
 async fn test_publish_and_fanout_end_to_end() {
     let db = connect("mem://").await.unwrap();
     db.use_ns("test_ns").use_db("test_db").await.unwrap();
+
+    common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
     store.init_schema().await.unwrap();

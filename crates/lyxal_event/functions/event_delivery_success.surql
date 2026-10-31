@@ -6,7 +6,11 @@
 DEFINE FUNCTION OVERWRITE fn::event_delivery_success(
     $params: object
 ) {
-    LET $delivery_id = $params.delivery_id;
+    IF $params.delivery_id == NONE OR $params.delivery_id == NULL {
+        RETURN fn::result_ok(false);
+    };
+
+    LET $delivery_id = <record> $params.delivery_id;
 
     LET $updated = (
         UPDATE $delivery_id SET

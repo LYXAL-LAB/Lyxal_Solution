@@ -5,6 +5,8 @@ use std::sync::Arc;
 use surrealdb::engine::any::connect;
 use tokio_util::sync::CancellationToken;
 
+mod common;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct TenantSecretRotated {
     pub key_id: String,
@@ -39,6 +41,8 @@ impl Handler<TenantSecretRotated> for TenantHandler {
 async fn test_strict_multi_instance_isolation() {
     let db = connect("mem://").await.unwrap();
     db.use_ns("cluster").use_db("main").await.unwrap();
+
+    common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
     store.init_schema().await.unwrap();

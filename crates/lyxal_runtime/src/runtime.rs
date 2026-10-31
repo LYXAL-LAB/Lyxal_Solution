@@ -356,31 +356,28 @@ impl LyxalRuntime {
             }
         }
 
-        // 4. Instanciation des workers
+        // 4. Instanciation du LYXAL Event Worker unique
         let worker_config = self.event_config.worker_config.clone();
-
         let event_worker = Arc::new(EventWorker::new(
             store.clone(),
             registry,
             worker_config.clone(),
         ));
+        let event_worker_service = Arc::new(EventWorkerService::new(
+            event_worker,
+            worker_config.dispatch_timeout,
+        ));
+        let _ = self.worker_registry.register(event_worker_service);
+
         let gc = Arc::new(GarbageCollector::new(
             store.clone(),
             self.event_config.retention_days,
             self.event_config.gc_interval,
         ));
-
-        let event_worker_service = Arc::new(EventWorkerService::new(
-            event_worker,
-            worker_config.dispatch_timeout,
-        ));
         let gc_service = Arc::new(EventGarbageCollectorService::new(
             gc,
             std::time::Duration::from_secs(5),
         ));
-
-        // Enregistrement auprès du WorkerRegistry
-        let _ = self.worker_registry.register(event_worker_service);
         let _ = self.worker_registry.register(gc_service);
 
         Ok(())

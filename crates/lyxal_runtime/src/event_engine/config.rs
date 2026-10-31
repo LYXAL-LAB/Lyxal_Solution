@@ -1,12 +1,12 @@
 use lyxal_event::EventWorkerConfig;
 use std::time::Duration;
 
-/// Configuration du moteur d'événements intégré dans Lyxal Runtime.
+/// Configuration du LYXAL Event Engine intégré dans Lyxal Runtime.
 #[derive(Debug, Clone)]
 pub struct EventEngineConfig {
     /// Indique si le moteur d'événements asynchrone est activé pour l'instance.
     pub enabled: bool,
-    /// Configuration spécifique du worker d'exécution des événements.
+    /// Configuration spécifique du worker d'exécution des événements (`EventWorker`).
     pub worker_config: EventWorkerConfig,
     /// Intervalle de réveil du ramasse-miettes (Garbage Collector).
     pub gc_interval: Duration,

@@ -535,6 +535,10 @@ Avant toute implémentation, Antigravity doit vérifier les points suivants.
 * [ ] L'idempotence du handler de domaine est garantie (transport At-Least-Once).
 * [ ] Les abonnements persistants `EventSubscription` sont déclarés.
 * [ ] Aucune erreur de handler n'est masquée silencieusement.
+* [ ] Le Fencing transactionnel sur `event_stream_lease` est respecté par les fonctions d'avancement.
+* [ ] L'avancement de curseur respecte l'invariant de contiguïté sans trou (`fn::event_flush_batch`).
+* [ ] Les messages poisons sont transférés atomiquement en DLQ avant toute confirmation de curseur.
+* [ ] La reprise post-crash (Crash Recovery) préserve les séquences existantes sans réassignation.
 
 ## Cryptographie (`lyxal_crypto`)
 

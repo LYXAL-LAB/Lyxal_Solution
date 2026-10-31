@@ -1,7 +1,7 @@
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │  fn::error_mapping_create                                               │
--- │  Création d'un mapping entre erreur externe et code Lyxal canonique     │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+-- â”‚  fn::error_mapping_create                                               â”‚
+-- â”‚  CrÃ©ation d'un mapping entre erreur externe et code Lyxal canonique     â”‚
+-- â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 
 DEFINE FUNCTION OVERWRITE fn::error_mapping_create(
     $params: object
@@ -24,14 +24,14 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_create(
         RETURN fn::error_result("ERROR_PARAM_REQUIRED", $language, { field: "external_code" });
     };
 
-    LET $clean_str = IF type::is_string($raw_def) { <string>$raw_def } ELSE { "" };
+    LET $clean_str = IF type::is::string($raw_def) { <string>$raw_def } ELSE { "" };
     LET $id_part = IF string::starts_with($clean_str, "error_definition:") {
         string::slice($clean_str, 17)
     } ELSE {
         $clean_str
     };
 
-    LET $def_rec = IF type::is_record($raw_def) {
+    LET $def_rec = IF type::is::record($raw_def) {
         $raw_def
     } ELSE IF string::len($id_part) > 0 {
         (SELECT VALUE id FROM error_definition WHERE code = $id_part OR id = type::record("error_definition", $id_part) LIMIT 1)[0]
@@ -63,4 +63,4 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_create(
     };
 
     RETURN fn::result_ok($created);
-} COMMENT "Enregistre une règle de correspondance d'erreur externe au format universel";
+} COMMENT "Enregistre une rÃ¨gle de correspondance d'erreur externe au format universel";

@@ -29,3 +29,6 @@ DEFINE FIELD OVERWRITE created_at ON TABLE event_subscription TYPE datetime DEFA
 
 DEFINE INDEX OVERWRITE idx_subscription_lookup ON TABLE event_subscription
     COLUMNS event_pattern, is_active;
+
+DEFINE INDEX OVERWRITE idx_subscription_name ON TABLE event_subscription
+    COLUMNS name UNIQUE;

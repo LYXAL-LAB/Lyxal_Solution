@@ -6,6 +6,8 @@ use std::time::Duration;
 use surrealdb::engine::any::connect;
 use tokio_util::sync::CancellationToken;
 
+mod common;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct PaymentProcessed {
     pub payment_id: String,
@@ -61,6 +63,8 @@ impl Handler<PaymentProcessed> for FailingPaymentHandler {
 async fn test_retry_dlq_and_replay_cycle() {
     let db = connect("mem://").await.unwrap();
     db.use_ns("test_ns").use_db("test_db").await.unwrap();
+
+    common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
     store.init_schema().await.unwrap();

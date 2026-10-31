@@ -1,7 +1,7 @@
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │  fn::error_mapping_get                                                  │
--- │  Lecture d'une règle de correspondance d'erreur externe par son ID      │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+-- â”‚  fn::error_mapping_get                                                  â”‚
+-- â”‚  Lecture d'une rÃ¨gle de correspondance d'erreur externe par son ID      â”‚
+-- â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 
 DEFINE FUNCTION OVERWRITE fn::error_mapping_get(
     $params: object
@@ -11,7 +11,7 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_get(
     LET $raw_str = IF $raw_id != NONE { string::trim(<string>$raw_id) } ELSE { "" };
     LET $id_part = string::replace($raw_str, "error_external_mapping:", "");
 
-    LET $mapping_id = IF type::is_record($raw_id) {
+    LET $mapping_id = IF type::is::record($raw_id) {
         $raw_id
     } ELSE IF string::len($id_part) > 0 {
         type::record("error_external_mapping", $id_part)
@@ -29,4 +29,4 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_get(
     };
 
     RETURN fn::result_ok($res[0]);
-} COMMENT "Récupère les détails d'un mapping d'erreur externe au format universel";
+} COMMENT "RÃ©cupÃ¨re les dÃ©tails d'un mapping d'erreur externe au format universel";

@@ -5,6 +5,8 @@ use std::sync::Arc;
 use surrealdb::engine::any::connect;
 use tokio_util::sync::CancellationToken;
 
+mod common;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct BookingCreatedEvent {
     pub customer: String,
@@ -36,6 +38,8 @@ impl Handler<BookingCreatedEvent> for TestBookingHandler {
 async fn test_surrealdb_define_event_triggers_lyxal_event() {
     let db = connect("mem://").await.unwrap();
     db.use_ns("test_ns").use_db("test_db").await.unwrap();
+
+    common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
     store.init_schema().await.unwrap();

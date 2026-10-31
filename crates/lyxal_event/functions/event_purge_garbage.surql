@@ -7,7 +7,7 @@ DEFINE FUNCTION OVERWRITE fn::event_purge_garbage(
     $params: object
 ) {
     LET $retention_days = IF $params.retention_days != NONE { $params.retention_days } ELSE { 7 };
-    LET $cutoff = time::now() - duration::from::days($retention_days);
+    LET $cutoff = time::now() - <duration> string::concat($retention_days, "d");
 
     -- Suppression des livraisons complétées anciennes
     DELETE event_delivery 

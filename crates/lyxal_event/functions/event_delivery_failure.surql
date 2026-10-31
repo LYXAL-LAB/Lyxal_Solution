@@ -1,14 +1,23 @@
 -- ============================================================================
 -- Function: fn::event_delivery_failure
 -- Description: Enregistre un échec de traitement, recalcule le retry ou bascule en Dead-Letter.
+-- Invariant: 1 tentative réelle = 1 incrément (incrémenté au claim/assign_seq, non répété ici).
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::event_delivery_failure(
     $params: object
 ) {
-    LET $delivery_id = $params.delivery_id;
-    LET $error = IF $params.error != NONE { $params.error } ELSE { "Unknown handler error" };
-    LET $retry_delay_seconds = IF $params.retry_delay_seconds != NONE { $params.retry_delay_seconds } ELSE { 5 };
+    IF $params.delivery_id == NONE OR $params.delivery_id == NULL {
+        RETURN fn::result_ok(false);
+    };
+
+    IF $params.error == NONE OR $params.error == NULL {
+        RETURN fn::result_ok(false);
+    };
+
+    LET $delivery_id = <record> $params.delivery_id;
+    LET $error = $params.error;
+    LET $retry_delay_seconds = IF $params.retry_delay_seconds != NONE AND $params.retry_delay_seconds != NULL { $params.retry_delay_seconds } ELSE { 5 };
 
     LET $delivery = (SELECT * FROM ONLY $delivery_id);
 
@@ -34,7 +43,7 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_failure(
             exhausted_at: time::now()
         };
 
-        -- Marque la livraison comme dead_letter
+        -- Marque la livraison comme dead_letter sans ré-incrémenter attempts
         UPDATE $delivery.id SET
             status = "dead_letter",
             last_error = $error,
@@ -42,7 +51,7 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_failure(
             lease_owner = NONE;
     } ELSE {
         -- Calcul du prochain instant de tentative
-        LET $next_retry = time::now() + duration::from::secs($retry_delay_seconds);
+        LET $next_retry = time::now() + <duration> string::concat($retry_delay_seconds, "s");
 
         UPDATE $delivery.id SET
             status = "failed",

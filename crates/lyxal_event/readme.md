@@ -1,228 +1,196 @@
-Lyxal Event --- Concept d'Architecture
+# ⚡ LYXAL Event Engine (`lyxal_event`)
 
-Objectif
+> **Moteur transactionnel unifié d'événements et de distribution streaming in-process pour Lyxal OS.**  
+> Compatible SurrealDB 3.2.0 | Version 1.0.0 | Statut : Production-Ready
 
-lyxal_event est le moteur d'événements interne de Lyxal OS.
+---
 
-Son rôle n'est pas de remplacer SurrealDB ni les modules métiers,mais de servir de point de communication entre tous les modules dusystème.
+## 🌟 1. Présentation & Rôle dans l'Architecture Lyxal OS
 
-Le principe est simple :
+Dans l'architecture modulaire de **Lyxal OS**, les modules métiers (`lyxal_booking`, `lyxal_notification`, `lyxal_crm`, `lyxal_catalogue`, etc.) doivent rester **strictement découplés** (Règle 5.6 de la Charte d'Architecture). Aucun module producteur ne doit connaître ses consommateurs.
 
-un module métier publie un événement ;
+`lyxal_event` constitue la dorsale événementielle asynchrone officielle de la plateforme. Il implémente :
+1. Le pattern **Transactional Outbox** dans SurrealDB 3.2.0 (écriture atomique lors des mutations métier).
+2. Un mécanisme d'**éventail asynchrone (Fan-Out)** vers les abonnements déclarés (`event_subscription`).
+3. Un moteur de **distribution streaming in-process pipeliné** (`ReliableDispatcher`) garantissant un débit élevé, le contrôle strict de backpressure et la gestion granulaire des retries/poisons.
+4. Une protection par **bail distribué et Fencing transactionnel** (`event_stream_lease`) pour exclure strictement tout split-brain ou leader zombie.
+5. Une garantie d'**avancement contigu du curseur sans trou** (`fn::event_flush_batch` et `event_subscription_progress`).
+6. Une **Barrière Dead-Letter Queue (DLQ)** garantissant qu'aucun message poison ne bloque le curseur ni n'est perdu lors des dépassements de quotas d'échecs.
 
-les autres modules décident librement de le consommer ;
+```text
+┌─────────────────────────┐
+│     Module Métier       │  (ex: lyxal_booking)
+│ (Mutation Transaction)  │
+└────────────┬────────────┘
+             │ DEFINE EVENT / EventPublisher
+             ▼
+┌─────────────────────────┐
+│      event_outbox       │  (Persistance atomique SurrealDB 3.2.0)
+└────────────┬────────────┘
+             │ fn::event_fanout
+             ▼
+┌─────────────────────────┐
+│     event_delivery      │  (Livraisons unitaires par abonnement)
+└────────────┬────────────┘
+             │ OutboxFeeder (Attribution atomique fn::event_delivery_assign_seq)
+             ▼
+┌─────────────────────────┐
+│    ReliableDispatcher   │  (Fenêtre glissante, Round-Robin, Backpressure)
+└────────────┬────────────┘
+             │ HandlerConsumerBridge
+             ▼
+┌─────────────────────────┐
+│     HandlerRegistry     │  (Handlers typés Handler<E> en Rust)
+└────────────┬────────────┘
+             │ ACK / NACK / Timeout
+             ▼
+┌─────────────────────────┐
+│ SubscriptionProgress    │  (Curseur contigu sans trou fn::event_flush_batch)
+└─────────────────────────┘
+```
 
-le module émetteur ne connaît jamais les modules consommateurs.
+---
 
-Cette approche réduit fortement le couplage entre les modules.
+## 🛡️ 2. Garanties & Invariants de Conception
 
-Philosophie
+* **Garantie de livraison At-Least-Once** : Aucun événement publié n'est perdu. En cas de crash ou redémarrage du serveur, les fan-outs et livraisons non résolues sont automatiquement repris.
+* **Fencing Transactionnel Étanche** : Le leader actif détient un bail (`event_stream_lease`) associé à une génération monotone (`generation`). Toute écriture (assignation de séquence, flush de curseur, transfert DLQ) vérifie et met à jour le bail de manière atomique. Tout leader déchu est rejeté immédiatement avec l'erreur `EVENT_STALE_LEADER_FENCED`.
+* **Séquencement Continu & Invariant de Contiguïté** : Chaque abonnement dispose d'un flux ordonné (`last_assigned_seq`). Le curseur persistant (`last_persisted_cursor`) ne progresse que si toutes les séquences antérieures sont résolues (`delivered`, `dead_letter` ou `dropped`), interdisant formellement l'apparition de trous.
+* **Barrière DLQ Atomique** : Un message épuisant ses retries est transféré dans `event_dead_letter` avant que le curseur ne puisse être avancé.
+* **Isolation Multi-Instance & Multi-Tenant** : Chaque livraison et événement transporte son contexte d'isolation (`EventContext` : `tenant_id`, `instance_id`, `environment`).
 
-Au lieu d'avoir :
+---
 
-Booking → Notification → Scheduler → CRM → Webhook
+## 🗄️ 3. Modèle de Données SurrealDB 3.2.0
 
-Chaque module publie uniquement un événement.
+### Tables Déclaratives
 
-Booking
-    │
-    ▼
-Lyxal Event
-    │
-    ├── Notification
-    ├── Scheduler
-    ├── CRM
-    ├── Analytics
-    ├── Webhook
-    └── IA
+| Table | Rôle | Clé / Index Majeurs |
+| :--- | :--- | :--- |
+| `event_outbox` | Table d'entrée transactionnelle de l'Outbox | `event_id`, `idx_outbox_unprocessed` (`status`, `created_at`) |
+| `event_subscription` | Abonnements déclaratifs aux patterns d'événements | `UNIQUE(name)` |
+| `event_delivery` | Livraisons unitaires fannées aux abonnements | `UNIQUE(outbox_event, subscription)`, index `(subscription, delivery_seq)` |
+| `event_dead_letter` | Quarantaine des messages empoisonnés (DLQ) | `delivery`, `outbox_event`, `exhausted_at` |
+| `event_stream_lease` | Verrou distribué de leadership streaming | Record singleton `event_stream_lease:outbox_leader` |
+| `event_subscription_progress` | Curseur de progression durable par abonnement | Record déterministe `event_subscription_progress:prog_<sub_id>` |
 
-Ainsi, Booking ne dépend d'aucun de ces moteurs.
+---
 
-Utilisation de DEFINE EVENT
+## ⚙️ 4. Fonctions SurrealQL Publiques
 
-Les événements SurrealDB servent à détecter les changements de données.
+Toutes les fonctions respectent la convention `fn::event_<action>` et le contrat de retour universel Lyxal OS (`fn::result_ok` / `fn::error_result`) :
 
-Exemple :
+* `fn::event_publish($params)` : Publication atomique dans `event_outbox` et déclenchement du fan-out.
+* `fn::event_fanout($params)` : Éclatement idempotent d'un événement vers tous les abonnements correspondants.
+* `fn::event_recover_pending_fanouts($params)` : Reprise des événements non encore ventilés après un redémarrage.
+* `fn::event_lease_acquire($params)` : Acquisition sous exclusion mutuelle du leadership avec attribution de génération monotone.
+* `fn::event_lease_renew($params)` : Renouvellement périodique du bail leader par heartbeat.
+* `fn::event_lease_release($params)` : Libération formelle coopérative pour permettre une reprise Zero-Wait.
+* `fn::event_delivery_assign_seq($params)` : Attribution atomique d'une séquence contiguë et verrouillage de la livraison sous garde de fencing.
+* `fn::event_flush_batch($params)` : Validation granulaire d'un lot de résolutions et avancement contigu du curseur.
+* `fn::event_dead_letter_transfer($params)` : Transfert transactionnel d'un message poison en table de quarantaine.
+* `fn::event_dead_letter_replay($params)` : Réarmement d'un message en quarantaine pour rejeu métier.
+* `fn::event_progress_get($params)` : Lecture de l'état persistant d'avancement d'un abonnement.
+* `fn::event_delivery_failure($params)` : Enregistrement canonique d'un échec de traitement avec calcul de retry ou bascule DLQ.
+* `fn::event_delivery_success($params)` : Acquittement direct unitaire d'une livraison.
+* `fn::event_purge_garbage($params)` : Purge planifiée des événements et livraisons archivés.
 
-CREATE booking CONTENT { ... };
+---
 
-Puis :
+## 💻 5. Utilisation & Intégration en Rust
 
-DEFINE EVENT booking_created
-ON TABLE booking
-WHEN $event = "CREATE"
-THEN (
-    CREATE event_outbox CONTENT {
-        module: "booking",
-        event: "booking.created",
-        source: $value.id,
-        created_at: time::now()
-    };
-);
+### 5.1. Définition d'un Événement de Domaine
 
-Le rôle du DEFINE EVENT est de publier un événement interne de manièreautomatique.
+```rust
+use lyxal_event::Event;
+use serde::{Deserialize, Serialize};
 
-Ce qui doit être fait dans DEFINE EVENT
-
-Les traitements doivent être :
-
-rapides ;
-
-atomiques ;
-
-directement liés à la transaction.
-
-Exemples :
-
-créer une entrée d'audit ;
-
-créer une activité métier ;
-
-incrémenter un compteur ;
-
-publier un événement dans event_outbox.
-
-Ce qui ne doit pas être fait dans DEFINE EVENT
-
-À éviter :
-
-appels HTTP ;
-
-envoi d'e-mails ;
-
-synchronisation CalDAV ;
-
-appels OAuth ;
-
-traitements IA ;
-
-calculs longs.
-
-Ces opérations doivent être exécutées par des workers.
-
-Event Outbox
-
-Le moteur s'appuie sur une table technique :
-
-event_outbox
-
-Exemple de contenu :
-
-{
-  "module": "booking",
-  "event": "booking.created",
-  "source": "booking:abc123",
-  "payload": {
-    "booking_id": "booking:abc123"
-  },
-  "status": "pending"
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BookingCreated {
+    pub booking_id: String,
+    pub customer_email: String,
 }
 
-Les workers lisent cette table et exécutent les traitements nécessaires.
+impl Event for BookingCreated {
+    const EVENT_TYPE: &'static str = "booking.created";
+}
+```
 
-Modules producteurs
+### 5.2. Publication d'Événements
 
-Tous les modules Lyxal peuvent publier des événements :
+```rust
+let published = publisher.publish(&BookingCreated {
+    booking_id: "book_987".to_string(),
+    customer_email: "client@lyxal.com".to_string(),
+}).await?;
+```
 
-lyxal_booking
+### 5.3. Implémentation d'un Handler Consommateur
 
-lyxal_crm
+```rust
+use async_trait::async_trait;
+use lyxal_event::{Handler, HandlerContext, LyxalEventError};
 
-lyxal_scheduler
+pub struct SendConfirmationHandler;
 
-lyxal_notification
+#[async_trait]
+impl Handler<BookingCreated> for SendConfirmationHandler {
+    async fn handle(&self, event: &BookingCreated, ctx: &HandlerContext) -> Result<(), LyxalEventError> {
+        println!("Envoi de l'email à {} pour réservation {}", event.customer_email, event.booking_id);
+        Ok(())
+    }
+}
+```
 
-lyxal_documents
+### 5.4. Enregistrement auprès du Runtime (`lyxal_runtime`)
 
-lyxal_storage
+```rust
+use lyxal_runtime::event_engine::EventConsumerModule;
+use lyxal_event::HandlerRegistry;
 
-etc.
+impl EventConsumerModule for NotificationModule {
+    fn register_event_handlers(&self, registry: &mut HandlerRegistry) -> Result<(), RuntimeError> {
+        registry.register(SendConfirmationHandler)?;
+        Ok(())
+    }
+}
+```
 
-Modules consommateurs
+---
 
-Un même événement peut être traité par plusieurs moteurs.
+## 📁 6. Structure Canonique du Module
 
-Exemple :
+```text
+crates/lyxal_event/
+├── manifest.toml            <-- Contrat Runtime officiel V1.0.0
+├── schema/                  <-- Schémas déclaratifs SurrealDB 3.2.0
+├── migrations/              <-- Migrations de persistance et durabilité
+├── functions/               <-- Fonctions transactionnelles SurrealQL
+├── error/                   <-- Master data d'erreurs (events.surql)
+├── src/
+│   ├── engine/              <-- Moteur de streaming in-process (Dispatcher, Feeder, Window, Bridge)
+│   ├── models/              <-- Modèles de domaine typés (Delivery, Outbox, Subscription, Lease)
+│   ├── store/               <-- Interface de persistance SurrealDB (EventStore)
+│   ├── worker/              <-- Worker supervisé, supervision du bail, retries
+│   └── lib.rs               <-- Façade publique et traits fondamentaux
+├── tests/                   <-- Tests unitaires, concurrence, crash recovery, persistance disque
+├── docs/                    <-- Documentation détaillée d'architecture et de référence
+├── CHANGELOG.md             <-- Historique des versions
+├── ROADMAP.md               <-- Feuille de route V2 (Observabilité) & V3 (IA / Fédéré)
+└── README.md                <-- Présente documentation
+```
 
-booking.created
-        │
-        ├── Notification
-        ├── Scheduler
-        ├── CRM
-        ├── Analytics
-        ├── Webhook
-        └── IA
+---
 
-Aucun consommateur n'est connu du producteur.
+## 🧪 7. Validation & Robustesse
 
-Exemple de flux
+Le module dispose d'une suite de tests complète validée sous SurrealDB 3.2.0 :
+* **50 tests unitaires** (fenêtre de dispatching, backpressure, retries exponentiels, poison drop/DLQ, baux).
+* **28 tests d'intégration** (scénarios nominaux, pannes de handlers, timeouts, concurrence, Fencing MVCC, reprise après crash serveur).
+* **Validation disque persistant (`surrealkv://`)** : résistance démontrée aux arrêts brutaux `SIGKILL` sans perte ni duplication.
 
-Utilisateur crée une réservation
-            │
-            ▼
-CREATE booking
-            │
-            ▼
-DEFINE EVENT
-            │
-            ▼
-event_outbox
-            │
-            ▼
-Worker Lyxal Event
-            │
-            ├── Notification
-            ├── Scheduler
-            ├── CRM
-            ├── Webhook
-            └── Analytics
-
-Avantages
-
-Architecture découplée.
-
-Modules indépendants.
-
-Réutilisation des moteurs.
-
-Évolutivité.
-
-Journalisation centralisée.
-
-Possibilité de rejouer des événements.
-
-Ajout d'un nouveau module sans modifier les modules existants.
-
-Position dans Lyxal OS
-
-Modules métiers
-    │
-    ├── Booking
-    ├── CRM
-    ├── Facturation
-    ├── Documents
-    └── ...
-
-            │
-            ▼
-
-      Lyxal Event
-
-            │
-
-    ├── Notification
-    ├── Scheduler
-    ├── Webhook
-    ├── Analytics
-    ├── IA
-    └── autres moteurs
-
-Principe fondamental
-
-Les modules métiers ne communiquent jamais directement entre eux.
-
-Ils publient des événements.
-
-Les moteurs techniques décident quoi faire avec ces événements.
-
-Cette architecture permet à Lyxal OS de rester modulaire, extensible etindépendant de chaque implémentation métier.
+Pour exécuter la suite de tests :
+```bash
+cargo test -p lyxal_event
+cargo clippy -p lyxal_event --all-targets -- -D warnings
+```

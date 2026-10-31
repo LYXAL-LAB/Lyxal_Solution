@@ -11,7 +11,7 @@ DEFINE FUNCTION OVERWRITE fn::event_claim_batch(
     LET $worker_id = IF $params.worker_id != NONE { $params.worker_id } ELSE { "worker_default" };
     LET $instance_id = IF $params.instance_id != NONE AND $params.instance_id != NULL { $params.instance_id } ELSE { NONE };
     LET $now = time::now();
-    LET $lease_until = time::now() + duration::from::secs($lease_seconds);
+    LET $lease_until = time::now() + <duration> string::concat($lease_seconds, "s");
 
     -- Sélection ordonnée des livraisons éligibles
     LET $eligible = IF $instance_id != NONE {
@@ -57,4 +57,4 @@ DEFINE FUNCTION OVERWRITE fn::event_claim_batch(
     );
 
     RETURN fn::result_ok($claimed);
-}; COMMENT "Réclame atomiquement un lot de livraisons d'événements et applique un bail exclusif";
+} COMMENT "Réclame atomiquement un lot de livraisons d'événements et applique un bail exclusif";

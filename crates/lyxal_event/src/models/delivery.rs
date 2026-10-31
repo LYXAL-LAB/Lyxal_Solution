@@ -16,6 +16,8 @@ pub enum DeliveryStatus {
     Failed,
     /// Rejeté en Dead-Letter après épuisement des tentatives.
     DeadLetter,
+    /// Abandonné volontairement selon la politique Drop (audit conservé).
+    Dropped,
 }
 
 /// Enregistrement de distribution unitaire pour un événement et un abonnement.
@@ -33,6 +35,18 @@ pub struct EventDelivery {
     pub context: EventContext,
     /// Statut actuel de la livraison.
     pub status: DeliveryStatus,
+    /// Numéro de séquence contigu attribué par le LYXAL Event Engine.
+    #[serde(default)]
+    pub delivery_seq: Option<u64>,
+    /// Référence croisée vers la quarantaine DLQ le cas échéant.
+    #[serde(default)]
+    pub dead_letter_ref: Option<RecordId>,
+    /// Horodatage d'abandon le cas échéant.
+    #[serde(default)]
+    pub dropped_at: Option<Datetime>,
+    /// Motif d'abandon le cas échéant.
+    #[serde(default)]
+    pub drop_reason: Option<String>,
     /// Nombre de tentatives déjà consommées.
     pub attempts: u32,
     /// Nombre maximal d'essais.

@@ -21,7 +21,7 @@ DEFINE FIELD OVERWRITE producer ON TABLE event_outbox TYPE string
 DEFINE FIELD OVERWRITE source ON TABLE event_outbox TYPE option<record>
     COMMENT "Référence à l'enregistrement à l'origine de la mutation (optionnel).";
 
-DEFINE FIELD OVERWRITE context ON TABLE event_outbox TYPE object
+DEFINE FIELD OVERWRITE context ON TABLE event_outbox TYPE object FLEXIBLE
     COMMENT "Contexte d'isolation de l'instance (instance_id, namespace, database).";
 
 DEFINE FIELD OVERWRITE context.instance_id ON TABLE event_outbox TYPE string;
@@ -34,10 +34,10 @@ DEFINE FIELD OVERWRITE correlation_id ON TABLE event_outbox TYPE string
 DEFINE FIELD OVERWRITE causation_id ON TABLE event_outbox TYPE option<string>
     COMMENT "Identifiant de causalité reliant l'événement à son déclencheur parent.";
 
-DEFINE FIELD OVERWRITE payload ON TABLE event_outbox TYPE object
+DEFINE FIELD OVERWRITE payload ON TABLE event_outbox TYPE object FLEXIBLE
     COMMENT "Données métier de l'événement.";
 
-DEFINE FIELD OVERWRITE metadata ON TABLE event_outbox TYPE object DEFAULT {}
+DEFINE FIELD OVERWRITE metadata ON TABLE event_outbox TYPE object FLEXIBLE DEFAULT {}
     COMMENT "Métadonnées transversales (acteur, horodatage client, headers).";
 
 DEFINE FIELD OVERWRITE status ON TABLE event_outbox TYPE string DEFAULT "pending"

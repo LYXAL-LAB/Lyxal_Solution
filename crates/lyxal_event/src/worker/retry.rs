@@ -41,10 +41,12 @@ mod tests {
 
     #[test]
     fn test_retry_delay_without_jitter_increases_exponentially() {
-        let mut cfg = EventWorkerConfig::default();
-        cfg.jitter = false;
-        cfg.retry_base_delay = Duration::from_secs(1);
-        cfg.retry_max_delay = Duration::from_secs(60);
+        let cfg = EventWorkerConfig {
+            jitter: false,
+            retry_base_delay: Duration::from_secs(1),
+            retry_max_delay: Duration::from_secs(60),
+            ..Default::default()
+        };
 
         assert_eq!(compute_next_retry_delay(&cfg, 0), Duration::from_secs(1));
         assert_eq!(compute_next_retry_delay(&cfg, 1), Duration::from_secs(2));

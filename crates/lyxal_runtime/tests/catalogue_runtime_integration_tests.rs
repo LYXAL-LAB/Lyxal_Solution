@@ -46,10 +46,10 @@ async fn test_resource_discovery_analysis_on_catalogue() {
     }
 
     // Analyse architecturale :
-    // ResourceDiscovery liste les 12 fichiers de schema/*.surql, mais les classe comme Migration (ordre 8)
-    // car leurs noms sont 01_... à 12_... et non pas tables.surql, fields.surql, etc.
+    // ResourceDiscovery liste les 13 fichiers de schema/*.surql (00 à 12), mais les classe comme Migration (ordre 8)
+    // car leurs noms sont 00_... à 12_... et non pas tables.surql, fields.surql, etc.
     // De plus, functions/ et seeds/ sont situés hors de schema/ et ne sont donc pas découverts nativement.
-    assert_eq!(discovered.len(), 12, "Les 12 fichiers de schema/ sont découverts par list_resources('schema')");
+    assert_eq!(discovered.len(), 13, "Les 13 fichiers de schema/ sont découverts par list_resources('schema')");
 }
 
 #[test]
@@ -137,16 +137,16 @@ fn test_catalogue_resources_loading_order_plan() {
     let ordered_resources = plan.resources();
     
     // Les 12 premières ressources doivent être les tables
-    for i in 0..12 {
-        assert_eq!(ordered_resources[i].kind, ResourceKind::Tables);
+    for res in ordered_resources.iter().take(12) {
+        assert_eq!(res.kind, ResourceKind::Tables);
     }
     // Les 22 suivantes doivent être les fonctions
-    for i in 12..34 {
-        assert_eq!(ordered_resources[i].kind, ResourceKind::Functions);
+    for res in ordered_resources.iter().take(34).skip(12) {
+        assert_eq!(res.kind, ResourceKind::Functions);
     }
     // Les 3 dernières doivent être les seeds
-    for i in 34..37 {
-        assert_eq!(ordered_resources[i].kind, ResourceKind::Seeds);
+    for res in ordered_resources.iter().take(37).skip(34) {
+        assert_eq!(res.kind, ResourceKind::Seeds);
     }
 
     println!("SchemaImportPlan successfully ordered 37 catalogue resources according to official Lyxal OS lifecycle order!");

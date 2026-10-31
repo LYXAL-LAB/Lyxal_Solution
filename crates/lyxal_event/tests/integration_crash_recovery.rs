@@ -6,6 +6,8 @@ use std::time::Duration;
 use surrealdb::engine::any::connect;
 use tokio_util::sync::CancellationToken;
 
+mod common;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct TaskAssigned {
     pub task_id: String,
@@ -35,6 +37,8 @@ impl Handler<TaskAssigned> for WorkerBHandler {
 async fn test_worker_crash_and_lease_recovery() {
     let db = connect("mem://").await.unwrap();
     db.use_ns("test_crash").use_db("test_crash").await.unwrap();
+
+    common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
     store.init_schema().await.unwrap();
