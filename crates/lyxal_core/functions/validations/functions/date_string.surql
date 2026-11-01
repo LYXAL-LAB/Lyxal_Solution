@@ -1,95 +1,43 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/date_string.surql
--- Fonction     : fn::validation_date_string
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/date_string.surql
+-- Fonction : fn::validation_date_string
 --
--- Description
--- -----------
--- Valide une date civile textuelle au format strict YYYY-MM-DD.
---
--- Règles appliquées
--- -----------------
---   1. La valeur doit être une chaîne non vide.
---   2. Le format exact doit être %Y-%m-%d.
---   3. La date doit exister dans le calendrier grégorien.
---   4. La chaîne nettoyée est retournée sans conversion.
+-- Valide une chaîne de date au format AAAA-MM-JJ (date réelle du
+-- calendrier).
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
+--   $value : any — valeur à contrôler
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_BLANK_NOT_ALLOWED
--- <FIELD>_INVALID_DATE_STRING
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne sans espaces périphériques, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure. Elle ne consulte ni ne modifie
--- aucune donnée persistante et ne contacte aucun service externe.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::is_datetime()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $day = fn::validation_date_string($params.day);
+--   IF !$day.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $day.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_date_string(
-    $value: any,
-    $field: string
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+    $value: any
+) -> object {
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
-    };
-
-    IF !string::is_datetime($clean_value, "%Y-%m-%d") {
-        THROW string::concat($clean_field, "_INVALID_DATE_STRING");
-    };
-
-    RETURN $clean_value;
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    IF !string::matches($clean, "^[0-9]{4}-[0-9]{2}-[0-9]{2}$") OR !string::is_datetime($clean + "T00:00:00Z") { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "date_string" } }; };
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide une date civile textuelle au format strict YYYY-MM-DD.
-"
+COMMENT "Valide une chaîne de date AAAA-MM-JJ. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

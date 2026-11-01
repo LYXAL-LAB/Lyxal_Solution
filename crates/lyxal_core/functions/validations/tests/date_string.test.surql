@@ -1,44 +1,30 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/date_string.test.surql
--- Fonction     : fn::validation_date_string
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_date_string (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme nettoyée
+RETURN fn::validation_date_string(" 2026-08-03 ")
+    == { valid: true, value: "2026-08-03", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Date valide
--- Résultat attendu : "2026-08-03"
--- ============================================================================
-RETURN fn::validation_date_string("2026-08-03", "DATE");
+-- test: date impossible
+RETURN fn::validation_date_string("2026-02-30")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "date_string" } };
 
--- ============================================================================
--- TEST 2 — Année bissextile valide
--- Résultat attendu : "2024-02-29"
--- ============================================================================
-RETURN fn::validation_date_string("2024-02-29", "DATE");
+-- test: format JJ/MM/AAAA
+RETURN fn::validation_date_string("03/08/2026")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "date_string" } };
 
--- ============================================================================
--- TEST 3 — Date impossible
--- Erreur attendue : DATE_INVALID_DATE_STRING
--- ============================================================================
-RETURN fn::validation_date_string("2026-02-30", "DATE");
+-- test: chaîne blanche
+RETURN fn::validation_date_string("  ")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 4 — Format français refusé
--- Erreur attendue : DATE_INVALID_DATE_STRING
--- ============================================================================
-RETURN fn::validation_date_string("03/08/2026", "DATE");
+-- test: valeur absente
+RETURN fn::validation_date_string(NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 5 — Datetime complet refusé
--- Erreur attendue : DATE_INVALID_DATE_STRING
--- ============================================================================
-RETURN fn::validation_date_string("2026-08-03T10:00:00Z", "DATE");
+-- test: valeur NULL
+RETURN fn::validation_date_string(NULL)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_date_string(1)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };

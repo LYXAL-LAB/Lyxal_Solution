@@ -1,102 +1,46 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/time_string.surql
--- Fonction     : fn::validation_time_string
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/time_string.surql
+-- Fonction : fn::validation_time_string
 --
--- Description
--- -----------
--- Valide une heure textuelle sur 24 heures, au format HH:MM ou HH:MM:SS.
---
--- Règles appliquées
--- -----------------
---   1. Les heures vont de 00 à 23.
---   2. Les minutes et secondes vont de 00 à 59.
---   3. Les secondes peuvent être obligatoires ou interdites selon la configuration.
+-- Valide une heure HH:MM (00:00 à 23:59), ou HH:MM:SS si les secondes sont
+-- exigées.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $require_seconds: bool
+--   $value           : any — valeur à contrôler
+--   $require_seconds : bool — true pour exiger le format HH:MM:SS
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_BLANK_NOT_ALLOWED
--- <FIELD>_INVALID_TIME_STRING
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne sans espaces périphériques, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure. Elle ne consulte ni ne modifie
--- aucune donnée persistante et ne contacte aucun service externe.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::matches()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $opening = fn::validation_time_string($params.opening, false);
+--   IF !$opening.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $opening.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_time_string(
     $value: any,
-    $field: string,
     $require_seconds: bool
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
-    };
-
-    LET $pattern = IF $require_seconds {
-        "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
-    } ELSE {
-        "^([01][0-9]|2[0-3]):[0-5][0-9]$"
-    };
-
-    IF !string::matches($clean_value, $pattern) {
-        THROW string::concat($clean_field, "_INVALID_TIME_STRING");
-    };
-
-    RETURN $clean_value;
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $pattern = IF $require_seconds { "^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$" } ELSE { "^([01][0-9]|2[0-3]):[0-5][0-9]$" };
+    IF !string::matches($clean, $pattern) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "time_string" } }; };
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide une heure textuelle 24 heures au format HH:MM ou HH:MM:SS.
-"
+COMMENT "Valide une heure HH:MM ou HH:MM:SS. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

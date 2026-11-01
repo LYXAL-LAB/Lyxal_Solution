@@ -1,107 +1,50 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/datetime_string.surql
--- Fonction     : fn::validation_datetime_string
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/datetime_string.surql
+-- Fonction : fn::validation_datetime_string
 --
--- Description
--- -----------
--- Valide une chaîne représentant un datetime reconnu par SurrealDB, avec format personnalisé facultatif.
---
--- Règles appliquées
--- -----------------
---   1. Sans format, la chaîne doit pouvoir être interprétée comme datetime.
---   2. Avec un format, la chaîne doit correspondre exactement au format fourni.
---   3. La fonction ne convertit pas la chaîne en datetime.
+-- Valide une chaîne de date et heure, au format RFC 3339 par défaut ou selon
+-- un format strftime donné.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $format: option<string>
+--   $value  : any — valeur à contrôler
+--   $format : option<string> — format strftime (ex. "%Y-%m-%d %H:%M"), NONE pour RFC 3339
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_BLANK_NOT_ALLOWED
--- <FIELD>_INVALID_DATETIME_STRING
--- VALIDATION_INVALID_DATETIME_FORMAT
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne sans espaces périphériques, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $format vide
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure. Elle ne consulte ni ne modifie
--- aucune donnée persistante et ne contacte aucun service externe.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::is_datetime()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $at = fn::validation_datetime_string($params.at, NONE);
+--   IF !$at.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $at.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_datetime_string(
     $value: any,
-    $field: string,
     $format: option<string>
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $format IS NOT NONE AND string::trim($format) = "" { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
-    };
-
-    IF $format IS NOT NONE AND string::trim($format) = "" {
-        THROW "VALIDATION_INVALID_DATETIME_FORMAT";
-    };
-
-    LET $is_valid = IF $format IS NONE {
-        string::is_datetime($clean_value)
-    } ELSE {
-        string::is_datetime($clean_value, string::trim($format))
-    };
-
-    IF !$is_valid {
-        THROW string::concat($clean_field, "_INVALID_DATETIME_STRING");
-    };
-
-    RETURN $clean_value;
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $matches = IF $format IS NONE { string::is_datetime($clean) } ELSE { string::is_datetime($clean, string::trim($format)) };
+    IF !$matches { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "datetime_string" } }; };
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide une chaîne datetime selon le format natif ou un format explicite.
-"
+COMMENT "Valide une chaîne de date et heure. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

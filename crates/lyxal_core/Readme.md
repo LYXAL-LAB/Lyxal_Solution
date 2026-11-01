@@ -82,7 +82,7 @@ IF !$name.valid {
 
 * Il n'y a plus de paramètre `$field` : le nom du champ n'est connu que du module.
 * Les paramètres facultatifs (`option<…>`) doivent être passés explicitement (`NONE`).
-* **Avancement** : famille « types, nombres et chaînes » migrée (44 fonctions : `boolean`, `integer`, `number`, `decimal`, `float`, `bytes`, `value_type`, `allowed_types`, `uuid`, `uuid_v7`, `ulid`, `positive_number`, `negative_number`, `non_negative_number`, `non_zero`, `even`, `odd`, `multiple_of`, `percentage`, `integer_range`, `compare`, `required_if`, `required_unless`, `required_string`, `optional_string`, `not_blank`, `min_length`, `max_length`, `alphanumeric`, `ascii`, `lowercase`, `uppercase`, `contains`, `starts_with`, `ends_with`, `forbidden_values`, `reserved_words`, `regex`, `enum`, `enum_any`, `slug`, `identifier`, `hexadecimal`, `base64`). Les autres fonctions gardent l'ancien contrat (`THROW` d'un code construit à partir de `$field`, `AUDIT.md` P1-1) jusqu'à leur PR.
+* **Avancement** : famille « types, nombres et chaînes » migrée (44 fonctions : `boolean`, `integer`, `number`, `decimal`, `float`, `bytes`, `value_type`, `allowed_types`, `uuid`, `uuid_v7`, `ulid`, `positive_number`, `negative_number`, `non_negative_number`, `non_zero`, `even`, `odd`, `multiple_of`, `percentage`, `integer_range`, `compare`, `required_if`, `required_unless`, `required_string`, `optional_string`, `not_blank`, `min_length`, `max_length`, `alphanumeric`, `ascii`, `lowercase`, `uppercase`, `contains`, `starts_with`, `ends_with`, `forbidden_values`, `reserved_words`, `regex`, `enum`, `enum_any`, `slug`, `identifier`, `hexadecimal`, `base64`) et famille « dates et durées » migrée (21 fonctions : `datetime`, `date`, `birthdate`, `age_range`, `business_day`, `future_datetime`, `past_datetime`, `date_range`, `time_range`, `time_of_day_range`, `time_of_day`, `weekday`, `duration`, `duration_range`, `execution_timeout`, `workflow_delay`, `date_string`, `datetime_string`, `iso8601`, `time_string`, `timezone`). Une « date » est un datetime à minuit UTC. Les autres fonctions gardent l'ancien contrat (`THROW` d'un code construit à partir de `$field`, `AUDIT.md` P1-1) jusqu'à leur PR.
 
 #### Catalogue des codes `CORE_VALIDATION_*`
 
@@ -96,16 +96,16 @@ Ce sont des **motifs** de rejet, transmis par le module dans les `details` de sa
 | `CORE_VALIDATION_BLANK` | chaîne vide après nettoyage | `{}` |
 | `CORE_VALIDATION_TOO_SHORT` | longueur inférieure au minimum | `{ min_length, length }` |
 | `CORE_VALIDATION_TOO_LONG` | longueur supérieure au maximum | `{ max_length, length }` |
-| `CORE_VALIDATION_TOO_SMALL` | valeur inférieure au minimum | `{ min }` (+ `exclusive: true` si borne exclue) |
-| `CORE_VALIDATION_TOO_LARGE` | valeur supérieure au maximum | `{ max }` (+ `exclusive: true` si borne exclue) |
-| `CORE_VALIDATION_FORMAT` | format non respecté | `{ expected }`, `{ pattern }`, `{ contains_any }`, `{ starts_with_any }` ou `{ ends_with_any }` |
-| `CORE_VALIDATION_NOT_ALLOWED` | valeur hors de la liste autorisée | `{ allowed }` |
+| `CORE_VALIDATION_TOO_SMALL` | valeur (nombre, date, durée) inférieure au minimum | `{ min }` (+ `exclusive` si borne exclue) ; pour un écart ou un âge : `{ min_<nom>, <nom> }` (ex. `{ min_days, days }`) ; `bound` pour une borne d'intervalle |
+| `CORE_VALIDATION_TOO_LARGE` | valeur (nombre, date, durée) supérieure au maximum | `{ max }` (+ `exclusive` si borne exclue) ; pour un écart ou un âge : `{ max_<nom>, <nom> }` ; `bound` pour une borne d'intervalle |
+| `CORE_VALIDATION_FORMAT` | format non respecté (dont date avec heure : `{ expected: "date" }`) | `{ expected }` (+ `bound`), `{ pattern }`, `{ contains_any }`, `{ starts_with_any }` ou `{ ends_with_any }` |
+| `CORE_VALIDATION_NOT_ALLOWED` | valeur hors de la liste autorisée, ou jour exclu | `{ allowed }`, ou `{ reason }` (`"weekend"`, `"holiday"`) |
 | `CORE_VALIDATION_FORBIDDEN` | valeur interdite ou mot réservé | `{}` |
 | `CORE_VALIDATION_NOT_MULTIPLE` | entier non multiple du diviseur | `{ divisor }` |
 | `CORE_VALIDATION_PARITY` | parité inattendue | `{ expected }` (`"even"` ou `"odd"`) |
 | `CORE_VALIDATION_ZERO` | valeur nulle interdite | `{}` |
 | `CORE_VALIDATION_COMPARISON` | comparaison non vérifiée | `{ operator }` |
-| `CORE_VALIDATION_RANGE_ORDER` | bornes d'un intervalle inversées (ou égales si interdit) | `{ min_value, max_value, allow_equal }` |
+| `CORE_VALIDATION_RANGE_ORDER` | bornes d'un intervalle inversées (ou égales si interdit) | `{ min_value, max_value, allow_equal }` ou `{ start, end, allow_equal }` (+ `allow_overnight` pour une plage horaire) |
 
 Le catalogue est fermé : un nouveau motif s'ajoute ici dans la PR qui l'introduit.
 
@@ -133,7 +133,7 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 * `scripts/ci/test_lyxal_core.py` charge les 777 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
 * **Deux formats coexistent pendant la reprise** :
   * **format « assertions »** (fichiers commençant par `-- lyxal-test: assertions`) : chaque bloc `-- test:` contient une instruction qui doit renvoyer `true`, ou lever l'erreur annoncée par `-- attendu-erreur: <CODE>` ; tout écart fait échouer la CI (détails : `implementation_plan.md` §5) ;
-  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (44 fichiers aujourd'hui, ceux des fonctions migrées).
+  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (65 fichiers aujourd'hui, ceux des fonctions migrées).
 * `scripts/ci/test_lyxal_core_selftest.py` vérifie que le banc accepte les bons tests et rejette les mauvais.
 * `scripts/ci/validate_surql.sh` vérifie la syntaxe de tout le SurrealQL du dépôt.
 * Les deux scripts font partie de la CI (job « SurrealQL ») et de `scripts/ci/ci_local.sh`.

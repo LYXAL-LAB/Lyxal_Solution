@@ -1,54 +1,36 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/time_of_day_range.test.surql
--- Fonction     : fn::validation_time_of_day_range
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_time_of_day_range (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: plage de jour
+RETURN fn::validation_time_of_day_range(540, 1080, false, false)
+    == { valid: true, value: { start_minute: 540, end_minute: 1080, duration_minutes: 540, overnight: false }, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Créneau de journée
--- Résultat attendu : duration_minutes = 480
--- ============================================================================
-RETURN fn::validation_time_of_day_range(
-    480, 960, "OPENING_RANGE", false, false
-);
+-- test: plage de nuit autorisée
+RETURN fn::validation_time_of_day_range(1320, 360, true, false)
+    == { valid: true, value: { start_minute: 1320, end_minute: 360, duration_minutes: 480, overnight: true }, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Créneau traversant minuit
--- Résultat attendu : duration_minutes = 240, overnight = true
--- ============================================================================
-RETURN fn::validation_time_of_day_range(
-    1320, 120, "SHIFT_RANGE", true, false
-);
+-- test: plage de nuit refusée
+RETURN fn::validation_time_of_day_range(1320, 360, false, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_RANGE_ORDER", details: { start: 1320, end: 360, allow_equal: false, allow_overnight: false } };
 
--- ============================================================================
--- TEST 3 — Passage de minuit interdit
--- Erreur attendue : SHIFT_RANGE_INVALID_ORDER
--- ============================================================================
-RETURN fn::validation_time_of_day_range(
-    1320, 120, "SHIFT_RANGE", false, false
-);
+-- test: durée nulle refusée
+RETURN fn::validation_time_of_day_range(600, 600, true, false).code == "CORE_VALIDATION_RANGE_ORDER";
 
--- ============================================================================
--- TEST 4 — Durée nulle interdite
--- Erreur attendue : RANGE_ZERO_DURATION_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_time_of_day_range(
-    600, 600, "RANGE", true, false
-);
+-- test: durée nulle autorisée
+RETURN fn::validation_time_of_day_range(600, 600, false, true).value.duration_minutes == 0;
 
--- ============================================================================
--- TEST 5 — Borne hors plage
--- Erreur attendue : RANGE_END_OUT_OF_RANGE
--- ============================================================================
-RETURN fn::validation_time_of_day_range(
-    600, 1440, "RANGE", true, false
-);
+-- test: début négatif
+RETURN fn::validation_time_of_day_range(-1, 600, false, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { bound: "start", min: 0 } };
+
+-- test: fin hors journée
+RETURN fn::validation_time_of_day_range(0, 1440, false, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { bound: "end", max: 1439 } };
+
+-- test: début absent
+RETURN fn::validation_time_of_day_range(NONE, 600, false, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { bound: "start" } };
+
+-- test: fin de type chaîne
+RETURN fn::validation_time_of_day_range(0, "10:00", false, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { bound: "end", expected: "int", actual: "string" } };

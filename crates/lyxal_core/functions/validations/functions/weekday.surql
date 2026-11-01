@@ -1,110 +1,52 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/weekday.surql
--- Fonction     : fn::validation_weekday
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/weekday.surql
+-- Fonction : fn::validation_weekday
 --
--- Description
--- -----------
--- Valide un numéro de jour de semaine selon la convention ISO : lundi = 1, dimanche = 7.
---
--- Règles appliquées
--- -----------------
---   1. La valeur doit être un entier entre 1 et 7.
---   2. Une liste facultative peut limiter les jours autorisés.
---   3. La fonction utilise la convention ISO 8601.
+-- Valide un jour de la semaine ISO 8601 (1 = lundi … 7 = dimanche),
+-- facultativement parmi une liste de jours autorisés.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allowed_days: option<array<int>>
+--   $value        : any — valeur à contrôler
+--   $allowed_days : option<array<int>> — jours autorisés (1 à 7, au moins un), NONE pour tous
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_WEEKDAY
--- <FIELD>_WEEKDAY_NOT_ALLOWED
--- VALIDATION_EMPTY_ALLOWED_WEEKDAYS
--- VALIDATION_INVALID_ALLOWED_WEEKDAY
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = l'entier d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_TOO_SMALL
+--     CORE_VALIDATION_TOO_LARGE
+--     CORE_VALIDATION_NOT_ALLOWED
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : liste vide ou jour hors de 1 à 7
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure. Elle ne consulte ni ne modifie
--- aucune donnée persistante et ne contacte aucun service externe.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::concat()
---   - type::is_null()
---   - type::is_int()
---   - array::len()
---   - array::any()
---   - array::contains()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $day = fn::validation_weekday($params.day, [1, 2, 3, 4, 5]);
+--   IF !$day.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $day.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_weekday(
     $value: any,
-    $field: string,
     $allowed_days: option<array<int>>
-) -> int {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
+) -> object {
+    IF $allowed_days IS NOT NONE AND (array::len($allowed_days) = 0 OR array::any($allowed_days, |$day| $day < 1 OR $day > 7)) {
+        THROW "CORE_INVALID_ARGUMENT";
     };
-
-    IF $allowed_days IS NOT NONE {
-        IF array::len($allowed_days) = 0 {
-            THROW "VALIDATION_EMPTY_ALLOWED_WEEKDAYS";
-        };
-
-        IF array::any($allowed_days, |$day| $day < 1 OR $day > 7) {
-            THROW "VALIDATION_INVALID_ALLOWED_WEEKDAY";
-        };
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_int($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "int", actual: type::of($value) } };
     };
-
-    IF $value < 1 OR $value > 7 {
-        THROW string::concat($clean_field, "_INVALID_WEEKDAY");
-    };
-
-    IF $allowed_days IS NOT NONE
-        AND !(($allowed_days) CONTAINS ($value))
-    {
-        THROW string::concat($clean_field, "_WEEKDAY_NOT_ALLOWED");
-    };
-
-    RETURN $value;
+    IF $value < 1 { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min: 1 } }; };
+    IF $value > 7 { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: 7 } }; };
+    IF $allowed_days IS NOT NONE AND $value NOT IN $allowed_days { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: $allowed_days } }; };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide un jour ISO de semaine compris entre 1, lundi, et 7, dimanche.
-"
+COMMENT "Valide un jour de la semaine ISO (1 à 7). Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

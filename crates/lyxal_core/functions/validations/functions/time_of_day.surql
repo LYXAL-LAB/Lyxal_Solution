@@ -1,86 +1,42 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/time_of_day.surql
--- Fonction     : fn::validation_time_of_day
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/time_of_day.surql
+-- Fonction : fn::validation_time_of_day
 --
--- Description
--- -----------
--- Valide une heure de journée exprimée en nombre entier de minutes depuis minuit.
---
--- Règles appliquées
--- -----------------
---   1. La valeur doit être un entier.
---   2. La plage autorisée est 0 à 1439.
---   3. 0 représente 00:00 et 1439 représente 23:59.
+-- Valide une heure de la journée exprimée en minutes depuis minuit : entier
+-- de 0 à 1439.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
+--   $value : any — valeur à contrôler
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_OUT_OF_DAY_RANGE
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = l'entier d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_TOO_SMALL
+--     CORE_VALIDATION_TOO_LARGE
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure. Elle ne consulte ni ne modifie
--- aucune donnée persistante et ne contacte aucun service externe.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::concat()
---   - type::is_null()
---   - type::is_int()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $open = fn::validation_time_of_day($params.open_minute);
+--   IF !$open.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $open.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_time_of_day(
-    $value: any,
-    $field: string
-) -> int {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+    $value: any
+) -> object {
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_int($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "int", actual: type::of($value) } };
     };
-
-    IF $value < 0 OR $value > 1439 {
-        THROW string::concat($clean_field, "_OUT_OF_DAY_RANGE");
-    };
-
-    RETURN $value;
+    IF $value < 0 { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min: 0 } }; };
+    IF $value > 1439 { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: 1439 } }; };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide une heure de journée exprimée en minutes entières depuis minuit.
-"
+COMMENT "Valide une heure en minutes depuis minuit (0 à 1439). Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

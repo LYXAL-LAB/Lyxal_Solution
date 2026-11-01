@@ -1,64 +1,41 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/business_day.test.surql
--- Fonction     : fn::validation_business_day
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_business_day (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: lundi ouvré
+RETURN fn::validation_business_day(d"2026-08-03T00:00:00Z", NONE)
+    == { valid: true, value: d"2026-08-03T00:00:00Z", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Lundi ouvré
--- Résultat attendu : d"2026-08-03T00:00:00Z"
--- ============================================================================
-RETURN fn::validation_business_day(
-    d"2026-08-03T00:00:00Z",
-    "WORK_DATE",
-    NONE
-);
+-- test: samedi refusé
+RETURN fn::validation_business_day(d"2026-08-08T00:00:00Z", NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "weekend" } };
 
--- ============================================================================
--- TEST 2 — Samedi refusé
--- Erreur attendue : WORK_DATE_WEEKEND_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_business_day(
-    d"2026-08-01T00:00:00Z",
-    "WORK_DATE",
-    NONE
-);
+-- test: dimanche refusé
+RETURN fn::validation_business_day(d"2026-08-09T00:00:00Z", NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "weekend" } };
 
--- ============================================================================
--- TEST 3 — Dimanche refusé
--- Erreur attendue : WORK_DATE_WEEKEND_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_business_day(
-    d"2026-08-02T00:00:00Z",
-    "WORK_DATE",
-    NONE
-);
+-- test: jour férié refusé
+RETURN fn::validation_business_day(d"2026-07-14T00:00:00Z", [d"2026-07-14T00:00:00Z"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "holiday" } };
 
--- ============================================================================
--- TEST 4 — Jour férié fourni
--- Erreur attendue : WORK_DATE_HOLIDAY_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_business_day(
-    d"2026-08-15T00:00:00Z",
-    "WORK_DATE",
-    [d"2026-08-15T00:00:00Z"]
-);
+-- test: jour non férié accepté
+RETURN fn::validation_business_day(d"2026-08-03T00:00:00Z", [d"2026-07-14T00:00:00Z"])
+    == { valid: true, value: d"2026-08-03T00:00:00Z", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 5 — Date avec heure
--- Erreur attendue : WORK_DATE_INVALID_DATE
--- ============================================================================
-RETURN fn::validation_business_day(
-    d"2026-08-03T10:00:00Z",
-    "WORK_DATE",
-    NONE
-);
+-- test: date avec heure
+RETURN fn::validation_business_day(d"2026-08-03T12:00:00Z", NONE).code == "CORE_VALIDATION_FORMAT";
+
+-- test: valeur absente
+RETURN fn::validation_business_day(NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_business_day(NULL, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type string refusé
+RETURN fn::validation_business_day("2026-08-03", NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "datetime", actual: "string" } };
+
+-- test: jour férié avec heure
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_business_day(d"2026-08-03T00:00:00Z", [d"2026-08-03T12:00:00Z"]);

@@ -1,79 +1,49 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/date_range.test.surql
--- Fonction     : fn::validation_date_range
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_date_range (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: intervalle valide
+RETURN fn::validation_date_range(d"2026-08-03T00:00:00Z", d"2026-08-08T00:00:00Z", false, 1, 30)
+    == { valid: true, value: { start_date: d"2026-08-03T00:00:00Z", end_date: d"2026-08-08T00:00:00Z", days: 5 }, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Plage valide
--- Résultat attendu : days = 9
--- ============================================================================
-RETURN fn::validation_date_range(
-    d"2026-08-01T00:00:00Z",
-    d"2026-08-10T00:00:00Z",
-    "DATE_RANGE",
-    false,
-    NONE,
-    NONE
-);
+-- test: même jour autorisé
+RETURN fn::validation_date_range(d"2026-08-03T00:00:00Z", d"2026-08-03T00:00:00Z", true, NONE, NONE)
+    == { valid: true, value: { start_date: d"2026-08-03T00:00:00Z", end_date: d"2026-08-03T00:00:00Z", days: 0 }, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Même jour autorisé
--- Résultat attendu : days = 0
--- ============================================================================
-RETURN fn::validation_date_range(
-    d"2026-08-01T00:00:00Z",
-    d"2026-08-01T00:00:00Z",
-    "DATE_RANGE",
-    true,
-    0,
-    0
-);
+-- test: même jour refusé
+RETURN fn::validation_date_range(d"2026-08-03T00:00:00Z", d"2026-08-03T00:00:00Z", false, NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_RANGE_ORDER", details: { start: d"2026-08-03T00:00:00Z", end: d"2026-08-03T00:00:00Z", allow_equal: false } };
 
--- ============================================================================
--- TEST 3 — Même jour interdit
--- Erreur attendue : DATE_RANGE_SAME_DAY_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_date_range(
-    d"2026-08-01T00:00:00Z",
-    d"2026-08-01T00:00:00Z",
-    "DATE_RANGE",
-    false,
-    NONE,
-    NONE
-);
+-- test: fin avant début
+RETURN fn::validation_date_range(d"2026-08-08T00:00:00Z", d"2026-08-03T00:00:00Z", true, NONE, NONE).code == "CORE_VALIDATION_RANGE_ORDER";
 
--- ============================================================================
--- TEST 4 — Heure cachée dans la date de début
--- Erreur attendue : DATE_RANGE_START_INVALID_DATE
--- ============================================================================
-RETURN fn::validation_date_range(
-    d"2026-08-01T10:00:00Z",
-    d"2026-08-10T00:00:00Z",
-    "DATE_RANGE",
-    false,
-    NONE,
-    NONE
-);
+-- test: trop court
+RETURN fn::validation_date_range(d"2026-08-03T00:00:00Z", d"2026-08-08T00:00:00Z", false, 7, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min_days: 7, days: 5 } };
 
--- ============================================================================
--- TEST 5 — Plage trop longue
--- Erreur attendue : DATE_RANGE_TOO_LONG
--- ============================================================================
-RETURN fn::validation_date_range(
-    d"2026-08-01T00:00:00Z",
-    d"2026-08-20T00:00:00Z",
-    "DATE_RANGE",
-    false,
-    NONE,
-    10
-);
+-- test: trop long
+RETURN fn::validation_date_range(d"2026-08-03T00:00:00Z", d"2026-08-08T00:00:00Z", false, NONE, 3)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max_days: 3, days: 5 } };
+
+-- test: début absent
+RETURN fn::validation_date_range(NONE, d"2026-08-08T00:00:00Z", false, NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { bound: "start" } };
+
+-- test: fin NULL
+RETURN fn::validation_date_range(d"2026-08-03T00:00:00Z", NULL, false, NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: { bound: "end" } };
+
+-- test: fin de type chaîne
+RETURN fn::validation_date_range(d"2026-08-03T00:00:00Z", "2026-08-08", false, NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { bound: "end", expected: "datetime", actual: "string" } };
+
+-- test: début avec heure
+RETURN fn::validation_date_range(d"2026-08-03T12:00:00Z", d"2026-08-08T00:00:00Z", false, NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { bound: "start", expected: "date" } };
+
+-- test: jours négatifs
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_date_range(d"2026-08-03T00:00:00Z", d"2026-08-08T00:00:00Z", false, -1, NONE);
+
+-- test: jours inversés
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_date_range(d"2026-08-03T00:00:00Z", d"2026-08-08T00:00:00Z", false, 5, 2);
