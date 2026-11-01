@@ -1,96 +1,50 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/totp_code.surql
--- Fonction     : fn::validation_totp_code
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/totp_code.surql
+-- Fonction : fn::validation_totp_code
 --
--- Description
--- -----------
--- Valide lexicalement un code TOTP numérique à 6 ou 8 chiffres.
+-- Valide un code TOTP : exactement 6 ou 8 chiffres.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $digits: int
+--   $value  : any — valeur à contrôler
+--   $digits : int — nombre de chiffres : 6 ou 8
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_TOTP_CODE
--- VALIDATION_INVALID_TOTP_DIGITS
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne sans espaces périphériques, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_UNSUPPORTED_OPTION : $digits différent de 6 et 8
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Primitive pure : aucune lecture ou écriture persistante, aucun appel réseau
--- et aucun effet secondaire.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::matches()
---   - string::len()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $code = fn::validation_totp_code($params.code, 6);
+--   IF !$code.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $code.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_totp_code(
     $value: any,
-    $field: string,
     $digits: int
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $digits NOT IN [6, 8] { THROW "CORE_UNSUPPORTED_OPTION"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    IF string::len($clean) != $digits OR !string::matches($clean, "^[0-9]+$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "totp_code", digits: $digits } };
     };
-
-    IF $digits != 6 AND $digits != 8 {
-        THROW "VALIDATION_INVALID_TOTP_DIGITS";
-    };
-
-    IF string::len($clean_value) != $digits
-        OR !string::matches($clean_value, "^[0-9]+$")
-    {
-        THROW string::concat($clean_field, "_INVALID_TOTP_CODE");
-    };
-
-    RETURN $clean_value;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide lexicalement un code TOTP numérique à six ou huit chiffres.
-"
+COMMENT "Valide un code TOTP : exactement 6 ou 8 chiffres. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

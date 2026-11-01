@@ -1,10 +1,34 @@
--- ============================================================================
--- LYXAL OS — CORE VALIDATION
--- Version 1.0.0 — PERMISSIONS FULL
--- ============================================================================
-RETURN fn::validation_mime_type("application/pdf", "MIME_TYPE", NONE);
-RETURN fn::validation_mime_type("IMAGE/JPEG", "MIME_TYPE", NONE);
--- MIME_TYPE_MIME_TYPE_NOT_ALLOWED
-RETURN fn::validation_mime_type("application/x-msdownload", "MIME_TYPE", ["application/pdf"]);
--- MIME_TYPE_INVALID_MIME_TYPE
-RETURN fn::validation_mime_type("application", "MIME_TYPE", NONE);
+-- lyxal-test: assertions
+-- Tests de fn::validation_mime_type (format : crates/lyxal_core/implementation_plan.md §5).
+
+-- test: valeur conforme
+RETURN fn::validation_mime_type(" IMAGE/PNG ", ["image/png"])
+    == { valid: true, value: "image/png", code: NONE, details: {} };
+
+-- test: paramètre refusé
+RETURN fn::validation_mime_type("image/png; q=1", ["image/png"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "mime_type" } };
+
+-- test: type non autorisé
+RETURN fn::validation_mime_type("image/gif", ["image/png"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: ["image/png"] } };
+
+-- test: chaîne blanche
+RETURN fn::validation_mime_type("  ", ["image/png"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_mime_type(NONE, ["image/png"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_mime_type(NULL, ["image/png"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_mime_type(42, ["image/png"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_mime_type("image/png", []);

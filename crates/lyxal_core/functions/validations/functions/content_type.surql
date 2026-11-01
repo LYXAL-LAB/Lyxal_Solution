@@ -1,47 +1,58 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/content_type.surql
--- Fonction     : fn::validation_content_type
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/content_type.surql
+-- Fonction : fn::validation_content_type
 --
--- Description
--- -----------
--- Valide un en-tête Content-Type et son type MIME principal.
+-- Valide un en-tête Content-Type (type/sous-type, paramètres « ; … »
+-- acceptés), facultativement parmi une liste de types de média ; la valeur
+-- renvoyée est en minuscules.
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
+-- Paramètres
+--   $value               : any — valeur à contrôler
+--   $allowed_media_types : option<array<string>> — types de média autorisés (au moins un), NONE pour tous
 --
--- Primitive sans accès persistant, sans appel réseau et sans effet secondaire.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = l'en-tête en minuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_NOT_ALLOWED
 --
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::split()
---   - string::matches()
---   - array::contains()
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : liste vide ou valeur vide
+--
+-- Exemple (dans une fonction de module)
+--   LET $type = fn::validation_content_type($headers.content_type, ["application/json"]);
+--   IF !$type.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $type.code });
+--   };
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::validation_content_type($value: any, $field: string, $allowed_media_types: option<array<string>>) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-    LET $clean_value = string::trim($value);
-    IF $clean_value = "" { THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED"); };
-    LET $normalized = string::lowercase($clean_value);
-    LET $parts = string::split($normalized, ";");
-    LET $media_type = string::trim($parts[0]);
-    IF !string::matches($media_type, "^[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+$") { THROW string::concat($clean_field, "_INVALID_CONTENT_TYPE"); };
-    IF $allowed_media_types IS NOT NONE {
-        IF array::len($allowed_media_types) = 0 { THROW "VALIDATION_EMPTY_ALLOWED_MEDIA_TYPES"; };
-        LET $allowed = array::map($allowed_media_types, |$item| string::lowercase(string::trim($item)));
-        IF !(($allowed) CONTAINS ($media_type)) { THROW string::concat($clean_field, "_MEDIA_TYPE_NOT_ALLOWED"); };
+DEFINE FUNCTION OVERWRITE fn::validation_content_type(
+    $value: any,
+    $allowed_media_types: option<array<string>>
+) -> object {
+    LET $allowed = IF $allowed_media_types IS NONE { NONE } ELSE { array::map($allowed_media_types, |$item| string::lowercase(string::trim($item))) };
+    IF $allowed IS NOT NONE AND (array::len($allowed) = 0 OR array::any($allowed, |$item| $item = "")) { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    IF !type::is_string($value) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-    RETURN $normalized;
+    LET $clean = string::lowercase(string::trim($value));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $media_type = string::trim(string::split($clean, ";")[0]);
+    IF !string::matches($media_type, "^[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "content_type" } };
+    };
+    IF $allowed IS NOT NONE AND $media_type NOT IN $allowed {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: $allowed } };
+    };
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "Valide un Content-Type et limite facultativement son type MIME."
+COMMENT "Valide un en-tête Content-Type (type/sous-type, paramètres « ; … » acceptés), facultativement parmi une liste de types de média ; la valeur renvoyée est en minuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

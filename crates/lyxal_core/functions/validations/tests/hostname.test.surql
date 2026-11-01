@@ -1,44 +1,37 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/hostname.test.surql
--- Fonction     : fn::validation_hostname
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_hostname (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_hostname(" Web-01.Example.com ", false)
+    == { valid: true, value: "web-01.example.com", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Nom d'hôte complet
--- Résultat attendu : "api.lyxal.com"
--- ============================================================================
-RETURN fn::validation_hostname("API.LYXAL.COM", "HOSTNAME", false);
+-- test: label unique autorisé
+RETURN fn::validation_hostname("localhost", true)
+    == { valid: true, value: "localhost", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Nom local autorisé
--- Résultat attendu : "localhost"
--- ============================================================================
-RETURN fn::validation_hostname("localhost", "HOSTNAME", true);
+-- test: label commençant par un tiret
+RETURN fn::validation_hostname("-web.example.com", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "hostname" } };
 
--- ============================================================================
--- TEST 3 — Nom local interdit
--- Erreur attendue : HOSTNAME_SINGLE_LABEL_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_hostname("localhost", "HOSTNAME", false);
+-- test: label trop long
+RETURN fn::validation_hostname("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com", false).code == "CORE_VALIDATION_FORMAT";
 
--- ============================================================================
--- TEST 4 — Tiret initial interdit
--- Erreur attendue : HOSTNAME_INVALID_HOSTNAME
--- ============================================================================
-RETURN fn::validation_hostname("-api.lyxal.com", "HOSTNAME", false);
+-- test: label unique refusé
+RETURN fn::validation_hostname("localhost", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "single_label" } };
 
--- ============================================================================
--- TEST 5 — Label vide
--- Erreur attendue : HOSTNAME_INVALID_HOSTNAME
--- ============================================================================
-RETURN fn::validation_hostname("api..lyxal.com", "HOSTNAME", false);
+-- test: chaîne blanche
+RETURN fn::validation_hostname("  ", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_hostname(NONE, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_hostname(NULL, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_hostname(42, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };

@@ -1,54 +1,33 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/checksum.test.surql
--- Fonction     : fn::validation_checksum
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_checksum (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_checksum(" CBF43926 ", "crc32")
+    == { valid: true, value: "cbf43926", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — CRC32 valide
--- Résultat attendu : "cbf43926"
--- ============================================================================
-RETURN fn::validation_checksum(
-    "CBF43926",
-    "CHECKSUM",
-    "crc32"
-);
+-- test: longueur incorrecte
+RETURN fn::validation_checksum("CBF439", "crc32")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "crc32", length: 8 } };
 
--- ============================================================================
--- TEST 2 — SHA-256 valide
--- Résultat attendu : valeur en minuscules
--- ============================================================================
-RETURN fn::validation_checksum(
-    "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
-    "CHECKSUM",
-    "sha256"
-);
+-- test: caractère non hexadécimal
+RETURN fn::validation_checksum("ZBF43926", "crc32").code == "CORE_VALIDATION_FORMAT";
 
--- ============================================================================
--- TEST 3 — Longueur incorrecte
--- Erreur attendue : CHECKSUM_INVALID_CHECKSUM_LENGTH
--- ============================================================================
-RETURN fn::validation_checksum(
-    "AABBCC",
-    "CHECKSUM",
-    "sha256"
-);
+-- test: chaîne blanche
+RETURN fn::validation_checksum("  ", "crc32")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 4 — Algorithme inconnu
--- Erreur attendue : VALIDATION_UNSUPPORTED_CHECKSUM_ALGORITHM
--- ============================================================================
-RETURN fn::validation_checksum(
-    "AABBCC",
-    "CHECKSUM",
-    "blake3"
-);
+-- test: valeur absente
+RETURN fn::validation_checksum(NONE, "crc32")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_checksum(NULL, "crc32")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_checksum(42, "crc32")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: algorithme inconnu
+-- attendu-erreur: CORE_UNSUPPORTED_OPTION
+RETURN fn::validation_checksum("ab", "whirlpool");

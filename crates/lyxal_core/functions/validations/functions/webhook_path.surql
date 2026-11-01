@@ -1,144 +1,56 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/webhook_path.surql
--- Fonction     : fn::validation_webhook_path
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/webhook_path.surql
+-- Fonction : fn::validation_webhook_path
 --
--- Description
--- -----------
--- Valide un chemin HTTP destiné à un webhook ou à une route interne.
---
--- Règles appliquées
--- -----------------
---   1. Le chemin doit commencer par '/'.
---   2. Les doubles barres et la traversée '..' sont interdites.
---   3. Les segments ordinaires utilisent lettres, chiffres, '_', '-' et '.'.
---   4. Les paramètres ':id' et le wildcard '*' peuvent être autorisés.
+-- Valide un chemin de webhook (/segment/…, segments [A-Za-z0-9._-]) ;
+-- paramètres « :nom » et joker « * » acceptés seulement si autorisés.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allow_parameters: bool
--- $allow_wildcard: bool
+--   $value            : any — valeur à contrôler
+--   $allow_parameters : bool — accepter les segments « :nom »
+--   $allow_wildcard   : bool — accepter le segment « * »
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_BLANK_NOT_ALLOWED
--- <FIELD>_INVALID_WEBHOOK_PATH
--- <FIELD>_PATH_PARAMETERS_NOT_ALLOWED
--- <FIELD>_WILDCARD_NOT_ALLOWED
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne sans espaces périphériques, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_NOT_ALLOWED
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure : aucune lecture ou écriture
--- persistante, aucun accès réseau et aucun effet secondaire.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::starts_with()
---   - string::contains()
---   - string::matches()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $path = fn::validation_webhook_path($params.path, true, false);
+--   IF !$path.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $path.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_webhook_path(
     $value: any,
-    $field: string,
     $allow_parameters: bool,
     $allow_wildcard: bool
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    IF !$allow_parameters AND string::contains($clean, ":") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "parameters" } };
     };
-
-    IF !string::starts_with($clean_value, "/")
-        OR string::contains($clean_value, "//")
-        OR string::contains($clean_value, "..")
-    {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_WEBHOOK_PATH"
-        );
+    IF !$allow_wildcard AND string::contains($clean, "*") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "wildcard" } };
     };
-
-    IF !$allow_parameters
-        AND string::contains($clean_value, ":")
-    {
-        THROW string::concat(
-            $clean_field,
-            "_PATH_PARAMETERS_NOT_ALLOWED"
-        );
+    IF !string::matches($clean, "^(/([A-Za-z0-9._-]+|:[A-Za-z_][A-Za-z0-9_]*|\\*))+$") OR string::contains($clean, "..") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "webhook_path" } };
     };
-
-    IF !$allow_wildcard
-        AND string::contains($clean_value, "*")
-    {
-        THROW string::concat(
-            $clean_field,
-            "_WILDCARD_NOT_ALLOWED"
-        );
-    };
-
-    LET $pattern = IF $allow_parameters AND $allow_wildcard {
-        "^/(?:[A-Za-z0-9._-]+|:[A-Za-z_][A-Za-z0-9_]*|\\*)(?:/(?:[A-Za-z0-9._-]+|:[A-Za-z_][A-Za-z0-9_]*|\\*))*$"
-    } ELSE IF $allow_parameters {
-        "^/(?:[A-Za-z0-9._-]+|:[A-Za-z_][A-Za-z0-9_]*)(?:/(?:[A-Za-z0-9._-]+|:[A-Za-z_][A-Za-z0-9_]*))*$"
-    } ELSE IF $allow_wildcard {
-        "^/(?:[A-Za-z0-9._-]+|\\*)(?:/(?:[A-Za-z0-9._-]+|\\*))*$"
-    } ELSE {
-        "^/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
-    };
-
-    IF !string::matches($clean_value, $pattern) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_WEBHOOK_PATH"
-        );
-    };
-
-    RETURN $clean_value;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide un chemin HTTP de webhook avec paramètres et wildcard facultatifs.
-"
+COMMENT "Valide un chemin de webhook (/segment/…, segments [A-Za-z0-9._-]) ; paramètres « :nom » et joker « * » acceptés seulement si autorisés. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

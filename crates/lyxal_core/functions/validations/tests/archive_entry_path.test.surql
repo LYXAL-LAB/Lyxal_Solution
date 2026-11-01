@@ -1,44 +1,36 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/archive_entry_path.test.surql
--- Fonction     : fn::validation_archive_entry_path
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_archive_entry_path (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_archive_entry_path(" docs/readme.txt ", 1024)
+    == { valid: true, value: "docs/readme.txt", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Entrée valide
--- Résultat attendu : "folder/file.txt"
--- ============================================================================
-RETURN fn::validation_archive_entry_path(
-    "folder/file.txt",
-    "ENTRY_PATH",
-    1024
-);
+-- test: chemin absolu
+RETURN fn::validation_archive_entry_path("/etc/passwd", 1024)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "archive_entry_path" } };
 
--- ============================================================================
--- TEST 2 — Traversée Unix
--- Erreur attendue : ENTRY_PATH_INVALID_ARCHIVE_ENTRY_PATH
--- ============================================================================
-RETURN fn::validation_archive_entry_path(
-    "../../etc/passwd",
-    "ENTRY_PATH",
-    1024
-);
+-- test: remontée
+RETURN fn::validation_archive_entry_path("docs/../../x", 1024).code == "CORE_VALIDATION_FORMAT";
 
--- ============================================================================
--- TEST 3 — Chemin absolu Windows
--- Erreur attendue : ENTRY_PATH_INVALID_ARCHIVE_ENTRY_PATH
--- ============================================================================
-RETURN fn::validation_archive_entry_path(
-    "C:\\Windows\\system.ini",
-    "ENTRY_PATH",
-    1024
-);
+-- test: lettre de lecteur
+RETURN fn::validation_archive_entry_path("C:/x", 1024).code == "CORE_VALIDATION_FORMAT";
+
+-- test: chaîne blanche
+RETURN fn::validation_archive_entry_path("  ", 1024)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_archive_entry_path(NONE, 1024)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_archive_entry_path(NULL, 1024)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_archive_entry_path(42, 1024)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: longueur maximale nulle
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_archive_entry_path("a", 0);

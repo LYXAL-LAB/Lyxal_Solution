@@ -1,46 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/mac_address.test.surql
--- Fonction     : fn::validation_mac_address
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_mac_address (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_mac_address(" AA:BB:CC:DD:EE:FF ", true, true)
+    == { valid: true, value: "aa:bb:cc:dd:ee:ff", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — MAC avec deux-points
--- Résultat attendu : "aa:bb:cc:dd:ee:ff"
--- ============================================================================
-RETURN fn::validation_mac_address(
-    "AA:BB:CC:DD:EE:FF", "MAC_ADDRESS", false, true
-);
+-- test: tiret refusé
+RETURN fn::validation_mac_address("AA-BB-CC-DD-EE-FF", false, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "mac_address" } };
 
--- ============================================================================
--- TEST 2 — MAC avec tirets
--- Résultat attendu : "aa-bb-cc-dd-ee-ff"
--- ============================================================================
-RETURN fn::validation_mac_address(
-    "AA-BB-CC-DD-EE-FF", "MAC_ADDRESS", true, false
-);
+-- test: tiret accepté
+RETURN fn::validation_mac_address("AA-BB-CC-DD-EE-FF", true, false)
+    == { valid: true, value: "aa-bb-cc-dd-ee-ff", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 3 — Mélange de séparateurs
--- Erreur attendue : MAC_ADDRESS_INVALID_MAC_ADDRESS
--- ============================================================================
-RETURN fn::validation_mac_address(
-    "AA:BB-CC:DD:EE:FF", "MAC_ADDRESS", true, true
-);
+-- test: octet manquant
+RETURN fn::validation_mac_address("AA:BB:CC:DD:EE", true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "mac_address" } };
 
--- ============================================================================
--- TEST 4 — Groupe trop court
--- Erreur attendue : MAC_ADDRESS_INVALID_MAC_ADDRESS
--- ============================================================================
-RETURN fn::validation_mac_address(
-    "A:BB:CC:DD:EE:FF", "MAC_ADDRESS", false, true
-);
+-- test: chaîne blanche
+RETURN fn::validation_mac_address("  ", true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_mac_address(NONE, true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_mac_address(NULL, true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_mac_address(42, true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: aucun séparateur
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_mac_address("a", false, false);

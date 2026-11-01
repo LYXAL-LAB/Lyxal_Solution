@@ -1,47 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/nonce.test.surql
--- Fonction     : fn::validation_nonce
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_nonce (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_nonce("a1B2c3D4e5", 8, 64)
+    == { valid: true, value: "a1B2c3D4e5", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Nonce valide
--- Résultat attendu : valeur reçue
--- ============================================================================
-RETURN fn::validation_nonce(
-    "D5j2aP9x_kLm-2026",
-    "NONCE",
-    16,
-    256
-);
+-- test: caractère interdit
+RETURN fn::validation_nonce("a1B2c3D4:e5", 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "nonce" } };
 
--- ============================================================================
--- TEST 2 — Trop court
--- Erreur attendue : NONCE_TOO_SHORT
--- ============================================================================
-RETURN fn::validation_nonce(
-    "abc",
-    "NONCE",
-    16,
-    256
-);
+-- test: trop court
+RETURN fn::validation_nonce("abc", 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: 8, length: 3 } };
 
--- ============================================================================
--- TEST 3 — Espace interdit
--- Erreur attendue : NONCE_INVALID_NONCE
--- ============================================================================
-RETURN fn::validation_nonce(
-    "D5j2aP9x kLm 2026",
-    "NONCE",
-    16,
-    256
-);
+-- test: chaîne blanche
+RETURN fn::validation_nonce("  ", 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_nonce(NONE, 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_nonce(NULL, 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_nonce(42, 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: longueur nulle
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_nonce("x", 0, 8);

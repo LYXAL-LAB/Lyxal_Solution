@@ -1,27 +1,54 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
--- Version 1.0.0 — PERMISSIONS FULL
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/validations/functions/hash.surql
 -- Fonction : fn::validation_hash
+--
+-- Valide une empreinte hexadécimale dont la longueur correspond à
+-- l'algorithme (md5, sha1, sha256, sha384, sha512) ; la valeur renvoyée est
+-- en minuscules.
+--
+-- Paramètres
+--   $value     : any — valeur à contrôler
+--   $algorithm : string — md5 | sha1 | sha256 | sha384 | sha512, insensible à la casse
+--
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = l'empreinte en minuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--
+-- Erreurs de programmation (THROW)
+--   CORE_UNSUPPORTED_OPTION : algorithme inconnu
+--
+-- Exemple (dans une fonction de module)
+--   LET $digest = fn::validation_hash($params.digest, "sha256");
+--   IF !$digest.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $digest.code });
+--   };
+-- ============================================================================
+
 DEFINE FUNCTION OVERWRITE fn::validation_hash(
-    $value: any, $field: string, $algorithm: string
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
+    $value: any,
+    $algorithm: string
+) -> object {
     LET $algo = string::lowercase(string::trim($algorithm));
-    IF !((["md5", "sha1", "sha256", "sha384", "sha512"]) CONTAINS ($algo)) {
-        THROW "VALIDATION_UNSUPPORTED_HASH_ALGORITHM";
+    LET $expected_length = { md5: 32, sha1: 40, sha256: 64, sha384: 96, sha512: 128 }[$algo];
+    IF $expected_length IS NONE { THROW "CORE_UNSUPPORTED_OPTION"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    IF !type::is_string($value) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-    LET $clean_value = string::trim($value);
-    IF $clean_value = "" { THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED"); };
-    LET $expected = IF $algo = "md5" { 32 } ELSE IF $algo = "sha1" { 40 }
-        ELSE IF $algo = "sha256" { 64 } ELSE IF $algo = "sha384" { 96 } ELSE { 128 };
-    IF !string::matches($clean_value, "^[0-9A-Fa-f]+$") { THROW string::concat($clean_field, "_INVALID_HASH"); };
-    IF string::len($clean_value) != $expected { THROW string::concat($clean_field, "_INVALID_HASH_LENGTH"); };
-    RETURN string::lowercase($clean_value);
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    IF !string::matches($clean, "^[0-9A-Fa-f]+$") OR string::len($clean) != $expected_length {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: $algo, length: $expected_length } };
+    };
+    RETURN { valid: true, value: string::lowercase($clean), code: NONE, details: {} };
 }
-COMMENT "Valide la représentation hexadécimale d'un hash selon l'algorithme déclaré."
+COMMENT "Valide une empreinte hexadécimale dont la longueur correspond à l'algorithme (md5, sha1, sha256, sha384, sha512) ; la valeur renvoyée est en minuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

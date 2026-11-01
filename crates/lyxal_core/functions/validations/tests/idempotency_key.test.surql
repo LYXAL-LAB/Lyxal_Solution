@@ -1,20 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/idempotency_key.test.surql
--- Fonction     : fn::validation_idempotency_key
--- Version      : 1.0.0
---
--- Les tests produisant un THROW ou une erreur native doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_idempotency_key (format : crates/lyxal_core/implementation_plan.md §5).
 
--- TEST 1 — UUID textuel
-RETURN fn::validation_idempotency_key("0191f946-936f-7223-bef5-aebbc527ad80", "IDEMPOTENCY_KEY", 8, 255);
+-- test: valeur conforme
+RETURN fn::validation_idempotency_key(" order:2026-0001 ", 8, 64)
+    == { valid: true, value: "order:2026-0001", code: NONE, details: {} };
 
--- TEST 2 — Clé namespacée
-RETURN fn::validation_idempotency_key("booking:create:abc_123", "IDEMPOTENCY_KEY", 8, 255);
+-- test: caractère interdit
+RETURN fn::validation_idempotency_key("order 2026 0001", 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "idempotency_key" } };
 
--- TEST 3 — Espace interdit
--- Erreur attendue : IDEMPOTENCY_KEY_INVALID_IDEMPOTENCY_KEY
-RETURN fn::validation_idempotency_key("booking create abc", "IDEMPOTENCY_KEY", 8, 255);
+-- test: trop longue
+RETURN fn::validation_idempotency_key("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: 64, length: 65 } };
+
+-- test: chaîne blanche
+RETURN fn::validation_idempotency_key("  ", 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_idempotency_key(NONE, 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_idempotency_key(NULL, 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_idempotency_key(42, 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_idempotency_key("x", 9, 8);

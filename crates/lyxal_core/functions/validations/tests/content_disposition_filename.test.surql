@@ -1,54 +1,36 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/content_disposition_filename.test.surql
--- Fonction     : fn::validation_content_disposition_filename
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_content_disposition_filename (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_content_disposition_filename(" rapport.pdf ", 255)
+    == { valid: true, value: "rapport.pdf", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Nom valide
--- Résultat attendu : "rapport-2026.pdf"
--- ============================================================================
-RETURN fn::validation_content_disposition_filename(
-    "rapport-2026.pdf",
-    "FILENAME",
-    255
-);
+-- test: guillemet
+RETURN fn::validation_content_disposition_filename("rap\"port.pdf", 255)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "content_disposition_filename" } };
 
--- ============================================================================
--- TEST 2 — Guillemet interdit
--- Erreur attendue : FILENAME_INVALID_CONTENT_DISPOSITION_FILENAME
--- ============================================================================
-RETURN fn::validation_content_disposition_filename(
-    "rapport\"2026.pdf",
-    "FILENAME",
-    255
-);
+-- test: retour à la ligne
+RETURN fn::validation_content_disposition_filename("rap\nport.pdf", 255).code == "CORE_VALIDATION_FORMAT";
 
--- ============================================================================
--- TEST 3 — Injection CRLF interdite
--- Erreur attendue : FILENAME_INVALID_CONTENT_DISPOSITION_FILENAME
--- ============================================================================
-RETURN fn::validation_content_disposition_filename(
-    "rapport.pdf\r\nX-Test: injected",
-    "FILENAME",
-    255
-);
+-- test: point initial
+RETURN fn::validation_content_disposition_filename(".env", 255).code == "CORE_VALIDATION_FORMAT";
 
--- ============================================================================
--- TEST 4 — Chemin interdit
--- Erreur attendue : FILENAME_INVALID_CONTENT_DISPOSITION_FILENAME
--- ============================================================================
-RETURN fn::validation_content_disposition_filename(
-    "../rapport.pdf",
-    "FILENAME",
-    255
-);
+-- test: chaîne blanche
+RETURN fn::validation_content_disposition_filename("  ", 255)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_content_disposition_filename(NONE, 255)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_content_disposition_filename(NULL, 255)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_content_disposition_filename(42, 255)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: longueur maximale nulle
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_content_disposition_filename("a", 0);

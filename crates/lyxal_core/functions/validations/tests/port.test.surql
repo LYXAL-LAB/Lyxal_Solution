@@ -1,44 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/port.test.surql
--- Fonction     : fn::validation_port
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_port (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: port dans les bornes
+RETURN fn::validation_port(8080, 1024, 65535)
+    == { valid: true, value: 8080, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Port HTTP
--- Résultat attendu : 80
--- ============================================================================
-RETURN fn::validation_port(80, "PORT", 1, 65535);
+-- test: trop petit
+RETURN fn::validation_port(80, 1024, 65535)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min: 1024 } };
 
--- ============================================================================
--- TEST 2 — Port maximal
--- Résultat attendu : 65535
--- ============================================================================
-RETURN fn::validation_port(65535, "PORT", 1, 65535);
+-- test: trop grand
+RETURN fn::validation_port(70000, 0, 65535)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: 65535 } };
 
--- ============================================================================
--- TEST 3 — Port zéro interdit
--- Erreur attendue : PORT_PORT_TOO_LOW
--- ============================================================================
-RETURN fn::validation_port(0, "PORT", 1, 65535);
+-- test: valeur absente
+RETURN fn::validation_port(NONE, 0, 65535)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — Port trop élevé
--- Erreur attendue : PORT_PORT_TOO_HIGH
--- ============================================================================
-RETURN fn::validation_port(65536, "PORT", 1, 65535);
+-- test: valeur NULL
+RETURN fn::validation_port(NULL, 0, 65535)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
 
--- ============================================================================
--- TEST 5 — Plage incohérente
--- Erreur attendue : VALIDATION_INVALID_PORT_RANGE
--- ============================================================================
-RETURN fn::validation_port(80, "PORT", 1000, 100);
+-- test: type string refusé
+RETURN fn::validation_port("8080", 0, 65535)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "int", actual: "string" } };
+
+-- test: borne hors plage
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_port(80, 0, 70000);
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_port(80, 100, 10);

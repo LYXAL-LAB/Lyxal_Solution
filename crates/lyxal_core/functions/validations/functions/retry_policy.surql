@@ -1,170 +1,65 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/retry_policy.surql
--- Fonction     : fn::validation_retry_policy
--- Domaine      : Core / Validation / Workflow
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/retry_policy.surql
+-- Fonction : fn::validation_retry_policy
 --
--- Description
--- -----------
--- Valide une politique de retry pour Scheduler, Webhook Engine ou Workflow.
---
--- Règles appliquées
--- -----------------
---   1. L'objet doit contenir max_attempts, strategy et initial_delay.
---   2. strategy doit être fixed, linear ou exponential.
---   3. max_attempts doit être compris entre 1 et la limite configurée.
---   4. initial_delay et max_delay doivent être des durations positives ou nulles.
---   5. max_delay ne peut pas être inférieur à initial_delay.
+-- Valide une politique de nouvelle tentative { max_attempts, strategy,
+-- initial_delay, max_delay? } et la renvoie normalisée (strategy en
+-- minuscules, max_delay = initial_delay par défaut).
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $max_attempts_limit: int
--- $max_backoff: duration
+--   $value              : any — valeur à contrôler
+--   $max_attempts_limit : int — nombre maximal de tentatives autorisé (>= 1)
+--   $max_backoff        : duration — délai maximal autorisé
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée ou un objet normalisé.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = { max_attempts, strategy, initial_delay, max_delay }, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_TOO_SMALL
+--     CORE_VALIDATION_TOO_LARGE
+--     CORE_VALIDATION_NOT_ALLOWED
+--     CORE_VALIDATION_RANGE_ORDER
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_MISSING_REQUIRED_KEY
--- <FIELD>_INVALID_MAX_ATTEMPTS
--- <FIELD>_INVALID_RETRY_STRATEGY
--- <FIELD>_INVALID_INITIAL_DELAY
--- <FIELD>_INVALID_MAX_DELAY
--- <FIELD>_INVALID_BACKOFF_ORDER
--- VALIDATION_INVALID_RETRY_LIMITS
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $max_attempts_limit < 1
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun lancement de job ou workflow ;
---   - aucun accès réseau ;
---   - aucun effet secondaire.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $policy = fn::validation_retry_policy($params.retry, 10, 1h);
+--   IF !$policy.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $policy.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_retry_policy(
     $value: any,
-    $field: string,
     $max_attempts_limit: int,
     $max_backoff: duration
 ) -> object {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $max_attempts_limit < 1 OR $max_backoff < 0s {
-        THROW "VALIDATION_INVALID_RETRY_LIMITS";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+    IF $max_attempts_limit < 1 { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_object($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "object", actual: type::of($value) } };
     };
-
-    LET $keys = object::keys($value);
-
-    IF !array::all(
-        ["max_attempts", "strategy", "initial_delay"],
-        |$key| (($keys) CONTAINS ($key))
-    ) {
-        THROW string::concat(
-            $clean_field,
-            "_MISSING_REQUIRED_KEY"
-        );
-    };
-
-    IF !type::is_int($value.max_attempts)
-        OR $value.max_attempts < 1
-        OR $value.max_attempts > $max_attempts_limit
-    {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_MAX_ATTEMPTS"
-        );
-    };
-
-    IF !type::is_string($value.strategy)
-        OR !((["fixed", "linear", "exponential"]) CONTAINS (string::lowercase(string::trim($value.strategy))))
-    {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_RETRY_STRATEGY"
-        );
-    };
-
-    IF type::of($value.initial_delay) != "duration"
-        OR $value.initial_delay < 0s
-        OR $value.initial_delay > $max_backoff
-    {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_INITIAL_DELAY"
-        );
-    };
-
-    LET $max_delay = IF (($keys) CONTAINS ("max_delay")) {
-        $value.max_delay
-    } ELSE {
-        $value.initial_delay
-    };
-
-    IF type::of($max_delay) != "duration"
-        OR $max_delay < 0s
-        OR $max_delay > $max_backoff
-    {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_MAX_DELAY"
-        );
-    };
-
-    IF $max_delay < $value.initial_delay {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_BACKOFF_ORDER"
-        );
-    };
-
-    RETURN {
-        max_attempts: $value.max_attempts,
-        strategy: string::lowercase(string::trim($value.strategy)),
-        initial_delay: $value.initial_delay,
-        max_delay: $max_delay
-    };
+    LET $missing = array::filter(["max_attempts", "strategy", "initial_delay"], |$key| $value[$key] IS NONE);
+    IF array::len($missing) > 0 { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { scope: "key", keys: $missing } }; };
+    IF !type::is_int($value.max_attempts) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { key: "max_attempts", expected: "int", actual: type::of($value.max_attempts) } }; };
+    IF $value.max_attempts < 1 { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { key: "max_attempts", min: 1 } }; };
+    IF $value.max_attempts > $max_attempts_limit { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { key: "max_attempts", max: $max_attempts_limit } }; };
+    IF !type::is_string($value.strategy) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { key: "strategy", expected: "string", actual: type::of($value.strategy) } }; };
+    LET $strategy = string::lowercase(string::trim($value.strategy));
+    IF $strategy NOT IN ["fixed", "linear", "exponential"] { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { key: "strategy", allowed: ["fixed", "linear", "exponential"] } }; };
+    LET $max_delay = $value.max_delay ?? $value.initial_delay;
+    IF !type::is_duration($value.initial_delay) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { key: "initial_delay", expected: "duration", actual: type::of($value.initial_delay) } }; };
+    IF $value.initial_delay > $max_backoff { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { key: "initial_delay", max: $max_backoff } }; };
+    IF !type::is_duration($max_delay) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { key: "max_delay", expected: "duration", actual: type::of($max_delay) } }; };
+    IF $max_delay > $max_backoff { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { key: "max_delay", max: $max_backoff } }; };
+    IF $max_delay < $value.initial_delay { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_RANGE_ORDER", details: { initial_delay: $value.initial_delay, max_delay: $max_delay } }; };
+    RETURN { valid: true, value: { max_attempts: $value.max_attempts, strategy: $strategy, initial_delay: $value.initial_delay, max_delay: $max_delay }, code: NONE, details: {} };
 }
-COMMENT "
-Valide et normalise une politique de retry pour les moteurs Lyxal.
-"
+COMMENT "Valide et normalise une politique de nouvelle tentative. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

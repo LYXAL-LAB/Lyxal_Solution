@@ -1,160 +1,61 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/private_key_pem.surql
--- Fonction     : fn::validation_private_key_pem
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/private_key_pem.surql
+-- Fonction : fn::validation_private_key_pem
 --
--- Description
--- -----------
--- Valide lexicalement un bloc PEM de clé privée PKCS#8, RSA, EC ou chiffrée.
+-- Valide l'enveloppe PEM d'une clé privée (PRIVATE KEY, RSA, EC ; chiffrée
+-- seulement si autorisé) ; le contenu n'est pas décodé.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allow_encrypted: bool
--- $max_length: int
+--   $value           : any — valeur à contrôler
+--   $allow_encrypted : bool — accepter une clé chiffrée (ENCRYPTED PRIVATE KEY)
+--   $max_length      : int — longueur maximale (>= 1)
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_PRIVATE_KEY_PEM
--- <FIELD>_ENCRYPTED_KEY_NOT_ALLOWED
--- <FIELD>_TOO_LONG
--- VALIDATION_INVALID_PEM_MAX_LENGTH
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne sans espaces périphériques, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_TOO_LONG
+--     CORE_VALIDATION_NOT_ALLOWED
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $max_length < 1
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Primitive pure : aucune lecture ou écriture persistante, aucun appel réseau
--- et aucun effet secondaire.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::starts_with()
---   - string::ends_with()
---   - string::contains()
---   - string::len()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $pem = fn::validation_private_key_pem($params.pem, false, 65536);
+--   IF !$pem.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $pem.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_private_key_pem(
     $value: any,
-    $field: string,
     $allow_encrypted: bool,
     $max_length: int
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $max_length < 1 { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $length = string::len($clean);
+    IF $max_length IS NOT NONE AND $length > $max_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } }; };
+    IF !$allow_encrypted AND string::starts_with($clean, "-----BEGIN ENCRYPTED PRIVATE KEY-----") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "encrypted" } };
     };
-
-    IF $max_length < 1 {
-        THROW "VALIDATION_INVALID_PEM_MAX_LENGTH";
+    IF !((string::starts_with($clean, "-----BEGIN PRIVATE KEY-----") AND string::ends_with($clean, "-----END PRIVATE KEY-----")) OR (string::starts_with($clean, "-----BEGIN RSA PRIVATE KEY-----") AND string::ends_with($clean, "-----END RSA PRIVATE KEY-----")) OR (string::starts_with($clean, "-----BEGIN EC PRIVATE KEY-----") AND string::ends_with($clean, "-----END EC PRIVATE KEY-----")) OR (string::starts_with($clean, "-----BEGIN ENCRYPTED PRIVATE KEY-----") AND string::ends_with($clean, "-----END ENCRYPTED PRIVATE KEY-----")))
+        OR !string::contains($clean, "\n") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "private_key_pem" } };
     };
-
-    IF string::len($clean_value) > $max_length {
-        THROW string::concat($clean_field, "_TOO_LONG");
-    };
-
-    LET $is_encrypted =
-        string::starts_with(
-            $clean_value,
-            "-----BEGIN ENCRYPTED PRIVATE KEY-----"
-        )
-        AND string::ends_with(
-            $clean_value,
-            "-----END ENCRYPTED PRIVATE KEY-----"
-        );
-
-    IF $is_encrypted AND !$allow_encrypted {
-        THROW string::concat(
-            $clean_field,
-            "_ENCRYPTED_KEY_NOT_ALLOWED"
-        );
-    };
-
-    LET $is_supported =
-        $is_encrypted
-        OR (
-            string::starts_with(
-                $clean_value,
-                "-----BEGIN PRIVATE KEY-----"
-            )
-            AND string::ends_with(
-                $clean_value,
-                "-----END PRIVATE KEY-----"
-            )
-        )
-        OR (
-            string::starts_with(
-                $clean_value,
-                "-----BEGIN RSA PRIVATE KEY-----"
-            )
-            AND string::ends_with(
-                $clean_value,
-                "-----END RSA PRIVATE KEY-----"
-            )
-        )
-        OR (
-            string::starts_with(
-                $clean_value,
-                "-----BEGIN EC PRIVATE KEY-----"
-            )
-            AND string::ends_with(
-                $clean_value,
-                "-----END EC PRIVATE KEY-----"
-            )
-        );
-
-    IF !$is_supported
-        OR !string::contains($clean_value, "
-")
-    {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_PRIVATE_KEY_PEM"
-        );
-    };
-
-    RETURN $clean_value;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide lexicalement un bloc PEM de clé privée prise en charge.
-"
+COMMENT "Valide l'enveloppe PEM d'une clé privée (PRIVATE KEY, RSA, EC ; chiffrée seulement si autorisé) ; le contenu n'est pas décodé. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

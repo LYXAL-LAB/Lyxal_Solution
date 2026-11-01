@@ -1,74 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/password_strength.test.surql
--- Fonction     : fn::validation_password_strength
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_password_strength (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: mot de passe robuste
+RETURN fn::validation_password_strength("Abcdef12!", 8, 64, true, true, true, true)
+    == { valid: true, value: "Abcdef12!", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Mot de passe valide
--- Résultat attendu : valeur reçue
--- ============================================================================
-RETURN fn::validation_password_strength(
-    "Lyxal-2026-Secure!",
-    "PASSWORD",
-    12,
-    128,
-    true,
-    true,
-    true,
-    true
-);
+-- test: trop court
+RETURN fn::validation_password_strength("Ab1!", 8, 64, true, true, true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: 8, length: 4 } };
 
--- ============================================================================
--- TEST 2 — Trop court
--- Erreur attendue : PASSWORD_TOO_SHORT
--- ============================================================================
-RETURN fn::validation_password_strength(
-    "Aa1!",
-    "PASSWORD",
-    12,
-    128,
-    true,
-    true,
-    true,
-    true
-);
+-- test: classes manquantes
+RETURN fn::validation_password_strength("abcdefgh", 8, 64, true, true, true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "password", missing: ["uppercase", "digit", "special"] } };
 
--- ============================================================================
--- TEST 3 — Majuscule manquante
--- Erreur attendue : PASSWORD_UPPERCASE_REQUIRED
--- ============================================================================
-RETURN fn::validation_password_strength(
-    "lyxal-2026-secure!",
-    "PASSWORD",
-    12,
-    128,
-    true,
-    true,
-    true,
-    true
-);
+-- test: aucune classe exigée
+RETURN fn::validation_password_strength("abcdefgh", 8, 64, false, false, false, false)
+    == { valid: true, value: "abcdefgh", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 4 — Caractère spécial manquant
--- Erreur attendue : PASSWORD_SPECIAL_CHARACTER_REQUIRED
--- ============================================================================
-RETURN fn::validation_password_strength(
-    "Lyxal2026Secure",
-    "PASSWORD",
-    12,
-    128,
-    true,
-    true,
-    true,
-    true
-);
+-- test: espaces conservés
+RETURN fn::validation_password_strength(" abcdefg", 8, 64, false, false, false, false)
+    == { valid: true, value: " abcdefg", code: NONE, details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_password_strength(NONE, 8, 64, false, false, false, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_password_strength(NULL, 8, 64, false, false, false, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_password_strength(12345678, 8, 64, false, false, false, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_password_strength("a", 10, 8, false, false, false, false);

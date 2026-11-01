@@ -1,47 +1,33 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/recovery_code.test.surql
--- Fonction     : fn::validation_recovery_code
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_recovery_code (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_recovery_code(" ab12-cd34-ef56 ", 3, 4)
+    == { valid: true, value: "AB12-CD34-EF56", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Code valide 4x4
--- Résultat attendu : "AB12-CD34-EF56-GH78"
--- ============================================================================
-RETURN fn::validation_recovery_code(
-    "ab12-cd34-ef56-gh78",
-    "RECOVERY_CODE",
-    4,
-    4
-);
+-- test: groupe trop court
+RETURN fn::validation_recovery_code("AB12-CD3-EF56", 3, 4)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "recovery_code", group_count: 3, group_length: 4 } };
 
--- ============================================================================
--- TEST 2 — Nombre de groupes invalide
--- Erreur attendue : RECOVERY_CODE_INVALID_RECOVERY_CODE
--- ============================================================================
-RETURN fn::validation_recovery_code(
-    "AB12-CD34",
-    "RECOVERY_CODE",
-    4,
-    4
-);
+-- test: nombre de groupes incorrect
+RETURN fn::validation_recovery_code("AB12-CD34", 3, 4).code == "CORE_VALIDATION_FORMAT";
 
--- ============================================================================
--- TEST 3 — Groupe trop court
--- Erreur attendue : RECOVERY_CODE_INVALID_RECOVERY_CODE
--- ============================================================================
-RETURN fn::validation_recovery_code(
-    "AB12-CD3-EF56-GH78",
-    "RECOVERY_CODE",
-    4,
-    4
-);
+-- test: chaîne blanche
+RETURN fn::validation_recovery_code("  ", 3, 4)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_recovery_code(NONE, 3, 4)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_recovery_code(NULL, 3, 4)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_recovery_code(42, 3, 4)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: forme nulle
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_recovery_code("x", 0, 4);

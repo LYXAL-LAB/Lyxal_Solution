@@ -1,129 +1,54 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/checksum.surql
--- Fonction     : fn::validation_checksum
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/checksum.surql
+-- Fonction : fn::validation_checksum
 --
--- Description
--- -----------
--- Valide une somme de contrôle textuelle selon un algorithme déclaré.
+-- Valide une empreinte hexadécimale dont la longueur correspond à
+-- l'algorithme (crc32, md5, sha1, sha256, sha384, sha512) ; la valeur
+-- renvoyée est en minuscules.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $algorithm: string
+--   $value     : any — valeur à contrôler
+--   $algorithm : string — crc32 | md5 | sha1 | sha256 | sha384 | sha512, insensible à la casse
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_CHECKSUM
--- <FIELD>_INVALID_CHECKSUM_LENGTH
--- VALIDATION_UNSUPPORTED_CHECKSUM_ALGORITHM
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = l'empreinte en minuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_UNSUPPORTED_OPTION : algorithme inconnu
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun accès réseau ;
---   - aucune inspection binaire réelle du fichier ;
---   - aucune conversion implicite de la valeur validée.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::lowercase()
---   - string::matches()
---   - string::len()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
--- Algorithmes pris en charge
--- --------------------------
--- crc32, md5, sha1, sha256, sha384 et sha512.
+-- Exemple (dans une fonction de module)
+--   LET $digest = fn::validation_checksum($params.digest, "sha256");
+--   IF !$digest.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $digest.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_checksum(
     $value: any,
-    $field: string,
     $algorithm: string
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    LET $clean_algorithm = string::lowercase(
-        string::trim($algorithm)
-    );
-
-    LET $expected_length = IF $clean_algorithm = "crc32" {
-        8
-    } ELSE IF $clean_algorithm = "md5" {
-        32
-    } ELSE IF $clean_algorithm = "sha1" {
-        40
-    } ELSE IF $clean_algorithm = "sha256" {
-        64
-    } ELSE IF $clean_algorithm = "sha384" {
-        96
-    } ELSE IF $clean_algorithm = "sha512" {
-        128
-    } ELSE {
-        0
-    };
-
-    IF $expected_length = 0 {
-        THROW "VALIDATION_UNSUPPORTED_CHECKSUM_ALGORITHM";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    LET $algo = string::lowercase(string::trim($algorithm));
+    LET $expected_length = { crc32: 8, md5: 32, sha1: 40, sha256: 64, sha384: 96, sha512: 128 }[$algo];
+    IF $expected_length IS NONE { THROW "CORE_UNSUPPORTED_OPTION"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF !string::matches($clean_value, "^[0-9A-Fa-f]+$") {
-        THROW string::concat($clean_field, "_INVALID_CHECKSUM");
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    IF !string::matches($clean, "^[0-9A-Fa-f]+$") OR string::len($clean) != $expected_length {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: $algo, length: $expected_length } };
     };
-
-    IF string::len($clean_value) != $expected_length {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_CHECKSUM_LENGTH"
-        );
-    };
-
-    RETURN string::lowercase($clean_value);
+    RETURN { valid: true, value: string::lowercase($clean), code: NONE, details: {} };
 }
-COMMENT "
-Valide une somme de contrôle hexadécimale selon l'algorithme déclaré.
-"
+COMMENT "Valide une empreinte hexadécimale dont la longueur correspond à l'algorithme (crc32, md5, sha1, sha256, sha384, sha512) ; la valeur renvoyée est en minuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

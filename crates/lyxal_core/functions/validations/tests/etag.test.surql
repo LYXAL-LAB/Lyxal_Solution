@@ -1,54 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/etag.test.surql
--- Fonction     : fn::validation_etag
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_etag (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_etag(" \"33a64df5\" ", false)
+    == { valid: true, value: "\"33a64df5\"", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — ETag fort
--- Résultat attendu : "\"abc123\""
--- ============================================================================
-RETURN fn::validation_etag(
-    "\"abc123\"",
-    "ETAG",
-    true
-);
+-- test: ETag faible autorisé
+RETURN fn::validation_etag("W/\"33a64df5\"", true)
+    == { valid: true, value: "W/\"33a64df5\"", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — ETag faible autorisé
--- Résultat attendu : "W/\"abc123\""
--- ============================================================================
-RETURN fn::validation_etag(
-    "W/\"abc123\"",
-    "ETAG",
-    true
-);
+-- test: sans guillemets
+RETURN fn::validation_etag("33a64df5", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "etag" } };
 
--- ============================================================================
--- TEST 3 — ETag faible interdit
--- Erreur attendue : ETAG_WEAK_ETAG_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_etag(
-    "W/\"abc123\"",
-    "ETAG",
-    false
-);
+-- test: ETag faible refusé
+RETURN fn::validation_etag("W/\"33a64df5\"", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "weak" } };
 
--- ============================================================================
--- TEST 4 — Guillemets manquants
--- Erreur attendue : ETAG_INVALID_ETAG
--- ============================================================================
-RETURN fn::validation_etag(
-    "abc123",
-    "ETAG",
-    true
-);
+-- test: chaîne blanche
+RETURN fn::validation_etag("  ", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_etag(NONE, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_etag(NULL, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_etag(42, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };

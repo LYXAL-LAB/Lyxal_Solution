@@ -1,21 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/bearer_token.test.surql
--- Fonction     : fn::validation_bearer_token
--- Version      : 1.0.0
---
--- Les tests produisant un THROW ou une erreur native doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_bearer_token (format : crates/lyxal_core/implementation_plan.md §5).
 
--- TEST 1 — Bearer valide
-RETURN fn::validation_bearer_token("Bearer abc.def.ghi", "AUTHORIZATION", 8, 4096);
+-- test: valeur conforme
+RETURN fn::validation_bearer_token("Bearer abc.DEF-123_xyz", 8, 64)
+    == { valid: true, value: "abc.DEF-123_xyz", code: NONE, details: {} };
 
--- TEST 2 — Schéma absent
--- Erreur attendue : AUTHORIZATION_INVALID_BEARER_FORMAT
-RETURN fn::validation_bearer_token("abc.def.ghi", "AUTHORIZATION", 8, 4096);
+-- test: sans préfixe Bearer
+RETURN fn::validation_bearer_token("abc.DEF-123_xyz", 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "bearer_token" } };
 
--- TEST 3 — Trop court
--- Erreur attendue : AUTHORIZATION_TOKEN_TOO_SHORT
-RETURN fn::validation_bearer_token("Bearer abc", "AUTHORIZATION", 8, 4096);
+-- test: jeton invalide
+RETURN fn::validation_bearer_token("Bearer abc def!", 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "bearer_token" } };
+
+-- test: jeton trop court
+RETURN fn::validation_bearer_token("Bearer abc", 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: 8, length: 3 } };
+
+-- test: chaîne blanche
+RETURN fn::validation_bearer_token("  ", 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_bearer_token(NONE, 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_bearer_token(NULL, 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_bearer_token(42, 8, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: longueur nulle
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_bearer_token("x", 0, 5);

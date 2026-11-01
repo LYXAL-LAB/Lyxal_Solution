@@ -1,44 +1,36 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/public_key_pem.test.surql
--- Fonction     : fn::validation_public_key_pem
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_public_key_pem (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_public_key_pem("-----BEGIN PUBLIC KEY-----\nMIIBCgKCAQEA\n-----END PUBLIC KEY-----", 65536)
+    == { valid: true, value: "-----BEGIN PUBLIC KEY-----\nMIIBCgKCAQEA\n-----END PUBLIC KEY-----", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Clé publique générique
--- Résultat attendu : valeur reçue
--- ============================================================================
-RETURN fn::validation_public_key_pem(
-    "-----BEGIN PUBLIC KEY-----\nQUJDRA==\n-----END PUBLIC KEY-----",
-    "PUBLIC_KEY",
-    16384
-);
+-- test: trop long
+RETURN fn::validation_public_key_pem("-----BEGIN PUBLIC KEY-----\nMIIBCgKCAQEA\n-----END PUBLIC KEY-----", 20).code == "CORE_VALIDATION_TOO_LONG";
 
--- ============================================================================
--- TEST 2 — Clé RSA publique
--- Résultat attendu : valeur reçue
--- ============================================================================
-RETURN fn::validation_public_key_pem(
-    "-----BEGIN RSA PUBLIC KEY-----\nQUJDRA==\n-----END RSA PUBLIC KEY-----",
-    "PUBLIC_KEY",
-    16384
-);
+-- test: sur une seule ligne
+RETURN fn::validation_public_key_pem("-----BEGIN PUBLIC KEY-----MIIB-----END PUBLIC KEY-----", 65536)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "public_key_pem" } };
 
--- ============================================================================
--- TEST 3 — Marqueur de fin incorrect
--- Erreur attendue : PUBLIC_KEY_INVALID_PUBLIC_KEY_PEM
--- ============================================================================
-RETURN fn::validation_public_key_pem(
-    "-----BEGIN PUBLIC KEY-----\nQUJDRA==\n-----END PRIVATE KEY-----",
-    "PUBLIC_KEY",
-    16384
-);
+-- test: mauvaise enveloppe
+RETURN fn::validation_public_key_pem("-----BEGIN PRIVATE KEY-----\nMIIB\n-----END PRIVATE KEY-----", 65536).code == "CORE_VALIDATION_FORMAT";
+
+-- test: chaîne blanche
+RETURN fn::validation_public_key_pem("  ", 65536)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_public_key_pem(NONE, 65536)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_public_key_pem(NULL, 65536)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_public_key_pem(42, 65536)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: longueur maximale nulle
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_public_key_pem("a", 0);

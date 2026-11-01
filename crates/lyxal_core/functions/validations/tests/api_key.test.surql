@@ -1,21 +1,46 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/api_key.test.surql
--- Fonction     : fn::validation_api_key
--- Version      : 1.0.0
---
--- Les tests produisant un THROW ou une erreur native doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_api_key (format : crates/lyxal_core/implementation_plan.md §5).
 
--- TEST 1 — Clé valide
-RETURN fn::validation_api_key("lyxal_live_abcd1234", "API_KEY", ["lyxal_live_", "lyxal_test_"], 16, 128);
+-- test: valeur conforme
+RETURN fn::validation_api_key("  sk_live_ABC123 ", 8, 64, ["sk_"])
+    == { valid: true, value: "sk_live_ABC123", code: NONE, details: {} };
 
--- TEST 2 — Préfixe interdit
--- Erreur attendue : API_KEY_API_KEY_PREFIX_NOT_ALLOWED
-RETURN fn::validation_api_key("other_abcd123456", "API_KEY", ["lyxal_live_"], 16, 128);
+-- test: sans préfixe imposé
+RETURN fn::validation_api_key("pk_ABCDEFGH", 8, 64, NONE)
+    == { valid: true, value: "pk_ABCDEFGH", code: NONE, details: {} };
 
--- TEST 3 — Espace interdit
--- Erreur attendue : API_KEY_INVALID_API_KEY
-RETURN fn::validation_api_key("lyxal_live_abcd 1234", "API_KEY", NONE, 8, 128);
+-- test: trop courte
+RETURN fn::validation_api_key("sk_1", 8, 64, ["sk_"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: 8, length: 4 } };
+
+-- test: caractère interdit
+RETURN fn::validation_api_key("sk_live_AB C123", 8, 64, ["sk_"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "api_key" } };
+
+-- test: préfixe non autorisé
+RETURN fn::validation_api_key("pk_live_ABC123", 8, 64, ["sk_"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed_prefixes: ["sk_"] } };
+
+-- test: chaîne blanche
+RETURN fn::validation_api_key("  ", 8, 64, ["sk_"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_api_key(NONE, 8, 64, ["sk_"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_api_key(NULL, 8, 64, ["sk_"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_api_key(42, 8, 64, ["sk_"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_api_key("x", 10, 5, NONE);
+
+-- test: liste de préfixes vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_api_key("x", 1, 5, []);

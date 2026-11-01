@@ -1,34 +1,36 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/certificate_pem.test.surql
--- Fonction     : fn::validation_certificate_pem
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_certificate_pem (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_certificate_pem("-----BEGIN CERTIFICATE-----\nMIIBCgKCAQEA\n-----END CERTIFICATE-----", 65536)
+    == { valid: true, value: "-----BEGIN CERTIFICATE-----\nMIIBCgKCAQEA\n-----END CERTIFICATE-----", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Certificat PEM valide
--- Résultat attendu : valeur reçue
--- ============================================================================
-RETURN fn::validation_certificate_pem(
-    "-----BEGIN CERTIFICATE-----\nQUJDRA==\n-----END CERTIFICATE-----",
-    "CERTIFICATE",
-    32768
-);
+-- test: trop long
+RETURN fn::validation_certificate_pem("-----BEGIN CERTIFICATE-----\nMIIBCgKCAQEA\n-----END CERTIFICATE-----", 20).code == "CORE_VALIDATION_TOO_LONG";
 
--- ============================================================================
--- TEST 2 — Bloc public key refusé
--- Erreur attendue : CERTIFICATE_INVALID_CERTIFICATE_PEM
--- ============================================================================
-RETURN fn::validation_certificate_pem(
-    "-----BEGIN PUBLIC KEY-----\nQUJDRA==\n-----END PUBLIC KEY-----",
-    "CERTIFICATE",
-    32768
-);
+-- test: sur une seule ligne
+RETURN fn::validation_certificate_pem("-----BEGIN CERTIFICATE-----MIIB-----END CERTIFICATE-----", 65536)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "certificate_pem" } };
+
+-- test: mauvaise enveloppe
+RETURN fn::validation_certificate_pem("-----BEGIN PRIVATE KEY-----\nMIIB\n-----END PRIVATE KEY-----", 65536).code == "CORE_VALIDATION_FORMAT";
+
+-- test: chaîne blanche
+RETURN fn::validation_certificate_pem("  ", 65536)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_certificate_pem(NONE, 65536)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_certificate_pem(NULL, 65536)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_certificate_pem(42, 65536)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: longueur maximale nulle
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_certificate_pem("a", 0);

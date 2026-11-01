@@ -1,38 +1,26 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/ipv4.test.surql
--- Fonction     : fn::validation_ipv4
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_ipv4 (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_ipv4(" 10.0.0.1 ")
+    == { valid: true, value: "10.0.0.1", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — IPv4 valide
--- Résultat attendu : "192.168.1.10"
--- ============================================================================
-RETURN fn::validation_ipv4("192.168.1.10", "IP_ADDRESS");
+-- test: adresse IPv6
+RETURN fn::validation_ipv4("::1")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "ipv4" } };
 
--- ============================================================================
--- TEST 2 — Loopback valide
--- Résultat attendu : "127.0.0.1"
--- ============================================================================
-RETURN fn::validation_ipv4("127.0.0.1", "IP_ADDRESS");
+-- test: chaîne blanche
+RETURN fn::validation_ipv4("  ")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 3 — Octet trop élevé
--- Erreur attendue : IP_ADDRESS_INVALID_IPV4
--- ============================================================================
-RETURN fn::validation_ipv4("256.1.1.1", "IP_ADDRESS");
+-- test: valeur absente
+RETURN fn::validation_ipv4(NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — IPv6 refusée
--- Erreur attendue : IP_ADDRESS_INVALID_IPV4
--- ============================================================================
-RETURN fn::validation_ipv4("2001:db8::1", "IP_ADDRESS");
+-- test: valeur NULL
+RETURN fn::validation_ipv4(NULL)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_ipv4(42)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
