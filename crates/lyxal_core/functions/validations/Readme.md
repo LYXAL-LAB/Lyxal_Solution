@@ -160,9 +160,6 @@
 57. hexadecimal.surql
     fn::validation_hexadecimal
 
-58. hash.surql
-    fn::validation_hash
-
 59. base64.surql
     fn::validation_base64
 
