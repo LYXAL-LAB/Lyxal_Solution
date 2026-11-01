@@ -464,10 +464,10 @@ puis désérialisés dans le modèle Rust.
 
 ## 12.5. Remplacement des Tuples par des Structures Nommées
 
-Les retours de fonctions SurrealQL doivent être désérialisés dans des structures nommées et typées :
+Les retours de fonctions SurrealQL doivent être désérialisés dans des structures nommées et typées (SDK `surrealdb` 3.3 : trait `SurrealValue`, cf. skill `lyxal-surrealdb` §2.6) :
 
 ```rust
-#[derive(Debug, Deserialize)]
+#[derive(Debug, SurrealValue)]
 ```
 
 Les tuples anonymes tels que :

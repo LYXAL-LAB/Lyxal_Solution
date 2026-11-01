@@ -1,11 +1,7 @@
 use async_trait::async_trait;
 use lyxal_server::{
     config::{ModulesConfig, RuntimeConfig},
-    error::ServerError,
-    health::HealthRegistry,
-    metrics::Metrics,
-    modules::{LyxalModule, ModuleContext, ModuleDescriptor, ModuleId},
-    runtime::RuntimeHandle,
+    modules::{LyxalModule, ModuleDescriptor, ModuleId},
 };
 use std::{collections::BTreeSet, sync::Arc};
 

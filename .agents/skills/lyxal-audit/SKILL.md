@@ -82,9 +82,9 @@ Inspecter les fichiers `.surql` du module pour contrôler :
 ### Contrôle 4 — Vérification Croisée DTO Rust $\leftrightarrow$ SurrealQL (`*Params` vs `$params`) [OBLIGATOIRE]
 Pour **chaque** fonction SurrealQL prenant `$params: object` et possédant une structure Rust d'entrée (`*Params`) :
 1. **Identification du couple** : associer `fn::<module>_<action>($params: object)` à sa structure Rust `*Params` (et sa constante `FN_*_QUERY` ou son wrapper `store.call_fn("<module>_<action>", params)`).
-2. **Analyse de la sérialisation Serde réelle** :
-   - Examiner les attributs `#[serde(rename = "...")]`, `#[serde(rename_all = "...")]`, `#[serde(flatten)]` et `#[serde(skip_serializing_if = "Option::is_none")]` ;
-   - Noter si un `Option<T>` sans `skip_serializing_if` envoie `null` ou si `NONE` est attendu côté SurrealDB.
+2. **Analyse de la conversion `SurrealValue` réelle** (SDK 3.3, cf. skill `lyxal-surrealdb` §2.6) :
+   - Examiner les attributs `#[surreal(rename = "...")]`, `#[surreal(rename_all = "...")]`, `#[surreal(untagged)]`, `#[surreal(default)]` ;
+   - Vérifier qu'aucun champ n'est transmis via `serde_json::to_value(...)` (un champ vide deviendrait `NULL`, refusé par un `Option<T>` à la relecture) et que les champs `datetime` sont typés `Datetime`.
 3. **Comparaison champ par champ avec `$params.<champ>`** :
    - Relever toutes les propriétés `$params.<prop>` lues dans le corps SurrealQL ;
    - Vérifier les alias explicites ou fallbacks éventuels dans SurrealQL (ex. : `$params.foo ?? $params.bar`) avant de conclure à un écart : **ne jamais classer une différence de nom comme un défaut si un alias ou une transformation explicite la prend en charge** ;
@@ -97,8 +97,8 @@ Pour **chaque** fonction SurrealQL prenant `$params: object` et possédant une s
    - **Incompatibles (P0/P1)** : divergence de nom sans alias (ex. `external_code` vs `$params.source_code`) ou incompatibilité de type provoquant un `NONE` inattendu ou une erreur d'exécution.
 
 ### Contrôle 5 — Compatibilité SurrealDB 3.3.4 [OBLIGATOIRE]
-Lorsque le workspace cible **SurrealDB 3.3.4** (binaire `surreal` v3.3.4 désigné par la variable d'environnement `LYXAL_SURREAL_BIN`, à défaut `surreal` présent dans le `PATH` — cf. `.agents/skills/lyxal-surrealdb/SKILL.md`) mais que les tests Cargo embarqués utilisent un SDK d'une autre génération (ex. `surrealdb = "2.2"` dans `Cargo.toml`) :
-1. **Détection des constructions à risque de rupture 2.x $\rightarrow$ 3.3.4** :
+Le workspace cible **SurrealDB 3.3.4** (binaire `surreal` v3.3.4 désigné par la variable d'environnement `LYXAL_SURREAL_BIN`, à défaut `surreal` présent dans le `PATH` — cf. `.agents/skills/lyxal-surrealdb/SKILL.md`) et le SDK Rust est en `surrealdb` 3.3 (moteur embarqué 3.3.x pour les tests `mem://`) :
+1. **Détection des constructions héritées de la 2.x** (y compris dans les requêtes SurrealQL écrites en dur dans le Rust) :
    - Exécuter `"${LYXAL_SURREAL_BIN:-surreal}" validate` (vérifier au préalable `"${LYXAL_SURREAL_BIN:-surreal}" version` = `3.3.4`) sur les fichiers `.surql` du module et rechercher systématiquement :
      - `option<any>` (rejeté au parsing en 3.3.4 $\rightarrow$ utiliser `any`) ;
      - `array::contains(` (supprimé en 3.3.4 $\rightarrow$ utiliser `(($a) CONTAINS ($b))`) ;
@@ -109,9 +109,9 @@ Lorsque le workspace cible **SurrealDB 3.3.4** (binaire `surreal` v3.3.4 désign
      - Signatures runtime 3.3.4 : `array::reduce` à 3 arguments ($\rightarrow$ `array::fold`), `array::sort::asc`/`desc` à 2 arguments, `math::min`/`max` sur `array<duration>`, soustraction de `duration` pouvant être négative, `math::log` à 1 argument, `encoding::base64::encode` sur `string` sans cast `<bytes>`, affectation `LET $token = ...` (variable protégée), ou `0..$n` non casté en `<array>(0..$n)` ;
      - `IF ... THEN ( ... ) END` vs `IF ... { ... }` dans les blocs procéduraux et `DEFINE EVENT`.
 2. **Interdiction des remplacements mécaniques non vérifiés** :
-   - Avant de recommander le remplacement d'une fonction SurrealQL, vérifier la sémantique exacte de l'expression cible (gestion de `NONE` vs `NULL`, comportement lorsque le premier argument de `type::record` contient déjà le préfixe `table:id`, compatibilité avec le SDK Rust si les tests tournent encore sur `surrealdb = "2.2"`).
-3. **Séparation stricte entre analyse statique, test SDK 2.x et preuve serveur 3.3.4** :
-   - Un test `cargo test` passant sur `surrealdb = "2.2"` (`mem://`) prouve la logique sur le moteur 2.2 embarqué, mais **ne constitue jamais une preuve de compatibilité SurrealDB 3.3.4**.
+   - Avant de recommander le remplacement d'une fonction SurrealQL, vérifier la sémantique exacte de l'expression cible (gestion de `NONE` vs `NULL`, comportement lorsque le premier argument de `type::record` contient déjà le préfixe `table:id`, conversion `SurrealValue` côté Rust).
+3. **Séparation stricte entre analyse statique, test embarqué et preuve serveur 3.3.4** :
+   - Un test `cargo test` passant en `mem://` prouve la logique sur le moteur 3.3.x embarqué par le SDK. Les chemins réseau (`ws://`, authentification `Root`, permissions de session) ne sont prouvés que contre un serveur réel.
    - **Règle absolue** : Ne jamais déclarer la compatibilité SurrealDB 3.3.4 comme « validée » tant que les scripts `.surql` n'ont pas été effectivement exécutés contre un binaire ou serveur SurrealDB `3.3.4`. Tant que ce test sur serveur 3.3.4 n'a pas eu lieu, le documenter obligatoirement dans la section **« 4. Points non vérifiés faute de preuves »**.
 
 ### Contrôle 6 — Conformité Rust (`src/`) [OBLIGATOIRE]

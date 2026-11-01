@@ -118,24 +118,24 @@ Le module fournit exclusivement son propre dictionnaire d'erreurs :
 Le crate expose les contrats fondamentaux de transport et de conversion de Lyxal OS :
 
 ```rust
-use lyxal_error::{LyxalResult, LyxalError, LyxalCallError};
+use lyxal_error::{LyxalCallError, LyxalResult};
+use surrealdb_types::SurrealValue;
 
-// Consommation typée d'une fonction SurrealQL
-pub async fn resolve_call<T: serde::de::DeserializeOwned>(
-    result: LyxalResult<T>
-) -> Result<T, LyxalCallError> {
+// Consommation typée d'une fonction SurrealQL (en pratique via `lyxal_surreal::LyxalSurrealCall::call_fn`)
+pub fn resolve_call<T: SurrealValue>(result: LyxalResult<T>) -> Result<T, LyxalCallError> {
     result.into_result("operation_name")
 }
 ```
 
 ### Structures de Transport
-* `LyxalResult<T>` : Enveloppe générique `{ ok: bool, data: Option<T>, error: Option<LyxalError> }`.
-  - `.into_result(op)` : Convertit l'enveloppe en `Result<T, LyxalCallError>`. Valide l'intégrité (rejette `ok: true` avec `error` ou `ok: false` sans `error`).
-* `LyxalError` : Structure complète de l'erreur métier standardisée (code, labels multilingues, statut HTTP, détails structurés).
-* `LyxalCallError` : Enum unifié de résultat côté consommateur Rust :
-  - `LyxalCallError::Business(LyxalError)` : Erreur fonctionnelle retournée par SurrealQL.
-  - `LyxalCallError::Transport(String)` : Échec réseau, parsing ou transport RPC.
-  - `LyxalCallError::Contract(String)` : Violation du contrat de données.
+* `LyxalResult<T: SurrealValue>` : Enveloppe générique `{ ok: bool, data: Option<T>, error: Option<LyxalError> }`, lue depuis SurrealDB (`SurrealValue`) et renvoyée en JSON par l'API (`serde`).
+  - `.into_result(op)` : Convertit l'enveloppe en `Result<T, LyxalCallError>`. Rejette tout état incohérent (`ok: true` avec `error`, `ok: false` sans `error` ou avec `data`). Un succès sans donnée n'est accepté que si `T` accepte `NONE` (`()` ou `Option<_>`).
+* `LyxalError` : Structure complète de l'erreur métier standardisée (code, libellés, catégorie, sévérité, statut HTTP, détails structurés).
+* `LyxalCallError` : Enum de résultat côté consommateur Rust :
+  - `LyxalCallError::Business(LyxalError)` : Erreur fonctionnelle retournée par SurrealQL (`fn::error_result`).
+  - `LyxalCallError::BusinessCode { code, details }` : Erreur métier construite côté Rust à partir d'un code canonique.
+  - `LyxalCallError::InvalidContract { function }` : Réponse ne respectant pas le contrat `LyxalResult`.
+* Les `XxxParams` des fonctions `fn::error_*` dérivent `SurrealValue`.
 
 ---
 
