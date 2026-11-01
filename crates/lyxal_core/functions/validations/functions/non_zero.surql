@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/non_zero.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/non_zero.surql
 -- Fonction     : fn::validation_non_zero
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

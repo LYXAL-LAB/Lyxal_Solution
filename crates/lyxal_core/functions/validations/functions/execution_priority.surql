@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/execution_priority.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/execution_priority.surql
 -- Fonction     : fn::validation_execution_priority
 -- Domaine      : Core / Validation / Workflow
 -- Version      : 1.0.0

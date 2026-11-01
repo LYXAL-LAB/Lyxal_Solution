@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/integer.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/integer.surql
 -- Fonction     : fn::validation_integer
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

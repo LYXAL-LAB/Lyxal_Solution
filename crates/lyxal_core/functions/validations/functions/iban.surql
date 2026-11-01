@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/iban.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/iban.surql
 -- Fonction     : fn::validation_iban
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

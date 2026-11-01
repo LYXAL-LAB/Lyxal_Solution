@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
--- Fichier      : core/sanitize/trim_left.surql
+-- Fichier      : crates/lyxal_core/functions/sanitize/functions/trim_left.surql
 -- Fonction     : fn::sanitize_trim_left
 -- Domaine      : Core / Sanitize / String
 -- Version      : 1.0.0

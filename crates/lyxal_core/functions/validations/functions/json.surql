@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/json.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/json.surql
 -- Fonction     : fn::validation_json
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

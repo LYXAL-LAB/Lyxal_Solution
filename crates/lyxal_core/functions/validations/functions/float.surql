@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/float.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/float.surql
 -- Fonction     : fn::validation_float
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

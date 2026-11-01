@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — VALIDATION ENGINE
 -- ============================================================================
--- Fichier      : core/validation/rule_definition.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/rule_definition.surql
 -- Fonction     : fn::validation_rule_definition
 -- Domaine      : Core / Validation / Engine
 -- Version      : 1.0.0

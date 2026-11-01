@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/jwt_compact.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/jwt_compact.surql
 -- Fonction     : fn::validation_jwt_compact
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

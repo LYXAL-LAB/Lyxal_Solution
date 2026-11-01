@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/uuid_v7.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/uuid_v7.surql
 -- Fonction     : fn::validation_uuid_v7
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

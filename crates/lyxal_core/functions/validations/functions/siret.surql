@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/siret.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/siret.surql
 -- Fonction     : fn::validation_siret
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

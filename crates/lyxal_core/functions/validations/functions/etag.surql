@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/etag.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/etag.surql
 -- Fonction     : fn::validation_etag
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

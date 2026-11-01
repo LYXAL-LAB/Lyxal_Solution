@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/forbidden_values.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/forbidden_values.surql
 -- Fonction     : fn::validation_forbidden_values
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

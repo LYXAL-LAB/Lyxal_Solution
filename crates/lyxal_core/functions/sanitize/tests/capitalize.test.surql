@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — TESTS CORE SANITIZE
 -- ============================================================================
--- Fichier      : core/sanitize/tests/capitalize.test.surql
+-- Fichier      : crates/lyxal_core/functions/sanitize/tests/capitalize.test.surql
 -- Fonction     : fn::sanitize_capitalize
 -- Version      : 1.0.0
 --

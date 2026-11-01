@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/archive_entry_path.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/archive_entry_path.surql
 -- Fonction     : fn::validation_archive_entry_path
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

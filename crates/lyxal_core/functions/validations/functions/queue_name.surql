@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/queue_name.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/queue_name.surql
 -- Fonction     : fn::validation_queue_name
 -- Domaine      : Core / Validation / Workflow
 -- Version      : 1.0.0

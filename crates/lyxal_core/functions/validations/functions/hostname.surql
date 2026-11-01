@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/hostname.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/hostname.surql
 -- Fonction     : fn::validation_hostname
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

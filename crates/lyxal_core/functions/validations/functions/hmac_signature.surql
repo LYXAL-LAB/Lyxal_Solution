@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/hmac_signature.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/hmac_signature.surql
 -- Fonction     : fn::validation_hmac_signature
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/ape_naf_code.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/ape_naf_code.surql
 -- Fonction     : fn::validation_ape_naf_code
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

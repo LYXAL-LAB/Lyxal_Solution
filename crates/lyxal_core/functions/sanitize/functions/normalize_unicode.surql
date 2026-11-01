@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
--- Fichier      : core/sanitize/normalize_unicode.surql
+-- Fichier      : crates/lyxal_core/functions/sanitize/functions/normalize_unicode.surql
 -- Fonction     : fn::sanitize_normalize_unicode
 -- Domaine      : Core / Sanitize / String
 -- Version      : 1.0.0

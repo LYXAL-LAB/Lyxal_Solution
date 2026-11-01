@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — TESTS CORE SANITIZE
 -- ============================================================================
--- Fichier      : core/sanitize/tests/collapse_whitespace.test.surql
+-- Fichier      : crates/lyxal_core/functions/sanitize/tests/collapse_whitespace.test.surql
 -- Fonction     : fn::sanitize_collapse_whitespace
 -- Version      : 1.0.0
 --

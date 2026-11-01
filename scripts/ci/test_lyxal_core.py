@@ -27,7 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CORE = ROOT / "crates" / "lyxal_core" / "functions"
-DOMAINS = {"validations": "test", "security": "tests", "sanitize": "tests", "utils": "tests"}
+DOMAINS = {"validations": "tests", "security": "tests", "sanitize": "tests", "utils": "tests"}
 SURREAL = os.environ.get("LYXAL_SURREAL_BIN", "surreal")
 NS, DB = "lyxal_core_ci", "lyxal_core_ci"
 THROW_CODE = re.compile(r"^(An error occurred: )?'?[A-Z][A-Z0-9_]{3,}'?$")

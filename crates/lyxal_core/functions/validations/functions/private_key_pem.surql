@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/private_key_pem.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/private_key_pem.surql
 -- Fonction     : fn::validation_private_key_pem
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

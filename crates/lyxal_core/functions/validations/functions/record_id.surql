@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/record_id.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/record_id.surql
 -- Fonction     : fn::validation_record_id
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

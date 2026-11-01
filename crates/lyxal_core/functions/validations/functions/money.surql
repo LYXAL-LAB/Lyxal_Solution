@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/money.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/money.surql
 -- Fonction     : fn::validation_money
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

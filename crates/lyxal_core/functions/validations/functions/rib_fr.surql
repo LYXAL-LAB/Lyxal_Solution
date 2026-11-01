@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/rib_fr.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/rib_fr.surql
 -- Fonction     : fn::validation_rib_fr
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

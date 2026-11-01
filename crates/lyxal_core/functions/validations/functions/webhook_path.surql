@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/webhook_path.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/webhook_path.surql
 -- Fonction     : fn::validation_webhook_path
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

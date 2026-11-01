@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/reserved_words.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/reserved_words.surql
 -- Fonction     : fn::validation_reserved_words
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

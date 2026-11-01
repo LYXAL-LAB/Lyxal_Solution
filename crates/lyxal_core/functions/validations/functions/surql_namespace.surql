@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/surql_namespace.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/surql_namespace.surql
 -- Fonction     : fn::validation_surql_namespace
 -- Domaine      : Core / Validation / SurrealQL
 -- Version      : 1.0.0

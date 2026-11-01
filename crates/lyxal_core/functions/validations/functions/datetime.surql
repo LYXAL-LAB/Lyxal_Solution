@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/datetime.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/datetime.surql
 -- Fonction     : fn::validation_datetime
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

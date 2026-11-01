@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/allowed_combination.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/allowed_combination.surql
 -- Fonction     : fn::validation_allowed_combination
 -- Domaine      : Core / Validation / Advanced
 -- Version      : 1.0.0

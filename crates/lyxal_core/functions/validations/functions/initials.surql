@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/initials.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/initials.surql
 -- Fonction     : fn::validation_initials
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/siren.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/siren.surql
 -- Fonction     : fn::validation_siren
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

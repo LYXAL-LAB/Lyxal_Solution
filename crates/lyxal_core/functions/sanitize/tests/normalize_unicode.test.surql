@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — TESTS CORE SANITIZE
 -- ============================================================================
--- Fichier      : core/sanitize/tests/normalize_unicode.test.surql
+-- Fichier      : crates/lyxal_core/functions/sanitize/tests/normalize_unicode.test.surql
 -- Fonction     : fn::sanitize_normalize_unicode
 -- Version      : 1.0.0
 --

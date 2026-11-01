@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/bearer_token.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/bearer_token.surql
 -- Fonction     : fn::validation_bearer_token
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

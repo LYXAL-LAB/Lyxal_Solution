@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/surql_field.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/surql_field.surql
 -- Fonction     : fn::validation_surql_field
 -- Domaine      : Core / Validation / SurrealQL
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/coordinates.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/coordinates.surql
 -- Fonction     : fn::validation_coordinates
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

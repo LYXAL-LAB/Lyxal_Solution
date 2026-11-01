@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/regex.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/regex.surql
 -- Fonction     : fn::validation_regex
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

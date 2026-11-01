@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/weekday.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/weekday.surql
 -- Fonction     : fn::validation_weekday
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

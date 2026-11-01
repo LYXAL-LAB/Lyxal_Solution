@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/image_height.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/image_height.surql
 -- Fonction     : fn::validation_image_height
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

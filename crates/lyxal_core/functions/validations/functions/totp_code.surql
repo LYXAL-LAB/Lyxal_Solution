@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/totp_code.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/totp_code.surql
 -- Fonction     : fn::validation_totp_code
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

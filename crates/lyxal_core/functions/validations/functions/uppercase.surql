@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/uppercase.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/uppercase.surql
 -- Fonction     : fn::validation_uppercase
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

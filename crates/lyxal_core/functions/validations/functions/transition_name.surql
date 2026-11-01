@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/transition_name.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/transition_name.surql
 -- Fonction     : fn::validation_transition_name
 -- Domaine      : Core / Validation / Workflow
 -- Version      : 1.0.0

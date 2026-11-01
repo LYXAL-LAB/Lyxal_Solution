@@ -1,6 +1,6 @@
 # Plan d'implémentation — Reprise de `lyxal_core`
 
-> **Statut** : EN ATTENTE DE VALIDATION CTO — aucune ligne de code modifiée.
+> **Statut** : VALIDÉ PAR LE CTO (2026-11-01) — exécution en cours (voir le tableau d'avancement de [`AUDIT.md`](AUDIT.md)).
 > **Source** : [`AUDIT.md`](AUDIT.md) (audit du 2026-11-01) et décisions CTO Q1 à Q4.
 > **Régime** : pré-production « Zéro Dette » (`.agents/AGENTS.md` §0) — ruptures de contrat autorisées, aucun appelant à préserver (aucun module n'appelle aujourd'hui le Core). Ce plan et `AUDIT.md` seront supprimés une fois la reprise exécutée et fusionnée.
 
@@ -12,7 +12,7 @@
 | :- | :--- |
 | Q1 | Contrat « résultat renvoyé » : les validations renvoient un résultat, les sanitize transforment, `THROW` réservé aux erreurs de programmation avec codes fixes `CORE_*`. |
 | Q2 | Moteur unique : les familles pipeline / optimiseur / débogage / benchmark / exécution / schéma / SDK, réimplémentées dans `validations`, `sanitize` et `security`, sont regroupées en un seul moteur générique. Aucune primitive supprimée pour cause de non-usage. |
-| Q3 | Suppression de 14 fonctions `security` (12 « demandes » crypto sans consommateur + 2 fonctions qui lèvent toujours une erreur) ; le reste du domaine est conservé. |
+| Q3 | Suppression de 18 fonctions `security` (16 « demandes » crypto ou coffre sans consommateur + 2 fonctions qui lèvent toujours une erreur) ; le reste du domaine est conservé. Les 4 fonctions ajoutées aux 14 initiales (`encrypt_string`, `encrypt_object`, `secret_export`, `secret_import`) ont été validées par le CTO lors du lot 1. |
 | Q4 | Tests réécrits au format « valeur attendue vérifiée », après les changements de contrat (chaque fonction est testée dans le lot qui la réécrit). |
 
 ## 2. Contrat cible des primitives (Q1)
@@ -73,11 +73,13 @@ Même principe : un résultat ou une valeur ; `THROW` uniquement pour un argumen
 | `security_key_generate`, `security_key_derive`, `security_key_wrap`, `security_key_unwrap` | « Demande » de gestion de clés sans consommateur |
 | `security_token_sign`, `security_token_verify` | « Demande » de signature / vérification sans consommateur ; même piège de vérification |
 | `security_secret_compare` | « Demande » de comparaison à temps constant sans consommateur ; même piège |
+| `security_encrypt_string`, `security_encrypt_object` | Emballent `security_encrypt` (supprimée) : même « demande » de chiffrement |
+| `security_secret_export`, `security_secret_import` | « Demande » adressée à un « coffre Rust » inexistant (`requires_native_vault`) |
 | `security_hash_argon2` | Lève toujours `SECURITY_NATIVE_PASSWORD_HASH_REQUIRED` |
 | `security_signature_verify` | Lève toujours `SECURITY_UNSUPPORTED_SIGNATURE_ALGORITHM` |
 
-* Les fonctions qui citent ces 14 fonctions (commentaires, exemples, `*_info`) sont mises à jour.
-* **`security_secret_generate`** : vérifier si `rand::id` est un générateur cryptographiquement sûr. S'il ne l'est pas, la fonction est supprimée et la génération de secrets reste dans `lyxal_crypto` (Rust, `OsRng`) ; s'il l'est, elle est conservée avec cette preuve dans son `COMMENT`.
+* Les fonctions qui citent ces 18 fonctions (commentaires, exemples, `*_info`) sont mises à jour.
+* **`security_secret_generate`** — vérifié au lot 1 : `rand::id` tire ses caractères de `rand::rng()` (ChaCha12 réensemencé par le système, `surrealdb-runtime` / `surrealdb-expr` 3.3.5), générateur cryptographiquement sûr, **sauf** si le serveur est démarré avec `SURREAL_RAND_SEED` (mode déterministe de test). Fonction conservée, condition inscrite dans son `COMMENT`.
 
 ## 5. Format des tests (Q4)
 
@@ -99,9 +101,9 @@ RETURN fn::validation_email("pas-un-email", 254).code == "CORE_VALIDATION_EMAIL_
 
 | Lot | Contenu | Vérification |
 | :- | :--- | :--- |
-| 1 | **Nettoyage** : suppression des 14 fonctions (Q3) et décision sur `secret_generate` ; version `0.1.0` + mise à jour des 5 appelants (`manifest.toml` de `lyxal_error`, `lyxal_event`, `lyxal_pipeline_ingestion`, `lyxal_catalogue`, et `lyxal_pipeline_ingestion/src/module.rs`) ; suppression de `CHANGELOG.md` ; `Readme.md` décrivant l'état actuel ; `validations/test/` → `validations/tests/` (et le script de CI) ; en-têtes et exemples de commentaires corrigés (P2-3, P2-4). | `ci_local.sh` vert ; 785 fonctions définies. |
+| 1 | **Nettoyage** : suppression des 18 fonctions (Q3) et décision sur `secret_generate` ; version `0.1.0` + mise à jour des 5 appelants (`manifest.toml` de `lyxal_error`, `lyxal_event`, `lyxal_pipeline_ingestion`, `lyxal_catalogue`, et `lyxal_pipeline_ingestion/src/module.rs`) ; suppression de `CHANGELOG.md` ; `Readme.md` décrivant l'état actuel ; `validations/test/` → `validations/tests/` (et le script de CI) ; chemins des en-têtes de fichiers corrigés (P2-3). Les exemples de commentaires (P2-4) sont réécrits au lot 3, avec le changement de signature de chaque fonction. | `ci_local.sh` vert ; 781 fonctions définies. |
 | 2 | **Outillage de tests** : nouveau format (§5) dans `test_lyxal_core.py`, avec ses propres tests (un fichier au nouveau format qui échoue doit faire échouer le script). | Script testé sur des cas qui passent et des cas qui échouent. |
-| 3 | **Contrat Q1**, par familles de 40 à 80 fonctions (plusieurs PR) : `validations` (types et chaînes, puis dates et durées, puis tableaux, objets et références), `sanitize`, puis le reste de `security` et `utils`. Suppression de `$field`, nouveau résultat, codes `CORE_*` ; **tests réécrits dans la même PR** ; master data `CORE_*` dans `lyxal_error` dès la première PR qui en a besoin. | Chaque fonction réécrite a des tests au nouveau format, tous verts. |
+| 3 | **Contrat Q1**, par familles de 40 à 80 fonctions (plusieurs PR) : `validations` (types et chaînes, puis dates et durées, puis tableaux, objets et références), `sanitize`, puis le reste de `security` et `utils`. Suppression de `$field`, nouveau résultat, codes `CORE_*`, exemples de commentaires corrigés (P2-4) ; **tests réécrits dans la même PR** ; master data `CORE_*` dans `lyxal_error` dès la première PR qui en a besoin. | Chaque fonction réécrite a des tests au nouveau format, tous verts. |
 | 4 | **Moteur unique Q2** : note de conception (§3) soumise au CTO, puis moteur `fn::utils_engine_*`, migration des étapes de chaque domaine, suppression des copies par domaine ; tests au nouveau format. | Mêmes garanties ; plus aucune famille de mécanique en double. |
 | 5 | **Clôture** : plus aucun fichier de test à l'ancien format (le mode « pas d'erreur inattendue » est retiré du script), statistiques du `Readme.md` et des skills mises à jour (le « 799 primitives validées » disparaît), suppression de `AUDIT.md` et de ce plan. | `ci_local.sh` vert ; audit de contrôle (skill `lyxal-audit`) sans écart P0/P1. |
 
@@ -110,7 +112,7 @@ RETURN fn::validation_email("pas-un-email", 254).code == "CORE_VALIDATION_EMAIL_
 * **Fonctions `lyxal_core` réutilisées** : primitives de pipeline de `utils` comme base du moteur unique (lot 4).
 * **Fonctions nouvelles** : `fn::utils_engine_*` (lot 4, API définie dans la note de conception).
 * **Codes d'erreur** : codes fixes `CORE_*` pour les erreurs de programmation, définis dans `lyxal_error/error/core/` ; catalogue `CORE_VALIDATION_*` documenté dans le Readme du Core.
-* **Crypto** : aucune nouvelle primitive ; suppression des 14 fonctions qui empiétaient sur `lyxal_crypto`.
+* **Crypto** : aucune nouvelle primitive ; suppression des 18 fonctions qui empiétaient sur `lyxal_crypto`.
 
 ## 8. Hors périmètre
 

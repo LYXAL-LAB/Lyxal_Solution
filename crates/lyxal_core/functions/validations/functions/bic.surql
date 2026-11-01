@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/bic.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/bic.surql
 -- Fonction     : fn::validation_bic
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

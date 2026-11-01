@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/profile_identifier.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/profile_identifier.surql
 -- Fonction     : fn::validation_profile_identifier
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

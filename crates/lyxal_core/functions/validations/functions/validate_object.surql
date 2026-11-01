@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — VALIDATION ENGINE
 -- ============================================================================
--- Fichier      : core/validation/validate_object.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/validate_object.surql
 -- Fonction     : fn::validation_validate_object
 -- Domaine      : Core / Validation / Engine
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — TESTS CORE SANITIZE
 -- ============================================================================
--- Fichier      : core/sanitize/tests/lowercase.test.surql
+-- Fichier      : crates/lyxal_core/functions/sanitize/tests/lowercase.test.surql
 -- Fonction     : fn::sanitize_lowercase
 -- Version      : 1.0.0
 --

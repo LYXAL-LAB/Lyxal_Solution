@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/certificate_pem.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/certificate_pem.surql
 -- Fonction     : fn::validation_certificate_pem
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/object.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/object.surql
 -- Fonction     : fn::validation_object
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

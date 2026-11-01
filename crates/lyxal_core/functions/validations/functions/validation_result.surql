@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/validation_result.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/validation_result.surql
 -- Fonction     : fn::validation_result
 -- Domaine      : Core / Validation / Advanced
 -- Version      : 1.0.0

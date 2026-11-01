@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/phone.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/phone.surql
 -- Fonction     : fn::validation_phone
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

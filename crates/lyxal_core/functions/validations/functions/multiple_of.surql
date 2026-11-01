@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/multiple_of.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/multiple_of.surql
 -- Fonction     : fn::validation_multiple_of
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

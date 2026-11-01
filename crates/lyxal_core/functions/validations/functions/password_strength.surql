@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/password_strength.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/password_strength.surql
 -- Fonction     : fn::validation_password_strength
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

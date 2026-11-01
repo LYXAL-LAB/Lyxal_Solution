@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/workflow_delay.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/workflow_delay.surql
 -- Fonction     : fn::validation_workflow_delay
 -- Domaine      : Core / Validation / Workflow
 -- Version      : 1.0.0

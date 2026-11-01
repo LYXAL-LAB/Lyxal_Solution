@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/enum.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/enum.surql
 -- Fonction     : fn::validation_enum
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

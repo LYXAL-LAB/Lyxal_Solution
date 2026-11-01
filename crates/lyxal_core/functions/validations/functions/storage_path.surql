@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/storage_path.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/storage_path.surql
 -- Fonction     : fn::validation_storage_path
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/execution_timeout.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/execution_timeout.surql
 -- Fonction     : fn::validation_execution_timeout
 -- Domaine      : Core / Validation / Workflow
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/totp_secret.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/totp_secret.surql
 -- Fonction     : fn::validation_totp_secret
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

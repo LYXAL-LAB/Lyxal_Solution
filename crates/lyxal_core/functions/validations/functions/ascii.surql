@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/ascii.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/ascii.surql
 -- Fonction     : fn::validation_ascii
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

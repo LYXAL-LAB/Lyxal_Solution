@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/vat_number_fr.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/vat_number_fr.surql
 -- Fonction     : fn::validation_vat_number_fr
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

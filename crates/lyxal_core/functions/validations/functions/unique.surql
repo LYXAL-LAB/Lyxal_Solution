@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/unique.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/unique.surql
 -- Fonction     : fn::validation_unique
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

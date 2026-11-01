@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/api_key.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/api_key.surql
 -- Fonction     : fn::validation_api_key
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

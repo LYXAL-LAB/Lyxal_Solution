@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/locale.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/locale.surql
 -- Fonction     : fn::validation_locale
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

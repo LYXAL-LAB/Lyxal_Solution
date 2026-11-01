@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/job_name.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/job_name.surql
 -- Fonction     : fn::validation_job_name
 -- Domaine      : Core / Validation / Workflow
 -- Version      : 1.0.0

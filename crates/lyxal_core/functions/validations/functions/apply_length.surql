@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — VALIDATION ENGINE
 -- ============================================================================
--- Fichier      : core/validation/apply_length.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/apply_length.surql
 -- Fonction     : fn::validation_apply_length
 -- Domaine      : Core / Validation / Engine
 -- Version      : 1.0.0

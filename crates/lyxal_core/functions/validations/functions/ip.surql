@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/ip.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/ip.surql
 -- Fonction     : fn::validation_ip
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

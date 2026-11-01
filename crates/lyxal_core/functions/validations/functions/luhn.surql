@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/luhn.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/luhn.surql
 -- Fonction     : fn::validation_luhn
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

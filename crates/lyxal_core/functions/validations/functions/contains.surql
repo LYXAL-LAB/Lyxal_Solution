@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/contains.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/contains.surql
 -- Fonction     : fn::validation_contains
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/last_name.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/last_name.surql
 -- Fonction     : fn::validation_last_name
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

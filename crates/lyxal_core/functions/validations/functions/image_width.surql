@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/image_width.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/image_width.surql
 -- Fonction     : fn::validation_image_width
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

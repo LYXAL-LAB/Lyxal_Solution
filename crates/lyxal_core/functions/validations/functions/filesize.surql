@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/filesize.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/filesize.surql
 -- Fonction     : fn::validation_filesize
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

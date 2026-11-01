@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/odd.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/odd.surql
 -- Fonction     : fn::validation_odd
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

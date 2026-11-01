@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/all_or_none.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/all_or_none.surql
 -- Fonction     : fn::validation_all_or_none
 -- Domaine      : Core / Validation / Advanced
 -- Version      : 1.0.0

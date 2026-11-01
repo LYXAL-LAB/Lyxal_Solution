@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — VALIDATION PIPELINE
 -- ============================================================================
--- Fichier      : core/validation/pipeline_execute.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/pipeline_execute.surql
 -- Fonction     : fn::validation_pipeline_execute
 -- Domaine      : Core / Validation / Pipeline
 -- Version      : 1.0.0

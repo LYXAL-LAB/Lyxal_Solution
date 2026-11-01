@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/cidr.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/cidr.surql
 -- Fonction     : fn::validation_cidr
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

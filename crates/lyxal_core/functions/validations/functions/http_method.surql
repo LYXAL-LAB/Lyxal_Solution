@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/http_method.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/http_method.surql
 -- Fonction     : fn::validation_http_method
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

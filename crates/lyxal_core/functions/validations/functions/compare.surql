@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/compare.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/compare.surql
 -- Fonction     : fn::validation_compare
 -- Domaine      : Core / Validation / Advanced
 -- Version      : 1.0.0
