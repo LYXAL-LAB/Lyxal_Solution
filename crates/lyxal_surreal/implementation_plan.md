@@ -143,7 +143,7 @@ Les écarts de comportement du moteur 3.3 révélés par les tests (C1) sont cor
 ### Lot 1 — `lyxal_error` + `lyxal_surreal` (terminé)
 
 * SDK résolu : `surrealdb` **3.3.5** (moteur embarqué des tests en 3.3.5) ; serveur de test : binaire **3.3.4**.
-* `lyxal_error` : `LyxalResult<T: SurrealValue>` et `LyxalError` dérivent `SurrealValue` **et** `serde` (relus depuis SurrealDB et renvoyés en JSON par l'API) ; les 16 `XxxParams` ne dérivent plus que `SurrealValue`. 5 attributs `#[serde(alias)]` supprimés (§0). `into_result` : un succès sans donnée n'est accepté que si `T` accepte `NONE` (`()` ou `Option<_>`).
+* `lyxal_error` : `LyxalResult<T: SurrealValue>` et `LyxalError` dérivent `SurrealValue` **et** `serde` (relus depuis SurrealDB et renvoyés en JSON par l'API) ; les 15 `XxxParams` ne dérivent plus que `SurrealValue`. 5 attributs `#[serde(alias)]` supprimés (§0). `into_result` : un succès sans donnée n'est accepté que si `T` accepte `NONE` (`()` ou `Option<_>`).
 * `lyxal_surreal` : `call_fn<T: SurrealValue, P: SurrealValue>` ; `signin(Root { String, String })` ; ré-export `Datetime`, `RecordId`, `SurrealValue`, `Value` ; dépendance `serde` retirée.
 * SurrealQL : 7 fichiers de `lyxal_error/functions/` corrigés (`type::is::*` → `type::is_*`).
 * Tests d'intégration `lyxal_error` : chemin Windows en dur (`c:\Users\HP\...\surreal.exe`) remplacé par `LYXAL_SURREAL_BIN`, à défaut `surreal` dans le `PATH`. Ils ne pouvaient s'exécuter que sur un poste ; ils passent désormais sur 3.3.4.
