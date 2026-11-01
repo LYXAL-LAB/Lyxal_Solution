@@ -6,9 +6,10 @@
 //! - Externalisation des règles métier (familles, spécifications, alias, substitutions) dans SurrealDB.
 //! - Découplage complet de la logique métier Rust vers SurrealQL.
 
-use std::sync::Arc;
+use lyxal_surreal::SurrealValue;
 use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
@@ -21,7 +22,7 @@ use crate::types::{BatchStatus, ManifestStatus, StateTransitionRecord};
 // DTOs DE PARAMÈTRES POUR call_fn
 // =============================================================================
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct BatchCreateParams {
     id: Option<String>,
     source_type: String,
@@ -41,7 +42,7 @@ struct BatchCreateParams {
     provenance_details: serde_json::Value,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct BatchCheckpointParams {
     id: String,
     cursor_offset: i64,
@@ -51,14 +52,14 @@ struct BatchCheckpointParams {
     lignes_rejetees: i64,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct BatchTransitionParams {
     id: String,
     nouveau_statut: String,
     transition: StateTransitionRecord,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct StagedSaveParams {
     batch_id: String,
     raw_record_id: Option<String>,
@@ -73,17 +74,17 @@ struct StagedSaveParams {
     description_technique: Option<String>,
     type_item: String,
     unite_reference: String,
-    conditionnement: Option<serde_json::Value>,
+    conditionnement: crate::types::PackagingDetails,
     qualification: String,
     publication_action: String,
     diff_payload: Option<serde_json::Value>,
     transitions: Vec<StateTransitionRecord>,
     is_approved: bool,
     approved_by: Option<String>,
-    approved_at: Option<String>,
+    approved_at: Option<lyxal_surreal::Datetime>,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct QuarantineLogParams {
     batch_id: String,
     raw_record_id: Option<String>,
@@ -94,7 +95,7 @@ struct QuarantineLogParams {
     cause_detaillee: String,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct ManifestSaveParams {
     manifest_ref: String,
     batch_id: String,
@@ -103,7 +104,7 @@ struct ManifestSaveParams {
     is_sealed: bool,
     statut: String,
     approved_by: Option<String>,
-    approved_at: Option<String>,
+    approved_at: Option<lyxal_surreal::Datetime>,
     approver_role: Option<String>,
     nb_articles_insert: i64,
     nb_articles_update: i64,
@@ -111,17 +112,17 @@ struct ManifestSaveParams {
     items_failed: i64,
     execution_items: Option<Vec<serde_json::Value>>,
     transitions: Option<Vec<StateTransitionRecord>>,
-    executed_at: Option<String>,
+    executed_at: Option<lyxal_surreal::Datetime>,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct ManifestApproveParams {
     manifest_ref: String,
     approved_by: String,
     approver_role: String,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct ManifestRecordExecParams {
     manifest_ref: String,
     statut: String,
@@ -130,27 +131,27 @@ struct ManifestRecordExecParams {
     execution_items: Option<Vec<serde_json::Value>>,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct ResolveUnitParams {
     raw_unit: String,
     language: String,
 }
 
 /// Résultat de la résolution dynamique d'unité vers base_unite
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
 pub struct ResolveUnitResult {
     pub canonical_code: String,
     pub resolved: bool,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct ResolveManufacturerParams {
     raw_name: String,
     language: String,
 }
 
 /// Résultat de la résolution dynamique de fabricant
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
 pub struct ResolveManufacturerResult {
     pub canonical_name: String,
     pub holding_or_group: Option<String>,
@@ -158,7 +159,7 @@ pub struct ResolveManufacturerResult {
     pub resolved: bool,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct FamilyRuleAddParams {
     code: String,
     label: String,
@@ -166,20 +167,20 @@ struct FamilyRuleAddParams {
     standard_unit: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct SpecAddParams {
     technical_identity_key: String,
     family_code: String,
     generic_title: String,
-    nominal_dimensions: Option<serde_json::Value>,
-    tolerances: Option<serde_json::Value>,
+    nominal_dimensions: Option<crate::normalization::dimensions::CanonicalDimensions>,
+    tolerances: Option<crate::technical_grouping::types::SpecificationTolerances>,
     nominal_weight: Option<f64>,
     standard_norm: Option<String>,
     fire_rating: Option<String>,
-    required_features: serde_json::Value,
+    required_features: std::collections::HashMap<String, String>,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct SubstitutionRuleAddParams {
     rule_id: String,
     source_mfg: String,
@@ -198,12 +199,12 @@ struct SubstitutionRuleAddParams {
 // DTOs PHASE 5 : DATA STEWARD & OBSERVABILITÉ
 // =============================================================================
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct DashboardMetricsParams {
     batch_id: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
 pub struct DashboardMetricsResult {
     pub batches: BatchesMetrics,
     pub items: ItemsMetrics,
@@ -211,7 +212,7 @@ pub struct DashboardMetricsResult {
     pub manifests: ManifestsMetrics,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
 pub struct BatchesMetrics {
     pub total: i64,
     pub active: i64,
@@ -220,7 +221,7 @@ pub struct BatchesMetrics {
     pub failed: i64,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
 pub struct ItemsMetrics {
     pub total: i64,
     pub verified: i64,
@@ -229,14 +230,14 @@ pub struct ItemsMetrics {
     pub approved: i64,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
 pub struct QuarantineMetrics {
     pub total: i64,
     pub critical: i64,
     pub pending: i64,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
 pub struct ManifestsMetrics {
     pub total: i64,
     pub sealed: i64,
@@ -244,7 +245,7 @@ pub struct ManifestsMetrics {
     pub committed: i64,
 }
 
-#[derive(Serialize, Default, Debug, Clone)]
+#[derive(Serialize, Default, Debug, Clone, SurrealValue)]
 pub struct StagedListFilter {
     pub batch_id: Option<String>,
     pub qualification: Option<String>,
@@ -253,7 +254,7 @@ pub struct StagedListFilter {
     pub start: Option<i64>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
 pub struct StagedListResult {
     pub items: Vec<serde_json::Value>,
     pub total: i64,
@@ -261,13 +262,13 @@ pub struct StagedListResult {
     pub start: i64,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, SurrealValue)]
 pub struct SessionAuthContext {
     pub user_id: String,
     pub role: String,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, SurrealValue)]
 pub struct StagedRequalifyParams {
     pub item_id: String,
     pub new_qualification: String,
@@ -277,7 +278,7 @@ pub struct StagedRequalifyParams {
     pub _session_auth: Option<SessionAuthContext>,
 }
 
-#[derive(Serialize, Default, Debug, Clone)]
+#[derive(Serialize, Default, Debug, Clone, SurrealValue)]
 pub struct QuarantineListFilter {
     pub batch_id: Option<String>,
     pub severite: Option<String>,
@@ -286,7 +287,7 @@ pub struct QuarantineListFilter {
     pub start: Option<i64>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
 pub struct QuarantineListResult {
     pub records: Vec<serde_json::Value>,
     pub total: i64,
@@ -294,7 +295,7 @@ pub struct QuarantineListResult {
     pub start: i64,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, SurrealValue)]
 pub struct QuarantineResolveParams {
     pub quarantine_id: String,
     pub comment: String,
@@ -304,7 +305,7 @@ pub struct QuarantineResolveParams {
     pub _session_auth: Option<SessionAuthContext>,
 }
 
-#[derive(Serialize, Default, Debug, Clone)]
+#[derive(Serialize, Default, Debug, Clone, SurrealValue)]
 pub struct ManifestListFilter {
     pub batch_id: Option<String>,
     pub statut: Option<String>,
@@ -312,7 +313,7 @@ pub struct ManifestListFilter {
     pub start: Option<i64>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
 pub struct ManifestListResult {
     pub manifests: Vec<serde_json::Value>,
     pub total: i64,
@@ -320,13 +321,13 @@ pub struct ManifestListResult {
     pub start: i64,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Debug, Clone, SurrealValue)]
 pub struct ManifestGetDetailParams {
     pub manifest_ref: String,
     pub language: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
 pub struct ManifestDetailResult {
     pub manifest: serde_json::Value,
     pub batch: Option<serde_json::Value>,
@@ -1404,7 +1405,10 @@ impl IngestionStore {
             .id
             .clone()
             .unwrap_or_else(|| format!("batch_{}", &batch.file_hash_blake3[..16]));
-        let id_val = id_val_raw.strip_prefix("ingestion_batch:").unwrap_or(&id_val_raw).to_string();
+        let id_val = id_val_raw
+            .strip_prefix("ingestion_batch:")
+            .unwrap_or(&id_val_raw)
+            .to_string();
 
         let params = BatchCreateParams {
             id: Some(id_val.clone()),
@@ -1428,14 +1432,18 @@ impl IngestionStore {
         let result: String = self
             .call_fn("ingestion_batch_create", params)
             .await
-            .map_err(|e| IngestionError::Storage(format!("Échec fn::ingestion_batch_create : {e}")))?;
+            .map_err(|e| {
+                IngestionError::Storage(format!("Échec fn::ingestion_batch_create : {e}"))
+            })?;
 
         Ok(result)
     }
 
     /// Récupère un lot par son identifiant
     pub async fn get_batch(&self, batch_id: &str) -> IngestionResult<Option<IngestionBatch>> {
-        let clean_id = batch_id.strip_prefix("ingestion_batch:").unwrap_or(batch_id);
+        let clean_id = batch_id
+            .strip_prefix("ingestion_batch:")
+            .unwrap_or(batch_id);
         let mut res = self
             .db
             .query("SELECT *, <string> record::id(id) AS id FROM ingestion_batch WHERE id = <record> string::concat('ingestion_batch:⟨', $id, '⟩');")
@@ -1481,7 +1489,9 @@ impl IngestionStore {
         to_confirm: usize,
         rejected: usize,
     ) -> IngestionResult<()> {
-        let clean_id = batch_id.strip_prefix("ingestion_batch:").unwrap_or(batch_id);
+        let clean_id = batch_id
+            .strip_prefix("ingestion_batch:")
+            .unwrap_or(batch_id);
         let params = BatchCheckpointParams {
             id: clean_id.to_string(),
             cursor_offset: cursor_offset as i64,
@@ -1494,14 +1504,18 @@ impl IngestionStore {
         let _: bool = self
             .call_fn("ingestion_batch_checkpoint", params)
             .await
-            .map_err(|e| IngestionError::Storage(format!("Échec fn::ingestion_batch_checkpoint : {e}")))?;
+            .map_err(|e| {
+                IngestionError::Storage(format!("Échec fn::ingestion_batch_checkpoint : {e}"))
+            })?;
 
         Ok(())
     }
 
     /// Charge le dernier offset de checkpoint d'un lot
     pub async fn load_checkpoint(&self, batch_id: &str) -> IngestionResult<usize> {
-        let clean_id = batch_id.strip_prefix("ingestion_batch:").unwrap_or(batch_id);
+        let clean_id = batch_id
+            .strip_prefix("ingestion_batch:")
+            .unwrap_or(batch_id);
         let batch = self
             .get_batch(clean_id)
             .await?
@@ -1517,7 +1531,9 @@ impl IngestionStore {
         actor: &str,
         reason: Option<&str>,
     ) -> IngestionResult<()> {
-        let clean_id = batch_id.strip_prefix("ingestion_batch:").unwrap_or(batch_id);
+        let clean_id = batch_id
+            .strip_prefix("ingestion_batch:")
+            .unwrap_or(batch_id);
         let batch = self
             .get_batch(clean_id)
             .await?
@@ -1541,7 +1557,9 @@ impl IngestionStore {
         let _: bool = self
             .call_fn("ingestion_batch_transition", params)
             .await
-            .map_err(|e| IngestionError::Storage(format!("Échec fn::ingestion_batch_transition : {e}")))?;
+            .map_err(|e| {
+                IngestionError::Storage(format!("Échec fn::ingestion_batch_transition : {e}"))
+            })?;
 
         Ok(())
     }
@@ -1553,7 +1571,10 @@ impl IngestionStore {
     /// Sauvegarde un bloc de lignes brutes
     pub async fn save_raw_records_chunk(&self, records: &[RawRecord]) -> IngestionResult<()> {
         for rec in records {
-            let clean_batch = rec.batch.strip_prefix("ingestion_batch:").unwrap_or(&rec.batch);
+            let clean_batch = rec
+                .batch
+                .strip_prefix("ingestion_batch:")
+                .unwrap_or(&rec.batch);
             let rec_id = format!("{}_{}", clean_batch, rec.ligne_numero);
 
             let query = r#"
@@ -1575,19 +1596,31 @@ impl IngestionStore {
                 .bind(("payload", rec.payload_brut.clone()))
                 .bind(("row_hash", rec.row_hash.clone()))
                 .await
-                .map_err(|e| IngestionError::Storage(format!("Échec sauvegarde raw record : {e}")))?;
+                .map_err(|e| {
+                    IngestionError::Storage(format!("Échec sauvegarde raw record : {e}"))
+                })?;
         }
         Ok(())
     }
 
     /// Sauvegarde un article en staging via fn::ingestion_staged_save
     pub async fn save_staged_item(&self, item: &StagedItem) -> IngestionResult<String> {
-        let clean_batch = item.batch.strip_prefix("ingestion_batch:").unwrap_or(&item.batch);
-        let clean_raw = item.raw_record.strip_prefix("ingestion_raw_record:").unwrap_or(&item.raw_record);
+        let clean_batch = item
+            .batch
+            .strip_prefix("ingestion_batch:")
+            .unwrap_or(&item.batch);
+        let clean_raw = item
+            .raw_record
+            .strip_prefix("ingestion_raw_record:")
+            .unwrap_or(&item.raw_record);
 
         let params = StagedSaveParams {
             batch_id: clean_batch.to_string(),
-            raw_record_id: if clean_raw.is_empty() { None } else { Some(clean_raw.to_string()) },
+            raw_record_id: if clean_raw.is_empty() {
+                None
+            } else {
+                Some(clean_raw.to_string())
+            },
             ligne_numero: item.ligne_numero as i64,
             canonical_fingerprint: item.canonical_fingerprint.clone(),
             rules_version: item.rules_version.clone(),
@@ -1599,20 +1632,22 @@ impl IngestionStore {
             description_technique: item.description_technique.clone(),
             type_item: item.type_item.clone(),
             unite_reference: item.unite_reference.clone(),
-            conditionnement: serde_json::to_value(&item.conditionnement).ok(),
+            conditionnement: item.conditionnement.clone(),
             qualification: item.qualification.as_str().to_string(),
             publication_action: item.publication_action.as_str().to_string(),
             diff_payload: item.diff_payload.clone(),
             transitions: item.transitions.clone(),
             is_approved: item.is_approved,
             approved_by: item.approved_by.clone(),
-            approved_at: item.approved_at.clone(),
+            approved_at: item.approved_at,
         };
 
         let result: String = self
             .call_fn("ingestion_staged_save", params)
             .await
-            .map_err(|e| IngestionError::Storage(format!("Échec fn::ingestion_staged_save : {e}")))?;
+            .map_err(|e| {
+                IngestionError::Storage(format!("Échec fn::ingestion_staged_save : {e}"))
+            })?;
 
         Ok(result)
     }
@@ -1626,8 +1661,13 @@ impl IngestionStore {
     }
 
     /// Récupère tous les articles en staging pour un lot
-    pub async fn get_staged_items_by_batch(&self, batch_id: &str) -> IngestionResult<Vec<StagedItem>> {
-        let clean_batch = batch_id.strip_prefix("ingestion_batch:").unwrap_or(batch_id);
+    pub async fn get_staged_items_by_batch(
+        &self,
+        batch_id: &str,
+    ) -> IngestionResult<Vec<StagedItem>> {
+        let clean_batch = batch_id
+            .strip_prefix("ingestion_batch:")
+            .unwrap_or(batch_id);
         let mut res = self
             .db
             .query("SELECT *, <string> record::id(id) AS id, <string> record::id(batch) AS batch, <string> record::id(raw_record) AS raw_record FROM ingestion_staged_item WHERE batch = <record> string::concat('ingestion_batch:', $b);")
@@ -1635,9 +1675,9 @@ impl IngestionStore {
             .await
             .map_err(|e| IngestionError::Storage(format!("Échec lecture staged items : {e}")))?;
 
-        let items: Vec<StagedItem> = res
-            .take(0)
-            .map_err(|e| IngestionError::Storage(format!("Erreur désérialisation staged items : {e}")))?;
+        let items: Vec<StagedItem> = res.take(0).map_err(|e| {
+            IngestionError::Storage(format!("Erreur désérialisation staged items : {e}"))
+        })?;
 
         Ok(items)
     }
@@ -1648,12 +1688,22 @@ impl IngestionStore {
 
     /// Consigne une anomalie en quarantaine via fn::ingestion_quarantine_log
     pub async fn log_quarantine(&self, record: &QuarantineRecord) -> IngestionResult<String> {
-        let clean_batch = record.batch.strip_prefix("ingestion_batch:").unwrap_or(&record.batch);
-        let clean_raw = record.raw_record.strip_prefix("ingestion_raw_record:").unwrap_or(&record.raw_record);
+        let clean_batch = record
+            .batch
+            .strip_prefix("ingestion_batch:")
+            .unwrap_or(&record.batch);
+        let clean_raw = record
+            .raw_record
+            .strip_prefix("ingestion_raw_record:")
+            .unwrap_or(&record.raw_record);
 
         let params = QuarantineLogParams {
             batch_id: clean_batch.to_string(),
-            raw_record_id: if clean_raw.is_empty() { None } else { Some(clean_raw.to_string()) },
+            raw_record_id: if clean_raw.is_empty() {
+                None
+            } else {
+                Some(clean_raw.to_string())
+            },
             code_erreur: record.code_erreur.clone(),
             severite: record.severite.clone(),
             champ_concerne: record.champ_concerne.clone(),
@@ -1664,13 +1714,18 @@ impl IngestionStore {
         let result: String = self
             .call_fn("ingestion_quarantine_log", params)
             .await
-            .map_err(|e| IngestionError::Storage(format!("Échec fn::ingestion_quarantine_log : {e}")))?;
+            .map_err(|e| {
+                IngestionError::Storage(format!("Échec fn::ingestion_quarantine_log : {e}"))
+            })?;
 
         Ok(result)
     }
 
     /// Sauvegarde un bloc d'anomalies en quarantaine
-    pub async fn save_quarantine_records_chunk(&self, records: &[QuarantineRecord]) -> IngestionResult<()> {
+    pub async fn save_quarantine_records_chunk(
+        &self,
+        records: &[QuarantineRecord],
+    ) -> IngestionResult<()> {
         for rec in records {
             self.log_quarantine(rec).await?;
         }
@@ -1678,8 +1733,13 @@ impl IngestionStore {
     }
 
     /// Récupère toutes les anomalies de quarantaine pour un lot
-    pub async fn get_quarantine_by_batch(&self, batch_id: &str) -> IngestionResult<Vec<QuarantineRecord>> {
-        let clean_batch = batch_id.strip_prefix("ingestion_batch:").unwrap_or(batch_id);
+    pub async fn get_quarantine_by_batch(
+        &self,
+        batch_id: &str,
+    ) -> IngestionResult<Vec<QuarantineRecord>> {
+        let clean_batch = batch_id
+            .strip_prefix("ingestion_batch:")
+            .unwrap_or(batch_id);
         let mut res = self
             .db
             .query("SELECT *, <string> record::id(id) AS id, <string> record::id(batch) AS batch, <string> record::id(raw_record) AS raw_record FROM ingestion_quarantine_record WHERE batch = <record> string::concat('ingestion_batch:', $b);")
@@ -1700,7 +1760,10 @@ impl IngestionStore {
 
     /// Crée ou met à jour un manifeste de publication via fn::ingestion_manifest_save
     pub async fn save_manifest(&self, manifest: &PublicationManifest) -> IngestionResult<String> {
-        let clean_batch = manifest.batch.strip_prefix("ingestion_batch:").unwrap_or(&manifest.batch);
+        let clean_batch = manifest
+            .batch
+            .strip_prefix("ingestion_batch:")
+            .unwrap_or(&manifest.batch);
 
         let params = ManifestSaveParams {
             manifest_ref: manifest.manifest_ref.clone(),
@@ -1710,7 +1773,7 @@ impl IngestionStore {
             is_sealed: manifest.is_sealed,
             statut: manifest.statut.as_str().to_string(),
             approved_by: manifest.approved_by.clone(),
-            approved_at: manifest.approved_at.clone(),
+            approved_at: manifest.approved_at,
             approver_role: manifest.approver_role.clone(),
             nb_articles_insert: manifest.nb_articles_insert as i64,
             nb_articles_update: manifest.nb_articles_update as i64,
@@ -1718,19 +1781,24 @@ impl IngestionStore {
             items_failed: manifest.items_failed as i64,
             execution_items: Some(manifest.execution_items.clone()),
             transitions: Some(manifest.transitions.clone()),
-            executed_at: manifest.executed_at.clone(),
+            executed_at: manifest.executed_at,
         };
 
         let result: String = self
             .call_fn("ingestion_manifest_save", params)
             .await
-            .map_err(|e| IngestionError::Storage(format!("Échec fn::ingestion_manifest_save : {e}")))?;
+            .map_err(|e| {
+                IngestionError::Storage(format!("Échec fn::ingestion_manifest_save : {e}"))
+            })?;
 
         Ok(result)
     }
 
     /// Récupère un manifeste par sa référence
-    pub async fn get_manifest(&self, manifest_ref: &str) -> IngestionResult<Option<PublicationManifest>> {
+    pub async fn get_manifest(
+        &self,
+        manifest_ref: &str,
+    ) -> IngestionResult<Option<PublicationManifest>> {
         let mut res = self
             .db
             .query("SELECT *, <string> record::id(id) AS id, <string> record::id(batch) AS batch FROM ingestion_publication_manifest WHERE manifest_ref = $ref;")
@@ -1738,9 +1806,9 @@ impl IngestionStore {
             .await
             .map_err(|e| IngestionError::Storage(format!("Échec lecture manifeste : {e}")))?;
 
-        let manifest: Option<PublicationManifest> = res
-            .take(0)
-            .map_err(|e| IngestionError::Storage(format!("Erreur désérialisation manifeste : {e}")))?;
+        let manifest: Option<PublicationManifest> = res.take(0).map_err(|e| {
+            IngestionError::Storage(format!("Erreur désérialisation manifeste : {e}"))
+        })?;
 
         Ok(manifest)
     }
@@ -1752,10 +1820,9 @@ impl IngestionStore {
         steward_id: &str,
         justification: &str,
     ) -> IngestionResult<()> {
-        let manifest = self
-            .get_manifest(manifest_ref)
-            .await?
-            .ok_or_else(|| IngestionError::Storage(format!("Manifeste '{manifest_ref}' introuvable")))?;
+        let manifest = self.get_manifest(manifest_ref).await?.ok_or_else(|| {
+            IngestionError::Storage(format!("Manifeste '{manifest_ref}' introuvable"))
+        })?;
 
         if !manifest.is_sealed {
             return Err(IngestionError::IllegalTransition(
@@ -1782,9 +1849,10 @@ impl IngestionStore {
                 LyxalSurrealError::Call(lyxal_error::LyxalCallError::Business(err)) => {
                     IngestionError::IllegalTransition(err.message)
                 }
-                LyxalSurrealError::Call(lyxal_error::LyxalCallError::BusinessCode { code, details }) => {
-                    IngestionError::IllegalTransition(format!("{code}: {details}"))
-                }
+                LyxalSurrealError::Call(lyxal_error::LyxalCallError::BusinessCode {
+                    code,
+                    details,
+                }) => IngestionError::IllegalTransition(format!("{code}: {details}")),
                 _ => IngestionError::Storage(format!("Échec fn::ingestion_manifest_approve : {e}")),
             })?;
 
@@ -1810,7 +1878,9 @@ impl IngestionStore {
         let _: bool = self
             .call_fn("ingestion_manifest_record_exec", params)
             .await
-            .map_err(|e| IngestionError::Storage(format!("Échec fn::ingestion_manifest_record_exec : {e}")))?;
+            .map_err(|e| {
+                IngestionError::Storage(format!("Échec fn::ingestion_manifest_record_exec : {e}"))
+            })?;
 
         Ok(())
     }
@@ -1846,7 +1916,9 @@ impl IngestionStore {
             .bind(("record", exec_record))
             .bind(("success", success))
             .await
-            .map_err(|e| IngestionError::Storage(format!("Échec journalisation exécution article : {e}")))?;
+            .map_err(|e| {
+                IngestionError::Storage(format!("Échec journalisation exécution article : {e}"))
+            })?;
 
         Ok(())
     }
@@ -1872,7 +1944,10 @@ impl IngestionStore {
     }
 
     /// Résout dynamiquement un fabricant via fn::ingestion_resolve_manufacturer
-    pub async fn resolve_manufacturer(&self, raw_name: &str) -> IngestionResult<ResolveManufacturerResult> {
+    pub async fn resolve_manufacturer(
+        &self,
+        raw_name: &str,
+    ) -> IngestionResult<ResolveManufacturerResult> {
         let params = ResolveManufacturerParams {
             raw_name: raw_name.to_string(),
             language: "fr".to_string(),
@@ -1881,7 +1956,9 @@ impl IngestionStore {
         let result: ResolveManufacturerResult = self
             .call_fn("ingestion_resolve_manufacturer", params)
             .await
-            .map_err(|e| IngestionError::Storage(format!("Échec fn::ingestion_resolve_manufacturer : {e}")))?;
+            .map_err(|e| {
+                IngestionError::Storage(format!("Échec fn::ingestion_resolve_manufacturer : {e}"))
+            })?;
 
         Ok(result)
     }
@@ -1904,29 +1981,36 @@ impl IngestionStore {
         let res: String = self
             .call_fn("ingestion_rule_family_add", params)
             .await
-            .map_err(|e| IngestionError::Storage(format!("Échec fn::ingestion_rule_family_add : {e}")))?;
+            .map_err(|e| {
+                IngestionError::Storage(format!("Échec fn::ingestion_rule_family_add : {e}"))
+            })?;
 
         Ok(res)
     }
 
     /// Ajoute ou met à jour une spécification patronne sans recompilation
-    pub async fn add_specification(&self, spec: &TechnicalSpecification) -> IngestionResult<String> {
+    pub async fn add_specification(
+        &self,
+        spec: &TechnicalSpecification,
+    ) -> IngestionResult<String> {
         let params = SpecAddParams {
             technical_identity_key: spec.technical_identity_key.clone(),
             family_code: spec.family_code.clone(),
             generic_title: spec.generic_title.clone(),
-            nominal_dimensions: serde_json::to_value(&spec.nominal_dimensions).ok(),
-            tolerances: serde_json::to_value(&spec.tolerances).ok(),
+            nominal_dimensions: spec.nominal_dimensions.clone(),
+            tolerances: spec.tolerances.clone(),
             nominal_weight: spec.nominal_weight.as_ref().and_then(|w| w.net_weight_kg),
             standard_norm: spec.standard_norm.clone(),
             fire_rating: spec.fire_rating.clone(),
-            required_features: serde_json::to_value(&spec.required_features).unwrap_or_default(),
+            required_features: spec.required_features.clone(),
         };
 
         let res: String = self
             .call_fn("ingestion_rule_spec_add", params)
             .await
-            .map_err(|e| IngestionError::Storage(format!("Échec fn::ingestion_rule_spec_add : {e}")))?;
+            .map_err(|e| {
+                IngestionError::Storage(format!("Échec fn::ingestion_rule_spec_add : {e}"))
+            })?;
 
         Ok(res)
     }
@@ -1953,7 +2037,9 @@ impl IngestionStore {
         let res: String = self
             .call_fn("ingestion_rule_substitution_add", params)
             .await
-            .map_err(|e| IngestionError::Storage(format!("Échec fn::ingestion_rule_substitution_add : {e}")))?;
+            .map_err(|e| {
+                IngestionError::Storage(format!("Échec fn::ingestion_rule_substitution_add : {e}"))
+            })?;
 
         Ok(res)
     }
@@ -1964,11 +2050,13 @@ impl IngestionStore {
             .db
             .query("SELECT * FROM ingestion_family_rule;")
             .await
-            .map_err(|e| IngestionError::Storage(format!("Échec lecture ingestion_family_rule : {e}")))?;
+            .map_err(|e| {
+                IngestionError::Storage(format!("Échec lecture ingestion_family_rule : {e}"))
+            })?;
 
-        let families: Vec<FamilyRule> = res
-            .take(0)
-            .map_err(|e| IngestionError::Storage(format!("Erreur désérialisation family_rule : {e}")))?;
+        let families: Vec<FamilyRule> = res.take(0).map_err(|e| {
+            IngestionError::Storage(format!("Erreur désérialisation family_rule : {e}"))
+        })?;
 
         Ok(families)
     }
@@ -1979,26 +2067,30 @@ impl IngestionStore {
             .db
             .query("SELECT * FROM ingestion_specification;")
             .await
-            .map_err(|e| IngestionError::Storage(format!("Échec lecture ingestion_specification : {e}")))?;
+            .map_err(|e| {
+                IngestionError::Storage(format!("Échec lecture ingestion_specification : {e}"))
+            })?;
 
-        let specs: Vec<TechnicalSpecification> = res
-            .take(0)
-            .map_err(|e| IngestionError::Storage(format!("Erreur désérialisation specification : {e}")))?;
+        let specs: Vec<TechnicalSpecification> = res.take(0).map_err(|e| {
+            IngestionError::Storage(format!("Erreur désérialisation specification : {e}"))
+        })?;
 
         Ok(specs)
     }
 
     /// Charge toutes les règles de substitution contextualisées depuis SurrealDB
-    pub async fn load_substitution_rules(&self) -> IngestionResult<Vec<ContextualSubstitutionRule>> {
+    pub async fn load_substitution_rules(
+        &self,
+    ) -> IngestionResult<Vec<ContextualSubstitutionRule>> {
         let mut res = self
             .db
             .query("SELECT rule_id, source_mfg AS source_manufacturer, source_ref, target_mfg AS target_manufacturer, target_ref, system_scope, certification_body, certification_ref AS certification_reference, <string> valid_until AS valid_until, is_revoked, revocation_reason FROM ingestion_substitution_rule;")
             .await
             .map_err(|e| IngestionError::Storage(format!("Échec lecture ingestion_substitution_rule : {e}")))?;
 
-        let rules: Vec<ContextualSubstitutionRule> = res
-            .take(0)
-            .map_err(|e| IngestionError::Storage(format!("Erreur désérialisation substitution_rule : {e}")))?;
+        let rules: Vec<ContextualSubstitutionRule> = res.take(0).map_err(|e| {
+            IngestionError::Storage(format!("Erreur désérialisation substitution_rule : {e}"))
+        })?;
 
         Ok(rules)
     }

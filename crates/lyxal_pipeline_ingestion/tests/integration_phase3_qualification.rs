@@ -87,7 +87,9 @@ fn test_commercial_qualification_strict_separation() {
     // a) Sans preuve formelle de provenance commerciale -> Maintien strict en TO_CONFIRM (Directive CTO Phase 4)
     let norm_no_proof = norm_engine.normalize(&raw_verified, None, SourceFormat::Csv);
     assert_eq!(norm_no_proof.qualification, ItemQualification::ToConfirm);
-    assert!(norm_no_proof.qualification_reason.contains("preuve commerciale formelle absente"));
+    assert!(norm_no_proof
+        .qualification_reason
+        .contains("preuve commerciale formelle absente"));
 
     // b) Avec preuve commerciale formelle (flux EDI signé / certificat) -> VERIFIED
     let proof = lyxal_pipeline_ingestion::proof::CommercialProof::new(
@@ -97,7 +99,8 @@ fn test_commercial_qualification_strict_separation() {
         "system:edi_receiver",
         "2026-10-25T10:00:00Z",
     );
-    let norm_verified = norm_engine.normalize_with_proof(&raw_verified, None, SourceFormat::Csv, Some(proof));
+    let norm_verified =
+        norm_engine.normalize_with_proof(&raw_verified, None, SourceFormat::Csv, Some(proof));
     assert_eq!(norm_verified.qualification, ItemQualification::Verified);
     assert_eq!(norm_verified.manufacturer, "PLACO");
 
@@ -121,7 +124,9 @@ fn test_commercial_qualification_strict_separation() {
     let norm_gtin_only = norm_engine.normalize(&raw_gtin_only, None, SourceFormat::Csv);
     // Exigence CTO : Une clé GTIN valide ne suffit jamais à attribuer VERIFIED
     assert_eq!(norm_gtin_only.qualification, ItemQualification::ToConfirm);
-    assert!(norm_gtin_only.qualification_reason.contains("preuve commerciale formelle absente"));
+    assert!(norm_gtin_only
+        .qualification_reason
+        .contains("preuve commerciale formelle absente"));
 
     // 1.3. Cas REJECTED : Code GTIN avec checksum corrompu (Modulo 10 faux)
     let raw_corrupt_gtin = RawRecordDto {
@@ -192,11 +197,17 @@ fn test_commercial_qualification_strict_separation() {
         raw_hash: "hash_05".to_string(),
     };
     let norm_spec_to_confirm = norm_engine.normalize(&raw_spec_to_confirm, None, SourceFormat::Csv);
-    assert_eq!(norm_spec_to_confirm.qualification, ItemQualification::ToConfirm);
+    assert_eq!(
+        norm_spec_to_confirm.qualification,
+        ItemQualification::ToConfirm
+    );
 
     // Évaluation technique : atteint le Niveau 3 (FunctionalEquivalence) grâce aux caractéristiques techniques complètes
     let dec_equiv = grouping_engine.evaluate_item(&norm_spec_to_confirm);
-    assert_eq!(dec_equiv.reached_level, TechnicalGroupLevel::FunctionalEquivalence);
+    assert_eq!(
+        dec_equiv.reached_level,
+        TechnicalGroupLevel::FunctionalEquivalence
+    );
     // MAIS son statut reste TO_CONFIRM car commercialement non vérifié (RÈGLE INVIOLABLE CTO)
     assert_eq!(dec_equiv.qualification, ItemQualification::ToConfirm);
 }
@@ -223,7 +234,11 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
         Some(8.50),
         Some("3017620422003"),
         true,
-        Some(CanonicalDimensions { length_mm: Some(2500.0), width_mm: Some(1200.0), height_mm: Some(12.5) }),
+        Some(CanonicalDimensions {
+            length_mm: Some(2500.0),
+            width_mm: Some(1200.0),
+            height_mm: Some(12.5),
+        }),
         feat_ba13.clone(),
         ItemQualification::Verified,
     );
@@ -236,13 +251,20 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
         Some(8.30),
         Some("3017620422003"),
         true,
-        Some(CanonicalDimensions { length_mm: Some(2500.0), width_mm: Some(1200.0), height_mm: Some(12.5) }),
+        Some(CanonicalDimensions {
+            length_mm: Some(2500.0),
+            width_mm: Some(1200.0),
+            height_mm: Some(12.5),
+        }),
         feat_ba13,
         ItemQualification::Verified,
     );
 
     let dec_plaques = engine.compare_items(&placo_ba13, &knauf_ks13);
-    assert_eq!(dec_plaques.reached_level, TechnicalGroupLevel::FunctionalEquivalence);
+    assert_eq!(
+        dec_plaques.reached_level,
+        TechnicalGroupLevel::FunctionalEquivalence
+    );
     assert_eq!(dec_plaques.confidence_score, 0.90);
 
     // -------------------------------------------------------------------------
@@ -259,7 +281,11 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
         Some(3.20),
         Some("3017620422003"),
         true,
-        Some(CanonicalDimensions { length_mm: Some(3000.0), width_mm: Some(48.0), height_mm: Some(40.0) }),
+        Some(CanonicalDimensions {
+            length_mm: Some(3000.0),
+            width_mm: Some(48.0),
+            height_mm: Some(40.0),
+        }),
         feat_rail.clone(),
         ItemQualification::Verified,
     );
@@ -272,13 +298,20 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
         Some(3.10),
         Some("3017620422003"),
         true,
-        Some(CanonicalDimensions { length_mm: Some(3000.0), width_mm: Some(48.0), height_mm: Some(40.0) }),
+        Some(CanonicalDimensions {
+            length_mm: Some(3000.0),
+            width_mm: Some(48.0),
+            height_mm: Some(40.0),
+        }),
         feat_rail,
         ItemQualification::Verified,
     );
 
     let dec_rails = engine.compare_items(&rail_placo, &rail_knauf);
-    assert_eq!(dec_rails.reached_level, TechnicalGroupLevel::FunctionalEquivalence);
+    assert_eq!(
+        dec_rails.reached_level,
+        TechnicalGroupLevel::FunctionalEquivalence
+    );
 
     // -------------------------------------------------------------------------
     // 2.3. Famille 3 : Prises et appareillages électriques (Legrand Céliane vs Schneider Odace)
@@ -315,14 +348,20 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
 
     let dec_prises = engine.compare_items(&prise_legrand, &prise_schneider);
     // Même famille électricité
-    assert!(dec_prises.matched_criteria.iter().any(|m| m.contains("famille")));
+    assert!(dec_prises
+        .matched_criteria
+        .iter()
+        .any(|m| m.contains("famille")));
 
     // -------------------------------------------------------------------------
     // 2.4. Famille 4 : Isolants thermiques (Laine de verre vs Laine de roche)
     // Matériaux incompatibles -> Doit refuser l'équivalence fonctionnelle
     // -------------------------------------------------------------------------
     let mut feat_verre = HashMap::new();
-    feat_verre.insert("insulation_material".to_string(), "LAINE_DE_VERRE".to_string());
+    feat_verre.insert(
+        "insulation_material".to_string(),
+        "LAINE_DE_VERRE".to_string(),
+    );
     feat_verre.insert("thermal_lambda".to_string(), "0.032".to_string());
 
     let isover_gr32 = create_test_item(
@@ -333,13 +372,20 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
         Some(14.50),
         Some("3017620422003"),
         true,
-        Some(CanonicalDimensions { length_mm: Some(2700.0), width_mm: Some(1200.0), height_mm: Some(100.0) }),
+        Some(CanonicalDimensions {
+            length_mm: Some(2700.0),
+            width_mm: Some(1200.0),
+            height_mm: Some(100.0),
+        }),
         feat_verre,
         ItemQualification::Verified,
     );
 
     let mut feat_roche = HashMap::new();
-    feat_roche.insert("insulation_material".to_string(), "LAINE_DE_ROCHE".to_string());
+    feat_roche.insert(
+        "insulation_material".to_string(),
+        "LAINE_DE_ROCHE".to_string(),
+    );
     feat_roche.insert("thermal_lambda".to_string(), "0.035".to_string());
 
     let rockwool_plus = create_test_item(
@@ -350,14 +396,21 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
         Some(16.00),
         Some("3017620422003"),
         true,
-        Some(CanonicalDimensions { length_mm: Some(1200.0), width_mm: Some(600.0), height_mm: Some(100.0) }),
+        Some(CanonicalDimensions {
+            length_mm: Some(1200.0),
+            width_mm: Some(600.0),
+            height_mm: Some(100.0),
+        }),
         feat_roche,
         ItemQualification::Verified,
     );
 
     let dec_isolants = engine.compare_items(&isover_gr32, &rockwool_plus);
     assert_eq!(dec_isolants.reached_level, TechnicalGroupLevel::Family);
-    assert!(dec_isolants.missing_evidence.iter().any(|m| m.contains("incompatibles")));
+    assert!(dec_isolants
+        .missing_evidence
+        .iter()
+        .any(|m| m.contains("incompatibles")));
 
     // -------------------------------------------------------------------------
     // 2.5. Empêcher les faux regroupements entre familles différentes
@@ -374,8 +427,14 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
     assert_eq!(normalize_manufacturer("Saint-Gobain Placo"), "PLACO");
     assert_eq!(normalize_manufacturer("Saint-Gobain Isover"), "ISOVER");
     assert_eq!(normalize_manufacturer("Saint-Gobain Weber"), "WEBER");
-    assert_eq!(normalize_manufacturer("Saint-Gobain PAM Pont-à-Mousson"), "PAM");
-    assert_eq!(normalize_manufacturer("Saint-Gobain"), "SAINT-GOBAIN (INDETERMINE)");
+    assert_eq!(
+        normalize_manufacturer("Saint-Gobain PAM Pont-à-Mousson"),
+        "PAM"
+    );
+    assert_eq!(
+        normalize_manufacturer("Saint-Gobain"),
+        "SAINT-GOBAIN (INDETERMINE)"
+    );
 
     // Marques électriques du groupe Legrand
     assert_eq!(normalize_manufacturer("Legrand France"), "LEGRAND");
@@ -383,7 +442,10 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
     assert_eq!(normalize_manufacturer("Legrand Bticino"), "BTICINO");
 
     // Marques du groupe Schneider Electric
-    assert_eq!(normalize_manufacturer("Schneider Electric France"), "SCHNEIDER ELECTRIC");
+    assert_eq!(
+        normalize_manufacturer("Schneider Electric France"),
+        "SCHNEIDER ELECTRIC"
+    );
     assert_eq!(normalize_manufacturer("Merlin Gerin"), "MERLIN GERIN");
     assert_eq!(normalize_manufacturer("Telemecanique"), "TELEMECANIQUE");
 }
@@ -403,8 +465,15 @@ fn test_contextual_and_revocable_substitution() {
         Some(8.50),
         Some("3017620422003"),
         true,
-        Some(CanonicalDimensions { length_mm: Some(2500.0), width_mm: Some(1200.0), height_mm: Some(12.5) }),
-        HashMap::from([("edge_type".to_string(), "BA".to_string()), ("fire_rating".to_string(), "A2-S1,D0".to_string())]),
+        Some(CanonicalDimensions {
+            length_mm: Some(2500.0),
+            width_mm: Some(1200.0),
+            height_mm: Some(12.5),
+        }),
+        HashMap::from([
+            ("edge_type".to_string(), "BA".to_string()),
+            ("fire_rating".to_string(), "A2-S1,D0".to_string()),
+        ]),
         ItemQualification::Verified,
     );
 
@@ -416,14 +485,24 @@ fn test_contextual_and_revocable_substitution() {
         Some(8.30),
         Some("3017620422003"),
         true,
-        Some(CanonicalDimensions { length_mm: Some(2500.0), width_mm: Some(1200.0), height_mm: Some(12.5) }),
-        HashMap::from([("edge_type".to_string(), "BA".to_string()), ("fire_rating".to_string(), "A2-S1,D0".to_string())]),
+        Some(CanonicalDimensions {
+            length_mm: Some(2500.0),
+            width_mm: Some(1200.0),
+            height_mm: Some(12.5),
+        }),
+        HashMap::from([
+            ("edge_type".to_string(), "BA".to_string()),
+            ("fire_rating".to_string(), "A2-S1,D0".to_string()),
+        ]),
         ItemQualification::Verified,
     );
 
     // 1. Sans règle enregistrée -> Reste au Niveau 3 (Équivalence fonctionnelle)
     let dec_before = engine.compare_items_in_context(&placo, &knauf, Some("SYSTEME_CLOISON_72_48"));
-    assert_eq!(dec_before.reached_level, TechnicalGroupLevel::FunctionalEquivalence);
+    assert_eq!(
+        dec_before.reached_level,
+        TechnicalGroupLevel::FunctionalEquivalence
+    );
 
     // 2. Enregistrement d'une règle contextualisée CSTB sur le scope "SYSTEME_CLOISON_72_48"
     engine.register_contextual_substitution(ContextualSubstitutionRule {
@@ -441,23 +520,47 @@ fn test_contextual_and_revocable_substitution() {
     });
 
     // 3. Évaluation avec le système conforme -> Promotion Niveau 4 (AuthorizedSubstitution)
-    let dec_valid_context = engine.compare_items_in_context(&placo, &knauf, Some("SYSTEME_CLOISON_72_48"));
-    assert_eq!(dec_valid_context.reached_level, TechnicalGroupLevel::AuthorizedSubstitution);
+    let dec_valid_context =
+        engine.compare_items_in_context(&placo, &knauf, Some("SYSTEME_CLOISON_72_48"));
+    assert_eq!(
+        dec_valid_context.reached_level,
+        TechnicalGroupLevel::AuthorizedSubstitution
+    );
     assert_eq!(dec_valid_context.confidence_score, 1.0);
-    assert!(dec_valid_context.matched_criteria.iter().any(|m| m.contains("Avis Technique")));
+    assert!(dec_valid_context
+        .matched_criteria
+        .iter()
+        .any(|m| m.contains("Avis Technique")));
 
     // 4. Évaluation avec un système constructif différent -> Rejet du Niveau 4 (hors périmètre)
-    let dec_wrong_context = engine.compare_items_in_context(&placo, &knauf, Some("SYSTEME_PLAFOND_SUSPENDU"));
-    assert_eq!(dec_wrong_context.reached_level, TechnicalGroupLevel::FunctionalEquivalence);
-    assert!(dec_wrong_context.missing_evidence.iter().any(|m| m.contains("hors périmètre")));
+    let dec_wrong_context =
+        engine.compare_items_in_context(&placo, &knauf, Some("SYSTEME_PLAFOND_SUSPENDU"));
+    assert_eq!(
+        dec_wrong_context.reached_level,
+        TechnicalGroupLevel::FunctionalEquivalence
+    );
+    assert!(dec_wrong_context
+        .missing_evidence
+        .iter()
+        .any(|m| m.contains("hors périmètre")));
 
     // 5. Révocation formelle de l'Avis Technique
-    let revoked = engine.revoke_substitution("CSTB-ATE-2026-01", "Avis Technique suspendu pour non-conformité procès-verbal");
+    let revoked = engine.revoke_substitution(
+        "CSTB-ATE-2026-01",
+        "Avis Technique suspendu pour non-conformité procès-verbal",
+    );
     assert!(revoked);
 
-    let dec_after_revocation = engine.compare_items_in_context(&placo, &knauf, Some("SYSTEME_CLOISON_72_48"));
-    assert_eq!(dec_after_revocation.reached_level, TechnicalGroupLevel::FunctionalEquivalence);
-    assert!(dec_after_revocation.missing_evidence.iter().any(|m| m.contains("révoquée")));
+    let dec_after_revocation =
+        engine.compare_items_in_context(&placo, &knauf, Some("SYSTEME_CLOISON_72_48"));
+    assert_eq!(
+        dec_after_revocation.reached_level,
+        TechnicalGroupLevel::FunctionalEquivalence
+    );
+    assert!(dec_after_revocation
+        .missing_evidence
+        .iter()
+        .any(|m| m.contains("révoquée")));
 }
 
 // =============================================================================
@@ -547,7 +650,9 @@ fn test_quarantine_engine_lifecycle_and_audit() {
         "ok",
     );
     assert!(res_short_justif.is_err());
-    assert!(res_short_justif.unwrap_err().contains("au moins 10 caractères"));
+    assert!(res_short_justif
+        .unwrap_err()
+        .contains("au moins 10 caractères"));
 
     // 4.6. Requalification formelle valide par steward_admin
     let res_ok = quarantine.requalify_entry(
@@ -564,7 +669,9 @@ fn test_quarantine_engine_lifecycle_and_audit() {
     assert_eq!(updated.resulting_qualification, ItemQualification::Verified);
     assert_eq!(updated.audit_trail.len(), 2);
     assert_eq!(updated.audit_trail[1].to_statut, "Verified");
-    assert!(updated.audit_trail[1].transition_by.contains("chief_steward"));
+    assert!(updated.audit_trail[1]
+        .transition_by
+        .contains("chief_steward"));
 
     // 4.7. Statistiques de quarantaine
     let stats = quarantine.get_stats_for_batch("batch_20261025_01");
@@ -585,7 +692,8 @@ fn test_streaming_and_volume_large_scale() {
 
     // Génération synthétique d'un flux CSV de 1 500 articles BTP représentatifs
     let mut csv_buffer = String::with_capacity(300_000);
-    csv_buffer.push_str("reference;designation;fabricant;unite;prix;longueur;largeur;epaisseur;gtin\n");
+    csv_buffer
+        .push_str("reference;designation;fabricant;unite;prix;longueur;largeur;epaisseur;gtin\n");
 
     for i in 1..=1500 {
         if i % 4 == 0 {
@@ -611,7 +719,9 @@ fn test_streaming_and_volume_large_scale() {
         }
     }
 
-    let csv_adapter = registry.get(SourceFormat::Csv).expect("CsvAdapter introuvable");
+    let csv_adapter = registry
+        .get(SourceFormat::Csv)
+        .expect("CsvAdapter introuvable");
 
     let start_time = Instant::now();
 
@@ -634,7 +744,12 @@ fn test_streaming_and_volume_large_scale() {
 
     // 2. Normalisation et routage quarantaine
     for rec in &records {
-        let normalized = norm_engine.normalize_with_proof(rec, None, SourceFormat::Csv, Some(stream_proof.clone()));
+        let normalized = norm_engine.normalize_with_proof(
+            rec,
+            None,
+            SourceFormat::Csv,
+            Some(stream_proof.clone()),
+        );
 
         match normalized.qualification {
             ItemQualification::Verified => verified_count += 1,
@@ -675,6 +790,13 @@ fn test_streaming_and_volume_large_scale() {
     );
 
     let throughput = (1500.0 / duration.as_secs_f64()) as usize;
-    println!("Débit mesuré sur 1 500 articles : {} articles/seconde (durée: {}ms)", throughput, duration.as_millis());
-    assert!(throughput >= 500, "Débit minimum attendu en mode test : >= 500 articles/seconde");
+    println!(
+        "Débit mesuré sur 1 500 articles : {} articles/seconde (durée: {}ms)",
+        throughput,
+        duration.as_millis()
+    );
+    assert!(
+        throughput >= 500,
+        "Débit minimum attendu en mode test : >= 500 articles/seconde"
+    );
 }

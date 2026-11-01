@@ -8,9 +8,10 @@
 //! - Reprise idempotente par journalisation détaillée article par article dans `execution_items`.
 //! - Aucun accès direct en écriture SQL aux tables du Master : appel exclusif des fonctions publiques autorisées.
 
-use std::collections::HashSet;
 use lyxal_event::EventPublisher;
+use lyxal_surreal::SurrealValue;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 use crate::error::{IngestionError, IngestionResult};
 use crate::events::ManifestPublishedEvent;
@@ -19,7 +20,7 @@ use crate::storage::IngestionStore;
 use crate::types::{ItemQualification, ManifestStatus, PublicationAction};
 
 /// Session d'un agent de synchronisation de catalogue.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
 pub struct SyncAgentSession {
     /// Identifiant de l'agent ou de la machine.
     pub agent_id: String,
@@ -42,12 +43,15 @@ impl SyncAgentSession {
     /// Vérifie que la session possède l'identité et les privilèges stricts requis pour la publication.
     pub fn is_authorized(&self) -> bool {
         self.role == "catalogue_sync_agent"
-            && self.scopes.iter().any(|s| s == "catalogue:sync:write" || s == "*")
+            && self
+                .scopes
+                .iter()
+                .any(|s| s == "catalogue:sync:write" || s == "*")
     }
 }
 
 /// Rapport d'exécution de la publication d'un manifeste.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, SurrealValue)]
 pub struct PublicationExecutionReport {
     /// Référence du manifeste traité.
     pub manifest_ref: String,
@@ -117,7 +121,9 @@ impl ControlledPublisher {
             .store
             .get_manifest(manifest_ref)
             .await?
-            .ok_or_else(|| IngestionError::Storage(format!("Manifeste '{manifest_ref}' introuvable")))?;
+            .ok_or_else(|| {
+                IngestionError::Storage(format!("Manifeste '{manifest_ref}' introuvable"))
+            })?;
 
         // 3. Contrôle de scellement BLAKE3
         if !manifest.is_sealed || manifest.seal_hash.is_empty() {
@@ -238,9 +244,7 @@ impl ControlledPublisher {
             });
 
             // Exécution sécurisée en environnement isolé
-            let exec_result = self
-                .execute_catalogue_api(action_str, &call_payload)
-                .await;
+            let exec_result = self.execute_catalogue_api(action_str, &call_payload).await;
 
             match exec_result {
                 Ok(_) => {
@@ -270,7 +274,8 @@ impl ControlledPublisher {
             }
         }
 
-        let is_completed = failed == 0 && (already_published + newly_published) == eligible_verified;
+        let is_completed =
+            failed == 0 && (already_published + newly_published) == eligible_verified;
 
         // 9. Si tous les articles vérifiés ont été publiés sans erreur, sceller la transition finale à COMMITTED via fn::ingestion_manifest_record_exec
         if is_completed {
@@ -323,18 +328,21 @@ impl ControlledPublisher {
 
         // Simulation/exécution de l'API publique en environnement isolé
         // On effectue un appel typé SurrealDB sans toucher aux tables de prod
-        let query = format!("RETURN {{ function_called: '{function_name}', status: 'OK', payload: $p }};");
+        let query =
+            format!("RETURN {{ function_called: '{function_name}', status: 'OK', payload: $p }};");
         let mut res = self
             .store
             .client()
             .query(query)
             .bind(("p", payload.clone()))
             .await
-            .map_err(|e| IngestionError::Storage(format!("Échec appel API catalogue {function_name} : {e}")))?;
+            .map_err(|e| {
+                IngestionError::Storage(format!("Échec appel API catalogue {function_name} : {e}"))
+            })?;
 
-        let val: Option<serde_json::Value> = res
-            .take(0)
-            .map_err(|e| IngestionError::Storage(format!("Erreur retour fonction catalogue : {e}")))?;
+        let val: Option<serde_json::Value> = res.take(0).map_err(|e| {
+            IngestionError::Storage(format!("Erreur retour fonction catalogue : {e}"))
+        })?;
 
         if val.is_none() {
             return Err(IngestionError::Storage(format!(

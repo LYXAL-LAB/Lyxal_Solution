@@ -9,7 +9,9 @@ pub mod manufacturer;
 pub mod technical_attributes;
 pub mod units;
 
-pub use dimensions::{normalize_dimensions, normalize_weight, CanonicalDimensions, CanonicalWeight};
+pub use dimensions::{
+    normalize_dimensions, normalize_weight, CanonicalDimensions, CanonicalWeight,
+};
 pub use gtin::{validate_and_normalize_gtin, GtinValidationError};
 pub use manufacturer::normalize_manufacturer;
 pub use technical_attributes::{normalize_technical_attributes, CanonicalTechnicalAttributes};
@@ -96,12 +98,14 @@ impl NormalizationEngine {
 
     /// Enregistre un alias d'unité dynamique vers base_unite
     pub fn register_unit_alias(&mut self, raw: &str, canonical: &str) {
-        self.custom_unit_aliases.insert(raw.trim().to_uppercase(), canonical.trim().to_uppercase());
+        self.custom_unit_aliases
+            .insert(raw.trim().to_uppercase(), canonical.trim().to_uppercase());
     }
 
     /// Enregistre un alias de fabricant dynamique
     pub fn register_manufacturer_alias(&mut self, raw: &str, canonical: &str) {
-        self.custom_mfg_aliases.insert(raw.trim().to_uppercase(), canonical.trim().to_uppercase());
+        self.custom_mfg_aliases
+            .insert(raw.trim().to_uppercase(), canonical.trim().to_uppercase());
     }
 
     /// Résout une unité brute via les alias dynamiques puis le référentiel statique
@@ -149,14 +153,19 @@ impl NormalizationEngine {
         };
 
         // 2. Normalisation fabricant
-        let mfg_input = raw.raw_manufacturer.as_deref()
+        let mfg_input = raw
+            .raw_manufacturer
+            .as_deref()
             .or(raw.raw_brand.as_deref())
             .or(default_manufacturer)
             .unwrap_or("FABRICANT_NON_SPECIFIE");
         let clean_manufacturer = self.resolve_manufacturer(mfg_input);
 
         // 3. Normalisation marque
-        let clean_brand = raw.raw_brand.as_deref().map(|b| self.resolve_manufacturer(b));
+        let clean_brand = raw
+            .raw_brand
+            .as_deref()
+            .map(|b| self.resolve_manufacturer(b));
 
         // 4. Normalisation libellé commercial
         let clean_label = raw.raw_designation.trim().to_string();
@@ -224,7 +233,9 @@ impl NormalizationEngine {
         });
 
         let canonical_fingerprint = lyxal_crypto::blake3_hex(
-            serde_json::to_string(&canonical_repr).unwrap_or_default().as_bytes()
+            serde_json::to_string(&canonical_repr)
+                .unwrap_or_default()
+                .as_bytes(),
         );
 
         NormalizedItemDto {
@@ -238,7 +249,10 @@ impl NormalizationEngine {
             is_gtin_valid,
             unit_code: clean_unit,
             price: raw.raw_price,
-            currency: raw.raw_currency.clone().unwrap_or_else(|| "EUR".to_string()),
+            currency: raw
+                .raw_currency
+                .clone()
+                .unwrap_or_else(|| "EUR".to_string()),
             dimensions: clean_dims,
             weight: clean_weight,
             technical_features: tech_attrs.normalized_features,
@@ -295,11 +309,20 @@ impl NormalizationEngine {
         let is_mfg_known = manufacturer != "FABRICANT_NON_SPECIFIE"
             && !manufacturer.is_empty()
             && !manufacturer.contains("(INDETERMINE)");
-        let has_detailed_designation = designation.len() >= 8 && !designation.contains("Article sans libellé");
+        let has_detailed_designation =
+            designation.len() >= 8 && !designation.contains("Article sans libellé");
         let has_tech_coherence = price.is_some() || is_gtin_valid || dimensions.is_some();
-        let has_valid_proof = commercial_proof.as_ref().map(|p| p.is_valid()).unwrap_or(false);
+        let has_valid_proof = commercial_proof
+            .as_ref()
+            .map(|p| p.is_valid())
+            .unwrap_or(false);
 
-        if is_mfg_known && is_unit_resolved && has_detailed_designation && has_tech_coherence && has_valid_proof {
+        if is_mfg_known
+            && is_unit_resolved
+            && has_detailed_designation
+            && has_tech_coherence
+            && has_valid_proof
+        {
             let p = commercial_proof.as_ref().unwrap();
             return (
                 ItemQualification::Verified,
@@ -366,7 +389,9 @@ mod tests {
         // 1. Sans preuve commerciale formelle -> Maintien strict en TO_CONFIRM (Directive CTO Phase 4)
         let norm_no_proof = engine.normalize(&raw, None, SourceFormat::FabDis);
         assert_eq!(norm_no_proof.qualification, ItemQualification::ToConfirm);
-        assert!(norm_no_proof.qualification_reason.contains("preuve commerciale formelle absente"));
+        assert!(norm_no_proof
+            .qualification_reason
+            .contains("preuve commerciale formelle absente"));
 
         // 2. Avec preuve commerciale formelle (flux EDI signé) -> VERIFIED
         let proof = crate::proof::CommercialProof::new(
@@ -376,13 +401,17 @@ mod tests {
             "system:edi_receiver",
             "2026-10-25T10:00:00Z",
         );
-        let norm_verified = engine.normalize_with_proof(&raw, None, SourceFormat::FabDis, Some(proof));
+        let norm_verified =
+            engine.normalize_with_proof(&raw, None, SourceFormat::FabDis, Some(proof));
         assert_eq!(norm_verified.manufacturer, "PLACO");
         assert_eq!(norm_verified.manufacturer_ref, "BA13_2500");
         assert_eq!(norm_verified.unit_code, Some("M2".to_string()));
         assert_eq!(norm_verified.qualification, ItemQualification::Verified);
         assert!(norm_verified.dimensions.is_some());
-        assert_eq!(norm_verified.dimensions.as_ref().unwrap().length_mm, Some(2500.0));
+        assert_eq!(
+            norm_verified.dimensions.as_ref().unwrap().length_mm,
+            Some(2500.0)
+        );
     }
 
     #[test]

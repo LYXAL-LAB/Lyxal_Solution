@@ -7,11 +7,13 @@
 //! Pour être qualifié VERIFIED, un article DOIT comporter une preuve commerciale formelle,
 //! fiable, identifiable et auditable. Sans cette preuve, l'article est obligatoirement TO_CONFIRM.
 
+use lyxal_surreal::SurrealValue;
 use serde::{Deserialize, Serialize};
 
 /// Type de preuve formelle attestant de la provenance commerciale d'une référence.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, SurrealValue)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[surreal(untagged, rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CommercialProofType {
     /// Flux EDI officiel signé électroniquement par le fabricant (ex: GS1 XML / AS2 certifié)
     CertifiedManufacturerEdi,
@@ -35,7 +37,7 @@ impl std::fmt::Display for CommercialProofType {
 }
 
 /// Preuve commerciale formelle, fiable et traçable attachée à un article ou lot.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, SurrealValue)]
 pub struct CommercialProof {
     /// Type de preuve formelle
     pub proof_type: CommercialProofType,
@@ -117,7 +119,10 @@ mod tests {
             "2026-10-25T10:00:00Z",
         );
         assert!(proof.is_valid());
-        assert_eq!(proof.proof_type, CommercialProofType::CertifiedManufacturerEdi);
+        assert_eq!(
+            proof.proof_type,
+            CommercialProofType::CertifiedManufacturerEdi
+        );
         assert!(!proof.is_pilot_or_synthetic());
         assert!(proof.is_eligible_for_production());
 
@@ -143,8 +148,14 @@ mod tests {
             "2026-10-25T14:00:00Z",
         );
         assert!(pilot_proof.is_valid());
-        assert!(pilot_proof.is_pilot_or_synthetic(), "Les jetons PROOF-AUTH-2026-* doivent être détectés comme pilotes");
-        assert!(!pilot_proof.is_eligible_for_production(), "Une preuve pilote ne doit JAMAIS être éligible à la production");
+        assert!(
+            pilot_proof.is_pilot_or_synthetic(),
+            "Les jetons PROOF-AUTH-2026-* doivent être détectés comme pilotes"
+        );
+        assert!(
+            !pilot_proof.is_eligible_for_production(),
+            "Une preuve pilote ne doit JAMAIS être éligible à la production"
+        );
 
         // Preuve synthétique de banc d'essai
         let synth_proof = CommercialProof::new(
@@ -155,7 +166,13 @@ mod tests {
             "2026-10-25T14:00:00Z",
         );
         assert!(synth_proof.is_valid());
-        assert!(synth_proof.is_pilot_or_synthetic(), "Une preuve synthétique doit être détectée");
-        assert!(!synth_proof.is_eligible_for_production(), "Une preuve synthétique ne doit JAMAIS être éligible à la production");
+        assert!(
+            synth_proof.is_pilot_or_synthetic(),
+            "Une preuve synthétique doit être détectée"
+        );
+        assert!(
+            !synth_proof.is_eligible_for_production(),
+            "Une preuve synthétique ne doit JAMAIS être éligible à la production"
+        );
     }
 }

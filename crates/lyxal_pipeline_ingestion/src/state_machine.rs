@@ -31,7 +31,10 @@ impl BatchStateMachine {
         }
     }
 
-    pub fn validate_transition(from: BatchStatus, to: BatchStatus) -> Result<(), IllegalStateTransitionError> {
+    pub fn validate_transition(
+        from: BatchStatus,
+        to: BatchStatus,
+    ) -> Result<(), IllegalStateTransitionError> {
         if Self::can_transition(from, to) {
             Ok(())
         } else {
@@ -59,7 +62,10 @@ impl StagedItemStateMachine {
         }
     }
 
-    pub fn validate_transition(from: ItemQualification, to: ItemQualification) -> Result<(), IllegalStateTransitionError> {
+    pub fn validate_transition(
+        from: ItemQualification,
+        to: ItemQualification,
+    ) -> Result<(), IllegalStateTransitionError> {
         if Self::can_transition(from, to) {
             Ok(())
         } else {
@@ -94,7 +100,10 @@ impl ManifestStateMachine {
         }
     }
 
-    pub fn validate_transition(from: ManifestStatus, to: ManifestStatus) -> Result<(), IllegalStateTransitionError> {
+    pub fn validate_transition(
+        from: ManifestStatus,
+        to: ManifestStatus,
+    ) -> Result<(), IllegalStateTransitionError> {
         if Self::can_transition(from, to) {
             Ok(())
         } else {
@@ -113,20 +122,64 @@ mod tests {
 
     #[test]
     fn test_batch_transitions() {
-        assert!(BatchStateMachine::validate_transition(BatchStatus::Received, BatchStatus::Parsing).is_ok());
-        assert!(BatchStateMachine::validate_transition(BatchStatus::Parsing, BatchStatus::Validating).is_ok());
-        assert!(BatchStateMachine::validate_transition(BatchStatus::Validating, BatchStatus::Staged).is_ok());
-        assert!(BatchStateMachine::validate_transition(BatchStatus::Staged, BatchStatus::Published).is_ok());
-        assert!(BatchStateMachine::validate_transition(BatchStatus::Published, BatchStatus::Received).is_err());
-        assert!(BatchStateMachine::validate_transition(BatchStatus::Received, BatchStatus::Published).is_err());
+        assert!(BatchStateMachine::validate_transition(
+            BatchStatus::Received,
+            BatchStatus::Parsing
+        )
+        .is_ok());
+        assert!(BatchStateMachine::validate_transition(
+            BatchStatus::Parsing,
+            BatchStatus::Validating
+        )
+        .is_ok());
+        assert!(BatchStateMachine::validate_transition(
+            BatchStatus::Validating,
+            BatchStatus::Staged
+        )
+        .is_ok());
+        assert!(BatchStateMachine::validate_transition(
+            BatchStatus::Staged,
+            BatchStatus::Published
+        )
+        .is_ok());
+        assert!(BatchStateMachine::validate_transition(
+            BatchStatus::Published,
+            BatchStatus::Received
+        )
+        .is_err());
+        assert!(BatchStateMachine::validate_transition(
+            BatchStatus::Received,
+            BatchStatus::Published
+        )
+        .is_err());
     }
 
     #[test]
     fn test_manifest_transitions() {
-        assert!(ManifestStateMachine::validate_transition(ManifestStatus::Draft, ManifestStatus::Sealed).is_ok());
-        assert!(ManifestStateMachine::validate_transition(ManifestStatus::Sealed, ManifestStatus::Approved).is_ok());
-        assert!(ManifestStateMachine::validate_transition(ManifestStatus::Approved, ManifestStatus::Executing).is_ok());
-        assert!(ManifestStateMachine::validate_transition(ManifestStatus::Executing, ManifestStatus::Committed).is_ok());
-        assert!(ManifestStateMachine::validate_transition(ManifestStatus::Draft, ManifestStatus::Approved).is_err());
+        assert!(ManifestStateMachine::validate_transition(
+            ManifestStatus::Draft,
+            ManifestStatus::Sealed
+        )
+        .is_ok());
+        assert!(ManifestStateMachine::validate_transition(
+            ManifestStatus::Sealed,
+            ManifestStatus::Approved
+        )
+        .is_ok());
+        assert!(ManifestStateMachine::validate_transition(
+            ManifestStatus::Approved,
+            ManifestStatus::Executing
+        )
+        .is_ok());
+        assert!(ManifestStateMachine::validate_transition(
+            ManifestStatus::Executing,
+            ManifestStatus::Committed
+        )
+        .is_ok());
+        assert!(ManifestStateMachine::validate_transition(
+            ManifestStatus::Draft,
+            ManifestStatus::Approved
+        )
+        .is_err());
     }
 }

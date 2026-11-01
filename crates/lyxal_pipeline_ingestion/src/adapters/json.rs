@@ -27,18 +27,41 @@ impl JsonAdapter {
         let map = obj.as_object()?;
 
         // Recherche flexible de la référence
-        let reference = find_string(map, &["ref", "reference", "reference_fabricant", "sku", "id", "code_article"])
-            .unwrap_or_else(|| format!("JSON_ART_{line_num}"));
+        let reference = find_string(
+            map,
+            &[
+                "ref",
+                "reference",
+                "reference_fabricant",
+                "sku",
+                "id",
+                "code_article",
+            ],
+        )
+        .unwrap_or_else(|| format!("JSON_ART_{line_num}"));
 
         // Désignation
-        let designation = find_string(map, &["designation", "libelle", "description", "label", "name", "nom"])
-            .unwrap_or_else(|| format!("Article JSON {reference}"));
+        let designation = find_string(
+            map,
+            &[
+                "designation",
+                "libelle",
+                "description",
+                "label",
+                "name",
+                "nom",
+            ],
+        )
+        .unwrap_or_else(|| format!("Article JSON {reference}"));
 
         // GTIN
         let gtin = find_string(map, &["ean", "ean13", "gtin", "barcode", "code_barre"]);
 
         // Fabricant et marque
-        let manufacturer = find_string(map, &["fabricant", "manufacturer", "fournisseur", "supplier"]);
+        let manufacturer = find_string(
+            map,
+            &["fabricant", "manufacturer", "fournisseur", "supplier"],
+        );
         let brand = find_string(map, &["marque", "brand"]);
 
         // Unité
@@ -46,13 +69,15 @@ impl JsonAdapter {
 
         // Prix
         let price = find_f64(map, &["prix", "price", "tarif", "prix_ht"]);
-        let currency = find_string(map, &["devise", "currency"]).or_else(|| Some("EUR".to_string()));
+        let currency =
+            find_string(map, &["devise", "currency"]).or_else(|| Some("EUR".to_string()));
 
         // Dimensions
         let length = find_f64(map, &["longueur", "length", "long"]);
         let width = find_f64(map, &["largeur", "width", "larg"]);
         let height = find_f64(map, &["hauteur", "height", "epaisseur", "thickness"]);
-        let dim_unit = find_string(map, &["unite_dim", "dim_unit"]).or_else(|| Some("mm".to_string()));
+        let dim_unit =
+            find_string(map, &["unite_dim", "dim_unit"]).or_else(|| Some("mm".to_string()));
 
         let dimensions = if length.is_some() || width.is_some() || height.is_some() {
             Some(RawDimensionsDto {
@@ -75,7 +100,8 @@ impl JsonAdapter {
         // Poids
         let gross_weight = find_f64(map, &["poids_brut", "gross_weight"]);
         let net_weight = find_f64(map, &["poids", "poids_net", "net_weight", "weight"]);
-        let weight_unit = find_string(map, &["unite_poids", "weight_unit"]).or_else(|| Some("kg".to_string()));
+        let weight_unit =
+            find_string(map, &["unite_poids", "weight_unit"]).or_else(|| Some("kg".to_string()));
 
         let weight = if gross_weight.is_some() || net_weight.is_some() {
             Some(RawWeightDto {
@@ -99,7 +125,8 @@ impl JsonAdapter {
             }
         }
 
-        let raw_hash = lyxal_crypto::blake3_hex(serde_json::to_string(obj).unwrap_or_default().as_bytes());
+        let raw_hash =
+            lyxal_crypto::blake3_hex(serde_json::to_string(obj).unwrap_or_default().as_bytes());
 
         Some(RawRecordDto {
             line_number: line_num,
@@ -158,7 +185,9 @@ impl SourceAdapter for JsonAdapter {
             })?;
 
             let array = root.as_array().ok_or_else(|| {
-                IngestionError::Validation("La racine JSON n'est pas un tableau d'articles".to_string())
+                IngestionError::Validation(
+                    "La racine JSON n'est pas un tableau d'articles".to_string(),
+                )
             })?;
 
             let mut records = Vec::with_capacity(array.len());
@@ -177,7 +206,9 @@ impl SourceAdapter for JsonAdapter {
                     continue;
                 }
                 let item: Value = serde_json::from_str(line_trim).map_err(|e| {
-                    IngestionError::Validation(format!("Ligne {idx} : syntaxe NDJSON invalide : {e}"))
+                    IngestionError::Validation(format!(
+                        "Ligne {idx} : syntaxe NDJSON invalide : {e}"
+                    ))
                 })?;
                 if let Some(record) = Self::parse_json_object(&item, idx + 1) {
                     records.push(record);
@@ -243,7 +274,10 @@ mod tests {
 
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].raw_reference, "PRISE-2PT-BLANC");
-        assert_eq!(records[0].raw_designation, "Prise de courant 2P+T 16A encastré blanc");
+        assert_eq!(
+            records[0].raw_designation,
+            "Prise de courant 2P+T 16A encastré blanc"
+        );
         assert_eq!(records[0].raw_gtin, Some("3456789012444".to_string()));
         assert_eq!(records[0].raw_manufacturer, Some("LEGRAND".to_string()));
         assert_eq!(records[0].raw_price, Some(7.90));

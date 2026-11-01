@@ -15,9 +15,17 @@ impl std::fmt::Display for GtinValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Empty => write!(f, "Le code GTIN est vide"),
-            Self::InvalidCharacters => write!(f, "Le code GTIN contient des caractères non numériques"),
-            Self::InvalidLength(len) => write!(f, "Longueur de GTIN non reconnue ({len} chiffres, attendu 8, 12, 13 ou 14)"),
-            Self::ChecksumMismatch { expected, calculated } => {
+            Self::InvalidCharacters => {
+                write!(f, "Le code GTIN contient des caractères non numériques")
+            }
+            Self::InvalidLength(len) => write!(
+                f,
+                "Longueur de GTIN non reconnue ({len} chiffres, attendu 8, 12, 13 ou 14)"
+            ),
+            Self::ChecksumMismatch {
+                expected,
+                calculated,
+            } => {
                 write!(f, "Clé de contrôle GS1 Modulo 10 erronée (attendu {expected}, calculé {calculated})")
             }
         }
@@ -88,7 +96,10 @@ mod tests {
     fn test_valid_gtin13() {
         // EAN officiel valide : 3 017620 422003
         let valid_ean = "3017620422003";
-        assert_eq!(validate_and_normalize_gtin(valid_ean), Ok("3017620422003".to_string()));
+        assert_eq!(
+            validate_and_normalize_gtin(valid_ean),
+            Ok("3017620422003".to_string())
+        );
     }
 
     #[test]

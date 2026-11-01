@@ -94,7 +94,9 @@ impl SourceAdapter for CsvAdapter {
 
     fn validate_header(&self, sample: &[u8]) -> Result<(), IngestionError> {
         let text = std::str::from_utf8(sample).map_err(|e| {
-            IngestionError::Validation(format!("Encodage de fichier CSV invalide (UTF-8 requis) : {e}"))
+            IngestionError::Validation(format!(
+                "Encodage de fichier CSV invalide (UTF-8 requis) : {e}"
+            ))
         })?;
 
         let first_line = text.lines().next().unwrap_or("");
@@ -144,27 +146,76 @@ impl SourceAdapter for CsvAdapter {
             let line_num = row_idx + 1; // 1-indexé
 
             // Recherche flexible des colonnes fondamentales
-            let reference = find_field(&fields, &header_map, &["ref", "reference", "reference_fabricant", "ref_fab", "art_code", "sku", "code_article"])
-                .unwrap_or_else(|| format!("LIGNE_{line_num}"));
+            let reference = find_field(
+                &fields,
+                &header_map,
+                &[
+                    "ref",
+                    "reference",
+                    "reference_fabricant",
+                    "ref_fab",
+                    "art_code",
+                    "sku",
+                    "code_article",
+                ],
+            )
+            .unwrap_or_else(|| format!("LIGNE_{line_num}"));
 
-            let designation = find_field(&fields, &header_map, &["designation", "libelle", "libelle_commercial", "description", "label", "nom", "titre"])
-                .unwrap_or_else(|| format!("Article sans libellé {reference}"));
+            let designation = find_field(
+                &fields,
+                &header_map,
+                &[
+                    "designation",
+                    "libelle",
+                    "libelle_commercial",
+                    "description",
+                    "label",
+                    "nom",
+                    "titre",
+                ],
+            )
+            .unwrap_or_else(|| format!("Article sans libellé {reference}"));
 
-            let gtin = find_field(&fields, &header_map, &["ean", "ean13", "gtin", "code_barre", "barcode"]);
-            let manufacturer = find_field(&fields, &header_map, &["fabricant", "manufacturer", "fournisseur", "supplier"]);
+            let gtin = find_field(
+                &fields,
+                &header_map,
+                &["ean", "ean13", "gtin", "code_barre", "barcode"],
+            );
+            let manufacturer = find_field(
+                &fields,
+                &header_map,
+                &["fabricant", "manufacturer", "fournisseur", "supplier"],
+            );
             let brand = find_field(&fields, &header_map, &["marque", "brand"]);
-            let unit = find_field(&fields, &header_map, &["unite", "unit", "uom", "unite_vente", "unite_ref"]);
+            let unit = find_field(
+                &fields,
+                &header_map,
+                &["unite", "unit", "uom", "unite_vente", "unite_ref"],
+            );
 
-            let price = find_field(&fields, &header_map, &["prix", "price", "tarif", "prix_ht", "pu_ht"])
-                .and_then(|p| p.replace(',', ".").parse::<f64>().ok());
+            let price = find_field(
+                &fields,
+                &header_map,
+                &["prix", "price", "tarif", "prix_ht", "pu_ht"],
+            )
+            .and_then(|p| p.replace(',', ".").parse::<f64>().ok());
 
-            let currency = find_field(&fields, &header_map, &["devise", "currency"]).or_else(|| Some("EUR".to_string()));
+            let currency = find_field(&fields, &header_map, &["devise", "currency"])
+                .or_else(|| Some("EUR".to_string()));
 
             // Extraction dimensions
-            let length = find_field(&fields, &header_map, &["longueur", "length", "long"]).and_then(|v| v.replace(',', ".").parse::<f64>().ok());
-            let width = find_field(&fields, &header_map, &["largeur", "width", "larg"]).and_then(|v| v.replace(',', ".").parse::<f64>().ok());
-            let height = find_field(&fields, &header_map, &["hauteur", "height", "epaisseur", "thickness", "haut"]).and_then(|v| v.replace(',', ".").parse::<f64>().ok());
-            let dim_unit = find_field(&fields, &header_map, &["unite_dim", "dim_unit"]).or_else(|| Some("mm".to_string()));
+            let length = find_field(&fields, &header_map, &["longueur", "length", "long"])
+                .and_then(|v| v.replace(',', ".").parse::<f64>().ok());
+            let width = find_field(&fields, &header_map, &["largeur", "width", "larg"])
+                .and_then(|v| v.replace(',', ".").parse::<f64>().ok());
+            let height = find_field(
+                &fields,
+                &header_map,
+                &["hauteur", "height", "epaisseur", "thickness", "haut"],
+            )
+            .and_then(|v| v.replace(',', ".").parse::<f64>().ok());
+            let dim_unit = find_field(&fields, &header_map, &["unite_dim", "dim_unit"])
+                .or_else(|| Some("mm".to_string()));
 
             let dimensions = if length.is_some() || width.is_some() || height.is_some() {
                 Some(RawDimensionsDto {
@@ -178,9 +229,16 @@ impl SourceAdapter for CsvAdapter {
             };
 
             // Extraction poids
-            let gross_weight = find_field(&fields, &header_map, &["poids_brut", "gross_weight"]).and_then(|v| v.replace(',', ".").parse::<f64>().ok());
-            let net_weight = find_field(&fields, &header_map, &["poids", "poids_net", "net_weight", "weight"]).and_then(|v| v.replace(',', ".").parse::<f64>().ok());
-            let weight_unit = find_field(&fields, &header_map, &["unite_poids", "weight_unit"]).or_else(|| Some("kg".to_string()));
+            let gross_weight = find_field(&fields, &header_map, &["poids_brut", "gross_weight"])
+                .and_then(|v| v.replace(',', ".").parse::<f64>().ok());
+            let net_weight = find_field(
+                &fields,
+                &header_map,
+                &["poids", "poids_net", "net_weight", "weight"],
+            )
+            .and_then(|v| v.replace(',', ".").parse::<f64>().ok());
+            let weight_unit = find_field(&fields, &header_map, &["unite_poids", "weight_unit"])
+                .or_else(|| Some("kg".to_string()));
 
             let weight = if gross_weight.is_some() || net_weight.is_some() {
                 Some(RawWeightDto {

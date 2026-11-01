@@ -5,5 +5,5 @@ pub mod types;
 
 pub use engine::QuarantineEngine;
 pub use types::{
-    AnomalyCategory, AnomalySeverity, QuarantineEntry, QuarantineStatus, QuarantineStats,
+    AnomalyCategory, AnomalySeverity, QuarantineEntry, QuarantineStats, QuarantineStatus,
 };

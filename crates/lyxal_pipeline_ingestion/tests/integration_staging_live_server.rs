@@ -44,7 +44,8 @@ fn staging_user() -> String {
 }
 
 fn staging_pass() -> String {
-    std::env::var("LYXAL_STAGING_PASS").unwrap_or_else(|_| "Stg_SecLyxal#2026!Rotated9x".to_string())
+    std::env::var("LYXAL_STAGING_PASS")
+        .unwrap_or_else(|_| "Stg_SecLyxal#2026!Rotated9x".to_string())
 }
 
 /// Helper initialisant le store pour les tests typés
@@ -63,7 +64,10 @@ async fn test_staging_live_connection_and_reconnection() {
     let start = Instant::now();
 
     // 1. Première connexion TCP + Handshake WebSocket natif vers SurrealDB 3.2.0 (Port 8001)
-    println!("    [1.1] Tentative de première connexion TCP vers {}...", STAGING_HOST);
+    println!(
+        "    [1.1] Tentative de première connexion TCP vers {}...",
+        STAGING_HOST
+    );
     let mut tcp1 = TcpStream::connect(STAGING_HOST)
         .await
         .expect("Connexion TCP 1 vers serveur SurrealDB 3.2.0");
@@ -96,7 +100,9 @@ async fn test_staging_live_connection_and_reconnection() {
         ws_resp1.to_lowercase().contains("upgrade: websocket"),
         "En-tête Upgrade attendu"
     );
-    println!("    [OK] Première session WebSocket 3.2.0 établie avec succès (101 Switching Protocols).");
+    println!(
+        "    [OK] Première session WebSocket 3.2.0 établie avec succès (101 Switching Protocols)."
+    );
 
     // 2. Déconnexion explicite (fermeture de socket)
     drop(tcp1);
@@ -126,12 +132,15 @@ async fn test_staging_live_connection_and_reconnection() {
     drop(tcp2);
 
     // 4. Exécution réelle d'une fonction métier sur le serveur distant Staging via HTTP /sql
-    println!("    [1.3] Exécution de fn::ingestion_dashboard_metrics sur l'instance Staging réelle...");
+    println!(
+        "    [1.3] Exécution de fn::ingestion_dashboard_metrics sur l'instance Staging réelle..."
+    );
     let auth_str = format!("{}:{}", staging_user(), staging_pass());
-    
+
     // Encodeur base64 pur standard
     fn base64_encode(input: &[u8]) -> String {
-        const CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        const CHARS: &[u8; 64] =
+            b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
         let mut out = String::with_capacity((input.len() + 2) / 3 * 4);
         for chunk in input.chunks(3) {
             let b0 = chunk[0] as u32;
@@ -155,7 +164,8 @@ async fn test_staging_live_connection_and_reconnection() {
     }
     let auth_b64 = base64_encode(auth_str.as_bytes());
 
-    let sql_query = "USE NS lyxal_staging DB pipeline_staging; RETURN fn::ingestion_dashboard_metrics({});";
+    let sql_query =
+        "USE NS lyxal_staging DB pipeline_staging; RETURN fn::ingestion_dashboard_metrics({});";
     let http_req = format!(
         "POST /sql HTTP/1.1\r\n\
         Host: {}\r\n\
@@ -168,7 +178,12 @@ async fn test_staging_live_connection_and_reconnection() {
         Connection: close\r\n\
         \r\n\
         {}",
-        STAGING_HOST, auth_b64, STAGING_NS, STAGING_DB, sql_query.len(), sql_query
+        STAGING_HOST,
+        auth_b64,
+        STAGING_NS,
+        STAGING_DB,
+        sql_query.len(),
+        sql_query
     );
 
     let mut tcp3 = TcpStream::connect(STAGING_HOST)
@@ -236,7 +251,10 @@ async fn test_staging_four_roles_authentication_and_rls() {
         created_at: None,
         completed_at: None,
     };
-    store.create_batch(&batch).await.expect("Création du lot par ingestion_agent");
+    store
+        .create_batch(&batch)
+        .await
+        .expect("Création du lot par ingestion_agent");
 
     // B. Rôle 2 : qualification_agent
     // Tente une requalification sans session steward autorisée : DOIT ÊTRE REJETÉ
@@ -324,7 +342,10 @@ async fn test_staging_worker_batch_checkpoint_and_interruption_resumption() {
         created_at: None,
         completed_at: None,
     };
-    store.create_batch(&batch).await.expect("Création lot worker");
+    store
+        .create_batch(&batch)
+        .await
+        .expect("Création lot worker");
 
     // Phase 1 : Traitement partiel interrompu par CancellationToken
     let token1 = CancellationToken::new();
@@ -365,7 +386,9 @@ async fn test_staging_worker_batch_checkpoint_and_interruption_resumption() {
         .await
         .expect("Lecture checkpoint final");
     assert_eq!(final_offset, total_items);
-    println!("    [OK] Interruption et reprise par checkpoint validées sans aucune perte ni doublon.");
+    println!(
+        "    [OK] Interruption et reprise par checkpoint validées sans aucune perte ni doublon."
+    );
 }
 
 // -----------------------------------------------------------------------------
@@ -373,7 +396,9 @@ async fn test_staging_worker_batch_checkpoint_and_interruption_resumption() {
 // -----------------------------------------------------------------------------
 #[tokio::test]
 async fn test_staging_btp_41_proof_security_and_master_isolation() {
-    println!("\n>>> [STAGING TEST 4] Audit de sécurité des 41 références BTP & isolation Master...");
+    println!(
+        "\n>>> [STAGING TEST 4] Audit de sécurité des 41 références BTP & isolation Master..."
+    );
 
     // 1. Les 10 références disposant de l'identifiant PROOF-AUTH-2026-*
     // Ce sont des données de VALIDATION TECHNIQUE. Elles ne doivent jamais être publiées en Master réel !
@@ -385,8 +410,14 @@ async fn test_staging_btp_41_proof_security_and_master_isolation() {
         "2026-10-25T00:00:00Z",
     );
     assert!(pilot_proof.is_valid());
-    assert!(pilot_proof.is_pilot_or_synthetic(), "Preuve PROOF-AUTH-2026-* doit être identifiée comme pilote");
-    assert!(!pilot_proof.is_eligible_for_production(), "Preuve pilote interdite pour publication en production");
+    assert!(
+        pilot_proof.is_pilot_or_synthetic(),
+        "Preuve PROOF-AUTH-2026-* doit être identifiée comme pilote"
+    );
+    assert!(
+        !pilot_proof.is_eligible_for_production(),
+        "Preuve pilote interdite pour publication en production"
+    );
 
     // 2. Preuve synthétique
     let synth_proof = CommercialProof::new(
@@ -491,7 +522,11 @@ async fn test_staging_btp_41_proof_security_and_master_isolation() {
     };
     store.save_manifest(&manifest).await.unwrap();
     store
-        .approve_manifest(manifest_ref, "steward_chief", "Approbation pour test verrou")
+        .approve_manifest(
+            manifest_ref,
+            "steward_chief",
+            "Approbation pour test verrou",
+        )
         .await
         .unwrap();
 
@@ -502,11 +537,13 @@ async fn test_staging_btp_41_proof_security_and_master_isolation() {
     );
 
     // Activation du mode de production simulée
-    let prod_publisher = ControlledPublisher::new(store.clone())
-        .with_simulated_production_mode(true);
+    let prod_publisher =
+        ControlledPublisher::new(store.clone()).with_simulated_production_mode(true);
 
     // Tentative de publication d'une référence portant une preuve pilote en mode production
-    let pub_result = prod_publisher.publish_manifest(manifest_ref, &session).await;
+    let pub_result = prod_publisher
+        .publish_manifest(manifest_ref, &session)
+        .await;
     assert!(
         pub_result.is_err(),
         "Le verrou de production simulée DOIT refuser catégoriquement la publication d'un article avec preuve pilote !"
@@ -524,7 +561,10 @@ async fn test_staging_btp_41_proof_security_and_master_isolation() {
         .get_dashboard_metrics(None)
         .await
         .expect("Consultation métriques");
-    assert_eq!(metrics.manifests.committed, 0, "Aucun manifeste commité en production");
+    assert_eq!(
+        metrics.manifests.committed, 0,
+        "Aucun manifeste commité en production"
+    );
 
     println!("    [OK] Audit des 41 références : 10 preuves pilotes isolées, 25 TO_CONFIRM hermétiques, Master intouché.");
 }
@@ -561,7 +601,10 @@ async fn test_staging_real_performance_metrics() {
         created_at: None,
         completed_at: None,
     };
-    store.create_batch(&batch).await.expect("Création lot bench");
+    store
+        .create_batch(&batch)
+        .await
+        .expect("Création lot bench");
 
     let total_start = Instant::now();
 
@@ -594,7 +637,10 @@ async fn test_staging_real_performance_metrics() {
             approved_at: None,
         };
 
-        store.save_staged_item(&item).await.expect("Enregistrement article staging");
+        store
+            .save_staged_item(&item)
+            .await
+            .expect("Enregistrement article staging");
         let duration_ms = op_start.elapsed().as_secs_f64() * 1000.0;
         latencies.push(duration_ms);
     }
@@ -612,14 +658,38 @@ async fn test_staging_real_performance_metrics() {
     println!("\n    ╔═══════════════════════════════════════════════════════════════╗");
     println!("    ║        RÉSULTATS DE PERFORMANCE EMPIRIQUES RÉELS (STAGING)    ║");
     println!("    ╠═══════════════════════════════════════════════════════════════╣");
-    println!("    ║ Opérations testées : {:>4} insertions unitaires Staging       ║", iterations);
-    println!("    ║ Durée totale       : {:>8.2?}                               ║", total_duration);
-    println!("    ║ Débit mesuré       : {:>8.2} ops/sec                        ║", throughput);
-    println!("    ║ Latence minimale   : {:>8.2} ms                             ║", min_latency);
-    println!("    ║ Latence médiane    : {:>8.2} ms                             ║", median_latency);
-    println!("    ║ Latence p95        : {:>8.2} ms                             ║", p95_latency);
-    println!("    ║ Latence p99        : {:>8.2} ms                             ║", p99_latency);
-    println!("    ║ Latence maximale   : {:>8.2} ms                             ║", max_latency);
+    println!(
+        "    ║ Opérations testées : {:>4} insertions unitaires Staging       ║",
+        iterations
+    );
+    println!(
+        "    ║ Durée totale       : {:>8.2?}                               ║",
+        total_duration
+    );
+    println!(
+        "    ║ Débit mesuré       : {:>8.2} ops/sec                        ║",
+        throughput
+    );
+    println!(
+        "    ║ Latence minimale   : {:>8.2} ms                             ║",
+        min_latency
+    );
+    println!(
+        "    ║ Latence médiane    : {:>8.2} ms                             ║",
+        median_latency
+    );
+    println!(
+        "    ║ Latence p95        : {:>8.2} ms                             ║",
+        p95_latency
+    );
+    println!(
+        "    ║ Latence p99        : {:>8.2} ms                             ║",
+        p99_latency
+    );
+    println!(
+        "    ║ Latence maximale   : {:>8.2} ms                             ║",
+        max_latency
+    );
     println!("    ╚═══════════════════════════════════════════════════════════════╝");
 
     assert!(median_latency < 500.0, "Latence médiane excessive (>500ms)");
@@ -635,7 +705,10 @@ async fn test_staging_health_check_probe() {
     let probe = IngestionHealthCheck::with_store(store);
     let ctx = ModuleContext::new("lyxal_pipeline_ingestion");
 
-    let result = probe.check(&ctx).await.expect("Exécution de la sonde de santé");
+    let result = probe
+        .check(&ctx)
+        .await
+        .expect("Exécution de la sonde de santé");
     assert_eq!(
         result.status,
         HealthStatus::Healthy,

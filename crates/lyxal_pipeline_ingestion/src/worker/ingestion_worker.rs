@@ -7,10 +7,10 @@
 //! - Idempotence durable et détection des doublons.
 //! - Publication des événements de domaine via [`lyxal_event`].
 
+use async_trait::async_trait;
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Duration;
-use async_trait::async_trait;
 use tokio::sync::Mutex;
 
 use lyxal_event::EventPublisher;
@@ -80,7 +80,8 @@ impl IngestionWorker {
         let worker_id = WorkerId::new(&module_id, "batch_worker")
             .unwrap_or_else(|_| panic!("Identifiant de worker 'batch_worker' invalide"));
 
-        let mut descriptor = WorkerDescriptor::new(worker_id, module_id, "Lyxal Ingestion Batch Processor");
+        let mut descriptor =
+            WorkerDescriptor::new(worker_id, module_id, "Lyxal Ingestion Batch Processor");
         descriptor.description = Some("Processeur supervisé de streaming, normalisation et qualification des catalogues fabricants".to_string());
         descriptor.criticality = WorkerCriticality::Required;
         descriptor.restart_policy = RestartPolicy::default();
@@ -176,17 +177,25 @@ impl IngestionWorker {
         }
 
         // 3. Parsing complet du flux source via le registre officiel des adaptateurs
-        let content = std::str::from_utf8(raw_bytes)
-            .map_err(|e| IngestionError::Adapter(format!("Flux d'ingestion non encodé en UTF-8 : {e}")))?;
+        let content = std::str::from_utf8(raw_bytes).map_err(|e| {
+            IngestionError::Adapter(format!("Flux d'ingestion non encodé en UTF-8 : {e}"))
+        })?;
 
         let registry = AdapterRegistry::new();
         let adapter = registry.get(format).ok_or_else(|| {
-            IngestionError::Adapter(format!("Aucun adaptateur disponible pour le format {:?}", format))
+            IngestionError::Adapter(format!(
+                "Aucun adaptateur disponible pour le format {:?}",
+                format
+            ))
         })?;
 
         let raw_records = adapter.parse_content(content)?;
         let total_lines = raw_records.len();
-        let chunk_size = if batch.chunk_size > 0 { batch.chunk_size } else { 100 };
+        let chunk_size = if batch.chunk_size > 0 {
+            batch.chunk_size
+        } else {
+            100
+        };
         let mut current_offset = batch.cursor_offset;
         let mut verified_count = batch.lignes_verifiees;
         let mut to_confirm_count = batch.lignes_a_confirmer;
@@ -246,7 +255,7 @@ impl IngestionWorker {
                     ligne_numero: line_num,
                     row_hash: normalized.canonical_fingerprint.clone(),
                     payload_brut: serde_json::to_value(dto).unwrap_or_default(),
-                    created_at: Some("2026-10-25T11:00:00Z".to_string()),
+                    created_at: Some(lyxal_surreal::Datetime::now()),
                 };
                 let raw_record_id = format!("{batch_id}_{line_num}");
 
@@ -263,9 +272,11 @@ impl IngestionWorker {
                             code_erreur: "REJECTED_QUALIFICATION".to_string(),
                             severite: "CRITIQUE".to_string(),
                             champ_concerne: "commercial_proof_and_specs".to_string(),
-                            valeur_fautive: Some(serde_json::to_value(&dto.raw_reference).unwrap_or_default()),
+                            valeur_fautive: Some(
+                                serde_json::to_value(&dto.raw_reference).unwrap_or_default(),
+                            ),
                             cause_detaillee: normalized.qualification_reason.clone(),
-                            created_at: Some("2026-10-25T11:00:00Z".to_string()),
+                            created_at: Some(lyxal_surreal::Datetime::now()),
                             is_resolved: false,
                             resolved_by: None,
                             resolved_at: None,
@@ -276,9 +287,15 @@ impl IngestionWorker {
 
                 // Conditionnement logistique
                 let conditionnement = PackagingDetails {
-                    unite_vente: normalized.unit_code.clone().unwrap_or_else(|| "PCE".to_string()),
+                    unite_vente: normalized
+                        .unit_code
+                        .clone()
+                        .unwrap_or_else(|| "PCE".to_string()),
                     quantite_par_colis: 1.0,
-                    poids_brut_kg: normalized.weight.as_ref().and_then(|w| w.gross_weight_kg.or(w.net_weight_kg)),
+                    poids_brut_kg: normalized
+                        .weight
+                        .as_ref()
+                        .and_then(|w| w.gross_weight_kg.or(w.net_weight_kg)),
                     dimensions: normalized.dimensions.as_ref().map(|d| Dimensions {
                         longueur_mm: d.length_mm.unwrap_or(0.0),
                         largeur_mm: d.width_mm.unwrap_or(0.0),
@@ -328,7 +345,9 @@ impl IngestionWorker {
             self.store.save_raw_records_chunk(&db_raw_records).await?;
             self.store.save_staged_items_chunk(&db_staged_items).await?;
             if !db_quarantine_records.is_empty() {
-                self.store.save_quarantine_records_chunk(&db_quarantine_records).await?;
+                self.store
+                    .save_quarantine_records_chunk(&db_quarantine_records)
+                    .await?;
             }
 
             current_offset = end_offset;
@@ -442,7 +461,10 @@ impl LyxalWorker for IngestionWorker {
 
                         return Err(RuntimeError::Internal {
                             code: "INGESTION_BATCH_FAILED",
-                            message: format!("Échec fatal du traitement du lot {}: {err}", job.batch_id),
+                            message: format!(
+                                "Échec fatal du traitement du lot {}: {err}",
+                                job.batch_id
+                            ),
                         });
                     }
                 }

@@ -8,8 +8,8 @@
 //! 5. Regroupement technique : substitution contextualisée et révocation formelle.
 //! 6. Benchmark industriel de plus de 1 500 articles BTP avec mesures de débit, mémoire et intégrité.
 
-use std::time::Instant;
 use lyxal_runtime::worker::CancellationToken;
+use std::time::Instant;
 
 use lyxal_pipeline_ingestion::adapters::RawRecordDto;
 use lyxal_pipeline_ingestion::error::IngestionError;
@@ -22,11 +22,18 @@ use lyxal_pipeline_ingestion::storage::IngestionStore;
 use lyxal_pipeline_ingestion::technical_grouping::{
     ContextualSubstitutionRule, TechnicalGroupLevel, TechnicalGroupingEngine,
 };
-use lyxal_pipeline_ingestion::types::{BatchStatus, ItemQualification, ManifestStatus, SourceFormat};
+use lyxal_pipeline_ingestion::types::{
+    BatchStatus, ItemQualification, ManifestStatus, SourceFormat,
+};
 use lyxal_pipeline_ingestion::worker::IngestionWorker;
 
 /// Générateur d'enregistrement brut pour les tests.
-fn make_test_dto(line: usize, ref_code: &str, designation: &str, gtin: Option<&str>) -> RawRecordDto {
+fn make_test_dto(
+    line: usize,
+    ref_code: &str,
+    designation: &str,
+    gtin: Option<&str>,
+) -> RawRecordDto {
     RawRecordDto {
         line_number: line,
         raw_reference: ref_code.to_string(),
@@ -68,7 +75,9 @@ fn test_verified_qualification_strict_requirement_phase4() {
         "Un article même avec GTIN et cotes valides DOIT être maintenu en TO_CONFIRM sans preuve"
     );
     assert!(
-        unverified.qualification_reason.contains("preuve commerciale formelle absente"),
+        unverified
+            .qualification_reason
+            .contains("preuve commerciale formelle absente"),
         "Le motif doit expliciter l'absence de preuve : {}",
         unverified.qualification_reason
     );
@@ -88,7 +97,9 @@ fn test_verified_qualification_strict_requirement_phase4() {
         "L'article avec preuve commerciale formelle authentifiée doit être qualifié VERIFIED"
     );
     assert!(
-        verified.qualification_reason.contains("Provenance commerciale formellement authentifiée"),
+        verified
+            .qualification_reason
+            .contains("Provenance commerciale formellement authentifiée"),
         "Le motif doit confirmer la conformité intégrale : {}",
         verified.qualification_reason
     );
@@ -151,7 +162,10 @@ async fn test_worker_interruption_checkpoint_and_resume_no_duplication() {
         .await
         .expect("Traitement sous annulation exécuté");
 
-    assert!(report_interrupted.interrupted, "Le rapport doit indiquer l'interruption");
+    assert!(
+        report_interrupted.interrupted,
+        "Le rapport doit indiquer l'interruption"
+    );
     assert_eq!(report_interrupted.final_status, BatchStatus::Parsing);
 
     // Vérification du checkpoint en base SurrealDB
@@ -174,7 +188,10 @@ async fn test_worker_interruption_checkpoint_and_resume_no_duplication() {
         .await
         .expect("Reprise réussie");
 
-    assert!(!report_completed.interrupted, "Le traitement final ne doit pas être interrompu");
+    assert!(
+        !report_completed.interrupted,
+        "Le traitement final ne doit pas être interrompu"
+    );
     assert_eq!(report_completed.final_status, BatchStatus::Staged);
     assert_eq!(report_completed.total_lignes, 60);
     assert_eq!(report_completed.cursor_offset, 60);
@@ -184,7 +201,11 @@ async fn test_worker_interruption_checkpoint_and_resume_no_duplication() {
         .get_staged_items_by_batch(batch_id)
         .await
         .expect("Lecture staged items");
-    assert_eq!(staged_items.len(), 60, "Exactement 60 articles uniques doivent être présents en staging");
+    assert_eq!(
+        staged_items.len(),
+        60,
+        "Exactement 60 articles uniques doivent être présents en staging"
+    );
 }
 
 // =============================================================================
@@ -227,14 +248,26 @@ async fn test_batch_reexecution_idempotence() {
 
     // 1ère exécution -> Passe en STAGED
     let rep1 = worker
-        .process_batch(batch_id, csv_data.as_bytes(), SourceFormat::Csv, None, &token)
+        .process_batch(
+            batch_id,
+            csv_data.as_bytes(),
+            SourceFormat::Csv,
+            None,
+            &token,
+        )
         .await
         .unwrap();
     assert_eq!(rep1.final_status, BatchStatus::Staged);
 
     // 2ème exécution immédiate du même lot -> Retourne directement sans retraiter
     let rep2 = worker
-        .process_batch(batch_id, csv_data.as_bytes(), SourceFormat::Csv, None, &token)
+        .process_batch(
+            batch_id,
+            csv_data.as_bytes(),
+            SourceFormat::Csv,
+            None,
+            &token,
+        )
         .await
         .unwrap();
     assert_eq!(rep2.final_status, BatchStatus::Staged);
@@ -242,7 +275,11 @@ async fn test_batch_reexecution_idempotence() {
     assert_eq!(rep2.cursor_offset, 10);
 
     let items = store.get_staged_items_by_batch(batch_id).await.unwrap();
-    assert_eq!(items.len(), 10, "Aucun doublon généré lors de la réexécution");
+    assert_eq!(
+        items.len(),
+        10,
+        "Aucun doublon généré lors de la réexécution"
+    );
 }
 
 // =============================================================================
@@ -293,7 +330,11 @@ async fn test_concurrent_batch_locking_prevention() {
 async fn test_publication_requires_blake3_seal_and_steward_approval() {
     let store = IngestionStore::create_in_memory().await.unwrap();
     let publisher = ControlledPublisher::new(store.clone());
-    let session = SyncAgentSession::new("agent_sync_01", "catalogue_sync_agent", vec!["catalogue:sync:write".to_string()]);
+    let session = SyncAgentSession::new(
+        "agent_sync_01",
+        "catalogue_sync_agent",
+        vec!["catalogue:sync:write".to_string()],
+    );
 
     let batch_id = "batch_pub_approval";
     let manifest_ref = "MANIFEST-2026-001";
@@ -341,8 +382,13 @@ async fn test_publication_requires_blake3_seal_and_steward_approval() {
     );
 
     // 3. Approbation par le steward_admin avec justification formelle
-    let res_short_reason = store.approve_manifest(manifest_ref, "steward_01", "court").await;
-    assert!(res_short_reason.is_err(), "Justification trop courte (< 10 caractères) doit être refusée");
+    let res_short_reason = store
+        .approve_manifest(manifest_ref, "steward_01", "court")
+        .await;
+    assert!(
+        res_short_reason.is_err(),
+        "Justification trop courte (< 10 caractères) doit être refusée"
+    );
 
     store
         .approve_manifest(
@@ -367,16 +413,28 @@ async fn test_publication_requires_authorized_sync_agent() {
     let publisher = ControlledPublisher::new(store.clone());
 
     // 1. Utilisateur standard sans rôle de sync
-    let unauthorized_session = SyncAgentSession::new("user_bob", "tenant_user", vec!["catalogue:read".to_string()]);
-    let res_unauth = publisher.publish_manifest("MANIFEST-ANY", &unauthorized_session).await;
+    let unauthorized_session = SyncAgentSession::new(
+        "user_bob",
+        "tenant_user",
+        vec!["catalogue:read".to_string()],
+    );
+    let res_unauth = publisher
+        .publish_manifest("MANIFEST-ANY", &unauthorized_session)
+        .await;
     assert!(
         matches!(res_unauth, Err(IngestionError::Unauthorized(_))),
         "Un utilisateur sans rôle catalogue_sync_agent doit être rejeté"
     );
 
     // 2. Rôle sync mais scope insuffisant
-    let bad_scope_session = SyncAgentSession::new("agent_02", "catalogue_sync_agent", vec!["catalogue:read".to_string()]);
-    let res_bad_scope = publisher.publish_manifest("MANIFEST-ANY", &bad_scope_session).await;
+    let bad_scope_session = SyncAgentSession::new(
+        "agent_02",
+        "catalogue_sync_agent",
+        vec!["catalogue:read".to_string()],
+    );
+    let res_bad_scope = publisher
+        .publish_manifest("MANIFEST-ANY", &bad_scope_session)
+        .await;
     assert!(
         matches!(res_bad_scope, Err(IngestionError::Unauthorized(_))),
         "Un agent sans scope 'catalogue:sync:write' doit être rejeté"
@@ -448,7 +506,10 @@ PLACO_REJ;;;;;0.00
 
     // Calcul du scellement BLAKE3 réel basé sur les staged items
     let staged_items = store.get_staged_items_by_batch(batch_id).await.unwrap();
-    let fingerprints: Vec<String> = staged_items.iter().map(|it| it.canonical_fingerprint.clone()).collect();
+    let fingerprints: Vec<String> = staged_items
+        .iter()
+        .map(|it| it.canonical_fingerprint.clone())
+        .collect();
     let seal_hash = FingerprintEngine::compute_manifest_seal(&fingerprints);
 
     // Création et approbation du manifeste
@@ -472,17 +533,37 @@ PLACO_REJ;;;;;0.00
         executed_at: None,
     };
     store.save_manifest(&manifest).await.unwrap();
-    store.approve_manifest(manifest_ref, "steward_chief", "Approbation des références vérifiées").await.unwrap();
+    store
+        .approve_manifest(
+            manifest_ref,
+            "steward_chief",
+            "Approbation des références vérifiées",
+        )
+        .await
+        .unwrap();
 
     // Publication contrôlée
     let publisher = ControlledPublisher::new(store.clone());
-    let session = SyncAgentSession::new("sync_bot", "catalogue_sync_agent", vec!["catalogue:sync:write".to_string()]);
-    let pub_report = publisher.publish_manifest(manifest_ref, &session).await.unwrap();
+    let session = SyncAgentSession::new(
+        "sync_bot",
+        "catalogue_sync_agent",
+        vec!["catalogue:sync:write".to_string()],
+    );
+    let pub_report = publisher
+        .publish_manifest(manifest_ref, &session)
+        .await
+        .unwrap();
 
     // VÉRIFICATIONS FORMELLES DU PROTOCOLE CTO
     assert_eq!(pub_report.total_staged, staged_items.len());
-    assert_eq!(pub_report.eligible_verified, 2, "Seuls les articles avec preuve valide sont éligibles");
-    assert_eq!(pub_report.newly_published, 2, "Seuls les articles VERIFIED ont été publiés");
+    assert_eq!(
+        pub_report.eligible_verified, 2,
+        "Seuls les articles avec preuve valide sont éligibles"
+    );
+    assert_eq!(
+        pub_report.newly_published, 2,
+        "Seuls les articles VERIFIED ont été publiés"
+    );
     assert_eq!(pub_report.failed, 0);
     assert!(pub_report.is_completed);
 
@@ -536,12 +617,21 @@ ITEM_P2;Item Partiel 2;3017620422003;Placo Saint-Gobain;PCE;12.0
         "Preuve valide",
     );
     worker
-        .process_batch(batch_id, csv.as_bytes(), SourceFormat::Csv, Some(proof), &CancellationToken::new())
+        .process_batch(
+            batch_id,
+            csv.as_bytes(),
+            SourceFormat::Csv,
+            Some(proof),
+            &CancellationToken::new(),
+        )
         .await
         .unwrap();
 
     let staged_items = store.get_staged_items_by_batch(batch_id).await.unwrap();
-    let fingerprints: Vec<String> = staged_items.iter().map(|it| it.canonical_fingerprint.clone()).collect();
+    let fingerprints: Vec<String> = staged_items
+        .iter()
+        .map(|it| it.canonical_fingerprint.clone())
+        .collect();
     let seal_hash = FingerprintEngine::compute_manifest_seal(&fingerprints);
 
     // Manifeste avec le premier article DÉJÀ publié lors d'un run précédent
@@ -570,15 +660,31 @@ ITEM_P2;Item Partiel 2;3017620422003;Placo Saint-Gobain;PCE;12.0
         executed_at: None,
     };
     store.save_manifest(&manifest).await.unwrap();
-    store.approve_manifest(manifest_ref, "steward_01", "Approbation de reprise").await.unwrap();
+    store
+        .approve_manifest(manifest_ref, "steward_01", "Approbation de reprise")
+        .await
+        .unwrap();
 
     // Reprise de la publication
     let publisher = ControlledPublisher::new(store.clone());
-    let session = SyncAgentSession::new("sync_bot", "catalogue_sync_agent", vec!["catalogue:sync:write".to_string()]);
-    let rep = publisher.publish_manifest(manifest_ref, &session).await.unwrap();
+    let session = SyncAgentSession::new(
+        "sync_bot",
+        "catalogue_sync_agent",
+        vec!["catalogue:sync:write".to_string()],
+    );
+    let rep = publisher
+        .publish_manifest(manifest_ref, &session)
+        .await
+        .unwrap();
 
-    assert_eq!(rep.already_published, 1, "ITEM_P1 doit être sauté car déjà publié");
-    assert_eq!(rep.newly_published, 1, "Seul ITEM_P2 doit être nouvellement publié");
+    assert_eq!(
+        rep.already_published, 1,
+        "ITEM_P1 doit être sauté car déjà publié"
+    );
+    assert_eq!(
+        rep.newly_published, 1,
+        "Seul ITEM_P2 doit être nouvellement publié"
+    );
     assert!(rep.is_completed);
 }
 
@@ -671,22 +777,31 @@ fn test_contextual_substitution_revocation() {
     grouping_engine.register_contextual_substitution(rule);
 
     // 1. Avant révocation : substitution autorisée dans le contexte précis
-    let dec_before = grouping_engine.compare_items_in_context(&placo, &knauf, Some("ZONE_SISMIQUE_3_ERP"));
-    assert_eq!(dec_before.reached_level, TechnicalGroupLevel::AuthorizedSubstitution);
+    let dec_before =
+        grouping_engine.compare_items_in_context(&placo, &knauf, Some("ZONE_SISMIQUE_3_ERP"));
+    assert_eq!(
+        dec_before.reached_level,
+        TechnicalGroupLevel::AuthorizedSubstitution
+    );
     assert_eq!(dec_before.confidence_score, 1.0);
 
     // 2. Révocation formelle de la règle CSTB
-    let revoked = grouping_engine.revoke_substitution(rule_id, "Directive de sécurité renforcée CSTB 2026");
+    let revoked =
+        grouping_engine.revoke_substitution(rule_id, "Directive de sécurité renforcée CSTB 2026");
     assert!(revoked, "La règle de substitution doit être révoquée");
 
     // 3. Après révocation : la substitution DOIT être refusée et redescendre au niveau équivalence
-    let dec_after = grouping_engine.compare_items_in_context(&placo, &knauf, Some("ZONE_SISMIQUE_3_ERP"));
+    let dec_after =
+        grouping_engine.compare_items_in_context(&placo, &knauf, Some("ZONE_SISMIQUE_3_ERP"));
     assert_eq!(
         dec_after.reached_level,
         TechnicalGroupLevel::FunctionalEquivalence,
         "Une substitution révoquée ne doit plus être accordée"
     );
-    assert!(dec_after.missing_evidence.iter().any(|m| m.contains("révoquée")));
+    assert!(dec_after
+        .missing_evidence
+        .iter()
+        .any(|m| m.contains("révoquée")));
 }
 
 // =============================================================================
@@ -729,7 +844,13 @@ async fn test_graceful_shutdown_under_cancellation_token() {
 
     let start = Instant::now();
     let rep = worker
-        .process_batch("batch_shutdown_test", csv.as_bytes(), SourceFormat::Csv, None, &token)
+        .process_batch(
+            "batch_shutdown_test",
+            csv.as_bytes(),
+            SourceFormat::Csv,
+            None,
+            &token,
+        )
         .await
         .unwrap();
     let duration = start.elapsed();
@@ -780,7 +901,11 @@ async fn test_industrial_benchmark_over_1500_items() {
     let mut csv_data = String::from("reference;designation;gtin;fabricant;unite;prix\n");
     for i in 1..=total_items {
         let (famille, mfg, gtin) = match i % 4 {
-            0 => ("Plaque BA13 Standard", "Placo Saint-Gobain", "3017620422003"),
+            0 => (
+                "Plaque BA13 Standard",
+                "Placo Saint-Gobain",
+                "3017620422003",
+            ),
             1 => ("Montant M48 Renforcé 3m", "Placoplatre", "3017620422003"),
             2 => ("Isolant GR32 Roul 100mm", "Isover", "3017620422003"),
             _ => ("Prise 2P+T Mosaic Blanc", "Legrand", "3017620422003"),
@@ -824,14 +949,26 @@ async fn test_industrial_benchmark_over_1500_items() {
     println!("Articles VERIFIED      : {}", report.verified_count);
     println!("Articles TO_CONFIRM    : {}", report.to_confirm_count);
     println!("Articles REJECTED      : {}", report.rejected_count);
-    println!("Durée totale           : {:.3} secondes", elapsed.as_secs_f64());
-    println!("Débit moyen constaté   : {:.1} articles/seconde", throughput_items_per_sec);
+    println!(
+        "Durée totale           : {:.3} secondes",
+        elapsed.as_secs_f64()
+    );
+    println!(
+        "Débit moyen constaté   : {:.1} articles/seconde",
+        throughput_items_per_sec
+    );
     println!("========================================================\n");
 
     // Assertions de performance et d'intégrité
-    assert_eq!(report.total_lignes, 1600, "1 600 articles doivent être traités");
+    assert_eq!(
+        report.total_lignes, 1600,
+        "1 600 articles doivent être traités"
+    );
     assert_eq!(report.final_status, BatchStatus::Staged);
-    assert_eq!(report.verified_count, 1600, "Tous les articles avec preuve valide doivent être VERIFIED");
+    assert_eq!(
+        report.verified_count, 1600,
+        "Tous les articles avec preuve valide doivent être VERIFIED"
+    );
     assert!(
         throughput_items_per_sec > 50.0,
         "Le débit industriel doit être supérieur à 50 articles/s avec persistance SurrealDB (constaté : {:.1} art/s)",
@@ -840,5 +977,9 @@ async fn test_industrial_benchmark_over_1500_items() {
 
     // Vérification de la persistance en base
     let staged_items = store.get_staged_items_by_batch(batch_id).await.unwrap();
-    assert_eq!(staged_items.len(), 1600, "1 600 articles doivent être présents dans la table ingestion_staged_item");
+    assert_eq!(
+        staged_items.len(),
+        1600,
+        "1 600 articles doivent être présents dans la table ingestion_staged_item"
+    );
 }

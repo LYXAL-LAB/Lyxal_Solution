@@ -135,8 +135,14 @@ async fn test_2_add_manufacturer_alias_dynamically_without_recompilation() {
     let store = IngestionStore::create_in_memory().await.unwrap();
 
     // 1. Résolution préalable d'un fabricant inconnu
-    let before_res = store.resolve_manufacturer("MAPEI FRANCE SAS").await.unwrap();
-    assert!(!before_res.is_verified, "Le fabricant ne doit pas être certifié au départ");
+    let before_res = store
+        .resolve_manufacturer("MAPEI FRANCE SAS")
+        .await
+        .unwrap();
+    assert!(
+        !before_res.is_verified,
+        "Le fabricant ne doit pas être certifié au départ"
+    );
 
     // 2. Déclaration dynamique d'un nouvel alias fabricant dans SurrealDB
     let q = r#"
@@ -150,7 +156,10 @@ async fn test_2_add_manufacturer_alias_dynamically_without_recompilation() {
     store.client().query(q).await.unwrap();
 
     // 3. Résolution dynamique via fn::ingestion_resolve_manufacturer
-    let after_res = store.resolve_manufacturer("MAPEI FRANCE SAS").await.unwrap();
+    let after_res = store
+        .resolve_manufacturer("MAPEI FRANCE SAS")
+        .await
+        .unwrap();
     assert!(after_res.resolved, "L'alias doit être résolu dynamiquement");
     assert_eq!(after_res.canonical_name, "MAPEI");
     assert_eq!(after_res.holding_or_group, Some("MAPEI GROUP".to_string()));
@@ -166,17 +175,33 @@ async fn test_3_resolve_unit_from_base_unite() {
 
     // 1. Résolution d'un code officiel direct présent dans base_unite
     let res_m2 = store.resolve_unit("M2").await.unwrap();
-    assert_eq!(res_m2, Some("M2".to_string()), "M2 doit être résolu depuis base_unite");
+    assert_eq!(
+        res_m2,
+        Some("M2".to_string()),
+        "M2 doit être résolu depuis base_unite"
+    );
 
     let res_pce = store.resolve_unit("PCE").await.unwrap();
-    assert_eq!(res_pce, Some("PCE".to_string()), "PCE doit être résolu depuis base_unite");
+    assert_eq!(
+        res_pce,
+        Some("PCE".to_string()),
+        "PCE doit être résolu depuis base_unite"
+    );
 
     // 2. Résolution d'un alias commercial vers base_unite (SQM -> M2)
     let res_sqm = store.resolve_unit("SQM").await.unwrap();
-    assert_eq!(res_sqm, Some("M2".to_string()), "SQM doit être normalisé vers M2");
+    assert_eq!(
+        res_sqm,
+        Some("M2".to_string()),
+        "SQM doit être normalisé vers M2"
+    );
 
     let res_piece = store.resolve_unit("PIECE").await.unwrap();
-    assert_eq!(res_piece, Some("PCE".to_string()), "PIECE doit être normalisé vers PCE");
+    assert_eq!(
+        res_piece,
+        Some("PCE".to_string()),
+        "PIECE doit être normalisé vers PCE"
+    );
 
     // 3. Ajout dynamique d'un nouveau code dans base_unite
     let q = r#"
@@ -186,11 +211,18 @@ async fn test_3_resolve_unit_from_base_unite() {
     store.client().query(q).await.unwrap();
 
     let res_litre = store.resolve_unit("LITRE").await.unwrap();
-    assert_eq!(res_litre, Some("LTR".to_string()), "L'alias dynamique LITRE doit pointer vers LTR");
+    assert_eq!(
+        res_litre,
+        Some("LTR".to_string()),
+        "L'alias dynamique LITRE doit pointer vers LTR"
+    );
 
     // 4. Unité inconnue non résolue
     let res_unknown = store.resolve_unit("UNITE_FICTIVE_XYZ").await.unwrap();
-    assert_eq!(res_unknown, None, "Une unité inconnue ne doit pas être résolue");
+    assert_eq!(
+        res_unknown, None,
+        "Une unité inconnue ne doit pas être résolue"
+    );
 }
 
 // =============================================================================
@@ -223,7 +255,10 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
         created_at: None,
         completed_at: None,
     };
-    store.create_batch(&batch).await.expect("fn::ingestion_batch_create");
+    store
+        .create_batch(&batch)
+        .await
+        .expect("fn::ingestion_batch_create");
 
     // 2. Checkpoint via fn::ingestion_batch_checkpoint
     store
@@ -263,7 +298,10 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
     // 4. Sauvegarde d'un brouillon non scellé -> Succès, mais rejet à l'approbation
     let mut draft_manifest = invalid_sealed_manifest;
     draft_manifest.is_sealed = false;
-    store.save_manifest(&draft_manifest).await.expect("Sauvegarde brouillon réussie");
+    store
+        .save_manifest(&draft_manifest)
+        .await
+        .expect("Sauvegarde brouillon réussie");
 
     let approve_unsealed = store
         .approve_manifest(
@@ -281,7 +319,10 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
     let mut valid_manifest = draft_manifest;
     valid_manifest.seal_hash = "blake3_seal_valid_hash".to_string();
     valid_manifest.is_sealed = true;
-    store.save_manifest(&valid_manifest).await.expect("fn::ingestion_manifest_save réussi");
+    store
+        .save_manifest(&valid_manifest)
+        .await
+        .expect("fn::ingestion_manifest_save réussi");
 
     // 5. Approbation sous contrôle strict du rôle steward_admin
     let approve_ok = store
@@ -291,7 +332,10 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
             "Bordereau vérifié et validé conforme",
         )
         .await;
-    assert!(approve_ok.is_ok(), "fn::ingestion_manifest_approve exécutée avec succès");
+    assert!(
+        approve_ok.is_ok(),
+        "fn::ingestion_manifest_approve exécutée avec succès"
+    );
 
     let loaded_manif = store.get_manifest(manifest_ref).await.unwrap().unwrap();
     assert_eq!(loaded_manif.statut, ManifestStatus::Approved);
@@ -332,7 +376,10 @@ async fn test_5_persistence_of_rules_and_substitutions_across_instances() {
         .iter()
         .find(|r| r.rule_id == "SUBST-PLACO-SINIAT-CLOISON-01");
 
-    assert!(found.is_some(), "La règle de substitution DOIT être persistée");
+    assert!(
+        found.is_some(),
+        "La règle de substitution DOIT être persistée"
+    );
     let loaded = found.unwrap();
     assert_eq!(loaded.source_manufacturer, "PLACO");
     assert_eq!(loaded.target_manufacturer, "SINIAT");
@@ -360,7 +407,10 @@ async fn test_6_rls_permissions_on_new_tables_and_functions() {
     for tbl in tables {
         let q = format!("INFO FOR TABLE {tbl};");
         let res = store.client().query(q).await;
-        assert!(res.is_ok(), "La table '{tbl}' doit être déclarée et valide dans le dictionnaire");
+        assert!(
+            res.is_ok(),
+            "La table '{tbl}' doit être déclarée et valide dans le dictionnaire"
+        );
     }
 }
 
@@ -374,7 +424,9 @@ async fn test_7_isolated_publication_compatible_with_catalogue_contracts() {
 
     // 1. Tenter une publication sans session autorisée -> DOIT être rejetée
     let unauth_session = SyncAgentSession::new("intruder", "guest", vec![]);
-    let pub_unauth = publisher.publish_manifest("MANIFEST-ANY", &unauth_session).await;
+    let pub_unauth = publisher
+        .publish_manifest("MANIFEST-ANY", &unauth_session)
+        .await;
     assert!(
         pub_unauth.is_err(),
         "Un utilisateur non habilité ne peut pas publier vers le Catalogue"
@@ -462,7 +514,11 @@ async fn test_7_isolated_publication_compatible_with_catalogue_contracts() {
     };
     store.save_manifest(&manifest).await.unwrap();
     store
-        .approve_manifest(manifest_ref, "steward_chief", "Validation isolée des articles")
+        .approve_manifest(
+            manifest_ref,
+            "steward_chief",
+            "Validation isolée des articles",
+        )
         .await
         .unwrap();
 
@@ -540,7 +596,10 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
         store.save_staged_item(&staged).await.unwrap();
     }
     // Checkpoint intermédiaire enregistré
-    store.save_checkpoint(batch_id, 10, 20, 10, 0, 0).await.unwrap();
+    store
+        .save_checkpoint(batch_id, 10, 20, 10, 0, 0)
+        .await
+        .unwrap();
 
     // 2. SIMULATION D'INCIDENT / CRASH SYSTEM
     // Le système redémarre et recharge le dernier checkpoint
@@ -577,7 +636,10 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
         };
         store.save_staged_item(&staged).await.unwrap();
     }
-    store.save_checkpoint(batch_id, 20, 20, 20, 0, 0).await.unwrap();
+    store
+        .save_checkpoint(batch_id, 20, 20, 20, 0, 0)
+        .await
+        .unwrap();
 
     // 4. Vérification d'absence totale de duplication
     let all_staged = store.get_staged_items_by_batch(batch_id).await.unwrap();

@@ -41,7 +41,8 @@ impl FabDisAdapter {
     /// Parse le format multi-blocs FAB-DIS 2.3
     fn parse_multi_block(&self, content: &str) -> Result<Vec<RawRecordDto>, IngestionError> {
         // Regroupement des blocs par référence fabricant
-        let mut commerce_records: HashMap<String, (usize, HashMap<String, String>, String)> = HashMap::new();
+        let mut commerce_records: HashMap<String, (usize, HashMap<String, String>, String)> =
+            HashMap::new();
         let mut logistics_records: HashMap<String, HashMap<String, String>> = HashMap::new();
         let mut reg_records: HashMap<String, HashMap<String, String>> = HashMap::new();
 
@@ -65,11 +66,21 @@ impl FabDisAdapter {
                         let ref_fab = parts[1].to_string();
                         let mut map = HashMap::new();
                         map.insert("ref_fab".to_string(), ref_fab.clone());
-                        if parts.len() > 2 { map.insert("ean".to_string(), parts[2].to_string()); }
-                        if parts.len() > 3 { map.insert("designation".to_string(), parts[3].to_string()); }
-                        if parts.len() > 4 { map.insert("marque".to_string(), parts[4].to_string()); }
-                        if parts.len() > 5 { map.insert("unite".to_string(), parts[5].to_string()); }
-                        if parts.len() > 6 { map.insert("prix".to_string(), parts[6].to_string()); }
+                        if parts.len() > 2 {
+                            map.insert("ean".to_string(), parts[2].to_string());
+                        }
+                        if parts.len() > 3 {
+                            map.insert("designation".to_string(), parts[3].to_string());
+                        }
+                        if parts.len() > 4 {
+                            map.insert("marque".to_string(), parts[4].to_string());
+                        }
+                        if parts.len() > 5 {
+                            map.insert("unite".to_string(), parts[5].to_string());
+                        }
+                        if parts.len() > 6 {
+                            map.insert("prix".to_string(), parts[6].to_string());
+                        }
                         commerce_records.insert(ref_fab, (idx + 1, map, line.to_string()));
                     }
                 }
@@ -78,11 +89,21 @@ impl FabDisAdapter {
                     if parts.len() >= 2 {
                         let ref_fab = parts[1].to_string();
                         let mut map = HashMap::new();
-                        if parts.len() > 2 { map.insert("poids_net".to_string(), parts[2].to_string()); }
-                        if parts.len() > 3 { map.insert("poids_brut".to_string(), parts[3].to_string()); }
-                        if parts.len() > 4 { map.insert("longueur".to_string(), parts[4].to_string()); }
-                        if parts.len() > 5 { map.insert("largeur".to_string(), parts[5].to_string()); }
-                        if parts.len() > 6 { map.insert("hauteur".to_string(), parts[6].to_string()); }
+                        if parts.len() > 2 {
+                            map.insert("poids_net".to_string(), parts[2].to_string());
+                        }
+                        if parts.len() > 3 {
+                            map.insert("poids_brut".to_string(), parts[3].to_string());
+                        }
+                        if parts.len() > 4 {
+                            map.insert("longueur".to_string(), parts[4].to_string());
+                        }
+                        if parts.len() > 5 {
+                            map.insert("largeur".to_string(), parts[5].to_string());
+                        }
+                        if parts.len() > 6 {
+                            map.insert("hauteur".to_string(), parts[6].to_string());
+                        }
                         logistics_records.insert(ref_fab, map);
                     }
                 }
@@ -91,9 +112,15 @@ impl FabDisAdapter {
                     if parts.len() >= 2 {
                         let ref_fab = parts[1].to_string();
                         let mut map = HashMap::new();
-                        if parts.len() > 2 { map.insert("etim".to_string(), parts[2].to_string()); }
-                        if parts.len() > 3 { map.insert("norme".to_string(), parts[3].to_string()); }
-                        if parts.len() > 4 { map.insert("classement_feu".to_string(), parts[4].to_string()); }
+                        if parts.len() > 2 {
+                            map.insert("etim".to_string(), parts[2].to_string());
+                        }
+                        if parts.len() > 3 {
+                            map.insert("norme".to_string(), parts[3].to_string());
+                        }
+                        if parts.len() > 4 {
+                            map.insert("classement_feu".to_string(), parts[4].to_string());
+                        }
                         reg_records.insert(ref_fab, map);
                     }
                 }
@@ -104,18 +131,29 @@ impl FabDisAdapter {
         let mut output = Vec::new();
         for (ref_fab, (line_num, c_map, raw_text)) in commerce_records {
             let ean = c_map.get("ean").cloned().filter(|s| !s.is_empty());
-            let designation = c_map.get("designation").cloned().unwrap_or_else(|| format!("Article FAB-DIS {ref_fab}"));
+            let designation = c_map
+                .get("designation")
+                .cloned()
+                .unwrap_or_else(|| format!("Article FAB-DIS {ref_fab}"));
             let brand = c_map.get("marque").cloned().filter(|s| !s.is_empty());
             let unit = c_map.get("unite").cloned().filter(|s| !s.is_empty());
-            let price = c_map.get("prix").and_then(|p| p.replace(',', ".").parse::<f64>().ok());
+            let price = c_map
+                .get("prix")
+                .and_then(|p| p.replace(',', ".").parse::<f64>().ok());
 
             // Réconciliation logistique
             let mut dimensions = None;
             let mut weight = None;
             if let Some(l_map) = logistics_records.get(&ref_fab) {
-                let length = l_map.get("longueur").and_then(|v| v.replace(',', ".").parse::<f64>().ok());
-                let width = l_map.get("largeur").and_then(|v| v.replace(',', ".").parse::<f64>().ok());
-                let height = l_map.get("hauteur").and_then(|v| v.replace(',', ".").parse::<f64>().ok());
+                let length = l_map
+                    .get("longueur")
+                    .and_then(|v| v.replace(',', ".").parse::<f64>().ok());
+                let width = l_map
+                    .get("largeur")
+                    .and_then(|v| v.replace(',', ".").parse::<f64>().ok());
+                let height = l_map
+                    .get("hauteur")
+                    .and_then(|v| v.replace(',', ".").parse::<f64>().ok());
                 if length.is_some() || width.is_some() || height.is_some() {
                     dimensions = Some(RawDimensionsDto {
                         length,
@@ -125,8 +163,12 @@ impl FabDisAdapter {
                     });
                 }
 
-                let net_weight = l_map.get("poids_net").and_then(|v| v.replace(',', ".").parse::<f64>().ok());
-                let gross_weight = l_map.get("poids_brut").and_then(|v| v.replace(',', ".").parse::<f64>().ok());
+                let net_weight = l_map
+                    .get("poids_net")
+                    .and_then(|v| v.replace(',', ".").parse::<f64>().ok());
+                let gross_weight = l_map
+                    .get("poids_brut")
+                    .and_then(|v| v.replace(',', ".").parse::<f64>().ok());
                 if net_weight.is_some() || gross_weight.is_some() {
                     weight = Some(RawWeightDto {
                         net_weight,
@@ -178,7 +220,7 @@ impl FabDisAdapter {
     fn parse_tabular(&self, content: &str) -> Result<Vec<RawRecordDto>, IngestionError> {
         let csv_adapter = super::csv::CsvAdapter::new();
         let mut records = csv_adapter.parse_content(content)?;
-        
+
         // Enrichissement spécifique FAB-DIS 3.0
         for r in &mut records {
             if let Some(payload_obj) = r.raw_payload.as_object_mut() {
@@ -247,7 +289,7 @@ L;RAIL_R48;1.5;1.6;3000;48;40
         let records = adapter.parse_content(content).unwrap();
 
         assert_eq!(records.len(), 2);
-        
+
         // Vérification de la première référence réconciliée multi-blocs
         let ba13 = &records[0];
         assert_eq!(ba13.raw_reference, "BA13_2500");
@@ -264,8 +306,14 @@ L;RAIL_R48;1.5;1.6;3000;48;40
         let weight = ba13.raw_weight.as_ref().unwrap();
         assert_eq!(weight.net_weight, Some(28.5));
 
-        assert_eq!(ba13.raw_attributes.get("classement_feu"), Some(&"A2-s1,d0".to_string()));
-        assert_eq!(ba13.raw_attributes.get("etim"), Some(&"EC001419".to_string()));
+        assert_eq!(
+            ba13.raw_attributes.get("classement_feu"),
+            Some(&"A2-s1,d0".to_string())
+        );
+        assert_eq!(
+            ba13.raw_attributes.get("etim"),
+            Some(&"EC001419".to_string())
+        );
 
         // Deuxième référence
         let rail = &records[1];

@@ -2,6 +2,4 @@
 
 pub mod controlled_publisher;
 
-pub use controlled_publisher::{
-    ControlledPublisher, PublicationExecutionReport, SyncAgentSession,
-};
+pub use controlled_publisher::{ControlledPublisher, PublicationExecutionReport, SyncAgentSession};

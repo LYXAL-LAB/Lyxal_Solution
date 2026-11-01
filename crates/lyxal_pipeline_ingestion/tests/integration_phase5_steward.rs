@@ -10,7 +10,9 @@
 //! 7. Sonde de santé industrielle `IngestionHealthCheck` conforme à `lyxal_runtime`.
 
 use lyxal_pipeline_ingestion::health::IngestionHealthCheck;
-use lyxal_pipeline_ingestion::models::{IngestionBatch, PublicationManifest, QuarantineRecord, StagedItem};
+use lyxal_pipeline_ingestion::models::{
+    IngestionBatch, PublicationManifest, QuarantineRecord, StagedItem,
+};
 use lyxal_pipeline_ingestion::proof::{CommercialProof, CommercialProofType};
 use lyxal_pipeline_ingestion::storage::store::{
     IngestionStore, ManifestListFilter, QuarantineListFilter, QuarantineResolveParams,
@@ -83,7 +85,10 @@ async fn test_1_dashboard_metrics_aggregation() {
         approved_by: None,
         approved_at: None,
     };
-    store.save_staged_item(&staged1).await.expect("Save staged 1");
+    store
+        .save_staged_item(&staged1)
+        .await
+        .expect("Save staged 1");
 
     let staged2 = StagedItem {
         id: None,
@@ -111,10 +116,16 @@ async fn test_1_dashboard_metrics_aggregation() {
         approved_by: None,
         approved_at: None,
     };
-    store.save_staged_item(&staged2).await.expect("Save staged 2");
+    store
+        .save_staged_item(&staged2)
+        .await
+        .expect("Save staged 2");
 
     // 3. Appel de la fonction publique SurrealQL fn::ingestion_dashboard_metrics via store.call_fn
-    let metrics = store.get_dashboard_metrics(None).await.expect("get_dashboard_metrics");
+    let metrics = store
+        .get_dashboard_metrics(None)
+        .await
+        .expect("get_dashboard_metrics");
 
     assert_eq!(metrics.batches.total, 1);
     assert_eq!(metrics.batches.staged, 1);
@@ -176,7 +187,10 @@ async fn test_2_staged_listing_and_filtering() {
         approved_by: None,
         approved_at: None,
     };
-    store.save_staged_item(&staged1).await.expect("Save staged 1");
+    store
+        .save_staged_item(&staged1)
+        .await
+        .expect("Save staged 1");
 
     let staged2 = StagedItem {
         id: None,
@@ -204,18 +218,27 @@ async fn test_2_staged_listing_and_filtering() {
         approved_by: None,
         approved_at: None,
     };
-    store.save_staged_item(&staged2).await.expect("Save staged 2");
+    store
+        .save_staged_item(&staged2)
+        .await
+        .expect("Save staged 2");
 
     // 1. Consultation sans filtre (total = 2)
-    let res_all = store.list_staged_items(StagedListFilter::default()).await.expect("list all");
+    let res_all = store
+        .list_staged_items(StagedListFilter::default())
+        .await
+        .expect("list all");
     assert_eq!(res_all.total, 2);
     assert_eq!(res_all.items.len(), 2);
 
     // 2. Filtre par qualification TO_CONFIRM (total = 1)
-    let res_to_confirm = store.list_staged_items(StagedListFilter {
-        qualification: Some("TO_CONFIRM".to_string()),
-        ..Default::default()
-    }).await.expect("filter TO_CONFIRM");
+    let res_to_confirm = store
+        .list_staged_items(StagedListFilter {
+            qualification: Some("TO_CONFIRM".to_string()),
+            ..Default::default()
+        })
+        .await
+        .expect("filter TO_CONFIRM");
     assert_eq!(res_to_confirm.total, 1);
     assert_eq!(res_to_confirm.items.len(), 1);
 }
@@ -288,7 +311,10 @@ async fn test_3_steward_requalification_session_security() {
         }),
     };
     let unauth_res = store.requalify_staged_item(unauth_params).await;
-    assert!(unauth_res.is_err(), "Un opérateur non steward_admin DOIT être formellement rejeté");
+    assert!(
+        unauth_res.is_err(),
+        "Un opérateur non steward_admin DOIT être formellement rejeté"
+    );
 
     // TENTATIVE 2 : Justification trop courte (< 10 caractères) avec steward_admin
     // DOIT ÊTRE REJETÉ PAR SURREALQL
@@ -304,7 +330,10 @@ async fn test_3_steward_requalification_session_security() {
         }),
     };
     let short_res = store.requalify_staged_item(short_justif_params).await;
-    assert!(short_res.is_err(), "Une justification < 10 caractères DOIT être rejetée");
+    assert!(
+        short_res.is_err(),
+        "Une justification < 10 caractères DOIT être rejetée"
+    );
 }
 
 #[tokio::test]
@@ -375,7 +404,10 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
         }),
     };
     let no_proof_res = store.requalify_staged_item(no_proof_params).await;
-    assert!(no_proof_res.is_err(), "Le passage en VERIFIED sans CommercialProof DOIT échouer");
+    assert!(
+        no_proof_res.is_err(),
+        "Le passage en VERIFIED sans CommercialProof DOIT échouer"
+    );
 
     // TENTATIVE 2 : Promotion vers VERIFIED AVEC CommercialProof authentique
     let valid_proof = CommercialProof::new(
@@ -398,14 +430,21 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
         }),
     };
     let with_proof_res = store.requalify_staged_item(with_proof_params).await;
-    assert!(with_proof_res.is_ok(), "Le passage en VERIFIED avec preuve DOIT réussir : {:?}", with_proof_res);
+    assert!(
+        with_proof_res.is_ok(),
+        "Le passage en VERIFIED avec preuve DOIT réussir : {:?}",
+        with_proof_res
+    );
 
     // Vérification de la transition d'état et de l'approbation
     let filter = StagedListFilter {
         qualification: Some("VERIFIED".to_string()),
         ..Default::default()
     };
-    let list_res = store.list_staged_items(filter).await.expect("List verified");
+    let list_res = store
+        .list_staged_items(filter)
+        .await
+        .expect("List verified");
     assert_eq!(list_res.total, 1);
     assert_eq!(list_res.items[0]["is_approved"], true);
     assert_eq!(list_res.items[0]["approved_by"], "steward_alice");
@@ -482,13 +521,19 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
         resolved_at: None,
         resolution_comment: None,
     };
-    let q_id = store.log_quarantine(&quar_rec).await.expect("Log quarantine");
+    let q_id = store
+        .log_quarantine(&quar_rec)
+        .await
+        .expect("Log quarantine");
 
     // 1. Consultation des anomalies non résolues
-    let list_q = store.list_quarantine_records(QuarantineListFilter {
-        is_resolved: Some(false),
-        ..Default::default()
-    }).await.expect("List quarantine");
+    let list_q = store
+        .list_quarantine_records(QuarantineListFilter {
+            is_resolved: Some(false),
+            ..Default::default()
+        })
+        .await
+        .expect("List quarantine");
     assert_eq!(list_q.total, 1);
 
     // 2. Résolution par le Data Steward avec correction du GTIN
@@ -506,22 +551,31 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
             role: "steward_admin".to_string(),
         }),
     };
-    let res = store.resolve_quarantine_record(resolve_params).await.expect("Resolve quarantine");
+    let res = store
+        .resolve_quarantine_record(resolve_params)
+        .await
+        .expect("Resolve quarantine");
     assert!(res, "La résolution d'anomalie doit réussir");
 
     // 3. Vérification que l'anomalie est marquée résolue
-    let list_resolved = store.list_quarantine_records(QuarantineListFilter {
-        is_resolved: Some(true),
-        ..Default::default()
-    }).await.expect("List resolved");
+    let list_resolved = store
+        .list_quarantine_records(QuarantineListFilter {
+            is_resolved: Some(true),
+            ..Default::default()
+        })
+        .await
+        .expect("List resolved");
     assert_eq!(list_resolved.total, 1);
     assert_eq!(list_resolved.records[0]["resolved_by"], "steward_bob");
 
     // 4. VÉRIFICATION DE LA RÈGLE D'OR CTO : L'article est repassé en TO_CONFIRM (PAS VERIFIED !)
-    let staged_list = store.list_staged_items(StagedListFilter {
-        qualification: Some("TO_CONFIRM".to_string()),
-        ..Default::default()
-    }).await.expect("List TO_CONFIRM");
+    let staged_list = store
+        .list_staged_items(StagedListFilter {
+            qualification: Some("TO_CONFIRM".to_string()),
+            ..Default::default()
+        })
+        .await
+        .expect("List TO_CONFIRM");
     assert_eq!(staged_list.total, 1);
     assert_eq!(staged_list.items[0]["qualification"], "TO_CONFIRM");
     assert_eq!(staged_list.items[0]["code_barre_gtin"], "3401234567896");
@@ -582,14 +636,26 @@ async fn test_6_manifest_listing_and_detail_integrity() {
     store.save_manifest(&manifest).await.expect("Save manifest");
 
     // 1. Listing paginé des manifestes
-    let res_list = store.list_manifests(ManifestListFilter::default()).await.expect("List manifests");
+    let res_list = store
+        .list_manifests(ManifestListFilter::default())
+        .await
+        .expect("List manifests");
     assert_eq!(res_list.total, 1);
-    assert_eq!(res_list.manifests[0]["manifest_ref"], "PUB-2026-LEGRAND-001");
+    assert_eq!(
+        res_list.manifests[0]["manifest_ref"],
+        "PUB-2026-LEGRAND-001"
+    );
 
     // 2. Consultation détaillée avec contrôle de scellement
-    let detail = store.get_manifest_detail("PUB-2026-LEGRAND-001").await.expect("Get manifest detail");
+    let detail = store
+        .get_manifest_detail("PUB-2026-LEGRAND-001")
+        .await
+        .expect("Get manifest detail");
     assert_eq!(detail.is_sealed, true);
-    assert_eq!(detail.seal_hash, "blake3_seal_hash_abcdef0123456789abcdef0123456789");
+    assert_eq!(
+        detail.seal_hash,
+        "blake3_seal_hash_abcdef0123456789abcdef0123456789"
+    );
     assert_eq!(detail.execution_count, 1);
     assert_eq!(detail.transition_count, 1);
 }
@@ -602,7 +668,10 @@ async fn test_7_ingestion_health_check_probe() {
     let probe = IngestionHealthCheck::with_store(store);
     let ctx = ModuleContext::new("lyxal_pipeline_ingestion");
 
-    let result = probe.check(&ctx).await.expect("Health check probe execution");
+    let result = probe
+        .check(&ctx)
+        .await
+        .expect("Health check probe execution");
     assert_eq!(result.status, lyxal_runtime::health::HealthStatus::Healthy);
     assert_eq!(result.module_id.as_str(), "lyxal_pipeline_ingestion");
     assert!(result.message.unwrap().contains("healthy"));

@@ -87,16 +87,25 @@ fn get_manufacturer_alias_map() -> &'static HashMap<&'static str, &'static str> 
 
 /// Suffixes juridiques et géographiques à nettoyer
 const STRIP_SUFFIXES: &[&str] = &[
-    " SAS", " SA", " SARL", " EURL", " GMBH", " LTD", " INC", " CORP", " SPA", " SL",
-    " FRANCE", " EUROPE", " INTERNATIONAL", " DISTRIBUTION"
+    " SAS",
+    " SA",
+    " SARL",
+    " EURL",
+    " GMBH",
+    " LTD",
+    " INC",
+    " CORP",
+    " SPA",
+    " SL",
+    " FRANCE",
+    " EUROPE",
+    " INTERNATIONAL",
+    " DISTRIBUTION",
 ];
 
 /// Normalise le nom d'un fabricant ou d'une marque vers sa forme canonique
 pub fn normalize_manufacturer(raw_name: &str) -> String {
-    let mut cleaned = raw_name
-        .trim()
-        .to_uppercase()
-        .replace(['.', ',', ';'], " ");
+    let mut cleaned = raw_name.trim().to_uppercase().replace(['.', ',', ';'], " ");
 
     // Remplacement des espaces multiples
     while cleaned.contains("  ") {
@@ -136,11 +145,20 @@ mod tests {
         assert_eq!(normalize_manufacturer("Saint-Gobain Weber"), "WEBER");
         assert_eq!(normalize_manufacturer("Saint-Gobain PAM"), "PAM");
         assert_eq!(normalize_manufacturer("Knauf SAS"), "KNAUF");
-        assert_eq!(normalize_manufacturer("Knauf Insulation"), "KNAUF INSULATION");
-        assert_eq!(normalize_manufacturer("Schneider Electric France"), "SCHNEIDER ELECTRIC");
+        assert_eq!(
+            normalize_manufacturer("Knauf Insulation"),
+            "KNAUF INSULATION"
+        );
+        assert_eq!(
+            normalize_manufacturer("Schneider Electric France"),
+            "SCHNEIDER ELECTRIC"
+        );
         assert_eq!(normalize_manufacturer("Legrand France SA"), "LEGRAND");
         assert_eq!(normalize_manufacturer("Legrand Bticino"), "BTICINO");
-        assert_eq!(normalize_manufacturer("Fabricant Inconnu SARL"), "FABRICANT INCONNU");
+        assert_eq!(
+            normalize_manufacturer("Fabricant Inconnu SARL"),
+            "FABRICANT INCONNU"
+        );
 
         // Règle CTO : Deux entités d'un même groupe restent strictement distinctes
         assert_ne!(

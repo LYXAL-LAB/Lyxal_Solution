@@ -166,7 +166,8 @@ impl TechnicalGroupingEngine {
         self.register_specification(TechnicalSpecification {
             family_code: "CLOISON_PLAQUE_PLATRE".to_string(),
             technical_identity_key: "SPEC_GEN_PLAQUE_BA13_2500x1200".to_string(),
-            generic_title: "Plaque de plâtre standard type A 2500x1200x12.5mm bords amincis".to_string(),
+            generic_title: "Plaque de plâtre standard type A 2500x1200x12.5mm bords amincis"
+                .to_string(),
             nominal_dimensions: Some(CanonicalDimensions {
                 length_mm: Some(2500.0),
                 width_mm: Some(1200.0),
@@ -186,7 +187,8 @@ impl TechnicalGroupingEngine {
         self.register_specification(TechnicalSpecification {
             family_code: "OSSATURE_METALLIQUE".to_string(),
             technical_identity_key: "SPEC_GEN_RAIL_R48_3000".to_string(),
-            generic_title: "Rail métallique pour cloison R48 longueur 3000mm épaisseur 0.6mm".to_string(),
+            generic_title: "Rail métallique pour cloison R48 longueur 3000mm épaisseur 0.6mm"
+                .to_string(),
             nominal_dimensions: Some(CanonicalDimensions {
                 length_mm: Some(3000.0),
                 width_mm: Some(48.0),
@@ -218,12 +220,17 @@ impl TechnicalGroupingEngine {
 
         // 4. Spécification générique Isolant Laine de verre GR32 100mm (Directive CTO Phase 3)
         let mut gr32_features = HashMap::new();
-        gr32_features.insert("insulation_material".to_string(), "LAINE_DE_VERRE".to_string());
+        gr32_features.insert(
+            "insulation_material".to_string(),
+            "LAINE_DE_VERRE".to_string(),
+        );
         gr32_features.insert("thermal_lambda".to_string(), "0.032".to_string());
         self.register_specification(TechnicalSpecification {
             family_code: "ISOLATION_THERMIQUE_ACOUSTIQUE".to_string(),
             technical_identity_key: "SPEC_GEN_ISOLANT_LAINE_VERRE_GR32_100".to_string(),
-            generic_title: "Panneau roulé de laine de verre semi-rigide lambda 0.032 épaisseur 100mm R=3.15".to_string(),
+            generic_title:
+                "Panneau roulé de laine de verre semi-rigide lambda 0.032 épaisseur 100mm R=3.15"
+                    .to_string(),
             nominal_dimensions: Some(CanonicalDimensions {
                 length_mm: Some(2700.0),
                 width_mm: Some(1200.0),
@@ -238,12 +245,16 @@ impl TechnicalGroupingEngine {
 
         // 5. Spécification générique Isolant Laine de roche 100mm
         let mut rock_features = HashMap::new();
-        rock_features.insert("insulation_material".to_string(), "LAINE_DE_ROCHE".to_string());
+        rock_features.insert(
+            "insulation_material".to_string(),
+            "LAINE_DE_ROCHE".to_string(),
+        );
         rock_features.insert("thermal_lambda".to_string(), "0.035".to_string());
         self.register_specification(TechnicalSpecification {
             family_code: "ISOLATION_THERMIQUE_ACOUSTIQUE".to_string(),
             technical_identity_key: "SPEC_GEN_ISOLANT_LAINE_ROCHE_100".to_string(),
-            generic_title: "Panneau rigide de laine de roche lambda 0.035 épaisseur 100mm R=2.85".to_string(),
+            generic_title: "Panneau rigide de laine de roche lambda 0.035 épaisseur 100mm R=2.85"
+                .to_string(),
             nominal_dimensions: Some(CanonicalDimensions {
                 length_mm: Some(1200.0),
                 width_mm: Some(600.0),
@@ -268,7 +279,9 @@ impl TechnicalGroupingEngine {
             confidence_score: 0.1,
             matched_criteria: Vec::new(),
             missing_evidence: vec!["Aucune famille technique reconnue".to_string()],
-            decision_reason: "L'article n'a pas pu être rattaché à une spécification technique standard".to_string(),
+            decision_reason:
+                "L'article n'a pas pu être rattaché à une spécification technique standard"
+                    .to_string(),
             rules_engine_version: self.rules_version.clone(),
         };
 
@@ -296,7 +309,10 @@ impl TechnicalGroupingEngine {
         // ---------------------------------------------------------------------
         let des_lower = item.commercial_label.to_lowercase();
         let family_match = if let Some(family_rule) = self.known_families.get(&spec.family_code) {
-            family_rule.keywords.iter().any(|kw| des_lower.contains(&kw.to_lowercase()))
+            family_rule
+                .keywords
+                .iter()
+                .any(|kw| des_lower.contains(&kw.to_lowercase()))
                 || des_lower.contains(&family_rule.label.to_lowercase())
         } else {
             match spec.family_code.as_str() {
@@ -357,7 +373,9 @@ impl TechnicalGroupingEngine {
         };
 
         let mut dims_match = true;
-        if let (Some(ref item_dims), Some(ref spec_dims)) = (&item.dimensions, &spec.nominal_dimensions) {
+        if let (Some(ref item_dims), Some(ref spec_dims)) =
+            (&item.dimensions, &spec.nominal_dimensions)
+        {
             if let (Some(il), Some(sl)) = (item_dims.length_mm, spec_dims.length_mm) {
                 if (il - sl).abs() <= len_tol {
                     matched_criteria.push(format!("Longueur conforme : {il}mm =~ {sl}mm"));
@@ -394,7 +412,8 @@ impl TechnicalGroupingEngine {
                     matched_criteria.push(format!("Norme conforme : {required_norm}"));
                     true
                 } else {
-                    missing_evidence.push(format!("Norme divergente : {item_norm} vs {required_norm}"));
+                    missing_evidence
+                        .push(format!("Norme divergente : {item_norm} vs {required_norm}"));
                     false
                 }
             } else {
@@ -423,7 +442,9 @@ impl TechnicalGroupingEngine {
                         matched_criteria.push(format!("Classement feu conforme : {required_fire}"));
                     } else {
                         performance_match = false;
-                        missing_evidence.push(format!("Classement feu non équivalent : {item_fire} vs {required_fire}"));
+                        missing_evidence.push(format!(
+                            "Classement feu non équivalent : {item_fire} vs {required_fire}"
+                        ));
                     }
                 } else {
                     performance_match = false;
@@ -435,14 +456,23 @@ impl TechnicalGroupingEngine {
             for (req_k, req_v) in &spec.required_features {
                 if let Some(item_v) = item.technical_features.get(req_k) {
                     if item_v.to_uppercase() == req_v.to_uppercase() {
-                        matched_criteria.push(format!("Attribut technique '{}' conforme : {}", req_k, req_v));
+                        matched_criteria.push(format!(
+                            "Attribut technique '{}' conforme : {}",
+                            req_k, req_v
+                        ));
                     } else {
                         performance_match = false;
-                        missing_evidence.push(format!("Attribut '{}' divergent : {} vs {}", req_k, item_v, req_v));
+                        missing_evidence.push(format!(
+                            "Attribut '{}' divergent : {} vs {}",
+                            req_k, item_v, req_v
+                        ));
                     }
                 } else {
                     performance_match = false;
-                    missing_evidence.push(format!("Caractéristique '{}' non renseignée dans la source", req_k));
+                    missing_evidence.push(format!(
+                        "Caractéristique '{}' non renseignée dans la source",
+                        req_k
+                    ));
                 }
             }
 
@@ -471,7 +501,10 @@ impl TechnicalGroupingEngine {
             if is_substitution_certified {
                 current_level = TechnicalGroupLevel::AuthorizedSubstitution;
                 confidence = 1.0;
-                matched_criteria.push("Substitution formellement certifiée par règle métier / Avis Technique".to_string());
+                matched_criteria.push(
+                    "Substitution formellement certifiée par règle métier / Avis Technique"
+                        .to_string(),
+                );
             } else {
                 missing_evidence.push(
                     "Substitution contractuelle (Niveau 4) non certifiée : nécessite une règle métier explicite ou arbitrage steward_admin".to_string()
@@ -554,26 +587,42 @@ impl TechnicalGroupingEngine {
                 || r.contains("ba13")
                 || r.contains("ks13")
         };
-        let is_both_plaque = is_plaque(&des_a, &item_a.manufacturer_ref) && is_plaque(&des_b, &item_b.manufacturer_ref);
+        let is_both_plaque = is_plaque(&des_a, &item_a.manufacturer_ref)
+            && is_plaque(&des_b, &item_b.manufacturer_ref);
 
         let is_rail = |des: &str, ref_str: &str| {
             let d = des.to_lowercase();
             let r = ref_str.to_lowercase();
-            d.contains("rail") || d.contains("montant") || d.contains("r48") || d.contains("m48") || r.contains("r48") || r.contains("m48")
+            d.contains("rail")
+                || d.contains("montant")
+                || d.contains("r48")
+                || d.contains("m48")
+                || r.contains("r48")
+                || r.contains("m48")
         };
-        let is_both_rail = is_rail(&des_a, &item_a.manufacturer_ref) && is_rail(&des_b, &item_b.manufacturer_ref);
+        let is_both_rail =
+            is_rail(&des_a, &item_a.manufacturer_ref) && is_rail(&des_b, &item_b.manufacturer_ref);
 
         let is_prise = |des: &str, feat: &std::collections::HashMap<String, String>| {
             let d = des.to_lowercase();
-            d.contains("prise") || d.contains("interrupteur") || d.contains("2p+t") || feat.contains_key("current_rating_a")
+            d.contains("prise")
+                || d.contains("interrupteur")
+                || d.contains("2p+t")
+                || feat.contains_key("current_rating_a")
         };
-        let is_both_prise = is_prise(&des_a, &item_a.technical_features) && is_prise(&des_b, &item_b.technical_features);
+        let is_both_prise = is_prise(&des_a, &item_a.technical_features)
+            && is_prise(&des_b, &item_b.technical_features);
 
         let is_isolant = |des: &str, feat: &std::collections::HashMap<String, String>| {
             let d = des.to_lowercase();
-            d.contains("isol") || d.contains("laine") || d.contains("gr32") || feat.contains_key("insulation_material") || feat.contains_key("thermal_lambda")
+            d.contains("isol")
+                || d.contains("laine")
+                || d.contains("gr32")
+                || feat.contains_key("insulation_material")
+                || feat.contains_key("thermal_lambda")
         };
-        let is_both_isolant = is_isolant(&des_a, &item_a.technical_features) && is_isolant(&des_b, &item_b.technical_features);
+        let is_both_isolant = is_isolant(&des_a, &item_a.technical_features)
+            && is_isolant(&des_b, &item_b.technical_features);
 
         if !is_both_plaque && !is_both_rail && !is_both_prise && !is_both_isolant {
             return TechnicalGroupingDecision {
@@ -618,7 +667,10 @@ impl TechnicalGroupingEngine {
             let mat_a = item_a.technical_features.get("insulation_material");
             let mat_b = item_b.technical_features.get("insulation_material");
             if mat_a.is_some() && mat_b.is_some() && mat_a != mat_b {
-                missing.push(format!("Matériaux isolants incompatibles : {:?} vs {:?}", mat_a, mat_b));
+                missing.push(format!(
+                    "Matériaux isolants incompatibles : {:?} vs {:?}",
+                    mat_a, mat_b
+                ));
             }
         }
 
@@ -634,13 +686,21 @@ impl TechnicalGroupingEngine {
                 if mat_a.is_some() && mat_a != mat_b {
                     // Déjà consigné ci-dessus
                 } else if lam_a.is_some() && lam_a != lam_b {
-                    missing.push(format!("Conductivité thermique (lambda) divergente : {:?} vs {:?}", lam_a, lam_b));
+                    missing.push(format!(
+                        "Conductivité thermique (lambda) divergente : {:?} vs {:?}",
+                        lam_a, lam_b
+                    ));
                 } else if mat_a.is_some() && lam_a.is_some() {
                     level = TechnicalGroupLevel::FunctionalEquivalence;
                     confidence = 0.90;
-                    matched.push("Isolants de même matériau, même lambda et cotes équivalentes".to_string());
+                    matched.push(
+                        "Isolants de même matériau, même lambda et cotes équivalentes".to_string(),
+                    );
                 } else {
-                    missing.push("Informations lambda ou matériau insuffisantes pour équivalence isolant".to_string());
+                    missing.push(
+                        "Informations lambda ou matériau insuffisantes pour équivalence isolant"
+                            .to_string(),
+                    );
                 }
             } else {
                 // Plâtrerie, rails, électricité
@@ -652,7 +712,9 @@ impl TechnicalGroupingEngine {
                 if fire_a.is_some() && fire_a == fire_b && edge_a == edge_b {
                     level = TechnicalGroupLevel::FunctionalEquivalence;
                     confidence = 0.90;
-                    matched.push("Performances feu et type de bords strictement équivalents".to_string());
+                    matched.push(
+                        "Performances feu et type de bords strictement équivalents".to_string(),
+                    );
                 } else {
                     missing.push("Preuve de classement au feu ou caractéristiques de bord divergentes/absentes".to_string());
                 }
@@ -672,19 +734,30 @@ impl TechnicalGroupingEngine {
             let mut scope_mismatch = false;
 
             for rule in self.contextual_rules.values() {
-                let pair_matches = (rule.source_manufacturer == mfg_a && rule.source_ref == ref_a && rule.target_manufacturer == mfg_b && rule.target_ref == ref_b)
-                    || (rule.source_manufacturer == mfg_b && rule.source_ref == ref_b && rule.target_manufacturer == mfg_a && rule.target_ref == ref_a);
+                let pair_matches = (rule.source_manufacturer == mfg_a
+                    && rule.source_ref == ref_a
+                    && rule.target_manufacturer == mfg_b
+                    && rule.target_ref == ref_b)
+                    || (rule.source_manufacturer == mfg_b
+                        && rule.source_ref == ref_b
+                        && rule.target_manufacturer == mfg_a
+                        && rule.target_ref == ref_a);
 
                 if pair_matches {
                     if rule.is_revoked {
                         substitution_revoked = true;
-                        revocation_msg = rule.revocation_reason.clone().unwrap_or_else(|| "Révocation administrative".to_string());
+                        revocation_msg = rule
+                            .revocation_reason
+                            .clone()
+                            .unwrap_or_else(|| "Révocation administrative".to_string());
                     } else if let Some(req_scope) = context_system {
                         if rule.system_scope.eq_ignore_ascii_case(req_scope) {
                             substitution_found = true;
                             matched.push(format!(
                                 "Substitution certifiée valide : {} ({}, scope: {})",
-                                rule.certification_reference, rule.certification_body, rule.system_scope
+                                rule.certification_reference,
+                                rule.certification_body,
+                                rule.system_scope
                             ));
                             break;
                         } else {
@@ -698,22 +771,36 @@ impl TechnicalGroupingEngine {
             }
 
             // Fallback rétro-compatible certified_substitutions (Phase 2 sans contexte)
-            let is_legacy_certified = self.certified_substitutions.contains(&(mfg_a.clone(), ref_a.clone(), mfg_b.clone(), ref_b.clone()))
-                || self.certified_substitutions.contains(&(mfg_b, ref_b, mfg_a, ref_a));
+            let is_legacy_certified = self.certified_substitutions.contains(&(
+                mfg_a.clone(),
+                ref_a.clone(),
+                mfg_b.clone(),
+                ref_b.clone(),
+            )) || self
+                .certified_substitutions
+                .contains(&(mfg_b, ref_b, mfg_a, ref_a));
 
             if substitution_revoked {
-                missing.push(format!("Substitution formellement révoquée : {revocation_msg}"));
+                missing.push(format!(
+                    "Substitution formellement révoquée : {revocation_msg}"
+                ));
             } else if substitution_found || (is_legacy_certified && context_system.is_none()) {
                 level = TechnicalGroupLevel::AuthorizedSubstitution;
                 confidence = 1.0;
-                matched.push("Paire de substitution certifiée conforme (Avis Technique / Règle métier)".to_string());
+                matched.push(
+                    "Paire de substitution certifiée conforme (Avis Technique / Règle métier)"
+                        .to_string(),
+                );
             } else if scope_mismatch {
                 missing.push(format!(
                     "Substitution non autorisée pour le système demandé (justificatif hors périmètre : {:?})",
                     context_system
                 ));
             } else {
-                missing.push("Substitution contractuelle non autorisée sans accord ou ATec validé".to_string());
+                missing.push(
+                    "Substitution contractuelle non autorisée sans accord ou ATec validé"
+                        .to_string(),
+                );
             }
         }
 
@@ -731,7 +818,10 @@ impl TechnicalGroupingEngine {
         TechnicalGroupingDecision {
             manufacturer_ref: item_a.manufacturer_ref.clone(),
             manufacturer: item_a.manufacturer.clone(),
-            technical_identity_key: format!("{}_VS_{}", item_a.manufacturer_ref, item_b.manufacturer_ref),
+            technical_identity_key: format!(
+                "{}_VS_{}",
+                item_a.manufacturer_ref, item_b.manufacturer_ref
+            ),
             reached_level: level,
             qualification: qual,
             confidence_score: confidence,
@@ -774,9 +864,15 @@ mod tests {
         norm: Option<&str>,
     ) -> NormalizedItemDto {
         let mut tech = HashMap::new();
-        if let Some(f) = fire { tech.insert("fire_rating".to_string(), f.to_string()); }
-        if let Some(e) = edge { tech.insert("edge_type".to_string(), e.to_string()); }
-        if let Some(n) = norm { tech.insert("standard_norm".to_string(), n.to_string()); }
+        if let Some(f) = fire {
+            tech.insert("fire_rating".to_string(), f.to_string());
+        }
+        if let Some(e) = edge {
+            tech.insert("edge_type".to_string(), e.to_string());
+        }
+        if let Some(n) = norm {
+            tech.insert("standard_norm".to_string(), n.to_string());
+        }
 
         NormalizedItemDto {
             line_number: 1,
@@ -811,7 +907,11 @@ mod tests {
             "PLACO",
             "BA13_2500",
             "Placoplatre BA13 2500x1200",
-            CanonicalDimensions { length_mm: Some(2500.0), width_mm: Some(1200.0), height_mm: Some(12.5) },
+            CanonicalDimensions {
+                length_mm: Some(2500.0),
+                width_mm: Some(1200.0),
+                height_mm: Some(12.5),
+            },
             Some("A2-S1,D0"),
             Some("BA"),
             Some("NF EN 520"),
@@ -821,15 +921,23 @@ mod tests {
             "KNAUF",
             "KS13_2500",
             "Plaque Knauf Standard KS 13 2500x1200",
-            CanonicalDimensions { length_mm: Some(2500.0), width_mm: Some(1200.0), height_mm: Some(12.5) },
+            CanonicalDimensions {
+                length_mm: Some(2500.0),
+                width_mm: Some(1200.0),
+                height_mm: Some(12.5),
+            },
             Some("A2-S1,D0"),
             Some("BA"),
             Some("NF EN 520"),
         );
 
         // 1. Sans règle, la substitution n'est pas autorisée
-        let dec_no_rule = engine.compare_items_in_context(&placo, &knauf, Some("SYSTEME_CLOISON_72_48"));
-        assert_eq!(dec_no_rule.reached_level, TechnicalGroupLevel::FunctionalEquivalence);
+        let dec_no_rule =
+            engine.compare_items_in_context(&placo, &knauf, Some("SYSTEME_CLOISON_72_48"));
+        assert_eq!(
+            dec_no_rule.reached_level,
+            TechnicalGroupLevel::FunctionalEquivalence
+        );
 
         // 2. Enregistrement d'une règle contextualisée pour "SYSTEME_CLOISON_72_48"
         engine.register_contextual_substitution(ContextualSubstitutionRule {
@@ -847,22 +955,41 @@ mod tests {
         });
 
         // 3. Test avec le bon scope système -> Substitution autorisée (Niveau 4)
-        let dec_valid = engine.compare_items_in_context(&placo, &knauf, Some("SYSTEME_CLOISON_72_48"));
-        assert_eq!(dec_valid.reached_level, TechnicalGroupLevel::AuthorizedSubstitution);
+        let dec_valid =
+            engine.compare_items_in_context(&placo, &knauf, Some("SYSTEME_CLOISON_72_48"));
+        assert_eq!(
+            dec_valid.reached_level,
+            TechnicalGroupLevel::AuthorizedSubstitution
+        );
         assert_eq!(dec_valid.confidence_score, 1.0);
 
         // 4. Test avec un scope système différent -> Rejet du Niveau 4
-        let dec_wrong_scope = engine.compare_items_in_context(&placo, &knauf, Some("SYSTEME_PLAFOND_SUSPENDU"));
-        assert_eq!(dec_wrong_scope.reached_level, TechnicalGroupLevel::FunctionalEquivalence);
-        assert!(dec_wrong_scope.missing_evidence.iter().any(|m| m.contains("hors périmètre")));
+        let dec_wrong_scope =
+            engine.compare_items_in_context(&placo, &knauf, Some("SYSTEME_PLAFOND_SUSPENDU"));
+        assert_eq!(
+            dec_wrong_scope.reached_level,
+            TechnicalGroupLevel::FunctionalEquivalence
+        );
+        assert!(dec_wrong_scope
+            .missing_evidence
+            .iter()
+            .any(|m| m.contains("hors périmètre")));
 
         // 5. Révocation de la règle -> Rejet du Niveau 4 même avec le bon scope
-        let revoked = engine.revoke_substitution("RULE-001", "Avis Technique suspendu suite à sinistre");
+        let revoked =
+            engine.revoke_substitution("RULE-001", "Avis Technique suspendu suite à sinistre");
         assert!(revoked);
 
-        let dec_revoked = engine.compare_items_in_context(&placo, &knauf, Some("SYSTEME_CLOISON_72_48"));
-        assert_eq!(dec_revoked.reached_level, TechnicalGroupLevel::FunctionalEquivalence);
-        assert!(dec_revoked.missing_evidence.iter().any(|m| m.contains("révoquée")));
+        let dec_revoked =
+            engine.compare_items_in_context(&placo, &knauf, Some("SYSTEME_CLOISON_72_48"));
+        assert_eq!(
+            dec_revoked.reached_level,
+            TechnicalGroupLevel::FunctionalEquivalence
+        );
+        assert!(dec_revoked
+            .missing_evidence
+            .iter()
+            .any(|m| m.contains("révoquée")));
     }
 
     #[test]
@@ -870,7 +997,10 @@ mod tests {
         let engine = TechnicalGroupingEngine::new();
 
         let mut features_glass = HashMap::new();
-        features_glass.insert("insulation_material".to_string(), "LAINE_DE_VERRE".to_string());
+        features_glass.insert(
+            "insulation_material".to_string(),
+            "LAINE_DE_VERRE".to_string(),
+        );
         features_glass.insert("thermal_lambda".to_string(), "0.032".to_string());
         features_glass.insert("thermal_resistance_r".to_string(), "3.15".to_string());
 
@@ -886,7 +1016,11 @@ mod tests {
             unit_code: Some("M2".to_string()),
             price: Some(14.50),
             currency: "EUR".to_string(),
-            dimensions: Some(CanonicalDimensions { length_mm: Some(2700.0), width_mm: Some(1200.0), height_mm: Some(100.0) }),
+            dimensions: Some(CanonicalDimensions {
+                length_mm: Some(2700.0),
+                width_mm: Some(1200.0),
+                height_mm: Some(100.0),
+            }),
             weight: None,
             technical_features: features_glass,
             commercial_proof: None,
@@ -899,7 +1033,10 @@ mod tests {
         };
 
         let mut features_rock = HashMap::new();
-        features_rock.insert("insulation_material".to_string(), "LAINE_DE_ROCHE".to_string());
+        features_rock.insert(
+            "insulation_material".to_string(),
+            "LAINE_DE_ROCHE".to_string(),
+        );
         features_rock.insert("thermal_lambda".to_string(), "0.035".to_string());
         features_rock.insert("thermal_resistance_r".to_string(), "2.85".to_string());
 
@@ -915,7 +1052,11 @@ mod tests {
             unit_code: Some("M2".to_string()),
             price: Some(16.20),
             currency: "EUR".to_string(),
-            dimensions: Some(CanonicalDimensions { length_mm: Some(1200.0), width_mm: Some(600.0), height_mm: Some(100.0) }),
+            dimensions: Some(CanonicalDimensions {
+                length_mm: Some(1200.0),
+                width_mm: Some(600.0),
+                height_mm: Some(100.0),
+            }),
             weight: None,
             technical_features: features_rock,
             commercial_proof: None,
@@ -930,6 +1071,9 @@ mod tests {
         // Laine de verre vs Laine de roche : même famille (Niveau 1), mais matériaux différents -> Jamais équivalent !
         let dec = engine.compare_items(&glass_wool, &rock_wool);
         assert_eq!(dec.reached_level, TechnicalGroupLevel::Family);
-        assert!(dec.missing_evidence.iter().any(|m| m.contains("incompatibles")));
+        assert!(dec
+            .missing_evidence
+            .iter()
+            .any(|m| m.contains("incompatibles")));
     }
 }

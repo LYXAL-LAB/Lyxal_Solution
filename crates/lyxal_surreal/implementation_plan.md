@@ -1,6 +1,6 @@
 # Plan d'implémentation — Alignement du SDK Rust `surrealdb` sur SurrealDB 3.3.4
 
-> **Statut** : VALIDÉ PAR LE CTO (2026-11-01) — exécution en cours : **Lots 1 à 3 terminés**.
+> **Statut** : VALIDÉ PAR LE CTO (2026-11-01) — exécution en cours : **Lots 1 à 4 terminés**.
 > **Décisions CTO** : Q1 → SDK et serveur en 3.3.x (dernier patch) ; Q2 → `lyxal_error` dépend de `surrealdb-types` ; Q3 → requêtes directes de `lyxal_pipeline_ingestion` portées telles quelles, remplacées à la reprise du module.
 > **Module porteur** : `lyxal_surreal` (transport unique, §11.1).
 > **Impact** : transverse — tous les crates du workspace qui parlent à SurrealDB.
@@ -111,7 +111,7 @@ where T: SurrealValue + Send, P: SurrealValue + Send + 'static;
 | 1 ✅ | `Cargo.toml` racine : `surrealdb = { version = "3.3", features = ["protocol-ws", "protocol-http", "kv-mem"] }`. `lyxal_error` + `lyxal_surreal` : `SurrealValue`, `call_fn`, `signin`, ré-exports. | `cargo test -p lyxal_error -p lyxal_surreal` |
 | 2 ✅ | `lyxal_event` : modèles, DTO, `event_store`, moteur, tests. | `cargo test -p lyxal_event` |
 | 3 ✅ | `lyxal_runtime` : stores, verrous (`type::record`), migrations, santé, workers, tests. | `cargo test -p lyxal_runtime` |
-| 4 | `lyxal_pipeline_ingestion` : stockage, publisher, tests. | `cargo test -p lyxal_pipeline_ingestion` |
+| 4 ✅ | `lyxal_pipeline_ingestion` : stockage, publisher, tests. | `cargo test -p lyxal_pipeline_ingestion` |
 | 5 | `apps/lyxal-server` : connexion, runtime, tests HTTP. | `cargo test -p lyxal-server` |
 | 6 | Preuve 3.3.4 : `cargo clippy --workspace --all-targets -D warnings` ; suite complète ; tests serveur (`ws://`) contre un `surreal start` 3.3.4 local ; `surreal validate` sur tous les `.surql` du workspace. Mise à jour des skills qui citent `surrealdb = "2.2"`. | Rapport de tests joint |
 
@@ -183,4 +183,20 @@ Les écarts de comportement du moteur 3.3 révélés par les tests (C1) sont cor
 2. **Tables de verrous créées par `SurrealRuntimeStore::bootstrap()`** uniquement : utiliser les verrous SurrealDB avec un autre store repose sur la création implicite de table.
 3. **Résultats ignorés (`let _ =`)** dans `runtime.rs`, `package/installer.rs`, `worker/supervisor.rs`, `reconciler/reconciler.rs` : enregistrement de workers, libération de baux, publication d'événements, persistance d'état. À examiner un par un (au mieux assumé ou erreur masquée).
 4. **`apps/lyxal-server` n'utilise ni `SurrealRuntimeStore` ni les verrous du runtime** : il gère ses migrations avec sa propre table `lyxal_module_migration` — doublon fonctionnel avec `lyxal_runtime`.
+
+### Lot 4 — `lyxal_pipeline_ingestion` (terminé)
+
+* **Types** : modèles, énumérations et DTO publics en `SurrealValue` + `serde` ; paramètres privés de `storage/store.rs` en `SurrealValue` seul. Les 10 énumérations unitaires sont encodées en chaîne (`#[surreal(untagged, rename_all = "SCREAMING_SNAKE_CASE")]`), comme en base. 5 attributs `#[serde(alias)]` supprimés sur `StateTransitionRecord` (§0). Les 12 requêtes directes sont portées telles quelles (décision CTO Q3).
+* **Dates** : les 8 champs de date des modèles (`created_at`, `approved_at`, `resolved_at`, `executed_at`, `completed_at`) passent de `Option<String>` à `Option<Datetime>` (champs `datetime` en base, refusés en texte par la 3.3), ainsi que `approved_at` / `executed_at` des paramètres d'enregistrement. Les deux constructions du worker qui écrivaient une date fixe (`"2026-10-25T11:00:00Z"`) dans ces champs utilisent `Datetime::now()`, le changement de type imposant de toucher ces lignes.
+* **Structures imbriquées envoyées nativement** : `conditionnement`, `nominal_dimensions`, `tolerances`, `required_features` passaient par `serde_json::to_value(...).ok()` / `.unwrap_or_default()` (erreur avalée, et `NULL` au lieu de `NONE` pour un champ absent, refusé à la relecture en 3.3). Ils sont désormais transmis avec leur type (`PackagingDetails`, `CanonicalDimensions`, `SpecificationTolerances`, `HashMap`).
+* **Résultats** : `cargo test -p lyxal_pipeline_ingestion` → 69 tests OK, dont les 6 de `integration_staging_live_server` exécutés contre un serveur 3.3.4 local sur le port 8001 (identifiants passés par `LYXAL_STAGING_USER` / `LYXAL_STAGING_PASS`) ; sans serveur, le premier de ces tests échoue (connexion refusée), comme prévu. `cargo fmt` appliqué ; 39/39 `.surql` valides. `cargo clippy -D warnings` : 13 remarques **préexistantes**, sans lien avec la migration, dans des fichiers que celle-ci n'a pas modifiés pour l'essentiel (taille de `IngestionError` due à `LyxalCallError`, fonction à 14 arguments, simplifications de style) ; les 3 remarques introduites par la migration (`clone()` d'un `Datetime`, devenu `Copy`) sont corrigées.
+
+#### Défauts existants relevés (hors périmètre, à traiter à la reprise de `lyxal_pipeline_ingestion`)
+
+1. **Journal des transitions incohérent** (prioritaire) : le SurrealQL écrit `{ from_state, to_state, triggered_by, reason, transitioned_at }` (date native) ; le Rust lit et écrit `{ from_statut, to_statut, transition_by, reason, transition_at }` (texte). Les transitions relues depuis la base sont donc des chaînes vides (champs remplis par défaut), et la base contient deux formats selon l'écrivain.
+2. **Horodatages écrits en dur dans le code de production** : `transition_at: "2026-10-25T11:00:00Z"` dans `storage/store.rs`, `worker/ingestion_worker.rs`, `quarantine/engine.rs` (champs texte, non touchés par la migration).
+3. **Mot de passe de recette par défaut en clair** dans `tests/integration_staging_live_server.rs` (repli quand `LYXAL_STAGING_PASS` est absent) : à retirer du code et à considérer comme compromis s'il a servi sur un serveur réel.
+4. **Requêtes directes** (§11.5) : 12 `.query(...)` dans un module métier, à remplacer par des fonctions `fn::ingestion_*` (décision CTO Q3).
+5. **13 remarques `clippy`** préexistantes.
+6. **Documents historiques** (§0) : `CHANGELOG.md`, `ROADMAP.md`, `docs/*` (rapports de clôture et de recette), script `tests/run_ingestion_phase1_tests.ps1`.
 
