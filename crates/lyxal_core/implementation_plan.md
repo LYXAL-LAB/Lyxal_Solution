@@ -1,0 +1,126 @@
+# Plan d'implémentation — Reprise de `lyxal_core`
+
+> **Statut** : EN ATTENTE DE VALIDATION CTO — aucune ligne de code modifiée.
+> **Source** : [`AUDIT.md`](AUDIT.md) (audit du 2026-11-01) et décisions CTO Q1 à Q4.
+> **Régime** : pré-production « Zéro Dette » (`.agents/AGENTS.md` §0) — ruptures de contrat autorisées, aucun appelant à préserver (aucun module n'appelle aujourd'hui le Core). Ce plan et `AUDIT.md` seront supprimés une fois la reprise exécutée et fusionnée.
+
+---
+
+## 1. Décisions CTO appliquées
+
+| # | Décision |
+| :- | :--- |
+| Q1 | Contrat « résultat renvoyé » : les validations renvoient un résultat, les sanitize transforment, `THROW` réservé aux erreurs de programmation avec codes fixes `CORE_*`. |
+| Q2 | Moteur unique : les familles pipeline / optimiseur / débogage / benchmark / exécution / schéma / SDK, réimplémentées dans `validations`, `sanitize` et `security`, sont regroupées en un seul moteur générique. Aucune primitive supprimée pour cause de non-usage. |
+| Q3 | Suppression de 14 fonctions `security` (12 « demandes » crypto sans consommateur + 2 fonctions qui lèvent toujours une erreur) ; le reste du domaine est conservé. |
+| Q4 | Tests réécrits au format « valeur attendue vérifiée », après les changements de contrat (chaque fonction est testée dans le lot qui la réécrit). |
+
+## 2. Contrat cible des primitives (Q1)
+
+### 2.1. `fn::validation_*` — renvoient un résultat, ne lèvent pas pour une donnée invalide
+
+```surql
+-- Signature : plus de paramètre $field (il ne servait qu'à fabriquer le code d'erreur)
+fn::validation_email($value: any, $max_length: option<int>) -> object
+
+-- Résultat
+{
+    valid: bool,
+    value: any,        -- valeur normalisée si valid = true, NONE sinon
+    code: option<string>,  -- NONE si valide, sinon "CORE_VALIDATION_<CAUSE>" (catalogue fermé)
+    details: object    -- contexte (longueurs, bornes, motif attendu…), {} si rien
+}
+```
+
+Utilisation depuis un module (le module choisit **son** code d'erreur, préfixé par le module, et répond selon §5.3) :
+
+```surql
+LET $email = fn::validation_email($params.email, 254);
+IF !$email.valid {
+    RETURN fn::error_result("AUTH_EMAIL_INVALID", $params.language, { reason: $email.code });
+};
+```
+
+### 2.2. `fn::sanitize_*` — transforment, sans lever pour une donnée
+
+* Entrée `NONE` → renvoie `NONE` (propagation).
+* Entrée du bon type → valeur transformée.
+* Entrée d'un mauvais type → erreur de programmation (la donnée aurait dû être validée avant) : `THROW "CORE_SANITIZE_INVALID_TYPE"`.
+
+### 2.3. `fn::security_*` et `fn::utils_*`
+
+Même principe : un résultat ou une valeur ; `THROW` uniquement pour un argument invalide.
+
+### 2.4. Erreurs de programmation (`THROW`)
+
+* Codes **fixes**, préfixés `CORE_` (module propriétaire `lyxal_core`, §5.5), en nombre réduit : `CORE_INVALID_ARGUMENT`, `CORE_SANITIZE_INVALID_TYPE`, `CORE_UNSUPPORTED_OPTION`, etc. Plus aucun code construit dynamiquement.
+* Leurs définitions master data sont portées par **`lyxal_error`** (propriétaire de la table `error_definition`, qui dépend déjà de `lyxal_core`) dans `crates/lyxal_error/error/core/core_definitions.surql`, au format idempotent `IF !record::exists(...) THEN ( CREATE ... ) END;`. Le Core n'acquiert aucune dépendance.
+* Le catalogue des codes de résultat `CORE_VALIDATION_*` est documenté dans `crates/lyxal_core/Readme.md` (ce sont des motifs transmis en `details`, pas des erreurs renvoyées telles quelles par une API).
+
+## 3. Moteur unique (Q2)
+
+* **Constat** (AUDIT.md P1-2) : 245 fonctions de mécanique dans `validations` (99), `sanitize` (71) et `security` (75), mêmes noms et même rôle, corps divergents (similarité 0,49 à 0,74).
+* **Cible** : un seul moteur dans `utils` (`fn::utils_engine_*`), bâti sur les primitives de pipeline génériques déjà présentes (`fn::utils_pipeline_chain`, `_map`, `_filter`, `_reduce`…). Chaque domaine ne fournit plus que ses **étapes** (ex. une étape de validation `email`, une étape de sanitize `trim`), appelées par le moteur.
+* Les familles `utils_runtime_*` (identifiants, horodatages, informations d'exécution) et `utils_cache_*` sont des primitives génériques déjà uniques : elles restent en place.
+* **Point de contrôle CTO** : avant d'écrire le moteur, le lot 4 commence par une **note de conception** ajoutée à ce plan (inventaire famille par famille, tableau des divergences, comportement retenu pour chacune, API cible). Aucune ligne du moteur n'est écrite avant sa validation.
+
+## 4. Suppressions `security` (Q3)
+
+| Fonction supprimée | Raison |
+| :--- | :--- |
+| `security_encrypt`, `security_encrypt_file`, `security_decrypt` | « Demande » de chiffrement sans consommateur |
+| `security_hmac_sign`, `security_hmac_verify` | « Demande » HMAC sans consommateur ; `hmac_verify` évalué comme vrai même avec une signature falsifiée |
+| `security_key_generate`, `security_key_derive`, `security_key_wrap`, `security_key_unwrap` | « Demande » de gestion de clés sans consommateur |
+| `security_token_sign`, `security_token_verify` | « Demande » de signature / vérification sans consommateur ; même piège de vérification |
+| `security_secret_compare` | « Demande » de comparaison à temps constant sans consommateur ; même piège |
+| `security_hash_argon2` | Lève toujours `SECURITY_NATIVE_PASSWORD_HASH_REQUIRED` |
+| `security_signature_verify` | Lève toujours `SECURITY_UNSUPPORTED_SIGNATURE_ALGORITHM` |
+
+* Les fonctions qui citent ces 14 fonctions (commentaires, exemples, `*_info`) sont mises à jour.
+* **`security_secret_generate`** : vérifier si `rand::id` est un générateur cryptographiquement sûr. S'il ne l'est pas, la fonction est supprimée et la génération de secrets reste dans `lyxal_crypto` (Rust, `OsRng`) ; s'il l'est, elle est conservée avec cette preuve dans son `COMMENT`.
+
+## 5. Format des tests (Q4)
+
+* Chaque instruction de test **s'auto-vérifie** et doit renvoyer `true` :
+
+```surql
+-- Adresse valide, espaces retirés
+RETURN fn::validation_email("  contact@example.com ", 254)
+    == { valid: true, value: "contact@example.com", code: NONE, details: {} };
+
+-- Adresse invalide
+RETURN fn::validation_email("pas-un-email", 254).code == "CORE_VALIDATION_EMAIL_FORMAT";
+```
+
+* Une erreur de programmation attendue est annoncée par un marqueur placé juste avant l'instruction : `-- attendu-erreur: CORE_INVALID_ARGUMENT`.
+* `scripts/ci/test_lyxal_core.py` évolue : pour un fichier au nouveau format, toute instruction qui ne renvoie pas `true`, ou qui ne lève pas l'erreur annoncée, fait échouer la CI. Les fichiers pas encore migrés gardent la vérification actuelle (pas d'erreur moteur inattendue) jusqu'à leur lot ; à la fin de la reprise, l'ancien mode disparaît.
+
+## 6. Lots d'exécution (une PR par lot, CI verte obligatoire)
+
+| Lot | Contenu | Vérification |
+| :- | :--- | :--- |
+| 1 | **Nettoyage** : suppression des 14 fonctions (Q3) et décision sur `secret_generate` ; version `0.1.0` + mise à jour des 5 appelants (`manifest.toml` de `lyxal_error`, `lyxal_event`, `lyxal_pipeline_ingestion`, `lyxal_catalogue`, et `lyxal_pipeline_ingestion/src/module.rs`) ; suppression de `CHANGELOG.md` ; `Readme.md` décrivant l'état actuel ; `validations/test/` → `validations/tests/` (et le script de CI) ; en-têtes et exemples de commentaires corrigés (P2-3, P2-4). | `ci_local.sh` vert ; 785 fonctions définies. |
+| 2 | **Outillage de tests** : nouveau format (§5) dans `test_lyxal_core.py`, avec ses propres tests (un fichier au nouveau format qui échoue doit faire échouer le script). | Script testé sur des cas qui passent et des cas qui échouent. |
+| 3 | **Contrat Q1**, par familles de 40 à 80 fonctions (plusieurs PR) : `validations` (types et chaînes, puis dates et durées, puis tableaux, objets et références), `sanitize`, puis le reste de `security` et `utils`. Suppression de `$field`, nouveau résultat, codes `CORE_*` ; **tests réécrits dans la même PR** ; master data `CORE_*` dans `lyxal_error` dès la première PR qui en a besoin. | Chaque fonction réécrite a des tests au nouveau format, tous verts. |
+| 4 | **Moteur unique Q2** : note de conception (§3) soumise au CTO, puis moteur `fn::utils_engine_*`, migration des étapes de chaque domaine, suppression des copies par domaine ; tests au nouveau format. | Mêmes garanties ; plus aucune famille de mécanique en double. |
+| 5 | **Clôture** : plus aucun fichier de test à l'ancien format (le mode « pas d'erreur inattendue » est retiré du script), statistiques du `Readme.md` et des skills mises à jour (le « 799 primitives validées » disparaît), suppression de `AUDIT.md` et de ce plan. | `ci_local.sh` vert ; audit de contrôle (skill `lyxal-audit`) sans écart P0/P1. |
+
+## 7. Fonctions Core, erreurs, crypto
+
+* **Fonctions `lyxal_core` réutilisées** : primitives de pipeline de `utils` comme base du moteur unique (lot 4).
+* **Fonctions nouvelles** : `fn::utils_engine_*` (lot 4, API définie dans la note de conception).
+* **Codes d'erreur** : codes fixes `CORE_*` pour les erreurs de programmation, définis dans `lyxal_error/error/core/` ; catalogue `CORE_VALIDATION_*` documenté dans le Readme du Core.
+* **Crypto** : aucune nouvelle primitive ; suppression des 14 fonctions qui empiétaient sur `lyxal_crypto`.
+
+## 8. Hors périmètre
+
+* L'adoption du Core par les modules existants (`lyxal_error`, `lyxal_event`, `lyxal_pipeline_ingestion`…) : elle se fera à la reprise de chacun.
+* Les fonctions SurrealQL des autres modules.
+
+## 9. Checklist §13 (extraits pertinents)
+
+* [x] Responsabilité au bon endroit : la crypto quitte le Core pour rester dans `lyxal_crypto` ; la mécanique n'existe plus qu'une fois.
+* [x] Aucune dépendance circulaire : le Core reste sans dépendance ; les définitions `CORE_*` vivent dans `lyxal_error`, qui dépend déjà du Core.
+* [x] Codes d'erreur préfixés par le module propriétaire (`CORE_*`), plus aucun code dynamique.
+* [x] Zéro dette : `$field`, codes dynamiques, copies de mécanique, `CHANGELOG.md` et documents de reprise supprimés en fin de reprise.
+* [ ] Validation explicite du CTO.
