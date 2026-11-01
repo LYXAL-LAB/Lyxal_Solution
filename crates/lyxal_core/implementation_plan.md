@@ -81,6 +81,12 @@ Même principe : un résultat ou une valeur ; `THROW` uniquement pour un argumen
 * Les fonctions qui citent ces 18 fonctions (commentaires, exemples, `*_info`) sont mises à jour.
 * **`security_secret_generate`** — vérifié au lot 1 : `rand::id` tire ses caractères de `rand::rng()` (ChaCha12 réensemencé par le système, `surrealdb-runtime` / `surrealdb-expr` 3.3.5), générateur cryptographiquement sûr, **sauf** si le serveur est démarré avec `SURREAL_RAND_SEED` (mode déterministe de test). Fonction conservée, condition inscrite dans son `COMMENT`.
 
+### 4 bis. Suppressions `validations` JSON (décision CTO du lot 3)
+
+| Fonction supprimée | Raison |
+| :--- | :--- |
+| `validation_json`, `validation_json_string`, `validation_json_array_string`, `validation_json_object_string` | Incompatibles avec le contrat Q1 : `encoding::json::decode` lève une erreur moteur sur un JSON invalide et SurrealDB 3.3.4 n'offre aucun moyen de le détecter sans lever. Le décodage JSON est un parsing, qui reste en Rust (§10) : le code Rust décode avec `serde_json` avant `call_fn`. Une primitive SurrealQL pourra être recréée si un module en exprime le besoin (§5.7.7). |
+
 ## 5. Format des tests (Q4)
 
 Format mis en place au lot 2 dans `scripts/ci/test_lyxal_core.py` (auto-testé par `scripts/ci/test_lyxal_core_selftest.py`) :
