@@ -97,9 +97,9 @@ Pour **chaque** fonction SurrealQL prenant `$params: object` et possédant une s
    - **Incompatibles (P0/P1)** : divergence de nom sans alias (ex. `external_code` vs `$params.source_code`) ou incompatibilité de type provoquant un `NONE` inattendu ou une erreur d'exécution.
 
 ### Contrôle 5 — Compatibilité SurrealDB 3.2.0 [OBLIGATOIRE]
-Lorsque le workspace cible **SurrealDB 3.2.0** (binaire local [`c:\Users\HP\Desktop\Lyxal_OS\surreal.exe`](../../../surreal.exe) v3.2.0, cf. `.agents/skills/lyxal-surrealdb/SKILL.md`) mais que les tests Cargo embarqués utilisent un SDK d'une autre génération (ex. `surrealdb = "2.2"` dans `Cargo.toml`) :
+Lorsque le workspace cible **SurrealDB 3.2.0** (binaire `surreal` v3.2.0 désigné par la variable d'environnement `LYXAL_SURREAL_BIN`, à défaut `surreal` présent dans le `PATH` — cf. `.agents/skills/lyxal-surrealdb/SKILL.md`) mais que les tests Cargo embarqués utilisent un SDK d'une autre génération (ex. `surrealdb = "2.2"` dans `Cargo.toml`) :
 1. **Détection des constructions à risque de rupture 2.x $\rightarrow$ 3.2.0** :
-   - Exécuter `c:\Users\HP\Desktop\Lyxal_OS\surreal.exe validate` sur les fichiers `.surql` du module et rechercher systématiquement :
+   - Exécuter `"${LYXAL_SURREAL_BIN:-surreal}" validate` (vérifier au préalable `"${LYXAL_SURREAL_BIN:-surreal}" version` = `3.2.0`) sur les fichiers `.surql` du module et rechercher systématiquement :
      - `option<any>` (rejeté au parsing en 3.2.0 $\rightarrow$ utiliser `any`) ;
      - `array::contains(` (supprimé en 3.2.0 $\rightarrow$ utiliser `(($a) CONTAINS ($b))`) ;
      - `time::from::parts(`, `string::pad(`, `encoding::hex::*`, `encoding::uri::*`, `bytes::from_int(` (inexistants en 3.2.0) ;

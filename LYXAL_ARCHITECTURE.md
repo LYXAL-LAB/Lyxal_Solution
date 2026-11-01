@@ -87,7 +87,7 @@ Une logique métier ne doit exister qu'à **un seul endroit**.
 
 ### 5.2. Règles sur les Fonctions SurrealQL
 - **Signature Obligatoire** : Toujours `DEFINE FUNCTION OVERWRITE fn::<module>_<nom>($params: object)`.
-- **Paramètre Unique `$params`** : Toutes les fonctions acceptent un objet `$params` unique (`LET $email = $params.email; LET $language = $params.language DEFAULT "fr";`).
+- **Paramètre Unique `$params`** : Toutes les fonctions acceptent un objet `$params` unique (`LET $email = $params.email; LET $language = $params.language ?? "fr";`).
 - **Contrat Universel de Retour** : Toujours retourner `fn::result_ok($data)` ou `fn::result_error($code, $language, $details)`.
 - **Taille Maximale** : Une fonction SurrealQL ne fait qu'une seule responsabilité métier et **ne dépasse pas ~300 lignes**. Elle découpe et appelle des sous-fonctions si la logique grandit.
 

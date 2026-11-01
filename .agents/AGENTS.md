@@ -65,11 +65,11 @@ Aucune modification de code ou création de fichier applicatif ne doit être eff
 Avant toute création d'une nouvelle fonction technique, vérifier si la responsabilité existe déjà dans :
 
 ```text
-lyxal_core/
-├── validation/
-├── sanitize/
-├── security/
-└── utils/
+crates/lyxal_core/functions/
+├── validations/   (fn::validation_*)
+├── sanitize/      (fn::sanitize_*)
+├── security/      (fn::security_*)
+└── utils/         (fn::utils_*)
 ```
 
 Le plan doit explicitement identifier :
@@ -148,6 +148,8 @@ Il est également interdit de recopier une primitive générique déjà disponib
 ## 5.2. Découpage Strict des Crates Rust
 
 ```text
+lyxal_core (SurrealQL — Couche 0 : validation / sanitize / security / utils)
+
 lyxal_error
      ▲
      │
@@ -156,9 +158,15 @@ lyxal_surreal       lyxal_crypto
      │                    │
      └────────┬───────────┘
               │
+lyxal_event · lyxal_runtime
+(+ services du Noyau : lyxal_auth, lyxal_notification, lyxal_scheduler)
+              ▲
+              │
       Modules Métiers
-(lyxal_booking, lyxal_notification, lyxal_scheduler...)
+(lyxal_booking, lyxal_catalogue, lyxal_crm...)
 ```
+
+> La hiérarchie complète et faisant foi est celle de la **section 6**. `lyxal_notification` et `lyxal_scheduler` appartiennent au **Noyau Technique**, pas aux modules métiers.
 
 `lyxal_crypto` est le crate cryptographique fondamental de Lyxal OS.
 
@@ -186,7 +194,7 @@ Exemple :
 
 ```surql
 LET $email = $params.email;
-LET $language = $params.language DEFAULT "fr";
+LET $language = $params.language ?? "fr";
 ```
 
 ### Contrat universel de retour
@@ -254,16 +262,18 @@ Les définitions d'erreurs sont classées par sous-domaines :
 <module>/error/<thème>/
 ```
 
-Les directives de seeds et master data utilisent la méthode canonique `CREATE` :
+Les directives de seeds et master data utilisent la méthode canonique `CREATE`, **protégée par un contrôle d'existence** afin d'être rejouables sans erreur ni écrasement (idempotence non destructive) :
 
 ```surql
-CREATE error_definition CONTENT {
-    code: "<MODULE>_<DOMAINE>_<CAUSE>",
-    ...
-};
+IF !record::exists(error_definition:<MODULE>_<DOMAINE>_<CAUSE>) THEN (
+    CREATE error_definition:<MODULE>_<DOMAINE>_<CAUSE> CONTENT {
+        code: "<MODULE>_<DOMAINE>_<CAUSE>",
+        ...
+    }
+) END;
 ```
 
-Cette méthode `CREATE` est le standard officiel à utiliser pour tous les seeds de la suite Lyxal OS (`seeds/*.surql`).
+Cette forme `IF !record::exists(...) THEN ( CREATE ... ) END;` est le standard officiel pour tous les seeds de la suite Lyxal OS (`seeds/*.surql`, `error/**/*.surql`). Un `CREATE` nu (non protégé) est interdit : il échoue au rejeu. `UPSERT` / `UPDATE` sont également interdits dans les seeds car ils écraseraient des données personnalisées.
 
 Tous les codes d'erreurs sont strictement préfixés par leur module propriétaire.
 
@@ -288,7 +298,7 @@ AUTH_*
 * **Émission SurrealQL (`DEFINE EVENT`)** : Tout événement déclenché par une mutation en base appelle exclusivement `fn::event_publish` :
 
 ```surql
-DEFINE EVENT IF NOT EXISTS booking_created_event ON TABLE booking WHEN $event = "CREATE" THEN (
+DEFINE EVENT OVERWRITE booking_created_event ON TABLE booking WHEN $event == "CREATE" THEN (
     fn::event_publish({
         event_id: rand::uuid::v7(),
         event_type: "booking.created",
@@ -322,9 +332,15 @@ impl Event for BookingCreated {
 * Les modules consommateurs déclarent leurs handlers au Runtime via le trait neutre :
 
 ```rust
+use lyxal_event::HandlerRegistry;
+use lyxal_runtime::{EventConsumerModule, RuntimeError};
+
 impl EventConsumerModule for NotificationModule {
     fn register_event_handlers(&self, registry: &mut HandlerRegistry) -> Result<(), RuntimeError> {
-        registry.register(BookingCreatedHandler)?;
+        // `register` retourne un `LyxalEventError` : il doit être converti explicitement.
+        registry
+            .register::<BookingCreated, _>(BookingCreatedHandler)
+            .map_err(|e| RuntimeError::EventEngineError { message: e.to_string() })?;
         Ok(())
     }
 }
@@ -357,12 +373,14 @@ Il contient exclusivement des fonctions techniques génériques, indépendantes 
 ## Structure
 
 ```text
-lyxal_core/
-├── validation/
-├── sanitize/
-├── security/
-└── utils/
+crates/lyxal_core/functions/
+├── validations/   (fn::validation_*)
+├── sanitize/      (fn::sanitize_*)
+├── security/      (fn::security_*)
+└── utils/         (fn::utils_*)
 ```
+
+> Dans la suite de ce document, les raccourcis `lyxal_core/validation`, `lyxal_core/sanitize`, `lyxal_core/security` et `lyxal_core/utils` désignent ces quatre dossiers.
 
 ## Principe fondamental
 
@@ -573,14 +591,12 @@ min_version = ">=0.1.0"
 id = "lyxal_auth"
 version = ">=1.0.0"
 
-[[dependencies]]
-id = "lyxal_notification"
-version = ">=1.0.0"
-
 [resources]
 schemas = ["schema/tables.surql", "schema/indexes.surql"]
 migrations = ["migrations/0001_initial.surql"]
 ```
+
+> `lyxal_booking` ne déclare **pas** de dépendance vers `lyxal_notification` : conformément au §5.6.1, un producteur d'événements ne connaît jamais ses consommateurs. C'est `lyxal_notification` qui s'abonne à `booking.created` via `lyxal_event`.
 
 ### 5.8.2. Contrat Rust du Cycle de Vie (`LyxalModule`)
 
@@ -672,7 +688,11 @@ impl ModuleHealthCheck for BookingHealthCheck {
     }
 
     async fn check(&self, _ctx: &ModuleContext) -> Result<HealthCheckResult, RuntimeError> {
-        Ok(HealthCheckResult::healthy("Booking engine operational"))
+        Ok(HealthCheckResult::healthy(
+            self.module_id.clone(),
+            0, // latence mesurée en ms
+            Some("Booking engine operational".to_string()),
+        ))
     }
 }
 ```
