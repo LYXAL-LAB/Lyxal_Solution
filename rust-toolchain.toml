@@ -1,0 +1,5 @@
+# Version de Rust figée pour tout le workspace (locale et CI). Monter de version par un changement explicite.
+[toolchain]
+channel = "1.97.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"
