@@ -1,145 +1,58 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/geohash.surql
--- Fonction     : fn::validation_geohash
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/geohash.surql
+-- Fonction : fn::validation_geohash
 --
--- Description
--- -----------
--- Valide lexicalement un géohash Base32 avec longueur configurable.
---
--- Règles appliquées
--- -----------------
---   1. La valeur est normalisée en minuscules.
---   2. L'alphabet géohash exclut a, i, l et o.
---   3. La longueur est configurable, généralement de 1 à 12.
+-- Valide un geohash (alphabet base32 geohash, sans a, i, l ni o) ; la valeur
+-- renvoyée est en minuscules.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $min_length: int
--- $max_length: int
+--   $value      : any — valeur à contrôler
+--   $min_length : int — longueur minimale (>= 1)
+--   $max_length : int — longueur maximale (>= $min_length)
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée et, lorsque cela est indiqué, normalisée.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le geohash en minuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_GEOHASH
--- <FIELD>_TOO_SHORT
--- <FIELD>_TOO_LONG
--- VALIDATION_INVALID_GEOHASH_LENGTH_RANGE
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $min_length < 1 ou $min_length > $max_length
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
---   La valeur est absente ou égale à NONE.
---
--- <FIELD>_NULL_NOT_ALLOWED
---   La valeur est explicitement égale à NULL.
---
--- <FIELD>_INVALID_TYPE
---   La valeur ne possède pas le type attendu.
---
--- <FIELD>_BLANK_NOT_ALLOWED
---   La chaîne est vide après string::trim().
---
--- VALIDATION_INVALID_FIELD_NAME
---   Le nom technique du champ est vide.
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun accès réseau ;
---   - aucune résolution géographique externe ;
---   - aucune conversion implicite de la valeur métier.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::lowercase()
---   - string::matches()
---   - string::len()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
--- Limite
--- ------
--- La fonction valide la forme, mais ne décode pas le géohash.
+-- Exemple (dans une fonction de module)
+--   LET $cell = fn::validation_geohash($params.geohash, 5, 12);
+--   IF !$cell.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $cell.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_geohash(
     $value: any,
-    $field: string,
     $min_length: int,
     $max_length: int
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $min_length < 1 OR $min_length > $max_length { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::lowercase(string::trim($value));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $length = string::len($clean);
+    IF $length < $min_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: $min_length, length: $length } }; };
+    IF $max_length IS NOT NONE AND $length > $max_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } }; };
+    IF !string::matches($clean, "^[0123456789bcdefghjkmnpqrstuvwxyz]+$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "geohash" } };
     };
-
-    IF $min_length < 1
-        OR $max_length < 1
-        OR $min_length > $max_length
-    {
-        THROW "VALIDATION_INVALID_GEOHASH_LENGTH_RANGE";
-    };
-
-    LET $geohash = string::lowercase($clean_value);
-    LET $length = string::len($geohash);
-
-    IF $length < $min_length {
-        THROW string::concat($clean_field, "_TOO_SHORT");
-    };
-
-    IF $length > $max_length {
-        THROW string::concat($clean_field, "_TOO_LONG");
-    };
-
-    IF !string::matches(
-        $geohash,
-        "^[0123456789bcdefghjkmnpqrstuvwxyz]+$"
-    ) {
-        THROW string::concat($clean_field, "_INVALID_GEOHASH");
-    };
-
-    RETURN $geohash;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide lexicalement un géohash Base32 et le normalise en minuscules.
-"
+COMMENT "Valide un geohash (alphabet base32 geohash, sans a, i, l ni o) ; la valeur renvoyée est en minuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

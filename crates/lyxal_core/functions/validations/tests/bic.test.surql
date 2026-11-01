@@ -1,24 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/bic.test.surql
--- Fonction     : fn::validation_bic
--- Version      : 1.0.0
---
--- Les tests qui attendent un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_bic (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_bic(" bnpafrppxxx ", ["FR"])
+    == { valid: true, value: "BNPAFRPPXXX", code: NONE, details: {} };
 
--- TEST 1 — BIC à 8 caractères
-RETURN fn::validation_bic("bnpafrpp", "BIC", ["FR"]);
+-- test: BIC à 8 caractères
+RETURN fn::validation_bic("BNPAFRPP", NONE)
+    == { valid: true, value: "BNPAFRPP", code: NONE, details: {} };
 
--- TEST 2 — BIC avec branche
-RETURN fn::validation_bic("SOGEFRPPXXX", "BIC", NONE);
+-- test: longueur incorrecte
+RETURN fn::validation_bic("BNPAFRPPX", ["FR"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "bic" } };
 
--- TEST 3 — Forme invalide
--- Erreur attendue : BIC_INVALID_BIC
-RETURN fn::validation_bic("BNPAFR", "BIC", NONE);
+-- test: pays non autorisé
+RETURN fn::validation_bic("DEUTDEFF", ["FR"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: ["FR"] } };
 
--- TEST 4 — Pays interdit
--- Erreur attendue : BIC_BIC_COUNTRY_NOT_ALLOWED
-RETURN fn::validation_bic("DEUTDEFF", "BIC", ["FR"]);
+-- test: chaîne blanche
+RETURN fn::validation_bic("  ", ["FR"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_bic(NONE, ["FR"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_bic(NULL, ["FR"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_bic(42, ["FR"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_bic("BNPAFRPP", []);

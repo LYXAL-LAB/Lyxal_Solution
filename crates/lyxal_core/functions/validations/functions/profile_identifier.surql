@@ -1,121 +1,59 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/profile_identifier.surql
--- Fonction     : fn::validation_profile_identifier
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/profile_identifier.surql
+-- Fonction : fn::validation_profile_identifier
 --
--- Description
--- -----------
--- Valide un identifiant public de profil stable, ASCII et URL-compatible.
+-- Valide un identifiant de profil : [a-z0-9._-], commençant et finissant par
+-- une lettre ou un chiffre, sans séparateur doublé ; la valeur renvoyée est
+-- en minuscules.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $min_length: int
--- $max_length: int
+--   $value      : any — valeur à contrôler
+--   $min_length : int — longueur minimale (>= 1)
+--   $max_length : int — longueur maximale (>= $min_length)
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_TOO_SHORT
--- <FIELD>_TOO_LONG
--- <FIELD>_INVALID_PROFILE_IDENTIFIER
--- <FIELD>_INVALID_BOUNDARY
--- VALIDATION_INVALID_PROFILE_IDENTIFIER_LENGTH_RANGE
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = l'identifiant en minuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $min_length < 1 ou $min_length > $max_length
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucune dépendance à l'authentification ;
---   - aucune consultation de registre externe ;
---   - aucune conversion implicite de la valeur métier.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $handle = fn::validation_profile_identifier($params.handle, 3, 40);
+--   IF !$handle.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $handle.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_profile_identifier(
     $value: any,
-    $field: string,
     $min_length: int,
     $max_length: int
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $min_length < 1 OR $min_length > $max_length { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::lowercase(string::trim($value));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $length = string::len($clean);
+    IF $length < $min_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: $min_length, length: $length } }; };
+    IF $max_length IS NOT NONE AND $length > $max_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } }; };
+    IF !string::matches($clean, "^[a-z0-9]+(?:[._-][a-z0-9]+)*$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "profile_identifier" } };
     };
-
-    IF $min_length < 1 OR $max_length < 1 OR $min_length > $max_length {
-        THROW "VALIDATION_INVALID_PROFILE_IDENTIFIER_LENGTH_RANGE";
-    };
-
-    LET $identifier = string::lowercase($clean_value);
-    LET $length = string::len($identifier);
-
-    IF $length < $min_length {
-        THROW string::concat($clean_field, "_TOO_SHORT");
-    };
-
-    IF $length > $max_length {
-        THROW string::concat($clean_field, "_TOO_LONG");
-    };
-
-    IF !string::matches(
-        $identifier,
-        "^[a-z0-9][a-z0-9._-]*[a-z0-9]$"
-    ) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_PROFILE_IDENTIFIER"
-        );
-    };
-
-    IF string::contains($identifier, "..")
-        OR string::contains($identifier, "__")
-        OR string::contains($identifier, "--")
-    {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_BOUNDARY"
-        );
-    };
-
-    RETURN $identifier;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide et normalise un identifiant public de profil ASCII et URL-compatible.
-"
+COMMENT "Valide un identifiant de profil : [a-z0-9._-], commençant et finissant par une lettre ou un chiffre, sans séparateur doublé ; la valeur renvoyée est en minuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

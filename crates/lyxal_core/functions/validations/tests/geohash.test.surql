@@ -1,47 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/geohash.test.surql
--- Fonction     : fn::validation_geohash
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_geohash (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_geohash(" U09TVW ", 5, 12)
+    == { valid: true, value: "u09tvw", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Géohash valide
--- Résultat attendu : "u09tvw0f64"
--- ============================================================================
-RETURN fn::validation_geohash(
-    "U09TVW0F64",
-    "GEOHASH",
-    1,
-    12
-);
+-- test: lettre exclue
+RETURN fn::validation_geohash("u09tva", 5, 12)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "geohash" } };
 
--- ============================================================================
--- TEST 2 — Caractère interdit
--- Erreur attendue : GEOHASH_INVALID_GEOHASH
--- ============================================================================
-RETURN fn::validation_geohash(
-    "u09tiw",
-    "GEOHASH",
-    1,
-    12
-);
+-- test: trop court
+RETURN fn::validation_geohash("u09", 5, 12)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: 5, length: 3 } };
 
--- ============================================================================
--- TEST 3 — Trop long
--- Erreur attendue : GEOHASH_TOO_LONG
--- ============================================================================
-RETURN fn::validation_geohash(
-    "u09tvw0f64abc",
-    "GEOHASH",
-    1,
-    12
-);
+-- test: chaîne blanche
+RETURN fn::validation_geohash("  ", 5, 12)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_geohash(NONE, 5, 12)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_geohash(NULL, 5, 12)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_geohash(42, 5, 12)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_geohash("u09tv", 6, 5);

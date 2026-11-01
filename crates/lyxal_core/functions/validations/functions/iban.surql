@@ -1,93 +1,62 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/iban.surql
--- Fonction     : fn::validation_iban
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/iban.surql
+-- Fonction : fn::validation_iban
 --
--- Description
--- -----------
--- Valide lexicalement un IBAN, supprime les espaces, normalise en majuscules et contrôle plusieurs longueurs nationales.
+-- Valide la forme d'un IBAN (espaces retirés, majuscules) et sa longueur
+-- pour les pays connus (FR, BE, DE, ES, IT, LU, NL, PT, GB, CH) ; pays
+-- facultativement limités. La clé de contrôle modulo 97 n'est pas vérifiée.
 --
--- Principes
--- ----------
---   - distinction stricte entre NONE, NULL et type invalide ;
---   - aucune conversion implicite de la valeur métier ;
---   - codes d'erreur stables construits depuis le nom technique du champ ;
---   - aucune lecture ou écriture persistante ;
---   - aucune vérification auprès d'un service bancaire ou administratif.
+-- Paramètres
+--   $value             : any — valeur à contrôler
+--   $allowed_countries : option<array<string>> — codes pays autorisés (au moins un, au bon format), NONE pour tous
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = l'IBAN sans espace, en majuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_NOT_ALLOWED
 --
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : liste vide ou code pays au mauvais format
 --
--- Limite
--- ------
--- Le checksum IBAN modulo 97 n'est pas calculé dans cette primitive.
-
+-- Exemple (dans une fonction de module)
+--   LET $iban = fn::validation_iban($params.iban, ["FR"]);
+--   IF !$iban.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $iban.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_iban(
     $value: any,
-    $field: string,
     $allowed_countries: option<array<string>>
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-
-    LET $iban = string::uppercase(string::replace(string::trim($value), " ", ""));
-    IF !string::matches($iban, "^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$") {
-        THROW string::concat($clean_field, "_INVALID_IBAN");
+) -> object {
+    LET $allowed = IF $allowed_countries IS NONE { NONE } ELSE { array::map($allowed_countries, |$item| string::uppercase(string::trim($item))) };
+    IF $allowed IS NOT NONE AND (array::len($allowed) = 0 OR array::any($allowed, |$item| !string::matches($item, "^[A-Z]{2}$"))) { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    IF !type::is_string($value) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $country = string::slice($iban, 0, 2);
-    LET $length = string::len($iban);
-    LET $expected =
-        IF $country = "FR" { 27 }
-        ELSE IF $country = "BE" { 16 }
-        ELSE IF $country = "DE" { 22 }
-        ELSE IF $country = "ES" { 24 }
-        ELSE IF $country = "IT" { 27 }
-        ELSE IF $country = "LU" { 20 }
-        ELSE IF $country = "NL" { 18 }
-        ELSE IF $country = "PT" { 25 }
-        ELSE IF $country = "GB" { 22 }
-        ELSE IF $country = "CH" { 21 }
-        ELSE { NONE };
-
-    IF $expected IS NOT NONE AND $length != $expected {
-        THROW string::concat($clean_field, "_INVALID_IBAN_LENGTH");
+    LET $clean = string::uppercase(string::replace(string::trim($value), " ", ""));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $country = string::slice($clean, 0, 2);
+    LET $expected_length = { FR: 27, BE: 16, DE: 22, ES: 24, IT: 27, LU: 20, NL: 18, PT: 25, GB: 22, CH: 21 }[$country];
+    IF !string::matches($clean, "^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "iban" } };
     };
-
-    IF $allowed_countries IS NOT NONE {
-        IF array::len($allowed_countries) = 0 {
-            THROW "VALIDATION_EMPTY_ALLOWED_IBAN_COUNTRIES";
-        };
-        LET $allowed = array::map(
-            $allowed_countries,
-            |$code| string::uppercase(string::trim($code))
-        );
-        IF array::any($allowed, |$code| !string::matches($code, "^[A-Z]{2}$")) {
-            THROW "VALIDATION_INVALID_ALLOWED_IBAN_COUNTRY";
-        };
-        IF !(($allowed) CONTAINS ($country)) {
-            THROW string::concat($clean_field, "_IBAN_COUNTRY_NOT_ALLOWED");
-        };
+    IF $expected_length IS NOT NONE AND string::len($clean) != $expected_length {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "iban", length: $expected_length } };
     };
-
-    RETURN $iban;
+    IF $allowed IS NOT NONE AND $country NOT IN $allowed {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: $allowed } };
+    };
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide lexicalement un IBAN et contrôle plusieurs longueurs nationales.
-Ne calcule pas encore le modulo 97 international.
-"
+COMMENT "Valide la forme d'un IBAN (espaces retirés, majuscules) et sa longueur pour les pays connus (FR, BE, DE, ES, IT, LU, NL, PT, GB, CH) ; pays facultativement limités. La clé de contrôle modulo 97 n'est pas vérifiée. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

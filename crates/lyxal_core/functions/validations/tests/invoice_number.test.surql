@@ -1,24 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/invoice_number.test.surql
--- Fonction     : fn::validation_invoice_number
--- Version      : 1.0.0
---
--- Les tests qui attendent un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_invoice_number (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_invoice_number(" FAC-2026/0001 ", 3, 20, ["FAC-"])
+    == { valid: true, value: "FAC-2026/0001", code: NONE, details: {} };
 
--- TEST 1 — Numéro classique
-RETURN fn::validation_invoice_number("FAC-2026-000123", "INVOICE_NUMBER", ["FAC-"], 5, 64);
+-- test: préfixe non autorisé
+RETURN fn::validation_invoice_number("AV-2026/0001", 3, 20, ["FAC-"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed_prefixes: ["FAC-"] } };
 
--- TEST 2 — Format avec barres
-RETURN fn::validation_invoice_number("2026/08/00123", "INVOICE_NUMBER", NONE, 5, 64);
+-- test: caractère interdit
+RETURN fn::validation_invoice_number("FAC 2026", 3, 20, ["FAC-"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "invoice_number" } };
 
--- TEST 3 — Préfixe interdit
--- Erreur attendue : INVOICE_NUMBER_PREFIX_NOT_ALLOWED
-RETURN fn::validation_invoice_number("AVOIR-2026-001", "INVOICE_NUMBER", ["FAC-"], 5, 64);
+-- test: chaîne blanche
+RETURN fn::validation_invoice_number("  ", 3, 20, ["FAC-"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- TEST 4 — Espaces interdits
--- Erreur attendue : INVOICE_NUMBER_INVALID_INVOICE_NUMBER
-RETURN fn::validation_invoice_number("FAC 2026 001", "INVOICE_NUMBER", NONE, 5, 64);
+-- test: valeur absente
+RETURN fn::validation_invoice_number(NONE, 3, 20, ["FAC-"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_invoice_number(NULL, 3, 20, ["FAC-"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_invoice_number(42, 3, 20, ["FAC-"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_invoice_number("FAC-1", 10, 3, NONE);
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_invoice_number("FAC-1", 3, 20, []);

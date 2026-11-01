@@ -12,7 +12,7 @@
 | 1. Audit (ce document) | ✅ terminé |
 | 2. Décisions CTO (§7) | ✅ Q1 résultat renvoyé · Q2 moteur unique · Q3 suppression des 18 fonctions · Q4 tests après Q1–Q3 |
 | 3. [`implementation_plan.md`](implementation_plan.md) | ✅ validé par le CTO |
-| 4. Exécution par lots (PR) | Lot 1 (nettoyage) ✅ PR #6 · Lot 2 (outillage de tests) ✅ PR #7 · Lot 3 (contrat Q1) ⏳ famille « types, nombres et chaînes » (44 fonctions) ✅ PR #8, 4 validateurs JSON supprimés (plan §4 bis) ✅ PR #9 ; famille « dates et durées » (21 fonctions) ✅ PR #10 ; famille « tableaux, objets et références » (29 fonctions) ✅ PR #11 ; 4 doublons supprimés (plan §4 ter) ; famille « formats techniques » (44 fonctions) ✅ PR #12 ; 3 recouvrements supprimés (`hash`, `ipv4`, `ipv6`, plan §4 ter) ; formats métier (≈ 61 fonctions) en cours, `sanitize`, `security`, `utils` · lots 4 et 5 à venir |
+| 4. Exécution par lots (PR) | Lot 1 (nettoyage) ✅ PR #6 · Lot 2 (outillage de tests) ✅ PR #7 · Lot 3 (contrat Q1) ⏳ famille « types, nombres et chaînes » (44 fonctions) ✅ PR #8, 4 validateurs JSON supprimés (plan §4 bis) ✅ PR #9 ; famille « dates et durées » (21 fonctions) ✅ PR #10 ; famille « tableaux, objets et références » (29 fonctions) ✅ PR #11 ; 4 doublons supprimés (plan §4 ter) ; famille « formats techniques » (44 fonctions) ✅ PR #12 ; 3 recouvrements supprimés (`hash`, `ipv4`, `ipv6`, plan §4 ter) ; formats métier : identité, finance, géographie (36 fonctions) en cours ; restent les noms Lyxal et SurrealQL (≈ 26 fonctions), `sanitize`, `security`, `utils` · lots 4 et 5 à venir |
 | 5. Suppression de ce document | — |
 
 ---

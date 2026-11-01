@@ -1,39 +1,37 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/siren.surql
--- Fonction     : fn::validation_siren
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/siren.surql
+-- Fonction : fn::validation_siren
 --
--- Description
--- -----------
--- Valide un numéro SIREN français à neuf chiffres par Luhn.
+-- Valide un numéro SIREN : 9 chiffres (espaces et tirets retirés) avec clé
+-- de Luhn exacte.
 --
--- Principes
--- ----------
---   - distinction stricte entre NONE, NULL et type invalide ;
---   - aucune conversion implicite de la valeur métier ;
---   - codes d'erreur stables construits depuis le nom technique du champ ;
---   - aucune lecture ou écriture persistante ;
---   - aucune vérification auprès d'un service bancaire ou administratif.
+-- Paramètres
+--   $value : any — valeur à contrôler
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = les 9 chiffres, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
 --
--- Dépendances Lyxal
--- -----------------
--- fn::validation_luhn()
-
+-- Exemple (dans une fonction de module)
+--   LET $siren = fn::validation_siren($params.siren);
+--   IF !$siren.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $siren.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_siren(
-    $value: any,
-    $field: string
-) -> string {
-    RETURN fn::validation_luhn($value, $field, 9, 9);
+    $value: any
+) -> object {
+    RETURN fn::validation_luhn($value, 9, 9);
 }
-COMMENT "Valide un numéro SIREN français à neuf chiffres par Luhn."
+COMMENT "Valide un SIREN (9 chiffres, clé de Luhn). Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

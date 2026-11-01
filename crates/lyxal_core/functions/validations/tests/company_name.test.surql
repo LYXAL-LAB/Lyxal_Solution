@@ -1,46 +1,30 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/company_name.test.surql
--- Fonction     : fn::validation_company_name
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_company_name (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_company_name(" Dupont & Fils (SARL) ", 2, 100)
+    == { valid: true, value: "Dupont & Fils (SARL)", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Société valide
--- Résultat attendu : "Lyxal SAS"
--- ============================================================================
-RETURN fn::validation_company_name(
-    "Lyxal SAS",
-    "COMPANY_NAME",
-    2,
-    200
-);
+-- test: caractère interdit
+RETURN fn::validation_company_name("Dupont <script>", 2, 100)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "company_name" } };
 
--- ============================================================================
--- TEST 2 — Ponctuation professionnelle
--- Résultat attendu : "Martin & Fils (BTP)"
--- ============================================================================
-RETURN fn::validation_company_name(
-    "Martin & Fils (BTP)",
-    "COMPANY_NAME",
-    2,
-    200
-);
+-- test: chaîne blanche
+RETURN fn::validation_company_name("  ", 2, 100)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 3 — Caractère de contrôle interdit
--- Erreur attendue : COMPANY_NAME_INVALID_COMPANY_NAME
--- ============================================================================
-RETURN fn::validation_company_name(
-    "Lyxal\nSAS",
-    "COMPANY_NAME",
-    2,
-    200
-);
+-- test: valeur absente
+RETURN fn::validation_company_name(NONE, 2, 100)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_company_name(NULL, 2, 100)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_company_name(42, 2, 100)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_company_name("ab", 5, 2);

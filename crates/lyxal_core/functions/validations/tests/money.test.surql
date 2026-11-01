@@ -1,49 +1,42 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/money.test.surql
--- Fonction     : fn::validation_money
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_money (format : crates/lyxal_core/implementation_plan.md §5).
 
--- ============================================================================
--- TEST 1 — Montant valide à deux décimales
--- Résultat attendu : 19.99dec
--- ============================================================================
-RETURN fn::validation_money(19.99dec, "PRICE", 0dec, NONE, 2);
+-- test: montant valide
+RETURN fn::validation_money(19.99dec, 0dec, NONE, 2)
+    == { valid: true, value: 19.99dec, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Montant entier decimal
--- Résultat attendu : 20dec
--- ============================================================================
-RETURN fn::validation_money(20dec, "PRICE", 0dec, NONE, 2);
+-- test: entier en decimal
+RETURN fn::validation_money(20dec, NONE, NONE, 0)
+    == { valid: true, value: 20dec, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 3 — Trop de décimales
--- Erreur attendue : PRICE_TOO_MANY_DECIMALS
--- ============================================================================
-RETURN fn::validation_money(19.999dec, "PRICE", 0dec, NONE, 2);
+-- test: trop de décimales
+RETURN fn::validation_money(19.999dec, NONE, NONE, 2)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { max_scale: 2, scale: 3 } };
 
--- ============================================================================
--- TEST 4 — Int refusé
--- Erreur attendue : PRICE_INVALID_TYPE
--- ============================================================================
-RETURN fn::validation_money(20, "PRICE", 0dec, NONE, 2);
+-- test: trop petit
+RETURN fn::validation_money(-1dec, 0dec, NONE, 2)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min: 0dec } };
 
--- ============================================================================
--- TEST 5 — Montant négatif refusé par la borne
--- Erreur attendue : PRICE_TOO_SMALL
--- ============================================================================
-RETURN fn::validation_money(-0.01dec, "PRICE", 0dec, NONE, 2);
+-- test: trop grand
+RETURN fn::validation_money(1000dec, NONE, 999.99dec, 2)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: 999.99dec } };
 
--- ============================================================================
--- TEST 6 — Échelle invalide
--- Erreur attendue : VALIDATION_INVALID_MONEY_SCALE
--- ============================================================================
-RETURN fn::validation_money(19.99dec, "PRICE", 0dec, NONE, -1);
+-- test: valeur absente
+RETURN fn::validation_money(NONE, NONE, NONE, 2)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_money(NULL, NONE, NONE, 2)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type float refusé
+RETURN fn::validation_money(19.99f, NONE, NONE, 2)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "decimal", actual: "float" } };
+
+-- test: échelle négative
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_money(1dec, NONE, NONE, -1);
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_money(1dec, 10dec, 1dec, 2);

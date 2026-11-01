@@ -1,49 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/display_name.test.surql
--- Fonction     : fn::validation_display_name
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_display_name (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_display_name(" Jean_Dupont.42 ", 2, 30, false)
+    == { valid: true, value: "Jean_Dupont.42", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Nom d'affichage simple
--- Résultat attendu : "Yaniss D."
--- ============================================================================
-RETURN fn::validation_display_name(
-    "Yaniss D.",
-    "DISPLAY_NAME",
-    2,
-    100,
-    false
-);
+-- test: emoji autorisé
+RETURN fn::validation_display_name("Jean 🚀", 2, 30, true)
+    == { valid: true, value: "Jean 🚀", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Emoji autorisé
--- Résultat attendu : "Yaniss 🚀"
--- ============================================================================
-RETURN fn::validation_display_name(
-    "Yaniss 🚀",
-    "DISPLAY_NAME",
-    2,
-    100,
-    true
-);
+-- test: emoji refusé
+RETURN fn::validation_display_name("Jean 🚀", 2, 30, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "display_name" } };
 
--- ============================================================================
--- TEST 3 — Emoji interdit
--- Erreur attendue : DISPLAY_NAME_INVALID_DISPLAY_NAME
--- ============================================================================
-RETURN fn::validation_display_name(
-    "Yaniss 🚀",
-    "DISPLAY_NAME",
-    2,
-    100,
-    false
-);
+-- test: trop court
+RETURN fn::validation_display_name("J", 2, 30, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: 2, length: 1 } };
+
+-- test: chaîne blanche
+RETURN fn::validation_display_name("  ", 2, 30, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_display_name(NONE, 2, 30, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_display_name(NULL, 2, 30, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_display_name(42, 2, 30, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_display_name("ab", 5, 2, false);

@@ -1,24 +1,42 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/iban.test.surql
--- Fonction     : fn::validation_iban
--- Version      : 1.0.0
---
--- Les tests qui attendent un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_iban (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_iban(" fr76 3000 6000 0112 3456 7890 189 ", ["FR"])
+    == { valid: true, value: "FR7630006000011234567890189", code: NONE, details: {} };
 
--- TEST 1 — IBAN français
-RETURN fn::validation_iban("FR76 3000 6000 0112 3456 7890 189", "IBAN", ["FR"]);
+-- test: longueur FR incorrecte
+RETURN fn::validation_iban("FR763000600001123456789018", ["FR"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "iban", length: 27 } };
 
--- TEST 2 — IBAN belge
-RETURN fn::validation_iban("BE68 5390 0754 7034", "IBAN", ["BE", "FR"]);
+-- test: pays non autorisé
+RETURN fn::validation_iban("DE89370400440532013000", ["FR"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: ["FR"] } };
 
--- TEST 3 — Longueur française incorrecte
--- Erreur attendue : IBAN_INVALID_IBAN_LENGTH
-RETURN fn::validation_iban("FR7630006000011234567890", "IBAN", NONE);
+-- test: forme invalide
+RETURN fn::validation_iban("FRXX30006000011234567890189", ["FR"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "iban" } };
 
--- TEST 4 — Pays interdit
--- Erreur attendue : IBAN_IBAN_COUNTRY_NOT_ALLOWED
-RETURN fn::validation_iban("DE89370400440532013000", "IBAN", ["FR"]);
+-- test: chaîne blanche
+RETURN fn::validation_iban("  ", ["FR"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_iban(NONE, ["FR"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_iban(NULL, ["FR"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_iban(42, ["FR"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_iban("FR76", []);
+
+-- test: code pays mal formé
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_iban("FR76", ["FRA"]);

@@ -1,152 +1,57 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/country_code_iso3.surql
--- Fonction     : fn::validation_country_code_iso3
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/country_code_iso3.surql
+-- Fonction : fn::validation_country_code_iso3
 --
--- Description
--- -----------
--- Valide lexicalement un code pays ISO 3166-1 alpha-3 composé de trois lettres.
---
--- Règles appliquées
--- -----------------
---   1. La valeur est normalisée en majuscules.
---   2. Elle doit contenir exactement trois lettres ASCII.
---   3. Une liste facultative peut limiter les codes autorisés.
+-- Valide un code pays ISO 3166-1 alpha-3 (trois lettres) ; la valeur
+-- renvoyée est en majuscules. L'existence du code n'est vérifiée que par la
+-- liste facultative.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allowed_codes: option<array<string>>
+--   $value         : any — valeur à contrôler
+--   $allowed_codes : option<array<string>> — codes pays autorisés (au moins un, au bon format), NONE pour tous
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée et, lorsque cela est indiqué, normalisée.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le code en majuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_NOT_ALLOWED
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_COUNTRY_CODE
--- <FIELD>_COUNTRY_CODE_NOT_ALLOWED
--- VALIDATION_EMPTY_ALLOWED_COUNTRY_CODES
--- VALIDATION_INVALID_ALLOWED_COUNTRY_CODE
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : liste vide ou code au mauvais format
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
---   La valeur est absente ou égale à NONE.
---
--- <FIELD>_NULL_NOT_ALLOWED
---   La valeur est explicitement égale à NULL.
---
--- <FIELD>_INVALID_TYPE
---   La valeur ne possède pas le type attendu.
---
--- <FIELD>_BLANK_NOT_ALLOWED
---   La chaîne est vide après string::trim().
---
--- VALIDATION_INVALID_FIELD_NAME
---   Le nom technique du champ est vide.
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun accès réseau ;
---   - aucune résolution géographique externe ;
---   - aucune conversion implicite de la valeur métier.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::uppercase()
---   - string::matches()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---   - array::len()
---   - array::map()
---   - array::any()
---   - array::contains()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $code = fn::validation_country_code_iso3($params.code, NONE);
+--   IF !$code.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $code.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_country_code_iso3(
     $value: any,
-    $field: string,
     $allowed_codes: option<array<string>>
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    LET $allowed = IF $allowed_codes IS NONE { NONE } ELSE { array::map($allowed_codes, |$item| string::uppercase(string::trim($item))) };
+    IF $allowed IS NOT NONE AND (array::len($allowed) = 0 OR array::any($allowed, |$item| !string::matches($item, "^[A-Z]{3}$"))) { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::uppercase(string::trim($value));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    IF !string::matches($clean, "^[A-Z]{3}$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "country_code_iso3" } };
     };
-
-    LET $country_code = string::uppercase($clean_value);
-
-    IF !string::matches($country_code, "^[A-Z]{3}$") {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_COUNTRY_CODE"
-        );
+    IF $allowed IS NOT NONE AND $clean NOT IN $allowed {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: $allowed } };
     };
-
-    IF $allowed_codes IS NOT NONE {
-        IF array::len($allowed_codes) = 0 {
-            THROW "VALIDATION_EMPTY_ALLOWED_COUNTRY_CODES";
-        };
-
-        LET $clean_allowed = array::map(
-            $allowed_codes,
-            |$code| string::uppercase(string::trim($code))
-        );
-
-        IF array::any(
-            $clean_allowed,
-            |$code| !string::matches($code, "^[A-Z]{3}$")
-        ) {
-            THROW "VALIDATION_INVALID_ALLOWED_COUNTRY_CODE";
-        };
-
-        IF !(($clean_allowed) CONTAINS ($country_code)) {
-            THROW string::concat(
-                $clean_field,
-                "_COUNTRY_CODE_NOT_ALLOWED"
-            );
-        };
-    };
-
-    RETURN $country_code;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide lexicalement et normalise un code pays ISO 3166-1 alpha-3.
-"
+COMMENT "Valide un code pays ISO 3166-1 alpha-3 (trois lettres) ; la valeur renvoyée est en majuscules. L'existence du code n'est vérifiée que par la liste facultative. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

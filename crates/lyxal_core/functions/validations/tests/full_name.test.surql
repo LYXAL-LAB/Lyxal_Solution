@@ -1,49 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/full_name.test.surql
--- Fonction     : fn::validation_full_name
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_full_name (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_full_name(" Marie Curie ", 2, 3, 100)
+    == { valid: true, value: "Marie Curie", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Nom complet valide
--- Résultat attendu : "Yaniss Dubreucq"
--- ============================================================================
-RETURN fn::validation_full_name(
-    "Yaniss Dubreucq",
-    "FULL_NAME",
-    2,
-    6,
-    200
-);
+-- test: un seul mot
+RETURN fn::validation_full_name("Marie", 2, 3, 100)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_words: 2, words: 1 } };
 
--- ============================================================================
--- TEST 2 — Nom composé valide
--- Résultat attendu : "Jean-Pierre Le Gall"
--- ============================================================================
-RETURN fn::validation_full_name(
-    "Jean-Pierre Le Gall",
-    "FULL_NAME",
-    2,
-    6,
-    200
-);
+-- test: trop de mots
+RETURN fn::validation_full_name("Anne Marie Louise Curie", 2, 3, 100)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_words: 3, words: 4 } };
 
--- ============================================================================
--- TEST 3 — Pas assez de mots
--- Erreur attendue : FULL_NAME_TOO_FEW_WORDS
--- ============================================================================
-RETURN fn::validation_full_name(
-    "Yaniss",
-    "FULL_NAME",
-    2,
-    6,
-    200
-);
+-- test: chiffre refusé
+RETURN fn::validation_full_name("Marie 2", 2, 3, 100)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "full_name" } };
+
+-- test: chaîne blanche
+RETURN fn::validation_full_name("  ", 2, 3, 100)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_full_name(NONE, 2, 3, 100)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_full_name(NULL, 2, 3, 100)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_full_name(42, 2, 3, 100)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: mots inversés
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_full_name("a b", 3, 2, 100);

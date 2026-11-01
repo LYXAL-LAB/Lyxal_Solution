@@ -1,64 +1,56 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/bic.surql
--- Fonction     : fn::validation_bic
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/bic.surql
+-- Fonction : fn::validation_bic
 --
--- Description
--- -----------
--- Valide lexicalement un code BIC/SWIFT de huit ou onze caractères.
+-- Valide un code BIC / SWIFT (8 ou 11 caractères) ; pays (5e et 6e
+-- caractères) facultativement limités. La valeur renvoyée est en majuscules.
 --
--- Principes
--- ----------
---   - distinction stricte entre NONE, NULL et type invalide ;
---   - aucune conversion implicite de la valeur métier ;
---   - codes d'erreur stables construits depuis le nom technique du champ ;
---   - aucune lecture ou écriture persistante ;
---   - aucune vérification auprès d'un service bancaire ou administratif.
+-- Paramètres
+--   $value             : any — valeur à contrôler
+--   $allowed_countries : option<array<string>> — codes pays autorisés (au moins un, au bon format), NONE pour tous
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le BIC en majuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_NOT_ALLOWED
 --
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : liste vide ou code pays au mauvais format
+--
+-- Exemple (dans une fonction de module)
+--   LET $bic = fn::validation_bic($params.bic, NONE);
+--   IF !$bic.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $bic.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_bic(
     $value: any,
-    $field: string,
     $allowed_countries: option<array<string>>
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-
-    LET $bic = string::uppercase(string::trim($value));
-    IF !string::matches($bic, "^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?$") {
-        THROW string::concat($clean_field, "_INVALID_BIC");
+) -> object {
+    LET $allowed = IF $allowed_countries IS NONE { NONE } ELSE { array::map($allowed_countries, |$item| string::uppercase(string::trim($item))) };
+    IF $allowed IS NOT NONE AND (array::len($allowed) = 0 OR array::any($allowed, |$item| !string::matches($item, "^[A-Z]{2}$"))) { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    IF !type::is_string($value) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $country = string::slice($bic, 4, 6);
-    IF $allowed_countries IS NOT NONE {
-        IF array::len($allowed_countries) = 0 {
-            THROW "VALIDATION_EMPTY_ALLOWED_BIC_COUNTRIES";
-        };
-        LET $allowed = array::map(
-            $allowed_countries,
-            |$code| string::uppercase(string::trim($code))
-        );
-        IF !(($allowed) CONTAINS ($country)) {
-            THROW string::concat($clean_field, "_BIC_COUNTRY_NOT_ALLOWED");
-        };
+    LET $clean = string::uppercase(string::trim($value));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    IF !string::matches($clean, "^[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "bic" } };
     };
-    RETURN $bic;
+    IF $allowed IS NOT NONE AND string::slice($clean, 4, 6) NOT IN $allowed {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: $allowed } };
+    };
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "Valide lexicalement et normalise un code BIC ou SWIFT."
+COMMENT "Valide un code BIC / SWIFT (8 ou 11 caractères) ; pays (5e et 6e caractères) facultativement limités. La valeur renvoyée est en majuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

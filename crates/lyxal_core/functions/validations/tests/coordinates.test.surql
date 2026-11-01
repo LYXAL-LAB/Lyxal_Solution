@@ -1,54 +1,22 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/coordinates.test.surql
--- Fonction     : fn::validation_coordinates
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_coordinates (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: coordonnées valides
+RETURN fn::validation_coordinates(48.8566f, 2.3522f)
+    == { valid: true, value: { latitude: 48.8566f, longitude: 2.3522f }, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Coordonnées de Paris
--- Résultat attendu : { latitude: 48.8566, longitude: 2.3522 }
--- ============================================================================
-RETURN fn::validation_coordinates(
-    48.8566,
-    2.3522,
-    "COORDINATES"
-);
+-- test: latitude hors bornes
+RETURN fn::validation_coordinates(91, 0)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { bound: "latitude", max: 90 } };
 
--- ============================================================================
--- TEST 2 — Origine géographique
--- Résultat attendu : { latitude: 0, longitude: 0 }
--- ============================================================================
-RETURN fn::validation_coordinates(
-    0,
-    0,
-    "COORDINATES"
-);
+-- test: longitude hors bornes
+RETURN fn::validation_coordinates(0, -181)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { bound: "longitude", min: -180 } };
 
--- ============================================================================
--- TEST 3 — Latitude hors plage
--- Erreur attendue : COORDINATES_LATITUDE_OUT_OF_RANGE
--- ============================================================================
-RETURN fn::validation_coordinates(
-    91,
-    2.3522,
-    "COORDINATES"
-);
+-- test: latitude absente
+RETURN fn::validation_coordinates(NONE, 0)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { bound: "latitude" } };
 
--- ============================================================================
--- TEST 4 — Longitude absente
--- Erreur attendue : COORDINATES_LONGITUDE_REQUIRED
--- ============================================================================
-RETURN fn::validation_coordinates(
-    48.8566,
-    NONE,
-    "COORDINATES"
-);
+-- test: longitude de type chaîne
+RETURN fn::validation_coordinates(0, "2.35")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { bound: "longitude", expected: "number", actual: "string" } };

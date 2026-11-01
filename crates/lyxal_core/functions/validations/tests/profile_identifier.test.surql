@@ -1,57 +1,33 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/profile_identifier.test.surql
--- Fonction     : fn::validation_profile_identifier
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_profile_identifier (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_profile_identifier(" Jean.Dupont ", 3, 30)
+    == { valid: true, value: "jean.dupont", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Identifiant valide
--- Résultat attendu : "yaniss.dubreucq"
--- ============================================================================
-RETURN fn::validation_profile_identifier(
-    "Yaniss.Dubreucq",
-    "PROFILE_ID",
-    3,
-    64
-);
+-- test: séparateur final
+RETURN fn::validation_profile_identifier("jean-", 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "profile_identifier" } };
 
--- ============================================================================
--- TEST 2 — Tiret valide
--- Résultat attendu : "yaniss-btp"
--- ============================================================================
-RETURN fn::validation_profile_identifier(
-    "yaniss-btp",
-    "PROFILE_ID",
-    3,
-    64
-);
+-- test: séparateur doublé
+RETURN fn::validation_profile_identifier("jean__dupont", 3, 30).code == "CORE_VALIDATION_FORMAT";
 
--- ============================================================================
--- TEST 3 — Séparateur final interdit
--- Erreur attendue : PROFILE_ID_INVALID_PROFILE_IDENTIFIER
--- ============================================================================
-RETURN fn::validation_profile_identifier(
-    "yaniss-",
-    "PROFILE_ID",
-    3,
-    64
-);
+-- test: chaîne blanche
+RETURN fn::validation_profile_identifier("  ", 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 4 — Séparateur répété
--- Erreur attendue : PROFILE_ID_INVALID_BOUNDARY
--- ============================================================================
-RETURN fn::validation_profile_identifier(
-    "yaniss__btp",
-    "PROFILE_ID",
-    3,
-    64
-);
+-- test: valeur absente
+RETURN fn::validation_profile_identifier(NONE, 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_profile_identifier(NULL, 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_profile_identifier(42, 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_profile_identifier("abc", 5, 3);

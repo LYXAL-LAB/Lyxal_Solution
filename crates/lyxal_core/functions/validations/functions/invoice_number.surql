@@ -1,78 +1,66 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/invoice_number.surql
--- Fonction     : fn::validation_invoice_number
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/invoice_number.surql
+-- Fonction : fn::validation_invoice_number
 --
--- Description
--- -----------
--- Valide lexicalement un numéro de facture technique avec longueur et préfixes configurables.
+-- Valide un numéro de facture ([A-Za-z0-9] puis [A-Za-z0-9._/-]), longueur
+-- bornée, préfixe facultativement imposé.
 --
--- Principes
--- ----------
---   - distinction stricte entre NONE, NULL et type invalide ;
---   - aucune conversion implicite de la valeur métier ;
---   - codes d'erreur stables construits depuis le nom technique du champ ;
---   - aucune lecture ou écriture persistante ;
---   - aucune vérification auprès d'un service bancaire ou administratif.
+-- Paramètres
+--   $value            : any — valeur à contrôler
+--   $min_length       : int — longueur minimale (>= 1)
+--   $max_length       : int — longueur maximale (>= $min_length)
+--   $allowed_prefixes : option<array<string>> — préfixes autorisés (au moins un), NONE pour tous
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne sans espaces périphériques, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_NOT_ALLOWED
 --
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $min_length < 1, $min_length > $max_length, ou liste de préfixes vide
+--
+-- Exemple (dans une fonction de module)
+--   LET $number = fn::validation_invoice_number($params.number, 3, 32, ["FAC-"]);
+--   IF !$number.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $number.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_invoice_number(
     $value: any,
-    $field: string,
-    $allowed_prefixes: option<array<string>>,
     $min_length: int,
-    $max_length: int
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $min_length < 1 OR $max_length < 1 OR $min_length > $max_length {
-        THROW "VALIDATION_INVALID_INVOICE_LENGTH_RANGE";
+    $max_length: int,
+    $allowed_prefixes: option<array<string>>
+) -> object {
+    IF $min_length < 1 OR $min_length > $max_length { THROW "CORE_INVALID_ARGUMENT"; };
+    LET $prefixes = IF $allowed_prefixes IS NONE { NONE } ELSE { array::map($allowed_prefixes, |$prefix| string::trim($prefix)) };
+    IF $prefixes IS NOT NONE AND (array::len($prefixes) = 0 OR array::any($prefixes, |$prefix| $prefix = "")) { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    IF !type::is_string($value) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-
-    LET $number = string::trim($value);
-    LET $length = string::len($number);
-    IF $length < $min_length { THROW string::concat($clean_field, "_TOO_SHORT"); };
-    IF $length > $max_length { THROW string::concat($clean_field, "_TOO_LONG"); };
-    IF !string::matches($number, "^[A-Za-z0-9][A-Za-z0-9._/-]*$") {
-        THROW string::concat($clean_field, "_INVALID_INVOICE_NUMBER");
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $length = string::len($clean);
+    IF $length < $min_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: $min_length, length: $length } }; };
+    IF $max_length IS NOT NONE AND $length > $max_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } }; };
+    IF !string::matches($clean, "^[A-Za-z0-9][A-Za-z0-9._/-]*$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "invoice_number" } };
     };
-
-    IF $allowed_prefixes IS NOT NONE {
-        IF array::len($allowed_prefixes) = 0 {
-            THROW "VALIDATION_EMPTY_INVOICE_PREFIXES";
-        };
-        LET $prefixes = array::map(
-            $allowed_prefixes,
-            |$prefix| string::trim($prefix)
-        );
-        IF !array::any(
-            $prefixes,
-            |$prefix| $prefix != "" AND string::starts_with($number, $prefix)
-        ) {
-            THROW string::concat($clean_field, "_PREFIX_NOT_ALLOWED");
-        };
+    IF $prefixes IS NOT NONE AND !array::any($prefixes, |$prefix| string::starts_with($clean, $prefix)) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed_prefixes: $prefixes } };
     };
-
-    RETURN $number;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide la forme d'un numéro de facture. L'unicité et la séquence restent
-sous la responsabilité de la fonction métier.
-"
+COMMENT "Valide un numéro de facture ([A-Za-z0-9] puis [A-Za-z0-9._/-]), longueur bornée, préfixe facultativement imposé. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;
