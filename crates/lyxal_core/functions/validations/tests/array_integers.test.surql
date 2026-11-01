@@ -1,46 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/array_integers.test.surql
--- Fonction     : fn::validation_array_integers
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_array_integers (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: entiers dans les bornes
+RETURN fn::validation_array_integers([1, 5], 1, 10)
+    == { valid: true, value: [1, 5], code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Entiers valides
--- Résultat attendu : [1, 2, 3]
--- ============================================================================
-RETURN fn::validation_array_integers(
-    [1, 2, 3], "VALUES", 0, 10
-);
+-- test: tableau vide accepté
+RETURN fn::validation_array_integers([], 1, 10)
+    == { valid: true, value: [], code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Float refusé
--- Erreur attendue : VALUES_INVALID_ITEM_TYPE
--- ============================================================================
-RETURN fn::validation_array_integers(
-    [1, 2f], "VALUES", 0, 10
-);
+-- test: élément non entier
+RETURN fn::validation_array_integers([1, 2.5f], NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { scope: "item", expected: "int" } };
 
--- ============================================================================
--- TEST 3 — Valeur trop petite
--- Erreur attendue : VALUES_ITEM_TOO_SMALL
--- ============================================================================
-RETURN fn::validation_array_integers(
-    [-1, 2], "VALUES", 0, 10
-);
+-- test: élément trop petit
+RETURN fn::validation_array_integers([0, 5], 1, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { scope: "item", min: 1 } };
 
--- ============================================================================
--- TEST 4 — Valeur trop grande
--- Erreur attendue : VALUES_ITEM_TOO_LARGE
--- ============================================================================
-RETURN fn::validation_array_integers(
-    [1, 11], "VALUES", 0, 10
-);
+-- test: élément trop grand
+RETURN fn::validation_array_integers([5, 11], NONE, 10)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { scope: "item", max: 10 } };
+
+-- test: valeur absente
+RETURN fn::validation_array_integers(NONE, NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_array_integers(NULL, NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_array_integers(5, NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "array", actual: "int" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_array_integers([1], 10, 1);

@@ -1,38 +1,22 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/array.test.surql
--- Fonction     : fn::validation_array
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_array (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur acceptée
+RETURN fn::validation_array([1, "a"])
+    == { valid: true, value: [1, "a"], code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Tableau valide
--- Résultat attendu : [1, 2, 3]
--- ============================================================================
-RETURN fn::validation_array([1, 2, 3], "ITEMS");
+-- test: valeur absente
+RETURN fn::validation_array(NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 2 — Tableau vide valide
--- Résultat attendu : []
--- ============================================================================
-RETURN fn::validation_array([], "ITEMS");
+-- test: valeur NULL
+RETURN fn::validation_array(NULL)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
 
--- ============================================================================
--- TEST 3 — Objet refusé
--- Erreur attendue : ITEMS_INVALID_TYPE
--- ============================================================================
-RETURN fn::validation_array({ a: 1 }, "ITEMS");
+-- test: type object refusé
+RETURN fn::validation_array({ a: 1 })
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "array", actual: "object" } };
 
--- ============================================================================
--- TEST 4 — NONE
--- Erreur attendue : ITEMS_REQUIRED
--- ============================================================================
-RETURN fn::validation_array(NONE, "ITEMS");
+-- test: tableau vide accepté
+RETURN fn::validation_array([])
+    == { valid: true, value: [], code: NONE, details: {} };

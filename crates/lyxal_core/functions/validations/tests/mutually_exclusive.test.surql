@@ -1,44 +1,18 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/mutually_exclusive.test.surql
--- Fonction     : fn::validation_mutually_exclusive
--- Domaine      : Core / Validation / Advanced
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_mutually_exclusive (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: une seule valeur
+RETURN fn::validation_mutually_exclusive(["A", NONE], false)
+    == { valid: true, value: ["A", NONE], code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Une seule valeur présente
--- Résultat attendu : tableau reçu
--- ============================================================================
-RETURN fn::validation_mutually_exclusive(
-    ["email@example.com", NONE, NONE],
-    "CONTACT_METHOD",
-    false
-);
+-- test: aucune valeur autorisée
+RETURN fn::validation_mutually_exclusive([NONE, NONE], true)
+    == { valid: true, value: [NONE, NONE], code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Aucune valeur autorisée
--- Résultat attendu : tableau reçu
--- ============================================================================
-RETURN fn::validation_mutually_exclusive(
-    [NONE, NONE, NONE],
-    "CONTACT_METHOD",
-    true
-);
+-- test: aucune valeur refusée
+RETURN fn::validation_mutually_exclusive([NONE, NONE], false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { scope: "group" } };
 
--- ============================================================================
--- TEST 3 — Deux valeurs présentes
--- Erreur attendue : CONTACT_METHOD_MUTUALLY_EXCLUSIVE
--- ============================================================================
-RETURN fn::validation_mutually_exclusive(
-    ["email@example.com", "+33123456789", NONE],
-    "CONTACT_METHOD",
-    false
-);
+-- test: deux valeurs
+RETURN fn::validation_mutually_exclusive(["A", "B"], true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_COMBINATION", details: { present: 2, max: 1 } };

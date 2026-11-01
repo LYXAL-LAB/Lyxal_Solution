@@ -1,41 +1,13 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/at_least_one.test.surql
--- Fonction     : fn::validation_at_least_one
--- Domaine      : Core / Validation / Advanced
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_at_least_one (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: une valeur présente
+RETURN fn::validation_at_least_one([NONE, "06 00 00 00 00"])
+    == { valid: true, value: [NONE, "06 00 00 00 00"], code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Une valeur présente
--- Résultat attendu : tableau reçu
--- ============================================================================
-RETURN fn::validation_at_least_one(
-    [NONE, "email@example.com", NONE],
-    "CONTACT"
-);
+-- test: NULL compte comme présent
+RETURN fn::validation_at_least_one([NULL, NONE]).valid;
 
--- ============================================================================
--- TEST 2 — Plusieurs valeurs présentes
--- Résultat attendu : tableau reçu
--- ============================================================================
-RETURN fn::validation_at_least_one(
-    ["email@example.com", "+33123456789"],
-    "CONTACT"
-);
-
--- ============================================================================
--- TEST 3 — Aucune valeur
--- Erreur attendue : CONTACT_AT_LEAST_ONE_REQUIRED
--- ============================================================================
-RETURN fn::validation_at_least_one(
-    [NONE, NONE],
-    "CONTACT"
-);
+-- test: aucune valeur
+RETURN fn::validation_at_least_one([NONE, NONE])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { scope: "group" } };

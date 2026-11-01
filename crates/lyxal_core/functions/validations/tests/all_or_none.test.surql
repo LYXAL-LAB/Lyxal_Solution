@@ -1,41 +1,14 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/all_or_none.test.surql
--- Fonction     : fn::validation_all_or_none
--- Domaine      : Core / Validation / Advanced
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_all_or_none (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: toutes présentes
+RETURN fn::validation_all_or_none(["a", "b"])
+    == { valid: true, value: ["a", "b"], code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Tout renseigné
--- Résultat attendu : tableau reçu
--- ============================================================================
-RETURN fn::validation_all_or_none(
-    ["30006", "00001", "12345678901", "89"],
-    "RIB"
-);
+-- test: toutes absentes
+RETURN fn::validation_all_or_none([NONE, NONE])
+    == { valid: true, value: [NONE, NONE], code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Tout absent
--- Résultat attendu : tableau reçu
--- ============================================================================
-RETURN fn::validation_all_or_none(
-    [NONE, NONE, NONE, NONE],
-    "RIB"
-);
-
--- ============================================================================
--- TEST 3 — Partiellement renseigné
--- Erreur attendue : RIB_ALL_OR_NONE_REQUIRED
--- ============================================================================
-RETURN fn::validation_all_or_none(
-    ["30006", "00001", NONE, NONE],
-    "RIB"
-);
+-- test: présence partielle
+RETURN fn::validation_all_or_none(["a", NONE, "c"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_COMBINATION", details: { present: 2, total: 3 } };

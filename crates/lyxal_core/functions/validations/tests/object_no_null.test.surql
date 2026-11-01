@@ -1,47 +1,22 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/object_no_null.test.surql
--- Fonction     : fn::validation_object_no_null
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_object_no_null (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur acceptée
+RETURN fn::validation_object_no_null({ a: 1 })
+    == { valid: true, value: { a: 1 }, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Objet sans NULL
--- Résultat attendu : objet reçu
--- ============================================================================
-RETURN fn::validation_object_no_null(
-    { name: "Lyxal", enabled: true },
-    "CONFIG"
-);
+-- test: valeur absente
+RETURN fn::validation_object_no_null(NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 2 — Valeur NULL
--- Erreur attendue : CONFIG_NULL_VALUE_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_object_no_null(
-    { name: "Lyxal", description: NULL },
-    "CONFIG"
-);
+-- test: valeur NULL
+RETURN fn::validation_object_no_null(NULL)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
 
--- ============================================================================
--- TEST 3 — Valeur NONE autorisée par cette fonction
--- Résultat attendu : objet reçu
--- ============================================================================
-RETURN fn::validation_object_no_null(
-    { name: "Lyxal", description: NONE },
-    "CONFIG"
-);
+-- test: type array refusé
+RETURN fn::validation_object_no_null([])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "object", actual: "array" } };
 
--- ============================================================================
--- TEST 4 — Objet racine NULL
--- Erreur attendue : CONFIG_NULL_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_object_no_null(NULL, "CONFIG");
+-- test: valeur NULL
+RETURN fn::validation_object_no_null({ a: NULL, b: 1 })
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: { scope: "value", keys: ["a"] } };

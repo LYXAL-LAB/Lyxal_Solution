@@ -1,54 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/record_id.test.surql
--- Fonction     : fn::validation_record_id
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_record_id (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: Record ID de table autorisée
+RETURN fn::validation_record_id(identity_user:a, ["identity_user", "identity_team"])
+    == { valid: true, value: identity_user:a, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Record ID valide
--- Résultat attendu : user:yaniss
--- ============================================================================
-RETURN fn::validation_record_id(
-    user:yaniss, "USER_ID", NONE
-);
+-- test: toutes tables
+RETURN fn::validation_record_id(team:b, NONE)
+    == { valid: true, value: team:b, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Table autorisée
--- Résultat attendu : user:yaniss
--- ============================================================================
-RETURN fn::validation_record_id(
-    user:yaniss, "USER_ID", ["user", "identity_user"]
-);
+-- test: table non autorisée
+RETURN fn::validation_record_id(team:b, ["identity_user"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: ["identity_user"] } };
 
--- ============================================================================
--- TEST 3 — Table interdite
--- Erreur attendue : USER_ID_RECORD_TABLE_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_record_id(
-    booking:one, "USER_ID", ["user"]
-);
+-- test: valeur absente
+RETURN fn::validation_record_id(NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — Chaîne non convertie
--- Erreur attendue : USER_ID_INVALID_TYPE
--- ============================================================================
-RETURN fn::validation_record_id(
-    "user:yaniss", "USER_ID", ["user"]
-);
+-- test: valeur NULL
+RETURN fn::validation_record_id(NULL, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
 
--- ============================================================================
--- TEST 5 — Liste de tables vide
--- Erreur attendue : VALIDATION_EMPTY_ALLOWED_TABLES
--- ============================================================================
-RETURN fn::validation_record_id(
-    user:yaniss, "USER_ID", []
-);
+-- test: type string refusé
+RETURN fn::validation_record_id("team:b", NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "record", actual: "string" } };
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_record_id(team:b, []);
+
+-- test: nom de table invalide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_record_id(team:b, ["team b"]);

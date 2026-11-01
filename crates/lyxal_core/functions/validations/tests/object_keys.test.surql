@@ -1,58 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/object_keys.test.surql
--- Fonction     : fn::validation_object_keys
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_object_keys (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: clés conformes
+RETURN fn::validation_object_keys({ city: "Lyon", street: "x" }, ["city"], ["street", "city"])
+    == { valid: true, value: { city: "Lyon", street: "x" }, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Objet conforme
--- Résultat attendu : objet reçu
--- ============================================================================
-RETURN fn::validation_object_keys(
-    { name: "Lyxal", enabled: true },
-    "CONFIG",
-    ["name"],
-    ["name", "enabled"]
-);
+-- test: sans contrainte
+RETURN fn::validation_object_keys({ any: 1 }, NONE, NONE)
+    == { valid: true, value: { any: 1 }, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Clé obligatoire manquante
--- Erreur attendue : CONFIG_MISSING_REQUIRED_KEY
--- ============================================================================
-RETURN fn::validation_object_keys(
-    { enabled: true },
-    "CONFIG",
-    ["name"],
-    ["name", "enabled"]
-);
+-- test: clé obligatoire absente
+RETURN fn::validation_object_keys({ street: "x" }, ["city", "street"], NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { scope: "key", keys: ["city"] } };
 
--- ============================================================================
--- TEST 3 — Clé inconnue
--- Erreur attendue : CONFIG_UNKNOWN_KEY
--- ============================================================================
-RETURN fn::validation_object_keys(
-    { name: "Lyxal", secret: true },
-    "CONFIG",
-    ["name"],
-    ["name", "enabled"]
-);
+-- test: clé inconnue
+RETURN fn::validation_object_keys({ city: "Lyon", zip: 1 }, NONE, ["city"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { scope: "key", keys: ["zip"] } };
 
--- ============================================================================
--- TEST 4 — Clé requise non autorisée par la configuration
--- Erreur attendue : VALIDATION_REQUIRED_KEY_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_object_keys(
-    { name: "Lyxal" },
-    "CONFIG",
-    ["name"],
-    ["enabled"]
-);
+-- test: valeur absente
+RETURN fn::validation_object_keys(NONE, NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_object_keys(NULL, NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type array refusé
+RETURN fn::validation_object_keys([], NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "object", actual: "array" } };
+
+-- test: clé vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_object_keys({}, [" "], NONE);
+
+-- test: clé obligatoire non autorisée
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_object_keys({}, ["city"], ["street"]);

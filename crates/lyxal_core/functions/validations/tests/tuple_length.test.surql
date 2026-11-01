@@ -1,50 +1,30 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/tuple_length.test.surql
--- Fonction     : fn::validation_tuple_length
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_tuple_length (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: longueur exacte
+RETURN fn::validation_tuple_length([1.5f, 2.5f], 2)
+    == { valid: true, value: [1.5f, 2.5f], code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Tuple de deux éléments
--- Résultat attendu : [2.3522, 48.8566]
--- ============================================================================
-RETURN fn::validation_tuple_length(
-    [2.3522, 48.8566],
-    "COORDINATES",
-    2
-);
+-- test: trop court
+RETURN fn::validation_tuple_length([1], 2)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: 2, length: 1 } };
 
--- ============================================================================
--- TEST 2 — Tuple vide
--- Résultat attendu : []
--- ============================================================================
-RETURN fn::validation_tuple_length([], "EMPTY_TUPLE", 0);
+-- test: trop long
+RETURN fn::validation_tuple_length([1, 2, 3], 2)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: 2, length: 3 } };
 
--- ============================================================================
--- TEST 3 — Longueur incorrecte
--- Erreur attendue : COORDINATES_INVALID_TUPLE_LENGTH
--- ============================================================================
-RETURN fn::validation_tuple_length(
-    [2.3522],
-    "COORDINATES",
-    2
-);
+-- test: valeur absente
+RETURN fn::validation_tuple_length(NONE, 2)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — Objet refusé
--- Erreur attendue : COORDINATES_INVALID_TYPE
--- ============================================================================
-RETURN fn::validation_tuple_length(
-    { x: 2.3522, y: 48.8566 },
-    "COORDINATES",
-    2
-);
+-- test: valeur NULL
+RETURN fn::validation_tuple_length(NULL, 2)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type object refusé
+RETURN fn::validation_tuple_length({}, 2)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "array", actual: "object" } };
+
+-- test: longueur négative
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_tuple_length([], -1);

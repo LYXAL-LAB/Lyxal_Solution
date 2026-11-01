@@ -1,54 +1,37 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/tuple_types.test.surql
--- Fonction     : fn::validation_tuple_types
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_tuple_types (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: types conformes
+RETURN fn::validation_tuple_types(["a", 1], ["string", " INT "])
+    == { valid: true, value: ["a", 1], code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Tuple string/int valide
--- Résultat attendu : ["page", 10]
--- ============================================================================
-RETURN fn::validation_tuple_types(
-    ["page", 10],
-    "PAGINATION",
-    ["string", "int"]
-);
+-- test: type d'élément incorrect
+RETURN fn::validation_tuple_types([1, "a"], ["string", "int"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { scope: "item", expected: ["string", "int"] } };
 
--- ============================================================================
--- TEST 2 — Tuple int/string invalide
--- Erreur attendue : PAGINATION_INVALID_TUPLE_ITEM_TYPE
--- ============================================================================
-RETURN fn::validation_tuple_types(
-    [10, "page"],
-    "PAGINATION",
-    ["string", "int"]
-);
+-- test: trop court
+RETURN fn::validation_tuple_types(["a"], ["string", "int"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: 2, length: 1 } };
 
--- ============================================================================
--- TEST 3 — Longueur incorrecte
--- Erreur attendue : PAGINATION_INVALID_TUPLE_LENGTH
--- ============================================================================
-RETURN fn::validation_tuple_types(
-    ["page"],
-    "PAGINATION",
-    ["string", "int"]
-);
+-- test: trop long
+RETURN fn::validation_tuple_types(["a", 1, 2], ["string", "int"]).code == "CORE_VALIDATION_TOO_LONG";
 
--- ============================================================================
--- TEST 4 — Types attendus vides
--- Erreur attendue : VALIDATION_EMPTY_TUPLE_TYPES
--- ============================================================================
-RETURN fn::validation_tuple_types(
-    [],
-    "PAGINATION",
-    []
-);
+-- test: valeur absente
+RETURN fn::validation_tuple_types(NONE, ["int"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_tuple_types(NULL, ["int"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_tuple_types(1, ["int"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "array", actual: "int" } };
+
+-- test: liste de types vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_tuple_types([], []);
+
+-- test: type vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_tuple_types([1], [" "]);

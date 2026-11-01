@@ -1,54 +1,30 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/array_objects.test.surql
--- Fonction     : fn::validation_array_objects
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_array_objects (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: objets acceptés
+RETURN fn::validation_array_objects([{ a: 1 }], false)
+    == { valid: true, value: [{ a: 1 }], code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Tableau d'objets valide
--- Résultat attendu : objets reçus
--- ============================================================================
-RETURN fn::validation_array_objects(
-    [{ name: "A" }, { name: "B" }],
-    "ITEMS",
-    false
-);
+-- test: objet vide autorisé
+RETURN fn::validation_array_objects([{}], true)
+    == { valid: true, value: [{}], code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Objet vide autorisé
--- Résultat attendu : [{}]
--- ============================================================================
-RETURN fn::validation_array_objects(
-    [{}],
-    "ITEMS",
-    true
-);
+-- test: objet vide refusé
+RETURN fn::validation_array_objects([{ a: 1 }, {}], false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_EMPTY", details: { scope: "item" } };
 
--- ============================================================================
--- TEST 3 — Objet vide interdit
--- Erreur attendue : ITEMS_EMPTY_OBJECT_ITEM_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_array_objects(
-    [{}],
-    "ITEMS",
-    false
-);
+-- test: élément non objet
+RETURN fn::validation_array_objects([{ a: 1 }, 2], true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { scope: "item", expected: "object" } };
 
--- ============================================================================
--- TEST 4 — String présente
--- Erreur attendue : ITEMS_INVALID_OBJECT_ITEM
--- ============================================================================
-RETURN fn::validation_array_objects(
-    [{ name: "A" }, "B"],
-    "ITEMS",
-    false
-);
+-- test: valeur absente
+RETURN fn::validation_array_objects(NONE, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_array_objects(NULL, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type object refusé
+RETURN fn::validation_array_objects({}, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "array", actual: "object" } };

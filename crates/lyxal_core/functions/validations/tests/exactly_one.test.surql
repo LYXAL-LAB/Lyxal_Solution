@@ -1,41 +1,14 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/exactly_one.test.surql
--- Fonction     : fn::validation_exactly_one
--- Domaine      : Core / Validation / Advanced
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_exactly_one (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: une seule valeur
+RETURN fn::validation_exactly_one([user:a, NONE])
+    == { valid: true, value: [user:a, NONE], code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Exactement une valeur
--- Résultat attendu : tableau reçu
--- ============================================================================
-RETURN fn::validation_exactly_one(
-    [user:one, NONE, NONE],
-    "OWNER"
-);
+-- test: aucune valeur
+RETURN fn::validation_exactly_one([NONE, NONE])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { scope: "group" } };
 
--- ============================================================================
--- TEST 2 — Aucune valeur
--- Erreur attendue : OWNER_EXACTLY_ONE_REQUIRED
--- ============================================================================
-RETURN fn::validation_exactly_one(
-    [NONE, NONE, NONE],
-    "OWNER"
-);
-
--- ============================================================================
--- TEST 3 — Plusieurs valeurs
--- Erreur attendue : OWNER_EXACTLY_ONE_REQUIRED
--- ============================================================================
-RETURN fn::validation_exactly_one(
-    [user:one, team:one, NONE],
-    "OWNER"
-);
+-- test: deux valeurs
+RETURN fn::validation_exactly_one([user:a, team:b])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_COMBINATION", details: { present: 2, max: 1 } };
