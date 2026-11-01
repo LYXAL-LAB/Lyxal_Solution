@@ -1,10 +1,10 @@
 ---
 name: lyxal-surrealdb
 description: >-
-  Use this skill when writing, reviewing, migrating, or testing SurrealQL schemas, functions, events, permissions, transactions, or seeds for Lyxal OS on SurrealDB 3.2.0 and the Rust surrealdb SDK.
+  Use this skill when writing, reviewing, migrating, or testing SurrealQL schemas, functions, events, permissions, transactions, or seeds for Lyxal OS on SurrealDB 3.3.4 and the Rust surrealdb SDK.
 ---
 
-# Lyxal OS — Ingénierie, Migrations & Sécurité SurrealDB 3.2.0 (`lyxal-surrealdb`)
+# Lyxal OS — Ingénierie, Migrations & Sécurité SurrealDB 3.3.4 (`lyxal-surrealdb`)
 
 > **Source normative** : Ce Skill applique les standards SurrealQL définis dans [`.agents/AGENTS.md`](../../AGENTS.md), [`.agents/rules/lyxal_standards_and_checklist.md`](../../rules/lyxal_standards_and_checklist.md) et l'audit architectural [`docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md`](../../../docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md).
 
@@ -14,16 +14,16 @@ description: >-
 
 Activer ce Skill dès que la tâche implique :
 - L'écriture ou la modification de fichiers `.surql` (`schema/`, `functions/`, `events/`, `migrations/`, `error/`, `seeds/`) ;
-- L'analyse de compatibilité syntaxique SurrealDB 3.2.0 ou d'interopérabilité avec le crate Rust `surrealdb = "2.2"` (`Surreal<Any>`) ;
+- L'analyse de compatibilité syntaxique SurrealDB 3.3.4 ou d'interopérabilité avec le crate Rust `surrealdb = "2.2"` (`Surreal<Any>`) ;
 - La conception de règles RLS (`PERMISSIONS`), de verrous moteurs (`DEFINE EVENT ... THROW`), de transactions ou de migrations déterministes.
 
 ---
 
 ## 1. Socle Technique Réel du Dépôt (Vérifié)
 
-1. **Moteur cible de référence** : **SurrealDB 3.2.0** (binaire `surreal` 3.2.0, non versionné dans le dépôt : chemin fourni par la variable d'environnement `LYXAL_SURREAL_BIN`, à défaut `surreal` dans le `PATH` ; `surreal.exe` sous Windows ; persistant ou mémoire `mem://`).
+1. **Moteur cible de référence** : **SurrealDB 3.3.4** (binaire `surreal` 3.3.4, non versionné dans le dépôt : chemin fourni par la variable d'environnement `LYXAL_SURREAL_BIN`, à défaut `surreal` dans le `PATH` ; `surreal.exe` sous Windows ; persistant ou mémoire `mem://`).
 2. **SDK Rust** : `surrealdb = { version = "2.2", features = ["protocol-ws", "protocol-http", "kv-mem"] }` dans [`Cargo.toml`](../../../Cargo.toml), consommé exclusivement via `Surreal<Any>` et [`lyxal_surreal::LyxalSurrealCall`](../../../crates/lyxal_surreal/src/call.rs).
-3. **Bibliothèque standard `lyxal_core` (Couche 0 — 799 primitives validées sur SurrealDB 3.2.0)** :
+3. **Bibliothèque standard `lyxal_core` (Couche 0 — 799 primitives validées sur SurrealDB 3.3.4)** :
    - Située dans [`crates/lyxal_core`](../../../crates/lyxal_core) (`339` validations, `170` sanitize, `170` security, `120` utils).
    - Par exception de bibliothèque standard de bas niveau, les primitives pures de `lyxal_core` (`fn::validation_*`, `fn::sanitize_*`, `fn::security_*`, `fn::utils_*`) utilisent des **signatures positionnelles typées** et signalent les violations de contrat par `THROW "<CODE>"`.
 4. **Contrats de retour universels des modules métiers et services** (définis dans [`crates/lyxal_error/functions/service/`](../../../crates/lyxal_error/functions/service/)) :
@@ -33,7 +33,7 @@ Activer ce Skill dès que la tâche implique :
 
 ---
 
-## 2. Contrôles de Syntaxe & Compatibilité SurrealQL 3.2.0
+## 2. Contrôles de Syntaxe & Compatibilité SurrealQL 3.3.4
 
 Avant d'écrire ou de recommander une construction SurrealQL, appliquer ces règles vérifiées sur les modules de référence ([`lyxal_error`](../../../crates/lyxal_error), [`lyxal_catalogue`](../../../crates/lyxal_catalogue) et [`lyxal_pipeline_ingestion`](../../../crates/lyxal_pipeline_ingestion)) :
 
@@ -83,17 +83,17 @@ Distinguer strictement deux usages de `DEFINE EVENT` dans Lyxal OS :
 2. **Publication d'événement de domaine asynchrone** (ex. [`events/01_events.surql`](../../../crates/lyxal_pipeline_ingestion/events/01_events.surql)) :
    - Appelle exclusivement `fn::event_publish({ event_id: rand::uuid::v7(), event_type: "<module>.<entite>.<action>", producer: "lyxal_<module>", payload: {...}, metadata: {...} })`.
 
-### 2.5. Règles Strictes de Compatibilité SurrealDB 3.2.0 (Vérifiées sur le binaire `surreal` 3.2.0)
-Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.2.0 :
+### 2.5. Règles Strictes de Compatibilité SurrealDB 3.3.4 (Vérifiées sur le binaire `surreal` 3.3.4 ; établies initialement sur 3.2.0)
+Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.3.4 :
 1. **Types & Signatures** :
    - **`option<any>` est interdit** (`Parse error: Unexpected token 'ANY', expected a kind name`) $\rightarrow$ utiliser **`any`** (qui accepte nativement `NONE` et `NULL` tout en préservant `$val IS NONE` et `type::is_null($val)`).
-2. **Fonctions Supprimées ou Inexistantes en 3.2.0** :
+2. **Fonctions Supprimées ou Inexistantes en 3.3.4** :
    - `array::contains($arr, $val)` est supprimé (`Invalid function/constant path`) $\rightarrow$ utiliser l'opérateur natif **`(($arr) CONTAINS ($val))`** ou **`!(($arr) CONTAINS ($val))`**.
    - `time::from::parts(...)` est supprimé $\rightarrow$ construire une chaîne ISO-8601 et la caster via `<datetime>string::concat(...)`.
    - `string::pad(...)`, `encoding::hex::*`, `encoding::uri::*`, `bytes::from_int(...)` n'existent pas $\rightarrow$ utiliser les primitives de `lyxal_core` (`fn::utils_to_hex`, `fn::utils_from_hex`, `fn::utils_encode_uri`, `fn::utils_decode_uri`, `fn::utils_number_format`).
    - `type::thing($tb, $id)` $\rightarrow$ remplacer par `type::record($tb, $id)` ou `<record<table>>$id`.
-   - `type::is::*` est supprimé/invalide en 3.2.0 $\rightarrow$ remplacer impérativement par `type::is_*` (ex. `type::is_string`, `type::is_record`, `type::is_datetime`, `type::is_object`) ou par l'opérateur direct `$val IS <type>`.
-3. **Sémantique des Tranches (`slice`) et Découpages (`split`) en 3.2.0** :
+   - `type::is::*` est supprimé/invalide en 3.3.4 $\rightarrow$ remplacer impérativement par `type::is_*` (ex. `type::is_string`, `type::is_record`, `type::is_datetime`, `type::is_object`) ou par l'opérateur direct `$val IS <type>`.
+3. **Sémantique des Tranches (`slice`) et Découpages (`split`) en 3.3.4** :
    - `string::slice($s, $start, $end)` et `array::slice($a, $start, $end)` prennent un **index de fin exclusif `$end`** (et **non** une longueur).
    - `string::split("abc", "")` retourne `["", "a", "b", "c", ""]` (chaînes vides aux deux extrémités).
 4. **Portée des Variables (`LET`) et Opérateur d'Égalité en Début de Bloc** :
@@ -101,20 +101,20 @@ Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.2.0
    - Une comparaison `$a = $b` placée en tête d'un bloc `{ $a = $b }` est interprétée comme une affectation sans `LET` $\rightarrow$ utiliser **`==`** (`{ $a == $b }`).
 5. **Littéraux de Chaînes, Échappements & Moteur Regex Rust** :
    - Tout antislash d'expression régulière dans un littéral `"..."` doit être doublé (`"\\s+"`, `"\\."`, `"\\p{L}"`, `"\\x00"`, et `"\\\\"` pour un antislash littéral dans une classe `[...]`).
-   - Le moteur `regex` Rust de SurrealDB 3.2.0 **ne supporte pas les backreferences** (`\1`, `\2`), et `string::replace($s, <regex>..., "$1")` n'expanse pas les groupes capturants `$1`.
+   - Le moteur `regex` Rust de SurrealDB 3.3.4 **ne supporte pas les backreferences** (`\1`, `\2`), et `string::replace($s, <regex>..., "$1")` n'expanse pas les groupes capturants `$1`.
 6. **Import CLI (`surreal import`)** :
-   - En SurrealDB 3.2.0, tout fichier importé via `surreal import` doit débuter par l'instruction `OPTION IMPORT;`.
-7. **Signatures Runtime de la Bibliothèque Standard SurrealDB 3.2.0 (Vérifiées en Lot 4)** :
-   - `array::reduce($arr, $fn)` prend **uniquement 2 arguments** en 3.2.0 (sans valeur initiale). Dès qu'un accumulateur initial `$init` est requis, utiliser **`array::fold($arr, $init, |$acc, $x| ...)`**.
-   - `array::sort::asc($arr)` et `array::sort::desc($arr)` prennent **uniquement 1 argument** en 3.2.0 (pas de second argument de champ `$field`). Pour trier un tableau d'objets par clé, utiliser `fn::utils_collection_sort_by($arr, $field, $direction)`.
-   - `math::min($arr)` et `math::max($arr)` n'acceptent que `array<number>` et rejettent `array<duration>`. En outre, le type `duration` est **non signé** en 3.2.0 (`-1ms` est rejeté et `$a - $b` échoue à l'exécution si `$a < $b` $\rightarrow$ comparer `$a >= $b` avant soustraction).
-   - `math::log($x, $base)` requiert **obligatoirement 2 arguments** (`float`, `float`) en 3.2.0.
-   - `encoding::base64::encode($bytes)` requiert un argument de type **`bytes`** (`<bytes>$str`) et retourne un base64 sans padding `=` en 3.2.0.
-   - `$token` est une **variable système protégée** en 3.2.0 (`'token' is a protected variable and cannot be set`) : ne jamais nommer une variable locale `LET $token = ...`.
+   - En SurrealDB 3.3.4, tout fichier importé via `surreal import` doit débuter par l'instruction `OPTION IMPORT;`.
+7. **Signatures Runtime de la Bibliothèque Standard SurrealDB 3.3.4 (Vérifiées en Lot 4 sur 3.2.0, revérifiées sur 3.3.4)** :
+   - `array::reduce($arr, $fn)` prend **uniquement 2 arguments** en 3.3.4 (sans valeur initiale). Dès qu'un accumulateur initial `$init` est requis, utiliser **`array::fold($arr, $init, |$acc, $x| ...)`**.
+   - `array::sort::asc($arr)` et `array::sort::desc($arr)` prennent **uniquement 1 argument** en 3.3.4 (pas de second argument de champ `$field`). Pour trier un tableau d'objets par clé, utiliser `fn::utils_collection_sort_by($arr, $field, $direction)`.
+   - `math::min($arr)` et `math::max($arr)` n'acceptent que `array<number>` et rejettent `array<duration>`. En outre, le type `duration` est **non signé** en 3.3.4 (`-1ms` est rejeté et `$a - $b` échoue à l'exécution si `$a < $b` $\rightarrow$ comparer `$a >= $b` avant soustraction).
+   - `math::log($x, $base)` requiert **obligatoirement 2 arguments** (`float`, `float`) en 3.3.4.
+   - `encoding::base64::encode($bytes)` requiert un argument de type **`bytes`** (`<bytes>$str`) et retourne un base64 sans padding `=` en 3.3.4.
+   - `$token` est une **variable système protégée** en 3.3.4 (`'token' is a protected variable and cannot be set`) : ne jamais nommer une variable locale `LET $token = ...`.
    - Un intervalle `0..$n` doit être explicitement converti en tableau via **`<array>(0..$n)`** avant d'être passé à `array::all`, `array::fold` ou `array::map`.
-8. **Indexation `UNIQUE` et Valeurs `NONE` / `NULL` en 3.2.0** :
-   - Sur SurrealDB 3.2.0, un index `UNIQUE` composite (ex: `DEFINE INDEX idx ON TABLE delivery FIELDS subscription, delivery_seq UNIQUE`) traite plusieurs enregistrements avec `delivery_seq = NONE` comme un conflit d'unicité et lève une violation `IndexExists`.
-   - Dès lors qu'un champ optionnel ou séquentiel peut valoir `NONE`, l'index de table doit être non-unique (`DEFINE INDEX ... FIELDS sub, seq`), et l'unicité de séquence doit être strictement garantie par une fonction transactionnelle atomique (ex: `fn::event_delivery_assign_seq` avec compteur incrémenté sur `event_subscription_progress`).
+8. **Indexation `UNIQUE` et Valeurs `NONE` / `NULL` en 3.3.4** :
+   - **Changement de comportement par rapport à 3.2.0** : sur SurrealDB 3.3.4, un index `UNIQUE` (simple ou composite, ex: `DEFINE INDEX idx ON TABLE delivery FIELDS subscription, delivery_seq UNIQUE`) **n'entre plus en conflit** lorsque plusieurs enregistrements ont `delivery_seq = NONE` ou `NULL` ; seules les valeurs renseignées identiques lèvent `Database index ... already contains ...`. En 3.2.0, ces valeurs `NONE` levaient une violation `IndexExists`.
+   - Les index non-uniques existants (`DEFINE INDEX ... FIELDS sub, seq`) et la garantie d'unicité par fonction transactionnelle atomique (ex: `fn::event_delivery_assign_seq` avec compteur incrémenté sur `event_subscription_progress`) **restent la norme** : ils sont corrects en 3.3.4 et ne doivent pas être convertis en `UNIQUE` sans `implementation_plan.md` validé par le CTO.
 
 ---
 
@@ -138,7 +138,7 @@ Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.2.0
 
 ---
 
-## 4. Protocole de Test Reproductible SurrealDB 3.2.0
+## 4. Protocole de Test Reproductible SurrealDB 3.3.4
 
 Pour valider un schéma, une fonction ou une migration :
 

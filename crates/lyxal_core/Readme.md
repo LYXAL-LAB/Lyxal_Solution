@@ -1,6 +1,6 @@
 # Lyxal Core
 
-> Bibliothèque standard de Lyxal OS (SurrealDB 3.2.0)
+> Bibliothèque standard de Lyxal OS (SurrealDB 3.3.4 — vérifiée initialement sur 3.2.0)
 
 ---
 
@@ -178,7 +178,7 @@ Le Core ne fournit que des briques techniques génériques.
 
 ---
 
-# Statistiques (Validées sur SurrealDB 3.2.0)
+# Statistiques (Validées sur SurrealDB 3.2.0 et 3.3.4)
 
 ## Validations (`functions/validations/`)
 
@@ -202,7 +202,16 @@ Le Core ne fournit que des briques techniques génériques.
 
 ---
 
-# Total & Métriques de Vérification (SurrealDB 3.2.0)
+# Total & Métriques de Vérification (SurrealDB 3.3.4)
+
+Revérification sur le binaire `surreal` **3.3.4** (linux x86_64, moteur `memory`) :
+
+- **799 / 799** fonctions validées par `surreal validate` et importées avec `0` erreur
+- **799 / 799** fichiers de tests validés par `surreal validate`
+- **2 557 instructions de tests exécutées** : **1 585** retours `OK`, **963** `THROW "<CODE>"` métier, **9** rejets `encoding::json::decode()` attendus, **0 erreur moteur inattendue** (résultats identiques à 3.2.0)
+- Les **123 assertions de valeurs explicites** (Lots 1–4) n'ont pas été rejouées individuellement sur 3.3.4
+
+## Historique — Vérification initiale (SurrealDB 3.2.0)
 
 Le Core comprend actuellement :
 
