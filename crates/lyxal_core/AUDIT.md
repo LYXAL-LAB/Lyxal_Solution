@@ -10,7 +10,7 @@
 | Étape | État |
 | :--- | :--- |
 | 1. Audit (ce document) | ✅ terminé |
-| 2. Décisions CTO Q1 à Q4 (§7) | ⏳ en attente |
+| 2. Décisions CTO (§7) | Q1 ✅ résultat renvoyé · Q2 ✅ moteur unique · Q4 ✅ tests après Q1–Q3 · Q3 ⏳ en discussion |
 | 3. `implementation_plan.md` | ⏳ à rédiger après les décisions |
 | 4. Exécution par lots (PR) | — |
 | 5. Suppression de ce document | — |
@@ -66,11 +66,13 @@ Contexte : **aucun module du dépôt n'appelle aujourd'hui une fonction du Core*
 * **Exemple de divergence** : `fn::sanitize_pipeline_merge($left, $right, $max_steps)` limite le nombre d'étapes (`SANITIZE_PIPELINE_TOO_MANY_STEPS`), `fn::security_pipeline_merge($left, $right)` ne le fait pas.
 * Ces fonctions ne sont **pas** inutiles : le constat porte sur la duplication, pas sur l'absence d'usage.
 
-### P1-3 — Responsabilité cryptographique dupliquée hors de `lyxal_crypto`
+### P1-3 — 12 « demandes » crypto sans consommateur, dont des vérifications qui ne vérifient rien
 
-* **Règle** : §11.3 (`lyxal_crypto` est le crate cryptographique officiel et unique ; interdiction de dupliquer sa responsabilité).
-* **Constat** : le domaine `security` contient `encrypt`, `encrypt_file`, `encrypt_object`, `encrypt_string`, `decrypt`, `hmac_sign`, `hmac_verify`, `key_generate`, `key_derive`, `key_wrap`, `key_unwrap`, `token_sign`, `token_verify`, `signature_sign`, `signature_verify`… Ces fonctions ne font aucun calcul cryptographique (aucun faux chiffrement) : elles renvoient une **demande** (`{ operation, algorithm, key_reference, requires_native_crypto: true }`) destinée au « moteur Rust ». Or **aucun code Rust ne lit ces demandes** (`lyxal_crypto` n'accède pas à SurrealDB, par contrat) : le contrat n'aboutit nulle part.
-* `fn::security_hash_argon2` lève toujours `SECURITY_NATIVE_PASSWORD_HASH_REQUIRED` (vérifié sur 3.3.4) : elle n'existe que pour rediriger vers Rust.
+* **Règle** : §11.3 (`lyxal_crypto` est le crate cryptographique officiel et unique).
+* **Périmètre exact** : le domaine `security` (170 fonctions) est **utile dans son ensemble** — empreintes non secrètes (`hash_sha256`, `hash_blake3`, `hash_verify` pour SHA-256/BLAKE3), construction et analyse de jetons (`token_claims`, `token_parse`, `token_expiration`), masquage (`redact_*`), détection d'attaques (`detect_*`), permissions, rôles et politiques, nonces et fenêtres anti-rejeu. L'écart ne concerne que **12 fonctions** qui renvoient une « demande » (`{ operation, …, requires_native_crypto: true }`) au lieu d'un résultat : `encrypt`, `encrypt_file`, `decrypt`, `hmac_sign`, `hmac_verify`, `key_generate`, `key_derive`, `key_wrap`, `key_unwrap`, `token_sign`, `token_verify`, `secret_compare`, ainsi que 2 fonctions qui lèvent toujours une erreur (`security_hash_argon2`, `security_signature_verify`).
+* **Pourquoi c'est un problème** :
+  * aucun code Rust ne lit ces demandes (`lyxal_crypto` n'accède pas à SurrealDB, par contrat) : le contrat n'aboutit nulle part ;
+  * **piège de sécurité démontré** (SurrealDB 3.3.4) : `RETURN IF fn::security_hmac_verify("message", "SIGNATURE-FALSIFIEE", "cle_ref", "hmac-sha256") { "ACCEPTÉ" } ELSE { "REFUSÉ" }` renvoie **`ACCEPTÉ`** — l'objet de demande non vide est évalué comme vrai. Une fonction nommée `*_verify` qui ne vérifie pas, appelée naïvement, accepte une signature falsifiée. Même risque pour `token_verify` et `secret_compare`.
 * `fn::security_secret_generate` produit des secrets avec `rand::id` : générateur non établi comme cryptographiquement sûr (cf. §5).
 
 ### P1-4 — Tests sans assertions
@@ -108,10 +110,10 @@ Sans objet : pas de crate Rust ; signatures positionnelles typées admises par c
 
 ## 7. Plan correctif proposé — décisions CTO
 
-* **Q1 — Contrat d'erreur (P1-1)**. Recommandation : `validation_*` **renvoient un résultat** (booléen, ou `{ valid, code, details }`) ; `sanitize_*` transforment sans lever ; seul un argument invalide (erreur de programmation) lève `THROW` avec un code fixe `CORE_*` défini en master data ; le module appelant choisit son propre code (`<MODULE>_…`) et répond via `fn::error_result`. Alternative : garder `THROW` avec des codes fixes `CORE_*` + traduction dans `call_fn` (plus fragile : la fonction de module est toujours interrompue).
-* **Q2 — Mécanique dupliquée (P1-2)**. Recommandation : **regrouper** chaque famille (pipeline, optimiseur, débogage, benchmark, exécution, schéma, cache, SDK) en **un seul moteur générique** dans `utils`, paramétré par le domaine ; chaque domaine ne garde que ses étapes propres. Aucune primitive n'est supprimée pour cause de non-usage.
-* **Q3 — Crypto (P1-3)**. Recommandation : supprimer les « demandes » crypto sans consommateur et `security_hash_argon2` (la crypto reste dans `lyxal_crypto`, en Rust) ; conserver les fonctions pures de masquage (`redact_*`), de détection (`detect_*`), de permissions et de politique ; revoir `security_secret_generate` (générateur sûr ou délégation à Rust).
-* **Q4 — Tests (P1-4)**. Recommandation : réécrire les tests au format « valeur attendue vérifiée » (la CI échoue au moindre écart), après Q1–Q3 pour ne pas tester du code appelé à changer.
+* **Q1 — Contrat d'erreur (P1-1)** — ✅ **décidé : résultat renvoyé.** `validation_*` renvoient un résultat (booléen, ou `{ valid, code, details }`) ; `sanitize_*` transforment sans lever ; seul un argument invalide (erreur de programmation) lève `THROW` avec un code fixe `CORE_*` défini en master data ; le module appelant choisit son propre code (`<MODULE>_…`) et répond via `fn::error_result`.
+* **Q2 — Mécanique dupliquée (P1-2)** — ✅ **décidé : moteur unique.** Chaque famille (pipeline, optimiseur, débogage, benchmark, exécution, schéma, cache, SDK) est regroupée en un seul moteur générique dans `utils`, paramétré par le domaine ; chaque domaine ne garde que ses étapes propres. Aucune primitive n'est supprimée pour cause de non-usage.
+* **Q3 — Crypto (P1-3)** — ⏳ **en discussion.** Proposition : supprimer uniquement les 12 « demandes » et les 2 fonctions qui lèvent toujours une erreur (la crypto reste dans `lyxal_crypto`, appelée par le Rust avant ou après `call_fn`) ; conserver les ≈ 156 autres fonctions du domaine ; revoir `security_secret_generate`.
+* **Q4 — Tests (P1-4)** — ✅ **décidé : après Q1–Q3.** Réécriture au format « valeur attendue vérifiée » (la CI échoue au moindre écart).
 * **Puis P2** : version `0.1.0` + mise à jour des 5 appelants ; suppression de `CHANGELOG.md` ; `Readme.md` décrivant l'état actuel ; `test/` → `tests/` ; en-têtes et exemples corrigés.
 
 Vu l'ampleur (Q1 touche le contrat de la plupart des fonctions), la reprise sera découpée en plusieurs PR.
