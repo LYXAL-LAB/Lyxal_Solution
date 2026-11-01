@@ -80,13 +80,14 @@ class SurrealServer:
              "--bind", f"127.0.0.1:{self.port}", "memory"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
-        for _ in range(100):
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
             ready = subprocess.run([SURREAL, "is-ready", "--endpoint", self.endpoint], capture_output=True)
             if ready.returncode == 0:
                 return self
             time.sleep(0.2)
         self.__exit__()
-        raise RuntimeError("Le serveur SurrealDB n'a pas démarré.")
+        raise RuntimeError("Le serveur SurrealDB n'a pas démarré en 30 s.")
 
     def __exit__(self, *_exc) -> None:
         if self.process:
