@@ -1,54 +1,59 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier  : crates/lyxal_core/functions/validations/functions/surql_namespace.surql
--- Fonction : fn::validation_surql_namespace
+-- Fichier  : crates/lyxal_core/functions/validations/functions/snake_case_name.surql
+-- Fonction : fn::validation_snake_case_name
 --
--- Valide un identifiant SurrealQL de namespace ([A-Za-z_][A-Za-z0-9_]*),
--- longueur bornée.
+-- Valide un nom technique en snake_case ([a-z][a-z0-9]*, segments séparés
+-- par « _ »), par exemple un nom de tâche planifiée, de workflow, d'étape ou
+-- de transition ; la valeur renvoyée est en minuscules.
 --
 -- Paramètres
 --   $value      : any — valeur à contrôler
---   $max_length : int — longueur maximale (>= 1)
+--   $min_length : int — longueur minimale (>= 1)
+--   $max_length : int — longueur maximale (>= $min_length)
 --
 -- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
---   valid = true  → value = la chaîne sans espaces périphériques, code = NONE
+--   valid = true  → value = le nom en minuscules, code = NONE
 --   valid = false → value = NONE, code parmi :
 --     CORE_VALIDATION_REQUIRED
 --     CORE_VALIDATION_NULL
 --     CORE_VALIDATION_TYPE
 --     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_TOO_SHORT
 --     CORE_VALIDATION_TOO_LONG
 --     CORE_VALIDATION_FORMAT
 --
 -- Erreurs de programmation (THROW)
---   CORE_INVALID_ARGUMENT : $max_length < 1
+--   CORE_INVALID_ARGUMENT : $min_length < 1 ou $min_length > $max_length
 --
 -- Exemple (dans une fonction de module)
---   LET $name = fn::validation_surql_namespace($params.name, 64);
+--   LET $name = fn::validation_snake_case_name($params.job_name, 3, 64);
 --   IF !$name.valid {
 --       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $name.code });
 --   };
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::validation_surql_namespace(
+DEFINE FUNCTION OVERWRITE fn::validation_snake_case_name(
     $value: any,
+    $min_length: int,
     $max_length: int
 ) -> object {
-    IF $max_length < 1 { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $min_length < 1 OR $min_length > $max_length { THROW "CORE_INVALID_ARGUMENT"; };
     IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
     IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
         RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-    LET $clean = string::trim($value);
+    LET $clean = string::lowercase(string::trim($value));
     IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
     LET $length = string::len($clean);
+    IF $length < $min_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: $min_length, length: $length } }; };
     IF $max_length IS NOT NONE AND $length > $max_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } }; };
-    IF !string::matches($clean, "^[A-Za-z_][A-Za-z0-9_]*$") {
-        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "surql_identifier" } };
+    IF !string::matches($clean, "^[a-z][a-z0-9]*(?:_[a-z][a-z0-9]*)*$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "snake_case" } };
     };
     RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "Valide un identifiant SurrealQL de namespace ([A-Za-z_][A-Za-z0-9_]*), longueur bornée. Renvoie { valid, value, code, details }."
+COMMENT "Valide un nom technique en snake_case ([a-z][a-z0-9]*, segments séparés par « _ »), par exemple un nom de tâche planifiée, de workflow, d'étape ou de transition ; la valeur renvoyée est en minuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;
