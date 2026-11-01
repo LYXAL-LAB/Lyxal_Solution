@@ -1,62 +1,45 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/lyxal_storage_path.test.surql
--- Fonction     : fn::validation_lyxal_storage_path
--- Domaine      : Core / Validation / Lyxal OS
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_lyxal_storage_path (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_lyxal_storage_path(" tenants/acme/doc.pdf ", "tenants", true, 1024)
+    == { valid: true, value: "tenants/acme/doc.pdf", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Chemin module valide
--- Résultat attendu : "modules/scheduler/manifest.surql"
--- ============================================================================
-RETURN fn::validation_lyxal_storage_path(
-    "modules/scheduler/manifest.surql",
-    "STORAGE_PATH",
-    "modules",
-    true,
-    1024
-);
+-- test: extension refusée
+RETURN fn::validation_lyxal_storage_path("tenants/doc.pdf", NONE, false, 1024)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "extension" } };
 
--- ============================================================================
--- TEST 2 — Répertoire sans extension
--- Résultat attendu : "assets/images"
--- ============================================================================
-RETURN fn::validation_lyxal_storage_path(
-    "assets/images",
-    "STORAGE_PATH",
-    "assets",
-    false,
-    1024
-);
+-- test: racine manquante
+RETURN fn::validation_lyxal_storage_path("public/doc.pdf", "tenants", true, 1024)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "lyxal_storage_path", root: "tenants" } };
 
--- ============================================================================
--- TEST 3 — Traversée interdite
--- Erreur attendue : STORAGE_PATH_INVALID_STORAGE_PATH
--- ============================================================================
-RETURN fn::validation_lyxal_storage_path(
-    "modules/../secret.env",
-    "STORAGE_PATH",
-    "modules",
-    true,
-    1024
-);
+-- test: chemin absolu
+RETURN fn::validation_lyxal_storage_path("/tenants/a", "tenants", true, 1024)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "lyxal_storage_path" } };
 
--- ============================================================================
--- TEST 4 — Mauvaise racine
--- Erreur attendue : STORAGE_PATH_STORAGE_ROOT_REQUIRED
--- ============================================================================
-RETURN fn::validation_lyxal_storage_path(
-    "assets/logo.svg",
-    "STORAGE_PATH",
-    "modules",
-    true,
-    1024
-);
+-- test: remontée
+RETURN fn::validation_lyxal_storage_path("tenants/../x", "tenants", true, 1024).code == "CORE_VALIDATION_FORMAT";
+
+-- test: chaîne blanche
+RETURN fn::validation_lyxal_storage_path("  ", "tenants", true, 1024)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_lyxal_storage_path(NONE, "tenants", true, 1024)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_lyxal_storage_path(NULL, "tenants", true, 1024)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_lyxal_storage_path(42, "tenants", true, 1024)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: longueur maximale nulle
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_lyxal_storage_path("a", NONE, true, 0);
+
+-- test: racine vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_lyxal_storage_path("a", " ", true, 10);

@@ -1,131 +1,52 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/surql_variable.surql
--- Fonction     : fn::validation_surql_variable
--- Domaine      : Core / Validation / SurrealQL
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/surql_variable.surql
+-- Fonction : fn::validation_surql_variable
 --
--- Description
--- -----------
--- Valide le nom d'une variable locale SurrealQL sans le préfixe dollar.
---
--- Règles appliquées
--- -----------------
---   1. Le préfixe $ ne doit pas être inclus.
---   2. Le nom doit être un identifiant simple.
---   3. Les variables de contexte réservées peuvent être interdites.
+-- Valide un nom de variable SurrealQL sans le « $ » ([A-Za-z_][A-Za-z0-9_]*)
+-- ; les noms réservés ["auth", "before", "after", "event", "value", "this",
+-- "input", "parent", "root"] sont refusés sauf autorisation.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allow_reserved: bool
+--   $value          : any — valeur à contrôler
+--   $allow_reserved : bool — true pour accepter les noms réservés
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée, éventuellement normalisée.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne sans espaces périphériques, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_FORBIDDEN
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_DOLLAR_PREFIX_NOT_ALLOWED
--- <FIELD>_INVALID_VARIABLE_NAME
--- <FIELD>_RESERVED_VARIABLE_NAME
---
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucune création de schéma SurrealDB ;
---   - aucune exécution de requête dynamique ;
---   - aucune vérification d'existence des objets validés.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $name = fn::validation_surql_variable($params.name, false);
+--   IF !$name.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $name.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_surql_variable(
     $value: any,
-    $field: string,
     $allow_reserved: bool
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    IF !string::matches($clean, "^[A-Za-z_][A-Za-z0-9_]*$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "surql_identifier" } };
     };
-
-    IF string::starts_with($clean_value, "$") {
-        THROW string::concat(
-            $clean_field,
-            "_DOLLAR_PREFIX_NOT_ALLOWED"
-        );
+    IF !$allow_reserved AND string::lowercase($clean) IN ["auth", "before", "after", "event", "value", "this", "input", "parent", "root"] {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORBIDDEN", details: {} };
     };
-
-    IF !string::matches(
-        $clean_value,
-        "^[A-Za-z_][A-Za-z0-9_]*$"
-    ) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_VARIABLE_NAME"
-        );
-    };
-
-    IF !$allow_reserved
-        AND (([
-                "auth",
-                "before",
-                "after",
-                "event",
-                "value",
-                "this",
-                "input",
-                "parent",
-                "root"
-            ]) CONTAINS (string::lowercase($clean_value)))
-    {
-        THROW string::concat(
-            $clean_field,
-            "_RESERVED_VARIABLE_NAME"
-        );
-    };
-
-    RETURN $clean_value;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide le nom d'une variable locale SurrealQL sans le préfixe dollar.
-"
+COMMENT "Valide un nom de variable SurrealQL sans le « $ » ([A-Za-z_][A-Za-z0-9_]*) ; les noms réservés [\"auth\", \"before\", \"after\", \"event\", \"value\", \"this\", \"input\", \"parent\", \"root\"] sont refusés sauf autorisation. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

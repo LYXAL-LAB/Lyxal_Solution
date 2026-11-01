@@ -1,58 +1,33 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/lyxal_namespace.test.surql
--- Fonction     : fn::validation_lyxal_namespace
--- Domaine      : Core / Validation / Lyxal OS
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_lyxal_namespace (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_lyxal_namespace(" Lyxal-Prod_1 ", 2, 64)
+    == { valid: true, value: "lyxal-prod_1", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Namespace valide
--- Résultat attendu : "lyxal_core"
--- ============================================================================
-RETURN fn::validation_lyxal_namespace(
-    "Lyxal_Core",
-    "NAMESPACE",
-    2,
-    64
-);
+-- test: séparateurs mélangés
+RETURN fn::validation_lyxal_namespace("lyxal-_prod", 2, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "lyxal_namespace" } };
 
--- ============================================================================
--- TEST 2 — Namespace avec tiret
--- Résultat attendu : "client-france"
--- ============================================================================
-RETURN fn::validation_lyxal_namespace(
-    "client-france",
-    "NAMESPACE",
-    2,
-    64
-);
+-- test: chiffre initial
+RETURN fn::validation_lyxal_namespace("1lyxal", 2, 64).code == "CORE_VALIDATION_FORMAT";
 
--- ============================================================================
--- TEST 3 — Chiffre initial interdit
--- Erreur attendue : NAMESPACE_INVALID_NAMESPACE
--- ============================================================================
-RETURN fn::validation_lyxal_namespace(
-    "2client",
-    "NAMESPACE",
-    2,
-    64
-);
+-- test: chaîne blanche
+RETURN fn::validation_lyxal_namespace("  ", 2, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 4 — Séparateur répété
--- Erreur attendue : NAMESPACE_REPEATED_SEPARATOR
--- ============================================================================
-RETURN fn::validation_lyxal_namespace(
-    "client__france",
-    "NAMESPACE",
-    2,
-    64
-);
+-- test: valeur absente
+RETURN fn::validation_lyxal_namespace(NONE, 2, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_lyxal_namespace(NULL, 2, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_lyxal_namespace(42, 2, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_lyxal_namespace("ab", 5, 2);

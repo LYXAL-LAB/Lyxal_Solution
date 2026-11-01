@@ -1,131 +1,53 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/surql_parameter.surql
--- Fonction     : fn::validation_surql_parameter
--- Domaine      : Core / Validation / SurrealQL
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/surql_parameter.surql
+-- Fonction : fn::validation_surql_parameter
 --
--- Description
--- -----------
--- Valide le nom d'un paramètre global SurrealQL sans son préfixe dollar.
---
--- Règles appliquées
--- -----------------
---   1. La valeur ne doit pas commencer par $.
---   2. L'identifiant doit être simple.
---   3. Les noms réservés courants peuvent être interdits.
+-- Valide un nom de paramètre SurrealQL sans le « $ »
+-- ([A-Za-z_][A-Za-z0-9_]*) ; les noms réservés ["auth", "session", "token",
+-- "before", "after", "event", "value", "this", "input"] sont refusés sauf
+-- autorisation.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allow_reserved: bool
+--   $value          : any — valeur à contrôler
+--   $allow_reserved : bool — true pour accepter les noms réservés
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée, éventuellement normalisée.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne sans espaces périphériques, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_FORBIDDEN
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_DOLLAR_PREFIX_NOT_ALLOWED
--- <FIELD>_INVALID_PARAMETER_NAME
--- <FIELD>_RESERVED_PARAMETER_NAME
---
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucune création de schéma SurrealDB ;
---   - aucune exécution de requête dynamique ;
---   - aucune vérification d'existence des objets validés.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $name = fn::validation_surql_parameter($params.name, false);
+--   IF !$name.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $name.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_surql_parameter(
     $value: any,
-    $field: string,
     $allow_reserved: bool
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    IF !string::matches($clean, "^[A-Za-z_][A-Za-z0-9_]*$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "surql_identifier" } };
     };
-
-    IF string::starts_with($clean_value, "$") {
-        THROW string::concat(
-            $clean_field,
-            "_DOLLAR_PREFIX_NOT_ALLOWED"
-        );
+    IF !$allow_reserved AND string::lowercase($clean) IN ["auth", "session", "token", "before", "after", "event", "value", "this", "input"] {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORBIDDEN", details: {} };
     };
-
-    IF !string::matches(
-        $clean_value,
-        "^[A-Za-z_][A-Za-z0-9_]*$"
-    ) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_PARAMETER_NAME"
-        );
-    };
-
-    IF !$allow_reserved
-        AND (([
-                "auth",
-                "session",
-                "token",
-                "before",
-                "after",
-                "event",
-                "value",
-                "this",
-                "input"
-            ]) CONTAINS (string::lowercase($clean_value)))
-    {
-        THROW string::concat(
-            $clean_field,
-            "_RESERVED_PARAMETER_NAME"
-        );
-    };
-
-    RETURN $clean_value;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide le nom d'un paramètre SurrealQL sans le préfixe dollar.
-"
+COMMENT "Valide un nom de paramètre SurrealQL sans le « $ » ([A-Za-z_][A-Za-z0-9_]*) ; les noms réservés [\"auth\", \"session\", \"token\", \"before\", \"after\", \"event\", \"value\", \"this\", \"input\"] sont refusés sauf autorisation. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

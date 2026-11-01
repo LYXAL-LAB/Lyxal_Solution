@@ -1,73 +1,42 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/surql_field_path.test.surql
--- Fonction     : fn::validation_surql_field_path
--- Domaine      : Core / Validation / SurrealQL
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests qui attendent un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_surql_field_path (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_surql_field_path(" items[*].tags[0] ", true, true, 4)
+    == { valid: true, value: "items[*].tags[0]", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Chemin imbriqué
--- Résultat attendu : "profile.address.city"
--- ============================================================================
-RETURN fn::validation_surql_field_path(
-    "profile.address.city",
-    "FIELD_PATH",
-    false,
-    false,
-    5
-);
+-- test: joker refusé
+RETURN fn::validation_surql_field_path("items[*]", false, true, 4)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "surql_field_path" } };
 
--- ============================================================================
--- TEST 2 — Wildcard de tableau
--- Résultat attendu : "addresses[*].city"
--- ============================================================================
-RETURN fn::validation_surql_field_path(
-    "addresses[*].city",
-    "FIELD_PATH",
-    true,
-    false,
-    5
-);
+-- test: index refusé
+RETURN fn::validation_surql_field_path("items[0]", true, false, 4)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "surql_field_path" } };
 
--- ============================================================================
--- TEST 3 — Index numérique
--- Résultat attendu : "items[0].price"
--- ============================================================================
-RETURN fn::validation_surql_field_path(
-    "items[0].price",
-    "FIELD_PATH",
-    false,
-    true,
-    5
-);
+-- test: trop de segments
+RETURN fn::validation_surql_field_path("a.b.c.d.e", true, true, 4)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_segments: 4, segments: 5 } };
 
--- ============================================================================
--- TEST 4 — Wildcard interdit
--- Erreur attendue : FIELD_PATH_ARRAY_WILDCARD_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_surql_field_path(
-    "addresses[*].city",
-    "FIELD_PATH",
-    false,
-    false,
-    5
-);
+-- test: segment vide
+RETURN fn::validation_surql_field_path("a..b", true, true, 4)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "surql_field_path" } };
 
--- ============================================================================
--- TEST 5 — Traversée de graphe interdite
--- Erreur attendue : FIELD_PATH_INVALID_FIELD_PATH
--- ============================================================================
-RETURN fn::validation_surql_field_path(
-    "user->orders",
-    "FIELD_PATH",
-    false,
-    false,
-    5
-);
+-- test: chaîne blanche
+RETURN fn::validation_surql_field_path("  ", true, true, 4)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_surql_field_path(NONE, true, true, 4)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_surql_field_path(NULL, true, true, 4)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_surql_field_path(42, true, true, 4)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: segments nuls
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_surql_field_path("a", true, true, 0);

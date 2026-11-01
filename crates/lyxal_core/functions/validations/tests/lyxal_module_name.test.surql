@@ -1,62 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/lyxal_module_name.test.surql
--- Fonction     : fn::validation_lyxal_module_name
--- Domaine      : Core / Validation / Lyxal OS
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_lyxal_module_name (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_lyxal_module_name(" Lyxal_Booking ", ["lyxal_"], 3, 64)
+    == { valid: true, value: "lyxal_booking", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Module valide
--- Résultat attendu : "lyxal_scheduler"
--- ============================================================================
-RETURN fn::validation_lyxal_module_name(
-    "Lyxal_Scheduler",
-    "MODULE_NAME",
-    ["lyxal_"],
-    3,
-    100
-);
+-- test: préfixe non autorisé
+RETURN fn::validation_lyxal_module_name("booking", ["lyxal_"], 3, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed_prefixes: ["lyxal_"] } };
 
--- ============================================================================
--- TEST 2 — Module métier valide
--- Résultat attendu : "booking_engine"
--- ============================================================================
-RETURN fn::validation_lyxal_module_name(
-    "booking_engine",
-    "MODULE_NAME",
-    NONE,
-    3,
-    100
-);
+-- test: tiret refusé
+RETURN fn::validation_lyxal_module_name("lyxal-booking", ["lyxal_"], 3, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "snake_case" } };
 
--- ============================================================================
--- TEST 3 — Tiret interdit
--- Erreur attendue : MODULE_NAME_INVALID_MODULE_NAME
--- ============================================================================
-RETURN fn::validation_lyxal_module_name(
-    "lyxal-scheduler",
-    "MODULE_NAME",
-    NONE,
-    3,
-    100
-);
+-- test: chaîne blanche
+RETURN fn::validation_lyxal_module_name("  ", ["lyxal_"], 3, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 4 — Préfixe interdit
--- Erreur attendue : MODULE_NAME_MODULE_PREFIX_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_lyxal_module_name(
-    "booking_engine",
-    "MODULE_NAME",
-    ["lyxal_"],
-    3,
-    100
-);
+-- test: valeur absente
+RETURN fn::validation_lyxal_module_name(NONE, ["lyxal_"], 3, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_lyxal_module_name(NULL, ["lyxal_"], 3, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_lyxal_module_name(42, ["lyxal_"], 3, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_lyxal_module_name("lyxal_a", [], 3, 64);
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_lyxal_module_name("lyxal_a", NONE, 9, 3);

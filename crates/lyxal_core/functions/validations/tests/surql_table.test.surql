@@ -1,39 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/surql_table.test.surql
--- Fonction     : fn::validation_surql_table
--- Domaine      : Core / Validation / SurrealQL
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests qui attendent un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_surql_table (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_surql_table(" booking_slot ", 64)
+    == { valid: true, value: "booking_slot", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Table simple
--- Résultat attendu : "user"
--- ============================================================================
-RETURN fn::validation_surql_table("user", "TABLE_NAME", 128);
+-- test: tiret refusé
+RETURN fn::validation_surql_table("booking-slot", 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "surql_identifier" } };
 
--- ============================================================================
--- TEST 2 — Tiret bas initial
--- Résultat attendu : "_system_event"
--- ============================================================================
-RETURN fn::validation_surql_table(
-    "_system_event",
-    "TABLE_NAME",
-    128
-);
+-- test: trop long
+RETURN fn::validation_surql_table("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: 64, length: 65 } };
 
--- ============================================================================
--- TEST 3 — Tiret interdit
--- Erreur attendue : TABLE_NAME_INVALID_TABLE_NAME
--- ============================================================================
-RETURN fn::validation_surql_table(
-    "user-profile",
-    "TABLE_NAME",
-    128
-);
+-- test: chaîne blanche
+RETURN fn::validation_surql_table("  ", 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_surql_table(NONE, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_surql_table(NULL, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_surql_table(42, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: longueur maximale nulle
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_surql_table("a", 0);

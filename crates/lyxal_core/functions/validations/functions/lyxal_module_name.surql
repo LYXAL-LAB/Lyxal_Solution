@@ -1,152 +1,67 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/lyxal_module_name.surql
--- Fonction     : fn::validation_lyxal_module_name
--- Domaine      : Core / Validation / Lyxal OS
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/lyxal_module_name.surql
+-- Fonction : fn::validation_lyxal_module_name
 --
--- Description
--- -----------
--- Valide le nom canonique d'un module installable dans Lyxal OS.
---
--- Règles appliquées
--- -----------------
---   1. La valeur est normalisée en minuscules.
---   2. Le format canonique utilise des segments séparés par un tiret bas.
---   3. Chaque segment commence par une lettre.
---   4. Une liste facultative peut imposer un préfixe de module.
+-- Valide un nom de module Lyxal en snake_case, longueur bornée, préfixe
+-- facultativement imposé (ex. lyxal_) ; la valeur renvoyée est en
+-- minuscules.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allowed_prefixes: option<array<string>>
--- $min_length: int
--- $max_length: int
+--   $value            : any — valeur à contrôler
+--   $allowed_prefixes : option<array<string>> — préfixes autorisés (au moins un), NONE pour tous
+--   $min_length       : int — longueur minimale (>= 1)
+--   $max_length       : int — longueur maximale (>= $min_length)
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée et normalisée selon la convention de la fonction.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le nom en minuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_NOT_ALLOWED
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_TOO_SHORT
--- <FIELD>_TOO_LONG
--- <FIELD>_INVALID_MODULE_NAME
--- <FIELD>_MODULE_PREFIX_NOT_ALLOWED
--- VALIDATION_INVALID_MODULE_LENGTH_RANGE
--- VALIDATION_EMPTY_MODULE_PREFIXES
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : liste de préfixes vide ou bornes invalides
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun accès réseau ;
---   - aucune dépendance à l'authentification ;
---   - aucune création de ressource Lyxal ;
---   - aucune conversion implicite de la valeur métier.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $module = fn::validation_lyxal_module_name($params.module, ["lyxal_"], 3, 64);
+--   IF !$module.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $module.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_lyxal_module_name(
     $value: any,
-    $field: string,
     $allowed_prefixes: option<array<string>>,
     $min_length: int,
     $max_length: int
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    LET $prefixes = IF $allowed_prefixes IS NONE { NONE } ELSE { array::map($allowed_prefixes, |$prefix| string::lowercase(string::trim($prefix))) };
+    IF $prefixes IS NOT NONE AND (array::len($prefixes) = 0 OR array::any($prefixes, |$prefix| $prefix = "")) { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $min_length < 1 OR $min_length > $max_length { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::lowercase(string::trim($value));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $length = string::len($clean);
+    IF $length < $min_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: $min_length, length: $length } }; };
+    IF $max_length IS NOT NONE AND $length > $max_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } }; };
+    IF !string::matches($clean, "^[a-z][a-z0-9]*(?:_[a-z][a-z0-9]*)*$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "snake_case" } };
     };
-
-    IF $min_length < 1 OR $max_length < 1 OR $min_length > $max_length {
-        THROW "VALIDATION_INVALID_MODULE_LENGTH_RANGE";
+    IF $prefixes IS NOT NONE AND !array::any($prefixes, |$prefix| string::starts_with($clean, $prefix)) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed_prefixes: $prefixes } };
     };
-
-    LET $module_name = string::lowercase($clean_value);
-    LET $length = string::len($module_name);
-
-    IF $length < $min_length {
-        THROW string::concat($clean_field, "_TOO_SHORT");
-    };
-
-    IF $length > $max_length {
-        THROW string::concat($clean_field, "_TOO_LONG");
-    };
-
-    IF !string::matches(
-        $module_name,
-        "^[a-z][a-z0-9]*(?:_[a-z][a-z0-9]*)*$"
-    ) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_MODULE_NAME"
-        );
-    };
-
-    IF $allowed_prefixes IS NOT NONE {
-        IF array::len($allowed_prefixes) = 0 {
-            THROW "VALIDATION_EMPTY_MODULE_PREFIXES";
-        };
-
-        LET $prefixes = array::map(
-            $allowed_prefixes,
-            |$prefix| string::lowercase(string::trim($prefix))
-        );
-
-        IF !array::any(
-            $prefixes,
-            |$prefix|
-                $prefix != ""
-                AND string::starts_with($module_name, $prefix)
-        ) {
-            THROW string::concat(
-                $clean_field,
-                "_MODULE_PREFIX_NOT_ALLOWED"
-            );
-        };
-    };
-
-    RETURN $module_name;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide le nom canonique d'un module installable dans Lyxal OS.
-"
+COMMENT "Valide un nom de module Lyxal en snake_case, longueur bornée, préfixe facultativement imposé (ex. lyxal_) ; la valeur renvoyée est en minuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

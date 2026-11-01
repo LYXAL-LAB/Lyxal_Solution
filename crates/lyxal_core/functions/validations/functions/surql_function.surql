@@ -1,137 +1,62 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/surql_function.surql
--- Fonction     : fn::validation_surql_function
--- Domaine      : Core / Validation / SurrealQL
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/surql_function.surql
+-- Fonction : fn::validation_surql_function
 --
--- Description
--- -----------
--- Valide un nom de fonction personnalisée SurrealQL utilisable après fn::.
---
--- Règles appliquées
--- -----------------
---   1. La valeur ne doit pas contenir le préfixe fn::.
---   2. Les segments sont séparés par ::.
---   3. Chaque segment est un identifiant simple.
---   4. Le namespace peut être obligatoire.
+-- Valide un nom de fonction SurrealQL sans le préfixe « fn:: » (segments
+-- [A-Za-z_][A-Za-z0-9_]* séparés par « :: ») ; espace de noms exigé si
+-- demandé, segments bornés.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $require_namespace: bool
--- $max_segments: int
+--   $value             : any — valeur à contrôler
+--   $require_namespace : bool — true pour exiger au moins un « :: »
+--   $max_segments      : int — nombre maximal de segments (>= 1)
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée, éventuellement normalisée.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne sans espaces périphériques, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_TOO_LONG
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_FN_PREFIX_NOT_ALLOWED
--- <FIELD>_NAMESPACE_REQUIRED
--- <FIELD>_INVALID_FUNCTION_NAME
--- <FIELD>_TOO_MANY_SEGMENTS
--- VALIDATION_INVALID_SURQL_FUNCTION_SEGMENTS
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $max_segments < 1
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucune création de schéma SurrealDB ;
---   - aucune exécution de requête dynamique ;
---   - aucune vérification d'existence des objets validés.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $function = fn::validation_surql_function($params.function, true, 4);
+--   IF !$function.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $function.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_surql_function(
     $value: any,
-    $field: string,
     $require_namespace: bool,
     $max_segments: int
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $max_segments < 1 { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $segments = array::len(string::split($clean, "::"));
+    IF string::starts_with($clean, "fn::") OR !string::matches($clean, "^[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "surql_function" } };
     };
-
-    IF $max_segments < 1 {
-        THROW "VALIDATION_INVALID_SURQL_FUNCTION_SEGMENTS";
+    IF $require_namespace AND $segments < 2 {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "surql_function", require_namespace: true } };
     };
-
-    IF string::starts_with($clean_value, "fn::") {
-        THROW string::concat(
-            $clean_field,
-            "_FN_PREFIX_NOT_ALLOWED"
-        );
+    IF $segments > $max_segments {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_segments: $max_segments, segments: $segments } };
     };
-
-    IF $require_namespace
-        AND !string::contains($clean_value, "::")
-    {
-        THROW string::concat(
-            $clean_field,
-            "_NAMESPACE_REQUIRED"
-        );
-    };
-
-    IF !string::matches(
-        $clean_value,
-        "^[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*$"
-    ) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_FUNCTION_NAME"
-        );
-    };
-
-    IF array::len(string::split($clean_value, "::")) > $max_segments {
-        THROW string::concat(
-            $clean_field,
-            "_TOO_MANY_SEGMENTS"
-        );
-    };
-
-    RETURN $clean_value;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide le nom d'une fonction personnalisée SurrealQL sans le préfixe fn::.
-"
+COMMENT "Valide un nom de fonction SurrealQL sans le préfixe « fn:: » (segments [A-Za-z_][A-Za-z0-9_]* séparés par « :: ») ; espace de noms exigé si demandé, segments bornés. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

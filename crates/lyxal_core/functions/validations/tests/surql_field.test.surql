@@ -1,57 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/surql_field.test.surql
--- Fonction     : fn::validation_surql_field
--- Domaine      : Core / Validation / SurrealQL
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests qui attendent un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_surql_field (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_surql_field(" created_at ", false, 64)
+    == { valid: true, value: "created_at", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Champ simple
--- Résultat attendu : "created_at"
--- ============================================================================
-RETURN fn::validation_surql_field(
-    "created_at",
-    "FIELD_NAME",
-    false,
-    128
-);
+-- test: champ id autorisé
+RETURN fn::validation_surql_field("id", true, 64)
+    == { valid: true, value: "id", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Champ id autorisé
--- Résultat attendu : "id"
--- ============================================================================
-RETURN fn::validation_surql_field(
-    "id",
-    "FIELD_NAME",
-    true,
-    128
-);
+-- test: champ id refusé
+RETURN fn::validation_surql_field("id", false, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORBIDDEN", details: {} };
 
--- ============================================================================
--- TEST 3 — Champ id interdit
--- Erreur attendue : FIELD_NAME_ID_FIELD_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_surql_field(
-    "id",
-    "FIELD_NAME",
-    false,
-    128
-);
+-- test: point refusé
+RETURN fn::validation_surql_field("a.b", false, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "surql_identifier" } };
 
--- ============================================================================
--- TEST 4 — Chemin refusé
--- Erreur attendue : FIELD_NAME_INVALID_FIELD_IDENTIFIER
--- ============================================================================
-RETURN fn::validation_surql_field(
-    "profile.name",
-    "FIELD_NAME",
-    true,
-    128
-);
+-- test: chaîne blanche
+RETURN fn::validation_surql_field("  ", false, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_surql_field(NONE, false, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_surql_field(NULL, false, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_surql_field(42, false, 64)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: longueur maximale nulle
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_surql_field("a", false, 0);

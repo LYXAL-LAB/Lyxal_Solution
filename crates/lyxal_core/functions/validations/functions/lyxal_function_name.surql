@@ -1,132 +1,60 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/lyxal_function_name.surql
--- Fonction     : fn::validation_lyxal_function_name
--- Domaine      : Core / Validation / Lyxal OS
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/lyxal_function_name.surql
+-- Fonction : fn::validation_lyxal_function_name
 --
--- Description
--- -----------
--- Valide un nom complet de fonction Lyxal ou SurrealQL de forme namespace::fonction.
---
--- Règles appliquées
--- -----------------
---   1. La valeur est normalisée en minuscules.
---   2. Les segments utilisent lettres, chiffres et tirets bas.
---   3. Le séparateur entre segments est ::.
---   4. Le namespace peut être obligatoire ou facultatif.
+-- Valide un nom de fonction Lyxal (segments [a-z][a-z0-9_]* séparés par « ::
+-- ») ; espace de noms exigé si demandé, longueur bornée, valeur renvoyée en
+-- minuscules.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $require_namespace: bool
--- $max_length: int
+--   $value             : any — valeur à contrôler
+--   $require_namespace : bool — true pour exiger au moins un « :: »
+--   $max_length        : int — longueur maximale (>= 1)
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée et normalisée selon la convention de la fonction.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le nom en minuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_TOO_LONG
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_TOO_LONG
--- <FIELD>_INVALID_FUNCTION_NAME
--- <FIELD>_FUNCTION_NAMESPACE_REQUIRED
--- VALIDATION_INVALID_FUNCTION_MAX_LENGTH
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $max_length < 1
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun accès réseau ;
---   - aucune dépendance à l'authentification ;
---   - aucune création de ressource Lyxal ;
---   - aucune conversion implicite de la valeur métier.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $function = fn::validation_lyxal_function_name($params.function, true, 128);
+--   IF !$function.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $function.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_lyxal_function_name(
     $value: any,
-    $field: string,
     $require_namespace: bool,
     $max_length: int
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $max_length < 1 { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::lowercase(string::trim($value));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $length = string::len($clean);
+    IF $max_length IS NOT NONE AND $length > $max_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } }; };
+    IF !string::matches($clean, "^[a-z][a-z0-9_]*(?:::[a-z][a-z0-9_]*)*$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "lyxal_function_name" } };
     };
-
-    IF $max_length < 1 {
-        THROW "VALIDATION_INVALID_FUNCTION_MAX_LENGTH";
+    IF $require_namespace AND !string::contains($clean, "::") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "lyxal_function_name", require_namespace: true } };
     };
-
-    LET $function_name = string::lowercase($clean_value);
-
-    IF string::len($function_name) > $max_length {
-        THROW string::concat($clean_field, "_TOO_LONG");
-    };
-
-    LET $has_namespace = string::contains($function_name, "::");
-
-    IF $require_namespace AND !$has_namespace {
-        THROW string::concat(
-            $clean_field,
-            "_FUNCTION_NAMESPACE_REQUIRED"
-        );
-    };
-
-    LET $pattern = IF $require_namespace {
-        "^[a-z][a-z0-9_]*(?:::[a-z][a-z0-9_]*)+$"
-    } ELSE {
-        "^[a-z][a-z0-9_]*(?:::[a-z][a-z0-9_]*)*$"
-    };
-
-    IF !string::matches($function_name, $pattern) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_FUNCTION_NAME"
-        );
-    };
-
-    RETURN $function_name;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide un nom de fonction Lyxal ou SurrealQL avec segments séparés par ::.
-"
+COMMENT "Valide un nom de fonction Lyxal (segments [a-z][a-z0-9_]* séparés par « :: ») ; espace de noms exigé si demandé, longueur bornée, valeur renvoyée en minuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

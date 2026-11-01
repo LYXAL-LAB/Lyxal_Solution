@@ -1,47 +1,30 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/execution_priority.test.surql
--- Fonction     : fn::validation_execution_priority
--- Domaine      : Core / Validation / Workflow
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_execution_priority (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: dans les bornes
+RETURN fn::validation_execution_priority(5, 0, 10)
+    == { valid: true, value: 5, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Priorité valide
--- Résultat attendu : 50
--- ============================================================================
-RETURN fn::validation_execution_priority(
-    50,
-    "PRIORITY",
-    0,
-    100
-);
+-- test: trop basse
+RETURN fn::validation_execution_priority(-1, 0, 10)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min: 0 } };
 
--- ============================================================================
--- TEST 2 — Priorité trop élevée
--- Erreur attendue : PRIORITY_PRIORITY_TOO_HIGH
--- ============================================================================
-RETURN fn::validation_execution_priority(
-    101,
-    "PRIORITY",
-    0,
-    100
-);
+-- test: trop haute
+RETURN fn::validation_execution_priority(11, 0, 10)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: 10 } };
 
--- ============================================================================
--- TEST 3 — Decimal refusé
--- Erreur attendue : PRIORITY_INVALID_TYPE
--- ============================================================================
-RETURN fn::validation_execution_priority(
-    50dec,
-    "PRIORITY",
-    0,
-    100
-);
+-- test: valeur absente
+RETURN fn::validation_execution_priority(NONE, 0, 10)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_execution_priority(NULL, 0, 10)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type string refusé
+RETURN fn::validation_execution_priority("5", 0, 10)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "int", actual: "string" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_execution_priority(5, 10, 0);
