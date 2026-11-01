@@ -1,54 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/country_code_iso3.test.surql
--- Fonction     : fn::validation_country_code_iso3
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_country_code_iso3 (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_country_code_iso3(" fra ", ["FRA", "BEL"])
+    == { valid: true, value: "FRA", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — France
--- Résultat attendu : "FRA"
--- ============================================================================
-RETURN fn::validation_country_code_iso3(
-    "fra",
-    "COUNTRY_CODE",
-    NONE
-);
+-- test: mauvaise longueur
+RETURN fn::validation_country_code_iso3("FR", ["FRA", "BEL"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "country_code_iso3" } };
 
--- ============================================================================
--- TEST 2 — Code autorisé
--- Résultat attendu : "BEL"
--- ============================================================================
-RETURN fn::validation_country_code_iso3(
-    "BEL",
-    "COUNTRY_CODE",
-    ["FRA", "BEL", "LUX"]
-);
+-- test: code non autorisé
+RETURN fn::validation_country_code_iso3("ZZZ", ["FRA", "BEL"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: ["FRA", "BEL"] } };
 
--- ============================================================================
--- TEST 3 — Alpha-2 refusé
--- Erreur attendue : COUNTRY_CODE_INVALID_COUNTRY_CODE
--- ============================================================================
-RETURN fn::validation_country_code_iso3(
-    "FR",
-    "COUNTRY_CODE",
-    NONE
-);
+-- test: chaîne blanche
+RETURN fn::validation_country_code_iso3("  ", ["FRA", "BEL"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 4 — Code non autorisé
--- Erreur attendue : COUNTRY_CODE_COUNTRY_CODE_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_country_code_iso3(
-    "USA",
-    "COUNTRY_CODE",
-    ["FRA", "BEL"]
-);
+-- test: valeur absente
+RETURN fn::validation_country_code_iso3(NONE, ["FRA", "BEL"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_country_code_iso3(NULL, ["FRA", "BEL"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_country_code_iso3(42, ["FRA", "BEL"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_country_code_iso3("fra", []);
+
+-- test: code autorisé mal formé
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_country_code_iso3("fra", ["1"]);

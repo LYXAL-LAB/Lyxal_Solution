@@ -1,50 +1,29 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/aspect_ratio.test.surql
--- Fonction     : fn::validation_aspect_ratio
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_aspect_ratio (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: rapport valide
+RETURN fn::validation_aspect_ratio(1920, 1080, 1dec, 2dec)
+    == { valid: true, value: { width: 1920, height: 1080, ratio: 1920dec / 1080dec }, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Ratio 16:9 valide
--- Résultat attendu : ratio proche de 1.777...
--- ============================================================================
-RETURN fn::validation_aspect_ratio(
-    1920,
-    1080,
-    "IMAGE",
-    1.7dec,
-    1.8dec
-);
+-- test: rapport trop petit
+RETURN fn::validation_aspect_ratio(1080, 1920, 1dec, 2dec).code == "CORE_VALIDATION_TOO_SMALL";
 
--- ============================================================================
--- TEST 2 — Ratio trop petit
--- Erreur attendue : IMAGE_RATIO_TOO_SMALL
--- ============================================================================
-RETURN fn::validation_aspect_ratio(
-    1000,
-    2000,
-    "IMAGE",
-    1dec,
-    2dec
-);
+-- test: rapport trop grand
+RETURN fn::validation_aspect_ratio(3000, 1000, 1dec, 2dec)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { bound: "ratio", max: 2dec, ratio: 3dec } };
 
--- ============================================================================
--- TEST 3 — Hauteur nulle
--- Erreur attendue : IMAGE_INVALID_DIMENSION_VALUE
--- ============================================================================
-RETURN fn::validation_aspect_ratio(
-    1920,
-    0,
-    "IMAGE",
-    1dec,
-    2dec
-);
+-- test: dimension nulle
+RETURN fn::validation_aspect_ratio(0, 1000, 1dec, 2dec)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { bound: "width", min: 1 } };
+
+-- test: hauteur de type chaîne
+RETURN fn::validation_aspect_ratio(100, "100", 1dec, 2dec)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { bound: "height", expected: "int", actual: "string" } };
+
+-- test: rapport minimal nul
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_aspect_ratio(1, 1, 0dec, 2dec);
+
+-- test: rapports inversés
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_aspect_ratio(1, 1, 2dec, 1dec);

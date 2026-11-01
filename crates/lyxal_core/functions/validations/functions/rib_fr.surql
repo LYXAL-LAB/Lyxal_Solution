@@ -1,81 +1,69 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/rib_fr.surql
--- Fonction     : fn::validation_rib_fr
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/rib_fr.surql
+-- Fonction : fn::validation_rib_fr
 --
--- Description
--- -----------
--- Valide lexicalement les composantes d'un RIB français.
+-- Valide la forme d'un RIB français : code banque (5 chiffres), code guichet
+-- (5 chiffres), numéro de compte (11 caractères alphanumériques) et clé (2
+-- chiffres), espaces retirés. La clé RIB n'est pas recalculée.
 --
--- Principes
--- ----------
---   - distinction stricte entre NONE, NULL et type invalide ;
---   - aucune conversion implicite de la valeur métier ;
---   - codes d'erreur stables construits depuis le nom technique du champ ;
---   - aucune lecture ou écriture persistante ;
---   - aucune vérification auprès d'un service bancaire ou administratif.
+-- Paramètres
+--   $bank_code      : any — code banque
+--   $branch_code    : any — code guichet
+--   $account_number : any — numéro de compte
+--   $rib_key        : any — clé RIB
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = { bank_code, branch_code, account_number, rib_key }, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_FORMAT
 --
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $rib = fn::validation_rib_fr($params.bank_code, $params.branch_code, $params.account_number, $params.rib_key);
+--   IF !$rib.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $rib.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_rib_fr(
     $bank_code: any,
     $branch_code: any,
     $account_number: any,
-    $rib_key: any,
-    $field: string
+    $rib_key: any
 ) -> object {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-
-    IF $bank_code IS NONE { THROW string::concat($clean_field, "_BANK_CODE_REQUIRED"); };
-    IF !type::is_string($bank_code)
-        OR !string::matches(string::replace(string::trim($bank_code), " ", ""), "^[0-9]{5}$") {
-        THROW string::concat($clean_field, "_BANK_CODE_INVALID");
+    IF $bank_code IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { bound: "bank_code" } }; };
+    IF type::is_null($bank_code) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: { bound: "bank_code" } }; };
+    IF !type::is_string($bank_code) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { bound: "bank_code", expected: "string", actual: type::of($bank_code) } };
     };
-
-    IF $branch_code IS NONE { THROW string::concat($clean_field, "_BRANCH_CODE_REQUIRED"); };
-    IF !type::is_string($branch_code)
-        OR !string::matches(string::replace(string::trim($branch_code), " ", ""), "^[0-9]{5}$") {
-        THROW string::concat($clean_field, "_BRANCH_CODE_INVALID");
+    LET $bank_code_clean = string::replace(string::trim($bank_code), " ", "");
+    IF !string::matches($bank_code_clean, "^[0-9]{5}$") { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { bound: "bank_code", expected: "^[0-9]{5}$" } }; };
+    IF $branch_code IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { bound: "branch_code" } }; };
+    IF type::is_null($branch_code) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: { bound: "branch_code" } }; };
+    IF !type::is_string($branch_code) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { bound: "branch_code", expected: "string", actual: type::of($branch_code) } };
     };
-
-    IF $account_number IS NONE { THROW string::concat($clean_field, "_ACCOUNT_NUMBER_REQUIRED"); };
+    LET $branch_code_clean = string::replace(string::trim($branch_code), " ", "");
+    IF !string::matches($branch_code_clean, "^[0-9]{5}$") { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { bound: "branch_code", expected: "^[0-9]{5}$" } }; };
+    IF $account_number IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { bound: "account_number" } }; };
+    IF type::is_null($account_number) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: { bound: "account_number" } }; };
     IF !type::is_string($account_number) {
-        THROW string::concat($clean_field, "_ACCOUNT_NUMBER_INVALID");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { bound: "account_number", expected: "string", actual: type::of($account_number) } };
     };
-    LET $account = string::uppercase(
-        string::replace(string::trim($account_number), " ", "")
-    );
-    IF !string::matches($account, "^[A-Z0-9]{11}$") {
-        THROW string::concat($clean_field, "_ACCOUNT_NUMBER_INVALID");
+    LET $account_number_clean = string::uppercase(string::replace(string::trim($account_number), " ", ""));
+    IF !string::matches($account_number_clean, "^[A-Z0-9]{11}$") { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { bound: "account_number", expected: "^[A-Z0-9]{11}$" } }; };
+    IF $rib_key IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { bound: "rib_key" } }; };
+    IF type::is_null($rib_key) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: { bound: "rib_key" } }; };
+    IF !type::is_string($rib_key) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { bound: "rib_key", expected: "string", actual: type::of($rib_key) } };
     };
-
-    IF $rib_key IS NONE { THROW string::concat($clean_field, "_RIB_KEY_REQUIRED"); };
-    IF !type::is_string($rib_key)
-        OR !string::matches(string::replace(string::trim($rib_key), " ", ""), "^[0-9]{2}$") {
-        THROW string::concat($clean_field, "_RIB_KEY_INVALID");
-    };
-
-    RETURN {
-        bank_code: string::replace(string::trim($bank_code), " ", ""),
-        branch_code: string::replace(string::trim($branch_code), " ", ""),
-        account_number: $account,
-        rib_key: string::replace(string::trim($rib_key), " ", "")
-    };
+    LET $rib_key_clean = string::replace(string::trim($rib_key), " ", "");
+    IF !string::matches($rib_key_clean, "^[0-9]{2}$") { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { bound: "rib_key", expected: "^[0-9]{2}$" } }; };
+    RETURN { valid: true, value: { bank_code: $bank_code_clean, branch_code: $branch_code_clean, account_number: $account_number_clean, rib_key: $rib_key_clean }, code: NONE, details: {} };
 }
-COMMENT "
-Valide lexicalement les composantes d'un RIB français. Ne recalcule pas la clé.
-"
+COMMENT "Valide la forme d'un RIB français. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

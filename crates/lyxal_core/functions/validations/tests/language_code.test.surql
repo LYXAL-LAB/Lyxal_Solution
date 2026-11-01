@@ -1,58 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/language_code.test.surql
--- Fonction     : fn::validation_language_code
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_language_code (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_language_code(" FR ", false, ["fr", "en"])
+    == { valid: true, value: "fr", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Français
--- Résultat attendu : "fr"
--- ============================================================================
-RETURN fn::validation_language_code(
-    "FR",
-    "LANGUAGE",
-    false,
-    NONE
-);
+-- test: trois lettres autorisées
+RETURN fn::validation_language_code("fra", true, NONE)
+    == { valid: true, value: "fra", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Code alpha-3 autorisé
--- Résultat attendu : "fra"
--- ============================================================================
-RETURN fn::validation_language_code(
-    "FRA",
-    "LANGUAGE",
-    true,
-    NONE
-);
+-- test: trois lettres refusées
+RETURN fn::validation_language_code("fra", false, ["fr", "en"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "language_code" } };
 
--- ============================================================================
--- TEST 3 — Alpha-3 interdit
--- Erreur attendue : LANGUAGE_INVALID_LANGUAGE_CODE
--- ============================================================================
-RETURN fn::validation_language_code(
-    "fra",
-    "LANGUAGE",
-    false,
-    NONE
-);
+-- test: code non autorisé
+RETURN fn::validation_language_code("de", false, ["fr", "en"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: ["fr", "en"] } };
 
--- ============================================================================
--- TEST 4 — Langue non autorisée
--- Erreur attendue : LANGUAGE_LANGUAGE_CODE_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_language_code(
-    "de",
-    "LANGUAGE",
-    false,
-    ["fr", "en"]
-);
+-- test: chaîne blanche
+RETURN fn::validation_language_code("  ", false, ["fr", "en"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_language_code(NONE, false, ["fr", "en"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_language_code(NULL, false, ["fr", "en"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_language_code(42, false, ["fr", "en"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_language_code("fr", false, []);

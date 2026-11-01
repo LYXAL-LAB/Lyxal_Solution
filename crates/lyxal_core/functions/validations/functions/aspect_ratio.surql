@@ -1,133 +1,60 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/aspect_ratio.surql
--- Fonction     : fn::validation_aspect_ratio
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/aspect_ratio.surql
+-- Fonction : fn::validation_aspect_ratio
 --
--- Description
--- -----------
--- Valide le ratio largeur/hauteur d'une image dans une plage décimale.
+-- Valide le rapport largeur / hauteur d'une image : deux entiers strictement
+-- positifs dont le rapport (decimal) est compris entre deux bornes incluses.
 --
 -- Paramètres
--- ----------
--- $width: any
--- $height: any
--- $field: string
--- $min_ratio: decimal
--- $max_ratio: decimal
+--   $width     : any — largeur
+--   $height    : any — hauteur
+--   $min_ratio : decimal — rapport minimal (> 0)
+--   $max_ratio : decimal — rapport maximal (>= $min_ratio)
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_DIMENSION_TYPE
--- <FIELD>_INVALID_DIMENSION_VALUE
--- <FIELD>_RATIO_TOO_SMALL
--- <FIELD>_RATIO_TOO_LARGE
--- VALIDATION_INVALID_ASPECT_RATIO_RANGE
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = { width, height, ratio }, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_TOO_SMALL
+--     CORE_VALIDATION_TOO_LARGE
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $min_ratio <= 0 ou $min_ratio > $max_ratio
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun accès réseau ;
---   - aucune inspection binaire réelle du fichier ;
---   - aucune conversion implicite de la valeur validée.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::concat()
---   - type::is_null()
---   - type::is_int()
---   - type::decimal()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $ratio = fn::validation_aspect_ratio($params.width, $params.height, 1dec, 2dec);
+--   IF !$ratio.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $ratio.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_aspect_ratio(
     $width: any,
     $height: any,
-    $field: string,
     $min_ratio: decimal,
     $max_ratio: decimal
 ) -> object {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
+    IF $min_ratio <= 0dec OR $min_ratio > $max_ratio { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $width IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { bound: "width" } }; };
+    IF type::is_null($width) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: { bound: "width" } }; };
+    IF !type::is_int($width) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { bound: "width", expected: "int", actual: type::of($width) } };
     };
-
-    IF $min_ratio <= 0dec
-        OR $max_ratio <= 0dec
-        OR $min_ratio > $max_ratio
-    {
-        THROW "VALIDATION_INVALID_ASPECT_RATIO_RANGE";
+    IF $width < 1 { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { bound: "width", min: 1 } }; };
+    IF $height IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { bound: "height" } }; };
+    IF type::is_null($height) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: { bound: "height" } }; };
+    IF !type::is_int($height) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { bound: "height", expected: "int", actual: type::of($height) } };
     };
-
-    IF $width IS NONE OR $height IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($width) OR type::is_null($height) {
-        THROW string::concat(
-            $clean_field,
-            "_NULL_NOT_ALLOWED"
-        );
-    };
-
-    IF !type::is_int($width) OR !type::is_int($height) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_DIMENSION_TYPE"
-        );
-    };
-
-    IF $width <= 0 OR $height <= 0 {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_DIMENSION_VALUE"
-        );
-    };
-
-    LET $ratio = type::decimal($width) / type::decimal($height);
-
-    IF $ratio < $min_ratio {
-        THROW string::concat(
-            $clean_field,
-            "_RATIO_TOO_SMALL"
-        );
-    };
-
-    IF $ratio > $max_ratio {
-        THROW string::concat(
-            $clean_field,
-            "_RATIO_TOO_LARGE"
-        );
-    };
-
-    RETURN {
-        width: $width,
-        height: $height,
-        ratio: $ratio
-    };
+    IF $height < 1 { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { bound: "height", min: 1 } }; };
+    LET $ratio = <decimal> $width / <decimal> $height;
+    IF $ratio < $min_ratio { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { bound: "ratio", min: $min_ratio, ratio: $ratio } }; };
+    IF $ratio > $max_ratio { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { bound: "ratio", max: $max_ratio, ratio: $ratio } }; };
+    RETURN { valid: true, value: { width: $width, height: $height, ratio: $ratio }, code: NONE, details: {} };
 }
-COMMENT "
-Valide le ratio largeur/hauteur d'une image dans une plage inclusive.
-"
+COMMENT "Valide le rapport largeur / hauteur d'une image. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

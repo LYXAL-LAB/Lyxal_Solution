@@ -1,20 +1,26 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/ape_naf_code.test.surql
--- Fonction     : fn::validation_ape_naf_code
--- Version      : 1.0.0
---
--- Les tests qui attendent un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_ape_naf_code (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_ape_naf_code(" 62.01z ")
+    == { valid: true, value: "6201Z", code: NONE, details: {} };
 
--- TEST 1 — Code valide
-RETURN fn::validation_ape_naf_code("4120a", "APE_CODE");
+-- test: sans lettre
+RETURN fn::validation_ape_naf_code("6201")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "ape_naf_code" } };
 
--- TEST 2 — Espace supprimé
-RETURN fn::validation_ape_naf_code("6201 z", "APE_CODE");
+-- test: chaîne blanche
+RETURN fn::validation_ape_naf_code("  ")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- TEST 3 — Lettre manquante
--- Erreur attendue : APE_CODE_INVALID_APE_NAF_CODE
-RETURN fn::validation_ape_naf_code("4120", "APE_CODE");
+-- test: valeur absente
+RETURN fn::validation_ape_naf_code(NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_ape_naf_code(NULL)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_ape_naf_code(42)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };

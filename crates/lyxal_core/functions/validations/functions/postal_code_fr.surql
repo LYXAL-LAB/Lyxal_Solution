@@ -1,127 +1,47 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/postal_code_fr.surql
--- Fonction     : fn::validation_postal_code_fr
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/postal_code_fr.surql
+-- Fonction : fn::validation_postal_code_fr
 --
--- Description
--- -----------
--- Valide lexicalement un code postal français à cinq chiffres.
---
--- Règles appliquées
--- -----------------
---   1. Le code principal contient exactement cinq chiffres.
---   2. Lorsque CEDEX est autorisé, le suffixe textuel peut suivre le code.
---   3. La fonction ne vérifie pas l'existence réelle de la commune ou du bureau postal.
+-- Valide un code postal français (5 chiffres, suivis de « CEDEX » et d'un
+-- numéro facultatif si autorisé) ; la valeur renvoyée est en majuscules.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allow_cedex: bool
+--   $value       : any — valeur à contrôler
+--   $allow_cedex : bool — true pour accepter la mention CEDEX
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée et, lorsque cela est indiqué, normalisée.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le code postal en majuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_POSTAL_CODE
---
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
---   La valeur est absente ou égale à NONE.
---
--- <FIELD>_NULL_NOT_ALLOWED
---   La valeur est explicitement égale à NULL.
---
--- <FIELD>_INVALID_TYPE
---   La valeur ne possède pas le type attendu.
---
--- <FIELD>_BLANK_NOT_ALLOWED
---   La chaîne est vide après string::trim().
---
--- VALIDATION_INVALID_FIELD_NAME
---   Le nom technique du champ est vide.
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun accès réseau ;
---   - aucune résolution géographique externe ;
---   - aucune conversion implicite de la valeur métier.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::uppercase()
---   - string::matches()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $zip = fn::validation_postal_code_fr($params.postal_code, true);
+--   IF !$zip.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $zip.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_postal_code_fr(
     $value: any,
-    $field: string,
     $allow_cedex: bool
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::uppercase(string::trim($value));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    IF !string::matches($clean, IF $allow_cedex { "^[0-9]{5}(?: CEDEX(?: [0-9]{1,2})?)?$" } ELSE { "^[0-9]{5}$" }) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "postal_code_fr" } };
     };
-
-    LET $postal_code = string::uppercase($clean_value);
-
-    LET $pattern = IF $allow_cedex {
-        "^[0-9]{5}(?: CEDEX(?: [0-9]{1,2})?)?$"
-    } ELSE {
-        "^[0-9]{5}$"
-    };
-
-    IF !string::matches($postal_code, $pattern) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_POSTAL_CODE"
-        );
-    };
-
-    RETURN $postal_code;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide lexicalement un code postal français à cinq chiffres, avec CEDEX
-facultatif.
-"
+COMMENT "Valide un code postal français (5 chiffres, suivis de « CEDEX » et d'un numéro facultatif si autorisé) ; la valeur renvoyée est en majuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

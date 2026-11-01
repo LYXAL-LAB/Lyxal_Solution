@@ -1,47 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/image_width.test.surql
--- Fonction     : fn::validation_image_width
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_image_width (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: dans les bornes
+RETURN fn::validation_image_width(1920, 16, 4096)
+    == { valid: true, value: 1920, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Largeur valide
--- Résultat attendu : 1920
--- ============================================================================
-RETURN fn::validation_image_width(
-    1920,
-    "WIDTH",
-    1,
-    8192
-);
+-- test: trop petite
+RETURN fn::validation_image_width(8, 16, 4096)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min: 16 } };
 
--- ============================================================================
--- TEST 2 — Trop étroite
--- Erreur attendue : WIDTH_TOO_NARROW
--- ============================================================================
-RETURN fn::validation_image_width(
-    100,
-    "WIDTH",
-    320,
-    8192
-);
+-- test: trop grande
+RETURN fn::validation_image_width(5000, 16, 4096)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: 4096 } };
 
--- ============================================================================
--- TEST 3 — Trop large
--- Erreur attendue : WIDTH_TOO_WIDE
--- ============================================================================
-RETURN fn::validation_image_width(
-    10000,
-    "WIDTH",
-    1,
-    8192
-);
+-- test: valeur absente
+RETURN fn::validation_image_width(NONE, 16, 4096)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_image_width(NULL, 16, 4096)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type float refusé
+RETURN fn::validation_image_width(1920.5f, 16, 4096)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "int", actual: "float" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_image_width(100, 200, 100);
+
+-- test: borne nulle
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_image_width(100, 0, 100);

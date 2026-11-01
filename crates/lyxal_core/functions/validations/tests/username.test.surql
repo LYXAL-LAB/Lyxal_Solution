@@ -1,131 +1,45 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/username.test.surql
--- Fonction     : fn::validation_username
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW interrompent l'exécution.
--- Dans Surrealist, sélectionner individuellement le test concerné lorsqu'une
--- erreur est attendue.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_username (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_username(" jean.dupont ", 3, 20, true)
+    == { valid: true, value: "jean.dupont", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Nom simple valide
--- Résultat attendu : "yaniss"
--- ============================================================================
-RETURN fn::validation_username(
-    "yaniss", "USERNAME", 3, 32, true
-);
+-- test: majuscules autorisées
+RETURN fn::validation_username("JeanDupont", 3, 20, false)
+    == { valid: true, value: "JeanDupont", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Séparateurs valides
--- Résultat attendu : "yaniss.dubreucq_2026"
--- ============================================================================
-RETURN fn::validation_username(
-    "yaniss.dubreucq_2026", "USERNAME", 3, 32, true
-);
+-- test: séparateur initial
+RETURN fn::validation_username(".jean", 3, 20, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "username" } };
 
--- ============================================================================
--- TEST 3 — Majuscules autorisées
--- Résultat attendu : "Yaniss"
--- ============================================================================
-RETURN fn::validation_username(
-    "Yaniss", "USERNAME", 3, 32, false
-);
+-- test: séparateur doublé
+RETURN fn::validation_username("jean..dupont", 3, 20, true).code == "CORE_VALIDATION_FORMAT";
 
--- ============================================================================
--- TEST 4 — Majuscules interdites
--- Erreur attendue : USERNAME_NOT_LOWERCASE
--- ============================================================================
-RETURN fn::validation_username(
-    "Yaniss", "USERNAME", 3, 32, true
-);
+-- test: majuscules refusées
+RETURN fn::validation_username("JeanDupont", 3, 20, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "lowercase" } };
 
--- ============================================================================
--- TEST 5 — Trop court
--- Erreur attendue : USERNAME_TOO_SHORT
--- ============================================================================
-RETURN fn::validation_username(
-    "ya", "USERNAME", 3, 32, true
-);
+-- test: trop court
+RETURN fn::validation_username("jd", 3, 20, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: 3, length: 2 } };
 
--- ============================================================================
--- TEST 6 — Espace interdit
--- Erreur attendue : USERNAME_INVALID_USERNAME
--- ============================================================================
-RETURN fn::validation_username(
-    "yaniss dubreucq", "USERNAME", 3, 32, true
-);
+-- test: chaîne blanche
+RETURN fn::validation_username("  ", 3, 20, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 7 — Accent interdit
--- Erreur attendue : USERNAME_INVALID_USERNAME
--- ============================================================================
-RETURN fn::validation_username(
-    "yaníss", "USERNAME", 3, 32, true
-);
+-- test: valeur absente
+RETURN fn::validation_username(NONE, 3, 20, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 8 — Séparateur au début
--- Erreur attendue : USERNAME_INVALID_BOUNDARY
--- ============================================================================
-RETURN fn::validation_username(
-    "_yaniss", "USERNAME", 3, 32, true
-);
+-- test: valeur NULL
+RETURN fn::validation_username(NULL, 3, 20, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
 
--- ============================================================================
--- TEST 9 — Séparateur à la fin
--- Erreur attendue : USERNAME_INVALID_BOUNDARY
--- ============================================================================
-RETURN fn::validation_username(
-    "yaniss-", "USERNAME", 3, 32, true
-);
+-- test: type int refusé
+RETURN fn::validation_username(42, 3, 20, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
 
--- ============================================================================
--- TEST 10 — Séparateur répété
--- Erreur attendue : USERNAME_REPEATED_SEPARATOR
--- ============================================================================
-RETURN fn::validation_username(
-    "yaniss__d", "USERNAME", 3, 32, true
-);
-
--- ============================================================================
--- TEST 11 — Limites incohérentes
--- Erreur attendue : VALIDATION_INVALID_USERNAME_LENGTH
--- ============================================================================
-RETURN fn::validation_username(
-    "yaniss", "USERNAME", 32, 3, true
-);
-
--- ============================================================================
--- TEST 12 — Enchaînement avec mots réservés
--- Résultat attendu : { valid: true, value: "yaniss", code: NONE, details: {} }
--- ============================================================================
-LET $username = fn::validation_username(
-    "yaniss", "USERNAME", 3, 32, true
-);
-
-RETURN fn::validation_reserved_words(
-    $username,
-    ["admin", "root", "system"],
-    true
-);
-
--- ============================================================================
--- TEST 13 — Nom valide mais réservé
--- Résultat attendu : { valid: false, value: NONE, code: "CORE_VALIDATION_FORBIDDEN", details: {} }
--- ============================================================================
-LET $username = fn::validation_username(
-    "admin", "USERNAME", 3, 32, true
-);
-
-RETURN fn::validation_reserved_words(
-    $username,
-    ["admin", "root", "system"],
-    true
-);
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_username("abc", 5, 3, false);

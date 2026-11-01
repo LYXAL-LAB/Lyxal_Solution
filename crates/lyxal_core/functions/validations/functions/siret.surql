@@ -1,44 +1,39 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/siret.surql
--- Fonction     : fn::validation_siret
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/siret.surql
+-- Fonction : fn::validation_siret
 --
--- Description
--- -----------
--- Valide un numéro SIRET français à quatorze chiffres et sépare SIREN et NIC.
+-- Valide un numéro SIRET : 14 chiffres (espaces et tirets retirés) avec clé
+-- de Luhn exacte ; renvoie aussi le SIREN et le NIC.
 --
--- Principes
--- ----------
---   - distinction stricte entre NONE, NULL et type invalide ;
---   - aucune conversion implicite de la valeur métier ;
---   - codes d'erreur stables construits depuis le nom technique du champ ;
---   - aucune lecture ou écriture persistante ;
---   - aucune vérification auprès d'un service bancaire ou administratif.
+-- Paramètres
+--   $value : any — valeur à contrôler
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = { siret, siren, nic }, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
 --
--- Dépendances Lyxal
--- -----------------
--- fn::validation_luhn()
-
+-- Exemple (dans une fonction de module)
+--   LET $siret = fn::validation_siret($params.siret);
+--   IF !$siret.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $siret.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_siret(
-    $value: any,
-    $field: string
+    $value: any
 ) -> object {
-    LET $siret = fn::validation_luhn($value, $field, 14, 14);
-    RETURN {
-        siret: $siret,
-        siren: string::slice($siret, 0, 9),
-        nic: string::slice($siret, 9, 14)
-    };
+    LET $check = fn::validation_luhn($value, 14, 14);
+    IF !$check.valid { RETURN $check; };
+    RETURN { valid: true, value: { siret: $check.value, siren: string::slice($check.value, 0, 9), nic: string::slice($check.value, 9, 14) }, code: NONE, details: {} };
 }
-COMMENT "Valide un SIRET français et retourne son SIREN et son NIC."
+COMMENT "Valide un SIRET et le décompose. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

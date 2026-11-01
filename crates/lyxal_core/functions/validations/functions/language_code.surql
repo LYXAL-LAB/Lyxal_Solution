@@ -1,160 +1,59 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/language_code.surql
--- Fonction     : fn::validation_language_code
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/language_code.surql
+-- Fonction : fn::validation_language_code
 --
--- Description
--- -----------
--- Valide un code de langue ISO 639 lexical à deux ou trois lettres.
---
--- Règles appliquées
--- -----------------
---   1. La valeur est normalisée en minuscules.
---   2. Deux lettres sont toujours acceptées lexicalement.
---   3. Trois lettres peuvent être autorisées.
---   4. Une liste facultative permet une validation fermée.
+-- Valide un code langue ISO 639 (deux lettres, ou trois si autorisé) ; la
+-- valeur renvoyée est en minuscules.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allow_alpha3: bool
--- $allowed_codes: option<array<string>>
+--   $value         : any — valeur à contrôler
+--   $allow_alpha3  : bool — true pour accepter les codes à trois lettres
+--   $allowed_codes : option<array<string>> — codes autorisés (au moins un, au bon format), NONE pour tous
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée et, lorsque cela est indiqué, normalisée.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le code en minuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_NOT_ALLOWED
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_LANGUAGE_CODE
--- <FIELD>_LANGUAGE_CODE_NOT_ALLOWED
--- VALIDATION_EMPTY_ALLOWED_LANGUAGE_CODES
--- VALIDATION_INVALID_ALLOWED_LANGUAGE_CODE
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : liste vide ou code au mauvais format
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
---   La valeur est absente ou égale à NONE.
---
--- <FIELD>_NULL_NOT_ALLOWED
---   La valeur est explicitement égale à NULL.
---
--- <FIELD>_INVALID_TYPE
---   La valeur ne possède pas le type attendu.
---
--- <FIELD>_BLANK_NOT_ALLOWED
---   La chaîne est vide après string::trim().
---
--- VALIDATION_INVALID_FIELD_NAME
---   Le nom technique du champ est vide.
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun accès réseau ;
---   - aucune résolution géographique externe ;
---   - aucune conversion implicite de la valeur métier.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::lowercase()
---   - string::matches()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---   - array::len()
---   - array::map()
---   - array::any()
---   - array::contains()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $lang = fn::validation_language_code($params.language, false, ["fr", "en"]);
+--   IF !$lang.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $lang.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_language_code(
     $value: any,
-    $field: string,
     $allow_alpha3: bool,
     $allowed_codes: option<array<string>>
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    LET $pattern = IF $allow_alpha3 { "^[a-z]{2,3}$" } ELSE { "^[a-z]{2}$" };
+    LET $allowed = IF $allowed_codes IS NONE { NONE } ELSE { array::map($allowed_codes, |$item| string::lowercase(string::trim($item))) };
+    IF $allowed IS NOT NONE AND (array::len($allowed) = 0 OR array::any($allowed, |$item| !string::matches($item, $pattern))) { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::lowercase(string::trim($value));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    IF !string::matches($clean, $pattern) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "language_code" } };
     };
-
-    LET $language_code = string::lowercase($clean_value);
-    LET $pattern = IF $allow_alpha3 {
-        "^[a-z]{2,3}$"
-    } ELSE {
-        "^[a-z]{2}$"
+    IF $allowed IS NOT NONE AND $clean NOT IN $allowed {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: $allowed } };
     };
-
-    IF !string::matches($language_code, $pattern) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_LANGUAGE_CODE"
-        );
-    };
-
-    IF $allowed_codes IS NOT NONE {
-        IF array::len($allowed_codes) = 0 {
-            THROW "VALIDATION_EMPTY_ALLOWED_LANGUAGE_CODES";
-        };
-
-        LET $clean_allowed = array::map(
-            $allowed_codes,
-            |$code| string::lowercase(string::trim($code))
-        );
-
-        IF array::any(
-            $clean_allowed,
-            |$code| !string::matches($code, $pattern)
-        ) {
-            THROW "VALIDATION_INVALID_ALLOWED_LANGUAGE_CODE";
-        };
-
-        IF !(($clean_allowed) CONTAINS ($language_code)) {
-            THROW string::concat(
-                $clean_field,
-                "_LANGUAGE_CODE_NOT_ALLOWED"
-            );
-        };
-    };
-
-    RETURN $language_code;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide et normalise un code de langue ISO 639 lexical à deux ou trois lettres.
-"
+COMMENT "Valide un code langue ISO 639 (deux lettres, ou trois si autorisé) ; la valeur renvoyée est en minuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

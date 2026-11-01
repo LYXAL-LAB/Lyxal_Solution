@@ -1,117 +1,63 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/initials.surql
--- Fonction     : fn::validation_initials
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/initials.surql
+-- Fonction : fn::validation_initials
 --
--- Description
--- -----------
--- Valide des initiales humaines avec points et séparateurs facultatifs.
+-- Valide des initiales : lettres A-Z une fois retirés les espaces et les
+-- points ; la valeur renvoyée est en majuscules, sans séparateur.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $min_count: int
--- $max_count: int
+--   $value     : any — valeur à contrôler
+--   $min_count : int — nombre minimal de lettres (>= 1)
+--   $max_count : int — nombre maximal de lettres (>= $min_count)
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_INITIALS
--- <FIELD>_TOO_FEW_INITIALS
--- <FIELD>_TOO_MANY_INITIALS
--- VALIDATION_INVALID_INITIALS_LIMITS
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = les lettres en majuscules, sans séparateur, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $min_count < 1 ou $min_count > $max_count
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucune dépendance à l'authentification ;
---   - aucune consultation de registre externe ;
---   - aucune conversion implicite de la valeur métier.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $initials = fn::validation_initials($params.initials, 1, 4);
+--   IF !$initials.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $initials.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_initials(
     $value: any,
-    $field: string,
     $min_count: int,
     $max_count: int
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $min_count < 1 OR $min_count > $max_count { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $letters = string::uppercase(string::replace(string::replace($clean, " ", ""), ".", ""));
+    LET $count = string::len($letters);
+    IF !string::matches($letters, "^[A-Z]+$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "initials" } };
     };
-
-    IF $min_count < 1 OR $max_count < 1 OR $min_count > $max_count {
-        THROW "VALIDATION_INVALID_INITIALS_LIMITS";
-    };
-
-    LET $normalized = string::uppercase(
-        string::replace(
-            string::replace($clean_value, " ", ""),
-            ".",
-            ""
-        )
-    );
-
-    IF !string::matches($normalized, "^[A-Z]+$") {
-        THROW string::concat($clean_field, "_INVALID_INITIALS");
-    };
-
-    LET $count = string::len($normalized);
-
     IF $count < $min_count {
-        THROW string::concat(
-            $clean_field,
-            "_TOO_FEW_INITIALS"
-        );
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_count: $min_count, count: $count } };
     };
-
     IF $count > $max_count {
-        THROW string::concat(
-            $clean_field,
-            "_TOO_MANY_INITIALS"
-        );
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_count: $max_count, count: $count } };
     };
-
-    RETURN $normalized;
+    RETURN { valid: true, value: $letters, code: NONE, details: {} };
 }
-COMMENT "
-Valide des initiales ASCII et les retourne en majuscules sans points ni espaces.
-"
+COMMENT "Valide des initiales : lettres A-Z une fois retirés les espaces et les points ; la valeur renvoyée est en majuscules, sans séparateur. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

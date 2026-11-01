@@ -1,59 +1,26 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/image_dimensions.test.surql
--- Fonction     : fn::validation_image_dimensions
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_image_dimensions (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: dimensions valides
+RETURN fn::validation_image_dimensions(1920, 1080, 16, 4096, 16, 4096, NONE)
+    == { valid: true, value: { width: 1920, height: 1080, pixels: 2073600 }, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Full HD valide
--- Résultat attendu : pixels = 2073600
--- ============================================================================
-RETURN fn::validation_image_dimensions(
-    1920,
-    1080,
-    "IMAGE",
-    1,
-    8192,
-    1,
-    8192,
-    50000000
-);
+-- test: trop de pixels
+RETURN fn::validation_image_dimensions(1920, 1080, 16, 4096, 16, 4096, 1000000)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { bound: "pixels", max: 1000000 } };
 
--- ============================================================================
--- TEST 2 — Largeur hors plage
--- Erreur attendue : IMAGE_WIDTH_OUT_OF_RANGE
--- ============================================================================
-RETURN fn::validation_image_dimensions(
-    10000,
-    1080,
-    "IMAGE",
-    1,
-    8192,
-    1,
-    8192,
-    NONE
-);
+-- test: largeur trop petite
+RETURN fn::validation_image_dimensions(8, 1080, 16, 4096, 16, 4096, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { bound: "width", min: 16 } };
 
--- ============================================================================
--- TEST 3 — Trop de pixels
--- Erreur attendue : IMAGE_PIXEL_COUNT_TOO_LARGE
--- ============================================================================
-RETURN fn::validation_image_dimensions(
-    8000,
-    8000,
-    "IMAGE",
-    1,
-    8192,
-    1,
-    8192,
-    50000000
-);
+-- test: hauteur absente
+RETURN fn::validation_image_dimensions(1920, NONE, 16, 4096, 16, 4096, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { bound: "height" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_image_dimensions(1, 1, 100, 10, 1, 10, NONE);
+
+-- test: pixels nuls
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_image_dimensions(1, 1, 1, 10, 1, 10, 0);

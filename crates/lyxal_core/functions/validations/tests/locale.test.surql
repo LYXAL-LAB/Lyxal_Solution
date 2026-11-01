@@ -1,54 +1,37 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/locale.test.surql
--- Fonction     : fn::validation_locale
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_locale (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_locale(" fr_fr ", false)
+    == { valid: true, value: "fr-FR", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Locale française
--- Résultat attendu : "fr-FR"
--- ============================================================================
-RETURN fn::validation_locale(
-    "fr_fr",
-    "LOCALE",
-    true
-);
+-- test: langue seule
+RETURN fn::validation_locale("EN", false)
+    == { valid: true, value: "en", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Langue seule
--- Résultat attendu : "fr"
--- ============================================================================
-RETURN fn::validation_locale(
-    "FR",
-    "LOCALE",
-    false
-);
+-- test: région exigée
+RETURN fn::validation_locale("en", true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "locale", require_region: true } };
 
--- ============================================================================
--- TEST 3 — Région obligatoire
--- Erreur attendue : LOCALE_REGION_REQUIRED
--- ============================================================================
-RETURN fn::validation_locale(
-    "fr",
-    "LOCALE",
-    true
-);
+-- test: région à trois lettres
+RETURN fn::validation_locale("fr-FRA", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "locale" } };
 
--- ============================================================================
--- TEST 4 — Locale trop complexe
--- Erreur attendue : LOCALE_INVALID_LOCALE
--- ============================================================================
-RETURN fn::validation_locale(
-    "zh-Hans-CN",
-    "LOCALE",
-    false
-);
+-- test: trop de segments
+RETURN fn::validation_locale("fr-FR-x", false).code == "CORE_VALIDATION_FORMAT";
+
+-- test: chaîne blanche
+RETURN fn::validation_locale("  ", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_locale(NONE, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_locale(NULL, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_locale(42, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };

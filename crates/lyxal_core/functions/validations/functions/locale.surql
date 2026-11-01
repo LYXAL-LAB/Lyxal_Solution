@@ -1,153 +1,54 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/locale.surql
--- Fonction     : fn::validation_locale
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/locale.surql
+-- Fonction : fn::validation_locale
 --
--- Description
--- -----------
--- Valide lexicalement une locale simplifiée de forme langue ou langue-PAYS.
---
--- Règles appliquées
--- -----------------
---   1. Le séparateur canonique est le tiret.
---   2. La langue est normalisée en minuscules.
---   3. La région est normalisée en majuscules.
---   4. La région peut être obligatoire ou facultative.
---   5. Les scripts BCP 47 et extensions ne sont pas couverts par cette primitive.
+-- Valide une locale langue[-RÉGION] (« fr », « fr-FR », « fr_FR ») ; la
+-- région est exigée si demandé. La valeur renvoyée est normalisée en « fr-FR
+-- ».
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $require_region: bool
+--   $value          : any — valeur à contrôler
+--   $require_region : bool — true pour exiger la région
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée et, lorsque cela est indiqué, normalisée.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la locale normalisée (« fr » ou « fr-FR »), code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_LOCALE
--- <FIELD>_REGION_REQUIRED
---
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
---   La valeur est absente ou égale à NONE.
---
--- <FIELD>_NULL_NOT_ALLOWED
---   La valeur est explicitement égale à NULL.
---
--- <FIELD>_INVALID_TYPE
---   La valeur ne possède pas le type attendu.
---
--- <FIELD>_BLANK_NOT_ALLOWED
---   La chaîne est vide après string::trim().
---
--- VALIDATION_INVALID_FIELD_NAME
---   Le nom technique du champ est vide.
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun accès réseau ;
---   - aucune résolution géographique externe ;
---   - aucune conversion implicite de la valeur métier.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::replace()
---   - string::split()
---   - string::lowercase()
---   - string::uppercase()
---   - string::matches()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---   - array::len()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $locale = fn::validation_locale($params.locale, false);
+--   IF !$locale.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $locale.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_locale(
     $value: any,
-    $field: string,
     $require_region: bool
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
-    };
-
-    LET $normalized_separator = string::replace(
-        $clean_value,
-        "_",
-        "-"
-    );
-
-    LET $parts = string::split($normalized_separator, "-");
-
-    IF array::len($parts) = 1 {
-        LET $language = string::lowercase($parts[0]);
-
-        IF $require_region {
-            THROW string::concat($clean_field, "_REGION_REQUIRED");
-        };
-
-        IF !string::matches($language, "^[a-z]{2,3}$") {
-            THROW string::concat($clean_field, "_INVALID_LOCALE");
-        };
-
-        RETURN $language;
-    };
-
-    IF array::len($parts) != 2 {
-        THROW string::concat($clean_field, "_INVALID_LOCALE");
-    };
-
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $parts = string::split(string::replace($clean, "_", "-"), "-");
     LET $language = string::lowercase($parts[0]);
-    LET $region = string::uppercase($parts[1]);
-
-    IF !string::matches($language, "^[a-z]{2,3}$")
-        OR !string::matches($region, "^[A-Z]{2}$")
-    {
-        THROW string::concat($clean_field, "_INVALID_LOCALE");
+    LET $region = IF array::len($parts) = 2 { string::uppercase($parts[1]) } ELSE { NONE };
+    IF array::len($parts) > 2 OR !string::matches($language, "^[a-z]{2,3}$") OR ($region IS NOT NONE AND !string::matches($region, "^[A-Z]{2}$")) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "locale" } };
     };
-
-    RETURN string::concat($language, "-", $region);
+    IF $require_region AND $region IS NONE {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "locale", require_region: true } };
+    };
+    RETURN { valid: true, value: IF $region IS NONE { $language } ELSE { $language + "-" + $region }, code: NONE, details: {} };
 }
-COMMENT "
-Valide et normalise une locale simplifiée de forme langue ou langue-PAYS.
-"
+COMMENT "Valide une locale langue[-RÉGION] (« fr », « fr-FR », « fr_FR ») ; la région est exigée si demandé. La valeur renvoyée est normalisée en « fr-FR ». Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

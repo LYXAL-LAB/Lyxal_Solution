@@ -1,54 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/currency_code.test.surql
--- Fonction     : fn::validation_currency_code
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_currency_code (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_currency_code(" eur ", ["EUR", "USD"])
+    == { valid: true, value: "EUR", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Euro
--- Résultat attendu : "EUR"
--- ============================================================================
-RETURN fn::validation_currency_code(
-    "eur",
-    "CURRENCY",
-    NONE
-);
+-- test: mauvaise longueur
+RETURN fn::validation_currency_code("EU", ["EUR", "USD"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "currency_code" } };
 
--- ============================================================================
--- TEST 2 — Devise autorisée
--- Résultat attendu : "CHF"
--- ============================================================================
-RETURN fn::validation_currency_code(
-    "CHF",
-    "CURRENCY",
-    ["EUR", "CHF", "GBP"]
-);
+-- test: code non autorisé
+RETURN fn::validation_currency_code("ZZZ", ["EUR", "USD"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: ["EUR", "USD"] } };
 
--- ============================================================================
--- TEST 3 — Code trop court
--- Erreur attendue : CURRENCY_INVALID_CURRENCY_CODE
--- ============================================================================
-RETURN fn::validation_currency_code(
-    "EU",
-    "CURRENCY",
-    NONE
-);
+-- test: chaîne blanche
+RETURN fn::validation_currency_code("  ", ["EUR", "USD"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 4 — Devise non autorisée
--- Erreur attendue : CURRENCY_CURRENCY_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_currency_code(
-    "USD",
-    "CURRENCY",
-    ["EUR", "GBP"]
-);
+-- test: valeur absente
+RETURN fn::validation_currency_code(NONE, ["EUR", "USD"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_currency_code(NULL, ["EUR", "USD"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_currency_code(42, ["EUR", "USD"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_currency_code("eur", []);
+
+-- test: code autorisé mal formé
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_currency_code("eur", ["1"]);

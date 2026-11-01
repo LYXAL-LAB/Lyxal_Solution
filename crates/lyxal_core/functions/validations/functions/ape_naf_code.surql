@@ -1,51 +1,45 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/ape_naf_code.surql
--- Fonction     : fn::validation_ape_naf_code
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/ape_naf_code.surql
+-- Fonction : fn::validation_ape_naf_code
 --
--- Description
--- -----------
--- Valide lexicalement un code APE/NAF français de quatre chiffres et une lettre.
+-- Valide un code APE / NAF (4 chiffres et une lettre, espaces et point
+-- retirés) ; la valeur renvoyée est en majuscules.
 --
--- Principes
--- ----------
---   - distinction stricte entre NONE, NULL et type invalide ;
---   - aucune conversion implicite de la valeur métier ;
---   - codes d'erreur stables construits depuis le nom technique du champ ;
---   - aucune lecture ou écriture persistante ;
---   - aucune vérification auprès d'un service bancaire ou administratif.
+-- Paramètres
+--   $value : any — valeur à contrôler
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le code en majuscules, sans séparateur, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
 --
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $check = fn::validation_ape_naf_code($params.ape_naf_code);
+--   IF !$check.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $check.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_ape_naf_code(
-    $value: any,
-    $field: string
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-
-    LET $code = string::uppercase(
-        string::replace(string::trim($value), " ", "")
-    );
-    IF !string::matches($code, "^[0-9]{4}[A-Z]$") {
-        THROW string::concat($clean_field, "_INVALID_APE_NAF_CODE");
+    $value: any
+) -> object {
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    IF !type::is_string($value) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-    RETURN $code;
+    LET $clean = string::uppercase(string::replace(string::replace(string::trim($value), " ", ""), ".", ""));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    IF !string::matches($clean, "^[0-9]{4}[A-Z]$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "ape_naf_code" } };
+    };
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "Valide lexicalement et normalise un code APE ou NAF français."
+COMMENT "Valide un code APE / NAF (4 chiffres et une lettre, espaces et point retirés) ; la valeur renvoyée est en majuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

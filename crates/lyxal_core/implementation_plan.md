@@ -95,6 +95,8 @@ Même principe : un résultat ou une valeur ; `THROW` uniquement pour un argumen
 | `validation_array_records` | `validation_array_of_records` (ajoute le contrôle d'existence facultatif) |
 | `validation_array_strings` | `validation_array_of_strings` (ajoute le nettoyage et les longueurs) |
 | `validation_record_type` | `validation_record_id` (accepte une liste de tables) |
+| `validation_hash` | `validation_checksum` (mêmes algorithmes, plus crc32) |
+| `validation_ipv4`, `validation_ipv6` | `validation_ip` avec la version `"ipv4"` ou `"ipv6"` |
 
 Raison : une responsabilité = un endroit (`.agents/AGENTS.md` §5.1). Aucun appelant.
 

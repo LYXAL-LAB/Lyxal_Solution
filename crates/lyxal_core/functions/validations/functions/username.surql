@@ -1,188 +1,63 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/username.surql
--- Fonction     : fn::validation_username
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/username.surql
+-- Fonction : fn::validation_username
 --
--- Description
--- -----------
--- Valide un nom d'utilisateur technique : longueur configurable, caractères ASCII autorisés, absence de séparateur en début ou fin et absence de séparateurs répétés.
---
--- Principes
--- ----------
---   - validation stricte du type reçu ;
---   - aucune conversion implicite ;
---   - codes d'erreur stables construits depuis le nom technique du champ ;
---   - aucune lecture ni écriture persistante ;
---   - retour de la chaîne validée, éventuellement nettoyée avec string::trim().
+-- Valide un identifiant d'utilisateur : [A-Za-z0-9._-], sans séparateur en
+-- début ou en fin, sans séparateur doublé ; minuscules exigées si demandé.
 --
 -- Paramètres
--- ----------
--- $value: any
---   Nom d'utilisateur obligatoire.
+--   $value           : any — valeur à contrôler
+--   $min_length      : int — longueur minimale (>= 1)
+--   $max_length      : int — longueur maximale (>= $min_length)
+--   $force_lowercase : bool — true pour exiger des minuscules
 --
--- $field: string
---   Nom technique utilisé pour les erreurs.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne sans espaces périphériques, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
+--     CORE_VALIDATION_FORMAT
 --
--- $min_length: int
---   Longueur minimale inclusive.
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $min_length < 1 ou $min_length > $max_length
 --
--- $max_length: int
---   Longueur maximale inclusive.
---
--- $force_lowercase: bool
---   Exige une valeur déjà en minuscules.
---
--- Valeur retournée
--- ----------------
--- string — nom d'utilisateur nettoyé et validé.
---
--- Erreurs générées
--- ----------------
--- <FIELD>_REQUIRED
---   La valeur est absente ou égale à NONE.
---
--- <FIELD>_NULL_NOT_ALLOWED
---   La valeur est explicitement égale à NULL.
---
--- <FIELD>_INVALID_TYPE
---   La valeur n'est pas strictement de type string.
---
--- VALIDATION_INVALID_FIELD_NAME
---   Le nom technique du champ est vide.
---
--- <FIELD>_BLANK_NOT_ALLOWED
---   Le nom d'utilisateur est vide.
---
--- <FIELD>_TOO_SHORT
---   La longueur est inférieure au minimum.
---
--- <FIELD>_TOO_LONG
---   La longueur dépasse le maximum.
---
--- <FIELD>_INVALID_USERNAME
---   La forme générale est invalide.
---
--- <FIELD>_INVALID_BOUNDARY
---   La valeur commence ou finit par '.', '_' ou '-'.
---
--- <FIELD>_REPEATED_SEPARATOR
---   La valeur contient '..', '__' ou '--'.
---
--- <FIELD>_NOT_LOWERCASE
---   Les minuscules sont imposées mais la valeur contient des majuscules.
---
--- VALIDATION_INVALID_USERNAME_LENGTH
---   Les limites de longueur sont invalides.
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure. Elle ne consulte aucune table, ne
--- modifie aucune donnée et ne dépend pas du contexte d'authentification.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::len()
---   - string::matches()
---   - string::starts_with()
---   - string::ends_with()
---   - string::contains()
---   - string::lowercase()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
---
--- Format accepté
--- --------------
---   - lettres ASCII A-Z et a-z ;
---   - chiffres 0-9 ;
---   - point, tiret bas et tiret ;
---   - aucun espace ;
---   - aucun séparateur en première ou dernière position ;
---   - aucun séparateur identique répété.
-
+-- Exemple (dans une fonction de module)
+--   LET $username = fn::validation_username($params.username, 3, 32, true);
+--   IF !$username.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $username.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_username(
     $value: any,
-    $field: string,
     $min_length: int,
     $max_length: int,
     $force_lowercase: bool
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-
-    IF $min_length < 1
-        OR $max_length < 1
-        OR $min_length > $max_length
-    {
-        THROW "VALIDATION_INVALID_USERNAME_LENGTH";
-    };
-
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
+) -> object {
+    IF $min_length < 1 OR $min_length > $max_length { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-    LET $length = string::len($clean_value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $length = string::len($clean);
+    IF $length < $min_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: $min_length, length: $length } }; };
+    IF $max_length IS NOT NONE AND $length > $max_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } }; };
+    IF !string::matches($clean, "^[A-Za-z0-9]+(?:[._-][A-Za-z0-9]+)*$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "username" } };
     };
-    IF $length < $min_length {
-        THROW string::concat($clean_field, "_TOO_SHORT");
+    IF $force_lowercase AND $clean != string::lowercase($clean) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "lowercase" } };
     };
-    IF $length > $max_length {
-        THROW string::concat($clean_field, "_TOO_LONG");
-    };
-    IF !string::matches($clean_value, "^[A-Za-z0-9._-]+$") {
-        THROW string::concat($clean_field, "_INVALID_USERNAME");
-    };
-
-    IF string::starts_with($clean_value, ".")
-        OR string::starts_with($clean_value, "_")
-        OR string::starts_with($clean_value, "-")
-        OR string::ends_with($clean_value, ".")
-        OR string::ends_with($clean_value, "_")
-        OR string::ends_with($clean_value, "-")
-    {
-        THROW string::concat($clean_field, "_INVALID_BOUNDARY");
-    };
-
-    IF string::contains($clean_value, "..")
-        OR string::contains($clean_value, "__")
-        OR string::contains($clean_value, "--")
-    {
-        THROW string::concat($clean_field, "_REPEATED_SEPARATOR");
-    };
-
-    IF $force_lowercase
-        AND $clean_value != string::lowercase($clean_value)
-    {
-        THROW string::concat($clean_field, "_NOT_LOWERCASE");
-    };
-
-    RETURN $clean_value;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide un nom d'utilisateur ASCII composé de lettres, chiffres, point, tiret
-bas et tiret. Contrôle la longueur, les limites, les séparateurs répétés et
-facultativement l'usage exclusif des minuscules.
-"
+COMMENT "Valide un identifiant d'utilisateur : [A-Za-z0-9._-], sans séparateur en début ou en fin, sans séparateur doublé ; minuscules exigées si demandé. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

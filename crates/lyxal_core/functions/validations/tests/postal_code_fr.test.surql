@@ -1,64 +1,33 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/postal_code_fr.test.surql
--- Fonction     : fn::validation_postal_code_fr
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_postal_code_fr (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_postal_code_fr(" 75008 ", false)
+    == { valid: true, value: "75008", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Code postal standard
--- Résultat attendu : "46000"
--- ============================================================================
-RETURN fn::validation_postal_code_fr(
-    "46000",
-    "POSTAL_CODE",
-    false
-);
+-- test: CEDEX autorisé
+RETURN fn::validation_postal_code_fr("75008 cedex 08", true)
+    == { valid: true, value: "75008 CEDEX 08", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Paris
--- Résultat attendu : "75001"
--- ============================================================================
-RETURN fn::validation_postal_code_fr(
-    "75001",
-    "POSTAL_CODE",
-    false
-);
+-- test: quatre chiffres
+RETURN fn::validation_postal_code_fr("7508", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "postal_code_fr" } };
 
--- ============================================================================
--- TEST 3 — CEDEX autorisé
--- Résultat attendu : "75008 CEDEX 08"
--- ============================================================================
-RETURN fn::validation_postal_code_fr(
-    "75008 cedex 08",
-    "POSTAL_CODE",
-    true
-);
+-- test: CEDEX refusé
+RETURN fn::validation_postal_code_fr("75008 CEDEX", false).code == "CORE_VALIDATION_FORMAT";
 
--- ============================================================================
--- TEST 4 — CEDEX interdit
--- Erreur attendue : POSTAL_CODE_INVALID_POSTAL_CODE
--- ============================================================================
-RETURN fn::validation_postal_code_fr(
-    "75008 CEDEX",
-    "POSTAL_CODE",
-    false
-);
+-- test: chaîne blanche
+RETURN fn::validation_postal_code_fr("  ", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 5 — Longueur invalide
--- Erreur attendue : POSTAL_CODE_INVALID_POSTAL_CODE
--- ============================================================================
-RETURN fn::validation_postal_code_fr(
-    "4600",
-    "POSTAL_CODE",
-    false
-);
+-- test: valeur absente
+RETURN fn::validation_postal_code_fr(NONE, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_postal_code_fr(NULL, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_postal_code_fr(42, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
