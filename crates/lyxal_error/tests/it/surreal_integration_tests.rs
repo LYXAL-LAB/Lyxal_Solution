@@ -65,7 +65,7 @@ impl SurrealServer {
 
         let start_time = std::time::Instant::now();
         let mut ready = false;
-        while start_time.elapsed() < Duration::from_secs(10) {
+        while start_time.elapsed() < Duration::from_secs(30) {
             if let Ok(stream) = std::net::TcpStream::connect(("127.0.0.1", port)) {
                 drop(stream);
                 ready = true;
@@ -74,7 +74,7 @@ impl SurrealServer {
             std::thread::sleep(Duration::from_millis(50));
         }
         if !ready {
-            panic!("SurrealDB failed to bind to port {} within 10s", port);
+            panic!("SurrealDB failed to bind to port {} within 30s", port);
         }
         std::thread::sleep(Duration::from_millis(200));
 

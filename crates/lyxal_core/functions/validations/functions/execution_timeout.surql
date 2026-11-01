@@ -1,120 +1,50 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/execution_timeout.surql
--- Fonction     : fn::validation_execution_timeout
--- Domaine      : Core / Validation / Workflow
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/execution_timeout.surql
+-- Fonction : fn::validation_execution_timeout
 --
--- Description
--- -----------
--- Valide un timeout d'exécution strictement positif.
---
--- Règles appliquées
--- -----------------
---   1. La valeur doit être de type duration.
---   2. Le timeout doit être strictement supérieur à zéro.
---   3. Les bornes sont inclusives.
+-- Valide un délai d'expiration d'exécution : durée strictement positive
+-- comprise entre deux bornes incluses.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $min_timeout: duration
--- $max_timeout: duration
+--   $value       : any — valeur à contrôler
+--   $min_timeout : duration — délai minimal inclus (> 0s)
+--   $max_timeout : duration — délai maximal inclus (>= $min_timeout)
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée ou un objet normalisé.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la durée d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_TOO_SMALL
+--     CORE_VALIDATION_TOO_LARGE
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_TIMEOUT_NOT_POSITIVE
--- <FIELD>_TIMEOUT_TOO_SHORT
--- <FIELD>_TIMEOUT_TOO_LONG
--- VALIDATION_INVALID_TIMEOUT_RANGE
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : borne <= 0s ou $min_timeout > $max_timeout
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun lancement de job ou workflow ;
---   - aucun accès réseau ;
---   - aucun effet secondaire.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $timeout = fn::validation_execution_timeout($params.timeout, 1s, 15m);
+--   IF !$timeout.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $timeout.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_execution_timeout(
     $value: any,
-    $field: string,
     $min_timeout: duration,
     $max_timeout: duration
-) -> duration {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
+) -> object {
+    IF $min_timeout <= 0s OR $min_timeout > $max_timeout { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    IF !type::is_duration($value) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "duration", actual: type::of($value) } };
     };
-
-    IF $min_timeout <= 0s
-        OR $max_timeout <= 0s
-        OR $min_timeout > $max_timeout
-    {
-        THROW "VALIDATION_INVALID_TIMEOUT_RANGE";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
-    IF type::of($value) != "duration" {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
-    };
-
-    IF $value <= 0s {
-        THROW string::concat(
-            $clean_field,
-            "_TIMEOUT_NOT_POSITIVE"
-        );
-    };
-
-    IF $value < $min_timeout {
-        THROW string::concat(
-            $clean_field,
-            "_TIMEOUT_TOO_SHORT"
-        );
-    };
-
-    IF $value > $max_timeout {
-        THROW string::concat(
-            $clean_field,
-            "_TIMEOUT_TOO_LONG"
-        );
-    };
-
-    RETURN $value;
+    IF $min_timeout IS NOT NONE AND $value < $min_timeout { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min: $min_timeout } }; };
+    IF $max_timeout IS NOT NONE AND $value > $max_timeout { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: $max_timeout } }; };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide un timeout d'exécution strictement positif dans une plage inclusive.
-"
+COMMENT "Valide un délai d'expiration positif et borné. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

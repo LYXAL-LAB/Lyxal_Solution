@@ -1,44 +1,30 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/time_of_day.test.surql
--- Fonction     : fn::validation_time_of_day
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_time_of_day (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: minuit
+RETURN fn::validation_time_of_day(0)
+    == { valid: true, value: 0, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Minuit
--- Résultat attendu : 0
--- ============================================================================
-RETURN fn::validation_time_of_day(0, "START_MINUTE");
+-- test: 23 h 59
+RETURN fn::validation_time_of_day(1439)
+    == { valid: true, value: 1439, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — 09:30
--- Résultat attendu : 570
--- ============================================================================
-RETURN fn::validation_time_of_day(570, "START_MINUTE");
+-- test: négatif
+RETURN fn::validation_time_of_day(-1)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min: 0 } };
 
--- ============================================================================
--- TEST 3 — 23:59
--- Résultat attendu : 1439
--- ============================================================================
-RETURN fn::validation_time_of_day(1439, "START_MINUTE");
+-- test: hors journée
+RETURN fn::validation_time_of_day(1440)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: 1439 } };
 
--- ============================================================================
--- TEST 4 — Valeur négative
--- Erreur attendue : START_MINUTE_OUT_OF_DAY_RANGE
--- ============================================================================
-RETURN fn::validation_time_of_day(-1, "START_MINUTE");
+-- test: valeur absente
+RETURN fn::validation_time_of_day(NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 5 — 24:00 hors plage
--- Erreur attendue : START_MINUTE_OUT_OF_DAY_RANGE
--- ============================================================================
-RETURN fn::validation_time_of_day(1440, "START_MINUTE");
+-- test: valeur NULL
+RETURN fn::validation_time_of_day(NULL)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type string refusé
+RETURN fn::validation_time_of_day("09:00")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "int", actual: "string" } };

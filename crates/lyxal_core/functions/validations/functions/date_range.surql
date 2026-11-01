@@ -1,156 +1,71 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/date_range.surql
--- Fonction     : fn::validation_date_range
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/date_range.surql
+-- Fonction : fn::validation_date_range
 --
--- Description
--- -----------
--- Valide une plage de dates civiles représentées par des datetimes à minuit UTC.
---
--- Règles appliquées
--- -----------------
---   1. Les deux valeurs doivent être des datetimes à minuit UTC.
---   2. La fin ne peut pas précéder le début.
---   3. Une plage d'un seul jour peut être autorisée ou refusée.
---   4. La durée en jours peut être encadrée.
+-- Valide un intervalle de dates calendaires [début, fin] : deux dates à
+-- minuit, dans l'ordre, de même jour seulement si autorisé, et d'une durée
+-- en jours facultativement bornée.
 --
 -- Paramètres
--- ----------
--- $start_value: any
--- $end_value: any
--- $field: string
--- $allow_same_day: bool
--- $min_days: option<int>
--- $max_days: option<int>
+--   $start_value    : any — date de début
+--   $end_value      : any — date de fin
+--   $allow_same_day : bool — true pour accepter début = fin
+--   $min_days       : option<int> — nombre minimal de jours (>= 0), NONE pour aucun
+--   $max_days       : option<int> — nombre maximal de jours (>= 0), NONE pour aucun
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_START_REQUIRED / _START_NULL_NOT_ALLOWED / _START_INVALID_TYPE / _START_INVALID_DATE
--- <FIELD>_END_REQUIRED / _END_NULL_NOT_ALLOWED / _END_INVALID_TYPE / _END_INVALID_DATE
--- <FIELD>_INVALID_ORDER
--- <FIELD>_SAME_DAY_NOT_ALLOWED
--- <FIELD>_TOO_SHORT
--- <FIELD>_TOO_LONG
--- VALIDATION_INVALID_DATE_RANGE_DAYS
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = { start_date, end_date, days }, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_RANGE_ORDER
+--     CORE_VALIDATION_TOO_SMALL
+--     CORE_VALIDATION_TOO_LARGE
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : nombre de jours négatif ou $min_days > $max_days
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure. Elle ne consulte ni ne modifie
--- aucune donnée persistante et ne contacte aucun service externe.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::concat()
---   - type::is_null()
---   - type::is_datetime()
---   - time::floor()
---   - duration::days()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $stay = fn::validation_date_range($params.check_in, $params.check_out, false, 1, 30);
+--   IF !$stay.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $stay.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_date_range(
     $start_value: any,
     $end_value: any,
-    $field: string,
     $allow_same_day: bool,
     $min_days: option<int>,
     $max_days: option<int>
 ) -> object {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
+    IF ($min_days IS NOT NONE AND $min_days < 0) OR ($max_days IS NOT NONE AND $max_days < 0) {
+        THROW "CORE_INVALID_ARGUMENT";
     };
-
-    IF $min_days IS NOT NONE AND $min_days < 0 {
-        THROW "VALIDATION_INVALID_DATE_RANGE_DAYS";
-    };
-
-    IF $max_days IS NOT NONE AND $max_days < 0 {
-        THROW "VALIDATION_INVALID_DATE_RANGE_DAYS";
-    };
-
-    IF $min_days IS NOT NONE
-        AND $max_days IS NOT NONE
-        AND $min_days > $max_days
-    {
-        THROW "VALIDATION_INVALID_DATE_RANGE_DAYS";
-    };
-
-    IF $start_value IS NONE {
-        THROW string::concat($clean_field, "_START_REQUIRED");
-    };
-
-    IF type::is_null($start_value) {
-        THROW string::concat($clean_field, "_START_NULL_NOT_ALLOWED");
-    };
-
+    IF $min_days IS NOT NONE AND $max_days IS NOT NONE AND $min_days > $max_days { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $start_value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { bound: "start" } }; };
+    IF type::is_null($start_value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: { bound: "start" } }; };
     IF !type::is_datetime($start_value) {
-        THROW string::concat($clean_field, "_START_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { bound: "start", expected: "datetime", actual: type::of($start_value) } };
     };
-
-    IF $start_value != time::floor($start_value, 1d) {
-        THROW string::concat($clean_field, "_START_INVALID_DATE");
-    };
-
-    IF $end_value IS NONE {
-        THROW string::concat($clean_field, "_END_REQUIRED");
-    };
-
-    IF type::is_null($end_value) {
-        THROW string::concat($clean_field, "_END_NULL_NOT_ALLOWED");
-    };
-
+    IF time::format($start_value, "%H%M%S%f") != "000000000000000" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { bound: "start", expected: "date" } }; };
+    IF $end_value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { bound: "end" } }; };
+    IF type::is_null($end_value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: { bound: "end" } }; };
     IF !type::is_datetime($end_value) {
-        THROW string::concat($clean_field, "_END_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { bound: "end", expected: "datetime", actual: type::of($end_value) } };
     };
-
-    IF $end_value != time::floor($end_value, 1d) {
-        THROW string::concat($clean_field, "_END_INVALID_DATE");
+    IF time::format($end_value, "%H%M%S%f") != "000000000000000" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { bound: "end", expected: "date" } }; };
+    IF $end_value < $start_value OR (!$allow_same_day AND $end_value = $start_value) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_RANGE_ORDER", details: { start: $start_value, end: $end_value, allow_equal: $allow_same_day } };
     };
-
-    IF $end_value < $start_value {
-        THROW string::concat($clean_field, "_INVALID_ORDER");
-    };
-
-    IF !$allow_same_day AND $end_value = $start_value {
-        THROW string::concat($clean_field, "_SAME_DAY_NOT_ALLOWED");
-    };
-
     LET $days = duration::days($end_value - $start_value);
-
-    IF $min_days IS NOT NONE AND $days < $min_days {
-        THROW string::concat($clean_field, "_TOO_SHORT");
-    };
-
-    IF $max_days IS NOT NONE AND $days > $max_days {
-        THROW string::concat($clean_field, "_TOO_LONG");
-    };
-
-    RETURN {
-        start_date: $start_value,
-        end_date: $end_value,
-        days: $days
-    };
+    IF $min_days IS NOT NONE AND $days < $min_days { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min_days: $min_days, days: $days } }; };
+    IF $max_days IS NOT NONE AND $days > $max_days { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max_days: $max_days, days: $days } }; };
+    RETURN { valid: true, value: { start_date: $start_value, end_date: $end_value, days: $days }, code: NONE, details: {} };
 }
-COMMENT "
-Valide une plage de dates civiles à minuit UTC et retourne son nombre de jours.
-"
+COMMENT "Valide un intervalle de dates ordonné et borné en jours. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

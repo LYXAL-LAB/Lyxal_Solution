@@ -1,46 +1,37 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/datetime_string.test.surql
--- Fonction     : fn::validation_datetime_string
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_datetime_string (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme nettoyée
+RETURN fn::validation_datetime_string(" 2026-08-03T14:30:00Z ", NONE)
+    == { valid: true, value: "2026-08-03T14:30:00Z", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — RFC 3339 valide
--- Résultat attendu : "2026-08-03T10:00:00Z"
--- ============================================================================
-RETURN fn::validation_datetime_string(
-    "2026-08-03T10:00:00Z", "DATETIME", NONE
-);
+-- test: texte libre
+RETURN fn::validation_datetime_string("demain matin", NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "datetime_string" } };
 
--- ============================================================================
--- TEST 2 — Format personnalisé valide
--- Résultat attendu : "03/08/2026 10:30"
--- ============================================================================
-RETURN fn::validation_datetime_string(
-    "03/08/2026 10:30", "DATETIME", "%d/%m/%Y %H:%M"
-);
+-- test: chaîne blanche
+RETURN fn::validation_datetime_string("  ", NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 3 — Format personnalisé non respecté
--- Erreur attendue : DATETIME_INVALID_DATETIME_STRING
--- ============================================================================
-RETURN fn::validation_datetime_string(
-    "2026-08-03 10:30", "DATETIME", "%d/%m/%Y %H:%M"
-);
+-- test: valeur absente
+RETURN fn::validation_datetime_string(NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — Format vide
--- Erreur attendue : VALIDATION_INVALID_DATETIME_FORMAT
--- ============================================================================
-RETURN fn::validation_datetime_string(
-    "2026-08-03", "DATETIME", "   "
-);
+-- test: valeur NULL
+RETURN fn::validation_datetime_string(NULL, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_datetime_string(1, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: format personnalisé
+RETURN fn::validation_datetime_string("2026-08-03 14:30", "%Y-%m-%d %H:%M")
+    == { valid: true, value: "2026-08-03 14:30", code: NONE, details: {} };
+
+-- test: format personnalisé non respecté
+RETURN fn::validation_datetime_string("2026-08-03T14:30:00Z", "%Y-%m-%d %H:%M").code == "CORE_VALIDATION_FORMAT";
+
+-- test: format vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_datetime_string("2026-08-03", " ");

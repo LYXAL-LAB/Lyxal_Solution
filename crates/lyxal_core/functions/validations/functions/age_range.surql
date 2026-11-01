@@ -1,131 +1,59 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/age_range.surql
--- Fonction     : fn::validation_age_range
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/age_range.surql
+-- Fonction : fn::validation_age_range
 --
--- Description
--- -----------
--- Calcule approximativement l'âge depuis une date de naissance et contrôle une plage.
+-- Valide une date de naissance et l'âge révolu qu'elle donne aujourd'hui,
+-- facultativement compris entre deux âges inclus.
 --
 -- Paramètres
--- ----------
--- $birthdate: any
--- $field: string
--- $min_age: option<int>
--- $max_age: option<int>
+--   $birthdate : any — date de naissance (datetime à minuit UTC)
+--   $min_age   : option<int> — âge minimal inclus (>= 0), NONE pour aucun
+--   $max_age   : option<int> — âge maximal inclus (>= 0), NONE pour aucun
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_BIRTHDATE
--- <FIELD>_TOO_YOUNG
--- <FIELD>_TOO_OLD
--- VALIDATION_INVALID_AGE_RANGE
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = { birthdate, age }, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_TOO_SMALL
+--     CORE_VALIDATION_TOO_LARGE
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : âge négatif ou $min_age > $max_age
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucune dépendance à l'authentification ;
---   - aucune consultation de registre externe ;
---   - aucune conversion implicite de la valeur métier.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
---
--- Précision
--- ---------
--- L'âge est calculé par différence d'années calendaires puis ajusté selon le
--- mois et le jour courants.
-
+-- Exemple (dans une fonction de module)
+--   LET $adult = fn::validation_age_range($params.birthdate, 18, NONE);
+--   IF !$adult.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $adult.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_age_range(
     $birthdate: any,
-    $field: string,
     $min_age: option<int>,
     $max_age: option<int>
 ) -> object {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
+    IF ($min_age IS NOT NONE AND $min_age < 0) OR ($max_age IS NOT NONE AND $max_age < 0) {
+        THROW "CORE_INVALID_ARGUMENT";
     };
-
-    IF $min_age IS NOT NONE AND $min_age < 0 {
-        THROW "VALIDATION_INVALID_AGE_RANGE";
+    IF $min_age IS NOT NONE AND $max_age IS NOT NONE AND $min_age > $max_age { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $birthdate IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($birthdate) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    IF !type::is_datetime($birthdate) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "datetime", actual: type::of($birthdate) } };
     };
-
-    IF $max_age IS NOT NONE AND $max_age < 0 {
-        THROW "VALIDATION_INVALID_AGE_RANGE";
-    };
-
-    IF $min_age IS NOT NONE
-        AND $max_age IS NOT NONE
-        AND $min_age > $max_age
-    {
-        THROW "VALIDATION_INVALID_AGE_RANGE";
-    };
-
-    IF $birthdate IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($birthdate) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
-    IF !type::is_datetime($birthdate)
-        OR $birthdate != time::floor($birthdate, 1d)
-    {
-        THROW string::concat($clean_field, "_INVALID_BIRTHDATE");
-    };
-
+    IF time::format($birthdate, "%H%M%S%f") != "000000000000000" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "date" } }; };
     LET $today = time::floor(time::now(), 1d);
-
-    IF $birthdate > $today {
-        THROW string::concat($clean_field, "_INVALID_BIRTHDATE");
-    };
-
-    LET $birth_year = <int>time::format($birthdate, "%Y");
-    LET $birth_month_day = time::format($birthdate, "%m%d");
-    LET $current_year = <int>time::format($today, "%Y");
-    LET $current_month_day = time::format($today, "%m%d");
-
-    LET $age = $current_year
-        - $birth_year
-        - IF $current_month_day < $birth_month_day { 1 } ELSE { 0 };
-
-    IF $min_age IS NOT NONE AND $age < $min_age {
-        THROW string::concat($clean_field, "_TOO_YOUNG");
-    };
-
-    IF $max_age IS NOT NONE AND $age > $max_age {
-        THROW string::concat($clean_field, "_TOO_OLD");
-    };
-
-    RETURN {
-        birthdate: $birthdate,
-        age: $age
-    };
+    IF $birthdate > $today { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: $today } }; };
+    LET $age = <int> time::format($today, "%Y") - <int> time::format($birthdate, "%Y")
+        - IF time::format($today, "%m%d") < time::format($birthdate, "%m%d") { 1 } ELSE { 0 };
+    IF $min_age IS NOT NONE AND $age < $min_age { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min_age: $min_age, age: $age } }; };
+    IF $max_age IS NOT NONE AND $age > $max_age { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max_age: $max_age, age: $age } }; };
+    RETURN { valid: true, value: { birthdate: $birthdate, age: $age }, code: NONE, details: {} };
 }
-COMMENT "
-Calcule l'âge calendaire depuis une date de naissance et contrôle une plage.
-"
+COMMENT "Valide une date de naissance et l'âge révolu qui en découle. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

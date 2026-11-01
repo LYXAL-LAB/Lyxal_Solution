@@ -1,96 +1,47 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/birthdate.surql
--- Fonction     : fn::validation_birthdate
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/birthdate.surql
+-- Fonction : fn::validation_birthdate
 --
--- Description
--- -----------
--- Valide une date de naissance typée datetime à minuit UTC.
+-- Valide une date de naissance : date calendaire (à minuit UTC) qui n'est
+-- pas dans le futur ; le jour même est accepté seulement si autorisé.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allow_today: bool
+--   $value       : any — valeur à contrôler
+--   $allow_today : bool — true pour accepter la date du jour
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_BIRTHDATE
--- <FIELD>_FUTURE_BIRTHDATE_NOT_ALLOWED
--- <FIELD>_TODAY_NOT_ALLOWED
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la date d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_TOO_LARGE
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucune dépendance à l'authentification ;
---   - aucune consultation de registre externe ;
---   - aucune conversion implicite de la valeur métier.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $birthdate = fn::validation_birthdate($params.birthdate, false);
+--   IF !$birthdate.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $birthdate.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_birthdate(
     $value: any,
-    $field: string,
     $allow_today: bool
-) -> datetime {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_datetime($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "datetime", actual: type::of($value) } };
     };
-
-    IF $value != time::floor($value, 1d) {
-        THROW string::concat($clean_field, "_INVALID_BIRTHDATE");
-    };
-
+    IF time::format($value, "%H%M%S%f") != "000000000000000" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "date" } }; };
     LET $today = time::floor(time::now(), 1d);
-
-    IF $value > $today {
-        THROW string::concat(
-            $clean_field,
-            "_FUTURE_BIRTHDATE_NOT_ALLOWED"
-        );
+    IF $value > $today OR (!$allow_today AND $value = $today) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: $today, exclusive: !$allow_today } };
     };
-
-    IF !$allow_today AND $value = $today {
-        THROW string::concat($clean_field, "_TODAY_NOT_ALLOWED");
-    };
-
-    RETURN $value;
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide une date de naissance à minuit UTC et refuse les dates futures.
-"
+COMMENT "Valide une date de naissance passée. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

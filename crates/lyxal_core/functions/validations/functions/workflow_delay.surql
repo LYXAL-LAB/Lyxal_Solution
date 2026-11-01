@@ -1,123 +1,54 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/workflow_delay.surql
--- Fonction     : fn::validation_workflow_delay
--- Domaine      : Core / Validation / Workflow
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/workflow_delay.surql
+-- Fonction : fn::validation_workflow_delay
 --
--- Description
--- -----------
--- Valide une durée d'attente utilisée par un workflow ou un job différé.
---
--- Règles appliquées
--- -----------------
---   1. La valeur doit être strictement de type duration.
---   2. Les bornes doivent être cohérentes et positives ou nulles.
---   3. Une durée nulle peut être autorisée ou interdite.
---   4. La plage est inclusive.
+-- Valide un délai d'attente de workflow : durée comprise entre deux bornes
+-- incluses, nulle seulement si autorisé.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $min_delay: duration
--- $max_delay: duration
--- $allow_zero: bool
+--   $value      : any — valeur à contrôler
+--   $min_delay  : duration — délai minimal inclus
+--   $max_delay  : duration — délai maximal inclus (>= $min_delay)
+--   $allow_zero : bool — true pour accepter un délai de 0s
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée ou un objet normalisé.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la durée d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_ZERO
+--     CORE_VALIDATION_TOO_SMALL
+--     CORE_VALIDATION_TOO_LARGE
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_ZERO_DELAY_NOT_ALLOWED
--- <FIELD>_DELAY_TOO_SHORT
--- <FIELD>_DELAY_TOO_LONG
--- VALIDATION_INVALID_DELAY_RANGE
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $min_delay > $max_delay
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun lancement de job ou workflow ;
---   - aucun accès réseau ;
---   - aucun effet secondaire.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $delay = fn::validation_workflow_delay($params.delay, 0s, 7d, true);
+--   IF !$delay.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $delay.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_workflow_delay(
     $value: any,
-    $field: string,
     $min_delay: duration,
     $max_delay: duration,
     $allow_zero: bool
-) -> duration {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
+) -> object {
+    IF $min_delay > $max_delay { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    IF !type::is_duration($value) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "duration", actual: type::of($value) } };
     };
-
-    IF $min_delay < 0s
-        OR $max_delay < 0s
-        OR $min_delay > $max_delay
-    {
-        THROW "VALIDATION_INVALID_DELAY_RANGE";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
-    IF type::of($value) != "duration" {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
-    };
-
-    IF !$allow_zero AND $value = 0s {
-        THROW string::concat(
-            $clean_field,
-            "_ZERO_DELAY_NOT_ALLOWED"
-        );
-    };
-
-    IF $value < $min_delay {
-        THROW string::concat(
-            $clean_field,
-            "_DELAY_TOO_SHORT"
-        );
-    };
-
-    IF $value > $max_delay {
-        THROW string::concat(
-            $clean_field,
-            "_DELAY_TOO_LONG"
-        );
-    };
-
-    RETURN $value;
+    IF !$allow_zero AND $value = 0s { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_ZERO", details: {} }; };
+    IF $min_delay IS NOT NONE AND $value < $min_delay { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min: $min_delay } }; };
+    IF $max_delay IS NOT NONE AND $value > $max_delay { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: $max_delay } }; };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide une durée d'attente de workflow dans une plage inclusive.
-"
+COMMENT "Valide un délai de workflow borné. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

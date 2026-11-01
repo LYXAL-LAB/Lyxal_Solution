@@ -1,117 +1,51 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/business_day.surql
--- Fonction     : fn::validation_business_day
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/business_day.surql
+-- Fonction : fn::validation_business_day
 --
--- Description
--- -----------
--- Vérifie qu'une date civile à minuit UTC est un jour ouvré et n'appartient pas à une liste de jours fériés.
---
--- Règles appliquées
--- -----------------
---   1. La valeur doit être un datetime à minuit UTC.
---   2. Samedi et dimanche sont refusés.
---   3. Une liste facultative de jours fériés peut être fournie.
---   4. Les jours fériés doivent eux-mêmes être à minuit UTC.
+-- Valide un jour ouvré : date calendaire (à minuit UTC) qui n'est ni un
+-- samedi, ni un dimanche, ni un jour férié fourni.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $holidays: option<array<datetime>>
+--   $value    : any — valeur à contrôler
+--   $holidays : option<array<datetime>> — jours fériés (dates à minuit), NONE pour aucun
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_DATE
--- <FIELD>_WEEKEND_NOT_ALLOWED
--- <FIELD>_HOLIDAY_NOT_ALLOWED
--- VALIDATION_INVALID_HOLIDAY_DATE
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la date d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_NOT_ALLOWED
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : jour férié qui n'est pas à minuit
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure. Elle ne consulte ni ne modifie
--- aucune donnée persistante et ne contacte aucun service externe.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::concat()
---   - type::is_null()
---   - type::is_datetime()
---   - time::floor()
---   - time::format()
---   - array::any()
---   - array::contains()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $day = fn::validation_business_day($params.delivery_day, $holidays);
+--   IF !$day.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $day.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_business_day(
     $value: any,
-    $field: string,
     $holidays: option<array<datetime>>
-) -> datetime {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
+) -> object {
+    IF $holidays IS NOT NONE AND array::any($holidays, |$holiday| time::format($holiday, "%H%M%S%f") != "000000000000000") {
+        THROW "CORE_INVALID_ARGUMENT";
     };
-
-    IF $holidays IS NOT NONE
-        AND array::any(
-            $holidays,
-            |$holiday| $holiday != time::floor($holiday, 1d)
-        )
-    {
-        THROW "VALIDATION_INVALID_HOLIDAY_DATE";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_datetime($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "datetime", actual: type::of($value) } };
     };
-
-    IF $value != time::floor($value, 1d) {
-        THROW string::concat($clean_field, "_INVALID_DATE");
-    };
-
-    LET $weekday = <int>time::format($value, "%w");
-
-    IF $weekday = 0 OR $weekday = 6 {
-        THROW string::concat($clean_field, "_WEEKEND_NOT_ALLOWED");
-    };
-
-    IF $holidays IS NOT NONE
-        AND (($holidays) CONTAINS ($value))
-    {
-        THROW string::concat($clean_field, "_HOLIDAY_NOT_ALLOWED");
-    };
-
-    RETURN $value;
+    IF time::format($value, "%H%M%S%f") != "000000000000000" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "date" } }; };
+    IF <int> time::format($value, "%w") IN [0, 6] { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "weekend" } }; };
+    IF $holidays IS NOT NONE AND $value IN $holidays { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "holiday" } }; };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide qu'une date civile à minuit UTC est un jour ouvré hors jours fériés.
-"
+COMMENT "Valide un jour ouvré (ni week-end ni jour férié). Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

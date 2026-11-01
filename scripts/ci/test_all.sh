@@ -27,11 +27,13 @@ trap cleanup EXIT
 start_server() { # port utilisateur mot_de_passe
     "${SURREAL}" start --log error --user "$2" --pass "$3" --bind "127.0.0.1:$1" memory >/dev/null 2>&1 &
     pids+=("$!")
-    for _ in $(seq 1 50); do
+    # Échéance en secondes, pas en tentatives : chaque appel à `surreal` passe par le lanceur de l'installateur.
+    local deadline=$((SECONDS + 30))
+    while (( SECONDS < deadline )); do
         if "${SURREAL}" is-ready --endpoint "http://127.0.0.1:$1" >/dev/null 2>&1; then return 0; fi
         sleep 0.2
     done
-    echo "Le serveur SurrealDB du port $1 n'a pas démarré." >&2
+    echo "Le serveur SurrealDB du port $1 n'a pas démarré en 30 s." >&2
     return 1
 }
 

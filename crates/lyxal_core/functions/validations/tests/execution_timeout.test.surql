@@ -1,47 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/execution_timeout.test.surql
--- Fonction     : fn::validation_execution_timeout
--- Domaine      : Core / Validation / Workflow
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_execution_timeout (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: dans les bornes
+RETURN fn::validation_execution_timeout(30s, 1s, 15m)
+    == { valid: true, value: 30s, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Timeout valide
--- Résultat attendu : 30s
--- ============================================================================
-RETURN fn::validation_execution_timeout(
-    30s,
-    "TIMEOUT",
-    1s,
-    10m
-);
+-- test: trop court
+RETURN fn::validation_execution_timeout(0s, 1s, 15m)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min: 1s } };
 
--- ============================================================================
--- TEST 2 — Timeout nul
--- Erreur attendue : TIMEOUT_TIMEOUT_NOT_POSITIVE
--- ============================================================================
-RETURN fn::validation_execution_timeout(
-    0s,
-    "TIMEOUT",
-    1s,
-    10m
-);
+-- test: trop long
+RETURN fn::validation_execution_timeout(1h, 1s, 15m)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: 15m } };
 
--- ============================================================================
--- TEST 3 — Timeout trop long
--- Erreur attendue : TIMEOUT_TIMEOUT_TOO_LONG
--- ============================================================================
-RETURN fn::validation_execution_timeout(
-    20m,
-    "TIMEOUT",
-    1s,
-    10m
-);
+-- test: valeur absente
+RETURN fn::validation_execution_timeout(NONE, 1s, 15m)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_execution_timeout(NULL, 1s, 15m)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_execution_timeout(30, 1s, 15m)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "duration", actual: "int" } };
+
+-- test: borne minimale nulle
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_execution_timeout(30s, 0s, 15m);
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_execution_timeout(30s, 15m, 1s);
