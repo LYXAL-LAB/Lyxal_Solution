@@ -40,7 +40,9 @@ start_server "${WS_PORT}" "${LYXAL_SURREAL_USER}" "${LYXAL_SURREAL_PASS}"
 
 cargo test --workspace --no-fail-fast
 
-# Tests ignorés par défaut parce qu'ils exigent un serveur ou sont longs.
-# (Les tests ignorés de lyxal_crypto sont des sous-processus lancés par d'autres tests : ne pas les exécuter seuls.)
-cargo test -p lyxal_surreal --test it -- --ignored
-cargo test -p lyxal_event --test it -- --ignored
+# Tests ignorés par défaut parce qu'ils exigent un serveur ou sont longs, désignés par leur nom exact.
+# Une seule commande sur le workspace : pas de recompilation de SurrealDB avec d'autres fonctionnalités.
+# (Les tests ignorés de lyxal_crypto sont des sous-processus lancés par d'autres tests : ils ne sont pas visés.)
+cargo test --workspace -- --ignored --exact \
+    call_tests::test_remote_ws_root_signin_and_call_fn \
+    integration_concurrency_1000::test_massive_concurrency_1000_deliveries_10_workers

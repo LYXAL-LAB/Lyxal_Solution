@@ -903,7 +903,9 @@ mod tests {
         let mut registry = HandlerRegistry::new();
         registry
             .register(SlowHandler {
-                duration: Duration::from_millis(200),
+                // Bien plus long que le délai : le handler ne peut pas finir avant lui, même sur une
+                // machine chargée (`tokio::time::timeout` vérifie le travail avant le délai à chaque réveil).
+                duration: Duration::from_secs(60),
             })
             .unwrap();
 
