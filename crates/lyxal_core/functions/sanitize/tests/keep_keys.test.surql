@@ -1,9 +1,16 @@
--- ============================================================================
--- TESTS — fn::sanitize_keep_keys
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::sanitize_keep_keys (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::sanitize_keep_keys(
-    {name:"Lyxal",age:1},
-    ["name"]
-);
+-- test: clés filtrées
+RETURN fn::sanitize_keep_keys({ name: "A", role: "admin" }, ["name"]) == { name: "A" };
+
+-- test: entrée absente → NONE
+RETURN fn::sanitize_keep_keys(NONE, ["name"]) == NONE;
+
+-- test: NULL refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_keep_keys(NULL, ["name"]);
+
+-- test: mauvais type refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_keep_keys([1], ["name"]);

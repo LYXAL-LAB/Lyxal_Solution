@@ -11,6 +11,7 @@ min_version = ">=0.1.0"
 [resources]
 functions = [
     "functions/sanitize/functions/absolute_url.surql",
+    "functions/sanitize/functions/alphanumeric_upper.surql",
     "functions/sanitize/functions/array.surql",
     "functions/sanitize/functions/array_compact.surql",
     "functions/sanitize/functions/array_flatten.surql",
@@ -22,7 +23,6 @@ functions = [
     "functions/sanitize/functions/array_strings.surql",
     "functions/sanitize/functions/array_unique.surql",
     "functions/sanitize/functions/ascii.surql",
-    "functions/sanitize/functions/bic.surql",
     "functions/sanitize/functions/calendar.surql",
     "functions/sanitize/functions/capitalize.surql",
     "functions/sanitize/functions/clamp.surql",
@@ -46,9 +46,7 @@ functions = [
     "functions/sanitize/functions/hostname.surql",
     "functions/sanitize/functions/html.surql",
     "functions/sanitize/functions/html_entities.surql",
-    "functions/sanitize/functions/iban.surql",
     "functions/sanitize/functions/integer.surql",
-    "functions/sanitize/functions/iso8601.surql",
     "functions/sanitize/functions/keep_keys.surql",
     "functions/sanitize/functions/lowercase.surql",
     "functions/sanitize/functions/markdown.surql",
@@ -81,7 +79,6 @@ functions = [
     "functions/sanitize/functions/remove_empty.surql",
     "functions/sanitize/functions/remove_multiple_spaces.surql",
     "functions/sanitize/functions/remove_newlines.surql",
-    "functions/sanitize/functions/remove_non_printable.surql",
     "functions/sanitize/functions/remove_tabs.surql",
     "functions/sanitize/functions/remove_tracking.surql",
     "functions/sanitize/functions/remove_unknown_keys.surql",

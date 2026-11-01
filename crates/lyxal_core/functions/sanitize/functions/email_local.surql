@@ -1,21 +1,29 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/sanitize/functions/email_local.surql
 -- Fonction : fn::sanitize_email_local
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Extrait la partie locale d'une adresse e-mail (avant « @ »), préfixe «
+-- mailto: » retiré.
+--
+-- Paramètres
+--   $value : any — valeur à nettoyer (chaîne, ou NONE)
+--
+-- Contrat sanitize (crates/lyxal_core/Readme.md)
+--   Valeur renvoyée : la partie locale
+--   Entrée          : NONE → NONE ; NULL ou mauvais type → THROW CORE_SANITIZE_INVALID_TYPE
+--
+-- Exemple
+--   LET $clean = fn::sanitize_email_local($params.email_local);
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_email_local($value:any,$field:string)->string{
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-
- LET $v=string::trim($value);
- LET $v=string::replace($v,<regex>"^mailto:","");
- RETURN string::split($v,"@")[0];
+DEFINE FUNCTION OVERWRITE fn::sanitize_email_local(
+    $value: any
+) -> option<string> {
+    IF $value IS NONE { RETURN NONE; };
+    IF !type::is_string($value) { THROW "CORE_SANITIZE_INVALID_TYPE"; };
+    RETURN string::split(string::replace(string::trim($value), <regex>"^mailto:", ""), "@")[0];
 }
-COMMENT "Extrait lexicalement la partie locale d'un email."
+COMMENT "Extrait la partie locale d'une adresse e-mail (avant « @ »), préfixe « mailto: » retiré. NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
 PERMISSIONS FULL;

@@ -1,40 +1,19 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE SANITIZE
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/sanitize/tests/trim.test.surql
--- Fonction     : fn::sanitize_trim
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::sanitize_trim (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: espaces périphériques
+RETURN fn::sanitize_trim("  Lyxal OS  ") == "Lyxal OS";
 
--- ============================================================================
--- TEST 1 — Espaces extérieurs
--- Résultat attendu : "Lyxal"
--- ============================================================================
-RETURN fn::sanitize_trim(
-    "   Lyxal   ",
-    "VALUE"
-);
+-- test: tabulations et retours
+RETURN fn::sanitize_trim("\t a \n") == "a";
 
--- ============================================================================
--- TEST 2 — Espaces internes conservés
--- Résultat attendu : "Lyxal OS"
--- ============================================================================
-RETURN fn::sanitize_trim(
-    "  Lyxal OS  ",
-    "VALUE"
-);
+-- test: entrée absente → NONE
+RETURN fn::sanitize_trim(NONE) == NONE;
 
--- ============================================================================
--- TEST 3 — Type invalide
--- Erreur attendue : VALUE_INVALID_TYPE
--- ============================================================================
-RETURN fn::sanitize_trim(
-    42,
-    "VALUE"
-);
+-- test: NULL refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_trim(NULL);
+
+-- test: mauvais type refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_trim(42);

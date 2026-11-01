@@ -63,3 +63,30 @@ IF !record::exists(error_definition:CORE_UNSUPPORTED_OPTION) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:CORE_SANITIZE_INVALID_TYPE) THEN (
+    CREATE error_definition:CORE_SANITIZE_INVALID_TYPE CONTENT {
+        code: "CORE_SANITIZE_INVALID_TYPE",
+        module: "core",
+        domain: "sanitize",
+        category: "internal",
+        severity: "error",
+        message: "A lyxal_core sanitize primitive received a value of the wrong type (or NULL)",
+        default_language: "en",
+        http_status: 500,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Type invalide transmis à une fonction sanitize",
+                description: "Une fonction fn::sanitize_* du Core a reçu une valeur NULL ou d'un type qu'elle ne sait pas transformer.",
+                resolution: "Valider la donnée avant de la nettoyer (fonctions fn::validation_*) : une fonction sanitize suppose une valeur du bon type, ou NONE."
+            },
+            en: {
+                label: "Invalid type passed to a sanitize function",
+                description: "A Core fn::sanitize_* function received a NULL value or a value of a type it cannot transform.",
+                resolution: "Validate the value before sanitizing it (fn::validation_* functions): a sanitize function expects a value of the right type, or NONE."
+            }
+        }
+    }
+) END;

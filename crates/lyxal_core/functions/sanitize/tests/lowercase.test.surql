@@ -1,31 +1,16 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE SANITIZE
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/sanitize/tests/lowercase.test.surql
--- Fonction     : fn::sanitize_lowercase
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::sanitize_lowercase (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: minuscules Unicode
+RETURN fn::sanitize_lowercase("ÉTÉ Lyxal") == "été lyxal";
 
--- ============================================================================
--- TEST 1 — Majuscules
--- Résultat attendu : "lyxal os"
--- ============================================================================
-RETURN fn::sanitize_lowercase(
-    "LYXAL OS",
-    "VALUE"
-);
+-- test: entrée absente → NONE
+RETURN fn::sanitize_lowercase(NONE) == NONE;
 
--- ============================================================================
--- TEST 2 — Accents
--- Résultat attendu : "équipe"
--- ============================================================================
-RETURN fn::sanitize_lowercase(
-    "ÉQUIPE",
-    "VALUE"
-);
+-- test: NULL refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_lowercase(NULL);
+
+-- test: mauvais type refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_lowercase(42);

@@ -1,20 +1,30 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/sanitize/functions/negative.surql
 -- Fonction : fn::sanitize_negative
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Extrait un nombre décimal d'une saisie texte (voir sanitize_decimal) et le
+-- rend négatif.
+--
+-- Paramètres
+--   $value : any — valeur à nettoyer (chaîne, ou NONE)
+--
+-- Contrat sanitize (crates/lyxal_core/Readme.md)
+--   Valeur renvoyée : le nombre précédé de « - » (chaîne vide si aucun chiffre)
+--   Entrée          : NONE → NONE ; NULL ou mauvais type → THROW CORE_SANITIZE_INVALID_TYPE
+--
+-- Exemple
+--   LET $clean = fn::sanitize_negative($params.negative);
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_negative($value:any,$field:string)->string{
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-
- LET $v=string::replace(fn::sanitize_decimal($value,$field),<regex>"^-","");
- RETURN IF $v=""{""}ELSE{string::concat("-",$v)};
+DEFINE FUNCTION OVERWRITE fn::sanitize_negative(
+    $value: any
+) -> option<string> {
+    IF $value IS NONE { RETURN NONE; };
+    IF !type::is_string($value) { THROW "CORE_SANITIZE_INVALID_TYPE"; };
+    LET $number = string::replace(fn::sanitize_decimal($value), <regex>"^-", "");
+    RETURN IF $number = "" { "" } ELSE { "-" + $number };
 }
-COMMENT "Force lexicalement une valeur numérique textuelle négative."
+COMMENT "Extrait un nombre décimal d'une saisie texte (voir sanitize_decimal) et le rend négatif. NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
 PERMISSIONS FULL;

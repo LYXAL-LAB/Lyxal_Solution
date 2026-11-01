@@ -1,24 +1,33 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/sanitize/functions/decimal.surql
 -- Fonction : fn::sanitize_decimal
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Extrait d'une saisie texte un nombre décimal : signe « - » initial
+-- conservé, virgule convertie en point, caractères non numériques supprimés,
+-- seul le premier point est conservé.
+--
+-- Paramètres
+--   $value : any — valeur à nettoyer (chaîne, ou NONE)
+--
+-- Contrat sanitize (crates/lyxal_core/Readme.md)
+--   Valeur renvoyée : le nombre décimal en texte (ex. « -1234.56 »)
+--   Entrée          : NONE → NONE ; NULL ou mauvais type → THROW CORE_SANITIZE_INVALID_TYPE
+--
+-- Exemple
+--   LET $clean = fn::sanitize_decimal($params.decimal);
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_decimal($value:any,$field:string)->string{
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-
- LET $v=string::trim($value);
- LET $sign=IF string::starts_with($v,"-"){"-"}ELSE{""};
- LET $v=string::replace($v,",",".");
- LET $v=string::replace($v,<regex>"[^0-9.]","");
- LET $parts=string::split($v,".");
- RETURN IF array::len($parts)<=1{string::concat($sign,$v)}ELSE{string::concat($sign,$parts[0],".",array::join(array::slice($parts,1,array::len($parts)),""))};
+DEFINE FUNCTION OVERWRITE fn::sanitize_decimal(
+    $value: any
+) -> option<string> {
+    IF $value IS NONE { RETURN NONE; };
+    IF !type::is_string($value) { THROW "CORE_SANITIZE_INVALID_TYPE"; };
+    LET $clean = string::trim($value);
+    LET $parts = string::split(string::replace(string::replace($clean, ",", "."), <regex>"[^0-9.]", ""), ".");
+    LET $number = IF array::len($parts) <= 1 { $parts[0] } ELSE { $parts[0] + "." + array::join(array::slice($parts, 1), "") };
+    RETURN IF string::starts_with($clean, "-") AND $number != "" { "-" + $number } ELSE { $number };
 }
-COMMENT "Normalise une représentation décimale avec un seul point."
+COMMENT "Extrait d'une saisie texte un nombre décimal : signe « - » initial conservé, virgule convertie en point, caractères non numériques supprimés, seul le premier point est conservé. NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
 PERMISSIONS FULL;

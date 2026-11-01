@@ -1,6 +1,19 @@
--- ============================================================================
--- TESTS — fn::sanitize_remove_newlines
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::sanitize_remove_newlines (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::sanitize_remove_newlines("Lyxal\nOS","VALUE"," ");
+-- test: trois formes de retour
+RETURN fn::sanitize_remove_newlines("a\r\nb\nc\rd", " ") == "a b c d";
+
+-- test: remplacement vide
+RETURN fn::sanitize_remove_newlines("a\nb", "") == "ab";
+
+-- test: entrée absente → NONE
+RETURN fn::sanitize_remove_newlines(NONE, " ") == NONE;
+
+-- test: NULL refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_remove_newlines(NULL, " ");
+
+-- test: mauvais type refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_remove_newlines(42, " ");

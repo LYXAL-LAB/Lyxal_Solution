@@ -87,7 +87,7 @@ Même principe : un résultat ou une valeur ; `THROW` uniquement pour un argumen
 | :--- | :--- |
 | `validation_json`, `validation_json_string`, `validation_json_array_string`, `validation_json_object_string` | Incompatibles avec le contrat Q1 : `encoding::json::decode` lève une erreur moteur sur un JSON invalide et SurrealDB 3.3.4 n'offre aucun moyen de le détecter sans lever. Le décodage JSON est un parsing, qui reste en Rust (§10) : le code Rust décode avec `serde_json` avant `call_fn`. Une primitive SurrealQL pourra être recréée si un module en exprime le besoin (§5.7.7). |
 
-### 4 ter. Suppressions `validations` en double (décision CTO du lot 3)
+### 4 ter. Suppressions et fusions de doublons (décisions CTO du lot 3)
 
 | Fonction supprimée | Fonction qui la couvre |
 | :--- | :--- |
@@ -99,6 +99,9 @@ Même principe : un résultat ou une valeur ; `THROW` uniquement pour un argumen
 | `validation_ipv4`, `validation_ipv6` | `validation_ip` avec la version `"ipv4"` ou `"ipv6"` |
 | `validation_job_name`, `validation_transition_name`, `validation_workflow_name`, `validation_workflow_step_name` | `validation_snake_case_name` (nouvelle fonction, même motif snake_case, validée par le CTO) |
 | `validation_surql_namespace`, `validation_surql_database`, `validation_surql_table`, `validation_surql_event` | `validation_identifier` (même motif `[A-Za-z_][A-Za-z0-9_]*`, bornes min/max) |
+| `sanitize_iso8601` | `sanitize_rfc3339` (code identique) |
+| `sanitize_iban`, `sanitize_bic` | `sanitize_alphanumeric_upper` (nouvelle fonction, code identique aux deux) |
+| `sanitize_remove_non_printable` | `sanitize_remove_control_chars` avec `$preserve_layout = true` |
 
 Raison : une responsabilité = un endroit (`.agents/AGENTS.md` §5.1). Aucun appelant.
 

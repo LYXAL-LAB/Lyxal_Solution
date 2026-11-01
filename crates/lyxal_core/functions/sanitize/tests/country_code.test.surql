@@ -1,6 +1,16 @@
--- ============================================================================
--- TESTS — fn::sanitize_country_code
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::sanitize_country_code (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::sanitize_country_code(" fr ","COUNTRY");
+-- test: lettres en majuscules
+RETURN fn::sanitize_country_code(" f.r ") == "FR";
+
+-- test: entrée absente → NONE
+RETURN fn::sanitize_country_code(NONE) == NONE;
+
+-- test: NULL refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_country_code(NULL);
+
+-- test: mauvais type refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_country_code(42);

@@ -1,32 +1,16 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE SANITIZE
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/sanitize/tests/collapse_whitespace.test.surql
--- Fonction     : fn::sanitize_collapse_whitespace
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::sanitize_collapse_whitespace (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: espaces mélangés
+RETURN fn::sanitize_collapse_whitespace("  a \t\n  b   c ") == "a b c";
 
--- ============================================================================
--- TEST 1 — Espaces multiples
--- Résultat attendu : "Lyxal OS"
--- ============================================================================
-RETURN fn::sanitize_collapse_whitespace(
-    "  Lyxal    OS  ",
-    "VALUE"
-);
+-- test: entrée absente → NONE
+RETURN fn::sanitize_collapse_whitespace(NONE) == NONE;
 
--- ============================================================================
--- TEST 2 — Tabulation et retour à la ligne
--- Résultat attendu : "Lyxal OS Core"
--- ============================================================================
-RETURN fn::sanitize_collapse_whitespace(
-    "Lyxal	OS
-Core",
-    "VALUE"
-);
+-- test: NULL refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_collapse_whitespace(NULL);
+
+-- test: mauvais type refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_collapse_whitespace(42);

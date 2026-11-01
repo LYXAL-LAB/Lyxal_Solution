@@ -1,31 +1,16 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE SANITIZE
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/sanitize/tests/title_case.test.surql
--- Fonction     : fn::sanitize_title_case
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::sanitize_title_case (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: chaque mot
+RETURN fn::sanitize_title_case("jean-pierre DE la fontaine") == "Jean-pierre De La Fontaine";
 
--- ============================================================================
--- TEST 1 — Phrase
--- Résultat attendu : "Lyxal Operating System"
--- ============================================================================
-RETURN fn::sanitize_title_case(
-    "LYXAL operating SYSTEM",
-    "VALUE"
-);
+-- test: entrée absente → NONE
+RETURN fn::sanitize_title_case(NONE) == NONE;
 
--- ============================================================================
--- TEST 2 — Plusieurs mots
--- Résultat attendu : "Jean Pierre"
--- ============================================================================
-RETURN fn::sanitize_title_case(
-    "jean pierre",
-    "VALUE"
-);
+-- test: NULL refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_title_case(NULL);
+
+-- test: mauvais type refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_title_case(42);

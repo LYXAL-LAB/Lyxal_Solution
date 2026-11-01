@@ -1,21 +1,35 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/sanitize/functions/calendar.surql
 -- Fonction : fn::sanitize_calendar
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Ramène un datetime au début de l'unité calendaire donnée (time::group).
+--
+-- Paramètres
+--   $value       : any — valeur à nettoyer (datetime, ou NONE)
+--   $granularity : string — "year", "month", "day", "hour", "minute" ou "second", insensible à la casse
+--
+-- Contrat sanitize (crates/lyxal_core/Readme.md)
+--   Valeur renvoyée : le datetime regroupé
+--   Entrée          : NONE → NONE ; NULL ou mauvais type → THROW CORE_SANITIZE_INVALID_TYPE
+--
+-- Erreurs de programmation (THROW)
+--   CORE_UNSUPPORTED_OPTION : unité inconnue
+--
+-- Exemple
+--   LET $month = fn::sanitize_calendar($params.at, "month");
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::sanitize_calendar(
-    $value: datetime,
+    $value: any,
     $granularity: string
-) -> datetime {
-    LET $g = string::lowercase(string::trim($granularity));
-    RETURN IF $g IN ["year","month","day","hour","minute","second"] {
-        time::group($value, $g)
-    } ELSE {
-        THROW "SANITIZE_INVALID_CALENDAR_GRANULARITY"
-    };
+) -> option<datetime> {
+    LET $unit = string::lowercase(string::trim($granularity));
+    IF $unit NOT IN ["year", "month", "day", "hour", "minute", "second"] { THROW "CORE_UNSUPPORTED_OPTION"; };
+    IF $value IS NONE { RETURN NONE; };
+    IF !type::is_datetime($value) { THROW "CORE_SANITIZE_INVALID_TYPE"; };
+    RETURN time::group($value, $unit);
 }
-COMMENT "Regroupe un datetime selon une granularité calendaire."
+COMMENT "Ramène un datetime au début de l'unité calendaire donnée (time::group). NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
 PERMISSIONS FULL;

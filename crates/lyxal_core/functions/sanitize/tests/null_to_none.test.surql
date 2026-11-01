@@ -1,8 +1,16 @@
--- ============================================================================
--- TESTS — fn::sanitize_null_to_none
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::sanitize_null_to_none (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::sanitize_null_to_none(
-    {name:NULL,age:1}
-);
+-- test: NULL remplacé
+RETURN fn::sanitize_null_to_none({ a: NULL, b: 1 }) == { a: NONE, b: 1 };
+
+-- test: entrée absente → NONE
+RETURN fn::sanitize_null_to_none(NONE) == NONE;
+
+-- test: NULL refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_null_to_none(NULL);
+
+-- test: mauvais type refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_null_to_none([1]);

@@ -1,96 +1,32 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/sanitize/functions/remove_control_chars.surql
--- Fonction     : fn::sanitize_remove_control_chars
--- Domaine      : Core / Sanitize / String
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/sanitize/functions/remove_control_chars.surql
+-- Fonction : fn::sanitize_remove_control_chars
 --
--- Description
--- -----------
--- Supprime les caractères de contrôle ASCII, avec conservation facultative des tabulations et retours à la ligne.
---
--- Règles appliquées
--- -----------------
---   1. Les plages U+0000–U+001F et U+007F sont visées.
---   2. Lorsque preserve_layout est vrai, TAB, LF et CR sont conservés.
---   3. Les caractères Unicode invisibles sont traités par sanitize_normalize_unicode.
+-- Retire les caractères de contrôle ASCII (U+0000 à U+001F et U+007F) ;
+-- tabulation, retour à la ligne et retour chariot sont conservés si demandé.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $preserve_layout: bool
+--   $value           : any — valeur à nettoyer (chaîne, ou NONE)
+--   $preserve_layout : bool — true pour conserver \t, \n et \r
 --
--- Valeur retournée
--- ----------------
--- Retourne une chaîne nettoyée.
+-- Contrat sanitize (crates/lyxal_core/Readme.md)
+--   Valeur renvoyée : la chaîne sans caractère de contrôle
+--   Entrée          : NONE → NONE ; NULL ou mauvais type → THROW CORE_SANITIZE_INVALID_TYPE
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Propriétés
--- -----------
---   - fonction pure ;
---   - aucune lecture ou écriture persistante ;
---   - aucun accès réseau ;
---   - aucune conversion implicite d'un type non textuel ;
---   - résultat déterministe pour une même entrée.
-
+-- Exemple
+--   LET $text = fn::sanitize_remove_control_chars($params.text, true);
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::sanitize_remove_control_chars(
     $value: any,
-    $field: string,
     $preserve_layout: bool
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat(
-            $clean_field,
-            "_NULL_NOT_ALLOWED"
-        );
-    };
-
-    IF !type::is_string($value) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_TYPE"
-        );
-    };
-
-    LET $pattern = IF $preserve_layout {
-        "[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]"
-    } ELSE {
-        "[\\x00-\\x1F\\x7F]"
-    };
-
-    RETURN string::replace(
-        $value,
-        <regex>$pattern,
-        ""
-    );
+) -> option<string> {
+    IF $value IS NONE { RETURN NONE; };
+    IF !type::is_string($value) { THROW "CORE_SANITIZE_INVALID_TYPE"; };
+    LET $pattern = IF $preserve_layout { "[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]" } ELSE { "[\\x00-\\x1F\\x7F]" };
+    RETURN string::replace($value, <regex>$pattern, "");
 }
-COMMENT "
-Supprime les caractères de contrôle ASCII avec conservation de mise en page
-facultative.
-"
+COMMENT "Retire les caractères de contrôle ASCII (U+0000 à U+001F et U+007F). NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
 PERMISSIONS FULL;

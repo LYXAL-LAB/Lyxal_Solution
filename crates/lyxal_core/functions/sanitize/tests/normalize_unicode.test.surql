@@ -1,43 +1,19 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE SANITIZE
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/sanitize/tests/normalize_unicode.test.surql
--- Fonction     : fn::sanitize_normalize_unicode
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::sanitize_normalize_unicode (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: espace insécable et invisible
+RETURN fn::sanitize_normalize_unicode("a\u00A0b\u200Bc", false) == "a bc";
 
--- ============================================================================
--- TEST 1 — Espace insécable
--- Résultat attendu : "Lyxal OS"
--- ============================================================================
-RETURN fn::sanitize_normalize_unicode(
-    "Lyxal OS",
-    "VALUE",
-    false
-);
+-- test: regroupement des espaces
+RETURN fn::sanitize_normalize_unicode(" a\u2003\u2003b ", true) == "a b";
 
--- ============================================================================
--- TEST 2 — Zero-width supprimé
--- Résultat attendu : "LyxalOS"
--- ============================================================================
-RETURN fn::sanitize_normalize_unicode(
-    "Lyxal​OS",
-    "VALUE",
-    false
-);
+-- test: entrée absente → NONE
+RETURN fn::sanitize_normalize_unicode(NONE, false) == NONE;
 
--- ============================================================================
--- TEST 3 — Espaces regroupés
--- Résultat attendu : "Lyxal OS Core"
--- ============================================================================
-RETURN fn::sanitize_normalize_unicode(
-    "  Lyxal  OS   Core  ",
-    "VALUE",
-    true
-);
+-- test: NULL refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_normalize_unicode(NULL, false);
+
+-- test: mauvais type refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_normalize_unicode(42, false);
