@@ -24,12 +24,12 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 777 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 773 fonctions déclarées)
 ├── Readme.md
 ├── AUDIT.md                 (document de reprise, supprimé en fin de reprise)
 ├── implementation_plan.md   (document de reprise, supprimé en fin de reprise)
 └── functions/
-    ├── validations/   functions/ (335) · tests/ (335)   fn::validation_*
+    ├── validations/   functions/ (331) · tests/ (331)   fn::validation_*
     ├── sanitize/      functions/ (170) · tests/ (170)   fn::sanitize_*
     ├── security/      functions/ (152) · tests/ (152)   fn::security_*
     └── utils/         functions/ (120) · tests/ (120)   fn::utils_*
@@ -135,7 +135,7 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 ## Tests
 
-* `scripts/ci/test_lyxal_core.py` charge les 777 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
+* `scripts/ci/test_lyxal_core.py` charge les 773 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
 * **Deux formats coexistent pendant la reprise** :
   * **format « assertions »** (fichiers commençant par `-- lyxal-test: assertions`) : chaque bloc `-- test:` contient une instruction qui doit renvoyer `true`, ou lever l'erreur annoncée par `-- attendu-erreur: <CODE>` ; tout écart fait échouer la CI (détails : `implementation_plan.md` §5) ;
   * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (94 fichiers aujourd'hui, ceux des fonctions migrées).
