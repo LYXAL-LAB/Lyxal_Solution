@@ -11,7 +11,6 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use surrealdb::sql::Thing;
 use tokio::{sync::RwLock, time::timeout};
 
 #[derive(Clone)]
@@ -175,7 +174,9 @@ impl RuntimeHandle {
             .start_order
             .iter()
             .filter_map(|id| self.inner.modules.get(id))
-            .fold(Router::new(), |router, module| router.merge(module.router()))
+            .fold(Router::new(), |router, module| {
+                router.merge(module.router())
+            })
     }
 
     pub async fn statuses(&self) -> Vec<ModuleStatus> {
@@ -186,10 +187,7 @@ impl RuntimeHandle {
             .filter_map(|id| {
                 self.inner.modules.get(id).map(|module| ModuleStatus {
                     descriptor: module.descriptor(),
-                    state: states
-                        .get(id)
-                        .copied()
-                        .unwrap_or(ModuleState::Discovered),
+                    state: states.get(id).copied().unwrap_or(ModuleState::Discovered),
                 })
             })
             .collect()
@@ -199,13 +197,18 @@ impl RuntimeHandle {
         let descriptor = module.descriptor();
         for migration in module.migrations() {
             let key = format!("{}:{}", descriptor.id, migration.id);
-            let existing: Option<Thing> = self
+            // Table absente au premier démarrage : aucune migration appliquée.
+            let existing: Option<surrealdb::types::Value> = match self
                 .inner
                 .context
                 .database
                 .select(("lyxal_module_migration", key.as_str()))
                 .await
-                .map_err(|error| ServerError::Database(error.to_string()))?;
+            {
+                Ok(record) => record,
+                Err(error) if error.is_not_found() => None,
+                Err(error) => return Err(ServerError::Database(error.to_string())),
+            };
 
             if existing.is_some() {
                 continue;
@@ -217,7 +220,7 @@ impl RuntimeHandle {
                 .query("BEGIN TRANSACTION;")
                 .query(&migration.query)
                 .query(
-                    "CREATE type::thing('lyxal_module_migration', $key) CONTENT {
+                    "CREATE type::record('lyxal_module_migration', $key) CONTENT {
                         module_id: $module_id,
                         migration_id: $migration_id,
                         checksum: $checksum,
@@ -230,6 +233,7 @@ impl RuntimeHandle {
                 .bind(("checksum", migration.checksum))
                 .query("COMMIT TRANSACTION;")
                 .await
+                .and_then(|response| response.check())
                 .map_err(|error| ServerError::Module {
                     module: descriptor.id.to_string(),
                     message: format!("migration échouée : {error}"),
@@ -366,13 +370,7 @@ fn topological_order(
     let mut output = Vec::new();
 
     for id in modules.keys() {
-        visit(
-            id,
-            modules,
-            &mut temporary,
-            &mut permanent,
-            &mut output,
-        )?;
+        visit(id, modules, &mut temporary, &mut permanent, &mut output)?;
     }
     Ok(output)
 }

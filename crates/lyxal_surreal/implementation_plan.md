@@ -1,6 +1,6 @@
 # Plan d'implémentation — Alignement du SDK Rust `surrealdb` sur SurrealDB 3.3.4
 
-> **Statut** : VALIDÉ PAR LE CTO (2026-11-01) — exécution en cours : **Lots 1 à 4 terminés**.
+> **Statut** : VALIDÉ PAR LE CTO (2026-11-01) — exécution en cours : **Lots 1 à 5 terminés** (workspace complet à nouveau compilable).
 > **Décisions CTO** : Q1 → SDK et serveur en 3.3.x (dernier patch) ; Q2 → `lyxal_error` dépend de `surrealdb-types` ; Q3 → requêtes directes de `lyxal_pipeline_ingestion` portées telles quelles, remplacées à la reprise du module.
 > **Module porteur** : `lyxal_surreal` (transport unique, §11.1).
 > **Impact** : transverse — tous les crates du workspace qui parlent à SurrealDB.
@@ -112,7 +112,7 @@ where T: SurrealValue + Send, P: SurrealValue + Send + 'static;
 | 2 ✅ | `lyxal_event` : modèles, DTO, `event_store`, moteur, tests. | `cargo test -p lyxal_event` |
 | 3 ✅ | `lyxal_runtime` : stores, verrous (`type::record`), migrations, santé, workers, tests. | `cargo test -p lyxal_runtime` |
 | 4 ✅ | `lyxal_pipeline_ingestion` : stockage, publisher, tests. | `cargo test -p lyxal_pipeline_ingestion` |
-| 5 | `apps/lyxal-server` : connexion, runtime, tests HTTP. | `cargo test -p lyxal-server` |
+| 5 ✅ | `apps/lyxal-server` : connexion, runtime, tests HTTP. | `cargo test -p lyxal-server` |
 | 6 | Preuve 3.3.4 : `cargo clippy --workspace --all-targets -D warnings` ; suite complète ; tests serveur (`ws://`) contre un `surreal start` 3.3.4 local ; `surreal validate` sur tous les `.surql` du workspace. Mise à jour des skills qui citent `surrealdb = "2.2"`. | Rapport de tests joint |
 
 Les écarts de comportement du moteur 3.3 révélés par les tests (C1) sont corrigés dans le lot du crate concerné et listés dans le rapport final.
@@ -199,4 +199,13 @@ Les écarts de comportement du moteur 3.3 révélés par les tests (C1) sont cor
 4. **Requêtes directes** (§11.5) : 12 `.query(...)` dans un module métier, à remplacer par des fonctions `fn::ingestion_*` (décision CTO Q3).
 5. **13 remarques `clippy`** préexistantes.
 6. **Documents historiques** (§0) : `CHANGELOG.md`, `ROADMAP.md`, `docs/*` (rapports de clôture et de recette), script `tests/run_ingestion_phase1_tests.ps1`.
+
+### Lot 5 — `apps/lyxal-server` (terminé)
+
+* `database.rs` : `signin(Root { String, String })`, sonde `Probe` en `SurrealValue`.
+* `runtime.rs` (migrations des modules hébergés) : `type::thing` → `type::record` ; `surrealdb::sql::Thing` supprimé (lecture en `Option<Value>`) ; au premier démarrage la table `lyxal_module_migration` n'existe pas encore, ce qui est une erreur en 3.x : traité par `is_not_found()` (aucune migration appliquée).
+* **Erreur masquée supprimée (§11.4)** : la réponse de la transaction de migration (`BEGIN … migration … CREATE … COMMIT`) n'était jamais vérifiée — une migration en échec était considérée comme appliquée. Ajout de `response.check()`.
+* **Workspace** : `cargo check --workspace --all-targets` passe (seul avertissement restant : imports inutilisés préexistants dans `tests/runtime_graph.rs`). Plus aucun chemin `surrealdb::sql`, `type::thing`, `type::is::`, `FLEXIBLE TYPE` ni `#[serde(alias)]` dans le code Rust du workspace.
+* **Résultats** : `cargo test -p lyxal-server` → 3 tests OK (dont le test HTTP de bout en bout qui démarre l'hôte avec le module d'ingestion et exécute ses migrations).
+* **Suite complète du workspace** (crate par crate, binaires 3.3.4 local et serveur de recette sur le port 8001) : `lyxal_error` 21, `lyxal_surreal` 16 (+1 ignoré), `lyxal_crypto` 76 (+2 ignorés, non concerné par la migration), `lyxal_event` 80 (+1 ignoré), `lyxal_runtime` 189, `lyxal_pipeline_ingestion` 69, `lyxal-server` 3 → **454 tests OK, 0 échec**. Les tests ignorés de `lyxal_surreal` (connexion `ws://` distante) et de `lyxal_event` (charge 1 000 événements) ont été exécutés à part avec succès aux lots 1 et 2.
 

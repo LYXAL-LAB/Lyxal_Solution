@@ -1,16 +1,16 @@
 use crate::{config::DatabaseConfig, error::ServerError};
-use serde::Deserialize;
 use std::{sync::Arc, time::Duration};
 use surrealdb::{
-    Surreal,
-    engine::any::{Any, connect},
+    engine::any::{connect, Any},
     opt::auth::Root,
+    types::SurrealValue,
+    Surreal,
 };
 use tokio::time::timeout;
 
 pub type Database = Arc<Surreal<Any>>;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, SurrealValue)]
 struct Probe {
     ok: bool,
 }
@@ -27,8 +27,8 @@ pub async fn connect_database(config: &DatabaseConfig) -> Result<Database, Serve
     if let (Some(username), Some(password)) = (&config.username, &config.password) {
         client
             .signin(Root {
-                username: username.as_str(),
-                password: password.as_str(),
+                username: username.clone(),
+                password: password.clone(),
             })
             .await
             .map_err(|error| ServerError::Database(error.to_string()))?;

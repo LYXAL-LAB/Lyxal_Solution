@@ -30,10 +30,11 @@ impl IngestionServerModule {
                 name: "Lyxal Pipeline Ingestion".into(),
                 version: "0.1.0".into(),
                 api_version: 1,
-                description: "Moteur d'ingestion, normalisation et qualification des catalogues fabricants".into(),
-                dependencies: vec![
-                    ModuleId::new("lyxal-system").unwrap_or_else(|e| panic!("id system invalide: {e}")),
-                ],
+                description:
+                    "Moteur d'ingestion, normalisation et qualification des catalogues fabricants"
+                        .into(),
+                dependencies: vec![ModuleId::new("lyxal-system")
+                    .unwrap_or_else(|e| panic!("id system invalide: {e}"))],
                 required: false,
             },
             store: Arc::new(Mutex::new(None)),
@@ -55,10 +56,11 @@ impl LyxalModule for IngestionServerModule {
 
     async fn install(&self, context: &ModuleContext) -> Result<(), ServerError> {
         let store = IngestionStore::new(context.database.as_ref().clone());
-        store
-            .init_schema()
-            .await
-            .map_err(|e| ServerError::Runtime(format!("Échec de l'initialisation du schéma ingestion: {e}")))?;
+        store.init_schema().await.map_err(|e| {
+            ServerError::Runtime(format!(
+                "Échec de l'initialisation du schéma ingestion: {e}"
+            ))
+        })?;
 
         let mut lock = self.store.lock().await;
         *lock = Some(store);

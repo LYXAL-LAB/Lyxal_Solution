@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::sync::{
-    Arc,
     atomic::{AtomicU64, Ordering},
+    Arc,
 };
 use std::time::Instant;
 
@@ -44,11 +44,15 @@ impl Default for Metrics {
 impl Metrics {
     pub fn request_started(&self) {
         self.inner.requests_total.fetch_add(1, Ordering::Relaxed);
-        self.inner.requests_in_flight.fetch_add(1, Ordering::Relaxed);
+        self.inner
+            .requests_in_flight
+            .fetch_add(1, Ordering::Relaxed);
     }
 
     pub fn request_finished(&self, failed: bool) {
-        self.inner.requests_in_flight.fetch_sub(1, Ordering::Relaxed);
+        self.inner
+            .requests_in_flight
+            .fetch_sub(1, Ordering::Relaxed);
         if failed {
             self.inner.requests_failed.fetch_add(1, Ordering::Relaxed);
         }

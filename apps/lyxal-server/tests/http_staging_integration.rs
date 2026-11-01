@@ -25,10 +25,11 @@ use surrealdb::engine::any::connect;
 #[tokio::test]
 async fn test_http_server_endpoints_and_ingestion_module() {
     // 1. Initialisation de la base in-memory pour le test HTTP de l'hôte
-    let db = connect("mem://")
+    let db = connect("mem://").await.expect("Connexion DB test");
+    db.use_ns("lyxal_test")
+        .use_db("system_test")
         .await
-        .expect("Connexion DB test");
-    db.use_ns("lyxal_test").use_db("system_test").await.expect("Use NS/DB");
+        .expect("Use NS/DB");
 
     let database = Arc::new(db);
     let health = HealthRegistry::default();
@@ -93,42 +94,63 @@ async fn test_http_server_endpoints_and_ingestion_module() {
     // 2. Compilation et démarrage du runtime hôte avec IngestionServerModule
     let modules = compiled_modules(&config);
     assert!(
-        modules.iter().any(|m| m.descriptor().id.as_str() == "lyxal-pipeline-ingestion"),
+        modules
+            .iter()
+            .any(|m| m.descriptor().id.as_str() == "lyxal-pipeline-ingestion"),
         "Le module lyxal-pipeline-ingestion doit être présent dans les modules compilés"
     );
 
-    let runtime = RuntimeHandle::build(modules, &config.modules, config.runtime.clone(), module_context)
-        .expect("Construction du runtime");
-    runtime.install_and_start().await.expect("Démarrage des modules hôtes");
+    let runtime = RuntimeHandle::build(
+        modules,
+        &config.modules,
+        config.runtime.clone(),
+        module_context,
+    )
+    .expect("Construction du runtime");
+    runtime
+        .install_and_start()
+        .await
+        .expect("Démarrage des modules hôtes");
 
-    let context = AppContext::new(
-        config.clone(),
-        database,
-        health,
-        metrics,
-        runtime.clone(),
-    );
+    let context = AppContext::new(config.clone(), database, health, metrics, runtime.clone());
 
     let router = build_router(context).expect("Construction du routeur Axum");
 
     // 3. Test GET /live
     let req_live = Request::builder().uri("/live").body(Body::empty()).unwrap();
-    let resp_live = tower::ServiceExt::oneshot(router.clone(), req_live).await.unwrap();
+    let resp_live = tower::ServiceExt::oneshot(router.clone(), req_live)
+        .await
+        .unwrap();
     assert_eq!(resp_live.status(), StatusCode::NO_CONTENT);
 
     // 4. Test GET /ready
-    let req_ready = Request::builder().uri("/ready").body(Body::empty()).unwrap();
-    let resp_ready = tower::ServiceExt::oneshot(router.clone(), req_ready).await.unwrap();
+    let req_ready = Request::builder()
+        .uri("/ready")
+        .body(Body::empty())
+        .unwrap();
+    let resp_ready = tower::ServiceExt::oneshot(router.clone(), req_ready)
+        .await
+        .unwrap();
     assert_eq!(resp_ready.status(), StatusCode::NO_CONTENT);
 
     // 5. Test GET /health
-    let req_health = Request::builder().uri("/health").body(Body::empty()).unwrap();
-    let resp_health = tower::ServiceExt::oneshot(router.clone(), req_health).await.unwrap();
+    let req_health = Request::builder()
+        .uri("/health")
+        .body(Body::empty())
+        .unwrap();
+    let resp_health = tower::ServiceExt::oneshot(router.clone(), req_health)
+        .await
+        .unwrap();
     assert_eq!(resp_health.status(), StatusCode::OK);
 
     // 6. Test GET /api/v1/system/modules
-    let req_mods = Request::builder().uri("/api/v1/system/modules").body(Body::empty()).unwrap();
-    let resp_mods = tower::ServiceExt::oneshot(router.clone(), req_mods).await.unwrap();
+    let req_mods = Request::builder()
+        .uri("/api/v1/system/modules")
+        .body(Body::empty())
+        .unwrap();
+    let resp_mods = tower::ServiceExt::oneshot(router.clone(), req_mods)
+        .await
+        .unwrap();
     assert_eq!(resp_mods.status(), StatusCode::OK);
 
     let body_bytes = to_bytes(resp_mods.into_body(), 1024 * 1024).await.unwrap();
