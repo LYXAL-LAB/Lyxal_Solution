@@ -7,6 +7,7 @@ description = "Modèles d'erreurs métiers et contrats de résultats purs pour l
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+surrealdb-types = { workspace = true }
 thiserror = "1.0"
 axum = { version = "0.7", optional = true }
 

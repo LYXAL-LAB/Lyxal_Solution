@@ -1,26 +1,51 @@
 use lyxal_error::LyxalResult;
-use serde::Deserialize;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::time::Duration;
+use surrealdb_types::{SurrealValue, Value};
 
 static NEXT_PORT: AtomicU16 = AtomicU16::new(18400);
 static TEST_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
-pub struct Surreal320 {
+/// Binaire `surreal` utilisé par les tests : `LYXAL_SURREAL_BIN`, à défaut `surreal` dans le `PATH`.
+fn surreal_bin() -> String {
+    std::env::var("LYXAL_SURREAL_BIN").unwrap_or_else(|_| "surreal".to_owned())
+}
+
+/// Convertit la sortie JSON du client `surreal sql` en valeur SurrealDB, `null` devenant `NONE`.
+///
+/// Les contrats `fn::result_ok` / `fn::error_result` utilisent `NONE` pour un champ absent ;
+/// la sortie JSON du client ne distingue pas `NONE` de `NULL`.
+fn to_surreal(raw: serde_json::Value) -> Value {
+    match raw {
+        serde_json::Value::Null => Value::None,
+        serde_json::Value::Object(map) => {
+            let mut obj = surrealdb_types::Object::new();
+            for (k, v) in map {
+                obj.insert(k, to_surreal(v));
+            }
+            Value::Object(obj)
+        }
+        serde_json::Value::Array(items) => Value::Array(surrealdb_types::Array::from(
+            items.into_iter().map(to_surreal).collect::<Vec<_>>(),
+        )),
+        other => other.into_value(),
+    }
+}
+
+pub struct SurrealServer {
     child: Child,
     pub port: u16,
     _guard: std::sync::MutexGuard<'static, ()>,
 }
 
-impl Surreal320 {
+impl SurrealServer {
     pub fn start() -> Self {
         let guard = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
         let port = NEXT_PORT.fetch_add(1, Ordering::SeqCst);
-        let surreal_bin = "c:\\Users\\HP\\Desktop\\Lyxal_OS\\surreal.exe";
-        let child = Command::new(surreal_bin)
+        let child = Command::new(surreal_bin())
             .args([
                 "start",
                 "--bind",
@@ -34,7 +59,9 @@ impl Surreal320 {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
-            .expect("Failed to spawn surreal.exe 3.2.0");
+            .expect(
+                "Impossible de lancer `surreal` (définir LYXAL_SURREAL_BIN ou l'ajouter au PATH)",
+            );
 
         let start_time = std::time::Instant::now();
         let mut ready = false;
@@ -47,7 +74,7 @@ impl Surreal320 {
             std::thread::sleep(Duration::from_millis(50));
         }
         if !ready {
-            panic!("SurrealDB 3.2.0 failed to bind to port {} within 10s", port);
+            panic!("SurrealDB failed to bind to port {} within 10s", port);
         }
         std::thread::sleep(Duration::from_millis(200));
 
@@ -59,9 +86,8 @@ impl Surreal320 {
     }
 
     pub fn execute_raw(&self, surql: &str) -> Vec<serde_json::Value> {
-        let surreal_bin = "c:\\Users\\HP\\Desktop\\Lyxal_OS\\surreal.exe";
         let endpoint = format!("http://127.0.0.1:{}", self.port);
-        let mut cmd = Command::new(surreal_bin)
+        let mut cmd = Command::new(surreal_bin())
             .args([
                 "sql",
                 "--endpoint",
@@ -84,7 +110,9 @@ impl Surreal320 {
             .expect("Spawn surreal sql client");
 
         if let Some(mut stdin) = cmd.stdin.take() {
-            stdin.write_all(surql.as_bytes()).expect("Write SQL to stdin");
+            stdin
+                .write_all(surql.as_bytes())
+                .expect("Write SQL to stdin");
         }
         let output = cmd.wait_with_output().expect("Execute surreal sql");
         let stdout_str = String::from_utf8_lossy(&output.stdout);
@@ -101,14 +129,17 @@ impl Surreal320 {
         results
     }
 
-    pub fn query_lyxal_result<T: serde::de::DeserializeOwned>(&self, surql: &str) -> LyxalResult<T> {
+    pub fn query_lyxal_result<T: SurrealValue>(&self, surql: &str) -> LyxalResult<T> {
         let results = self.execute_raw(surql);
         let last_val = results.last().cloned().unwrap_or(serde_json::Value::Null);
 
         let item = if let Some(arr) = last_val.as_array() {
             if let Some(first) = arr.first() {
                 if let Some(inner_arr) = first.as_array() {
-                    inner_arr.first().cloned().unwrap_or(serde_json::Value::Null)
+                    inner_arr
+                        .first()
+                        .cloned()
+                        .unwrap_or(serde_json::Value::Null)
                 } else {
                     first.clone()
                 }
@@ -119,7 +150,7 @@ impl Surreal320 {
             last_val
         };
 
-        serde_json::from_value(item.clone()).unwrap_or_else(|e| {
+        LyxalResult::<T>::from_value(to_surreal(item.clone())).unwrap_or_else(|e| {
             panic!(
                 "Failed to deserialize LyxalResult: {:?}\nExtracted item: {:?}\nRaw results: {:?}",
                 e, item, results
@@ -142,66 +173,71 @@ impl Surreal320 {
     }
 }
 
-impl Drop for Surreal320 {
+impl Drop for SurrealServer {
     fn drop(&mut self) {
         let _ = self.child.kill();
     }
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, SurrealValue)]
+#[surreal(crate = "surrealdb_types")]
 struct DefinitionData {
     code: String,
-    #[serde(default)]
+    #[surreal(default)]
     category: Option<String>,
-    #[serde(default)]
+    #[surreal(default)]
     severity: Option<String>,
-    #[serde(default)]
+    #[surreal(default)]
     http_status: Option<u16>,
-    #[serde(default)]
+    #[surreal(default)]
     enabled: Option<bool>,
-    #[serde(default)]
+    #[surreal(default)]
     retryable: Option<bool>,
-    #[serde(default)]
+    #[surreal(default)]
     log_occurrence: Option<bool>,
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, SurrealValue)]
+#[surreal(crate = "surrealdb_types")]
 struct DisableResult {
     disabled: bool,
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, SurrealValue)]
+#[surreal(crate = "surrealdb_types")]
 struct MappingData {
     provider: String,
-    #[serde(default)]
+    #[surreal(default)]
     external_code: Option<String>,
-    #[serde(default)]
+    #[surreal(default)]
     service: Option<String>,
-    #[serde(default)]
+    #[surreal(default)]
     enabled: Option<bool>,
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, SurrealValue)]
+#[surreal(crate = "surrealdb_types")]
 struct OccurrenceData {
     code: String,
     source_module: String,
-    #[serde(default)]
+    #[surreal(default)]
     operation: Option<String>,
 }
 
 #[allow(dead_code)]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, SurrealValue)]
+#[surreal(crate = "surrealdb_types")]
 struct PurgeData {
     purged: bool,
     count: usize,
 }
 
-fn setup_db() -> Surreal320 {
-    let db = Surreal320::start();
+fn setup_db() -> SurrealServer {
+    let db = SurrealServer::start();
 
     let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("manifest.toml");
     let content = std::fs::read_to_string(&manifest_path).expect("Read manifest.toml");
@@ -241,8 +277,8 @@ fn test_surreal_bootstrap_and_migration_idempotence() {
     assert_eq!(defs.len(), 3, "Expected canonical error definitions");
 
     // Reapply migration multiple times to verify strict idempotence
-    let migration_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("migrations/0001_initial_schema.surql");
+    let migration_path =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("migrations/0001_initial_schema.surql");
     let migration_surql = std::fs::read_to_string(migration_path).unwrap();
 
     let mig_res1 = db.query_val(&migration_surql);
@@ -252,23 +288,28 @@ fn test_surreal_bootstrap_and_migration_idempotence() {
     assert_eq!(mig_res2["status"], "APPLIED");
 
     // Verify replaying error_definitions.surql and seeds/error_mappings.surql doesn't fail or duplicate
-    let err_defs_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("error/error_definitions.surql");
+    let err_defs_path =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("error/error_definitions.surql");
     let err_defs_surql = std::fs::read_to_string(err_defs_path).unwrap();
     db.execute_raw(&err_defs_surql);
 
-    let seeds_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("seeds/error_mappings.surql");
+    let seeds_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("seeds/error_mappings.surql");
     let seeds_surql = std::fs::read_to_string(seeds_path).unwrap();
     db.execute_raw(&seeds_surql);
 
     // Verify count of error_definition is exactly 6 (no duplicates!)
     let count_val = db.query_val("SELECT count() FROM error_definition GROUP ALL;");
-    assert_eq!(count_val[0]["count"], 6, "Expected exactly 6 definitions without duplicate");
+    assert_eq!(
+        count_val[0]["count"], 6,
+        "Expected exactly 6 definitions without duplicate"
+    );
 
     // Verify count of error_external_mapping is exactly 2 (no duplicates!)
     let map_count_val = db.query_val("SELECT count() FROM error_external_mapping GROUP ALL;");
-    assert_eq!(map_count_val[0]["count"], 2, "Expected exactly 2 mappings without duplicate");
+    assert_eq!(
+        map_count_val[0]["count"], 2,
+        "Expected exactly 2 mappings without duplicate"
+    );
 }
 
 #[test]
@@ -276,13 +317,14 @@ fn test_surreal_primitives_result_ok_and_error_result() {
     let db = setup_db();
 
     // Test fn::result_ok
-    let res: LyxalResult<String> = db.query_lyxal_result("RETURN fn::result_ok('success_payload');");
+    let res: LyxalResult<String> =
+        db.query_lyxal_result("RETURN fn::result_ok('success_payload');");
     assert!(res.ok);
     assert_eq!(res.into_result("test").unwrap(), "success_payload");
 
     // Test fn::error_result with known code and French translation
     let err_res: LyxalResult<serde_json::Value> = db.query_lyxal_result(
-        "RETURN fn::error_result('ERROR_PARAM_REQUIRED', 'fr', { field: 'username' });"
+        "RETURN fn::error_result('ERROR_PARAM_REQUIRED', 'fr', { field: 'username' });",
     );
     assert!(!err_res.ok);
     let err = err_res.into_result("test").unwrap_err();
@@ -299,7 +341,7 @@ fn test_surreal_primitives_result_ok_and_error_result() {
 
     // Test fn::error_result with unknown code -> resolves with unknown code details
     let fallback_res: LyxalResult<serde_json::Value> = db.query_lyxal_result(
-        "RETURN fn::error_result('UNKNOWN_CODE_12345', 'fr', { context: 'test' });"
+        "RETURN fn::error_result('UNKNOWN_CODE_12345', 'fr', { context: 'test' });",
     );
     assert!(!fallback_res.ok);
     let fallback_err = fallback_res.into_result("test").unwrap_err();
@@ -337,7 +379,7 @@ fn test_surreal_error_definition_lifecycle() {
                 documentation: { url: "https://docs.lyxal.dev/errors/TEST_CUSTOM_ERR" },
                 metadata: { tag: "integration_320" }
             });
-        "#
+        "#,
     );
     assert!(create_res.ok);
     let created = create_res.into_result("create").unwrap();
@@ -347,7 +389,10 @@ fn test_surreal_error_definition_lifecycle() {
 
     // Verify persisted record has documentation and metadata
     let verify_rec = db.query_val("SELECT * FROM error_definition WHERE code = 'TEST_CUSTOM_ERR';");
-    assert_eq!(verify_rec[0]["documentation"]["url"], "https://docs.lyxal.dev/errors/TEST_CUSTOM_ERR");
+    assert_eq!(
+        verify_rec[0]["documentation"]["url"],
+        "https://docs.lyxal.dev/errors/TEST_CUSTOM_ERR"
+    );
     assert_eq!(verify_rec[0]["metadata"]["tag"], "integration_320");
 
     // 2. Duplicate creation rejects
@@ -358,7 +403,7 @@ fn test_surreal_error_definition_lifecycle() {
                 module: "test",
                 message: "Duplicate"
             });
-        "#
+        "#,
     );
     assert!(!dup_res.ok);
     let dup_err = dup_res.into_result("create").unwrap_err();
@@ -370,22 +415,31 @@ fn test_surreal_error_definition_lifecycle() {
     assert!(get_res.ok);
     assert_eq!(get_res.into_result("get").unwrap().code, "TEST_CUSTOM_ERR");
 
-    let get_res_alt: LyxalResult<DefinitionData> =
-        db.query_lyxal_result("RETURN fn::error_definition_get({ code_or_id: 'TEST_CUSTOM_ERR' });");
+    let get_res_alt: LyxalResult<DefinitionData> = db
+        .query_lyxal_result("RETURN fn::error_definition_get({ code_or_id: 'TEST_CUSTOM_ERR' });");
     assert!(get_res_alt.ok);
-    assert_eq!(get_res_alt.into_result("get_alt").unwrap().code, "TEST_CUSTOM_ERR");
+    assert_eq!(
+        get_res_alt.into_result("get_alt").unwrap().code,
+        "TEST_CUSTOM_ERR"
+    );
 
     // 4. Missing param in get rejects with ERROR_PARAM_REQUIRED
     let get_missing: LyxalResult<DefinitionData> =
         db.query_lyxal_result("RETURN fn::error_definition_get({});");
     assert!(!get_missing.ok);
-    assert!(get_missing.into_result("get_missing").unwrap_err().is_business_code("ERROR_PARAM_REQUIRED"));
+    assert!(get_missing
+        .into_result("get_missing")
+        .unwrap_err()
+        .is_business_code("ERROR_PARAM_REQUIRED"));
 
     // 5. Inexistent code in get rejects with ERROR_DEFINITION_NOT_FOUND
     let get_inexistent: LyxalResult<DefinitionData> =
         db.query_lyxal_result("RETURN fn::error_definition_get({ code: 'INEXISTENT_ERROR_XYZ' });");
     assert!(!get_inexistent.ok);
-    assert!(get_inexistent.into_result("get_inexistent").unwrap_err().is_business_code("ERROR_DEFINITION_NOT_FOUND"));
+    assert!(get_inexistent
+        .into_result("get_inexistent")
+        .unwrap_err()
+        .is_business_code("ERROR_DEFINITION_NOT_FOUND"));
 
     // 6. Update with metadata and retryable
     let upd_res: LyxalResult<DefinitionData> = db.query_lyxal_result(
@@ -397,7 +451,7 @@ fn test_surreal_error_definition_lifecycle() {
                 retryable: false,
                 metadata: { tag: "updated_320" }
             });
-        "#
+        "#,
     );
     assert!(upd_res.ok);
     let updated = upd_res.into_result("update").unwrap();
@@ -406,8 +460,9 @@ fn test_surreal_error_definition_lifecycle() {
     assert_eq!(updated.retryable, Some(false));
 
     // 7. List definitions before disable (must contain TEST_CUSTOM_ERR and filter by severity)
-    let list_res: LyxalResult<Vec<DefinitionData>> =
-        db.query_lyxal_result("RETURN fn::error_definition_list({ category: 'business', severity: 'error' });");
+    let list_res: LyxalResult<Vec<DefinitionData>> = db.query_lyxal_result(
+        "RETURN fn::error_definition_list({ category: 'business', severity: 'error' });",
+    );
     assert!(list_res.ok);
     let items = list_res.into_result("list").unwrap();
     assert!(items.iter().any(|i| i.code == "TEST_CUSTOM_ERR"));
@@ -416,13 +471,20 @@ fn test_surreal_error_definition_lifecycle() {
     let dis_missing: LyxalResult<DisableResult> =
         db.query_lyxal_result("RETURN fn::error_definition_disable({});");
     assert!(!dis_missing.ok);
-    assert!(dis_missing.into_result("dis_missing").unwrap_err().is_business_code("ERROR_PARAM_REQUIRED"));
+    assert!(dis_missing
+        .into_result("dis_missing")
+        .unwrap_err()
+        .is_business_code("ERROR_PARAM_REQUIRED"));
 
     // 9. Inexistent code in disable rejects with ERROR_DEFINITION_NOT_FOUND
-    let dis_inexistent: LyxalResult<DisableResult> =
-        db.query_lyxal_result("RETURN fn::error_definition_disable({ code: 'INEXISTENT_CODE_XYZ' });");
+    let dis_inexistent: LyxalResult<DisableResult> = db.query_lyxal_result(
+        "RETURN fn::error_definition_disable({ code: 'INEXISTENT_CODE_XYZ' });",
+    );
     assert!(!dis_inexistent.ok);
-    assert!(dis_inexistent.into_result("dis_inexistent").unwrap_err().is_business_code("ERROR_DEFINITION_NOT_FOUND"));
+    assert!(dis_inexistent
+        .into_result("dis_inexistent")
+        .unwrap_err()
+        .is_business_code("ERROR_DEFINITION_NOT_FOUND"));
 
     // 10. Disable definition with valid object
     let dis_res: LyxalResult<DisableResult> =
@@ -431,9 +493,13 @@ fn test_surreal_error_definition_lifecycle() {
     assert!(dis_res.into_result("disable").unwrap().disabled);
 
     // 11. Physical data preservation verification (record still exists with enabled: false)
-    let phys_check = db.query_val("SELECT code, enabled FROM error_definition WHERE code = 'TEST_CUSTOM_ERR';");
+    let phys_check =
+        db.query_val("SELECT code, enabled FROM error_definition WHERE code = 'TEST_CUSTOM_ERR';");
     assert_eq!(phys_check[0]["code"], "TEST_CUSTOM_ERR");
-    assert_eq!(phys_check[0]["enabled"], false, "Record must be logically disabled");
+    assert_eq!(
+        phys_check[0]["enabled"], false,
+        "Record must be logically disabled"
+    );
 
     // 12. List definitions after disable (must be excluded from default enabled_only list)
     let list_after: LyxalResult<Vec<DefinitionData>> =
@@ -460,7 +526,7 @@ fn test_surreal_error_mapping_and_resolution() {
                 priority: 10,
                 description: "Paiement refusé"
             });
-        "#
+        "#,
     );
     assert!(map_res.ok);
     let created = map_res.into_result("create_mapping").unwrap();
@@ -475,7 +541,7 @@ fn test_surreal_error_mapping_and_resolution() {
                 service: "checkout",
                 external_code: "card_declined"
             });
-        "#
+        "#,
     );
     assert!(match_res.ok);
     let matched_opt = match_res.into_result("map_ext").unwrap();
@@ -491,7 +557,7 @@ fn test_surreal_error_mapping_and_resolution() {
                 provider: "stripe",
                 external_code: "unknown_weird_error_491823"
             });
-        "#
+        "#,
     );
     assert!(unknown_res.ok);
     assert!(unknown_res.into_result("map_ext").unwrap().is_none());
@@ -502,41 +568,61 @@ fn test_surreal_error_mapping_and_resolution() {
             RETURN fn::error_map_external({
                 external_code: "card_declined"
             });
-        "#
+        "#,
     );
     assert!(!missing_res.ok);
-    assert!(missing_res.into_result("map_ext").unwrap_err().is_business_code("ERROR_PARAM_REQUIRED"));
+    assert!(missing_res
+        .into_result("map_ext")
+        .unwrap_err()
+        .is_business_code("ERROR_PARAM_REQUIRED"));
 
     // 5. Get mapping by object params
     let map_get_res: LyxalResult<MappingData> = db.query_lyxal_result(
         "RETURN fn::error_mapping_get({ id: (SELECT VALUE id FROM error_external_mapping WHERE provider = 'stripe' LIMIT 1)[0] });"
     );
     assert!(map_get_res.ok);
-    assert_eq!(map_get_res.into_result("map_get").unwrap().provider, "stripe");
+    assert_eq!(
+        map_get_res.into_result("map_get").unwrap().provider,
+        "stripe"
+    );
 
     // 6. Missing param in mapping get rejects
     let map_get_missing: LyxalResult<MappingData> =
         db.query_lyxal_result("RETURN fn::error_mapping_get({});");
     assert!(!map_get_missing.ok);
-    assert!(map_get_missing.into_result("map_get_missing").unwrap_err().is_business_code("ERROR_PARAM_REQUIRED"));
+    assert!(map_get_missing
+        .into_result("map_get_missing")
+        .unwrap_err()
+        .is_business_code("ERROR_PARAM_REQUIRED"));
 
     // 7. Inexistent ID in mapping get rejects
-    let map_get_inexistent: LyxalResult<MappingData> =
-        db.query_lyxal_result("RETURN fn::error_mapping_get({ mapping_id: 'error_external_mapping:nonexistent' });");
+    let map_get_inexistent: LyxalResult<MappingData> = db.query_lyxal_result(
+        "RETURN fn::error_mapping_get({ mapping_id: 'error_external_mapping:nonexistent' });",
+    );
     assert!(!map_get_inexistent.ok);
-    assert!(map_get_inexistent.into_result("map_get_inexistent").unwrap_err().is_business_code("ERROR_MAPPING_NOT_FOUND"));
+    assert!(map_get_inexistent
+        .into_result("map_get_inexistent")
+        .unwrap_err()
+        .is_business_code("ERROR_MAPPING_NOT_FOUND"));
 
     // 8. Missing param in mapping disable rejects
     let map_dis_missing: LyxalResult<DisableResult> =
         db.query_lyxal_result("RETURN fn::error_mapping_disable({});");
     assert!(!map_dis_missing.ok);
-    assert!(map_dis_missing.into_result("map_dis_missing").unwrap_err().is_business_code("ERROR_PARAM_REQUIRED"));
+    assert!(map_dis_missing
+        .into_result("map_dis_missing")
+        .unwrap_err()
+        .is_business_code("ERROR_PARAM_REQUIRED"));
 
     // 9. Inexistent ID in mapping disable rejects
-    let map_dis_inexistent: LyxalResult<DisableResult> =
-        db.query_lyxal_result("RETURN fn::error_mapping_disable({ id: 'error_external_mapping:nonexistent' });");
+    let map_dis_inexistent: LyxalResult<DisableResult> = db.query_lyxal_result(
+        "RETURN fn::error_mapping_disable({ id: 'error_external_mapping:nonexistent' });",
+    );
     assert!(!map_dis_inexistent.ok);
-    assert!(map_dis_inexistent.into_result("map_dis_inexistent").unwrap_err().is_business_code("ERROR_MAPPING_NOT_FOUND"));
+    assert!(map_dis_inexistent
+        .into_result("map_dis_inexistent")
+        .unwrap_err()
+        .is_business_code("ERROR_MAPPING_NOT_FOUND"));
 
     // 10. Disable mapping with valid object
     let dis_res: LyxalResult<DisableResult> = db.query_lyxal_result(
@@ -560,7 +646,7 @@ fn test_surreal_error_occurrence_logging_and_purging() {
                 technical_message: "Validation field email missing",
                 environment: "test"
             });
-        "#
+        "#,
     );
     assert!(log_res.ok);
     let occ = log_res.into_result("log").unwrap();
@@ -581,17 +667,24 @@ fn test_surreal_error_occurrence_logging_and_purging() {
     let occ_missing: LyxalResult<OccurrenceData> =
         db.query_lyxal_result("RETURN fn::error_occurrence_get({});");
     assert!(!occ_missing.ok);
-    assert!(occ_missing.into_result("occ_missing").unwrap_err().is_business_code("ERROR_PARAM_REQUIRED"));
+    assert!(occ_missing
+        .into_result("occ_missing")
+        .unwrap_err()
+        .is_business_code("ERROR_PARAM_REQUIRED"));
 
     // 4. Inexistent ID in occurrence get rejects
-    let occ_inexistent: LyxalResult<OccurrenceData> =
-        db.query_lyxal_result("RETURN fn::error_occurrence_get({ id: 'error_occurrence:nonexistent' });");
+    let occ_inexistent: LyxalResult<OccurrenceData> = db.query_lyxal_result(
+        "RETURN fn::error_occurrence_get({ id: 'error_occurrence:nonexistent' });",
+    );
     assert!(!occ_inexistent.ok);
-    assert!(occ_inexistent.into_result("occ_inexistent").unwrap_err().is_business_code("ERROR_OCCURRENCE_NOT_FOUND"));
+    assert!(occ_inexistent
+        .into_result("occ_inexistent")
+        .unwrap_err()
+        .is_business_code("ERROR_OCCURRENCE_NOT_FOUND"));
 
     // 5. List occurrences with object params
     let list_res: LyxalResult<Vec<OccurrenceData>> = db.query_lyxal_result(
-        "RETURN fn::error_occurrence_list({ source_module: 'test_integration' });"
+        "RETURN fn::error_occurrence_list({ source_module: 'test_integration' });",
     );
     assert!(list_res.ok);
     let items = list_res.into_result("list_occ").unwrap();
@@ -601,11 +694,14 @@ fn test_surreal_error_occurrence_logging_and_purging() {
     let purge_missing: LyxalResult<PurgeData> =
         db.query_lyxal_result("RETURN fn::error_occurrence_purge_before({});");
     assert!(!purge_missing.ok);
-    assert!(purge_missing.into_result("purge_missing").unwrap_err().is_business_code("ERROR_PARAM_REQUIRED"));
+    assert!(purge_missing
+        .into_result("purge_missing")
+        .unwrap_err()
+        .is_business_code("ERROR_PARAM_REQUIRED"));
 
     // 7. Purge occurrences before future date with object params
     let purge_res: LyxalResult<PurgeData> = db.query_lyxal_result(
-        "RETURN fn::error_occurrence_purge_before({ before: '2099-01-01T00:00:00Z' });"
+        "RETURN fn::error_occurrence_purge_before({ before: '2099-01-01T00:00:00Z' });",
     );
     assert!(purge_res.ok);
     let purge_data = purge_res.into_result("purge").unwrap();
@@ -633,14 +729,17 @@ fn test_surreal_edge_cases_and_contract_coherence() {
 
     // 2. Calling fn::error_get (internal resolution primitive)
     let canon_res: LyxalResult<DefinitionData> = db.query_lyxal_result(
-        "RETURN { ok: true, data: fn::error_get('ERROR_PARAM_REQUIRED'), error: NONE };"
+        "RETURN { ok: true, data: fn::error_get('ERROR_PARAM_REQUIRED'), error: NONE };",
     );
     assert!(canon_res.ok);
-    assert_eq!(canon_res.into_result("canon").unwrap().code, "ERROR_PARAM_REQUIRED");
+    assert_eq!(
+        canon_res.into_result("canon").unwrap().code,
+        "ERROR_PARAM_REQUIRED"
+    );
 
     // 3. Calling fn::error_get with inexistent code returns None without error
     let none_res: LyxalResult<Option<DefinitionData>> = db.query_lyxal_result(
-        "RETURN { ok: true, data: fn::error_get('INEXISTENT_CODE_XYZ_123'), error: NONE };"
+        "RETURN { ok: true, data: fn::error_get('INEXISTENT_CODE_XYZ_123'), error: NONE };",
     );
     assert!(none_res.ok);
     assert!(none_res.into_result("none").unwrap().is_none());

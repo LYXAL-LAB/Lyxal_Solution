@@ -9,14 +9,21 @@ fn test_manifest_validity_and_completeness() {
     let parsed: toml::Value = toml::from_str(&content).expect("Parse manifest.toml");
 
     let table = parsed.as_table().expect("manifest root must be a table");
-    assert_eq!(table.get("id").and_then(|v| v.as_str()), Some("lyxal_error"));
+    assert_eq!(
+        table.get("id").and_then(|v| v.as_str()),
+        Some("lyxal_error")
+    );
     assert_eq!(table.get("version").and_then(|v| v.as_str()), Some("0.1.0"));
 
-    let resources = table.get("resources").and_then(|v| v.as_table())
+    let resources = table
+        .get("resources")
+        .and_then(|v| v.as_table())
         .expect("resources section must exist");
 
     let check_file_list = |key: &str| {
-        let list = resources.get(key).and_then(|v| v.as_array())
+        let list = resources
+            .get(key)
+            .and_then(|v| v.as_array())
             .unwrap_or_else(|| panic!("Key {} must be an array in resources", key));
         for item in list {
             let rel_path = item.as_str().expect("resource path must be string");
@@ -69,7 +76,12 @@ fn test_no_orphan_surql_files() {
                 if p.is_dir() {
                     collect_surql_files(&p, base, acc);
                 } else if p.extension().is_some_and(|ext| ext == "surql") {
-                    let rel = p.strip_prefix(base).unwrap().to_str().unwrap().replace('\\', "/");
+                    let rel = p
+                        .strip_prefix(base)
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        .replace('\\', "/");
                     acc.push(rel);
                 }
             }

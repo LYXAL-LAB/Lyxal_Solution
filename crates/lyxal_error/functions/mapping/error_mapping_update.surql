@@ -8,9 +8,9 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_update(
 ) {
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
     LET $raw_id = $params.mapping_id ?? $params.id;
-    LET $mapping_id = IF type::is::record($raw_id) {
+    LET $mapping_id = IF type::is_record($raw_id) {
         $raw_id
-    } ELSE IF type::is::string($raw_id) {
+    } ELSE IF type::is_string($raw_id) {
         IF string::starts_with($raw_id, "error_external_mapping:") {
             type::record("error_external_mapping", string::slice($raw_id, 23))
         } ELSE {
@@ -34,7 +34,7 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_update(
     LET $m = IF $raw_matcher != NONE AND string::len(string::trim($raw_matcher)) > 0 { string::lowercase(string::trim($raw_matcher)) } ELSE { $cur.matcher };
     LET $raw_def = $params.definition_id ?? $params.target_code ?? $params.definition;
     LET $def = IF $raw_def != NONE {
-        IF type::is::record($raw_def) {
+        IF type::is_record($raw_def) {
             $raw_def
         } ELSE {
             LET $id_str = string::replace(<string>$raw_def, "error_definition:", "");

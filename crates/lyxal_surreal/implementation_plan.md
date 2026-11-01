@@ -1,6 +1,7 @@
 # Plan d'implémentation — Alignement du SDK Rust `surrealdb` sur SurrealDB 3.3.4
 
-> **Statut** : EN ATTENTE DE VALIDATION CTO — aucune ligne de code modifiée.
+> **Statut** : VALIDÉ PAR LE CTO (2026-11-01) — exécution en cours : **Lot 1 terminé**.
+> **Décisions CTO** : Q1 → SDK et serveur en 3.3.x (dernier patch) ; Q2 → `lyxal_error` dépend de `surrealdb-types` ; Q3 → requêtes directes de `lyxal_pipeline_ingestion` portées telles quelles, remplacées à la reprise du module.
 > **Module porteur** : `lyxal_surreal` (transport unique, §11.1).
 > **Impact** : transverse — tous les crates du workspace qui parlent à SurrealDB.
 > **Régime** : pré-production « Zéro Dette » (`.agents/AGENTS.md` §0) — ruptures de contrat autorisées si tous les appelants sont mis à jour dans le même chantier.
@@ -86,7 +87,13 @@ where T: SurrealValue + Send, P: SurrealValue + Send + 'static;
 
 * `type::thing('table', $key_id)` → `type::record('table', $key_id)` (10 occurrences dans `lyxal_runtime/src/lock/`).
 * Revue de chaque requête `.query(...)` directe (61 au total) contre les règles du skill `lyxal-surrealdb` §2.5 (fonctions supprimées, signatures 3.x).
-* Aucun fichier `.surql` n'a besoin de changer : `lyxal_core` a été rejoué sur 3.3.4 sans écart, et `surreal validate` passe sur les fichiers des modules (à reconfirmer en Lot 6).
+* **Correction (Lot 1)** : contrairement à ce qu'annonçait la première version de ce plan, 9 fichiers `.surql` sur 167 (hors `lyxal_core`) ne passent pas `surreal validate` en 3.3.4. Ils sont corrigés dans le lot de leur crate :
+
+| Crate | Fichiers | Cause | Lot |
+| :--- | :--- | :--- | :- |
+| `lyxal_error` | 7 fichiers de `functions/` | `type::is::*` → `type::is_*` | 1 (corrigé) |
+| `lyxal_event` | `tests/concurrency/lot3a_queries.surql` | à analyser | 2 |
+| `lyxal_runtime` | `schema/fields.surql` | à analyser | 3 |
 
 ## 6. Fonctions Core, erreurs et crypto
 
@@ -95,11 +102,13 @@ where T: SurrealValue + Send, P: SurrealValue + Send + 'static;
 * **Codes d'erreur master data** : aucun nouveau.
 * **Besoin crypto** : aucun (`lyxal_crypto` n'utilise pas SurrealDB).
 
-## 7. Lots d'exécution (un commit par lot, workspace compilable à chaque lot)
+## 7. Lots d'exécution (un commit par lot)
+
+> **Correction** : le workspace complet ne peut pas compiler entre les lots 1 et 5, car le changement de `call_fn` casse les crates appelants jusqu'à leur propre lot. À chaque lot, les crates **déjà migrés** compilent et leurs tests passent ; le workspace complet recompile au Lot 5. Rien n'est fusionné sur `main` avant la fin du Lot 6.
 
 | Lot | Contenu | Vérification |
 | :- | :--- | :--- |
-| 1 | `Cargo.toml` racine : `surrealdb = { version = "3.3", features = ["protocol-ws", "protocol-http", "kv-mem"] }`. `lyxal_error` + `lyxal_surreal` : `SurrealValue`, `call_fn`, `signin`, ré-exports. | `cargo test -p lyxal_error -p lyxal_surreal` |
+| 1 ✅ | `Cargo.toml` racine : `surrealdb = { version = "3.3", features = ["protocol-ws", "protocol-http", "kv-mem"] }`. `lyxal_error` + `lyxal_surreal` : `SurrealValue`, `call_fn`, `signin`, ré-exports. | `cargo test -p lyxal_error -p lyxal_surreal` |
 | 2 | `lyxal_event` : modèles, DTO, `event_store`, moteur, tests. | `cargo test -p lyxal_event` |
 | 3 | `lyxal_runtime` : stores, verrous (`type::record`), migrations, santé, workers, tests. | `cargo test -p lyxal_runtime` |
 | 4 | `lyxal_pipeline_ingestion` : stockage, publisher, tests. | `cargo test -p lyxal_pipeline_ingestion` |
@@ -126,3 +135,19 @@ Les écarts de comportement du moteur 3.3 révélés par les tests (C1) sont cor
 * [x] Aucune dépendance circulaire (Q2 ajoute une dépendance vers un crate externe de types, pas vers un crate Lyxal supérieur).
 * [ ] Zéro dette : `alias` supprimés, aucune passerelle `serde` résiduelle — vérifié au Lot 6.
 * [ ] Validation explicite du CTO.
+
+---
+
+## 11. Journal d'exécution
+
+### Lot 1 — `lyxal_error` + `lyxal_surreal` (terminé)
+
+* SDK résolu : `surrealdb` **3.3.5** (moteur embarqué des tests en 3.3.5) ; serveur de test : binaire **3.3.4**.
+* `lyxal_error` : `LyxalResult<T: SurrealValue>` et `LyxalError` dérivent `SurrealValue` **et** `serde` (relus depuis SurrealDB et renvoyés en JSON par l'API) ; les 16 `XxxParams` ne dérivent plus que `SurrealValue`. 5 attributs `#[serde(alias)]` supprimés (§0). `into_result` : un succès sans donnée n'est accepté que si `T` accepte `NONE` (`()` ou `Option<_>`).
+* `lyxal_surreal` : `call_fn<T: SurrealValue, P: SurrealValue>` ; `signin(Root { String, String })` ; ré-export `Datetime`, `RecordId`, `SurrealValue`, `Value` ; dépendance `serde` retirée.
+* SurrealQL : 7 fichiers de `lyxal_error/functions/` corrigés (`type::is::*` → `type::is_*`).
+* Tests d'intégration `lyxal_error` : chemin Windows en dur (`c:\Users\HP\...\surreal.exe`) remplacé par `LYXAL_SURREAL_BIN`, à défaut `surreal` dans le `PATH`. Ils ne pouvaient s'exécuter que sur un poste ; ils passent désormais sur 3.3.4.
+* Nouveau test `test_remote_ws_root_signin_and_call_fn` (ignoré par défaut, lancé avec `LYXAL_SURREAL_WS_URL`) : connexion `ws://` + Root + `call_fn` réels.
+* Point d'attention pour les lots suivants : un `Option<_>` n'accepte que `NONE`, pas `NULL`. Les contrats `fn::result_ok` / `fn::error_result` renvoient bien `NONE`.
+* Résultats : `cargo test -p lyxal_error -p lyxal_surreal --all-features` → 39 tests OK (dont 6 sur serveur 3.3.4) + test distant OK ; `cargo clippy … -D warnings` OK ; `cargo fmt` appliqué aux deux crates.
+

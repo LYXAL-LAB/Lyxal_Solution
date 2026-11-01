@@ -3,6 +3,30 @@ use lyxal_error::{
     LyxalError, LyxalResult,
 };
 use serde_json::json;
+use surrealdb_types::{SurrealValue, Value};
+
+/// Convertit un JSON en valeur SurrealDB, `null` devenant `NONE`.
+///
+/// `fn::result_ok` et `fn::error_result` renvoient `NONE` (et non `NULL`) pour un champ absent :
+/// c'est ce que reçoit réellement le SDK.
+fn to_surreal(raw: serde_json::Value) -> Value {
+    match raw {
+        serde_json::Value::Null => Value::None,
+        serde_json::Value::Object(map) => {
+            let mut obj = surrealdb_types::Object::new();
+            for (k, v) in map {
+                obj.insert(k, to_surreal(v));
+            }
+            Value::Object(obj)
+        }
+        other => other.into_value(),
+    }
+}
+
+/// Simule la lecture d'un `LyxalResult<T>` renvoyé par SurrealDB.
+fn from_db<T: SurrealValue>(raw: serde_json::Value) -> LyxalResult<T> {
+    LyxalResult::<T>::from_value(to_surreal(raw)).expect("LyxalResult conforme")
+}
 
 #[test]
 fn test_lyxal_result_success_with_data() {
@@ -12,7 +36,7 @@ fn test_lyxal_result_success_with_data() {
         "error": null
     });
 
-    let res: LyxalResult<serde_json::Value> = serde_json::from_value(raw).unwrap();
+    let res: LyxalResult<serde_json::Value> = from_db(raw);
     assert!(res.ok);
     assert!(res.error.is_none());
 
@@ -28,7 +52,7 @@ fn test_lyxal_result_success_void_unit() {
         "error": null
     });
 
-    let res: LyxalResult<()> = serde_json::from_value(raw).unwrap();
+    let res: LyxalResult<()> = from_db(raw);
     assert!(res.ok);
     assert!(res.into_result("test_void").is_ok());
 }
@@ -41,7 +65,7 @@ fn test_lyxal_result_success_optional_type() {
         "error": null
     });
 
-    let res: LyxalResult<Option<String>> = serde_json::from_value(raw).unwrap();
+    let res: LyxalResult<Option<String>> = from_db(raw);
     assert!(res.ok);
     let opt = res.into_result("test_opt").unwrap();
     assert_eq!(opt, None);
@@ -68,7 +92,7 @@ fn test_lyxal_result_business_error_propagation() {
         }
     });
 
-    let res: LyxalResult<String> = serde_json::from_value(raw).unwrap();
+    let res: LyxalResult<String> = from_db(raw);
     assert!(!res.ok);
     assert!(res.data.is_none());
 
@@ -195,7 +219,7 @@ fn test_lyxal_call_error_helpers() {
 }
 
 #[test]
-fn test_types_serialization_roundtrip() {
+fn test_types_surreal_value_roundtrip() {
     let create_params = ErrorDefinitionCreateParams {
         code: "ERR_TEST_ROUNDTRIP".into(),
         message: "Message test".into(),
@@ -206,10 +230,19 @@ fn test_types_serialization_roundtrip() {
         ..Default::default()
     };
 
-    let val = serde_json::to_value(&create_params).unwrap();
-    assert_eq!(val["code"], "ERR_TEST_ROUNDTRIP");
-    assert_eq!(val["http_status"], 400);
-    assert!(val.get("translations").is_none()); // skip_serializing_if
+    let val = create_params.into_value();
+    let obj = match &val {
+        Value::Object(obj) => obj,
+        other => panic!("objet attendu, obtenu {other:?}"),
+    };
+    assert_eq!(
+        obj.get("code"),
+        Some(&Value::String("ERR_TEST_ROUNDTRIP".into()))
+    );
+    // Un champ optionnel absent est transmis comme NONE (lu par `$params.x ?? défaut` en SurrealQL).
+    assert!(matches!(obj.get("translations"), None | Some(Value::None)));
+    let json = val.into_json_value();
+    assert_eq!(json["http_status"], 400);
 
     let mapping_params = ErrorMappingCreateParams {
         provider: "stripe".into(),
@@ -224,31 +257,13 @@ fn test_types_serialization_roundtrip() {
         ..Default::default()
     };
 
-    let val_mapping = serde_json::to_value(&mapping_params).unwrap();
+    let val_mapping = mapping_params.into_value().into_json_value();
     assert_eq!(val_mapping["provider"], "stripe");
     assert_eq!(val_mapping["match_type"], "exact");
     assert_eq!(val_mapping["service"], "charges");
     assert_eq!(val_mapping["external_http_status"], 402);
     assert_eq!(val_mapping["description"], "Carte refusée");
     assert_eq!(val_mapping["retryable_override"], false);
-
-    // Test Serde alias deserialization (matcher -> match_type, definition_id -> target_code)
-    let raw_with_aliases = json!({
-        "mapping_id": "error_external_mapping:123",
-        "provider": "stripe",
-        "matcher": "exact",
-        "definition_id": "error_definition:PAYMENT_FAILED",
-        "active": true
-    });
-    let deserialized_mapping: lyxal_error::ErrorMappingUpdateParams =
-        serde_json::from_value(raw_with_aliases).unwrap();
-    assert_eq!(deserialized_mapping.mapping_id, "error_external_mapping:123");
-    assert_eq!(deserialized_mapping.match_type.as_deref(), Some("exact"));
-    assert_eq!(
-        deserialized_mapping.target_code.as_deref(),
-        Some("error_definition:PAYMENT_FAILED")
-    );
-    assert_eq!(deserialized_mapping.active, Some(true));
 
     let log_params = ErrorLogParams {
         code: "ERROR_OCCURRED".into(),
@@ -257,7 +272,7 @@ fn test_types_serialization_roundtrip() {
         ..Default::default()
     };
 
-    let val_log = serde_json::to_value(&log_params).unwrap();
+    let val_log = log_params.into_value().into_json_value();
     assert_eq!(val_log["code"], "ERROR_OCCURRED");
     assert_eq!(val_log["source_module"], "lyxal_booking");
 }

@@ -2,8 +2,8 @@ use async_trait::async_trait;
 use lyxal_surreal::{
     create_surreal_client, LyxalCallError, LyxalSurrealCall, LyxalSurrealError, RootCredentials,
 };
-use serde::Serialize;
 use surrealdb::engine::any::Any;
+use surrealdb::types::SurrealValue;
 use surrealdb::Surreal;
 
 /// Store de test implémentant le trait officiel `LyxalSurrealCall`
@@ -18,13 +18,13 @@ impl LyxalSurrealCall for TestStore {
     }
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct AddParams {
     a: i64,
     b: i64,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct EmptyParams {}
 
 #[tokio::test]
@@ -153,7 +153,8 @@ async fn test_call_fn_business_error_propagation() {
         .expect("Define test_business_error function");
 
     let store = TestStore { db: client };
-    let res: Result<String, LyxalSurrealError> = store.call_fn("test_business_error", EmptyParams {}).await;
+    let res: Result<String, LyxalSurrealError> =
+        store.call_fn("test_business_error", EmptyParams {}).await;
 
     assert!(res.is_err(), "Expected error from call_fn");
     let err = res.unwrap_err();
@@ -214,7 +215,8 @@ async fn test_call_fn_invalid_contract_rejection() {
     let store = TestStore { db: client };
 
     // Cas 1 : ok=true avec error présent -> InvalidContract
-    let res: Result<String, LyxalSurrealError> = store.call_fn("test_bad_contract", EmptyParams {}).await;
+    let res: Result<String, LyxalSurrealError> =
+        store.call_fn("test_bad_contract", EmptyParams {}).await;
     assert!(res.is_err());
     match res.unwrap_err() {
         LyxalSurrealError::Call(LyxalCallError::InvalidContract { function }) => {
@@ -224,13 +226,17 @@ async fn test_call_fn_invalid_contract_rejection() {
     }
 
     // Cas 2 : retour NONE -> InvalidContract
-    let res_none: Result<String, LyxalSurrealError> = store.call_fn("test_none_contract", EmptyParams {}).await;
+    let res_none: Result<String, LyxalSurrealError> =
+        store.call_fn("test_none_contract", EmptyParams {}).await;
     assert!(res_none.is_err());
     match res_none.unwrap_err() {
         LyxalSurrealError::Call(LyxalCallError::InvalidContract { function }) => {
             assert_eq!(function, "test_none_contract");
         }
-        err => panic!("Expected InvalidContract error for NONE return, got {:?}", err),
+        err => panic!(
+            "Expected InvalidContract error for NONE return, got {:?}",
+            err
+        ),
     }
 }
 
@@ -257,7 +263,10 @@ async fn test_call_fn_sql_injection_rejection() {
             Err(LyxalSurrealError::InvalidFunctionName { function }) => {
                 assert_eq!(function, bad_name);
             }
-            _ => panic!("Expected InvalidFunctionName for '{}', got {:?}", bad_name, res),
+            _ => panic!(
+                "Expected InvalidFunctionName for '{}', got {:?}",
+                bad_name, res
+            ),
         }
     }
 }
@@ -283,4 +292,40 @@ fn test_axum_http_status_mapping() {
     // 3. InvalidFunctionName -> 400
     let err = LyxalSurrealError::InvalidFunctionName { function: "bad;" };
     assert_eq!(err.into_response().status(), StatusCode::BAD_REQUEST);
+}
+
+/// Connexion distante réelle (`ws://` + authentification Root) et appel `call_fn` de bout en bout.
+///
+/// Lancer un serveur, par exemple `surreal start --user root --pass root memory`, puis :
+/// `LYXAL_SURREAL_WS_URL=ws://127.0.0.1:8000 cargo test -p lyxal_surreal -- --ignored`.
+/// Identifiants : `LYXAL_SURREAL_USER` / `LYXAL_SURREAL_PASS` (défaut `root` / `root`).
+#[tokio::test]
+#[ignore = "nécessite un serveur SurrealDB distant (LYXAL_SURREAL_WS_URL)"]
+async fn test_remote_ws_root_signin_and_call_fn() {
+    let url = std::env::var("LYXAL_SURREAL_WS_URL").expect("LYXAL_SURREAL_WS_URL doit être défini");
+    let user = std::env::var("LYXAL_SURREAL_USER").unwrap_or_else(|_| "root".to_owned());
+    let pass = std::env::var("LYXAL_SURREAL_PASS").unwrap_or_else(|_| "root".to_owned());
+
+    let db = create_surreal_client(&url, Some(RootCredentials::new(user, pass)))
+        .await
+        .expect("Connexion ws:// avec authentification Root");
+    db.use_ns("lyxal_test")
+        .use_db("test_remote")
+        .await
+        .expect("Select namespace and database");
+
+    db.query(
+        "DEFINE FUNCTION OVERWRITE fn::test_remote_add($params: object) {
+            RETURN { ok: true, data: $params.a + $params.b, error: NONE };
+        };",
+    )
+    .await
+    .expect("Définition de la fonction de test");
+
+    let store = TestStore { db };
+    let sum: i64 = store
+        .call_fn("test_remote_add", AddParams { a: 20, b: 22 })
+        .await
+        .expect("call_fn distant");
+    assert_eq!(sum, 42);
 }

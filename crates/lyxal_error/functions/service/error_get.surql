@@ -6,9 +6,9 @@
 DEFINE FUNCTION OVERWRITE fn::error_get(
     $params: any
 ) {
-    LET $code = IF type::is::string($params) {
+    LET $code = IF type::is_string($params) {
         $params
-    } ELSE IF type::is::object($params) {
+    } ELSE IF type::is_object($params) {
         $params.code ?? $params.code_or_id ?? $params.id
     } ELSE {
         NONE
