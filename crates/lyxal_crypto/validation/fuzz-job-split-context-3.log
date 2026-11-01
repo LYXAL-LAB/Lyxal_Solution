@@ -1,0 +1,19 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 4015394611
+INFO: Loaded 1 modules   (882 inline 8-bit counters): 882 [0x558103f38ab0, 0x558103f38e22), 
+INFO: Loaded 1 PC tables (882 PCs): 882 [0x558103f38e28,0x558103f3c548), 
+INFO:      218 files found in /workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/context
+INFO: seed corpus: files: 218 min: 1b max: 129b total: 4268b rss: 83Mb
+#219	INITED cov: 179 ft: 418 corp: 152/2921b exec/s: 0 rss: 83Mb
+#1048576	pulse  cov: 179 ft: 418 corp: 152/2921b lim: 10567 exec/s: 524288 rss: 208Mb
+#2097152	pulse  cov: 179 ft: 418 corp: 152/2921b lim: 21011 exec/s: 419430 rss: 374Mb
+#4194304	pulse  cov: 179 ft: 418 corp: 152/2921b lim: 41906 exec/s: 381300 rss: 492Mb
+#8388608	pulse  cov: 179 ft: 418 corp: 152/2921b lim: 83722 exec/s: 399457 rss: 493Mb
+#16777216	pulse  cov: 179 ft: 418 corp: 152/2921b lim: 167343 exec/s: 390167 rss: 495Mb
+#33554432	pulse  cov: 179 ft: 418 corp: 152/2921b lim: 334638 exec/s: 381300 rss: 496Mb
+==70645== libFuzzer: run interrupted; exiting
+stat::number_of_executed_units: 40769032
+stat::average_exec_per_sec:     377491
+stat::new_units_added:          0
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              497

@@ -1,0 +1,31 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2340866320
+INFO: Loaded 1 modules   (1571 inline 8-bit counters): 1571 [0x55da24298950, 0x55da24298f73), 
+INFO: Loaded 1 PC tables (1571 PCs): 1571 [0x55da24298f78,0x55da2429f1a8), 
+INFO:      205 files found in /workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/phc
+INFO: seed corpus: files: 205 min: 1b max: 513b total: 11809b rss: 83Mb
+#206	INITED cov: 452 ft: 778 corp: 149/8701b exec/s: 0 rss: 83Mb
+#524288	pulse  cov: 452 ft: 778 corp: 149/8701b lim: 5722 exec/s: 262144 rss: 149Mb
+#1048576	pulse  cov: 452 ft: 778 corp: 149/8701b lim: 8192 exec/s: 262144 rss: 260Mb
+#1743627	REDUCE cov: 452 ft: 778 corp: 149/8700b lim: 8192 exec/s: 290604 rss: 406Mb L: 20/513 MS: 1 EraseBytes-
+#1847993	RELOAD cov: 452 ft: 779 corp: 150/8802b lim: 8192 exec/s: 263999 rss: 428Mb
+#2097152	pulse  cov: 452 ft: 779 corp: 150/8802b lim: 8192 exec/s: 299593 rss: 450Mb
+#4194304	pulse  cov: 452 ft: 779 corp: 150/8802b lim: 8192 exec/s: 279620 rss: 537Mb
+#8388608	pulse  cov: 452 ft: 779 corp: 150/8802b lim: 8192 exec/s: 299593 rss: 537Mb
+#16777216	pulse  cov: 452 ft: 779 corp: 150/8802b lim: 8192 exec/s: 310689 rss: 537Mb
+#33554432	pulse  cov: 452 ft: 779 corp: 150/8802b lim: 8192 exec/s: 313592 rss: 537Mb
+#49540120	REDUCE cov: 452 ft: 779 corp: 150/8801b lim: 8192 exec/s: 315542 rss: 537Mb L: 104/513 MS: 2 EraseBytes-ChangeASCIIInt-
+#67108864	pulse  cov: 452 ft: 779 corp: 150/8801b lim: 8192 exec/s: 316551 rss: 537Mb
+#98779431	NEW    cov: 452 ft: 781 corp: 151/8850b lim: 8192 exec/s: 318643 rss: 537Mb L: 49/513 MS: 1 CrossOver-
+#103807007	NEW    cov: 452 ft: 782 corp: 152/8899b lim: 8192 exec/s: 319406 rss: 537Mb L: 49/513 MS: 1 ShuffleBytes-
+#104367519	REDUCE cov: 452 ft: 782 corp: 152/8898b lim: 8192 exec/s: 319166 rss: 537Mb L: 93/513 MS: 2 EraseBytes-CrossOver-
+#111930201	REDUCE cov: 452 ft: 782 corp: 152/8897b lim: 8192 exec/s: 318889 rss: 537Mb L: 48/513 MS: 2 ChangeASCIIInt-EraseBytes-
+#112244473	REDUCE cov: 452 ft: 782 corp: 152/8896b lim: 8192 exec/s: 318876 rss: 537Mb L: 93/513 MS: 2 CrossOver-EraseBytes-
+#134217728	pulse  cov: 452 ft: 782 corp: 152/8896b lim: 8192 exec/s: 318806 rss: 537Mb
+#136866241	REDUCE cov: 452 ft: 782 corp: 152/8895b lim: 8192 exec/s: 318293 rss: 537Mb L: 93/513 MS: 3 CrossOver-ChangeByte-EraseBytes-
+==58385== libFuzzer: run interrupted; exiting
+stat::number_of_executed_units: 142474441
+stat::average_exec_per_sec:     318023
+stat::new_units_added:          8
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              537

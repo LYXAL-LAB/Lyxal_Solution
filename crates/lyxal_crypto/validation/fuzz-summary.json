@@ -1,0 +1,162 @@
+[
+  {
+    "target": "envelope",
+    "binary_sha256": "4875cfbcf87e2a6dcb8feac50f34c15317fecf2c5c8a07a786e38e00628ec68a",
+    "requested_seconds": 1800,
+    "completed_seconds": 1803,
+    "executions": 78644193,
+    "peak_rss_mb": 404,
+    "sessions": [
+      {
+        "origin": "fuzz/target/campaigns/1793384446173830745/envelope-1.json",
+        "evidence": "fuzz-envelope-1",
+        "exit_code": 0,
+        "seconds": 601,
+        "executions": 35419535,
+        "peak_rss_mb": 404,
+        "coverage_counters": 443,
+        "coverage_features": 1721
+      },
+      {
+        "origin": "fuzz/target/campaigns/1793384446173830745/envelope-2.json",
+        "evidence": "fuzz-envelope-2",
+        "exit_code": 0,
+        "seconds": 601,
+        "executions": 35094268,
+        "peak_rss_mb": 402,
+        "coverage_counters": 443,
+        "coverage_features": 1721
+      },
+      {
+        "origin": "fuzz/target/campaigns/1793385762383141904/envelope-1.json",
+        "evidence": "fuzz-envelope-3",
+        "exit_code": 0,
+        "seconds": 601,
+        "executions": 8130390,
+        "peak_rss_mb": 365,
+        "coverage_counters": 445,
+        "coverage_features": 1723
+      }
+    ]
+  },
+  {
+    "target": "context",
+    "binary_sha256": "cf4017cd119255edeee1d19d781f4f0354c16c6aa8ec3592410058ee9cfffb07",
+    "requested_seconds": 1800,
+    "completed_seconds": 1803,
+    "executions": 706877641,
+    "peak_rss_mb": 507,
+    "sessions": [
+      {
+        "origin": "fuzz/target/campaigns/1793384446173830745/context-1.json",
+        "evidence": "fuzz-context-1",
+        "exit_code": 0,
+        "seconds": 601,
+        "executions": 256221675,
+        "peak_rss_mb": 506,
+        "coverage_counters": 177,
+        "coverage_features": 417
+      },
+      {
+        "origin": "fuzz/target/campaigns/1793384446173830745/context-2.json",
+        "evidence": "fuzz-context-2",
+        "exit_code": 0,
+        "seconds": 601,
+        "executions": 227756112,
+        "peak_rss_mb": 507,
+        "coverage_counters": 179,
+        "coverage_features": 418
+      },
+      {
+        "origin": "fuzz/target/campaigns/1793385762383141904/context-1.json",
+        "evidence": "fuzz-context-3",
+        "exit_code": 0,
+        "seconds": 601,
+        "executions": 222899854,
+        "peak_rss_mb": 502,
+        "coverage_counters": 179,
+        "coverage_features": 419
+      }
+    ]
+  },
+  {
+    "target": "phc",
+    "binary_sha256": "ff7752c6cceb61f02c52024127faa78530873f6eb3a5b48c00ed7b81538e2e82",
+    "requested_seconds": 1800,
+    "completed_seconds": 1803,
+    "executions": 560786440,
+    "peak_rss_mb": 550,
+    "sessions": [
+      {
+        "origin": "fuzz/target/campaigns/1793384446173830745/phc-1.json",
+        "evidence": "fuzz-phc-1",
+        "exit_code": 0,
+        "seconds": 601,
+        "executions": 192078605,
+        "peak_rss_mb": 550,
+        "coverage_counters": 452,
+        "coverage_features": 782
+      },
+      {
+        "origin": "fuzz/target/campaigns/1793384446173830745/phc-2.json",
+        "evidence": "fuzz-phc-2",
+        "exit_code": 0,
+        "seconds": 601,
+        "executions": 181952521,
+        "peak_rss_mb": 464,
+        "coverage_counters": 452,
+        "coverage_features": 781
+      },
+      {
+        "origin": "fuzz/target/campaigns/1793385762383141904/phc-1.json",
+        "evidence": "fuzz-phc-3",
+        "exit_code": 0,
+        "seconds": 601,
+        "executions": 186755314,
+        "peak_rss_mb": 465,
+        "coverage_counters": 452,
+        "coverage_features": 783
+      }
+    ]
+  },
+  {
+    "target": "rotation",
+    "binary_sha256": "df2f640f63ea591b56b1adb486189b5b0380e42738887bfdd8fd76b4d1941f91",
+    "requested_seconds": 1800,
+    "completed_seconds": 1803,
+    "executions": 25472004,
+    "peak_rss_mb": 437,
+    "sessions": [
+      {
+        "origin": "fuzz/target/campaigns/1793384446173830745/rotation-1.json",
+        "evidence": "fuzz-rotation-1",
+        "exit_code": 0,
+        "seconds": 601,
+        "executions": 8631033,
+        "peak_rss_mb": 436,
+        "coverage_counters": 746,
+        "coverage_features": 2175
+      },
+      {
+        "origin": "fuzz/target/campaigns/1793384446173830745/rotation-2.json",
+        "evidence": "fuzz-rotation-2",
+        "exit_code": 0,
+        "seconds": 601,
+        "executions": 8228563,
+        "peak_rss_mb": 437,
+        "coverage_counters": 746,
+        "coverage_features": 2175
+      },
+      {
+        "origin": "fuzz/target/campaigns/1793385762383141904/rotation-1.json",
+        "evidence": "fuzz-rotation-3",
+        "exit_code": 0,
+        "seconds": 601,
+        "executions": 8612408,
+        "peak_rss_mb": 435,
+        "coverage_counters": 746,
+        "coverage_features": 2175
+      }
+    ]
+  }
+]

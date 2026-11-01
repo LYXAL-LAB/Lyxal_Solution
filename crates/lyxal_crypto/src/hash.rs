@@ -1,3 +1,4 @@
+//! Generic SHA-256 and BLAKE3 hashing; never a substitute for Argon2 password hashing.
 use sha2::{Digest, Sha256};
 
 /// Calcule la somme de contrôle SHA-256 (32 octets) à partir d'un flux d'octets.
@@ -30,18 +31,22 @@ pub fn blake3_hex(data: &[u8]) -> String {
 pub struct Sha256Hasher(Sha256);
 
 impl Sha256Hasher {
+    /// Start an empty streaming hash.
     pub fn new() -> Self {
         Self(Sha256::new())
     }
 
+    /// Feed the next public-data chunk into the hash.
     pub fn update(&mut self, data: &[u8]) {
         self.0.update(data);
     }
 
+    /// Finalize and consume the hasher, returning 32 digest bytes.
     pub fn finalize(self) -> [u8; 32] {
         self.0.finalize().into()
     }
 
+    /// Finalize and consume the hasher, returning lowercase hexadecimal.
     pub fn finalize_hex(self) -> String {
         let bytes = self.finalize();
         hex::encode(bytes)
@@ -53,18 +58,22 @@ impl Sha256Hasher {
 pub struct Blake3Hasher(blake3::Hasher);
 
 impl Blake3Hasher {
+    /// Start an empty streaming hash.
     pub fn new() -> Self {
         Self(blake3::Hasher::new())
     }
 
+    /// Feed the next public-data chunk into the hash.
     pub fn update(&mut self, data: &[u8]) {
         self.0.update(data);
     }
 
+    /// Finalize and consume the hasher, returning 32 digest bytes.
     pub fn finalize(self) -> [u8; 32] {
         *self.0.finalize().as_bytes()
     }
 
+    /// Finalize and consume the hasher, returning lowercase hexadecimal.
     pub fn finalize_hex(self) -> String {
         let bytes = self.finalize();
         hex::encode(bytes)

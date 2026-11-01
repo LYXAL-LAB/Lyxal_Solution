@@ -1,0 +1,19 @@
+{
+  "target": "rotation",
+  "segment": 2,
+  "requested_seconds": 600,
+  "command": [
+    "/workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/target/x86_64-unknown-linux-gnu/release/rotation",
+    "/workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/rotation",
+    "-timeout=10",
+    "-rss_limit_mb=2048",
+    "-print_final_stats=1",
+    "-max_len=8192",
+    "-artifact_prefix=/workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/artifacts/rotation/",
+    "-max_total_time=600"
+  ],
+  "start_unix": 1793385047.388097,
+  "end_unix": 1793385648.5576048,
+  "exit_code": 0,
+  "binary_sha256": "df2f640f63ea591b56b1adb486189b5b0380e42738887bfdd8fd76b4d1941f91"
+}

@@ -1,38 +1,47 @@
+//! HMAC-SHA256 with distinct 256-bit keys and constant-time tag verification.
+use crate::{CryptoError, HmacKey};
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
-
 type HmacSha256 = Hmac<Sha256>;
-
-/// Calcule la signature d'authentification de message HMAC-SHA256 (32 octets).
-pub fn sign_hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
-    let mut mac = HmacSha256::new_from_slice(key).expect("HMAC can take key of any size");
+pub(crate) fn sign_bytes(key: &[u8], data: &[u8]) -> Result<[u8; 32], CryptoError> {
+    let mut mac = HmacSha256::new_from_slice(key).map_err(|_| CryptoError::InvalidKeyLength)?;
     mac.update(data);
-    mac.finalize().into_bytes().into()
+    Ok(mac.finalize().into_bytes().into())
 }
-
-/// Calcule la signature HMAC-SHA256 sous forme de chaîne hexadécimale minuscule (64 caractères).
-pub fn sign_hmac_sha256_hex(key: &[u8], data: &[u8]) -> String {
-    let tag = sign_hmac_sha256(key, data);
-    hex::encode(tag)
-}
-
-/// Vérifie une signature HMAC-SHA256 en utilisant l'API native en temps constant de la bibliothèque `hmac`.
-///
-/// Renvoie `true` si le tag correspond exactement, `false` sinon (sans fuite par canal auxiliaire).
-pub fn verify_hmac_sha256(key: &[u8], data: &[u8], expected_tag: &[u8]) -> bool {
-    let mut mac = match HmacSha256::new_from_slice(key) {
-        Ok(m) => m,
-        Err(_) => return false,
-    };
+pub(crate) fn verify_bytes(key: &[u8], data: &[u8], tag: &[u8]) -> Result<bool, CryptoError> {
+    if tag.len() != 32 {
+        return Err(CryptoError::InvalidTagEncoding);
+    }
+    let mut mac = HmacSha256::new_from_slice(key).map_err(|_| CryptoError::InvalidKeyLength)?;
     mac.update(data);
-    mac.verify_slice(expected_tag).is_ok()
+    Ok(mac.verify_slice(tag).is_ok())
 }
-
-/// Vérifie une signature HMAC-SHA256 encodée en hexadécimal en temps constant.
-pub fn verify_hmac_sha256_hex(key: &[u8], data: &[u8], expected_hex: &str) -> bool {
-    let expected_tag = match hex::decode(expected_hex.trim()) {
-        Ok(t) => t,
-        Err(_) => return false,
-    };
-    verify_hmac_sha256(key, data, &expected_tag)
+/// Sign arbitrary bytes; caller controls admission and message-stream budgets.
+pub fn sign_hmac_sha256(key: &HmacKey, data: &[u8]) -> Result<[u8; 32], CryptoError> {
+    sign_bytes(key.expose(), data)
+}
+/// Verify exactly 32 tag bytes. Mismatch is false; malformed length is an error.
+pub fn verify_hmac_sha256(key: &HmacKey, data: &[u8], tag: &[u8]) -> Result<bool, CryptoError> {
+    verify_bytes(key.expose(), data, tag)
+}
+/// Explicit lowercase hex encoding of an authentication tag.
+pub fn sign_hmac_sha256_hex(key: &HmacKey, data: &[u8]) -> Result<String, CryptoError> {
+    Ok(hex::encode(sign_hmac_sha256(key, data)?))
+}
+/// Verify exactly 64 hex characters without trimming or input-sized allocation.
+pub fn verify_hmac_sha256_hex(
+    key: &HmacKey,
+    data: &[u8],
+    encoded: &str,
+) -> Result<bool, CryptoError> {
+    if encoded.len() != 64 {
+        return Err(CryptoError::InvalidTagEncoding);
+    }
+    let mut tag = [0; 32];
+    hex::decode_to_slice(encoded, &mut tag).map_err(|_| CryptoError::InvalidTagEncoding)?;
+    verify_hmac_sha256(key, data, &tag)
+}
+#[cfg(test)]
+mod vectors {
+    include!("hmac_vectors.rs");
 }

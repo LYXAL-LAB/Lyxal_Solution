@@ -1,0 +1,5 @@
+{
+  "classification": "stopped before first checkpoint to correct the non-Unicode environment error-buffer path; excluded from accepted campaigns",
+  "source_affected": "src/providers/environment.rs",
+  "status": "not validated"
+}

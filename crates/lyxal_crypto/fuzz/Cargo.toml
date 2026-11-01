@@ -1,0 +1,42 @@
+[package]
+name = "lyxal-crypto-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+[package.metadata]
+cargo-fuzz = true
+[workspace]
+members = ["."]
+resolver = "2"
+[dependencies]
+libfuzzer-sys = "=0.4.13"
+lyxal_crypto = { path = ".." }
+
+[[bin]]
+name = "envelope"
+path = "fuzz_targets/envelope.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "context"
+path = "fuzz_targets/context.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "phc"
+path = "fuzz_targets/phc.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rotation"
+path = "fuzz_targets/rotation.rs"
+test = false
+doc = false
+bench = false
+

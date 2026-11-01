@@ -1,0 +1,29 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3991451874
+INFO: Loaded 1 modules   (1818 inline 8-bit counters): 1818 [0x56377883c410, 0x56377883cb2a), 
+INFO: Loaded 1 PC tables (1818 PCs): 1818 [0x56377883cb30,0x563778843cd0), 
+INFO:      281 files found in /workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/envelope
+INFO: seed corpus: files: 281 min: 1b max: 1398212b total: 2170494b rss: 83Mb
+#282	INITED cov: 443 ft: 1721 corp: 166/1398Kb exec/s: 0 rss: 83Mb
+#31254	REDUCE cov: 443 ft: 1721 corp: 166/1398Kb lim: 1398512 exec/s: 0 rss: 341Mb L: 25/1398212 MS: 2 ChangeBinInt-EraseBytes-
+#131072	pulse  cov: 443 ft: 1721 corp: 166/1398Kb lim: 1399492 exec/s: 65536 rss: 352Mb
+#262144	pulse  cov: 443 ft: 1721 corp: 166/1398Kb lim: 1400812 exec/s: 52428 rss: 360Mb
+#524288	pulse  cov: 443 ft: 1721 corp: 166/1398Kb lim: 1403412 exec/s: 52428 rss: 365Mb
+#1048576	pulse  cov: 443 ft: 1721 corp: 166/1398Kb lim: 1408652 exec/s: 55188 rss: 365Mb
+#1982721	REDUCE cov: 443 ft: 1721 corp: 166/1398Kb lim: 1417972 exec/s: 56649 rss: 368Mb L: 25/1398212 MS: 1 EraseBytes-
+#2097152	pulse  cov: 443 ft: 1721 corp: 166/1398Kb lim: 1419112 exec/s: 55188 rss: 368Mb
+#4194304	pulse  cov: 443 ft: 1721 corp: 166/1398Kb lim: 1440032 exec/s: 56679 rss: 374Mb
+#4904492	REDUCE cov: 443 ft: 1721 corp: 166/1398Kb lim: 1447112 exec/s: 57028 rss: 375Mb L: 15/1398212 MS: 5 ChangeASCIIInt-EraseBytes-CrossOver-ChangeBit-CopyPart-
+#4929483	REDUCE cov: 443 ft: 1721 corp: 166/1398Kb lim: 1447352 exec/s: 57319 rss: 375Mb L: 12/1398212 MS: 1 EraseBytes-
+#4939509	REDUCE cov: 443 ft: 1721 corp: 166/1398Kb lim: 1447452 exec/s: 57436 rss: 375Mb L: 8/1398212 MS: 1 EraseBytes-
+#7291143	REDUCE cov: 443 ft: 1721 corp: 166/1398Kb lim: 1470892 exec/s: 57866 rss: 382Mb L: 66/1398212 MS: 2 ShuffleBytes-EraseBytes-
+#8388608	pulse  cov: 443 ft: 1721 corp: 166/1398Kb lim: 1481832 exec/s: 59074 rss: 383Mb
+#16777216	pulse  cov: 443 ft: 1721 corp: 166/1398Kb lim: 1500000 exec/s: 59074 rss: 391Mb
+#33554432	pulse  cov: 443 ft: 1721 corp: 166/1398Kb lim: 1500000 exec/s: 59388 rss: 398Mb
+#35419535	DONE   cov: 443 ft: 1721 corp: 166/1398Kb lim: 1500000 exec/s: 58934 rss: 404Mb
+Done 35419535 runs in 601 second(s)
+stat::number_of_executed_units: 35419535
+stat::average_exec_per_sec:     58934
+stat::new_units_added:          6
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              404

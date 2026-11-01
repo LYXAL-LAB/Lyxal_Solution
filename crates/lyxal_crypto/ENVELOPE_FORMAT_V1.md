@@ -1,3 +1,5 @@
+> **ARCHIVE HISTORIQUE — NON PRIS EN CHARGE.** L’API actuelle rejette enc:v1 ; la spécification active est ENVELOPE_FORMAT_V2.md. Aucune migration automatique.
+
 # 📜 Spécification du Format d'Enveloppe Persistante `enc:v1` & AAD `lyxal:v1`
 
 Ce document formalise la spécification technique immuable du format persistant d'enveloppe chiffrée `enc:v1` et du contexte d'authentification AAD `lyxal:v1` de Lyxal OS.

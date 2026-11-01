@@ -1,0 +1,19 @@
+{
+  "target": "phc",
+  "segment": 1,
+  "requested_seconds": 600,
+  "command": [
+    "/workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/target/x86_64-unknown-linux-gnu/release/phc",
+    "/workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/phc",
+    "-timeout=10",
+    "-rss_limit_mb=2048",
+    "-print_final_stats=1",
+    "-max_len=8192",
+    "-artifact_prefix=/workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/artifacts/phc/",
+    "-max_total_time=600"
+  ],
+  "start_unix": 1793385762.4184473,
+  "end_unix": 1793386363.6673584,
+  "exit_code": 0,
+  "binary_sha256": "ff7752c6cceb61f02c52024127faa78530873f6eb3a5b48c00ed7b81538e2e82"
+}

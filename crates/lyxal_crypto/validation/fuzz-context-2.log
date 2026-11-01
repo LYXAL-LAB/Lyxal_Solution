@@ -1,0 +1,25 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 4022177215
+INFO: Loaded 1 modules   (882 inline 8-bit counters): 882 [0x55e6f4662ab0, 0x55e6f4662e22), 
+INFO: Loaded 1 PC tables (882 PCs): 882 [0x55e6f4662e28,0x55e6f4666548), 
+INFO:      216 files found in /workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/context
+INFO: seed corpus: files: 216 min: 1b max: 129b total: 4245b rss: 83Mb
+#217	INITED cov: 177 ft: 416 corp: 149/2759b exec/s: 0 rss: 83Mb
+#1048576	pulse  cov: 177 ft: 416 corp: 149/2759b lim: 10567 exec/s: 349525 rss: 206Mb
+#2097152	pulse  cov: 177 ft: 416 corp: 149/2759b lim: 21011 exec/s: 349525 rss: 374Mb
+#4194304	pulse  cov: 177 ft: 416 corp: 149/2759b lim: 41906 exec/s: 349525 rss: 493Mb
+#8388608	pulse  cov: 177 ft: 416 corp: 149/2759b lim: 83722 exec/s: 349525 rss: 495Mb
+#16777216	pulse  cov: 177 ft: 416 corp: 149/2759b lim: 167343 exec/s: 349525 rss: 497Mb
+#33554432	pulse  cov: 177 ft: 416 corp: 149/2759b lim: 334638 exec/s: 353204 rss: 497Mb
+#67108864	pulse  cov: 177 ft: 416 corp: 149/2759b lim: 669274 exec/s: 356962 rss: 499Mb
+#134217728	pulse  cov: 177 ft: 416 corp: 149/2759b lim: 1338630 exec/s: 361772 rss: 502Mb
+#142873455	NEW    cov: 178 ft: 417 corp: 150/2772b lim: 1424970 exec/s: 360791 rss: 502Mb L: 13/129 MS: 3 ChangeBinInt-ChangeByte-ChangeBit-
+#142876021	NEW    cov: 179 ft: 418 corp: 151/2783b lim: 1424990 exec/s: 360798 rss: 502Mb L: 11/129 MS: 1 EraseBytes-
+#143236217	REDUCE cov: 179 ft: 418 corp: 151/2782b lim: 1428570 exec/s: 360796 rss: 502Mb L: 12/129 MS: 1 EraseBytes-
+#227756112	DONE   cov: 179 ft: 418 corp: 151/2782b lim: 1500000 exec/s: 378961 rss: 507Mb
+Done 227756112 runs in 601 second(s)
+stat::number_of_executed_units: 227756112
+stat::average_exec_per_sec:     378961
+stat::new_units_added:          3
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              507

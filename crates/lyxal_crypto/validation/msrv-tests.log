@@ -1,0 +1,174 @@
+   Compiling lyxal_crypto v0.1.0 (/workspace/Lyxal_Solution/crates/lyxal_crypto)
+    Finished `test` profile [unoptimized] target(s) in 2.53s
+     Running unittests src/lib.rs (target/debug/deps/lyxal_crypto-740d7c04f3a76042)
+
+running 17 tests
+test cipher::vectors::test_nist_sp800_38d_aes256_gcm_vector_14 ... ok
+test cipher::rng_tests::nonce_rng_failure_has_no_infallible_fallback ... ok
+test cipher::vectors::test_nist_sp800_38d_aes256_gcm_vector_13 ... ok
+test cipher::vectors::test_nist_sp800_38d_aes256_gcm_vector_15 ... ok
+test context::tests::exact_reference_aad_and_domains ... ok
+test cipher::vectors::test_nist_sp800_38d_aes256_gcm_vector_16 ... ok
+test hmac::vectors::supplemental_32_byte_key_vector_is_retained ... ok
+test key::tests::partially_filled_rng_error_is_propagated ... ok
+test hmac::vectors::test_verify_hmac_sha256_fails_on_tampering ... ok
+test password::tests::phc_cost_boundaries_and_duplicates_are_strict ... ok
+test password::tests::salt_rng_failure_precedes_expensive_hashing ... ok
+test providers::file::tests::crash_child ... ignored, private process-interruption helper
+test hmac::vectors::test_rfc4231_hmac_sha256_official_vectors ... ok
+test providers::file::tests::temporary_name_failures_are_bounded_and_preserve_foreign_files ... ok
+test providers::file::tests::failures_before_and_after_publication_are_distinct ... ok
+test password::tests::rejected_input_never_enters_workspace_allocation ... ok
+test providers::file::tests::interrupted_process_never_leaves_an_accepted_partial_final ... ok
+
+test result: ok. 16 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/encryption.rs (target/debug/deps/encryption-1957dd713655de72)
+
+running 3 tests
+test nonce_samples_are_distinct_without_claiming_global_uniqueness ... ok
+test every_context_component_and_domain_is_authenticated ... ok
+test roundtrip_empty_binary_and_maximum_plaintext ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.54s
+
+     Running tests/envelope_v2_fixtures.rs (target/debug/deps/envelope_v2_fixtures-00ec9465f8ee630c)
+
+running 2 tests
+test changing_routing_metadata_is_detected_even_with_identical_key_material ... ok
+test three_independent_literal_envelopes_open_exactly ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/file_v2.rs (target/debug/deps/file_v2-9e3c1a841741e6e5)
+
+running 6 tests
+test file_subprocess_worker ... ignored, invoked only as an isolated multiprocess worker
+test key_file_formats_and_private_parent_are_strict ... ok
+test generated_key_is_private_persistent_and_shared_between_loads ... ok
+test strict_mode_symlinks_permissions_and_corruption_fail_closed ... ok
+test special_files_parent_links_and_permission_variants_are_rejected ... ok
+test multiprocess_publication_16_workers_100_rounds ... ok
+
+test result: ok. 5 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 1.22s
+
+     Running tests/fuzz_robustness.rs (target/debug/deps/fuzz_robustness-f895b726fbbf798f)
+
+running 2 tests
+test malformed_corpus_is_rejected_without_panics ... ok
+test two_thousand_single_bit_mutations_fail_authentication ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/hash_vectors.rs (target/debug/deps/hash_vectors-f2bed72271e55bbc)
+
+running 4 tests
+test test_blake3_official_reference_vectors ... ok
+test test_streaming_blake3_hasher_matches_oneshot ... ok
+test test_streaming_sha256_hasher_matches_oneshot ... ok
+test test_nist_sha256_official_vectors ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/key_generation.rs (target/debug/deps/key_generation-dc2d6de0714a86bd)
+
+running 2 tests
+test key_identifier_bounds_and_identity_are_exact ... ok
+test different_material_with_the_same_id_fails_authentication ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/key_resolver.rs (target/debug/deps/key_resolver-60e4099790db9b24)
+
+running 2 tests
+test non_unicode_environment_errors_are_redacted_and_invalid_names_fail ... ok
+test environment_loading_is_explicit_canonical_and_redacted ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/mac_kdf_v2.rs (target/debug/deps/mac_kdf_v2-8e73a7f9aa1febe4)
+
+running 3 tests
+test domain_info_boundary_is_enforced ... ok
+test hmac_has_a_distinct_key_and_strict_tag_encoding ... ok
+test hkdf_rfc5869_and_output_bounds ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/negative_tests.rs (target/debug/deps/negative_tests-2089c4def0631273)
+
+running 2 tests
+test hostile_input_is_not_reflected_in_diagnostics ... ok
+test context_boundaries_and_unicode_identity_are_precise ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/password_tests.rs (target/debug/deps/password_tests-cbe3785428656eab)
+
+running 1 test
+test accepted_weak_hash_verifies_and_requests_upgrade ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/password_v2.rs (target/debug/deps/password_v2-97f16c64b57fb4e3)
+
+running 3 tests
+test stronger_cost_is_not_automatically_downgraded ... ok
+test invalid_phc_and_excessive_costs_never_start_hashing ... ok
+test password_roundtrip_policy_and_redaction ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 14.75s
+
+     Running tests/proptests.rs (target/debug/deps/proptests-b6c47c4cec045502)
+
+running 4 tests
+test distinct_valid_contexts_reject_substitution ... ok
+test hmac_roundtrip ... ok
+test rotation_is_authenticated_and_idempotent ... ok
+test roundtrip_and_canonical_encoding ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.54s
+
+     Running tests/protocol_v2.rs (target/debug/deps/protocol_v2-09d4d95dda23a252)
+
+running 4 tests
+test canonical_transport_and_v1_rejection ... ok
+test exact_contexts_and_explicit_global_domain ... ok
+test resource_limits_are_checked_before_decoding ... ok
+test maximum_wire_size_and_minimum_empty_payload_are_exact ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/resource_boundaries.rs (target/debug/deps/resource_boundaries-f3b404f0d3f0532c)
+
+running 4 tests
+test phc_salt_digest_and_cost_boundaries_do_not_require_hashing ... ok
+test every_context_field_enforces_its_own_byte_limit ... ok
+test mac_and_kdf_edges_preserve_fixed_size_contracts ... ok
+test password_admission_and_owned_secret_edges_are_exact ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running tests/rotation_v2.rs (target/debug/deps/rotation_v2-1e2b307af797e756)
+
+running 8 tests
+test duplicate_and_failed_transitions_never_mutate ... ok
+test capacity_and_initial_active_are_enforced ... ok
+test current_requires_authentication_and_wrong_same_id_key_fails ... ok
+test complete_rotation_and_retirement ... ok
+test restoring_tombstones_needs_no_destroyed_key ... ok
+test duplicate_historical_material_is_not_replaced ... ok
+test successor_rejects_substitution_and_forgotten_tombstones ... ok
+test each_operation_captures_exactly_once ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/secrets_v2.rs (target/debug/deps/secrets_v2-a798d62a23a143c1)
+
+running 3 tests
+test conversions_preserve_allocation_and_reject_invalid_utf8 ... ok
+test diagnostics_never_expose_secrets ... ok
+test key_lengths_context_free_ids_and_capacities_are_strict ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+

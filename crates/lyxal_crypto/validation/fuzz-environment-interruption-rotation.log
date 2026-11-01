@@ -1,0 +1,20 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 302565983
+INFO: Loaded 1 modules   (4997 inline 8-bit counters): 4997 [0x55d84e889a60, 0x55d84e88ade5), 
+INFO: Loaded 1 PC tables (4997 PCs): 4997 [0x55d84e88ade8,0x55d84e89e638), 
+INFO:       76 files found in /workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/rotation
+INFO: seed corpus: files: 76 min: 1b max: 4098b total: 27976b rss: 31Mb
+#77	INITED cov: 746 ft: 2175 corp: 75/27Kb exec/s: 0 rss: 35Mb
+#16384	pulse  cov: 746 ft: 2175 corp: 75/27Kb lim: 4254 exec/s: 8192 rss: 228Mb
+#32768	pulse  cov: 746 ft: 2175 corp: 75/27Kb lim: 4422 exec/s: 10922 rss: 402Mb
+#65536	pulse  cov: 746 ft: 2175 corp: 75/27Kb lim: 4746 exec/s: 10922 rss: 410Mb
+#131072	pulse  cov: 746 ft: 2175 corp: 75/27Kb lim: 5394 exec/s: 10922 rss: 417Mb
+#262144	pulse  cov: 746 ft: 2175 corp: 75/27Kb lim: 6702 exec/s: 12483 rss: 422Mb
+#524288	pulse  cov: 746 ft: 2175 corp: 75/27Kb lim: 8192 exec/s: 13443 rss: 423Mb
+#649506	REDUCE cov: 746 ft: 2175 corp: 75/27Kb lim: 8192 exec/s: 13531 rss: 424Mb L: 4097/4097 MS: 4 ChangeBit-ChangeByte-ShuffleBytes-EraseBytes-
+#652902	RELOAD cov: 746 ft: 2176 corp: 76/31Kb lim: 8192 exec/s: 13324 rss: 424Mb
+#1048576	pulse  cov: 746 ft: 2176 corp: 76/31Kb lim: 8192 exec/s: 15420 rss: 488Mb
+#2097152	pulse  cov: 746 ft: 2176 corp: 76/31Kb lim: 8192 exec/s: 15650 rss: 488Mb
+#4194304	pulse  cov: 746 ft: 2176 corp: 76/31Kb lim: 8192 exec/s: 15477 rss: 488Mb
+#8388608	pulse  cov: 746 ft: 2176 corp: 76/31Kb lim: 8192 exec/s: 14952 rss: 488Mb
+#16777216	pulse  cov: 746 ft: 2176 corp: 76/31Kb lim: 8192 exec/s: 14450 rss: 488Mb

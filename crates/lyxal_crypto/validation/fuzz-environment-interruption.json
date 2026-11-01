@@ -1,0 +1,34 @@
+[
+  {
+    "target": "envelope",
+    "last_coverage_record": "#134217728\tpulse  cov: 443 ft: 1722 corp: 154/1408Kb lim: 1500000 exec/s: 85981 rss: 511Mb",
+    "final_metadata_present": false,
+    "observed_process_state": "zombie, parent 1",
+    "observed_kernel_exit_code": 0,
+    "classification": "unverified: final libFuzzer/LeakSanitizer output and supervisor completion record unavailable after environment restart; not counted as successful campaign"
+  },
+  {
+    "target": "context",
+    "last_coverage_record": "#553199329\tREDUCE cov: 167 ft: 404 corp: 138/2787b lim: 1500000 exec/s: 444336 rss: 602Mb L: 72/129 MS: 1 EraseBytes-",
+    "final_metadata_present": false,
+    "observed_process_state": "zombie, parent 1",
+    "observed_kernel_exit_code": 0,
+    "classification": "unverified: final libFuzzer/LeakSanitizer output and supervisor completion record unavailable after environment restart; not counted as successful campaign"
+  },
+  {
+    "target": "phc",
+    "last_coverage_record": "#543214845\tREDUCE cov: 452 ft: 779 corp: 146/8464b lim: 8192 exec/s: 321238 rss: 524Mb L: 93/513 MS: 4 CrossOver-CopyPart-ShuffleBytes-EraseBytes-",
+    "final_metadata_present": false,
+    "observed_process_state": "zombie, parent 1",
+    "observed_kernel_exit_code": 0,
+    "classification": "unverified: final libFuzzer/LeakSanitizer output and supervisor completion record unavailable after environment restart; not counted as successful campaign"
+  },
+  {
+    "target": "rotation",
+    "last_coverage_record": "#16777216\tpulse  cov: 746 ft: 2176 corp: 76/31Kb lim: 8192 exec/s: 14450 rss: 488Mb",
+    "final_metadata_present": false,
+    "observed_process_state": "zombie, parent 1",
+    "observed_kernel_exit_code": 0,
+    "classification": "unverified: final libFuzzer/LeakSanitizer output and supervisor completion record unavailable after environment restart; not counted as successful campaign"
+  }
+]

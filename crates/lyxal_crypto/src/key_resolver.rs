@@ -1,282 +1,251 @@
-use crate::error::CryptoError;
-use crate::key::{EncryptionKey, KeyId};
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine;
-use std::collections::HashMap;
-use std::fs::{self, OpenOptions};
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
-use zeroize::Zeroizing;
-
-/// Politique de génération automatique de clé.
+//! Immutable snapshots. Host publication and durable registry restoration are explicit.
+use crate::{CryptoError, EncryptionKey, KeyId};
+use std::{collections::HashMap, fmt, sync::Arc};
+use subtle::ConstantTimeEq;
+/// Maximum number of IDs, including irrevocable tombstones.
+pub const MAX_KEY_IDS: usize = 64;
+/// Allowed use when inserting material into a builder.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum KeyGenerationPolicy {
-    /// Autorise la génération automatique d'une nouvelle clé (environnement Dev)
-    AllowGenerate,
-    /// Exige une clé existante, échoue sinon (environnement Production Strict)
-    RequireExisting,
+pub enum KeyUse {
+    /// The unique key permitted to seal new envelopes.
+    Active,
+    /// Historical material permitted only to open envelopes.
+    DecryptOnly,
 }
-
-/// Trait d'abstraction pour la résolution des clés (supportant la clé active et la rotation via Arc<EncryptionKey>).
-pub trait KeyResolver: Send + Sync {
-    /// Retourne l'identifiant de la clé active actuelle pour le chiffrement.
-    fn active_key_id(&self) -> Result<KeyId, CryptoError>;
-
-    /// Résout une clé par son identifiant unique sous forme d'Arc partageable sans copie mémoire.
-    fn resolve(&self, id: &KeyId) -> Result<Arc<EncryptionKey>, CryptoError>;
+/// Non-secret lifecycle state of one ID.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeyState {
+    /// The unique key permitted to seal new envelopes.
+    Active,
+    /// Historical material permitted only to open envelopes.
+    DecryptOnly,
+    /// A retained tombstone with no key material or cryptographic permission.
+    Revoked,
 }
-
-/// Implémentation du trait `KeyResolver` pour les Pointeurs Intelligents `Arc<T>` (Permet le Dynamic Dispatch `Arc<dyn KeyResolver>`).
-impl<T> KeyResolver for Arc<T>
-where
-    T: KeyResolver + ?Sized,
-{
-    fn active_key_id(&self) -> Result<KeyId, CryptoError> {
-        (**self).active_key_id()
+#[derive(Clone)]
+struct Entry {
+    state: KeyState,
+    key: Option<Arc<EncryptionKey>>,
+}
+/// Coherent identity/material pair. No raw key export.
+pub struct ResolvedKey {
+    pub(crate) id: KeyId,
+    pub(crate) key: Arc<EncryptionKey>,
+}
+impl ResolvedKey {
+    /// Explicit pairing for a trusted provider, checked on insertion into a builder.
+    pub fn new(id: KeyId, key: Arc<EncryptionKey>) -> Self {
+        Self { id, key }
     }
-
-    fn resolve(&self, id: &KeyId) -> Result<Arc<EncryptionKey>, CryptoError> {
-        (**self).resolve(id)
+    /// Non-secret identity, not a new nonce budget.
+    pub fn id(&self) -> &KeyId {
+        &self.id
     }
 }
-
-/// Fournisseur de clé via variable d'environnement (`LYXAL_CRYPTO_MASTER_KEY`).
-///
-/// # Exemples
-/// ```rust
-/// use lyxal_crypto::{EnvironmentKeyProvider, KeyId};
-///
-/// std::env::set_var("TEST_MASTER_KEY", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=");
-/// let key_id = KeyId::parse("env-key-01").unwrap();
-/// let provider = EnvironmentKeyProvider::new("TEST_MASTER_KEY", key_id).unwrap();
-/// ```
-pub struct EnvironmentKeyProvider {
-    key_id: KeyId,
-    cached_key: Arc<EncryptionKey>,
+impl fmt::Debug for ResolvedKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ResolvedKey")
+            .field("id", &self.id)
+            .field("key", &"[REDACTED]")
+            .finish()
+    }
 }
-
-impl EnvironmentKeyProvider {
-    pub fn new(env_var: impl AsRef<str>, key_id: KeyId) -> Result<Self, CryptoError> {
-        let val = std::env::var(env_var.as_ref()).map_err(|_| CryptoError::MissingActiveKey)?;
-        let trimmed = val.trim();
-
-        // Accepte STRICTEMENT et UNIQUEMENT du Base64 standard de 32 octets avec effacement mémoire (Zeroizing)
-        let bytes = Zeroizing::new(
-            STANDARD
-                .decode(trimmed)
-                .map_err(|_| CryptoError::InvalidKeyEncoding)?,
-        );
-        if bytes.len() != 32 {
-            return Err(CryptoError::InvalidKeyLength);
+/// Mutable construction only; built snapshots never change.
+#[derive(Default)]
+pub struct KeyRingBuilder {
+    entries: HashMap<KeyId, Entry>,
+}
+impl KeyRingBuilder {
+    /// Start empty; build requires exactly one active key.
+    pub fn new() -> Self {
+        Self::default()
+    }
+    /// Share the existing material and preserve ALL tombstones.
+    pub fn from_snapshot(snapshot: &KeyRing) -> Self {
+        Self {
+            entries: snapshot.entries.clone(),
         }
-
-        let key = EncryptionKey::try_from_slice(&bytes)?;
-        Ok(Self {
-            key_id,
-            cached_key: Arc::new(key),
+    }
+    fn insert_entry(&mut self, id: KeyId, entry: Entry) -> Result<(), CryptoError> {
+        if self.entries.contains_key(&id) {
+            return Err(CryptoError::DuplicateKeyId);
+        }
+        if self.entries.len() >= MAX_KEY_IDS {
+            return Err(CryptoError::KeyStoreUnavailable);
+        }
+        if entry.state == KeyState::Active
+            && self.entries.values().any(|e| e.state == KeyState::Active)
+        {
+            return Err(CryptoError::MultipleActiveKeys);
+        }
+        self.entries
+            .try_reserve(1)
+            .map_err(|_| CryptoError::AllocationFailed)?;
+        self.entries.insert(id, entry);
+        Ok(())
+    }
+    /// Insert a new identity. Duplicate IDs never replace any entry, even for equal bytes.
+    pub fn insert(
+        &mut self,
+        id: KeyId,
+        key: EncryptionKey,
+        use_: KeyUse,
+    ) -> Result<(), CryptoError> {
+        self.insert_resolved(ResolvedKey::new(id, Arc::new(key)), use_)
+    }
+    /// Transfer a provider's coherent pair without copying material.
+    pub fn insert_resolved(&mut self, key: ResolvedKey, use_: KeyUse) -> Result<(), CryptoError> {
+        self.insert_entry(
+            key.id,
+            Entry {
+                state: match use_ {
+                    KeyUse::Active => KeyState::Active,
+                    KeyUse::DecryptOnly => KeyState::DecryptOnly,
+                },
+                key: Some(key.key),
+            },
+        )
+    }
+    /// Restore a trusted host-registry tombstone WITHOUT importing a destroyed key.
+    /// Does not persist the registry; duplicates and capacity errors leave this builder unchanged.
+    pub fn insert_revoked(&mut self, id: KeyId) -> Result<(), CryptoError> {
+        self.insert_entry(
+            id,
+            Entry {
+                state: KeyState::Revoked,
+                key: None,
+            },
+        )
+    }
+    /// Select a known, non-revoked key and demote the previous active key.
+    /// Reactivation never resets any host-maintained budget for its material.
+    pub fn activate(&mut self, id: &KeyId) -> Result<(), CryptoError> {
+        let target = self.entries.get(id).ok_or(CryptoError::KeyUnavailable)?;
+        if target.state == KeyState::Revoked {
+            return Err(CryptoError::KeyRevoked);
+        }
+        for (entry_id, entry) in &mut self.entries {
+            if entry_id == id {
+                entry.state = KeyState::Active;
+            } else if entry.state == KeyState::Active {
+                entry.state = KeyState::DecryptOnly;
+            }
+        }
+        Ok(())
+    }
+    /// Revoke a non-active entry, keeping its ID forever within this lineage.
+    pub fn revoke(&mut self, id: &KeyId) -> Result<(), CryptoError> {
+        let entry = self
+            .entries
+            .get_mut(id)
+            .ok_or(CryptoError::KeyUnavailable)?;
+        if entry.state == KeyState::Active {
+            return Err(CryptoError::ActiveKeyRevocation);
+        }
+        entry.state = KeyState::Revoked;
+        entry.key = None;
+        Ok(())
+    }
+    /// Consume the builder only when exactly one active and all invariants hold.
+    pub fn build(self) -> Result<KeyRing, CryptoError> {
+        let mut active = None;
+        for (id, entry) in &self.entries {
+            if (entry.state == KeyState::Revoked) != entry.key.is_none() {
+                return Err(CryptoError::InvalidSnapshotTransition);
+            }
+            if entry.state == KeyState::Active {
+                if active.is_some() {
+                    return Err(CryptoError::MultipleActiveKeys);
+                }
+                active = Some(id.clone());
+            }
+        }
+        Ok(KeyRing {
+            active: active.ok_or(CryptoError::MissingActiveKey)?,
+            entries: self.entries,
         })
     }
-
-    pub fn default_env() -> Result<Self, CryptoError> {
-        let key_id = KeyId::parse("main")?;
-        Self::new("LYXAL_CRYPTO_MASTER_KEY", key_id)
-    }
 }
-
-impl KeyResolver for EnvironmentKeyProvider {
-    fn active_key_id(&self) -> Result<KeyId, CryptoError> {
-        Ok(self.key_id.clone())
+/// Validated immutable snapshot. Old Arcs are not remotely revoked by a new snapshot.
+pub struct KeyRing {
+    active: KeyId,
+    entries: HashMap<KeyId, Entry>,
+}
+impl KeyRing {
+    /// Read the active ID for host admission/monitoring, not a count of invocations.
+    pub fn active_id(&self) -> &KeyId {
+        &self.active
     }
-
-    fn resolve(&self, id: &KeyId) -> Result<Arc<EncryptionKey>, CryptoError> {
-        if id == &self.key_id {
-            Ok(Arc::clone(&self.cached_key))
-        } else {
-            Err(CryptoError::KeyNotFound {
-                key_id: id.to_string(),
-            })
+    /// Inspect only non-secret lifecycle metadata.
+    pub fn state(&self, id: &KeyId) -> Option<KeyState> {
+        self.entries.get(id).map(|e| e.state)
+    }
+    pub(crate) fn resolve(&self, id: &KeyId) -> Result<Arc<EncryptionKey>, CryptoError> {
+        let entry = self.entries.get(id).ok_or(CryptoError::KeyUnavailable)?;
+        if entry.state == KeyState::Revoked {
+            return Err(CryptoError::KeyRevoked);
         }
+        entry
+            .key
+            .clone()
+            .ok_or(CryptoError::InvalidSnapshotTransition)
     }
-}
-
-/// Fournisseur de clé via fichier local (`lyxal-master.key`).
-///
-/// # Exemples
-/// ```rust
-/// use lyxal_crypto::{FileKeyProvider, KeyGenerationPolicy, KeyId};
-///
-/// let temp_dir = tempfile::tempdir().unwrap();
-/// let key_path = temp_dir.path().join("master.key");
-/// let key_id = KeyId::parse("file-key-01").unwrap();
-/// let provider = FileKeyProvider::new(key_path, key_id, KeyGenerationPolicy::AllowGenerate);
-/// ```
-pub struct FileKeyProvider {
-    path: PathBuf,
-    key_id: KeyId,
-    policy: KeyGenerationPolicy,
-    cached_key: RwLock<Option<Arc<EncryptionKey>>>,
-}
-
-impl FileKeyProvider {
-    pub fn new(path: impl AsRef<Path>, key_id: KeyId, policy: KeyGenerationPolicy) -> Self {
-        Self {
-            path: path.as_ref().to_path_buf(),
-            key_id,
-            policy,
-            cached_key: RwLock::new(None),
-        }
-    }
-
-    pub fn default_dev(dir: impl AsRef<Path>) -> Result<Self, CryptoError> {
-        let key_id = KeyId::parse("main")?;
-        Ok(Self::new(
-            dir.as_ref().join("lyxal-master.key"),
-            key_id,
-            KeyGenerationPolicy::AllowGenerate,
+    pub(crate) fn active(&self) -> Result<ResolvedKey, CryptoError> {
+        Ok(ResolvedKey::new(
+            self.active.clone(),
+            self.resolve(&self.active)?,
         ))
     }
-
-    pub fn default_strict(dir: impl AsRef<Path>) -> Result<Self, CryptoError> {
-        let key_id = KeyId::parse("main")?;
-        Ok(Self::new(
-            dir.as_ref().join("lyxal-master.key"),
-            key_id,
-            KeyGenerationPolicy::RequireExisting,
-        ))
-    }
-
-    fn read_key_from_path(&self) -> Result<EncryptionKey, CryptoError> {
-        let content = fs::read_to_string(&self.path)?;
-        let trimmed = content.trim();
-        let bytes = Zeroizing::new(
-            STANDARD
-                .decode(trimmed)
-                .map_err(|_| CryptoError::InvalidKeyEncoding)?,
-        );
-        EncryptionKey::try_from_slice(&bytes)
-    }
-}
-
-impl KeyResolver for FileKeyProvider {
-    fn active_key_id(&self) -> Result<KeyId, CryptoError> {
-        Ok(self.key_id.clone())
-    }
-
-    fn resolve(&self, id: &KeyId) -> Result<Arc<EncryptionKey>, CryptoError> {
-        if id != &self.key_id {
-            return Err(CryptoError::KeyNotFound {
-                key_id: id.to_string(),
-            });
-        }
-
-        {
-            let lock = self
-                .cached_key
-                .read()
-                .map_err(|_| CryptoError::KeyStoreUnavailable)?;
-            if let Some(ref k) = *lock {
-                return Ok(Arc::clone(k));
+    /// Host MUST invoke this under its publication lock against the current snapshot.
+    /// Reject lost IDs/tombstones, resurrected keys, and changed material under an existing ID.
+    pub fn validate_successor(&self, next: &Self) -> Result<(), CryptoError> {
+        for (id, old) in &self.entries {
+            let new = next
+                .entries
+                .get(id)
+                .ok_or(CryptoError::InvalidSnapshotTransition)?;
+            if old.state == KeyState::Revoked && new.state != KeyState::Revoked {
+                return Err(CryptoError::InvalidSnapshotTransition);
             }
-        }
-
-        let mut lock = self
-            .cached_key
-            .write()
-            .map_err(|_| CryptoError::KeyStoreUnavailable)?;
-        if let Some(ref k) = *lock {
-            return Ok(Arc::clone(k));
-        }
-
-        if self.path.exists() {
-            let key = Arc::new(self.read_key_from_path()?);
-            *lock = Some(Arc::clone(&key));
-            Ok(key)
-        } else {
-            match self.policy {
-                KeyGenerationPolicy::AllowGenerate => {
-                    let key = EncryptionKey::generate();
-                    let b64 = Zeroizing::new(STANDARD.encode(key.expose()));
-
-                    if let Some(parent) = self.path.parent() {
-                        fs::create_dir_all(parent)?;
-                    }
-
-                    // Configuration des options de création atomique avec mode 0600 sous Unix
-                    let mut options = OpenOptions::new();
-                    options.write(true).create_new(true);
-
-                    #[cfg(unix)]
-                    {
-                        use std::os::unix::fs::OpenOptionsExt;
-                        options.mode(0o600);
-                    }
-
-                    match options.open(&self.path) {
-                        Ok(mut file) => {
-                            file.write_all(b64.as_bytes())?;
-                            file.flush()?;
-                            let arc_key = Arc::new(key);
-                            *lock = Some(Arc::clone(&arc_key));
-                            Ok(arc_key)
-                        }
-                        Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {
-                            // Relit la clé créée simultanément par un autre processus
-                            let read_key = Arc::new(self.read_key_from_path()?);
-                            *lock = Some(Arc::clone(&read_key));
-                            Ok(read_key)
-                        }
-                        Err(err) => Err(err.into()),
-                    }
+            if let (Some(a), Some(b)) = (&old.key, &new.key) {
+                if !bool::from(a.expose().ct_eq(b.expose())) {
+                    return Err(CryptoError::KeySubstitution);
                 }
-                KeyGenerationPolicy::RequireExisting => Err(CryptoError::GenerationProhibited),
             }
         }
-    }
-}
-
-/// Résolveur composite associant une clé active et un trousseau de clés historiques pour la rotation.
-pub struct CompositeKeyResolver {
-    active_id: KeyId,
-    keys: RwLock<HashMap<KeyId, Arc<EncryptionKey>>>,
-}
-
-impl CompositeKeyResolver {
-    pub fn new(active_id: KeyId, active_key: EncryptionKey) -> Self {
-        let mut map = HashMap::new();
-        map.insert(active_id.clone(), Arc::new(active_key));
-        Self {
-            active_id,
-            keys: RwLock::new(map),
-        }
-    }
-
-    pub fn add_historical_key(&self, id: KeyId, key: EncryptionKey) -> Result<(), CryptoError> {
-        let mut map = self
-            .keys
-            .write()
-            .map_err(|_| CryptoError::KeyStoreUnavailable)?;
-        map.insert(id, Arc::new(key));
         Ok(())
     }
 }
-
-impl KeyResolver for CompositeKeyResolver {
-    fn active_key_id(&self) -> Result<KeyId, CryptoError> {
-        Ok(self.active_id.clone())
+impl fmt::Debug for KeyRing {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("KeyRing")
+            .field("active", &self.active)
+            .field("ids", &self.entries.len())
+            .finish()
     }
-
-    fn resolve(&self, id: &KeyId) -> Result<Arc<EncryptionKey>, CryptoError> {
-        let map = self
-            .keys
-            .read()
-            .map_err(|_| CryptoError::KeyStoreUnavailable)?;
-        if let Some(key) = map.get(id) {
-            Ok(Arc::clone(key))
-        } else {
-            Err(CryptoError::KeyNotFound {
-                key_id: id.to_string(),
-            })
-        }
+}
+/// Capture ONE validated snapshot; the host may implement atomic publication here.
+pub trait KeyResolver: Send + Sync {
+    /// Return a stable snapshot for the complete cryptographic operation.
+    fn snapshot(&self) -> Result<Arc<KeyRing>, CryptoError>;
+}
+impl<T: KeyResolver + ?Sized> KeyResolver for Arc<T> {
+    fn snapshot(&self) -> Result<Arc<KeyRing>, CryptoError> {
+        (**self).snapshot()
+    }
+}
+/// Resolver for a fixed snapshot with no hidden IO/reloading.
+pub struct StaticKeyResolver {
+    keys: Arc<KeyRing>,
+}
+impl StaticKeyResolver {
+    /// Share a snapshot. Changing files/environment afterward does not change this resolver.
+    pub fn new(keys: Arc<KeyRing>) -> Self {
+        Self { keys }
+    }
+}
+impl KeyResolver for StaticKeyResolver {
+    fn snapshot(&self) -> Result<Arc<KeyRing>, CryptoError> {
+        Ok(Arc::clone(&self.keys))
     }
 }

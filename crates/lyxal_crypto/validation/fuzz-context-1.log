@@ -1,0 +1,46 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 3996145585
+INFO: Loaded 1 modules   (882 inline 8-bit counters): 882 [0x55a0998b1ab0, 0x55a0998b1e22), 
+INFO: Loaded 1 PC tables (882 PCs): 882 [0x55a0998b1e28,0x55a0998b5548), 
+INFO:      201 files found in /workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/context
+INFO: seed corpus: files: 201 min: 1b max: 129b total: 4079b rss: 83Mb
+#202	INITED cov: 167 ft: 404 corp: 140/2722b exec/s: 0 rss: 83Mb
+#2593	REDUCE cov: 167 ft: 404 corp: 140/2721b lim: 150 exec/s: 0 rss: 83Mb L: 4/129 MS: 1 EraseBytes-
+#70214	REDUCE cov: 167 ft: 404 corp: 140/2720b lim: 815 exec/s: 0 rss: 83Mb L: 7/129 MS: 1 EraseBytes-
+#856999	REDUCE cov: 167 ft: 404 corp: 140/2719b lim: 8643 exec/s: 428499 rss: 177Mb L: 16/129 MS: 3 EraseBytes-ChangeByte-CMP- DE: "\021\000\000\000\000\000\000\000"-
+#1048576	pulse  cov: 167 ft: 404 corp: 140/2719b lim: 10541 exec/s: 349525 rss: 208Mb
+#2097152	pulse  cov: 167 ft: 404 corp: 140/2719b lim: 20997 exec/s: 349525 rss: 372Mb
+#4194304	pulse  cov: 167 ft: 404 corp: 140/2719b lim: 41891 exec/s: 349525 rss: 490Mb
+#8388608	pulse  cov: 167 ft: 404 corp: 140/2719b lim: 83690 exec/s: 364722 rss: 491Mb
+#16777216	pulse  cov: 167 ft: 404 corp: 140/2719b lim: 167326 exec/s: 372827 rss: 492Mb
+#33554432	pulse  cov: 167 ft: 404 corp: 140/2719b lim: 334620 exec/s: 377016 rss: 493Mb
+#55291548	NEW    cov: 168 ft: 405 corp: 141/2730b lim: 551398 exec/s: 381321 rss: 495Mb L: 11/129 MS: 2 ChangeBit-ChangeByte-
+#55297924	NEW    cov: 169 ft: 408 corp: 142/2742b lim: 551455 exec/s: 381364 rss: 495Mb L: 12/129 MS: 1 InsertByte-
+#55299795	NEW    cov: 169 ft: 409 corp: 143/2755b lim: 551455 exec/s: 381377 rss: 495Mb L: 13/129 MS: 1 InsertByte-
+#55314776	NEW    cov: 170 ft: 410 corp: 144/2768b lim: 551588 exec/s: 381481 rss: 495Mb L: 13/129 MS: 1 ChangeBit-
+#55340622	REDUCE cov: 170 ft: 410 corp: 144/2767b lim: 551835 exec/s: 379045 rss: 495Mb L: 12/129 MS: 1 EraseBytes-
+#55344773	REDUCE cov: 171 ft: 411 corp: 145/2779b lim: 551873 exec/s: 379073 rss: 495Mb L: 12/129 MS: 1 ShuffleBytes-
+#55399309	NEW    cov: 172 ft: 412 corp: 146/2791b lim: 552405 exec/s: 379447 rss: 495Mb L: 12/129 MS: 1 ChangeByte-
+#55405247	REDUCE cov: 172 ft: 412 corp: 146/2790b lim: 552462 exec/s: 379487 rss: 495Mb L: 11/129 MS: 3 ChangeASCIIInt-ChangeBit-EraseBytes-
+#55426203	REDUCE cov: 173 ft: 413 corp: 147/2802b lim: 552671 exec/s: 379631 rss: 495Mb L: 12/129 MS: 1 InsertByte-
+#55471459	REDUCE cov: 173 ft: 413 corp: 147/2801b lim: 553108 exec/s: 379941 rss: 495Mb L: 11/129 MS: 1 EraseBytes-
+#55658835	NEW    cov: 174 ft: 414 corp: 148/2813b lim: 554970 exec/s: 381224 rss: 496Mb L: 12/129 MS: 1 ChangeBinInt-
+#55665446	NEW    cov: 175 ft: 415 corp: 149/2825b lim: 555027 exec/s: 381270 rss: 496Mb L: 12/129 MS: 1 ShuffleBytes-
+#55949607	REDUCE cov: 175 ft: 415 corp: 149/2824b lim: 557858 exec/s: 380609 rss: 498Mb L: 11/129 MS: 1 EraseBytes-
+#67108864	pulse  cov: 175 ft: 415 corp: 149/2824b lim: 669141 exec/s: 390167 rss: 506Mb
+#70860055	NEW    cov: 176 ft: 416 corp: 150/2837b lim: 706571 exec/s: 393666 rss: 506Mb L: 13/129 MS: 3 ShuffleBytes-ChangeBit-CopyPart-
+#70902276	REDUCE cov: 176 ft: 416 corp: 150/2836b lim: 706989 exec/s: 393901 rss: 506Mb L: 12/129 MS: 1 EraseBytes-
+#70918092	REDUCE cov: 177 ft: 417 corp: 151/2848b lim: 707141 exec/s: 393989 rss: 506Mb L: 12/129 MS: 1 CopyPart-
+#70925098	REDUCE cov: 177 ft: 417 corp: 151/2847b lim: 707198 exec/s: 394028 rss: 506Mb L: 11/129 MS: 1 EraseBytes-
+#128134885	REDUCE cov: 177 ft: 417 corp: 151/2846b lim: 1277810 exec/s: 416022 rss: 506Mb L: 11/129 MS: 2 CrossOver-EraseBytes-
+#134217728	pulse  cov: 177 ft: 417 corp: 151/2846b lim: 1338470 exec/s: 418123 rss: 506Mb
+#256221675	DONE   cov: 177 ft: 417 corp: 151/2846b lim: 1500000 exec/s: 426325 rss: 506Mb
+###### Recommended dictionary. ######
+"\021\000\000\000\000\000\000\000" # Uses: 22661989
+###### End of recommended dictionary. ######
+Done 256221675 runs in 601 second(s)
+stat::number_of_executed_units: 256221675
+stat::average_exec_per_sec:     426325
+stat::new_units_added:          21
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              506

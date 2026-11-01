@@ -1,0 +1,15 @@
+{
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "filesystem": "overlayfs; ext4/XFS not qualified",
+  "current_rust": "1.99.1",
+  "msrv": "1.85.0",
+  "msrv_contracts_environment": {
+    "RUSTUP_TOOLCHAIN": "1.85.0"
+  },
+  "rustdoc_environment": {
+    "RUSTDOCFLAGS": "-D warnings"
+  },
+  "original_sandbox_failure": "Unix IPC creation and LeakSanitizer ptrace checks restricted; complete reruns use authorized execution context",
+  "sanitizers_disabled": false,
+  "sysctl_modified": false
+}

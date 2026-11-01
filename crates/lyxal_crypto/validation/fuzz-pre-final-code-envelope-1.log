@@ -1,0 +1,37 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2338124327
+INFO: Loaded 1 modules   (1818 inline 8-bit counters): 1818 [0x55cad1386410, 0x55cad1386b2a), 
+INFO: Loaded 1 PC tables (1818 PCs): 1818 [0x55cad1386b30,0x55cad138dcd0), 
+INFO:      265 files found in /workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/envelope
+INFO: seed corpus: files: 265 min: 1b max: 1398212b total: 2163725b rss: 83Mb
+#266	INITED cov: 443 ft: 1721 corp: 163/1398Kb exec/s: 0 rss: 83Mb
+#1400	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1398212 exec/s: 0 rss: 83Mb L: 3/1398212 MS: 4 EraseBytes-EraseBytes-ChangeASCIIInt-ChangeByte-
+#6037	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1398252 exec/s: 0 rss: 93Mb L: 622/1398212 MS: 2 InsertRepeatedBytes-EraseBytes-
+#17529	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1398352 exec/s: 0 rss: 212Mb L: 582/1398212 MS: 2 InsertByte-EraseBytes-
+#38960	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1398552 exec/s: 0 rss: 346Mb L: 580/1398212 MS: 1 EraseBytes-
+#54753	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1398692 exec/s: 54753 rss: 350Mb L: 148/1398212 MS: 1 EraseBytes-
+#97150	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1399112 exec/s: 48575 rss: 350Mb L: 541/1398212 MS: 5 CopyPart-InsertByte-InsertByte-InsertByte-EraseBytes-
+#118141	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1399312 exec/s: 59070 rss: 350Mb L: 145/1398212 MS: 1 EraseBytes-
+#124867	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1399372 exec/s: 62433 rss: 350Mb L: 10/1398212 MS: 1 EraseBytes-
+#131072	pulse  cov: 443 ft: 1721 corp: 163/1398Kb lim: 1399432 exec/s: 65536 rss: 350Mb
+#181470	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1399932 exec/s: 60490 rss: 353Mb L: 576/1398212 MS: 2 CopyPart-EraseBytes-
+#202363	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1400132 exec/s: 50590 rss: 353Mb L: 128/1398212 MS: 3 ShuffleBytes-ChangeASCIIInt-EraseBytes-
+#239949	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1400492 exec/s: 47989 rss: 357Mb L: 64/1398212 MS: 1 EraseBytes-
+#262144	pulse  cov: 443 ft: 1721 corp: 163/1398Kb lim: 1400712 exec/s: 52428 rss: 357Mb
+#330857	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1401392 exec/s: 47265 rss: 357Mb L: 529/1398212 MS: 2 ShuffleBytes-EraseBytes-
+#463729	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1402712 exec/s: 51525 rss: 357Mb L: 528/1398212 MS: 2 EraseBytes-CrossOver-
+#524288	pulse  cov: 443 ft: 1721 corp: 163/1398Kb lim: 1403312 exec/s: 52428 rss: 357Mb
+#572524	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1403792 exec/s: 52047 rss: 357Mb L: 144/1398212 MS: 4 ShuffleBytes-ShuffleBytes-ChangeBinInt-EraseBytes-
+#1048576	pulse  cov: 443 ft: 1721 corp: 163/1398Kb lim: 1408532 exec/s: 55188 rss: 371Mb
+#2073536	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1418752 exec/s: 56041 rss: 376Mb L: 57/1398212 MS: 2 ChangeBit-EraseBytes-
+#2097152	pulse  cov: 443 ft: 1721 corp: 163/1398Kb lim: 1418972 exec/s: 56679 rss: 376Mb
+#2800408	REDUCE cov: 443 ft: 1721 corp: 163/1398Kb lim: 1425992 exec/s: 56008 rss: 376Mb L: 2112/1398212 MS: 2 ChangeBinInt-EraseBytes-
+#4194304	pulse  cov: 443 ft: 1721 corp: 163/1398Kb lim: 1439892 exec/s: 56679 rss: 380Mb
+#8388608	pulse  cov: 443 ft: 1721 corp: 163/1398Kb lim: 1481732 exec/s: 58661 rss: 384Mb
+#16777216	pulse  cov: 443 ft: 1721 corp: 163/1398Kb lim: 1500000 exec/s: 59918 rss: 389Mb
+==58382== libFuzzer: run interrupted; exiting
+stat::number_of_executed_units: 26482587
+stat::average_exec_per_sec:     59112
+stat::new_units_added:          16
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              390

@@ -1,0 +1,36 @@
+INFO: Running with entropic power schedule (0xFF, 100).
+INFO: Seed: 2339825260
+INFO: Loaded 1 modules   (882 inline 8-bit counters): 882 [0x558b73dffab0, 0x558b73dffe22), 
+INFO: Loaded 1 PC tables (882 PCs): 882 [0x558b73dffe28,0x558b73e03548), 
+INFO:      187 files found in /workspace/Lyxal_Solution/crates/lyxal_crypto/fuzz/corpus/context
+INFO: seed corpus: files: 187 min: 1b max: 129b total: 3565b rss: 83Mb
+#188	INITED cov: 167 ft: 403 corp: 140/2671b exec/s: 0 rss: 83Mb
+#2944	REDUCE cov: 167 ft: 403 corp: 140/2670b lim: 157 exec/s: 0 rss: 83Mb L: 2/129 MS: 1 EraseBytes-
+#17942	REDUCE cov: 167 ft: 403 corp: 140/2668b lim: 302 exec/s: 0 rss: 83Mb L: 7/129 MS: 3 ShuffleBytes-ChangeByte-EraseBytes-
+#198325	REDUCE cov: 167 ft: 403 corp: 140/2667b lim: 2095 exec/s: 0 rss: 83Mb L: 16/129 MS: 3 CopyPart-ChangeByte-EraseBytes-
+#265682	RELOAD cov: 167 ft: 404 corp: 141/2680b lim: 2755 exec/s: 265682 rss: 83Mb
+#1048576	pulse  cov: 167 ft: 404 corp: 141/2680b lim: 10554 exec/s: 349525 rss: 211Mb
+#2097152	pulse  cov: 167 ft: 404 corp: 141/2680b lim: 20997 exec/s: 419430 rss: 387Mb
+#4194304	pulse  cov: 167 ft: 404 corp: 141/2680b lim: 41906 exec/s: 419430 rss: 492Mb
+#8388608	pulse  cov: 167 ft: 404 corp: 141/2680b lim: 83706 exec/s: 419430 rss: 493Mb
+#16777216	pulse  cov: 167 ft: 404 corp: 141/2680b lim: 167343 exec/s: 409200 rss: 493Mb
+#32803659	REDUCE cov: 167 ft: 404 corp: 141/2674b lim: 327150 exec/s: 410045 rss: 495Mb L: 74/129 MS: 2 CrossOver-EraseBytes-
+#33554432	pulse  cov: 167 ft: 404 corp: 141/2674b lim: 334620 exec/s: 414252 rss: 495Mb
+#34145855	REDUCE cov: 167 ft: 404 corp: 141/2673b lim: 340524 exec/s: 411395 rss: 495Mb L: 73/129 MS: 1 EraseBytes-
+#35754524	REDUCE cov: 167 ft: 404 corp: 141/2665b lim: 356562 exec/s: 415750 rss: 495Mb L: 48/129 MS: 3 ChangeBit-CopyPart-EraseBytes-
+#37162035	REDUCE cov: 167 ft: 404 corp: 141/2664b lim: 370584 exec/s: 412911 rss: 495Mb L: 72/129 MS: 1 EraseBytes-
+#67108864	pulse  cov: 167 ft: 404 corp: 141/2664b lim: 669236 exec/s: 419430 rss: 496Mb
+#69959003	REDUCE cov: 167 ft: 404 corp: 141/2662b lim: 697660 exec/s: 418916 rss: 496Mb L: 19/129 MS: 3 CrossOver-ChangeBit-EraseBytes-
+#70120229	REDUCE cov: 167 ft: 404 corp: 141/2661b lim: 699256 exec/s: 419881 rss: 496Mb L: 18/129 MS: 1 EraseBytes-
+#70659761	REDUCE cov: 167 ft: 404 corp: 141/2660b lim: 704633 exec/s: 420593 rss: 496Mb L: 17/129 MS: 1 EraseBytes-
+#121431987	REDUCE cov: 167 ft: 404 corp: 141/2659b lim: 1211030 exec/s: 424587 rss: 498Mb L: 16/129 MS: 4 ChangeBit-EraseBytes-InsertByte-CopyPart-
+#122859652	REDUCE cov: 167 ft: 404 corp: 141/2658b lim: 1225270 exec/s: 425119 rss: 498Mb L: 11/129 MS: 5 CrossOver-ChangeByte-ChangeBinInt-EraseBytes-EraseBytes-
+#134217728	pulse  cov: 167 ft: 404 corp: 141/2658b lim: 1338550 exec/s: 426088 rss: 498Mb
+#136779506	REDUCE cov: 167 ft: 404 corp: 141/2657b lim: 1364110 exec/s: 426104 rss: 498Mb L: 71/129 MS: 4 EraseBytes-InsertRepeatedBytes-EraseBytes-EraseBytes-
+#136887169	REDUCE cov: 167 ft: 404 corp: 141/2656b lim: 1365170 exec/s: 425115 rss: 498Mb L: 70/129 MS: 3 ChangeBinInt-ChangeBit-EraseBytes-
+==58383== libFuzzer: run interrupted; exiting
+stat::number_of_executed_units: 189550076
+stat::average_exec_per_sec:     423102
+stat::new_units_added:          14
+stat::slowest_unit_time_sec:    0
+stat::peak_rss_mb:              498
