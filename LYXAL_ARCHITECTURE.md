@@ -162,6 +162,8 @@ Interfaces Applicatives (Console Web, CLI, Axum API Handlers: lyxal_server, Desk
 
 ## 🔄 8. Évolution, Migrations & Non-Rupture d'API
 
+> **Suspendu tant que Lyxal OS n'est pas en production** : le régime pré-production « Zéro Dette » de `.agents/AGENTS.md` §0 s'applique (contrats modifiables avec mise à jour de tous les appelants, une seule migration `0001_initial.surql` réécrite en place, pas d'historique dans les modules).
+
 - **Cycle de Vie des APIs** : `V1 (Architecture) ──► V2 (Sans breaking change) ──► V3 (Migration) ──► V4 (Dépréciation)`.
 - **Règle de Non-Rupture** : On ne casse jamais une API existante. On ajoute de nouveaux champs/fonctions, on déprécie l'ancienne version, puis on la supprime dans une version majeure ultérieure.
 - **Migrations Déterministes** : Aucun fichier existant ne doit être modifié manuellement en production (`schema/` ➔ `migration/` ➔ `runtime`).

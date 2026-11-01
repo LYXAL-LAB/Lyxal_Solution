@@ -138,6 +138,16 @@ Si le module comporte un crate Rust, inspecter `Cargo.toml` et `src/**/*.rs` :
    - **Violation P0** si un module métier importe directement `argon2`, `bcrypt`, `hmac`, `sha2`, `blake3`, `aes_gcm`, `hkdf` ou utilise `rand::thread_rng()`.
    - Toute opération cryptographique dans un module métier doit passer par `lyxal_crypto` (`hash`, `password`, `hmac`, `kdf`, `CryptoEngine` avec `SecretContext` / `EncryptedEnvelope`) et `rand_core::OsRng`.
 
+### Contrôle 7 bis — Zéro Dette (régime pré-production, [`AGENTS.md` §0](../../AGENTS.md)) [OBLIGATOIRE]
+Tant que le CTO n'a pas déclaré la première mise en production, signaler comme **P2** (à nettoyer lors de la reprise du module) :
+1. Plus d'un fichier dans `migrations/` (le module ne doit avoir que `0001_initial.surql`, à l'état cible).
+2. Tout élément conservé pour compatibilité : alias, fonction / champ / code d'erreur déprécié, `#[deprecated]`, branche `legacy` / `v1` / `fallback` lisant un ancien format.
+3. Code mort, commenté ou non appelé.
+4. Documents historiques dans le module : rapports de clôture, d'audit ou de recette passés, `CHANGELOG.md` de versions jamais livrées, `implementation_plan.md` déjà exécuté.
+5. Version `manifest.toml` / `Cargo.toml` ≥ `1.0.0`.
+
+Une rupture de contrat public n'est **pas** un écart en pré-production si tous les appelants du dépôt ont été mis à jour ; elle est un **P1** si un appelant n'a pas été mis à jour (workspace cassé ou dépendance implicite rompue).
+
 ### Contrôle 8 — Exécution des Contrôles & Preuves de Tests [OBLIGATOIRE]
 1. Distinguer avec une rigueur absolue dans le rapport :
    - **Contrôles statiques effectués** (lecture intégrale des fichiers, vérification des graphes, croisement DTO $\leftrightarrow$ SurrealQL) ;

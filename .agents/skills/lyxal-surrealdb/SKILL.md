@@ -120,7 +120,8 @@ Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.3.4
 
 ## 3. Migrations, Seeds & Prévention de Perte de Données
 
-1. **Immuabilité des Migrations (`migrations/XXXX_nom.surql`)** :
+0. **Régime pré-production en vigueur ([`AGENTS.md` §0](../../AGENTS.md))** : tant que le CTO n'a pas déclaré la première mise en production, chaque module n'a **qu'un seul fichier** `migrations/0001_initial.surql`, qui décrit le schéma cible et **est réécrit en place**. Pas de `0002_...` correctif. Les bases de développement sont recréées à partir de zéro. Les instructions destructives ne sont pas nécessaires et restent interdites dans les migrations. La règle 1 ci-dessous ne s'applique qu'après la mise en production.
+1. **Immuabilité des Migrations (`migrations/XXXX_nom.surql`)** — *après mise en production* :
    - Le moteur [`MigrationRunner`](../../../crates/lyxal_runtime/src/migration/runner.rs) de `lyxal_runtime` calcule et vérifie un `MigrationChecksum` sur chaque fichier de migration.
    - **Règle absolue** : Ne jamais modifier un fichier de migration déjà appliqué ou gelé. Toute évolution passe par un nouveau fichier incrémental (`0002_...surql`).
    - Interdiction formelle des instructions destructives (`REMOVE TABLE`, `REMOVE FIELD`, `DELETE` non borné) sans plan de migration validé par le CTO.
