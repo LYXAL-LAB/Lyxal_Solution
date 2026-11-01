@@ -58,9 +58,9 @@ Activer ce Skill dès qu'une mission implique :
   - `fn name(&self) -> &'static str`
 - Contexte de livraison [`HandlerContext`](../../../crates/lyxal_event/src/handler/context.rs) : expose `event_id`, `delivery_id`, `correlation_id`, `causation_id`, `context: EventContext` (`tenant_id`, `namespace`, `database`, `user_id`, `request_id`), `attempt: u32` et `cancellation: CancellationToken`.
 - Registre [`HandlerRegistry`](../../../crates/lyxal_event/src/handler/registry.rs) : associe un `event_type` à un `ErasedHandler` unique par processus (`registry.register::<E, H>(handler)` retourne `Err(LyxalEventError::DuplicateHandler)` si le même `EVENT_TYPE` est enregistré deux fois dans le même `HandlerRegistry`).
-- Pont Runtime [`EventConsumerModule`](../../../crates/lyxal_runtime/src/event_engine/registration.rs) :
-  - `fn module_id(&self) -> &ModuleId`
+- Pont Runtime [`EventConsumerModule`](../../../crates/lyxal_runtime/src/event_engine/registration.rs) (méthode unique) :
   - `fn register_event_handlers(&self, registry: &mut HandlerRegistry) -> Result<(), RuntimeError>`
+  - `HandlerRegistry::register` retourne `Result<&mut Self, LyxalEventError>` : l'erreur doit être convertie explicitement (ex. `.map_err(|e| RuntimeError::EventEngineError { message: e.to_string() })?`), aucune conversion `From` automatique n'existant.
 
 #### Règles de contrôle
 1. **[OBLIGATOIRE] Découplage Producteur / Consommateur** : Un module producteur émet ses événements via `DEFINE EVENT ... THEN ( fn::event_publish({...}) )` en SurrealQL ou via `EventPublisher::publish` en Rust, sans **jamais** importer le crate d'un module consommateur.
@@ -132,7 +132,7 @@ Activer ce Skill dès qu'une mission implique :
 - Trait [`ModuleHealthCheck`](../../../crates/lyxal_runtime/src/health/check.rs) :
   - `fn module_id(&self) -> &ModuleId`
   - `async fn check(&self, ctx: &ModuleContext) -> Result<HealthCheckResult, RuntimeError>`
-- Résultat [`HealthCheckResult`](../../../crates/lyxal_runtime/src/health/check.rs) : constructeurs `healthy(msg)`, `degraded(msg)`, `unhealthy(msg)`, `unknown(msg)`, `not_applicable()` produisant un `HealthStatus`.
+- Résultat [`HealthCheckResult`](../../../crates/lyxal_runtime/src/health/check.rs) : constructeurs `healthy(module_id, latency_ms, message: Option<String>)`, `degraded(module_id, latency_ms, message)`, `unhealthy(module_id, latency_ms: Option<u64>, message)`, `unknown(module_id)` et `not_applicable(module_id, reason: Option<String>)` produisant un `HealthStatus`.
 
 #### Règles de contrôle
 1. **[OBLIGATOIRE] Sonde légère et non bloquante** : `ModuleHealthCheck::check` est appelée périodiquement par `HealthEngine` sous un timeout strict (`health_check_timeout`). Elle doit vérifier la disponibilité des ressources critiques du module dans `ctx: &ModuleContext` sans effectuer de requêtes lourdes ou mutantes (modèle de référence : [`IngestionHealthCheck`](../../../crates/lyxal_pipeline_ingestion/src/health.rs)).

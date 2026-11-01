@@ -21,7 +21,7 @@ Activer ce Skill dès que la tâche implique :
 
 ## 1. Socle Technique Réel du Dépôt (Vérifié)
 
-1. **Moteur cible de référence** : **SurrealDB 3.2.0** (binaire local [`surreal.exe`](../../../surreal.exe) `3.2.0 for windows on x86_64`, persistant ou mémoire `mem://`).
+1. **Moteur cible de référence** : **SurrealDB 3.2.0** (binaire `surreal` 3.2.0, non versionné dans le dépôt : chemin fourni par la variable d'environnement `LYXAL_SURREAL_BIN`, à défaut `surreal` dans le `PATH` ; `surreal.exe` sous Windows ; persistant ou mémoire `mem://`).
 2. **SDK Rust** : `surrealdb = { version = "2.2", features = ["protocol-ws", "protocol-http", "kv-mem"] }` dans [`Cargo.toml`](../../../Cargo.toml), consommé exclusivement via `Surreal<Any>` et [`lyxal_surreal::LyxalSurrealCall`](../../../crates/lyxal_surreal/src/call.rs).
 3. **Bibliothèque standard `lyxal_core` (Couche 0 — 799 primitives validées sur SurrealDB 3.2.0)** :
    - Située dans [`crates/lyxal_core`](../../../crates/lyxal_core) (`339` validations, `170` sanitize, `170` security, `120` utils).
@@ -83,7 +83,7 @@ Distinguer strictement deux usages de `DEFINE EVENT` dans Lyxal OS :
 2. **Publication d'événement de domaine asynchrone** (ex. [`events/01_events.surql`](../../../crates/lyxal_pipeline_ingestion/events/01_events.surql)) :
    - Appelle exclusivement `fn::event_publish({ event_id: rand::uuid::v7(), event_type: "<module>.<entite>.<action>", producer: "lyxal_<module>", payload: {...}, metadata: {...} })`.
 
-### 2.5. Règles Strictes de Compatibilité SurrealDB 3.2.0 (Vérifiées sur `surreal.exe` 3.2.0)
+### 2.5. Règles Strictes de Compatibilité SurrealDB 3.2.0 (Vérifiées sur le binaire `surreal` 3.2.0)
 Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.2.0 :
 1. **Types & Signatures** :
    - **`option<any>` est interdit** (`Parse error: Unexpected token 'ANY', expected a kind name`) $\rightarrow$ utiliser **`any`** (qui accepte nativement `NONE` et `NULL` tout en préservant `$val IS NONE` et `type::is_null($val)`).
@@ -102,8 +102,8 @@ Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.2.0
 5. **Littéraux de Chaînes, Échappements & Moteur Regex Rust** :
    - Tout antislash d'expression régulière dans un littéral `"..."` doit être doublé (`"\\s+"`, `"\\."`, `"\\p{L}"`, `"\\x00"`, et `"\\\\"` pour un antislash littéral dans une classe `[...]`).
    - Le moteur `regex` Rust de SurrealDB 3.2.0 **ne supporte pas les backreferences** (`\1`, `\2`), et `string::replace($s, <regex>..., "$1")` n'expanse pas les groupes capturants `$1`.
-6. **Import CLI (`surreal.exe import`)** :
-   - En SurrealDB 3.2.0, tout fichier importé via `surreal.exe import` doit débuter par l'instruction `OPTION IMPORT;`.
+6. **Import CLI (`surreal import`)** :
+   - En SurrealDB 3.2.0, tout fichier importé via `surreal import` doit débuter par l'instruction `OPTION IMPORT;`.
 7. **Signatures Runtime de la Bibliothèque Standard SurrealDB 3.2.0 (Vérifiées en Lot 4)** :
    - `array::reduce($arr, $fn)` prend **uniquement 2 arguments** en 3.2.0 (sans valeur initiale). Dès qu'un accumulateur initial `$init` est requis, utiliser **`array::fold($arr, $init, |$acc, $x| ...)`**.
    - `array::sort::asc($arr)` et `array::sort::desc($arr)` prennent **uniquement 1 argument** en 3.2.0 (pas de second argument de champ `$field`). Pour trier un tableau d'objets par clé, utiliser `fn::utils_collection_sort_by($arr, $field, $direction)`.
