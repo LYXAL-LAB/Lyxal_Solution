@@ -83,19 +83,26 @@ Même principe : un résultat ou une valeur ; `THROW` uniquement pour un argumen
 
 ## 5. Format des tests (Q4)
 
-* Chaque instruction de test **s'auto-vérifie** et doit renvoyer `true` :
+Format mis en place au lot 2 dans `scripts/ci/test_lyxal_core.py` (auto-testé par `scripts/ci/test_lyxal_core_selftest.py`) :
 
 ```surql
--- Adresse valide, espaces retirés
+-- lyxal-test: assertions
+
+-- test: adresse valide, espaces retirés
 RETURN fn::validation_email("  contact@example.com ", 254)
     == { valid: true, value: "contact@example.com", code: NONE, details: {} };
 
--- Adresse invalide
+-- test: adresse invalide
 RETURN fn::validation_email("pas-un-email", 254).code == "CORE_VALIDATION_EMAIL_FORMAT";
+
+-- test: longueur maximale négative
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_email("contact@example.com", -1);
 ```
 
-* Une erreur de programmation attendue est annoncée par un marqueur placé juste avant l'instruction : `-- attendu-erreur: CORE_INVALID_ARGUMENT`.
-* `scripts/ci/test_lyxal_core.py` évolue : pour un fichier au nouveau format, toute instruction qui ne renvoie pas `true`, ou qui ne lève pas l'erreur annoncée, fait échouer la CI. Les fichiers pas encore migrés gardent la vérification actuelle (pas d'erreur moteur inattendue) jusqu'à leur lot ; à la fin de la reprise, l'ancien mode disparaît.
+* La ligne `-- lyxal-test: assertions` (dans les 30 premières lignes) fait passer le fichier au nouveau format.
+* Chaque bloc `-- test: <description>` contient **exactement une** instruction, exécutée seule. Elle doit renvoyer `true`, ou lever exactement l'erreur annoncée par `-- attendu-erreur: <CODE>`. Tout autre résultat (`false`, une autre valeur, une autre erreur, une erreur non annoncée, plusieurs instructions, une instruction hors bloc, aucun bloc) fait échouer la CI, avec le nom du bloc.
+* Les fichiers sans la ligne de format gardent l'ancienne vérification (pas d'erreur moteur inattendue) jusqu'à leur lot ; ce mode disparaît au lot 5.
 
 ## 6. Lots d'exécution (une PR par lot, CI verte obligatoire)
 

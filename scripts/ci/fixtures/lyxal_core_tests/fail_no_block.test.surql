@@ -1,0 +1,2 @@
+-- lyxal-test: assertions
+-- Aucun bloc de test : doit être signalé.
