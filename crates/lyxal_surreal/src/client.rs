@@ -92,8 +92,8 @@ pub async fn create_surreal_client(
     if !embedded {
         if let Some(creds) = credentials {
             db.signin(Root {
-                username: &creds.username,
-                password: &creds.password,
+                username: creds.username,
+                password: creds.password,
             })
             .await?;
         }
@@ -108,9 +108,18 @@ mod tests {
 
     #[test]
     fn test_normalize_endpoint() {
-        assert_eq!(normalize_endpoint("ws://127.0.0.1:8000/"), "ws://127.0.0.1:8000");
-        assert_eq!(normalize_endpoint("ws://127.0.0.1:8000/rpc"), "ws://127.0.0.1:8000");
-        assert_eq!(normalize_endpoint("ws://127.0.0.1:8000/rpc/"), "ws://127.0.0.1:8000");
+        assert_eq!(
+            normalize_endpoint("ws://127.0.0.1:8000/"),
+            "ws://127.0.0.1:8000"
+        );
+        assert_eq!(
+            normalize_endpoint("ws://127.0.0.1:8000/rpc"),
+            "ws://127.0.0.1:8000"
+        );
+        assert_eq!(
+            normalize_endpoint("ws://127.0.0.1:8000/rpc/"),
+            "ws://127.0.0.1:8000"
+        );
         assert_eq!(normalize_endpoint("mem://"), "mem://");
         assert_eq!(normalize_endpoint("memory"), "memory");
     }
@@ -126,36 +135,61 @@ mod tests {
     #[test]
     fn test_validate_endpoint_scheme_invalid() {
         let res = validate_endpoint_scheme("http://127.0.0.1:8000");
-        assert!(matches!(res, Err(LyxalSurrealError::UnsupportedEndpoint { .. })));
+        assert!(matches!(
+            res,
+            Err(LyxalSurrealError::UnsupportedEndpoint { .. })
+        ));
 
         let res = validate_endpoint_scheme("tcp://127.0.0.1:8000");
-        assert!(matches!(res, Err(LyxalSurrealError::UnsupportedEndpoint { .. })));
+        assert!(matches!(
+            res,
+            Err(LyxalSurrealError::UnsupportedEndpoint { .. })
+        ));
 
         let res = validate_endpoint_scheme("invalid");
-        assert!(matches!(res, Err(LyxalSurrealError::UnsupportedEndpoint { .. })));
+        assert!(matches!(
+            res,
+            Err(LyxalSurrealError::UnsupportedEndpoint { .. })
+        ));
     }
 
     #[tokio::test]
     async fn test_create_surreal_client_mem_success() {
         let db = create_surreal_client("mem://", None).await;
-        assert!(db.is_ok(), "mem:// connection without credentials must succeed");
+        assert!(
+            db.is_ok(),
+            "mem:// connection without credentials must succeed"
+        );
         let client = db.unwrap();
-        client.use_ns("test_ns").use_db("test_db").await.expect("Select NS/DB");
+        client
+            .use_ns("test_ns")
+            .use_db("test_db")
+            .await
+            .expect("Select NS/DB");
     }
 
     #[tokio::test]
     async fn test_create_surreal_client_rejects_missing_credentials_on_ws() {
         let res = create_surreal_client("ws://127.0.0.1:9999", None).await;
-        assert!(matches!(res, Err(LyxalSurrealError::MissingCredentials { .. })));
+        assert!(matches!(
+            res,
+            Err(LyxalSurrealError::MissingCredentials { .. })
+        ));
 
         let empty_cred = Some(RootCredentials::new("", ""));
         let res2 = create_surreal_client("ws://127.0.0.1:9999", empty_cred).await;
-        assert!(matches!(res2, Err(LyxalSurrealError::MissingCredentials { .. })));
+        assert!(matches!(
+            res2,
+            Err(LyxalSurrealError::MissingCredentials { .. })
+        ));
     }
 
     #[tokio::test]
     async fn test_create_surreal_client_rejects_unsupported_endpoint() {
         let res = create_surreal_client("http://127.0.0.1:8000", None).await;
-        assert!(matches!(res, Err(LyxalSurrealError::UnsupportedEndpoint { .. })));
+        assert!(matches!(
+            res,
+            Err(LyxalSurrealError::UnsupportedEndpoint { .. })
+        ));
     }
 }

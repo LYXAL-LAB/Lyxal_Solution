@@ -6,7 +6,7 @@ description: >-
 
 # Lyxal OS — Ingénierie, Migrations & Sécurité SurrealDB 3.3.4 (`lyxal-surrealdb`)
 
-> **Source normative** : Ce Skill applique les standards SurrealQL définis dans [`.agents/AGENTS.md`](../../AGENTS.md), [`.agents/rules/lyxal_standards_and_checklist.md`](../../rules/lyxal_standards_and_checklist.md) et l'audit architectural [`docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md`](../../../docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md).
+> **Source normative** : Ce Skill applique les standards SurrealQL définis dans [`.agents/AGENTS.md`](../../AGENTS.md), [`.agents/rules/lyxal_standards_and_checklist.md`](../../rules/lyxal_standards_and_checklist.md) et l'audit architectural [`docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md`](../../../docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md).
 
 ---
 
@@ -14,7 +14,7 @@ description: >-
 
 Activer ce Skill dès que la tâche implique :
 - L'écriture ou la modification de fichiers `.surql` (`schema/`, `functions/`, `events/`, `migrations/`, `error/`, `seeds/`) ;
-- L'analyse de compatibilité syntaxique SurrealDB 3.3.4 ou d'interopérabilité avec le crate Rust `surrealdb = "2.2"` (`Surreal<Any>`) ;
+- L'analyse de compatibilité syntaxique SurrealDB 3.3.4 ou d'interopérabilité avec le crate Rust `surrealdb` 3.3 (`Surreal<Any>`, trait `SurrealValue`) ;
 - La conception de règles RLS (`PERMISSIONS`), de verrous moteurs (`DEFINE EVENT ... THROW`), de transactions ou de migrations déterministes.
 
 ---
@@ -22,7 +22,7 @@ Activer ce Skill dès que la tâche implique :
 ## 1. Socle Technique Réel du Dépôt (Vérifié)
 
 1. **Moteur cible de référence** : **SurrealDB 3.3.4** (binaire `surreal` 3.3.4, non versionné dans le dépôt : chemin fourni par la variable d'environnement `LYXAL_SURREAL_BIN`, à défaut `surreal` dans le `PATH` ; `surreal.exe` sous Windows ; persistant ou mémoire `mem://`).
-2. **SDK Rust** : `surrealdb = { version = "2.2", features = ["protocol-ws", "protocol-http", "kv-mem"] }` dans [`Cargo.toml`](../../../Cargo.toml), consommé exclusivement via `Surreal<Any>` et [`lyxal_surreal::LyxalSurrealCall`](../../../crates/lyxal_surreal/src/call.rs).
+2. **SDK Rust** : `surrealdb = { version = "3.3", features = ["protocol-ws", "protocol-http", "kv-mem"] }` et `surrealdb-types = "3.3"` dans [`Cargo.toml`](../../../Cargo.toml), consommé exclusivement via `Surreal<Any>` et [`lyxal_surreal::LyxalSurrealCall`](../../../crates/lyxal_surreal/src/call.rs). Le moteur embarqué des tests (`mem://`) est donc un moteur 3.3.x : un test `cargo test` exécute réellement le SurrealQL en 3.3. Les types natifs (`Datetime`, `RecordId`, `SurrealValue`, `ToSql`, `Value`) sont ré-exportés par `lyxal_surreal`.
 3. **Bibliothèque standard `lyxal_core` (Couche 0 — 799 primitives validées sur SurrealDB 3.3.4)** :
    - Située dans [`crates/lyxal_core`](../../../crates/lyxal_core) (`339` validations, `170` sanitize, `170` security, `120` utils).
    - Par exception de bibliothèque standard de bas niveau, les primitives pures de `lyxal_core` (`fn::validation_*`, `fn::sanitize_*`, `fn::security_*`, `fn::utils_*`) utilisent des **signatures positionnelles typées** et signalent les violations de contrat par `THROW "<CODE>"`.
@@ -53,7 +53,7 @@ Avant d'écrire ou de recommander une construction SurrealQL, appliquer ces règ
 - **`TYPE NORMAL` vs `TYPE RELATION`** :
   - Toujours utiliser `TYPE NORMAL` avec des champs `TYPE record<cible> REFERENCE` par défaut.
   - **Interdiction** de convertir une table existante (notamment les 13 tables gelées de `lyxal_catalogue` V1.1 et les 11 tables de `lyxal_pipeline_ingestion` V1.0.0) en `TYPE RELATION`.
-  - Toute nouvelle table `TYPE RELATION IN ... OUT ... SCHEMAFULL` requiert une validation formelle préalable du CTO (cf. [`AUDIT_SURREALDB_RELATION_TABLES.md`](../../../docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md)).
+  - Toute nouvelle table `TYPE RELATION IN ... OUT ... SCHEMAFULL` requiert une validation formelle préalable du CTO (cf. [`AUDIT_SURREALDB_RELATION_TABLES.md`](../../../docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md)).
 - **Champs optionnels et tableaux typés** :
   - Utiliser `TYPE option<string>`, `TYPE option<decimal>`, `TYPE option<datetime>`, `TYPE option<record<...>>`.
   - Pour les tableaux d'objets structurés, déclarer à la fois `DEFINE FIELD OVERWRITE items ON TABLE ... TYPE option<array<object>> DEFAULT [];`, `DEFINE FIELD OVERWRITE items[*] ON TABLE ... TYPE object;` et chaque sous-champ `items[*].champ`.
@@ -116,11 +116,24 @@ Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.3.4
    - **Changement de comportement par rapport à 3.2.0** : sur SurrealDB 3.3.4, un index `UNIQUE` (simple ou composite, ex: `DEFINE INDEX idx ON TABLE delivery FIELDS subscription, delivery_seq UNIQUE`) **n'entre plus en conflit** lorsque plusieurs enregistrements ont `delivery_seq = NONE` ou `NULL` ; seules les valeurs renseignées identiques lèvent `Database index ... already contains ...`. En 3.2.0, ces valeurs `NONE` levaient une violation `IndexExists`.
    - Les index non-uniques existants (`DEFINE INDEX ... FIELDS sub, seq`) et la garantie d'unicité par fonction transactionnelle atomique (ex: `fn::event_delivery_assign_seq` avec compteur incrémenté sur `event_subscription_progress`) **restent la norme** : ils sont corrects en 3.3.4 et ne doivent pas être convertis en `UNIQUE` sans `implementation_plan.md` validé par le CTO.
 
+
+### 2.6. Contrat Rust ↔ SurrealDB avec le SDK 3.3 (constaté lors de la migration 2.x → 3.3)
+1. **`SurrealValue` remplace `serde`** pour tout ce qui traverse la frontière base de données (`bind`, `take`, `call_fn`) : `#[derive(SurrealValue)]` sur les `XxxParams` / `XxxResult` / lignes de persistance. `serde` ne reste que pour les types aussi exposés en JSON (API HTTP, payloads d'événements). Un type peut dériver les deux. Hors du SDK (crate dépendant seulement de `surrealdb-types`), préciser `#[surreal(crate = "surrealdb_types")]`. Un générique doit porter la contrainte sur la structure (`struct LyxalResult<T: SurrealValue>`).
+2. **Attributs** : `#[surreal(default)]`, `#[surreal(default = "fn")]`, `#[surreal(rename_all = "...")]`. Pas d'`alias` ni de `with` (et aucun alias de compatibilité en régime pré-production).
+3. **Énumérations unitaires** : par défaut le derive encode `Pending` en `{pending: {}}`. Pour stocker une chaîne (`'pending'`), utiliser `#[surreal(untagged, rename_all = "snake_case")]` (ou la casse voulue).
+4. **`NONE` ≠ `NULL`** : un `Option<T>` accepte `NONE` et **refuse `NULL`**. Les contrats `fn::result_ok` / `fn::error_result` renvoient `NONE`. Ne jamais passer une structure par `serde_json::to_value(...)` avant de l'envoyer : un champ vide deviendrait `NULL`. Transmettre le type natif.
+5. **Types stricts** : un champ `datetime` se lit en `Datetime` (plus de conversion implicite vers `String`) ; un champ `TYPE string` refuse un `uuid` natif — en 3.x, `rand::uuid::v7()` renvoie un `uuid` : le convertir (`<string> rand::uuid::v7()`) s'il est stocké en chaîne. Une table `SCHEMAFULL` **refuse** un champ non déclaré (la 2.x l'ignorait) : déclarer tout champ écrit par le code.
+6. **`RecordId`** : plus de `Display` ni de `FromStr`. Texte : `id.to_sql()` (trait `ToSql`) ; construction : `RecordId::new(table, key)` ou `RecordId::parse_simple("table:key")`.
+7. **Table absente** : `SELECT` ou `select()` sur une table qui n'existe pas encore renvoie une **erreur** (la 2.x renvoyait une liste vide).
+8. **Erreurs typées, jamais par texte** : `err.is_not_found()`, `err.is_already_exists()`, `err.is_validation()`, etc. Ne jamais classer une erreur en cherchant un mot dans son message.
+9. **Zéro erreur masquée** : jamais `take(0).unwrap_or_default()` ni `.ok()` sur une lecture ; toute réponse multi-instructions (transaction) est vérifiée par `response.check()`.
+
 ---
 
 ## 3. Migrations, Seeds & Prévention de Perte de Données
 
-1. **Immuabilité des Migrations (`migrations/XXXX_nom.surql`)** :
+0. **Régime pré-production en vigueur ([`AGENTS.md` §0](../../AGENTS.md))** : tant que le CTO n'a pas déclaré la première mise en production, chaque module n'a **qu'un seul fichier** `migrations/0001_initial.surql`, qui décrit le schéma cible et **est réécrit en place**. Pas de `0002_...` correctif. Les bases de développement sont recréées à partir de zéro. Les instructions destructives ne sont pas nécessaires et restent interdites dans les migrations. La règle 1 ci-dessous ne s'applique qu'après la mise en production.
+1. **Immuabilité des Migrations (`migrations/XXXX_nom.surql`)** — *après mise en production* :
    - Le moteur [`MigrationRunner`](../../../crates/lyxal_runtime/src/migration/runner.rs) de `lyxal_runtime` calcule et vérifie un `MigrationChecksum` sur chaque fichier de migration.
    - **Règle absolue** : Ne jamais modifier un fichier de migration déjà appliqué ou gelé. Toute évolution passe par un nouveau fichier incrémental (`0002_...surql`).
    - Interdiction formelle des instructions destructives (`REMOVE TABLE`, `REMOVE FIELD`, `DELETE` non borné) sans plan de migration validé par le CTO.
@@ -139,6 +152,8 @@ Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.3.4
 ---
 
 ## 4. Protocole de Test Reproductible SurrealDB 3.3.4
+
+Outillage versionné dans `scripts/ci/` : `install_surreal.sh` (binaire 3.3.4 exact), `validate_surql.sh` (`surreal validate` de tout le workspace), `test_lyxal_core.py` (suite `lyxal_core`), `test_all.sh` (tests Rust + serveurs de test), `ci_local.sh` (tout, comme la CI).
 
 Pour valider un schéma, une fonction ou une migration :
 

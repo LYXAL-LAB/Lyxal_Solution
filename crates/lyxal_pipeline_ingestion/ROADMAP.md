@@ -23,7 +23,7 @@
 **Statut Officiel :** **FUNCTIONALLY COMPLETE — STAGING VALIDATED — PRODUCTION NOT AUTHORIZED**  
 **Rôle :** Moteur d'extraction, normalisation, contrôle d'intégrité, quarantaine et publication contrôlée avec scellement cryptographique BLAKE3.  
 **Directive d'Architecture SurrealDB :**  
-- **Conserver les 11 tables existantes en `TYPE NORMAL`** (conforme aux conclusions de l'[`audit d'architecture`](file:///c:/Users/HP/Desktop/Lyxal_OS/docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md)).  
+- **Conserver les 11 tables existantes en `TYPE NORMAL`** (conforme aux conclusions de l'[`audit d'architecture`](../../docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md)).  
 - **Modèle de Traitement :** Le pipeline repose principalement sur des flux séquentiels transactionnels par blocs (chunks) et des relations de traçabilité immuables (`batch -> raw_record -> staged_item -> manifest`).  
 - **Aucune conversion en `TYPE RELATION`** n'est prévue ni autorisée sans nouveau besoin fonctionnel formellement démontré et validé par le CTO.  
 - **Maintien strict du statut de gouvernance :** Le statut `FUNCTIONALLY COMPLETE — STAGING VALIDATED — PRODUCTION NOT AUTHORIZED` reste scellé et inchangé.
@@ -122,7 +122,7 @@
 ---
 
 ## 🔗 Liens & Documents Associés
-- Audit architectural des tables relationnelles SurrealDB : [`docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md)
+- Audit architectural des tables relationnelles SurrealDB : [`docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md`](../../docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md)
 - Documentation officielle du module : [`README.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/README.md)
 - Rapport de clôture fonctionnelle V1.0.0 : [`docs/V1_CLOSURE_REPORT.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/docs/V1_CLOSURE_REPORT.md)
 - Charte d'architecture du workspace : [`.agents/AGENTS.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/.agents/AGENTS.md)

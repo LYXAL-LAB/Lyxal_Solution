@@ -6,6 +6,7 @@
 //! 3. Équivalence fonctionnelle
 //! 4. Substitution autorisée
 
+use lyxal_surreal::SurrealValue;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -13,7 +14,10 @@ use crate::normalization::{CanonicalDimensions, CanonicalWeight};
 use crate::types::ItemQualification;
 
 /// Les quatre niveaux stricts de regroupement technique (Directive CTO).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, SurrealValue,
+)]
+#[surreal(untagged)]
 pub enum TechnicalGroupLevel {
     /// Niveau 1 : Appartenance taxonomique à une même famille (ex: PLAQUES_DE_PLATRE, OSSATURES_METALLIQUES).
     Family = 1,
@@ -37,7 +41,7 @@ impl std::fmt::Display for TechnicalGroupLevel {
 }
 
 /// Règle de classification d'une famille technique de produits BTP.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, SurrealValue)]
 pub struct FamilyRule {
     /// Code unique de la famille (ex: "CLOISON_PLAQUE_PLATRE", "CARRELAGE_REVETEMENT_SOL")
     pub code: String,
@@ -50,15 +54,19 @@ pub struct FamilyRule {
 }
 
 /// Tolérances dimensionnelles et métrologiques configurables pour une spécification patronne.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, SurrealValue)]
 pub struct SpecificationTolerances {
     #[serde(default = "default_dim_tol")]
+    #[surreal(default = "default_dim_tol")]
     pub length_tol_mm: f64,
     #[serde(default = "default_dim_tol")]
+    #[surreal(default = "default_dim_tol")]
     pub width_tol_mm: f64,
     #[serde(default = "default_height_tol")]
+    #[surreal(default = "default_height_tol")]
     pub height_tol_mm: f64,
     #[serde(default = "default_pct_tol")]
+    #[surreal(default = "default_pct_tol")]
     pub weight_tol_pct: f64,
 }
 
@@ -84,7 +92,7 @@ impl Default for SpecificationTolerances {
 }
 
 /// Spécification technique générique canonique servant de patron de rapprochement.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, SurrealValue)]
 pub struct TechnicalSpecification {
     /// Code de famille technique (ex: "CLOISON_PLAQUE_PLATRE", "OSSATURE_RAIL")
     pub family_code: String,
@@ -96,6 +104,7 @@ pub struct TechnicalSpecification {
     pub nominal_dimensions: Option<CanonicalDimensions>,
     /// Tolérances configurables
     #[serde(default)]
+    #[surreal(default)]
     pub tolerances: Option<SpecificationTolerances>,
     /// Poids nominal en kg
     pub nominal_weight: Option<CanonicalWeight>,
@@ -108,7 +117,7 @@ pub struct TechnicalSpecification {
 }
 
 /// Résultat de l'analyse de rapprochement technique entre un article et un patron technique.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, SurrealValue)]
 pub struct TechnicalGroupingDecision {
     /// Référence fabricant de l'article analysé
     pub manufacturer_ref: String,
@@ -133,7 +142,7 @@ pub struct TechnicalGroupingDecision {
 }
 
 /// Règle de substitution certifiée contextualisée et révocable (Directive CTO Phase 3).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, SurrealValue)]
 pub struct ContextualSubstitutionRule {
     /// Identifiant unique de la règle (ex: "RULE-SUBST-PLACO-KNAUF-72-48")
     pub rule_id: String,

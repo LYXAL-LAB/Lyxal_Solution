@@ -32,6 +32,7 @@
 //!    crm     analytics    ai
 //! ```
 
+pub mod engine;
 pub mod error;
 pub mod gc;
 pub mod handler;
@@ -40,7 +41,6 @@ pub mod publisher;
 pub mod store;
 pub mod types;
 pub mod worker;
-pub mod engine;
 
 pub use error::LyxalEventError;
 pub use gc::GarbageCollector;

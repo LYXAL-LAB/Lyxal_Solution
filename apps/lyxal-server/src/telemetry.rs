@@ -1,5 +1,5 @@
 use crate::{config::ObservabilityConfig, error::ServerError};
-use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 pub fn init(config: &ObservabilityConfig) -> Result<(), ServerError> {
     let filter = EnvFilter::try_new(&config.log_filter)

@@ -140,9 +140,7 @@ mod tests {
         use axum::response::IntoResponse;
 
         // 1. Database error -> 500
-        let db_err = LyxalSurrealError::Database(surrealdb::Error::Db(
-            surrealdb::error::Db::Internal("db error".into()),
-        ));
+        let db_err = LyxalSurrealError::Database(surrealdb::Error::internal("db error".into()));
         let res = db_err.into_response();
         assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 

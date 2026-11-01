@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
 
 use super::types::{
-    AnomalyCategory, AnomalySeverity, QuarantineEntry, QuarantineStatus, QuarantineStats,
+    AnomalyCategory, AnomalySeverity, QuarantineEntry, QuarantineStats, QuarantineStatus,
 };
 use crate::types::{ItemQualification, StateTransitionRecord};
 

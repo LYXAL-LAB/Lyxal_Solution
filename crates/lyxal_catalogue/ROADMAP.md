@@ -23,7 +23,7 @@
 **Statut :** **Fonctionnellement terminée, validée et gelée.**  
 **Rôle :** Fondation universelle des données produits, articles marchands, prestations immatérielles et nomenclatures d'ouvrages BTP.  
 **Directive d'Architecture SurrealDB :**  
-- **Conserver les 13 tables existantes en `TYPE NORMAL`** (conforme aux conclusions de l'[`audit d'architecture`](file:///c:/Users/HP/Desktop/Lyxal_OS/docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md)).  
+- **Conserver les 13 tables existantes en `TYPE NORMAL`** (conforme aux conclusions de l'[`audit d'architecture`](../../docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md)).  
 - **Aucune migration autorisée** sur le socle V1.1 scellé.
 
 ### Capacités Déjà Implémentées & Disponibles
@@ -135,7 +135,7 @@
 ---
 
 ## 🔗 Liens & Documents Associés
-- Audit architectural des tables relationnelles SurrealDB : [`docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md)
+- Audit architectural des tables relationnelles SurrealDB : [`docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md`](../../docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md)
 - Documentation officielle du module : [`README.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/README.md)
 - Charte d'architecture du workspace : [`.agents/AGENTS.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/.agents/AGENTS.md)
 - Roadmap transversale d'intégration : [`docs/14-roadmap/ROADMAP_LYXAL_SPACE.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/docs/14-roadmap/ROADMAP_LYXAL_SPACE.md)

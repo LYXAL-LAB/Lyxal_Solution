@@ -7,12 +7,13 @@ use crate::event::payload::RuntimeEventPayload;
 use crate::lock::node_id::NodeId;
 use crate::types::ModuleId;
 use async_trait::async_trait;
+use lyxal_surreal::SurrealValue;
 use serde::{Deserialize, Serialize};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
 /// Structure de désérialisation interne d'une ligne de la table `system_runtime_event`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
 pub struct SystemRuntimeEventRow {
     pub event_id: String,
     pub sequence: i64,
@@ -49,7 +50,7 @@ impl SurrealRuntimeEventJournal {
             DEFINE FIELD OVERWRITE module_id ON TABLE system_runtime_event TYPE option<string>;
             DEFINE FIELD OVERWRITE correlation_id ON TABLE system_runtime_event TYPE option<string>;
             DEFINE FIELD OVERWRITE causation_id ON TABLE system_runtime_event TYPE option<string>;
-            DEFINE FIELD OVERWRITE payload ON TABLE system_runtime_event FLEXIBLE TYPE object;
+            DEFINE FIELD OVERWRITE payload ON TABLE system_runtime_event TYPE object FLEXIBLE;
             DEFINE FIELD OVERWRITE created_at ON TABLE system_runtime_event TYPE datetime DEFAULT time::now();
 
             DEFINE INDEX OVERWRITE idx_system_runtime_event_id ON TABLE system_runtime_event COLUMNS event_id UNIQUE;
@@ -125,7 +126,7 @@ impl RuntimeEventJournal for SurrealRuntimeEventJournal {
             })?;
 
         let query = r#"
-            UPSERT type::thing('system_runtime_event', $key_id) SET
+            UPSERT type::record('system_runtime_event', $key_id) SET
                 event_id = $event_id,
                 sequence = $sequence,
                 node_id = $node_id,

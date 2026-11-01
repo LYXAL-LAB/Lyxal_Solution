@@ -79,6 +79,8 @@ Une dépendance implicite est une **violation P1** (ou **P0** si elle viole l'is
 
 ### 4. Analyse d'Impact SemVer, Migrations & Non-Rupture d'API
 
+> **Régime pré-production en vigueur ([`AGENTS.md` §0](../../AGENTS.md))** : une rupture de contrat public est **autorisée** à condition que tous les appelants du dépôt soient mis à jour dans le même changement (workspace qui compile, tests verts). Les ruptures restent **détectées et listées** dans le rapport (statut `Rupture coordonnée`), mais ne sont pas bloquantes ; la stratégie Expand / Contract (point 2) ne s'applique pas, et la catégorie 2 se limite à la réécriture de `migrations/0001_initial.surql`. Les règles ci-dessous s'appliquent pleinement après la première mise en production.
+
 Conformément à [`AGENTS.md` §8](../../AGENTS.md) (`V1 Architecture -> V2 Sans breaking change -> V3 Migration -> V4 Dépréciation`) :
 1. **[OBLIGATOIRE] Détection des Breaking Changes** :
    - **SurrealQL** : suppression ou renommage d'une fonction `fn::<module>_*`, ajout d'un champ obligatoire dans `$params` sans valeur par défaut (`??` / `DEFAULT`), modification de la structure retournée dans `fn::result_ok($data)`, suppression d'un code d'erreur existant.

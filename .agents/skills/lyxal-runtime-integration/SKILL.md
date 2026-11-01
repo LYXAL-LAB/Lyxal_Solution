@@ -122,7 +122,7 @@ Activer ce Skill dès qu'une mission implique :
 2. **[OBLIGATOIRE] Garantie d'Exécution Unique de `install()`** :
    - Toute mutation d'installation de schéma ou de migration exécutée par le Runtime doit être protégée par l'acquisition préalable du bail (`acquire`), le renouvellement (`renew`) si nécessaire, et la vérification de l'état déjà installé après acquisition du verrou.
 3. **[OBLIGATOIRE] Point d'attention SurrealDB 3.3.4 sur les verrous** :
-   - Lors d'un audit de `crates/lyxal_runtime/src/lock/`, vérifier si les requêtes SurrealQL internes utilisent `type::thing(...)` (ex. dans [`installation.rs`](../../../crates/lyxal_runtime/src/lock/installation.rs)) et signaler tout écart de compatibilité avec SurrealDB 3.3.4 (`type::record`).
+   - Lors d'un audit de `crates/lyxal_runtime/src/lock/`, vérifier que les requêtes SurrealQL internes utilisent `type::record(...)` (et jamais `type::thing`, supprimé en 3.x), que toute lecture d'état de verrou propage ses erreurs (aucun `take(0).unwrap_or_default()` : un verrou illisible ne doit jamais être vu comme libre) et que les cas attendus sont distingués par type d'erreur (`is_not_found()` pour une table pas encore créée, `is_already_exists()` pour une création concurrente).
 
 ---
 

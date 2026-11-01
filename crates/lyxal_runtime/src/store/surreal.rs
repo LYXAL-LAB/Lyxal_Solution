@@ -5,7 +5,7 @@ use crate::store::traits::RuntimeStore;
 use crate::types::ModuleId;
 use async_trait::async_trait;
 use lyxal_surreal::LyxalSurrealCall;
-use serde::{Deserialize, Serialize};
+use lyxal_surreal::SurrealValue;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
@@ -33,50 +33,50 @@ impl LyxalSurrealCall for SurrealRuntimeStore {
 }
 
 // Structures de persistance internes pour la désérialisation SurrealDB
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, SurrealValue)]
 struct SystemModuleRow {
     module_id: String,
     name: String,
-    #[serde(default)]
+    #[surreal(default)]
     description: Option<String>,
-    #[serde(default)]
-    created_at: Option<surrealdb::Datetime>,
-    #[serde(default)]
-    updated_at: Option<surrealdb::Datetime>,
+    #[surreal(default)]
+    created_at: Option<lyxal_surreal::Datetime>,
+    #[surreal(default)]
+    updated_at: Option<lyxal_surreal::Datetime>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, SurrealValue)]
 struct SystemReleaseRow {
     module_id: String,
     version: String,
     manifest_version: i64,
-    #[serde(default)]
+    #[surreal(default)]
     description: Option<String>,
     status: String,
-    #[serde(default)]
+    #[surreal(default)]
     checksum: Option<String>,
-    #[serde(default)]
+    #[surreal(default)]
     installation_phase: Option<String>,
-    #[serde(default)]
-    created_at: Option<surrealdb::Datetime>,
-    #[serde(default)]
-    installed_at: Option<surrealdb::Datetime>,
+    #[surreal(default)]
+    created_at: Option<lyxal_surreal::Datetime>,
+    #[surreal(default)]
+    installed_at: Option<lyxal_surreal::Datetime>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, SurrealValue)]
 struct SystemMigrationRow {
     migration_id: String,
     module_id: String,
     module_version: String,
-    #[serde(default)]
+    #[surreal(default)]
     order: Option<i64>,
     checksum: String,
     status: String,
-    #[serde(default)]
+    #[surreal(default)]
     applied_at: Option<i64>,
-    #[serde(default)]
+    #[surreal(default)]
     duration_ms: Option<i64>,
-    #[serde(default)]
+    #[surreal(default)]
     error: Option<String>,
 }
 
@@ -117,6 +117,7 @@ impl RuntimeStore for SurrealRuntimeStore {
             DEFINE FIELD OVERWRITE installation_phase ON TABLE system_module_release TYPE option<string>;
             DEFINE FIELD OVERWRITE created_at ON TABLE system_module_release TYPE datetime DEFAULT time::now() READONLY;
             DEFINE FIELD OVERWRITE installed_at ON TABLE system_module_release TYPE option<datetime>;
+            DEFINE FIELD OVERWRITE updated_at ON TABLE system_module_release TYPE option<datetime>;
 
             -- Champs system_migration
             DEFINE FIELD OVERWRITE migration_id ON TABLE system_migration TYPE string;
@@ -190,7 +191,7 @@ impl RuntimeStore for SurrealRuntimeStore {
     async fn upsert_module(&self, module: &StoredModule) -> Result<(), RuntimeError> {
         let key_id = module.module_id.as_str().replace([':', '.', '-'], "_");
         let query = r#"
-            UPSERT type::thing('system_module', $key_id) SET
+            UPSERT type::record('system_module', $key_id) SET
                 module_id = $module_id,
                 name = $name,
                 description = $description,
@@ -312,7 +313,7 @@ impl RuntimeStore for SurrealRuntimeStore {
         );
 
         let query = r#"
-            UPSERT type::thing('system_module_release', $key_id) SET
+            UPSERT type::record('system_module_release', $key_id) SET
                 module_id = $module_id,
                 version = $version,
                 manifest_version = $manifest_version,
@@ -390,7 +391,7 @@ impl RuntimeStore for SurrealRuntimeStore {
             version.replace([':', '.', '-'], "_")
         );
 
-        let query = "SELECT * FROM type::thing('system_module_release', $key_id);";
+        let query = "SELECT * FROM type::record('system_module_release', $key_id);";
 
         let mut res = self
             .client
@@ -480,7 +481,7 @@ impl RuntimeStore for SurrealRuntimeStore {
         );
 
         let query = r#"
-            UPSERT type::thing('system_module_release', $key_id) SET
+            UPSERT type::record('system_module_release', $key_id) SET
                 status = $status,
                 installation_phase = $phase,
                 updated_at = time::now();
@@ -548,7 +549,7 @@ impl RuntimeStore for SurrealRuntimeStore {
         );
 
         let query = r#"
-            UPSERT type::thing('system_migration', $key_id) SET
+            UPSERT type::record('system_migration', $key_id) SET
                 migration_id = $migration_id,
                 module_id = $module_id,
                 module_version = $module_version,
@@ -628,7 +629,7 @@ impl RuntimeStore for SurrealRuntimeStore {
             migration_id.as_str().replace([':', '.', '-'], "_")
         );
 
-        let query = "SELECT * FROM type::thing('system_migration', $key_id);";
+        let query = "SELECT * FROM type::record('system_migration', $key_id);";
 
         let mut res = self
             .client

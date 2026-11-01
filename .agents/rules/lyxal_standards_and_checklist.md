@@ -464,10 +464,10 @@ puis désérialisés dans le modèle Rust.
 
 ## 12.5. Remplacement des Tuples par des Structures Nommées
 
-Les retours de fonctions SurrealQL doivent être désérialisés dans des structures nommées et typées :
+Les retours de fonctions SurrealQL doivent être désérialisés dans des structures nommées et typées (SDK `surrealdb` 3.3 : trait `SurrealValue`, cf. skill `lyxal-surrealdb` §2.6) :
 
 ```rust
-#[derive(Debug, Deserialize)]
+#[derive(Debug, SurrealValue)]
 ```
 
 Les tuples anonymes tels que :
@@ -552,6 +552,15 @@ Avant toute implémentation, Antigravity doit vérifier les points suivants.
 * [ ] Aucun AAD vide n'est utilisé pour le chiffrement.
 * [ ] Aucun `rand::thread_rng()` — uniquement `rand_core::OsRng`.
 * [ ] Si un besoin crypto non couvert est identifié : signalé au CTO, **aucune implémentation avant validation**.
+
+## Zéro Dette (régime pré-production, `AGENTS.md` §0)
+
+* [ ] Aucun alias, champ, fonction ou format conservé uniquement pour compatibilité.
+* [ ] Toute rupture de contrat est répercutée sur tous les appelants du dépôt dans le même changement.
+* [ ] Une seule migration `migrations/0001_initial.surql`, à l'état cible.
+* [ ] Aucun code mort ou commenté.
+* [ ] Aucun document historique (rapport de clôture/audit/recette passé, changelog non livré, plan déjà exécuté) conservé dans le module.
+* [ ] Versions en `0.y.z`.
 
 ## Validation CTO
 

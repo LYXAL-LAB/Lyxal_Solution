@@ -5,9 +5,14 @@ pub mod client;
 pub mod error;
 
 pub use call::{validate_function_name, LyxalSurrealCall};
-pub use client::{create_surreal_client, normalize_endpoint, validate_endpoint_scheme, RootCredentials};
+pub use client::{
+    create_surreal_client, normalize_endpoint, validate_endpoint_scheme, RootCredentials,
+};
 pub use error::LyxalSurrealError;
 pub use lyxal_error::{LyxalCallError, LyxalError, LyxalResult};
+
+/// Types natifs du SDK SurrealDB exposés aux modules (§12.2 : alias définis dans `models/types.rs`).
+pub use surrealdb::types::{Datetime, RecordId, SurrealValue, ToSql, Value};
 
 #[cfg(test)]
 mod tests {
@@ -22,36 +27,43 @@ mod tests {
         assert!(!validate_function_name(""));
     }
 
-    #[derive(serde::Serialize)]
-    struct PrimitiveParams<'a> {
-        email: &'a str,
+    #[derive(SurrealValue)]
+    struct PrimitiveParams {
+        email: String,
     }
 
-    #[derive(serde::Serialize)]
+    #[derive(SurrealValue)]
     struct RecordParams {
-        account: surrealdb::RecordId,
+        account: RecordId,
     }
 
-    #[derive(serde::Serialize)]
+    #[derive(SurrealValue)]
     struct DateParams {
-        start_at: surrealdb::Datetime,
+        start_at: Datetime,
     }
 
     #[test]
-    fn test_param_structs_serialize_cleanly() {
+    fn test_param_structs_convert_to_native_values() {
         let p1 = PrimitiveParams {
-            email: "test@example.com",
+            email: "test@example.com".to_owned(),
         };
-        assert!(serde_json::to_value(&p1).is_ok());
+        assert!(matches!(p1.into_value(), Value::Object(_)));
 
+        let account = RecordId::new("account", "yaniss");
         let p2 = RecordParams {
-            account: surrealdb::RecordId::from(("account", "yaniss")),
+            account: account.clone(),
         };
-        assert!(serde_json::to_value(&p2).is_ok());
+        match p2.into_value() {
+            Value::Object(obj) => assert_eq!(obj.get("account"), Some(&Value::RecordId(account))),
+            other => panic!("objet attendu, obtenu {other:?}"),
+        }
 
         let p3 = DateParams {
-            start_at: surrealdb::Datetime::default(),
+            start_at: Datetime::now(),
         };
-        assert!(serde_json::to_value(&p3).is_ok());
+        match p3.into_value() {
+            Value::Object(obj) => assert!(matches!(obj.get("start_at"), Some(Value::Datetime(_)))),
+            other => panic!("objet attendu, obtenu {other:?}"),
+        }
     }
 }

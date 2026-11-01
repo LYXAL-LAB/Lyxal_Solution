@@ -1,10 +1,10 @@
 use super::{handlers, middleware};
 use crate::{config::CorsConfig, context::AppContext, error::ServerError};
 use axum::{
-    Router,
     http::{HeaderName, HeaderValue, Method},
     middleware::from_fn_with_state,
     routing::get,
+    Router,
 };
 use std::{str::FromStr, time::Duration};
 use tower::ServiceBuilder;
@@ -69,8 +69,7 @@ fn cors_layer(config: &CorsConfig) -> Result<CorsLayer, ServerError> {
         .allowed_methods
         .iter()
         .map(|value| {
-            Method::from_str(value)
-                .map_err(|error| ServerError::Configuration(error.to_string()))
+            Method::from_str(value).map_err(|error| ServerError::Configuration(error.to_string()))
         })
         .collect::<Result<Vec<_>, _>>()?;
 

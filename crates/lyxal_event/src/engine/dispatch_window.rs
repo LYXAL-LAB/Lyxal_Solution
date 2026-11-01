@@ -189,9 +189,13 @@ impl<T> DispatchWindow<T> {
         if self.in_flight.remove(&offset).is_some() {
             self.acked_offsets.insert(offset);
             if let Some(new_cursor) = self.advance_safe_cursor() {
-                AckOutcome::Advanced { safe_cursor: new_cursor }
+                AckOutcome::Advanced {
+                    safe_cursor: new_cursor,
+                }
             } else {
-                AckOutcome::Accepted { current_safe_cursor: self.safe_cursor }
+                AckOutcome::Accepted {
+                    current_safe_cursor: self.safe_cursor,
+                }
             }
         } else if self.acked_offsets.contains(&offset) {
             AckOutcome::DuplicateAck(offset)
@@ -222,7 +226,12 @@ impl<T> DispatchWindow<T> {
     /// Traite un refus explicite (NACK) pour un offset donné.
     ///
     /// Retourne `true` si l'offset était présent en vol et a été mis à jour.
-    pub fn on_nack(&mut self, offset: u64, policy: &DeliveryPolicy, reason: Option<String>) -> bool {
+    pub fn on_nack(
+        &mut self,
+        offset: u64,
+        policy: &DeliveryPolicy,
+        reason: Option<String>,
+    ) -> bool {
         if let Some(pending) = self.in_flight.get_mut(&offset) {
             pending.on_nack(policy, reason);
             true
@@ -330,25 +339,40 @@ mod tests {
         assert!(window.has_capacity());
         assert_eq!(window.in_flight_count(), 0);
 
-        window.mark_dispatched(1, create_test_delivery("m1")).unwrap();
+        window
+            .mark_dispatched(1, create_test_delivery("m1"))
+            .unwrap();
         assert!(window.has_capacity());
         assert_eq!(window.in_flight_count(), 1);
 
-        window.mark_dispatched(2, create_test_delivery("m2")).unwrap();
+        window
+            .mark_dispatched(2, create_test_delivery("m2"))
+            .unwrap();
         assert!(!window.has_capacity());
         assert_eq!(window.in_flight_count(), 2);
 
         // Tentative de dépassement de capacité
-        let err = window.mark_dispatched(3, create_test_delivery("m3")).unwrap_err();
-        assert_eq!(err, DispatchWindowError::CapacityExceeded { current: 2, max: 2 });
+        let err = window
+            .mark_dispatched(3, create_test_delivery("m3"))
+            .unwrap_err();
+        assert_eq!(
+            err,
+            DispatchWindowError::CapacityExceeded { current: 2, max: 2 }
+        );
     }
 
     #[test]
     fn test_dispatch_window_in_order_acks() {
         let mut window = DispatchWindow::new(5);
-        window.mark_dispatched(1, create_test_delivery("m1")).unwrap();
-        window.mark_dispatched(2, create_test_delivery("m2")).unwrap();
-        window.mark_dispatched(3, create_test_delivery("m3")).unwrap();
+        window
+            .mark_dispatched(1, create_test_delivery("m1"))
+            .unwrap();
+        window
+            .mark_dispatched(2, create_test_delivery("m2"))
+            .unwrap();
+        window
+            .mark_dispatched(3, create_test_delivery("m3"))
+            .unwrap();
 
         assert_eq!(window.safe_cursor(), None);
 
@@ -371,7 +395,9 @@ mod tests {
     fn test_dispatch_window_out_of_order_acks() {
         let mut window = DispatchWindow::new(10);
         for i in 1..=4 {
-            window.mark_dispatched(i, create_test_delivery(&format!("m{i}"))).unwrap();
+            window
+                .mark_dispatched(i, create_test_delivery(&format!("m{i}")))
+                .unwrap();
         }
 
         // ACK 1 -> safe_cursor = 1
@@ -379,11 +405,21 @@ mod tests {
         assert_eq!(window.safe_cursor(), Some(1));
 
         // ACK 3 (désordonné : 2 est manquant) -> le curseur DOIT rester à 1
-        assert_eq!(window.on_ack(3), AckOutcome::Accepted { current_safe_cursor: Some(1) });
+        assert_eq!(
+            window.on_ack(3),
+            AckOutcome::Accepted {
+                current_safe_cursor: Some(1)
+            }
+        );
         assert_eq!(window.safe_cursor(), Some(1));
 
         // ACK 4 (désordonné : 2 est toujours manquant) -> le curseur DOIT rester à 1
-        assert_eq!(window.on_ack(4), AckOutcome::Accepted { current_safe_cursor: Some(1) });
+        assert_eq!(
+            window.on_ack(4),
+            AckOutcome::Accepted {
+                current_safe_cursor: Some(1)
+            }
+        );
         assert_eq!(window.safe_cursor(), Some(1));
 
         // Enfin ACK 2 : comble le trou -> saut immédiat de 1 à 4 !
@@ -395,7 +431,9 @@ mod tests {
     #[test]
     fn test_dispatch_window_duplicate_ack() {
         let mut window = DispatchWindow::new(5);
-        window.mark_dispatched(1, create_test_delivery("m1")).unwrap();
+        window
+            .mark_dispatched(1, create_test_delivery("m1"))
+            .unwrap();
 
         assert_eq!(window.on_ack(1), AckOutcome::Advanced { safe_cursor: 1 });
 
@@ -407,7 +445,9 @@ mod tests {
     #[test]
     fn test_dispatch_window_unknown_ack() {
         let mut window = DispatchWindow::new(5);
-        window.mark_dispatched(10, create_test_delivery("m10")).unwrap();
+        window
+            .mark_dispatched(10, create_test_delivery("m10"))
+            .unwrap();
 
         // ACK sur un offset 999 jamais dispatché
         assert_eq!(window.on_ack(999), AckOutcome::UnknownOffset(999));
@@ -417,15 +457,26 @@ mod tests {
     #[test]
     fn test_dispatch_window_skipped_gap_resolution() {
         let mut window = DispatchWindow::new(10);
-        window.mark_dispatched(1, create_test_delivery("m1")).unwrap();
-        window.mark_dispatched(2, create_test_delivery("m2")).unwrap();
-        window.mark_dispatched(3, create_test_delivery("m3")).unwrap();
+        window
+            .mark_dispatched(1, create_test_delivery("m1"))
+            .unwrap();
+        window
+            .mark_dispatched(2, create_test_delivery("m2"))
+            .unwrap();
+        window
+            .mark_dispatched(3, create_test_delivery("m3"))
+            .unwrap();
 
         // 1 est ACKé
         assert_eq!(window.on_ack(1), AckOutcome::Advanced { safe_cursor: 1 });
 
         // 3 est ACKé (2 est manquant)
-        assert_eq!(window.on_ack(3), AckOutcome::Accepted { current_safe_cursor: Some(1) });
+        assert_eq!(
+            window.on_ack(3),
+            AckOutcome::Accepted {
+                current_safe_cursor: Some(1)
+            }
+        );
         assert_eq!(window.safe_cursor(), Some(1));
 
         // 2 a épuisé ses retries et est skippé/résolu en DLQ
@@ -440,9 +491,15 @@ mod tests {
         let mut window = DispatchWindow::new(10);
         let policy = DeliveryPolicy::default();
 
-        window.mark_dispatched(1, create_test_delivery("m1")).unwrap();
-        window.mark_dispatched(2, create_test_delivery("m2")).unwrap();
-        window.mark_dispatched(3, create_test_delivery("m3")).unwrap();
+        window
+            .mark_dispatched(1, create_test_delivery("m1"))
+            .unwrap();
+        window
+            .mark_dispatched(2, create_test_delivery("m2"))
+            .unwrap();
+        window
+            .mark_dispatched(3, create_test_delivery("m3"))
+            .unwrap();
 
         window.on_ack(1);
         window.on_ack(3);
@@ -467,15 +524,25 @@ mod tests {
         let off1 = u64::MAX - 1;
         let off2 = u64::MAX;
 
-        window.mark_dispatched(off1, create_test_delivery("near_max1")).unwrap();
-        window.mark_dispatched(off2, create_test_delivery("near_max2")).unwrap();
+        window
+            .mark_dispatched(off1, create_test_delivery("near_max1"))
+            .unwrap();
+        window
+            .mark_dispatched(off2, create_test_delivery("near_max2"))
+            .unwrap();
 
         // ACK off1
-        assert_eq!(window.on_ack(off1), AckOutcome::Advanced { safe_cursor: off1 });
+        assert_eq!(
+            window.on_ack(off1),
+            AckOutcome::Advanced { safe_cursor: off1 }
+        );
         assert_eq!(window.safe_cursor(), Some(off1));
 
         // ACK off2 (atteint u64::MAX sans overflow)
-        assert_eq!(window.on_ack(off2), AckOutcome::Advanced { safe_cursor: off2 });
+        assert_eq!(
+            window.on_ack(off2),
+            AckOutcome::Advanced { safe_cursor: off2 }
+        );
         assert_eq!(window.safe_cursor(), Some(off2));
     }
 
@@ -517,10 +584,12 @@ mod tests {
         assert_eq!(ready, vec![2]);
 
         // Provoquer un 2ème essai puis l'épuisement sur 1
-        window.get_mut(1).unwrap().on_send_attempt("w1", policy.ack_timeout);
+        window
+            .get_mut(1)
+            .unwrap()
+            .on_send_attempt("w1", policy.ack_timeout);
         window.on_nack(1, &policy, Some("exhausted".to_string()));
         let exhausted = window.collect_retry_exhausted();
         assert_eq!(exhausted, vec![1]);
     }
 }
-

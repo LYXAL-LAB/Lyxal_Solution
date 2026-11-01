@@ -20,7 +20,9 @@ pub enum IngestionError {
     #[error("Référence fabricant obligatoire manquante ou vide pour le fabricant '{fabricant}'.")]
     MissingManufacturerRef { fabricant: String },
 
-    #[error("Unité fournisseur '{unite}' non convertible ou inconnue dans le référentiel 'base_unite'.")]
+    #[error(
+        "Unité fournisseur '{unite}' non convertible ou inconnue dans le référentiel 'base_unite'."
+    )]
     UnresolvedBaseUnit { unite: String },
 
     #[error("Conditionnement physique incohérent : {details}")]
@@ -57,18 +59,36 @@ pub enum IngestionError {
 impl From<IngestionError> for LyxalError {
     fn from(err: IngestionError) -> Self {
         let (code, category, retryable) = match &err {
-            IngestionError::InvalidSourceFormat(_) => ("INGESTION_SOURCE_INVALID", "validation", false),
+            IngestionError::InvalidSourceFormat(_) => {
+                ("INGESTION_SOURCE_INVALID", "validation", false)
+            }
             IngestionError::Validation(_) => ("INGESTION_VALIDATION_ERROR", "validation", false),
             IngestionError::Adapter(_) => ("INGESTION_ADAPTER_ERROR", "validation", false),
-            IngestionError::DuplicateBatch { .. } => ("INGESTION_BATCH_DUPLICATE", "business", false),
+            IngestionError::DuplicateBatch { .. } => {
+                ("INGESTION_BATCH_DUPLICATE", "business", false)
+            }
             IngestionError::InvalidGtin { .. } => ("INGESTION_GTIN_INVALID", "validation", false),
-            IngestionError::MissingManufacturerRef { .. } => ("INGESTION_MANUFACTURER_REF_MISSING", "validation", false),
-            IngestionError::UnresolvedBaseUnit { .. } => ("INGESTION_UNIT_UNRESOLVED", "validation", false),
-            IngestionError::IncoherentPackaging { .. } => ("INGESTION_PACKAGING_INCOHERENT", "validation", false),
-            IngestionError::IllegalStateTransition { .. } => ("INGESTION_ILLEGAL_STATE_TRANSITION", "business", false),
-            IngestionError::IllegalTransition(_) => ("INGESTION_ILLEGAL_STATE_TRANSITION", "business", false),
-            IngestionError::SealVerificationFailed { .. } => ("INGESTION_SEAL_VERIFICATION_FAILED", "security", false),
-            IngestionError::FingerprintTampered(_) => ("INGESTION_FINGERPRINT_TAMPERED", "security", false),
+            IngestionError::MissingManufacturerRef { .. } => {
+                ("INGESTION_MANUFACTURER_REF_MISSING", "validation", false)
+            }
+            IngestionError::UnresolvedBaseUnit { .. } => {
+                ("INGESTION_UNIT_UNRESOLVED", "validation", false)
+            }
+            IngestionError::IncoherentPackaging { .. } => {
+                ("INGESTION_PACKAGING_INCOHERENT", "validation", false)
+            }
+            IngestionError::IllegalStateTransition { .. } => {
+                ("INGESTION_ILLEGAL_STATE_TRANSITION", "business", false)
+            }
+            IngestionError::IllegalTransition(_) => {
+                ("INGESTION_ILLEGAL_STATE_TRANSITION", "business", false)
+            }
+            IngestionError::SealVerificationFailed { .. } => {
+                ("INGESTION_SEAL_VERIFICATION_FAILED", "security", false)
+            }
+            IngestionError::FingerprintTampered(_) => {
+                ("INGESTION_FINGERPRINT_TAMPERED", "security", false)
+            }
             IngestionError::Unauthorized(_) => ("INGESTION_UNAUTHORIZED", "security", false),
             IngestionError::Database(_) => ("INGESTION_DB_ERROR", "technical", true),
             IngestionError::Storage(_) => ("INGESTION_STORAGE_ERROR", "technical", true),

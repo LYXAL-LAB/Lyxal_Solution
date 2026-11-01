@@ -3,8 +3,8 @@ use crate::handler::Event;
 use crate::models::{EventContext, LyxalEventEnvelope};
 use crate::store::EventStore;
 use crate::types::{CausationId, CorrelationId};
+use lyxal_surreal::RecordId;
 use std::sync::Arc;
-use surrealdb::sql::Thing as RecordId;
 
 /// Façade producteur permettant aux modules d'émettre des événements dans le bus.
 #[derive(Clone)]
@@ -44,10 +44,10 @@ impl EventPublisher {
     ) -> Result<LyxalEventEnvelope, LyxalEventError> {
         let mut envelope = LyxalEventEnvelope::new(&self.producer, self.context.clone(), event)?;
         if let Some(corr) = correlation_id {
-            envelope = envelope.with_correlation_id(corr.as_uuid());
+            envelope = envelope.with_correlation_id(corr);
         }
         if let Some(caus) = causation_id {
-            envelope = envelope.with_causation_id(caus.as_uuid());
+            envelope = envelope.with_causation_id(caus);
         }
         if let Some(src) = source {
             envelope = envelope.with_source(src);

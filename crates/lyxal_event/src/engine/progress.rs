@@ -28,11 +28,11 @@
 //!   et réconciliés par relecture durable (`fn::event_progress_get`) avant toute nouvelle tentative.
 //! - Tout rejet de fencing (`EVENT_STALE_LEADER_FENCED`) annule immédiatement le jeton local.
 
+use async_trait::async_trait;
+use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError};
 use std::collections::{BTreeMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use async_trait::async_trait;
-use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 use thiserror::Error;
@@ -237,7 +237,10 @@ impl SubscriptionProgressTracker {
     /// Si l'appel échoue (conflit MVCC ou réseau), les résolutions mémoires sont STRICTEMENT conservées.
     /// Une réconciliation par relecture durable (`recover_durable_state`) est tentée pour détecter
     /// si le commit a effectivement été validé malgré une coupure de socket.
-    pub async fn flush_progress(&mut self, target_cursor: u64) -> Result<FlushBatchResult, ProgressError> {
+    pub async fn flush_progress(
+        &mut self,
+        target_cursor: u64,
+    ) -> Result<FlushBatchResult, ProgressError> {
         if target_cursor <= self.last_persisted_cursor {
             // Rien à avancer
             return Ok(FlushBatchResult {
@@ -329,7 +332,8 @@ impl SubscriptionProgressTracker {
         let confirmed_set: HashSet<String> = confirmed_ids.into_iter().collect();
 
         self.delivered_ids.retain(|id| !confirmed_set.contains(id));
-        self.dead_letter_ids.retain(|id| !confirmed_set.contains(id));
+        self.dead_letter_ids
+            .retain(|id| !confirmed_set.contains(id));
         self.dropped_ids.retain(|id| !confirmed_set.contains(id));
         self.recorded_ids.retain(|id| !confirmed_set.contains(id));
 
@@ -346,13 +350,8 @@ mod tests {
         let client = surrealdb::engine::any::connect("mem://").await.unwrap();
         let cancel = CancellationToken::new();
         let gen = Arc::new(AtomicU64::new(1));
-        let mut tracker = SubscriptionProgressTracker::new(
-            client,
-            "test_sub",
-            "test_node",
-            gen,
-            cancel,
-        );
+        let mut tracker =
+            SubscriptionProgressTracker::new(client, "test_sub", "test_node", gen, cancel);
 
         assert_eq!(tracker.last_persisted_cursor(), 0);
         assert_eq!(tracker.pending_resolutions_count(), 0);
@@ -368,7 +367,10 @@ mod tests {
         // Clear flushed up to sequence 2
         tracker.clear_flushed_resolutions(2);
         assert_eq!(tracker.pending_resolutions_count(), 2);
-        assert_eq!(tracker.delivered_ids, vec!["del_3".to_string(), "del_4".to_string()]);
+        assert_eq!(
+            tracker.delivered_ids,
+            vec!["del_3".to_string(), "del_4".to_string()]
+        );
 
         // Clear remaining
         tracker.clear_flushed_resolutions(4);
@@ -380,13 +382,8 @@ mod tests {
         let client = surrealdb::engine::any::connect("mem://").await.unwrap();
         let cancel = CancellationToken::new();
         let gen = Arc::new(AtomicU64::new(1));
-        let mut tracker = SubscriptionProgressTracker::new(
-            client,
-            "test_sub",
-            "test_node",
-            gen,
-            cancel.clone(),
-        );
+        let mut tracker =
+            SubscriptionProgressTracker::new(client, "test_sub", "test_node", gen, cancel.clone());
 
         cancel.cancel(); // Simulate lease revocation
 
@@ -399,4 +396,3 @@ mod tests {
         assert!(matches!(flush_res, Err(ProgressError::Fenced)));
     }
 }
-

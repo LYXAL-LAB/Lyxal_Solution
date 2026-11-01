@@ -51,3 +51,11 @@ Les variables d'environnement utilisent le séparateur `__`.
 Implémenter `LyxalModule`, puis l'enregistrer dans `modules::compiled_modules`.
 Lorsqu'un contrat commun définitif existe dans `lyxal-runtime`, déplacer le trait
 dans ce crate commun et remplacer l'import local sans modifier l'orchestration.
+
+---
+
+## Défauts connus (à traiter à la reprise du module)
+
+Relevés lors de la migration du SDK `surrealdb` vers 3.3 (novembre 2026), sans être corrigés car hors de son périmètre.
+
+1. **Doublon fonctionnel avec `lyxal_runtime`** : l'hôte définit ses propres types de module (`modules::LyxalModule`, `ModuleContext`…) et gère les migrations des modules hébergés avec sa propre table `lyxal_module_migration`, sans utiliser `SurrealRuntimeStore`, `MigrationRunner` ni les verrous distribués du runtime (contrairement au §5.8.5 : l'hôte devrait instancier `LyxalRuntime`).

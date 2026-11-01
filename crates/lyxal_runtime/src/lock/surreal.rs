@@ -7,28 +7,28 @@ use crate::migration::id::MigrationId;
 use crate::types::ModuleId;
 use async_trait::async_trait;
 use lyxal_surreal::LyxalSurrealCall;
-use serde::{Deserialize, Serialize};
+use lyxal_surreal::SurrealValue;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
 /// Structure de persistance interne d'un verrou dans la table `system_migration_lock`.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, SurrealValue)]
 struct SystemMigrationLockRow {
     lock_key: String,
     module_id: String,
     migration_id: String,
     owner_node_id: String,
     generation: i64,
-    #[serde(default)]
+    #[surreal(default)]
     is_released: Option<bool>,
-    #[serde(default)]
+    #[surreal(default)]
     acquired_at: Option<i64>,
-    #[serde(default)]
+    #[surreal(default)]
     renewed_at: Option<i64>,
-    #[serde(default)]
+    #[surreal(default)]
     expires_at: Option<i64>,
-    #[serde(default)]
+    #[surreal(default)]
     released_at: Option<i64>,
 }
 
@@ -111,23 +111,31 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
         // 1. Initialisation idempotente du record sentinel si absent (generation = 0, is_released = true, expires_at = 0)
         {
             let _guard = MIGRATION_INIT_MUTEX.lock().await;
-            let check_query = "SELECT id FROM type::thing('system_migration_lock', $key_id);";
-            let check_res = self
+            let check_query = "SELECT id FROM type::record('system_migration_lock', $key_id);";
+            let mut check_res = self
                 .client
                 .query(check_query)
                 .bind(("key_id", key_record_id.clone()))
-                .await;
-
-            let exists = if let Ok(mut r) = check_res {
-                let rows: Vec<serde_json::Value> = r.take(0).unwrap_or_default();
-                !rows.is_empty()
-            } else {
-                false
+                .await
+                .map_err(|err| RuntimeError::MigrationLockAcquireFailed {
+                    key: lock_key_str.clone(),
+                    message: format!("Failed to inspect migration lock sentinel: {}", err),
+                })?;
+            // Table absente (premier verrou de cette base) : la sentinelle est créée ci-dessous.
+            let exists = match check_res.take::<Vec<serde_json::Value>>(0) {
+                Ok(rows) => !rows.is_empty(),
+                Err(err) if err.is_not_found() => false,
+                Err(err) => {
+                    return Err(RuntimeError::MigrationLockAcquireFailed {
+                        key: lock_key_str.clone(),
+                        message: format!("Failed to decode migration lock sentinel: {}", err),
+                    })
+                }
             };
 
             if !exists {
                 let init_query = r#"
-                    CREATE ONLY type::thing('system_migration_lock', $key_id) SET
+                    CREATE ONLY type::record('system_migration_lock', $key_id) SET
                         lock_key = $lock_key,
                         module_id = $module_id,
                         migration_id = $migration_id,
@@ -140,19 +148,32 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
                         released_at = NONE,
                         updated_at = time::now();
                 "#;
-                let _ = self
+                let init_res = self
                     .client
                     .query(init_query)
                     .bind(("key_id", key_record_id.clone()))
                     .bind(("lock_key", lock_key_str.clone()))
                     .bind(("module_id", key.module_id.to_string()))
                     .bind(("migration_id", key.migration_id.to_string()))
-                    .await;
+                    .await
+                    .map_err(|err| RuntimeError::MigrationLockAcquireFailed {
+                        key: lock_key_str.clone(),
+                        message: format!("Failed to create migration lock sentinel: {}", err),
+                    })?;
+                if let Err(err) = init_res.check() {
+                    // Un autre nœud a créé la sentinelle entre la lecture et la création : état attendu.
+                    if !err.is_already_exists() {
+                        return Err(RuntimeError::MigrationLockAcquireFailed {
+                            key: lock_key_str.clone(),
+                            message: format!("Failed to create migration lock sentinel: {}", err),
+                        });
+                    }
+                }
             }
         }
 
         // 2. Lecture de l'état actuel du verrou
-        let select_query = "SELECT * FROM type::thing('system_migration_lock', $key_id);";
+        let select_query = "SELECT * FROM type::record('system_migration_lock', $key_id);";
         let mut sel_res = self
             .client
             .query(select_query)
@@ -163,7 +184,13 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
                 message: format!("Failed to inspect current lock state: {}", err),
             })?;
 
-        let rows: Vec<SystemMigrationLockRow> = sel_res.take(0).unwrap_or_default();
+        let rows: Vec<SystemMigrationLockRow> =
+            sel_res
+                .take(0)
+                .map_err(|err| RuntimeError::MigrationLockAcquireFailed {
+                    key: lock_key_str.clone(),
+                    message: format!("Failed to decode current lock state: {}", err),
+                })?;
         let existing = rows.into_iter().next();
 
         let (expected_gen, is_released, expires_at) = match &existing {
@@ -193,7 +220,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
         // 3. Vrai Compare-And-Swap conditionnel : atomicité basée sur generation == expected_generation
         let next_gen = expected_gen + 1;
         let cas_query = r#"
-            UPDATE type::thing('system_migration_lock', $key_id) SET
+            UPDATE type::record('system_migration_lock', $key_id) SET
                 owner_node_id = $owner_node_id,
                 generation = $next_gen,
                 is_released = false,
@@ -221,7 +248,12 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
                 message: format!("Failed to dispatch CAS lease acquire: {}", err),
             })?;
 
-        let updated_rows: Vec<SystemMigrationLockRow> = res.take(0).unwrap_or_default();
+        let updated_rows: Vec<SystemMigrationLockRow> =
+            res.take(0)
+                .map_err(|err| RuntimeError::MigrationLockAcquireFailed {
+                    key: lock_key_str.clone(),
+                    message: format!("Failed to decode CAS lease acquire response: {}", err),
+                })?;
 
         // 4. Succès déterminé EXCLUSIVEMENT par exactement 1 record modifié par le UPDATE CAS
         if let Some(row) = updated_rows.into_iter().next() {
@@ -243,7 +275,13 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
                     message: format!("Failed to inspect winning lock state: {}", err),
                 })?;
 
-            let check_rows: Vec<SystemMigrationLockRow> = check_res.take(0).unwrap_or_default();
+            let check_rows: Vec<SystemMigrationLockRow> =
+                check_res
+                    .take(0)
+                    .map_err(|err| RuntimeError::MigrationLockAcquireFailed {
+                        key: lock_key_str.clone(),
+                        message: format!("Failed to decode winning lock state: {}", err),
+                    })?;
             if let Some(r) = check_rows.into_iter().next() {
                 let lease = Self::row_to_lease(r)?;
                 if &lease.owner == node_id && lease.is_active_at(now_secs) {
@@ -275,7 +313,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
         let key_record_id = lock_key_str.replace([':', '.', '-'], "_");
 
         let update_query = r#"
-            UPDATE type::thing('system_migration_lock', $key_id) SET
+            UPDATE type::record('system_migration_lock', $key_id) SET
                 renewed_at = $now_secs,
                 expires_at = $expires_at_secs,
                 updated_at = time::now()
@@ -331,7 +369,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
 
         // AUCUN DELETE ! Invariant Fencing : libération logique avec maintien de la génération N
         let update_query = r#"
-            UPDATE type::thing('system_migration_lock', $key_id) SET
+            UPDATE type::record('system_migration_lock', $key_id) SET
                 is_released = true,
                 expires_at = 0,
                 released_at = $now_secs,
@@ -352,7 +390,11 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
                 message: format!("Failed to release lease '{}': {}", lock_key_str, err),
             })?;
 
-        let updated_rows: Vec<SystemMigrationLockRow> = res.take(0).unwrap_or_default();
+        let updated_rows: Vec<SystemMigrationLockRow> =
+            res.take(0).map_err(|err| RuntimeError::Internal {
+                code: "RUNTIME_MIGRATION_LOCK_RELEASE_FAILED",
+                message: format!("Failed to decode lease release '{}': {}", lock_key_str, err),
+            })?;
         if updated_rows.is_empty() {
             return Err(RuntimeError::MigrationLockNotOwner {
                 key: lock_key_str,
@@ -370,7 +412,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
     ) -> Result<Option<MigrationLease>, RuntimeError> {
         let lock_key_str = key.canonical_string();
         let key_record_id = lock_key_str.replace([':', '.', '-'], "_");
-        let query = "SELECT * FROM type::thing('system_migration_lock', $key_id);";
+        let query = "SELECT * FROM type::record('system_migration_lock', $key_id);";
 
         let mut res = self
             .client

@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 use lyxal_error::{LyxalCallError, LyxalResult};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 use surrealdb::engine::any::Any;
+use surrealdb::types::SurrealValue;
 use surrealdb::Surreal;
 
 use crate::error::LyxalSurrealError;
@@ -23,6 +22,8 @@ pub trait LyxalSurrealCall {
 
     /// Exécute une fonction SurrealQL `fn::<function_name>($params)` en lui transmettant un objet `$params` typé.
     ///
+    /// Les paramètres et le résultat traversent la frontière Rust ↔ SurrealDB via le trait natif
+    /// `SurrealValue` (`#[derive(SurrealValue)]` sur les `XxxParams` / `XxxResult`).
     /// Désérialise et retourne le contrat universel `LyxalResult<T>`.
     async fn call_fn<T, P>(
         &self,
@@ -30,8 +31,8 @@ pub trait LyxalSurrealCall {
         params: P,
     ) -> Result<T, LyxalSurrealError>
     where
-        T: DeserializeOwned + Send,
-        P: Serialize + Send + 'static,
+        T: SurrealValue + Send,
+        P: SurrealValue + Send + 'static,
     {
         if !validate_function_name(function_name) {
             return Err(LyxalSurrealError::InvalidFunctionName {

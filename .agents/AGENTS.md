@@ -7,6 +7,42 @@ Ce document régit l'ensemble des processus de développement, des principes d'a
 
 ---
 
+# 🚧 0. Régime Pré-Production — Zéro Dette (EN VIGUEUR)
+
+> [!IMPORTANT]
+>
+> **Lyxal OS n'a jamais été mis en production ni utilisé.** Il n'existe aucune donnée, aucune installation et aucun consommateur externe à préserver.
+> Tant que le CTO n'a pas déclaré explicitement la **première mise en production**, ce régime **prime** sur toute règle de compatibilité, de migration ou d'historique (§8, `LYXAL_ARCHITECTURE.md` §8, skills `lyxal-surrealdb` §3 et `lyxal-module-integration` §4–5).
+
+## 0.1. Objectif
+
+Chaque module repris doit sortir **propre, à l'état cible**, comme s'il était écrit aujourd'hui pour la première fois. On ne garde rien « pour compatibilité ». L'historique vit uniquement dans Git.
+
+## 0.2. Ce qui est interdit en pré-production
+
+* Conserver un ancien contrat « par sécurité » : alias, fonction ou champ déprécié, double nommage, `#[deprecated]`, branche `legacy` / `v1` / `fallback` lisant un ancien format, valeur par défaut ajoutée uniquement pour ne pas casser un appelant interne.
+* Empiler des migrations correctives (`0002_fix_...`, `0003_rename_...`).
+* Conserver du code mort, commenté ou non appelé.
+* Conserver des documents historiques dans les modules : rapports de clôture, d'audit ou de recette passés, changelogs de versions jamais livrées, plans d'implémentation déjà exécutés.
+
+## 0.3. Ce qui s'applique à la place
+
+1. **Rupture libre et coordonnée** : un contrat public (SurrealQL, Rust, événement) peut être renommé, modifié ou supprimé. Obligation unique : mettre à jour **dans le même changement** tous les appelants du dépôt, pour que le workspace compile et que les tests passent. Le changement de contrat reste mentionné dans l'`implementation_plan.md` soumis au CTO.
+2. **Une seule migration par module** : `migrations/0001_initial.surql` décrit le schéma cible complet et **est réécrite en place** à chaque évolution. Une base de développement existante est **supprimée et recréée** ; la vérification du `MigrationChecksum` n'impose donc rien en pré-production.
+3. **Versions `0.x`** : tant qu'aucun module n'est livré, les versions (`manifest.toml`, `Cargo.toml`) restent en `0.y.z` et les contraintes de dépendance en `>=0.1.0`. Un statut annoncé (« gelé », « V1.1 », « clôturé staging ») décrit un état d'avancement, **pas** une obligation de compatibilité. Les décisions d'architecture associées (ex. pas de `TYPE RELATION` sur les tables existantes) restent valables.
+4. **Documentation de l'état actuel uniquement** : le `README.md` du module décrit ce qui existe aujourd'hui. Pas de `CHANGELOG.md` avant la première version livrée. Un `implementation_plan.md` est supprimé une fois exécuté et fusionné.
+5. **Nettoyage à la reprise** : lors de la reprise d'un module, tout élément relevant du §0.2 est supprimé dans le même chantier et listé dans le plan.
+
+## 0.4. Ce qui reste inchangé
+
+Toutes les autres règles s'appliquent normalement : validation CTO du plan (§3), structure canonique (§4), standards SurrealQL / Rust (§5), `lyxal_core`, `lyxal_crypto`, erreurs, événements, idempotence des seeds (nécessaire pour rejouer une installation), zéro erreur silencieuse.
+
+## 0.5. Fin du régime
+
+À la première mise en production déclarée par le CTO, cette section est retirée et le §8 (non-rupture, migrations incrémentales immuables, dépréciation) s'applique pleinement. La migration `0001_initial.surql` de chaque module devient alors figée.
+
+---
+
 ## 🌟 1. Principe Fondamental & Contrat de Stabilité
 
 Lyxal OS est une plateforme applicative modulaire. Chaque module doit être :
@@ -127,8 +163,8 @@ module_name/
 ├── seeds/                   <-- Données de démonstration ou initiales
 ├── src/                     <-- Code source Rust (Types, Wrappers, LyxalModule, Workers)
 ├── README.md                <-- Documentation du module
-├── CHANGELOG.md             <-- Historique des versions
-└── implementation_plan.md   <-- Plan courant d'implémentation
+├── CHANGELOG.md             <-- Historique des versions (créé à la première version livrée, cf. §0)
+└── implementation_plan.md   <-- Plan courant d'implémentation (supprimé une fois exécuté, cf. §0)
 ```
 
 ---
@@ -764,6 +800,9 @@ Les fonctions appartenant à `lyxal_core` suivent leurs conventions propres déf
 ---
 
 # 🔄 8. Évolution, Migrations & Non-Rupture d'API
+
+> [!NOTE]
+> **Suspendu pendant le régime pré-production (§0).** Cette section décrit les règles applicables **après** la première mise en production.
 
 Cycle de vie :
 

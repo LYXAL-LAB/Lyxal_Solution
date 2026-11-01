@@ -1,10 +1,11 @@
 //! Normalisation des grandeurs dimensionnelles (en mm) et pondérales (en kg) vers le système SI.
 
-use serde::{Deserialize, Serialize};
 use crate::adapters::{RawDimensionsDto, RawWeightDto};
+use lyxal_surreal::SurrealValue;
+use serde::{Deserialize, Serialize};
 
 /// Dimensions normalisées selon le standard industriel (longueur, largeur, hauteur en millimètres).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default, SurrealValue)]
 pub struct CanonicalDimensions {
     pub length_mm: Option<f64>,
     pub width_mm: Option<f64>,
@@ -12,7 +13,7 @@ pub struct CanonicalDimensions {
 }
 
 /// Poids normalisé selon le standard industriel (en kilogrammes).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default, SurrealValue)]
 pub struct CanonicalWeight {
     pub net_weight_kg: Option<f64>,
     pub gross_weight_kg: Option<f64>,
@@ -79,7 +80,9 @@ pub fn normalize_weight(raw: Option<&RawWeightDto>) -> Option<CanonicalWeight> {
 }
 
 /// Tente d'extraire des dimensions et du poids depuis une désignation commerciale textuelle
-pub fn extract_specs_from_text(text: &str) -> (Option<CanonicalDimensions>, Option<CanonicalWeight>) {
+pub fn extract_specs_from_text(
+    text: &str,
+) -> (Option<CanonicalDimensions>, Option<CanonicalWeight>) {
     let lower = text.to_lowercase();
     let mut dims = CanonicalDimensions::default();
     let mut weight = CanonicalWeight::default();
@@ -90,7 +93,10 @@ pub fn extract_specs_from_text(text: &str) -> (Option<CanonicalDimensions>, Opti
         if part.contains('x') {
             let sub: Vec<&str> = part.split('x').collect();
             if sub.len() >= 2 {
-                if let (Ok(l), Ok(w)) = (sub[0].replace(',', ".").parse::<f64>(), sub[1].replace(',', ".").parse::<f64>()) {
+                if let (Ok(l), Ok(w)) = (
+                    sub[0].replace(',', ".").parse::<f64>(),
+                    sub[1].replace(',', ".").parse::<f64>(),
+                ) {
                     dims.length_mm = Some(l);
                     dims.width_mm = Some(w);
                     if sub.len() >= 3 {
@@ -149,11 +155,12 @@ pub fn extract_specs_from_text(text: &str) -> (Option<CanonicalDimensions>, Opti
         dims.width_mm = Some(90.0);
     }
 
-    let final_dims = if dims.length_mm.is_some() || dims.width_mm.is_some() || dims.height_mm.is_some() {
-        Some(dims)
-    } else {
-        None
-    };
+    let final_dims =
+        if dims.length_mm.is_some() || dims.width_mm.is_some() || dims.height_mm.is_some() {
+            Some(dims)
+        } else {
+            None
+        };
 
     let final_weight = if weight.net_weight_kg.is_some() {
         Some(weight)

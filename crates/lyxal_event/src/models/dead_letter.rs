@@ -1,9 +1,9 @@
 use super::envelope::EventContext;
+use lyxal_surreal::{Datetime, RecordId, SurrealValue};
 use serde::{Deserialize, Serialize};
-use surrealdb::sql::{Datetime, Thing as RecordId};
 
 /// Enregistrement de mise en quarantaine (Dead Letter Queue).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
 pub struct EventDeadLetter {
     /// Identifiant de l'enregistrement dans la table event_dead_letter.
     pub id: RecordId,

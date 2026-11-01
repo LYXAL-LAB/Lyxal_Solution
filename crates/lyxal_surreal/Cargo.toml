@@ -6,7 +6,6 @@ description = "Client générique et exécuteur de fonctions SurrealQL pour l'é
 
 [dependencies]
 surrealdb = { workspace = true }
-serde = { workspace = true }
 serde_json = { workspace = true }
 async-trait = { workspace = true }
 thiserror = { workspace = true }

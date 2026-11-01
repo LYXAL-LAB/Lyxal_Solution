@@ -84,7 +84,7 @@ Une fois la validation CTO obtenue, créer les fichiers dans l'ordre suivant :
    - Utiliser la syntaxe `[[dependencies]]` et `[runtime]` validée par `ManifestParser` dans `crates/lyxal_runtime` (prendre modèle sur [`crates/lyxal_pipeline_ingestion/manifest.toml`](../../../crates/lyxal_pipeline_ingestion/manifest.toml)).
 2. **Schémas Déclaratifs (`schema/XX_<table_name>.surql`)** :
    - Numéroter dans l'ordre topologique des références (`00_`, `01_`, ...).
-   - Toujours utiliser `TYPE NORMAL SCHEMAFULL` par défaut (toute table `TYPE RELATION` exige un arbitrage CTO explicite conformément à [`AUDIT_SURREALDB_RELATION_TABLES.md`](../../../docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md)).
+   - Toujours utiliser `TYPE NORMAL SCHEMAFULL` par défaut (toute table `TYPE RELATION` exige un arbitrage CTO explicite conformément à [`AUDIT_SURREALDB_RELATION_TABLES.md`](../../../docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md)).
 3. **Définitions d'Erreurs (`error/<domaine>/error_definitions.surql`) & Seeds (`seeds/*.surql`)** :
    - Protéger chaque insertion par `IF !record::exists(error_definition:<CODE>) THEN ( CREATE error_definition:<CODE> CONTENT { ... } ) END;` pour garantir l'idempotence non destructrice.
 4. **Fonctions Métier (`functions/<sous_domaine>/<module>_<action>.surql`)** :

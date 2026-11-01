@@ -29,7 +29,7 @@ impl XmlAdapter {
 
         let end_pos = block[content_start..].find(&close_tag)?;
         let value = &block[content_start..content_start + end_pos];
-        
+
         let trimmed = value.trim();
         if trimmed.is_empty() {
             None
@@ -164,9 +164,11 @@ impl SourceAdapter for XmlAdapter {
             }
 
             // Dimensions si présentes
-            let length = Self::extract_tag_value(block, "LENGTH").and_then(|v| v.parse::<f64>().ok());
+            let length =
+                Self::extract_tag_value(block, "LENGTH").and_then(|v| v.parse::<f64>().ok());
             let width = Self::extract_tag_value(block, "WIDTH").and_then(|v| v.parse::<f64>().ok());
-            let height = Self::extract_tag_value(block, "HEIGHT").and_then(|v| v.parse::<f64>().ok());
+            let height =
+                Self::extract_tag_value(block, "HEIGHT").and_then(|v| v.parse::<f64>().ok());
             let dimensions = if length.is_some() || width.is_some() || height.is_some() {
                 Some(RawDimensionsDto {
                     length,
@@ -179,7 +181,8 @@ impl SourceAdapter for XmlAdapter {
             };
 
             // Poids si présent
-            let net_weight = Self::extract_tag_value(block, "WEIGHT").and_then(|v| v.parse::<f64>().ok());
+            let net_weight =
+                Self::extract_tag_value(block, "WEIGHT").and_then(|v| v.parse::<f64>().ok());
             let weight = if net_weight.is_some() {
                 Some(RawWeightDto {
                     net_weight,
@@ -253,7 +256,10 @@ mod tests {
 
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].raw_reference, "BA13-PREGYPLAC");
-        assert_eq!(records[0].raw_designation, "Plaque Siniat Pregyplac BA13 2500x1200");
+        assert_eq!(
+            records[0].raw_designation,
+            "Plaque Siniat Pregyplac BA13 2500x1200"
+        );
         assert_eq!(records[0].raw_gtin, Some("3456789012399".to_string()));
         assert_eq!(records[0].raw_manufacturer, Some("SINIAT".to_string()));
         assert_eq!(records[0].raw_unit, Some("M2".to_string()));

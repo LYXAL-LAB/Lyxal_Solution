@@ -6,7 +6,7 @@ use crate::{
     health::{HealthRegistry, HealthState},
     http,
     metrics::Metrics,
-    modules::{ModuleContext, compiled_modules},
+    modules::{compiled_modules, ModuleContext},
     runtime::RuntimeHandle,
     shutdown, telemetry,
 };
@@ -30,27 +30,17 @@ async fn run_inner() -> Result<(), ServerError> {
     );
 
     let health = HealthRegistry::default();
-    health
-        .set("server", HealthState::Starting, None)
-        .await;
-    health
-        .set("database", HealthState::Starting, None)
-        .await;
+    health.set("server", HealthState::Starting, None).await;
+    health.set("database", HealthState::Starting, None).await;
 
     let database = match database::connect_database(&config.database).await {
         Ok(database) => {
-            health
-                .set("database", HealthState::Healthy, None)
-                .await;
+            health.set("database", HealthState::Healthy, None).await;
             database
         }
         Err(error) if !config.database.required => {
             health
-                .set(
-                    "database",
-                    HealthState::Degraded,
-                    Some(error.to_string()),
-                )
+                .set("database", HealthState::Degraded, Some(error.to_string()))
                 .await;
             return Err(ServerError::Database(
                 "le mode sans base requiert un adaptateur NullDatabase, non activé".into(),
@@ -58,11 +48,7 @@ async fn run_inner() -> Result<(), ServerError> {
         }
         Err(error) => {
             health
-                .set(
-                    "database",
-                    HealthState::Unhealthy,
-                    Some(error.to_string()),
-                )
+                .set("database", HealthState::Unhealthy, Some(error.to_string()))
                 .await;
             return Err(error);
         }

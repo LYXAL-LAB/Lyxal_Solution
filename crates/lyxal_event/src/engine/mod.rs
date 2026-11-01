@@ -63,8 +63,8 @@ pub use pending_delivery::{
 };
 #[allow(unused_imports)]
 pub use poison_handler::{
-    build_dead_letter_envelope, resolve_envelope_poison, resolve_poison_policy,
-    DeadLetterEnvelope, PoisonError, PoisonPolicy, PoisonResolution,
+    build_dead_letter_envelope, resolve_envelope_poison, resolve_poison_policy, DeadLetterEnvelope,
+    PoisonError, PoisonPolicy, PoisonResolution,
 };
 #[allow(unused_imports)]
 pub use progress::{ProgressError, SubscriptionProgressTracker};

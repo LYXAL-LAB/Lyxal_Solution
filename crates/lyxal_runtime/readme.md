@@ -249,3 +249,14 @@ cargo clippy --workspace --all-targets -- -D warnings
 # Exécution de l'ensemble des tests (y compris concurrence et multi-nœuds mem://)
 cargo test --workspace
 ```
+
+---
+
+## Défauts connus (à traiter à la reprise du module)
+
+Relevés lors de la migration du SDK `surrealdb` vers 3.3 (novembre 2026), sans être corrigés car hors de son périmètre.
+
+1. **Schéma défini deux fois** : `schema/*.surql` et des copies en dur dans `store/surreal.rs`, `worker/store.rs`, `event/store.rs`, `health/store.rs`. Les deux versions divergeaient déjà (`installation_phase`).
+2. **Tables de verrous créées par `SurrealRuntimeStore::bootstrap()`** uniquement : utiliser les verrous SurrealDB avec un autre store repose sur la création implicite de table.
+3. **Résultats ignorés (`let _ =`)** dans `runtime.rs`, `package/installer.rs`, `worker/supervisor.rs`, `reconciler/reconciler.rs` : enregistrement de workers, libération de baux, publication d'événements, persistance d'état. À examiner un par un (au mieux assumé ou erreur masquée).
+4. **`apps/lyxal-server` n'utilise ni `SurrealRuntimeStore` ni les verrous du runtime** : il gère ses migrations avec sa propre table `lyxal_module_migration` — doublon fonctionnel avec `lyxal_runtime`.

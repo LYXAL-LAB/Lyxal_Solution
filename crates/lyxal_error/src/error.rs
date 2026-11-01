@@ -1,9 +1,13 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use surrealdb_types::SurrealValue;
 use thiserror::Error;
 
 /// Structure universelle représentant une erreur métier résolue et traduite par SurrealDB (`fn::error_resolve`).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+///
+/// Lue depuis SurrealDB via `SurrealValue` et renvoyée en JSON par l'API HTTP via `serde`.
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
+#[surreal(crate = "surrealdb_types")]
 pub struct LyxalError {
     pub code: String,
     pub message: String,
@@ -15,11 +19,13 @@ pub struct LyxalError {
     pub http_status: Option<u16>,
     pub retryable: bool,
     #[serde(default)]
+    #[surreal(default)]
     pub documentation: Value,
     #[serde(default)]
+    #[surreal(default)]
     pub metadata: Value,
-
     #[serde(default)]
+    #[surreal(default)]
     pub details: Value,
 }
 

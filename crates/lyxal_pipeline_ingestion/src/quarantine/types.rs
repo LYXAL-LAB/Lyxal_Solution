@@ -1,11 +1,15 @@
 //! Types formels pour la gestion de la quarantaine et la classification des anomalies (Directive CTO Phase 3).
 
-use serde::{Deserialize, Serialize};
 use crate::types::{ItemQualification, StateTransitionRecord};
+use lyxal_surreal::SurrealValue;
+use serde::{Deserialize, Serialize};
 
 /// Sévérité de l'anomalie détectée lors de l'ingestion ou de la normalisation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, SurrealValue,
+)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[surreal(untagged, rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AnomalySeverity {
     /// Information informative (n'empêche pas la publication)
     Info = 1,
@@ -29,8 +33,9 @@ impl std::fmt::Display for AnomalySeverity {
 }
 
 /// Catégories normalisées d'anomalies de catalogue BTP.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, SurrealValue)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[surreal(untagged, rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AnomalyCategory {
     /// Structure de données corrompue ou syntaxe illisible
     MalformedData,
@@ -53,8 +58,9 @@ pub enum AnomalyCategory {
 }
 
 /// Statut de cycle de vie d'une entrée mise en quarantaine.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, SurrealValue)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[surreal(untagged, rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum QuarantineStatus {
     /// En quarantaine active (en attente de révision ou arbitrage)
     Quarantined,
@@ -65,7 +71,7 @@ pub enum QuarantineStatus {
 }
 
 /// Entrée d'audit détaillée enregistrée en zone de quarantaine (`ingestion_quarantine_record`).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, SurrealValue)]
 pub struct QuarantineEntry {
     /// Identifiant unique de l'anomalie
     pub entry_id: String,
@@ -104,7 +110,7 @@ pub struct QuarantineEntry {
 }
 
 /// Statistiques agrégées des anomalies pour un lot d'ingestion.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, SurrealValue)]
 pub struct QuarantineStats {
     pub total_anomalies: usize,
     pub fatal_count: usize,

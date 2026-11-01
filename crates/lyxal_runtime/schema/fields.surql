@@ -17,7 +17,9 @@ DEFINE FIELD OVERWRITE description ON TABLE system_module_release TYPE option<st
 DEFINE FIELD OVERWRITE status ON TABLE system_module_release TYPE string;
 DEFINE FIELD OVERWRITE checksum ON TABLE system_module_release TYPE option<string>;
 DEFINE FIELD OVERWRITE created_at ON TABLE system_module_release TYPE datetime DEFAULT time::now() READONLY;
+DEFINE FIELD OVERWRITE installation_phase ON TABLE system_module_release TYPE option<string>;
 DEFINE FIELD OVERWRITE installed_at ON TABLE system_module_release TYPE option<datetime>;
+DEFINE FIELD OVERWRITE updated_at ON TABLE system_module_release TYPE option<datetime>;
 
 -- Champs pour system_migration
 DEFINE FIELD OVERWRITE migration_id ON TABLE system_migration TYPE string;
@@ -93,6 +95,6 @@ DEFINE FIELD OVERWRITE kind ON TABLE system_runtime_event TYPE string;
 DEFINE FIELD OVERWRITE module_id ON TABLE system_runtime_event TYPE option<string>;
 DEFINE FIELD OVERWRITE correlation_id ON TABLE system_runtime_event TYPE option<string>;
 DEFINE FIELD OVERWRITE causation_id ON TABLE system_runtime_event TYPE option<string>;
-DEFINE FIELD OVERWRITE payload ON TABLE system_runtime_event FLEXIBLE TYPE object;
+DEFINE FIELD OVERWRITE payload ON TABLE system_runtime_event TYPE object FLEXIBLE;
 DEFINE FIELD OVERWRITE created_at ON TABLE system_runtime_event TYPE datetime DEFAULT time::now();
 

@@ -130,10 +130,7 @@ fn get_units_mapping() -> &'static HashMap<&'static str, &'static str> {
 
 /// Normalise une chaîne brute d'unité vers le code canonique officiel de `base_unite`.
 pub fn normalize_unit(raw_unit: &str) -> Option<&'static str> {
-    let cleaned = raw_unit
-        .trim()
-        .to_uppercase()
-        .replace(['.', '-', '_'], "");
+    let cleaned = raw_unit.trim().to_uppercase().replace(['.', '-', '_'], "");
 
     get_units_mapping().get(cleaned.as_str()).copied()
 }

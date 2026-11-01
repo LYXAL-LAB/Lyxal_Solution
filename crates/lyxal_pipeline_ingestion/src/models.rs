@@ -2,10 +2,11 @@ use crate::types::{
     BatchStatus, ItemQualification, ManifestStatus, PackagingDetails, PublicationAction,
     SourceFormat, StateTransitionRecord,
 };
+use lyxal_surreal::SurrealValue;
 use serde::{Deserialize, Serialize};
 
 /// Modèle Rust pour `ingestion_batch`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
 pub struct IngestionBatch {
     pub id: Option<String>,
     pub source_type: SourceFormat,
@@ -23,23 +24,23 @@ pub struct IngestionBatch {
     pub lignes_rejetees: usize,
     pub transitions: Vec<StateTransitionRecord>,
     pub provenance_details: serde_json::Value,
-    pub created_at: Option<String>,
-    pub completed_at: Option<String>,
+    pub created_at: Option<lyxal_surreal::Datetime>,
+    pub completed_at: Option<lyxal_surreal::Datetime>,
 }
 
 /// Modèle Rust pour `ingestion_raw_record`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
 pub struct RawRecord {
     pub id: Option<String>,
     pub batch: String,
     pub ligne_numero: usize,
     pub row_hash: String,
     pub payload_brut: serde_json::Value,
-    pub created_at: Option<String>,
+    pub created_at: Option<lyxal_surreal::Datetime>,
 }
 
 /// Modèle Rust pour `ingestion_staged_item`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
 pub struct StagedItem {
     pub id: Option<String>,
     pub batch: String,
@@ -47,7 +48,7 @@ pub struct StagedItem {
     pub ligne_numero: usize,
     pub canonical_fingerprint: String,
     pub rules_version: String,
-    
+
     // Identité métier fabricant / référence
     pub fabricant: String,
     pub marque: Option<String>,
@@ -64,20 +65,22 @@ pub struct StagedItem {
     // Triptyque de qualification et publication
     pub qualification: ItemQualification,
     #[serde(default)]
+    #[surreal(default)]
     pub qualification_reason: Option<String>,
     #[serde(default)]
+    #[surreal(default)]
     pub commercial_proof: Option<crate::proof::CommercialProof>,
     pub publication_action: PublicationAction,
     pub diff_payload: Option<serde_json::Value>,
     pub transitions: Vec<StateTransitionRecord>,
-    
+
     pub is_approved: bool,
     pub approved_by: Option<String>,
-    pub approved_at: Option<String>,
+    pub approved_at: Option<lyxal_surreal::Datetime>,
 }
 
 /// Modèle Rust pour `ingestion_quarantine_record`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
 pub struct QuarantineRecord {
     pub id: Option<String>,
     pub batch: String,
@@ -87,16 +90,17 @@ pub struct QuarantineRecord {
     pub champ_concerne: String,
     pub valeur_fautive: Option<serde_json::Value>,
     pub cause_detaillee: String,
-    pub created_at: Option<String>,
+    pub created_at: Option<lyxal_surreal::Datetime>,
     #[serde(default)]
+    #[surreal(default)]
     pub is_resolved: bool,
     pub resolved_by: Option<String>,
-    pub resolved_at: Option<String>,
+    pub resolved_at: Option<lyxal_surreal::Datetime>,
     pub resolution_comment: Option<String>,
 }
 
 /// Modèle Rust pour `ingestion_publication_manifest`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
 pub struct PublicationManifest {
     pub id: Option<String>,
     pub batch: String,
@@ -105,9 +109,9 @@ pub struct PublicationManifest {
     pub seal_hash: String,
     pub is_sealed: bool,
     pub statut: ManifestStatus,
-    
+
     pub approved_by: Option<String>,
-    pub approved_at: Option<String>,
+    pub approved_at: Option<lyxal_surreal::Datetime>,
     pub approver_role: Option<String>,
 
     pub nb_articles_insert: usize,
@@ -116,5 +120,5 @@ pub struct PublicationManifest {
     pub items_failed: usize,
     pub execution_items: Vec<serde_json::Value>,
     pub transitions: Vec<StateTransitionRecord>,
-    pub executed_at: Option<String>,
+    pub executed_at: Option<lyxal_surreal::Datetime>,
 }

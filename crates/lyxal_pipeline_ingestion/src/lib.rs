@@ -39,8 +39,8 @@ pub use module::PipelineIngestionModule;
 pub use state_machine::{BatchStateMachine, ManifestStateMachine, StagedItemStateMachine};
 pub use storage::IngestionStore;
 pub use types::{
-    BatchStatus, Dimensions, ItemQualification, ManifestStatus, PackagingDetails, PublicationAction,
-    SourceFormat, StateTransitionRecord,
+    BatchStatus, Dimensions, ItemQualification, ManifestStatus, PackagingDetails,
+    PublicationAction, SourceFormat, StateTransitionRecord,
 };
 
 // Re-exports Phase 2
@@ -50,8 +50,8 @@ pub use adapters::{
 };
 pub use normalization::{
     normalize_dimensions, normalize_manufacturer, normalize_technical_attributes, normalize_unit,
-    normalize_weight, validate_and_normalize_gtin, CanonicalDimensions, CanonicalTechnicalAttributes,
-    CanonicalWeight, NormalizationEngine, NormalizedItemDto,
+    normalize_weight, validate_and_normalize_gtin, CanonicalDimensions,
+    CanonicalTechnicalAttributes, CanonicalWeight, NormalizationEngine, NormalizedItemDto,
 };
 pub use technical_grouping::{
     ContextualSubstitutionRule, FamilyRule, SpecificationTolerances, TechnicalGroupLevel,
@@ -64,8 +64,8 @@ pub use health::IngestionHealthCheck;
 pub use proof::{CommercialProof, CommercialProofType};
 pub use publisher::{ControlledPublisher, PublicationExecutionReport, SyncAgentSession};
 pub use quarantine::{
-    AnomalyCategory, AnomalySeverity, QuarantineEngine, QuarantineEntry, QuarantineStatus,
-    QuarantineStats,
+    AnomalyCategory, AnomalySeverity, QuarantineEngine, QuarantineEntry, QuarantineStats,
+    QuarantineStatus,
 };
 pub use worker::{BatchProcessingReport, IngestionWorker};
 

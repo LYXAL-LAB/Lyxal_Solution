@@ -1,8 +1,0 @@
-/target
-**/*.rs.bk
-Cargo.lock
-**/*.swp
-.DS_Store
-.vscode/
-.idea/
-*.pdb

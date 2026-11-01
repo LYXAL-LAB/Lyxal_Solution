@@ -931,7 +931,7 @@ impl RuntimeError {
     }
 
     /// Enveloppe un résultat dans le contrat `LyxalResult<T>`.
-    pub fn into_lyxal_result<T>(self) -> LyxalResult<T> {
+    pub fn into_lyxal_result<T: lyxal_surreal::SurrealValue>(self) -> LyxalResult<T> {
         LyxalResult {
             ok: false,
             data: None,

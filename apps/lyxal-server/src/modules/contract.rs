@@ -1,9 +1,4 @@
-use crate::{
-    database::Database,
-    error::ServerError,
-    health::HealthRegistry,
-    metrics::Metrics,
-};
+use crate::{database::Database, error::ServerError, health::HealthRegistry, metrics::Metrics};
 use async_trait::async_trait;
 use axum::Router;
 use serde::Serialize;
@@ -16,11 +11,9 @@ impl ModuleId {
     pub fn new(value: impl Into<String>) -> Result<Self, ServerError> {
         let value = value.into();
         let valid = !value.is_empty()
-            && value
-                .chars()
-                .all(|character| character.is_ascii_lowercase()
-                    || character.is_ascii_digit()
-                    || character == '-');
+            && value.chars().all(|character| {
+                character.is_ascii_lowercase() || character.is_ascii_digit() || character == '-'
+            });
         if !valid {
             return Err(ServerError::Runtime(format!(
                 "identifiant de module invalide : {value}"

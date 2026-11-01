@@ -1,13 +1,5 @@
-use crate::{
-    context::AppContext,
-    health::HealthState,
-};
-use axum::{
-    Json,
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-};
+use crate::{context::AppContext, health::HealthState};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::Serialize;
 
 #[derive(Serialize)]

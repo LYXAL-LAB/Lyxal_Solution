@@ -48,14 +48,21 @@ pub fn normalize_technical_attributes(
         result.standard_norm = Some("NF EN 520".to_string());
     } else if text_lower.contains("en 14195") || text_lower.contains("en14195") {
         result.standard_norm = Some("NF EN 14195".to_string());
-    } else if text_lower.contains("en 13162") || text_lower.contains("en13162") || text_lower.contains("laine de verre") || text_lower.contains("laine de roche") {
+    } else if text_lower.contains("en 13162")
+        || text_lower.contains("en13162")
+        || text_lower.contains("laine de verre")
+        || text_lower.contains("laine de roche")
+    {
         result.standard_norm = Some("NF EN 13162".to_string());
     } else if text_lower.contains("c 15-100") || text_lower.contains("c15-100") {
         result.standard_norm = Some("NF C 15-100".to_string());
     }
 
     // 3. Réaction au feu
-    if let Some(feu) = find_attr(raw_attrs, &["classement_feu", "fire_rating", "reaction_feu", "feu"]) {
+    if let Some(feu) = find_attr(
+        raw_attrs,
+        &["classement_feu", "fire_rating", "reaction_feu", "feu"],
+    ) {
         result.fire_rating = Some(feu.trim().to_uppercase());
     } else if text_lower.contains("a2-s1,d0") || text_lower.contains("a2-s1 d0") {
         result.fire_rating = Some("A2-S1,D0".to_string());
@@ -70,7 +77,12 @@ pub fn normalize_technical_attributes(
     // 4. Type de bords pour plaques
     if let Some(edge) = find_attr(raw_attrs, &["edge_type", "type_bord", "bords", "bord"]) {
         result.edge_type = Some(edge.trim().to_uppercase());
-    } else if text_lower.contains("ba13") || text_lower.contains("ks 13") || text_lower.contains("ks13") || text_lower.contains("bords amincis") || text_lower.contains(" ba ") {
+    } else if text_lower.contains("ba13")
+        || text_lower.contains("ks 13")
+        || text_lower.contains("ks13")
+        || text_lower.contains("bords amincis")
+        || text_lower.contains(" ba ")
+    {
         result.edge_type = Some("BA".to_string()); // Bords Amincis
     } else if text_lower.contains("bords droits") || text_lower.contains(" bd ") {
         result.edge_type = Some("BD".to_string());
@@ -81,7 +93,10 @@ pub fn normalize_technical_attributes(
     // Typologie de plaque spéciale
     if text_lower.contains("hydro") || text_lower.contains("h1") {
         result.board_special_type = Some("HYDROFUGE".to_string());
-    } else if text_lower.contains("flam") || text_lower.contains("coupe-feu") || text_lower.contains("coupe feu") {
+    } else if text_lower.contains("flam")
+        || text_lower.contains("coupe-feu")
+        || text_lower.contains("coupe feu")
+    {
         result.board_special_type = Some("COUPE_FEU".to_string());
     } else if text_lower.contains("phonique") || text_lower.contains("acoustique") {
         result.board_special_type = Some("PHONIQUE".to_string());
@@ -90,7 +105,11 @@ pub fn normalize_technical_attributes(
     }
 
     // 5. Épaisseur d'acier pour ossatures métalliques
-    if text_lower.contains("0,6mm") || text_lower.contains("0.6mm") || text_lower.contains("0,6 mm") || text_lower.contains("0.6 mm") {
+    if text_lower.contains("0,6mm")
+        || text_lower.contains("0.6mm")
+        || text_lower.contains("0,6 mm")
+        || text_lower.contains("0.6 mm")
+    {
         result.steel_thickness_mm = Some(0.6);
     } else if text_lower.contains("rail") || text_lower.contains("montant") {
         result.steel_thickness_mm = Some(0.6);
@@ -109,21 +128,33 @@ pub fn normalize_technical_attributes(
         result.electrical_ip_rating = Some("IP55".to_string());
     } else if text_lower.contains("ip44") {
         result.electrical_ip_rating = Some("IP44".to_string());
-    } else if text_lower.contains("ip20") || text_lower.contains("encastre") || text_lower.contains("encastré") {
+    } else if text_lower.contains("ip20")
+        || text_lower.contains("encastre")
+        || text_lower.contains("encastré")
+    {
         result.electrical_ip_rating = Some("IP20".to_string());
     }
 
     // 7. Isolation thermique & acoustique (Nouvelle famille Phase 3)
     // Conductivité thermique (lambda)
-    if let Some(l_str) = find_attr(raw_attrs, &["lambda", "conductivite", "conductivite_thermique"]) {
+    if let Some(l_str) = find_attr(
+        raw_attrs,
+        &["lambda", "conductivite", "conductivite_thermique"],
+    ) {
         result.thermal_lambda = l_str.replace(',', ".").parse::<f64>().ok();
-    } else if text_lower.contains("gr32") || text_lower.contains("0.032") || text_lower.contains("0,032") {
+    } else if text_lower.contains("gr32")
+        || text_lower.contains("0.032")
+        || text_lower.contains("0,032")
+    {
         result.thermal_lambda = Some(0.032);
     } else if text_lower.contains("0.035") || text_lower.contains("0,035") {
         result.thermal_lambda = Some(0.035);
     } else if text_lower.contains("0.038") || text_lower.contains("0,038") {
         result.thermal_lambda = Some(0.038);
-    } else if text_lower.contains("ibr") || text_lower.contains("0.040") || text_lower.contains("0,040") {
+    } else if text_lower.contains("ibr")
+        || text_lower.contains("0.040")
+        || text_lower.contains("0,040")
+    {
         result.thermal_lambda = Some(0.040);
     }
 
@@ -144,55 +175,90 @@ pub fn normalize_technical_attributes(
     }
 
     // Matériau isolant
-    if text_lower.contains("laine de verre") || text_lower.contains("isover") || text_lower.contains("ursa") {
+    if text_lower.contains("laine de verre")
+        || text_lower.contains("isover")
+        || text_lower.contains("ursa")
+    {
         result.insulation_material = Some("LAINE_DE_VERRE".to_string());
     } else if text_lower.contains("laine de roche") || text_lower.contains("rockwool") {
         result.insulation_material = Some("LAINE_DE_ROCHE".to_string());
-    } else if text_lower.contains("polyuréthane") || text_lower.contains("polyurethane") || text_lower.contains("pur") || text_lower.contains("pir") {
+    } else if text_lower.contains("polyuréthane")
+        || text_lower.contains("polyurethane")
+        || text_lower.contains("pur")
+        || text_lower.contains("pir")
+    {
         result.insulation_material = Some("POLYURETHANE".to_string());
-    } else if text_lower.contains("polystyrène") || text_lower.contains("polystyrene") || text_lower.contains("pse") {
+    } else if text_lower.contains("polystyrène")
+        || text_lower.contains("polystyrene")
+        || text_lower.contains("pse")
+    {
         result.insulation_material = Some("POLYSTYRENE".to_string());
     }
 
     // Remplissage map normalisée
     if let Some(ref e) = result.etim_class {
-        result.normalized_features.insert("etim_class".to_string(), e.clone());
+        result
+            .normalized_features
+            .insert("etim_class".to_string(), e.clone());
     }
     if let Some(ref n) = result.standard_norm {
-        result.normalized_features.insert("standard_norm".to_string(), n.clone());
+        result
+            .normalized_features
+            .insert("standard_norm".to_string(), n.clone());
     }
     if let Some(ref f) = result.fire_rating {
-        result.normalized_features.insert("fire_rating".to_string(), f.clone());
+        result
+            .normalized_features
+            .insert("fire_rating".to_string(), f.clone());
     }
     if let Some(ref b) = result.edge_type {
-        result.normalized_features.insert("edge_type".to_string(), b.clone());
+        result
+            .normalized_features
+            .insert("edge_type".to_string(), b.clone());
     }
     if let Some(ref bt) = result.board_special_type {
-        result.normalized_features.insert("board_special_type".to_string(), bt.clone());
+        result
+            .normalized_features
+            .insert("board_special_type".to_string(), bt.clone());
     }
     if let Some(st) = result.steel_thickness_mm {
-        result.normalized_features.insert("steel_thickness_mm".to_string(), st.to_string());
+        result
+            .normalized_features
+            .insert("steel_thickness_mm".to_string(), st.to_string());
     }
     if let Some(a) = result.electrical_current_a {
-        result.normalized_features.insert("electrical_current_a".to_string(), a.to_string());
+        result
+            .normalized_features
+            .insert("electrical_current_a".to_string(), a.to_string());
     }
     if let Some(ref ip) = result.electrical_ip_rating {
-        result.normalized_features.insert("electrical_ip_rating".to_string(), ip.clone());
+        result
+            .normalized_features
+            .insert("electrical_ip_rating".to_string(), ip.clone());
     }
     if let Some(l) = result.thermal_lambda {
-        result.normalized_features.insert("thermal_lambda".to_string(), l.to_string());
+        result
+            .normalized_features
+            .insert("thermal_lambda".to_string(), l.to_string());
     }
     if let Some(r) = result.thermal_resistance_r {
-        result.normalized_features.insert("thermal_resistance_r".to_string(), r.to_string());
+        result
+            .normalized_features
+            .insert("thermal_resistance_r".to_string(), r.to_string());
     }
     if let Some(ref m) = result.insulation_material {
-        result.normalized_features.insert("insulation_material".to_string(), m.clone());
+        result
+            .normalized_features
+            .insert("insulation_material".to_string(), m.clone());
     }
 
     result
 }
 
-fn find_attr<'a>(raw_attrs: &'a HashMap<String, String>, candidates: &[&str]) -> Option<&'a String> {
+fn find_attr<'a>(
+    raw_attrs: &'a HashMap<String, String>,
+    candidates: &[&str],
+) -> Option<&'a String> {
     for &cand in candidates {
         if let Some(val) = raw_attrs.get(cand) {
             return Some(val);

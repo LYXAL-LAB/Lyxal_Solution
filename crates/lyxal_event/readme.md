@@ -194,3 +194,14 @@ Pour exécuter la suite de tests :
 cargo test -p lyxal_event
 cargo clippy -p lyxal_event --all-targets -- -D warnings
 ```
+
+---
+
+## Défauts connus (à traiter à la reprise du module)
+
+Relevés lors de la migration du SDK `surrealdb` vers 3.3 (novembre 2026), sans être corrigés car hors de son périmètre.
+
+1. **Classification des erreurs par texte** : `EventStore::claim_batch` (et les autres méthodes au même schéma) réessaie dès que le message d'erreur contient « conflict » ou « retry ». Une erreur de désérialisation citant le champ `next_retry_at` a ainsi été réessayée ; le premier essai ayant déjà réclamé la livraison, le second renvoyait une liste vide — erreur masquée (§11.4). Il faut tester le type d'erreur, pas son texte.
+2. **Replis silencieux dans `EventWorker::fetch_and_enqueue_pending`** : un `event_id` absent est remplacé par un identifiant neuf, un contexte absent par le contexte par défaut.
+3. **Test `integration_concurrency_1000`** : marqué « Legacy … superseded by unified streaming architecture » ; à supprimer ou réécrire selon §0.
+4. **En-têtes de licence ASF** dans `engine/*.rs` (licence Apache Software Foundation), incohérents avec la licence du workspace.

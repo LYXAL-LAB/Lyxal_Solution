@@ -1,10 +1,11 @@
 use super::envelope::EventContext;
+use lyxal_surreal::{Datetime, RecordId, SurrealValue};
 use serde::{Deserialize, Serialize};
-use surrealdb::sql::{Datetime, Thing as RecordId};
 
 /// Statut du cycle de vie d'une livraison d'événement.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, SurrealValue)]
 #[serde(rename_all = "snake_case")]
+#[surreal(untagged, rename_all = "snake_case")]
 pub enum DeliveryStatus {
     /// En attente d'acquisition par un worker.
     Pending,
@@ -21,7 +22,7 @@ pub enum DeliveryStatus {
 }
 
 /// Enregistrement de distribution unitaire pour un événement et un abonnement.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
 pub struct EventDelivery {
     /// Identifiant de l'enregistrement dans la table event_delivery.
     pub id: RecordId,
@@ -37,15 +38,19 @@ pub struct EventDelivery {
     pub status: DeliveryStatus,
     /// Numéro de séquence contigu attribué par le LYXAL Event Engine.
     #[serde(default)]
+    #[surreal(default)]
     pub delivery_seq: Option<u64>,
     /// Référence croisée vers la quarantaine DLQ le cas échéant.
     #[serde(default)]
+    #[surreal(default)]
     pub dead_letter_ref: Option<RecordId>,
     /// Horodatage d'abandon le cas échéant.
     #[serde(default)]
+    #[surreal(default)]
     pub dropped_at: Option<Datetime>,
     /// Motif d'abandon le cas échéant.
     #[serde(default)]
+    #[surreal(default)]
     pub drop_reason: Option<String>,
     /// Nombre de tentatives déjà consommées.
     pub attempts: u32,

@@ -103,3 +103,15 @@ Pour le détail des versions, objectifs et critères d'acceptation de `lyxal_pip
 * 📄 **Feuille de Route Officielle du Module :** [`ROADMAP.md`](./ROADMAP.md)
 * 🌐 **Intégration Transversale LYXAL SPACE :** [`docs/14-roadmap/ROADMAP_LYXAL_SPACE.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/docs/14-roadmap/ROADMAP_LYXAL_SPACE.md)
 
+---
+
+## Défauts connus (à traiter à la reprise du module)
+
+Relevés lors de la migration du SDK `surrealdb` vers 3.3 (novembre 2026), sans être corrigés car hors de son périmètre.
+
+1. **Journal des transitions incohérent** (prioritaire) : le SurrealQL écrit `{ from_state, to_state, triggered_by, reason, transitioned_at }` (date native) ; le Rust lit et écrit `{ from_statut, to_statut, transition_by, reason, transition_at }` (texte). Les transitions relues depuis la base sont donc des chaînes vides (champs remplis par défaut), et la base contient deux formats selon l'écrivain.
+2. **Horodatages écrits en dur dans le code de production** : `transition_at: "2026-10-25T11:00:00Z"` dans `storage/store.rs`, `worker/ingestion_worker.rs`, `quarantine/engine.rs` (champs texte, non touchés par la migration).
+3. **Mot de passe de recette par défaut en clair** dans `tests/integration_staging_live_server.rs` (repli quand `LYXAL_STAGING_PASS` est absent) : à retirer du code et à considérer comme compromis s'il a servi sur un serveur réel.
+4. **Requêtes directes** (§11.5) : 12 `.query(...)` dans un module métier, à remplacer par des fonctions `fn::ingestion_*` (décision CTO Q3).
+5. **13 remarques `clippy`** préexistantes.
+6. **Documents historiques** (§0) : `CHANGELOG.md`, `ROADMAP.md`, `docs/*` (rapports de clôture et de recette), script `tests/run_ingestion_phase1_tests.ps1`.
