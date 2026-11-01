@@ -153,6 +153,8 @@ Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.3.4
 
 ## 4. Protocole de Test Reproductible SurrealDB 3.3.4
 
+Outillage versionné dans `scripts/ci/` : `install_surreal.sh` (binaire 3.3.4 exact), `validate_surql.sh` (`surreal validate` de tout le workspace), `test_lyxal_core.py` (suite `lyxal_core`), `test_all.sh` (tests Rust + serveurs de test), `ci_local.sh` (tout, comme la CI).
+
 Pour valider un schéma, une fonction ou une migration :
 
 1. **Ordre de chargement strict** (reproduisant `SchemaImporter` de `lyxal_runtime`) :

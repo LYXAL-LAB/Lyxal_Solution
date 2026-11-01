@@ -149,6 +149,7 @@ Tant que le CTO n'a pas déclaré la première mise en production, signaler comm
 Une rupture de contrat public n'est **pas** un écart en pré-production si tous les appelants du dépôt ont été mis à jour ; elle est un **P1** si un appelant n'a pas été mis à jour (workspace cassé ou dépendance implicite rompue).
 
 ### Contrôle 8 — Exécution des Contrôles & Preuves de Tests [OBLIGATOIRE]
+0. **Banc de vérification commun** : `scripts/ci/ci_local.sh` rejoue exactement la CI (formatage, `clippy`, `surreal validate` de tout le SurrealQL, suite `lyxal_core`, tous les tests y compris contre un serveur SurrealDB 3.3.4 réel). Le citer comme preuve (commande et code retour) plutôt que des commandes isolées.
 1. Distinguer avec une rigueur absolue dans le rapport :
    - **Contrôles statiques effectués** (lecture intégrale des fichiers, vérification des graphes, croisement DTO $\leftrightarrow$ SurrealQL) ;
    - **Tests réellement exécutés et réussis** (commande exacte, code retour `0`, nombre de tests passés et moteur utilisé) ;
