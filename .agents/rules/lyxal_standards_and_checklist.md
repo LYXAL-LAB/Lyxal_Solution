@@ -133,28 +133,28 @@ Son API publique est **FIGÉE** (CORE FREEZE, STATUS: STABLE).
 
 Le contrat complet est documenté dans `crates/lyxal_crypto/API_CONTRACT.md`.
 
-### Primitives STABLE Disponibles
+### Primitives STABLE Disponibles (Architecture V2)
 
-| Primitive | Module | Fonctions Principales |
+| Primitive | Module | Fonctions & Types Principaux |
 | :--- | :--- | :--- |
-| **AES-256-GCM** | `cipher`, `envelope`, `context` | `CryptoEngine::encrypt_secret`, `CryptoEngine::decrypt_secret`, `CryptoEngine::encrypt_unbound`, `CryptoEngine::decrypt_unbound`, `CryptoEngine::reencrypt_if_needed` |
+| **AES-256-GCM & Secrets** | `cipher`, `envelope`, `context`, `secret` | `CryptoEngine::seal`, `CryptoEngine::open`, `EncryptedEnvelope::parse`, `encode`, types sensibles `SecretBytes`, `SecretString` |
 | **SHA-256** | `hash` | `sha256()`, `sha256_hex()`, `Sha256Hasher` |
 | **BLAKE3** | `hash` | `blake3()`, `blake3_hex()`, `Blake3Hasher` |
-| **Argon2id** | `password` | `hash_password()`, `verify_password()`, `needs_rehash()` |
-| **HMAC-SHA256** | `hmac` | `sign_hmac_sha256()`, `sign_hmac_sha256_hex()`, `verify_hmac_sha256()`, `verify_hmac_sha256_hex()` |
-| **HKDF-SHA256** | `kdf` | `hkdf_sha256()`, `hkdf_sha256_32()` |
-| **Gestion de clés** | `key`, `key_resolver` | `EncryptionKey`, `KeyId`, `KeyResolver`, `CompositeKeyResolver`, `EnvironmentKeyProvider`, `FileKeyProvider` |
+| **Argon2id** | `password` | `hash_password()`, `verify_password()`, `PasswordHash::parse`, `PasswordHash::needs_rehash` |
+| **HMAC-SHA256** | `hmac` | `HmacKey`, `sign_hmac_sha256()`, `verify_hmac_sha256()` |
+| **HKDF-SHA256** | `kdf` | `hkdf_sha256()` (retourne `SecretBytes`) |
+| **Gestion de clés & Trousseaux** | `key`, `key_resolver`, `providers` | `EncryptionKey`, `KeyId`, `KeyRingBuilder`, `KeyRing`, `KeyUse`, `KeyResolver`, `StaticKeyResolver`, `EnvironmentKeyProvider`, `FileKeyProvider` |
 
 ### Chiffrement des Secrets
 
-Tous les secrets :
+Tous les secrets applicatifs :
 
 * mots de passe ;
 * tokens ;
 * clés API ;
 * données sensibles
 
-sont gérés exclusivement via :
+sont manipulés sous forme de types sensibles opaques (`SecretBytes`, `SecretString`) et gérés exclusivement via :
 
 ```text
 lyxal_crypto
@@ -162,21 +162,23 @@ lyxal_crypto
 
 ### Règles d'Usage Obligatoires
 
-1. **Hachage de mots de passe** : utiliser `lyxal_crypto::password::{hash_password, verify_password}`. Il est interdit d'importer directement `argon2`, `bcrypt` ou toute autre crate de hachage de mots de passe dans un module métier.
+1. **Hachage de mots de passe** : utiliser `lyxal_crypto::password::{hash_password, verify_password}` avec `PasswordHash`. Il est interdit d'importer directement `argon2`, `bcrypt` ou toute autre crate de hachage de mots de passe dans un module métier.
 
-2. **Signature HMAC** : utiliser `lyxal_crypto::hmac::{sign_hmac_sha256, verify_hmac_sha256}`. Il est interdit d'importer directement `hmac` ou `sha2` dans un module métier pour signer ou vérifier des MACs.
+2. **Signature HMAC** : utiliser `lyxal_crypto::hmac::{sign_hmac_sha256, verify_hmac_sha256}` avec `HmacKey` (32 octets). Il est interdit d'importer directement `hmac` ou `sha2` dans un module métier pour signer ou vérifier des MACs.
 
 3. **Hachage cryptographique** : utiliser `lyxal_crypto::hash::{sha256, blake3}`. Il est interdit d'importer directement `sha2` ou `blake3` dans un module métier.
 
-4. **Dérivation de clés** : utiliser `lyxal_crypto::kdf::{hkdf_sha256, hkdf_sha256_32}`. Il est interdit d'importer directement `hkdf` dans un module métier.
+4. **Dérivation de clés** : utiliser `lyxal_crypto::kdf::hkdf_sha256` produisant un `SecretBytes`. Il est interdit d'importer directement `hkdf` dans un module métier.
 
-5. **Chiffrement de secrets** : utiliser `CryptoEngine` avec `SecretContext` (ou mode non lié `encrypt_unbound`/`decrypt_unbound`) et `EncryptedEnvelope`. Il est interdit d'appeler directement les primitives bas niveau `encrypt_aes_gcm` / `decrypt_aes_gcm` dans un module métier.
+5. **Chiffrement de secrets** : utiliser `CryptoEngine::seal(&secret, &context)` et `CryptoEngine::open(&envelope, &context)` avec `SecretContext` strict et `EncryptedEnvelope`. Il est interdit d'appeler directement les primitives bas niveau de chiffrement dans un module métier.
 
-6. **CSPRNG** : utiliser `rand_core::OsRng`. Il est interdit d'utiliser `rand::thread_rng()` ou tout PRNG déterministe pour la génération de matériel cryptographique.
+6. **Types sensibles opaques** : tout secret en mémoire utilise `SecretBytes` ou `SecretString` qui implémentent `ZeroizeOnDrop` et dont le `Debug` est strictement masqué (`[REDACTED]`). L'accès intentionnel se fait via `.expose_secret()`.
+
+7. **CSPRNG** : utiliser `rand_core::OsRng`. Il est interdit d'utiliser `rand::thread_rng()` ou tout PRNG déterministe pour la génération de matériel cryptographique.
 
 ### Contextes AAD Déterministes
 
-En mode lié (recommandé pour toute donnée multi-tenant et applicative), chaque valeur chiffrée doit dériver son AAD d'un `SecretContext` strict :
+En mode lié (recommandé pour toute donnée multi-tenant et applicative), chaque valeur chiffrée doit dériver son AAD d'un `SecretContext` strict via `SecretContext::with_tenant` :
 
 ```text
 tenant
@@ -186,19 +188,17 @@ record_id
 field
 ```
 
-Le format AAD canonique `lyxal:v1` est **DÉFINITIVEMENT FIGÉ**. Sa spécification complète est documentée dans `crates/lyxal_crypto/ENVELOPE_FORMAT_V1.md`.
+Pour les secrets d'infrastructure globaux dépourvus de contexte d'enregistrement ou de tenant, utiliser exclusivement `SecretContext::global(purpose)`. **Tout chiffrement à AAD vide est formellement interdit.**
 
-Le mode non lié (`encrypt_unbound` / `decrypt_unbound`, AAD vide) est réservé aux secrets d'infrastructure globaux dépourvus de contexte d'enregistrement ou de tenant.
+### Format d'Enveloppe Canonique V2
 
-### Format d'Enveloppe Moderne
-
-Toute nouvelle écriture est scellée directement sous le format :
+Toute nouvelle écriture est scellée directement sous le format canonique V2 :
 
 ```text
-enc:v1:<key_id>:<base64url_payload>
+enc:v2:<key_id>:<base64url_payload>
 ```
 
-Ce format est **DÉFINITIVEMENT FIGÉ**. Toute modification future du schéma d'enveloppe devra introduire une version explicite (`enc:v2`).
+Ce format est documenté dans `crates/lyxal_crypto/ENVELOPE_FORMAT_V2.md`. L'ancien format `enc:v1` est conservé pour mémoire historique et n'est plus produit.
 
 ### Interdiction Absolue de Duplication Cryptographique
 
@@ -544,9 +544,12 @@ Avant toute implémentation, Antigravity doit vérifier les points suivants.
 
 * [ ] Toute opération crypto utilise exclusivement `lyxal_crypto`.
 * [ ] Aucune crate crypto (`argon2`, `hmac`, `sha2`, `blake3`, `aes-gcm`, `hkdf`) n'est importée directement dans le module métier.
-* [ ] Les mots de passe sont hashés via `lyxal_crypto::password`.
-* [ ] Les signatures HMAC passent par `lyxal_crypto::hmac`.
-* [ ] Les secrets chiffrés utilisent `CryptoEngine` avec `SecretContext` et `EncryptedEnvelope`.
+* [ ] Les secrets sont manipulés sous forme de types sensibles opaques (`SecretBytes`, `SecretString`).
+* [ ] L'accès aux secrets bruts est strictement intentionnel via `.expose_secret()` (zéro fuite en `Debug`).
+* [ ] Les mots de passe sont hashés et vérifiés via `lyxal_crypto::password` (`PasswordHash`).
+* [ ] Les signatures HMAC passent par `lyxal_crypto::hmac` (`HmacKey` 32 octets).
+* [ ] Les secrets chiffrés utilisent `CryptoEngine::seal` / `open` avec `SecretContext` strict (`with_tenant` ou `global`) et `EncryptedEnvelope` (format `enc:v2`).
+* [ ] Aucun AAD vide n'est utilisé pour le chiffrement.
 * [ ] Aucun `rand::thread_rng()` — uniquement `rand_core::OsRng`.
 * [ ] Si un besoin crypto non couvert est identifié : signalé au CTO, **aucune implémentation avant validation**.
 

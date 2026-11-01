@@ -36,7 +36,7 @@ les clés via l'hôte avant toute donnée dépendante ; ne pas générer une nou
 - [Protocole V2](ENVELOPE_FORMAT_V2.md) : octets exacts, canonisation, fixtures indépendantes.
 - [Sécurité](SECURITY.md) : menaces, quotas hôte, mémoire et stockage.
 - [Migration](MIGRATION_GUIDE.md) : ruptures assumées ; aucun fallback V1.
-- [Rapport de phase B](IMPLEMENTATION_REPORT.md) : preuves et validations non exécutées.
+- [Feuille de route](roadmap.md) : état et perspectives d'évolution.
 
 `SecretContext` ne réalise aucune autorisation métier. Tenant et record sont exacts,
 sans normalisation implicite. Un secret global requiert `SecretContext::global(purpose)` ;
