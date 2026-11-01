@@ -20,8 +20,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use surrealdb::engine::any::connect;
 
-mod common;
-
+use crate::common;
 struct MemoryTestResourceProvider {
     resources: HashMap<String, ModuleResource>,
 }

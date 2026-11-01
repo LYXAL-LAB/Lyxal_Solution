@@ -40,7 +40,7 @@ use lyxal_event::engine::dispatcher::{
     AckReport, DispatchMessage, DispatcherConfig, DispatcherError, NackReport, ReliableDispatcher,
 };
 
-mod common;
+use crate::common;
 use lyxal_event::engine::feeder::{FeederError, OutboxFeeder};
 use lyxal_event::engine::lease::OutboxLeaseManager;
 use lyxal_event::engine::pending_delivery::DeliveryPolicy;

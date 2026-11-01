@@ -5,8 +5,7 @@ use serde_json::json;
 use std::sync::Arc;
 use surrealdb::engine::any::connect;
 
-mod common;
-
+use crate::common;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct TestEvent {
     pub val: u64,

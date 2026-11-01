@@ -22,8 +22,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 
-mod common;
-
+use crate::common;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 struct BookingCreated {
     pub booking_id: String,

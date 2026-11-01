@@ -3,8 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use surrealdb::engine::any::connect;
 
-mod common;
-
+use crate::common;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct InvoiceIssued {
     pub invoice_id: String,

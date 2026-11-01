@@ -148,7 +148,7 @@ fn multiprocess_publication_16_workers_100_rounds() {
         for index in 0..16 {
             children.push(
                 Command::new(&executable)
-                    .args(["--ignored", "--exact", "file_subprocess_worker"])
+                    .args(["--ignored", "--exact", "file_v2::file_subprocess_worker"])
                     .env("LYXAL_CRYPTO_TEST_DIR", d.path())
                     .env("LYXAL_CRYPTO_TEST_INDEX", index.to_string())
                     .stdout(Stdio::null())

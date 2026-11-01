@@ -6,8 +6,7 @@ use std::time::Duration;
 use surrealdb::engine::any::connect;
 use tokio_util::sync::CancellationToken;
 
-mod common;
-
+use crate::common;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct TaskAssigned {
     pub task_id: String,

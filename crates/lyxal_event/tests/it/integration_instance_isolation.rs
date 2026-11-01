@@ -5,8 +5,7 @@ use std::sync::Arc;
 use surrealdb::engine::any::connect;
 use tokio_util::sync::CancellationToken;
 
-mod common;
-
+use crate::common;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct TenantSecretRotated {
     pub key_id: String,
