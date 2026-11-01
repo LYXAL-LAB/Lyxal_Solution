@@ -20,6 +20,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use surrealdb::engine::any::connect;
 
+mod common;
+
 struct MemoryTestResourceProvider {
     resources: HashMap<String, ModuleResource>,
 }
@@ -155,8 +157,8 @@ fn create_package(
 
 #[tokio::test]
 async fn test_batch_dag_diamond_installation_and_start_order() {
-    let client = connect("mem://").await.unwrap();
-    client.use_ns("test").use_db("test").await.unwrap();
+    // Le moteur d'événements démarré par `start_all()` dépend des fonctions de `lyxal_error`.
+    let client = common::setup_db("test", "test").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let runtime = LyxalRuntime::new(RuntimeConfig::default())

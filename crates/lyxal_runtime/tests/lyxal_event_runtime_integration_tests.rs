@@ -17,12 +17,12 @@ use lyxal_runtime::worker::id::WorkerId;
 use lyxal_runtime::worker::restart::{RestartPolicy, WorkerRestartBackoff};
 use lyxal_runtime::worker::state::WorkerState;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use surrealdb::engine::any::connect;
 use tokio::sync::Mutex;
+
+mod common;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 struct BookingCreated {
@@ -86,55 +86,12 @@ impl EventConsumerModule for MockNotificationModule {
     }
 }
 
-/// Helper pour créer une base de données mémoire SurrealDB isolée avec les primitives canoniques de base (lyxal_error)
-async fn setup_db(ns: &str, db: &str) -> surrealdb::Surreal<surrealdb::engine::any::Any> {
-    let client = connect("mem://").await.expect("connect mem://");
-    client.use_ns(ns).use_db(db).await.expect("use_ns/use_db");
-
-    let error_manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("Parent crates dir")
-        .join("lyxal_error")
-        .join("manifest.toml");
-
-    let content = std::fs::read_to_string(&error_manifest_path)
-        .unwrap_or_else(|e| panic!("Failed to read lyxal_error manifest at {:?}: {}", error_manifest_path, e));
-    let parsed: toml::Value = toml::from_str(&content)
-        .expect("Failed to parse lyxal_error manifest");
-    let resources = parsed
-        .get("resources")
-        .and_then(|v| v.as_table())
-        .expect("Resources table in lyxal_error manifest");
-
-    let error_base_dir = error_manifest_path.parent().expect("lyxal_error dir");
-
-    if let Some(schemas) = resources.get("schemas").and_then(|v| v.as_array()) {
-        for s in schemas {
-            let rel = s.as_str().expect("schema rel path");
-            let surql = std::fs::read_to_string(error_base_dir.join(rel))
-                .unwrap_or_else(|e| panic!("Failed to read {}: {}", rel, e));
-            client.query(&surql).await.expect("query failed").check().expect("check failed");
-        }
-    }
-
-    if let Some(functions) = resources.get("functions").and_then(|v| v.as_array()) {
-        for f in functions {
-            let rel = f.as_str().expect("function rel path");
-            let surql = std::fs::read_to_string(error_base_dir.join(rel))
-                .unwrap_or_else(|e| panic!("Failed to read {}: {}", rel, e));
-            client.query(&surql).await.expect("query failed").check().expect("check failed");
-        }
-    }
-
-    client
-}
-
 // ---------------------------------------------------------------------------
 // TEST 1 : Démarrage automatique d'EventWorker par le Runtime & Dispatch E2E
 // ---------------------------------------------------------------------------
 #[tokio::test]
 async fn test_runtime_event_worker_auto_start_and_dispatch() {
-    let client = setup_db("test_ns", "test_db").await;
+    let client = common::setup_db("test_ns", "test_db").await;
     let tracker = Arc::new(Mutex::new(Vec::new()));
     let handler = MockNotificationHandler {
         tracker: tracker.clone(),
@@ -220,7 +177,7 @@ async fn test_runtime_event_worker_auto_start_and_dispatch() {
 // ---------------------------------------------------------------------------
 #[tokio::test]
 async fn test_runtime_define_event_e2e() {
-    let client = setup_db("test_ns", "test_db").await;
+    let client = common::setup_db("test_ns", "test_db").await;
     let tracker = Arc::new(Mutex::new(Vec::new()));
     let handler = MockNotificationHandler {
         tracker: tracker.clone(),
@@ -307,7 +264,7 @@ async fn test_runtime_define_event_e2e() {
 // ---------------------------------------------------------------------------
 #[tokio::test]
 async fn test_runtime_shutdown_graceful_no_zombies() {
-    let client = setup_db("test_ns", "test_db").await;
+    let client = common::setup_db("test_ns", "test_db").await;
 
     let mut event_config = EventEngineConfig::default();
     event_config.worker_config.poll_interval = Duration::from_millis(50);
@@ -356,7 +313,7 @@ async fn test_runtime_shutdown_graceful_no_zombies() {
 // ---------------------------------------------------------------------------
 #[tokio::test]
 async fn test_runtime_restart_and_fanout_recovery() {
-    let client = setup_db("test_ns", "test_db").await;
+    let client = common::setup_db("test_ns", "test_db").await;
     let event_store = Arc::new(EventStore::new(client.clone()));
     event_store.init_schema().await.expect("init schema");
 
@@ -428,8 +385,8 @@ async fn test_runtime_restart_and_fanout_recovery() {
 // ---------------------------------------------------------------------------
 #[tokio::test]
 async fn test_runtime_multi_instance_isolation() {
-    let client_alpha = setup_db("alpha_ns", "alpha_db").await;
-    let client_beta = setup_db("beta_ns", "beta_db").await;
+    let client_alpha = common::setup_db("alpha_ns", "alpha_db").await;
+    let client_beta = common::setup_db("beta_ns", "beta_db").await;
 
     let tracker_alpha = Arc::new(Mutex::new(Vec::new()));
     let tracker_beta = Arc::new(Mutex::new(Vec::new()));
@@ -539,7 +496,7 @@ async fn test_runtime_multi_instance_isolation() {
 // ---------------------------------------------------------------------------
 #[tokio::test]
 async fn test_runtime_missing_handler_behavior() {
-    let client = setup_db("test_ns", "test_db").await;
+    let client = common::setup_db("test_ns", "test_db").await;
 
     let mut event_config = EventEngineConfig::default();
     event_config.worker_config.poll_interval = Duration::from_millis(50);

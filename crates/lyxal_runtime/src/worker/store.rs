@@ -6,15 +6,15 @@ use crate::worker::id::WorkerId;
 use crate::worker::metrics::WorkerMetrics;
 use crate::worker::state::WorkerState;
 use async_trait::async_trait;
+use lyxal_surreal::SurrealValue;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use std::time::SystemTime;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
 /// Enregistrement persistant d'un worker dans `system_worker`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, SurrealValue)]
 pub struct WorkerStoreRow {
     pub node_id: String,
     pub worker_id: String,
@@ -26,7 +26,7 @@ pub struct WorkerStoreRow {
     pub last_error: Option<String>,
     pub started_at: Option<i64>,
     pub stopped_at: Option<i64>,
-    pub updated_at: Option<String>,
+    pub updated_at: Option<lyxal_surreal::Datetime>,
 }
 
 /// Contrat de persistance locale de l'état des workers supervisés.
@@ -107,13 +107,7 @@ impl WorkerStore for MemoryWorkerStore {
             last_error: metrics.last_error.clone(),
             started_at: metrics.started_at.map(|v| v as i64),
             stopped_at: metrics.stopped_at.map(|v| v as i64),
-            updated_at: Some(
-                SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap_or_default()
-                    .as_secs()
-                    .to_string(),
-            ),
+            updated_at: Some(lyxal_surreal::Datetime::now()),
         };
 
         let mut lock = self.workers.write().map_err(|_| RuntimeError::Internal {
@@ -223,7 +217,7 @@ impl WorkerStore for SurrealWorkerStore {
         let crit_str = format!("{:?}", criticality).to_lowercase();
 
         let query = r#"
-            UPSERT type::thing('system_worker', $key_id) SET
+            UPSERT type::record('system_worker', $key_id) SET
                 node_id = $node_id,
                 worker_id = $worker_id,
                 module_id = $module_id,
@@ -271,7 +265,7 @@ impl WorkerStore for SurrealWorkerStore {
         worker_id: &WorkerId,
     ) -> Result<Option<WorkerStoreRow>, RuntimeError> {
         let key_id = Self::make_key_id(node_id, worker_id);
-        let query = "SELECT * FROM type::thing('system_worker', $key_id);";
+        let query = "SELECT * FROM type::record('system_worker', $key_id);";
 
         let mut res = self
             .client
@@ -283,7 +277,11 @@ impl WorkerStore for SurrealWorkerStore {
                 message: format!("Failed to dispatch get worker: {}", err),
             })?;
 
-        let rows: Vec<WorkerStoreRow> = res.take(0).unwrap_or_default();
+        let rows: Vec<WorkerStoreRow> =
+            res.take(0).map_err(|err| RuntimeError::WorkerStoreFailed {
+                worker: worker_id.to_string(),
+                message: format!("Failed to decode worker row: {}", err),
+            })?;
         Ok(rows.into_iter().next())
     }
 
@@ -303,7 +301,11 @@ impl WorkerStore for SurrealWorkerStore {
                 message: format!("Failed to dispatch list node workers: {}", err),
             })?;
 
-        let rows: Vec<WorkerStoreRow> = res.take(0).unwrap_or_default();
+        let rows: Vec<WorkerStoreRow> =
+            res.take(0).map_err(|err| RuntimeError::WorkerStoreFailed {
+                worker: "system_worker".to_string(),
+                message: format!("Failed to decode node worker rows: {}", err),
+            })?;
         Ok(rows)
     }
 }

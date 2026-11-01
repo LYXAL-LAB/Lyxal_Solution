@@ -1,6 +1,6 @@
 # Plan d'implémentation — Alignement du SDK Rust `surrealdb` sur SurrealDB 3.3.4
 
-> **Statut** : VALIDÉ PAR LE CTO (2026-11-01) — exécution en cours : **Lots 1 et 2 terminés**.
+> **Statut** : VALIDÉ PAR LE CTO (2026-11-01) — exécution en cours : **Lots 1 à 3 terminés**.
 > **Décisions CTO** : Q1 → SDK et serveur en 3.3.x (dernier patch) ; Q2 → `lyxal_error` dépend de `surrealdb-types` ; Q3 → requêtes directes de `lyxal_pipeline_ingestion` portées telles quelles, remplacées à la reprise du module.
 > **Module porteur** : `lyxal_surreal` (transport unique, §11.1).
 > **Impact** : transverse — tous les crates du workspace qui parlent à SurrealDB.
@@ -93,7 +93,7 @@ where T: SurrealValue + Send, P: SurrealValue + Send + 'static;
 | :--- | :--- | :--- | :- |
 | `lyxal_error` | 7 fichiers de `functions/` | `type::is::*` → `type::is_*` | 1 (corrigé) |
 | `lyxal_event` | `tests/concurrency/lot3a_queries.surql` | fichier supprimé avec le dossier `tests/concurrency/` (décision CTO, Lot 2) | 2 (clos) |
-| `lyxal_runtime` | `schema/fields.surql` | à analyser | 3 |
+| `lyxal_runtime` | `schema/fields.surql` | `FLEXIBLE TYPE object` → `TYPE object FLEXIBLE` | 3 (corrigé) |
 
 ## 6. Fonctions Core, erreurs et crypto
 
@@ -110,7 +110,7 @@ where T: SurrealValue + Send, P: SurrealValue + Send + 'static;
 | :- | :--- | :--- |
 | 1 ✅ | `Cargo.toml` racine : `surrealdb = { version = "3.3", features = ["protocol-ws", "protocol-http", "kv-mem"] }`. `lyxal_error` + `lyxal_surreal` : `SurrealValue`, `call_fn`, `signin`, ré-exports. | `cargo test -p lyxal_error -p lyxal_surreal` |
 | 2 ✅ | `lyxal_event` : modèles, DTO, `event_store`, moteur, tests. | `cargo test -p lyxal_event` |
-| 3 | `lyxal_runtime` : stores, verrous (`type::record`), migrations, santé, workers, tests. | `cargo test -p lyxal_runtime` |
+| 3 ✅ | `lyxal_runtime` : stores, verrous (`type::record`), migrations, santé, workers, tests. | `cargo test -p lyxal_runtime` |
 | 4 | `lyxal_pipeline_ingestion` : stockage, publisher, tests. | `cargo test -p lyxal_pipeline_ingestion` |
 | 5 | `apps/lyxal-server` : connexion, runtime, tests HTTP. | `cargo test -p lyxal-server` |
 | 6 | Preuve 3.3.4 : `cargo clippy --workspace --all-targets -D warnings` ; suite complète ; tests serveur (`ws://`) contre un `surreal start` 3.3.4 local ; `surreal validate` sur tous les `.surql` du workspace. Mise à jour des skills qui citent `surrealdb = "2.2"`. | Rapport de tests joint |
@@ -167,4 +167,20 @@ Les écarts de comportement du moteur 3.3 révélés par les tests (C1) sont cor
 2. **Replis silencieux dans `EventWorker::fetch_and_enqueue_pending`** : un `event_id` absent est remplacé par un identifiant neuf, un contexte absent par le contexte par défaut.
 3. **Test `integration_concurrency_1000`** : marqué « Legacy … superseded by unified streaming architecture » ; à supprimer ou réécrire selon §0.
 4. **En-têtes de licence ASF** dans `engine/*.rs` (licence Apache Software Foundation), incohérents avec la licence du workspace.
+
+### Lot 3 — `lyxal_runtime` (terminé)
+
+* **Structures de persistance** (`System*Row`, `WorkerStoreRow`) : `SurrealValue` (les deux publiques gardent aussi `serde`). `into_lyxal_result<T: SurrealValue>`.
+* **SurrealQL dans le Rust** : **20** `type::thing` (et non 10 comme estimé : 10 dans les verrous, 10 dans les stores) + 5 dans les tests → `type::record`. `FLEXIBLE TYPE object` → `TYPE object FLEXIBLE` dans `schema/fields.surql` et dans la copie en dur de `event/store.rs`.
+* **Champs absents du schéma, refusés en 3.3** : `system_module_release.updated_at` (écrit par le code, jamais déclaré) ajouté aux deux définitions du schéma ; `installation_phase` ajouté à `schema/fields.surql`, qui ne l'avait pas alors que la copie en dur l'avait. `WorkerStoreRow.updated_at` passe de `Option<String>` à `Option<Datetime>` (champ `datetime` en base ; le store mémoire écrivait des secondes en texte).
+* **Erreurs masquées supprimées (§11.4)** : 14 `res.take(0).unwrap_or_default()` dans les verrous distribués (installation et migration) et le store des workers transformaient toute erreur de lecture en « aucune ligne ». Avec la 3.3, plus stricte, un verrou illisible aurait été vu comme libre (risque de double installation / migration). Les erreurs sont désormais propagées avec la variante d'erreur de l'opération. Les deux « sentinelles » de verrou distinguent par type d'erreur, sans comparaison de texte : table absente (`is_not_found()`, premier verrou de la base) et création concurrente par un autre nœud (`is_already_exists()`) sont des cas attendus ; toute autre erreur remonte. Cette correction a fait apparaître 11 échecs de tests jusque-là masqués, tous résolus.
+* **Tests** : préparation commune `tests/common/mod.rs` (installation des fonctions `lyxal_error` requises par le moteur d'événements), utilisée par `module_batch_dag_tests` (qui démarrait le moteur sans ses dépendances) et `lyxal_event_runtime_integration_tests`.
+* **Résultats** : `cargo test -p lyxal_runtime` → 189 tests OK ; tests multi-nœuds (verrous concurrents) stables sur 3 exécutions ; `cargo clippy -p lyxal_runtime --all-targets -D warnings` OK ; `cargo fmt` appliqué ; 3/3 `.surql` valides.
+
+#### Défauts existants relevés (hors périmètre, à traiter à la reprise de `lyxal_runtime`)
+
+1. **Schéma défini deux fois** : `schema/*.surql` et des copies en dur dans `store/surreal.rs`, `worker/store.rs`, `event/store.rs`, `health/store.rs`. Les deux versions divergeaient déjà (`installation_phase`).
+2. **Tables de verrous créées par `SurrealRuntimeStore::bootstrap()`** uniquement : utiliser les verrous SurrealDB avec un autre store repose sur la création implicite de table.
+3. **Résultats ignorés (`let _ =`)** dans `runtime.rs`, `package/installer.rs`, `worker/supervisor.rs`, `reconciler/reconciler.rs` : enregistrement de workers, libération de baux, publication d'événements, persistance d'état. À examiner un par un (au mieux assumé ou erreur masquée).
+4. **`apps/lyxal-server` n'utilise ni `SurrealRuntimeStore` ni les verrous du runtime** : il gère ses migrations avec sa propre table `lyxal_module_migration` — doublon fonctionnel avec `lyxal_runtime`.
 

@@ -5,7 +5,7 @@ use crate::health::status::HealthStatus;
 use crate::lock::node_id::NodeId;
 use crate::types::ModuleId;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use lyxal_surreal::SurrealValue;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use surrealdb::engine::any::Any;
@@ -70,15 +70,15 @@ impl HealthStore for MemoryHealthStore {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, SurrealValue)]
 struct SystemHealthRow {
     pub node_id: String,
     pub module_id: String,
     pub status: String,
     pub latency_ms: Option<u64>,
     pub message: Option<String>,
-    pub checked_at: Option<surrealdb::sql::Datetime>,
-    pub updated_at: Option<surrealdb::sql::Datetime>,
+    pub checked_at: Option<lyxal_surreal::Datetime>,
+    pub updated_at: Option<lyxal_surreal::Datetime>,
 }
 
 /// Implémentation SurrealDB officielle de `HealthStore`.
@@ -142,7 +142,7 @@ impl HealthStore for SurrealHealthStore {
             );
 
             let query = r#"
-                UPSERT ONLY type::thing('system_health', $key) SET
+                UPSERT ONLY type::record('system_health', $key) SET
                     node_id = $node_id,
                     module_id = $module_id,
                     status = $status,

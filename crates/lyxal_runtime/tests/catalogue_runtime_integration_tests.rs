@@ -1,5 +1,7 @@
 use lyxal_runtime::manifest::ManifestParser;
-use lyxal_runtime::resource::{FilesystemResourceProvider, ModuleResource, ResourceDiscovery, ResourceKind};
+use lyxal_runtime::resource::{
+    FilesystemResourceProvider, ModuleResource, ResourceDiscovery, ResourceKind,
+};
 use lyxal_runtime::schema::SchemaImportPlan;
 use lyxal_runtime::types::ModuleId;
 use std::fs;
@@ -13,8 +15,9 @@ fn test_manifest_parser_supports_catalogue_manifest() {
         .join("lyxal_catalogue")
         .join("manifest.toml");
 
-    let manifest = ManifestParser::parse_file(&manifest_path).expect("Failed to parse catalogue manifest.toml");
-    
+    let manifest = ManifestParser::parse_file(&manifest_path)
+        .expect("Failed to parse catalogue manifest.toml");
+
     assert_eq!(manifest.id.as_str(), "lyxal_catalogue");
     assert_eq!(manifest.name, "Lyxal Catalogue");
     assert_eq!(manifest.version.to_string(), "1.0.0");
@@ -23,7 +26,17 @@ fn test_manifest_parser_supports_catalogue_manifest() {
     assert_eq!(manifest.dependencies[0].id.as_str(), "lyxal_core");
     assert_eq!(manifest.dependencies[1].id.as_str(), "lyxal_base");
     assert!(manifest.runtime.is_some());
-    assert_eq!(manifest.runtime.as_ref().unwrap().min_version.as_ref().unwrap().to_string(), ">=0.1.0");
+    assert_eq!(
+        manifest
+            .runtime
+            .as_ref()
+            .unwrap()
+            .min_version
+            .as_ref()
+            .unwrap()
+            .to_string(),
+        ">=0.1.0"
+    );
 }
 
 #[tokio::test]
@@ -42,23 +55,29 @@ async fn test_resource_discovery_analysis_on_catalogue() {
 
     println!("Discovered resources count: {}", discovered.len());
     for res in &discovered {
-        println!(" - {} (kind: {:?}, order: {})", res.logical_path, res.kind, res.kind.execution_order());
+        println!(
+            " - {} (kind: {:?}, order: {})",
+            res.logical_path,
+            res.kind,
+            res.kind.execution_order()
+        );
     }
 
     // Analyse architecturale :
     // ResourceDiscovery liste les 13 fichiers de schema/*.surql (00 à 12), mais les classe comme Migration (ordre 8)
     // car leurs noms sont 00_... à 12_... et non pas tables.surql, fields.surql, etc.
     // De plus, functions/ et seeds/ sont situés hors de schema/ et ne sont donc pas découverts nativement.
-    assert_eq!(discovered.len(), 13, "Les 13 fichiers de schema/ sont découverts par list_resources('schema')");
+    assert_eq!(
+        discovered.len(),
+        13,
+        "Les 13 fichiers de schema/ sont découverts par list_resources('schema')"
+    );
 }
 
 #[test]
 fn test_catalogue_resources_loading_order_plan() {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let catalogue_dir = manifest_dir
-        .parent()
-        .unwrap()
-        .join("lyxal_catalogue");
+    let catalogue_dir = manifest_dir.parent().unwrap().join("lyxal_catalogue");
 
     // 1. Schémas déclarés (12 tables dans l'ordre 01 à 12)
     let schema_files = [
@@ -131,11 +150,15 @@ fn test_catalogue_resources_loading_order_plan() {
     }
 
     let plan = SchemaImportPlan::new(ModuleId::new("lyxal_catalogue"), resources);
-    assert_eq!(plan.len(), 12 + 3 + 22, "Le plan doit contenir les 37 ressources");
+    assert_eq!(
+        plan.len(),
+        12 + 3 + 22,
+        "Le plan doit contenir les 37 ressources"
+    );
 
     // Vérification de l'ordre officiel : Tables (ordre 1) -> Functions (ordre 4) -> Seeds (ordre 7)
     let ordered_resources = plan.resources();
-    
+
     // Les 12 premières ressources doivent être les tables
     for res in ordered_resources.iter().take(12) {
         assert_eq!(res.kind, ResourceKind::Tables);

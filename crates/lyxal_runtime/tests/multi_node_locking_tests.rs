@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use surrealdb::engine::any::connect;
+use surrealdb::types::SurrealValue;
 use tokio::sync::Barrier;
 
 /// ResourceProvider en mémoire pour les tests d'intégration
@@ -253,7 +254,7 @@ async fn test_two_concurrent_runners_execute_exactly_once() {
 
     assert_eq!(stored_mig.status, MigrationStatus::Applied);
 
-    #[derive(serde::Deserialize)]
+    #[derive(SurrealValue)]
     struct CounterRow {
         val: i64,
     }
@@ -560,7 +561,7 @@ async fn test_surreal_installation_lease_released_takeover_contention_42_to_43()
 
     // Pré-initialisation d'un record sentinel libéré à generation = 42
     let setup_sql = r#"
-        CREATE ONLY type::thing('system_installation_lock', $key_id) SET
+        CREATE ONLY type::record('system_installation_lock', $key_id) SET
             lock_key = $lock_key,
             module_id = 'lyxal_booking',
             version = '1.0.0',
@@ -658,7 +659,7 @@ async fn test_surreal_installation_lease_expired_takeover_contention_42_to_43() 
 
     // Pré-initialisation d'un record expiré à generation = 42
     let setup_sql = r#"
-        CREATE ONLY type::thing('system_installation_lock', $key_id) SET
+        CREATE ONLY type::record('system_installation_lock', $key_id) SET
             lock_key = $lock_key,
             module_id = 'lyxal_booking',
             version = '1.0.0',
