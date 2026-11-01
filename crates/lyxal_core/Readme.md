@@ -78,6 +78,9 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 ## Tests
 
 * `scripts/ci/test_lyxal_core.py` charge les 781 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
-* **Limite actuelle** : la plupart des tests ne contiennent pas d'assertion (le résultat attendu est un commentaire). Le script vérifie l'absence d'erreur moteur inattendue, pas l'exactitude des valeurs. Les tests sont réécrits au format auto-vérifié (chaque instruction renvoie `true`) au fil du lot 3 (`implementation_plan.md` §5).
+* **Deux formats coexistent pendant la reprise** :
+  * **format « assertions »** (fichiers commençant par `-- lyxal-test: assertions`) : chaque bloc `-- test:` contient une instruction qui doit renvoyer `true`, ou lever l'erreur annoncée par `-- attendu-erreur: <CODE>` ; tout écart fait échouer la CI (détails : `implementation_plan.md` §5) ;
+  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3.
+* `scripts/ci/test_lyxal_core_selftest.py` vérifie que le banc accepte les bons tests et rejette les mauvais.
 * `scripts/ci/validate_surql.sh` vérifie la syntaxe de tout le SurrealQL du dépôt.
 * Les deux scripts font partie de la CI (job « SurrealQL ») et de `scripts/ci/ci_local.sh`.
