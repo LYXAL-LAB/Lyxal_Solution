@@ -121,8 +121,8 @@ Activer ce Skill dès qu'une mission implique :
    - La libération (`release`) d'un bail SurrealDB ne doit **JAMAIS exécuter `DELETE`** sur l'enregistrement de verrou (`system_installation_lock` / verrou de migration), car cela réinitialiserait `generation` à `1` et violerait la protection contre les écrivains zombies (*split-brain*). La libération doit être strictement logique (`SET is_released = true, expires_at = 0`).
 2. **[OBLIGATOIRE] Garantie d'Exécution Unique de `install()`** :
    - Toute mutation d'installation de schéma ou de migration exécutée par le Runtime doit être protégée par l'acquisition préalable du bail (`acquire`), le renouvellement (`renew`) si nécessaire, et la vérification de l'état déjà installé après acquisition du verrou.
-3. **[OBLIGATOIRE] Point d'attention SurrealDB 3.2.0 sur les verrous** :
-   - Lors d'un audit de `crates/lyxal_runtime/src/lock/`, vérifier si les requêtes SurrealQL internes utilisent `type::thing(...)` (ex. dans [`installation.rs`](../../../crates/lyxal_runtime/src/lock/installation.rs)) et signaler tout écart de compatibilité avec SurrealDB 3.2.0 (`type::record`).
+3. **[OBLIGATOIRE] Point d'attention SurrealDB 3.3.4 sur les verrous** :
+   - Lors d'un audit de `crates/lyxal_runtime/src/lock/`, vérifier si les requêtes SurrealQL internes utilisent `type::thing(...)` (ex. dans [`installation.rs`](../../../crates/lyxal_runtime/src/lock/installation.rs)) et signaler tout écart de compatibilité avec SurrealDB 3.3.4 (`type::record`).
 
 ---
 

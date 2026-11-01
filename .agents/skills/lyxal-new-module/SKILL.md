@@ -70,7 +70,7 @@ Le plan soumis doit impérativement documenter :
    - Sondes de santé éventuelles (`ModuleHealthCheck`).
 7. **Risques & Stratégie de Tests** :
    - Tests unitaires Rust (`cargo test -p lyxal_<domaine>`) ;
-   - Scénarios de tests SurrealQL sur SurrealDB 3.2.0 (cas nominaux, erreurs attendues, permissions RLS, idempotence des seeds).
+   - Scénarios de tests SurrealQL sur SurrealDB 3.3.4 (cas nominaux, erreurs attendues, permissions RLS, idempotence des seeds).
 
 **Fin de l'Étape 2** : Présenter le plan et attendre l'instruction explicite de validation avant de passer à l'Étape 3.
 

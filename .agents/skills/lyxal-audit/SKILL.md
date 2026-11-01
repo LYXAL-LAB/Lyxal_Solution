@@ -1,7 +1,7 @@
 ---
 name: lyxal-audit
 description: >-
-  Use this skill when the user asks to audit, review, or verify the architectural, Rust, SurrealQL, DTO mapping, SurrealDB 3.2.0 compatibility, cryptographic, runtime, or security compliance of one or more Lyxal OS modules against the CTO governance rules.
+  Use this skill when the user asks to audit, review, or verify the architectural, Rust, SurrealQL, DTO mapping, SurrealDB 3.3.4 compatibility, cryptographic, runtime, or security compliance of one or more Lyxal OS modules against the CTO governance rules.
 ---
 
 # Lyxal OS — Audit de Conformité & Preuves Vérifiables (`lyxal-audit`)
@@ -25,7 +25,7 @@ Activer ce Skill dès que l'utilisateur demande :
 | Niveau | Définition | Exemples |
 | :--- | :--- | :--- |
 | **P0 — Bloquant Critique** | Violation directe d'une règle d'inviolabilité, de sécurité, de cryptographie, de contrat d'API ou d'intégrité des données. Interdit toute validation. | Usage de `fn::result_error`, import direct d'une crate crypto (`sha2`, `blake3`, `argon2`, `hmac`, `aes-gcm`, `hkdf`) dans un module métier, `rand::thread_rng()`, `panic!` dans le transport, `raw_query()` public ou métier, masquage silencieux d'erreur (`unwrap_or_default` / `None` sur erreur DB), absence de `PERMISSIONS` ou faille d'isolation `tenant_id`, couplage direct entre deux modules métiers. |
-| **P1 — Majeur** | Écart structurel, contractuel ou de compatibilité dégradant la maintenabilité, l'exécution runtime, l'idempotence ou la compatibilité SurrealDB 3.2.0. | Divergence de champ entre DTO Rust `*Params` et `$params.<champ>` SurrealQL, construction SurrealQL dépréciée/incompatible 3.2.0 (`type::thing(`, `type::is::`), signature SurrealQL métier sans `$params: object` unique, fonction > 300 lignes, `manifest.toml` désynchronisé des fichiers réels sur disque, seed `CREATE` non idempotent ou destructif, tuple anonyme dans un contrat Rust public, worker avec `tokio::spawn` sauvage hors `LyxalWorker` / `CancellationToken`, handler `lyxal_event` non idempotent. |
+| **P1 — Majeur** | Écart structurel, contractuel ou de compatibilité dégradant la maintenabilité, l'exécution runtime, l'idempotence ou la compatibilité SurrealDB 3.3.4. | Divergence de champ entre DTO Rust `*Params` et `$params.<champ>` SurrealQL, construction SurrealQL dépréciée/incompatible 3.3.4 (`type::thing(`, `type::is::`), signature SurrealQL métier sans `$params: object` unique, fonction > 300 lignes, `manifest.toml` désynchronisé des fichiers réels sur disque, seed `CREATE` non idempotent ou destructif, tuple anonyme dans un contrat Rust public, worker avec `tokio::spawn` sauvage hors `LyxalWorker` / `CancellationToken`, handler `lyxal_event` non idempotent. |
 | **P2 — Mineur / Qualité** | Manquement documentaire ou cosmétique sans impact fonctionnel immédiat. | Absence de `COMMENT "..."` en SurrealQL ou `///` sur un type Rust public, nommage d'index non standardisé, couverture de cas limites incomplète dans les tests. |
 
 ---
@@ -57,7 +57,7 @@ Avant d'exiger l'implémentation de `LyxalModule` ou `LyxalSurrealCall`, situer 
        - `fn::error_resolve($code: string, $language: option<string>, $details: option<object>) -> object`
    - Toutes les **autres** fonctions publiques d'un module (y compris les fonctions CRUD et statistiques de `lyxal_error` telles que `fn::error_definition_*`, `fn::error_mapping_*`, `fn::error_statistics_*`) restent soumises à la signature stricte `$params: object` unique.
 4. **Non-exemption des règles de sécurité et de qualité** :
-   - Ces exceptions de topologie DAG ne dispensent **jamais** un crate de fondation des contrôles sur les erreurs silencieuses, l'absence de `panic!`/`.unwrap()` en production, la correspondance exacte DTO $\leftrightarrow$ SurrealQL, la compatibilité SurrealDB 3.2.0, l'idempotence des seeds ou les permissions SurrealQL.
+   - Ces exceptions de topologie DAG ne dispensent **jamais** un crate de fondation des contrôles sur les erreurs silencieuses, l'absence de `panic!`/`.unwrap()` en production, la correspondance exacte DTO $\leftrightarrow$ SurrealQL, la compatibilité SurrealDB 3.3.4, l'idempotence des seeds ou les permissions SurrealQL.
 
 ### Contrôle 3 — Conformité SurrealQL (`schema/`, `functions/`, `events/`, `error/`, `seeds/`) [OBLIGATOIRE]
 Inspecter les fichiers `.surql` du module pour contrôler :
@@ -96,23 +96,23 @@ Pour **chaque** fonction SurrealQL prenant `$params: object` et possédant une s
    - **Supplémentaires côté Rust** : sérialisés par `*Params` mais jamais lus en SurrealQL ;
    - **Incompatibles (P0/P1)** : divergence de nom sans alias (ex. `external_code` vs `$params.source_code`) ou incompatibilité de type provoquant un `NONE` inattendu ou une erreur d'exécution.
 
-### Contrôle 5 — Compatibilité SurrealDB 3.2.0 [OBLIGATOIRE]
-Lorsque le workspace cible **SurrealDB 3.2.0** (binaire `surreal` v3.2.0 désigné par la variable d'environnement `LYXAL_SURREAL_BIN`, à défaut `surreal` présent dans le `PATH` — cf. `.agents/skills/lyxal-surrealdb/SKILL.md`) mais que les tests Cargo embarqués utilisent un SDK d'une autre génération (ex. `surrealdb = "2.2"` dans `Cargo.toml`) :
-1. **Détection des constructions à risque de rupture 2.x $\rightarrow$ 3.2.0** :
-   - Exécuter `"${LYXAL_SURREAL_BIN:-surreal}" validate` (vérifier au préalable `"${LYXAL_SURREAL_BIN:-surreal}" version` = `3.2.0`) sur les fichiers `.surql` du module et rechercher systématiquement :
-     - `option<any>` (rejeté au parsing en 3.2.0 $\rightarrow$ utiliser `any`) ;
-     - `array::contains(` (supprimé en 3.2.0 $\rightarrow$ utiliser `(($a) CONTAINS ($b))`) ;
-     - `time::from::parts(`, `string::pad(`, `encoding::hex::*`, `encoding::uri::*`, `bytes::from_int(` (inexistants en 3.2.0) ;
+### Contrôle 5 — Compatibilité SurrealDB 3.3.4 [OBLIGATOIRE]
+Lorsque le workspace cible **SurrealDB 3.3.4** (binaire `surreal` v3.3.4 désigné par la variable d'environnement `LYXAL_SURREAL_BIN`, à défaut `surreal` présent dans le `PATH` — cf. `.agents/skills/lyxal-surrealdb/SKILL.md`) mais que les tests Cargo embarqués utilisent un SDK d'une autre génération (ex. `surrealdb = "2.2"` dans `Cargo.toml`) :
+1. **Détection des constructions à risque de rupture 2.x $\rightarrow$ 3.3.4** :
+   - Exécuter `"${LYXAL_SURREAL_BIN:-surreal}" validate` (vérifier au préalable `"${LYXAL_SURREAL_BIN:-surreal}" version` = `3.3.4`) sur les fichiers `.surql` du module et rechercher systématiquement :
+     - `option<any>` (rejeté au parsing en 3.3.4 $\rightarrow$ utiliser `any`) ;
+     - `array::contains(` (supprimé en 3.3.4 $\rightarrow$ utiliser `(($a) CONTAINS ($b))`) ;
+     - `time::from::parts(`, `string::pad(`, `encoding::hex::*`, `encoding::uri::*`, `bytes::from_int(` (inexistants en 3.3.4) ;
      - `type::thing(` (remplacé en SurrealDB 3.x par `type::record($table, $id)` / construction de `record<T>`) ;
      - `type::is::*` (ex. `type::is::string($x)` $\rightarrow$ `type::is_string($x)` ou `$x IS string`) ;
      - Séquences d'échappement regex à simple antislash dans `"..."` (`Invalid escape sequence`), backreferences `\1`/`\2`, réaffectations de variables sans `LET` ou comparaisons `$a = $b` en tête de bloc `{ ... }` ;
-     - Signatures runtime 3.2.0 : `array::reduce` à 3 arguments ($\rightarrow$ `array::fold`), `array::sort::asc`/`desc` à 2 arguments, `math::min`/`max` sur `array<duration>`, soustraction de `duration` pouvant être négative, `math::log` à 1 argument, `encoding::base64::encode` sur `string` sans cast `<bytes>`, affectation `LET $token = ...` (variable protégée), ou `0..$n` non casté en `<array>(0..$n)` ;
+     - Signatures runtime 3.3.4 : `array::reduce` à 3 arguments ($\rightarrow$ `array::fold`), `array::sort::asc`/`desc` à 2 arguments, `math::min`/`max` sur `array<duration>`, soustraction de `duration` pouvant être négative, `math::log` à 1 argument, `encoding::base64::encode` sur `string` sans cast `<bytes>`, affectation `LET $token = ...` (variable protégée), ou `0..$n` non casté en `<array>(0..$n)` ;
      - `IF ... THEN ( ... ) END` vs `IF ... { ... }` dans les blocs procéduraux et `DEFINE EVENT`.
 2. **Interdiction des remplacements mécaniques non vérifiés** :
    - Avant de recommander le remplacement d'une fonction SurrealQL, vérifier la sémantique exacte de l'expression cible (gestion de `NONE` vs `NULL`, comportement lorsque le premier argument de `type::record` contient déjà le préfixe `table:id`, compatibilité avec le SDK Rust si les tests tournent encore sur `surrealdb = "2.2"`).
-3. **Séparation stricte entre analyse statique, test SDK 2.x et preuve serveur 3.2.0** :
-   - Un test `cargo test` passant sur `surrealdb = "2.2"` (`mem://`) prouve la logique sur le moteur 2.2 embarqué, mais **ne constitue jamais une preuve de compatibilité SurrealDB 3.2.0**.
-   - **Règle absolue** : Ne jamais déclarer la compatibilité SurrealDB 3.2.0 comme « validée » tant que les scripts `.surql` n'ont pas été effectivement exécutés contre un binaire ou serveur SurrealDB `3.2.0`. Tant que ce test sur serveur 3.2.0 n'a pas eu lieu, le documenter obligatoirement dans la section **« 4. Points non vérifiés faute de preuves »**.
+3. **Séparation stricte entre analyse statique, test SDK 2.x et preuve serveur 3.3.4** :
+   - Un test `cargo test` passant sur `surrealdb = "2.2"` (`mem://`) prouve la logique sur le moteur 2.2 embarqué, mais **ne constitue jamais une preuve de compatibilité SurrealDB 3.3.4**.
+   - **Règle absolue** : Ne jamais déclarer la compatibilité SurrealDB 3.3.4 comme « validée » tant que les scripts `.surql` n'ont pas été effectivement exécutés contre un binaire ou serveur SurrealDB `3.3.4`. Tant que ce test sur serveur 3.3.4 n'a pas eu lieu, le documenter obligatoirement dans la section **« 4. Points non vérifiés faute de preuves »**.
 
 ### Contrôle 6 — Conformité Rust (`src/`) [OBLIGATOIRE]
 Si le module comporte un crate Rust, inspecter `Cargo.toml` et `src/**/*.rs` :
@@ -143,8 +143,8 @@ Si le module comporte un crate Rust, inspecter `Cargo.toml` et `src/**/*.rs` :
    - **Contrôles statiques effectués** (lecture intégrale des fichiers, vérification des graphes, croisement DTO $\leftrightarrow$ SurrealQL) ;
    - **Tests réellement exécutés et réussis** (commande exacte, code retour `0`, nombre de tests passés et moteur utilisé) ;
    - **Tests réellement exécutés et échoués** (commande exacte, trace d'erreur) ;
-   - **Tests impossibles à exécuter ou non exécutés** (blocage sandbox `CreateProcessSecurityEnvironment`, absence d'instance SurrealDB 3.2.0 active, etc.).
-2. **Ne jamais déclarer `cargo check`, `cargo test` ou une validation SurrealDB 3.2.0 réussie sans résultat d'exécution effectif.**
+   - **Tests impossibles à exécuter ou non exécutés** (blocage sandbox `CreateProcessSecurityEnvironment`, absence d'instance SurrealDB 3.3.4 active, etc.).
+2. **Ne jamais déclarer `cargo check`, `cargo test` ou une validation SurrealDB 3.3.4 réussie sans résultat d'exécution effectif.**
 
 ---
 
@@ -158,8 +158,8 @@ Toujours structurer le livrable d'audit selon ces 7 sections :
    - Tableau indiquant pour chaque écart : `ID & Sévérité`, `Règle applicable`, `Fichier & Lignes` (liens cliquables `[fichier](file:///...#Lxx-Lyy)`), `Preuve constatée`, `Correction recommandée`.
 4. **Tableau de Correspondance DTO Rust (`*Params`) $\leftrightarrow$ SurrealQL (`$params`)** :
    - Tableau exhaustif listant par fonction : `Fonction SurrealQL`, `Struct Rust`, `Champs conformes`, `Champs absents`, `Champs supplémentaires`, `Champs incompatibles`.
-5. **Points Non Vérifiés Faute de Preuves (Tests & Compatibilité SurrealDB 3.2.0)** :
-   - Distinction explicite entre tests exécutés/réussis, tests échoués, contrôles statiques et vérifications nécessitant un serveur SurrealDB 3.2.0.
+5. **Points Non Vérifiés Faute de Preuves (Tests & Compatibilité SurrealDB 3.3.4)** :
+   - Distinction explicite entre tests exécutés/réussis, tests échoués, contrôles statiques et vérifications nécessitant un serveur SurrealDB 3.3.4.
 6. **Éléments Conformes & Preuves Validées** :
    - Résumé factuel avec références de fichiers/lignes des contrôles validés.
 7. **Plan Correctif Proposé (soumis à validation CTO)** :

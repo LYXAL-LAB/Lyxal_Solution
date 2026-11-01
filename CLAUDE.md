@@ -25,7 +25,7 @@ Les skills sont dans `.agents/skills/` et exposés à Claude Code via `.claude/s
 | `lyxal-new-module` | Conception ou création d'un module, rédaction d'`implementation_plan.md` |
 | `lyxal-module-integration` | Changement touchant plusieurs modules, dépendances, contrats publics |
 | `lyxal-runtime-integration` | `LyxalModule`, workers, événements, baux, sondes de santé |
-| `lyxal-surrealdb` | Écriture / revue de fichiers `.surql`, compatibilité SurrealDB 3.2.0 |
+| `lyxal-surrealdb` | Écriture / revue de fichiers `.surql`, compatibilité SurrealDB 3.3.4 |
 
 Si les liens de `.claude/skills/` ne sont pas disponibles (ex. Windows sans support des
 liens symboliques Git), lire directement `.agents/skills/<nom>/SKILL.md`.
