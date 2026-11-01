@@ -1,89 +1,44 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/ulid.surql
--- Fonction     : fn::validation_ulid
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/ulid.surql
+-- Fonction : fn::validation_ulid
 --
--- Description
--- -----------
--- Valide un ULID textuel avec le validateur natif SurrealDB.
+-- Valide qu'une chaîne est un ULID ; la valeur renvoyée est débarrassée de
+-- ses espaces périphériques et mise en majuscules.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
+--   $value : any — valeur à contrôler
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_ULID
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le ULID nettoyé, en majuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Primitive pure : aucune lecture ou écriture persistante, aucun appel réseau
--- et aucun effet secondaire.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::uppercase()
---   - string::is_ulid()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $check = fn::validation_ulid($params.ulid);
+--   IF !$check.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $check.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_ulid(
-    $value: any,
-    $field: string
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+    $value: any
+) -> object {
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
-    };
-
-    LET $ulid = string::uppercase($clean_value);
-
-    IF !string::is_ulid($ulid) {
-        THROW string::concat($clean_field, "_INVALID_ULID");
-    };
-
-    RETURN $ulid;
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $ulid = string::uppercase($clean);
+    IF !string::is_ulid($ulid) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "ulid" } }; };
+    RETURN { valid: true, value: $ulid, code: NONE, details: {} };
 }
-COMMENT "
-Valide un ULID textuel et le normalise en majuscules.
-"
+COMMENT "Valide qu'une chaîne est un ULID et la renvoie en majuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

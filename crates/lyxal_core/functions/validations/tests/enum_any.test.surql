@@ -1,52 +1,29 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/enum_any.test.surql
--- Fonction     : fn::validation_enum_any
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_enum_any (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: entier autorisé
+RETURN fn::validation_enum_any(2, [1, 2, 3])
+    == { valid: true, value: 2, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Entier autorisé
--- Résultat attendu : 2
--- ============================================================================
-RETURN fn::validation_enum_any(2, "LEVEL", [1, 2, 3]);
+-- test: chaîne autorisée
+RETURN fn::validation_enum_any("b", ["a", "b"])
+    == { valid: true, value: "b", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Booléen autorisé
--- Résultat attendu : true
--- ============================================================================
-RETURN fn::validation_enum_any(
-    true,
-    "ENABLED",
-    [true, false]
-);
+-- test: valeur refusée
+RETURN fn::validation_enum_any(4, [1, 2, 3])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: [1, 2, 3] } };
 
--- ============================================================================
--- TEST 3 — Record ID autorisé
--- Résultat attendu : role:admin
--- ============================================================================
-RETURN fn::validation_enum_any(
-    role:admin,
-    "ROLE_ID",
-    [role:admin, role:member]
-);
+-- test: aucune conversion de type
+RETURN fn::validation_enum_any("2", [1, 2, 3]).code == "CORE_VALIDATION_NOT_ALLOWED";
 
--- ============================================================================
--- TEST 4 — Type différent non égal
--- Erreur attendue : LEVEL_VALUE_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_enum_any("2", "LEVEL", [1, 2, 3]);
+-- test: valeur absente
+RETURN fn::validation_enum_any(NONE, [1])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 5 — Liste vide
--- Erreur attendue : VALIDATION_EMPTY_ENUM_VALUES
--- ============================================================================
-RETURN fn::validation_enum_any(1, "LEVEL", []);
+-- test: valeur NULL
+RETURN fn::validation_enum_any(NULL, [1])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_enum_any(1, []);

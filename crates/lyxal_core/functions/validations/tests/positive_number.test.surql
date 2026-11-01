@@ -1,43 +1,22 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/positive_number.test.surql
--- Fonction     : fn::validation_positive_number
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_positive_number (format : crates/lyxal_core/implementation_plan.md §5).
 
--- ============================================================================
--- TEST 1 — Entier positif
--- Résultat attendu : 42
--- ============================================================================
-RETURN fn::validation_positive_number(42, "QUANTITY");
+-- test: valeur acceptée
+RETURN fn::validation_positive_number(0.5dec)
+    == { valid: true, value: 0.5dec, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Decimal positif
--- Résultat attendu : 0.01dec
--- ============================================================================
-RETURN fn::validation_positive_number(0.01dec, "AMOUNT");
+-- test: valeur refusée
+RETURN fn::validation_positive_number(0)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min: 0, exclusive: true } };
 
--- ============================================================================
--- TEST 3 — Zéro refusé
--- Erreur attendue : QUANTITY_NOT_POSITIVE
--- ============================================================================
-RETURN fn::validation_positive_number(0, "QUANTITY");
+-- test: valeur absente
+RETURN fn::validation_positive_number(NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — Nombre négatif refusé
--- Erreur attendue : QUANTITY_NOT_POSITIVE
--- ============================================================================
-RETURN fn::validation_positive_number(-1, "QUANTITY");
+-- test: valeur NULL
+RETURN fn::validation_positive_number(NULL)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
 
--- ============================================================================
--- TEST 5 — Type invalide
--- Erreur attendue : QUANTITY_INVALID_TYPE
--- ============================================================================
-RETURN fn::validation_positive_number("42", "QUANTITY");
+-- test: type string refusé
+RETURN fn::validation_positive_number("1")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "number", actual: "string" } };

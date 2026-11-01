@@ -1,47 +1,22 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/required_unless.test.surql
--- Fonction     : fn::validation_required_unless
--- Domaine      : Core / Validation / Advanced
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_required_unless (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: obligatoire et présente
+RETURN fn::validation_required_unless("ACME", false, false)
+    == { valid: true, value: "ACME", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Exception vraie
--- Résultat attendu : NONE
--- ============================================================================
-RETURN fn::validation_required_unless(
-    NONE,
-    "PHONE",
-    true,
-    false
-);
+-- test: non obligatoire et absente
+RETURN fn::validation_required_unless(NONE, true, false)
+    == { valid: true, value: NONE, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Exception fausse et valeur présente
--- Résultat attendu : "+33123456789"
--- ============================================================================
-RETURN fn::validation_required_unless(
-    "+33123456789",
-    "PHONE",
-    false,
-    false
-);
+-- test: obligatoire et absente
+RETURN fn::validation_required_unless(NONE, false, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 3 — Exception fausse et valeur absente
--- Erreur attendue : PHONE_REQUIRED_UNLESS
--- ============================================================================
-RETURN fn::validation_required_unless(
-    NONE,
-    "PHONE",
-    false,
-    false
-);
+-- test: obligatoire et NULL refusée
+RETURN fn::validation_required_unless(NULL, false, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: obligatoire et NULL autorisée
+RETURN fn::validation_required_unless(NULL, false, true)
+    == { valid: true, value: NULL, code: NONE, details: {} };

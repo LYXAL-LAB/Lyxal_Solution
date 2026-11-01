@@ -1,63 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/contains.test.surql
--- Fonction     : fn::validation_contains
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW interrompent l'exécution.
--- Dans Surrealist, sélectionner individuellement le test concerné lorsqu'une
--- erreur est attendue.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_contains (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: fragment présent
+RETURN fn::validation_contains(" a@b ", ["@"], true, true)
+    == { valid: true, value: "a@b", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Sous-chaîne présente
--- Résultat attendu : "Lyxal Operating System"
--- ============================================================================
-RETURN fn::validation_contains(
-    "Lyxal Operating System", "TITLE", ["Operating"], true, true
-);
+-- test: insensible à la casse
+RETURN fn::validation_contains("Bonjour", ["JOUR"], false, false)
+    == { valid: true, value: "Bonjour", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Recherche insensible à la casse
--- Résultat attendu : "Lyxal Operating System"
--- ============================================================================
-RETURN fn::validation_contains(
-    "Lyxal Operating System", "TITLE", ["operating"], false, true
-);
+-- test: sensible à la casse
+RETURN fn::validation_contains("Bonjour", ["JOUR"], true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { contains_any: ["JOUR"] } };
 
--- ============================================================================
--- TEST 3 — Une valeur parmi plusieurs est présente
--- Résultat attendu : "module scheduler"
--- ============================================================================
-RETURN fn::validation_contains(
-    "module scheduler", "DESCRIPTION", ["calendar", "scheduler"], true, true
-);
+-- test: valeur absente
+RETURN fn::validation_contains(NONE, ["a"], true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — Contenu absent
--- Erreur attendue : TITLE_REQUIRED_CONTENT_MISSING
--- ============================================================================
-RETURN fn::validation_contains(
-    "Lyxal OS", "TITLE", ["Scheduler"], false, true
-);
+-- test: valeur NULL
+RETURN fn::validation_contains(NULL, ["a"], true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
 
--- ============================================================================
--- TEST 5 — Liste vide
--- Erreur attendue : VALIDATION_EMPTY_NEEDLES
--- ============================================================================
-RETURN fn::validation_contains(
-    "Lyxal OS", "TITLE", [], true, true
-);
+-- test: type int refusé
+RETURN fn::validation_contains(1, ["a"], true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
 
--- ============================================================================
--- TEST 6 — Sous-chaîne vide
--- Erreur attendue : VALIDATION_INVALID_NEEDLE
--- ============================================================================
-RETURN fn::validation_contains(
-    "Lyxal OS", "TITLE", [""], true, true
-);
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_contains("abc", [], true, true);
+
+-- test: fragment vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_contains("abc", [" "], true, true);

@@ -1,96 +1,42 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/enum_any.surql
--- Fonction     : fn::validation_enum_any
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/enum_any.surql
+-- Fonction : fn::validation_enum_any
 --
--- Description
--- -----------
--- Vérifie qu'une valeur scalaire ou structurée correspond exactement à une valeur autorisée.
---
--- Règles appliquées
--- -----------------
---   1. La liste des valeurs autorisées doit être non vide.
---   2. La comparaison est stricte selon l'égalité SurrealQL.
---   3. Aucune conversion ni normalisation n'est appliquée.
---   4. Cette fonction peut valider des valeurs non textuelles.
+-- Valide qu'une valeur de n'importe quel type fait partie d'une liste de
+-- valeurs autorisées (égalité SurrealQL, sans conversion).
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allowed_values: array<any>
+--   $value          : any — valeur à contrôler
+--   $allowed_values : array<any> — valeurs autorisées (au moins une)
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_VALUE_NOT_ALLOWED
--- VALIDATION_EMPTY_ENUM_VALUES
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la valeur d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_NOT_ALLOWED
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : liste vide
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucune dépendance à l'authentification ;
---   - aucun appel réseau ;
---   - aucun effet secondaire ;
---   - aucune conversion implicite de la valeur validée.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::concat()
---   - type::is_null()
---   - array::len()
---   - array::contains()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $check = fn::validation_enum_any($params.priority, [1, 2, 3]);
+--   IF !$check.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $check.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_enum_any(
     $value: any,
-    $field: string,
     $allowed_values: array<any>
-) -> any {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF array::len($allowed_values) = 0 {
-        THROW "VALIDATION_EMPTY_ENUM_VALUES";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
-    IF !(($allowed_values) CONTAINS ($value)) {
-        THROW string::concat($clean_field, "_VALUE_NOT_ALLOWED");
-    };
-
-    RETURN $value;
+) -> object {
+    IF array::len($allowed_values) = 0 { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    IF $value NOT IN $allowed_values { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: $allowed_values } }; };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide qu'une valeur correspond exactement à l'une des valeurs autorisées.
-"
+COMMENT "Valide qu'une valeur fait partie des valeurs autorisées. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

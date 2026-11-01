@@ -1,43 +1,26 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/multiple_of.test.surql
--- Fonction     : fn::validation_multiple_of
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_multiple_of (format : crates/lyxal_core/implementation_plan.md §5).
 
--- ============================================================================
--- TEST 1 — Multiple valide
--- Résultat attendu : 20
--- ============================================================================
-RETURN fn::validation_multiple_of(20, "QUANTITY", 5);
+-- test: multiple
+RETURN fn::validation_multiple_of(45, 15)
+    == { valid: true, value: 45, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Multiple négatif valide
--- Résultat attendu : -20
--- ============================================================================
-RETURN fn::validation_multiple_of(-20, "QUANTITY", 5);
+-- test: non multiple
+RETURN fn::validation_multiple_of(50, 15)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_MULTIPLE", details: { divisor: 15 } };
 
--- ============================================================================
--- TEST 3 — Non multiple
--- Erreur attendue : QUANTITY_NOT_MULTIPLE
--- ============================================================================
-RETURN fn::validation_multiple_of(22, "QUANTITY", 5);
+-- test: valeur absente
+RETURN fn::validation_multiple_of(NONE, 15)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — Diviseur nul
--- Erreur attendue : VALIDATION_ZERO_DIVISOR
--- ============================================================================
-RETURN fn::validation_multiple_of(20, "QUANTITY", 0);
+-- test: valeur NULL
+RETURN fn::validation_multiple_of(NULL, 15)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
 
--- ============================================================================
--- TEST 5 — Decimal refusé
--- Erreur attendue : QUANTITY_INVALID_TYPE
--- ============================================================================
-RETURN fn::validation_multiple_of(20dec, "QUANTITY", 5);
+-- test: type float refusé
+RETURN fn::validation_multiple_of(45f, 15)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "int", actual: "float" } };
+
+-- test: diviseur nul
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_multiple_of(45, 0);

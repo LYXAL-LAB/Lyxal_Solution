@@ -104,7 +104,7 @@ RETURN fn::validation_username(
 
 -- ============================================================================
 -- TEST 12 — Enchaînement avec mots réservés
--- Résultat attendu : "yaniss"
+-- Résultat attendu : { valid: true, value: "yaniss", code: NONE, details: {} }
 -- ============================================================================
 LET $username = fn::validation_username(
     "yaniss", "USERNAME", 3, 32, true
@@ -112,14 +112,13 @@ LET $username = fn::validation_username(
 
 RETURN fn::validation_reserved_words(
     $username,
-    "USERNAME",
     ["admin", "root", "system"],
     true
 );
 
 -- ============================================================================
 -- TEST 13 — Nom valide mais réservé
--- Erreur attendue : USERNAME_RESERVED_WORD
+-- Résultat attendu : { valid: false, value: NONE, code: "CORE_VALIDATION_FORBIDDEN", details: {} }
 -- ============================================================================
 LET $username = fn::validation_username(
     "admin", "USERNAME", 3, 32, true
@@ -127,7 +126,6 @@ LET $username = fn::validation_username(
 
 RETURN fn::validation_reserved_words(
     $username,
-    "USERNAME",
     ["admin", "root", "system"],
     true
 );

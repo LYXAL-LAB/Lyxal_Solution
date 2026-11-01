@@ -1,43 +1,29 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/integer_range.test.surql
--- Fonction     : fn::validation_integer_range
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_integer_range (format : crates/lyxal_core/implementation_plan.md §5).
 
--- ============================================================================
--- TEST 1 — Plage valide
--- Résultat attendu : { min_value: 1, max_value: 10, span: 9 }
--- ============================================================================
-RETURN fn::validation_integer_range(1, 10, "RANGE", false);
+-- test: intervalle valide
+RETURN fn::validation_integer_range(2, 10, false)
+    == { valid: true, value: { min_value: 2, max_value: 10, span: 8 }, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Bornes égales autorisées
--- Résultat attendu : span 0
--- ============================================================================
-RETURN fn::validation_integer_range(5, 5, "RANGE", true);
+-- test: bornes égales autorisées
+RETURN fn::validation_integer_range(5, 5, true)
+    == { valid: true, value: { min_value: 5, max_value: 5, span: 0 }, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 3 — Bornes inversées
--- Erreur attendue : RANGE_INVALID_ORDER
--- ============================================================================
-RETURN fn::validation_integer_range(10, 1, "RANGE", false);
+-- test: bornes égales refusées
+RETURN fn::validation_integer_range(5, 5, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_RANGE_ORDER", details: { min_value: 5, max_value: 5, allow_equal: false } };
 
--- ============================================================================
--- TEST 4 — Bornes égales interdites
--- Erreur attendue : RANGE_EQUAL_BOUNDS_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_integer_range(5, 5, "RANGE", false);
+-- test: bornes inversées
+RETURN fn::validation_integer_range(10, 2, true).code == "CORE_VALIDATION_RANGE_ORDER";
 
--- ============================================================================
--- TEST 5 — Minimum de type incorrect
--- Erreur attendue : RANGE_MIN_INVALID_TYPE
--- ============================================================================
-RETURN fn::validation_integer_range(1dec, 10, "RANGE", false);
+-- test: borne basse absente
+RETURN fn::validation_integer_range(NONE, 2, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { bound: "min" } };
+
+-- test: borne haute NULL
+RETURN fn::validation_integer_range(1, NULL, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: { bound: "max" } };
+
+-- test: borne haute non entière
+RETURN fn::validation_integer_range(1, 2.5f, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { bound: "max", expected: "int", actual: "float" } };

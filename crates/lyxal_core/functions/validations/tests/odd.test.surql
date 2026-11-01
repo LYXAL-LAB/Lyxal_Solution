@@ -1,37 +1,22 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/odd.test.surql
--- Fonction     : fn::validation_odd
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_odd (format : crates/lyxal_core/implementation_plan.md §5).
 
--- ============================================================================
--- TEST 1 — Impair positif
--- Résultat attendu : 41
--- ============================================================================
-RETURN fn::validation_odd(41, "VALUE");
+-- test: entier impair
+RETURN fn::validation_odd(-3)
+    == { valid: true, value: -3, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Impair négatif
--- Résultat attendu : -41
--- ============================================================================
-RETURN fn::validation_odd(-41, "VALUE");
+-- test: entier pair
+RETURN fn::validation_odd(0)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_PARITY", details: { expected: "odd" } };
 
--- ============================================================================
--- TEST 3 — Pair refusé
--- Erreur attendue : VALUE_NOT_ODD
--- ============================================================================
-RETURN fn::validation_odd(42, "VALUE");
+-- test: valeur absente
+RETURN fn::validation_odd(NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — Zéro refusé
--- Erreur attendue : VALUE_NOT_ODD
--- ============================================================================
-RETURN fn::validation_odd(0, "VALUE");
+-- test: valeur NULL
+RETURN fn::validation_odd(NULL)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type decimal refusé
+RETURN fn::validation_odd(3dec)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "int", actual: "decimal" } };

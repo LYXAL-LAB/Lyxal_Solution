@@ -1,63 +1,29 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/alphanumeric.test.surql
--- Fonction     : fn::validation_alphanumeric
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW interrompent l'exécution.
--- Dans Surrealist, sélectionner individuellement le test concerné lorsqu'une
--- erreur est attendue.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_alphanumeric (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: lettres et chiffres, nettoyée
+RETURN fn::validation_alphanumeric(" Abc123 ", true)
+    == { valid: true, value: "Abc123", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Lettres et chiffres
--- Résultat attendu : "Lyxal2026"
--- ============================================================================
-RETURN fn::validation_alphanumeric(
-    "Lyxal2026", "CODE", true
-);
+-- test: espaces non retirés
+RETURN fn::validation_alphanumeric(" Abc123 ", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "alphanumeric" } };
 
--- ============================================================================
--- TEST 2 — Lettres uniquement
--- Résultat attendu : "Lyxal"
--- ============================================================================
-RETURN fn::validation_alphanumeric(
-    "Lyxal", "CODE", true
-);
+-- test: ponctuation refusée
+RETURN fn::validation_alphanumeric("abc-123", true).code == "CORE_VALIDATION_FORMAT";
 
--- ============================================================================
--- TEST 3 — Chiffres uniquement
--- Résultat attendu : "2026"
--- ============================================================================
-RETURN fn::validation_alphanumeric(
-    "2026", "CODE", true
-);
+-- test: chaîne vide
+RETURN fn::validation_alphanumeric("", true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 4 — Tiret interdit
--- Erreur attendue : CODE_INVALID_ALPHANUMERIC
--- ============================================================================
-RETURN fn::validation_alphanumeric(
-    "Lyxal-2026", "CODE", true
-);
+-- test: valeur absente
+RETURN fn::validation_alphanumeric(NONE, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 5 — Espace interne interdit
--- Erreur attendue : CODE_INVALID_ALPHANUMERIC
--- ============================================================================
-RETURN fn::validation_alphanumeric(
-    "Lyxal 2026", "CODE", true
-);
+-- test: valeur NULL
+RETURN fn::validation_alphanumeric(NULL, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
 
--- ============================================================================
--- TEST 6 — Chaîne vide
--- Erreur attendue : CODE_BLANK_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_alphanumeric(
-    "", "CODE", true
-);
+-- test: type int refusé
+RETURN fn::validation_alphanumeric(123, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };

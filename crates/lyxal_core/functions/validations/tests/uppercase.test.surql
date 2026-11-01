@@ -1,47 +1,30 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/uppercase.test.surql
--- Fonction     : fn::validation_uppercase
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW interrompent l'exécution.
--- Dans Surrealist, sélectionner individuellement le test concerné lorsqu'une
--- erreur est attendue.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_uppercase (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme nettoyée
+RETURN fn::validation_uppercase(" " + "HELLO-123" + " ", true, false)
+    == { valid: true, value: "HELLO-123", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Majuscules valides
--- Résultat attendu : "LYXAL_CORE"
--- ============================================================================
-RETURN fn::validation_uppercase(
-    "LYXAL_CORE", "CODE", true, false
-);
+-- test: valeur non conforme
+RETURN fn::validation_uppercase("HELLo", true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "uppercase" } };
 
--- ============================================================================
--- TEST 2 — Minuscule présente
--- Erreur attendue : CODE_NOT_UPPERCASE
--- ============================================================================
-RETURN fn::validation_uppercase(
-    "LYXAL_Core", "CODE", true, false
-);
+-- test: vide autorisée
+RETURN fn::validation_uppercase("  ", true, true)
+    == { valid: true, value: "", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 3 — Chiffres et ponctuation acceptés
--- Résultat attendu : "LYXAL-2026"
--- ============================================================================
-RETURN fn::validation_uppercase(
-    "LYXAL-2026", "CODE", true, false
-);
+-- test: vide refusée
+RETURN fn::validation_uppercase("  ", true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 4 — Chaîne vide refusée
--- Erreur attendue : CODE_BLANK_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_uppercase(
-    "", "CODE", true, false
-);
+-- test: valeur absente
+RETURN fn::validation_uppercase(NONE, true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_uppercase(NULL, true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_uppercase(1, true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };

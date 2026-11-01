@@ -1,85 +1,39 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/odd.surql
--- Fonction     : fn::validation_odd
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/odd.surql
+-- Fonction : fn::validation_odd
 --
--- Description
--- -----------
--- Vérifie qu'une valeur obligatoire est un entier impair.
---
--- Principes
--- ----------
---   - validation stricte sans conversion implicite ;
---   - distinction entre NONE, NULL et type invalide ;
---   - codes d'erreur stables ;
---   - aucune lecture ou écriture persistante ;
---   - retour de la valeur d'origine lorsqu'elle est valide.
+-- Valide qu'une valeur est un entier impair.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
+--   $value : any — valeur à contrôler
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_NOT_ODD
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = l'entier d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_PARITY
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::concat()
---   - type::is_null()
---   - type::is_int()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $check = fn::validation_odd($params.count);
+--   IF !$check.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $check.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_odd(
-    $value: any,
-    $field: string
-) -> int {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+    $value: any
+) -> object {
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_int($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "int", actual: type::of($value) } };
     };
-
-    IF $value % 2 = 0 {
-        THROW string::concat($clean_field, "_NOT_ODD");
-    };
-
-    RETURN $value;
+    IF $value % 2 = 0 { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_PARITY", details: { expected: "odd" } }; };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide qu'une valeur obligatoire est strictement de type int et impaire.
-"
+COMMENT "Valide qu'une valeur est un entier impair. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

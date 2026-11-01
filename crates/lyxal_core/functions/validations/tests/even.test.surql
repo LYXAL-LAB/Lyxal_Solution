@@ -1,37 +1,22 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/even.test.surql
--- Fonction     : fn::validation_even
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_even (format : crates/lyxal_core/implementation_plan.md §5).
 
--- ============================================================================
--- TEST 1 — Pair positif
--- Résultat attendu : 42
--- ============================================================================
-RETURN fn::validation_even(42, "VALUE");
+-- test: entier pair
+RETURN fn::validation_even(-4)
+    == { valid: true, value: -4, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Zéro est pair
--- Résultat attendu : 0
--- ============================================================================
-RETURN fn::validation_even(0, "VALUE");
+-- test: entier impair
+RETURN fn::validation_even(3)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_PARITY", details: { expected: "even" } };
 
--- ============================================================================
--- TEST 3 — Pair négatif
--- Résultat attendu : -42
--- ============================================================================
-RETURN fn::validation_even(-42, "VALUE");
+-- test: valeur absente
+RETURN fn::validation_even(NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — Impair refusé
--- Erreur attendue : VALUE_NOT_EVEN
--- ============================================================================
-RETURN fn::validation_even(41, "VALUE");
+-- test: valeur NULL
+RETURN fn::validation_even(NULL)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type float refusé
+RETURN fn::validation_even(2f)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "int", actual: "float" } };

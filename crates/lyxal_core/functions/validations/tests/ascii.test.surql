@@ -1,55 +1,30 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/ascii.test.surql
--- Fonction     : fn::validation_ascii
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW interrompent l'exécution.
--- Dans Surrealist, sélectionner individuellement le test concerné lorsqu'une
--- erreur est attendue.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_ascii (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme nettoyée
+RETURN fn::validation_ascii(" " + "Hello-123" + " ", true, false)
+    == { valid: true, value: "Hello-123", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — ASCII valide
--- Résultat attendu : "LYXAL-2026_test"
--- ============================================================================
-RETURN fn::validation_ascii(
-    "LYXAL-2026_test", "VALUE", true, false
-);
+-- test: valeur non conforme
+RETURN fn::validation_ascii("Été", true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "ascii" } };
 
--- ============================================================================
--- TEST 2 — Accents refusés
--- Erreur attendue : VALUE_NON_ASCII_CHARACTERS
--- ============================================================================
-RETURN fn::validation_ascii(
-    "Équipe", "VALUE", true, false
-);
+-- test: vide autorisée
+RETURN fn::validation_ascii("  ", true, true)
+    == { valid: true, value: "", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 3 — Emoji refusé
--- Erreur attendue : VALUE_NON_ASCII_CHARACTERS
--- ============================================================================
-RETURN fn::validation_ascii(
-    "Lyxal 🚀", "VALUE", true, false
-);
+-- test: vide refusée
+RETURN fn::validation_ascii("  ", true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 4 — Chaîne vide autorisée
--- Résultat attendu : ""
--- ============================================================================
-RETURN fn::validation_ascii(
-    "", "VALUE", true, true
-);
+-- test: valeur absente
+RETURN fn::validation_ascii(NONE, true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 5 — Type invalide
--- Erreur attendue : VALUE_INVALID_TYPE
--- ============================================================================
-RETURN fn::validation_ascii(
-    2026, "VALUE", true, false
-);
+-- test: valeur NULL
+RETURN fn::validation_ascii(NULL, true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_ascii(1, true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };

@@ -1,101 +1,44 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/value_type.surql
--- Fonction     : fn::validation_value_type
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/value_type.surql
+-- Fonction : fn::validation_value_type
 --
--- Description
--- -----------
--- Vérifie que le type réel d'une valeur correspond exactement au type attendu.
---
--- Règles appliquées
--- -----------------
---   1. Le nom du type attendu est obligatoire.
---   2. Le type réel est obtenu avec type::of().
---   3. La comparaison porte sur le nom exact retourné par SurrealDB.
---   4. La valeur d'origine est retournée sans conversion.
+-- Valide que le type SurrealDB d'une valeur (type::of) est exactement le
+-- type attendu.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $expected_type: string
+--   $value         : any — valeur à contrôler
+--   $expected_type : string — type attendu tel que renvoyé par type::of (ex. "string", "int", "object"), insensible à la casse
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_UNEXPECTED_TYPE
--- VALIDATION_INVALID_EXPECTED_TYPE
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la valeur d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $expected_type vide
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucune dépendance à l'authentification ;
---   - aucun appel réseau ;
---   - aucun effet secondaire ;
---   - aucune conversion implicite de la valeur validée.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::lowercase()
---   - string::concat()
---   - type::is_null()
---   - type::of()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $check = fn::validation_value_type($params.settings, "object");
+--   IF !$check.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $check.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_value_type(
     $value: any,
-    $field: string,
     $expected_type: string
-) -> any {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    LET $clean_expected_type = string::lowercase(
-        string::trim($expected_type)
-    );
-
-    IF $clean_expected_type = "" {
-        THROW "VALIDATION_INVALID_EXPECTED_TYPE";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
-    IF string::lowercase(type::of($value)) != $clean_expected_type {
-        THROW string::concat($clean_field, "_UNEXPECTED_TYPE");
-    };
-
-    RETURN $value;
+) -> object {
+    LET $expected = string::lowercase(string::trim($expected_type));
+    IF $expected = "" { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    LET $actual = string::lowercase(type::of($value));
+    IF $actual != $expected { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: $expected, actual: $actual } }; };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide qu'une valeur possède exactement le type SurrealDB attendu selon
-type::of(), sans conversion implicite.
-"
+COMMENT "Valide que type::of(valeur) est le type attendu. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;
