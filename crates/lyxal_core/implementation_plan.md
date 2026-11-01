@@ -97,6 +97,8 @@ Même principe : un résultat ou une valeur ; `THROW` uniquement pour un argumen
 | `validation_record_type` | `validation_record_id` (accepte une liste de tables) |
 | `validation_hash` | `validation_checksum` (mêmes algorithmes, plus crc32) |
 | `validation_ipv4`, `validation_ipv6` | `validation_ip` avec la version `"ipv4"` ou `"ipv6"` |
+| `validation_job_name`, `validation_transition_name`, `validation_workflow_name`, `validation_workflow_step_name` | `validation_snake_case_name` (nouvelle fonction, même motif snake_case, validée par le CTO) |
+| `validation_surql_namespace`, `validation_surql_database`, `validation_surql_table`, `validation_surql_event` | `validation_identifier` (même motif `[A-Za-z_][A-Za-z0-9_]*`, bornes min/max) |
 
 Raison : une responsabilité = un endroit (`.agents/AGENTS.md` §5.1). Aucun appelant.
 
