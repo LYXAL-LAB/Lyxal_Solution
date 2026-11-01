@@ -1,102 +1,52 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/tuple_length.surql
--- Fonction     : fn::validation_tuple_length
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/tuple_length.surql
+-- Fonction : fn::validation_tuple_length
 --
--- Description
--- -----------
--- Vérifie qu'un tableau utilisé comme tuple possède une longueur exacte.
---
--- Règles appliquées
--- -----------------
---   1. La valeur doit être strictement de type array.
---   2. La longueur attendue doit être positive ou nulle.
---   3. La longueur réelle doit être exactement égale à la longueur attendue.
+-- Valide qu'une valeur est un tableau d'exactement N éléments.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $expected_length: int
+--   $value           : any — valeur à contrôler
+--   $expected_length : int — nombre exact d'éléments (>= 0)
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_TUPLE_LENGTH
--- VALIDATION_INVALID_EXPECTED_TUPLE_LENGTH
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le tableau d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $expected_length < 0
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucune dépendance à l'authentification ;
---   - aucun appel réseau ;
---   - aucun effet secondaire ;
---   - aucune conversion implicite de la valeur validée.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::concat()
---   - type::is_null()
---   - type::is_array()
---   - array::len()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $point = fn::validation_tuple_length($params.point, 2);
+--   IF !$point.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $point.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_tuple_length(
     $value: any,
-    $field: string,
     $expected_length: int
-) -> array {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $expected_length < 0 {
-        THROW "VALIDATION_INVALID_EXPECTED_TUPLE_LENGTH";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $expected_length < 0 { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_array($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "array", actual: type::of($value) } };
     };
-
-    IF array::len($value) != $expected_length {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_TUPLE_LENGTH"
-        );
+    LET $length = array::len($value);
+    IF $expected_length IS NOT NONE AND $length < $expected_length {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: $expected_length, length: $length } };
     };
-
-    RETURN $value;
+    IF $expected_length IS NOT NONE AND $length > $expected_length {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $expected_length, length: $length } };
+    };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide qu'un tableau utilisé comme tuple possède une longueur exacte.
-"
+COMMENT "Valide un tableau d'exactement N éléments. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

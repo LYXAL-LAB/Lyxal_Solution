@@ -1,114 +1,49 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/record_id.surql
--- Fonction     : fn::validation_record_id
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/record_id.surql
+-- Fonction : fn::validation_record_id
 --
--- Description
--- -----------
--- Vérifie qu'une valeur obligatoire est un Record ID SurrealDB et peut limiter les tables autorisées.
+-- Valide qu'une valeur est un Record ID natif, facultativement d'une des
+-- tables autorisées.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allowed_tables: option<array<string>>
+--   $value          : any — valeur à contrôler
+--   $allowed_tables : option<array<string>> — tables autorisées (au moins une, noms valides), NONE pour toutes
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_RECORD_TABLE_NOT_ALLOWED
--- VALIDATION_EMPTY_ALLOWED_TABLES
--- VALIDATION_INVALID_ALLOWED_TABLE
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le Record ID d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_NOT_ALLOWED
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : liste vide ou nom de table invalide
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Primitive pure : aucune lecture ou écriture persistante, aucun accès réseau
--- et aucun effet secondaire.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::concat()
---   - type::is_null()
---   - type::is_record()
---   - record::tb()
---   - array::len()
---   - array::map()
---   - array::any()
---   - array::contains()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $owner = fn::validation_record_id($params.owner, ["identity_user", "identity_team"]);
+--   IF !$owner.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $owner.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_record_id(
     $value: any,
-    $field: string,
     $allowed_tables: option<array<string>>
-) -> record {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-
-    LET $clean_tables = IF $allowed_tables IS NONE {
-        NONE
-    } ELSE {
-        array::map(
-            $allowed_tables,
-            |$table| string::trim($table)
-        )
+) -> object {
+    LET $tables = IF $allowed_tables IS NONE { NONE } ELSE { array::map($allowed_tables, |$table| string::trim($table)) };
+    IF $tables IS NOT NONE AND (array::len($tables) = 0 OR array::any($tables, |$table| !string::matches($table, "^[A-Za-z_][A-Za-z0-9_]*$"))) {
+        THROW "CORE_INVALID_ARGUMENT";
     };
-
-    IF $clean_tables IS NOT NONE AND array::len($clean_tables) = 0 {
-        THROW "VALIDATION_EMPTY_ALLOWED_TABLES";
-    };
-
-    IF $clean_tables IS NOT NONE
-        AND array::any(
-            $clean_tables,
-            |$table|
-                $table = ""
-                OR !string::matches(
-                    $table,
-                    "^[A-Za-z_][A-Za-z0-9_]*$"
-                )
-        )
-    {
-        THROW "VALIDATION_INVALID_ALLOWED_TABLE";
-    };
-
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_record($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "record", actual: type::of($value) } };
     };
-
-    IF $clean_tables IS NOT NONE
-        AND !(($clean_tables) CONTAINS (record::tb($value)))
-    {
-        THROW string::concat(
-            $clean_field,
-            "_RECORD_TABLE_NOT_ALLOWED"
-        );
-    };
-
-    RETURN $value;
+    IF $tables IS NOT NONE AND record::tb($value) NOT IN $tables { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: $tables } }; };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide un Record ID SurrealDB et limite facultativement sa table.
-"
+COMMENT "Valide un Record ID natif, facultativement limité à des tables. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

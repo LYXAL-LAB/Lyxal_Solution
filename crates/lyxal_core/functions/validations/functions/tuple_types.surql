@@ -1,139 +1,57 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/tuple_types.surql
--- Fonction     : fn::validation_tuple_types
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/tuple_types.surql
+-- Fonction : fn::validation_tuple_types
 --
--- Description
--- -----------
--- Valide la longueur et le type de chaque position d'un tableau utilisé comme tuple.
---
--- Règles appliquées
--- -----------------
---   1. La liste des types attendus définit la longueur du tuple.
---   2. Chaque position est comparée avec type::of().
---   3. Les types attendus sont normalisés en minuscules.
---   4. L'ordre des types est significatif.
+-- Valide qu'un tableau a exactement autant d'éléments que de types attendus,
+-- chaque élément ayant le type (type::of) de même rang.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $expected_types: array<string>
+--   $value          : any — valeur à contrôler
+--   $expected_types : array<string> — types attendus dans l'ordre (au moins un, tels que renvoyés par type::of)
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_TUPLE_LENGTH
--- <FIELD>_INVALID_TUPLE_ITEM_TYPE
--- VALIDATION_EMPTY_TUPLE_TYPES
--- VALIDATION_INVALID_TUPLE_TYPE_NAME
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le tableau d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : liste vide ou type vide
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucune dépendance à l'authentification ;
---   - aucun appel réseau ;
---   - aucun effet secondaire ;
---   - aucune conversion implicite de la valeur validée.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::lowercase()
---   - string::concat()
---   - type::is_null()
---   - type::is_array()
---   - type::of()
---   - array::len()
---   - array::map()
---   - array::any()
---   - array::all()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $pair = fn::validation_tuple_types($params.pair, ["string", "int"]);
+--   IF !$pair.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $pair.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_tuple_types(
     $value: any,
-    $field: string,
     $expected_types: array<string>
-) -> array {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF array::len($expected_types) = 0 {
-        THROW "VALIDATION_EMPTY_TUPLE_TYPES";
-    };
-
-    LET $clean_expected_types = array::map(
-        $expected_types,
-        |$type_name| string::lowercase(string::trim($type_name))
-    );
-
-    IF array::any(
-        $clean_expected_types,
-        |$type_name| $type_name = ""
-    ) {
-        THROW "VALIDATION_INVALID_TUPLE_TYPE_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    LET $types = array::map($expected_types, |$type_name| string::lowercase(string::trim($type_name)));
+    IF array::len($types) = 0 OR array::any($types, |$type_name| $type_name = "") { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_array($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "array", actual: type::of($value) } };
     };
-
-    IF array::len($value) != array::len($clean_expected_types) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_TUPLE_LENGTH"
-        );
+    LET $length = array::len($value);
+    IF $length < array::len($types) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: array::len($types), length: $length } };
     };
-
-    LET $indexes = <array>(0..array::len($value));
-
-    LET $all_types_match = array::all(
-        $indexes,
-        |$index|
-            string::lowercase(type::of($value[$index]))
-            = $clean_expected_types[$index]
-    );
-
-    IF !$all_types_match {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_TUPLE_ITEM_TYPE"
-        );
+    IF $length > array::len($types) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: array::len($types), length: $length } };
     };
-
-    RETURN $value;
+    IF !array::all(<array> (0..$length), |$index| string::lowercase(type::of($value[$index])) = $types[$index]) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { scope: "item", expected: $types } };
+    };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide la longueur et le type exact de chaque position d'un tuple représenté
-par un tableau.
-"
+COMMENT "Valide un tableau typé élément par élément. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

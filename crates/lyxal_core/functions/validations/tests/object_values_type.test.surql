@@ -1,58 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/object_values_type.test.surql
--- Fonction     : fn::validation_object_values_type
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_object_values_type (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeurs du bon type
+RETURN fn::validation_object_values_type({ fr: "Bonjour", en: "Hello" }, "string", false)
+    == { valid: true, value: { fr: "Bonjour", en: "Hello" }, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Map de strings valide
--- Résultat attendu : objet reçu
--- ============================================================================
-RETURN fn::validation_object_values_type(
-    { first_name: "Yaniss", city: "Cahors" },
-    "METADATA",
-    "string",
-    false
-);
+-- test: objet vide autorisé
+RETURN fn::validation_object_values_type({}, "string", true)
+    == { valid: true, value: {}, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Map d'entiers valide
--- Résultat attendu : objet reçu
--- ============================================================================
-RETURN fn::validation_object_values_type(
-    { min: 1, max: 10 },
-    "LIMITS",
-    "int",
-    false
-);
+-- test: objet vide refusé
+RETURN fn::validation_object_values_type({}, "string", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_EMPTY", details: {} };
 
--- ============================================================================
--- TEST 3 — Valeur de type différent
--- Erreur attendue : METADATA_INVALID_OBJECT_VALUE_TYPE
--- ============================================================================
-RETURN fn::validation_object_values_type(
-    { name: "Lyxal", enabled: true },
-    "METADATA",
-    "string",
-    false
-);
+-- test: valeur d'un autre type
+RETURN fn::validation_object_values_type({ fr: "Bonjour", en: 1 }, " String ", true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { scope: "value", expected: "string" } };
 
--- ============================================================================
--- TEST 4 — Objet vide interdit
--- Erreur attendue : METADATA_EMPTY_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_object_values_type(
-    {},
-    "METADATA",
-    "string",
-    false
-);
+-- test: valeur absente
+RETURN fn::validation_object_values_type(NONE, "string", true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_object_values_type(NULL, "string", true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type array refusé
+RETURN fn::validation_object_values_type([], "string", true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "object", actual: "array" } };
+
+-- test: type attendu vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_object_values_type({}, " ", true);

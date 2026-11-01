@@ -1,100 +1,56 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/array_length.surql
--- Fonction     : fn::validation_array_length
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/array_length.surql
+-- Fonction : fn::validation_array_length
 --
--- Description
--- -----------
--- Valide la longueur minimale et maximale d'un tableau obligatoire.
+-- Valide qu'une valeur est un tableau dont le nombre d'éléments est compris
+-- entre deux bornes facultatives.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $min_length: option<int>
--- $max_length: option<int>
+--   $value      : any — valeur à contrôler
+--   $min_length : option<int> — nombre minimal d'éléments (>= 0), NONE pour aucun
+--   $max_length : option<int> — nombre maximal d'éléments (>= 0), NONE pour aucun
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_TOO_SHORT
--- <FIELD>_TOO_LONG
--- VALIDATION_INVALID_ARRAY_MIN_LENGTH
--- VALIDATION_INVALID_ARRAY_MAX_LENGTH
--- VALIDATION_INVALID_ARRAY_LENGTH_RANGE
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le tableau d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : borne négative ou $min_length > $max_length
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Primitive pure : aucune lecture ou écriture persistante, aucun accès réseau
--- et aucun effet secondaire.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::concat()
---   - type::is_null()
---   - type::is_array()
---   - array::len()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $items = fn::validation_array_length($params.items, 1, 50);
+--   IF !$items.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $items.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_array_length(
     $value: any,
-    $field: string,
     $min_length: option<int>,
     $max_length: option<int>
-) -> array {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-
-    IF $min_length IS NOT NONE AND $min_length < 0 {
-        THROW "VALIDATION_INVALID_ARRAY_MIN_LENGTH";
-    };
-    IF $max_length IS NOT NONE AND $max_length < 0 {
-        THROW "VALIDATION_INVALID_ARRAY_MAX_LENGTH";
-    };
-    IF $min_length IS NOT NONE
-        AND $max_length IS NOT NONE
-        AND $min_length > $max_length
-    {
-        THROW "VALIDATION_INVALID_ARRAY_LENGTH_RANGE";
-    };
-
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
+) -> object {
+    IF ($min_length IS NOT NONE AND $min_length < 0) OR ($max_length IS NOT NONE AND $max_length < 0) { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $min_length IS NOT NONE AND $max_length IS NOT NONE AND $min_length > $max_length { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_array($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "array", actual: type::of($value) } };
     };
-
     LET $length = array::len($value);
-
     IF $min_length IS NOT NONE AND $length < $min_length {
-        THROW string::concat($clean_field, "_TOO_SHORT");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: $min_length, length: $length } };
     };
     IF $max_length IS NOT NONE AND $length > $max_length {
-        THROW string::concat($clean_field, "_TOO_LONG");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } };
     };
-
-    RETURN $value;
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide la longueur inclusive minimale et maximale d'un tableau obligatoire.
-"
+COMMENT "Valide un tableau borné en nombre d'éléments. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

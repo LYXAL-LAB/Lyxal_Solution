@@ -1,103 +1,57 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/array_integers.surql
--- Fonction     : fn::validation_array_integers
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/array_integers.surql
+-- Fonction : fn::validation_array_integers
 --
--- Description
--- -----------
--- Vérifie que tous les éléments d'un tableau sont strictement de type int et respectent des bornes facultatives.
+-- Valide qu'une valeur est un tableau d'entiers, chacun facultativement
+-- compris entre deux bornes incluses.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $min_value: option<int>
--- $max_value: option<int>
+--   $value     : any — valeur à contrôler
+--   $min_value : option<int> — valeur minimale incluse de chaque élément, NONE pour aucune
+--   $max_value : option<int> — valeur maximale incluse de chaque élément, NONE pour aucune
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_ITEM_TYPE
--- <FIELD>_ITEM_TOO_SMALL
--- <FIELD>_ITEM_TOO_LARGE
--- VALIDATION_INVALID_INTEGER_ITEM_RANGE
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le tableau d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_TOO_SMALL
+--     CORE_VALIDATION_TOO_LARGE
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $min_value > $max_value
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Primitive pure : aucune lecture ou écriture persistante, aucun accès réseau
--- et aucun effet secondaire.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::concat()
---   - type::is_null()
---   - type::is_array()
---   - type::is_int()
---   - array::all()
---   - array::any()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $quantities = fn::validation_array_integers($params.quantities, 1, NONE);
+--   IF !$quantities.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $quantities.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_array_integers(
     $value: any,
-    $field: string,
     $min_value: option<int>,
     $max_value: option<int>
-) -> array<int> {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-
-    IF $min_value IS NOT NONE
-        AND $max_value IS NOT NONE
-        AND $min_value > $max_value
-    {
-        THROW "VALIDATION_INVALID_INTEGER_ITEM_RANGE";
-    };
-
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
+) -> object {
+    IF $min_value IS NOT NONE AND $max_value IS NOT NONE AND $min_value > $max_value { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_array($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "array", actual: type::of($value) } };
     };
-
     IF !array::all($value, |$item| type::is_int($item)) {
-        THROW string::concat($clean_field, "_INVALID_ITEM_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { scope: "item", expected: "int" } };
     };
-
-    IF $min_value IS NOT NONE
-        AND array::any($value, |$item| $item < $min_value)
-    {
-        THROW string::concat($clean_field, "_ITEM_TOO_SMALL");
+    IF $min_value IS NOT NONE AND array::any($value, |$item| $item < $min_value) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { scope: "item", min: $min_value } };
     };
-
-    IF $max_value IS NOT NONE
-        AND array::any($value, |$item| $item > $max_value)
-    {
-        THROW string::concat($clean_field, "_ITEM_TOO_LARGE");
+    IF $max_value IS NOT NONE AND array::any($value, |$item| $item > $max_value) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { scope: "item", max: $max_value } };
     };
-
-    RETURN $value;
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide que tous les éléments d'un tableau sont des entiers dans des bornes
-facultatives.
-"
+COMMENT "Valide un tableau d'entiers bornés. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

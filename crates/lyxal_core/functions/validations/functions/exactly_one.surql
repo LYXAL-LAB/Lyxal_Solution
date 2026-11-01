@@ -1,86 +1,35 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/exactly_one.surql
--- Fonction     : fn::validation_exactly_one
--- Domaine      : Core / Validation / Advanced
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/exactly_one.surql
+-- Fonction : fn::validation_exactly_one
 --
--- Description
--- -----------
--- Vérifie qu'exactement une valeur d'un ensemble est présente.
---
--- Règles appliquées
--- -----------------
---   1. NONE est considéré comme absent.
---   2. NULL est considéré comme présent.
---   3. Le nombre de valeurs présentes doit être exactement égal à un.
+-- Valide qu'exactement une valeur d'un groupe de champs est présente
+-- (différente de NONE).
 --
 -- Paramètres
--- ----------
--- $values: array<any>
--- $field: string
+--   $values : array<any> — valeurs des champs du groupe, assemblées par l'appelant (NONE = champ absent)
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée ou un objet de résultat normalisé.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le tableau d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_COMBINATION
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_EXACTLY_ONE_REQUIRED
---
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun appel réseau ;
---   - aucune exécution dynamique de code ;
---   - aucun effet secondaire.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $target = fn::validation_exactly_one([$params.user_id, $params.team_id]);
+--   IF !$target.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $target.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_exactly_one(
-    $values: array<any>,
-    $field: string
-) -> array<any> {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    LET $count = array::len(
-        array::filter(
-            $values,
-            |$item| $item IS NOT NONE
-        )
-    );
-
-    IF $count != 1 {
-        THROW string::concat(
-            $clean_field,
-            "_EXACTLY_ONE_REQUIRED"
-        );
-    };
-
-    RETURN $values;
+    $values: array<any>
+) -> object {
+    LET $present = array::len(array::filter($values, |$item| $item IS NOT NONE));
+    IF $present = 0 { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { scope: "group" } }; };
+    IF $present > 1 { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_COMBINATION", details: { present: $present, max: 1 } }; };
+    RETURN { valid: true, value: $values, code: NONE, details: {} };
 }
-COMMENT "
-Valide qu'exactement une valeur d'un ensemble est présente.
-"
+COMMENT "Valide qu'exactement une valeur du groupe est présente. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

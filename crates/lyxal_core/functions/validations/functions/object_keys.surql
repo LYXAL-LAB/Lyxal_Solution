@@ -1,137 +1,56 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/object_keys.surql
--- Fonction     : fn::validation_object_keys
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/object_keys.surql
+-- Fonction : fn::validation_object_keys
 --
--- Description
--- -----------
--- Valide les clés obligatoires et les clés autorisées d'un objet.
+-- Valide les clés d'un objet : présence des clés obligatoires et,
+-- facultativement, absence de clé hors de la liste autorisée.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $required_keys: option<array<string>>
--- $allowed_keys: option<array<string>>
+--   $value         : any — valeur à contrôler
+--   $required_keys : option<array<string>> — clés obligatoires, NONE pour aucune
+--   $allowed_keys  : option<array<string>> — clés autorisées (doit contenir les clés obligatoires), NONE pour toutes
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_MISSING_REQUIRED_KEY
--- <FIELD>_UNKNOWN_KEY
--- VALIDATION_EMPTY_REQUIRED_KEY
--- VALIDATION_EMPTY_ALLOWED_KEY
--- VALIDATION_REQUIRED_KEY_NOT_ALLOWED
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = l'objet d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_NOT_ALLOWED
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : clé vide, ou clé obligatoire absente des clés autorisées
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Primitive pure : aucune lecture ou écriture persistante, aucun accès réseau
--- et aucun effet secondaire.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::concat()
---   - type::is_null()
---   - type::is_object()
---   - object::keys()
---   - array::map()
---   - array::any()
---   - array::all()
---   - array::contains()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $address = fn::validation_object_keys($params.address, ["city"], ["street", "city", "postal_code"]);
+--   IF !$address.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $address.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_object_keys(
     $value: any,
-    $field: string,
     $required_keys: option<array<string>>,
     $allowed_keys: option<array<string>>
 ) -> object {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-
-    LET $clean_required = IF $required_keys IS NONE {
-        NONE
-    } ELSE {
-        array::map($required_keys, |$key| string::trim($key))
-    };
-
-    LET $clean_allowed = IF $allowed_keys IS NONE {
-        NONE
-    } ELSE {
-        array::map($allowed_keys, |$key| string::trim($key))
-    };
-
-    IF $clean_required IS NOT NONE
-        AND array::any($clean_required, |$key| $key = "")
-    {
-        THROW "VALIDATION_EMPTY_REQUIRED_KEY";
-    };
-
-    IF $clean_allowed IS NOT NONE
-        AND array::any($clean_allowed, |$key| $key = "")
-    {
-        THROW "VALIDATION_EMPTY_ALLOWED_KEY";
-    };
-
-    IF $clean_required IS NOT NONE
-        AND $clean_allowed IS NOT NONE
-        AND !array::all(
-            $clean_required,
-            |$key| (($clean_allowed) CONTAINS ($key))
-        )
-    {
-        THROW "VALIDATION_REQUIRED_KEY_NOT_ALLOWED";
-    };
-
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
+    LET $required = IF $required_keys IS NONE { [] } ELSE { array::map($required_keys, |$key| string::trim($key)) };
+    LET $allowed = IF $allowed_keys IS NONE { NONE } ELSE { array::map($allowed_keys, |$key| string::trim($key)) };
+    IF array::any($required, |$key| $key = "")
+        OR ($allowed IS NOT NONE AND array::any($allowed, |$key| $key = ""))
+        OR ($allowed IS NOT NONE AND array::any($required, |$key| $key NOT IN $allowed)) { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_object($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "object", actual: type::of($value) } };
     };
-
     LET $keys = object::keys($value);
-
-    IF $clean_required IS NOT NONE
-        AND !array::all(
-            $clean_required,
-            |$key| (($keys) CONTAINS ($key))
-        )
-    {
-        THROW string::concat($clean_field, "_MISSING_REQUIRED_KEY");
-    };
-
-    IF $clean_allowed IS NOT NONE
-        AND !array::all(
-            $keys,
-            |$key| (($clean_allowed) CONTAINS ($key))
-        )
-    {
-        THROW string::concat($clean_field, "_UNKNOWN_KEY");
-    };
-
-    RETURN $value;
+    LET $missing = array::filter($required, |$key| $key NOT IN $keys);
+    IF array::len($missing) > 0 { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: { scope: "key", keys: $missing } }; };
+    LET $unknown = IF $allowed IS NONE { [] } ELSE { array::filter($keys, |$key| $key NOT IN $allowed) };
+    IF array::len($unknown) > 0 { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { scope: "key", keys: $unknown } }; };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide les clés obligatoires et facultativement les seules clés autorisées
-d'un objet.
-"
+COMMENT "Valide les clés obligatoires et autorisées d'un objet. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

@@ -74,9 +74,8 @@ RETURN fn::validation_record_type(
 
 LET $team_id = fn::validation_record(
     "team_001",
-    "TEAM_ID",
     "booking_team"
-);
+).value;
 
 RETURN fn::validation_record_type(
     $team_id,
@@ -282,6 +281,5 @@ LET $team_id = fn::validation_record_type(
 );
 
 RETURN fn::validation_record_exists(
-    $team_id,
-    "TEAM_ID"
+    $team_id
 );

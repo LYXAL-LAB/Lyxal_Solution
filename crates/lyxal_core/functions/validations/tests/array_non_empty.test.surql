@@ -1,32 +1,22 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/array_non_empty.test.surql
--- Fonction     : fn::validation_array_non_empty
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_array_non_empty (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur acceptée
+RETURN fn::validation_array_non_empty([0])
+    == { valid: true, value: [0], code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Tableau non vide
--- Résultat attendu : ["admin"]
--- ============================================================================
-RETURN fn::validation_array_non_empty(["admin"], "ROLES");
+-- test: valeur absente
+RETURN fn::validation_array_non_empty(NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 2 — Tableau vide
--- Erreur attendue : ROLES_EMPTY_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_array_non_empty([], "ROLES");
+-- test: valeur NULL
+RETURN fn::validation_array_non_empty(NULL)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
 
--- ============================================================================
--- TEST 3 — Chaîne refusée
--- Erreur attendue : ROLES_INVALID_TYPE
--- ============================================================================
-RETURN fn::validation_array_non_empty("admin", "ROLES");
+-- test: type string refusé
+RETURN fn::validation_array_non_empty("abc")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "array", actual: "string" } };
+
+-- test: tableau vide
+RETURN fn::validation_array_non_empty([])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_EMPTY", details: {} };

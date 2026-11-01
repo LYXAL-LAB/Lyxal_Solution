@@ -1,41 +1,18 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/allowed_combination.test.surql
--- Fonction     : fn::validation_allowed_combination
--- Domaine      : Core / Validation / Advanced
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_allowed_combination (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: combinaison autorisée
+RETURN fn::validation_allowed_combination(["weight", "kg"], [["weight", "kg"], ["length", "m"]])
+    == { valid: true, value: ["weight", "kg"], code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Combinaison autorisée
--- Résultat attendu : ["email", "daily"]
--- ============================================================================
-RETURN fn::validation_allowed_combination(
-    ["email", "daily"],
-    "NOTIFICATION_SETTINGS",
-    [
-        ["email", "daily"],
-        ["email", "weekly"],
-        ["sms", "urgent"]
-    ]
-);
+-- test: combinaison refusée
+RETURN fn::validation_allowed_combination(["weight", "m"], [["weight", "kg"], ["length", "m"]])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_COMBINATION", details: { allowed: [["weight", "kg"], ["length", "m"]] } };
 
--- ============================================================================
--- TEST 2 — Combinaison interdite
--- Erreur attendue : NOTIFICATION_SETTINGS_COMBINATION_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_allowed_combination(
-    ["sms", "daily"],
-    "NOTIFICATION_SETTINGS",
-    [
-        ["email", "daily"],
-        ["sms", "urgent"]
-    ]
-);
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_allowed_combination(["a"], []);
+
+-- test: combinaison de longueur différente
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_allowed_combination(["a", "b"], [["a"]]);

@@ -1,88 +1,35 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/all_or_none.surql
--- Fonction     : fn::validation_all_or_none
--- Domaine      : Core / Validation / Advanced
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/all_or_none.surql
+-- Fonction : fn::validation_all_or_none
 --
--- Description
--- -----------
--- Vérifie que toutes les valeurs d'un ensemble sont présentes ou toutes absentes.
---
--- Règles appliquées
--- -----------------
---   1. NONE est considéré comme absent.
---   2. NULL est considéré comme présent.
---   3. Un ensemble partiellement renseigné est refusé.
+-- Valide que les valeurs d'un groupe de champs sont toutes présentes ou
+-- toutes absentes (NONE).
 --
 -- Paramètres
--- ----------
--- $values: array<any>
--- $field: string
+--   $values : array<any> — valeurs des champs du groupe, assemblées par l'appelant (NONE = champ absent)
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée ou un objet de résultat normalisé.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le tableau d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_COMBINATION
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_ALL_OR_NONE_REQUIRED
---
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun appel réseau ;
---   - aucune exécution dynamique de code ;
---   - aucun effet secondaire.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $address = fn::validation_all_or_none([$params.street, $params.city, $params.postal_code]);
+--   IF !$address.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $address.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_all_or_none(
-    $values: array<any>,
-    $field: string
-) -> array<any> {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
+    $values: array<any>
+) -> object {
+    LET $present = array::len(array::filter($values, |$item| $item IS NOT NONE));
+    IF $present != 0 AND $present != array::len($values) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_COMBINATION", details: { present: $present, total: array::len($values) } };
     };
-
-    LET $present_count = array::len(
-        array::filter(
-            $values,
-            |$item| $item IS NOT NONE
-        )
-    );
-
-    LET $total = array::len($values);
-
-    IF $present_count != 0 AND $present_count != $total {
-        THROW string::concat(
-            $clean_field,
-            "_ALL_OR_NONE_REQUIRED"
-        );
-    };
-
-    RETURN $values;
+    RETURN { valid: true, value: $values, code: NONE, details: {} };
 }
-COMMENT "
-Valide qu'un groupe est entièrement renseigné ou entièrement absent.
-"
+COMMENT "Valide que les valeurs du groupe sont toutes présentes ou toutes absentes. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;
