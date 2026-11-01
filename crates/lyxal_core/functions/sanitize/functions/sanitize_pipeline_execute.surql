@@ -18,37 +18,34 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_pipeline_execute(
         $value,
         |$current,$step| {
             IF $step.rule = "trim" {
-                fn::sanitize_trim($current,$field)
+                fn::sanitize_trim($current)
             } ELSE IF $step.rule = "lowercase" {
-                fn::sanitize_lowercase($current,$field)
+                fn::sanitize_lowercase($current)
             } ELSE IF $step.rule = "uppercase" {
-                fn::sanitize_uppercase($current,$field)
+                fn::sanitize_uppercase($current)
             } ELSE IF $step.rule = "capitalize" {
-                fn::sanitize_capitalize($current,$field)
+                fn::sanitize_capitalize($current)
             } ELSE IF $step.rule = "title_case" {
-                fn::sanitize_title_case($current,$field)
+                fn::sanitize_title_case($current)
             } ELSE IF $step.rule = "collapse_whitespace" {
-                fn::sanitize_collapse_whitespace($current,$field)
+                fn::sanitize_collapse_whitespace($current)
             } ELSE IF $step.rule = "remove_control_chars" {
                 fn::sanitize_remove_control_chars(
                     $current,
-                    $field,
                     IF $step.options.preserve_layout IS NONE { false } ELSE { $step.options.preserve_layout }
                 )
             } ELSE IF $step.rule = "normalize_unicode" {
                 fn::sanitize_normalize_unicode(
                     $current,
-                    $field,
                     IF $step.options.collapse_whitespace IS NONE { false } ELSE { $step.options.collapse_whitespace }
                 )
             } ELSE IF $step.rule = "slug" {
                 fn::sanitize_slug(
                     $current,
-                    $field,
                     IF $step.value IS NONE { "-" } ELSE { $step.value }
                 )
             } ELSE IF $step.rule = "safe_identifier" {
-                fn::sanitize_safe_identifier($current,$field)
+                fn::sanitize_safe_identifier($current)
             } ELSE IF $step.rule = "default" {
                 IF $current IS NONE { $step.value } ELSE { $current }
             } ELSE {

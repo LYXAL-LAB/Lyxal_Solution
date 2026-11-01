@@ -1,22 +1,31 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/sanitize/functions/phone.surql
 -- Fonction : fn::sanitize_phone
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Normalise une saisie de téléphone : chiffres seuls, « + » initial
+-- conservé.
+--
+-- Paramètres
+--   $value : any — valeur à nettoyer (chaîne, ou NONE)
+--
+-- Contrat sanitize (crates/lyxal_core/Readme.md)
+--   Valeur renvoyée : « +33612345678 » ou « 0612345678 »
+--   Entrée          : NONE → NONE ; NULL ou mauvais type → THROW CORE_SANITIZE_INVALID_TYPE
+--
+-- Exemple
+--   LET $clean = fn::sanitize_phone($params.phone);
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_phone($value:any,$field:string)->string{
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-
- LET $v=string::trim($value);
- LET $plus=string::starts_with($v,"+");
- LET $digits=string::replace($v,<regex>"[^0-9]","");
- RETURN IF $plus{string::concat("+",$digits)}ELSE{$digits};
+DEFINE FUNCTION OVERWRITE fn::sanitize_phone(
+    $value: any
+) -> option<string> {
+    IF $value IS NONE { RETURN NONE; };
+    IF !type::is_string($value) { THROW "CORE_SANITIZE_INVALID_TYPE"; };
+    LET $clean = string::trim($value);
+    LET $digits = string::replace($clean, <regex>"[^0-9]", "");
+    RETURN IF string::starts_with($clean, "+") { "+" + $digits } ELSE { $digits };
 }
-COMMENT "Conserve les chiffres et un éventuel + initial."
+COMMENT "Normalise une saisie de téléphone : chiffres seuls, « + » initial conservé. NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
 PERMISSIONS FULL;

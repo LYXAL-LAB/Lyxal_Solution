@@ -24,13 +24,13 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 763 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 760 fonctions déclarées)
 ├── Readme.md
 ├── AUDIT.md                 (document de reprise, supprimé en fin de reprise)
 ├── implementation_plan.md   (document de reprise, supprimé en fin de reprise)
 └── functions/
     ├── validations/   functions/ (321) · tests/ (321)   fn::validation_*
-    ├── sanitize/      functions/ (170) · tests/ (170)   fn::sanitize_*
+    ├── sanitize/      functions/ (167) · tests/ (167)   fn::sanitize_*
     ├── security/      functions/ (152) · tests/ (152)   fn::security_*
     └── utils/         functions/ (120) · tests/ (120)   fn::utils_*
 ```
@@ -122,8 +122,26 @@ Seul un argument invalide fourni par le code appelant (borne négative, bornes i
 | :--- | :--- |
 | `CORE_INVALID_ARGUMENT` | argument de configuration invalide |
 | `CORE_UNSUPPORTED_OPTION` | option inconnue (ex. opérateur de `fn::validation_compare`) |
+| `CORE_SANITIZE_INVALID_TYPE` | valeur NULL ou de mauvais type transmise à une fonction `fn::sanitize_*` (la donnée aurait dû être validée avant) |
 
 Un motif d'expression régulière syntaxiquement invalide (`fn::validation_regex`) provoque l'erreur du moteur (`string::matches`) : SurrealDB 3.3.4 n'offre aucun moyen de le détecter sans lever.
+
+### Contrat des fonctions `sanitize` — migration en cours (lot 3)
+
+Une fonction `fn::sanitize_*` transforme une valeur **déjà validée** ; elle ne renvoie pas de résultat `{ valid, … }` (plan §2.2) :
+
+* entrée `NONE` → renvoie `NONE` (un champ facultatif absent traverse la chaîne de nettoyage) ;
+* entrée `NULL` ou d'un type inattendu → `THROW "CORE_SANITIZE_INVALID_TYPE"` ;
+* argument de configuration invalide → `CORE_INVALID_ARGUMENT` ou `CORE_UNSUPPORTED_OPTION` ;
+* exceptions documentées : `fn::sanitize_array` et `fn::sanitize_object` renvoient `[]` et `{}` pour `NONE` ou `NULL`, car elles servent à fournir une collection par défaut.
+
+```surql
+LET $email = fn::validation_email($params.email, 254);
+IF !$email.valid { RETURN fn::error_result("AUTH_EMAIL_INVALID", $params.language, { reason: $email.code }); };
+LET $clean = fn::sanitize_email($email.value);
+```
+
+* **Avancement** : famille « textes, nombres, dates, tableaux, objets » migrée (64 fonctions). Restent HTML, Markdown, URL et chemins, puis la mécanique (lot 4).
 
 ---
 
@@ -135,10 +153,10 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 ## Tests
 
-* `scripts/ci/test_lyxal_core.py` charge les 763 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
+* `scripts/ci/test_lyxal_core.py` charge les 760 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
 * **Deux formats coexistent pendant la reprise** :
   * **format « assertions »** (fichiers commençant par `-- lyxal-test: assertions`) : chaque bloc `-- test:` contient une instruction qui doit renvoyer `true`, ou lever l'erreur annoncée par `-- attendu-erreur: <CODE>` ; tout écart fait échouer la CI (détails : `implementation_plan.md` §5) ;
-  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (190 fichiers aujourd'hui, ceux des fonctions migrées).
+  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (254 fichiers aujourd'hui, ceux des fonctions migrées).
 * `scripts/ci/test_lyxal_core_selftest.py` vérifie que le banc accepte les bons tests et rejette les mauvais.
 * `scripts/ci/validate_surql.sh` vérifie la syntaxe de tout le SurrealQL du dépôt.
 * Les deux scripts font partie de la CI (job « SurrealQL ») et de `scripts/ci/ci_local.sh`.

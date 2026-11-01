@@ -1,6 +1,16 @@
--- ============================================================================
--- TESTS — fn::sanitize_email
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::sanitize_email (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::sanitize_email(" User@Example.COM ","EMAIL");
+-- test: minuscules sans espace
+RETURN fn::sanitize_email(" Jean.Dupont @Example.COM ") == "jean.dupont@example.com";
+
+-- test: entrée absente → NONE
+RETURN fn::sanitize_email(NONE) == NONE;
+
+-- test: NULL refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_email(NULL);
+
+-- test: mauvais type refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_email(42);

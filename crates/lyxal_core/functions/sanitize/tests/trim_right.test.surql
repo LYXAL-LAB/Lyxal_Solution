@@ -1,31 +1,16 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE SANITIZE
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/sanitize/tests/trim_right.test.surql
--- Fonction     : fn::sanitize_trim_right
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::sanitize_trim_right (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: espaces finaux
+RETURN fn::sanitize_trim_right("  a b  ") == "  a b";
 
--- ============================================================================
--- TEST 1 — Espaces de fin supprimés
--- Résultat attendu : "   Lyxal"
--- ============================================================================
-RETURN fn::sanitize_trim_right(
-    "   Lyxal   ",
-    "VALUE"
-);
+-- test: entrée absente → NONE
+RETURN fn::sanitize_trim_right(NONE) == NONE;
 
--- ============================================================================
--- TEST 2 — Espaces de début conservés
--- Résultat attendu : " Lyxal"
--- ============================================================================
-RETURN fn::sanitize_trim_right(
-    " Lyxal",
-    "VALUE"
-);
+-- test: NULL refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_trim_right(NULL);
+
+-- test: mauvais type refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_trim_right(42);

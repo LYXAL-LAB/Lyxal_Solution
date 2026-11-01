@@ -1,40 +1,22 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE SANITIZE
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/sanitize/tests/capitalize.test.surql
--- Fonction     : fn::sanitize_capitalize
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::sanitize_capitalize (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: première lettre
+RETURN fn::sanitize_capitalize("lYXAL os") == "Lyxal os";
 
--- ============================================================================
--- TEST 1 — Mot en majuscules
--- Résultat attendu : "Lyxal"
--- ============================================================================
-RETURN fn::sanitize_capitalize(
-    "LYXAL",
-    "VALUE"
-);
+-- test: chaîne vide
+RETURN fn::sanitize_capitalize("") == "";
 
--- ============================================================================
--- TEST 2 — Phrase
--- Résultat attendu : "Lyxal os"
--- ============================================================================
-RETURN fn::sanitize_capitalize(
-    "lyxal OS",
-    "VALUE"
-);
+-- test: accent initial
+RETURN fn::sanitize_capitalize("élan") == "Élan";
 
--- ============================================================================
--- TEST 3 — Chaîne vide
--- Résultat attendu : ""
--- ============================================================================
-RETURN fn::sanitize_capitalize(
-    "",
-    "VALUE"
-);
+-- test: entrée absente → NONE
+RETURN fn::sanitize_capitalize(NONE) == NONE;
+
+-- test: NULL refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_capitalize(NULL);
+
+-- test: mauvais type refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_capitalize(42);

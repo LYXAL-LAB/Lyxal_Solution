@@ -1,31 +1,16 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE SANITIZE
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/sanitize/tests/uppercase.test.surql
--- Fonction     : fn::sanitize_uppercase
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::sanitize_uppercase (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: majuscules Unicode
+RETURN fn::sanitize_uppercase("été lyxal") == "ÉTÉ LYXAL";
 
--- ============================================================================
--- TEST 1 — Minuscules
--- Résultat attendu : "LYXAL OS"
--- ============================================================================
-RETURN fn::sanitize_uppercase(
-    "lyxal os",
-    "VALUE"
-);
+-- test: entrée absente → NONE
+RETURN fn::sanitize_uppercase(NONE) == NONE;
 
--- ============================================================================
--- TEST 2 — Accents
--- Résultat attendu : "ÉQUIPE"
--- ============================================================================
-RETURN fn::sanitize_uppercase(
-    "équipe",
-    "VALUE"
-);
+-- test: NULL refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_uppercase(NULL);
+
+-- test: mauvais type refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_uppercase(42);

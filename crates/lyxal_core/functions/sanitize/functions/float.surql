@@ -1,25 +1,39 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/sanitize/functions/float.surql
 -- Fonction : fn::sanitize_float
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Extrait d'une saisie texte localisée un nombre à virgule : séparateur de
+-- milliers supprimé, séparateur décimal converti en point, signe « - »
+-- initial conservé.
+--
+-- Paramètres
+--   $value             : any — valeur à nettoyer (chaîne, ou NONE)
+--   $decimal_separator : string — séparateur décimal de la saisie : "," ou "." (l'autre est traité comme séparateur de milliers)
+--
+-- Contrat sanitize (crates/lyxal_core/Readme.md)
+--   Valeur renvoyée : le nombre en texte avec un point décimal (ex. « -1234.5 »)
+--   Entrée          : NONE → NONE ; NULL ou mauvais type → THROW CORE_SANITIZE_INVALID_TYPE
+--
+-- Erreurs de programmation (THROW)
+--   CORE_UNSUPPORTED_OPTION : séparateur autre que "," ou "."
+--
+-- Exemple
+--   LET $amount = fn::sanitize_float($params.amount, ",");
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_float($value:any,$field:string,$decimal_separator:string)->string{
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-
- LET $v=string::trim($value);
- LET $sep=IF $decimal_separator=","{","}ELSE{"."};
- LET $sign=IF string::starts_with($v,"-"){"-"}ELSE{""};
- LET $v=string::replace($v,<regex>"[^0-9.,]","");
- LET $v=string::replace($v,IF $sep=","{"."}ELSE{","},"");
- LET $v=string::replace($v,$sep,".");
- RETURN string::concat($sign,$v);
+DEFINE FUNCTION OVERWRITE fn::sanitize_float(
+    $value: any,
+    $decimal_separator: string
+) -> option<string> {
+    IF $value IS NONE { RETURN NONE; };
+    IF !type::is_string($value) { THROW "CORE_SANITIZE_INVALID_TYPE"; };
+    IF $decimal_separator NOT IN [",", "."] { THROW "CORE_UNSUPPORTED_OPTION"; };
+    LET $clean = string::trim($value);
+    LET $thousands = IF $decimal_separator = "," { "." } ELSE { "," };
+    LET $number = string::replace(string::replace(string::replace($clean, <regex>"[^0-9.,]", ""), $thousands, ""), ",", ".");
+    RETURN IF string::starts_with($clean, "-") AND $number != "" { "-" + $number } ELSE { $number };
 }
-COMMENT "Nettoie une représentation textuelle de nombre flottant."
+COMMENT "Extrait d'une saisie texte localisée un nombre à virgule : séparateur de milliers supprimé, séparateur décimal converti en point, signe « - » initial conservé. NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
 PERMISSIONS FULL;
