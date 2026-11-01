@@ -18,6 +18,7 @@ use crate::error::LyxalEventError;
 use crate::handler::HandlerRegistry;
 use crate::models::LyxalEventEnvelope;
 use crate::store::EventStore;
+use lyxal_surreal::ToSql;
 
 /// Métriques d'observabilité en mémoire du LYXAL Event Engine.
 #[derive(Debug, Default)]
@@ -116,7 +117,9 @@ impl EventWorker {
             if !lease_manager.is_leader() {
                 match lease_manager.acquire_lease().await {
                     Ok(true) => {
-                        self.metrics.leadership_acquisitions.fetch_add(1, Ordering::SeqCst);
+                        self.metrics
+                            .leadership_acquisitions
+                            .fetch_add(1, Ordering::SeqCst);
                         info!(
                             worker_id = %self.config.worker_id,
                             generation = lease_manager.current_generation(),
@@ -252,7 +255,9 @@ impl EventWorker {
                         Err(e) => {
                             let err_str = e.to_string();
                             if err_str.contains("EVENT_STALE_LEADER_FENCED") {
-                                self.metrics.fencing_conflicts.fetch_add(1, Ordering::SeqCst);
+                                self.metrics
+                                    .fencing_conflicts
+                                    .fetch_add(1, Ordering::SeqCst);
                                 linked_cancel.cancel();
                                 break;
                             }
@@ -368,7 +373,7 @@ impl EventWorker {
 
             if let Err(err) = self.dispatch_delivery(&delivery, cancel).await {
                 warn!(
-                    delivery_id = %delivery.id,
+                    delivery_id = %delivery.id.to_sql(),
                     target_module = %delivery.target_module,
                     error = ?err,
                     "Failed to settle event delivery; proceeding with batch"
@@ -387,7 +392,10 @@ impl EventWorker {
         let envelope = match self.store.get_outbox_event(&delivery.outbox_event).await? {
             Some(env) => env,
             None => {
-                let err_msg = format!("Outbox event '{}' not found", delivery.outbox_event);
+                let err_msg = format!(
+                    "Outbox event '{}' not found",
+                    delivery.outbox_event.to_sql()
+                );
                 self.store
                     .delivery_failure(&delivery.id, &err_msg, 5)
                     .await?;
@@ -413,10 +421,10 @@ impl EventWorker {
 
         let child_cancel = cancel.child_token();
         let ctx = crate::handler::HandlerContext::new(
-            crate::types::EventId::from_uuid(envelope.event_id),
+            envelope.event_id,
             delivery.id.clone(),
-            crate::types::CorrelationId::from_uuid(envelope.correlation_id),
-            envelope.causation_id.map(crate::types::CausationId::from_uuid),
+            envelope.correlation_id,
+            envelope.causation_id,
             envelope.context.clone(),
             delivery.attempts,
             child_cancel.clone(),
@@ -478,26 +486,17 @@ impl EventWorker {
         }
 
         for rec in deliveries {
-            let event_id = rec
-                .event_id
-                .as_deref()
-                .and_then(|s| uuid::Uuid::parse_str(s).ok())
-                .unwrap_or_else(uuid::Uuid::now_v7);
+            let event_id = rec.event_id.unwrap_or_default();
             let correlation_id = rec
                 .correlation_id
-                .as_deref()
-                .and_then(|s| uuid::Uuid::parse_str(s).ok())
-                .unwrap_or(event_id);
-            let causation_id = rec
-                .causation_id
-                .as_deref()
-                .and_then(|s| uuid::Uuid::parse_str(s).ok());
+                .unwrap_or_else(|| crate::types::CorrelationId::from_uuid(event_id.as_uuid()));
+            let causation_id = rec.causation_id;
 
             let mut meta = rec.metadata.unwrap_or_else(|| serde_json::json!({}));
             if let serde_json::Value::Object(ref mut map) = meta {
                 map.insert(
                     "delivery_id".to_string(),
-                    serde_json::Value::String(rec.id.to_string()),
+                    serde_json::Value::String(rec.id.to_sql()),
                 );
             }
 
@@ -508,8 +507,7 @@ impl EventWorker {
                 version: rec.version.unwrap_or(1),
                 producer: rec.producer.unwrap_or_else(|| rec.target_module.clone()),
                 source: rec.source,
-                context: serde_json::from_value(rec.context.clone().unwrap_or_default())
-                    .unwrap_or_default(),
+                context: rec.context.clone().unwrap_or_default(),
                 correlation_id,
                 causation_id,
                 payload: rec.payload.unwrap_or_else(|| serde_json::json!({})),
@@ -517,8 +515,8 @@ impl EventWorker {
                 created_at: rec.created_at.unwrap_or_default(),
             };
 
-            let outbox_id = rec.outbox_event.to_string();
-            let sub_id = rec.subscription.to_string();
+            let outbox_id = rec.outbox_event.to_sql();
+            let sub_id = rec.subscription.to_sql();
             let target_module = rec.target_module.clone();
             let context = serde_json::to_value(&envelope.context).unwrap_or_default();
 

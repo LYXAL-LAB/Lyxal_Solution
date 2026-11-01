@@ -408,10 +408,7 @@ impl<T: Clone + Send + 'static> ReliableDispatcher<T> {
                 self.window.on_skipped(offset);
             }
 
-            NackReport::RetryExhausted {
-                offset,
-                resolution,
-            }
+            NackReport::RetryExhausted { offset, resolution }
         } else {
             NackReport::ScheduledRetry {
                 offset,
@@ -480,10 +477,7 @@ impl<T: Clone + Send + 'static> ReliableDispatcher<T> {
             let _ = self.window.on_skipped(offset);
         }
 
-        NackReport::RetryExhausted {
-            offset,
-            resolution,
-        }
+        NackReport::RetryExhausted { offset, resolution }
     }
 
     /// Passe périodique de surveillance du watchdog :
@@ -704,7 +698,11 @@ mod tests {
             assert!(msg.offset <= 6);
         }
 
-        assert_eq!(counts, [2, 2, 2], "Load should be balanced round-robin 2 each");
+        assert_eq!(
+            counts,
+            [2, 2, 2],
+            "Load should be balanced round-robin 2 each"
+        );
     }
 
     #[test]
@@ -762,10 +760,8 @@ mod tests {
             }
         );
 
-        let report = dispatcher.watchdog_tick(
-            Instant::now() + Duration::from_millis(30),
-            helper_extractor,
-        );
+        let report =
+            dispatcher.watchdog_tick(Instant::now() + Duration::from_millis(30), helper_extractor);
         assert_eq!(report.retried_count, 1);
 
         let retried_msg = rx.try_recv().unwrap();
@@ -893,10 +889,8 @@ mod tests {
             .submit_message(1, "m1".into(), helper_extractor)
             .unwrap();
 
-        let report = dispatcher.watchdog_tick(
-            Instant::now() + Duration::from_millis(60),
-            helper_extractor,
-        );
+        let report =
+            dispatcher.watchdog_tick(Instant::now() + Duration::from_millis(60), helper_extractor);
         assert_eq!(report.timed_out_count, 1);
         assert_eq!(report.exhausted_count, 0);
     }
@@ -952,9 +946,7 @@ mod tests {
         let report = dispatcher.watchdog_tick(Instant::now(), helper_extractor);
         assert_eq!(report.retried_count, 1);
 
-        let m1_reassigned = rx2
-            .try_recv()
-            .expect("w2 must receive reassigned message");
+        let m1_reassigned = rx2.try_recv().expect("w2 must receive reassigned message");
         assert_eq!(m1_reassigned.offset, 1);
         assert_eq!(m1_reassigned.attempt_id, 2);
     }
@@ -973,19 +965,34 @@ mod tests {
 
         // Tentative 1
         let m1 = rx.try_recv().unwrap();
-        let rep1 = dispatcher.handle_nack(m1.offset, m1.attempt_id, Some("err1".into()), helper_extractor);
+        let rep1 = dispatcher.handle_nack(
+            m1.offset,
+            m1.attempt_id,
+            Some("err1".into()),
+            helper_extractor,
+        );
         assert!(matches!(rep1, NackReport::ScheduledRetry { .. }));
 
         // Tick retry -> Tentative 2
         dispatcher.watchdog_tick(Instant::now() + Duration::from_millis(30), helper_extractor);
         let m2 = rx.try_recv().unwrap();
-        let rep2 = dispatcher.handle_nack(m2.offset, m2.attempt_id, Some("err2".into()), helper_extractor);
+        let rep2 = dispatcher.handle_nack(
+            m2.offset,
+            m2.attempt_id,
+            Some("err2".into()),
+            helper_extractor,
+        );
         assert!(matches!(rep2, NackReport::ScheduledRetry { .. }));
 
         // Tick retry -> Tentative 3 (max_redelivery_count = 3)
         dispatcher.watchdog_tick(Instant::now() + Duration::from_millis(60), helper_extractor);
         let m3 = rx.try_recv().unwrap();
-        let rep3 = dispatcher.handle_nack(m3.offset, m3.attempt_id, Some("err3".into()), helper_extractor);
+        let rep3 = dispatcher.handle_nack(
+            m3.offset,
+            m3.attempt_id,
+            Some("err3".into()),
+            helper_extractor,
+        );
 
         // Exhaustion!
         assert_eq!(
@@ -1013,8 +1020,16 @@ mod tests {
         // Forcer 3 NACKs
         for _ in 0..3 {
             let m = rx.try_recv().unwrap();
-            let _ = dispatcher.handle_nack(m.offset, m.attempt_id, Some("Fatal crash".into()), helper_extractor);
-            dispatcher.watchdog_tick(Instant::now() + Duration::from_millis(100), helper_extractor);
+            let _ = dispatcher.handle_nack(
+                m.offset,
+                m.attempt_id,
+                Some("Fatal crash".into()),
+                helper_extractor,
+            );
+            dispatcher.watchdog_tick(
+                Instant::now() + Duration::from_millis(100),
+                helper_extractor,
+            );
         }
 
         let dlqs = dispatcher.drain_dead_letters();
@@ -1057,13 +1072,7 @@ mod tests {
             .submit_message(3, "m3".into(), helper_extractor)
             .expect_err("Window saturation must reject with WindowFull");
 
-        assert_eq!(
-            err,
-            DispatcherError::WindowFull {
-                current: 2,
-                max: 2
-            }
-        );
+        assert_eq!(err, DispatcherError::WindowFull { current: 2, max: 2 });
     }
 
     #[test]
@@ -1123,8 +1132,16 @@ mod tests {
 
         // Message 1 épuise ses retries
         for _ in 0..3 {
-            let _ = dispatcher.handle_nack(m1.offset, m1.attempt_id, Some("block error".into()), helper_extractor);
-            dispatcher.watchdog_tick(Instant::now() + Duration::from_millis(100), helper_extractor);
+            let _ = dispatcher.handle_nack(
+                m1.offset,
+                m1.attempt_id,
+                Some("block error".into()),
+                helper_extractor,
+            );
+            dispatcher.watchdog_tick(
+                Instant::now() + Duration::from_millis(100),
+                helper_extractor,
+            );
         }
 
         // Le curseur contigu reste impérativement bloqué à None !
@@ -1133,6 +1150,10 @@ mod tests {
             None,
             "Block policy must halt safe cursor progression"
         );
-        assert_eq!(dispatcher.in_flight_count(), 1, "Blocked message remains in flight");
+        assert_eq!(
+            dispatcher.in_flight_count(),
+            1,
+            "Blocked message remains in flight"
+        );
     }
 }

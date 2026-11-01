@@ -1,10 +1,9 @@
 use crate::error::LyxalEventError;
 use crate::models::{EventDeadLetter, EventDelivery, EventSubscription, LyxalEventEnvelope};
 use async_trait::async_trait;
-use lyxal_surreal::LyxalSurrealCall;
-use serde::{Deserialize, Serialize};
+use lyxal_surreal::RecordId;
+use lyxal_surreal::{LyxalSurrealCall, SurrealValue};
 use surrealdb::engine::any::Any;
-use surrealdb::sql::Thing as RecordId;
 use surrealdb::Surreal;
 
 /// Store de persistance SurrealDB pour le moteur d'événements.
@@ -20,7 +19,7 @@ impl LyxalSurrealCall for EventStore {
     }
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct PublishParams {
     event_id: String,
     event_type: String,
@@ -35,53 +34,52 @@ struct PublishParams {
     auto_fanout: bool,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct FanoutParams {
     outbox_id: RecordId,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct RecoverFanoutParams {
     limit: usize,
 }
 
-#[derive(Deserialize)]
+#[derive(SurrealValue)]
 struct RecoverFanoutResult {
     recovered_count: usize,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(SurrealValue, Clone)]
 struct ClaimParams {
     limit: usize,
     lease_seconds: u64,
     worker_id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     instance_id: Option<String>,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(SurrealValue, Clone)]
 struct DeliverySuccessParams {
     delivery_id: RecordId,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(SurrealValue, Clone)]
 struct DeliveryFailureParams {
     delivery_id: RecordId,
     error: String,
     retry_delay_seconds: u64,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct DeadLetterReplayParams {
     dead_letter_id: RecordId,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct PurgeGarbageParams {
     retention_days: u32,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct SubscriptionRegisterParams {
     name: String,
     target_module: String,
@@ -91,21 +89,19 @@ struct SubscriptionRegisterParams {
     max_attempts: u32,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct OutboxGetParams {
     id: RecordId,
 }
 
-#[derive(Serialize)]
+#[derive(SurrealValue)]
 struct DeliveryGetParams {
     id: RecordId,
 }
 
-#[derive(Serialize, Default)]
+#[derive(SurrealValue, Default)]
 struct DeadLetterListParams {
-    #[serde(skip_serializing_if = "Option::is_none")]
     limit: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     delivery: Option<RecordId>,
 }
 
@@ -243,7 +239,8 @@ impl EventStore {
             is_active: sub.is_active,
             max_attempts: sub.max_attempts,
         };
-        let created: EventSubscription = self.call_fn("event_subscription_register", params).await?;
+        let created: EventSubscription =
+            self.call_fn("event_subscription_register", params).await?;
         Ok(created)
     }
 
@@ -351,12 +348,10 @@ impl EventStore {
                 .await
             {
                 Ok(true) => return Ok(()),
-                Ok(false) => {
-                    return Err(LyxalEventError::Internal(
-                        "Failed to record delivery failure (delivery not found or invalid parameters)"
-                            .to_string(),
-                    ))
-                }
+                Ok(false) => return Err(LyxalEventError::Internal(
+                    "Failed to record delivery failure (delivery not found or invalid parameters)"
+                        .to_string(),
+                )),
                 Err(err) => {
                     attempts += 1;
                     let err_str = err.to_string();
@@ -425,9 +420,8 @@ impl EventStore {
         &self,
         params: crate::engine::dto::DeliveryFetchPendingParams,
     ) -> Result<Vec<crate::engine::dto::PendingDeliveryItem>, LyxalEventError> {
-        let items: Vec<crate::engine::dto::PendingDeliveryItem> = self
-            .call_fn("event_delivery_fetch_pending", params)
-            .await?;
+        let items: Vec<crate::engine::dto::PendingDeliveryItem> =
+            self.call_fn("event_delivery_fetch_pending", params).await?;
         Ok(items)
     }
 }

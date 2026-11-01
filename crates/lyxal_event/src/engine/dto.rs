@@ -20,22 +20,21 @@
 //! Ce module formalise les paramètres d'appel (`*Params`) et les résultats typés (`*Result`)
 //! transmis au runtime SurrealDB via le trait universel [`lyxal_surreal::LyxalSurrealCall`].
 
-use serde::{Deserialize, Serialize};
-use surrealdb::sql::Datetime;
+use lyxal_surreal::{Datetime, SurrealValue};
 
 // ----------------------------------------------------------------------------
 // 1. Bail distribué & Fencing (fn::event_lease_*)
 // ----------------------------------------------------------------------------
 
 /// Paramètres d'acquisition du bail (`fn::event_lease_acquire`).
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct LeaseAcquireParams {
     pub node_id: String,
     pub ttl_seconds: u64,
 }
 
 /// Résultat d'acquisition du bail (`fn::event_lease_acquire`).
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct LeaseAcquireResult {
     pub acquired: bool,
     pub generation: u64,
@@ -44,7 +43,7 @@ pub struct LeaseAcquireResult {
 }
 
 /// Paramètres de renouvellement du bail (`fn::event_lease_renew`).
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct LeaseRenewParams {
     pub node_id: String,
     pub generation: u64,
@@ -52,7 +51,7 @@ pub struct LeaseRenewParams {
 }
 
 /// Résultat de renouvellement du bail (`fn::event_lease_renew`).
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct LeaseRenewResult {
     pub renewed: bool,
     pub generation: u64,
@@ -60,14 +59,14 @@ pub struct LeaseRenewResult {
 }
 
 /// Paramètres de libération du bail (`fn::event_lease_release`).
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct LeaseReleaseParams {
     pub node_id: String,
     pub generation: u64,
 }
 
 /// Résultat de libération du bail (`fn::event_lease_release`).
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct LeaseReleaseResult {
     pub released: bool,
 }
@@ -77,7 +76,7 @@ pub struct LeaseReleaseResult {
 // ----------------------------------------------------------------------------
 
 /// Paramètres d'attribution de séquence contiguë (`fn::event_delivery_assign_seq`).
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct DeliveryAssignSeqParams {
     pub outbox_event: String,
     pub subscription: String,
@@ -85,7 +84,6 @@ pub struct DeliveryAssignSeqParams {
     pub node_id: String,
     pub generation: u64,
     pub context: serde_json::Value,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lock_seconds: Option<u64>,
 }
 
@@ -94,7 +92,7 @@ pub struct DeliveryAssignSeqParams {
 // ----------------------------------------------------------------------------
 
 /// Paramètres de flush granulaire et d'avancement de curseur (`fn::event_flush_batch`).
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct FlushBatchParams {
     pub subscription: String,
     pub target_cursor: u64,
@@ -107,7 +105,7 @@ pub struct FlushBatchParams {
 }
 
 /// Résultat de flush granulaire (`fn::event_flush_batch`).
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct FlushBatchResult {
     pub flushed: bool,
     pub persisted_cursor: u64,
@@ -121,7 +119,7 @@ pub struct FlushBatchResult {
 // ----------------------------------------------------------------------------
 
 /// Paramètres de transfert en quarantaine DLQ (`fn::event_dead_letter_transfer`).
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct DeadLetterTransferParams {
     pub delivery_id: String,
     pub error: String,
@@ -130,7 +128,7 @@ pub struct DeadLetterTransferParams {
 }
 
 /// Résultat de transfert en quarantaine DLQ (`fn::event_dead_letter_transfer`).
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct DeadLetterTransferResult {
     pub dead_lettered: bool,
     pub dlq_id: String,
@@ -141,13 +139,13 @@ pub struct DeadLetterTransferResult {
 // ----------------------------------------------------------------------------
 
 /// Paramètres de lecture de progression durable (`fn::event_progress_get`).
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct ProgressGetParams {
     pub subscription: String,
 }
 
 /// Résultat de lecture de progression durable (`fn::event_progress_get`).
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct ProgressGetResult {
     pub subscription: String,
     pub partition: u32,
@@ -162,32 +160,29 @@ pub struct ProgressGetResult {
 // ----------------------------------------------------------------------------
 
 /// Paramètres de récupération des livraisons en attente (`fn::event_delivery_fetch_pending`).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct DeliveryFetchPendingParams {
     pub limit: usize,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub instance_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subscription: Option<String>,
 }
 
 /// Enregistrement d'une livraison éligible renvoyé par `fn::event_delivery_fetch_pending`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct PendingDeliveryItem {
-    pub id: surrealdb::sql::Thing,
+    pub id: lyxal_surreal::RecordId,
     pub created_at: Option<Datetime>,
-    pub outbox_event: surrealdb::sql::Thing,
-    pub subscription: surrealdb::sql::Thing,
+    pub outbox_event: lyxal_surreal::RecordId,
+    pub subscription: lyxal_surreal::RecordId,
     pub target_module: String,
-    pub context: Option<serde_json::Value>,
-    pub event_id: Option<String>,
+    pub context: Option<crate::models::EventContext>,
+    pub event_id: Option<crate::types::EventId>,
     pub event_type: Option<String>,
     pub version: Option<u32>,
     pub producer: Option<String>,
-    pub source: Option<surrealdb::sql::Thing>,
-    pub correlation_id: Option<String>,
-    pub causation_id: Option<String>,
+    pub source: Option<lyxal_surreal::RecordId>,
+    pub correlation_id: Option<crate::types::CorrelationId>,
+    pub causation_id: Option<crate::types::CausationId>,
     pub payload: Option<serde_json::Value>,
     pub metadata: Option<serde_json::Value>,
 }
-

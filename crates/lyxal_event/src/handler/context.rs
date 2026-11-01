@@ -1,6 +1,6 @@
 use crate::models::EventContext;
 use crate::types::{CausationId, CorrelationId, EventId};
-use surrealdb::sql::Thing as RecordId;
+use lyxal_surreal::RecordId;
 use tokio_util::sync::CancellationToken;
 
 /// Contexte d'exécution transmis au handler lors du traitement d'une livraison.

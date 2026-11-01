@@ -1,4 +1,5 @@
 use lyxal_event::prelude::*;
+use lyxal_surreal::{SurrealValue, ToSql};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -31,7 +32,7 @@ impl Handler<BenchmarkItem> for ConcurrencyItemHandler {
         _event: BenchmarkItem,
         ctx: &HandlerContext,
     ) -> Result<(), LyxalEventError> {
-        let id_str = ctx.delivery_id.to_string();
+        let id_str = ctx.delivery_id.to_sql();
         self.total_count.fetch_add(1, Ordering::SeqCst);
 
         let mut lock = self.processed_ids.lock().unwrap();
@@ -76,7 +77,7 @@ async fn test_massive_concurrency_1000_deliveries_10_workers() {
         .query("SELECT count() AS total FROM event_delivery GROUP ALL")
         .await
         .unwrap();
-    #[derive(Deserialize)]
+    #[derive(SurrealValue)]
     struct CountRow {
         total: usize,
     }

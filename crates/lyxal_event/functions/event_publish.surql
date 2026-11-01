@@ -6,7 +6,9 @@
 DEFINE FUNCTION OVERWRITE fn::event_publish(
     $params: object
 ) {
-    LET $event_id = $params.event_id;
+    -- Les identifiants sont stockés en chaîne (TYPE string) ; un appelant SurrealQL peut passer
+    -- directement `rand::uuid::v7()` (type uuid natif en SurrealDB 3.x).
+    LET $event_id = <string> $params.event_id;
     LET $event_type = $params.event_type;
     LET $version = IF $params.version != NONE { $params.version } ELSE { 1 };
     LET $producer = IF $params.producer != NONE { $params.producer } ELSE { "unknown" };
@@ -16,8 +18,8 @@ DEFINE FUNCTION OVERWRITE fn::event_publish(
         namespace: "default",
         database: "default"
     } };
-    LET $correlation_id = IF $params.correlation_id != NONE { $params.correlation_id } ELSE { $event_id };
-    LET $causation_id = $params.causation_id;
+    LET $correlation_id = IF $params.correlation_id != NONE { <string> $params.correlation_id } ELSE { $event_id };
+    LET $causation_id = IF $params.causation_id != NONE AND $params.causation_id != NULL { <string> $params.causation_id } ELSE { NONE };
     LET $payload = IF $params.payload != NONE { $params.payload } ELSE { {} };
     LET $metadata = IF $params.metadata != NONE { $params.metadata } ELSE { {} };
     LET $auto_fanout = IF $params.auto_fanout != NONE { $params.auto_fanout } ELSE { true };

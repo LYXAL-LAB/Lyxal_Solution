@@ -28,10 +28,10 @@
 //! - Aucun message n'est considéré comme définitivement traité avant sa confirmation durable
 //!   dans SurrealDB par le [`SubscriptionProgressTracker`].
 
+use async_trait::async_trait;
+use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError, ToSql};
 use std::collections::HashMap;
 use std::sync::Arc;
-use async_trait::async_trait;
-use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 use thiserror::Error;
@@ -39,11 +39,11 @@ use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info};
 
-use crate::models::EventDelivery;
 use super::dispatcher::{AckReport, DispatcherError, ReliableDispatcher};
 use super::dto::DeliveryAssignSeqParams;
 use super::lease::OutboxLeaseManager;
 use super::progress::{ProgressError, SubscriptionProgressTracker};
+use crate::models::EventDelivery;
 
 /// Erreurs associées à l'alimentation de l'outbox.
 #[derive(Debug, Error)]
@@ -139,9 +139,11 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         ));
         let cancel = self.cancellation.clone();
 
-        self.trackers.entry(subscription.to_string()).or_insert_with(|| {
-            SubscriptionProgressTracker::new(client, subscription, node_id, gen, cancel)
-        })
+        self.trackers
+            .entry(subscription.to_string())
+            .or_insert_with(|| {
+                SubscriptionProgressTracker::new(client, subscription, node_id, gen, cancel)
+            })
     }
 
     /// Attribue une séquence transactionnelle durable et injecte le message dans le dispatcher in-process.
@@ -187,7 +189,8 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
             lock_seconds: None,
         };
 
-        let delivery: EventDelivery = match self.call_fn("event_delivery_assign_seq", params).await {
+        let delivery: EventDelivery = match self.call_fn("event_delivery_assign_seq", params).await
+        {
             Ok(del) => del,
             Err(e) => {
                 let err_str = e.to_string();
@@ -200,7 +203,7 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         };
 
         let seq = delivery.delivery_seq.ok_or(FeederError::MissingSequence)?;
-        let delivery_id_str = delivery.id.to_string();
+        let delivery_id_str = delivery.id.to_sql();
 
         if self.delivery_seq_to_id.contains_key(&seq) {
             return Ok(seq);
@@ -208,7 +211,8 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
 
         // Enregistre l'association séquence -> identifiant de livraison et abonnement
         self.delivery_seq_to_id.insert(seq, delivery_id_str);
-        self.delivery_seq_to_sub.insert(seq, subscription.to_string());
+        self.delivery_seq_to_sub
+            .insert(seq, subscription.to_string());
 
         // Enqueue dans le dispatcher in-process
         {
@@ -291,7 +295,9 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         // Si un retry est programmé, mettre à jour la livraison en base (échec transitoire persistant)
         if let crate::engine::dispatcher::NackReport::ScheduledRetry { offset, .. } = &nack_report {
             if let Some(del_id) = self.delivery_seq_to_id.get(offset) {
-                let reason_str = reason.clone().unwrap_or_else(|| "Handler failed".to_string());
+                let reason_str = reason
+                    .clone()
+                    .unwrap_or_else(|| "Handler failed".to_string());
                 let params = serde_json::json!({
                     "delivery_id": del_id,
                     "error": reason_str,
@@ -459,8 +465,8 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
     use crate::engine::dispatcher::{DispatcherConfig, ReliableDispatcher};
+    use std::time::Duration;
 
     #[tokio::test]
     async fn test_feeder_not_leader_rejected() {
@@ -503,8 +509,12 @@ mod tests {
             Duration::from_secs(5),
         ));
         // Force leader flag en mémoire pour le test unitaire
-        lease.is_leader.store(true, std::sync::atomic::Ordering::SeqCst);
-        lease.generation.store(1, std::sync::atomic::Ordering::SeqCst);
+        lease
+            .is_leader
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+        lease
+            .generation
+            .store(1, std::sync::atomic::Ordering::SeqCst);
 
         let cancel = CancellationToken::new();
         let disp_config = DispatcherConfig {

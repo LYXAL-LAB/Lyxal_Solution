@@ -1,8 +1,8 @@
+use lyxal_surreal::{Datetime, RecordId, SurrealValue};
 use serde::{Deserialize, Serialize};
-use surrealdb::sql::{Datetime, Thing as RecordId};
 
 /// Modèle de domaine d'un abonnement à un type ou pattern d'événements.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
 pub struct EventSubscription {
     /// Identifiant de l'enregistrement SurrealDB.
     pub id: Option<RecordId>,

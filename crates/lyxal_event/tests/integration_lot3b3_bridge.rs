@@ -173,14 +173,13 @@ impl Handler<OrderCreatedEvent> for IdempotentPaymentHandler {
         ctx: &HandlerContext,
     ) -> Result<(), LyxalEventError> {
         let key = format!("idemp_{}_{}", ctx.event_id.0, event.order_id);
-        self.gateway
-            .charge(&key, event.amount)
-            .await
-            .map_err(|e| LyxalEventError::HandlerFailed {
+        self.gateway.charge(&key, event.amount).await.map_err(|e| {
+            LyxalEventError::HandlerFailed {
                 event_id: ctx.event_id.0,
                 event_type: "order.created".to_string(),
                 error: e,
-            })?;
+            }
+        })?;
         Ok(())
     }
 }
@@ -262,11 +261,8 @@ async fn test_scenario_01_nominal_delivery() {
         })
         .unwrap();
 
-    let bridge = HandlerConsumerBridge::new(
-        BridgeConfig::default(),
-        registry,
-        CancellationToken::new(),
-    );
+    let bridge =
+        HandlerConsumerBridge::new(BridgeConfig::default(), registry, CancellationToken::new());
 
     let mut rx = {
         let mut disp = dispatcher.lock().await;
@@ -308,11 +304,8 @@ async fn test_scenario_01_nominal_delivery() {
 async fn test_scenario_02_missing_handler_error_and_retry() {
     let (_lease, dispatcher, mut feeder) = build_in_memory_harness(10).await;
     let registry = HandlerRegistry::new(); // Aucun handler enregistré
-    let bridge = HandlerConsumerBridge::new(
-        BridgeConfig::default(),
-        registry,
-        CancellationToken::new(),
-    );
+    let bridge =
+        HandlerConsumerBridge::new(BridgeConfig::default(), registry, CancellationToken::new());
 
     let mut rx = {
         let mut disp = dispatcher.lock().await;
@@ -360,11 +353,8 @@ async fn test_scenario_03_transient_error_retry() {
         .register(FailingHandler { is_terminal: false })
         .unwrap();
 
-    let bridge = HandlerConsumerBridge::new(
-        BridgeConfig::default(),
-        registry,
-        CancellationToken::new(),
-    );
+    let bridge =
+        HandlerConsumerBridge::new(BridgeConfig::default(), registry, CancellationToken::new());
 
     let mut rx = {
         let mut disp = dispatcher.lock().await;
@@ -412,11 +402,8 @@ async fn test_scenario_04_terminal_error_poison() {
         .register(FailingHandler { is_terminal: true })
         .unwrap();
 
-    let bridge = HandlerConsumerBridge::new(
-        BridgeConfig::default(),
-        registry,
-        CancellationToken::new(),
-    );
+    let bridge =
+        HandlerConsumerBridge::new(BridgeConfig::default(), registry, CancellationToken::new());
 
     let mut rx = {
         let mut disp = dispatcher.lock().await;
@@ -466,11 +453,8 @@ async fn test_scenario_05_handler_panic_isolation() {
     let mut registry = HandlerRegistry::new();
     registry.register(PanickingHandler).unwrap();
 
-    let bridge = HandlerConsumerBridge::new(
-        BridgeConfig::default(),
-        registry,
-        CancellationToken::new(),
-    );
+    let bridge =
+        HandlerConsumerBridge::new(BridgeConfig::default(), registry, CancellationToken::new());
 
     let mut rx = {
         let mut disp = dispatcher.lock().await;
@@ -738,7 +722,10 @@ async fn test_scenario_10_concurrent_handlers_execution() {
         let msg = rx.recv().await.unwrap();
         let res = bridge.process_message(&msg).await;
         assert!(matches!(res, HandlerExecutionResult::Success { .. }));
-        let _ = feeder.handle_ack("test_sub", msg.offset, msg.attempt_id).await.unwrap();
+        let _ = feeder
+            .handle_ack("test_sub", msg.offset, msg.attempt_id)
+            .await
+            .unwrap();
     }
 
     assert_eq!(counter.load(Ordering::SeqCst), 10);
@@ -795,7 +782,10 @@ async fn test_scenario_11_backpressure_when_saturated() {
     assert!(matches!(err, Err(FeederError::Backpressure)));
 
     // Libérer un slot via ACK du premier message
-    let _ = feeder.handle_ack("test_sub", msg1.offset, msg1.attempt_id).await.unwrap();
+    let _ = feeder
+        .handle_ack("test_sub", msg1.offset, msg1.attempt_id)
+        .await
+        .unwrap();
     {
         let disp = dispatcher.lock().await;
         assert!(disp.has_capacity());
@@ -828,8 +818,14 @@ async fn test_scenario_12_contiguous_cursor_gap_blocking() {
     let _msg3 = rx.recv().await.unwrap();
 
     // ACK 1 et 2 -> curseur = 2
-    let _ = feeder.handle_ack("test_sub", msg1.offset, msg1.attempt_id).await.unwrap();
-    let rep2 = feeder.handle_ack("test_sub", msg2.offset, msg2.attempt_id).await.unwrap();
+    let _ = feeder
+        .handle_ack("test_sub", msg1.offset, msg1.attempt_id)
+        .await
+        .unwrap();
+    let rep2 = feeder
+        .handle_ack("test_sub", msg2.offset, msg2.attempt_id)
+        .await
+        .unwrap();
     assert_eq!(rep2, AckReport::Advanced { safe_cursor: 2 });
 
     // Séquence 3 en vol : le curseur ne dépasse pas 2
@@ -863,8 +859,14 @@ async fn test_scenario_13_dlq_barrier_before_terminal_resolution() {
     let msg3 = rx.recv().await.unwrap();
 
     // ACK 1 et 2
-    let _ = feeder.handle_ack("test_sub", msg1.offset, msg1.attempt_id).await.unwrap();
-    let _ = feeder.handle_ack("test_sub", msg2.offset, msg2.attempt_id).await.unwrap();
+    let _ = feeder
+        .handle_ack("test_sub", msg1.offset, msg1.attempt_id)
+        .await
+        .unwrap();
+    let _ = feeder
+        .handle_ack("test_sub", msg2.offset, msg2.attempt_id)
+        .await
+        .unwrap();
 
     // Séquence 3 échoue de manière terminale (bascule en DLQ)
     let nack_rep = feeder
@@ -964,13 +966,8 @@ async fn test_scenario_15_simulated_crash_recovery_from_durable_cursor() {
     drop(tracker);
 
     // 3. Redémarrage post-crash : création d'un nouveau tracker
-    let new_tracker = SubscriptionProgressTracker::new(
-        client,
-        "sub_crash",
-        "node_2".to_string(),
-        gen,
-        cancel,
-    );
+    let new_tracker =
+        SubscriptionProgressTracker::new(client, "sub_crash", "node_2".to_string(), gen, cancel);
 
     // Le nouveau nœud reprend fidèlement sur l'état durable (0 car le mock mem:// n'a pas persisté 3)
     assert_eq!(new_tracker.last_persisted_cursor(), 0);
@@ -988,11 +985,8 @@ async fn test_scenario_16_external_idempotence_replay() {
         })
         .unwrap();
 
-    let bridge = HandlerConsumerBridge::new(
-        BridgeConfig::default(),
-        registry,
-        CancellationToken::new(),
-    );
+    let bridge =
+        HandlerConsumerBridge::new(BridgeConfig::default(), registry, CancellationToken::new());
 
     let mut rx = {
         let mut disp = dispatcher.lock().await;

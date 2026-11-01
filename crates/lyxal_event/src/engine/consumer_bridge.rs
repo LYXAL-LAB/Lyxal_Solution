@@ -58,10 +58,10 @@
 //! - **Annulation Coopérative** : Dès que le bail distribué est perdu ou fencé, le `CancellationToken`
 //!   de la passerelle annule l'ensemble des handlers en cours et rejette toute tentative de persistance.
 
+use lyxal_surreal::{RecordId, ToSql};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use surrealdb::sql::Thing as RecordId;
 use tokio::sync::{mpsc, Mutex, Semaphore};
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info, warn};
@@ -69,7 +69,6 @@ use tracing::{debug, error, info, warn};
 use crate::error::LyxalEventError;
 use crate::handler::{HandlerContext, HandlerRegistry};
 use crate::models::LyxalEventEnvelope;
-use crate::types::{CausationId, CorrelationId, EventId};
 
 use super::dispatcher::{AckReport, DispatchMessage, NackReport, ReliableDispatcher};
 use super::feeder::{FeederError, OutboxFeeder};
@@ -262,22 +261,19 @@ impl HandlerConsumerBridge {
     fn resolve_delivery_id(msg: &DispatchMessage<LyxalEventEnvelope>) -> (String, RecordId) {
         if let Some(val) = msg.message.metadata.get("delivery_id") {
             if let Some(s) = val.as_str() {
-                if let Ok(thing) = s.parse::<RecordId>() {
+                if let Ok(thing) = RecordId::parse_simple(s) {
                     return (s.to_string(), thing);
                 }
-                return (
-                    s.to_string(),
-                    RecordId::from(("event_delivery", s)),
-                );
+                return (s.to_string(), RecordId::new("event_delivery", s));
             }
         }
 
         if let Some(ref rec_id) = msg.message.id {
-            return (rec_id.to_string(), rec_id.clone());
+            return (rec_id.to_sql(), rec_id.clone());
         }
 
         let fallback_id = format!("delivery_{}", msg.offset);
-        let fallback_record = RecordId::from(("event_delivery", fallback_id.as_str()));
+        let fallback_record = RecordId::new("event_delivery", fallback_id.as_str());
         (fallback_id, fallback_record)
     }
 
@@ -328,10 +324,10 @@ impl HandlerConsumerBridge {
 
         let child_cancel = self.cancellation.child_token();
         let ctx = HandlerContext::new(
-            EventId::from_uuid(msg.message.event_id),
+            msg.message.event_id,
             delivery_record_id,
-            CorrelationId::from_uuid(msg.message.correlation_id),
-            msg.message.causation_id.map(CausationId::from_uuid),
+            msg.message.correlation_id,
+            msg.message.causation_id,
             msg.message.context.clone(),
             attempt_id,
             child_cancel.clone(),
@@ -343,7 +339,12 @@ impl HandlerConsumerBridge {
         let del_id_for_task = delivery_id_str.clone();
 
         let task_result = tokio::task::spawn(async move {
-            match tokio::time::timeout(timeout_duration, handler_clone.handle(&envelope_clone, &ctx)).await {
+            match tokio::time::timeout(
+                timeout_duration,
+                handler_clone.handle(&envelope_clone, &ctx),
+            )
+            .await
+            {
                 Ok(execution_res) => match execution_res {
                     Ok(()) => HandlerExecutionResult::Success {
                         delivery_id: del_id_for_task,
@@ -637,10 +638,10 @@ impl HandlerConsumerBridge {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_trait::async_trait;
-    use serde::{Deserialize, Serialize};
     use crate::handler::{Event, Handler};
     use crate::models::EventContext;
+    use async_trait::async_trait;
+    use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Clone, Serialize, Deserialize)]
     struct UserRegisteredEvent {

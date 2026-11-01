@@ -1,6 +1,33 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use surrealdb::types::{Error as SurrealTypeError, Kind, SurrealValue, Value};
 use uuid::Uuid;
+
+/// Implémente `SurrealValue` pour un identifiant UUID typé, stocké en base sous forme de chaîne
+/// (`TYPE string` dans `schema/event_outbox.surql`).
+macro_rules! impl_uuid_string_surreal_value {
+    ($ty:ident) => {
+        impl SurrealValue for $ty {
+            fn kind_of() -> Kind {
+                String::kind_of()
+            }
+
+            fn into_value(self) -> Value {
+                Value::String(self.0.to_string())
+            }
+
+            fn from_value(value: Value) -> Result<Self, SurrealTypeError> {
+                let raw = String::from_value(value)?;
+                Uuid::parse_str(&raw).map(Self).map_err(|e| {
+                    SurrealTypeError::validation(
+                        format!("{} invalide '{raw}' : {e}", stringify!($ty)),
+                        None,
+                    )
+                })
+            }
+        }
+    };
+}
 
 /// Identifiant unique d'événement (UUIDv7).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -97,3 +124,7 @@ impl fmt::Display for CausationId {
         write!(f, "{}", self.0)
     }
 }
+
+impl_uuid_string_surreal_value!(EventId);
+impl_uuid_string_surreal_value!(CorrelationId);
+impl_uuid_string_surreal_value!(CausationId);

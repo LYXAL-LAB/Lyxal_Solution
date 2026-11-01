@@ -12,7 +12,7 @@ pub use error::LyxalSurrealError;
 pub use lyxal_error::{LyxalCallError, LyxalError, LyxalResult};
 
 /// Types natifs du SDK SurrealDB exposés aux modules (§12.2 : alias définis dans `models/types.rs`).
-pub use surrealdb::types::{Datetime, RecordId, SurrealValue, Value};
+pub use surrealdb::types::{Datetime, RecordId, SurrealValue, ToSql, Value};
 
 #[cfg(test)]
 mod tests {

@@ -14,10 +14,14 @@ pub async fn setup_test_db(db: &Surreal<Any>) {
         .join("lyxal_error")
         .join("manifest.toml");
 
-    let content = std::fs::read_to_string(&error_manifest_path)
-        .unwrap_or_else(|e| panic!("Failed to read lyxal_error manifest at {:?}: {}", error_manifest_path, e));
-    let parsed: toml::Value = toml::from_str(&content)
-        .expect("Failed to parse lyxal_error manifest");
+    let content = std::fs::read_to_string(&error_manifest_path).unwrap_or_else(|e| {
+        panic!(
+            "Failed to read lyxal_error manifest at {:?}: {}",
+            error_manifest_path, e
+        )
+    });
+    let parsed: toml::Value =
+        toml::from_str(&content).expect("Failed to parse lyxal_error manifest");
     let resources = parsed
         .get("resources")
         .and_then(|v| v.as_table())
@@ -31,7 +35,11 @@ pub async fn setup_test_db(db: &Surreal<Any>) {
             let rel = s.as_str().expect("schema rel path");
             let surql = std::fs::read_to_string(error_base_dir.join(rel))
                 .unwrap_or_else(|e| panic!("Failed to read {}: {}", rel, e));
-            db.query(&surql).await.expect("query failed").check().expect("check failed");
+            db.query(&surql)
+                .await
+                .expect("query failed")
+                .check()
+                .expect("check failed");
         }
     }
 
@@ -41,7 +49,10 @@ pub async fn setup_test_db(db: &Surreal<Any>) {
             let rel = f.as_str().expect("function rel path");
             let surql = std::fs::read_to_string(error_base_dir.join(rel))
                 .unwrap_or_else(|e| panic!("Failed to read {}: {}", rel, e));
-            let res = db.query(&surql).await.unwrap_or_else(|e| panic!("Failed to execute function {}: {}", rel, e));
+            let res = db
+                .query(&surql)
+                .await
+                .unwrap_or_else(|e| panic!("Failed to execute function {}: {}", rel, e));
             if let Err(e) = res.check() {
                 panic!("Failed check for function {}: {}", rel, e);
             }
@@ -49,13 +60,19 @@ pub async fn setup_test_db(db: &Surreal<Any>) {
     }
 
     // 3. Définitions d'erreurs de lyxal_error
-    if let Some(errors) = resources.get("error_definitions").and_then(|v| v.as_array()) {
+    if let Some(errors) = resources
+        .get("error_definitions")
+        .and_then(|v| v.as_array())
+    {
         for e in errors {
             let rel = e.as_str().expect("error definition rel path");
             let surql = std::fs::read_to_string(error_base_dir.join(rel))
                 .unwrap_or_else(|e| panic!("Failed to read {}: {}", rel, e));
-            db.query(&surql).await.expect("query failed").check().expect("check failed");
+            db.query(&surql)
+                .await
+                .expect("query failed")
+                .check()
+                .expect("check failed");
         }
     }
 }
-

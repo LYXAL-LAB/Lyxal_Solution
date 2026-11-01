@@ -1,8 +1,9 @@
 use lyxal_event::prelude::*;
+use lyxal_surreal::{SurrealValue, ToSql};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use surrealdb::engine::any::connect;
 use std::sync::Arc;
+use surrealdb::engine::any::connect;
 
 mod common;
 
@@ -15,7 +16,7 @@ impl Event for TestEvent {
     const EVENT_TYPE: &'static str = "test.event";
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(SurrealValue, Debug)]
 #[allow(dead_code)]
 struct LyxalResponse {
     pub ok: bool,
@@ -55,7 +56,7 @@ async fn test_rejection_of_legacy_dto_and_negative_contracts() {
         .unwrap();
     assert_eq!(deliveries.len(), 1, "Une livraison doit être initialisée");
     let delivery_id = deliveries[0].id.clone();
-    let delivery_id_str = delivery_id.to_string();
+    let delivery_id_str = delivery_id.to_sql();
 
     // =========================================================================
     // TEST 1 : fn::event_delivery_success avec l'ancien DTO { "id": ... }
@@ -128,7 +129,11 @@ async fn test_rejection_of_legacy_dto_and_negative_contracts() {
 
     // Vérification qu'aucune dead-letter n'a été insérée
     let dead_letters = store.get_dead_letters().await.unwrap();
-    assert_eq!(dead_letters.len(), 0, "Aucune dead letter ne doit être créée lors d'un échec de contrat");
+    assert_eq!(
+        dead_letters.len(),
+        0,
+        "Aucune dead letter ne doit être créée lors d'un échec de contrat"
+    );
 
     // =========================================================================
     // TEST 4 : fn::event_delivery_failure avec 'delivery_id' mais 'error_message' au lieu de 'error'
@@ -185,7 +190,10 @@ async fn test_rejection_of_legacy_dto_and_negative_contracts() {
     // TEST 6 : Acquittement canonique valide via delivery_success
     // =========================================================================
     let success_res = store.delivery_success(&delivery_id).await;
-    assert!(success_res.is_ok(), "L'acquittement via le store doit réussir avec le nouveau DTO");
+    assert!(
+        success_res.is_ok(),
+        "L'acquittement via le store doit réussir avec le nouveau DTO"
+    );
 
     let final_delivery = store.get_delivery(&delivery_id).await.unwrap().unwrap();
     assert_eq!(final_delivery.status, DeliveryStatus::Delivered);
@@ -223,18 +231,18 @@ async fn test_delivery_fetch_pending_canonical_contract() {
         db.query(format!(
             r#"
             CREATE event_outbox:ev{} CONTENT {{
-                event_id: rand::uuid::v7(),
+                event_id: <string> rand::uuid::v7(),
                 event_type: "test.event",
                 version: 1,
                 producer: "test_producer",
                 source: NONE,
                 context: {{ instance_id: "inst_alpha", namespace: "test_ns", database: "test_fetch" }},
-                correlation_id: rand::uuid::v7(),
+                correlation_id: <string> rand::uuid::v7(),
                 causation_id: NONE,
                 payload: {{ value: {} }},
                 metadata: {{}},
-                published: true,
-                published_at: time::now()
+                status: "fanned_out",
+                fanned_out_at: time::now()
             }};
             "#,
             i, i
@@ -428,8 +436,12 @@ async fn test_delivery_fetch_pending_canonical_contract() {
         })
         .await
         .unwrap();
-    let ids: Vec<String> = all.iter().map(|d| d.id.to_string()).collect();
-    assert_eq!(ids.len(), 4, "Doit retourner exactement 4 livraisons éligibles");
+    let ids: Vec<String> = all.iter().map(|d| d.id.to_sql()).collect();
+    assert_eq!(
+        ids.len(),
+        4,
+        "Doit retourner exactement 4 livraisons éligibles"
+    );
     assert!(ids.contains(&"event_delivery:d1".to_string()));
     assert!(ids.contains(&"event_delivery:d2".to_string()));
     assert!(ids.contains(&"event_delivery:d8".to_string()));
@@ -446,7 +458,7 @@ async fn test_delivery_fetch_pending_canonical_contract() {
         })
         .await
         .unwrap();
-    let alpha_ids: Vec<String> = alpha_only.iter().map(|d| d.id.to_string()).collect();
+    let alpha_ids: Vec<String> = alpha_only.iter().map(|d| d.id.to_sql()).collect();
     assert_eq!(alpha_ids.len(), 3);
     assert!(!alpha_ids.contains(&"event_delivery:d8".to_string()));
 
@@ -461,7 +473,7 @@ async fn test_delivery_fetch_pending_canonical_contract() {
         })
         .await
         .unwrap();
-    let beta_sub_ids: Vec<String> = beta_sub_only.iter().map(|d| d.id.to_string()).collect();
+    let beta_sub_ids: Vec<String> = beta_sub_only.iter().map(|d| d.id.to_sql()).collect();
     assert_eq!(beta_sub_ids, vec!["event_delivery:d9".to_string()]);
 
     // =========================================================================
@@ -475,8 +487,12 @@ async fn test_delivery_fetch_pending_canonical_contract() {
         })
         .await
         .unwrap();
-    assert_eq!(limited.len(), 2, "La limite doit être strictement respectée");
+    assert_eq!(
+        limited.len(),
+        2,
+        "La limite doit être strictement respectée"
+    );
     // L'ordre doit être created_at ASC : d1 puis d2
-    assert_eq!(limited[0].id.to_string(), "event_delivery:d1");
-    assert_eq!(limited[1].id.to_string(), "event_delivery:d2");
+    assert_eq!(limited[0].id.to_sql(), "event_delivery:d1");
+    assert_eq!(limited[1].id.to_sql(), "event_delivery:d2");
 }

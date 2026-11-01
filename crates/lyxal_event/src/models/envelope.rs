@@ -1,11 +1,11 @@
 use crate::error::LyxalEventError;
 use crate::handler::Event;
+use crate::types::{CausationId, CorrelationId, EventId};
+use lyxal_surreal::{Datetime, RecordId, SurrealValue};
 use serde::{Deserialize, Serialize};
-use surrealdb::sql::{Datetime, Thing as RecordId};
-use uuid::Uuid;
 
 /// Contexte d'instance et d'isolation multi-tenant pour le routage des événements.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, SurrealValue)]
 pub struct EventContext {
     /// Identifiant de l'instance Lyxal OS (ex: "inst_alpha").
     pub instance_id: String,
@@ -47,129 +47,46 @@ impl Default for EventContext {
     }
 }
 
-pub mod uuid_serde {
-    use serde::{self, Deserialize, Deserializer, Serializer};
-    use uuid::Uuid;
-
-    pub fn serialize<S>(uuid: &Uuid, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&uuid.to_string())
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Uuid, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        #[serde(untagged)]
-        enum UuidRepr {
-            Str(String),
-            Bytes(Vec<u8>),
-            Uuid(Uuid),
-        }
-
-        match UuidRepr::deserialize(deserializer)? {
-            UuidRepr::Str(s) => Uuid::parse_str(&s).map_err(serde::de::Error::custom),
-            UuidRepr::Bytes(b) => {
-                if b.len() == 16 {
-                    let mut arr = [0u8; 16];
-                    arr.copy_from_slice(&b);
-                    Ok(Uuid::from_bytes(arr))
-                } else {
-                    Uuid::parse_str(&String::from_utf8_lossy(&b)).map_err(serde::de::Error::custom)
-                }
-            }
-            UuidRepr::Uuid(u) => Ok(u),
-        }
-    }
-}
-
-pub mod opt_uuid_serde {
-    use serde::{self, Deserialize, Deserializer, Serializer};
-    use uuid::Uuid;
-
-    pub fn serialize<S>(uuid: &Option<Uuid>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match uuid {
-            Some(u) => serializer.serialize_some(&u.to_string()),
-            None => serializer.serialize_none(),
-        }
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Uuid>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        #[serde(untagged)]
-        enum OptUuidRepr {
-            Str(String),
-            Bytes(Vec<u8>),
-            Uuid(Uuid),
-            None,
-        }
-
-        let opt: Option<OptUuidRepr> = Option::deserialize(deserializer)?;
-        match opt {
-            Some(OptUuidRepr::Str(s)) if !s.is_empty() => Uuid::parse_str(&s)
-                .map(Some)
-                .map_err(serde::de::Error::custom),
-            Some(OptUuidRepr::Bytes(b)) => {
-                if b.len() == 16 {
-                    let mut arr = [0u8; 16];
-                    arr.copy_from_slice(&b);
-                    Ok(Some(Uuid::from_bytes(arr)))
-                } else {
-                    Uuid::parse_str(&String::from_utf8_lossy(&b))
-                        .map(Some)
-                        .map_err(serde::de::Error::custom)
-                }
-            }
-            Some(OptUuidRepr::Uuid(u)) => Ok(Some(u)),
-            _ => Ok(None),
-        }
-    }
-}
-
 /// Enveloppe canonique universelle d'un événement au sein de Lyxal OS.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
 pub struct LyxalEventEnvelope {
     /// Identifiant de l'enregistrement dans la table event_outbox (si persisté).
     #[serde(default)]
+    #[surreal(default)]
     pub id: Option<RecordId>,
     /// Identifiant unique d'événement (UUIDv7).
-    #[serde(with = "uuid_serde")]
-    pub event_id: Uuid,
+    pub event_id: EventId,
     /// Nom de domaine qualifié de l'événement (ex: "booking.created").
     pub event_type: String,
     /// Version de schéma de l'événement.
     #[serde(default = "default_version")]
+    #[surreal(default = "default_version")]
     pub version: u32,
     /// Module producteur ayant émis l'événement.
     #[serde(default)]
+    #[surreal(default)]
     pub producer: String,
     /// Enregistrement source à l'origine de la mutation (optionnel).
     #[serde(default)]
+    #[surreal(default)]
     pub source: Option<RecordId>,
     /// Contexte d'isolation de l'instance.
     pub context: EventContext,
     /// Identifiant de corrélation pour le traçage distribué.
-    #[serde(with = "uuid_serde")]
-    pub correlation_id: Uuid,
+    pub correlation_id: CorrelationId,
     /// Identifiant de causalité reliant l'événement à son déclencheur parent.
-    #[serde(default, with = "opt_uuid_serde")]
-    pub causation_id: Option<Uuid>,
+    #[serde(default)]
+    #[surreal(default)]
+    pub causation_id: Option<CausationId>,
     /// Données métier sérialisées au format JSON.
     pub payload: serde_json::Value,
     /// Métadonnées transversales (acteur, client, trace headers).
     #[serde(default)]
+    #[surreal(default)]
     pub metadata: serde_json::Value,
     /// Horodatage UTC de création.
     #[serde(default)]
+    #[surreal(default)]
     pub created_at: Datetime,
 }
 
@@ -184,7 +101,7 @@ impl LyxalEventEnvelope {
         context: EventContext,
         event: &E,
     ) -> Result<Self, LyxalEventError> {
-        let event_id = Uuid::now_v7();
+        let event_id = EventId::new();
         let payload = serde_json::to_value(event)?;
         Ok(Self {
             id: None,
@@ -194,7 +111,7 @@ impl LyxalEventEnvelope {
             producer: producer.into(),
             source: None,
             context,
-            correlation_id: event_id,
+            correlation_id: CorrelationId::from_uuid(event_id.as_uuid()),
             causation_id: None,
             payload,
             metadata: serde_json::json!({}),
@@ -204,14 +121,14 @@ impl LyxalEventEnvelope {
 
     /// Associe un identifiant de corrélation spécifique.
     #[must_use]
-    pub fn with_correlation_id(mut self, correlation_id: Uuid) -> Self {
+    pub fn with_correlation_id(mut self, correlation_id: CorrelationId) -> Self {
         self.correlation_id = correlation_id;
         self
     }
 
     /// Associe un identifiant de causalité parent.
     #[must_use]
-    pub fn with_causation_id(mut self, causation_id: Uuid) -> Self {
+    pub fn with_causation_id(mut self, causation_id: CausationId) -> Self {
         self.causation_id = Some(causation_id);
         self
     }

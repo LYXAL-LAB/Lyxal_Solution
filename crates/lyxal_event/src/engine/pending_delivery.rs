@@ -276,7 +276,10 @@ mod tests {
 
         assert_eq!(pd.status, PendingDeliveryStatus::WaitingToRetry);
         assert_eq!(pd.last_failure_reason.as_deref(), Some("handler error"));
-        assert_eq!(pd.compute_redelivery_delay(&policy), Duration::from_millis(50));
+        assert_eq!(
+            pd.compute_redelivery_delay(&policy),
+            Duration::from_millis(50)
+        );
     }
 
     #[test]
@@ -293,15 +296,24 @@ mod tests {
 
         // Tentative 1
         pd.on_send_attempt("w1", policy.ack_timeout);
-        assert_eq!(pd.compute_redelivery_delay(&policy), Duration::from_millis(100)); // 100 * 2^0
+        assert_eq!(
+            pd.compute_redelivery_delay(&policy),
+            Duration::from_millis(100)
+        ); // 100 * 2^0
 
         // Tentative 2
         pd.on_send_attempt("w1", policy.ack_timeout);
-        assert_eq!(pd.compute_redelivery_delay(&policy), Duration::from_millis(200)); // 100 * 2^1
+        assert_eq!(
+            pd.compute_redelivery_delay(&policy),
+            Duration::from_millis(200)
+        ); // 100 * 2^1
 
         // Tentative 3
         pd.on_send_attempt("w1", policy.ack_timeout);
-        assert_eq!(pd.compute_redelivery_delay(&policy), Duration::from_millis(400)); // 100 * 2^2
+        assert_eq!(
+            pd.compute_redelivery_delay(&policy),
+            Duration::from_millis(400)
+        ); // 100 * 2^2
     }
 
     #[test]
@@ -350,7 +362,10 @@ mod tests {
 
         pd.on_ack_timeout(&policy);
         assert_eq!(pd.status, PendingDeliveryStatus::WaitingToRetry);
-        assert_eq!(pd.last_failure_reason.as_deref(), Some("ACK timeout expired"));
+        assert_eq!(
+            pd.last_failure_reason.as_deref(),
+            Some("ACK timeout expired")
+        );
     }
 
     #[test]
@@ -368,4 +383,3 @@ mod tests {
         assert_eq!(pd.last_failure_reason.as_deref(), Some("worker reconnect"));
     }
 }
-

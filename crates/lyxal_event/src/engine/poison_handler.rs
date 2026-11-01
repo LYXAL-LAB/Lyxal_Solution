@@ -253,15 +253,11 @@ mod tests {
         pending.delivery_attempt = 5;
         pending.last_failure_reason = Some("Handler error".into());
 
-        let (res, dlq) = resolve_poison_policy(
-            &pending,
-            42,
-            "sub_test",
-            &PoisonPolicy::Drop,
-            None,
-            |msg| ("test.event".into(), serde_json::json!(msg), None),
-        )
-        .expect("Drop resolution should succeed");
+        let (res, dlq) =
+            resolve_poison_policy(&pending, 42, "sub_test", &PoisonPolicy::Drop, None, |msg| {
+                ("test.event".into(), serde_json::json!(msg), None)
+            })
+            .expect("Drop resolution should succeed");
 
         assert_eq!(res, PoisonResolution::Resolved);
         assert!(dlq.is_none());
@@ -358,9 +354,6 @@ mod tests {
             meta.get("x-poison-policy").and_then(|v| v.as_str()),
             Some("dead_letter")
         );
-        assert_eq!(
-            meta.get("tenant").and_then(|v| v.as_str()),
-            Some("acme")
-        );
+        assert_eq!(meta.get("tenant").and_then(|v| v.as_str()), Some("acme"));
     }
 }

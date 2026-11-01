@@ -1,6 +1,6 @@
 # Plan d'implémentation — Alignement du SDK Rust `surrealdb` sur SurrealDB 3.3.4
 
-> **Statut** : VALIDÉ PAR LE CTO (2026-11-01) — exécution en cours : **Lot 1 terminé**.
+> **Statut** : VALIDÉ PAR LE CTO (2026-11-01) — exécution en cours : **Lots 1 et 2 terminés**.
 > **Décisions CTO** : Q1 → SDK et serveur en 3.3.x (dernier patch) ; Q2 → `lyxal_error` dépend de `surrealdb-types` ; Q3 → requêtes directes de `lyxal_pipeline_ingestion` portées telles quelles, remplacées à la reprise du module.
 > **Module porteur** : `lyxal_surreal` (transport unique, §11.1).
 > **Impact** : transverse — tous les crates du workspace qui parlent à SurrealDB.
@@ -92,7 +92,7 @@ where T: SurrealValue + Send, P: SurrealValue + Send + 'static;
 | Crate | Fichiers | Cause | Lot |
 | :--- | :--- | :--- | :- |
 | `lyxal_error` | 7 fichiers de `functions/` | `type::is::*` → `type::is_*` | 1 (corrigé) |
-| `lyxal_event` | `tests/concurrency/lot3a_queries.surql` | à analyser | 2 |
+| `lyxal_event` | `tests/concurrency/lot3a_queries.surql` | fichier supprimé avec le dossier `tests/concurrency/` (décision CTO, Lot 2) | 2 (clos) |
 | `lyxal_runtime` | `schema/fields.surql` | à analyser | 3 |
 
 ## 6. Fonctions Core, erreurs et crypto
@@ -109,11 +109,11 @@ where T: SurrealValue + Send, P: SurrealValue + Send + 'static;
 | Lot | Contenu | Vérification |
 | :- | :--- | :--- |
 | 1 ✅ | `Cargo.toml` racine : `surrealdb = { version = "3.3", features = ["protocol-ws", "protocol-http", "kv-mem"] }`. `lyxal_error` + `lyxal_surreal` : `SurrealValue`, `call_fn`, `signin`, ré-exports. | `cargo test -p lyxal_error -p lyxal_surreal` |
-| 2 | `lyxal_event` : modèles, DTO, `event_store`, moteur, tests. | `cargo test -p lyxal_event` |
+| 2 ✅ | `lyxal_event` : modèles, DTO, `event_store`, moteur, tests. | `cargo test -p lyxal_event` |
 | 3 | `lyxal_runtime` : stores, verrous (`type::record`), migrations, santé, workers, tests. | `cargo test -p lyxal_runtime` |
 | 4 | `lyxal_pipeline_ingestion` : stockage, publisher, tests. | `cargo test -p lyxal_pipeline_ingestion` |
 | 5 | `apps/lyxal-server` : connexion, runtime, tests HTTP. | `cargo test -p lyxal-server` |
-| 6 | Preuve 3.3.4 : `cargo clippy --workspace --all-targets -D warnings` ; suite complète ; tests serveur (`ws://`) contre un `surreal start` 3.3.4 local (harnais `lyxal_event/tests/concurrency`) ; `surreal validate` sur tous les `.surql` du workspace. Mise à jour des skills qui citent `surrealdb = "2.2"`. | Rapport de tests joint |
+| 6 | Preuve 3.3.4 : `cargo clippy --workspace --all-targets -D warnings` ; suite complète ; tests serveur (`ws://`) contre un `surreal start` 3.3.4 local ; `surreal validate` sur tous les `.surql` du workspace. Mise à jour des skills qui citent `surrealdb = "2.2"`. | Rapport de tests joint |
 
 Les écarts de comportement du moteur 3.3 révélés par les tests (C1) sont corrigés dans le lot du crate concerné et listés dans le rapport final.
 
@@ -150,4 +150,21 @@ Les écarts de comportement du moteur 3.3 révélés par les tests (C1) sont cor
 * Nouveau test `test_remote_ws_root_signin_and_call_fn` (ignoré par défaut, lancé avec `LYXAL_SURREAL_WS_URL`) : connexion `ws://` + Root + `call_fn` réels.
 * Point d'attention pour les lots suivants : un `Option<_>` n'accepte que `NONE`, pas `NULL`. Les contrats `fn::result_ok` / `fn::error_result` renvoient bien `NONE`.
 * Résultats : `cargo test -p lyxal_error -p lyxal_surreal --all-features` → 39 tests OK (dont 6 sur serveur 3.3.4) + test distant OK ; `cargo clippy … -D warnings` OK ; `cargo fmt` appliqué aux deux crates.
+
+### Lot 2 — `lyxal_event` (terminé)
+
+* **Modèles publics** (`LyxalEventEnvelope`, `EventContext`, `EventDelivery`, `EventSubscription`, `EventDeadLetter`) : `SurrealValue` + `serde` (JSON des payloads et de l'API). **DTO internes** (`engine/dto.rs`, paramètres privés de `event_store.rs`) : `SurrealValue` seul.
+* **Identifiants typés** : `LyxalEventEnvelope.event_id` / `correlation_id` / `causation_id` passent de `uuid::Uuid` aux types existants `EventId` / `CorrelationId` / `CausationId`, qui implémentent `SurrealValue` sous forme de chaîne (conforme à `TYPE string` du schéma). Les modules `uuid_serde` / `opt_uuid_serde` (lecture tolérante de plusieurs anciens formats) sont supprimés (§0). `with_correlation_id` / `with_causation_id` prennent désormais les types typés. `PendingDeliveryItem` est typé (`EventContext`, `EventId`…) au lieu de chaînes et de JSON décodés avec repli silencieux.
+* **`RecordId` en 3.x** : plus de `Display` ni de `FromStr`. Remplacés par `to_sql()` (trait `ToSql`, ajouté aux ré-exports de `lyxal_surreal`) et `RecordId::parse_simple` / `RecordId::new`.
+* **Énumérations unitaires** : par défaut le derive encode `Pending` en `{pending: {}}`. `DeliveryStatus` utilise `#[surreal(untagged, rename_all = "snake_case")]` pour être lu et écrit en chaîne (`'pending'`), comme en base.
+* **SurrealQL** : `fn::event_publish` convertit `event_id` / `correlation_id` / `causation_id` en chaîne (`<string>`). En 3.x, `rand::uuid::v7()` renvoie un `uuid` natif ; sans cette conversion, l'exemple officiel de `DEFINE EVENT` (§5.6.1) échouait sur `TYPE string`. Le test `integration_define_event` couvre ce cas.
+* **Tests** : dossier `tests/concurrency/` supprimé (≈ 3 600 lignes de bancs d'essai des lots 3A/3B, tous ignorés, chemins Windows en dur, scripts PowerShell — décision CTO). Fixture de `integration_dto_contracts` corrigée (champs `published` / `published_at` absents du schéma : ignorés en 2.x, refusés en 3.3).
+* **Résultats** : `cargo test -p lyxal_event` → 80 tests OK + test de charge ignoré `integration_concurrency_1000` lancé à part (1 000 événements, OK) ; `cargo clippy -p lyxal_event --all-targets -D warnings` OK ; `cargo fmt` appliqué ; 27/27 `.surql` valides en 3.3.4. Les trois crates migrés : 117 tests OK.
+
+#### Défauts existants relevés (hors périmètre, à traiter à la reprise de `lyxal_event`)
+
+1. **Classification des erreurs par texte** : `EventStore::claim_batch` (et les autres méthodes au même schéma) réessaie dès que le message d'erreur contient « conflict » ou « retry ». Une erreur de désérialisation citant le champ `next_retry_at` a ainsi été réessayée ; le premier essai ayant déjà réclamé la livraison, le second renvoyait une liste vide — erreur masquée (§11.4). Il faut tester le type d'erreur, pas son texte.
+2. **Replis silencieux dans `EventWorker::fetch_and_enqueue_pending`** : un `event_id` absent est remplacé par un identifiant neuf, un contexte absent par le contexte par défaut.
+3. **Test `integration_concurrency_1000`** : marqué « Legacy … superseded by unified streaming architecture » ; à supprimer ou réécrire selon §0.
+4. **En-têtes de licence ASF** dans `engine/*.rs` (licence Apache Software Foundation), incohérents avec la licence du workspace.
 

@@ -27,11 +27,11 @@
 //!   local est immédiatement déclenché pour interrompre tout traitement ou dispatching en vol.
 //! - Un conflit de fencing n'est JAMAIS rejoué aveuglément.
 
+use async_trait::async_trait;
+use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use async_trait::async_trait;
-use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 use thiserror::Error;
@@ -311,4 +311,3 @@ mod tests {
         assert!(cancel.is_cancelled());
     }
 }
-
