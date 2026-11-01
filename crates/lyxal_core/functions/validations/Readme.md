@@ -55,9 +55,6 @@
 19. ip.surql
     fn::validation_ip
 
-20. json.surql
-    fn::validation_json
-
 21. object.surql
     fn::validation_object
 

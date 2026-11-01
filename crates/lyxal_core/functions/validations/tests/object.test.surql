@@ -181,23 +181,6 @@ RETURN fn::validation_object(
 
 
 -- ============================================================================
--- TEST 14 — Validation après décodage d'un JSON objet
--- Résultat attendu : { name: "Lyxal", enabled: true }
--- ============================================================================
-
-LET $decoded_configuration = fn::validation_json(
-    '{"name":"Lyxal","enabled":true}',
-    "CONFIGURATION",
-    10000
-);
-
-RETURN fn::validation_object(
-    $decoded_configuration,
-    "CONFIGURATION"
-);
-
-
--- ============================================================================
 -- TEST 15 — Nom technique vide
 -- Erreur attendue : VALIDATION_INVALID_FIELD_NAME
 -- ============================================================================
