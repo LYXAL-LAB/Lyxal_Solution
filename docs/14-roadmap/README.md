@@ -13,4 +13,4 @@ Ce dossier regroupe les feuilles de route stratégiques et d'intégration transv
    - [`crates/lyxal_error/ROADMAP.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_error/ROADMAP.md) — Évolutions V1 à V3 du moteur d'erreurs et d'observabilité.
 
 3. **Audits d'Architecture & Décisions Structurantes** :
-   - [`docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md) — Audit exhaustif des tables relationnelles SurrealDB (`TYPE NORMAL` vs `TYPE RELATION`).
+   - [`docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md`](../01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md) — Audit exhaustif des tables relationnelles SurrealDB (`TYPE NORMAL` vs `TYPE RELATION`).

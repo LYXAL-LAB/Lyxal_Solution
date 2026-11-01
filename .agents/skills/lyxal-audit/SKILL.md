@@ -69,7 +69,7 @@ Inspecter les fichiers `.surql` du module pour contrôler :
    - Longueur $\le 300$ lignes par fonction.
 3. **Schémas & Sécurité RLS** :
    - `DEFINE TABLE OVERWRITE <module>_<table_name> TYPE NORMAL SCHEMAFULL PERMISSIONS ... COMMENT "..."` ;
-   - Vérification que toute table `TYPE RELATION` éventuelle a fait l'objet d'une validation CTO explicite (cf. [`AUDIT_SURREALDB_RELATION_TABLES.md`](../../../docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md)) ;
+   - Vérification que toute table `TYPE RELATION` éventuelle a fait l'objet d'une validation CTO explicite (cf. [`AUDIT_SURREALDB_RELATION_TABLES.md`](../../../docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md)) ;
    - Vérification des permissions (`$token` / `$auth`, isolation stricte de `tenant_id`, verrous `DEFINE EVENT ... Guard` sur les tables critiques).
 4. **Événements (`events/*.surql`)** :
    - Les `DEFINE EVENT` de publication passent exclusivement par `fn::event_publish({...})` sans effet de bord direct sur un autre module.

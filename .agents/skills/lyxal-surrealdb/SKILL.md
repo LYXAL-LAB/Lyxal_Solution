@@ -6,7 +6,7 @@ description: >-
 
 # Lyxal OS — Ingénierie, Migrations & Sécurité SurrealDB 3.3.4 (`lyxal-surrealdb`)
 
-> **Source normative** : Ce Skill applique les standards SurrealQL définis dans [`.agents/AGENTS.md`](../../AGENTS.md), [`.agents/rules/lyxal_standards_and_checklist.md`](../../rules/lyxal_standards_and_checklist.md) et l'audit architectural [`docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md`](../../../docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md).
+> **Source normative** : Ce Skill applique les standards SurrealQL définis dans [`.agents/AGENTS.md`](../../AGENTS.md), [`.agents/rules/lyxal_standards_and_checklist.md`](../../rules/lyxal_standards_and_checklist.md) et l'audit architectural [`docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md`](../../../docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md).
 
 ---
 
@@ -53,7 +53,7 @@ Avant d'écrire ou de recommander une construction SurrealQL, appliquer ces règ
 - **`TYPE NORMAL` vs `TYPE RELATION`** :
   - Toujours utiliser `TYPE NORMAL` avec des champs `TYPE record<cible> REFERENCE` par défaut.
   - **Interdiction** de convertir une table existante (notamment les 13 tables gelées de `lyxal_catalogue` V1.1 et les 11 tables de `lyxal_pipeline_ingestion` V1.0.0) en `TYPE RELATION`.
-  - Toute nouvelle table `TYPE RELATION IN ... OUT ... SCHEMAFULL` requiert une validation formelle préalable du CTO (cf. [`AUDIT_SURREALDB_RELATION_TABLES.md`](../../../docs/architecture/AUDIT_SURREALDB_RELATION_TABLES.md)).
+  - Toute nouvelle table `TYPE RELATION IN ... OUT ... SCHEMAFULL` requiert une validation formelle préalable du CTO (cf. [`AUDIT_SURREALDB_RELATION_TABLES.md`](../../../docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md)).
 - **Champs optionnels et tableaux typés** :
   - Utiliser `TYPE option<string>`, `TYPE option<decimal>`, `TYPE option<datetime>`, `TYPE option<record<...>>`.
   - Pour les tableaux d'objets structurés, déclarer à la fois `DEFINE FIELD OVERWRITE items ON TABLE ... TYPE option<array<object>> DEFAULT [];`, `DEFINE FIELD OVERWRITE items[*] ON TABLE ... TYPE object;` et chaque sous-champ `items[*].champ`.
