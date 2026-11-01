@@ -1,0 +1,128 @@
+# Plan d'implémentation — Alignement du SDK Rust `surrealdb` sur SurrealDB 3.3.4
+
+> **Statut** : EN ATTENTE DE VALIDATION CTO — aucune ligne de code modifiée.
+> **Module porteur** : `lyxal_surreal` (transport unique, §11.1).
+> **Impact** : transverse — tous les crates du workspace qui parlent à SurrealDB.
+> **Régime** : pré-production « Zéro Dette » (`.agents/AGENTS.md` §0) — ruptures de contrat autorisées si tous les appelants sont mis à jour dans le même chantier.
+
+---
+
+## 1. Objectif
+
+Passer le workspace de `surrealdb = "2.2"` (résolu en **2.6.5** dans `Cargo.lock`) à **`surrealdb` 3.3.x**, pour que :
+
+1. le SDK parle le même protocole que le serveur cible **3.3.4** ;
+2. les tests embarqués (`mem://`) s'exécutent sur le **moteur 3.3** et non plus sur le moteur 2.6 ;
+3. le code ne contienne plus aucune construction propre à 2.x.
+
+## 2. Constats (vérifiés le 2026-11-01)
+
+| # | Constat | Preuve |
+| :- | :--- | :--- |
+| C1 | Le workspace compile et ses tests passent, mais **uniquement sur le moteur 2.6 embarqué** : la quasi-totalité des tests utilise `mem://`. Aucun test du workspace ne prouve aujourd'hui le fonctionnement sur 3.x. | `grep mem:// crates/*/tests` |
+| C2 | **Les verrous de `lyxal_runtime` sont incompatibles avec un serveur 3.x** : 10 requêtes utilisent `type::thing(...)`, supprimée en 3.x (`Invalid function/constant path`, vérifié sur le binaire 3.3.4). | `lock/installation.rs` (7), `lock/surreal.rs` (3) |
+| C3 | En SDK 3.x, l'échange de données avec la base ne passe plus par `serde` mais par le trait **`SurrealValue`** (`surrealdb::types`). `.bind(...)` et `.take(...)` exigent `SurrealValue`. | Essai de compilation sur une copie jetable : `call.rs` → `the trait SurrealValue is not implemented` |
+| C4 | `surrealdb::RecordId`, `surrealdb::Datetime` et `surrealdb::sql::Thing` n'existent plus à ces chemins. Les types sont dans `surrealdb::types::{RecordId, Datetime, …}`. | Essai : `cannot find RecordId in surrealdb` |
+| C5 | `signin(Root { … })` prend désormais des `String` (et non des `&str`). | Essai : `client.rs:95-96` |
+| C6 | Le SDK fournit une passerelle `SerdeWrapper<T>`, mais sa documentation précise qu'elle **n'a pas la parité** avec `SurrealValue` (variantes d'enum, types natifs comme `RecordId` non préservés) et recommande `SurrealValue` « directement chaque fois que possible ». | `surrealdb-types/src/traits/surreal_value.rs` |
+| C7 | Le derive `SurrealValue` gère `default`, `rename`, `rename_all`, `tag`, `content`, `untagged`, `flatten`, `skip_content_if`. Il ne gère **pas** `alias` ni `with`. | `surrealdb-types-derive` |
+
+### Volume concerné (crates du workspace)
+
+| Crate | Structs `serde` | `call_fn` | `.query(` directs | Lignes `src/` |
+| :--- | ---: | ---: | ---: | ---: |
+| `lyxal_error` | 17 | – | – | 468 |
+| `lyxal_surreal` | 3 | 2 | 1 | 442 |
+| `lyxal_event` | 42 | 21 | 3 | 7 126 |
+| `lyxal_runtime` | 93 | – | 40 | 15 016 |
+| `lyxal_pipeline_ingestion` | 69 | 27 | 12 | 7 992 |
+| `apps/lyxal-server` | 20 | – | 5 | – |
+| `lyxal_crypto` | 0 | – | – | non concerné |
+
+Tests : ~22 000 lignes dans `crates/*/tests` et `apps/*/tests`.
+
+## 3. Choix technique
+
+| Option | Description | Décision |
+| :--- | :--- | :--- |
+| A. Passerelle `SerdeWrapper` | Garder tous les DTO `serde`, envelopper dans `call_fn`. Changement minimal. | **Rejetée** : perte de typage natif (`RecordId`, `Datetime`, enums), dette assumée dès le départ (C6). |
+| B. Passer par `serde_json::Value` | Convertir chaque DTO en JSON avant `bind`. | **Rejetée** : même perte de types natifs, double conversion, logique de transport dupliquée. |
+| **C. `SurrealValue` natif** | Chaque type qui traverse la frontière Rust ↔ SurrealDB dérive `SurrealValue`. | **Retenue** : conforme à la recommandation du SDK, zéro passerelle, types natifs préservés. |
+
+`Serialize` / `Deserialize` ne restent **que** sur les types qui servent aussi à autre chose que la base (API HTTP JSON d'`apps/lyxal-server`, fichiers `manifest.toml`, configuration). Un type peut dériver les deux.
+
+## 4. Contrats Rust modifiés
+
+### 4.1. `lyxal_surreal` (contrat public central)
+
+```rust
+// Avant
+async fn call_fn<T, P>(&self, function_name: &'static str, params: P) -> Result<T, LyxalSurrealError>
+where T: DeserializeOwned + Send, P: Serialize + Send + 'static;
+
+// Après
+async fn call_fn<T, P>(&self, function_name: &'static str, params: P) -> Result<T, LyxalSurrealError>
+where T: SurrealValue + Send, P: SurrealValue + Send + 'static;
+```
+
+* `create_surreal_client` : signature inchangée ; seul l'appel interne `signin(Root { username: String, password: String })` change.
+* Ré-export depuis `lyxal_surreal` des types du SDK utilisés par les modules : `pub use surrealdb::types::{SurrealValue, RecordId, Datetime, Value};`. Les modules continuent de définir leurs alias dans `models/types.rs` (§12.2) à partir de ces types.
+* `LyxalSurrealError::Database(surrealdb::Error)` : conservé ; vérifier la conversion `From` avec le nouveau type d'erreur.
+
+### 4.2. `lyxal_error`
+
+* `LyxalResult<T>` et `LyxalCallError`/structures d'erreur désérialisées depuis SurrealQL : dérivent `SurrealValue` (en plus de `Serialize`, car renvoyées aussi en JSON par l'API HTTP).
+* `lyxal_error` ajoute la dépendance `surrealdb-types` (types uniquement, sans moteur) — **point à valider** (§8, Q2).
+
+### 4.3. Modules consommateurs
+
+* Tous les `XxxParams` / `XxxResult` et modèles lus en base : `#[derive(SurrealValue)]`.
+* Attributs `serde` convertis vers leurs équivalents `SurrealValue` (`skip_serializing_if` → `skip_content_if`, etc.).
+* `#[serde(alias = …)]` (10 occurrences) : **supprimés** — ce sont des compatibilités avec d'anciens noms de champs, interdites par le §0.
+* `#[serde(with = …)]` (3 occurrences) : remplacés par le type natif (`Datetime`, `Duration`) ou une implémentation manuelle de `SurrealValue`.
+* `surrealdb::sql::Thing as RecordId` → `lyxal_surreal::RecordId`.
+
+## 5. Changements SurrealQL dans le Rust
+
+* `type::thing('table', $key_id)` → `type::record('table', $key_id)` (10 occurrences dans `lyxal_runtime/src/lock/`).
+* Revue de chaque requête `.query(...)` directe (61 au total) contre les règles du skill `lyxal-surrealdb` §2.5 (fonctions supprimées, signatures 3.x).
+* Aucun fichier `.surql` n'a besoin de changer : `lyxal_core` a été rejoué sur 3.3.4 sans écart, et `surreal validate` passe sur les fichiers des modules (à reconfirmer en Lot 6).
+
+## 6. Fonctions Core, erreurs et crypto
+
+* **Fonctions `lyxal_core` réutilisées** : aucune nouvelle ; aucune fonction Core manquante identifiée.
+* **Nouvelles fonctions SurrealQL** : aucune.
+* **Codes d'erreur master data** : aucun nouveau.
+* **Besoin crypto** : aucun (`lyxal_crypto` n'utilise pas SurrealDB).
+
+## 7. Lots d'exécution (un commit par lot, workspace compilable à chaque lot)
+
+| Lot | Contenu | Vérification |
+| :- | :--- | :--- |
+| 1 | `Cargo.toml` racine : `surrealdb = { version = "3.3", features = ["protocol-ws", "protocol-http", "kv-mem"] }`. `lyxal_error` + `lyxal_surreal` : `SurrealValue`, `call_fn`, `signin`, ré-exports. | `cargo test -p lyxal_error -p lyxal_surreal` |
+| 2 | `lyxal_event` : modèles, DTO, `event_store`, moteur, tests. | `cargo test -p lyxal_event` |
+| 3 | `lyxal_runtime` : stores, verrous (`type::record`), migrations, santé, workers, tests. | `cargo test -p lyxal_runtime` |
+| 4 | `lyxal_pipeline_ingestion` : stockage, publisher, tests. | `cargo test -p lyxal_pipeline_ingestion` |
+| 5 | `apps/lyxal-server` : connexion, runtime, tests HTTP. | `cargo test -p lyxal-server` |
+| 6 | Preuve 3.3.4 : `cargo clippy --workspace --all-targets -D warnings` ; suite complète ; tests serveur (`ws://`) contre un `surreal start` 3.3.4 local (harnais `lyxal_event/tests/concurrency`) ; `surreal validate` sur tous les `.surql` du workspace. Mise à jour des skills qui citent `surrealdb = "2.2"`. | Rapport de tests joint |
+
+Les écarts de comportement du moteur 3.3 révélés par les tests (C1) sont corrigés dans le lot du crate concerné et listés dans le rapport final.
+
+## 8. Questions au CTO
+
+* **Q1 — Version exacte** : le SDK `=3.3.4` tire ses sous-crates en `^3.3.4`, aujourd'hui résolues en **3.3.5**. Proposition : contrainte `"3.3"` dans `Cargo.toml` (moteur embarqué en 3.3.x le plus récent) et binaire serveur 3.3.x de même patch ; ou figer tout en 3.3.4 via `Cargo.lock`.
+* **Q2 — `lyxal_error` et `surrealdb-types`** : `lyxal_error` est sous `lyxal_surreal` dans la hiérarchie et ne dépend pas de SurrealDB aujourd'hui. Pour que `LyxalResult<T>` dérive `SurrealValue`, il doit dépendre de `surrealdb-types` (types seuls, pas de moteur). Alternative : `lyxal_surreal` désérialise une structure interne puis la convertit en `LyxalResult<T>`. Recommandation : dépendance à `surrealdb-types` (plus simple, pas de duplication).
+* **Q3 — Requêtes directes dans `lyxal_pipeline_ingestion`** : ce module métier fait 12 `.query(...)` directs, contraire au §11.5 (`raw_query` réservé au runtime, aux migrations et aux tests). Proposition : les **porter tels quels** dans ce chantier (changement de SDK uniquement), et les remplacer par des fonctions `fn::ingestion_*` lors de la reprise du module.
+
+## 9. Hors périmètre
+
+* `lyxal_booking/engine` (SDK 2.2) et `lyxal_scheduler/engine` (SDK 3) : hors workspace, traités à la reprise de chaque module.
+* Toute refonte fonctionnelle des crates : seul le changement de SDK et ce qu'il impose est fait ici.
+
+## 10. Checklist §13 (extraits pertinents)
+
+* [x] Responsabilité dans le bon crate (`lyxal_surreal` reste le seul porteur de `call_fn`).
+* [x] Aucune primitive Core dupliquée ; aucune nouvelle primitive Core ou crypto.
+* [x] Aucune dépendance circulaire (Q2 ajoute une dépendance vers un crate externe de types, pas vers un crate Lyxal supérieur).
+* [ ] Zéro dette : `alias` supprimés, aucune passerelle `serde` résiduelle — vérifié au Lot 6.
+* [ ] Validation explicite du CTO.
