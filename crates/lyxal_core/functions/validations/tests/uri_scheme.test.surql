@@ -1,52 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/uri_scheme.test.surql
--- Fonction     : fn::validation_uri_scheme
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_uri_scheme (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_uri_scheme(" HTTPS ", ["https", "sftp"])
+    == { valid: true, value: "https", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Schéma HTTPS
--- Résultat attendu : "https"
--- ============================================================================
-RETURN fn::validation_uri_scheme("HTTPS", "SCHEME", NONE);
+-- test: schéma invalide
+RETURN fn::validation_uri_scheme("1http", ["https", "sftp"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "uri_scheme" } };
 
--- ============================================================================
--- TEST 2 — Schéma personnalisé valide
--- Résultat attendu : "lyxal+secure"
--- ============================================================================
-RETURN fn::validation_uri_scheme(
-    "lyxal+secure", "SCHEME", NONE
-);
+-- test: schéma non autorisé
+RETURN fn::validation_uri_scheme("ftp", ["https", "sftp"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: ["https", "sftp"] } };
 
--- ============================================================================
--- TEST 3 — Schéma autorisé
--- Résultat attendu : "https"
--- ============================================================================
-RETURN fn::validation_uri_scheme(
-    "https", "SCHEME", ["http", "https"]
-);
+-- test: chaîne blanche
+RETURN fn::validation_uri_scheme("  ", ["https", "sftp"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 4 — Schéma interdit
--- Erreur attendue : SCHEME_URI_SCHEME_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_uri_scheme(
-    "ftp", "SCHEME", ["http", "https"]
-);
+-- test: valeur absente
+RETURN fn::validation_uri_scheme(NONE, ["https", "sftp"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 5 — Premier caractère invalide
--- Erreur attendue : SCHEME_INVALID_URI_SCHEME
--- ============================================================================
-RETURN fn::validation_uri_scheme(
-    "1http", "SCHEME", NONE
-);
+-- test: valeur NULL
+RETURN fn::validation_uri_scheme(NULL, ["https", "sftp"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_uri_scheme(42, ["https", "sftp"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_uri_scheme("https", []);
+
+-- test: schéma autorisé invalide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_uri_scheme("https", ["ht tp"]);

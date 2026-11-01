@@ -1,114 +1,58 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/totp_secret.surql
--- Fonction     : fn::validation_totp_secret
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/totp_secret.surql
+-- Fonction : fn::validation_totp_secret
 --
--- Description
--- -----------
--- Valide lexicalement un secret TOTP encodé en Base32 sans padding.
+-- Valide un secret TOTP encodé en Base32 (A-Z, 2-7), longueur bornée ; la
+-- valeur renvoyée est en majuscules.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $min_length: int
--- $max_length: int
+--   $value      : any — valeur à contrôler
+--   $min_length : int — longueur minimale (>= 1)
+--   $max_length : int — longueur maximale (>= $min_length)
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_TOTP_SECRET
--- <FIELD>_TOO_SHORT
--- <FIELD>_TOO_LONG
--- VALIDATION_INVALID_TOTP_SECRET_LENGTH_RANGE
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le secret en majuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $min_length < 1 ou $min_length > $max_length
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Primitive pure : aucune lecture ou écriture persistante, aucun appel réseau
--- et aucun effet secondaire.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::uppercase()
---   - string::matches()
---   - string::len()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
--- Limite
--- ------
--- La fonction valide la forme Base32 mais ne génère ni ne vérifie un code TOTP.
+-- Exemple (dans une fonction de module)
+--   LET $secret = fn::validation_totp_secret($params.secret, 16, 64);
+--   IF !$secret.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $secret.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_totp_secret(
     $value: any,
-    $field: string,
     $min_length: int,
     $max_length: int
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $min_length < 1 OR $min_length > $max_length { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::uppercase(string::trim($value));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $length = string::len($clean);
+    IF $length < $min_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: $min_length, length: $length } }; };
+    IF $max_length IS NOT NONE AND $length > $max_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } }; };
+    IF !string::matches($clean, "^[A-Z2-7]+$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "base32" } };
     };
-
-    IF $min_length < 1 OR $max_length < 1 OR $min_length > $max_length {
-        THROW "VALIDATION_INVALID_TOTP_SECRET_LENGTH_RANGE";
-    };
-
-    LET $secret = string::uppercase($clean_value);
-    LET $length = string::len($secret);
-
-    IF $length < $min_length {
-        THROW string::concat($clean_field, "_TOO_SHORT");
-    };
-
-    IF $length > $max_length {
-        THROW string::concat($clean_field, "_TOO_LONG");
-    };
-
-    IF !string::matches($secret, "^[A-Z2-7]+$") {
-        THROW string::concat($clean_field, "_INVALID_TOTP_SECRET");
-    };
-
-    RETURN $secret;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide lexicalement un secret TOTP Base32 sans padding et le normalise en
-majuscules.
-"
+COMMENT "Valide un secret TOTP encodé en Base32 (A-Z, 2-7), longueur bornée ; la valeur renvoyée est en majuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

@@ -1,41 +1,26 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/ipv6.test.surql
--- Fonction     : fn::validation_ipv6
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_ipv6 (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_ipv6(" 2001:DB8::1 ")
+    == { valid: true, value: "2001:db8::1", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — IPv6 complète valide
--- Résultat attendu : valeur en minuscules
--- ============================================================================
-RETURN fn::validation_ipv6(
-    "2001:0DB8:85A3:0000:0000:8A2E:0370:7334",
-    "IP_ADDRESS"
-);
+-- test: adresse IPv4
+RETURN fn::validation_ipv6("10.0.0.1")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "ipv6" } };
 
--- ============================================================================
--- TEST 2 — IPv6 compressée valide
--- Résultat attendu : "2001:db8::1"
--- ============================================================================
-RETURN fn::validation_ipv6("2001:db8::1", "IP_ADDRESS");
+-- test: chaîne blanche
+RETURN fn::validation_ipv6("  ")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 3 — Loopback IPv6 valide
--- Résultat attendu : "::1"
--- ============================================================================
-RETURN fn::validation_ipv6("::1", "IP_ADDRESS");
+-- test: valeur absente
+RETURN fn::validation_ipv6(NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — IPv4 refusée
--- Erreur attendue : IP_ADDRESS_INVALID_IPV6
--- ============================================================================
-RETURN fn::validation_ipv6("192.168.1.1", "IP_ADDRESS");
+-- test: valeur NULL
+RETURN fn::validation_ipv6(NULL)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_ipv6(42)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };

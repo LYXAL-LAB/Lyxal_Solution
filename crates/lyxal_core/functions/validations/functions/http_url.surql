@@ -1,27 +1,58 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
--- Version 1.0.0 — PERMISSIONS FULL
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/validations/functions/http_url.surql
 -- Fonction : fn::validation_http_url
+--
+-- Valide une URL http:// ou https://, selon les schémas autorisés.
+--
+-- Paramètres
+--   $value       : any — valeur à contrôler
+--   $allow_http  : bool — accepter http://
+--   $allow_https : bool — accepter https://
+--
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne sans espaces périphériques, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_NOT_ALLOWED
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : aucun schéma autorisé
+--
+-- Exemple (dans une fonction de module)
+--   LET $callback = fn::validation_http_url($params.callback_url, false, true);
+--   IF !$callback.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $callback.code });
+--   };
+-- ============================================================================
+
 DEFINE FUNCTION OVERWRITE fn::validation_http_url(
-    $value: any, $field: string, $allow_http: bool, $allow_https: bool
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF !$allow_http AND !$allow_https { THROW "VALIDATION_NO_HTTP_SCHEME_ALLOWED"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-    LET $clean_value = string::trim($value);
-    IF $clean_value = "" { THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED"); };
-    LET $lower = string::lowercase($clean_value);
-    LET $is_http = string::starts_with($lower, "http://");
-    LET $is_https = string::starts_with($lower, "https://");
-    IF ($is_http AND !$allow_http) OR ($is_https AND !$allow_https) OR (!$is_http AND !$is_https) {
-        THROW string::concat($clean_field, "_INVALID_HTTP_SCHEME");
+    $value: any,
+    $allow_http: bool,
+    $allow_https: bool
+) -> object {
+    IF !$allow_http AND !$allow_https { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    IF !type::is_string($value) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-    IF !string::is_url($clean_value) { THROW string::concat($clean_field, "_INVALID_HTTP_URL"); };
-    RETURN $clean_value;
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $is_http = string::starts_with(string::lowercase($clean), "http://");
+    LET $is_https = string::starts_with(string::lowercase($clean), "https://");
+    IF (!$is_http AND !$is_https) OR !string::is_url($clean) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "http_url" } };
+    };
+    IF ($is_http AND !$allow_http) OR ($is_https AND !$allow_https) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "scheme" } };
+    };
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "Valide une URL absolue utilisant HTTP ou HTTPS."
+COMMENT "Valide une URL http:// ou https://, selon les schémas autorisés. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

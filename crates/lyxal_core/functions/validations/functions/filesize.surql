@@ -1,115 +1,52 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/filesize.surql
--- Fonction     : fn::validation_filesize
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/filesize.surql
+-- Fonction : fn::validation_filesize
 --
--- Description
--- -----------
--- Valide une taille de fichier exprimée en octets sous forme d'entier non négatif.
+-- Valide une taille de fichier en octets : entier positif ou nul,
+-- facultativement compris entre deux bornes incluses.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $min_bytes: option<int>
--- $max_bytes: option<int>
+--   $value     : any — valeur à contrôler
+--   $min_bytes : option<int> — taille minimale (>= 0), NONE pour aucune
+--   $max_bytes : option<int> — taille maximale (>= 0), NONE pour aucune
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_TOO_SMALL
--- <FIELD>_TOO_LARGE
--- VALIDATION_INVALID_FILESIZE_RANGE
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = l'entier d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_TOO_SMALL
+--     CORE_VALIDATION_TOO_LARGE
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : borne négative ou $min_bytes > $max_bytes
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun accès réseau ;
---   - aucune inspection binaire réelle du fichier ;
---   - aucune conversion implicite de la valeur validée.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::concat()
---   - type::is_null()
---   - type::is_int()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $size = fn::validation_filesize($params.size, 1, 10485760);
+--   IF !$size.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $size.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_filesize(
     $value: any,
-    $field: string,
     $min_bytes: option<int>,
     $max_bytes: option<int>
-) -> int {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $min_bytes IS NOT NONE AND $min_bytes < 0 {
-        THROW "VALIDATION_INVALID_FILESIZE_RANGE";
-    };
-
-    IF $max_bytes IS NOT NONE AND $max_bytes < 0 {
-        THROW "VALIDATION_INVALID_FILESIZE_RANGE";
-    };
-
-    IF $min_bytes IS NOT NONE
-        AND $max_bytes IS NOT NONE
-        AND $min_bytes > $max_bytes
-    {
-        THROW "VALIDATION_INVALID_FILESIZE_RANGE";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF ($min_bytes IS NOT NONE AND $min_bytes < 0) OR ($max_bytes IS NOT NONE AND $max_bytes < 0) { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $min_bytes IS NOT NONE AND $max_bytes IS NOT NONE AND $min_bytes > $max_bytes { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_int($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "int", actual: type::of($value) } };
     };
-
-    IF $value < 0 {
-        THROW string::concat($clean_field, "_TOO_SMALL");
-    };
-
-    IF $min_bytes IS NOT NONE AND $value < $min_bytes {
-        THROW string::concat($clean_field, "_TOO_SMALL");
-    };
-
-    IF $max_bytes IS NOT NONE AND $value > $max_bytes {
-        THROW string::concat($clean_field, "_TOO_LARGE");
-    };
-
-    RETURN $value;
+    LET $min = $min_bytes ?? 0;
+    IF $value < $min { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min: $min } }; };
+    IF $max_bytes IS NOT NONE AND $value > $max_bytes { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: $max_bytes } }; };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide une taille de fichier exprimée en octets dans une plage inclusive.
-"
+COMMENT "Valide une taille de fichier bornée. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

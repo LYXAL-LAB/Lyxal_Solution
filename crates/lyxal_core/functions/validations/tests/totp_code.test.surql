@@ -1,38 +1,37 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/totp_code.test.surql
--- Fonction     : fn::validation_totp_code
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_totp_code (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_totp_code(" 123456 ", 6)
+    == { valid: true, value: "123456", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Code à 6 chiffres
--- Résultat attendu : "123456"
--- ============================================================================
-RETURN fn::validation_totp_code("123456", "TOTP_CODE", 6);
+-- test: huit chiffres
+RETURN fn::validation_totp_code("12345678", 8)
+    == { valid: true, value: "12345678", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Code à 8 chiffres
--- Résultat attendu : "12345678"
--- ============================================================================
-RETURN fn::validation_totp_code("12345678", "TOTP_CODE", 8);
+-- test: cinq chiffres
+RETURN fn::validation_totp_code("12345", 6)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "totp_code", digits: 6 } };
 
--- ============================================================================
--- TEST 3 — Longueur invalide
--- Erreur attendue : TOTP_CODE_INVALID_TOTP_CODE
--- ============================================================================
-RETURN fn::validation_totp_code("12345", "TOTP_CODE", 6);
+-- test: lettre
+RETURN fn::validation_totp_code("12345a", 6).code == "CORE_VALIDATION_FORMAT";
 
--- ============================================================================
--- TEST 4 — Lettres interdites
--- Erreur attendue : TOTP_CODE_INVALID_TOTP_CODE
--- ============================================================================
-RETURN fn::validation_totp_code("12A456", "TOTP_CODE", 6);
+-- test: chaîne blanche
+RETURN fn::validation_totp_code("  ", 6)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_totp_code(NONE, 6)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_totp_code(NULL, 6)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_totp_code(42, 6)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: nombre de chiffres non pris en charge
+-- attendu-erreur: CORE_UNSUPPORTED_OPTION
+RETURN fn::validation_totp_code("123456", 7);

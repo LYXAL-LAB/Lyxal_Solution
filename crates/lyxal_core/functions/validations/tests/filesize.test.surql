@@ -1,58 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/filesize.test.surql
--- Fonction     : fn::validation_filesize
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_filesize (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: taille dans les bornes
+RETURN fn::validation_filesize(2048, 1, 4096)
+    == { valid: true, value: 2048, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Taille valide
--- Résultat attendu : 1048576
--- ============================================================================
-RETURN fn::validation_filesize(
-    1048576,
-    "FILE_SIZE",
-    1,
-    10485760
-);
+-- test: taille nulle sans minimum
+RETURN fn::validation_filesize(0, NONE, NONE)
+    == { valid: true, value: 0, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Fichier vide autorisé
--- Résultat attendu : 0
--- ============================================================================
-RETURN fn::validation_filesize(
-    0,
-    "FILE_SIZE",
-    0,
-    NONE
-);
+-- test: taille négative
+RETURN fn::validation_filesize(-1, NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min: 0 } };
 
--- ============================================================================
--- TEST 3 — Taille trop élevée
--- Erreur attendue : FILE_SIZE_TOO_LARGE
--- ============================================================================
-RETURN fn::validation_filesize(
-    10485761,
-    "FILE_SIZE",
-    1,
-    10485760
-);
+-- test: trop grande
+RETURN fn::validation_filesize(5000, NONE, 4096)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: 4096 } };
 
--- ============================================================================
--- TEST 4 — Decimal refusé
--- Erreur attendue : FILE_SIZE_INVALID_TYPE
--- ============================================================================
-RETURN fn::validation_filesize(
-    1024dec,
-    "FILE_SIZE",
-    0,
-    NONE
-);
+-- test: valeur absente
+RETURN fn::validation_filesize(NONE, NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_filesize(NULL, NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type float refusé
+RETURN fn::validation_filesize(1.5f, NONE, NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "int", actual: "float" } };
+
+-- test: borne négative
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_filesize(1, -1, NONE);
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_filesize(1, 10, 5);

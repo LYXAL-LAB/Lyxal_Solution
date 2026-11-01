@@ -1,54 +1,44 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/cidr.test.surql
--- Fonction     : fn::validation_cidr
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_cidr (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_cidr(" 10.0.0.0/8 ", true, true)
+    == { valid: true, value: "10.0.0.0/8", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — CIDR IPv4 valide
--- Résultat attendu : "192.168.1.0/24"
--- ============================================================================
-RETURN fn::validation_cidr(
-    "192.168.1.0/24", "CIDR", true, false
-);
+-- test: IPv6 en minuscules
+RETURN fn::validation_cidr("2001:DB8::/32", true, true)
+    == { valid: true, value: "2001:db8::/32", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — CIDR IPv6 valide
--- Résultat attendu : "2001:db8::/32"
--- ============================================================================
-RETURN fn::validation_cidr(
-    "2001:DB8::/32", "CIDR", false, true
-);
+-- test: IPv6 non autorisée
+RETURN fn::validation_cidr("2001:db8::/32", true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "ipv6" } };
 
--- ============================================================================
--- TEST 3 — Préfixe IPv4 trop grand
--- Erreur attendue : CIDR_INVALID_CIDR
--- ============================================================================
-RETURN fn::validation_cidr(
-    "192.168.1.0/33", "CIDR", true, false
-);
+-- test: préfixe IPv4 trop grand
+RETURN fn::validation_cidr("10.0.0.0/33", true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "cidr" } };
 
--- ============================================================================
--- TEST 4 — IPv6 interdite
--- Erreur attendue : CIDR_CIDR_FAMILY_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_cidr(
-    "2001:db8::/32", "CIDR", true, false
-);
+-- test: sans préfixe
+RETURN fn::validation_cidr("10.0.0.0", true, true).code == "CORE_VALIDATION_FORMAT";
 
--- ============================================================================
--- TEST 5 — Aucune famille autorisée
--- Erreur attendue : VALIDATION_NO_CIDR_FAMILY_ALLOWED
--- ============================================================================
-RETURN fn::validation_cidr(
-    "192.168.1.0/24", "CIDR", false, false
-);
+-- test: préfixe démesuré
+RETURN fn::validation_cidr("10.0.0.0/99999999999999999999", true, true).code == "CORE_VALIDATION_FORMAT";
+
+-- test: chaîne blanche
+RETURN fn::validation_cidr("  ", true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_cidr(NONE, true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_cidr(NULL, true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_cidr(42, true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: aucune famille
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_cidr("10.0.0.0/8", false, false);

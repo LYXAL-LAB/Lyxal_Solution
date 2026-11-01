@@ -1,127 +1,53 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/hostname.surql
--- Fonction     : fn::validation_hostname
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/hostname.surql
+-- Fonction : fn::validation_hostname
 --
--- Description
--- -----------
--- Valide un nom d'hôte DNS ASCII, avec domaine complet ou nom local selon la configuration.
---
--- Règles appliquées
--- -----------------
---   1. La valeur est normalisée en minuscules.
---   2. Chaque label commence et finit par un caractère alphanumérique.
---   3. Le tiret est autorisé uniquement à l'intérieur d'un label.
---   4. Les labels ne dépassent pas 63 caractères.
---   5. La longueur totale ne dépasse pas 253 caractères.
+-- Valide un nom d'hôte (RFC 1123 : labels de 1 à 63 caractères [a-z0-9-],
+-- 253 au total) ; un nom à un seul label est accepté seulement si autorisé.
+-- La valeur renvoyée est en minuscules.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allow_single_label: bool
+--   $value              : any — valeur à contrôler
+--   $allow_single_label : bool — true pour accepter un nom sans point (ex. localhost)
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_BLANK_NOT_ALLOWED
--- <FIELD>_INVALID_HOSTNAME
--- <FIELD>_SINGLE_LABEL_NOT_ALLOWED
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le nom d'hôte en minuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_NOT_ALLOWED
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure : aucune lecture ou écriture
--- persistante, aucun accès réseau et aucun effet secondaire.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::lowercase()
---   - string::matches()
---   - string::len()
---   - string::split()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---   - array::len()
---   - array::any()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $host = fn::validation_hostname($params.host, false);
+--   IF !$host.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $host.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_hostname(
     $value: any,
-    $field: string,
     $allow_single_label: bool
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::lowercase(string::trim($value));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    IF string::len($clean) > 253
+        OR array::any(string::split($clean, "."), |$label| string::len($label) > 63 OR !string::matches($label, "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$")) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "hostname" } };
     };
-
-    LET $hostname = string::lowercase($clean_value);
-
-    IF string::len($hostname) > 253 {
-        THROW string::concat($clean_field, "_INVALID_HOSTNAME");
+    IF !$allow_single_label AND array::len(string::split($clean, ".")) < 2 {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "single_label" } };
     };
-
-    LET $labels = string::split($hostname, ".");
-
-    IF !$allow_single_label AND array::len($labels) < 2 {
-        THROW string::concat($clean_field, "_SINGLE_LABEL_NOT_ALLOWED");
-    };
-
-    LET $invalid_label = array::any(
-        $labels,
-        |$label|
-            string::len($label) = 0
-            OR string::len($label) > 63
-            OR !string::matches(
-                $label,
-                "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
-            )
-    );
-
-    IF $invalid_label {
-        THROW string::concat($clean_field, "_INVALID_HOSTNAME");
-    };
-
-    RETURN $hostname;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide et normalise un nom d'hôte DNS ASCII.
-"
+COMMENT "Valide un nom d'hôte (RFC 1123 : labels de 1 à 63 caractères [a-z0-9-], 253 au total) ; un nom à un seul label est accepté seulement si autorisé. La valeur renvoyée est en minuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

@@ -1,54 +1,42 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/origin.test.surql
--- Fonction     : fn::validation_origin
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_origin (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_origin(" https://App.example.com ", false, true, true)
+    == { valid: true, value: "https://app.example.com", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Origine HTTPS
--- Résultat attendu : "https://lyxal.com"
--- ============================================================================
-RETURN fn::validation_origin(
-    "HTTPS://LYXAL.COM", "ORIGIN", false, true, false
-);
+-- test: port refusé
+RETURN fn::validation_origin("https://app.example.com:8443", false, true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "port" } };
 
--- ============================================================================
--- TEST 2 — Origine locale avec port
--- Résultat attendu : "http://localhost:3000"
--- ============================================================================
-RETURN fn::validation_origin(
-    "http://localhost:3000", "ORIGIN", true, false, true
-);
+-- test: port autorisé
+RETURN fn::validation_origin("https://app.example.com:8443", false, true, true)
+    == { valid: true, value: "https://app.example.com:8443", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 3 — Chemin interdit
--- Erreur attendue : ORIGIN_INVALID_ORIGIN
--- ============================================================================
-RETURN fn::validation_origin(
-    "https://lyxal.com/api", "ORIGIN", false, true, false
-);
+-- test: avec chemin
+RETURN fn::validation_origin("https://app.example.com/login", false, true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "origin" } };
 
--- ============================================================================
--- TEST 4 — Port interdit
--- Erreur attendue : ORIGIN_ORIGIN_PORT_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_origin(
-    "https://lyxal.com:8443", "ORIGIN", false, true, false
-);
+-- test: schéma http refusé
+RETURN fn::validation_origin("http://app.example.com", false, true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "scheme" } };
 
--- ============================================================================
--- TEST 5 — HTTP interdit
--- Erreur attendue : ORIGIN_ORIGIN_SCHEME_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_origin(
-    "http://lyxal.com", "ORIGIN", false, true, false
-);
+-- test: chaîne blanche
+RETURN fn::validation_origin("  ", false, true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_origin(NONE, false, true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_origin(NULL, false, true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_origin(42, false, true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: aucun schéma
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_origin("https://a.b", false, false, true);

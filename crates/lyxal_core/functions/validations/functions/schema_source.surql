@@ -11,9 +11,13 @@ DEFINE FUNCTION OVERWRITE fn::validation_schema_source(
     $version: string,
     $definition: object
 ) -> object {
+    LET $version_check = fn::validation_contract_version($version);
+    IF !$version_check.valid {
+        THROW "SCHEMA_VERSION_INVALID_CONTRACT_VERSION";
+    };
     RETURN {
         name: string::lowercase(string::trim($name)),
-        version: fn::validation_contract_version($version,"SCHEMA_VERSION"),
+        version: $version_check.value,
         definition: $definition
     };
 }

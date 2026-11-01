@@ -1,21 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/http_method.test.surql
--- Fonction     : fn::validation_http_method
--- Version      : 1.0.0
---
--- Les tests produisant un THROW ou une erreur native doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_http_method (format : crates/lyxal_core/implementation_plan.md §5).
 
--- TEST 1 — POST normalisé
-RETURN fn::validation_http_method("post", "METHOD", NONE);
+-- test: valeur conforme
+RETURN fn::validation_http_method(" post ", ["GET", "post"])
+    == { valid: true, value: "POST", code: NONE, details: {} };
 
--- TEST 2 — DELETE interdit
--- Erreur attendue : METHOD_HTTP_METHOD_NOT_ALLOWED
-RETURN fn::validation_http_method("DELETE", "METHOD", ["GET", "POST"]);
+-- test: caractère interdit
+RETURN fn::validation_http_method("GET2", ["GET", "post"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "http_method" } };
 
--- TEST 3 — Forme invalide
--- Erreur attendue : METHOD_INVALID_HTTP_METHOD
-RETURN fn::validation_http_method("POST /", "METHOD", NONE);
+-- test: méthode non autorisée
+RETURN fn::validation_http_method("DELETE", ["GET", "post"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: ["GET", "POST"] } };
+
+-- test: chaîne blanche
+RETURN fn::validation_http_method("  ", ["GET", "post"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_http_method(NONE, ["GET", "post"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_http_method(NULL, ["GET", "post"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_http_method(42, ["GET", "post"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_http_method("GET", []);

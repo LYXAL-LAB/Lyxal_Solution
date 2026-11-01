@@ -1,21 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/content_type.test.surql
--- Fonction     : fn::validation_content_type
--- Version      : 1.0.0
---
--- Les tests produisant un THROW ou une erreur native doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_content_type (format : crates/lyxal_core/implementation_plan.md §5).
 
--- TEST 1 — JSON avec charset
-RETURN fn::validation_content_type("Application/JSON; Charset=UTF-8", "CONTENT_TYPE", ["application/json"]);
+-- test: valeur conforme
+RETURN fn::validation_content_type(" Application/JSON; charset=UTF-8 ", ["application/json"])
+    == { valid: true, value: "application/json; charset=utf-8", code: NONE, details: {} };
 
--- TEST 2 — Type interdit
--- Erreur attendue : CONTENT_TYPE_MEDIA_TYPE_NOT_ALLOWED
-RETURN fn::validation_content_type("text/plain", "CONTENT_TYPE", ["application/json"]);
+-- test: sans sous-type
+RETURN fn::validation_content_type("application", ["application/json"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "content_type" } };
 
--- TEST 3 — Forme invalide
--- Erreur attendue : CONTENT_TYPE_INVALID_CONTENT_TYPE
-RETURN fn::validation_content_type("application", "CONTENT_TYPE", NONE);
+-- test: type non autorisé
+RETURN fn::validation_content_type("text/html", ["application/json"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: ["application/json"] } };
+
+-- test: chaîne blanche
+RETURN fn::validation_content_type("  ", ["application/json"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_content_type(NONE, ["application/json"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_content_type(NULL, ["application/json"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_content_type(42, ["application/json"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_content_type("text/html", []);

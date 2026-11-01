@@ -1,131 +1,68 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/password_strength.surql
--- Fonction     : fn::validation_password_strength
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/password_strength.surql
+-- Fonction : fn::validation_password_strength
 --
--- Description
--- -----------
--- Valide lexicalement la robustesse minimale d'un mot de passe sans le stocker ni le hacher.
+-- Valide la robustesse d'un mot de passe : longueur bornée (sans nettoyage)
+-- et présence des classes de caractères exigées. Le mot de passe n'est
+-- jamais renvoyé dans details.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $min_length: int
--- $max_length: int
--- $require_uppercase: bool
--- $require_lowercase: bool
--- $require_digit: bool
--- $require_special: bool
+--   $value             : any — valeur à contrôler
+--   $min_length        : int — longueur minimale (>= 1)
+--   $max_length        : int — longueur maximale (>= $min_length)
+--   $require_uppercase : bool — exiger une majuscule
+--   $require_lowercase : bool — exiger une minuscule
+--   $require_digit     : bool — exiger un chiffre
+--   $require_special   : bool — exiger un caractère spécial
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_TOO_SHORT
--- <FIELD>_TOO_LONG
--- <FIELD>_UPPERCASE_REQUIRED
--- <FIELD>_LOWERCASE_REQUIRED
--- <FIELD>_DIGIT_REQUIRED
--- <FIELD>_SPECIAL_CHARACTER_REQUIRED
--- VALIDATION_INVALID_PASSWORD_LENGTH_RANGE
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le mot de passe d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $min_length < 1 ou $min_length > $max_length
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Primitive pure : aucune lecture ou écriture persistante, aucun appel réseau
--- et aucun effet secondaire.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::len()
---   - string::matches()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
--- Sécurité
--- --------
--- Cette fonction ne remplace pas un hash Argon2, scrypt, bcrypt ou PBKDF2.
+-- Exemple (dans une fonction de module)
+--   LET $password = fn::validation_password_strength($params.password, 12, 128, true, true, true, false);
+--   IF !$password.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $password.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_password_strength(
     $value: any,
-    $field: string,
     $min_length: int,
     $max_length: int,
     $require_uppercase: bool,
     $require_lowercase: bool,
     $require_digit: bool,
     $require_special: bool
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-
-    IF $min_length < 1 OR $max_length < 1 OR $min_length > $max_length {
-        THROW "VALIDATION_INVALID_PASSWORD_LENGTH_RANGE";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $min_length < 1 OR $min_length > $max_length { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
     LET $length = string::len($value);
-
-    IF $length < $min_length {
-        THROW string::concat($clean_field, "_TOO_SHORT");
-    };
-
-    IF $length > $max_length {
-        THROW string::concat($clean_field, "_TOO_LONG");
-    };
-
-    IF $require_uppercase AND !string::matches($value, "[A-Z]") {
-        THROW string::concat($clean_field, "_UPPERCASE_REQUIRED");
-    };
-
-    IF $require_lowercase AND !string::matches($value, "[a-z]") {
-        THROW string::concat($clean_field, "_LOWERCASE_REQUIRED");
-    };
-
-    IF $require_digit AND !string::matches($value, "[0-9]") {
-        THROW string::concat($clean_field, "_DIGIT_REQUIRED");
-    };
-
-    IF $require_special AND !string::matches($value, "[^A-Za-z0-9]") {
-        THROW string::concat(
-            $clean_field,
-            "_SPECIAL_CHARACTER_REQUIRED"
-        );
-    };
-
-    RETURN $value;
+    IF $length < $min_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: $min_length, length: $length } }; };
+    IF $length > $max_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } }; };
+    LET $missing = array::filter([
+        IF $require_uppercase AND !string::matches($value, "[A-Z]") { "uppercase" },
+        IF $require_lowercase AND !string::matches($value, "[a-z]") { "lowercase" },
+        IF $require_digit AND !string::matches($value, "[0-9]") { "digit" },
+        IF $require_special AND !string::matches($value, "[^A-Za-z0-9]") { "special" }
+    ], |$item| $item IS NOT NONE);
+    IF array::len($missing) > 0 { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "password", missing: $missing } }; };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide la longueur et les classes de caractères minimales d'un mot de passe.
-"
+COMMENT "Valide la robustesse d'un mot de passe. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

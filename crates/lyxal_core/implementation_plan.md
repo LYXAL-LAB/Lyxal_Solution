@@ -87,6 +87,17 @@ Même principe : un résultat ou une valeur ; `THROW` uniquement pour un argumen
 | :--- | :--- |
 | `validation_json`, `validation_json_string`, `validation_json_array_string`, `validation_json_object_string` | Incompatibles avec le contrat Q1 : `encoding::json::decode` lève une erreur moteur sur un JSON invalide et SurrealDB 3.3.4 n'offre aucun moyen de le détecter sans lever. Le décodage JSON est un parsing, qui reste en Rust (§10) : le code Rust décode avec `serde_json` avant `call_fn`. Une primitive SurrealQL pourra être recréée si un module en exprime le besoin (§5.7.7). |
 
+### 4 ter. Suppressions `validations` en double (décision CTO du lot 3)
+
+| Fonction supprimée | Fonction qui la couvre |
+| :--- | :--- |
+| `validation_array_not_empty` | `validation_array_non_empty` (même rôle, nommage aligné sur `object_non_empty`) |
+| `validation_array_records` | `validation_array_of_records` (ajoute le contrôle d'existence facultatif) |
+| `validation_array_strings` | `validation_array_of_strings` (ajoute le nettoyage et les longueurs) |
+| `validation_record_type` | `validation_record_id` (accepte une liste de tables) |
+
+Raison : une responsabilité = un endroit (`.agents/AGENTS.md` §5.1). Aucun appelant.
+
 ## 5. Format des tests (Q4)
 
 Format mis en place au lot 2 dans `scripts/ci/test_lyxal_core.py` (auto-testé par `scripts/ci/test_lyxal_core_selftest.py`) :

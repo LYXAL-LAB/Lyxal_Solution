@@ -1,157 +1,65 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/origin.surql
--- Fonction     : fn::validation_origin
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/origin.surql
+-- Fonction : fn::validation_origin
 --
--- Description
--- -----------
--- Valide une origine web composée d'un schéma HTTP(S), d'un hôte et d'un port facultatif, sans chemin.
---
--- Règles appliquées
--- -----------------
---   1. Seuls http:// et https:// sont acceptés.
---   2. Aucun chemin, query ou fragment n'est autorisé après l'autorité.
---   3. Un port explicite peut être autorisé ou interdit.
---   4. La fonction ne contacte pas l'origine.
+-- Valide une origine HTTP(S) (schéma://hôte[:port], sans chemin), selon les
+-- schémas autorisés et l'autorisation d'un port explicite. La valeur
+-- renvoyée est en minuscules.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allow_http: bool
--- $allow_https: bool
--- $allow_port: bool
+--   $value       : any — valeur à contrôler
+--   $allow_http  : bool — accepter http://
+--   $allow_https : bool — accepter https://
+--   $allow_port  : bool — accepter un port explicite
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_BLANK_NOT_ALLOWED
--- <FIELD>_INVALID_ORIGIN
--- <FIELD>_ORIGIN_SCHEME_NOT_ALLOWED
--- <FIELD>_ORIGIN_PORT_NOT_ALLOWED
--- VALIDATION_NO_ORIGIN_SCHEME_ALLOWED
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = l'origine en minuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_NOT_ALLOWED
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : aucun schéma autorisé
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure : aucune lecture ou écriture
--- persistante, aucun accès réseau et aucun effet secondaire.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::lowercase()
---   - string::starts_with()
---   - string::matches()
---   - string::contains()
---   - string::is_url()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $origin = fn::validation_origin($headers.origin, false, true, true);
+--   IF !$origin.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $origin.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_origin(
     $value: any,
-    $field: string,
     $allow_http: bool,
     $allow_https: bool,
     $allow_port: bool
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF !$allow_http AND !$allow_https { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::lowercase(string::trim($value));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $is_http = string::starts_with($clean, "http://");
+    LET $is_https = string::starts_with($clean, "https://");
+    IF (!$is_http AND !$is_https) OR !string::is_url($clean) OR string::matches($clean, "^https?://[^/?#]+[/?#].*$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "origin" } };
     };
-
-    IF !$allow_http AND !$allow_https {
-        THROW "VALIDATION_NO_ORIGIN_SCHEME_ALLOWED";
+    IF ($is_http AND !$allow_http) OR ($is_https AND !$allow_https) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "scheme" } };
     };
-
-    LET $origin = string::lowercase($clean_value);
-    LET $is_http = string::starts_with($origin, "http://");
-    LET $is_https = string::starts_with($origin, "https://");
-
-    IF !$is_http AND !$is_https {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_ORIGIN"
-        );
+    IF !$allow_port AND string::matches($clean, "^https?://(\\[[^\\]]+\\]|[^:]+):[0-9]+$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { reason: "port" } };
     };
-
-    IF ($is_http AND !$allow_http)
-        OR ($is_https AND !$allow_https)
-    {
-        THROW string::concat(
-            $clean_field,
-            "_ORIGIN_SCHEME_NOT_ALLOWED"
-        );
-    };
-
-    IF !string::is_url($origin)
-        OR string::matches(
-            $origin,
-            "^https?://[^/?#]+[/?#].*$"
-        )
-    {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_ORIGIN"
-        );
-    };
-
-    LET $authority = IF $is_https {
-        string::slice($origin, 8)
-    } ELSE {
-        string::slice($origin, 7)
-    };
-
-    LET $has_explicit_port =
-        string::matches($authority, "^\\[[^\\]]+\\]:[0-9]+$")
-        OR string::matches($authority, "^[^:]+:[0-9]+$");
-
-    IF !$allow_port AND $has_explicit_port {
-        THROW string::concat(
-            $clean_field,
-            "_ORIGIN_PORT_NOT_ALLOWED"
-        );
-    };
-
-    RETURN $origin;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide une origine web HTTP(S) sans chemin, query ni fragment.
-"
+COMMENT "Valide une origine HTTP(S) (schéma://hôte[:port], sans chemin), selon les schémas autorisés et l'autorisation d'un port explicite. La valeur renvoyée est en minuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

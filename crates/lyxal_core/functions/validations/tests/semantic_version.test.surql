@@ -1,9 +1,33 @@
--- ============================================================================
--- LYXAL OS — CORE VALIDATION
--- Version 1.0.0 — PERMISSIONS FULL
--- ============================================================================
-RETURN fn::validation_semantic_version("3.0.0", "VERSION", false);
-RETURN fn::validation_semantic_version("3.0.0-beta.1", "VERSION", false);
-RETURN fn::validation_semantic_version("v3.0.0", "VERSION", true);
--- VERSION_INVALID_SEMANTIC_VERSION
-RETURN fn::validation_semantic_version("v3.0.0", "VERSION", false);
+-- lyxal-test: assertions
+-- Tests de fn::validation_semantic_version (format : crates/lyxal_core/implementation_plan.md §5).
+
+-- test: valeur conforme
+RETURN fn::validation_semantic_version(" 1.2.3-rc.1+build.5 ", false)
+    == { valid: true, value: "1.2.3-rc.1+build.5", code: NONE, details: {} };
+
+-- test: préfixe v autorisé
+RETURN fn::validation_semantic_version("v1.2.3", true)
+    == { valid: true, value: "v1.2.3", code: NONE, details: {} };
+
+-- test: zéro initial
+RETURN fn::validation_semantic_version("01.2.3", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "semantic_version" } };
+
+-- test: préfixe v refusé
+RETURN fn::validation_semantic_version("v1.2.3", false).code == "CORE_VALIDATION_FORMAT";
+
+-- test: chaîne blanche
+RETURN fn::validation_semantic_version("  ", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_semantic_version(NONE, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_semantic_version(NULL, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_semantic_version(42, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };

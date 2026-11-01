@@ -34,9 +34,6 @@
 12. boolean.surql
     fn::validation_boolean
 
-13. array_not_empty.surql
-    fn::validation_array_not_empty
-
 14. datetime.surql
     fn::validation_datetime
 
@@ -57,9 +54,6 @@
 
 21. object.surql
     fn::validation_object
-
-22. record_type.surql
-    fn::validation_record_type
 
 23. array_length.surql
     fn::validation_array_length

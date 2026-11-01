@@ -1,42 +1,55 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/jwt_compact.surql
--- Fonction     : fn::validation_jwt_compact
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/jwt_compact.surql
+-- Fonction : fn::validation_jwt_compact
 --
--- Description
--- -----------
--- Valide uniquement la forme compacte d’un JWT à trois segments Base64URL.
+-- Valide la forme compacte d'un JWT : trois segments Base64URL non vides
+-- séparés par des points (la signature n'est pas vérifiée).
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
+-- Paramètres
+--   $value      : any — valeur à contrôler
+--   $max_length : int — longueur maximale (>= 1)
 --
--- Primitive sans accès persistant, sans appel réseau et sans effet secondaire.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne sans espaces périphériques, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_TOO_LONG
+--     CORE_VALIDATION_FORMAT
 --
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::split()
---   - string::matches()
---   - array::all()
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $max_length < 1
+--
+-- Exemple (dans une fonction de module)
+--   LET $jwt = fn::validation_jwt_compact($params.token, 8192);
+--   IF !$jwt.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $jwt.code });
+--   };
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::validation_jwt_compact($value: any, $field: string, $max_length: int) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-    LET $clean_value = string::trim($value);
-    IF $clean_value = "" { THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED"); };
-    IF $max_length < 1 { THROW "VALIDATION_INVALID_JWT_MAX_LENGTH"; };
-    IF string::len($clean_value) > $max_length { THROW string::concat($clean_field, "_JWT_TOO_LONG"); };
-    LET $segments = string::split($clean_value, ".");
-    IF array::len($segments) != 3 OR !array::all($segments, |$segment| $segment != "" AND string::matches($segment, "^[A-Za-z0-9_-]+$")) { THROW string::concat($clean_field, "_INVALID_JWT_FORMAT"); };
-    RETURN $clean_value;
+DEFINE FUNCTION OVERWRITE fn::validation_jwt_compact(
+    $value: any,
+    $max_length: int
+) -> object {
+    IF $max_length < 1 { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    IF !type::is_string($value) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
+    };
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $length = string::len($clean);
+    IF $max_length IS NOT NONE AND $length > $max_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } }; };
+    IF array::len(string::split($clean, ".")) != 3
+        OR !array::all(string::split($clean, "."), |$segment| string::matches($segment, "^[A-Za-z0-9_-]+$")) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "jwt_compact" } };
+    };
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "Valide uniquement la forme compacte d'un JWT; aucune signature n'est vérifiée."
+COMMENT "Valide la forme compacte d'un JWT : trois segments Base64URL non vides séparés par des points (la signature n'est pas vérifiée). Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;
