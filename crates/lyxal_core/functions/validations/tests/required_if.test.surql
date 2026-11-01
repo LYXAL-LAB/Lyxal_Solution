@@ -1,47 +1,22 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/required_if.test.surql
--- Fonction     : fn::validation_required_if
--- Domaine      : Core / Validation / Advanced
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_required_if (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: obligatoire et présente
+RETURN fn::validation_required_if("ACME", true, false)
+    == { valid: true, value: "ACME", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Condition fausse
--- Résultat attendu : NONE
--- ============================================================================
-RETURN fn::validation_required_if(
-    NONE,
-    "COMPANY_NAME",
-    false,
-    false
-);
+-- test: non obligatoire et absente
+RETURN fn::validation_required_if(NONE, false, false)
+    == { valid: true, value: NONE, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Condition vraie et valeur présente
--- Résultat attendu : "Lyxal"
--- ============================================================================
-RETURN fn::validation_required_if(
-    "Lyxal",
-    "COMPANY_NAME",
-    true,
-    false
-);
+-- test: obligatoire et absente
+RETURN fn::validation_required_if(NONE, true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 3 — Condition vraie et valeur absente
--- Erreur attendue : COMPANY_NAME_REQUIRED_IF
--- ============================================================================
-RETURN fn::validation_required_if(
-    NONE,
-    "COMPANY_NAME",
-    true,
-    false
-);
+-- test: obligatoire et NULL refusée
+RETURN fn::validation_required_if(NULL, true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: obligatoire et NULL autorisée
+RETURN fn::validation_required_if(NULL, true, true)
+    == { valid: true, value: NULL, code: NONE, details: {} };

@@ -1,31 +1,22 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/non_negative_number.test.surql
--- Fonction     : fn::validation_non_negative_number
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_non_negative_number (format : crates/lyxal_core/implementation_plan.md §5).
 
--- ============================================================================
--- TEST 1 — Zéro accepté
--- Résultat attendu : 0
--- ============================================================================
-RETURN fn::validation_non_negative_number(0, "AMOUNT");
+-- test: valeur acceptée
+RETURN fn::validation_non_negative_number(0)
+    == { valid: true, value: 0, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Positif accepté
--- Résultat attendu : 25.5dec
--- ============================================================================
-RETURN fn::validation_non_negative_number(25.5dec, "AMOUNT");
+-- test: valeur refusée
+RETURN fn::validation_non_negative_number(-0.1f)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min: 0 } };
 
--- ============================================================================
--- TEST 3 — Négatif refusé
--- Erreur attendue : AMOUNT_NEGATIVE_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_non_negative_number(-0.01dec, "AMOUNT");
+-- test: valeur absente
+RETURN fn::validation_non_negative_number(NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_non_negative_number(NULL)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type string refusé
+RETURN fn::validation_non_negative_number("1")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "number", actual: "string" } };

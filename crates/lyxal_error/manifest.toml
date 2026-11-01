@@ -47,5 +47,6 @@ seeds = [
     "seeds/error_mappings.surql"
 ]
 error_definitions = [
-    "error/error_definitions.surql"
+    "error/error_definitions.surql",
+    "error/core/core_definitions.surql"
 ]

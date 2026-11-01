@@ -416,9 +416,8 @@ RETURN fn::validation_unique(
 
 LET $slug = fn::validation_slug(
     "Available-User",
-    "USER_SLUG",
     100
-);
+).value;
 
 RETURN fn::validation_unique(
     $slug,

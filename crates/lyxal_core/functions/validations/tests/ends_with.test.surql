@@ -1,71 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/ends_with.test.surql
--- Fonction     : fn::validation_ends_with
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW interrompent l'exécution.
--- Dans Surrealist, sélectionner individuellement le test concerné lorsqu'une
--- erreur est attendue.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_ends_with (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: suffixe présent
+RETURN fn::validation_ends_with(" devis.pdf ", [".pdf"], true, true)
+    == { valid: true, value: "devis.pdf", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Extension valide
--- Résultat attendu : "document.pdf"
--- ============================================================================
-RETURN fn::validation_ends_with(
-    "document.pdf", "FILENAME", [".pdf"], true, true
-);
+-- test: insensible à la casse
+RETURN fn::validation_ends_with("DEVIS.PDF", [".pdf"], false, true)
+    == { valid: true, value: "DEVIS.PDF", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Plusieurs extensions autorisées
--- Résultat attendu : "PHOTO.JPG"
--- ============================================================================
-RETURN fn::validation_ends_with(
-    "PHOTO.JPG", "FILENAME", [".jpg", ".png"], false, true
-);
+-- test: suffixe absent
+RETURN fn::validation_ends_with("devis.doc", [".pdf"], true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { ends_with_any: [".pdf"] } };
 
--- ============================================================================
--- TEST 3 — Suffixe invalide
--- Erreur attendue : FILENAME_INVALID_SUFFIX
--- ============================================================================
-RETURN fn::validation_ends_with(
-    "document.exe", "FILENAME", [".pdf"], false, true
-);
+-- test: valeur absente
+RETURN fn::validation_ends_with(NONE, ["a"], true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — Liste vide
--- Erreur attendue : VALIDATION_EMPTY_SUFFIXES
--- ============================================================================
-RETURN fn::validation_ends_with(
-    "document.pdf", "FILENAME", [], true, true
-);
+-- test: valeur NULL
+RETURN fn::validation_ends_with(NULL, ["a"], true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
 
--- ============================================================================
--- TEST 5 — Suffixe vide
--- Erreur attendue : VALIDATION_INVALID_SUFFIX
--- ============================================================================
-RETURN fn::validation_ends_with(
-    "document.pdf", "FILENAME", ["  "], true, true
-);
+-- test: type int refusé
+RETURN fn::validation_ends_with(1, ["a"], true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
 
--- ============================================================================
--- TEST 6 — Valeur NULL
--- Erreur attendue : FILENAME_NULL_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_ends_with(
-    NULL, "FILENAME", [".pdf"], true, true
-);
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_ends_with("abc", [], true, true);
 
--- ============================================================================
--- TEST 7 — Type invalide
--- Erreur attendue : FILENAME_INVALID_TYPE
--- ============================================================================
-RETURN fn::validation_ends_with(
-    ["document.pdf"], "FILENAME", [".pdf"], true, true
-);
+-- test: suffixe vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_ends_with("abc", ["  "], true, true);

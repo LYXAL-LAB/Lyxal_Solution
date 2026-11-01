@@ -1,151 +1,53 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/starts_with.surql
--- Fonction     : fn::validation_starts_with
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/starts_with.surql
+-- Fonction : fn::validation_starts_with
 --
--- Description
--- -----------
--- Vérifie qu'une chaîne obligatoire commence par au moins un préfixe autorisé. La comparaison peut être sensible ou insensible à la casse.
---
--- Principes
--- ----------
---   - validation stricte du type reçu ;
---   - aucune conversion implicite ;
---   - codes d'erreur stables construits depuis le nom technique du champ ;
---   - aucune lecture ni écriture persistante ;
---   - retour de la chaîne validée, éventuellement nettoyée avec string::trim().
+-- Valide qu'une chaîne commence par au moins un des préfixes donnés.
 --
 -- Paramètres
--- ----------
--- $value: any
---   Chaîne obligatoire à contrôler.
+--   $value          : any — valeur à contrôler
+--   $prefixes       : array<string> — fragments recherchés (au moins un, non vides)
+--   $case_sensitive : bool — false pour comparer sans tenir compte de la casse
+--   $trim_value     : bool — true pour retirer les espaces périphériques avant le contrôle
 --
--- $field: string
---   Nom technique utilisé pour les erreurs.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne (nettoyée si $trim_value), casse d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_FORMAT
 --
--- $prefixes: array<string>
---   Liste non vide des préfixes autorisés.
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : liste vide ou fragment vide
 --
--- $case_sensitive: bool
---   Active ou désactive la sensibilité à la casse.
---
--- $trim_value: bool
---   Nettoie la valeur avec string::trim() avant validation.
---
--- Valeur retournée
--- ----------------
--- string — chaîne validée.
---
--- Erreurs générées
--- ----------------
--- <FIELD>_REQUIRED
---   La valeur est absente ou égale à NONE.
---
--- <FIELD>_NULL_NOT_ALLOWED
---   La valeur est explicitement égale à NULL.
---
--- <FIELD>_INVALID_TYPE
---   La valeur n'est pas strictement de type string.
---
--- VALIDATION_INVALID_FIELD_NAME
---   Le nom technique du champ est vide.
---
--- <FIELD>_INVALID_PREFIX
---   La chaîne ne commence par aucun préfixe autorisé.
---
--- VALIDATION_EMPTY_PREFIXES
---   La liste des préfixes est vide.
---
--- VALIDATION_INVALID_PREFIX
---   Un préfixe est vide après nettoyage.
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure. Elle ne consulte aucune table, ne
--- modifie aucune donnée et ne dépend pas du contexte d'authentification.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::lowercase()
---   - string::starts_with()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---   - array::len()
---   - array::any()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $check = fn::validation_starts_with($params.key, ["sk_", "pk_"], true, true);
+--   IF !$check.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $check.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_starts_with(
     $value: any,
-    $field: string,
     $prefixes: array<string>,
     $case_sensitive: bool,
     $trim_value: bool
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-
-    IF array::len($prefixes) = 0 { THROW "VALIDATION_EMPTY_PREFIXES"; };
-
-    LET $clean_prefixes = array::map(
-        $prefixes,
-        |$prefix| string::trim($prefix)
-    );
-
-    IF array::any($clean_prefixes, |$prefix| $prefix = "") {
-        THROW "VALIDATION_INVALID_PREFIX";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
+) -> object {
+    LET $items = array::map($prefixes, |$item| string::trim($item));
+    IF array::len($items) = 0 OR array::any($items, |$item| $item = "") { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = IF $trim_value {
-        string::trim($value)
-    } ELSE {
-        $value
-    };
-
-    LET $comparison_value = IF $case_sensitive {
-        $clean_value
-    } ELSE {
-        string::lowercase($clean_value)
-    };
-
-    LET $matches = array::any(
-        $clean_prefixes,
-        |$prefix| string::starts_with(
-            $comparison_value,
-            IF $case_sensitive { $prefix } ELSE { string::lowercase($prefix) }
-        )
-    );
-
-    IF !$matches {
-        THROW string::concat($clean_field, "_INVALID_PREFIX");
-    };
-
-    RETURN $clean_value;
+    LET $clean = IF $trim_value { string::trim($value) } ELSE { $value };
+    LET $subject = IF $case_sensitive { $clean } ELSE { string::lowercase($clean) };
+    LET $found = array::any($items, |$item| string::starts_with($subject, IF $case_sensitive { $item } ELSE { string::lowercase($item) }));
+    IF !$found { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { starts_with_any: $items } }; };
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide qu'une chaîne obligatoire commence par au moins un préfixe autorisé.
-La comparaison peut être sensible ou insensible à la casse.
-"
+COMMENT "Valide qu'une chaîne commence par au moins un des préfixes donnés. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

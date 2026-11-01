@@ -1,55 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/forbidden_values.test.surql
--- Fonction     : fn::validation_forbidden_values
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW interrompent l'exécution.
--- Dans Surrealist, sélectionner individuellement le test concerné lorsqu'une
--- erreur est attendue.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_forbidden_values (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur permise
+RETURN fn::validation_forbidden_values(" equipe ", ["admin", "root"], false, true)
+    == { valid: true, value: "equipe", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Valeur autorisée
--- Résultat attendu : "member"
--- ============================================================================
-RETURN fn::validation_forbidden_values(
-    "member", "ROLE", ["root", "system"], false, true
-);
+-- test: valeur interdite, casse ignorée
+RETURN fn::validation_forbidden_values("ADMIN", ["admin"], false, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORBIDDEN", details: {} };
 
--- ============================================================================
--- TEST 2 — Valeur interdite
--- Erreur attendue : ROLE_FORBIDDEN_VALUE
--- ============================================================================
-RETURN fn::validation_forbidden_values(
-    "root", "ROLE", ["root", "system"], false, true
-);
+-- test: casse distinguée
+RETURN fn::validation_forbidden_values("ADMIN", ["admin"], true, true)
+    == { valid: true, value: "ADMIN", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 3 — Interdiction insensible à la casse
--- Erreur attendue : ROLE_FORBIDDEN_VALUE
--- ============================================================================
-RETURN fn::validation_forbidden_values(
-    "ROOT", "ROLE", ["root"], false, true
-);
+-- test: fragment non interdit
+RETURN fn::validation_forbidden_values("administrateur", ["admin"], false, true)
+    == { valid: true, value: "administrateur", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 4 — Comparaison sensible à la casse
--- Résultat attendu : "ROOT"
--- ============================================================================
-RETURN fn::validation_forbidden_values(
-    "ROOT", "ROLE", ["root"], true, true
-);
+-- test: valeur absente
+RETURN fn::validation_forbidden_values(NONE, ["a"], true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 5 — Liste vide
--- Erreur attendue : VALIDATION_EMPTY_FORBIDDEN_VALUES
--- ============================================================================
-RETURN fn::validation_forbidden_values(
-    "member", "ROLE", [], false, true
-);
+-- test: valeur NULL
+RETURN fn::validation_forbidden_values(NULL, ["a"], true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_forbidden_values(1, ["a"], true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_forbidden_values("abc", [], true, true);
+
+-- test: valeur vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_forbidden_values("abc", [""], true, true);

@@ -1,55 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/reserved_words.test.surql
--- Fonction     : fn::validation_reserved_words
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW interrompent l'exécution.
--- Dans Surrealist, sélectionner individuellement le test concerné lorsqu'une
--- erreur est attendue.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_reserved_words (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: mot libre
+RETURN fn::validation_reserved_words(" alice ", ["admin", "system"], true)
+    == { valid: true, value: "alice", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Identifiant disponible
--- Résultat attendu : "yaniss"
--- ============================================================================
-RETURN fn::validation_reserved_words(
-    "yaniss", "USERNAME", ["admin", "root", "system"], true
-);
+-- test: mot réservé, casse ignorée
+RETURN fn::validation_reserved_words("System", ["admin", "system"], true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORBIDDEN", details: {} };
 
--- ============================================================================
--- TEST 2 — Mot réservé
--- Erreur attendue : USERNAME_RESERVED_WORD
--- ============================================================================
-RETURN fn::validation_reserved_words(
-    "admin", "USERNAME", ["admin", "root"], true
-);
+-- test: espaces conservés
+RETURN fn::validation_reserved_words(" admin", ["admin"], false)
+    == { valid: true, value: " admin", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 3 — Mot réservé avec casse différente
--- Erreur attendue : USERNAME_RESERVED_WORD
--- ============================================================================
-RETURN fn::validation_reserved_words(
-    "ADMIN", "USERNAME", ["admin"], true
-);
+-- test: valeur absente
+RETURN fn::validation_reserved_words(NONE, ["a"], true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — Mot composé non égal au mot réservé
--- Résultat attendu : "administrator"
--- ============================================================================
-RETURN fn::validation_reserved_words(
-    "administrator", "USERNAME", ["admin"], true
-);
+-- test: valeur NULL
+RETURN fn::validation_reserved_words(NULL, ["a"], true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
 
--- ============================================================================
--- TEST 5 — Liste vide
--- Erreur attendue : VALIDATION_EMPTY_RESERVED_WORDS
--- ============================================================================
-RETURN fn::validation_reserved_words(
-    "yaniss", "USERNAME", [], true
-);
+-- test: type int refusé
+RETURN fn::validation_reserved_words(1, ["a"], true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_reserved_words("abc", [], true);
+
+-- test: mot vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_reserved_words("abc", [" "], true);

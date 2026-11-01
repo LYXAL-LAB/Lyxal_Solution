@@ -1,41 +1,26 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/ulid.test.surql
--- Fonction     : fn::validation_ulid
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_ulid (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: ULID nettoyé et mis en majuscules
+RETURN fn::validation_ulid("  01arz3ndektsv4rrffq69g5fav ")
+    == { valid: true, value: "01ARZ3NDEKTSV4RRFFQ69G5FAV", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — ULID valide
--- Résultat attendu : "01JCJB3TPQ50XTG32WM088NKJD"
--- ============================================================================
-RETURN fn::validation_ulid(
-    "01jcjb3tpq50xtg32wm088nkjd",
-    "ULID"
-);
+-- test: chaîne vide
+RETURN fn::validation_ulid("   ")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 2 — Longueur invalide
--- Erreur attendue : ULID_INVALID_ULID
--- ============================================================================
-RETURN fn::validation_ulid(
-    "01JCJB3TPQ50XTG32WM088NKJ",
-    "ULID"
-);
+-- test: format invalide
+RETURN fn::validation_ulid("01ARZ3NDEKTSV4RRFFQ69G5FA")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "ulid" } };
 
--- ============================================================================
--- TEST 3 — Caractère interdit
--- Erreur attendue : ULID_INVALID_ULID
--- ============================================================================
-RETURN fn::validation_ulid(
-    "01JCJB3TPQ50XTG32WM088NKJI",
-    "ULID"
-);
+-- test: valeur absente
+RETURN fn::validation_ulid(NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_ulid(NULL)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_ulid(12)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };

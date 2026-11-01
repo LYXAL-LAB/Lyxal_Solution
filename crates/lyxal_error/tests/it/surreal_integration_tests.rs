@@ -292,16 +292,20 @@ fn test_surreal_bootstrap_and_migration_idempotence() {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("error/error_definitions.surql");
     let err_defs_surql = std::fs::read_to_string(err_defs_path).unwrap();
     db.execute_raw(&err_defs_surql);
+    let core_defs_path =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("error/core/core_definitions.surql");
+    let core_defs_surql = std::fs::read_to_string(core_defs_path).unwrap();
+    db.execute_raw(&core_defs_surql);
 
     let seeds_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("seeds/error_mappings.surql");
     let seeds_surql = std::fs::read_to_string(seeds_path).unwrap();
     db.execute_raw(&seeds_surql);
 
-    // Verify count of error_definition is exactly 6 (no duplicates!)
+    // Verify count of error_definition is exactly 8 (6 lyxal_error + 2 lyxal_core, no duplicates!)
     let count_val = db.query_val("SELECT count() FROM error_definition GROUP ALL;");
     assert_eq!(
-        count_val[0]["count"], 6,
-        "Expected exactly 6 definitions without duplicate"
+        count_val[0]["count"], 8,
+        "Expected exactly 8 definitions without duplicate"
     );
 
     // Verify count of error_external_mapping is exactly 2 (no duplicates!)

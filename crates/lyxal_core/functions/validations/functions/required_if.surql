@@ -1,89 +1,39 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/required_if.surql
--- Fonction     : fn::validation_required_if
--- Domaine      : Core / Validation / Advanced
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/required_if.surql
+-- Fonction : fn::validation_required_if
 --
--- Description
--- -----------
--- Rend une valeur obligatoire lorsqu'une condition booléenne est vraie.
---
--- Règles appliquées
--- -----------------
---   1. Lorsque la condition est fausse, la valeur est retournée sans contrainte.
---   2. Lorsque la condition est vraie, NONE est refusé.
---   3. NULL peut être autorisé ou refusé.
+-- Valide la présence d'une valeur obligatoire lorsque la condition est vraie
+-- ; sinon la valeur est acceptée telle quelle (y compris NONE).
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $condition: bool
--- $allow_null: bool
+--   $value      : any — valeur à contrôler
+--   $condition  : bool — condition évaluée par l'appelant
+--   $allow_null : bool — true pour accepter NULL quand la valeur est obligatoire
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée ou un objet de résultat normalisé.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la valeur d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_REQUIRED_IF
--- <FIELD>_NULL_NOT_ALLOWED
---
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun appel réseau ;
---   - aucune exécution dynamique de code ;
---   - aucun effet secondaire.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $check = fn::validation_required_if($params.company_name, $params.is_company, false);
+--   IF !$check.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $check.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_required_if(
     $value: any,
-    $field: string,
     $condition: bool,
     $allow_null: bool
-) -> any {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF !$condition {
-        RETURN $value;
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED_IF");
-    };
-
-    IF !$allow_null AND type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
-    RETURN $value;
+) -> object {
+    IF !($condition) { RETURN { valid: true, value: $value, code: NONE, details: {} }; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF !$allow_null AND type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Rend une valeur obligatoire lorsque la condition fournie est vraie.
-"
+COMMENT "Valide la présence d'une valeur obligatoire lorsque la condition est vraie. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

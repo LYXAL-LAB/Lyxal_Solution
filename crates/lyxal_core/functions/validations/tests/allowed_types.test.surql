@@ -1,56 +1,26 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/allowed_types.test.surql
--- Fonction     : fn::validation_allowed_types
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_allowed_types (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: type autorisé
+RETURN fn::validation_allowed_types(5, ["int", "decimal"])
+    == { valid: true, value: 5, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Entier autorisé
--- Résultat attendu : 42
--- ============================================================================
-RETURN fn::validation_allowed_types(
-    42,
-    "VALUE",
-    ["int", "decimal"]
-);
+-- test: type refusé
+RETURN fn::validation_allowed_types("5", ["int", "Decimal"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: ["int", "decimal"], actual: "string" } };
 
--- ============================================================================
--- TEST 2 — Decimal autorisé
--- Résultat attendu : 42dec
--- ============================================================================
-RETURN fn::validation_allowed_types(
-    42dec,
-    "VALUE",
-    ["int", "decimal"]
-);
+-- test: valeur absente
+RETURN fn::validation_allowed_types(NONE, ["int"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 3 — String interdite
--- Erreur attendue : VALUE_TYPE_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_allowed_types(
-    "42",
-    "VALUE",
-    ["int", "decimal"]
-);
+-- test: valeur NULL
+RETURN fn::validation_allowed_types(NULL, ["int"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
 
--- ============================================================================
--- TEST 4 — Liste vide
--- Erreur attendue : VALIDATION_EMPTY_ALLOWED_TYPES
--- ============================================================================
-RETURN fn::validation_allowed_types(42, "VALUE", []);
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_allowed_types(5, []);
 
--- ============================================================================
--- TEST 5 — Nom de type vide
--- Erreur attendue : VALIDATION_INVALID_ALLOWED_TYPE
--- ============================================================================
-RETURN fn::validation_allowed_types(42, "VALUE", ["int", "   "]);
+-- test: type vide dans la liste
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_allowed_types(5, ["int", " "]);

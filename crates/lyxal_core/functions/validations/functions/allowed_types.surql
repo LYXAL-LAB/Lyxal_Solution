@@ -1,116 +1,46 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/allowed_types.surql
--- Fonction     : fn::validation_allowed_types
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/allowed_types.surql
+-- Fonction : fn::validation_allowed_types
 --
--- Description
--- -----------
--- Vérifie que le type réel d'une valeur appartient à une liste de types autorisés.
---
--- Règles appliquées
--- -----------------
---   1. La liste des types autorisés doit être non vide.
---   2. Chaque nom de type est nettoyé et normalisé en minuscules.
---   3. Le type réel est obtenu avec type::of().
---   4. La valeur d'origine est retournée.
+-- Valide que le type SurrealDB d'une valeur (type::of) fait partie d'une
+-- liste de types autorisés.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allowed_types: array<string>
+--   $value         : any — valeur à contrôler
+--   $allowed_types : array<string> — types autorisés tels que renvoyés par type::of, insensibles à la casse
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_TYPE_NOT_ALLOWED
--- VALIDATION_EMPTY_ALLOWED_TYPES
--- VALIDATION_INVALID_ALLOWED_TYPE
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la valeur d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- VALIDATION_INVALID_FIELD_NAME
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : liste vide ou contenant un type vide
 --
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucune dépendance à l'authentification ;
---   - aucun appel réseau ;
---   - aucun effet secondaire ;
---   - aucune conversion implicite de la valeur validée.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::lowercase()
---   - string::concat()
---   - type::is_null()
---   - type::of()
---   - array::len()
---   - array::map()
---   - array::any()
---   - array::contains()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
+-- Exemple (dans une fonction de module)
+--   LET $check = fn::validation_allowed_types($params.amount, ["int", "decimal"]);
+--   IF !$check.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $check.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_allowed_types(
     $value: any,
-    $field: string,
     $allowed_types: array<string>
-) -> any {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
+) -> object {
+    LET $allowed = array::map($allowed_types, |$type_name| string::lowercase(string::trim($type_name)));
+    IF array::len($allowed) = 0 OR array::any($allowed, |$type_name| $type_name = "") {
+        THROW "CORE_INVALID_ARGUMENT";
     };
-
-    IF array::len($allowed_types) = 0 {
-        THROW "VALIDATION_EMPTY_ALLOWED_TYPES";
-    };
-
-    LET $clean_allowed_types = array::map(
-        $allowed_types,
-        |$type_name| string::lowercase(string::trim($type_name))
-    );
-
-    IF array::any(
-        $clean_allowed_types,
-        |$type_name| $type_name = ""
-    ) {
-        THROW "VALIDATION_INVALID_ALLOWED_TYPE";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
-    LET $actual_type = string::lowercase(type::of($value));
-
-    IF !(($clean_allowed_types) CONTAINS ($actual_type)) {
-        THROW string::concat($clean_field, "_TYPE_NOT_ALLOWED");
-    };
-
-    RETURN $value;
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    LET $actual = string::lowercase(type::of($value));
+    IF $actual NOT IN $allowed { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: $allowed, actual: $actual } }; };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide que le type réel d'une valeur appartient à une liste de types SurrealDB
-autorisés.
-"
+COMMENT "Valide que type::of(valeur) fait partie des types autorisés. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

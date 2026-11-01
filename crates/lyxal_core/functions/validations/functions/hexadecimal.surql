@@ -1,33 +1,68 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
--- Version 1.0.0 — PERMISSIONS FULL
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/validations/functions/hexadecimal.surql
 -- Fonction : fn::validation_hexadecimal
+--
+-- Valide une chaîne hexadécimale, avec préfixe 0x facultatif si autorisé ;
+-- les longueurs portent sur les chiffres, hors préfixe.
+--
+-- Paramètres
+--   $value        : any — valeur à contrôler
+--   $min_length   : option<int> — nombre minimal de chiffres (>= 1), NONE pour aucun
+--   $max_length   : option<int> — nombre maximal de chiffres (>= 1), NONE pour aucun
+--   $allow_prefix : bool — true pour accepter le préfixe 0x / 0X
+--
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne nettoyée, en minuscules (préfixe conservé), code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : borne < 1 ou $min_length > $max_length
+--
+-- Exemple (dans une fonction de module)
+--   LET $check = fn::validation_hexadecimal($params.color, 6, 6, false);
+--   IF !$check.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $check.code });
+--   };
+-- ============================================================================
+
 DEFINE FUNCTION OVERWRITE fn::validation_hexadecimal(
-    $value: any, $field: string,
-    $min_length: option<int>, $max_length: option<int>, $allow_prefix: bool
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $min_length IS NOT NONE AND $min_length < 1 { THROW "VALIDATION_INVALID_HEX_MIN_LENGTH"; };
-    IF $max_length IS NOT NONE AND $max_length < 1 { THROW "VALIDATION_INVALID_HEX_MAX_LENGTH"; };
-    IF $min_length IS NOT NONE AND $max_length IS NOT NONE AND $min_length > $max_length {
-        THROW "VALIDATION_INVALID_HEX_LENGTH_RANGE";
+    $value: any,
+    $min_length: option<int>,
+    $max_length: option<int>,
+    $allow_prefix: bool
+) -> object {
+    IF ($min_length IS NOT NONE AND $min_length < 1) OR ($max_length IS NOT NONE AND $max_length < 1) {
+        THROW "CORE_INVALID_ARGUMENT";
     };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-    LET $clean_value = string::trim($value);
-    IF $clean_value = "" { THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED"); };
+    IF $min_length IS NOT NONE AND $max_length IS NOT NONE AND $min_length > $max_length {
+        THROW "CORE_INVALID_ARGUMENT";
+    };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    IF !type::is_string($value) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
+    };
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
     LET $pattern = IF $allow_prefix { "^(0x|0X)?[0-9A-Fa-f]+$" } ELSE { "^[0-9A-Fa-f]+$" };
-    IF !string::matches($clean_value, $pattern) { THROW string::concat($clean_field, "_INVALID_HEXADECIMAL"); };
-    LET $hex_value = IF string::starts_with($clean_value, "0x") OR string::starts_with($clean_value, "0X") {
-        string::slice($clean_value, 2)
-    } ELSE { $clean_value };
-    LET $length = string::len($hex_value);
-    IF $min_length IS NOT NONE AND $length < $min_length { THROW string::concat($clean_field, "_TOO_SHORT"); };
-    IF $max_length IS NOT NONE AND $length > $max_length { THROW string::concat($clean_field, "_TOO_LONG"); };
-    RETURN string::lowercase($clean_value);
+    IF !string::matches($clean, $pattern) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "hexadecimal" } }; };
+    LET $length = string::len($clean) - IF string::matches($clean, "^0[xX]") { 2 } ELSE { 0 };
+    IF $min_length IS NOT NONE AND $length < $min_length {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: $min_length, length: $length } };
+    };
+    IF $max_length IS NOT NONE AND $length > $max_length {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } };
+    };
+    RETURN { valid: true, value: string::lowercase($clean), code: NONE, details: {} };
 }
-COMMENT "Valide une chaîne hexadécimale avec longueur et préfixe facultatifs."
+COMMENT "Valide une chaîne hexadécimale. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

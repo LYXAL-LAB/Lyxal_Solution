@@ -1,54 +1,33 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/uuid_v7.test.surql
--- Fonction     : fn::validation_uuid_v7
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_uuid_v7 (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: UUID v7 natif
+RETURN fn::validation_uuid_v7(u"0190b5a2-7c1e-7a3b-9f00-1234567890ab", false)
+    == { valid: true, value: u"0190b5a2-7c1e-7a3b-9f00-1234567890ab", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — UUID v7 typé
--- Résultat attendu : UUID reçu
--- ============================================================================
-RETURN fn::validation_uuid_v7(
-    u"018a6680-bef9-701b-9025-e1754f296a0f",
-    "ID",
-    false
-);
+-- test: UUID v7 en chaîne autorisée
+RETURN fn::validation_uuid_v7("0190b5a2-7c1e-7a3b-9f00-1234567890ab", true)
+    == { valid: true, value: "0190b5a2-7c1e-7a3b-9f00-1234567890ab", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — UUID v7 textuel autorisé
--- Résultat attendu : chaîne reçue
--- ============================================================================
-RETURN fn::validation_uuid_v7(
-    "018a6680-bef9-701b-9025-e1754f296a0f",
-    "ID",
-    true
-);
+-- test: chaîne refusée si non autorisée
+RETURN fn::validation_uuid_v7("0190b5a2-7c1e-7a3b-9f00-1234567890ab", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "uuid", actual: "string" } };
 
--- ============================================================================
--- TEST 3 — UUID v4 refusé
--- Erreur attendue : ID_INVALID_UUID_V7
--- ============================================================================
-RETURN fn::validation_uuid_v7(
-    u"550e8400-e29b-41d4-a716-446655440000",
-    "ID",
-    false
-);
+-- test: UUID v4 refusé
+RETURN fn::validation_uuid_v7(u"9b2c6a3e-1f4d-4c8a-9e7b-2d5f8a1c3e60", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "uuid_v7" } };
 
--- ============================================================================
--- TEST 4 — Chaîne interdite
--- Erreur attendue : ID_STRING_UUID_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_uuid_v7(
-    "018a6680-bef9-701b-9025-e1754f296a0f",
-    "ID",
-    false
-);
+-- test: chaîne mal formée
+RETURN fn::validation_uuid_v7("pas-un-uuid", true).code == "CORE_VALIDATION_FORMAT";
+
+-- test: type int refusé
+RETURN fn::validation_uuid_v7(7, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "uuid", actual: "int" } };
+
+-- test: valeur absente
+RETURN fn::validation_uuid_v7(NONE, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_uuid_v7(NULL, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };

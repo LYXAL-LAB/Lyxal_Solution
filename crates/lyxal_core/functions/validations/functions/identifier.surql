@@ -1,29 +1,60 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
--- Version 1.0.0 — PERMISSIONS FULL
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/validations/functions/identifier.surql
 -- Fonction : fn::validation_identifier
--- Valide un identifiant ASCII : lettre ou _ au début, puis lettres, chiffres ou _.
+--
+-- Valide un identifiant technique : lettre ou souligné, puis lettres,
+-- chiffres ou soulignés ([A-Za-z_][A-Za-z0-9_]*).
+--
+-- Paramètres
+--   $value      : any — valeur à contrôler
+--   $min_length : int — longueur minimale (>= 1)
+--   $max_length : int — longueur maximale (>= $min_length)
+--
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = l'identifiant sans espaces périphériques, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
+--     CORE_VALIDATION_FORMAT
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $min_length < 1 ou $min_length > $max_length
+--
+-- Exemple (dans une fonction de module)
+--   LET $check = fn::validation_identifier($params.key, 1, 64);
+--   IF !$check.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $check.code });
+--   };
+-- ============================================================================
+
 DEFINE FUNCTION OVERWRITE fn::validation_identifier(
-    $value: any, $field: string, $min_length: int, $max_length: int
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $min_length < 1 OR $max_length < 1 OR $min_length > $max_length {
-        THROW "VALIDATION_INVALID_IDENTIFIER_LENGTH";
+    $value: any,
+    $min_length: int,
+    $max_length: int
+) -> object {
+    IF $min_length < 1 OR $min_length > $max_length { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
+    IF !type::is_string($value) {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-    LET $clean_value = string::trim($value);
-    IF $clean_value = "" { THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED"); };
-    LET $length = string::len($clean_value);
-    IF $length < $min_length { THROW string::concat($clean_field, "_TOO_SHORT"); };
-    IF $length > $max_length { THROW string::concat($clean_field, "_TOO_LONG"); };
-    IF !string::matches($clean_value, "^[A-Za-z_][A-Za-z0-9_]*$") {
-        THROW string::concat($clean_field, "_INVALID_IDENTIFIER");
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $length = string::len($clean);
+    IF $min_length IS NOT NONE AND $length < $min_length {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: $min_length, length: $length } };
     };
-    RETURN $clean_value;
+    IF $max_length IS NOT NONE AND $length > $max_length {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } };
+    };
+    IF !string::matches($clean, "^[A-Za-z_][A-Za-z0-9_]*$") { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "identifier" } }; };
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "Valide un identifiant technique ASCII avec longueur configurable."
+COMMENT "Valide un identifiant technique. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

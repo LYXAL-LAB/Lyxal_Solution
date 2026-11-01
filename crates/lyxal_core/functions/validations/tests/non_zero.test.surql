@@ -1,37 +1,22 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/non_zero.test.surql
--- Fonction     : fn::validation_non_zero
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_non_zero (format : crates/lyxal_core/implementation_plan.md §5).
 
--- ============================================================================
--- TEST 1 — Positif non nul
--- Résultat attendu : 1
--- ============================================================================
-RETURN fn::validation_non_zero(1, "DIVISOR");
+-- test: valeur acceptée
+RETURN fn::validation_non_zero(-2)
+    == { valid: true, value: -2, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Négatif non nul
--- Résultat attendu : -1
--- ============================================================================
-RETURN fn::validation_non_zero(-1, "DELTA");
+-- test: valeur refusée
+RETURN fn::validation_non_zero(0dec)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_ZERO", details: {} };
 
--- ============================================================================
--- TEST 3 — Zéro entier refusé
--- Erreur attendue : DIVISOR_ZERO_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_non_zero(0, "DIVISOR");
+-- test: valeur absente
+RETURN fn::validation_non_zero(NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — Zéro decimal refusé
--- Erreur attendue : DIVISOR_ZERO_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_non_zero(0dec, "DIVISOR");
+-- test: valeur NULL
+RETURN fn::validation_non_zero(NULL)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type string refusé
+RETURN fn::validation_non_zero("1")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "number", actual: "string" } };

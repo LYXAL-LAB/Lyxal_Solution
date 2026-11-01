@@ -1,87 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/starts_with.test.surql
--- Fonction     : fn::validation_starts_with
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW interrompent l'exécution.
--- Dans Surrealist, sélectionner individuellement le test concerné lorsqu'une
--- erreur est attendue.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_starts_with (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: préfixe présent
+RETURN fn::validation_starts_with("sk_live_1", ["pk_", "sk_"], true, true)
+    == { valid: true, value: "sk_live_1", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Préfixe valide
--- Résultat attendu : "lyxal-core"
--- ============================================================================
-RETURN fn::validation_starts_with(
-    "lyxal-core", "IDENTIFIER", ["lyxal-"], true, true
-);
+-- test: insensible à la casse
+RETURN fn::validation_starts_with("SK_1", ["sk_"], false, true)
+    == { valid: true, value: "SK_1", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Comparaison insensible à la casse
--- Résultat attendu : "Lyxal-Core"
--- ============================================================================
-RETURN fn::validation_starts_with(
-    "Lyxal-Core", "IDENTIFIER", ["lyxal-"], false, true
-);
+-- test: préfixe absent
+RETURN fn::validation_starts_with("live_sk_1", ["sk_"], true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { starts_with_any: ["sk_"] } };
 
--- ============================================================================
--- TEST 3 — Plusieurs préfixes autorisés
--- Résultat attendu : "https://lyxal.test"
--- ============================================================================
-RETURN fn::validation_starts_with(
-    "https://lyxal.test", "URL", ["http://", "https://"], true, true
-);
+-- test: valeur absente
+RETURN fn::validation_starts_with(NONE, ["a"], true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — Préfixe invalide
--- Erreur attendue : IDENTIFIER_INVALID_PREFIX
--- ============================================================================
-RETURN fn::validation_starts_with(
-    "core-lyxal", "IDENTIFIER", ["lyxal-"], true, true
-);
+-- test: valeur NULL
+RETURN fn::validation_starts_with(NULL, ["a"], true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
 
--- ============================================================================
--- TEST 5 — Liste vide
--- Erreur attendue : VALIDATION_EMPTY_PREFIXES
--- ============================================================================
-RETURN fn::validation_starts_with(
-    "lyxal-core", "IDENTIFIER", [], true, true
-);
+-- test: type int refusé
+RETURN fn::validation_starts_with(1, ["a"], true, true)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
 
--- ============================================================================
--- TEST 6 — Préfixe vide
--- Erreur attendue : VALIDATION_INVALID_PREFIX
--- ============================================================================
-RETURN fn::validation_starts_with(
-    "lyxal-core", "IDENTIFIER", ["   "], true, true
-);
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_starts_with("abc", [], true, true);
 
--- ============================================================================
--- TEST 7 — Valeur absente
--- Erreur attendue : IDENTIFIER_REQUIRED
--- ============================================================================
-RETURN fn::validation_starts_with(
-    NONE, "IDENTIFIER", ["lyxal-"], true, true
-);
-
--- ============================================================================
--- TEST 8 — Type invalide
--- Erreur attendue : IDENTIFIER_INVALID_TYPE
--- ============================================================================
-RETURN fn::validation_starts_with(
-    42, "IDENTIFIER", ["lyxal-"], true, true
-);
-
--- ============================================================================
--- TEST 9 — Nom technique vide
--- Erreur attendue : VALIDATION_INVALID_FIELD_NAME
--- ============================================================================
-RETURN fn::validation_starts_with(
-    "lyxal-core", "   ", ["lyxal-"], true, true
-);
+-- test: préfixe vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_starts_with("abc", [""], true, true);

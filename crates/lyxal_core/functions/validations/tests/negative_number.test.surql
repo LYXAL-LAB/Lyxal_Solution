@@ -1,37 +1,22 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/negative_number.test.surql
--- Fonction     : fn::validation_negative_number
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_negative_number (format : crates/lyxal_core/implementation_plan.md §5).
 
--- ============================================================================
--- TEST 1 — Entier négatif
--- Résultat attendu : -42
--- ============================================================================
-RETURN fn::validation_negative_number(-42, "BALANCE");
+-- test: valeur acceptée
+RETURN fn::validation_negative_number(-3)
+    == { valid: true, value: -3, code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Float négatif
--- Résultat attendu : -0.5f
--- ============================================================================
-RETURN fn::validation_negative_number(-0.5f, "DELTA");
+-- test: valeur refusée
+RETURN fn::validation_negative_number(0)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: 0, exclusive: true } };
 
--- ============================================================================
--- TEST 3 — Zéro refusé
--- Erreur attendue : BALANCE_NOT_NEGATIVE
--- ============================================================================
-RETURN fn::validation_negative_number(0, "BALANCE");
+-- test: valeur absente
+RETURN fn::validation_negative_number(NONE)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 4 — Positif refusé
--- Erreur attendue : BALANCE_NOT_NEGATIVE
--- ============================================================================
-RETURN fn::validation_negative_number(1, "BALANCE");
+-- test: valeur NULL
+RETURN fn::validation_negative_number(NULL)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type string refusé
+RETURN fn::validation_negative_number("1")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "number", actual: "string" } };

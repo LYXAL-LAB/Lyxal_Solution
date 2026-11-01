@@ -1,108 +1,45 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/alphanumeric.surql
--- Fonction     : fn::validation_alphanumeric
--- Domaine      : Core / Validation
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/alphanumeric.surql
+-- Fonction : fn::validation_alphanumeric
 --
--- Description
--- -----------
--- Vérifie qu'une chaîne obligatoire et non vide contient uniquement des caractères alphanumériques.
---
--- Principes
--- ----------
---   - validation stricte du type reçu ;
---   - aucune conversion implicite ;
---   - codes d'erreur stables construits depuis le nom technique du champ ;
---   - aucune lecture ni écriture persistante ;
---   - retour de la chaîne validée, éventuellement nettoyée avec string::trim().
+-- Valide qu'une chaîne non vide ne contient que des lettres et des chiffres
+-- (string::is_alphanum).
 --
 -- Paramètres
--- ----------
--- $value: any
---   Chaîne obligatoire à contrôler.
+--   $value      : any — valeur à contrôler
+--   $trim_value : bool — true pour retirer les espaces périphériques avant le contrôle
 --
--- $field: string
---   Nom technique utilisé pour les erreurs.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne (nettoyée si $trim_value), code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
 --
--- $trim_value: bool
---   Nettoie la valeur avant validation.
---
--- Valeur retournée
--- ----------------
--- string — chaîne validée.
---
--- Erreurs générées
--- ----------------
--- <FIELD>_REQUIRED
---   La valeur est absente ou égale à NONE.
---
--- <FIELD>_NULL_NOT_ALLOWED
---   La valeur est explicitement égale à NULL.
---
--- <FIELD>_INVALID_TYPE
---   La valeur n'est pas strictement de type string.
---
--- VALIDATION_INVALID_FIELD_NAME
---   Le nom technique du champ est vide.
---
--- <FIELD>_BLANK_NOT_ALLOWED
---   La chaîne est vide après nettoyage.
---
--- <FIELD>_INVALID_ALPHANUMERIC
---   La chaîne contient un caractère non alphanumérique.
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure. Elle ne consulte aucune table, ne
--- modifie aucune donnée et ne dépend pas du contexte d'authentification.
---
--- Dépendances natives SurrealDB
--- -----------------------------
---   - string::trim()
---   - string::is_alphanum()
---   - string::concat()
---   - type::is_null()
---   - type::is_string()
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $check = fn::validation_alphanumeric($params.code, true);
+--   IF !$check.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $check.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_alphanumeric(
     $value: any,
-    $field: string,
     $trim_value: bool
-) -> string {
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
+) -> object {
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = IF $trim_value { string::trim($value) } ELSE { $value };
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
-    };
-    IF !string::is_alphanum($clean_value) {
-        THROW string::concat($clean_field, "_INVALID_ALPHANUMERIC");
-    };
-
-    RETURN $clean_value;
+    LET $clean = IF $trim_value { string::trim($value) } ELSE { $value };
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    IF !string::is_alphanum($clean) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "alphanumeric" } }; };
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide qu'une chaîne obligatoire contient uniquement des caractères
-alphanumériques selon le contrôle natif string::is_alphanum().
-"
+COMMENT "Valide qu'une chaîne ne contient que des lettres et des chiffres. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

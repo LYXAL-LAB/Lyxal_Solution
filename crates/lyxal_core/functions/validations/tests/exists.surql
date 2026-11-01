@@ -370,9 +370,8 @@ RETURN fn::validation_exists(
 
 LET $slug = fn::validation_slug(
     "First-Item",
-    "ITEM_SLUG",
     100
-);
+).value;
 
 RETURN fn::validation_exists(
     $slug,
@@ -388,9 +387,8 @@ RETURN fn::validation_exists(
 -- ============================================================================
 
 LET $external_id = fn::validation_uuid(
-    u"018a6680-bef9-701b-9025-e1754f296a0f",
-    "EXTERNAL_ID"
-);
+    u"018a6680-bef9-701b-9025-e1754f296a0f"
+).value;
 
 RETURN fn::validation_exists(
     $external_id,
@@ -407,10 +405,9 @@ RETURN fn::validation_exists(
 
 LET $position = fn::validation_integer(
     1,
-    "POSITION",
     0,
     NONE
-);
+).value;
 
 RETURN fn::validation_exists(
     $position,

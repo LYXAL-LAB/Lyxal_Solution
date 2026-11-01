@@ -1,55 +1,30 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/lowercase.test.surql
--- Fonction     : fn::validation_lowercase
--- Domaine      : Core / Validation
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW interrompent l'exécution.
--- Dans Surrealist, sélectionner individuellement le test concerné lorsqu'une
--- erreur est attendue.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_lowercase (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme nettoyée
+RETURN fn::validation_lowercase(" " + "hello-123" + " ", true, false)
+    == { valid: true, value: "hello-123", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Minuscules valides
--- Résultat attendu : "lyxal-core"
--- ============================================================================
-RETURN fn::validation_lowercase(
-    "lyxal-core", "IDENTIFIER", true, false
-);
+-- test: valeur non conforme
+RETURN fn::validation_lowercase("Hello", true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "lowercase" } };
 
--- ============================================================================
--- TEST 2 — Majuscule présente
--- Erreur attendue : IDENTIFIER_NOT_LOWERCASE
--- ============================================================================
-RETURN fn::validation_lowercase(
-    "Lyxal-core", "IDENTIFIER", true, false
-);
+-- test: vide autorisée
+RETURN fn::validation_lowercase("  ", true, true)
+    == { valid: true, value: "", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 3 — Chiffres et ponctuation acceptés
--- Résultat attendu : "lyxal_2026"
--- ============================================================================
-RETURN fn::validation_lowercase(
-    "lyxal_2026", "IDENTIFIER", true, false
-);
+-- test: vide refusée
+RETURN fn::validation_lowercase("  ", true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 4 — Chaîne vide refusée
--- Erreur attendue : IDENTIFIER_BLANK_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_lowercase(
-    "", "IDENTIFIER", true, false
-);
+-- test: valeur absente
+RETURN fn::validation_lowercase(NONE, true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
 
--- ============================================================================
--- TEST 5 — Chaîne vide autorisée
--- Résultat attendu : ""
--- ============================================================================
-RETURN fn::validation_lowercase(
-    "", "IDENTIFIER", true, true
-);
+-- test: valeur NULL
+RETURN fn::validation_lowercase(NULL, true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_lowercase(1, true, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
