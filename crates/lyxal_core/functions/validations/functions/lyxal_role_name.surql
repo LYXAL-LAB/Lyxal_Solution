@@ -1,141 +1,65 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/lyxal_role_name.surql
--- Fonction     : fn::validation_lyxal_role_name
--- Domaine      : Core / Validation / Lyxal OS
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/lyxal_role_name.surql
+-- Fonction : fn::validation_lyxal_role_name
 --
--- Description
--- -----------
--- Valide un nom de rôle Lyxal destiné au contrôle d'accès.
---
--- Règles appliquées
--- -----------------
---   1. La valeur est normalisée en minuscules.
---   2. Lettres, chiffres et tirets bas sont autorisés.
---   3. Une liste facultative peut interdire les rôles système réservés.
+-- Valide un nom de rôle Lyxal : [a-z][a-z0-9_]* sans « _ » final, longueur
+-- bornée, hors rôles réservés ; la valeur renvoyée est en minuscules.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $reserved_roles: option<array<string>>
--- $min_length: int
--- $max_length: int
+--   $value          : any — valeur à contrôler
+--   $reserved_roles : option<array<string>> — rôles réservés, refusés (NONE pour aucun)
+--   $min_length     : int — longueur minimale (>= 1)
+--   $max_length     : int — longueur maximale (>= $min_length)
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée et normalisée selon la convention de la fonction.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le rôle en minuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_FORBIDDEN
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_TOO_SHORT
--- <FIELD>_TOO_LONG
--- <FIELD>_INVALID_ROLE_NAME
--- <FIELD>_RESERVED_ROLE_NAME
--- VALIDATION_INVALID_ROLE_LENGTH_RANGE
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $min_length < 1 ou $min_length > $max_length
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun accès réseau ;
---   - aucune dépendance à l'authentification ;
---   - aucune création de ressource Lyxal ;
---   - aucune conversion implicite de la valeur métier.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $role = fn::validation_lyxal_role_name($params.role, ["owner", "system"], 2, 64);
+--   IF !$role.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $role.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_lyxal_role_name(
     $value: any,
-    $field: string,
     $reserved_roles: option<array<string>>,
     $min_length: int,
     $max_length: int
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    LET $reserved = IF $reserved_roles IS NONE { [] } ELSE { array::map($reserved_roles, |$item| string::lowercase(string::trim($item))) };
+    IF $min_length < 1 OR $min_length > $max_length { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::lowercase(string::trim($value));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $length = string::len($clean);
+    IF $length < $min_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: $min_length, length: $length } }; };
+    IF $max_length IS NOT NONE AND $length > $max_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } }; };
+    IF !string::matches($clean, "^[a-z][a-z0-9_]*[a-z0-9]$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "lyxal_role_name" } };
     };
-
-    IF $min_length < 1 OR $max_length < 1 OR $min_length > $max_length {
-        THROW "VALIDATION_INVALID_ROLE_LENGTH_RANGE";
+    IF $clean IN $reserved {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORBIDDEN", details: {} };
     };
-
-    LET $role = string::lowercase($clean_value);
-    LET $length = string::len($role);
-
-    IF $length < $min_length {
-        THROW string::concat($clean_field, "_TOO_SHORT");
-    };
-
-    IF $length > $max_length {
-        THROW string::concat($clean_field, "_TOO_LONG");
-    };
-
-    IF !string::matches(
-        $role,
-        "^[a-z][a-z0-9_]*[a-z0-9]$"
-    ) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_ROLE_NAME"
-        );
-    };
-
-    IF $reserved_roles IS NOT NONE {
-        LET $reserved = array::map(
-            $reserved_roles,
-            |$item| string::lowercase(string::trim($item))
-        );
-
-        IF (($reserved) CONTAINS ($role)) {
-            THROW string::concat(
-                $clean_field,
-                "_RESERVED_ROLE_NAME"
-            );
-        };
-    };
-
-    RETURN $role;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide un nom de rôle Lyxal et peut interdire des rôles système réservés.
-"
+COMMENT "Valide un nom de rôle Lyxal : [a-z][a-z0-9_]* sans « _ » final, longueur bornée, hors rôles réservés ; la valeur renvoyée est en minuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

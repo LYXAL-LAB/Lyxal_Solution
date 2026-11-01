@@ -1,130 +1,57 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/lyxal_permission_name.surql
--- Fonction     : fn::validation_lyxal_permission_name
--- Domaine      : Core / Validation / Lyxal OS
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/lyxal_permission_name.surql
+-- Fonction : fn::validation_lyxal_permission_name
 --
--- Description
--- -----------
--- Valide un nom de permission Lyxal structuré par ressource et action.
---
--- Règles appliquées
--- -----------------
---   1. La valeur est normalisée en minuscules.
---   2. Le format canonique est ressource.action ou domaine.ressource.action.
---   3. Le dernier segment représente l'action.
---   4. Une liste facultative peut limiter les actions autorisées.
+-- Valide un nom de permission Lyxal (au moins deux segments [a-z][a-z0-9_]*
+-- séparés par des points, ex. booking.slot.read) ; action finale
+-- facultativement limitée. Valeur renvoyée en minuscules.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $allowed_actions: option<array<string>>
+--   $value           : any — valeur à contrôler
+--   $allowed_actions : option<array<string>> — actions (dernier segment) autorisées, au moins une, NONE pour toutes
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée et normalisée selon la convention de la fonction.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le nom en minuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_NOT_ALLOWED
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_PERMISSION_NAME
--- <FIELD>_PERMISSION_ACTION_NOT_ALLOWED
--- VALIDATION_EMPTY_PERMISSION_ACTIONS
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : liste d'actions vide ou action vide
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun accès réseau ;
---   - aucune dépendance à l'authentification ;
---   - aucune création de ressource Lyxal ;
---   - aucune conversion implicite de la valeur métier.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $permission = fn::validation_lyxal_permission_name($params.permission, ["read", "write"]);
+--   IF !$permission.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $permission.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_lyxal_permission_name(
     $value: any,
-    $field: string,
     $allowed_actions: option<array<string>>
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    LET $actions = IF $allowed_actions IS NONE { NONE } ELSE { array::map($allowed_actions, |$item| string::lowercase(string::trim($item))) };
+    IF $actions IS NOT NONE AND (array::len($actions) = 0 OR array::any($actions, |$item| $item = "")) { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::lowercase(string::trim($value));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    IF !string::matches($clean, "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "lyxal_permission_name" } };
     };
-
-    LET $permission = string::lowercase($clean_value);
-
-    IF !string::matches(
-        $permission,
-        "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+$"
-    ) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_PERMISSION_NAME"
-        );
+    IF $actions IS NOT NONE AND array::last(string::split($clean, ".")) NOT IN $actions {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: $actions } };
     };
-
-    LET $segments = string::split($permission, ".");
-    LET $action = $segments[array::len($segments) - 1];
-
-    IF $allowed_actions IS NOT NONE {
-        IF array::len($allowed_actions) = 0 {
-            THROW "VALIDATION_EMPTY_PERMISSION_ACTIONS";
-        };
-
-        LET $actions = array::map(
-            $allowed_actions,
-            |$item| string::lowercase(string::trim($item))
-        );
-
-        IF !(($actions) CONTAINS ($action)) {
-            THROW string::concat(
-                $clean_field,
-                "_PERMISSION_ACTION_NOT_ALLOWED"
-            );
-        };
-    };
-
-    RETURN $permission;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide un nom de permission Lyxal structuré par segments et action finale.
-"
+COMMENT "Valide un nom de permission Lyxal (au moins deux segments [a-z][a-z0-9_]* séparés par des points, ex. booking.slot.read) ; action finale facultativement limitée. Valeur renvoyée en minuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

@@ -1,109 +1,50 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/execution_priority.surql
--- Fonction     : fn::validation_execution_priority
--- Domaine      : Core / Validation / Workflow
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/execution_priority.surql
+-- Fonction : fn::validation_execution_priority
 --
--- Description
--- -----------
--- Valide une priorité entière de job ou de workflow.
---
--- Règles appliquées
--- -----------------
---   1. La valeur doit être strictement de type int.
---   2. La plage est inclusive.
---   3. Une valeur plus élevée peut représenter une priorité supérieure selon le moteur.
+-- Valide une priorité d'exécution : entier compris entre deux bornes
+-- incluses.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $min_priority: int
--- $max_priority: int
+--   $value        : any — valeur à contrôler
+--   $min_priority : int — priorité minimale incluse
+--   $max_priority : int — priorité maximale incluse (>= $min_priority)
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée ou un objet normalisé.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = l'entier d'origine, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_TOO_SMALL
+--     CORE_VALIDATION_TOO_LARGE
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_PRIORITY_TOO_LOW
--- <FIELD>_PRIORITY_TOO_HIGH
--- VALIDATION_INVALID_PRIORITY_RANGE
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $min_priority > $max_priority
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun lancement de job ou workflow ;
---   - aucun accès réseau ;
---   - aucun effet secondaire.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $priority = fn::validation_execution_priority($params.priority, 0, 10);
+--   IF !$priority.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $priority.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_execution_priority(
     $value: any,
-    $field: string,
     $min_priority: int,
     $max_priority: int
-) -> int {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $min_priority > $max_priority {
-        THROW "VALIDATION_INVALID_PRIORITY_RANGE";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $min_priority > $max_priority { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_int($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "int", actual: type::of($value) } };
     };
-
-    IF $value < $min_priority {
-        THROW string::concat(
-            $clean_field,
-            "_PRIORITY_TOO_LOW"
-        );
-    };
-
-    IF $value > $max_priority {
-        THROW string::concat(
-            $clean_field,
-            "_PRIORITY_TOO_HIGH"
-        );
-    };
-
-    RETURN $value;
+    IF $value < $min_priority { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SMALL", details: { min: $min_priority } }; };
+    IF $value > $max_priority { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LARGE", details: { max: $max_priority } }; };
+    RETURN { valid: true, value: $value, code: NONE, details: {} };
 }
-COMMENT "
-Valide une priorité entière dans une plage inclusive.
-"
+COMMENT "Valide une priorité d'exécution bornée. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

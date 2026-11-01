@@ -1,53 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/surql_record_string.test.surql
--- Fonction     : fn::validation_surql_record_string
--- Domaine      : Core / Validation / SurrealQL
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests qui attendent un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_surql_record_string (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_surql_record_string(" identity_user:abc ", "identity_user")
+    == { valid: true, value: "identity_user:abc", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Record textuel valide
--- Résultat attendu : "person:tobie"
--- ============================================================================
-RETURN fn::validation_surql_record_string(
-    "person:tobie",
-    "RECORD_ID",
-    NONE
-);
+-- test: toutes tables
+RETURN fn::validation_surql_record_string("team:x", NONE)
+    == { valid: true, value: "team:x", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Table attendue
--- Résultat attendu : "person:tobie"
--- ============================================================================
-RETURN fn::validation_surql_record_string(
-    "person:tobie",
-    "RECORD_ID",
-    "person"
-);
+-- test: autre table
+RETURN fn::validation_surql_record_string("booking_team:abc", "identity_user")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: ["identity_user"] } };
 
--- ============================================================================
--- TEST 3 — Mauvaise table
--- Erreur attendue : RECORD_ID_RECORD_TABLE_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_surql_record_string(
-    "company:lyxal",
-    "RECORD_ID",
-    "person"
-);
+-- test: sans identifiant
+RETURN fn::validation_surql_record_string("identity_user", "identity_user")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "record" } };
 
--- ============================================================================
--- TEST 4 — Chaîne ordinaire
--- Erreur attendue : RECORD_ID_INVALID_RECORD_STRING
--- ============================================================================
-RETURN fn::validation_surql_record_string(
-    "not a record",
-    "RECORD_ID",
-    NONE
-);
+-- test: chaîne blanche
+RETURN fn::validation_surql_record_string("  ", "identity_user")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_surql_record_string(NONE, "identity_user")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_surql_record_string(NULL, "identity_user")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_surql_record_string(42, "identity_user")
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: table invalide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_surql_record_string("a:b", "a-b");

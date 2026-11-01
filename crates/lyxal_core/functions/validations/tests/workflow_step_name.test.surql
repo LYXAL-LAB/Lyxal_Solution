@@ -1,36 +1,37 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/workflow_step_name.test.surql
--- Fonction     : fn::validation_workflow_step_name
--- Domaine      : Core / Validation / Workflow
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_workflow_step_name (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_workflow_step_name(" Send_Invoice_V2 ", 3, 30)
+    == { valid: true, value: "send_invoice_v2", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Étape valide
--- Résultat attendu : "validate_customer"
--- ============================================================================
-RETURN fn::validation_workflow_step_name(
-    "Validate_Customer",
-    "STEP_NAME",
-    3,
-    100
-);
+-- test: tiret refusé
+RETURN fn::validation_workflow_step_name("send-invoice", 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "snake_case" } };
 
--- ============================================================================
--- TEST 2 — Chiffre initial interdit
--- Erreur attendue : STEP_NAME_INVALID_STEP_NAME
--- ============================================================================
-RETURN fn::validation_workflow_step_name(
-    "1_validate_customer",
-    "STEP_NAME",
-    3,
-    100
-);
+-- test: chiffre initial
+RETURN fn::validation_workflow_step_name("2send", 3, 30).code == "CORE_VALIDATION_FORMAT";
+
+-- test: trop court
+RETURN fn::validation_workflow_step_name("ab", 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_length: 3, length: 2 } };
+
+-- test: chaîne blanche
+RETURN fn::validation_workflow_step_name("  ", 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_workflow_step_name(NONE, 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_workflow_step_name(NULL, 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_workflow_step_name(42, 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_workflow_step_name("abc", 5, 3);

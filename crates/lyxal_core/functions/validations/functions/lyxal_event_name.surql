@@ -1,136 +1,63 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/lyxal_event_name.surql
--- Fonction     : fn::validation_lyxal_event_name
--- Domaine      : Core / Validation / Lyxal OS
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/lyxal_event_name.surql
+-- Fonction : fn::validation_lyxal_event_name
 --
--- Description
--- -----------
--- Valide le nom canonique d'un événement Lyxal destiné aux webhooks, workflows ou notifications.
---
--- Règles appliquées
--- -----------------
---   1. La valeur est normalisée en minuscules.
---   2. Le séparateur canonique est le point.
---   3. Chaque segment commence par une lettre.
---   4. Le nombre de segments est configurable.
+-- Valide un nom d'événement Lyxal (segments [a-z][a-z0-9_]* séparés par des
+-- points, ex. booking.created) ; nombre de segments borné, valeur renvoyée
+-- en minuscules.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $min_segments: int
--- $max_segments: int
+--   $value        : any — valeur à contrôler
+--   $min_segments : int — nombre minimal de segments (>= 1)
+--   $max_segments : int — nombre maximal de segments (>= $min_segments)
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée et normalisée selon la convention de la fonction.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = le nom en minuscules, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_FORMAT
+--     CORE_VALIDATION_TOO_SHORT
+--     CORE_VALIDATION_TOO_LONG
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_EVENT_NAME
--- <FIELD>_TOO_FEW_SEGMENTS
--- <FIELD>_TOO_MANY_SEGMENTS
--- VALIDATION_INVALID_EVENT_SEGMENT_LIMITS
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $min_segments < 1 ou $min_segments > $max_segments
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Cette fonction est une primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucun accès réseau ;
---   - aucune dépendance à l'authentification ;
---   - aucune création de ressource Lyxal ;
---   - aucune conversion implicite de la valeur métier.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $event = fn::validation_lyxal_event_name($params.event_type, 2, 4);
+--   IF !$event.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $event.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_lyxal_event_name(
     $value: any,
-    $field: string,
     $min_segments: int,
     $max_segments: int
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $min_segments < 1 OR $min_segments > $max_segments { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::lowercase(string::trim($value));
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $segments = array::len(string::split($clean, "."));
+    IF !string::matches($clean, "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "lyxal_event_name" } };
     };
-
-    IF $min_segments < 1
-        OR $max_segments < 1
-        OR $min_segments > $max_segments
-    {
-        THROW "VALIDATION_INVALID_EVENT_SEGMENT_LIMITS";
+    IF $segments < $min_segments {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_segments: $min_segments, segments: $segments } };
     };
-
-    LET $event_name = string::lowercase($clean_value);
-
-    IF !string::matches(
-        $event_name,
-        "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*$"
-    ) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_EVENT_NAME"
-        );
+    IF $segments > $max_segments {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_segments: $max_segments, segments: $segments } };
     };
-
-    LET $segments = string::split($event_name, ".");
-    LET $count = array::len($segments);
-
-    IF $count < $min_segments {
-        THROW string::concat(
-            $clean_field,
-            "_TOO_FEW_SEGMENTS"
-        );
-    };
-
-    IF $count > $max_segments {
-        THROW string::concat(
-            $clean_field,
-            "_TOO_MANY_SEGMENTS"
-        );
-    };
-
-    RETURN $event_name;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide un nom d'événement Lyxal à segments séparés par des points.
-"
+COMMENT "Valide un nom d'événement Lyxal (segments [a-z][a-z0-9_]* séparés par des points, ex. booking.created) ; nombre de segments borné, valeur renvoyée en minuscules. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

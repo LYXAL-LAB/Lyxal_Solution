@@ -1,54 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/lyxal_permission_name.test.surql
--- Fonction     : fn::validation_lyxal_permission_name
--- Domaine      : Core / Validation / Lyxal OS
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_lyxal_permission_name (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_lyxal_permission_name(" Booking.Slot.Read ", ["read", "write"])
+    == { valid: true, value: "booking.slot.read", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Permission simple
--- Résultat attendu : "booking.read"
--- ============================================================================
-RETURN fn::validation_lyxal_permission_name(
-    "Booking.Read",
-    "PERMISSION",
-    ["read", "create", "update", "delete"]
-);
+-- test: un seul segment
+RETURN fn::validation_lyxal_permission_name("booking", ["read", "write"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "lyxal_permission_name" } };
 
--- ============================================================================
--- TEST 2 — Permission détaillée
--- Résultat attendu : "scheduler.job.run"
--- ============================================================================
-RETURN fn::validation_lyxal_permission_name(
-    "scheduler.job.run",
-    "PERMISSION",
-    ["read", "run"]
-);
+-- test: action non autorisée
+RETURN fn::validation_lyxal_permission_name("booking.slot.delete", ["read", "write"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NOT_ALLOWED", details: { allowed: ["read", "write"] } };
 
--- ============================================================================
--- TEST 3 — Action interdite
--- Erreur attendue : PERMISSION_PERMISSION_ACTION_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_lyxal_permission_name(
-    "booking.delete",
-    "PERMISSION",
-    ["read", "create"]
-);
+-- test: chaîne blanche
+RETURN fn::validation_lyxal_permission_name("  ", ["read", "write"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
 
--- ============================================================================
--- TEST 4 — Un seul segment
--- Erreur attendue : PERMISSION_INVALID_PERMISSION_NAME
--- ============================================================================
-RETURN fn::validation_lyxal_permission_name(
-    "admin",
-    "PERMISSION",
-    NONE
-);
+-- test: valeur absente
+RETURN fn::validation_lyxal_permission_name(NONE, ["read", "write"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_lyxal_permission_name(NULL, ["read", "write"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_lyxal_permission_name(42, ["read", "write"])
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: liste vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_lyxal_permission_name("a.b", []);

@@ -1,58 +1,38 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/lyxal_event_name.test.surql
--- Fonction     : fn::validation_lyxal_event_name
--- Domaine      : Core / Validation / Lyxal OS
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_lyxal_event_name (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_lyxal_event_name(" Booking.Created ", 2, 3)
+    == { valid: true, value: "booking.created", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Événement valide
--- Résultat attendu : "booking.created"
--- ============================================================================
-RETURN fn::validation_lyxal_event_name(
-    "Booking.Created",
-    "EVENT_NAME",
-    2,
-    5
-);
+-- test: un seul segment
+RETURN fn::validation_lyxal_event_name("booking", 2, 3)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_SHORT", details: { min_segments: 2, segments: 1 } };
 
--- ============================================================================
--- TEST 2 — Événement détaillé
--- Résultat attendu : "scheduler.job.execution.failed"
--- ============================================================================
-RETURN fn::validation_lyxal_event_name(
-    "scheduler.job.execution.failed",
-    "EVENT_NAME",
-    2,
-    5
-);
+-- test: trop de segments
+RETURN fn::validation_lyxal_event_name("a.b.c.d", 2, 3)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_segments: 3, segments: 4 } };
 
--- ============================================================================
--- TEST 3 — Trop peu de segments
--- Erreur attendue : EVENT_NAME_TOO_FEW_SEGMENTS
--- ============================================================================
-RETURN fn::validation_lyxal_event_name(
-    "created",
-    "EVENT_NAME",
-    2,
-    5
-);
+-- test: point final
+RETURN fn::validation_lyxal_event_name("booking.", 2, 3)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "lyxal_event_name" } };
 
--- ============================================================================
--- TEST 4 — Segment avec tiret
--- Erreur attendue : EVENT_NAME_INVALID_EVENT_NAME
--- ============================================================================
-RETURN fn::validation_lyxal_event_name(
-    "booking.payment-failed",
-    "EVENT_NAME",
-    2,
-    5
-);
+-- test: chaîne blanche
+RETURN fn::validation_lyxal_event_name("  ", 2, 3)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_lyxal_event_name(NONE, 2, 3)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_lyxal_event_name(NULL, 2, 3)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_lyxal_event_name(42, 2, 3)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: segments inversés
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_lyxal_event_name("a.b", 3, 2);

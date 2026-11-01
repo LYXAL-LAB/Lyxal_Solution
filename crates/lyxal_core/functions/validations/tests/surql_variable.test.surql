@@ -1,43 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/surql_variable.test.surql
--- Fonction     : fn::validation_surql_variable
--- Domaine      : Core / Validation / SurrealQL
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests qui attendent un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_surql_variable (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_surql_variable(" my_param ", false)
+    == { valid: true, value: "my_param", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Variable valide
--- Résultat attendu : "clean_value"
--- ============================================================================
-RETURN fn::validation_surql_variable(
-    "clean_value",
-    "VARIABLE_NAME",
-    false
-);
+-- test: nom réservé autorisé
+RETURN fn::validation_surql_variable("parent", true)
+    == { valid: true, value: "parent", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Préfixe dollar refusé
--- Erreur attendue : VARIABLE_NAME_DOLLAR_PREFIX_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_surql_variable(
-    "$clean_value",
-    "VARIABLE_NAME",
-    false
-);
+-- test: préfixe $ refusé
+RETURN fn::validation_surql_variable("$my_param", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "surql_identifier" } };
 
--- ============================================================================
--- TEST 3 — Variable réservée
--- Erreur attendue : VARIABLE_NAME_RESERVED_VARIABLE_NAME
--- ============================================================================
-RETURN fn::validation_surql_variable(
-    "before",
-    "VARIABLE_NAME",
-    false
-);
+-- test: nom réservé
+RETURN fn::validation_surql_variable("PARENT", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORBIDDEN", details: {} };
+
+-- test: chaîne blanche
+RETURN fn::validation_surql_variable("  ", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_surql_variable(NONE, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_surql_variable(NULL, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_surql_variable(42, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };

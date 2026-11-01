@@ -1,113 +1,54 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/functions/surql_database.surql
--- Fonction     : fn::validation_surql_database
--- Domaine      : Core / Validation / SurrealQL
--- Version      : 1.0.0
--- Statut       : Stable
+-- Fichier  : crates/lyxal_core/functions/validations/functions/surql_database.surql
+-- Fonction : fn::validation_surql_database
 --
--- Description
--- -----------
--- Valide un nom simple de database SurrealDB.
---
--- Règles appliquées
--- -----------------
---   1. L'identifiant doit être simple et portable.
---   2. La casse est conservée.
---   3. Les identifiants échappés ne sont pas couverts.
+-- Valide un identifiant SurrealQL de base de données
+-- ([A-Za-z_][A-Za-z0-9_]*), longueur bornée.
 --
 -- Paramètres
--- ----------
--- $value: any
--- $field: string
--- $max_length: int
+--   $value      : any — valeur à contrôler
+--   $max_length : int — longueur maximale (>= 1)
 --
--- Valeur retournée
--- ----------------
--- Retourne la valeur validée, éventuellement normalisée.
+-- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
+--   valid = true  → value = la chaîne sans espaces périphériques, code = NONE
+--   valid = false → value = NONE, code parmi :
+--     CORE_VALIDATION_REQUIRED
+--     CORE_VALIDATION_NULL
+--     CORE_VALIDATION_TYPE
+--     CORE_VALIDATION_BLANK
+--     CORE_VALIDATION_TOO_LONG
+--     CORE_VALIDATION_FORMAT
 --
--- Erreurs spécifiques
--- --------------------
--- <FIELD>_INVALID_DATABASE_NAME
--- <FIELD>_TOO_LONG
--- VALIDATION_INVALID_SURQL_DATABASE_MAX_LENGTH
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $max_length < 1
 --
--- Erreurs communes
--- ----------------
--- <FIELD>_REQUIRED
--- <FIELD>_NULL_NOT_ALLOWED
--- <FIELD>_INVALID_TYPE
--- <FIELD>_BLANK_NOT_ALLOWED
--- VALIDATION_INVALID_FIELD_NAME
---
--- Permissions
--- -----------
--- PERMISSIONS FULL
---
--- Primitive pure :
---
---   - aucune lecture ou écriture persistante ;
---   - aucune création de schéma SurrealDB ;
---   - aucune exécution de requête dynamique ;
---   - aucune vérification d'existence des objets validés.
---
--- Dépendances Lyxal
--- -----------------
--- Aucune.
-
+-- Exemple (dans une fonction de module)
+--   LET $name = fn::validation_surql_database($params.name, 64);
+--   IF !$name.valid {
+--       RETURN fn::error_result("<MODULE>_<DOMAINE>_INVALID", $params.language, { reason: $name.code });
+--   };
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::validation_surql_database(
     $value: any,
-    $field: string,
     $max_length: int
-) -> string {
-    LET $clean_field = string::trim($field);
-
-    IF $clean_field = "" {
-        THROW "VALIDATION_INVALID_FIELD_NAME";
-    };
-
-    IF $value IS NONE {
-        THROW string::concat($clean_field, "_REQUIRED");
-    };
-
-    IF type::is_null($value) {
-        THROW string::concat($clean_field, "_NULL_NOT_ALLOWED");
-    };
-
+) -> object {
+    IF $max_length < 1 { THROW "CORE_INVALID_ARGUMENT"; };
+    IF $value IS NONE { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} }; };
+    IF type::is_null($value) { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} }; };
     IF !type::is_string($value) {
-        THROW string::concat($clean_field, "_INVALID_TYPE");
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: type::of($value) } };
     };
-
-    LET $clean_value = string::trim($value);
-
-    IF $clean_value = "" {
-        THROW string::concat($clean_field, "_BLANK_NOT_ALLOWED");
+    LET $clean = string::trim($value);
+    IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
+    LET $length = string::len($clean);
+    IF $max_length IS NOT NONE AND $length > $max_length { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_TOO_LONG", details: { max_length: $max_length, length: $length } }; };
+    IF !string::matches($clean, "^[A-Za-z_][A-Za-z0-9_]*$") {
+        RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "surql_identifier" } };
     };
-
-    IF $max_length < 1 {
-        THROW "VALIDATION_INVALID_SURQL_DATABASE_MAX_LENGTH";
-    };
-
-    IF string::len($clean_value) > $max_length {
-        THROW string::concat($clean_field, "_TOO_LONG");
-    };
-
-    IF !string::matches(
-        $clean_value,
-        "^[A-Za-z_][A-Za-z0-9_]*$"
-    ) {
-        THROW string::concat(
-            $clean_field,
-            "_INVALID_DATABASE_NAME"
-        );
-    };
-
-    RETURN $clean_value;
+    RETURN { valid: true, value: $clean, code: NONE, details: {} };
 }
-COMMENT "
-Valide un nom simple et portable de database SurrealDB.
-"
+COMMENT "Valide un identifiant SurrealQL de base de données ([A-Za-z_][A-Za-z0-9_]*), longueur bornée. Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

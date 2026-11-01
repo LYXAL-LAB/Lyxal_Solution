@@ -1,43 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/surql_parameter.test.surql
--- Fonction     : fn::validation_surql_parameter
--- Domaine      : Core / Validation / SurrealQL
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests qui attendent un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_surql_parameter (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_surql_parameter(" my_param ", false)
+    == { valid: true, value: "my_param", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Paramètre valide
--- Résultat attendu : "api_base_url"
--- ============================================================================
-RETURN fn::validation_surql_parameter(
-    "api_base_url",
-    "PARAMETER_NAME",
-    false
-);
+-- test: nom réservé autorisé
+RETURN fn::validation_surql_parameter("session", true)
+    == { valid: true, value: "session", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 2 — Préfixe dollar refusé
--- Erreur attendue : PARAMETER_NAME_DOLLAR_PREFIX_NOT_ALLOWED
--- ============================================================================
-RETURN fn::validation_surql_parameter(
-    "$api_base_url",
-    "PARAMETER_NAME",
-    false
-);
+-- test: préfixe $ refusé
+RETURN fn::validation_surql_parameter("$my_param", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "surql_identifier" } };
 
--- ============================================================================
--- TEST 3 — Nom réservé
--- Erreur attendue : PARAMETER_NAME_RESERVED_PARAMETER_NAME
--- ============================================================================
-RETURN fn::validation_surql_parameter(
-    "auth",
-    "PARAMETER_NAME",
-    false
-);
+-- test: nom réservé
+RETURN fn::validation_surql_parameter("SESSION", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORBIDDEN", details: {} };
+
+-- test: chaîne blanche
+RETURN fn::validation_surql_parameter("  ", false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_surql_parameter(NONE, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_surql_parameter(NULL, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_surql_parameter(42, false)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };

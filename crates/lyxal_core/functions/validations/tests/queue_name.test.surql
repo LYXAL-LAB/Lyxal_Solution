@@ -1,36 +1,33 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/queue_name.test.surql
--- Fonction     : fn::validation_queue_name
--- Domaine      : Core / Validation / Workflow
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_queue_name (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_queue_name(" Mail-Outbox ", 3, 30)
+    == { valid: true, value: "mail-outbox", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — File valide
--- Résultat attendu : "email-high-priority"
--- ============================================================================
-RETURN fn::validation_queue_name(
-    "Email-High-Priority",
-    "QUEUE_NAME",
-    3,
-    100
-);
+-- test: souligné refusé
+RETURN fn::validation_queue_name("mail_outbox", 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "kebab_case" } };
 
--- ============================================================================
--- TEST 2 — Tiret bas interdit
--- Erreur attendue : QUEUE_NAME_INVALID_QUEUE_NAME
--- ============================================================================
-RETURN fn::validation_queue_name(
-    "email_high_priority",
-    "QUEUE_NAME",
-    3,
-    100
-);
+-- test: tiret final
+RETURN fn::validation_queue_name("mail-", 3, 30).code == "CORE_VALIDATION_FORMAT";
+
+-- test: chaîne blanche
+RETURN fn::validation_queue_name("  ", 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_queue_name(NONE, 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_queue_name(NULL, 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_queue_name(42, 3, 30)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_queue_name("abc", 5, 3);

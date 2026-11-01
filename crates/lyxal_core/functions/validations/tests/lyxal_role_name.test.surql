@@ -1,50 +1,34 @@
--- ============================================================================
--- LYXAL OS — TESTS CORE VALIDATION
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/lyxal_role_name.test.surql
--- Fonction     : fn::validation_lyxal_role_name
--- Domaine      : Core / Validation / Lyxal OS
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_lyxal_role_name (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur conforme
+RETURN fn::validation_lyxal_role_name(" Team_Admin ", ["owner"], 2, 32)
+    == { valid: true, value: "team_admin", code: NONE, details: {} };
 
--- ============================================================================
--- TEST 1 — Rôle valide
--- Résultat attendu : "project_manager"
--- ============================================================================
-RETURN fn::validation_lyxal_role_name(
-    "Project_Manager",
-    "ROLE_NAME",
-    ["root", "system"],
-    2,
-    64
-);
+-- test: rôle réservé
+RETURN fn::validation_lyxal_role_name("Owner", ["owner"], 2, 32)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORBIDDEN", details: {} };
 
--- ============================================================================
--- TEST 2 — Rôle réservé
--- Erreur attendue : ROLE_NAME_RESERVED_ROLE_NAME
--- ============================================================================
-RETURN fn::validation_lyxal_role_name(
-    "root",
-    "ROLE_NAME",
-    ["root", "system"],
-    2,
-    64
-);
+-- test: souligné final
+RETURN fn::validation_lyxal_role_name("admin_", ["owner"], 2, 32)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "lyxal_role_name" } };
 
--- ============================================================================
--- TEST 3 — Tiret interdit
--- Erreur attendue : ROLE_NAME_INVALID_ROLE_NAME
--- ============================================================================
-RETURN fn::validation_lyxal_role_name(
-    "project-manager",
-    "ROLE_NAME",
-    NONE,
-    2,
-    64
-);
+-- test: chaîne blanche
+RETURN fn::validation_lyxal_role_name("  ", ["owner"], 2, 32)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} };
+
+-- test: valeur absente
+RETURN fn::validation_lyxal_role_name(NONE, ["owner"], 2, 32)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_REQUIRED", details: {} };
+
+-- test: valeur NULL
+RETURN fn::validation_lyxal_role_name(NULL, ["owner"], 2, 32)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_NULL", details: {} };
+
+-- test: type int refusé
+RETURN fn::validation_lyxal_role_name(42, ["owner"], 2, 32)
+    == { valid: false, value: NONE, code: "CORE_VALIDATION_TYPE", details: { expected: "string", actual: "int" } };
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_lyxal_role_name("ab", NONE, 5, 2);
