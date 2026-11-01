@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/positive_number.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/positive_number.surql
 -- Fonction     : fn::validation_positive_number
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

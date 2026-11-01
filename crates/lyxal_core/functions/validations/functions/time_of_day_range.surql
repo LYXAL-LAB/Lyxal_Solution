@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/time_of_day_range.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/time_of_day_range.surql
 -- Fonction     : fn::validation_time_of_day_range
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

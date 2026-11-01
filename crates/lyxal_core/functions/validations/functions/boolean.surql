@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/boolean.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/boolean.surql
 -- Fonction     : fn::validation_boolean
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

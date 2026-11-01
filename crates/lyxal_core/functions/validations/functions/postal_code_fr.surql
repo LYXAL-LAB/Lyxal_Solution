@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/postal_code_fr.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/postal_code_fr.surql
 -- Fonction     : fn::validation_postal_code_fr
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

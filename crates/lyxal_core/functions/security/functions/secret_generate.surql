@@ -23,7 +23,10 @@ DEFINE FUNCTION OVERWRITE fn::security_secret_generate(
     };
 }
 COMMENT "
-Génère un secret alphanumérique à partir de rand::id. Pour des clés binaires
-ou contraintes cryptographiques précises, utiliser le moteur Rust.
+Génère un secret alphanumérique à partir de rand::id. En SurrealDB 3.3, rand::id
+tire ses caractères de rand::rng() (ChaCha12 réensemencé par le système) : générateur
+cryptographiquement sûr, SAUF si le serveur est démarré avec SURREAL_RAND_SEED
+(mode déterministe réservé aux tests et benchmarks), qui rend les secrets prévisibles.
+Pour des clés binaires ou du matériel cryptographique, utiliser lyxal_crypto (Rust, OsRng).
 "
 PERMISSIONS FULL;

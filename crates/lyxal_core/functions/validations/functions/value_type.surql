@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/value_type.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/value_type.surql
 -- Fonction     : fn::validation_value_type
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

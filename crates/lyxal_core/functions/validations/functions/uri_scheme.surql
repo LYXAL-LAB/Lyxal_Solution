@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/uri_scheme.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/uri_scheme.surql
 -- Fonction     : fn::validation_uri_scheme
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

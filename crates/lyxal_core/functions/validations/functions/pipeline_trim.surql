@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — VALIDATION PIPELINE
 -- ============================================================================
--- Fichier      : core/validation/pipeline_trim.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/pipeline_trim.surql
 -- Fonction     : fn::validation_pipeline_trim
 -- Domaine      : Core / Validation / Pipeline
 -- Version      : 1.0.0

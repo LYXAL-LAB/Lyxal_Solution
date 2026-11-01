@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/currency_code.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/currency_code.surql
 -- Fonction     : fn::validation_currency_code
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

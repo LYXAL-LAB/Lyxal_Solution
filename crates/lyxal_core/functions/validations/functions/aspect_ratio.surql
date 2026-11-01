@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/aspect_ratio.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/aspect_ratio.surql
 -- Fonction     : fn::validation_aspect_ratio
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/time_range.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/time_range.surql
 -- Fonction     : fn::validation_time_range
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/timezone.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/timezone.surql
 -- Fonction     : fn::validation_timezone
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

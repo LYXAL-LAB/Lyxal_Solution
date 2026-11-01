@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
--- Fichier      : core/sanitize/remove_control_chars.surql
+-- Fichier      : crates/lyxal_core/functions/sanitize/functions/remove_control_chars.surql
 -- Fonction     : fn::sanitize_remove_control_chars
 -- Domaine      : Core / Sanitize / String
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/bytes.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/bytes.surql
 -- Fonction     : fn::validation_bytes
 -- Domaine      : Core / Validation
 -- Version      : 1.0.1

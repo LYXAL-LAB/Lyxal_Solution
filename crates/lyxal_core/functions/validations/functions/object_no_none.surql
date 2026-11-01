@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/object_no_none.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/object_no_none.surql
 -- Fonction     : fn::validation_object_no_none
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

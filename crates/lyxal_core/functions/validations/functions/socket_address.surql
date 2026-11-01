@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/socket_address.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/socket_address.surql
 -- Fonction     : fn::validation_socket_address
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

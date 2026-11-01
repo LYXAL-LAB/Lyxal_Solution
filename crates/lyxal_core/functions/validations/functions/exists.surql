@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/exists.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/exists.surql
 -- Fonction     : fn::validation_exists
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

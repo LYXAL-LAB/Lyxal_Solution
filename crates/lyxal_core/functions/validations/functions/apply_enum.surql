@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — VALIDATION ENGINE
 -- ============================================================================
--- Fichier      : core/validation/apply_enum.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/apply_enum.surql
 -- Fonction     : fn::validation_apply_enum
 -- Domaine      : Core / Validation / Engine
 -- Version      : 1.0.0

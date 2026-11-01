@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/decimal.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/decimal.surql
 -- Fonction     : fn::validation_decimal
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/recovery_code.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/recovery_code.surql
 -- Fonction     : fn::validation_recovery_code
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

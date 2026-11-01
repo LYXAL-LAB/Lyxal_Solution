@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/cron_expression.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/cron_expression.surql
 -- Fonction     : fn::validation_cron_expression
 -- Domaine      : Core / Validation / Workflow
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/card_pan.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/card_pan.surql
 -- Fonction     : fn::validation_card_pan
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

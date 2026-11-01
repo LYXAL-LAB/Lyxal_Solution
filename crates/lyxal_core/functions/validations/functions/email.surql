@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/email.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/email.surql
 -- Fonction     : fn::validation_email
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

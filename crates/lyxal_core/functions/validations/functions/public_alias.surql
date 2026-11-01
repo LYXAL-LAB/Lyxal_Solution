@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/public_alias.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/public_alias.surql
 -- Fonction     : fn::validation_public_alias
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

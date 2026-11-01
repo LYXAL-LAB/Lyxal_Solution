@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/workflow_step_name.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/workflow_step_name.surql
 -- Fonction     : fn::validation_workflow_step_name
 -- Domaine      : Core / Validation / Workflow
 -- Version      : 1.0.0

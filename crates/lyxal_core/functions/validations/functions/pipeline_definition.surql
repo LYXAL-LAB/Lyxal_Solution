@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — VALIDATION PIPELINE
 -- ============================================================================
--- Fichier      : core/validation/pipeline_definition.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/pipeline_definition.surql
 -- Fonction     : fn::validation_pipeline_definition
 -- Domaine      : Core / Validation / Pipeline
 -- Version      : 1.0.0

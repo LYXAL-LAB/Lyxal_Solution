@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/port.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/port.surql
 -- Fonction     : fn::validation_port
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

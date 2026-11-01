@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/max_length.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/max_length.surql
 -- Fonction     : fn::validation_max_length
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

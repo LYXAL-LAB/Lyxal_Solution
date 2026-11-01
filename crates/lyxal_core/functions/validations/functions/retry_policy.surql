@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/retry_policy.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/retry_policy.surql
 -- Fonction     : fn::validation_retry_policy
 -- Domaine      : Core / Validation / Workflow
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/ipv6.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/ipv6.surql
 -- Fonction     : fn::validation_ipv6
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

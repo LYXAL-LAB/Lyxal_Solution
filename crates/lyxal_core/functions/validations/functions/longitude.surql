@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/longitude.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/longitude.surql
 -- Fonction     : fn::validation_longitude
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

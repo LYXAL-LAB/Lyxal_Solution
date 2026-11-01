@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/tuple_types.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/tuple_types.surql
 -- Fonction     : fn::validation_tuple_types
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

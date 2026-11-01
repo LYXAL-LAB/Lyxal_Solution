@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — TESTS CORE SANITIZE
 -- ============================================================================
--- Fichier      : core/sanitize/tests/trim_left.test.surql
+-- Fichier      : crates/lyxal_core/functions/sanitize/tests/trim_left.test.surql
 -- Fonction     : fn::sanitize_trim_left
 -- Version      : 1.0.0
 --

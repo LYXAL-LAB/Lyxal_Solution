@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
--- Fichier      : core/sanitize/title_case.surql
+-- Fichier      : crates/lyxal_core/functions/sanitize/functions/title_case.surql
 -- Fonction     : fn::sanitize_title_case
 -- Domaine      : Core / Sanitize / String
 -- Version      : 1.0.0

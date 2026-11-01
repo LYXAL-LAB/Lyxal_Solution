@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/first_name.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/first_name.surql
 -- Fonction     : fn::validation_first_name
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

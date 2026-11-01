@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/number.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/number.surql
 -- Fonction     : fn::validation_number
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

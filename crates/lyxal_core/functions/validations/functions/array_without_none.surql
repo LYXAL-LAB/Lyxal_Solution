@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/array_without_none.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/array_without_none.surql
 -- Fonction     : fn::validation_array_without_none
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

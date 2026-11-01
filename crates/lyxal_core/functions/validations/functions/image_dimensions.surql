@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/image_dimensions.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/image_dimensions.surql
 -- Fonction     : fn::validation_image_dimensions
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
--- Fichier      : core/sanitize/lowercase.surql
+-- Fichier      : crates/lyxal_core/functions/sanitize/functions/lowercase.surql
 -- Fonction     : fn::sanitize_lowercase
 -- Domaine      : Core / Sanitize / String
 -- Version      : 1.0.0

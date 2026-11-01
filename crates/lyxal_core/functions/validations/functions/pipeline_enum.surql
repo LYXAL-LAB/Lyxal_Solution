@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — VALIDATION PIPELINE
 -- ============================================================================
--- Fichier      : core/validation/pipeline_enum.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/pipeline_enum.surql
 -- Fonction     : fn::validation_pipeline_enum
 -- Domaine      : Core / Validation / Pipeline
 -- Version      : 1.0.0

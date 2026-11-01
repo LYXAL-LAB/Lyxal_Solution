@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/array_length.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/array_length.surql
 -- Fonction     : fn::validation_array_length
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

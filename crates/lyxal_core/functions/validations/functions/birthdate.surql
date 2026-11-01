@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/birthdate.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/birthdate.surql
 -- Fonction     : fn::validation_birthdate
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

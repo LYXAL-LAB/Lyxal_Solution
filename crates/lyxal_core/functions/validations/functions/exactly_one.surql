@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/exactly_one.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/exactly_one.surql
 -- Fonction     : fn::validation_exactly_one
 -- Domaine      : Core / Validation / Advanced
 -- Version      : 1.0.0

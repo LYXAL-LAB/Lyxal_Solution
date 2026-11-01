@@ -10,9 +10,9 @@
 | Étape | État |
 | :--- | :--- |
 | 1. Audit (ce document) | ✅ terminé |
-| 2. Décisions CTO (§7) | ✅ Q1 résultat renvoyé · Q2 moteur unique · Q3 suppression des 14 fonctions · Q4 tests après Q1–Q3 |
-| 3. [`implementation_plan.md`](implementation_plan.md) | ⏳ rédigé, en attente de validation CTO |
-| 4. Exécution par lots (PR) | — |
+| 2. Décisions CTO (§7) | ✅ Q1 résultat renvoyé · Q2 moteur unique · Q3 suppression des 18 fonctions · Q4 tests après Q1–Q3 |
+| 3. [`implementation_plan.md`](implementation_plan.md) | ✅ validé par le CTO |
+| 4. Exécution par lots (PR) | Lot 1 (nettoyage) ⏳ en cours · lots 2 à 5 à venir |
 | 5. Suppression de ce document | — |
 
 ---
@@ -112,7 +112,7 @@ Sans objet : pas de crate Rust ; signatures positionnelles typées admises par c
 
 * **Q1 — Contrat d'erreur (P1-1)** — ✅ **décidé : résultat renvoyé.** `validation_*` renvoient un résultat (booléen, ou `{ valid, code, details }`) ; `sanitize_*` transforment sans lever ; seul un argument invalide (erreur de programmation) lève `THROW` avec un code fixe `CORE_*` défini en master data ; le module appelant choisit son propre code (`<MODULE>_…`) et répond via `fn::error_result`.
 * **Q2 — Mécanique dupliquée (P1-2)** — ✅ **décidé : moteur unique.** Chaque famille (pipeline, optimiseur, débogage, benchmark, exécution, schéma, cache, SDK) est regroupée en un seul moteur générique dans `utils`, paramétré par le domaine ; chaque domaine ne garde que ses étapes propres. Aucune primitive n'est supprimée pour cause de non-usage.
-* **Q3 — Crypto (P1-3)** — ✅ **décidé : suppression des 14 fonctions.** Supprimer uniquement les 12 « demandes » et les 2 fonctions qui lèvent toujours une erreur (la crypto reste dans `lyxal_crypto`, appelée par le Rust avant ou après `call_fn`) ; conserver les ≈ 156 autres fonctions du domaine ; revoir `security_secret_generate`.
+* **Q3 — Crypto (P1-3)** — ✅ **décidé : suppression de 18 fonctions** (les 14 ci-dessous, plus `encrypt_string`, `encrypt_object`, `secret_export` et `secret_import`, de même nature, validées au lot 1). Supprimer uniquement les 12 « demandes » et les 2 fonctions qui lèvent toujours une erreur (la crypto reste dans `lyxal_crypto`, appelée par le Rust avant ou après `call_fn`) ; conserver les ≈ 156 autres fonctions du domaine ; revoir `security_secret_generate`.
 * **Q4 — Tests (P1-4)** — ✅ **décidé : après Q1–Q3.** Réécriture au format « valeur attendue vérifiée » (la CI échoue au moindre écart).
 * **Puis P2** : version `0.1.0` + mise à jour des 5 appelants ; suppression de `CHANGELOG.md` ; `Readme.md` décrivant l'état actuel ; `test/` → `tests/` ; en-têtes et exemples corrigés.
 

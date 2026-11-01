@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/invoice_number.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/invoice_number.surql
 -- Fonction     : fn::validation_invoice_number
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

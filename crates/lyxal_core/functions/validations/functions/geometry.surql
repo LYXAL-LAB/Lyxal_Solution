@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/geometry.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/geometry.surql
 -- Fonction     : fn::validation_geometry
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/idempotency_key.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/idempotency_key.surql
 -- Fonction     : fn::validation_idempotency_key
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

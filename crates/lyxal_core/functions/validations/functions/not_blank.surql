@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/not_blank.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/not_blank.surql
 -- Fonction     : fn::validation_not_blank
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

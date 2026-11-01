@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/ends_with.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/ends_with.surql
 -- Fonction     : fn::validation_ends_with
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

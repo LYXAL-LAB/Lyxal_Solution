@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/country_code_iso3.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/country_code_iso3.surql
 -- Fonction     : fn::validation_country_code_iso3
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

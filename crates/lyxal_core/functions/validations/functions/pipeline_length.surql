@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — VALIDATION PIPELINE
 -- ============================================================================
--- Fichier      : core/validation/pipeline_length.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/pipeline_length.surql
 -- Fonction     : fn::validation_pipeline_length
 -- Domaine      : Core / Validation / Pipeline
 -- Version      : 1.0.0

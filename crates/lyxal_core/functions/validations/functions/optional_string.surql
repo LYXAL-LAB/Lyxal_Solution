@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/optional_string.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/optional_string.surql
 -- Fonction     : fn::validation_optional_string
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

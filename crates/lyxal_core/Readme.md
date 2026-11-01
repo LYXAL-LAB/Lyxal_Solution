@@ -1,254 +1,83 @@
 # Lyxal Core
 
-> Bibliothèque standard de Lyxal OS (SurrealDB 3.3.4 — vérifiée initialement sur 3.2.0)
+> Bibliothèque standard SurrealQL de Lyxal OS — SurrealDB 3.3.4.
+> **Reprise en cours** : voir [`AUDIT.md`](AUDIT.md) (état constaté) et [`implementation_plan.md`](implementation_plan.md) (lots en cours). Ce Readme décrit l'état actuel ; il est mis à jour à chaque lot.
 
 ---
 
-# Présentation
+## Présentation
 
-**Lyxal Core** est la bibliothèque fondamentale de **Lyxal OS**.
-
-Elle regroupe l'ensemble des fonctions SurrealQL génériques utilisées par tous les modules de la plateforme.
-
-Le Core ne contient **aucune logique métier**.
-
-Son rôle est de fournir des briques techniques réutilisables afin d'éviter la duplication de code, de garantir des comportements homogènes et de simplifier le développement de tous les modules Lyxal.
-
----
-
-# Objectifs
-
-- Centraliser les fonctions communes
-- Garantir un comportement identique dans tous les modules
-- Réduire la duplication de code
-- Faciliter les tests
-- Simplifier la maintenance
-- Fournir une bibliothèque standard pour SurrealQL
-
----
-
-# Architecture
-
-```text
-lyxal_core/
-├── manifest.toml
-├── README.md
-├── CHANGELOG.md
-└── functions/
-    ├── validations/
-    │   ├── functions/   (339 fonctions)
-    │   └── test/        (339 fichiers de tests)
-    ├── sanitize/
-    │   ├── functions/   (170 fonctions)
-    │   └── tests/       (170 fichiers de tests)
-    ├── security/
-    │   ├── functions/   (170 fonctions)
-    │   └── tests/       (170 fichiers de tests)
-    └── utils/
-        ├── functions/   (120 fonctions)
-        └── tests/       (120 fichiers de tests)
-```
-
-Chaque dossier représente une bibliothèque indépendante.
-
-Aucune bibliothèque ne dépend d'un module métier.
-
-Tous les modules Lyxal peuvent les utiliser.
-
----
-
-# Validations (`functions/validations/`)
-
-Le dossier **validations** regroupe les fonctions permettant de vérifier qu'une donnée respecte un contrat.
-
-Exemples :
-
-- validation des chaînes
-- validation des nombres
-- validation des UUID
-- validation des e-mails
-- validation des URL
-- validation des tableaux
-- validation des objets
-- validation des dates
-- validation des octets (`bytes`)
-
-Ces fonctions ne modifient jamais les données.
-
-Elles vérifient uniquement leur conformité.
-
----
-
-# Sanitize (`functions/sanitize/`)
-
-Le dossier **sanitize** contient les fonctions de normalisation.
-
-Exemples :
-
-- trim
-- lowercase
-- uppercase
-- slug
-- nettoyage HTML lexical léger (`fn::sanitize_html` / `fn::sanitize_strip_dangerous_attributes` — pré-filtrage lexical, ne remplace pas un parseur DOM anti-XSS complet pour du HTML riche non fiable)
-- suppression des caractères interdits
-- normalisation Unicode
-- normalisation téléphone
-- normalisation email
-- nettoyage des tableaux
-- nettoyage des objets
-
-Ces fonctions transforment une donnée afin qu'elle soit exploitable.
-
----
-
-# Security (`functions/security/`)
-
-Le dossier **security** fournit les fonctions de sécurité et les descripteurs de politiques.
-
-Il comprend notamment :
-
-- permissions
-- contrôle d'accès
-- masquage
-- redaction
-- signatures
-- hash
-- vérifications
-- audit
-- replay protection
-- validation de politiques
-- helpers de sécurité
-
-Les opérations cryptographiques natives (AES-256-GCM, SHA-256, BLAKE3, Argon2id, HMAC-SHA256, HKDF-SHA256) sont réalisées par le crate Rust fondamental **`lyxal_crypto`**.
-
----
-
-# Utils (`functions/utils/`)
-
-Le dossier **utils** contient les fonctions techniques génériques.
-
-Il comprend notamment :
-
-- tableaux
-- objets
-- chaînes
-- nombres
-- dates
-- collections
-- comparaisons
-- conversions (hexadécimal, URI RFC 3986)
-- cache
-- runtime
-- pipelines
-- helpers
-
-Ces fonctions peuvent être utilisées dans tous les modules Lyxal.
-
----
-
-# Modules utilisant Lyxal Core
-
-Le Core est utilisé par tous les modules système et métiers :
-
-- Lyxal Auth
-- Lyxal Scheduler
-- Lyxal Notification
-- Lyxal Storage
-- Lyxal Error
-- Lyxal Webhook
-- Lyxal Catalogue
-- Lyxal Pipeline Ingestion
-- Lyxal Booking
-- ...
-
----
-
-# Philosophie
+**Lyxal Core** est la couche 0 de Lyxal OS : des fonctions SurrealQL génériques, sans logique métier, sans table et sans dépendance, destinées à être réutilisées par tous les modules (`.agents/AGENTS.md` §5.7).
 
 Le Core ne contient jamais :
 
-- de logique métier
-- de tables métier
-- de workflow
-- de règles fonctionnelles propres à un module
+- de logique métier ;
+- de tables métier ;
+- de workflow ;
+- de règle fonctionnelle propre à un module.
 
-Ces éléments appartiennent aux modules Lyxal.
-
-Le Core ne fournit que des briques techniques génériques.
+Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modules fournissent le métier.
 
 ---
 
-# Statistiques (Validées sur SurrealDB 3.2.0 et 3.3.4)
+## Organisation
 
-## Validations (`functions/validations/`)
-
-- 339 fonctions
-- 339 fichiers de tests
-
-## Sanitize (`functions/sanitize/`)
-
-- 170 fonctions
-- 170 fichiers de tests
-
-## Security (`functions/security/`)
-
-- 170 fonctions
-- 170 fichiers de tests
-
-## Utils (`functions/utils/`)
-
-- 120 fonctions
-- 120 fichiers de tests
-
----
-
-# Total & Métriques de Vérification (SurrealDB 3.3.4)
-
-Revérification sur le binaire `surreal` **3.3.4** (linux x86_64, moteur `memory`) :
-
-- **799 / 799** fonctions validées par `surreal validate` et importées avec `0` erreur
-- **799 / 799** fichiers de tests validés par `surreal validate`
-- **2 557 instructions de tests exécutées** : **1 585** retours `OK`, **963** `THROW "<CODE>"` métier, **9** rejets `encoding::json::decode()` attendus, **0 erreur moteur inattendue** (résultats identiques à 3.2.0)
-- Les **123 assertions de valeurs explicites** (Lots 1–4) n'ont pas été rejouées individuellement sur 3.3.4
-
-## Historique — Vérification initiale (SurrealDB 3.2.0)
-
-Le Core comprend actuellement :
-
-- **799 fonctions SurrealQL** (`799 / 799` validées par `surreal validate` et `799 / 799` importées sur `surreal.exe` v3.2.0 avec `0` erreur)
-- **799 fichiers de tests** (parité stricte 1:1, `799 / 799` validés par `surreal validate`)
-- **2 557 instructions de tests exécutées sur `surreal.exe` v3.2.0** :
-  - **1 585** retours nominaux `OK`
-  - **963** tests négatifs levant le `THROW "<CODE>"` métier attendu
-  - **9** rejets négatifs `encoding::json::decode()` sur chaînes JSON malformées (`validations/test/json.surql`, `json_string.test.surql`)
-  - **0 erreur moteur inattendue**
-- **123 assertions de valeurs explicites** vérifiées sur `surreal.exe` v3.2.0 (`81` assertions Lots 1–3 + `42` assertions Lot 4)
-
-Chaque fonction est fournie avec :
-
-- un fichier `.surql`
-- un fichier de test `.surql` / `.test.surql` (scénarios d'exécution positifs et négatifs)
-
----
-
-# Convention
-
-Toutes les fonctions de la bibliothèque standard `lyxal_core` sont déclarées sous la forme :
-
-```surql
-DEFINE FUNCTION OVERWRITE fn::<domaine>_<nom>(...) -> <type>
+```text
+lyxal_core/
+├── manifest.toml            (id lyxal_core, version 0.1.0, 781 fonctions déclarées)
+├── Readme.md
+├── AUDIT.md                 (document de reprise, supprimé en fin de reprise)
+├── implementation_plan.md   (document de reprise, supprimé en fin de reprise)
+└── functions/
+    ├── validations/   functions/ (339) · tests/ (339)   fn::validation_*
+    ├── sanitize/      functions/ (170) · tests/ (170)   fn::sanitize_*
+    ├── security/      functions/ (152) · tests/ (152)   fn::security_*
+    └── utils/         functions/ (120) · tests/ (120)   fn::utils_*
 ```
 
-Chaque fonction :
+Chaque fonction a son fichier (`functions/<domaine>/functions/<nom>.surql`) et son fichier de tests (`functions/<domaine>/tests/<nom>.test.surql`).
 
-- est documentée
-- possède des tests unitaires
-- suit les conventions Lyxal
-- est indépendante
-- est réutilisable
+| Domaine | Rôle |
+| :--- | :--- |
+| `validations` | Vérifier qu'une donnée respecte un contrat (chaînes, nombres, UUID, e-mails, URL, tableaux, objets, dates, durées, géométries…). |
+| `sanitize` | Normaliser une donnée (espaces, casse, slug, Unicode, téléphone, e-mail, tableaux, objets ; nettoyage HTML lexical léger, qui ne remplace pas un parseur DOM anti-XSS). |
+| `security` | Primitives de sécurité pures : empreintes non secrètes (SHA-256, BLAKE3), jetons (construction des claims, analyse), masquage (`redact_*`), détection d'attaques (`detect_*`), permissions, rôles, politiques, nonces et fenêtres anti-rejeu. |
+| `utils` | Fonctions techniques génériques : tableaux, objets, chaînes, nombres, dates, collections, conversions, cache, informations d'exécution, pipelines. |
+
+**Cryptographie** : chiffrement, HMAC, dérivation et gestion de clés, hachage de mots de passe sont exclusivement réalisés en Rust par `lyxal_crypto` (§11.3), appelé par le code Rust avant ou après `call_fn`. Le Core n'en contient aucune.
+
+`fn::security_secret_generate` utilise `rand::id`, sûr en SurrealDB 3.3 (`rand::rng()`, ChaCha12) **sauf** si le serveur est démarré avec `SURREAL_RAND_SEED` (mode déterministe de test). Pour du matériel cryptographique, utiliser `lyxal_crypto`.
 
 ---
 
-# Objectif
+## Contrat des fonctions
 
-Faire de **Lyxal Core** la bibliothèque standard SurrealQL de l'ensemble de Lyxal OS, offrant des fonctions génériques, robustes et testées, réutilisées par tous les modules de la plateforme.
+Toutes les fonctions sont déclarées sous la forme :
+
+```surql
+DEFINE FUNCTION OVERWRITE fn::<domaine>_<nom>(<paramètres typés>) -> <type> { ... }
+COMMENT "..."
+PERMISSIONS FULL;
+```
+
+Les primitives du Core utilisent des **signatures positionnelles typées** (exception au `$params: object` des modules, skill `lyxal-audit` Contrôle 2.3).
+
+### Contrat d'erreur — en cours de migration
+
+* **Actuel** : les fonctions signalent une donnée invalide par `THROW`, souvent avec un code construit à partir du paramètre `$field` (ex. `EMAIL_REQUIRED`). Un `THROW` interrompt la fonction du module appelant (`AUDIT.md`, P1-1).
+* **Cible** (lot 3 du plan, décision CTO Q1) : `fn::validation_*` renvoient `{ valid, value, code, details }` ; `fn::sanitize_*` transforment sans lever ; seul un argument invalide (erreur de programmation) lève `THROW` avec un code fixe `CORE_*`. Le module appelant choisit son propre code d'erreur et répond via `fn::error_result` (§5.3).
+
+---
+
+## Utilisation par les modules
+
+Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque module, une fois le contrat cible en place. Les modules `lyxal_error`, `lyxal_event`, `lyxal_pipeline_ingestion` et `lyxal_catalogue` le déclarent déjà comme dépendance (`>=0.1.0`).
+
+---
+
+## Tests
+
+* `scripts/ci/test_lyxal_core.py` charge les 781 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
+* **Limite actuelle** : la plupart des tests ne contiennent pas d'assertion (le résultat attendu est un commentaire). Le script vérifie l'absence d'erreur moteur inattendue, pas l'exactitude des valeurs. Les tests sont réécrits au format auto-vérifié (chaque instruction renvoie `true`) au fil du lot 3 (`implementation_plan.md` §5).
+* `scripts/ci/validate_surql.sh` vérifie la syntaxe de tout le SurrealQL du dépôt.
+* Les deux scripts font partie de la CI (job « SurrealQL ») et de `scripts/ci/ci_local.sh`.

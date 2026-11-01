@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/latitude.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/latitude.surql
 -- Fonction     : fn::validation_latitude
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

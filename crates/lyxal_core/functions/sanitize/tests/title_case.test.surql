@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — TESTS CORE SANITIZE
 -- ============================================================================
--- Fichier      : core/sanitize/tests/title_case.test.surql
+-- Fichier      : crates/lyxal_core/functions/sanitize/tests/title_case.test.surql
 -- Fonction     : fn::sanitize_title_case
 -- Version      : 1.0.0
 --

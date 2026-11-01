@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/business_day.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/business_day.surql
 -- Fonction     : fn::validation_business_day
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

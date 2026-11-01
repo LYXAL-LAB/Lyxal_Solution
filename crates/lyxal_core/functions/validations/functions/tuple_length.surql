@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/tuple_length.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/tuple_length.surql
 -- Fonction     : fn::validation_tuple_length
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

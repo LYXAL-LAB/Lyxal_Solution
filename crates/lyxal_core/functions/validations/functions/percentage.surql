@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/percentage.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/percentage.surql
 -- Fonction     : fn::validation_percentage
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0

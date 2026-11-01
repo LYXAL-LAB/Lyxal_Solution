@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
--- Fichier      : core/sanitize/collapse_whitespace.surql
+-- Fichier      : crates/lyxal_core/functions/sanitize/functions/collapse_whitespace.surql
 -- Fonction     : fn::sanitize_collapse_whitespace
 -- Domaine      : Core / Sanitize / String
 -- Version      : 1.0.0

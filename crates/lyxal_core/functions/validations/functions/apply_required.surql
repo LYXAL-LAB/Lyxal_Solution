@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — VALIDATION ENGINE
 -- ============================================================================
--- Fichier      : core/validation/apply_required.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/apply_required.surql
 -- Fonction     : fn::validation_apply_required
 -- Domaine      : Core / Validation / Engine
 -- Version      : 1.0.0

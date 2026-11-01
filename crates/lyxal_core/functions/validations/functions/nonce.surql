@@ -1,7 +1,7 @@
 -- ============================================================================
 -- LYXAL OS — CORE VALIDATION
 -- ============================================================================
--- Fichier      : core/validation/nonce.surql
+-- Fichier      : crates/lyxal_core/functions/validations/functions/nonce.surql
 -- Fonction     : fn::validation_nonce
 -- Domaine      : Core / Validation
 -- Version      : 1.0.0
