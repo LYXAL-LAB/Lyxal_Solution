@@ -1,54 +1,22 @@
--- ============================================================================
--- LYXAL OS — TESTS VALIDATION PIPELINE
--- ============================================================================
--- Fichier      : crates/lyxal_core/functions/validations/tests/pipeline_execute.test.surql
--- Fonction     : fn::validation_pipeline_execute
--- Version      : 1.0.0
---
--- Important
--- ---------
--- Les tests provoquant volontairement un THROW doivent être exécutés
--- individuellement dans Surrealist.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::validation_pipeline_execute (format : crates/lyxal_core/implementation_plan.md §5).
 
+-- test: valeur valide
+RETURN fn::validation_pipeline_execute(" A@b.fr ", [{ rule: "email", options: { max_length: 254 } }], 10) == { valid: true, value: "A@b.fr", errors: [], warnings: [], by_field: {} };
 
--- TEST 1 — Pipeline complet
--- Résultat attendu : "lyxal-core"
-RETURN fn::validation_pipeline_execute(
-    "  LYXAL-CORE  ",
-    "SLUG",
-    [
-        { rule: "required" },
-        { rule: "trim" },
-        { rule: "lowercase" },
-        { rule: "min_length", value: 3 },
-        { rule: "max_length", value: 64 },
-        { rule: "pattern", value: "^[a-z-]+$" }
-    ],
-    20
-);
+-- test: valeur invalide sans erreur levée
+RETURN fn::validation_pipeline_execute("x", [{ rule: "email", options: { max_length: 254 } }], 10).by_field == { "$": ["CORE_VALIDATION_FORMAT"] };
 
--- TEST 2 — Valeur par défaut
--- Résultat attendu : "pending"
-RETURN fn::validation_pipeline_execute(
-    NONE,
-    "STATUS",
-    [
-        { rule: "default", value: "pending" },
-        { rule: "enum", value: ["pending", "active"] }
-    ],
-    20
-);
+-- test: arrêt à la première erreur
+RETURN array::len(fn::validation_pipeline_execute("x", [{ rule: "min_length", options: { min_length: 3 } }, { rule: "max_length", options: { max_length: 0 } }], 10).errors) == 1;
 
--- TEST 3 — Pattern échoué
--- Erreur attendue : SLUG_PATTERN_MISMATCH
-RETURN fn::validation_pipeline_execute(
-    "  Lyxal Core  ",
-    "SLUG",
-    [
-        { rule: "trim" },
-        { rule: "lowercase" },
-        { rule: "pattern", value: "^[a-z-]+$" }
-    ],
-    20
-);
+-- test: each sur un tableau
+RETURN fn::validation_pipeline_execute([1, "a", 3], [{ rule: "array" }, { rule: "each", options: { pipeline: [{ rule: "integer" }] } }], 10).by_field == { "[1]": ["CORE_VALIDATION_TYPE"] };
+
+-- test: règle inconnue
+-- attendu-erreur: CORE_UNSUPPORTED_OPTION
+RETURN fn::validation_pipeline_execute(1, [{ rule: "inconnue" }], 10);
+
+-- test: option obligatoire absente
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_pipeline_execute("a", [{ rule: "min_length" }], 10);

@@ -24,12 +24,12 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 696 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 600 fonctions déclarées)
 ├── Readme.md
 ├── AUDIT.md                 (document de reprise, supprimé en fin de reprise)
 ├── implementation_plan.md   (document de reprise, supprimé en fin de reprise)
 └── functions/
-    ├── validations/   functions/ (321) · tests/ (321)   fn::validation_*
+    ├── validations/   functions/ (225) · tests/ (225)   fn::validation_*
     ├── sanitize/      functions/ (126) · tests/ (126)   fn::sanitize_*
     ├── security/      functions/ (137) · tests/ (137)   fn::security_*
     └── utils/         functions/ (112) · tests/ (112)   fn::utils_*
@@ -83,6 +83,11 @@ IF !$name.valid {
 * Il n'y a plus de paramètre `$field` : le nom du champ n'est connu que du module.
 * Les paramètres facultatifs (`option<…>`) doivent être passés explicitement (`NONE`).
 * **Avancement** : famille « types, nombres et chaînes » migrée (44 fonctions : `boolean`, `integer`, `number`, `decimal`, `float`, `bytes`, `value_type`, `allowed_types`, `uuid`, `uuid_v7`, `ulid`, `positive_number`, `negative_number`, `non_negative_number`, `non_zero`, `even`, `odd`, `multiple_of`, `percentage`, `integer_range`, `compare`, `required_if`, `required_unless`, `required_string`, `optional_string`, `not_blank`, `min_length`, `max_length`, `alphanumeric`, `ascii`, `lowercase`, `uppercase`, `contains`, `starts_with`, `ends_with`, `forbidden_values`, `reserved_words`, `regex`, `enum`, `enum_any`, `slug`, `identifier`, `hexadecimal`, `base64`) et famille « dates et durées » migrée (21 fonctions : `datetime`, `date`, `birthdate`, `age_range`, `business_day`, `future_datetime`, `past_datetime`, `date_range`, `time_range`, `time_of_day_range`, `time_of_day`, `weekday`, `duration`, `duration_range`, `execution_timeout`, `workflow_delay`, `date_string`, `datetime_string`, `iso8601`, `time_string`, `timezone`) et famille « tableaux, objets et références » migrée (29 fonctions : `array`, `array_non_empty`, `array_unique`, `array_without_none`, `array_without_null`, `array_length`, `tuple_length`, `tuple_types`, `array_integers`, `array_objects`, `array_of_strings`, `array_of_records`, `at_least_one`, `exactly_one`, `mutually_exclusive`, `all_or_none`, `allowed_combination`, `object`, `object_non_empty`, `object_no_none`, `object_no_null`, `object_keys`, `object_values_type`, `unknown_keys_policy`, `record`, `record_id`, `record_exists`, `exists`, `unique`) et famille « formats techniques » migrée (41 fonctions : jetons et secrets — `api_key`, `bearer_token`, `idempotency_key`, `nonce`, `recovery_code`, `totp_code`, `totp_secret`, `jwt_compact`, `hmac_signature`, `checksum`, `etag`, `password_strength` ; réseau et web — `email`, `domain`, `hostname`, `ip`, `cidr`, `mac_address`, `port`, `socket_address`, `origin`, `url`, `http_url`, `uri_scheme`, `http_method`, `webhook_path`, `content_type`, `mime_type` ; fichiers — `extension`, `filename`, `filesize`, `archive_entry_path`, `content_disposition_filename`, `storage_path`, `certificate_pem`, `public_key_pem`, `private_key_pem` ; versions et planification — `semantic_version`, `contract_version`, `cron_expression`, `retry_policy`) et famille « formats métier : identité, finance, géographie » migrée (36 fonctions : `first_name`, `last_name`, `full_name`, `display_name`, `initials`, `username`, `public_alias`, `profile_identifier`, `company_name`, `phone`, `postal_code_fr`, `country_code_iso2`, `country_code_iso3`, `currency_code`, `language_code`, `locale`, `latitude`, `longitude`, `coordinates`, `geohash`, `geometry`, `luhn`, `card_pan`, `iban`, `bic`, `rib_fr`, `siren`, `siret`, `vat_number_fr`, `ape_naf_code`, `invoice_number`, `money`, `image_width`, `image_height`, `image_dimensions`, `aspect_ratio`) et famille « noms Lyxal et SurrealQL » migrée (19 fonctions : `execution_priority`, `snake_case_name`, `queue_name`, `lyxal_bucket_name`, `lyxal_database`, `lyxal_event_name`, `lyxal_function_name`, `lyxal_instance_name`, `lyxal_module_name`, `lyxal_namespace`, `lyxal_permission_name`, `lyxal_role_name`, `lyxal_storage_path`, `surql_field`, `surql_field_path`, `surql_function`, `surql_parameter`, `surql_record_string`, `surql_variable` ; un identifiant SurrealQL de table, namespace, base ou événement se valide avec `identifier`). **Toutes les validations de valeurs sont migrées** ; seules les fonctions de mécanique de `validations` (pipeline, schéma, rapports, registre…) gardent l'ancien contrat jusqu'au lot 4. Une « date » est un datetime à minuit UTC. Le champ `details.scope` précise ce qui est en cause quand ce n'est pas la valeur elle-même : `"item"` (un élément d'un tableau), `"key"` (une clé d'objet), `"value"` (une valeur d'objet) ou `"group"` (un groupe de champs). Les autres fonctions gardent l'ancien contrat (`THROW` d'un code construit à partir de `$field`, `AUDIT.md` P1-1) jusqu'à leur PR.
+* **Pipelines et schémas** (moteur unique, lot 4) : `fn::validation_pipeline_execute($value, $pipeline, $max_steps)` et `fn::validation_object_execute($value, $schema, $max_steps)` renvoient le rapport `{ valid, value, errors, warnings, by_field }` et ne lèvent jamais pour une donnée invalide.
+  * Les étapes viennent de `fn::validation_step_catalog()` : 175 règles, une par validateur à une seule valeur. Un paramètre `option<…>` vaut NONE par défaut ; les autres sont des options obligatoires.
+  * `fn::validation_object` y figure sous le nom `is_object`.
+  * Les validateurs qui comparent plusieurs valeurs (`compare`, `date_range`, `time_range`, `coordinates`…) s'appellent directement.
+  * `fn::validation_dsl_compile($dsl)` convertit une description DSL en schéma du moteur ; la normalisation (trim, casse) relève de `sanitize`.
 
 #### Catalogue des codes `CORE_VALIDATION_*`
 
@@ -192,10 +197,10 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 ## Tests
 
-* `scripts/ci/test_lyxal_core.py` charge les 696 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
+* `scripts/ci/test_lyxal_core.py` charge les 600 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
 * **Deux formats coexistent pendant la reprise** :
   * **format « assertions »** (fichiers commençant par `-- lyxal-test: assertions`) : chaque bloc `-- test:` contient une instruction qui doit renvoyer `true`, ou lever l'erreur annoncée par `-- attendu-erreur: <CODE>` ; tout écart fait échouer la CI (détails : `implementation_plan.md` §5) ;
-  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (447 fichiers aujourd'hui, ceux des fonctions migrées).
+  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (452 fichiers aujourd'hui, ceux des fonctions migrées).
 * `scripts/ci/test_lyxal_core_selftest.py` vérifie que le banc accepte les bons tests et rejette les mauvais.
 * `scripts/ci/validate_surql.sh` vérifie la syntaxe de tout le SurrealQL du dépôt.
 * Les deux scripts font partie de la CI (job « SurrealQL ») et de `scripts/ci/ci_local.sh`.
