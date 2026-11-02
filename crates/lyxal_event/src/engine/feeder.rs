@@ -343,9 +343,11 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
             if let Some(delivery_id) = self.delivery_seq_to_id.get(offset).cloned() {
                 let params = DeliveryFailureParams {
                     delivery_id,
-                    error: reason
-                        .clone()
-                        .unwrap_or_else(|| "Handler failed".to_string()),
+                    error: super::progress::bounded_error_message(
+                        reason
+                            .clone()
+                            .unwrap_or_else(|| "Handler failed".to_string()),
+                    ),
                     retry_delay_seconds: 1,
                 };
                 let failure: Result<bool, LyxalSurrealError> =

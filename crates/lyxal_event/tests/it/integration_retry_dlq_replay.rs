@@ -141,3 +141,69 @@ async fn test_retry_dlq_and_replay_cycle() {
         common::delivery_statuses(&db).await
     );
 }
+
+/// Handler en échec avec un diagnostic démesuré.
+struct VerboseFailingHandler;
+
+#[async_trait::async_trait]
+impl Handler<PaymentProcessed> for VerboseFailingHandler {
+    async fn handle(
+        &self,
+        _event: PaymentProcessed,
+        _ctx: &HandlerContext,
+    ) -> Result<(), LyxalEventError> {
+        Err(LyxalEventError::HandlerFailed {
+            event_id: uuid::Uuid::now_v7(),
+            event_type: "payment.processed".to_string(),
+            error: "x".repeat(10_000),
+        })
+    }
+}
+
+/// Un diagnostic de handler très long n'empêche pas le transfert en dead letter : il est borné
+/// à la longueur validée par `fn::event_dead_letter_transfer`.
+#[tokio::test]
+async fn test_oversized_error_still_reaches_dead_letter() {
+    let db = connect("mem://").await.unwrap();
+    db.use_ns("test_ns").use_db("test_verbose").await.unwrap();
+    common::setup_test_db(&db).await;
+    let store = Arc::new(EventStore::new(db.clone()));
+    store.init_schema().await.unwrap();
+
+    let sub = EventSubscription::new(
+        "payment_verbose_sub",
+        "lyxal_accounting",
+        "payment.processed",
+        "record_ledger",
+    )
+    .with_max_attempts(2);
+    store.register_subscription(&sub).await.unwrap();
+    EventPublisher::new(store.clone(), "lyxal_billing", EventContext::default())
+        .publish(&PaymentProcessed {
+            payment_id: "pay_verbose".to_string(),
+            amount: 1,
+        })
+        .await
+        .unwrap();
+
+    let mut registry = HandlerRegistry::new();
+    registry.register(VerboseFailingHandler).unwrap();
+    let worker = Arc::new(EventWorker::new(
+        store.clone(),
+        registry,
+        common::fast_config("worker_verbose").with_max_attempts(2),
+    ));
+    let dead_lettered = common::run_worker_until(worker, Duration::from_secs(15), || {
+        let db = db.clone();
+        async move { common::delivery_statuses(&db).await == ["dead_letter"] }
+    })
+    .await;
+    assert!(
+        dead_lettered,
+        "la livraison doit finir en dead letter : {:?}",
+        common::delivery_statuses(&db).await
+    );
+    let dead_letters = store.get_dead_letters().await.unwrap();
+    assert_eq!(dead_letters.len(), 1);
+    assert!(dead_letters[0].last_error.chars().count() <= 4000);
+}

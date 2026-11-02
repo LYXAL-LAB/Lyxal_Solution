@@ -77,6 +77,21 @@ impl From<LyxalSurrealError> for ProgressError {
 /// Nombre maximal de rejeux d'une écriture interrompue par un conflit transitoire.
 pub(crate) const MAX_CONFLICT_RETRIES: u32 = 8;
 
+/// Longueur maximale (en caractères) d'un diagnostic d'échec, identique à la borne validée par
+/// `fn::event_dead_letter_transfer` et `fn::event_delivery_failure`.
+pub(crate) const MAX_ERROR_CHARS: usize = 4000;
+
+/// Borne un diagnostic d'échec à `MAX_ERROR_CHARS` caractères : un message de handler trop long
+/// ne doit jamais empêcher le transfert en dead letter ni l'enregistrement d'un échec.
+pub(crate) fn bounded_error_message(message: String) -> String {
+    if message.chars().count() <= MAX_ERROR_CHARS {
+        return message;
+    }
+    let mut bounded: String = message.chars().take(MAX_ERROR_CHARS - 1).collect();
+    bounded.push('…');
+    bounded
+}
+
 /// Conflit d'écriture transitoire de SurrealDB (contrôle de concurrence optimiste) : la
 /// transaction n'a pas été validée et peut être rejouée telle quelle.
 pub(crate) fn is_transient_conflict(err: &LyxalSurrealError) -> bool {
@@ -207,7 +222,7 @@ impl SubscriptionProgressTracker {
         let gen = self.generation.load(Ordering::SeqCst);
         let params = DeadLetterTransferParams {
             delivery_id: delivery_id.clone(),
-            error: error_msg.clone(),
+            error: bounded_error_message(error_msg),
             node_id: self.node_id.clone(),
             generation: gen,
         };
@@ -383,6 +398,17 @@ mod tests {
 
     fn del(key: &str) -> RecordId {
         RecordId::new("event_delivery", key)
+    }
+
+    #[test]
+    fn test_bounded_error_message_respects_validation_limit() {
+        let short = "erreur courte".to_string();
+        assert_eq!(bounded_error_message(short.clone()), short);
+
+        let long = "é".repeat(MAX_ERROR_CHARS + 500);
+        let bounded = bounded_error_message(long);
+        assert_eq!(bounded.chars().count(), MAX_ERROR_CHARS);
+        assert!(bounded.ends_with('…'));
     }
 
     #[tokio::test]
