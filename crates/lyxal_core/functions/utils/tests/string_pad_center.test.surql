@@ -1,10 +1,18 @@
--- ============================================================================
--- TESTS — fn::utils_string_pad_center
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_string_pad_center (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_string_pad_center(
-    "Lyxal",
-    11,
-    "-"
-);
+-- test: centrage
+RETURN fn::utils_string_pad_center("ab", 6, "*") == "**ab**";
+
+-- test: reste à droite
+RETURN fn::utils_string_pad_center("ab", 5, "-") == "-ab--";
+
+-- test: déjà assez long
+RETURN fn::utils_string_pad_center("abc", 2, "*") == "abc";
+
+-- test: remplissage vide
+RETURN fn::utils_string_pad_center("a", 3, "") == " a ";
+
+-- test: largeur négative
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_string_pad_center("a", -1, "*");

@@ -1,11 +1,20 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/cache_key.surql
 -- Fonction : fn::utils_cache_key
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Construit une clé de cache déterministe.
+--
+-- Paramètres
+--   $namespace : string
+--   $parts     : array<any>
+--
+-- Valeur renvoyée : string (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $clean_namespace = ""
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_cache_key(
     $namespace: string,
     $parts: array<any>
@@ -15,7 +24,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_cache_key(
     );
 
     IF $clean_namespace = "" {
-        THROW "UTILS_INVALID_CACHE_NAMESPACE";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     RETURN string::concat(

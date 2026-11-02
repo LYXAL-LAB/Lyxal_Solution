@@ -1,11 +1,21 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/runtime_environment.surql
 -- Fonction : fn::utils_runtime_environment
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Construit les métadonnées d'environnement d'exécution.
+--
+-- Paramètres
+--   $name     : string
+--   $debug    : bool
+--   $metadata : option<object>
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_UNSUPPORTED_OPTION : !((["development","test","staging","production"]) CONTAINS ($clean_name))
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_runtime_environment(
     $name: string,
     $debug: bool,
@@ -14,7 +24,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_runtime_environment(
     LET $clean_name = string::lowercase(string::trim($name));
 
     IF !((["development","test","staging","production"]) CONTAINS ($clean_name)) {
-        THROW "UTILS_INVALID_RUNTIME_ENVIRONMENT";
+        THROW "CORE_UNSUPPORTED_OPTION";
     };
 
     RETURN {

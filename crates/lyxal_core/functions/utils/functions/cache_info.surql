@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/cache_info.surql
 -- Fonction : fn::utils_cache_info
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Retourne les métadonnées d'une entrée de cache.
+--
+-- Paramètres
+--   $entry : object
+--   $now   : datetime
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_cache_info(
     $entry: object,
     $now: datetime

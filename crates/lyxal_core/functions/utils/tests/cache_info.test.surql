@@ -1,16 +1,8 @@
--- ============================================================================
--- TESTS — fn::utils_cache_info
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_cache_info (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_cache_info(
-    {
-        key:"a",
-        value:{name:"Lyxal"},
-        created_at:d"2026-08-03T12:00:00Z",
-        updated_at:d"2026-08-03T12:00:00Z",
-        expires_at:d"2026-08-03T13:00:00Z",
-        hits:2
-    },
-    d"2026-08-03T12:30:00Z"
-);
+-- test: entrée active
+RETURN fn::utils_cache_info(fn::utils_cache_entry(" k ", 42, 1h, d"2026-01-01T10:00:00Z", NONE), d"2026-01-01T10:15:00Z").remaining == 45m;
+
+-- test: entrée expirée
+RETURN fn::utils_cache_info(fn::utils_cache_entry(" k ", 42, 1h, d"2026-01-01T10:00:00Z", NONE), d"2026-01-01T12:00:00Z").expired AND fn::utils_cache_info(fn::utils_cache_entry(" k ", 42, 1h, d"2026-01-01T10:00:00Z", NONE), d"2026-01-01T12:00:00Z").remaining == 0s;

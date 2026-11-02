@@ -1,10 +1,5 @@
--- ============================================================================
--- TESTS — fn::utils_runtime_version
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_runtime_version (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_runtime_version(
-    "lyxal_utils",
-    "1.0.0",
-    "v1"
-);
+-- test: normalisée
+RETURN fn::utils_runtime_version(" Lyxal ", " 0.1.0 ", " V1 ") == { name: "lyxal", version: "0.1.0", contract: "v1" };

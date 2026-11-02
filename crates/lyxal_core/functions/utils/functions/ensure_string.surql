@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/ensure_string.surql
 -- Fonction : fn::utils_ensure_string
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Normalise une valeur vers une chaîne.
+--
+-- Paramètres
+--   $value         : any
+--   $default_value : string
+--
+-- Valeur renvoyée : string (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_ensure_string(
     $value: any,
     $default_value: string

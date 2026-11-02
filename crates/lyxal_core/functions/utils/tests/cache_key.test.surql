@@ -1,9 +1,12 @@
--- ============================================================================
--- TESTS — fn::utils_cache_key
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_cache_key (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_cache_key(
-    "scheduler",
-    ["job",123,"v1"]
-);
+-- test: préfixe normalisé
+RETURN string::starts_with(fn::utils_cache_key(" Users ", [1, "a"]), "users:");
+
+-- test: déterministe
+RETURN fn::utils_cache_key("u", [1, "a"]) == fn::utils_cache_key("u", [1, "a"]) AND fn::utils_cache_key("u", [1]) != fn::utils_cache_key("u", [2]);
+
+-- test: espace de noms vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_cache_key(" ", [1]);

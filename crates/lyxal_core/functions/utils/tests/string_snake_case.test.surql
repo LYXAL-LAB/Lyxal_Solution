@@ -1,8 +1,8 @@
--- ============================================================================
--- TESTS — fn::utils_string_snake_case
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_string_snake_case (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_string_snake_case(
-    "Lyxal OperatingSystem"
-);
+-- test: depuis PascalCase
+RETURN fn::utils_string_snake_case("HelloBigWorld") == "hello_big_world";
+
+-- test: tirets
+RETURN fn::utils_string_snake_case("-a-b-") == "a_b";

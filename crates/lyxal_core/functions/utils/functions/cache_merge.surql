@@ -1,11 +1,18 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/cache_merge.surql
 -- Fonction : fn::utils_cache_merge
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Purge les expirations et remplace une entrée par clé.
+--
+-- Paramètres
+--   $entries : array<object>
+--   $entry   : object
+--   $now     : datetime
+--
+-- Valeur renvoyée : array<object> (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_cache_merge(
     $entries: array<object>,
     $entry: object,

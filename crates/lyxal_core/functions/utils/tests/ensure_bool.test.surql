@@ -1,7 +1,18 @@
--- ============================================================================
--- TESTS — fn::utils_ensure_bool
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_ensure_bool (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_ensure_bool("yes",false);
-RETURN fn::utils_ensure_bool(0,true);
+-- test: texte vrai
+RETURN fn::utils_ensure_bool(" Yes ", false) == true;
+
+-- test: texte faux
+RETURN fn::utils_ensure_bool("off", true) == false;
+
+-- test: nombre
+RETURN fn::utils_ensure_bool(0, true) == false;
+
+-- test: NULL remplacé
+RETURN fn::utils_ensure_bool(NULL, true) == true;
+
+-- test: texte inconnu
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_ensure_bool("peut-être", false);

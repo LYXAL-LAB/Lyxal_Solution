@@ -1,17 +1,26 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/runtime_id.surql
 -- Fonction : fn::utils_runtime_id
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Génère un identifiant runtime préfixé.
+--
+-- Paramètres
+--   $prefix : string
+--   $length : int
+--
+-- Valeur renvoyée : string (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $length < 8 OR $length > 128
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_runtime_id(
     $prefix: string,
     $length: int
 ) -> string {
     IF $length < 8 OR $length > 128 {
-        THROW "UTILS_INVALID_RUNTIME_ID_LENGTH";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     LET $clean_prefix = string::lowercase(string::trim($prefix));

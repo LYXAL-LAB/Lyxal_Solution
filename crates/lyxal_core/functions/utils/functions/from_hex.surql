@@ -1,11 +1,19 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/from_hex.surql
 -- Fonction : fn::utils_from_hex
--- Version  : 1.0.1
--- Statut   : Stable
+--
+-- Décode une chaîne hexadécimale en octets.
+--
+-- Paramètres
+--   $value : string
+--
+-- Valeur renvoyée : bytes (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : longueur impaire ou caractère non hexadécimal
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_from_hex(
     $value: string
 ) -> bytes {
@@ -18,7 +26,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_from_hex(
     IF string::len($clean) % 2 != 0
         OR !string::matches($clean, "^[0-9a-f]+$")
     {
-        THROW "UTILS_INVALID_HEX_STRING";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     LET $hex_digits = [

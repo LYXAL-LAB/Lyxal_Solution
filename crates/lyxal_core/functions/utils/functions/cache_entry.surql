@@ -1,11 +1,23 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/cache_entry.surql
 -- Fonction : fn::utils_cache_entry
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Construit une entrée de cache.
+--
+-- Paramètres
+--   $key        : string
+--   $value      : any
+--   $ttl        : duration
+--   $created_at : datetime
+--   $metadata   : option<object>
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $ttl <= 0s
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_cache_entry(
     $key: string,
     $value: any,
@@ -14,7 +26,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_cache_entry(
     $metadata: option<object>
 ) -> object {
     IF $ttl <= 0s {
-        THROW "UTILS_INVALID_CACHE_TTL";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     RETURN {

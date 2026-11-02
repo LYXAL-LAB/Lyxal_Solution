@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/to_hex.surql
 -- Fonction : fn::utils_to_hex
--- Version  : 1.0.1
--- Statut   : Stable
+--
+-- Encode des octets en chaîne hexadécimale minuscule.
+--
+-- Paramètres
+--   $value : bytes
+--
+-- Valeur renvoyée : string (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_to_hex(
     $value: bytes
 ) -> string {

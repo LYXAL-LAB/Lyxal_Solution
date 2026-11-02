@@ -1,11 +1,20 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/ensure_number.surql
 -- Fonction : fn::utils_ensure_number
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Normalise une valeur vers un nombre.
+--
+-- Paramètres
+--   $value         : any
+--   $default_value : number
+--
+-- Valeur renvoyée : number (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : valeur non convertible (nombre ou chaîne décimale attendus)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_ensure_number(
     $value: any,
     $default_value: number
@@ -19,7 +28,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_ensure_number(
     {
         <number>string::trim($value)
     } ELSE {
-        THROW "UTILS_VALUE_IS_NOT_NUMBER"
+        THROW "CORE_INVALID_ARGUMENT"
     };
 }
 COMMENT "Normalise une valeur vers un nombre."

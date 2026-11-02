@@ -1,18 +1,28 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/string_pad_center.surql
 -- Fonction : fn::utils_string_pad_center
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Centre une chaîne dans une largeur donnée.
+--
+-- Paramètres
+--   $value  : string
+--   $length : int
+--   $pad    : string
+--
+-- Valeur renvoyée : string (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $length < 0
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_string_pad_center(
     $value: string,
     $length: int,
     $pad: string
 ) -> string {
     IF $length < 0 {
-        THROW "UTILS_INVALID_PAD_LENGTH";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     LET $current = string::len($value);

@@ -1,24 +1,8 @@
--- ============================================================================
--- TESTS — fn::utils_encode_uri
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_encode_uri (format : crates/lyxal_core/implementation_plan.md §5).
 
--- TEST 1 — Espaces et caractères réservés ("Lyxal OS / Core" -> "Lyxal%20OS%20%2F%20Core")
-RETURN fn::utils_encode_uri(
-    "Lyxal OS / Core"
-);
+-- test: caractères réservés
+RETURN fn::utils_encode_uri("a b/é?") == "a%20b%2F%C3%A9%3F";
 
--- TEST 2 — Chaîne vide ("" -> "")
-RETURN fn::utils_encode_uri(
-    ""
-);
-
--- TEST 3 — Caractères non réservés RFC 3986 ("abc-123_DEF.~" -> "abc-123_DEF.~")
-RETURN fn::utils_encode_uri(
-    "abc-123_DEF.~"
-);
-
--- TEST 4 — UTF-8 multi-octets et réservés ("Équipe & Co=100%" -> "%C3%89quipe%20%26%20Co%3D100%25")
-RETURN fn::utils_encode_uri(
-    "Équipe & Co=100%"
-);
+-- test: non réservés conservés
+RETURN fn::utils_encode_uri("A-z_0.~") == "A-z_0.~";

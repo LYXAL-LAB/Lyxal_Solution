@@ -14,8 +14,7 @@
 -- Valeur renvoyée : array<object> (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 --
 -- Erreurs de programmation (THROW)
---   CORE_UNSUPPORTED_OPTION : $clean_direction = "asc" { array::fold( $value, [], |$sorted, $item| { LET $ik = $item[$key]; IF $ik IS NONE OR type::is_null($ik) { array::append($sorted, $item) } ELSE { LET $before = array::filter($sorted, |$x| $x[$key] IS NOT NONE AND !type::is_null($x[$key]) AND $x[$key] <= $ik); LET $after = array::filter($sorted, |$x| $x[$key] IS NONE OR type::is_null($x[$key]) OR $x[$key] > $ik); array::concat(array::append($before, $item), $after) } } ) } ELSE IF $clean_direction = "desc" { array::fold( $value, [], |$sorted, $item| { LET $ik = $item[$key]; IF $ik IS NONE OR type::is_null($ik) { array::append($sorted, $item) } ELSE { LET $before = array::filter($sorted, |$x| $x[$key] IS NOT NONE AND !type::is_null($x[$key]) AND $x[$key] >= $ik); LET $after = array::filter($sorted, |$x| $x[$key] IS NONE OR type::is_null($x[$key]) OR $x[$key] < $ik); array::concat(array::append($before, $item), $after) } } ) } ELSE
---   CORE_UNSUPPORTED_OPTION : option inconnue
+--   CORE_UNSUPPORTED_OPTION : sens de tri autre que « asc » ou « desc »
 -- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::utils_collection_sort_by(
     $value: array<object>,
