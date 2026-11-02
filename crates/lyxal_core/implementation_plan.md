@@ -108,6 +108,8 @@ Même principe : un résultat ou une valeur ; `THROW` uniquement pour un argumen
 | `security_signature_headers`, `_payload`, `_request`, `_response`, `_timestamp`, `_info` | `security_hmac_*` (même forme canonique ; seule la signature HMAC existe, §11.3) |
 | `security_hmac_nonce`, `security_signature_nonce`, `security_token_nonce` | `security_nonce` (nouvelle fonction, code identique aux trois) |
 | `security_info`, `security_cipher_info`, `security_hmac_info` | aucune : fiches descriptives figées (et fausses pour `security_info`), leur contenu relève du Readme |
+| `security_permission_inherit` | `security_permission_merge` (raccourci aux mêmes paramètres) |
+| `security_redact_secret` | `security_secret_mask` avec le masque `"*"` |
 | `security_hash_compare` | aucune : égalité simple présentée comme une comparaison d'empreintes (même piège que `security_secret_compare`, §4) |
 
 Raison : une responsabilité = un endroit (`.agents/AGENTS.md` §5.1). Aucun appelant.

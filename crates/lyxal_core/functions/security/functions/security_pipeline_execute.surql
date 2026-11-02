@@ -37,7 +37,7 @@ DEFINE FUNCTION OVERWRITE fn::security_pipeline_execute(
             } ELSE IF $step.rule = "redact_card" {
                 object::extend($state,{value:fn::security_redact_card(<string>$state.value)})
             } ELSE IF $step.rule = "redact_secret" {
-                object::extend($state,{value:fn::security_redact_secret(<string>$state.value,0,4)})
+                object::extend($state,{value:fn::security_secret_mask(<string>$state.value,0,4,"*")})
             } ELSE IF $step.rule = "redact_log" {
                 object::extend($state,{value:fn::security_redact_log(<string>$state.value)})
             } ELSE IF $step.rule = "redact_object" {
