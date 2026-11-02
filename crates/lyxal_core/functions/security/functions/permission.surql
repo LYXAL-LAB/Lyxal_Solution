@@ -1,11 +1,23 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/permission.surql
 -- Fonction : fn::security_permission
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Construit une permission générique ressource/action.
+--
+-- Paramètres
+--   $resource   : string
+--   $action     : string
+--   $effect     : string
+--   $conditions : option<object>
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $clean_resource = "" OR $clean_action = ""
+--   CORE_UNSUPPORTED_OPTION : !((["allow","deny"]) CONTAINS ($clean_effect))
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_permission(
     $resource: string,
     $action: string,
@@ -17,11 +29,11 @@ DEFINE FUNCTION OVERWRITE fn::security_permission(
     LET $clean_effect = string::lowercase(string::trim($effect));
 
     IF $clean_resource = "" OR $clean_action = "" {
-        THROW "SECURITY_INVALID_PERMISSION";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     IF !((["allow","deny"]) CONTAINS ($clean_effect)) {
-        THROW "SECURITY_INVALID_PERMISSION_EFFECT";
+        THROW "CORE_UNSUPPORTED_OPTION";
     };
 
     RETURN {

@@ -1,9 +1,5 @@
--- ============================================================================
--- TESTS — fn::security_permission_inherit
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::security_permission_inherit (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::security_permission_inherit(
-    [{resource:"a",action:"read",effect:"allow"}],
-    [{resource:"a",action:"write",effect:"allow"}]
-);
+-- test: héritage
+RETURN fn::security_permission_inherit([{ resource: "booking", action: "read", effect: "allow", conditions: {} }], [{ resource: "booking", action: "write", effect: "allow", conditions: {} }, { resource: "booking", action: "read", effect: "allow", conditions: {} }]) == [{ resource: "booking", action: "read", effect: "allow", conditions: {} }, { resource: "booking", action: "write", effect: "allow", conditions: {} }];

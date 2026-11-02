@@ -1,11 +1,24 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/token_generate.surql
 -- Fonction : fn::security_token_generate
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Génère un token opaque textuel avec UUID v7, date d'émission et
+-- expiration.
+--
+-- Paramètres
+--   $prefix    : string
+--   $length    : int
+--   $issued_at : datetime
+--   $ttl       : duration
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $length < 24 OR $length > 256
+--   CORE_INVALID_ARGUMENT : $ttl <= 0s
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_token_generate(
     $prefix: string,
     $length: int,
@@ -13,10 +26,10 @@ DEFINE FUNCTION OVERWRITE fn::security_token_generate(
     $ttl: duration
 ) -> object {
     IF $length < 24 OR $length > 256 {
-        THROW "SECURITY_INVALID_TOKEN_LENGTH";
+        THROW "CORE_INVALID_ARGUMENT";
     };
     IF $ttl <= 0s {
-        THROW "SECURITY_INVALID_TOKEN_TTL";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     LET $clean_prefix = string::lowercase(string::trim($prefix));
@@ -35,7 +48,5 @@ DEFINE FUNCTION OVERWRITE fn::security_token_generate(
         status: "active"
     };
 }
-COMMENT "
-Génère un token opaque textuel avec UUID v7, date d'émission et expiration.
-"
+COMMENT "Génère un token opaque textuel avec UUID v7, date d'émission et expiration."
 PERMISSIONS FULL;

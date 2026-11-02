@@ -1,17 +1,5 @@
--- ============================================================================
--- TESTS — fn::security_policy_merge
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::security_policy_merge (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::security_policy_merge(
-    {
-        permissions:[{resource:"a",action:"read",effect:"allow"}],
-        default_effect:"deny"
-    },
-    {
-        permissions:[{resource:"a",action:"write",effect:"allow"}],
-        default_effect:"deny"
-    },
-    "merged",
-    "v1"
-);
+-- test: permissions fusionnées et effet repris
+RETURN fn::security_policy_merge({ permissions: [{ resource: "booking", action: "read", effect: "allow", conditions: {} }], default_effect: "deny" }, { permissions: [{ resource: "booking", action: "write", effect: "allow", conditions: {} }], default_effect: "allow" }, "merged", "v3") == { name: "merged", version: "v3", permissions: [{ resource: "booking", action: "read", effect: "allow", conditions: {} }, { resource: "booking", action: "write", effect: "allow", conditions: {} }], default_effect: "allow" };

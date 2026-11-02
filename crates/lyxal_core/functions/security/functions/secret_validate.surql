@@ -1,18 +1,28 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/secret_validate.surql
 -- Fonction : fn::security_secret_validate
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Évalue des contraintes structurelles minimales sur un secret.
+--
+-- Paramètres
+--   $secret     : string
+--   $min_length : int
+--   $max_length : int
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $min_length < 1 OR $max_length < $min_length
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_secret_validate(
     $secret: string,
     $min_length: int,
     $max_length: int
 ) -> object {
     IF $min_length < 1 OR $max_length < $min_length {
-        THROW "SECURITY_INVALID_SECRET_LENGTH_RANGE";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     LET $length = string::len($secret);

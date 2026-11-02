@@ -1,11 +1,20 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/hmac_response.surql
 -- Fonction : fn::security_hmac_response
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Construit la représentation canonique d'une réponse HMAC.
+--
+-- Paramètres
+--   $status       : int
+--   $timestamp    : datetime
+--   $nonce        : string
+--   $payload      : any
+--   $content_type : string
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_hmac_response(
     $status: int,
     $timestamp: datetime,

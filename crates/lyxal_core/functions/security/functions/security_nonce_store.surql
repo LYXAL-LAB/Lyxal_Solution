@@ -1,11 +1,23 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/security_nonce_store.surql
 -- Fonction : fn::security_nonce_store
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Construit une entrée de stockage de nonce sans conserver le nonce brut.
+--
+-- Paramètres
+--   $nonce     : string
+--   $subject   : string
+--   $issued_at : datetime
+--   $ttl       : duration
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : string::len(string::trim($nonce)) < 16
+--   CORE_INVALID_ARGUMENT : $ttl <= 0s
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_nonce_store(
     $nonce: string,
     $subject: string,
@@ -13,11 +25,11 @@ DEFINE FUNCTION OVERWRITE fn::security_nonce_store(
     $ttl: duration
 ) -> object {
     IF string::len(string::trim($nonce)) < 16 {
-        THROW "SECURITY_NONCE_TOO_SHORT";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     IF $ttl <= 0s {
-        THROW "SECURITY_INVALID_NONCE_TTL";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     RETURN {

@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/detect_file_attack.surql
 -- Fonction : fn::security_detect_file_attack
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Détecte plusieurs anomalies simples sur un nom de fichier et son MIME.
+--
+-- Paramètres
+--   $filename : string
+--   $mime     : string
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_detect_file_attack(
     $filename: string,
     $mime: string

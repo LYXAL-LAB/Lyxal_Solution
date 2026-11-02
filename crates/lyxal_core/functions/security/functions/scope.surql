@@ -1,11 +1,19 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/scope.surql
 -- Fonction : fn::security_scope
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Valide et normalise un scope de forme domaine:action.
+--
+-- Paramètres
+--   $value : string
+--
+-- Valeur renvoyée : string (contrat : crates/lyxal_core/Readme.md, fonctions security)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : !string::matches( $scope, "^[a-z][a-z0-9_]*(?::[a-z][a-z0-9_]*)+$" )
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_scope(
     $value: string
 ) -> string {
@@ -15,7 +23,7 @@ DEFINE FUNCTION OVERWRITE fn::security_scope(
         $scope,
         "^[a-z][a-z0-9_]*(?::[a-z][a-z0-9_]*)+$"
     ) {
-        THROW "SECURITY_INVALID_SCOPE";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     RETURN $scope;

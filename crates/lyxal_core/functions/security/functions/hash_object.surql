@@ -1,11 +1,19 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/hash_object.surql
 -- Fonction : fn::security_hash_object
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Encode un objet en JSON puis calcule son empreinte. La stabilité dépend de
+-- l'ordre canonique fourni par l'encodeur et du même environnement
+-- d'exécution.
+--
+-- Paramètres
+--   $value     : object
+--   $algorithm : string
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_hash_object(
     $value: object,
     $algorithm: string
@@ -17,8 +25,5 @@ DEFINE FUNCTION OVERWRITE fn::security_hash_object(
         hash: fn::security_hash_string($canonical, $algorithm)
     };
 }
-COMMENT "
-Encode un objet en JSON puis calcule son empreinte. La stabilité dépend de
-l'ordre canonique fourni par l'encodeur et du même environnement d'exécution.
-"
+COMMENT "Encode un objet en JSON puis calcule son empreinte. La stabilité dépend de l'ordre canonique fourni par l'encodeur et du même environnement d'exécution."
 PERMISSIONS FULL;

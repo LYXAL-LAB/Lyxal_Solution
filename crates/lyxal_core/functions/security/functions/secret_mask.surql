@@ -1,11 +1,22 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/secret_mask.surql
 -- Fonction : fn::security_secret_mask
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Masque un secret en conservant ses extrémités.
+--
+-- Paramètres
+--   $secret        : string
+--   $visible_start : int
+--   $visible_end   : int
+--   $mask          : string
+--
+-- Valeur renvoyée : string (contrat : crates/lyxal_core/Readme.md, fonctions security)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $visible_start < 0 OR $visible_end < 0
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_secret_mask(
     $secret: string,
     $visible_start: int,
@@ -13,7 +24,7 @@ DEFINE FUNCTION OVERWRITE fn::security_secret_mask(
     $mask: string
 ) -> string {
     IF $visible_start < 0 OR $visible_end < 0 {
-        THROW "SECURITY_INVALID_SECRET_VISIBILITY";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     LET $length = string::len($secret);

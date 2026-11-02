@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/permission_merge.surql
 -- Fonction : fn::security_permission_merge
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Fusionne deux ensembles de permissions sans doublons stricts.
+--
+-- Paramètres
+--   $left  : array<object>
+--   $right : array<object>
+--
+-- Valeur renvoyée : array<object> (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_permission_merge(
     $left: array<object>,
     $right: array<object>

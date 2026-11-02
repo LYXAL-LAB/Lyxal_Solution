@@ -1,11 +1,19 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/policy_merge.surql
 -- Fonction : fn::security_policy_merge
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Fusionne deux politiques de permissions.
+--
+-- Paramètres
+--   $left    : object
+--   $right   : object
+--   $name    : string
+--   $version : string
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_policy_merge(
     $left: object,
     $right: object,

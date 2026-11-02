@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/hash_info.surql
 -- Fonction : fn::security_hash_info
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Retourne les métadonnées d'une empreinte.
+--
+-- Paramètres
+--   $hash      : string
+--   $algorithm : string
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_hash_info(
     $hash: string,
     $algorithm: string

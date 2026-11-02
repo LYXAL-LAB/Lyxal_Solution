@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/permission_inherit.surql
 -- Fonction : fn::security_permission_inherit
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Construit les permissions héritées d'un parent et d'un enfant.
+--
+-- Paramètres
+--   $parent_permissions : array<object>
+--   $child_permissions  : array<object>
+--
+-- Valeur renvoyée : array<object> (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_permission_inherit(
     $parent_permissions: array<object>,
     $child_permissions: array<object>
