@@ -10,14 +10,27 @@
 DEFINE FUNCTION OVERWRITE fn::event_dead_letter_transfer(
     $params: object
 ) {
-    IF $params.delivery_id == NONE OR $params.error == NONE OR $params.node_id == NONE OR $params.generation == NONE {
-        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", "fr", { message: "delivery_id, error, node_id, and generation are mandatory" });
+    -- Fonction interne du moteur d'événements (appelée par le code Rust avec des types
+    -- vérifiés, à chaque livraison) : validation par les primitives de lyxal_core plutôt que
+    -- par fn::validation_object_execute, dont le coût par appel pèserait sur le débit
+    -- (décision CTO, reprise lyxal_event).
+    LET $checks = {
+        delivery_id: fn::validation_record_id($params.delivery_id, ["event_delivery"]),
+        error: fn::validation_required_string($params.error, 1, 4000),
+        node_id: fn::validation_required_string($params.node_id, 1, 128),
+        generation: fn::validation_integer($params.generation, 1, NONE),
+        language: fn::validation_language_code($params.language ?? "fr", false, NONE)
     };
+    LET $invalid = object::from_entries(array::map(array::filter(object::entries($checks), |$e| !$e[1].valid), |$e| [$e[0], [$e[1].code]]));
+    IF object::len($invalid) > 0 {
+        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", $params.language, { fields: $invalid });
+    };
+    LET $p = object::from_entries(array::map(object::entries($checks), |$e| [$e[0], $e[1].value]));
+    LET $delivery_id = $p.delivery_id;
+    LET $error_msg = $p.error;
+    LET $node_id = $p.node_id;
+    LET $generation = $p.generation;
 
-    LET $delivery_id = <record<event_delivery>> $params.delivery_id;
-    LET $error_msg = <string> $params.error;
-    LET $node_id = <string> $params.node_id;
-    LET $generation = <number> $params.generation;
     LET $now = time::now();
     LET $lease_rec = event_stream_lease:outbox_leader;
 

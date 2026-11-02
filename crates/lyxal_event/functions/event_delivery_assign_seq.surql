@@ -9,17 +9,33 @@
 DEFINE FUNCTION OVERWRITE fn::event_delivery_assign_seq(
     $params: object
 ) {
-    IF $params.outbox_event == NONE OR $params.subscription == NONE OR $params.node_id == NONE OR $params.generation == NONE {
-        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", "fr", { message: "outbox_event, subscription, node_id, and generation are mandatory" });
+    -- Fonction interne du moteur d'événements (appelée par le code Rust avec des types
+    -- vérifiés, à chaque livraison) : validation par les primitives de lyxal_core plutôt que
+    -- par fn::validation_object_execute, dont le coût par appel pèserait sur le débit
+    -- (décision CTO, reprise lyxal_event).
+    LET $checks = {
+        outbox_event: fn::validation_record_id($params.outbox_event, ["event_outbox"]),
+        subscription: fn::validation_record_id($params.subscription, ["event_subscription"]),
+        target_module: IF !fn::validation_required_string($params.target_module, 1, 64).valid { fn::validation_required_string($params.target_module, 1, 64) } ELSE { fn::validation_regex($params.target_module, "^[a-z][a-z0-9_]*$") },
+        node_id: fn::validation_required_string($params.node_id, 1, 128),
+        generation: fn::validation_integer($params.generation, 1, NONE),
+        context: fn::validation_object($params.context ?? {}),
+        lock_seconds: fn::validation_integer(($params.lock_seconds ?? 30), 1, 3600),
+        language: fn::validation_language_code($params.language ?? "fr", false, NONE)
     };
+    LET $invalid = object::from_entries(array::map(array::filter(object::entries($checks), |$e| !$e[1].valid), |$e| [$e[0], [$e[1].code]]));
+    IF object::len($invalid) > 0 {
+        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", $params.language, { fields: $invalid });
+    };
+    LET $p = object::from_entries(array::map(object::entries($checks), |$e| [$e[0], $e[1].value]));
+    LET $outbox_event = $p.outbox_event;
+    LET $subscription = $p.subscription;
+    LET $target_module = $p.target_module;
+    LET $node_id = $p.node_id;
+    LET $generation = $p.generation;
+    LET $context = $p.context;
+    LET $lock_seconds = $p.lock_seconds;
 
-    LET $outbox_event = <record<event_outbox>> $params.outbox_event;
-    LET $subscription = <record<event_subscription>> $params.subscription;
-    LET $target_module = IF $params.target_module != NONE AND $params.target_module != NULL { <string> $params.target_module } ELSE { "unknown" };
-    LET $node_id = <string> $params.node_id;
-    LET $generation = <number> $params.generation;
-    LET $context = IF $params.context != NONE AND $params.context != NULL { $params.context } ELSE { {} };
-    LET $lock_seconds = IF $params.lock_seconds != NONE AND $params.lock_seconds != NULL THEN <number> $params.lock_seconds ELSE 30 END;
     LET $lock_duration = <duration> string::concat($lock_seconds, "s");
     LET $now = time::now();
     LET $lease_rec = event_stream_lease:outbox_leader;
@@ -91,7 +107,7 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_assign_seq(
                 locked_until = $now + $lock_duration,
                 lease_owner = $node_id,
                 attempts = attempts + 1,
-                target_module = IF $ex.target_module != NONE AND $ex.target_module != "unknown" THEN $ex.target_module ELSE $target_module END
+                target_module = $ex.target_module ?? $target_module
             RETURN AFTER
         );
         RETURN fn::result_ok($updated[0]);

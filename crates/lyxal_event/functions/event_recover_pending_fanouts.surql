@@ -6,7 +6,20 @@
 DEFINE FUNCTION OVERWRITE fn::event_recover_pending_fanouts(
     $params: object
 ) {
-    LET $limit = IF $params.limit != NONE { $params.limit } ELSE { 50 };
+    -- Fonction interne du moteur d'événements (appelée par le code Rust avec des types
+    -- vérifiés, à chaque livraison) : validation par les primitives de lyxal_core plutôt que
+    -- par fn::validation_object_execute, dont le coût par appel pèserait sur le débit
+    -- (décision CTO, reprise lyxal_event).
+    LET $checks = {
+        limit: fn::validation_integer(($params.limit ?? 50), 1, 1000),
+        language: fn::validation_language_code($params.language ?? "fr", false, NONE)
+    };
+    LET $invalid = object::from_entries(array::map(array::filter(object::entries($checks), |$e| !$e[1].valid), |$e| [$e[0], [$e[1].code]]));
+    IF object::len($invalid) > 0 {
+        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", $params.language, { fields: $invalid });
+    };
+    LET $p = object::from_entries(array::map(object::entries($checks), |$e| [$e[0], $e[1].value]));
+    LET $limit = $p.limit;
 
     -- Récupère les événements outbox restés en statut 'pending'
     LET $pending_events = (

@@ -29,7 +29,7 @@
 //! - Tout rejet de fencing (`EVENT_STALE_LEADER_FENCED`) annule immédiatement le jeton local.
 
 use async_trait::async_trait;
-use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError};
+use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError, RecordId, ToSql};
 use std::collections::{BTreeMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -75,7 +75,7 @@ impl From<LyxalSurrealError> for ProgressError {
 }
 
 /// Nombre maximal de rejeux d'une écriture interrompue par un conflit transitoire.
-const MAX_CONFLICT_RETRIES: u32 = 8;
+pub(crate) const MAX_CONFLICT_RETRIES: u32 = 8;
 
 /// Conflit d'écriture transitoire de SurrealDB (contrôle de concurrence optimiste) : la
 /// transaction n'a pas été validée et peut être rejouée telle quelle.
@@ -93,7 +93,7 @@ pub(crate) async fn conflict_backoff(attempt: u32) {
 /// Gestionnaire de suivi et de flush durable pour un abonnement spécifique.
 pub struct SubscriptionProgressTracker {
     client: Surreal<Any>,
-    subscription: String,
+    subscription: RecordId,
     node_id: String,
     generation: Arc<AtomicU64>,
     lease_cancellation: CancellationToken,
@@ -103,14 +103,14 @@ pub struct SubscriptionProgressTracker {
     last_assigned_seq: u64,
 
     // Buffers mémoire des résolutions en attente de flush
-    delivered_ids: Vec<String>,
-    dead_letter_ids: Vec<String>,
-    dropped_ids: Vec<String>,
+    delivered_ids: Vec<RecordId>,
+    dead_letter_ids: Vec<RecordId>,
+    dropped_ids: Vec<RecordId>,
     drop_reason: Option<String>,
 
     // Indexation séquence -> delivery_id pour validation d'intégrité
-    seq_map: BTreeMap<u64, String>,
-    recorded_ids: HashSet<String>,
+    seq_map: BTreeMap<u64, RecordId>,
+    recorded_ids: HashSet<RecordId>,
 }
 
 #[async_trait]
@@ -124,14 +124,14 @@ impl SubscriptionProgressTracker {
     /// Crée un nouveau tracker de progression pour un abonnement donné.
     pub fn new(
         client: Surreal<Any>,
-        subscription: impl Into<String>,
+        subscription: RecordId,
         node_id: impl Into<String>,
         generation: Arc<AtomicU64>,
         lease_cancellation: CancellationToken,
     ) -> Self {
         Self {
             client,
-            subscription: subscription.into(),
+            subscription,
             node_id: node_id.into(),
             generation,
             lease_cancellation,
@@ -172,7 +172,7 @@ impl SubscriptionProgressTracker {
         self.last_assigned_seq = result.last_assigned_seq;
 
         info!(
-            subscription = %self.subscription,
+            subscription = %self.subscription.to_sql(),
             persisted_cursor = self.last_persisted_cursor,
             assigned_seq = self.last_assigned_seq,
             "Progression durable récupérée avec succès depuis SurrealDB"
@@ -182,7 +182,7 @@ impl SubscriptionProgressTracker {
     }
 
     /// Enregistre un acquittement positif (delivered) pour une séquence.
-    pub fn record_delivered(&mut self, seq: u64, delivery_id: String) {
+    pub fn record_delivered(&mut self, seq: u64, delivery_id: RecordId) {
         if self.recorded_ids.insert(delivery_id.clone()) {
             self.delivered_ids.push(delivery_id.clone());
             self.seq_map.insert(seq, delivery_id);
@@ -197,7 +197,7 @@ impl SubscriptionProgressTracker {
     pub async fn record_dead_letter(
         &mut self,
         seq: u64,
-        delivery_id: String,
+        delivery_id: RecordId,
         error_msg: String,
     ) -> Result<DeadLetterTransferResult, ProgressError> {
         if self.lease_cancellation.is_cancelled() {
@@ -235,14 +235,13 @@ impl SubscriptionProgressTracker {
                 Ok(result)
             }
             Err(e) => {
-                let err_str = e.to_string();
-                if err_str.contains("EVENT_STALE_LEADER_FENCED") {
+                if crate::error::is_stale_leader_fenced(&e) {
                     self.lease_cancellation.cancel();
                     Err(ProgressError::Fenced)
                 } else {
                     Err(ProgressError::DlqBarrierFailed {
-                        delivery_id,
-                        reason: err_str,
+                        delivery_id: delivery_id.to_sql(),
+                        reason: e.to_string(),
                     })
                 }
             }
@@ -250,7 +249,7 @@ impl SubscriptionProgressTracker {
     }
 
     /// Enregistre un abandon volontaire (dropped) selon la politique de Poison.
-    pub fn record_dropped(&mut self, seq: u64, delivery_id: String, reason: String) {
+    pub fn record_dropped(&mut self, seq: u64, delivery_id: RecordId, reason: String) {
         if self.recorded_ids.insert(delivery_id.clone()) {
             self.dropped_ids.push(delivery_id.clone());
             self.seq_map.insert(seq, delivery_id);
@@ -312,7 +311,7 @@ impl SubscriptionProgressTracker {
                 // Nettoyage des IDs confirmés
                 self.clear_flushed_resolutions(target_cursor);
                 debug!(
-                    subscription = %self.subscription,
+                    subscription = %self.subscription.to_sql(),
                     persisted_cursor = self.last_persisted_cursor,
                     "Flush batch exécuté et curseur durable avancé avec succès"
                 );
@@ -320,13 +319,13 @@ impl SubscriptionProgressTracker {
             }
             Err(e) => {
                 let err_str = e.to_string();
-                if err_str.contains("EVENT_STALE_LEADER_FENCED") {
+                if crate::error::is_stale_leader_fenced(&e) {
                     self.lease_cancellation.cancel();
                     return Err(ProgressError::Fenced);
                 }
 
                 warn!(
-                    subscription = %self.subscription,
+                    subscription = %self.subscription.to_sql(),
                     error = %err_str,
                     "Échec de l'appel flush_batch — tentative de réconciliation durable"
                 );
@@ -335,7 +334,7 @@ impl SubscriptionProgressTracker {
                 if let Ok(rec) = self.recover_durable_state().await {
                     if rec.last_persisted_cursor >= target_cursor {
                         info!(
-                            subscription = %self.subscription,
+                            subscription = %self.subscription.to_sql(),
                             persisted_cursor = rec.last_persisted_cursor,
                             "Réconciliation réussie : le commit ambigu était en fait validé !"
                         );
@@ -358,19 +357,17 @@ impl SubscriptionProgressTracker {
 
     fn clear_flushed_resolutions(&mut self, target_cursor: u64) {
         // Supprime les résolutions <= target_cursor
-        let confirmed_ids: Vec<String> = self
+        let confirmed_ids: Vec<RecordId> = self
             .seq_map
             .range(..=target_cursor)
             .map(|(_, id)| id.clone())
             .collect();
 
-        let confirmed_set: HashSet<String> = confirmed_ids.into_iter().collect();
-
-        self.delivered_ids.retain(|id| !confirmed_set.contains(id));
+        self.delivered_ids.retain(|id| !confirmed_ids.contains(id));
         self.dead_letter_ids
-            .retain(|id| !confirmed_set.contains(id));
-        self.dropped_ids.retain(|id| !confirmed_set.contains(id));
-        self.recorded_ids.retain(|id| !confirmed_set.contains(id));
+            .retain(|id| !confirmed_ids.contains(id));
+        self.dropped_ids.retain(|id| !confirmed_ids.contains(id));
+        self.recorded_ids.retain(|id| !confirmed_ids.contains(id));
 
         self.seq_map.retain(|seq, _| *seq > target_cursor);
     }
@@ -380,32 +377,36 @@ impl SubscriptionProgressTracker {
 mod tests {
     use super::*;
 
+    fn sub() -> RecordId {
+        RecordId::new("event_subscription", "test_sub")
+    }
+
+    fn del(key: &str) -> RecordId {
+        RecordId::new("event_delivery", key)
+    }
+
     #[tokio::test]
     async fn test_progress_tracker_buffer_and_clear() {
         let client = surrealdb::engine::any::connect("mem://").await.unwrap();
         let cancel = CancellationToken::new();
         let gen = Arc::new(AtomicU64::new(1));
-        let mut tracker =
-            SubscriptionProgressTracker::new(client, "test_sub", "test_node", gen, cancel);
+        let mut tracker = SubscriptionProgressTracker::new(client, sub(), "test_node", gen, cancel);
 
         assert_eq!(tracker.last_persisted_cursor(), 0);
         assert_eq!(tracker.pending_resolutions_count(), 0);
 
         // Record out-of-order ACKs
-        tracker.record_delivered(3, "del_3".to_string());
-        tracker.record_delivered(1, "del_1".to_string());
-        tracker.record_dropped(2, "del_2".to_string(), "ttl_expired".to_string());
-        tracker.record_delivered(4, "del_4".to_string());
+        tracker.record_delivered(3, del("del_3"));
+        tracker.record_delivered(1, del("del_1"));
+        tracker.record_dropped(2, del("del_2"), "ttl_expired".to_string());
+        tracker.record_delivered(4, del("del_4"));
 
         assert_eq!(tracker.pending_resolutions_count(), 4);
 
         // Clear flushed up to sequence 2
         tracker.clear_flushed_resolutions(2);
         assert_eq!(tracker.pending_resolutions_count(), 2);
-        assert_eq!(
-            tracker.delivered_ids,
-            vec!["del_3".to_string(), "del_4".to_string()]
-        );
+        assert_eq!(tracker.delivered_ids, vec![del("del_3"), del("del_4")]);
 
         // Clear remaining
         tracker.clear_flushed_resolutions(4);
@@ -418,12 +419,12 @@ mod tests {
         let cancel = CancellationToken::new();
         let gen = Arc::new(AtomicU64::new(1));
         let mut tracker =
-            SubscriptionProgressTracker::new(client, "test_sub", "test_node", gen, cancel.clone());
+            SubscriptionProgressTracker::new(client, sub(), "test_node", gen, cancel.clone());
 
         cancel.cancel(); // Simulate lease revocation
 
         let dlq_res = tracker
-            .record_dead_letter(1, "del_1".to_string(), "err".to_string())
+            .record_dead_letter(1, del("del_1"), "err".to_string())
             .await;
         assert!(matches!(dlq_res, Err(ProgressError::Fenced)));
 

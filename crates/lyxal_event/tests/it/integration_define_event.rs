@@ -56,8 +56,8 @@ async fn test_surrealdb_define_event_triggers_lyxal_event() {
     let define_event_ddl = r#"
         DEFINE TABLE IF NOT EXISTS booking SCHEMALESS;
 
-        DEFINE EVENT IF NOT EXISTS booking_created_event ON TABLE booking WHEN $event = "CREATE" THEN (
-            fn::event_publish({
+        DEFINE EVENT IF NOT EXISTS booking_created_event ON TABLE booking WHEN $event = "CREATE" THEN {
+            LET $published = fn::event_publish({
                 event_id: rand::uuid::v7(),
                 event_type: "booking.created",
                 producer: "lyxal_booking",
@@ -71,8 +71,10 @@ async fn test_surrealdb_define_event_triggers_lyxal_event() {
                     customer: $after.customer,
                     service: $after.service
                 }
-            })
-        );
+            });
+            -- Une publication refusée fait échouer la mutation au lieu d'être perdue
+            IF !$published.ok { THROW $published.error.code; };
+        };
     "#;
     db.query(define_event_ddl).await.unwrap();
 
@@ -110,4 +112,53 @@ async fn test_surrealdb_define_event_triggers_lyxal_event() {
         1,
         "Handler must process the event payload"
     );
+}
+
+/// Une publication refusée par la validation fait échouer la mutation qui la déclenche :
+/// l'événement n'est jamais perdu en silence.
+#[tokio::test]
+async fn test_invalid_publish_in_define_event_aborts_mutation() {
+    let db = connect("mem://").await.unwrap();
+    db.use_ns("test_ns").use_db("test_invalid").await.unwrap();
+    common::setup_test_db(&db).await;
+    let store = Arc::new(EventStore::new(db.clone()));
+    store.init_schema().await.unwrap();
+
+    db.query(
+        r#"
+        DEFINE TABLE IF NOT EXISTS booking SCHEMALESS;
+        DEFINE EVENT IF NOT EXISTS booking_bad_event ON TABLE booking WHEN $event = "CREATE" THEN {
+            LET $published = fn::event_publish({
+                event_id: rand::uuid::v7(),
+                event_type: "booking.created",
+                producer: "lyxal_booking",
+                unknown_field: true
+            });
+            IF !$published.ok { THROW $published.error.code; };
+        };
+    "#,
+    )
+    .await
+    .unwrap();
+
+    let res = db
+        .query("CREATE booking:b1 CONTENT { customer: 'Jean' }")
+        .await
+        .unwrap()
+        .check();
+    let err = res.expect_err("la mutation doit échouer");
+    assert!(
+        err.to_string().contains("EVENT_INVALID_PARAMETERS"),
+        "{err}"
+    );
+
+    let mut check = db.query("RETURN record::exists(booking:b1)").await.unwrap();
+    let exists: Option<bool> = check.take(0).unwrap();
+    assert_eq!(exists, Some(false), "la mutation doit être annulée");
+    let mut outbox = db
+        .query("RETURN count(SELECT * FROM event_outbox)")
+        .await
+        .unwrap();
+    let count: Option<i64> = outbox.take(0).unwrap();
+    assert_eq!(count, Some(0));
 }

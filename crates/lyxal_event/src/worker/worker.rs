@@ -45,7 +45,6 @@ pub struct EventWorkerMetrics {
 /// File d'un abonnement pendant un mandat de leader : son dispatcher, son feeder (curseur
 /// contigu propre à l'abonnement) et la passerelle d'exécution des handlers.
 struct SubscriptionPipeline {
-    dispatcher: Arc<Mutex<ReliableDispatcher<LyxalEventEnvelope>>>,
     feeder: OutboxFeeder<LyxalEventEnvelope>,
     bridge: HandlerConsumerBridge,
     rx: tokio::sync::mpsc::Receiver<DispatchMessage<LyxalEventEnvelope>>,
@@ -196,8 +195,12 @@ impl EventWorker {
                                     break;
                                 }
                                 Err(e) => {
-                                    let err_str = e.to_string();
-                                    if err_str.contains("EVENT_STALE_LEADER_FENCED") {
+                                    let fenced = matches!(
+                                        &e,
+                                        crate::engine::lease::LeaseError::Surreal(inner)
+                                            if crate::error::is_stale_leader_fenced(inner)
+                                    );
+                                    if fenced {
                                         error!("Fencing détecté lors du renouvellement de bail !");
                                         metrics_renew.fencing_conflicts.fetch_add(1, Ordering::SeqCst);
                                     } else {
@@ -229,7 +232,7 @@ impl EventWorker {
                 {
                     Ok(n) => work_done += n,
                     Err(e) => {
-                        if e.to_string().contains("EVENT_STALE_LEADER_FENCED") {
+                        if matches!(e, LyxalEventError::StaleLeaderFenced) {
                             self.metrics
                                 .fencing_conflicts
                                 .fetch_add(1, Ordering::SeqCst);
@@ -256,7 +259,13 @@ impl EventWorker {
                                 self.record_outcome(outcome);
                             }
                             Err(e) => {
-                                if e.to_string().contains("EVENT_STALE_LEADER_FENCED") {
+                                if matches!(
+                                    e,
+                                    FeederError::Fenced
+                                        | FeederError::Progress(
+                                            crate::engine::progress::ProgressError::Fenced
+                                        )
+                                ) {
                                     self.metrics
                                         .fencing_conflicts
                                         .fetch_add(1, Ordering::SeqCst);
@@ -286,10 +295,28 @@ impl EventWorker {
                         warn!(error = ?e, "Échec du rattrapage de l'avancement du curseur");
                     }
 
-                    // Redélivrance des messages non acquittés dans les délais
-                    let mut disp = pipeline.dispatcher.lock().await;
-                    let _report =
-                        disp.watchdog_tick(tokio::time::Instant::now(), envelope_extractor);
+                    // Redélivrance des messages non acquittés dans les délais, et transfert en
+                    // dead letter de ceux dont le budget est épuisé
+                    if let Err(e) = pipeline
+                        .feeder
+                        .handle_watchdog_and_poison(tokio::time::Instant::now(), envelope_extractor)
+                        .await
+                    {
+                        if matches!(
+                            e,
+                            FeederError::Fenced
+                                | FeederError::Progress(
+                                    crate::engine::progress::ProgressError::Fenced
+                                )
+                        ) {
+                            self.metrics
+                                .fencing_conflicts
+                                .fetch_add(1, Ordering::SeqCst);
+                            linked_cancel.cancel();
+                            break 'term;
+                        }
+                        warn!(error = ?e, "Échec du traitement des délais d'acquittement");
+                    }
                 }
 
                 if work_done == 0 {
@@ -396,12 +423,7 @@ impl EventWorker {
             let mut disp = dispatcher.lock().await;
             bridge.register_with_dispatcher(&mut disp, self.config.max_unacked)
         };
-        SubscriptionPipeline {
-            dispatcher,
-            feeder,
-            bridge,
-            rx,
-        }
+        SubscriptionPipeline { feeder, bridge, rx }
     }
 
     async fn fetch_and_enqueue_pending(
@@ -467,15 +489,14 @@ impl EventWorker {
                 created_at: rec.created_at.unwrap_or_default(),
             };
 
-            let outbox_id = rec.outbox_event.to_sql();
             let target_module = rec.target_module.clone();
             let context = serde_json::to_value(&envelope.context).unwrap_or_default();
 
             match pipeline
                 .feeder
                 .assign_and_enqueue(
-                    &outbox_id,
-                    &sub_id,
+                    &rec.outbox_event,
+                    &rec.subscription,
                     &target_module,
                     context,
                     envelope,
@@ -489,11 +510,7 @@ impl EventWorker {
                 }
                 // File de cet abonnement pleine : la livraison reste en attente pour un tour suivant
                 Err(FeederError::Backpressure) => {}
-                Err(FeederError::Fenced) => {
-                    return Err(LyxalEventError::Internal(
-                        "EVENT_STALE_LEADER_FENCED: leadership revoked".to_string(),
-                    ));
-                }
+                Err(FeederError::Fenced) => return Err(LyxalEventError::StaleLeaderFenced),
                 Err(e) => {
                     warn!(error = ?e, "Échec lors de assign_and_enqueue");
                 }

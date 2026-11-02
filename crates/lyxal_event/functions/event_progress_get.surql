@@ -9,11 +9,21 @@
 DEFINE FUNCTION OVERWRITE fn::event_progress_get(
     $params: object
 ) {
-    IF $params.subscription == NONE OR $params.subscription == NULL {
-        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", "fr", { message: "subscription is mandatory" });
+    -- Fonction interne du moteur d'événements (appelée par le code Rust avec des types
+    -- vérifiés, à chaque livraison) : validation par les primitives de lyxal_core plutôt que
+    -- par fn::validation_object_execute, dont le coût par appel pèserait sur le débit
+    -- (décision CTO, reprise lyxal_event).
+    LET $checks = {
+        subscription: fn::validation_record_id($params.subscription, ["event_subscription"]),
+        language: fn::validation_language_code($params.language ?? "fr", false, NONE)
     };
+    LET $invalid = object::from_entries(array::map(array::filter(object::entries($checks), |$e| !$e[1].valid), |$e| [$e[0], [$e[1].code]]));
+    IF object::len($invalid) > 0 {
+        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", $params.language, { fields: $invalid });
+    };
+    LET $p = object::from_entries(array::map(object::entries($checks), |$e| [$e[0], $e[1].value]));
+    LET $subscription = $p.subscription;
 
-    LET $subscription = <record<event_subscription>> $params.subscription;
     LET $prog_rec = type::record(string::concat("event_subscription_progress:prog_", record::id($subscription)));
     LET $prog = (SELECT * FROM ONLY $prog_rec);
 

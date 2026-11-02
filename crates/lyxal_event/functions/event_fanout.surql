@@ -6,7 +6,21 @@
 DEFINE FUNCTION OVERWRITE fn::event_fanout(
     $params: object
 ) {
-    LET $outbox_id = $params.outbox_id;
+    -- Fonction interne du moteur d'événements (appelée par le code Rust avec des types
+    -- vérifiés, à chaque livraison) : validation par les primitives de lyxal_core plutôt que
+    -- par fn::validation_object_execute, dont le coût par appel pèserait sur le débit
+    -- (décision CTO, reprise lyxal_event).
+    LET $checks = {
+        outbox_id: fn::validation_record_id($params.outbox_id, ["event_outbox"]),
+        language: fn::validation_language_code($params.language ?? "fr", false, NONE)
+    };
+    LET $invalid = object::from_entries(array::map(array::filter(object::entries($checks), |$e| !$e[1].valid), |$e| [$e[0], [$e[1].code]]));
+    IF object::len($invalid) > 0 {
+        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", $params.language, { fields: $invalid });
+    };
+    LET $p = object::from_entries(array::map(object::entries($checks), |$e| [$e[0], $e[1].value]));
+    LET $outbox_id = $p.outbox_id;
+
     LET $event = (SELECT * FROM $outbox_id)[0];
 
     IF $event == NONE {

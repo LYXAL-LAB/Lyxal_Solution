@@ -425,15 +425,13 @@ impl HandlerConsumerBridge {
         result: HandlerExecutionResult,
         feeder: &mut OutboxFeeder<LyxalEventEnvelope>,
     ) -> Result<ConsumerOutcome, FeederError> {
-        let sub = &self.config.subscription_name;
-
         match result {
             HandlerExecutionResult::Success {
                 delivery_id,
                 delivery_seq,
                 attempt_id,
             } => {
-                let report = feeder.handle_ack(sub, delivery_seq, attempt_id).await?;
+                let report = feeder.handle_ack(delivery_seq, attempt_id).await?;
                 Ok(ConsumerOutcome::Ack {
                     delivery_id,
                     delivery_seq,
@@ -449,7 +447,6 @@ impl HandlerConsumerBridge {
             } => {
                 let report = feeder
                     .handle_nack(
-                        sub,
                         delivery_seq,
                         attempt_id,
                         Some(reason),
@@ -472,7 +469,6 @@ impl HandlerConsumerBridge {
             } => {
                 let report = feeder
                     .handle_nack(
-                        sub,
                         delivery_seq,
                         attempt_id,
                         Some(reason),
@@ -494,7 +490,6 @@ impl HandlerConsumerBridge {
             } => {
                 let report = feeder
                     .handle_nack(
-                        sub,
                         delivery_seq,
                         attempt_id,
                         Some("Handler execution timeout elapsed".to_string()),
@@ -517,7 +512,6 @@ impl HandlerConsumerBridge {
             } => {
                 let report = feeder
                     .handle_nack(
-                        sub,
                         delivery_seq,
                         attempt_id,
                         Some(format!("Handler panicked: {reason}")),
@@ -540,7 +534,6 @@ impl HandlerConsumerBridge {
             } => {
                 let report = feeder
                     .handle_nack(
-                        sub,
                         delivery_seq,
                         attempt_id,
                         Some(format!("Missing handler for event type '{event_type}'")),

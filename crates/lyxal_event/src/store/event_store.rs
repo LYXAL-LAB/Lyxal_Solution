@@ -21,14 +21,14 @@ impl LyxalSurrealCall for EventStore {
 
 #[derive(SurrealValue)]
 struct PublishParams {
-    event_id: String,
+    event_id: surrealdb::types::Uuid,
     event_type: String,
     version: u32,
     producer: String,
     source: Option<RecordId>,
     context: crate::models::EventContext,
-    correlation_id: String,
-    causation_id: Option<String>,
+    correlation_id: surrealdb::types::Uuid,
+    causation_id: Option<surrealdb::types::Uuid>,
     payload: serde_json::Value,
     metadata: serde_json::Value,
     auto_fanout: bool,
@@ -185,14 +185,14 @@ impl EventStore {
         auto_fanout: bool,
     ) -> Result<LyxalEventEnvelope, LyxalEventError> {
         let params = PublishParams {
-            event_id: envelope.event_id.to_string(),
+            event_id: envelope.event_id.as_uuid().into(),
             event_type: envelope.event_type.clone(),
             version: envelope.version,
             producer: envelope.producer.clone(),
             source: envelope.source.clone(),
             context: envelope.context.clone(),
-            correlation_id: envelope.correlation_id.to_string(),
-            causation_id: envelope.causation_id.map(|c| c.to_string()),
+            correlation_id: envelope.correlation_id.as_uuid().into(),
+            causation_id: envelope.causation_id.map(|c| c.as_uuid().into()),
             payload: envelope.payload.clone(),
             metadata: envelope.metadata.clone(),
             auto_fanout,

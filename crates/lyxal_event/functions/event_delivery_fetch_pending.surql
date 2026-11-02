@@ -8,9 +8,25 @@
 DEFINE FUNCTION OVERWRITE fn::event_delivery_fetch_pending(
     $params: object
 ) {
-    LET $limit = IF $params.limit != NONE AND $params.limit != NULL THEN <number> $params.limit ELSE 50 END;
-    LET $instance_id = IF $params.instance_id != NONE AND $params.instance_id != NULL THEN <string> $params.instance_id ELSE NONE END;
-    LET $subscription = IF $params.subscription != NONE AND $params.subscription != NULL THEN <record<event_subscription>> $params.subscription ELSE NONE END;
+    -- Fonction interne du moteur d'événements (appelée par le code Rust avec des types
+    -- vérifiés, à chaque livraison) : validation par les primitives de lyxal_core plutôt que
+    -- par fn::validation_object_execute, dont le coût par appel pèserait sur le débit
+    -- (décision CTO, reprise lyxal_event).
+    LET $checks = {
+        limit: fn::validation_integer(($params.limit ?? 50), 1, 1000),
+        instance_id: IF $params.instance_id IS NONE { { valid: true, value: NONE } } ELSE { fn::validation_optional_string($params.instance_id, 1, 128) },
+        subscription: IF $params.subscription IS NONE { { valid: true, value: NONE } } ELSE { fn::validation_record_id($params.subscription, ["event_subscription"]) },
+        language: fn::validation_language_code($params.language ?? "fr", false, NONE)
+    };
+    LET $invalid = object::from_entries(array::map(array::filter(object::entries($checks), |$e| !$e[1].valid), |$e| [$e[0], [$e[1].code]]));
+    IF object::len($invalid) > 0 {
+        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", $params.language, { fields: $invalid });
+    };
+    LET $p = object::from_entries(array::map(object::entries($checks), |$e| [$e[0], $e[1].value]));
+    LET $limit = $p.limit;
+    LET $instance_id = $p.instance_id;
+    LET $subscription = $p.subscription;
+
     LET $now = time::now();
 
     LET $deliveries = (

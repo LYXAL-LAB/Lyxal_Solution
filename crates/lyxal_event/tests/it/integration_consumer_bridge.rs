@@ -39,6 +39,7 @@ use lyxal_event::engine::consumer_bridge::{
 use lyxal_event::engine::dispatcher::{
     AckReport, DispatchMessage, DispatcherConfig, DispatcherError, NackReport, ReliableDispatcher,
 };
+use lyxal_surreal::RecordId;
 
 use crate::common;
 use lyxal_event::engine::feeder::{FeederError, OutboxFeeder};
@@ -590,7 +591,7 @@ async fn test_scenario_07_stale_ack_rejected() {
     assert_eq!(msg2.attempt_id, 2);
 
     // Un ACK tardif arrive portant attempt_id: 1
-    let stale_report = feeder.handle_ack("test_sub", 7, 1).await.unwrap();
+    let stale_report = feeder.handle_ack(7, 1).await.unwrap();
     assert_eq!(
         stale_report,
         AckReport::StaleAttempt {
@@ -601,7 +602,7 @@ async fn test_scenario_07_stale_ack_rejected() {
     );
 
     // L'ACK valide de la tentative 2 est accepté
-    let valid_report = feeder.handle_ack("test_sub", 7, 2).await.unwrap();
+    let valid_report = feeder.handle_ack(7, 2).await.unwrap();
     assert_eq!(valid_report, AckReport::Advanced { safe_cursor: 7 });
 }
 
@@ -629,11 +630,11 @@ async fn test_scenario_08_double_ack_no_double_advancement() {
     let msg = rx.recv().await.unwrap();
     assert_eq!(msg.attempt_id, 1);
 
-    let first_ack = feeder.handle_ack("test_sub", 8, 1).await.unwrap();
+    let first_ack = feeder.handle_ack(8, 1).await.unwrap();
     assert_eq!(first_ack, AckReport::Advanced { safe_cursor: 8 });
 
     // Deuxième ACK identique
-    let second_ack = feeder.handle_ack("test_sub", 8, 1).await.unwrap();
+    let second_ack = feeder.handle_ack(8, 1).await.unwrap();
     assert_eq!(second_ack, AckReport::DuplicateAck(8));
 
     let disp = dispatcher.lock().await;
@@ -664,19 +665,12 @@ async fn test_scenario_09_late_nack_after_valid_ack() {
     let msg = rx.recv().await.unwrap();
     assert_eq!(msg.attempt_id, 1);
 
-    let ack = feeder.handle_ack("test_sub", 9, 1).await.unwrap();
+    let ack = feeder.handle_ack(9, 1).await.unwrap();
     assert_eq!(ack, AckReport::Advanced { safe_cursor: 9 });
 
     // NACK tardif reçu après confirmation
     let late_nack = feeder
-        .handle_nack(
-            "test_sub",
-            9,
-            1,
-            Some("Late crash".into()),
-            false,
-            envelope_extractor,
-        )
+        .handle_nack(9, 1, Some("Late crash".into()), false, envelope_extractor)
         .await
         .unwrap();
     assert_eq!(late_nack, NackReport::UnknownOffset(9));
@@ -722,10 +716,7 @@ async fn test_scenario_10_concurrent_handlers_execution() {
         let msg = rx.recv().await.unwrap();
         let res = bridge.process_message(&msg).await;
         assert!(matches!(res, HandlerExecutionResult::Success { .. }));
-        let _ = feeder
-            .handle_ack("test_sub", msg.offset, msg.attempt_id)
-            .await
-            .unwrap();
+        let _ = feeder.handle_ack(msg.offset, msg.attempt_id).await.unwrap();
     }
 
     assert_eq!(counter.load(Ordering::SeqCst), 10);
@@ -767,8 +758,8 @@ async fn test_scenario_11_backpressure_when_saturated() {
     // Tenter un enqueue via feeder -> rejet Backpressure
     let err = feeder
         .assign_and_enqueue(
-            "outbox_evt_3",
-            "test_sub",
+            &RecordId::new("event_outbox", "outbox_evt_3"),
+            &RecordId::new("event_subscription", "test_sub"),
             "mod_order",
             serde_json::Value::Null,
             create_envelope(&OrderCreatedEvent {
@@ -783,7 +774,7 @@ async fn test_scenario_11_backpressure_when_saturated() {
 
     // Libérer un slot via ACK du premier message
     let _ = feeder
-        .handle_ack("test_sub", msg1.offset, msg1.attempt_id)
+        .handle_ack(msg1.offset, msg1.attempt_id)
         .await
         .unwrap();
     {
@@ -819,11 +810,11 @@ async fn test_scenario_12_contiguous_cursor_gap_blocking() {
 
     // ACK 1 et 2 -> curseur = 2
     let _ = feeder
-        .handle_ack("test_sub", msg1.offset, msg1.attempt_id)
+        .handle_ack(msg1.offset, msg1.attempt_id)
         .await
         .unwrap();
     let rep2 = feeder
-        .handle_ack("test_sub", msg2.offset, msg2.attempt_id)
+        .handle_ack(msg2.offset, msg2.attempt_id)
         .await
         .unwrap();
     assert_eq!(rep2, AckReport::Advanced { safe_cursor: 2 });
@@ -860,18 +851,17 @@ async fn test_scenario_13_dlq_barrier_before_terminal_resolution() {
 
     // ACK 1 et 2
     let _ = feeder
-        .handle_ack("test_sub", msg1.offset, msg1.attempt_id)
+        .handle_ack(msg1.offset, msg1.attempt_id)
         .await
         .unwrap();
     let _ = feeder
-        .handle_ack("test_sub", msg2.offset, msg2.attempt_id)
+        .handle_ack(msg2.offset, msg2.attempt_id)
         .await
         .unwrap();
 
     // Séquence 3 échoue de manière terminale (bascule en DLQ)
     let nack_rep = feeder
         .handle_nack(
-            "test_sub",
             msg3.offset,
             msg3.attempt_id,
             Some("Fatal poison".into()),
@@ -948,16 +938,16 @@ async fn test_scenario_15_simulated_crash_recovery_from_durable_cursor() {
     // 1. Session avant crash
     let mut tracker = SubscriptionProgressTracker::new(
         client.clone(),
-        "sub_crash",
+        RecordId::new("event_subscription", "sub_crash"),
         "node_1".to_string(),
         gen.clone(),
         cancel.clone(),
     );
 
     // Enregistrer 1, 2, 3, 4, 5
-    tracker.record_delivered(1, "del_1".to_string());
-    tracker.record_delivered(2, "del_2".to_string());
-    tracker.record_delivered(3, "del_3".to_string());
+    tracker.record_delivered(1, RecordId::new("event_delivery", "del_1"));
+    tracker.record_delivered(2, RecordId::new("event_delivery", "del_2"));
+    tracker.record_delivered(3, RecordId::new("event_delivery", "del_3"));
 
     // Flush persisté jusqu'à 2 seulement (3 reste en tampon mémoire)
     assert_eq!(tracker.last_persisted_cursor(), 0);
@@ -966,8 +956,13 @@ async fn test_scenario_15_simulated_crash_recovery_from_durable_cursor() {
     drop(tracker);
 
     // 3. Redémarrage post-crash : création d'un nouveau tracker
-    let new_tracker =
-        SubscriptionProgressTracker::new(client, "sub_crash", "node_2".to_string(), gen, cancel);
+    let new_tracker = SubscriptionProgressTracker::new(
+        client,
+        RecordId::new("event_subscription", "sub_crash"),
+        "node_2".to_string(),
+        gen,
+        cancel,
+    );
 
     // Le nouveau nœud reprend fidèlement sur l'état durable (0 car le mock mem:// n'a pas persisté 3)
     assert_eq!(new_tracker.last_persisted_cursor(), 0);
@@ -1058,21 +1053,21 @@ async fn test_scenario_18_mvcc_conflict_resilience() {
 
     let mut tracker1 = SubscriptionProgressTracker::new(
         client.clone(),
-        "sub_mvcc",
+        RecordId::new("event_subscription", "sub_mvcc"),
         "node_1".to_string(),
         gen_node1,
         cancel.clone(),
     );
     let mut tracker2 = SubscriptionProgressTracker::new(
         client,
-        "sub_mvcc",
+        RecordId::new("event_subscription", "sub_mvcc"),
         "node_2".to_string(),
         gen_node2,
         cancel,
     );
 
-    tracker1.record_delivered(1, "del_1".to_string());
-    tracker2.record_delivered(1, "del_1".to_string());
+    tracker1.record_delivered(1, RecordId::new("event_delivery", "del_1"));
+    tracker2.record_delivered(1, RecordId::new("event_delivery", "del_1"));
 
     // Le nœud 1 avec G=1 et le nœud 2 avec G=2 tentent d'écrire
     // Sur SurrealDB 3.2.0, l'ancien leader G=1 est rejeté par Fencing ou MVCC

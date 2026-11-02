@@ -8,8 +8,20 @@
 DEFINE FUNCTION OVERWRITE fn::event_dead_letter_list(
     $params: object
 ) {
-    LET $limit = IF $params.limit != NONE AND $params.limit != NULL THEN <number> $params.limit ELSE 100 END;
-    LET $delivery = IF $params.delivery != NONE AND $params.delivery != NULL THEN <record<event_delivery>> $params.delivery ELSE NONE END;
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000 } }], default: 100 },
+            delivery: { pipeline: [{ rule: "record_id", options: { allowed_tables: ["event_delivery"] } }] },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", $params.language, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $limit = $p.limit;
+    LET $delivery = $p.delivery;
 
     LET $items = IF $delivery != NONE {
         (SELECT * FROM event_dead_letter WHERE delivery = $delivery ORDER BY exhausted_at DESC LIMIT $limit)
