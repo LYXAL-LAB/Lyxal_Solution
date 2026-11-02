@@ -7,6 +7,12 @@ RETURN fn::utils_engine_run(fn::utils_engine_state([" ab ", "c"], "", NONE), fn:
 -- test: each : valeurs nettoyées
 RETURN fn::utils_engine_run(fn::utils_engine_state([" ab ", " cd"], "", NONE), fn::utils_engine_pipeline([{ rule: "each", options: { pipeline: [{ rule: "trim" }] } }], [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10), |$s, $step| IF $step.rule = "trim" { object::extend($s, { value: string::trim($s.value) }) } ELSE IF string::len($s.value) < $step.value { fn::utils_engine_issue($s, "min", "CORE_VALIDATION_TOO_SHORT", { min: $step.value }) } ELSE { $s }).value == ["ab", "cd"];
 
+-- test: each : enregistrements propagés
+RETURN fn::utils_engine_run(fn::utils_engine_state(["a", "b"], "", NONE), fn::utils_engine_pipeline([{ rule: "each", options: { pipeline: [{ rule: "mark" }] } }], [{ rule: "mark" }], 10), |$s, $step| fn::utils_engine_record($s, "mark", "seen", $s.value)).records.map(|$r| $r.path) == ["[0]", "[1]"];
+
+-- test: object : enregistrements propagés
+RETURN fn::utils_engine_run_object(fn::utils_engine_state({ a: 1 }, "", NONE), fn::utils_engine_schema({ fields: { a: { pipeline: [{ rule: "mark" }] } } }, [{ rule: "mark" }], 10), |$s, $step| fn::utils_engine_record($s, "mark", "seen", $s.value)).records == [{ path: "a", rule: "mark", kind: "seen", data: 1 }];
+
 -- test: each : NONE traversé
 RETURN fn::utils_engine_run(fn::utils_engine_state(NONE, "", NONE), fn::utils_engine_pipeline([{ rule: "each", options: { pipeline: [] } }], [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10), |$s, $step| IF $step.rule = "trim" { object::extend($s, { value: string::trim($s.value) }) } ELSE IF string::len($s.value) < $step.value { fn::utils_engine_issue($s, "min", "CORE_VALIDATION_TOO_SHORT", { min: $step.value }) } ELSE { $s }).value IS NONE;
 
