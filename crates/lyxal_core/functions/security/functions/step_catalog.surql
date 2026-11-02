@@ -8,7 +8,9 @@
 -- masquage et empreintes (transforment la valeur), détections (enregistrent
 -- un constat, kind « finding »), permission_check (enregistre une décision,
 -- kind « decision » ; options permissions, resource, action, context).
--- required liste les options obligatoires.
+-- required liste les options obligatoires. Aucune règle n'est déclarée
+-- idempotente : empreintes et masquages se cumulent, détections et décisions
+-- ajoutent un enregistrement à chaque passage.
 --
 -- Valeur renvoyée : array<object> (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
@@ -38,5 +40,5 @@ DEFINE FUNCTION OVERWRITE fn::security_step_catalog() -> array<object> {
         { rule: "permission_check", cost: 2, required: ["permissions", "resource", "action"] }
     ];
 }
-COMMENT "Catalogue des règles de security utilisables dans un pipeline du moteur : masquage et empreintes (transforment la valeur), détections (enregistrent un constat, kind « finding »), permission_check (enregistre une décision, kind « decision » ; options permissions, resource, action, context). required liste les options obligatoires."
+COMMENT "Catalogue des règles de security utilisables dans un pipeline du moteur : masquage et empreintes (transforment la valeur), détections (enregistrent un constat, kind « finding »), permission_check (enregistre une décision, kind « decision » ; options permissions, resource, action, context). required liste les options obligatoires. Aucune règle n'est déclarée idempotente : empreintes et masquages se cumulent, détections et décisions ajoutent un enregistrement à chaque passage."
 PERMISSIONS FULL;

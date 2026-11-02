@@ -10,7 +10,11 @@
 -- NONE par options.value). fn::sanitize_object est exposée sous le nom
 -- object_or_empty, object étant une règle du moteur ;
 -- fn::sanitize_date_range (deux valeurs) n'est pas une étape. required liste
--- les options obligatoires.
+-- les options obligatoires ; idempotent marque les seules règles
+-- qu'appliquer deux fois de suite revient à appliquer une fois pour toute
+-- entrée (trim, trim_left, trim_right, lowercase, uppercase,
+-- collapse_whitespace, default), seules simplifiables par
+-- fn::utils_engine_optimize.
 --
 -- Valeur renvoyée : array<object> (contrat : crates/lyxal_core/Readme.md, fonctions sanitize)
 -- ============================================================================
@@ -31,7 +35,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_step_catalog() -> array<object> {
         { rule: "calendar", cost: 1, required: ["granularity"] },
         { rule: "capitalize", cost: 1 },
         { rule: "clamp", cost: 1, required: ["min", "max"] },
-        { rule: "collapse_whitespace", cost: 1 },
+        { rule: "collapse_whitespace", cost: 1, idempotent: true },
         { rule: "country_code", cost: 1 },
         { rule: "credit_card_mask", cost: 1 },
         { rule: "currency", cost: 1 },
@@ -51,7 +55,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_step_catalog() -> array<object> {
         { rule: "html", cost: 3 },
         { rule: "html_entities", cost: 1 },
         { rule: "integer", cost: 1 },
-        { rule: "lowercase", cost: 1 },
+        { rule: "lowercase", cost: 1, idempotent: true },
         { rule: "markdown", cost: 3 },
         { rule: "markdown_code", cost: 1 },
         { rule: "markdown_headers", cost: 1 },
@@ -103,13 +107,13 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_step_catalog() -> array<object> {
         { rule: "timestamp", cost: 1 },
         { rule: "timezone", cost: 1 },
         { rule: "title_case", cost: 1 },
-        { rule: "trim", cost: 1 },
-        { rule: "trim_left", cost: 1 },
-        { rule: "trim_right", cost: 1 },
-        { rule: "uppercase", cost: 1 },
+        { rule: "trim", cost: 1, idempotent: true },
+        { rule: "trim_left", cost: 1, idempotent: true },
+        { rule: "trim_right", cost: 1, idempotent: true },
+        { rule: "uppercase", cost: 1, idempotent: true },
         { rule: "url", cost: 1 },
-        { rule: "default", cost: 1, required: ["value"] }
+        { rule: "default", cost: 1, idempotent: true, required: ["value"] }
     ];
 }
-COMMENT "Catalogue des règles de sanitize utilisables dans un pipeline du moteur : une règle par fonction de valeurs fn::sanitize_* (options = paramètres de la fonction, avec leurs valeurs par défaut), plus « default » (remplace NONE par options.value). fn::sanitize_object est exposée sous le nom object_or_empty, object étant une règle du moteur ; fn::sanitize_date_range (deux valeurs) n'est pas une étape. required liste les options obligatoires."
+COMMENT "Catalogue des règles de sanitize utilisables dans un pipeline du moteur : une règle par fonction de valeurs fn::sanitize_* (options = paramètres de la fonction, avec leurs valeurs par défaut), plus « default » (remplace NONE par options.value). fn::sanitize_object est exposée sous le nom object_or_empty, object étant une règle du moteur ; fn::sanitize_date_range (deux valeurs) n'est pas une étape. required liste les options obligatoires ; idempotent marque les seules règles qu'appliquer deux fois de suite revient à appliquer une fois pour toute entrée (trim, trim_left, trim_right, lowercase, uppercase, collapse_whitespace, default), seules simplifiables par fn::utils_engine_optimize."
 PERMISSIONS FULL;

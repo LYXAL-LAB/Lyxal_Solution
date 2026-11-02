@@ -16,6 +16,9 @@ RETURN array::find(fn::validation_step_catalog(), |$e| $e.rule = "integer").requ
 -- test: validation_object exposée sous is_object
 RETURN array::any(fn::validation_step_catalog(), |$e| $e.rule = "is_object");
 
+-- test: aucune règle déclarée idempotente
+RETURN !array::any(fn::validation_step_catalog(), |$e| $e.idempotent = true);
+
 -- test: aucune règle du moteur masquée
 RETURN array::len(fn::utils_engine_pipeline([], fn::validation_step_catalog(), 1)) == 0;
 

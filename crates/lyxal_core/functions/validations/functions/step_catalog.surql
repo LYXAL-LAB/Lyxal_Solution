@@ -9,7 +9,9 @@
 -- validateur ; un paramètre option<…> vaut NONE par défaut, les autres sont
 -- obligatoires). fn::validation_object y figure sous le nom is_object,
 -- object étant une règle du moteur. Les validateurs qui comparent plusieurs
--- valeurs (compare, date_range, time_range…) s'appellent directement.
+-- valeurs (compare, date_range, time_range…) s'appellent directement. Aucune
+-- règle n'est déclarée idempotente : la réapplication d'un validateur à sa
+-- valeur normalisée n'est pas garantie identique.
 --
 -- Valeur renvoyée : array<object> (contrat : crates/lyxal_core/Readme.md, fonctions validations)
 -- ============================================================================
@@ -192,5 +194,5 @@ DEFINE FUNCTION OVERWRITE fn::validation_step_catalog() -> array<object> {
         { rule: "workflow_delay", cost: 1, required: ["min_delay", "max_delay", "allow_zero"] }
     ];
 }
-COMMENT "Catalogue des règles de validation utilisables dans un pipeline du moteur : une règle par validateur à une seule valeur (options = paramètres du validateur ; un paramètre option<…> vaut NONE par défaut, les autres sont obligatoires). fn::validation_object y figure sous le nom is_object, object étant une règle du moteur. Les validateurs qui comparent plusieurs valeurs (compare, date_range, time_range…) s'appellent directement."
+COMMENT "Catalogue des règles de validation utilisables dans un pipeline du moteur : une règle par validateur à une seule valeur (options = paramètres du validateur ; un paramètre option<…> vaut NONE par défaut, les autres sont obligatoires). fn::validation_object y figure sous le nom is_object, object étant une règle du moteur. Les validateurs qui comparent plusieurs valeurs (compare, date_range, time_range…) s'appellent directement. Aucune règle n'est déclarée idempotente : la réapplication d'un validateur à sa valeur normalisée n'est pas garantie identique."
 PERMISSIONS FULL;

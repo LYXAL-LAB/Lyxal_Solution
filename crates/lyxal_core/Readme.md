@@ -24,15 +24,15 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 564 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 480 fonctions déclarées)
 ├── Readme.md
 ├── AUDIT.md                 (document de reprise, supprimé en fin de reprise)
 ├── implementation_plan.md   (document de reprise, supprimé en fin de reprise)
 └── functions/
-    ├── validations/   functions/ (225) · tests/ (225)   fn::validation_*
-    ├── sanitize/      functions/ (126) · tests/ (126)   fn::sanitize_*
-    ├── security/      functions/ (100) · tests/ (100)   fn::security_*
-    └── utils/         functions/ (113) · tests/ (113)   fn::utils_*
+    ├── validations/   functions/ (195) · tests/ (195)   fn::validation_*
+    ├── sanitize/      functions/ (97) · tests/ (97)   fn::sanitize_*
+    ├── security/      functions/ (71) · tests/ (71)   fn::security_*
+    └── utils/         functions/ (117) · tests/ (117)   fn::utils_*
 ```
 
 Chaque fonction a son fichier (`functions/<domaine>/functions/<nom>.surql`) et son fichier de tests (`functions/<domaine>/tests/<nom>.test.surql`).
@@ -142,8 +142,6 @@ Les fonctions `fn::security_*` gardent des **paramètres typés** et renvoient u
   * détections, qui ajoutent un constat ;
   * `permission_check`, qui ajoute une décision.
 
-  Restent au lot 4 : optimiseur, débogage, benchmark.
-
 ### Moteur unique `fn::utils_engine_*` — en cours (lot 4)
 
 Un seul moteur exécute les pipelines de tous les domaines (`implementation_plan.md` §3.1). Il ne connaît aucune règle métier : chaque domaine lui passe une **closure** qui applique une étape.
@@ -158,6 +156,12 @@ Un seul moteur exécute les pipelines de tous les domaines (`implementation_plan
   * `one_of` : première branche sans erreur.
 * **Schéma** : `{ fields: { <champ>: { pipeline, required, nullable, default } }, unknown_keys: "reject" | "strip" | "keep" }`, contrôlé par `fn::utils_engine_schema` et appliqué par `fn::utils_engine_run_object`. Codes produits : `CORE_VALIDATION_REQUIRED`, `CORE_VALIDATION_NULL`, `CORE_VALIDATION_NOT_ALLOWED`.
 * **Rapport** : `fn::utils_engine_report` renvoie `{ valid, value, errors, warnings, by_field }` ; `fn::utils_engine_report_merge` fusionne plusieurs rapports.
+* **Optimiseur** : `fn::utils_engine_optimize($pipeline, $catalog)` supprime une étape identique à la précédente si le catalogue déclare sa règle idempotente (`idempotent: true`). Il ne réordonne jamais : ce serait changer le résultat (décision CTO).
+* **Débogage** : `fn::utils_engine_trace`, `_debug_session`, `_debug_add`, `_debug_failed`, `_debug_slowest`, `_debug_summary`.
+* **Mesure** : `fn::utils_engine_benchmark_sample`, `_run`, `_stats`, `_compare`, `_report`.
+  * `_stats` calcule le taux de réussite, le min, le max, la moyenne, les centiles p50 / p95 / p99 et le débit.
+  * `_compare` signale une régression quand le rapport des moyennes ou des p95 dépasse le seuil.
+* **Requête et réponse d'exécution** : `fn::utils_engine_request` et `fn::utils_engine_response`, communes à tous les domaines.
 
 ```surql
 LET $pipeline = fn::utils_engine_pipeline([{ rule: "trim" }], [{ rule: "trim", cost: 1 }], 20);
@@ -173,7 +177,7 @@ Les fonctions `fn::utils_*` gardent des **paramètres typés** et renvoient une 
 * Les nombres et l'arrondi s'appuient sur `sanitize` (`fn::sanitize_round`) ; l'égalité profonde est l'opérateur `==` de SurrealQL.
 * `fn::utils_to_csv` applique les guillemets RFC 4180. La lecture d'un CSV est du parsing : elle se fait en Rust (`.agents/rules/lyxal_standards_and_checklist.md` §10).
 * Les conversions `ensure_bool`, `ensure_number`, `decode_uri` et `from_hex` lèvent `CORE_INVALID_ARGUMENT` sur une donnée non convertible : elles s'appliquent à une donnée déjà validée.
-* **Avancement** : toutes les fonctions de valeurs de `utils` sont migrées (86 fonctions). Seule la mécanique (pipeline) attend le lot 4.
+* **Avancement** : toutes les fonctions de valeurs de `utils` sont migrées (86 fonctions) ; la mécanique est regroupée dans le moteur `fn::utils_engine_*` (31 fonctions).
 
 ### Contrat des fonctions `sanitize` — migration en cours (lot 3)
 
@@ -190,7 +194,7 @@ IF !$email.valid { RETURN fn::error_result("AUTH_EMAIL_INVALID", $params.languag
 LET $clean = fn::sanitize_email($email.value);
 ```
 
-* **Avancement** : toutes les fonctions de valeurs de `sanitize` sont migrées (93 fonctions : textes, nombres, dates, tableaux, objets, HTML, Markdown, URL, chemins). Les pipelines passent par le moteur unique (lot 4) : `fn::sanitize_pipeline_execute($value, $pipeline, $max_steps)` et `fn::sanitize_object_execute($value, $schema, $max_steps)`, avec les 93 règles de `fn::sanitize_step_catalog()` (une par fonction de valeurs sauf `date_range`, plus `default` ; `fn::sanitize_object` y figure sous le nom `object_or_empty`). Restent au lot 4 : optimiseur, débogage, benchmark.
+* **Avancement** : toutes les fonctions de valeurs de `sanitize` sont migrées (93 fonctions : textes, nombres, dates, tableaux, objets, HTML, Markdown, URL, chemins). Les pipelines passent par le moteur unique (lot 4) : `fn::sanitize_pipeline_execute($value, $pipeline, $max_steps)` et `fn::sanitize_object_execute($value, $schema, $max_steps)`, avec les 93 règles de `fn::sanitize_step_catalog()` (une par fonction de valeurs sauf `date_range`, plus `default` ; `fn::sanitize_object` y figure sous le nom `object_or_empty`).
 * Le nettoyage HTML et Markdown est **lexical** (expressions régulières) : il ne remplace pas un parseur HTML anti-XSS. `string::replace` de SurrealDB 3.3.4 ne gère pas les groupes de capture (« $1 ») : les fonctions qui doivent garder une partie du motif (liens Markdown…) découpent le texte.
 
 ---
@@ -203,10 +207,8 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 ## Tests
 
-* `scripts/ci/test_lyxal_core.py` charge les 564 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
-* **Deux formats coexistent pendant la reprise** :
-  * **format « assertions »** (fichiers commençant par `-- lyxal-test: assertions`) : chaque bloc `-- test:` contient une instruction qui doit renvoyer `true`, ou lever l'erreur annoncée par `-- attendu-erreur: <CODE>` ; tout écart fait échouer la CI (détails : `implementation_plan.md` §5) ;
-  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (466 fichiers aujourd'hui, ceux des fonctions migrées).
+* `scripts/ci/test_lyxal_core.py` charge les 480 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
+* Tous les fichiers de tests (480) sont au **format « assertions »** (fichiers commençant par `-- lyxal-test: assertions`) : chaque bloc `-- test:` contient une instruction qui doit renvoyer `true`, ou lever l'erreur annoncée par `-- attendu-erreur: <CODE>` ; tout écart fait échouer la CI (détails : `implementation_plan.md` §5). Le banc sait encore lire l'ancien format, qui n'a plus aucun fichier ; ce code sera retiré au lot 5.
 * `scripts/ci/test_lyxal_core_selftest.py` vérifie que le banc accepte les bons tests et rejette les mauvais.
 * `scripts/ci/validate_surql.sh` vérifie la syntaxe de tout le SurrealQL du dépôt.
 * Les deux scripts font partie de la CI (job « SurrealQL ») et de `scripts/ci/ci_local.sh`.

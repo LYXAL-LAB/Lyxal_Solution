@@ -7,6 +7,9 @@ RETURN array::len(fn::security_step_catalog()) == 22;
 -- test: règles uniques
 RETURN array::len(array::distinct(fn::security_step_catalog().map(|$e| $e.rule))) == 22;
 
+-- test: aucune règle déclarée idempotente (enregistrements cumulés)
+RETURN !array::any(fn::security_step_catalog(), |$e| $e.idempotent = true);
+
 -- test: aucune règle du moteur masquée
 RETURN array::len(fn::utils_engine_pipeline([], fn::security_step_catalog(), 1)) == 0;
 
