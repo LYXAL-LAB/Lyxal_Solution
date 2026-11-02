@@ -10,6 +10,12 @@ RETURN fn::sanitize_markdown_safe("# Titre **gras**") == "# Titre **gras**";
 -- test: lien data neutralisé, texte suivant conservé
 RETURN fn::sanitize_markdown_safe("[x](data:text/html,a) suite (note)") == "[x](about:blank) suite (note)";
 
+-- test: lien javascript avec titre
+RETURN fn::sanitize_markdown_safe("[clic](javascript:evil \"titre\") fin") == "[clic](about:blank) fin";
+
+-- test: lien javascript avec titre entre apostrophes
+RETURN fn::sanitize_markdown_safe("[clic](javascript:x(1) 't') fin") == "[clic](about:blank) fin";
+
 -- test: entrée absente → NONE
 RETURN fn::sanitize_markdown_safe(NONE) == NONE;
 
