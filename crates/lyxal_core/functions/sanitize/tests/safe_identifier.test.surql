@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_safe_identifier (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_safe_identifier (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: espaces et ponctuation
 RETURN fn::sanitize_safe_identifier(" Mon Champ-Clé! ") == "mon_champ_cl";

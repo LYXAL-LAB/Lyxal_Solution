@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_starts_with (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_starts_with (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: préfixe présent
 RETURN fn::validation_starts_with("sk_live_1", ["pk_", "sk_"], true, true)

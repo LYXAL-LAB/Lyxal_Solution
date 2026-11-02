@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_permission_check (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_permission_check (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: autorisation
 RETURN fn::security_permission_check([{ resource: "booking", action: "read", effect: "allow", conditions: {} }], "BOOKING", "read", NONE).allowed;

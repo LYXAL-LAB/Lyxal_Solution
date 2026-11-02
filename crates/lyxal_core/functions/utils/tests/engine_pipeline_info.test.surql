@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_engine_pipeline_info (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_engine_pipeline_info (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: étapes, règles et coût
 RETURN fn::utils_engine_pipeline_info(fn::utils_engine_pipeline([{ rule: "trim" }, { rule: "min", value: 1 }, { rule: "trim" }], [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10), [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }]) == { step_count: 3, rules: ["trim", "min"], cost: 5 };

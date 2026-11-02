@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_integer_range (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_integer_range (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: intervalle valide
 RETURN fn::validation_integer_range(2, 10, false)

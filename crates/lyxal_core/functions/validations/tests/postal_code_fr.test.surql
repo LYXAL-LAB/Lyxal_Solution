@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_postal_code_fr (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_postal_code_fr (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur conforme
 RETURN fn::validation_postal_code_fr(" 75008 ", false)

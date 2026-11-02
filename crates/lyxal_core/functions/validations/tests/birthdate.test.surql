@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_birthdate (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_birthdate (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: date passée
 RETURN fn::validation_birthdate(d"1990-06-15T00:00:00Z", false)

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_number_scale (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_number_scale (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: changement d'échelle
 RETURN fn::utils_number_scale(5, 0, 10, 0, 100) == 50;

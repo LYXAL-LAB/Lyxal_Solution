@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_date_string (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_date_string (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur conforme nettoyée
 RETURN fn::validation_date_string(" 2026-08-03 ")

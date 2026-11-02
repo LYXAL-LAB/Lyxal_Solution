@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_redact_log (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_redact_log (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: jeton Bearer
 RETURN fn::security_redact_log("GET /a authorization: bearer abc.def-123 ok") == "GET /a Authorization: Bearer ***REDACTED*** ok";

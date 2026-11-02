@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_compare_versions (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_compare_versions (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: version inférieure
 RETURN fn::utils_compare_versions("v1.2.9", "1.10.0") == -1;

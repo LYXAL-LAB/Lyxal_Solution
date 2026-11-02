@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_dsl_compile (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_dsl_compile (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: pipelines construits
 RETURN fn::validation_dsl_compile({ name: "contact", version: "v1", fields: { name: { required: true, type: "string", min_length: 2, max_length: 50 }, age: { min: 0, max: 130 }, role: { enum: ["admin", "user"], default: "user" } } }).fields.name.pipeline.map(|$s| $s.rule) == ["value_type", "min_length", "max_length"];

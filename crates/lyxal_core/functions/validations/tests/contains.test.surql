@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_contains (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_contains (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: fragment présent
 RETURN fn::validation_contains(" a@b ", ["@"], true, true)

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_object_execute (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_object_execute (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: objet valide
 RETURN fn::validation_object_execute({ email: "A@b.fr", age: 30 }, { fields: { email: { pipeline: [{ rule: "email", options: { max_length: 254 } }], required: true }, age: { pipeline: [{ rule: "integer", options: { min_value: 0, max_value: 130 } }] } } }, 10) == { valid: true, value: { email: "A@b.fr", age: 30 }, errors: [], warnings: [], by_field: {} };

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_domain (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_domain (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: URL complète
 RETURN fn::sanitize_domain(" HTTPS://Example.com:8443/a/b ") == "example.com";

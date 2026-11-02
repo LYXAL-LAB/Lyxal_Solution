@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_iso8601 (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_iso8601 (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur conforme nettoyée
 RETURN fn::validation_iso8601(" 2026-08-03T14:30:00+02:00 ", false)

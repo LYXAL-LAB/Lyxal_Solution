@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_private_key_pem (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_private_key_pem (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur conforme
 RETURN fn::validation_private_key_pem("-----BEGIN PRIVATE KEY-----\nMIIEvQIBADAN\n-----END PRIVATE KEY-----", false, 65536)

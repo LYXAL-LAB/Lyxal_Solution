@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_value_type (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_value_type (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: type attendu
 RETURN fn::validation_value_type({ a: 1 }, "object")

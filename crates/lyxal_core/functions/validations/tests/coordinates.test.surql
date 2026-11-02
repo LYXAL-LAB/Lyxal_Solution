@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_coordinates (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_coordinates (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: coordonnées valides
 RETURN fn::validation_coordinates(48.8566f, 2.3522f)

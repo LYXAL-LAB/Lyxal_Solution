@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_time_range (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_time_range (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: intervalle valide
 RETURN fn::validation_time_range(d"2026-08-03T00:00:00Z", d"2026-08-03T12:00:00Z", false, 1h, 24h)

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_clamp (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_clamp (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: dans l'intervalle
 RETURN fn::sanitize_clamp(5, 0, 10) == 5;

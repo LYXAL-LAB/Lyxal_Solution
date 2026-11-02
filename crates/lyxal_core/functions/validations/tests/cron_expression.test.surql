@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_cron_expression (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_cron_expression (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur conforme
 RETURN fn::validation_cron_expression(" */5 * * * MON-FRI ", false, true)

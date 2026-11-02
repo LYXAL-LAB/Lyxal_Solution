@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_object_merge (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_object_merge (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: clés remplacées et ajoutées
 RETURN fn::sanitize_object_merge({ a: 1, b: 2 }, { b: 3, c: 4 }) == { a: 1, b: 3, c: 4 };

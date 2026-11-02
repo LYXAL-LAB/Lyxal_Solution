@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_detect_file_attack (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_detect_file_attack (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: exécutable
 RETURN fn::security_detect_file_attack("setup.EXE", "application/octet-stream") == { detected: true, category: "file_attack", score: 60, dangerous_extension: true, double_extension: false, mime_mismatch: false };

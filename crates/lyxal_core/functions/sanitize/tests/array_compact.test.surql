@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_array_compact (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_array_compact (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: NONE, NULL et vides retirés
 RETURN fn::sanitize_array_compact([NONE, NULL, "", " ", "A", 0], true, true) == ["A", 0];

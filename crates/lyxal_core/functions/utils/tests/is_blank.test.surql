@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_is_blank (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_is_blank (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: chaîne blanche
 RETURN fn::utils_is_blank("  ");

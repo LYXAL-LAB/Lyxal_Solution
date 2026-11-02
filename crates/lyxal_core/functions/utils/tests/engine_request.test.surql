@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_engine_request (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_engine_request (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: requête
 RETURN fn::utils_engine_request(" Validate ", { a: 1 }, NONE).operation == "validate" AND fn::utils_engine_request("v", 1, NONE).context == {};

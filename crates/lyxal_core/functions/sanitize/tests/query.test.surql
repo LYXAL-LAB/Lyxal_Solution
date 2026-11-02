@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_query (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_query (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: point d'interrogation et fragment retirés
 RETURN fn::sanitize_query(" ?a=1&b=2#top ") == "a=1&b=2";

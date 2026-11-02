@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_compare_numbers (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_compare_numbers (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: dans la tolérance
 RETURN fn::utils_compare_numbers(1.0f, 1.05f, 0.1f) == 0;

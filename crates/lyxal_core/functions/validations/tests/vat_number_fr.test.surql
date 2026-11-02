@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_vat_number_fr (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_vat_number_fr (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: numéro valide
 RETURN fn::validation_vat_number_fr(" fr 44 732829320 ", true)

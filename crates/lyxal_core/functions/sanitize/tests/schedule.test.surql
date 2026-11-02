@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_schedule (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_schedule (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: début arrondi
 RETURN fn::sanitize_schedule(d"2026-08-03T10:07:30Z", 1h, 15m) == { start_at: d"2026-08-03T10:00:00Z", end_at: d"2026-08-03T11:00:00Z", duration: 1h };

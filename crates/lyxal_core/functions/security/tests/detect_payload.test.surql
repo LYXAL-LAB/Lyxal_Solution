@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_detect_payload (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_detect_payload (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: plusieurs attaques
 RETURN fn::security_detect_payload("<script>x</script> UNION SELECT a FROM b").detected;

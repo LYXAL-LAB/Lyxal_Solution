@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_rfc3339 (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_rfc3339 (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: sans fraction
 RETURN fn::sanitize_rfc3339(d"2026-01-01T10:00:00Z") == "2026-01-01T10:00:00Z";

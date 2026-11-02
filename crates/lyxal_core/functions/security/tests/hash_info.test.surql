@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_hash_info (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_hash_info (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: empreinte déterministe
 RETURN fn::security_hash_info("abcd", " SHA256 ") == { algorithm: "sha256", hash: "abcd", length: 4, password_suitable: false, deterministic: true };

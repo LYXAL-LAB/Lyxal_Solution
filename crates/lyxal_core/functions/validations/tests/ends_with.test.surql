@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_ends_with (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_ends_with (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: suffixe présent
 RETURN fn::validation_ends_with(" devis.pdf ", [".pdf"], true, true)

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_max_length (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_max_length (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: longueur respectée
 RETURN fn::validation_max_length("abc", 3)

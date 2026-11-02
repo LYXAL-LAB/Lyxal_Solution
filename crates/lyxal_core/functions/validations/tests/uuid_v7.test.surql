@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_uuid_v7 (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_uuid_v7 (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: UUID v7 natif
 RETURN fn::validation_uuid_v7(u"0190b5a2-7c1e-7a3b-9f00-1234567890ab", false)

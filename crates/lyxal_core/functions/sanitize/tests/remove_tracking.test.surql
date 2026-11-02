@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_remove_tracking (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_remove_tracking (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: paramètres de suivi retirés
 RETURN fn::sanitize_remove_tracking("https://x.com/p?utm_source=nl&id=2&gclid=abc") == "https://x.com/p?id=2";

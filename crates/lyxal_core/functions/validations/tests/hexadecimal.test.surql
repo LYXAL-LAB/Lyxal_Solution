@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_hexadecimal (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_hexadecimal (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: hexadécimal mis en minuscules
 RETURN fn::validation_hexadecimal(" FF00aa ", 6, 6, false)

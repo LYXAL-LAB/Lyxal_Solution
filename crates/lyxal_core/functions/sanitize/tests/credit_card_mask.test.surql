@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_credit_card_mask (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_credit_card_mask (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: quatre chiffres visibles
 RETURN fn::sanitize_credit_card_mask("4111 1111 1111 1111", 4) == "************1111";

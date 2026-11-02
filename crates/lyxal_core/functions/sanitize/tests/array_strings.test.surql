@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_array_strings (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_array_strings (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: chaînes nettoyées
 RETURN fn::sanitize_array_strings([" A ", 1, "b", NULL], true, true) == ["a", "b"];

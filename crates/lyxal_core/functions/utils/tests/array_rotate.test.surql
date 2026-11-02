@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_array_rotate (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_array_rotate (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: rotation à gauche
 RETURN fn::utils_array_rotate([1, 2, 3, 4], 1) == [2, 3, 4, 1];

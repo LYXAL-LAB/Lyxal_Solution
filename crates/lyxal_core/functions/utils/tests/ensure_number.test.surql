@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_ensure_number (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_ensure_number (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: chaîne décimale
 RETURN fn::utils_ensure_number(" -1.5 ", 0) == -1.5dec;

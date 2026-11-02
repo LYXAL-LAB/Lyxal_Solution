@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_surql_function (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_surql_function (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur conforme
 RETURN fn::validation_surql_function(" booking::create ", true, 3)

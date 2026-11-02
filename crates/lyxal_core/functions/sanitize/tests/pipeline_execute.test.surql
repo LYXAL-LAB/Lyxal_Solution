@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_pipeline_execute (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_pipeline_execute (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: enchaînement d'étapes
 RETURN fn::sanitize_pipeline_execute("  Hello   World ", [{ rule: "collapse_whitespace" }, { rule: "lowercase" }, { rule: "slug" }], 10) == "hello-world";

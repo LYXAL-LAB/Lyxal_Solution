@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_future_datetime (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_future_datetime (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: du bon côté de la référence
 RETURN fn::validation_future_datetime(d"2026-01-02T00:00:00Z", d"2026-01-01T00:00:00Z", false, NONE, NONE)

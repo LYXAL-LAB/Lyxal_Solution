@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_object_execute (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_object_execute (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: champs masqués, constats par champ
 RETURN fn::security_object_execute({ email: "a@b.fr", note: "<script>x</script>" }, { fields: { email: { pipeline: [{ rule: "redact_email" }] }, note: { pipeline: [{ rule: "detect_xss" }] } } }, 10).findings.map(|$f| $f.path) == ["note"];

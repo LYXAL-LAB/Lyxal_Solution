@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_scope (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_scope (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: scope normalisé
 RETURN fn::security_scope(" Booking:Read ") == "booking:read";

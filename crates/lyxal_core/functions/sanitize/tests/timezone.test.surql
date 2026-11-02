@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_timezone (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_timezone (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: Z
 RETURN fn::sanitize_timezone(" z ") == "+00:00";

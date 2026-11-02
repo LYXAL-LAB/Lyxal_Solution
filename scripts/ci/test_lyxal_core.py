@@ -3,9 +3,9 @@
 1. Démarre `surreal start memory` sur un port libre, avec des identifiants générés.
 2. Importe toutes les fonctions de `crates/lyxal_core/functions/*/functions/` et vérifie
    qu'elles sont toutes définies.
-3. Exécute chaque fichier de tests selon son format.
-
-Format « assertions » (fichier dont les premières lignes contiennent `-- lyxal-test: assertions`) :
+3. Vérifie que chaque fonction a son fichier de tests `<nom>.test.surql`, et inversement.
+4. Exécute chaque fichier de tests, obligatoirement au format « assertions » (la ligne
+   `-- lyxal-test: assertions` figure dans ses 30 premières lignes) :
 
     -- lyxal-test: assertions
 
@@ -19,11 +19,6 @@ Format « assertions » (fichier dont les premières lignes contiennent `-- lyxa
   Chaque bloc `-- test:` contient exactement une instruction, exécutée seule. Elle doit renvoyer
   `true`, ou lever exactement l'erreur annoncée par `-- attendu-erreur:`. Tout autre résultat
   fait échouer le script.
-
-Ancien format (fichiers pas encore migrés) : chaque instruction est classée `OK`, `THROW` métier
-(`THROW "<CODE>"`) ou rejet JSON attendu (fichiers `json*`) ; toute autre erreur fait échouer
-le script. Ce mode ne vérifie pas les valeurs renvoyées et disparaît à la fin de la reprise
-(`crates/lyxal_core/implementation_plan.md`).
 """
 
 import base64
@@ -38,7 +33,6 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
-from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -51,7 +45,6 @@ NS, DB = "lyxal_core_ci", "lyxal_core_ci"
 FORMAT_MARKER = re.compile(r"^--\s*lyxal-test:\s*assertions\s*$", re.M)
 TEST_MARKER = re.compile(r"^--\s*test:\s*(.*)$")
 ERROR_MARKER = re.compile(r"^--\s*attendu-erreur:\s*([A-Z][A-Z0-9_]*)\s*$")
-LEGACY_THROW = re.compile(r"^(An error occurred: )?'?[A-Z][A-Z0-9_]{3,}'?$")
 
 
 def thrown_code(message: str) -> str:
@@ -131,14 +124,12 @@ class SurrealServer:
 class FileReport:
     """Résultat d'un fichier de tests."""
 
-    assertions: bool
     passed: int = 0
-    counts: Counter = field(default_factory=Counter)
     failures: list[str] = field(default_factory=list)
 
 
 def run_assertions(server: SurrealServer, text: str) -> FileReport:
-    report = FileReport(assertions=True)
+    report = FileReport()
     preamble, blocks, current = [], [], None
     for line in text.splitlines():
         marker = TEST_MARKER.match(line.strip())
@@ -185,38 +176,25 @@ def run_assertions(server: SurrealServer, text: str) -> FileReport:
     return report
 
 
-def run_legacy(server: SurrealServer, text: str, file_name: str) -> FileReport:
-    report = FileReport(assertions=False)
-    try:
-        results = server.sql(text)
-    except urllib.error.HTTPError as error:
-        report.failures.append(f"requête refusée : {error.read().decode()[:300]}")
-        return report
-    for index, result in enumerate(results):
-        if result["status"] == "OK":
-            report.counts["OK"] += 1
-            continue
-        message = str(result["result"]).strip()
-        if LEGACY_THROW.match(message):
-            report.counts["THROW"] += 1
-        elif file_name.startswith("json") and "encoding::json::decode" in message:
-            report.counts["JSON"] += 1
-        else:
-            report.failures.append(f"instruction {index} : {message[:300]}")
-    return report
-
-
 def run_file(server: SurrealServer, path: Path) -> FileReport:
     text = path.read_text()
     head = "\n".join(text.splitlines()[:30])
-    if FORMAT_MARKER.search(head):
-        return run_assertions(server, text)
-    return run_legacy(server, text, path.name)
+    if not FORMAT_MARKER.search(head):
+        return FileReport(failures=["ligne `-- lyxal-test: assertions` absente des 30 premières lignes"])
+    return run_assertions(server, text)
 
 
 def main() -> int:
     function_files = sorted(f for d in DOMAINS for f in (CORE / d / "functions").glob("*.surql"))
     test_files = sorted(f for d in DOMAINS for f in (CORE / d / "tests").glob("*.surql"))
+    failures = []
+    for domain in DOMAINS:
+        functions = {f.stem for f in (CORE / domain / "functions").glob("*.surql")}
+        tests = {f.name for f in (CORE / domain / "tests").glob("*.surql")}
+        for name in sorted(functions - {t.removesuffix(".test.surql") for t in tests}):
+            failures.append((Path("crates/lyxal_core/functions") / domain / "functions" / f"{name}.surql", "fonction sans fichier de tests"))
+        for name in sorted(t for t in tests if not t.endswith(".test.surql") or t.removesuffix(".test.surql") not in functions):
+            failures.append((Path("crates/lyxal_core/functions") / domain / "tests" / name, "fichier de tests sans fonction correspondante"))
 
     with SurrealServer() as server:
         defined = server.load_functions(function_files)
@@ -225,21 +203,13 @@ def main() -> int:
             print("Toutes les fonctions de lyxal_core ne sont pas définies.", file=sys.stderr)
             return 1
 
-        assertion_files = legacy_files = assertions_passed = 0
-        legacy_counts, failures = Counter(), []
+        assertions_passed = 0
         for path in test_files:
             report = run_file(server, path)
-            if report.assertions:
-                assertion_files += 1
-                assertions_passed += report.passed
-            else:
-                legacy_files += 1
-                legacy_counts += report.counts
+            assertions_passed += report.passed
             failures += [(path.relative_to(ROOT), message) for message in report.failures]
 
-    print(f"Format assertions : {assertion_files} fichiers, {assertions_passed} assertions vérifiées.")
-    print(f"Ancien format (non vérifié en valeur) : {legacy_files} fichiers — {legacy_counts['OK']} OK, "
-          f"{legacy_counts['THROW']} THROW métier, {legacy_counts['JSON']} rejets JSON.")
+    print(f"Tests : {len(test_files)} fichiers, {assertions_passed} assertions vérifiées.")
     print(f"Échecs : {len(failures)}.")
     for relative, message in failures:
         print(f"::error file={relative}::{message}")

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_email_local (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_email_local (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: partie locale
 RETURN fn::sanitize_email_local(" mailto:Jean.Dupont@example.com ") == "Jean.Dupont";

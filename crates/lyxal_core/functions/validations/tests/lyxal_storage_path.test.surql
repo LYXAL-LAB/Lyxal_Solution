@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_lyxal_storage_path (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_lyxal_storage_path (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur conforme
 RETURN fn::validation_lyxal_storage_path(" tenants/acme/doc.pdf ", "tenants", true, 1024)

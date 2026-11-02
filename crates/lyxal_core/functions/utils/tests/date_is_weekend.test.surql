@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_date_is_weekend (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_date_is_weekend (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: samedi
 RETURN fn::utils_date_is_weekend(d"2026-08-08T12:00:00Z");

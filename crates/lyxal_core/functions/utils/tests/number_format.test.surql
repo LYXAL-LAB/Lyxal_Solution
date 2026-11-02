@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_number_format (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_number_format (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: format français
 RETURN fn::utils_number_format(1234567.891f, 2, ",", " ") == "1 234 567,89";

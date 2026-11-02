@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_remove_tabs (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_remove_tabs (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: tabulations
 RETURN fn::sanitize_remove_tabs("a\tb\tc", " ") == "a b c";

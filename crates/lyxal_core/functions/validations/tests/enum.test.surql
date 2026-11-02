@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_enum (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_enum (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur autorisée, casse ignorée
 RETURN fn::validation_enum(" Admin ", ["owner", "admin"], false)

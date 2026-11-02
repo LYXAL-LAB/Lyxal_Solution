@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_at_least_one (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_at_least_one (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: une valeur présente
 RETURN fn::validation_at_least_one([NONE, "06 00 00 00 00"])

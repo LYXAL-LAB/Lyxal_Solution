@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_step_result (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_step_result (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: résultat vide
 RETURN fn::security_step_result(fn::utils_engine_state("a", "", NONE)) == { value: "a", findings: [], score: 0, decisions: [], allowed: true, errors: [] };

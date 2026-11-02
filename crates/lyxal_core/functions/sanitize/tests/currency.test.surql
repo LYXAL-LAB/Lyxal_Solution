@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_currency (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_currency (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: montant en euros
 RETURN fn::sanitize_currency("1 234,50 €", ",") == "1234.50";

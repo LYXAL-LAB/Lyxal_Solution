@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_multiple_of (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_multiple_of (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: multiple
 RETURN fn::validation_multiple_of(45, 15)

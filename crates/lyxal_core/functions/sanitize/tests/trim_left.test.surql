@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_trim_left (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_trim_left (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: espaces initiaux
 RETURN fn::sanitize_trim_left("  a b  ") == "a b  ";

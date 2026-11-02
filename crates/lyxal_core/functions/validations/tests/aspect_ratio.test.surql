@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_aspect_ratio (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_aspect_ratio (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: rapport valide
 RETURN fn::validation_aspect_ratio(1920, 1080, 1dec, 2dec)

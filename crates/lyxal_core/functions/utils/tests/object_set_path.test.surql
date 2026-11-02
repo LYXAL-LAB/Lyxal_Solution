@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_object_set_path (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_object_set_path (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: création des niveaux
 RETURN fn::utils_object_set_path({ a: 1 }, ["b", "c"], 2) == { a: 1, b: { c: 2 } };

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_capitalize (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_capitalize (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: première lettre
 RETURN fn::sanitize_capitalize("lYXAL os") == "Lyxal os";

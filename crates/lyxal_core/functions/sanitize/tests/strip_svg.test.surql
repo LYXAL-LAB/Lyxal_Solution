@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_strip_svg (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_strip_svg (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: élément svg retiré
 RETURN fn::sanitize_strip_svg("a<SVG x=1>contenu</svg>b") == "ab";

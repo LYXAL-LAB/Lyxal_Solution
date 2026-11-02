@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_engine_schema_hash (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_engine_schema_hash (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: empreinte stable
 RETURN fn::utils_engine_schema_hash(fn::utils_engine_schema({ name: "contact", fields: { name: { pipeline: [{ rule: "trim" }, { rule: "min", value: 2 }], required: true }, note: { pipeline: [{ rule: "trim" }], nullable: true }, lang: { default: "fr" } } }, [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10)) == fn::utils_engine_schema_hash(fn::utils_engine_schema({ name: "contact", fields: { name: { pipeline: [{ rule: "trim" }, { rule: "min", value: 2 }], required: true }, note: { pipeline: [{ rule: "trim" }], nullable: true }, lang: { default: "fr" } } }, [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10)) AND string::len(fn::utils_engine_schema_hash(fn::utils_engine_schema({ name: "contact", fields: { name: { pipeline: [{ rule: "trim" }, { rule: "min", value: 2 }], required: true }, note: { pipeline: [{ rule: "trim" }], nullable: true }, lang: { default: "fr" } } }, [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10))) == 64;

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_tuple_types (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_tuple_types (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: types conformes
 RETURN fn::validation_tuple_types(["a", 1], ["string", " INT "])

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_date (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_date (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: date à minuit dans les bornes
 RETURN fn::validation_date(d"2026-08-03T00:00:00Z", d"2026-07-14T00:00:00Z", d"2026-08-09T00:00:00Z")

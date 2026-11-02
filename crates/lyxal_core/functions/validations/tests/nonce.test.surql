@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_nonce (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_nonce (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur conforme
 RETURN fn::validation_nonce("a1B2c3D4e5", 8, 64)

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_redact_ip (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_redact_ip (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: IPv4
 RETURN fn::security_redact_ip(" 192.168.1.42 ") == "192.168.x.x";

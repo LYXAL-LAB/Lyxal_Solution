@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_array_of_strings (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_array_of_strings (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: chaînes nettoyées
 RETURN fn::validation_array_of_strings([" admin ", "user"], false, 1, 10)

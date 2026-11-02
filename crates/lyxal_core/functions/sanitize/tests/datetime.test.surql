@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_datetime (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_datetime (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: à la minute
 RETURN fn::sanitize_datetime(d"2026-08-03T12:34:56.789Z", 1m) == d"2026-08-03T12:34:00Z";

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_postal_code (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_postal_code (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: majuscules et tiret
 RETURN fn::sanitize_postal_code(" sw1a-1aa ") == "SW1A-1AA";

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_tuple_length (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_tuple_length (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: longueur exacte
 RETURN fn::validation_tuple_length([1.5f, 2.5f], 2)

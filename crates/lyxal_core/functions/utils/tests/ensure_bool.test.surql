@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_ensure_bool (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_ensure_bool (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: texte vrai
 RETURN fn::utils_ensure_bool(" Yes ", false) == true;

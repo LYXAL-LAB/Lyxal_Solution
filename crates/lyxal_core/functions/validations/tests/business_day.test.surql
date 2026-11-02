@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_business_day (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_business_day (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: lundi ouvré
 RETURN fn::validation_business_day(d"2026-08-03T00:00:00Z", NONE)

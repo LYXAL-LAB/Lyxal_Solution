@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_retry_policy (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_retry_policy (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: politique complète
 RETURN fn::validation_retry_policy({ max_attempts: 3, strategy: " Exponential ", initial_delay: 1s, max_delay: 30s }, 10, 1h)

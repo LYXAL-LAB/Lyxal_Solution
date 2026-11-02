@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_decimal (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_decimal (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: virgule décimale
 RETURN fn::sanitize_decimal(" -1 234,56 ") == "-1234.56";

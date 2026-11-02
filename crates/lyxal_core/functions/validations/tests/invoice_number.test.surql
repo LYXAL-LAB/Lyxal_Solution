@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_invoice_number (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_invoice_number (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur conforme
 RETURN fn::validation_invoice_number(" FAC-2026/0001 ", 3, 20, ["FAC-"])

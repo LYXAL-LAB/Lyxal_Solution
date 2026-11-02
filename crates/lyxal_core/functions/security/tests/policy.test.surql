@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_policy (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_policy (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: politique normalisée
 RETURN fn::security_policy(" Main ", " V2 ", [{ resource: "booking", action: "read", effect: "allow", conditions: {} }], " DENY ") == { name: "main", version: "v2", permissions: [{ resource: "booking", action: "read", effect: "allow", conditions: {} }], default_effect: "deny" };

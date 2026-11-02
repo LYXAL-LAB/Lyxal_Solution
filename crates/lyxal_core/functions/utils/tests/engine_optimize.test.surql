@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_engine_optimize (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_engine_optimize (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: doublons consécutifs idempotents retirés
 RETURN fn::utils_engine_optimize([{ rule: "trim" }, { rule: "trim" }, { rule: "hash" }, { rule: "trim" }], [{ rule: "trim", cost: 1, idempotent: true }, { rule: "hash", cost: 2 }]) == { pipeline: [{ rule: "trim" }, { rule: "hash" }, { rule: "trim" }], removed: 1, cost_before: 5, cost_after: 4 };

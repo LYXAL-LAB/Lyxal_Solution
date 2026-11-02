@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_object_execute (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_object_execute (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: champs nettoyés, défaut appliqué, clé inconnue retirée
 RETURN fn::sanitize_object_execute({ name: " jean dupont ", extra: 1 }, { fields: { name: { pipeline: [{ rule: "trim" }, { rule: "title_case" }] }, lang: { pipeline: [{ rule: "lowercase" }], default: "FR" } }, unknown_keys: "strip" }, 10) == { name: "Jean Dupont", lang: "fr" };
