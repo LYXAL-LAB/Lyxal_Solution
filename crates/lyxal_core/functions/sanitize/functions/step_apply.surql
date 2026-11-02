@@ -117,7 +117,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_step_apply(
         ELSE IF $step.rule = "trim_right" { fn::sanitize_trim_right($value) }
         ELSE IF $step.rule = "uppercase" { fn::sanitize_uppercase($value) }
         ELSE IF $step.rule = "url" { fn::sanitize_url($value) }
-        ELSE IF $step.rule = "default" { $value ?? $options.value }
+        ELSE IF $step.rule = "default" { IF $value IS NONE { $options.value } ELSE { $value } }
         ELSE { THROW "CORE_UNSUPPORTED_OPTION" }
     });
 }

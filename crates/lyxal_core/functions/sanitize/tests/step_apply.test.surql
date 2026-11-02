@@ -16,6 +16,9 @@ RETURN fn::sanitize_step_apply(fn::utils_engine_state("a  b", "", NONE), { rule:
 -- test: default remplace NONE
 RETURN fn::sanitize_step_apply(fn::utils_engine_state(NONE, "", NONE), { rule: "default", options: { value: 5 } }).value == 5;
 
+-- test: default conserve NULL
+RETURN fn::sanitize_step_apply(fn::utils_engine_state(NULL, "", NONE), { rule: "default", options: { value: 5 } }).value == NULL;
+
 -- test: default conserve une valeur
 RETURN fn::sanitize_step_apply(fn::utils_engine_state(1, "", NONE), { rule: "default", options: { value: 5 } }).value == 1;
 
