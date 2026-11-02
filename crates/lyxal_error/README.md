@@ -97,7 +97,7 @@ même fournisseur, service, code externe et matcher.
 | `ERROR_MAPPING_ALREADY_EXISTS` | `conflict` | 409 | Correspondance identique déjà enregistrée |
 | `ERROR_INVALID_FUNCTION_RESPONSE` | `internal` | 500 | Réponse d'une fonction hors contrat `{ ok, data, error }`, détectée côté Rust |
 
-`error/core/core_definitions.surql` installe aussi les codes `CORE_*` levés par `lyxal_core`.
+Chaque module porte ses propres définitions : les codes `CORE_*` sont dans `lyxal_core`.
 
 ---
 

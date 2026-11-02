@@ -6,8 +6,9 @@
 -- jamais une donnée utilisateur invalide : celle-ci est signalée par le résultat
 -- { valid, value, code, details } des fonctions `fn::validation_*`).
 --
--- Le Core n'a aucune table : ces définitions sont portées par `lyxal_error`,
--- propriétaire de `error_definition`. Forme idempotente non destructive (§5.5).
+-- Chaque module porte ses propres définitions (§5.5). Elles s'écrivent dans la
+-- table `error_definition` de `lyxal_error` : elles s'installent après les
+-- schémas. Forme idempotente non destructive.
 -- ============================================================================
 
 IF !record::exists(error_definition:CORE_INVALID_ARGUMENT) THEN (
