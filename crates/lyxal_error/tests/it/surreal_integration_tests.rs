@@ -1,730 +1,753 @@
-use lyxal_error::LyxalResult;
-use std::io::Write;
-use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
-use std::sync::atomic::{AtomicU16, Ordering};
-use std::time::Duration;
-use surrealdb_types::{SurrealValue, Value};
+//! Tests d'intégration contre un serveur SurrealDB 3.3.4 réel.
+//!
+//! Chaque test démarre un serveur `surreal` en mémoire, installe `lyxal_core` puis
+//! `lyxal_error` depuis leurs manifestes, et appelle les fonctions publiques avec les
+//! types Rust du crate (`*Params` en entrée, types de résultat en sortie) : le contrat
+//! DTO ↔ SurrealQL est ainsi vérifié de bout en bout, `RecordId` et `Datetime` compris.
 
-static NEXT_PORT: AtomicU16 = AtomicU16::new(18400);
-static TEST_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
+use lyxal_error::*;
+use std::path::{Path, PathBuf};
+use std::process::{Child, Command, Stdio};
+use std::time::Duration;
+use surrealdb::engine::any::{connect, Any};
+use surrealdb::opt::auth::Root;
+use surrealdb::Surreal;
+use surrealdb_types::{Datetime, RecordId, SurrealValue};
 
 /// Binaire `surreal` utilisé par les tests : `LYXAL_SURREAL_BIN`, à défaut `surreal` dans le `PATH`.
 fn surreal_bin() -> String {
     std::env::var("LYXAL_SURREAL_BIN").unwrap_or_else(|_| "surreal".to_owned())
 }
 
-/// Convertit la sortie JSON du client `surreal sql` en valeur SurrealDB, `null` devenant `NONE`.
-///
-/// Les contrats `fn::result_ok` / `fn::error_result` utilisent `NONE` pour un champ absent ;
-/// la sortie JSON du client ne distingue pas `NONE` de `NULL`.
-fn to_surreal(raw: serde_json::Value) -> Value {
-    match raw {
-        serde_json::Value::Null => Value::None,
-        serde_json::Value::Object(map) => {
-            let mut obj = surrealdb_types::Object::new();
-            for (k, v) in map {
-                obj.insert(k, to_surreal(v));
-            }
-            Value::Object(obj)
-        }
-        serde_json::Value::Array(items) => Value::Array(surrealdb_types::Array::from(
-            items.into_iter().map(to_surreal).collect::<Vec<_>>(),
-        )),
-        other => other.into_value(),
-    }
-}
-
-pub struct SurrealServer {
+/// Serveur SurrealDB en mémoire, arrêté à la fin du test.
+struct SurrealServer {
     child: Child,
-    pub port: u16,
-    _guard: std::sync::MutexGuard<'static, ()>,
-}
-
-impl SurrealServer {
-    pub fn start() -> Self {
-        let guard = TEST_MUTEX.lock().unwrap_or_else(|e| e.into_inner());
-        let port = NEXT_PORT.fetch_add(1, Ordering::SeqCst);
-        let child = Command::new(surreal_bin())
-            .args([
-                "start",
-                "--bind",
-                &format!("127.0.0.1:{}", port),
-                "--user",
-                "root",
-                "--pass",
-                "root",
-                "mem://",
-            ])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .expect(
-                "Impossible de lancer `surreal` (définir LYXAL_SURREAL_BIN ou l'ajouter au PATH)",
-            );
-
-        let start_time = std::time::Instant::now();
-        let mut ready = false;
-        while start_time.elapsed() < Duration::from_secs(30) {
-            if let Ok(stream) = std::net::TcpStream::connect(("127.0.0.1", port)) {
-                drop(stream);
-                ready = true;
-                break;
-            }
-            std::thread::sleep(Duration::from_millis(50));
-        }
-        if !ready {
-            panic!("SurrealDB failed to bind to port {} within 30s", port);
-        }
-        std::thread::sleep(Duration::from_millis(200));
-
-        Self {
-            child,
-            port,
-            _guard: guard,
-        }
-    }
-
-    pub fn execute_raw(&self, surql: &str) -> Vec<serde_json::Value> {
-        let endpoint = format!("http://127.0.0.1:{}", self.port);
-        let mut cmd = Command::new(surreal_bin())
-            .args([
-                "sql",
-                "--endpoint",
-                &endpoint,
-                "-u",
-                "root",
-                "-p",
-                "root",
-                "--ns",
-                "lyxal_test",
-                "--db",
-                "test_error",
-                "--hide-welcome",
-                "--json",
-            ])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .expect("Spawn surreal sql client");
-
-        if let Some(mut stdin) = cmd.stdin.take() {
-            stdin
-                .write_all(surql.as_bytes())
-                .expect("Write SQL to stdin");
-        }
-        let output = cmd.wait_with_output().expect("Execute surreal sql");
-        let stdout_str = String::from_utf8_lossy(&output.stdout);
-
-        let mut results = Vec::new();
-        for line in stdout_str.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with('[') || trimmed.starts_with('{') {
-                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(trimmed) {
-                    results.push(parsed);
-                }
-            }
-        }
-        results
-    }
-
-    pub fn query_lyxal_result<T: SurrealValue>(&self, surql: &str) -> LyxalResult<T> {
-        let results = self.execute_raw(surql);
-        let last_val = results.last().cloned().unwrap_or(serde_json::Value::Null);
-
-        let item = if let Some(arr) = last_val.as_array() {
-            if let Some(first) = arr.first() {
-                if let Some(inner_arr) = first.as_array() {
-                    inner_arr
-                        .first()
-                        .cloned()
-                        .unwrap_or(serde_json::Value::Null)
-                } else {
-                    first.clone()
-                }
-            } else {
-                serde_json::Value::Null
-            }
-        } else {
-            last_val
-        };
-
-        LyxalResult::<T>::from_value(to_surreal(item.clone())).unwrap_or_else(|e| {
-            panic!(
-                "Failed to deserialize LyxalResult: {:?}\nExtracted item: {:?}\nRaw results: {:?}",
-                e, item, results
-            )
-        })
-    }
-
-    pub fn query_val(&self, surql: &str) -> serde_json::Value {
-        let results = self.execute_raw(surql);
-        let last_val = results.last().cloned().unwrap_or(serde_json::Value::Null);
-        if let Some(arr) = last_val.as_array() {
-            if let Some(first) = arr.first() {
-                first.clone()
-            } else {
-                serde_json::Value::Null
-            }
-        } else {
-            last_val
-        }
-    }
 }
 
 impl Drop for SurrealServer {
     fn drop(&mut self) {
         let _ = self.child.kill();
+        let _ = self.child.wait();
     }
 }
 
-#[allow(dead_code)]
-#[derive(Debug, SurrealValue)]
-#[surreal(crate = "surrealdb_types")]
-struct DefinitionData {
-    code: String,
-    #[surreal(default)]
-    category: Option<String>,
-    #[surreal(default)]
-    severity: Option<String>,
-    #[surreal(default)]
-    http_status: Option<u16>,
-    #[surreal(default)]
-    enabled: Option<bool>,
-    #[surreal(default)]
-    retryable: Option<bool>,
-    #[surreal(default)]
-    log_occurrence: Option<bool>,
+fn free_port() -> u16 {
+    std::net::TcpListener::bind("127.0.0.1:0")
+        .and_then(|listener| listener.local_addr())
+        .map(|addr| addr.port())
+        .expect("port libre")
 }
 
-#[allow(dead_code)]
-#[derive(Debug, SurrealValue)]
-#[surreal(crate = "surrealdb_types")]
-struct DisableResult {
-    disabled: bool,
+/// Exécute un script SurrealQL et échoue si une instruction est en erreur.
+async fn run_script(db: &Surreal<Any>, label: &str, surql: &str) {
+    db.query(surql)
+        .await
+        .unwrap_or_else(|e| panic!("{label} : {e}"))
+        .check()
+        .unwrap_or_else(|e| panic!("{label} : {e}"));
 }
 
-#[allow(dead_code)]
-#[derive(Debug, SurrealValue)]
-#[surreal(crate = "surrealdb_types")]
-struct MappingData {
-    provider: String,
-    #[surreal(default)]
-    external_code: Option<String>,
-    #[surreal(default)]
-    service: Option<String>,
-    #[surreal(default)]
-    enabled: Option<bool>,
+/// Installe les ressources d'un manifeste (`schemas`, `functions`, `error_definitions`).
+async fn install_manifest(db: &Surreal<Any>, module_dir: &Path) {
+    let content = std::fs::read_to_string(module_dir.join("manifest.toml")).expect("manifest");
+    let manifest: toml::Value = toml::from_str(&content).expect("manifest TOML");
+    let resources = manifest
+        .get("resources")
+        .and_then(|v| v.as_table())
+        .expect("[resources]");
+    for key in ["schemas", "functions", "error_definitions"] {
+        let Some(files) = resources.get(key).and_then(|v| v.as_array()) else {
+            continue;
+        };
+        let script: String = files
+            .iter()
+            .map(|f| {
+                let path = module_dir.join(f.as_str().expect("chemin"));
+                std::fs::read_to_string(&path)
+                    .unwrap_or_else(|e| panic!("{} : {e}", path.display()))
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        run_script(db, &format!("{} [{key}]", module_dir.display()), &script).await;
+    }
 }
 
-#[allow(dead_code)]
-#[derive(Debug, SurrealValue)]
-#[surreal(crate = "surrealdb_types")]
-struct OccurrenceData {
-    code: String,
-    source_module: String,
-    #[surreal(default)]
-    operation: Option<String>,
+fn crate_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
 
-#[allow(dead_code)]
-#[derive(Debug, SurrealValue)]
-#[surreal(crate = "surrealdb_types")]
-struct PurgeData {
-    purged: bool,
-    count: usize,
-}
+/// Démarre un serveur, s'y connecte en `ws://` (authentification Root) et installe
+/// `lyxal_core` puis `lyxal_error`.
+async fn setup_db() -> (SurrealServer, Surreal<Any>) {
+    let port = free_port();
+    let child = Command::new(surreal_bin())
+        .args([
+            "start",
+            "--bind",
+            &format!("127.0.0.1:{port}"),
+            "--user",
+            "root",
+            "--pass",
+            "root",
+            "memory",
+        ])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("Impossible de lancer `surreal` (définir LYXAL_SURREAL_BIN ou l'ajouter au PATH)");
+    let server = SurrealServer { child };
 
-fn setup_db() -> SurrealServer {
-    let db = SurrealServer::start();
-
-    let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("manifest.toml");
-    let content = std::fs::read_to_string(&manifest_path).expect("Read manifest.toml");
-    let parsed: toml::Value = toml::from_str(&content).expect("Parse manifest.toml");
-    let resources = parsed.get("resources").and_then(|v| v.as_table()).unwrap();
-
-    let execute_resources = |key: &str| {
-        let list = resources.get(key).and_then(|v| v.as_array()).unwrap();
-        for item in list {
-            let rel_path = item.as_str().unwrap();
-            let full_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(rel_path);
-            let surql = std::fs::read_to_string(&full_path)
-                .unwrap_or_else(|_| panic!("Failed to read {}", full_path.display()));
-
-            db.execute_raw(&surql);
+    let endpoint = format!("ws://127.0.0.1:{port}");
+    let started = std::time::Instant::now();
+    let db = loop {
+        match connect(&endpoint).await {
+            Ok(db) => break db,
+            Err(e) if started.elapsed() > Duration::from_secs(30) => {
+                panic!("SurrealDB injoignable sur {endpoint} : {e}")
+            }
+            Err(_) => tokio::time::sleep(Duration::from_millis(100)).await,
         }
     };
+    db.signin(Root {
+        username: "root".into(),
+        password: "root".into(),
+    })
+    .await
+    .expect("signin Root");
+    db.use_ns("lyxal_test")
+        .use_db("test_error")
+        .await
+        .expect("ns/db");
 
-    execute_resources("schemas");
-    execute_resources("functions");
-    execute_resources("error_definitions");
-
-    db
+    install_manifest(&db, &crate_dir().join("../lyxal_core")).await;
+    install_manifest(&db, &crate_dir()).await;
+    (server, db)
 }
 
-#[test]
-fn test_surreal_bootstrap_idempotence() {
-    let db = setup_db();
-
-    // Verify error definitions table has the canon codes
-    let defs_val = db.query_val(
-        "SELECT VALUE code FROM error_definition WHERE code IN ['ERROR_PARAM_REQUIRED', 'ERROR_DEFINITION_NOT_FOUND', 'CORE_INVALID_ARGUMENT'];"
-    );
-    let defs: Vec<String> = serde_json::from_value(defs_val).unwrap();
-    assert_eq!(defs.len(), 3, "Expected canonical error definitions");
-
-    // Verify replaying the error definitions doesn't fail or duplicate
-    let err_defs_path =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("error/error_definitions.surql");
-    let err_defs_surql = std::fs::read_to_string(err_defs_path).unwrap();
-    db.execute_raw(&err_defs_surql);
-    let core_defs_path =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("error/core/core_definitions.surql");
-    let core_defs_surql = std::fs::read_to_string(core_defs_path).unwrap();
-    db.execute_raw(&core_defs_surql);
-
-    // Verify count of error_definition is exactly 8 (5 lyxal_error + 3 lyxal_core, no duplicates!)
-    let count_val = db.query_val("SELECT count() FROM error_definition GROUP ALL;");
-    assert_eq!(
-        count_val[0]["count"], 8,
-        "Expected exactly 8 definitions without duplicate"
-    );
-
-    // No external mapping is installed by default (no demonstration seeds)
-    let map_count_val = db.query_val("SELECT count() FROM error_external_mapping GROUP ALL;");
-    assert_eq!(map_count_val[0]["count"], 0, "Expected no default mapping");
+/// Appelle `fn::<name>($params)` et renvoie le contrat `{ ok, data, error }` converti.
+async fn call<T: SurrealValue, P: SurrealValue + 'static>(
+    db: &Surreal<Any>,
+    name: &'static str,
+    params: P,
+) -> Result<T, LyxalCallError> {
+    let mut response = db
+        .query(format!("RETURN fn::{name}($params);"))
+        .bind(("params", params))
+        .await
+        .unwrap_or_else(|e| panic!("{name} : {e}"));
+    let result: Option<LyxalResult<T>> =
+        response.take(0).unwrap_or_else(|e| panic!("{name} : {e}"));
+    result
+        .expect("contrat { ok, data, error } attendu")
+        .into_result(name)
 }
 
-#[test]
-fn test_surreal_primitives_result_ok_and_error_result() {
-    let db = setup_db();
+/// Exécute une requête SurrealQL et renvoie le contrat converti (entrées hors DTO).
+async fn call_raw<T: SurrealValue>(db: &Surreal<Any>, surql: &str) -> Result<T, LyxalCallError> {
+    let mut response = db.query(surql).await.expect("requête");
+    let result: Option<LyxalResult<T>> = response.take(0).expect("lecture du contrat");
+    result
+        .expect("contrat { ok, data, error } attendu")
+        .into_result("raw")
+}
 
-    // Test fn::result_ok
-    let res: LyxalResult<String> =
-        db.query_lyxal_result("RETURN fn::result_ok('success_payload');");
-    assert!(res.ok);
-    assert_eq!(res.into_result("test").unwrap(), "success_payload");
-
-    // Test fn::error_result with known code and French translation
-    let err_res: LyxalResult<serde_json::Value> = db.query_lyxal_result(
-        "RETURN fn::error_result('ERROR_PARAM_REQUIRED', 'fr', { field: 'username' });",
-    );
-    assert!(!err_res.ok);
-    let err = err_res.into_result("test").unwrap_err();
-    match &err {
-        lyxal_error::LyxalCallError::Business(be) => {
-            assert_eq!(be.code, "ERROR_PARAM_REQUIRED");
-            assert_eq!(be.http_status, Some(400));
-            assert_eq!(be.category, "validation");
-            assert_eq!(be.details["field"], "username");
-            assert!(be.label.contains("obligatoire") || be.message.contains("obligatoire"));
-        }
-        _ => panic!("Expected Business error, got {:?}", err),
-    }
-
-    // Test fn::error_result with unknown code -> resolves with unknown code details
-    let fallback_res: LyxalResult<serde_json::Value> = db.query_lyxal_result(
-        "RETURN fn::error_result('UNKNOWN_CODE_12345', 'fr', { context: 'test' });",
-    );
-    assert!(!fallback_res.ok);
-    let fallback_err = fallback_res.into_result("test").unwrap_err();
-    match &fallback_err {
-        lyxal_error::LyxalCallError::Business(be) => {
-            assert_eq!(be.code, "UNKNOWN_CODE_12345");
-            assert_eq!(be.http_status, Some(500));
-            assert_eq!(be.category, "internal");
-            assert!(be.label.contains("inconnue"));
-        }
-        _ => panic!("Expected Business fallback error, got {:?}", fallback_err),
+/// Code et détails d'une erreur métier.
+fn business(err: LyxalCallError) -> LyxalError {
+    match err {
+        LyxalCallError::Business(e) => e,
+        other => panic!("erreur métier attendue, obtenu {other:?}"),
     }
 }
 
-#[test]
-fn test_surreal_error_definition_lifecycle() {
-    let db = setup_db();
+async fn count(db: &Surreal<Any>, table: &str) -> i64 {
+    let mut response = db
+        .query(format!("RETURN count(SELECT * FROM {table});"))
+        .await
+        .expect("count");
+    response.take::<Option<i64>>(0).expect("count").unwrap_or(0)
+}
 
-    // 1. Creation with object params including retryable, documentation, metadata
-    let create_res: LyxalResult<DefinitionData> = db.query_lyxal_result(
-        r#"
-            RETURN fn::error_definition_create({
-                code: "TEST_CUSTOM_ERR",
-                module: "test",
-                message: "A custom test error occurred",
-                category: "business",
-                severity: "warning",
-                http_status: 422,
-                retryable: true,
-                log_occurrence: false,
-                translations: {
-                    fr: { label: "Erreur personnalisée de test" },
-                    en: { label: "Custom test error" }
-                },
-                documentation: { url: "https://docs.lyxal.dev/errors/TEST_CUSTOM_ERR" },
-                metadata: { tag: "integration_320" }
-            });
-        "#,
+#[tokio::test]
+async fn test_surreal_bootstrap_idempotence() {
+    let (_server, db) = setup_db().await;
+
+    // 7 définitions lyxal_error + 3 définitions CORE_* rattachées au module
+    assert_eq!(count(&db, "error_definition").await, 10);
+    assert_eq!(count(&db, "error_external_mapping").await, 0);
+
+    // Le rejeu des définitions ne crée ni doublon ni erreur
+    install_manifest(&db, &crate_dir()).await;
+    assert_eq!(count(&db, "error_definition").await, 10);
+}
+
+#[tokio::test]
+async fn test_surreal_result_ok_and_error_result() {
+    let (_server, db) = setup_db().await;
+
+    let ok: String = call_raw(&db, "RETURN fn::result_ok('payload');")
+        .await
+        .unwrap();
+    assert_eq!(ok, "payload");
+
+    let err = business(
+        call_raw::<serde_json::Value>(
+            &db,
+            "RETURN fn::error_result('ERROR_INVALID_INPUT', 'fr', { fields: { code: ['required'] } });",
+        )
+        .await
+        .unwrap_err(),
     );
-    assert!(create_res.ok);
-    let created = create_res.into_result("create").unwrap();
-    assert_eq!(created.code, "TEST_CUSTOM_ERR");
-    assert_eq!(created.retryable, Some(true));
-    assert_eq!(created.log_occurrence, Some(false));
+    assert_eq!(err.code, "ERROR_INVALID_INPUT");
+    assert_eq!(err.http_status, Some(400));
+    assert_eq!(err.category, "validation");
+    assert!(err.details["fields"]["code"].is_array());
 
-    // Verify persisted record has documentation and metadata
-    let verify_rec = db.query_val("SELECT * FROM error_definition WHERE code = 'TEST_CUSTOM_ERR';");
+    // Code inconnu : erreur interne générique, code d'origine conservé
+    let unknown = business(
+        call_raw::<serde_json::Value>(
+            &db,
+            "RETURN fn::error_result('UNKNOWN_CODE_12345', 'fr', {});",
+        )
+        .await
+        .unwrap_err(),
+    );
+    assert_eq!(unknown.code, "UNKNOWN_CODE_12345");
+    assert_eq!(unknown.http_status, Some(500));
+    assert_eq!(unknown.category, "internal");
+}
+
+#[tokio::test]
+async fn test_surreal_error_definition_lifecycle() {
+    let (_server, db) = setup_db().await;
+
+    // Création
+    let created: ErrorDefinition = call(
+        &db,
+        "error_definition_create",
+        ErrorDefinitionCreateParams {
+            code: "TEST_CUSTOM_ERR".into(),
+            module: "test".into(),
+            message: "A custom test error occurred".into(),
+            category: Some("business".into()),
+            severity: Some("warning".into()),
+            http_status: Some(422),
+            retryable: Some(true),
+            log_occurrence: Some(false),
+            translations: Some(serde_json::json!({
+                "fr": { "label": "Erreur de test" },
+                "en": { "label": "Test error" }
+            })),
+            metadata: Some(serde_json::json!({ "tag": "it" })),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
     assert_eq!(
-        verify_rec[0]["documentation"]["url"],
-        "https://docs.lyxal.dev/errors/TEST_CUSTOM_ERR"
+        created.id,
+        RecordId::new("error_definition", "TEST_CUSTOM_ERR")
     );
-    assert_eq!(verify_rec[0]["metadata"]["tag"], "integration_320");
+    assert_eq!(created.module, "test");
+    assert_eq!(created.http_status, Some(422));
+    assert!(created.retryable);
+    assert!(!created.log_occurrence);
+    assert_eq!(created.metadata["tag"], "it");
+    assert_eq!(created.documentation, serde_json::json!({}));
 
-    // 2. Duplicate creation rejects
-    let dup_res: LyxalResult<DefinitionData> = db.query_lyxal_result(
-        r#"
-            RETURN fn::error_definition_create({
-                code: "TEST_CUSTOM_ERR",
-                module: "test",
-                message: "Duplicate"
-            });
-        "#,
+    // Doublon
+    let dup = business(
+        call::<ErrorDefinition, _>(
+            &db,
+            "error_definition_create",
+            ErrorDefinitionCreateParams {
+                code: "TEST_CUSTOM_ERR".into(),
+                module: "test".into(),
+                message: "Doublon".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap_err(),
     );
-    assert!(!dup_res.ok);
-    let dup_err = dup_res.into_result("create").unwrap_err();
-    assert!(dup_err.is_business_code("ERROR_DEFINITION_ALREADY_EXISTS"));
+    assert_eq!(dup.code, "ERROR_DEFINITION_ALREADY_EXISTS");
 
-    // 3. Get with object params (both code and code_or_id)
-    let get_res: LyxalResult<DefinitionData> =
-        db.query_lyxal_result("RETURN fn::error_definition_get({ code: 'TEST_CUSTOM_ERR' });");
-    assert!(get_res.ok);
-    assert_eq!(get_res.into_result("get").unwrap().code, "TEST_CUSTOM_ERR");
-
-    let get_res_alt: LyxalResult<DefinitionData> = db
-        .query_lyxal_result("RETURN fn::error_definition_get({ code_or_id: 'TEST_CUSTOM_ERR' });");
-    assert!(get_res_alt.ok);
-    assert_eq!(
-        get_res_alt.into_result("get_alt").unwrap().code,
-        "TEST_CUSTOM_ERR"
+    // Préfixe du code différent du module
+    let prefix = business(
+        call::<ErrorDefinition, _>(
+            &db,
+            "error_definition_create",
+            ErrorDefinitionCreateParams {
+                code: "OTHER_ERR".into(),
+                module: "test".into(),
+                message: "Mauvais préfixe".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap_err(),
     );
+    assert_eq!(prefix.code, "ERROR_DEFINITION_CODE_PREFIX_MISMATCH");
 
-    // 4. Missing param in get rejects with ERROR_PARAM_REQUIRED
-    let get_missing: LyxalResult<DefinitionData> =
-        db.query_lyxal_result("RETURN fn::error_definition_get({});");
-    assert!(!get_missing.ok);
-    assert!(get_missing
-        .into_result("get_missing")
-        .unwrap_err()
-        .is_business_code("ERROR_PARAM_REQUIRED"));
-
-    // 5. Inexistent code in get rejects with ERROR_DEFINITION_NOT_FOUND
-    let get_inexistent: LyxalResult<DefinitionData> =
-        db.query_lyxal_result("RETURN fn::error_definition_get({ code: 'INEXISTENT_ERROR_XYZ' });");
-    assert!(!get_inexistent.ok);
-    assert!(get_inexistent
-        .into_result("get_inexistent")
-        .unwrap_err()
-        .is_business_code("ERROR_DEFINITION_NOT_FOUND"));
-
-    // 6. Update with metadata and retryable
-    let upd_res: LyxalResult<DefinitionData> = db.query_lyxal_result(
-        r#"
-            RETURN fn::error_definition_update({
-                code: "TEST_CUSTOM_ERR",
-                severity: "error",
-                http_status: 400,
-                retryable: false,
-                metadata: { tag: "updated_320" }
-            });
-        "#,
+    // Entrée invalide : rapport par champ de lyxal_core
+    let invalid = business(
+        call::<ErrorDefinition, _>(
+            &db,
+            "error_definition_create",
+            ErrorDefinitionCreateParams {
+                code: "bad code".into(),
+                module: "test".into(),
+                message: "m".into(),
+                category: Some("inconnue".into()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap_err(),
     );
-    assert!(upd_res.ok);
-    let updated = upd_res.into_result("update").unwrap();
-    assert_eq!(updated.severity.as_deref(), Some("error"));
+    assert_eq!(invalid.code, "ERROR_INVALID_INPUT");
+    assert!(invalid.details["fields"].get("code").is_some());
+    assert!(invalid.details["fields"].get("category").is_some());
+
+    // Champ inconnu (ancien alias) refusé
+    let alias = business(
+        call_raw::<serde_json::Value>(
+            &db,
+            "RETURN fn::error_definition_get({ code_or_id: 'TEST_CUSTOM_ERR' });",
+        )
+        .await
+        .unwrap_err(),
+    );
+    assert_eq!(alias.code, "ERROR_INVALID_INPUT");
+
+    // Lecture
+    let got: ErrorDefinition = call(
+        &db,
+        "error_definition_get",
+        ErrorDefinitionGetParams {
+            code: "TEST_CUSTOM_ERR".into(),
+            language: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(got.code, "TEST_CUSTOM_ERR");
+
+    let missing = business(
+        call::<ErrorDefinition, _>(
+            &db,
+            "error_definition_get",
+            ErrorDefinitionGetParams {
+                code: "TEST_INEXISTENT".into(),
+                language: Some("en".into()),
+            },
+        )
+        .await
+        .unwrap_err(),
+    );
+    assert_eq!(missing.code, "ERROR_DEFINITION_NOT_FOUND");
+
+    // Mise à jour partielle : les champs non fournis sont conservés
+    let updated: ErrorDefinition = call(
+        &db,
+        "error_definition_update",
+        ErrorDefinitionUpdateParams {
+            code: "TEST_CUSTOM_ERR".into(),
+            severity: Some("error".into()),
+            http_status: Some(400),
+            retryable: Some(false),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(updated.severity, "error");
     assert_eq!(updated.http_status, Some(400));
-    assert_eq!(updated.retryable, Some(false));
+    assert!(!updated.retryable);
+    assert_eq!(updated.message, "A custom test error occurred");
+    assert_eq!(updated.metadata["tag"], "it");
 
-    // 7. List definitions before disable (must contain TEST_CUSTOM_ERR and filter by severity)
-    let list_res: LyxalResult<Vec<DefinitionData>> = db.query_lyxal_result(
-        "RETURN fn::error_definition_list({ category: 'business', severity: 'error' });",
-    );
-    assert!(list_res.ok);
-    let items = list_res.into_result("list").unwrap();
-    assert!(items.iter().any(|i| i.code == "TEST_CUSTOM_ERR"));
+    // Liste filtrée
+    let listed: Vec<ErrorDefinition> = call(
+        &db,
+        "error_definition_list",
+        ErrorDefinitionListParams {
+            module: Some("test".into()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].code, "TEST_CUSTOM_ERR");
 
-    // 8. Missing param in disable rejects with ERROR_PARAM_REQUIRED
-    let dis_missing: LyxalResult<DisableResult> =
-        db.query_lyxal_result("RETURN fn::error_definition_disable({});");
-    assert!(!dis_missing.ok);
-    assert!(dis_missing
-        .into_result("dis_missing")
-        .unwrap_err()
-        .is_business_code("ERROR_PARAM_REQUIRED"));
+    let paged: Vec<ErrorDefinition> = call(
+        &db,
+        "error_definition_list",
+        ErrorDefinitionListParams {
+            limit: Some(2),
+            start: Some(1),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(paged.len(), 2);
 
-    // 9. Inexistent code in disable rejects with ERROR_DEFINITION_NOT_FOUND
-    let dis_inexistent: LyxalResult<DisableResult> = db.query_lyxal_result(
-        "RETURN fn::error_definition_disable({ code: 'INEXISTENT_CODE_XYZ' });",
-    );
-    assert!(!dis_inexistent.ok);
-    assert!(dis_inexistent
-        .into_result("dis_inexistent")
-        .unwrap_err()
-        .is_business_code("ERROR_DEFINITION_NOT_FOUND"));
+    // Désactivation logique
+    let disabled: DisableResult = call(
+        &db,
+        "error_definition_disable",
+        ErrorDefinitionDisableParams {
+            code: "TEST_CUSTOM_ERR".into(),
+            language: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert!(disabled.disabled);
+    assert_eq!(disabled.id, created.id);
 
-    // 10. Disable definition with valid object
-    let dis_res: LyxalResult<DisableResult> =
-        db.query_lyxal_result("RETURN fn::error_definition_disable({ code: 'TEST_CUSTOM_ERR' });");
-    assert!(dis_res.ok);
-    assert!(dis_res.into_result("disable").unwrap().disabled);
+    let active: Vec<ErrorDefinition> = call(
+        &db,
+        "error_definition_list",
+        ErrorDefinitionListParams {
+            module: Some("test".into()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert!(active.is_empty());
 
-    // 11. Physical data preservation verification (record still exists with enabled: false)
-    let phys_check =
-        db.query_val("SELECT code, enabled FROM error_definition WHERE code = 'TEST_CUSTOM_ERR';");
-    assert_eq!(phys_check[0]["code"], "TEST_CUSTOM_ERR");
-    assert_eq!(
-        phys_check[0]["enabled"], false,
-        "Record must be logically disabled"
-    );
-
-    // 12. List definitions after disable (must be excluded from default enabled_only list)
-    let list_after: LyxalResult<Vec<DefinitionData>> =
-        db.query_lyxal_result("RETURN fn::error_definition_list({ category: 'business' });");
-    assert!(list_after.ok);
-    let items_after = list_after.into_result("list_after").unwrap();
-    assert!(!items_after.iter().any(|i| i.code == "TEST_CUSTOM_ERR"));
+    let all: Vec<ErrorDefinition> = call(
+        &db,
+        "error_definition_list",
+        ErrorDefinitionListParams {
+            module: Some("test".into()),
+            enabled_only: Some(false),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(all.len(), 1);
+    assert!(!all[0].enabled);
 }
 
-#[test]
-fn test_surreal_error_mapping_and_resolution() {
-    let db = setup_db();
+#[tokio::test]
+async fn test_surreal_error_mapping_and_external_resolution() {
+    let (_server, db) = setup_db().await;
 
-    // 1. Create mapping using match_type / definition_id / service / description
-    let map_res: LyxalResult<MappingData> = db.query_lyxal_result(
-        r#"
-            RETURN fn::error_mapping_create({
-                provider: "stripe",
-                service: "checkout",
-                external_code: "card_declined",
-                match_type: "exact",
-                definition_id: "error_definition:ERROR_PARAM_REQUIRED",
-                http_status: 402,
-                priority: 10,
-                description: "Paiement refusé"
-            });
-        "#,
-    );
-    assert!(map_res.ok);
-    let created = map_res.into_result("create_mapping").unwrap();
-    assert_eq!(created.provider, "stripe");
-    assert_eq!(created.service.as_deref(), Some("checkout"));
-
-    // 2. Resolve external mapping (exact match)
-    let match_res: LyxalResult<Option<serde_json::Value>> = db.query_lyxal_result(
-        r#"
-            RETURN fn::error_map_external({
-                provider: "stripe",
-                service: "checkout",
-                external_code: "card_declined"
-            });
-        "#,
-    );
-    assert!(match_res.ok);
-    let matched_opt = match_res.into_result("map_ext").unwrap();
-    assert!(matched_opt.is_some());
-    let matched = matched_opt.unwrap();
-    assert_eq!(matched["provider"], "stripe");
-    assert_eq!(matched["external_code"], "card_declined");
-
-    // 3. Resolve unknown external code returns None without error
-    let unknown_res: LyxalResult<Option<serde_json::Value>> = db.query_lyxal_result(
-        r#"
-            RETURN fn::error_map_external({
-                provider: "stripe",
-                external_code: "unknown_weird_error_491823"
-            });
-        "#,
-    );
-    assert!(unknown_res.ok);
-    assert!(unknown_res.into_result("map_ext").unwrap().is_none());
-
-    // 4. Missing required param provider returns ERROR_PARAM_REQUIRED
-    let missing_res: LyxalResult<Option<serde_json::Value>> = db.query_lyxal_result(
-        r#"
-            RETURN fn::error_map_external({
-                external_code: "card_declined"
-            });
-        "#,
-    );
-    assert!(!missing_res.ok);
-    assert!(missing_res
-        .into_result("map_ext")
-        .unwrap_err()
-        .is_business_code("ERROR_PARAM_REQUIRED"));
-
-    // 5. Get mapping by object params
-    let map_get_res: LyxalResult<MappingData> = db.query_lyxal_result(
-        "RETURN fn::error_mapping_get({ id: (SELECT VALUE id FROM error_external_mapping WHERE provider = 'stripe' LIMIT 1)[0] });"
-    );
-    assert!(map_get_res.ok);
+    // Création
+    let mapping: ErrorMapping = call(
+        &db,
+        "error_mapping_create",
+        ErrorMappingCreateParams {
+            provider: "stripe".into(),
+            external_code: "card_".into(),
+            definition_code: "ERROR_INVALID_INPUT".into(),
+            service: Some("checkout".into()),
+            matcher: Some("prefix".into()),
+            priority: Some(10),
+            description: Some("Paiement refusé".into()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(mapping.matcher, "prefix");
     assert_eq!(
-        map_get_res.into_result("map_get").unwrap().provider,
-        "stripe"
+        mapping.definition,
+        RecordId::new("error_definition", "ERROR_INVALID_INPUT")
     );
+    assert_eq!(mapping.priority, 10);
 
-    // 6. Missing param in mapping get rejects
-    let map_get_missing: LyxalResult<MappingData> =
-        db.query_lyxal_result("RETURN fn::error_mapping_get({});");
-    assert!(!map_get_missing.ok);
-    assert!(map_get_missing
-        .into_result("map_get_missing")
-        .unwrap_err()
-        .is_business_code("ERROR_PARAM_REQUIRED"));
-
-    // 7. Inexistent ID in mapping get rejects
-    let map_get_inexistent: LyxalResult<MappingData> = db.query_lyxal_result(
-        "RETURN fn::error_mapping_get({ mapping_id: 'error_external_mapping:nonexistent' });",
+    // Doublon, définition inconnue, matcher `regex` supprimé
+    let dup = business(
+        call::<ErrorMapping, _>(
+            &db,
+            "error_mapping_create",
+            ErrorMappingCreateParams {
+                provider: "stripe".into(),
+                external_code: "card_".into(),
+                definition_code: "ERROR_INVALID_INPUT".into(),
+                service: Some("checkout".into()),
+                matcher: Some("prefix".into()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap_err(),
     );
-    assert!(!map_get_inexistent.ok);
-    assert!(map_get_inexistent
-        .into_result("map_get_inexistent")
-        .unwrap_err()
-        .is_business_code("ERROR_MAPPING_NOT_FOUND"));
+    assert_eq!(dup.code, "ERROR_MAPPING_ALREADY_EXISTS");
 
-    // 8. Missing param in mapping disable rejects
-    let map_dis_missing: LyxalResult<DisableResult> =
-        db.query_lyxal_result("RETURN fn::error_mapping_disable({});");
-    assert!(!map_dis_missing.ok);
-    assert!(map_dis_missing
-        .into_result("map_dis_missing")
-        .unwrap_err()
-        .is_business_code("ERROR_PARAM_REQUIRED"));
-
-    // 9. Inexistent ID in mapping disable rejects
-    let map_dis_inexistent: LyxalResult<DisableResult> = db.query_lyxal_result(
-        "RETURN fn::error_mapping_disable({ id: 'error_external_mapping:nonexistent' });",
+    let unknown_def = business(
+        call::<ErrorMapping, _>(
+            &db,
+            "error_mapping_create",
+            ErrorMappingCreateParams {
+                provider: "stripe".into(),
+                external_code: "x".into(),
+                definition_code: "TEST_INEXISTENT".into(),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap_err(),
     );
-    assert!(!map_dis_inexistent.ok);
-    assert!(map_dis_inexistent
-        .into_result("map_dis_inexistent")
-        .unwrap_err()
-        .is_business_code("ERROR_MAPPING_NOT_FOUND"));
+    assert_eq!(unknown_def.code, "ERROR_DEFINITION_NOT_FOUND");
 
-    // 10. Disable mapping with valid object
-    let dis_res: LyxalResult<DisableResult> = db.query_lyxal_result(
-        "RETURN fn::error_mapping_disable({ id: (SELECT VALUE id FROM error_external_mapping WHERE provider = 'stripe' LIMIT 1)[0] });"
+    let regex = business(
+        call::<ErrorMapping, _>(
+            &db,
+            "error_mapping_create",
+            ErrorMappingCreateParams {
+                provider: "stripe".into(),
+                external_code: "^card".into(),
+                definition_code: "ERROR_INVALID_INPUT".into(),
+                matcher: Some("regex".into()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap_err(),
     );
-    assert!(dis_res.ok);
-    assert!(dis_res.into_result("disable_mapping").unwrap().disabled);
+    assert_eq!(regex.code, "ERROR_INVALID_INPUT");
+
+    // Résolution d'une erreur externe
+    let matched: Option<ErrorExternalMatch> = call(
+        &db,
+        "error_map_external",
+        ErrorMapExternalParams {
+            provider: "stripe".into(),
+            external_code: "card_declined".into(),
+            service: Some("checkout".into()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    let matched = matched.expect("correspondance attendue");
+    assert_eq!(matched.mapping, mapping.id);
+    assert_eq!(matched.definition_code, "ERROR_INVALID_INPUT");
+
+    let none: Option<ErrorExternalMatch> = call(
+        &db,
+        "error_map_external",
+        ErrorMapExternalParams {
+            provider: "stripe".into(),
+            external_code: "insufficient_funds".into(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert!(none.is_none());
+
+    // Lecture, identifiant d'une autre table, identifiant inconnu
+    let got: ErrorMapping = call(
+        &db,
+        "error_mapping_get",
+        ErrorMappingGetParams {
+            mapping_id: mapping.id.clone(),
+            language: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(got.provider, "stripe");
+
+    let wrong_table = business(
+        call::<ErrorMapping, _>(
+            &db,
+            "error_mapping_get",
+            ErrorMappingGetParams {
+                mapping_id: RecordId::new("error_definition", "ERROR_INVALID_INPUT"),
+                language: None,
+            },
+        )
+        .await
+        .unwrap_err(),
+    );
+    assert_eq!(wrong_table.code, "ERROR_INVALID_INPUT");
+
+    let not_found = business(
+        call::<ErrorMapping, _>(
+            &db,
+            "error_mapping_get",
+            ErrorMappingGetParams {
+                mapping_id: RecordId::new("error_external_mapping", "inexistant"),
+                language: None,
+            },
+        )
+        .await
+        .unwrap_err(),
+    );
+    assert_eq!(not_found.code, "ERROR_MAPPING_NOT_FOUND");
+
+    // Mise à jour partielle
+    let updated: ErrorMapping = call(
+        &db,
+        "error_mapping_update",
+        ErrorMappingUpdateParams {
+            mapping_id: mapping.id.clone(),
+            service: None,
+            matcher: None,
+            definition_code: Some("ERROR_MAPPING_NOT_FOUND".into()),
+            priority: Some(5),
+            external_http_status: Some(402),
+            description: None,
+            retryable_override: Some(false),
+            enabled: None,
+            metadata: None,
+            language: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(updated.priority, 5);
+    assert_eq!(
+        updated.definition,
+        RecordId::new("error_definition", "ERROR_MAPPING_NOT_FOUND")
+    );
+    assert_eq!(updated.external_http_status, Some(402));
+    assert_eq!(updated.retryable_override, Some(false));
+    assert_eq!(updated.description.as_deref(), Some("Paiement refusé"));
+
+    // Liste et désactivation
+    let listed: Vec<ErrorMapping> = call(
+        &db,
+        "error_mapping_list",
+        ErrorMappingListParams {
+            provider: Some("stripe".into()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(listed.len(), 1);
+
+    let disabled: DisableResult = call(
+        &db,
+        "error_mapping_disable",
+        ErrorMappingDisableParams {
+            mapping_id: mapping.id.clone(),
+            language: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert!(disabled.disabled);
+    assert_eq!(disabled.id, mapping.id);
+
+    let after: Option<ErrorExternalMatch> = call(
+        &db,
+        "error_map_external",
+        ErrorMapExternalParams {
+            provider: "stripe".into(),
+            external_code: "card_declined".into(),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert!(after.is_none(), "une correspondance désactivée est ignorée");
 }
 
-#[test]
-fn test_surreal_error_occurrence_logging_and_purging() {
-    let db = setup_db();
+#[tokio::test]
+async fn test_surreal_error_occurrence_logging_and_purging() {
+    let (_server, db) = setup_db().await;
 
-    // 1. Log error occurrence via fn::error_log
-    let log_res: LyxalResult<OccurrenceData> = db.query_lyxal_result(
-        r#"
-            RETURN fn::error_log({
-                code: "ERROR_PARAM_REQUIRED",
-                source_module: "test_integration",
-                operation: "user_signup",
-                technical_message: "Validation field email missing",
-                environment: "test"
-            });
-        "#,
-    );
-    assert!(log_res.ok);
-    let occ = log_res.into_result("log").unwrap();
-    assert_eq!(occ.code, "ERROR_PARAM_REQUIRED");
-    assert_eq!(occ.source_module, "test_integration");
-
-    // 2. Retrieve occurrence by ID with object params
-    let get_res: LyxalResult<OccurrenceData> = db.query_lyxal_result(
-        "RETURN fn::error_occurrence_get({ id: (SELECT VALUE id FROM error_occurrence WHERE source_module = 'test_integration' LIMIT 1)[0] });"
-    );
-    assert!(get_res.ok);
+    // Journalisation avec une source typée
+    let source = RecordId::new("booking", "b1");
+    let logged: Option<ErrorOccurrence> = call(
+        &db,
+        "error_log",
+        ErrorLogParams {
+            code: "ERROR_INVALID_INPUT".into(),
+            source_module: "test_integration".into(),
+            operation: Some("user_signup".into()),
+            source: Some(source.clone()),
+            technical_message: Some("email manquant".into()),
+            environment: Some("test".into()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    let occurrence = logged.expect("occurrence journalisée");
+    assert_eq!(occurrence.code, "ERROR_INVALID_INPUT");
+    assert_eq!(occurrence.source, Some(source));
     assert_eq!(
-        get_res.into_result("get_occ").unwrap().operation.as_deref(),
-        Some("user_signup")
+        occurrence.definition,
+        Some(RecordId::new("error_definition", "ERROR_INVALID_INPUT"))
     );
+    assert_eq!(occurrence.environment, "test");
 
-    // 3. Missing param in occurrence get rejects
-    let occ_missing: LyxalResult<OccurrenceData> =
-        db.query_lyxal_result("RETURN fn::error_occurrence_get({});");
-    assert!(!occ_missing.ok);
-    assert!(occ_missing
-        .into_result("occ_missing")
-        .unwrap_err()
-        .is_business_code("ERROR_PARAM_REQUIRED"));
+    // Lecture et identifiant inconnu
+    let got: ErrorOccurrence = call(
+        &db,
+        "error_occurrence_get",
+        ErrorOccurrenceGetParams {
+            occurrence_id: occurrence.id.clone(),
+            language: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(got.operation.as_deref(), Some("user_signup"));
 
-    // 4. Inexistent ID in occurrence get rejects
-    let occ_inexistent: LyxalResult<OccurrenceData> = db.query_lyxal_result(
-        "RETURN fn::error_occurrence_get({ id: 'error_occurrence:nonexistent' });",
+    let not_found = business(
+        call::<ErrorOccurrence, _>(
+            &db,
+            "error_occurrence_get",
+            ErrorOccurrenceGetParams {
+                occurrence_id: RecordId::new("error_occurrence", "inexistant"),
+                language: None,
+            },
+        )
+        .await
+        .unwrap_err(),
     );
-    assert!(!occ_inexistent.ok);
-    assert!(occ_inexistent
-        .into_result("occ_inexistent")
-        .unwrap_err()
-        .is_business_code("ERROR_OCCURRENCE_NOT_FOUND"));
+    assert_eq!(not_found.code, "ERROR_OCCURRENCE_NOT_FOUND");
 
-    // 5. List occurrences with object params
-    let list_res: LyxalResult<Vec<OccurrenceData>> = db.query_lyxal_result(
-        "RETURN fn::error_occurrence_list({ source_module: 'test_integration' });",
+    // Liste
+    let listed: Vec<ErrorOccurrence> = call(
+        &db,
+        "error_occurrence_list",
+        ErrorOccurrenceListParams {
+            source_module: Some("test_integration".into()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(listed.len(), 1);
+
+    // Une date sous forme de chaîne est refusée
+    let string_date = business(
+        call_raw::<PurgeResult>(
+            &db,
+            "RETURN fn::error_occurrence_purge_before({ before_date: '2099-01-01T00:00:00Z' });",
+        )
+        .await
+        .unwrap_err(),
     );
-    assert!(list_res.ok);
-    let items = list_res.into_result("list_occ").unwrap();
-    assert!(!items.is_empty());
+    assert_eq!(string_date.code, "ERROR_INVALID_INPUT");
 
-    // 6. Missing param in occurrence purge rejects
-    let purge_missing: LyxalResult<PurgeData> =
-        db.query_lyxal_result("RETURN fn::error_occurrence_purge_before({});");
-    assert!(!purge_missing.ok);
-    assert!(purge_missing
-        .into_result("purge_missing")
-        .unwrap_err()
-        .is_business_code("ERROR_PARAM_REQUIRED"));
-
-    // 7. Purge occurrences before future date with object params
-    let purge_res: LyxalResult<PurgeData> = db.query_lyxal_result(
-        "RETURN fn::error_occurrence_purge_before({ before: '2099-01-01T00:00:00Z' });",
-    );
-    assert!(purge_res.ok);
-    let purge_data = purge_res.into_result("purge").unwrap();
-    assert!(purge_data.purged);
-    assert!(purge_data.count >= 1);
-}
-
-#[test]
-fn test_surreal_edge_cases_and_contract_coherence() {
-    let db = setup_db();
-
-    // 1. Calling list functions with empty object {} must succeed
-    let def_list: LyxalResult<Vec<DefinitionData>> =
-        db.query_lyxal_result("RETURN fn::error_definition_list({});");
-    assert!(def_list.ok);
-    assert!(def_list.into_result("def_list").unwrap().len() >= 6);
-
-    let map_list: LyxalResult<Vec<MappingData>> =
-        db.query_lyxal_result("RETURN fn::error_mapping_list({});");
-    assert!(map_list.ok);
-
-    let occ_list: LyxalResult<Vec<OccurrenceData>> =
-        db.query_lyxal_result("RETURN fn::error_occurrence_list({});");
-    assert!(occ_list.ok);
-
-    // 2. Calling fn::error_get (internal resolution primitive)
-    let canon_res: LyxalResult<DefinitionData> = db.query_lyxal_result(
-        "RETURN { ok: true, data: fn::error_get('ERROR_PARAM_REQUIRED'), error: NONE };",
-    );
-    assert!(canon_res.ok);
-    assert_eq!(
-        canon_res.into_result("canon").unwrap().code,
-        "ERROR_PARAM_REQUIRED"
-    );
-
-    // 3. Calling fn::error_get with inexistent code returns None without error
-    let none_res: LyxalResult<Option<DefinitionData>> = db.query_lyxal_result(
-        "RETURN { ok: true, data: fn::error_get('INEXISTENT_CODE_XYZ_123'), error: NONE };",
-    );
-    assert!(none_res.ok);
-    assert!(none_res.into_result("none").unwrap().is_none());
+    // Purge
+    let before: Datetime = "2099-01-01T00:00:00Z".parse().expect("date");
+    let purged: PurgeResult = call(
+        &db,
+        "error_occurrence_purge_before",
+        ErrorOccurrencePurgeParams {
+            before_date: before,
+            language: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(purged.count, 1);
+    assert_eq!(purged.before, before);
+    assert_eq!(count(&db, "error_occurrence").await, 0);
 }

@@ -1,68 +1,67 @@
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │  fn::error_mapping_update                                               │
--- │  Mise à jour d'une règle de correspondance d'erreur externe             │
--- └──────────────────────────────────────────────────────────────────────────┘
-
+-- ============================================================================
+-- LYXAL OS — LYXAL_ERROR
+-- ============================================================================
+-- Fichier  : crates/lyxal_error/functions/mapping/error_mapping_update.surql
+-- Fonction : fn::error_mapping_update
+--
+-- Met à jour une correspondance externe : seuls les champs transmis changent
+-- (fournisseur et code externe immuables).
+--
+-- Paramètres
+--   mapping_id (requis)
+--   service, matcher, definition_code, priority, external_http_status, description, retryable_override, enabled, metadata, language
+--
+-- Valeur renvoyée : fn::result_ok(correspondance)
+--
+-- Erreurs
+--   ERROR_INVALID_INPUT : entrée invalide (details.fields)
+--   ERROR_MAPPING_NOT_FOUND : correspondance inconnue
+--   ERROR_DEFINITION_NOT_FOUND : definition_code inconnu
+--   ERROR_MAPPING_ALREADY_EXISTS : la modification crée un doublon
+-- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::error_mapping_update(
     $params: object
 ) {
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
-    LET $raw_id = $params.mapping_id ?? $params.id;
-    LET $mapping_id = IF type::is_record($raw_id) {
-        $raw_id
-    } ELSE IF type::is_string($raw_id) {
-        IF string::starts_with($raw_id, "error_external_mapping:") {
-            type::record("error_external_mapping", string::slice($raw_id, 23))
-        } ELSE {
-            type::record("error_external_mapping", $raw_id)
-        }
-    } ELSE {
-        NONE
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+        mapping_id: { pipeline: [{ rule: "record_id", options: { allowed_tables: ["error_external_mapping"] } }], required: true },
+        service: { pipeline: [{ rule: "required_string", options: { min_length: 2, max_length: 64 } }, { rule: "regex", options: { pattern: "^[a-z][a-z0-9_-]+$" } }] },
+        matcher: { pipeline: [{ rule: "enum", options: { allowed: ["exact", "prefix", "contains", "http_status"], case_sensitive: false } }] },
+        definition_code: { pipeline: [{ rule: "required_string", options: { min_length: 3, max_length: 128 } }, { rule: "regex", options: { pattern: "^[A-Z][A-Z0-9_]+$" } }] },
+        priority: { pipeline: [{ rule: "integer", options: { min_value: 0 } }] },
+        external_http_status: { pipeline: [{ rule: "integer", options: { min_value: 100, max_value: 599 } }] },
+        description: { pipeline: [{ rule: "optional_string", options: { max_length: 1000 } }] },
+        retryable_override: { pipeline: [{ rule: "boolean" }] },
+        enabled: { pipeline: [{ rule: "boolean" }] },
+        metadata: { pipeline: [{ rule: "is_object" }] },
+        language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("ERROR_INVALID_INPUT", $params.language, { fields: $report.by_field });
     };
-
-    IF $mapping_id == NONE {
-        RETURN fn::error_result("ERROR_PARAM_REQUIRED", $language, { field: "mapping_id" });
+    LET $p = $report.value;
+    LET $current = (SELECT * FROM $p.mapping_id)[0];
+    IF $current IS NONE { RETURN fn::error_result("ERROR_MAPPING_NOT_FOUND", $p.language, { mapping_id: $p.mapping_id }); };
+    LET $definition = IF $p.definition_code IS NONE { NONE } ELSE { (SELECT VALUE id FROM error_definition WHERE code = $p.definition_code LIMIT 1)[0] };
+    IF $p.definition_code IS NOT NONE AND $definition IS NONE {
+        RETURN fn::error_result("ERROR_DEFINITION_NOT_FOUND", $p.language, { code: $p.definition_code });
     };
-
-    LET $existing = SELECT * FROM $mapping_id;
-    IF array::len($existing) == 0 {
-        RETURN fn::error_result("ERROR_MAPPING_NOT_FOUND", $language, { mapping_id: $mapping_id });
+    LET $provider = $current.provider;
+    LET $service = $p.service ?? $current.service;
+    LET $external_code = $current.external_code;
+    LET $matcher = $p.matcher ?? $current.matcher;
+    LET $exclude = $current.id;
+    IF array::len(SELECT VALUE id FROM error_external_mapping
+            WHERE provider = $provider AND service = $service AND external_code = $external_code AND matcher = $matcher AND id != $exclude LIMIT 1) > 0 {
+        RETURN fn::error_result("ERROR_MAPPING_ALREADY_EXISTS", $p.language, { provider: $provider, service: $service, external_code: $external_code, matcher: $matcher });
     };
-
-    LET $cur = $existing[0];
-    LET $raw_matcher = $params.matcher ?? $params.match_type;
-    LET $m = IF $raw_matcher != NONE AND string::len(string::trim($raw_matcher)) > 0 { string::lowercase(string::trim($raw_matcher)) } ELSE { $cur.matcher };
-    LET $raw_def = $params.definition_id ?? $params.target_code ?? $params.definition;
-    LET $def = IF $raw_def != NONE {
-        IF type::is_record($raw_def) {
-            $raw_def
-        } ELSE {
-            LET $id_str = string::replace(<string>$raw_def, "error_definition:", "");
-            type::record("error_definition", $id_str)
-        }
-    } ELSE {
-        $cur.definition
-    };
-    LET $p = IF $params.priority != NONE { $params.priority } ELSE { $cur.priority };
-    LET $r_override = IF $params.retryable_override != NONE { $params.retryable_override } ELSE { $cur.retryable_override };
-    LET $svc = IF $params.service != NONE { $params.service } ELSE { $cur.service };
-    LET $ext_status = IF $params.external_http_status != NONE { $params.external_http_status } ELSE IF $params.http_status != NONE { $params.http_status } ELSE { $cur.external_http_status };
-    LET $desc = IF $params.description != NONE { $params.description } ELSE { $cur.description };
-    LET $enab = IF $params.enabled != NONE { $params.enabled } ELSE IF $params.active != NONE { $params.active } ELSE { $cur.enabled };
-
-    UPDATE $mapping_id MERGE {
-        matcher: $m,
-        definition: $def,
-        priority: $p,
-        service: $svc,
-        external_http_status: $ext_status,
-        description: $desc,
-        retryable_override: $r_override,
-        enabled: $enab,
-        updated_at: time::now()
-    };
-
-    LET $updated = SELECT * FROM $mapping_id;
-    RETURN fn::result_ok($updated[0]);
-} COMMENT "Met à jour la méthode de correspondance, la priorité ou le code d'erreur cible"
+    LET $changes = object::extend(
+        object::from_entries(array::filter(object::entries($p), |$entry| $entry[0] NOT IN ["mapping_id", "definition_code", "language"] AND $entry[1] IS NOT NONE)),
+        IF $definition IS NONE { {} } ELSE { { definition: $definition } }
+    );
+    RETURN fn::result_ok(UPDATE ONLY $current.id MERGE $changes);
+}
+COMMENT "Met à jour une correspondance externe : seuls les champs transmis changent (fournisseur et code externe immuables)."
 PERMISSIONS FULL;

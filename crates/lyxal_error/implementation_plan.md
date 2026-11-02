@@ -105,7 +105,7 @@ Chaque changement de contrat est livré **avec** la mise à jour de tous ses app
 | Lot | Contenu |
 | :- | :--- |
 | 1 ✅ | **Nettoyage sans changement de contrat** : suppression des documents historiques, de la migration vide, des seeds de démonstration et de `CORE_ERROR_DEFINITION_NOT_FOUND` (aucun appelant) ; encodage UTF-8 ; `PERMISSIONS FULL` explicite ; README à l'état actuel ; manifeste. |
-| 2 | **Contrat SurrealQL et DTO Rust, ensemble** : validation par le Core et `ERROR_INVALID_INPUT` ; suppression des alias **et** renommage des DTO correspondants (`matcher`, `definition_code`…) ; suppression de `error_get` **avec** la réécriture de `error_resolve` et `error_log` qui l'appelaient ; suppression de `error_occurrence_create` ; conflits, intégrité, préfixe, retrait de `regex`, `error_log` complet, bornes ; types de résultat ; tests d'intégration et de contrat. |
+| 2 ✅ | **Contrat SurrealQL et DTO Rust, ensemble** : validation par le Core et `ERROR_INVALID_INPUT` ; suppression des alias **et** renommage des DTO correspondants (`matcher`, `definition_code`…) ; suppression de `error_get` **avec** la réécriture de `error_resolve` et `error_log` qui l'appelaient ; suppression de `error_occurrence_create` ; conflits, intégrité, préfixe, retrait de `regex`, `error_log` complet, bornes ; types de résultat ; tests d'intégration et de contrat. |
 | 3 | **`LyxalCallError`** : suppression de `BusinessCode` **avec** la mise à jour de `lyxal_pipeline_ingestion` (workspace) ; note de reprise dans `lyxal_booking/implementation_plan.md` (hors workspace, traité lors de sa reprise) ; `ERROR_INVALID_FUNCTION_RESPONSE` ; tests. |
 | 4 | **Clôture** : audit de contrôle (`lyxal-audit`, aucun écart P0/P1), suppression de `AUDIT.md` et de ce plan. |
 
