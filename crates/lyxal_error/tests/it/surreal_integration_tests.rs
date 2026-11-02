@@ -171,13 +171,13 @@ async fn count(db: &Surreal<Any>, table: &str) -> i64 {
 async fn test_surreal_bootstrap_idempotence() {
     let (_server, db) = setup_db().await;
 
-    // 7 définitions lyxal_error + 3 définitions CORE_* rattachées au module
-    assert_eq!(count(&db, "error_definition").await, 10);
+    // 8 définitions lyxal_error + 3 définitions CORE_* rattachées au module
+    assert_eq!(count(&db, "error_definition").await, 11);
     assert_eq!(count(&db, "error_external_mapping").await, 0);
 
     // Le rejeu des définitions ne crée ni doublon ni erreur
     install_manifest(&db, &crate_dir()).await;
-    assert_eq!(count(&db, "error_definition").await, 10);
+    assert_eq!(count(&db, "error_definition").await, 11);
 }
 
 #[tokio::test]

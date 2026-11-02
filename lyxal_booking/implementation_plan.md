@@ -1,3 +1,12 @@
+> [!NOTE]
+> **À traiter lors de la reprise de `lyxal_booking` — rupture de contrat `lyxal_error` (reprise `lyxal_error`, lot 3, décision CTO Q6)**
+>
+> `lyxal_error::LyxalCallError::BusinessCode` et `LyxalCallError::business_code(...)` n'existent plus. `lyxal_booking/engine` (hors workspace, non compilé par la CI) les utilise encore :
+> * `engine/src/auth.rs:93` construit une erreur avec `LyxalCallError::business_code(...)` ;
+> * `engine/src/auth.rs:634` filtre `LyxalSurrealError::Call(LyxalCallError::BusinessCode { details, .. })`.
+>
+> À la reprise : une erreur métier se construit côté SurrealQL avec `fn::error_result("BOOKING_...", $language, $details)` et se lit côté Rust comme `LyxalCallError::Business(LyxalError)` (`is_business_code` ne teste plus que cette variante). `LyxalCallError::InvalidContract` répond désormais avec le code `ERROR_INVALID_FUNCTION_RESPONSE`.
+
 # 📋 Implementation Plan — Assainissement Final des Helpers Cal.rs
 
 ## Contexte & Objectif

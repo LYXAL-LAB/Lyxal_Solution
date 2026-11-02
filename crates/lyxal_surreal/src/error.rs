@@ -121,10 +121,20 @@ mod tests {
 
     #[test]
     fn test_is_business_code() {
-        let call_err = LyxalCallError::BusinessCode {
-            code: "TEST_ERR",
+        let call_err = LyxalCallError::Business(lyxal_error::LyxalError {
+            code: "TEST_ERR".into(),
+            message: "Test error".into(),
+            label: "Erreur de test".into(),
+            description: None,
+            resolution: None,
+            category: "business".into(),
+            severity: "error".into(),
+            http_status: Some(400),
+            retryable: false,
+            documentation: serde_json::json!({}),
+            metadata: serde_json::json!({}),
             details: serde_json::json!({}),
-        };
+        });
         let err = LyxalSurrealError::Call(call_err);
         assert!(err.is_business_code("TEST_ERR"));
         assert!(!err.is_business_code("OTHER_ERR"));

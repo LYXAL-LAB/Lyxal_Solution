@@ -1849,10 +1849,6 @@ impl IngestionStore {
                 LyxalSurrealError::Call(lyxal_error::LyxalCallError::Business(err)) => {
                     IngestionError::IllegalTransition(err.message)
                 }
-                LyxalSurrealError::Call(lyxal_error::LyxalCallError::BusinessCode {
-                    code,
-                    details,
-                }) => IngestionError::IllegalTransition(format!("{code}: {details}")),
                 _ => IngestionError::Storage(format!("Échec fn::ingestion_manifest_approve : {e}")),
             })?;
 

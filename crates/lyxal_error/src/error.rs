@@ -29,32 +29,23 @@ pub struct LyxalError {
     pub details: Value,
 }
 
-/// Enumération typée des erreurs d'appel métier indépendantes du moteur de base de données.
+/// Erreur d'appel d'une fonction SurrealQL Lyxal, indépendante du moteur de base de données.
 #[derive(Debug, Error)]
 pub enum LyxalCallError {
+    /// Erreur métier renvoyée par `fn::error_result`, résolue et traduite par SurrealQL.
     #[error("{}: {}", .0.code, .0.label)]
     Business(LyxalError),
 
-    #[error("Business error code: {code}")]
-    BusinessCode { code: &'static str, details: Value },
-
+    /// Réponse qui ne respecte pas le contrat `{ ok, data, error }`
+    /// (code `ERROR_INVALID_FUNCTION_RESPONSE`).
     #[error("Invalid result contract from function: {function}")]
     InvalidContract { function: &'static str },
 }
 
 impl LyxalCallError {
-    /// Constructeur générique d'erreur métier par code canonique (ex: "BOOKING_AUTH_INVALID_CREDENTIALS").
-    pub fn business_code(code: &'static str, details: Value) -> Self {
-        Self::BusinessCode { code, details }
-    }
-
-    /// Teste si l'erreur correspond à un code métier spécifique de manière robuste.
+    /// Indique si l'erreur est l'erreur métier `target_code`.
     pub fn is_business_code(&self, target_code: &str) -> bool {
-        match self {
-            LyxalCallError::Business(err) => err.code == target_code,
-            LyxalCallError::BusinessCode { code, .. } => *code == target_code,
-            _ => false,
-        }
+        matches!(self, LyxalCallError::Business(err) if err.code == target_code)
     }
 }
 
@@ -82,34 +73,15 @@ impl axum::response::IntoResponse for LyxalCallError {
                     .into_response()
             }
 
-            LyxalCallError::BusinessCode { code, details } => (
-                StatusCode::UNAUTHORIZED,
-                Json(serde_json::json!({
-                    "ok": false,
-                    "data": null,
-                    "error": {
-                        "code": code,
-                        "message": "Authentication failed",
-                        "label": "Échec d'authentification",
-                        "category": "authentication",
-                        "severity": "error",
-                        "http_status": 401,
-                        "retryable": false,
-                        "details": details
-                    }
-                })),
-            )
-                .into_response(),
-
             LyxalCallError::InvalidContract { function: _ } => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({
                     "ok": false,
                     "data": null,
                     "error": {
-                        "code": "CORE_INVALID_FUNCTION_RESPONSE",
-                        "message": "Invalid response contract from SurrealQL function",
-                        "label": "Une erreur de réponse système est survenue",
+                        "code": "ERROR_INVALID_FUNCTION_RESPONSE",
+                        "message": "A database function returned a response that does not match the result contract",
+                        "label": "Réponse système invalide",
                         "category": "internal",
                         "severity": "error",
                         "http_status": 500,
