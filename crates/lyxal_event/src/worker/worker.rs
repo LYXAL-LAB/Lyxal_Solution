@@ -1,15 +1,18 @@
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, info, trace, warn};
+use tokio_util::task::AbortOnDropHandle;
+use tracing::{error, info, trace, warn};
 
 use super::config::EventWorkerConfig;
-use super::retry::{compute_lease_duration, compute_next_retry_delay};
 use crate::engine::consumer_bridge::{
     envelope_extractor, BridgeConfig, ConsumerOutcome, HandlerConsumerBridge,
 };
-use crate::engine::dispatcher::{DispatcherConfig, NackReport, ReliableDispatcher};
+use crate::engine::dispatcher::{
+    DispatchMessage, DispatcherConfig, NackReport, ReliableDispatcher,
+};
 use crate::engine::feeder::{FeederError, OutboxFeeder};
 use crate::engine::lease::OutboxLeaseManager;
 use crate::engine::pending_delivery::DeliveryPolicy;
@@ -37,6 +40,15 @@ pub struct EventWorkerMetrics {
     pub leadership_losses: AtomicU64,
     /// Nombre de conflits de fencing détectés.
     pub fencing_conflicts: AtomicU64,
+}
+
+/// File d'un abonnement pendant un mandat de leader : son dispatcher, son feeder (curseur
+/// contigu propre à l'abonnement) et la passerelle d'exécution des handlers.
+struct SubscriptionPipeline {
+    dispatcher: Arc<Mutex<ReliableDispatcher<LyxalEventEnvelope>>>,
+    feeder: OutboxFeeder<LyxalEventEnvelope>,
+    bridge: HandlerConsumerBridge,
+    rx: tokio::sync::mpsc::Receiver<DispatchMessage<LyxalEventEnvelope>>,
 }
 
 /// Moteur d'exécution asynchrone officiel de LYXAL OS (`EventWorker`).
@@ -83,7 +95,6 @@ impl EventWorker {
     pub async fn run(&self, cancel: CancellationToken) -> Result<(), LyxalEventError> {
         info!(
             worker_id = %self.config.worker_id,
-            subscription = %self.config.subscription_name,
             "LYXAL Event Worker démarré"
         );
 
@@ -98,7 +109,9 @@ impl EventWorker {
         let store_recovery = self.store.clone();
         let cancel_recovery = cancel.clone();
         let recovery_interval = self.config.fanout_recovery_interval;
-        tokio::spawn(async move {
+        // Tâches de fond liées à la vie du worker : interrompues si `run` est abandonné, pour
+        // qu'aucune ne survive au worker (un heartbeat orphelin garderait le bail indéfiniment).
+        let _recovery_task = AbortOnDropHandle::new(tokio::spawn(async move {
             while !cancel_recovery.is_cancelled() {
                 tokio::select! {
                     () = tokio::time::sleep(recovery_interval) => {
@@ -109,7 +122,7 @@ impl EventWorker {
                     () = cancel_recovery.cancelled() => break,
                 }
             }
-        });
+        }));
 
         // Boucle principale de supervision et de cycle de vie
         while !cancel.is_cancelled() {
@@ -142,7 +155,9 @@ impl EventWorker {
                 }
             }
 
-            // 2. Si le leadership est actif, instancie le pipeline résilient pour ce mandat
+            // 2. Leadership actif : une file par abonnement pour ce mandat, créée à la première
+            //    livraison de l'abonnement. Chaque abonnement numérote ses livraisons à partir de 1
+            //    et garde son propre curseur contigu (§5.6.4) : une file commune les confondrait.
             let lease_cancel = lease_manager.cancellation_token();
             let term_cancel = CancellationToken::new();
 
@@ -151,53 +166,14 @@ impl EventWorker {
             let lc_global = cancel.clone();
             let lc_lease = lease_cancel.clone();
             let lc_task = linked_cancel.clone();
-            tokio::spawn(async move {
+            let _link_task = AbortOnDropHandle::new(tokio::spawn(async move {
                 tokio::select! {
                     () = lc_global.cancelled() => lc_task.cancel(),
                     () = lc_lease.cancelled() => lc_task.cancel(),
                 }
-            });
+            }));
 
-            let disp_config = DispatcherConfig {
-                max_unacked: self.config.max_unacked,
-                delivery_policy: DeliveryPolicy {
-                    max_redelivery_count: self.config.max_redelivery_count,
-                    ack_timeout: self.config.ack_timeout,
-                    ..Default::default()
-                },
-                poison_policy: PoisonPolicy::DeadLetter,
-                subscription_name: self.config.subscription_name.clone(),
-                dead_letter_topic: self.config.dead_letter_topic.clone(),
-            };
-
-            let dispatcher = Arc::new(Mutex::new(ReliableDispatcher::new(
-                disp_config,
-                linked_cancel.clone(),
-            )));
-
-            let mut feeder = OutboxFeeder::new(
-                client.clone(),
-                Arc::clone(&lease_manager),
-                Arc::clone(&dispatcher),
-            );
-
-            let bridge_config = BridgeConfig {
-                consumer_id: format!("{}_bridge", self.config.worker_id),
-                subscription_name: self.config.subscription_name.clone(),
-                dispatch_timeout: self.config.dispatch_timeout,
-                max_concurrency: self.config.max_unacked,
-            };
-
-            let bridge = HandlerConsumerBridge::new(
-                bridge_config,
-                (*self.registry).clone(),
-                linked_cancel.clone(),
-            );
-
-            let mut rx = {
-                let mut disp = dispatcher.lock().await;
-                bridge.register_with_dispatcher(&mut disp, self.config.max_unacked)
-            };
+            let mut pipelines: HashMap<String, SubscriptionPipeline> = HashMap::new();
 
             // Tâche de fond de renouvellement du bail (Heartbeat & Fencing)
             let renew_lease_mgr = Arc::clone(&lease_manager);
@@ -205,7 +181,7 @@ impl EventWorker {
             let renew_cancel = linked_cancel.clone();
             let metrics_renew = Arc::clone(&self.metrics);
 
-            let heartbeat_handle = tokio::spawn(async move {
+            let heartbeat_handle = AbortOnDropHandle::new(tokio::spawn(async move {
                 while !renew_cancel.is_cancelled() {
                     tokio::select! {
                         () = tokio::time::sleep(renew_interval) => {
@@ -235,80 +211,85 @@ impl EventWorker {
                         () = renew_cancel.cancelled() => break,
                     }
                 }
-            });
+            }));
 
             // Boucle d'exécution du mandat leader
-            while !linked_cancel.is_cancelled() {
-                let has_capacity = {
-                    let disp = dispatcher.lock().await;
-                    disp.has_capacity()
-                };
-
+            'term: while !linked_cancel.is_cancelled() {
                 let mut work_done = 0;
 
-                // Si le dispatcher a de la capacité, chercher et séquencer des événements outbox
-                if has_capacity {
-                    match self.fetch_and_enqueue_pending(&mut feeder).await {
-                        Ok(n) => {
-                            work_done += n;
+                // Séquencement des livraisons en attente, chacune dans la file de son abonnement
+                match self
+                    .fetch_and_enqueue_pending(
+                        &mut pipelines,
+                        &client,
+                        &lease_manager,
+                        &linked_cancel,
+                    )
+                    .await
+                {
+                    Ok(n) => work_done += n,
+                    Err(e) => {
+                        if e.to_string().contains("EVENT_STALE_LEADER_FENCED") {
+                            self.metrics
+                                .fencing_conflicts
+                                .fetch_add(1, Ordering::SeqCst);
+                            linked_cancel.cancel();
+                            break;
                         }
-                        Err(e) => {
-                            let err_str = e.to_string();
-                            if err_str.contains("EVENT_STALE_LEADER_FENCED") {
-                                self.metrics
-                                    .fencing_conflicts
-                                    .fetch_add(1, Ordering::SeqCst);
-                                linked_cancel.cancel();
-                                break;
-                            }
-                            warn!(error = ?e, "Erreur lors de la récupération et de l'enfilage outbox");
-                        }
+                        warn!(error = ?e, "Erreur lors de la récupération et de l'enfilage outbox");
                     }
                 }
 
-                // Dépilage et traitement des messages par le Bridge
-                tokio::select! {
-                    msg_opt = rx.recv() => {
-                        if let Some(msg) = msg_opt {
-                            match bridge.process_and_settle(&msg, &mut feeder).await {
-                                Ok(outcome) => {
-                                    work_done += 1;
-                                    match outcome {
-                                        ConsumerOutcome::Ack { .. } => {
-                                            self.metrics.deliveries_acked.fetch_add(1, Ordering::SeqCst);
-                                        }
-                                        ConsumerOutcome::Nack { report, .. } => {
-                                            match report {
-                                                NackReport::RetryExhausted { .. } => {
-                                                    self.metrics.deliveries_dead_lettered.fetch_add(1, Ordering::SeqCst);
-                                                }
-                                                _ => {
-                                                    self.metrics.deliveries_nacked.fetch_add(1, Ordering::SeqCst);
-                                                }
-                                            }
-                                        }
-                                        ConsumerOutcome::Cancelled { .. } => {
-                                            trace!("Consommation de livraison annulée");
-                                        }
-                                    }
+                // Traitement des messages prêts de chaque file, borné par file à chaque tour
+                for pipeline in pipelines.values_mut() {
+                    for _ in 0..self.config.max_unacked.max(1) {
+                        let Ok(msg) = pipeline.rx.try_recv() else {
+                            break;
+                        };
+                        match pipeline
+                            .bridge
+                            .process_and_settle(&msg, &mut pipeline.feeder)
+                            .await
+                        {
+                            Ok(outcome) => {
+                                work_done += 1;
+                                self.record_outcome(outcome);
+                            }
+                            Err(e) => {
+                                if e.to_string().contains("EVENT_STALE_LEADER_FENCED") {
+                                    self.metrics
+                                        .fencing_conflicts
+                                        .fetch_add(1, Ordering::SeqCst);
+                                    linked_cancel.cancel();
+                                    break 'term;
                                 }
-                                Err(e) => {
-                                    let err_str = e.to_string();
-                                    if err_str.contains("EVENT_STALE_LEADER_FENCED") {
-                                        self.metrics.fencing_conflicts.fetch_add(1, Ordering::SeqCst);
-                                        linked_cancel.cancel();
-                                        break;
-                                    }
-                                    warn!(error = ?e, "Erreur lors du traitement et règlement par le Bridge");
-                                }
+                                warn!(error = ?e, "Erreur lors du traitement et règlement par le Bridge");
                             }
                         }
                     }
-                    () = tokio::time::sleep(self.config.poll_interval) => {
-                        let mut disp = dispatcher.lock().await;
-                        let _report = disp.watchdog_tick(tokio::time::Instant::now(), envelope_extractor);
+
+                    // Rattrapage d'un avancement de curseur resté en attente (échec d'écriture)
+                    if let Err(e) = pipeline.feeder.retry_pending_flush().await {
+                        if matches!(
+                            e,
+                            FeederError::Fenced
+                                | FeederError::Progress(
+                                    crate::engine::progress::ProgressError::Fenced
+                                )
+                        ) {
+                            self.metrics
+                                .fencing_conflicts
+                                .fetch_add(1, Ordering::SeqCst);
+                            linked_cancel.cancel();
+                            break 'term;
+                        }
+                        warn!(error = ?e, "Échec du rattrapage de l'avancement du curseur");
                     }
-                    () = linked_cancel.cancelled() => break,
+
+                    // Redélivrance des messages non acquittés dans les délais
+                    let mut disp = pipeline.dispatcher.lock().await;
+                    let _report =
+                        disp.watchdog_tick(tokio::time::Instant::now(), envelope_extractor);
                 }
 
                 if work_done == 0 {
@@ -337,134 +318,98 @@ impl EventWorker {
         Ok(())
     }
 
-    /// Exécute un cycle unitaire de claim et de traitement par lot (utilisé notamment en tests et en exécution pas-à-pas).
-    pub async fn poll_cycle(&self, cancel: &CancellationToken) -> Result<usize, LyxalEventError> {
-        let lease = compute_lease_duration(&self.config, self.config.batch_size);
-        let lease_secs = lease.as_secs().max(5);
-
-        // Phase 1 : Claim atomique par lot
-        let deliveries = self
-            .store
-            .claim_batch(
-                self.config.batch_size,
-                lease_secs,
-                &self.config.worker_id,
-                self.config.instance_id.as_deref(),
-            )
-            .await?;
-
-        let count = deliveries.len();
-        if count == 0 {
-            trace!("No pending event deliveries claimed");
-            return Ok(0);
-        }
-
-        debug!(
-            worker_id = %self.config.worker_id,
-            count,
-            "Claimed event delivery batch"
-        );
-
-        // Phase 2 : Traitement séquentiel et acquittement unitaire hors du verrou de claim
-        for delivery in deliveries {
-            if cancel.is_cancelled() {
-                break;
+    /// Comptabilise l'issue d'un traitement dans les métriques.
+    fn record_outcome(&self, outcome: ConsumerOutcome) {
+        match outcome {
+            ConsumerOutcome::Ack { .. } => {
+                self.metrics.deliveries_acked.fetch_add(1, Ordering::SeqCst);
             }
-
-            if let Err(err) = self.dispatch_delivery(&delivery, cancel).await {
-                warn!(
-                    delivery_id = %delivery.id.to_sql(),
-                    target_module = %delivery.target_module,
-                    error = ?err,
-                    "Failed to settle event delivery; proceeding with batch"
-                );
+            ConsumerOutcome::Nack {
+                report: NackReport::RetryExhausted { .. },
+                ..
+            } => {
+                self.metrics
+                    .deliveries_dead_lettered
+                    .fetch_add(1, Ordering::SeqCst);
+            }
+            ConsumerOutcome::Nack { .. } => {
+                self.metrics
+                    .deliveries_nacked
+                    .fetch_add(1, Ordering::SeqCst);
+            }
+            ConsumerOutcome::Cancelled { .. } => {
+                trace!("Consommation de livraison annulée");
             }
         }
-
-        Ok(count)
     }
 
-    async fn dispatch_delivery(
+    /// Crée la file d'un abonnement pour le mandat en cours : dispatcher, feeder (curseur
+    /// contigu propre à l'abonnement) et passerelle d'exécution des handlers.
+    async fn build_pipeline(
         &self,
-        delivery: &crate::models::EventDelivery,
+        subscription: &str,
+        client: &surrealdb::Surreal<surrealdb::engine::any::Any>,
+        lease_manager: &Arc<OutboxLeaseManager>,
         cancel: &CancellationToken,
-    ) -> Result<(), LyxalEventError> {
-        let envelope = match self.store.get_outbox_event(&delivery.outbox_event).await? {
-            Some(env) => env,
-            None => {
-                let err_msg = format!(
-                    "Outbox event '{}' not found",
-                    delivery.outbox_event.to_sql()
-                );
-                self.store
-                    .delivery_failure(&delivery.id, &err_msg, 5)
-                    .await?;
-                return Err(LyxalEventError::Internal(err_msg));
-            }
+    ) -> SubscriptionPipeline {
+        let disp_config = DispatcherConfig {
+            max_unacked: self.config.max_unacked,
+            delivery_policy: DeliveryPolicy {
+                max_redelivery_count: self.config.max_redelivery_count,
+                ack_timeout: self.config.ack_timeout,
+                base_redelivery_delay: self.config.retry_base_delay,
+                max_redelivery_delay: self.config.retry_max_delay,
+                jitter: self.config.jitter,
+                ..Default::default()
+            },
+            poison_policy: PoisonPolicy::DeadLetter,
+            subscription_name: subscription.to_string(),
+            // La politique DeadLetter exige un topic : à défaut de configuration, un topic propre
+            // à l'abonnement (sinon le message épuisé reste bloqué, jamais transféré en DLQ).
+            dead_letter_topic: Some(
+                self.config
+                    .dead_letter_topic
+                    .clone()
+                    .unwrap_or_else(|| format!("{subscription}.dead_letter")),
+            ),
         };
-
-        let handler = match self.registry.get(&envelope.event_type) {
-            Some(h) => h,
-            None => {
-                let err_msg = format!(
-                    "No handler registered for event type '{}'",
-                    envelope.event_type
-                );
-                warn!(event_type = %envelope.event_type, "Missing handler for delivery");
-                let retry_delay = compute_next_retry_delay(&self.config, delivery.attempts);
-                self.store
-                    .delivery_failure(&delivery.id, &err_msg, retry_delay.as_secs().max(1))
-                    .await?;
-                return Ok(());
-            }
-        };
-
-        let child_cancel = cancel.child_token();
-        let ctx = crate::handler::HandlerContext::new(
-            envelope.event_id,
-            delivery.id.clone(),
-            envelope.correlation_id,
-            envelope.causation_id,
-            envelope.context.clone(),
-            delivery.attempts,
-            child_cancel.clone(),
+        let dispatcher = Arc::new(Mutex::new(ReliableDispatcher::new(
+            disp_config,
+            cancel.clone(),
+        )));
+        let feeder = OutboxFeeder::new(
+            client.clone(),
+            Arc::clone(lease_manager),
+            Arc::clone(&dispatcher),
         );
-
-        match tokio::time::timeout(
-            self.config.dispatch_timeout,
-            handler.handle(&envelope, &ctx),
-        )
-        .await
-        {
-            Ok(Ok(())) => {
-                self.store.delivery_success(&delivery.id).await?;
-            }
-            Ok(Err(err)) => {
-                let err_str = err.to_string();
-                let retry_delay = compute_next_retry_delay(&self.config, delivery.attempts);
-                self.store
-                    .delivery_failure(&delivery.id, &err_str, retry_delay.as_secs().max(1))
-                    .await?;
-            }
-            Err(_elapsed) => {
-                child_cancel.cancel();
-                let err_str = format!(
-                    "Handler execution timed out after {:?}",
-                    self.config.dispatch_timeout
-                );
-                let retry_delay = compute_next_retry_delay(&self.config, delivery.attempts);
-                self.store
-                    .delivery_failure(&delivery.id, &err_str, retry_delay.as_secs().max(1))
-                    .await?;
-            }
+        let bridge = HandlerConsumerBridge::new(
+            BridgeConfig {
+                consumer_id: format!("{}_bridge", self.config.worker_id),
+                subscription_name: subscription.to_string(),
+                dispatch_timeout: self.config.dispatch_timeout,
+                max_concurrency: self.config.max_unacked,
+            },
+            (*self.registry).clone(),
+            cancel.clone(),
+        );
+        let rx = {
+            let mut disp = dispatcher.lock().await;
+            bridge.register_with_dispatcher(&mut disp, self.config.max_unacked)
+        };
+        SubscriptionPipeline {
+            dispatcher,
+            feeder,
+            bridge,
+            rx,
         }
-
-        Ok(())
     }
 
     async fn fetch_and_enqueue_pending(
         &self,
-        feeder: &mut OutboxFeeder<LyxalEventEnvelope>,
+        pipelines: &mut HashMap<String, SubscriptionPipeline>,
+        client: &surrealdb::Surreal<surrealdb::engine::any::Any>,
+        lease_manager: &Arc<OutboxLeaseManager>,
+        cancel: &CancellationToken,
     ) -> Result<usize, LyxalEventError> {
         // 1. Déclenche la reprise des fan-outs en attente pour créer les event_delivery correspondants
         let _ = self
@@ -480,12 +425,19 @@ impl EventWorker {
         };
         let deliveries = self.store.fetch_pending_deliveries(params).await?;
 
-        let count = deliveries.len();
-        if count == 0 {
-            return Ok(0);
-        }
-
+        let mut enqueued = 0;
         for rec in deliveries {
+            let sub_id = rec.subscription.to_sql();
+            if !pipelines.contains_key(&sub_id) {
+                let pipeline = self
+                    .build_pipeline(&sub_id, client, lease_manager, cancel)
+                    .await;
+                pipelines.insert(sub_id.clone(), pipeline);
+            }
+            let Some(pipeline) = pipelines.get_mut(&sub_id) else {
+                continue;
+            };
+
             let event_id = rec.event_id.unwrap_or_default();
             let correlation_id = rec
                 .correlation_id
@@ -516,11 +468,11 @@ impl EventWorker {
             };
 
             let outbox_id = rec.outbox_event.to_sql();
-            let sub_id = rec.subscription.to_sql();
             let target_module = rec.target_module.clone();
             let context = serde_json::to_value(&envelope.context).unwrap_or_default();
 
-            match feeder
+            match pipeline
+                .feeder
                 .assign_and_enqueue(
                     &outbox_id,
                     &sub_id,
@@ -532,11 +484,11 @@ impl EventWorker {
                 .await
             {
                 Ok(_seq) => {
+                    enqueued += 1;
                     self.metrics.events_enqueued.fetch_add(1, Ordering::SeqCst);
                 }
-                Err(FeederError::Backpressure) => {
-                    break;
-                }
+                // File de cet abonnement pleine : la livraison reste en attente pour un tour suivant
+                Err(FeederError::Backpressure) => {}
                 Err(FeederError::Fenced) => {
                     return Err(LyxalEventError::Internal(
                         "EVENT_STALE_LEADER_FENCED: leadership revoked".to_string(),
@@ -548,6 +500,6 @@ impl EventWorker {
             }
         }
 
-        Ok(count)
+        Ok(enqueued)
     }
 }

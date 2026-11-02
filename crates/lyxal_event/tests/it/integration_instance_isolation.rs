@@ -2,8 +2,8 @@ use lyxal_event::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use surrealdb::engine::any::connect;
-use tokio_util::sync::CancellationToken;
 
 use crate::common;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -76,14 +76,7 @@ async fn test_strict_multi_instance_isolation() {
         .unwrap();
 
     // Vérifie qu'il y a 2 deliveries (une pour alpha, une pour beta)
-    let all_deliveries = store.claim_batch(10, 30, "probe", None).await.unwrap();
-    assert_eq!(all_deliveries.len(), 2);
-    // Libère le claim probe
-    db.query(
-        "UPDATE event_delivery SET status = 'pending', locked_until = NONE, lease_owner = NONE",
-    )
-    .await
-    .unwrap();
+    assert_eq!(common::delivery_statuses(&db).await, ["pending", "pending"]);
 
     // 3. Worker dédié EXCLUSIVEMENT à l'instance Alpha
     let alpha_instances = Arc::new(std::sync::Mutex::new(Vec::new()));
@@ -97,18 +90,24 @@ async fn test_strict_multi_instance_isolation() {
         })
         .unwrap();
 
-    let config_alpha = EventWorkerConfig::default()
-        .with_worker_id("worker_for_alpha_only")
-        .with_instance_id("inst_alpha");
+    let config_alpha = common::fast_config("worker_for_alpha_only").with_instance_id("inst_alpha");
 
-    let worker_alpha = EventWorker::new(store.clone(), registry_alpha, config_alpha);
-    let cancel = CancellationToken::new();
-
-    let processed_by_alpha = worker_alpha.poll_cycle(&cancel).await.unwrap();
-    assert_eq!(
-        processed_by_alpha, 1,
-        "Worker Alpha must claim ONLY the single delivery belonging to inst_alpha"
+    let worker_alpha = Arc::new(EventWorker::new(
+        store.clone(),
+        registry_alpha,
+        config_alpha,
+    ));
+    let alpha_done = common::run_worker_until(worker_alpha, Duration::from_secs(10), || {
+        let db = db.clone();
+        async move { common::delivery_statuses(&db).await == ["delivered", "pending"] }
+    })
+    .await;
+    assert!(
+        alpha_done,
+        "seule la livraison de inst_alpha doit être livrée : {:?}",
+        common::delivery_statuses(&db).await
     );
+    assert_eq!(alpha_count.load(Ordering::SeqCst), 1);
 
     let instances_seen = alpha_instances.lock().unwrap().clone();
     assert_eq!(

@@ -2,7 +2,6 @@ use lyxal_event::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 struct OrderCreated {
@@ -60,43 +59,4 @@ fn test_handler_registry_duplicate_rejection() {
     assert!(registry.register(handler1).is_ok());
     let duplicate_res = registry.register(handler2);
     assert!(duplicate_res.is_err(), "Duplicate registration must fail");
-}
-
-#[test]
-fn test_retry_delay_exponential_with_jitter() {
-    let cfg = EventWorkerConfig {
-        jitter: false,
-        retry_base_delay: Duration::from_millis(100),
-        retry_max_delay: Duration::from_secs(5),
-        ..Default::default()
-    };
-
-    assert_eq!(
-        compute_next_retry_delay(&cfg, 0),
-        Duration::from_millis(100)
-    );
-    assert_eq!(
-        compute_next_retry_delay(&cfg, 1),
-        Duration::from_millis(200)
-    );
-    assert_eq!(
-        compute_next_retry_delay(&cfg, 2),
-        Duration::from_millis(400)
-    );
-    assert_eq!(
-        compute_next_retry_delay(&cfg, 3),
-        Duration::from_millis(800)
-    );
-    assert_eq!(compute_next_retry_delay(&cfg, 10), Duration::from_secs(5));
-}
-
-#[test]
-fn test_lease_duration_scaling_by_batch() {
-    let cfg = EventWorkerConfig {
-        dispatch_timeout: Duration::from_secs(10),
-        ..Default::default()
-    };
-
-    assert_eq!(compute_lease_duration(&cfg, 1), Duration::from_secs(10));
-    assert_eq!(compute_lease_duration(&cfg, 4), Duration::from_secs(40));
 }

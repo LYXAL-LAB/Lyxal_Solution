@@ -4,7 +4,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use surrealdb::engine::any::connect;
-use tokio_util::sync::CancellationToken;
 
 use crate::common;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -88,15 +87,20 @@ async fn test_publish_and_fanout_end_to_end() {
     assert_eq!(published.event_type, "booking.created");
 
     // Vérification de la création des 2 livraisons
-    let worker_config = EventWorkerConfig::default()
-        .with_batch_size(10)
-        .with_dispatch_timeout(Duration::from_secs(5));
+    let worker_config = common::fast_config("worker_fanout");
 
-    let worker = EventWorker::new(store.clone(), registry, worker_config);
-    let cancel = CancellationToken::new();
+    let worker = Arc::new(EventWorker::new(store.clone(), registry, worker_config));
 
-    let processed = worker.poll_cycle(&cancel).await.unwrap();
-    assert_eq!(processed, 2, "Expected 2 deliveries claimed and processed");
+    let delivered = common::run_worker_until(worker, Duration::from_secs(10), || {
+        let db = db.clone();
+        async move { common::delivery_statuses(&db).await == ["delivered", "delivered"] }
+    })
+    .await;
+    assert!(
+        delivered,
+        "les 2 livraisons doivent être livrées : {:?}",
+        common::delivery_statuses(&db).await
+    );
 
     assert_eq!(
         notif_count.load(Ordering::SeqCst),

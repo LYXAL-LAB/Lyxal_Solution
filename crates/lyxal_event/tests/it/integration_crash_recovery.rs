@@ -54,40 +54,39 @@ async fn test_worker_crash_and_lease_recovery() {
     };
     publisher.publish(&event).await.unwrap();
 
-    // 3. Worker A démarre, réclame le lot avec un bail court de 1 seconde, puis crash immédiatement (drop)
-    let claimed_by_a = store
-        .claim_batch(1, 1, "worker_a_doomed", None)
+    // 3. Worker A devient leader, séquence la livraison puis « plante » pendant le traitement :
+    //    son handler ne rend jamais la main et sa tâche est interrompue sans libérer le bail.
+    let mut a_registry = HandlerRegistry::new();
+    a_registry.register(StuckHandler).unwrap();
+    let worker_a = Arc::new(EventWorker::new(
+        store.clone(),
+        a_registry,
+        common::fast_config("worker_a_doomed"),
+    ));
+    let a_task = {
+        let worker_a = worker_a.clone();
+        tokio::spawn(async move { worker_a.run(CancellationToken::new()).await })
+    };
+    let mut assigned = false;
+    for _ in 0..200 {
+        if common::delivery_statuses(&db).await == ["processing"] {
+            assigned = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+    assert!(assigned, "Worker A doit avoir séquencé la livraison");
+    let seq_before = delivery_seq(&db).await;
+    assert_eq!(seq_before, Some(1));
+    a_task.abort();
+    let _ = a_task.await;
+
+    // 4. Le temps passe : le verrou de la livraison expire (simulé), le bail de A expire (2 s).
+    db.query("UPDATE event_delivery SET locked_until = time::now() - 1s")
         .await
         .unwrap();
-    assert_eq!(
-        claimed_by_a.len(),
-        1,
-        "Worker A must have claimed the delivery"
-    );
-    assert_eq!(claimed_by_a[0].status, DeliveryStatus::Processing);
-    assert_eq!(
-        claimed_by_a[0].lease_owner.as_deref(),
-        Some("worker_a_doomed")
-    );
 
-    // Simule le crash brutal : Worker A est détruit sans jamais appeler delivery_success ou delivery_failure.
-    drop(claimed_by_a);
-
-    // Si Worker B essaie immédiatement de réclamer avant l'expiration du bail, il ne doit rien obtenir
-    let early_claim_by_b = store
-        .claim_batch(1, 5, "worker_b_survivor", None)
-        .await
-        .unwrap();
-    assert_eq!(
-        early_claim_by_b.len(),
-        0,
-        "Worker B must not steal delivery while lease is still valid"
-    );
-
-    // 4. On attend l'expiration du bail (1 seconde)
-    tokio::time::sleep(Duration::from_millis(1200)).await;
-
-    // 5. Worker B se réveille après expiration du bail et réclame la livraison orpheline
+    // 5. Worker B prend le leadership, reprend la livraison orpheline et la livre.
     let b_count = Arc::new(AtomicUsize::new(0));
     let mut b_registry = HandlerRegistry::new();
     b_registry
@@ -95,26 +94,46 @@ async fn test_worker_crash_and_lease_recovery() {
             processed: b_count.clone(),
         })
         .unwrap();
-
-    let b_config = EventWorkerConfig::default().with_worker_id("worker_b_survivor");
-    let worker_b = EventWorker::new(store.clone(), b_registry, b_config);
-    let cancel = CancellationToken::new();
-
-    let b_processed = worker_b.poll_cycle(&cancel).await.unwrap();
-    assert_eq!(
-        b_processed, 1,
-        "Worker B must recover and process the expired delivery"
+    let worker_b = Arc::new(EventWorker::new(
+        store.clone(),
+        b_registry,
+        common::fast_config("worker_b_survivor"),
+    ));
+    let delivered = common::run_worker_until(worker_b, Duration::from_secs(15), || {
+        let db = db.clone();
+        async move { common::delivery_statuses(&db).await == ["delivered"] }
+    })
+    .await;
+    assert!(
+        delivered,
+        "Worker B doit livrer la livraison reprise : {:?}",
+        common::delivery_statuses(&db).await
     );
-    assert_eq!(
-        b_count.load(Ordering::SeqCst),
-        1,
-        "Handler B must have successfully executed the recovered delivery"
-    );
+    assert_eq!(b_count.load(Ordering::SeqCst), 1);
 
-    // Vérifie que la livraison est définitivement en statut 'delivered'
-    let mut query = db.query("SELECT * FROM ONLY event_delivery").await.unwrap();
-    let final_delivery: Option<EventDelivery> = query.take(0).unwrap();
-    let d = final_delivery.expect("Delivery must exist");
-    assert_eq!(d.status, DeliveryStatus::Delivered);
-    assert!(d.delivered_at.is_some());
+    // La reprise conserve le numéro de séquence d'origine (§5.6.4)
+    assert_eq!(delivery_seq(&db).await, seq_before);
+}
+
+async fn delivery_seq(db: &surrealdb::Surreal<surrealdb::engine::any::Any>) -> Option<i64> {
+    let mut res = db
+        .query("RETURN (SELECT VALUE delivery_seq FROM event_delivery)[0]")
+        .await
+        .unwrap();
+    res.take(0).unwrap()
+}
+
+/// Handler qui ne rend jamais la main (traitement interrompu par le crash).
+struct StuckHandler;
+
+#[async_trait::async_trait]
+impl Handler<TaskAssigned> for StuckHandler {
+    async fn handle(
+        &self,
+        _event: TaskAssigned,
+        _ctx: &HandlerContext,
+    ) -> Result<(), LyxalEventError> {
+        std::future::pending::<()>().await;
+        Ok(())
+    }
 }

@@ -74,6 +74,22 @@ impl From<LyxalSurrealError> for ProgressError {
     }
 }
 
+/// Nombre maximal de rejeux d'une écriture interrompue par un conflit transitoire.
+const MAX_CONFLICT_RETRIES: u32 = 8;
+
+/// Conflit d'écriture transitoire de SurrealDB (contrôle de concurrence optimiste) : la
+/// transaction n'a pas été validée et peut être rejouée telle quelle.
+pub(crate) fn is_transient_conflict(err: &LyxalSurrealError) -> bool {
+    let message = err.to_string();
+    message.contains("Transaction conflict") || message.contains("can be retried")
+}
+
+/// Attente aléatoire croissante avant un rejeu, pour désynchroniser les écrivains concurrents.
+pub(crate) async fn conflict_backoff(attempt: u32) {
+    let upper = 10 + 20 * u64::from(attempt);
+    tokio::time::sleep(std::time::Duration::from_millis(fastrand::u64(5..upper))).await;
+}
+
 /// Gestionnaire de suivi et de flush durable pour un abonnement spécifique.
 pub struct SubscriptionProgressTracker {
     client: Surreal<Any>,
@@ -196,8 +212,19 @@ impl SubscriptionProgressTracker {
             generation: gen,
         };
 
-        let dlq_res: Result<DeadLetterTransferResult, LyxalSurrealError> =
-            self.call_fn("event_dead_letter_transfer", params).await;
+        let mut attempt = 0;
+        let dlq_res: Result<DeadLetterTransferResult, LyxalSurrealError> = loop {
+            match self
+                .call_fn("event_dead_letter_transfer", params.clone())
+                .await
+            {
+                Err(e) if is_transient_conflict(&e) && attempt < MAX_CONFLICT_RETRIES => {
+                    attempt += 1;
+                    conflict_backoff(attempt).await;
+                }
+                other => break other,
+            }
+        };
 
         match dlq_res {
             Ok(result) => {
@@ -268,8 +295,16 @@ impl SubscriptionProgressTracker {
             drop_reason: self.drop_reason.clone(),
         };
 
-        let flush_res: Result<FlushBatchResult, LyxalSurrealError> =
-            self.call_fn("event_flush_batch", params).await;
+        let mut attempt = 0;
+        let flush_res: Result<FlushBatchResult, LyxalSurrealError> = loop {
+            match self.call_fn("event_flush_batch", params.clone()).await {
+                Err(e) if is_transient_conflict(&e) && attempt < MAX_CONFLICT_RETRIES => {
+                    attempt += 1;
+                    conflict_backoff(attempt).await;
+                }
+                other => break other,
+            }
+        };
 
         match flush_res {
             Ok(result) => {

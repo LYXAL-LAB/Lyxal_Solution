@@ -73,7 +73,7 @@ Fonctions réutilisées : `fn::validation_object_execute`, avec les règles `req
 | Lot | Contenu |
 | :- | :--- |
 | 1 ✅ | **Nettoyage** : manifeste `0.1.0` ; suppression de `CHANGELOG.md` et `ROADMAP.md` ; `readme.md` renommé `README.md` (README et `docs/` réécrits à l'état final au lot 5, après les changements de contrat) ; codes d'erreur inutilisés ; `TYPE NORMAL … PERMISSIONS NONE` sur les tables, `PERMISSIONS FULL` sur les fonctions (V-01, V-10, V-11, V-12). |
-| 2 | **Suppression du chemin hérité et tests sur `run`** (Q1, V-04, V-13). |
+| 2 ✅ | **Suppression du chemin hérité et tests sur `run`** (Q1, V-04, V-13). Les tests sur le chemin de production ont révélé quatre bugs, corrigés dans ce lot (décision CTO : une file par abonnement) : multi-abonnements (V-14), DLQ jamais atteinte (V-15), bail gardé par une tâche orpheline (V-16), curseur bloqué après un conflit d'écriture (V-17). |
 | 3 | **Contrat SurrealQL et DTO, ensemble** : validation par le Core, `language`, champs obligatoires, identifiants `RecordId`, `DeliveryFailureParams` unique, erreurs typées pour les `THROW` gardés (V-02, V-03, V-06, Q2). |
 | 4 | **Robustesse du worker et installation** : erreurs propagées, livraisons corrompues en DLQ, tâches attendues, `install` vérifié contre le manifeste ; appelants de `lyxal_runtime` (V-05, V-07, V-09, Q3). |
 | 5 | **Clôture** : README et `docs/` à l'état actuel, audit de contrôle, suppression de `AUDIT.md` et de ce plan. |
