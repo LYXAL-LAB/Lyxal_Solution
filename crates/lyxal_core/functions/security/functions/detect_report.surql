@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/detect_report.surql
 -- Fonction : fn::security_detect_report
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Produit un rapport consolidé de détection.
+--
+-- Paramètres
+--   $subject : string
+--   $results : array<object>
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_detect_report(
     $subject: string,
     $results: array<object>

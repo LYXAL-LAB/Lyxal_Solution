@@ -36,6 +36,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_engine_run_step(
             value: array::map($items, |$item| $item.value),
             issues: array::concat($state.issues, array::flatten(array::map($items, |$item| $item.issues))),
             warnings: array::concat($state.warnings, array::flatten(array::map($items, |$item| $item.warnings))),
+            records: array::concat($state.records, array::flatten(array::map($items, |$item| $item.records))),
             stop: array::any($items, |$item| $item.stop)
         });
     };
@@ -52,13 +53,13 @@ DEFINE FUNCTION OVERWRITE fn::utils_engine_run_step(
     IF $step.rule = "one_of" {
         LET $outcome = array::fold($step.options.pipelines, { winner: NONE, attempts: 0 }, |$acc, $pipeline| {
             IF $acc.winner IS NOT NONE { RETURN $acc; };
-            LET $attempt = fn::utils_engine_run(object::extend($state, { issues: [], warnings: [], stop: false }), $pipeline, $apply);
+            LET $attempt = fn::utils_engine_run(object::extend($state, { issues: [], warnings: [], records: [], stop: false }), $pipeline, $apply);
             RETURN { winner: IF array::len($attempt.issues) = 0 { $attempt } ELSE { NONE }, attempts: $acc.attempts + 1 };
         });
         RETURN IF $outcome.winner IS NONE {
             fn::utils_engine_issue($state, "one_of", "CORE_VALIDATION_COMBINATION", { scope: "group", attempts: $outcome.attempts })
         } ELSE {
-            object::extend($outcome.winner, { issues: $state.issues, warnings: array::concat($state.warnings, $outcome.winner.warnings) })
+            object::extend($outcome.winner, { issues: $state.issues, warnings: array::concat($state.warnings, $outcome.winner.warnings), records: array::concat($state.records, $outcome.winner.records) })
         };
     };
     RETURN $apply($state, $step);

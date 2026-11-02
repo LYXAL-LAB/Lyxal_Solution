@@ -54,6 +54,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_engine_run_object(
         value: $output,
         issues: array::concat($state.issues, $field_issues),
         warnings: array::concat($state.warnings, array::flatten(array::map($results, |$result| $result[1].warnings))),
+        records: array::concat($state.records, array::flatten(array::map($results, |$result| $result[1].records))),
         stop: array::len($field_issues) > 0
     });
 }

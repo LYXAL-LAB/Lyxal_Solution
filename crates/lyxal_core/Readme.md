@@ -24,15 +24,15 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 600 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 564 fonctions déclarées)
 ├── Readme.md
 ├── AUDIT.md                 (document de reprise, supprimé en fin de reprise)
 ├── implementation_plan.md   (document de reprise, supprimé en fin de reprise)
 └── functions/
     ├── validations/   functions/ (225) · tests/ (225)   fn::validation_*
     ├── sanitize/      functions/ (126) · tests/ (126)   fn::sanitize_*
-    ├── security/      functions/ (137) · tests/ (137)   fn::security_*
-    └── utils/         functions/ (112) · tests/ (112)   fn::utils_*
+    ├── security/      functions/ (100) · tests/ (100)   fn::security_*
+    └── utils/         functions/ (113) · tests/ (113)   fn::utils_*
 ```
 
 Chaque fonction a son fichier (`functions/<domaine>/functions/<nom>.surql`) et son fichier de tests (`functions/<domaine>/tests/<nom>.test.surql`).
@@ -136,14 +136,20 @@ Un motif d'expression régulière syntaxiquement invalide (`fn::validation_regex
 Les fonctions `fn::security_*` gardent des **paramètres typés** et renvoient une valeur ou un objet (plan §2.3) : empreintes non secrètes, forme canonique des requêtes HMAC (la signature elle-même est calculée par `lyxal_crypto`), permissions et politiques, détection d'attaques (heuristique, score de 0 à 100), masquage, nonces et fenêtres anti-rejeu, jetons. Seul un argument invalide lève `CORE_INVALID_ARGUMENT` ou `CORE_UNSUPPORTED_OPTION`.
 
 * Les comparaisons d'empreintes (`fn::security_hash_verify`) ne sont pas à temps constant : pour un secret, la comparaison se fait dans `lyxal_crypto`.
-* **Avancement** : toutes les fonctions de valeurs de `security` sont migrées (58 fonctions). Seule la mécanique (pipeline, audit, débogage…) attend le lot 4.
+* **Avancement** : toutes les fonctions de valeurs de `security` sont migrées (58 fonctions), ainsi que l'audit chaîné (`audit_*`, empreinte calculée sur la représentation SurrealQL de l'événement) et les rapports `detect_report`, `redact_report`, `signature_report`.
+* **Pipelines** (moteur unique, lot 4) : `fn::security_pipeline_execute($value, $pipeline, $max_steps)` et `fn::security_object_execute($value, $schema, $max_steps)` renvoient `{ value, findings, score, decisions, allowed, errors }`. Le catalogue `fn::security_step_catalog()` compte 22 règles :
+  * masquage et empreintes, qui transforment la valeur ;
+  * détections, qui ajoutent un constat ;
+  * `permission_check`, qui ajoute une décision.
+
+  Restent au lot 4 : optimiseur, débogage, benchmark.
 
 ### Moteur unique `fn::utils_engine_*` — en cours (lot 4)
 
 Un seul moteur exécute les pipelines de tous les domaines (`implementation_plan.md` §3.1). Il ne connaît aucune règle métier : chaque domaine lui passe une **closure** qui applique une étape.
 
 * **Étape** : `{ rule, value, options }`. `fn::utils_engine_pipeline($steps, $catalog, $max_steps)` contrôle un pipeline contre le catalogue du domaine (`[{ rule, cost, required }]`, `required` listant les options obligatoires).
-* **État** : `{ value, issues, warnings, stop, path, parent }` (`fn::utils_engine_state`). Le domaine peut y ajouter ses clés. Une étape signale une erreur avec `fn::utils_engine_issue`, ce qui arrête le pipeline en cours, ou un avertissement avec `fn::utils_engine_warning`.
+* **État** : `{ value, issues, warnings, records, stop, path, parent }` (`fn::utils_engine_state`). `records` accueille les données propres au domaine (`fn::utils_engine_record`, ex. constats et décisions de `security`), propagées par les règles du moteur. Une étape signale une erreur avec `fn::utils_engine_issue`, ce qui arrête le pipeline en cours, ou un avertissement avec `fn::utils_engine_warning`.
 * **Exécution** : `fn::utils_engine_run($state, $pipeline, $apply)`, où `$apply` est une closure `|$state, $step| …` qui renvoie le nouvel état.
 * **Règles du moteur**, disponibles dans tout domaine :
   * `each` : sous-pipeline appliqué à chaque élément d'un tableau ;
@@ -197,10 +203,10 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 ## Tests
 
-* `scripts/ci/test_lyxal_core.py` charge les 600 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
+* `scripts/ci/test_lyxal_core.py` charge les 564 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
 * **Deux formats coexistent pendant la reprise** :
   * **format « assertions »** (fichiers commençant par `-- lyxal-test: assertions`) : chaque bloc `-- test:` contient une instruction qui doit renvoyer `true`, ou lever l'erreur annoncée par `-- attendu-erreur: <CODE>` ; tout écart fait échouer la CI (détails : `implementation_plan.md` §5) ;
-  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (452 fichiers aujourd'hui, ceux des fonctions migrées).
+  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (466 fichiers aujourd'hui, ceux des fonctions migrées).
 * `scripts/ci/test_lyxal_core_selftest.py` vérifie que le banc accepte les bons tests et rejette les mauvais.
 * `scripts/ci/validate_surql.sh` vérifie la syntaxe de tout le SurrealQL du dépôt.
 * Les deux scripts font partie de la CI (job « SurrealQL ») et de `scripts/ci/ci_local.sh`.

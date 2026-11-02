@@ -1,11 +1,19 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/redact_report.surql
 -- Fonction : fn::security_redact_report
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Produit un rapport sans réexposer les valeurs sensibles.
+--
+-- Paramètres
+--   $subject : string
+--   $input   : any
+--   $output  : any
+--   $fields  : array<string>
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_redact_report(
     $subject: string,
     $input: any,

@@ -1,11 +1,21 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/signature_report.surql
 -- Fonction : fn::security_signature_report
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Construit un rapport de signature ou vérification.
+--
+-- Paramètres
+--   $algorithm : string
+--   $key_id    : string
+--   $timestamp : datetime
+--   $nonce     : string
+--   $verified  : option<bool>
+--   $reason    : option<string>
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_signature_report(
     $algorithm: string,
     $key_id: string,

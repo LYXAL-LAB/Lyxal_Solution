@@ -5,7 +5,8 @@
 -- Fonction : fn::utils_engine_state
 --
 -- Crée l'état d'exécution transmis aux étapes : { value, issues, warnings,
--- stop, path, parent }. Un domaine peut y ajouter ses propres clés.
+-- records, stop, path, parent }. records accueille les données propres au
+-- domaine (fn::utils_engine_record), propagées par les règles du moteur.
 --
 -- Paramètres
 --   $value  : any
@@ -19,7 +20,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_engine_state(
     $path: string,
     $parent: any
 ) -> object {
-    RETURN { value: $value, issues: [], warnings: [], stop: false, path: string::trim($path), parent: $parent };
+    RETURN { value: $value, issues: [], warnings: [], records: [], stop: false, path: string::trim($path), parent: $parent };
 }
-COMMENT "Crée l'état d'exécution transmis aux étapes : { value, issues, warnings, stop, path, parent }. Un domaine peut y ajouter ses propres clés."
+COMMENT "Crée l'état d'exécution transmis aux étapes : { value, issues, warnings, records, stop, path, parent }. records accueille les données propres au domaine (fn::utils_engine_record), propagées par les règles du moteur."
 PERMISSIONS FULL;

@@ -1,12 +1,8 @@
--- ============================================================================
--- TESTS — fn::security_detect_report
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::security_detect_report (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::security_detect_report(
-    "payload",
-    [
-        {detected:true,category:"xss",score:60},
-        {detected:false,category:"sql_injection",score:0}
-    ]
-);
+-- test: niveau
+RETURN fn::security_detect_report(" form ", [{ detected: true, score: 70 }, { detected: false, score: 0 }]).level == "high";
+
+-- test: rien détecté
+RETURN fn::security_detect_report("s", []).level == "none";
