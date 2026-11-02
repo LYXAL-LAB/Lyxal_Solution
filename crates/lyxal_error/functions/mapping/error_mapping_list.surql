@@ -33,4 +33,5 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_list(
                  START $start;
 
     RETURN fn::result_ok($list);
-} COMMENT "Liste et filtre les règles de correspondance externes au format universel";
+} COMMENT "Liste et filtre les règles de correspondance externes au format universel"
+PERMISSIONS FULL;

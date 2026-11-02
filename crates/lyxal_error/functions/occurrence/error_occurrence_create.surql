@@ -8,4 +8,5 @@ DEFINE FUNCTION OVERWRITE fn::error_occurrence_create(
 ) {
     LET $res = fn::error_log($params);
     RETURN $res;
-} COMMENT "Enregistre une occurrence d'erreur immuable (append-only) au format universel LyxalResult";
+} COMMENT "Enregistre une occurrence d'erreur immuable (append-only) au format universel LyxalResult"
+PERMISSIONS FULL;

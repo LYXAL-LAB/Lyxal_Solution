@@ -1,7 +1,7 @@
--- â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
--- â”‚  fn::error_mapping_create                                               â”‚
--- â”‚  CrÃ©ation d'un mapping entre erreur externe et code Lyxal canonique     â”‚
--- â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+-- ┌──────────────────────────────────────────────────────────────────────────┐
+-- │  fn::error_mapping_create                                               │
+-- │  Création d'un mapping entre erreur externe et code Lyxal canonique     │
+-- └──────────────────────────────────────────────────────────────────────────┘
 
 DEFINE FUNCTION OVERWRITE fn::error_mapping_create(
     $params: object
@@ -63,4 +63,5 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_create(
     };
 
     RETURN fn::result_ok($created);
-} COMMENT "Enregistre une rÃ¨gle de correspondance d'erreur externe au format universel";
+} COMMENT "Enregistre une règle de correspondance d'erreur externe au format universel"
+PERMISSIONS FULL;

@@ -187,7 +187,6 @@ Les feuilles de route officielles par module et transversales sont documentées 
 - **Intégration Transversale LYXAL SPACE :** [`docs/14-roadmap/ROADMAP_LYXAL_SPACE.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/docs/14-roadmap/ROADMAP_LYXAL_SPACE.md)
 - **Master Catalogue Universel :** [`crates/lyxal_catalogue/ROADMAP.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/ROADMAP.md)
 - **Pipeline d'Ingestion :** [`crates/lyxal_pipeline_ingestion/ROADMAP.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/ROADMAP.md)
-- **Gestionnaire d'Erreurs :** [`crates/lyxal_error/ROADMAP.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_error/ROADMAP.md)
 
 ---
 

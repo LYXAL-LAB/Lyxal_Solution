@@ -27,4 +27,5 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_disable(
 
     UPDATE $existing[0] SET enabled = false, updated_at = time::now();
     RETURN fn::result_ok({ disabled: true, id: <string>$existing[0] });
-} COMMENT "Désactive logiquement une définition d'erreur canonique du catalogue";
+} COMMENT "Désactive logiquement une définition d'erreur canonique du catalogue"
+PERMISSIONS FULL;

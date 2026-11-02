@@ -18,9 +18,6 @@ schemas = [
     "schema/error_external_mapping.surql",
     "schema/error_occurrence.surql"
 ]
-migrations = [
-    "migrations/0001_initial_schema.surql"
-]
 functions = [
     "functions/service/result_ok.surql",
     "functions/service/error_get.surql",
@@ -42,9 +39,6 @@ functions = [
     "functions/occurrence/error_occurrence_get.surql",
     "functions/occurrence/error_occurrence_list.surql",
     "functions/occurrence/error_occurrence_purge_before.surql"
-]
-seeds = [
-    "seeds/error_mappings.surql"
 ]
 error_definitions = [
     "error/error_definitions.surql",

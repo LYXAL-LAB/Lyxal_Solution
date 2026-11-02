@@ -15,4 +15,5 @@ DEFINE FUNCTION OVERWRITE fn::error_result(
         data: NONE,
         error: $err
     };
-} COMMENT "Construit directement le résultat d'échec conforme au contrat universel";
+} COMMENT "Construit directement le résultat d'échec conforme au contrat universel"
+PERMISSIONS FULL;

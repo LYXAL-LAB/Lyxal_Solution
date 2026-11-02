@@ -11,4 +11,5 @@ DEFINE FUNCTION OVERWRITE fn::result_ok(
         data: $data,
         error: NONE
     };
-} COMMENT "Construit directement le résultat de succès conforme au contrat universel";
+} COMMENT "Construit directement le résultat de succès conforme au contrat universel"
+PERMISSIONS FULL;

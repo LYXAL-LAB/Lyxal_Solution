@@ -53,4 +53,5 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_update(
 
     LET $updated = SELECT * FROM $cur.id;
     RETURN fn::result_ok($updated[0]);
-} COMMENT "Met à jour le message, la catégorie, la sévérité ou les traductions d'une erreur";
+} COMMENT "Met à jour le message, la catégorie, la sévérité ou les traductions d'une erreur"
+PERMISSIONS FULL;

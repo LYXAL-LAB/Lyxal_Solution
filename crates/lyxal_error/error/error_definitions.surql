@@ -1,7 +1,7 @@
 -- ============================================================================
 -- DÉFINITIONS D'ERREURS CANONIQUES — MODULE LYXAL_ERROR
 -- DOMAINE : error
--- CONFORMITÉ : .agents/AGENTS.md & SurrealDB 3.2.0 (Idempotent)
+-- CONFORMITÉ : .agents/AGENTS.md §5.5 & SurrealDB 3.3.4 (idempotent)
 -- ============================================================================
 
 IF !record::exists(error_definition:ERROR_PARAM_REQUIRED) 
@@ -139,34 +139,6 @@ IF !record::exists(error_definition:ERROR_OCCURRENCE_NOT_FOUND)
                 label: "Error occurrence not found",
                 description: "The requested error occurrence record could not be found.",
                 resolution: "Check the occurrence identifier or retention window."
-            }
-        }
-    }
-) END;
-
-IF !record::exists(error_definition:CORE_ERROR_DEFINITION_NOT_FOUND) 
-   AND array::len((SELECT VALUE id FROM error_definition WHERE code = "CORE_ERROR_DEFINITION_NOT_FOUND" LIMIT 1)) == 0 THEN (
-    CREATE error_definition:CORE_ERROR_DEFINITION_NOT_FOUND CONTENT {
-        code: "CORE_ERROR_DEFINITION_NOT_FOUND",
-        module: "core",
-        domain: "error",
-        category: "internal",
-        severity: "error",
-        message: "The requested error definition was not found",
-        default_language: "en",
-        http_status: 500,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Une erreur inconnue est survenue",
-                description: "Le code d'erreur n'a pas pu être résolu dans le référentiel.",
-                resolution: "Réessayez ou contactez le support technique."
-            },
-            en: {
-                label: "An unknown error occurred",
-                description: "The error code could not be resolved in the repository.",
-                resolution: "Retry or contact technical support."
             }
         }
     }

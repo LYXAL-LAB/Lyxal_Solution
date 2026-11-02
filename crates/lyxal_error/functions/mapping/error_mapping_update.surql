@@ -1,7 +1,7 @@
--- â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
--- â”‚  fn::error_mapping_update                                               â”‚
--- â”‚  Mise Ã  jour d'une rÃ¨gle de correspondance d'erreur externe             â”‚
--- â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+-- ┌──────────────────────────────────────────────────────────────────────────┐
+-- │  fn::error_mapping_update                                               │
+-- │  Mise à jour d'une règle de correspondance d'erreur externe             │
+-- └──────────────────────────────────────────────────────────────────────────┘
 
 DEFINE FUNCTION OVERWRITE fn::error_mapping_update(
     $params: object
@@ -64,4 +64,5 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_update(
 
     LET $updated = SELECT * FROM $mapping_id;
     RETURN fn::result_ok($updated[0]);
-} COMMENT "Met Ã  jour la mÃ©thode de correspondance, la prioritÃ© ou le code d'erreur cible";
+} COMMENT "Met à jour la méthode de correspondance, la priorité ou le code d'erreur cible"
+PERMISSIONS FULL;

@@ -65,4 +65,5 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_create(
     };
 
     RETURN fn::result_ok($created);
-} COMMENT "Crée une nouvelle définition d'erreur canonique dans le catalogue";
+} COMMENT "Crée une nouvelle définition d'erreur canonique dans le catalogue"
+PERMISSIONS FULL;

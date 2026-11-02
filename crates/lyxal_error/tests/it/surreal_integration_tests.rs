@@ -257,37 +257,24 @@ fn setup_db() -> SurrealServer {
     };
 
     execute_resources("schemas");
-    execute_resources("migrations");
     execute_resources("functions");
     execute_resources("error_definitions");
-    execute_resources("seeds");
 
     db
 }
 
 #[test]
-fn test_surreal_bootstrap_and_migration_idempotence() {
+fn test_surreal_bootstrap_idempotence() {
     let db = setup_db();
 
     // Verify error definitions table has the canon codes
     let defs_val = db.query_val(
-        "SELECT VALUE code FROM error_definition WHERE code IN ['ERROR_PARAM_REQUIRED', 'ERROR_DEFINITION_NOT_FOUND', 'CORE_ERROR_DEFINITION_NOT_FOUND'];"
+        "SELECT VALUE code FROM error_definition WHERE code IN ['ERROR_PARAM_REQUIRED', 'ERROR_DEFINITION_NOT_FOUND', 'CORE_INVALID_ARGUMENT'];"
     );
     let defs: Vec<String> = serde_json::from_value(defs_val).unwrap();
     assert_eq!(defs.len(), 3, "Expected canonical error definitions");
 
-    // Reapply migration multiple times to verify strict idempotence
-    let migration_path =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("migrations/0001_initial_schema.surql");
-    let migration_surql = std::fs::read_to_string(migration_path).unwrap();
-
-    let mig_res1 = db.query_val(&migration_surql);
-    assert_eq!(mig_res1["status"], "APPLIED");
-
-    let mig_res2 = db.query_val(&migration_surql);
-    assert_eq!(mig_res2["status"], "APPLIED");
-
-    // Verify replaying error_definitions.surql and seeds/error_mappings.surql doesn't fail or duplicate
+    // Verify replaying the error definitions doesn't fail or duplicate
     let err_defs_path =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("error/error_definitions.surql");
     let err_defs_surql = std::fs::read_to_string(err_defs_path).unwrap();
@@ -297,23 +284,16 @@ fn test_surreal_bootstrap_and_migration_idempotence() {
     let core_defs_surql = std::fs::read_to_string(core_defs_path).unwrap();
     db.execute_raw(&core_defs_surql);
 
-    let seeds_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("seeds/error_mappings.surql");
-    let seeds_surql = std::fs::read_to_string(seeds_path).unwrap();
-    db.execute_raw(&seeds_surql);
-
-    // Verify count of error_definition is exactly 9 (6 lyxal_error + 3 lyxal_core, no duplicates!)
+    // Verify count of error_definition is exactly 8 (5 lyxal_error + 3 lyxal_core, no duplicates!)
     let count_val = db.query_val("SELECT count() FROM error_definition GROUP ALL;");
     assert_eq!(
-        count_val[0]["count"], 9,
-        "Expected exactly 9 definitions without duplicate"
+        count_val[0]["count"], 8,
+        "Expected exactly 8 definitions without duplicate"
     );
 
-    // Verify count of error_external_mapping is exactly 2 (no duplicates!)
+    // No external mapping is installed by default (no demonstration seeds)
     let map_count_val = db.query_val("SELECT count() FROM error_external_mapping GROUP ALL;");
-    assert_eq!(
-        map_count_val[0]["count"], 2,
-        "Expected exactly 2 mappings without duplicate"
-    );
+    assert_eq!(map_count_val[0]["count"], 0, "Expected no default mapping");
 }
 
 #[test]

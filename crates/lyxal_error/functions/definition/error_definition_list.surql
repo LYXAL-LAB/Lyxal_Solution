@@ -49,4 +49,5 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_list(
                  START $start;
 
     RETURN fn::result_ok($list);
-} COMMENT "Liste et filtre les définitions d'erreurs du catalogue canonique au format universel";
+} COMMENT "Liste et filtre les définitions d'erreurs du catalogue canonique au format universel"
+PERMISSIONS FULL;
