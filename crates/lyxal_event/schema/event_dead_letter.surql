@@ -4,7 +4,10 @@
 --              ou soumises à une erreur fatale/poison.
 -- ============================================================================
 
-DEFINE TABLE OVERWRITE event_dead_letter SCHEMAFULL
+DEFINE TABLE OVERWRITE event_dead_letter
+    TYPE NORMAL
+    SCHEMAFULL
+    PERMISSIONS NONE
     COMMENT "Table de rétention et d'audit pour les livraisons en échec définitif.";
 
 DEFINE FIELD OVERWRITE delivery ON TABLE event_dead_letter TYPE record<event_delivery>

@@ -22,4 +22,5 @@ DEFINE FUNCTION OVERWRITE fn::event_purge_garbage(
       AND fanned_out_at < $cutoff;
 
     RETURN fn::result_ok(true);
-} COMMENT "Purge les événements et livraisons archivés selon la politique de rétention";
+} COMMENT "Purge les événements et livraisons archivés selon la politique de rétention"
+PERMISSIONS FULL;

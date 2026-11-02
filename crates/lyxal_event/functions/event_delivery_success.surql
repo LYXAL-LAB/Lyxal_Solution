@@ -23,4 +23,5 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_success(
     )[0];
 
     RETURN fn::result_ok($updated != NONE);
-} COMMENT "Acquitte avec succès une livraison d'événement et libère son bail";
+} COMMENT "Acquitte avec succès une livraison d'événement et libère son bail"
+PERMISSIONS FULL;

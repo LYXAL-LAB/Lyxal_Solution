@@ -136,5 +136,6 @@ DEFINE FUNCTION OVERWRITE fn::event_flush_batch(
         dead_letter_count: array::len($dead_letter_ids),
         dropped_count: array::len($dropped_ids)
     });
-} COMMENT "Applique les statuts terminaux et avance le curseur sous invariant contigu et garde de fencing.";
+} COMMENT "Applique les statuts terminaux et avance le curseur sous invariant contigu et garde de fencing."
+PERMISSIONS FULL;
 

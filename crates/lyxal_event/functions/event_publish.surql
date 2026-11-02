@@ -50,4 +50,5 @@ DEFINE FUNCTION OVERWRITE fn::event_publish(
     };
 
     RETURN fn::result_ok($created);
-} COMMENT "Publie un événement dans l'outbox et déclenche le fan-out";
+} COMMENT "Publie un événement dans l'outbox et déclenche le fan-out"
+PERMISSIONS FULL;

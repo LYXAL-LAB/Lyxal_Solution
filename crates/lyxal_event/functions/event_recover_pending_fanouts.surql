@@ -31,4 +31,5 @@ DEFINE FUNCTION OVERWRITE fn::event_recover_pending_fanouts(
     RETURN fn::result_ok({
         recovered_count: array::len($pending_events)
     });
-} COMMENT "Reprend de manière idempotente les fan-outs d'événements outbox restés en statut pending";
+} COMMENT "Reprend de manière idempotente les fan-outs d'événements outbox restés en statut pending"
+PERMISSIONS FULL;

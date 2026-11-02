@@ -3,7 +3,10 @@
 -- Description: Table de coordination distribuée du bail de streaming outbox (Leadership & Fencing).
 -- ============================================================================
 
-DEFINE TABLE OVERWRITE event_stream_lease SCHEMAFULL
+DEFINE TABLE OVERWRITE event_stream_lease
+    TYPE NORMAL
+    SCHEMAFULL
+    PERMISSIONS NONE
     COMMENT "Table de coordination distribuée du bail de streaming outbox (Leadership & Fencing).";
 
 DEFINE FIELD OVERWRITE generation ON TABLE event_stream_lease TYPE int

@@ -3,7 +3,10 @@
 -- Description: Déclaration des abonnements et des modules consommateurs.
 -- ============================================================================
 
-DEFINE TABLE OVERWRITE event_subscription SCHEMAFULL
+DEFINE TABLE OVERWRITE event_subscription
+    TYPE NORMAL
+    SCHEMAFULL
+    PERMISSIONS NONE
     COMMENT "Registre des abonnements des modules aux types d'événements.";
 
 DEFINE FIELD OVERWRITE name ON TABLE event_subscription TYPE string

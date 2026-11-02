@@ -88,4 +88,5 @@ DEFINE FUNCTION OVERWRITE fn::event_lease_acquire(
         owner_node_id: $lease.owner_node_id,
         expires_at: $lease.expires_at
     });
-} COMMENT "Tente d'acquérir le bail exclusif de streaming outbox avec incrément de génération.";
+} COMMENT "Tente d'acquérir le bail exclusif de streaming outbox avec incrément de génération."
+PERMISSIONS FULL;

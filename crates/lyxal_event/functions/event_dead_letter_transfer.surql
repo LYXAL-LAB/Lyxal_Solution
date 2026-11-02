@@ -81,5 +81,6 @@ DEFINE FUNCTION OVERWRITE fn::event_dead_letter_transfer(
         dead_lettered: true,
         dlq_id: <string> $dlq_id
     });
-} COMMENT "Transfère une livraison en dead-letter de façon atomique et strictement idempotente.";
+} COMMENT "Transfère une livraison en dead-letter de façon atomique et strictement idempotente."
+PERMISSIONS FULL;
 

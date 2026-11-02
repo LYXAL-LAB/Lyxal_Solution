@@ -36,5 +36,6 @@ DEFINE FUNCTION OVERWRITE fn::event_progress_get(
         exists: true,
         updated_at: $prog.updated_at
     });
-} COMMENT "Lit l'état durable de la progression et du curseur pour un abonnement.";
+} COMMENT "Lit l'état durable de la progression et du curseur pour un abonnement."
+PERMISSIONS FULL;
 

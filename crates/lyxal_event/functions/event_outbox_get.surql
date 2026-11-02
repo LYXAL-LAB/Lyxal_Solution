@@ -16,5 +16,6 @@ DEFINE FUNCTION OVERWRITE fn::event_outbox_get(
     LET $event = (SELECT * FROM ONLY $id);
 
     RETURN fn::result_ok($event);
-} COMMENT "Récupère un événement outbox par son identifiant";
+} COMMENT "Récupère un événement outbox par son identifiant"
+PERMISSIONS FULL;
 

@@ -57,4 +57,5 @@ DEFINE FUNCTION OVERWRITE fn::event_claim_batch(
     );
 
     RETURN fn::result_ok($claimed);
-} COMMENT "Réclame atomiquement un lot de livraisons d'événements et applique un bail exclusif";
+} COMMENT "Réclame atomiquement un lot de livraisons d'événements et applique un bail exclusif"
+PERMISSIONS FULL;
