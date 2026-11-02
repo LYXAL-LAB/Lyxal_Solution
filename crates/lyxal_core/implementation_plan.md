@@ -103,6 +103,7 @@ Même principe : un résultat ou une valeur ; `THROW` uniquement pour un argumen
 | `sanitize_iban`, `sanitize_bic` | `sanitize_alphanumeric_upper` (nouvelle fonction, code identique aux deux) |
 | `sanitize_remove_non_printable` | `sanitize_remove_control_chars` avec `$preserve_layout = true` |
 | `sanitize_keep_keys` | `sanitize_remove_unknown_keys` (keep_keys n'en était qu'un raccourci) |
+| `sanitize_markdown_html` | `sanitize_strip_html` (markdown_html n'en était qu'un raccourci) |
 
 Raison : une responsabilité = un endroit (`.agents/AGENTS.md` §5.1). Aucun appelant.
 
