@@ -598,6 +598,40 @@ Une nouvelle fonction ne doit être ajoutée au Core que si :
 4. son emplacement (`validation`, `sanitize`, `security` ou `utils`) est clairement identifié ;
 5. son ajout a été explicitement validé par le CTO.
 
+---
+
+## 5.7.8. Entrées des modules : validation, nettoyage et contrôle par `lyxal_core` (obligatoire)
+
+Toute fonction d'un module qui valide, nettoie ou contrôle (sécurité) les données reçues le fait **exclusivement** avec `lyxal_core` :
+
+* **une valeur isolée** : la primitive correspondante (`fn::validation_*`, `fn::sanitize_*`, `fn::security_*`) ;
+* **plusieurs champs d'un objet** ou une suite d'étapes : le **moteur unique**, c'est-à-dire `fn::validation_object_execute`, `fn::sanitize_object_execute` ou `fn::security_object_execute` (et leurs variantes `*_pipeline_execute` pour une valeur), avec les règles des catalogues `fn::<domaine>_step_catalog()`.
+
+Il est interdit dans un module :
+
+* de réécrire une vérification ou une normalisation déjà couverte par le Core (format d'e-mail, longueur, bornes, UUID, trim, casse…), par une expression régulière ou une condition locale ;
+* d'écrire son propre exécuteur de pipeline, de schéma d'objet, de rapport d'erreurs par champ, d'optimiseur, de traces ou de mesures : ces mécaniques existent une seule fois, dans `fn::utils_engine_*` ;
+* de lever un `THROW` pour une donnée invalide : le module lit le rapport du Core (`valid`, `by_field`) et renvoie **son** erreur via `fn::error_result("<MODULE>_...", ...)`.
+
+Une règle qui dépend d'une table, d'un état ou d'un workflow (ex. créneau Booking disponible) reste dans le module (§5.7.5) ; elle s'exécute **après** la validation par le Core. Une règle générique absente des catalogues est un besoin d'extension du Core (§5.7.7), signalé au CTO, jamais contourné localement.
+
+```surql
+DEFINE FUNCTION OVERWRITE fn::booking_create($params: object) {
+    LET $language = $params.language ?? "fr";
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            customer_email: { pipeline: [{ rule: "email", options: { max_length: 254 } }], required: true },
+            starts_at: { pipeline: [{ rule: "future_datetime", options: { allow_equal: false } }], required: true }
+        },
+        unknown_keys: "strip"
+    }, 20);
+    IF !$report.valid { RETURN fn::error_result("BOOKING_INVALID_INPUT", $language, { fields: $report.by_field }); };
+    LET $input = fn::sanitize_object_execute($report.value, { fields: { customer_email: { pipeline: [{ rule: "lowercase" }] } } }, 20);
+    -- règles métier (disponibilité du créneau…) puis écriture
+    ...
+};
+```
+
 > **Règle d'or : `lyxal_core` fournit les briques ; les modules fournissent le métier.**
 
 ---

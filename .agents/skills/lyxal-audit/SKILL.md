@@ -25,7 +25,7 @@ Activer ce Skill dès que l'utilisateur demande :
 | Niveau | Définition | Exemples |
 | :--- | :--- | :--- |
 | **P0 — Bloquant Critique** | Violation directe d'une règle d'inviolabilité, de sécurité, de cryptographie, de contrat d'API ou d'intégrité des données. Interdit toute validation. | Usage de `fn::result_error`, import direct d'une crate crypto (`sha2`, `blake3`, `argon2`, `hmac`, `aes-gcm`, `hkdf`) dans un module métier, `rand::thread_rng()`, `panic!` dans le transport, `raw_query()` public ou métier, masquage silencieux d'erreur (`unwrap_or_default` / `None` sur erreur DB), absence de `PERMISSIONS` ou faille d'isolation `tenant_id`, couplage direct entre deux modules métiers. |
-| **P1 — Majeur** | Écart structurel, contractuel ou de compatibilité dégradant la maintenabilité, l'exécution runtime, l'idempotence ou la compatibilité SurrealDB 3.3.4. | Divergence de champ entre DTO Rust `*Params` et `$params.<champ>` SurrealQL, construction SurrealQL dépréciée/incompatible 3.3.4 (`type::thing(`, `type::is::`), signature SurrealQL métier sans `$params: object` unique, fonction > 300 lignes, `manifest.toml` désynchronisé des fichiers réels sur disque, seed `CREATE` non idempotent ou destructif, tuple anonyme dans un contrat Rust public, worker avec `tokio::spawn` sauvage hors `LyxalWorker` / `CancellationToken`, handler `lyxal_event` non idempotent. |
+| **P1 — Majeur** | Écart structurel, contractuel ou de compatibilité dégradant la maintenabilité, l'exécution runtime, l'idempotence ou la compatibilité SurrealDB 3.3.4. | Divergence de champ entre DTO Rust `*Params` et `$params.<champ>` SurrealQL, construction SurrealQL dépréciée/incompatible 3.3.4 (`type::thing(`, `type::is::`), signature SurrealQL métier sans `$params: object` unique, fonction > 300 lignes, `manifest.toml` désynchronisé des fichiers réels sur disque, seed `CREATE` non idempotent ou destructif, tuple anonyme dans un contrat Rust public, worker avec `tokio::spawn` sauvage hors `LyxalWorker` / `CancellationToken`, handler `lyxal_event` non idempotent, validation / nettoyage / contrôle des entrées réécrits localement au lieu de `lyxal_core` (`AGENTS.md` §5.7.8). |
 | **P2 — Mineur / Qualité** | Manquement documentaire ou cosmétique sans impact fonctionnel immédiat. | Absence de `COMMENT "..."` en SurrealQL ou `///` sur un type Rust public, nommage d'index non standardisé, couverture de cas limites incomplète dans les tests. |
 
 ---
@@ -78,6 +78,14 @@ Inspecter les fichiers `.surql` du module pour contrôler :
    - Idempotence des seeds au rejeu (protection `IF !record::exists(...) THEN { CREATE ... } END;` ou contrôle préalable d'existence) ;
    - Préfixe strict `<MODULE>_*` sur tous les codes d'erreurs ;
    - Vérification que chaque code passé à `fn::error_result("<CODE>", ...)` dans `functions/` possède bien sa définition dans `error/` ou `seeds/error_definitions.surql`.
+6. **Entrées traitées par `lyxal_core`** ([`AGENTS.md` §5.7.8](../../AGENTS.md)) — hors `crates/lyxal_core` lui-même :
+   - Pour chaque fonction publique, relever comment `$params` est validé, nettoyé et contrôlé : primitives `fn::validation_*` / `fn::sanitize_*` / `fn::security_*`, ou moteur `fn::*_object_execute` / `fn::*_pipeline_execute`.
+   - Signaler en **P1** :
+     - une vérification ou normalisation générique écrite localement (`string::matches` sur un e-mail, une URL ou un UUID, test de longueur ou de bornes, `string::trim` / `string::lowercase` de nettoyage) alors qu'une règle du catalogue la couvre ;
+     - un exécuteur local de pipeline, de schéma d'objet, de rapport par champ, d'optimiseur, de traces ou de mesures ;
+     - un `THROW` pour une donnée invalide au lieu d'un `fn::error_result("<MODULE>_...", ...)` construit à partir du rapport du Core.
+   - Ne pas signaler une règle qui dépend d'une table, d'un état ou d'un workflow du module (§5.7.5).
+   - Pour lister les règles disponibles : `fn::validation_step_catalog()`, `fn::sanitize_step_catalog()`, `fn::security_step_catalog()` (contrat : `crates/lyxal_core/Readme.md`).
 
 ### Contrôle 4 — Vérification Croisée DTO Rust $\leftrightarrow$ SurrealQL (`*Params` vs `$params`) [OBLIGATOIRE]
 Pour **chaque** fonction SurrealQL prenant `$params: object` et possédant une structure Rust d'entrée (`*Params`) :
