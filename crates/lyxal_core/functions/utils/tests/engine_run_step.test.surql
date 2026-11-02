@@ -22,6 +22,9 @@ RETURN fn::utils_engine_run(fn::utils_engine_state(" x ", "siret", { type: "pro"
 -- test: one_of : première branche sans erreur
 RETURN fn::utils_engine_run(fn::utils_engine_state("abc", "", NONE), fn::utils_engine_pipeline([{ rule: "one_of", options: { pipelines: [[{ rule: "min", value: 5 }], [{ rule: "min", value: 2 }]] } }], [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10), |$s, $step| IF $step.rule = "trim" { object::extend($s, { value: string::trim($s.value) }) } ELSE IF string::len($s.value) < $step.value { fn::utils_engine_issue($s, "min", "CORE_VALIDATION_TOO_SHORT", { min: $step.value }) } ELSE { $s }).issues == [];
 
+-- test: one_of : branches suivantes non exécutées
+RETURN fn::utils_engine_run(fn::utils_engine_state("abc", "", NONE), fn::utils_engine_pipeline([{ rule: "one_of", options: { pipelines: [[], [{ rule: "each", options: { pipeline: [] } }]] } }], [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10), |$s, $step| IF $step.rule = "trim" { object::extend($s, { value: string::trim($s.value) }) } ELSE IF string::len($s.value) < $step.value { fn::utils_engine_issue($s, "min", "CORE_VALIDATION_TOO_SHORT", { min: $step.value }) } ELSE { $s }).issues == [];
+
 -- test: one_of : aucune branche
 RETURN fn::utils_engine_run(fn::utils_engine_state("a", "", NONE), fn::utils_engine_pipeline([{ rule: "one_of", options: { pipelines: [[{ rule: "min", value: 5 }], [{ rule: "min", value: 2 }]] } }], [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10), |$s, $step| IF $step.rule = "trim" { object::extend($s, { value: string::trim($s.value) }) } ELSE IF string::len($s.value) < $step.value { fn::utils_engine_issue($s, "min", "CORE_VALIDATION_TOO_SHORT", { min: $step.value }) } ELSE { $s }).issues[0].code == "CORE_VALIDATION_COMBINATION";
 

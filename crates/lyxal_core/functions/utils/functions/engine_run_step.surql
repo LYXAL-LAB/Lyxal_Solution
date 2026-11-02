@@ -7,9 +7,9 @@
 -- Exécute une étape : les règles du moteur sont traitées ici (each : chaque
 -- élément d'un tableau ; object : schéma imbriqué ; when : branche selon la
 -- valeur ou le champ voisin options.field, comparé à options.equals ou
--- options.in ; one_of : première branche sans erreur, sinon
--- CORE_VALIDATION_COMBINATION) ; toute autre règle est confiée à la closure
--- $apply du domaine.
+-- options.in ; one_of : branches essayées dans l'ordre, arrêt à la première
+-- sans erreur, sinon CORE_VALIDATION_COMBINATION) ; toute autre règle est
+-- confiée à la closure $apply du domaine.
 --
 -- Paramètres
 --   $state : object
@@ -50,17 +50,18 @@ DEFINE FUNCTION OVERWRITE fn::utils_engine_run_step(
         RETURN fn::utils_engine_run($state, IF $matched { $step.options.then } ELSE { $step.options.else }, $apply);
     };
     IF $step.rule = "one_of" {
-        LET $attempts = array::map($step.options.pipelines, |$pipeline|
-            fn::utils_engine_run(object::extend($state, { issues: [], warnings: [], stop: false }), $pipeline, $apply)
-        );
-        LET $winner = array::find($attempts, |$attempt| array::len($attempt.issues) = 0);
-        RETURN IF $winner IS NONE {
-            fn::utils_engine_issue($state, "one_of", "CORE_VALIDATION_COMBINATION", { scope: "group", attempts: array::len($attempts) })
+        LET $outcome = array::fold($step.options.pipelines, { winner: NONE, attempts: 0 }, |$acc, $pipeline| {
+            IF $acc.winner IS NOT NONE { RETURN $acc; };
+            LET $attempt = fn::utils_engine_run(object::extend($state, { issues: [], warnings: [], stop: false }), $pipeline, $apply);
+            RETURN { winner: IF array::len($attempt.issues) = 0 { $attempt } ELSE { NONE }, attempts: $acc.attempts + 1 };
+        });
+        RETURN IF $outcome.winner IS NONE {
+            fn::utils_engine_issue($state, "one_of", "CORE_VALIDATION_COMBINATION", { scope: "group", attempts: $outcome.attempts })
         } ELSE {
-            object::extend($winner, { issues: $state.issues, warnings: array::concat($state.warnings, $winner.warnings) })
+            object::extend($outcome.winner, { issues: $state.issues, warnings: array::concat($state.warnings, $outcome.winner.warnings) })
         };
     };
     RETURN $apply($state, $step);
 }
-COMMENT "Exécute une étape : les règles du moteur sont traitées ici (each : chaque élément d'un tableau ; object : schéma imbriqué ; when : branche selon la valeur ou le champ voisin options.field, comparé à options.equals ou options.in ; one_of : première branche sans erreur, sinon CORE_VALIDATION_COMBINATION) ; toute autre règle est confiée à la closure $apply du domaine."
+COMMENT "Exécute une étape : les règles du moteur sont traitées ici (each : chaque élément d'un tableau ; object : schéma imbriqué ; when : branche selon la valeur ou le champ voisin options.field, comparé à options.equals ou options.in ; one_of : branches essayées dans l'ordre, arrêt à la première sans erreur, sinon CORE_VALIDATION_COMBINATION) ; toute autre règle est confiée à la closure $apply du domaine."
 PERMISSIONS FULL;
