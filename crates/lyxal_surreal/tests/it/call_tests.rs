@@ -272,27 +272,73 @@ async fn test_call_fn_sql_injection_rejection() {
     }
 }
 
-#[cfg(feature = "axum")]
-#[test]
-fn test_axum_http_status_mapping() {
-    use axum::http::StatusCode;
-    use axum::response::IntoResponse;
+/// Exécute les fichiers d'une ressource d'un manifeste.
+async fn install_resource(db: &Surreal<Any>, module_dir: &std::path::Path, key: &str) {
+    let manifest: toml::Value = toml::from_str(
+        &std::fs::read_to_string(module_dir.join("manifest.toml")).expect("manifest"),
+    )
+    .expect("manifest TOML");
+    let files = manifest["resources"]
+        .get(key)
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    for file in files {
+        let path = module_dir.join(file.as_str().expect("chemin"));
+        let surql = std::fs::read_to_string(&path).expect("fichier");
+        db.query(surql)
+            .await
+            .and_then(|r| r.check())
+            .unwrap_or_else(|e| panic!("{} : {e}", path.display()));
+    }
+}
 
-    // 1. UnsupportedEndpoint -> 400
-    let err = LyxalSurrealError::UnsupportedEndpoint {
-        endpoint: "http://bad.endpoint".into(),
-    };
-    assert_eq!(err.into_response().status(), StatusCode::BAD_REQUEST);
+/// Les définitions `SURREAL_*` s'installent dans la table `error_definition` de `lyxal_error`,
+/// sans doublon au rejeu, et se résolvent par `fn::error_resolve`.
+#[tokio::test]
+async fn test_surreal_error_definitions_install_and_resolve() {
+    let db = create_surreal_client(opts("mem://", None, "test_definitions"))
+        .await
+        .expect("Connect mem://");
+    let crate_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let error_dir = crate_dir.join("../lyxal_error");
+    install_resource(&db, &error_dir, "schemas").await;
+    install_resource(&db, &error_dir, "functions").await;
+    install_resource(&db, &crate_dir, "error_definitions").await;
+    install_resource(&db, &crate_dir, "error_definitions").await;
 
-    // 2. MissingCredentials -> 401
-    let err = LyxalSurrealError::MissingCredentials {
-        endpoint: "ws://remote.endpoint".into(),
-    };
-    assert_eq!(err.into_response().status(), StatusCode::UNAUTHORIZED);
+    let mut res = db
+        .query("RETURN (SELECT VALUE code FROM error_definition WHERE module = 'surreal' ORDER BY code);")
+        .await
+        .expect("requête");
+    let codes: Vec<String> = res.take(0).expect("codes");
+    assert_eq!(
+        codes,
+        [
+            "SURREAL_CONNECT_TIMEOUT",
+            "SURREAL_DATABASE_ERROR",
+            "SURREAL_INVALID_FUNCTION_NAME",
+            "SURREAL_MISSING_CREDENTIALS",
+            "SURREAL_UNSUPPORTED_ENDPOINT",
+        ]
+    );
 
-    // 3. InvalidFunctionName -> 400
-    let err = LyxalSurrealError::InvalidFunctionName { function: "bad;" };
-    assert_eq!(err.into_response().status(), StatusCode::BAD_REQUEST);
+    let mut res = db
+        .query("RETURN fn::error_resolve('SURREAL_CONNECT_TIMEOUT', 'fr', {});")
+        .await
+        .expect("résolution");
+    let resolved: Option<serde_json::Value> = res
+        .take::<Option<surrealdb::types::Value>>(0)
+        .expect("lecture")
+        .map(|v| v.into_json_value());
+    let resolved = resolved.expect("erreur résolue");
+    assert_eq!(resolved["code"], "SURREAL_CONNECT_TIMEOUT");
+    assert_eq!(resolved["http_status"], 503);
+    assert_eq!(resolved["retryable"], true);
+    assert_eq!(
+        resolved["label"],
+        "Délai de connexion à la base de données dépassé"
+    );
 }
 
 /// Connexion distante réelle (`ws://` + authentification Root) et appel `call_fn` de bout en bout.

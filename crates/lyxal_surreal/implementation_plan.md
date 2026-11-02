@@ -79,7 +79,7 @@ définitions d'erreurs suivent le format standard `IF !record::exists(...) THEN 
 | 0 ✅ | **Définitions `CORE_*` dans `lyxal_core`** (consigne CTO) : `crates/lyxal_error/error/core/core_definitions.surql` devient `crates/lyxal_core/error/core_definitions.surql`, déclaré dans le manifeste de `lyxal_core` ; les tests installent les manifestes phase par phase (schémas, puis fonctions, puis définitions). |
 | 1 ✅ | **Nettoyage** : suppression de `LYXAL_SURREAL_IMPLEMENTATION_REPORT.md` ; README à l'état actuel (S-05, S-06). |
 | 2 ✅ | **Secret et fabrique, avec l'hôte** : `RootCredentials` (Q1) ; `SurrealConnectOptions` et `ConnectTimeout` ; `lyxal-server` passe par la fabrique, `DatabaseConfig::password` protégé (Q2) ; tests (S-01, S-02). |
-| 3 | **Codes d'erreur** : `SURREAL_*`, catégories et statuts (Q4), définitions master data et, selon Q3, `manifest.toml` ; tests `axum` complets (S-03, S-04, S-07). |
+| 3 ✅ | **Codes d'erreur** : `SURREAL_*`, catégories et statuts (Q4), définitions master data et, selon Q3, `manifest.toml` ; tests `axum` complets (S-03, S-04, S-07). |
 | 4 | **Clôture** : audit de contrôle, suppression de `AUDIT.md` et de ce plan. |
 
 Chaque lot fait l'objet d'une PR, fusionnée quand la CI est verte.

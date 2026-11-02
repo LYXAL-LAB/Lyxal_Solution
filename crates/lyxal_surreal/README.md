@@ -2,7 +2,7 @@
 
 Fondation technique (`.agents/AGENTS.md` §5.2, §6) : seul crate qui encapsule le client
 `Surreal<Any>` et l'appel des fonctions SurrealQL. Il dépend de `lyxal_error` et de `lyxal_crypto` (même niveau) et ne contient
-aucune logique métier ni SurrealQL.
+aucune logique métier ni fonction SurrealQL ; il ne porte que les définitions de ses codes d'erreur.
 
 Version `0.1.0` (régime pré-production). SDK `surrealdb` 3.3, serveur cible SurrealDB 3.3.4.
 
@@ -66,17 +66,26 @@ Le crate réexporte `LyxalCallError`, `LyxalError`, `LyxalResult` et les types d
 
 ## 3. Erreurs : `LyxalSurrealError`
 
-| Variante | Cause |
-| :- | :- |
-| `Call(LyxalCallError)` | erreur métier ou contrat non respecté (`lyxal_error`) |
-| `Database(surrealdb::Error)` | erreur du SDK : réseau, requête, authentification |
-| `InvalidFunctionName { function }` | nom de fonction refusé |
-| `UnsupportedEndpoint { endpoint }` | schéma d'URL non autorisé |
-| `MissingCredentials { endpoint }` | identifiants Root absents en distant |
-| `ConnectTimeout { endpoint }` | délai de connexion dépassé |
+| Variante | Cause | Code | HTTP |
+| :- | :- | :- | :- |
+| `Call(LyxalCallError)` | erreur métier ou contrat non respecté | code de `lyxal_error` | celui du code |
+| `Database(surrealdb::Error)` | erreur du SDK : réseau, requête, authentification | `SURREAL_DATABASE_ERROR` | 500 |
+| `InvalidFunctionName { function }` | nom de fonction refusé | `SURREAL_INVALID_FUNCTION_NAME` | 500 |
+| `UnsupportedEndpoint { endpoint }` | schéma d'URL non autorisé | `SURREAL_UNSUPPORTED_ENDPOINT` | 500 |
+| `MissingCredentials { endpoint }` | identifiants Root absents en distant | `SURREAL_MISSING_CREDENTIALS` | 500 |
+| `ConnectTimeout { endpoint }` | délai de connexion dépassé | `SURREAL_CONNECT_TIMEOUT` | 503, réessayable |
 
-Avec la fonctionnalité `axum`, `LyxalSurrealError` implémente `IntoResponse` : `Call` est relayé
-à `lyxal_error`, les autres variantes répondent `{ ok: false, data: null, error: {…} }`.
+Les erreurs de transport sont des erreurs du serveur (catégorie `internal`, ou `timeout` pour le
+délai). `transport_info()` donne leur code, leur catégorie, leur statut et leurs libellés.
+Avec la fonctionnalité `axum`, `LyxalSurrealError` implémente `IntoResponse` :
+
+* `Call` est relayé à `lyxal_error` ;
+* les autres variantes répondent `{ ok: false, data: null, error: {…} }`, sans l'adresse de la
+  base ni le détail SurrealDB, qui restent dans les journaux du serveur.
+
+Les définitions de ces codes (traductions fr/en) sont dans `error/error_definitions.surql`,
+déclaré dans `manifest.toml` (dépendance `lyxal_error`, dont elles alimentent la table
+`error_definition`). Un test vérifie que chaque code émis y figure avec les mêmes attributs.
 
 ## 4. Vérification
 

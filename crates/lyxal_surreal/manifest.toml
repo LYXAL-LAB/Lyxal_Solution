@@ -1,0 +1,16 @@
+manifest_version = 1
+id = "lyxal_surreal"
+name = "Lyxal Surreal Transport"
+version = "0.1.0"
+description = "Transport SurrealDB de Lyxal OS : connexion Surreal<Any> et appel des fonctions SurrealQL"
+capabilities = ["database"]
+
+[runtime]
+min_version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_error"
+version = ">=0.1.0"
+
+[resources]
+error_definitions = ["error/error_definitions.surql"]
