@@ -1,7 +1,7 @@
 # Plan de reprise — `lyxal_error`
 
 > Document de reprise (régime pré-production, `.agents/AGENTS.md` §0), supprimé une fois exécuté.
-> **Statut : ⏳ soumis au CTO.** Aucune modification de code avant validation.
+> **Statut : ✅ validé par le CTO** (décisions Q1 à Q8 acceptées telles que proposées).
 > Constats détaillés : `AUDIT.md` (identifiants E-01 à E-20).
 
 ## 1. Objectif
@@ -21,7 +21,7 @@ Faire sortir `lyxal_error` à l'état cible, comme `lyxal_core`, sans rien garde
 | Q3 | **`fn::error_occurrence_create`** : raccourci de `fn::error_log` (E-12). | **Supprimer** et garder `fn::error_log`, le nom de service utilisé par les modules. |
 | Q4 | **Mode de correspondance `regex`** : prévu par le schéma, non implémenté (E-03). SurrealQL 3.3.4 ne sait pas vérifier qu'un motif est bien formé sans lever : `fn::validation_regex` teste une valeur contre un motif, elle ne valide pas le motif, et un motif invalide (`[`) lève une erreur brute du moteur. | **Retirer `regex` des modes autorisés** (il reste `exact`, `prefix`, `contains`, `http_status`). Un motif invalide ne pourra alors jamais faire échouer une résolution. Si un besoin réel de `regex` apparaît, il faudra une validation de syntaxe qui n'existe pas dans le Core : ce serait une demande d'extension (§5.7.7), probablement côté Rust, à soumettre séparément. |
 | Q5 | **Préfixe des codes** (E-07). | Rendre `module` **obligatoire** et exiger que `code` commence par `UPPER(module)_`, sinon `ERROR_DEFINITION_CODE_PREFIX_MISMATCH`. Les codes `CORE_*` existants ont le module `core` et restent valides. |
-| Q6 | **`LyxalCallError::BusinessCode`** : répond toujours 401 « Authentication failed » (E-09). Il est utilisé par `lyxal_pipeline_ingestion` et par `lyxal_booking/engine`, hors workspace. | **Supprimer la variante.** Le code Rust qui a besoin d'une erreur métier construit un `LyxalError` résolu par SurrealQL, comme les autres. Les deux appelants sont mis à jour dans la même PR : `lyxal_booking` relit sa logique d'authentification en Rust et n'est pas compilé par la CI (je vérifierai sa compilation à la main). |
+| Q6 | **`LyxalCallError::BusinessCode`** : répond toujours 401 « Authentication failed » (E-09). Il est utilisé par `lyxal_pipeline_ingestion` et par `lyxal_booking/engine`, hors workspace. | **Supprimer la variante.** Le code Rust qui a besoin d'une erreur métier construit un `LyxalError` résolu par SurrealQL, comme les autres. `lyxal_pipeline_ingestion` (membre du workspace) est mis à jour dans la même PR. `lyxal_booking/engine` (hors workspace, non compilé par la CI) n'est pas modifié : une note dans `lyxal_booking/implementation_plan.md` signale le changement, qui sera traité lors de la reprise de ce module (décision CTO). |
 | Q7 | **Seeds de démonstration** `seeds/error_mappings.surql` (E-19). | **Supprimer.** Aucun mapping n'est installé par défaut ; chaque module déclare les siens. |
 | Q8 | **Migration vide** `0001_initial_schema.surql` (E-16). | **Supprimer**, comme `lyxal_core` et `lyxal_event` qui n'en ont pas. Les schémas sont appliqués par la phase schéma du runtime. |
 
@@ -100,13 +100,13 @@ Faire sortir `lyxal_error` à l'état cible, comme `lyxal_core`, sans rien garde
 
 ## 6. Lots (une PR par lot, CI verte obligatoire)
 
-Chaque changement de contrat est livré **avec** la mise à jour de tous ses appelants (SurrealQL, DTO Rust, modules dépendants) et de ses tests, dans la même PR (§0.3, point 1). Aucun lot ne laisse le workspace dans un état intermédiaire cassé.
+Chaque changement de contrat est livré **avec** la mise à jour de tous ses appelants du workspace (SurrealQL, DTO Rust, modules dépendants) et de ses tests, dans la même PR (§0.3, point 1). Aucun lot ne laisse le workspace dans un état intermédiaire cassé. Un appelant situé hors du workspace reçoit une note de reprise dans son module et est traité lors de la reprise de ce module (décision CTO).
 
 | Lot | Contenu |
 | :- | :--- |
 | 1 | **Nettoyage sans changement de contrat** : suppression des documents historiques, de la migration vide, des seeds de démonstration et de `CORE_ERROR_DEFINITION_NOT_FOUND` (aucun appelant) ; encodage UTF-8 ; `PERMISSIONS FULL` explicite ; README à l'état actuel ; manifeste. |
 | 2 | **Contrat SurrealQL et DTO Rust, ensemble** : validation par le Core et `ERROR_INVALID_INPUT` ; suppression des alias **et** renommage des DTO correspondants (`matcher`, `definition_code`…) ; suppression de `error_get` **avec** la réécriture de `error_resolve` et `error_log` qui l'appelaient ; suppression de `error_occurrence_create` ; conflits, intégrité, préfixe, retrait de `regex`, `error_log` complet, bornes ; types de résultat ; tests d'intégration et de contrat. |
-| 3 | **`LyxalCallError`** : suppression de `BusinessCode` **avec** la mise à jour de `lyxal_pipeline_ingestion` et de `lyxal_booking/engine` (hors workspace, compilation vérifiée à la main) ; `ERROR_INVALID_FUNCTION_RESPONSE` ; tests. |
+| 3 | **`LyxalCallError`** : suppression de `BusinessCode` **avec** la mise à jour de `lyxal_pipeline_ingestion` (workspace) ; note de reprise dans `lyxal_booking/implementation_plan.md` (hors workspace, traité lors de sa reprise) ; `ERROR_INVALID_FUNCTION_RESPONSE` ; tests. |
 | 4 | **Clôture** : audit de contrôle (`lyxal-audit`, aucun écart P0/P1), suppression de `AUDIT.md` et de ce plan. |
 
 ## 7. Checklist §13 (extraits)
@@ -117,4 +117,4 @@ Chaque changement de contrat est livré **avec** la mise à jour de tous ses app
 * [x] DTO `*Params` et types de résultat définis ; aucun `panic!` ; aucun secret.
 * [x] Codes `ERROR_*` identifiés, master data prévue, aucune erreur silencieuse.
 * [x] Zéro dette : alias, code mort, documents historiques et migration vide supprimés ; version `0.1.0`.
-* [ ] Validation explicite du CTO.
+* [x] Validation explicite du CTO.
