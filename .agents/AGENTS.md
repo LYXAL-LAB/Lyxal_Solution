@@ -626,7 +626,7 @@ DEFINE FUNCTION OVERWRITE fn::booking_create($params: object) {
         unknown_keys: "strip"
     }, 20);
     IF !$report.valid { RETURN fn::error_result("BOOKING_INVALID_INPUT", $language, { fields: $report.by_field }); };
-    LET $input = fn::sanitize_object_execute($report.value, { fields: { customer_email: { pipeline: [{ rule: "lowercase" }] } } }, 20);
+    LET $input = fn::sanitize_object_execute($report.value, { fields: { customer_email: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     -- règles métier (disponibilité du créneau…) puis écriture
     ...
 };
