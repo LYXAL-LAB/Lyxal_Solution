@@ -1,19 +1,30 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/sanitize/functions/strip_html.surql
 -- Fonction : fn::sanitize_strip_html
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Supprime toutes les balises HTML (<…>), en gardant le texte. Nettoyage
+-- lexical par expressions régulières : il ne remplace pas un parseur HTML
+-- anti-XSS.
+--
+-- Paramètres
+--   $value : any — valeur à nettoyer (chaîne, ou NONE)
+--
+-- Contrat sanitize (crates/lyxal_core/Readme.md)
+--   Valeur renvoyée : le texte sans balise
+--   Entrée          : NONE → NONE ; NULL ou mauvais type → THROW CORE_SANITIZE_INVALID_TYPE
+--
+-- Exemple
+--   LET $clean = fn::sanitize_strip_html($params.strip_html);
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_strip_html($value:any,$field:string)->string{
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-
- RETURN string::replace($value,<regex>"<[^>]*>","");
+DEFINE FUNCTION OVERWRITE fn::sanitize_strip_html(
+    $value: any
+) -> option<string> {
+    IF $value IS NONE { RETURN NONE; };
+    IF !type::is_string($value) { THROW "CORE_SANITIZE_INVALID_TYPE"; };
+    RETURN string::replace($value, <regex>"<[^>]*>", "");
 }
-COMMENT "Supprime lexicalement les balises HTML."
+COMMENT "Supprime toutes les balises HTML (<…>), en gardant le texte. Nettoyage lexical par expressions régulières : il ne remplace pas un parseur HTML anti-XSS. NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
 PERMISSIONS FULL;

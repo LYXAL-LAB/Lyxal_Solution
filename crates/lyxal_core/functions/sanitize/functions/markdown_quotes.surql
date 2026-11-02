@@ -1,19 +1,28 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/sanitize/functions/markdown_quotes.surql
 -- Fonction : fn::sanitize_markdown_quotes
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Supprime les marqueurs de citation Markdown (> en début de ligne).
+--
+-- Paramètres
+--   $value : any — valeur à nettoyer (chaîne, ou NONE)
+--
+-- Contrat sanitize (crates/lyxal_core/Readme.md)
+--   Valeur renvoyée : le texte sans marqueur de citation
+--   Entrée          : NONE → NONE ; NULL ou mauvais type → THROW CORE_SANITIZE_INVALID_TYPE
+--
+-- Exemple
+--   LET $clean = fn::sanitize_markdown_quotes($params.markdown_quotes);
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_markdown_quotes($value:any,$field:string)->string{
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-
- RETURN string::replace($value,<regex>"(?m)^\\s*>\\s?","");
+DEFINE FUNCTION OVERWRITE fn::sanitize_markdown_quotes(
+    $value: any
+) -> option<string> {
+    IF $value IS NONE { RETURN NONE; };
+    IF !type::is_string($value) { THROW "CORE_SANITIZE_INVALID_TYPE"; };
+    RETURN string::replace($value, <regex>"(?m)^\\s*>\\s?", "");
 }
-COMMENT "Retire les marqueurs de citation Markdown."
+COMMENT "Supprime les marqueurs de citation Markdown (> en début de ligne). NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
 PERMISSIONS FULL;

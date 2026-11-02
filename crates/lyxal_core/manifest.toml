@@ -47,7 +47,6 @@ functions = [
     "functions/sanitize/functions/html.surql",
     "functions/sanitize/functions/html_entities.surql",
     "functions/sanitize/functions/integer.surql",
-    "functions/sanitize/functions/keep_keys.surql",
     "functions/sanitize/functions/lowercase.surql",
     "functions/sanitize/functions/markdown.surql",
     "functions/sanitize/functions/markdown_code.surql",

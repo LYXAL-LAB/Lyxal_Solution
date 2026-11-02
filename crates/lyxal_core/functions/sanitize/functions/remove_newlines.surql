@@ -27,5 +27,5 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_remove_newlines(
     IF !type::is_string($value) { THROW "CORE_SANITIZE_INVALID_TYPE"; };
     RETURN string::replace($value, <regex>"\\r\\n|\\n|\\r", $replacement);
 }
-COMMENT "Remplace les retours à la ligne (\r\n, \n, \r) par une chaîne de remplacement. NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
+COMMENT "Remplace les retours à la ligne (\\r\\n, \\n, \\r) par une chaîne de remplacement. NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
 PERMISSIONS FULL;

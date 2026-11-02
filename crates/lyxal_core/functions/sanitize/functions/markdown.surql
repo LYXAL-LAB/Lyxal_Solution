@@ -1,26 +1,31 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/sanitize/functions/markdown.surql
 -- Fonction : fn::sanitize_markdown
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Convertit un texte Markdown en texte brut : images, liens, code, titres,
+-- citations, listes, tableaux et balises HTML retirés (texte conservé).
+--
+-- Paramètres
+--   $value : any — valeur à nettoyer (chaîne, ou NONE)
+--
+-- Contrat sanitize (crates/lyxal_core/Readme.md)
+--   Valeur renvoyée : le texte brut
+--   Entrée          : NONE → NONE ; NULL ou mauvais type → THROW CORE_SANITIZE_INVALID_TYPE
+--
+-- Exemple
+--   LET $clean = fn::sanitize_markdown($params.markdown);
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_markdown($value:any,$field:string)->string{
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-
- LET $v=fn::sanitize_markdown_images($value,$field);
- LET $v=fn::sanitize_markdown_links($v,$field);
- LET $v=fn::sanitize_markdown_code($v,$field);
- LET $v=fn::sanitize_markdown_headers($v,$field);
- LET $v=fn::sanitize_markdown_quotes($v,$field);
- LET $v=fn::sanitize_markdown_lists($v,$field);
- LET $v=fn::sanitize_markdown_tables($v,$field);
- RETURN fn::sanitize_markdown_html($v,$field);
+DEFINE FUNCTION OVERWRITE fn::sanitize_markdown(
+    $value: any
+) -> option<string> {
+    IF $value IS NONE { RETURN NONE; };
+    IF !type::is_string($value) { THROW "CORE_SANITIZE_INVALID_TYPE"; };
+    LET $inline = fn::sanitize_markdown_code(fn::sanitize_markdown_links(fn::sanitize_markdown_images($value)));
+    LET $blocks = fn::sanitize_markdown_tables(fn::sanitize_markdown_lists(fn::sanitize_markdown_quotes(fn::sanitize_markdown_headers($inline))));
+    RETURN fn::sanitize_markdown_html($blocks);
 }
-COMMENT "Aplati le Markdown vers du texte brut."
+COMMENT "Convertit un texte Markdown en texte brut : images, liens, code, titres, citations, listes, tableaux et balises HTML retirés (texte conservé). NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
 PERMISSIONS FULL;
