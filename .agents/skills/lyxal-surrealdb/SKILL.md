@@ -90,7 +90,7 @@ Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.3.4
 2. **Fonctions Supprimées ou Inexistantes en 3.3.4** :
    - `array::contains($arr, $val)` est supprimé (`Invalid function/constant path`) $\rightarrow$ utiliser l'opérateur natif **`(($arr) CONTAINS ($val))`** ou **`!(($arr) CONTAINS ($val))`**.
    - `time::from::parts(...)` est supprimé $\rightarrow$ construire une chaîne ISO-8601 et la caster via `<datetime>string::concat(...)`.
-   - `string::pad(...)`, `encoding::hex::*`, `encoding::uri::*`, `bytes::from_int(...)` n'existent pas $\rightarrow$ utiliser les primitives de `lyxal_core` (`fn::utils_to_hex`, `fn::utils_from_hex`, `fn::utils_encode_uri`, `fn::utils_decode_uri`, `fn::utils_number_format`).
+   - `string::pad(...)`, `encoding::hex::*`, `encoding::uri::*`, `bytes::from_int(...)` n'existent pas $\rightarrow$ utiliser les primitives de `lyxal_core` (`fn::utils_to_hex`, `fn::utils_from_hex`, `fn::utils_encode_uri`, `fn::utils_decode_uri`, `fn::utils_string_pad_center`, `fn::utils_number_format`).
    - `type::thing($tb, $id)` $\rightarrow$ remplacer par `type::record($tb, $id)` ou `<record<table>>$id`.
    - `type::is::*` est supprimé/invalide en 3.3.4 $\rightarrow$ remplacer impérativement par `type::is_*` (ex. `type::is_string`, `type::is_record`, `type::is_datetime`, `type::is_object`) ou par l'opérateur direct `$val IS <type>`.
 3. **Sémantique des Tranches (`slice`) et Découpages (`split`) en 3.3.4** :

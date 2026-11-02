@@ -38,7 +38,7 @@ Activer ce Skill dès qu'une mission implique :
 
 #### Règles de contrôle
 1. **[OBLIGATOIRE] Respect de la Hiérarchie des Couches ([`AGENTS.md` §6](../../AGENTS.md))** :
-   - **Couche 0 (Fondation SurrealQL)** : `lyxal_core` (`validation`, `sanitize`, `security`, `utils`) ;
+   - **Couche 0 (Fondation SurrealQL)** : `lyxal_core` (`validations`, `sanitize`, `security`, `utils`) ;
    - **Couche 1 (Fondation Rust)** : `lyxal_error` $\rightarrow$ `lyxal_surreal`, `lyxal_crypto` ;
    - **Couche 2 (Noyau Technique & Moteur)** : `lyxal_event`, `lyxal_runtime`, `lyxal_auth`, `lyxal_notification`, `lyxal_scheduler` ;
    - **Couche 3 (Modules Métiers)** : `lyxal_booking`, `lyxal_catalogue`, `lyxal_pipeline_ingestion`, `lyxal_crm`, `lyxal_documents`, `lyxal_btp`, etc. ;
