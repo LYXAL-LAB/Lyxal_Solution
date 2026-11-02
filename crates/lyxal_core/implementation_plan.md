@@ -64,6 +64,79 @@ Même principe : un résultat ou une valeur ; `THROW` uniquement pour un argumen
 * Les familles `utils_runtime_*` (identifiants, horodatages, informations d'exécution) et `utils_cache_*` sont des primitives génériques déjà uniques : elles restent en place.
 * **Point de contrôle CTO** : avant d'écrire le moteur, le lot 4 commence par une **note de conception** ajoutée à ce plan (inventaire famille par famille, tableau des divergences, comportement retenu pour chacune, API cible). Aucune ligne du moteur n'est écrite avant sa validation.
 
+### 3.1. Note de conception du lot 4 — ⏳ soumise au CTO
+
+#### Inventaire (état après le lot 3)
+
+292 fonctions de mécanique restent à l'ancien contrat : `validations` 131, `sanitize` 72, `security` 79, `utils` 10 (`pipeline_*`).
+
+| Famille | `validations` | `sanitize` | `security` | `utils` | Constat |
+| :--- | ---: | ---: | ---: | ---: | :--- |
+| Pipeline (définition, étapes, exécution, fusion, info, stats) | 17 | 12 | 11 | 10 | même rôle ; `validations` réimplémente ses propres contrôles (`pipeline_length`, `apply_range`…) au lieu d'appeler les validateurs migrés ; codes construits dynamiquement (`<CHAMP>_REQUIRED`, `<CHAMP>_TOO_LONG`…), interdits par le §2.4 |
+| Schéma (objet, champ, imbriqué, conditionnel, union, nullable, compilation, registre, version, manifeste) | 23 | 6 | 6 | — | trois modèles de schéma incompatibles (`unknown_keys_policy`, `default_action`, `definition`) |
+| Cache de schémas | 10 | 2 | 2 | — | doublon de `utils_cache_*`, déjà générique |
+| Benchmark | 10 | 10 | 10 | — | mêmes calculs ; signatures divergentes (`started_at`/`completed_at` ou `wall_duration` ; `success`, `changed` ou `blocked`) |
+| Débogage (traces, sessions, rapports) | 10 | 10 | 10 | — | mêmes calculs ; champ de résultat différent par domaine |
+| Optimiseur (coût, ordre, fusion, dédoublonnage) | 10 | 10 | 10 | — | le réordonnancement change le résultat (ex. `trim` puis `max_length` ≠ l'inverse) |
+| Runtime (requête, réponse, contexte, lot, santé, stats) | 10 | 10 | 10 | — | enveloppes de requête ; `runtime_health` renvoie toujours `healthy: true` |
+| SDK (capacités, version, manifeste, compile, diagnostic, exécution) | 10 | 10 | 10 | — | façades des familles ci-dessus ; `sdk_version` renvoie une fiche figée (« 1.0.0 », numéros de lots) |
+| DSL de règles | 10 | — | — | — | objet décrivant un schéma, converti en schéma compilé (pas de parsing de texte) |
+| Registre de validateurs | 10 | — | — | — | liste de noms modifiable (`add`, `enable`, `remove`) ; SurrealQL ne peut pas appeler une fonction d'après son nom, donc ajouter un nom au registre ne rend aucune règle exécutable |
+| Rapports et résultats | 10 | — | 3 | — | `report_*`, `field_result`, `validation_error`… ; `detect_report`, `redact_report`, `signature_report` |
+| Audit | — | — | 5 | — | chaîne d'empreintes du journal d'audit : fonctions métier de `security`, pas de la mécanique |
+
+#### Contrainte technique décisive (vérifiée en SurrealDB 3.3.4)
+
+SurrealQL ne permet pas d'appeler une fonction à partir de son nom. En revanche, une fonction personnalisée accepte une **closure** en paramètre (type `function`) et l'appelle : `fn::run($v, $steps, |$cur, $step| fn::sanitize_step_apply($cur, $step))` fonctionne. Le moteur générique reçoit donc, de chaque domaine, la closure qui applique une étape.
+
+#### Architecture retenue
+
+* **Moteur** (`utils`, `fn::utils_engine_*`) : construit et contrôle les pipelines, les exécute avec la closure du domaine, gère les schémas d'objets, les rapports, l'optimisation, les traces et les mesures. Il ne connaît aucune règle de domaine.
+* **Chaque domaine** fournit trois fonctions :
+  * `fn::<domaine>_step_catalog()` : la liste fixe de ses règles (nom, options attendues, coût) ;
+  * `fn::<domaine>_step_apply($state, $step)` : le seul aiguillage qui appelle les fonctions de valeurs migrées au lot 3 ;
+  * `fn::<domaine>_pipeline_execute(...)` : le point d'entrée public, qui relie les deux au moteur.
+* **État transporté** : chaque domaine choisit sa forme ; le moteur la transmet telle quelle.
+  * `sanitize` : la valeur.
+  * `validations` : `{ valid, value, errors: [{ field, code, details }] }`. Aucun `THROW` pour une donnée invalide ; les codes sont ceux du catalogue `CORE_VALIDATION_*` (§2.1).
+  * `security` : `{ value, findings, decisions }`.
+
+#### Comportement retenu par famille
+
+| Famille | Comportement retenu | Fonctions cibles |
+| :--- | :--- | :--- |
+| Pipeline | Étape = `{ rule, value, options }`. `utils_engine_pipeline` contrôle les étapes contre le catalogue du domaine et la borne `max_steps` (`CORE_INVALID_ARGUMENT` / `CORE_UNSUPPORTED_OPTION`). `utils_engine_run` exécute par `array::fold`. Les étapes `validation_pipeline_*` et `validation_apply_*` (12) disparaissent : l'aiguillage appelle directement `fn::validation_required`, `fn::validation_length`, etc. | `utils_engine_step`, `utils_engine_pipeline`, `utils_engine_pipeline_merge`, `utils_engine_pipeline_info`, `utils_engine_run`, `utils_engine_run_batch` |
+| Schéma | Un seul modèle : `{ name, version, fields: { <champ>: { pipeline, required, nullable } }, unknown_keys: "reject" \| "strip" \| "keep" }`. Les cas imbriqué, tableau, conditionnel et union deviennent quatre règles génériques du moteur (`object`, `each`, `when`, `one_of`), utilisables dans tout domaine. | `utils_engine_schema`, `utils_engine_run_object`, `utils_engine_schema_hash` |
+| Cache de schémas | Supprimé : `utils_cache_*` + `utils_engine_schema_hash` couvrent le besoin. | — |
+| Rapports | Un seul rapport `{ valid, errors, warnings, by_field }`, construit et fusionné par le moteur. `detect_report`, `redact_report` et `signature_report` restent dans `security` (contenu métier) et passent au contrat §2.3. | `utils_engine_report`, `utils_engine_report_merge` |
+| Optimiseur | On garde ce qui ne change pas le résultat : suppression des étapes identiques successives, calcul du coût (table fournie par le catalogue), rapport. Le réordonnancement est **abandonné**, car il modifie le résultat. | `utils_engine_optimize`, `utils_engine_pipeline_cost` |
+| Débogage | Trace = `{ field, rule, input, output, ok, details, started_at, duration }` (le champ `details` porte l'erreur, le constat de sécurité ou rien). Sessions, échecs, plus lents, résumé, rapport. | `utils_engine_trace`, `utils_engine_debug_session`, `utils_engine_debug_add`, `utils_engine_debug_failed`, `utils_engine_debug_slowest`, `utils_engine_debug_summary` |
+| Benchmark | Échantillon = `{ name, duration, ok, metadata }` (`ok` remplace `success`, `changed` et `blocked`). Mesure par `started_at` / `completed_at` (la durée totale en découle). Statistiques en une fonction (nombre, taux de réussite, p50 / p95 / p99, débit) ; comparaison avec seuil de régression. | `utils_engine_benchmark_sample`, `utils_engine_benchmark_run`, `utils_engine_benchmark_stats`, `utils_engine_benchmark_compare`, `utils_engine_benchmark_report` |
+| Runtime | Requête et réponse d'exécution définies une fois dans le moteur. `runtime_health` (toujours « sain ») est supprimée. | `utils_engine_request`, `utils_engine_response` |
+| SDK | Supprimé : façades des familles ci-dessus ; capacités, version et manifeste sont des fiches figées, leur contenu relève du Readme (même décision que `security_info`, §4 ter). | — |
+| DSL | `validation_dsl_compile` est conservée : elle convertit l'objet DSL en schéma du moteur. Les 9 autres (exécution, validation de champ, d'objet…) doublonnent le moteur. | `validation_dsl_compile` |
+| Registre de validateurs | Supprimé, remplacé par `validation_step_catalog()` : un registre modifiable ne peut rien rendre exécutable (contrainte ci-dessus). | — |
+| `utils_pipeline_*` | Absorbées par le moteur ; `pipeline_chain` (`array::flatten`), `pipeline_map`, `pipeline_filter`, `pipeline_reduce` et `pipeline_split` ne font qu'appeler une fonction native de tableau. | (moteur) |
+| Audit `security` | Hors moteur : migré au contrat §2.3 dans `security`. | `security_audit_*` (5) |
+
+#### Bilan
+
+* **Après** : environ 25 fonctions `fn::utils_engine_*`, 3 par domaine (catalogue, aiguillage, point d'entrée), `validation_dsl_compile`, l'audit et les 3 rapports de `security`, soit environ **45 fonctions** à la place de 292.
+* **Supprimées** : environ 245 fonctions. Raisons : une responsabilité = un endroit (§5.1), raccourcis de fonctions natives, fiches figées, et le registre que SurrealQL ne peut pas exploiter.
+* **Codes d'erreur** : uniquement `CORE_INVALID_ARGUMENT`, `CORE_UNSUPPORTED_OPTION` et les codes `CORE_VALIDATION_*` ; tous les codes `VALIDATION_*`, `SANITIZE_*`, `SECURITY_*` et dynamiques disparaissent.
+* **Découpage en PR** :
+  1. le moteur et ses tests (pipeline, exécution, schéma, rapport) ;
+  2. le branchement de `sanitize` et la suppression de ses copies ;
+  3. le branchement de `validations` ;
+  4. le branchement de `security` ;
+  5. les familles optimiseur, débogage, benchmark et runtime.
+
+#### Décisions demandées au CTO
+
+1. Valider l'architecture : moteur + closure + trois fonctions par domaine.
+2. Valider l'abandon du réordonnancement par l'optimiseur.
+3. Valider les suppressions : SDK, registre de validateurs, cache de schémas, `runtime_health`, raccourcis `utils_pipeline_*`, 9 fonctions DSL.
+
 ## 4. Suppressions `security` (Q3)
 
 | Fonction supprimée | Raison |
