@@ -6,7 +6,7 @@
 //! DTO ↔ SurrealQL est ainsi vérifié de bout en bout, `RecordId` et `Datetime` compris.
 
 use lyxal_error::*;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::time::Duration;
 use surrealdb::engine::any::{connect, Any};
@@ -47,29 +47,46 @@ async fn run_script(db: &Surreal<Any>, label: &str, surql: &str) {
         .unwrap_or_else(|e| panic!("{label} : {e}"));
 }
 
-/// Installe les ressources d'un manifeste (`schemas`, `functions`, `error_definitions`).
-async fn install_manifest(db: &Surreal<Any>, module_dir: &Path) {
-    let content = std::fs::read_to_string(module_dir.join("manifest.toml")).expect("manifest");
-    let manifest: toml::Value = toml::from_str(&content).expect("manifest TOML");
-    let resources = manifest
-        .get("resources")
-        .and_then(|v| v.as_table())
-        .expect("[resources]");
+/// Installe les ressources de plusieurs manifestes, phase par phase : tous les schémas, puis
+/// toutes les fonctions, puis toutes les définitions d'erreurs. Les définitions de
+/// `lyxal_core` s'écrivent dans la table `error_definition` de `lyxal_error`.
+async fn install_manifests(db: &Surreal<Any>, module_dirs: &[PathBuf]) {
+    let manifests: Vec<(PathBuf, toml::Value)> = module_dirs
+        .iter()
+        .map(|dir| {
+            let content = std::fs::read_to_string(dir.join("manifest.toml")).expect("manifest");
+            (
+                dir.clone(),
+                toml::from_str(&content).expect("manifest TOML"),
+            )
+        })
+        .collect();
     for key in ["schemas", "functions", "error_definitions"] {
-        let Some(files) = resources.get(key).and_then(|v| v.as_array()) else {
-            continue;
-        };
-        let script: String = files
-            .iter()
-            .map(|f| {
-                let path = module_dir.join(f.as_str().expect("chemin"));
-                std::fs::read_to_string(&path)
-                    .unwrap_or_else(|e| panic!("{} : {e}", path.display()))
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        run_script(db, &format!("{} [{key}]", module_dir.display()), &script).await;
+        for (dir, manifest) in &manifests {
+            let Some(files) = manifest
+                .get("resources")
+                .and_then(|r| r.get(key))
+                .and_then(|v| v.as_array())
+            else {
+                continue;
+            };
+            let script: String = files
+                .iter()
+                .map(|f| {
+                    let path = dir.join(f.as_str().expect("chemin"));
+                    std::fs::read_to_string(&path)
+                        .unwrap_or_else(|e| panic!("{} : {e}", path.display()))
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            run_script(db, &format!("{} [{key}]", dir.display()), &script).await;
+        }
     }
+}
+
+/// `lyxal_core` puis `lyxal_error`.
+fn modules() -> Vec<PathBuf> {
+    vec![crate_dir().join("../lyxal_core"), crate_dir()]
 }
 
 fn crate_dir() -> PathBuf {
@@ -119,8 +136,7 @@ async fn setup_db() -> (SurrealServer, Surreal<Any>) {
         .await
         .expect("ns/db");
 
-    install_manifest(&db, &crate_dir().join("../lyxal_core")).await;
-    install_manifest(&db, &crate_dir()).await;
+    install_manifests(&db, &modules()).await;
     (server, db)
 }
 
@@ -159,6 +175,16 @@ fn business(err: LyxalCallError) -> LyxalError {
     }
 }
 
+async fn count_where(db: &Surreal<Any>, table: &str, condition: &str) -> i64 {
+    let mut response = db
+        .query(format!(
+            "RETURN count(SELECT * FROM {table} WHERE {condition});"
+        ))
+        .await
+        .expect("count");
+    response.take::<Option<i64>>(0).expect("count").unwrap_or(0)
+}
+
 async fn count(db: &Surreal<Any>, table: &str) -> i64 {
     let mut response = db
         .query(format!("RETURN count(SELECT * FROM {table});"))
@@ -171,12 +197,16 @@ async fn count(db: &Surreal<Any>, table: &str) -> i64 {
 async fn test_surreal_bootstrap_idempotence() {
     let (_server, db) = setup_db().await;
 
-    // 8 définitions lyxal_error + 3 définitions CORE_* rattachées au module
+    // 8 définitions de lyxal_error + 3 définitions CORE_* de lyxal_core
     assert_eq!(count(&db, "error_definition").await, 11);
+    assert_eq!(
+        count_where(&db, "error_definition", "module = 'core'").await,
+        3
+    );
     assert_eq!(count(&db, "error_external_mapping").await, 0);
 
     // Le rejeu des définitions ne crée ni doublon ni erreur
-    install_manifest(&db, &crate_dir()).await;
+    install_manifests(&db, &modules()).await;
     assert_eq!(count(&db, "error_definition").await, 11);
 }
 

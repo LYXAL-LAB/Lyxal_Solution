@@ -2462,6 +2462,7 @@ dependencies = [
  "config",
  "http",
  "lyxal_pipeline_ingestion",
+ "lyxal_surreal",
  "serde",
  "serde_json",
  "surrealdb",
@@ -2580,11 +2581,13 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "axum 0.7.9",
+ "lyxal_crypto",
  "lyxal_error",
  "serde_json",
  "surrealdb",
  "thiserror 1.0.69",
  "tokio",
+ "toml",
 ]
 
 [[package]]

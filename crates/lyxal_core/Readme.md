@@ -142,7 +142,7 @@ Elles gardent des **paramètres typés** et renvoient une valeur ou un objet. Se
 
 ### Erreurs de programmation (`THROW`)
 
-Seul un argument invalide fourni par le code appelant (borne négative, bornes inversées, liste vide, option inconnue) interrompt une fonction, avec un code fixe défini dans `crates/lyxal_error/error/core/core_definitions.surql` :
+Seul un argument invalide fourni par le code appelant (borne négative, bornes inversées, liste vide, option inconnue) interrompt une fonction, avec un code fixe défini dans `crates/lyxal_core/error/core_definitions.surql` (déclaré dans le manifeste, installé après le schéma de `lyxal_error`) :
 
 | Code | Cas |
 | :--- | :--- |

@@ -39,6 +39,5 @@ functions = [
     "functions/occurrence/error_occurrence_purge_before.surql"
 ]
 error_definitions = [
-    "error/error_definitions.surql",
-    "error/core/core_definitions.surql"
+    "error/error_definitions.surql"
 ]

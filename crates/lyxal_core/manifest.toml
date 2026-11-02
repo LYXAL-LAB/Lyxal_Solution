@@ -491,3 +491,6 @@ functions = [
     "functions/validations/functions/step_apply.surql",
     "functions/validations/functions/step_catalog.surql",
 ]
+error_definitions = [
+    "error/core_definitions.surql"
+]

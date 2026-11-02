@@ -1,6 +1,7 @@
 use crate::error::ServerError;
-use serde::Deserialize;
-use std::{collections::BTreeSet, net::IpAddr, path::Path};
+use lyxal_surreal::SecretString;
+use serde::{Deserialize, Deserializer};
+use std::{collections::BTreeSet, fmt, net::IpAddr, path::Path, sync::Arc};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct AppConfig {
@@ -38,9 +39,43 @@ pub struct DatabaseConfig {
     pub namespace: String,
     pub database: String,
     pub username: Option<String>,
-    pub password: Option<String>,
+    pub password: Option<SecretPassword>,
     pub connect_timeout_seconds: u64,
     pub required: bool,
+}
+
+/// Mot de passe lu dans la configuration : masqué dans `Debug`, effacé de la mémoire à la
+/// libération (`lyxal_crypto::SecretString`).
+#[derive(Clone)]
+pub struct SecretPassword(Arc<SecretString>);
+
+impl SecretPassword {
+    pub fn new(text: String) -> Result<Self, ServerError> {
+        SecretString::new(text)
+            .map(|secret| Self(Arc::new(secret)))
+            .map_err(|error| ServerError::Configuration(format!("database.password : {error}")))
+    }
+
+    /// Copie protégée du secret, pour une utilisation unique (connexion Root).
+    pub fn to_secret(&self) -> Result<SecretString, ServerError> {
+        SecretString::new(self.0.expose_secret().to_owned())
+            .map_err(|error| ServerError::Configuration(format!("database.password : {error}")))
+    }
+}
+
+impl fmt::Debug for SecretPassword {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("[REDACTED]")
+    }
+}
+
+impl<'de> Deserialize<'de> for SecretPassword {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        SecretString::new(text)
+            .map(|secret| Self(Arc::new(secret)))
+            .map_err(serde::de::Error::custom)
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]

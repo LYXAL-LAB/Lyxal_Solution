@@ -26,6 +26,8 @@ trust_proxy_headers = false
 endpoint = "ws://127.0.0.1:8000"
 namespace = "test"
 database = "test"
+username = "root"
+password = "mot-de-passe-de-test"
 connect_timeout_seconds = 1
 required = true
 
@@ -59,4 +61,29 @@ disabled = []
     let config = AppConfig::load_from(directory.path()).expect("valid config");
     assert_eq!(config.application.name, "Lyxal Test");
     assert_eq!(config.server.port, 0);
+
+    // Le mot de passe n'apparaît jamais dans l'affichage de débogage de la configuration
+    let debug = format!("{config:?}");
+    assert!(!debug.contains("mot-de-passe-de-test"));
+    assert!(debug.contains("[REDACTED]"));
+}
+
+#[tokio::test]
+async fn remote_database_without_credentials_is_refused() {
+    let config = lyxal_server::config::DatabaseConfig {
+        endpoint: "ws://127.0.0.1:9".into(),
+        namespace: "test".into(),
+        database: "test".into(),
+        username: None,
+        password: None,
+        connect_timeout_seconds: 1,
+        required: true,
+    };
+    let error = lyxal_server::database::connect_database(&config)
+        .await
+        .expect_err("ws:// sans identifiants refusé");
+    assert!(
+        error.to_string().contains("Missing Root credentials"),
+        "{error}"
+    );
 }
