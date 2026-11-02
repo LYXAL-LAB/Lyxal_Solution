@@ -1,7 +1,9 @@
 use async_trait::async_trait;
 use lyxal_surreal::{
     create_surreal_client, LyxalCallError, LyxalSurrealCall, LyxalSurrealError, RootCredentials,
+    SecretString, SurrealConnectOptions,
 };
+use std::time::Duration;
 use surrealdb::engine::any::Any;
 use surrealdb::types::SurrealValue;
 use surrealdb::Surreal;
@@ -18,6 +20,25 @@ impl LyxalSurrealCall for TestStore {
     }
 }
 
+/// Options de connexion de test (namespace `lyxal_test`).
+fn opts(
+    endpoint: &str,
+    credentials: Option<RootCredentials>,
+    database: &str,
+) -> SurrealConnectOptions {
+    SurrealConnectOptions {
+        endpoint: endpoint.to_owned(),
+        credentials,
+        namespace: "lyxal_test".to_owned(),
+        database: database.to_owned(),
+        connect_timeout: Duration::from_secs(10),
+    }
+}
+
+fn secret(text: &str) -> SecretString {
+    SecretString::new(text.to_owned()).expect("secret")
+}
+
 #[derive(SurrealValue)]
 struct AddParams {
     a: i64,
@@ -29,15 +50,9 @@ struct EmptyParams {}
 
 #[tokio::test]
 async fn test_create_surreal_client_mem_lifecycle() {
-    let client = create_surreal_client("mem://", None)
+    let client = create_surreal_client(opts("mem://", None, "test_db"))
         .await
         .expect("Connection to mem:// without Root credentials must succeed");
-
-    client
-        .use_ns("lyxal_test")
-        .use_db("test_db")
-        .await
-        .expect("Select namespace and database");
 
     let mut res = client
         .query("RETURN 42;")
@@ -49,7 +64,7 @@ async fn test_create_surreal_client_mem_lifecycle() {
 
 #[tokio::test]
 async fn test_create_surreal_client_rejects_unsupported_protocol() {
-    let res = create_surreal_client("http://127.0.0.1:8000", None).await;
+    let res = create_surreal_client(opts("http://127.0.0.1:8000", None, "test_db")).await;
     match res {
         Err(LyxalSurrealError::UnsupportedEndpoint { endpoint }) => {
             assert_eq!(endpoint, "http://127.0.0.1:8000");
@@ -60,7 +75,7 @@ async fn test_create_surreal_client_rejects_unsupported_protocol() {
 
 #[tokio::test]
 async fn test_create_surreal_client_rejects_missing_credentials_on_remote() {
-    let res = create_surreal_client("ws://127.0.0.1:8000", None).await;
+    let res = create_surreal_client(opts("ws://127.0.0.1:8000", None, "test_db")).await;
     match res {
         Err(LyxalSurrealError::MissingCredentials { endpoint }) => {
             assert_eq!(endpoint, "ws://127.0.0.1:8000");
@@ -68,8 +83,9 @@ async fn test_create_surreal_client_rejects_missing_credentials_on_remote() {
         _ => panic!("Expected MissingCredentials error, got {:?}", res),
     }
 
-    let empty_creds = Some(RootCredentials::new("", ""));
-    let res_empty = create_surreal_client("ws://127.0.0.1:8000", empty_creds).await;
+    let empty_creds = Some(RootCredentials::new("", secret("")));
+    let res_empty =
+        create_surreal_client(opts("ws://127.0.0.1:8000", empty_creds, "test_db")).await;
     assert!(matches!(
         res_empty,
         Err(LyxalSurrealError::MissingCredentials { .. })
@@ -78,14 +94,9 @@ async fn test_create_surreal_client_rejects_missing_credentials_on_remote() {
 
 #[tokio::test]
 async fn test_call_fn_nominal_success() {
-    let client = create_surreal_client("mem://", None)
+    let client = create_surreal_client(opts("mem://", None, "test_db"))
         .await
         .expect("Connect mem://");
-    client
-        .use_ns("lyxal_test")
-        .use_db("test_db")
-        .await
-        .expect("Select NS/DB");
 
     // Déclaration d'une fonction respectant le contrat universel { ok: true, data: ..., error: NONE }
     client
@@ -114,14 +125,9 @@ async fn test_call_fn_nominal_success() {
 
 #[tokio::test]
 async fn test_call_fn_business_error_propagation() {
-    let client = create_surreal_client("mem://", None)
+    let client = create_surreal_client(opts("mem://", None, "test_db"))
         .await
         .expect("Connect mem://");
-    client
-        .use_ns("lyxal_test")
-        .use_db("test_db")
-        .await
-        .expect("Select NS/DB");
 
     // Déclaration d'une fonction simulant une erreur métier canonique
     client
@@ -176,14 +182,9 @@ async fn test_call_fn_business_error_propagation() {
 
 #[tokio::test]
 async fn test_call_fn_invalid_contract_rejection() {
-    let client = create_surreal_client("mem://", None)
+    let client = create_surreal_client(opts("mem://", None, "test_db"))
         .await
         .expect("Connect mem://");
-    client
-        .use_ns("lyxal_test")
-        .use_db("test_db")
-        .await
-        .expect("Select NS/DB");
 
     // Fonction retournant une violation du contrat tripartite Lyxal (ok=true ET error présent)
     client
@@ -242,7 +243,7 @@ async fn test_call_fn_invalid_contract_rejection() {
 
 #[tokio::test]
 async fn test_call_fn_sql_injection_rejection() {
-    let client = create_surreal_client("mem://", None)
+    let client = create_surreal_client(opts("mem://", None, "test_db"))
         .await
         .expect("Connect mem://");
     let store = TestStore { db: client };
@@ -306,13 +307,10 @@ async fn test_remote_ws_root_signin_and_call_fn() {
     let user = std::env::var("LYXAL_SURREAL_USER").unwrap_or_else(|_| "root".to_owned());
     let pass = std::env::var("LYXAL_SURREAL_PASS").unwrap_or_else(|_| "root".to_owned());
 
-    let db = create_surreal_client(&url, Some(RootCredentials::new(user, pass)))
+    let creds = RootCredentials::new(user, secret(&pass));
+    let db = create_surreal_client(opts(&url, Some(creds), "test_remote"))
         .await
         .expect("Connexion ws:// avec authentification Root");
-    db.use_ns("lyxal_test")
-        .use_db("test_remote")
-        .await
-        .expect("Select namespace and database");
 
     db.query(
         "DEFINE FUNCTION OVERWRITE fn::test_remote_add($params: object) {

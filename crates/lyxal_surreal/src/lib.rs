@@ -7,8 +7,10 @@ pub mod error;
 pub use call::{validate_function_name, LyxalSurrealCall};
 pub use client::{
     create_surreal_client, normalize_endpoint, validate_endpoint_scheme, RootCredentials,
+    SurrealConnectOptions,
 };
 pub use error::LyxalSurrealError;
+pub use lyxal_crypto::SecretString;
 pub use lyxal_error::{LyxalCallError, LyxalError, LyxalResult};
 
 /// Types natifs du SDK SurrealDB exposés aux modules (§12.2 : alias définis dans `models/types.rs`).

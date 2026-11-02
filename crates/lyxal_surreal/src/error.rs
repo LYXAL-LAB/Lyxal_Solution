@@ -19,6 +19,9 @@ pub enum LyxalSurrealError {
 
     #[error("Missing Root credentials for remote endpoint: {endpoint}")]
     MissingCredentials { endpoint: String },
+
+    #[error("Connection to SurrealDB timed out: {endpoint}")]
+    ConnectTimeout { endpoint: String },
 }
 
 impl LyxalSurrealError {
@@ -107,6 +110,24 @@ impl axum::response::IntoResponse for LyxalSurrealError {
                         "severity": "error",
                         "http_status": 401,
                         "retryable": false
+                    }
+                })),
+            )
+                .into_response(),
+
+            LyxalSurrealError::ConnectTimeout { endpoint } => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(serde_json::json!({
+                    "ok": false,
+                    "data": null,
+                    "error": {
+                        "code": "SURREAL_CONNECT_TIMEOUT",
+                        "message": format!("Connection to SurrealDB timed out: {}", endpoint),
+                        "label": "Délai de connexion à la base de données dépassé",
+                        "category": "timeout",
+                        "severity": "error",
+                        "http_status": 503,
+                        "retryable": true
                     }
                 })),
             )

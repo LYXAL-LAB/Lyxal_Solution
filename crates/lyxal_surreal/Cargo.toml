@@ -10,10 +10,9 @@ serde_json = { workspace = true }
 async-trait = { workspace = true }
 thiserror = { workspace = true }
 lyxal_error = { workspace = true }
-axum = { workspace = true, optional = true }
-
-[dev-dependencies]
+lyxal_crypto = { workspace = true }
 tokio = { workspace = true }
+axum = { workspace = true, optional = true }
 
 [features]
 default = []

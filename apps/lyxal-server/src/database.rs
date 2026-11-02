@@ -1,12 +1,7 @@
 use crate::{config::DatabaseConfig, error::ServerError};
+use lyxal_surreal::{create_surreal_client, RootCredentials, SurrealConnectOptions};
 use std::{sync::Arc, time::Duration};
-use surrealdb::{
-    engine::any::{connect, Any},
-    opt::auth::Root,
-    types::SurrealValue,
-    Surreal,
-};
-use tokio::time::timeout;
+use surrealdb::{engine::any::Any, types::SurrealValue, Surreal};
 
 pub type Database = Arc<Surreal<Any>>;
 
@@ -15,30 +10,25 @@ struct Probe {
     ok: bool,
 }
 
+/// Connecte la base par la fabrique de `lyxal_surreal` (schémas d'URL, identifiants Root,
+/// délai, namespace et base), puis vérifie la connexion par une sonde.
 pub async fn connect_database(config: &DatabaseConfig) -> Result<Database, ServerError> {
-    let client = timeout(
-        Duration::from_secs(config.connect_timeout_seconds),
-        connect(&config.endpoint),
-    )
+    let credentials = match (&config.username, &config.password) {
+        (Some(username), Some(password)) => Some(RootCredentials::new(
+            username.clone(),
+            password.to_secret()?,
+        )),
+        _ => None,
+    };
+    let client = create_surreal_client(SurrealConnectOptions {
+        endpoint: config.endpoint.clone(),
+        credentials,
+        namespace: config.namespace.clone(),
+        database: config.database.clone(),
+        connect_timeout: Duration::from_secs(config.connect_timeout_seconds),
+    })
     .await
-    .map_err(|_| ServerError::Database("délai de connexion dépassé".into()))?
     .map_err(|error| ServerError::Database(error.to_string()))?;
-
-    if let (Some(username), Some(password)) = (&config.username, &config.password) {
-        client
-            .signin(Root {
-                username: username.clone(),
-                password: password.clone(),
-            })
-            .await
-            .map_err(|error| ServerError::Database(error.to_string()))?;
-    }
-
-    client
-        .use_ns(&config.namespace)
-        .use_db(&config.database)
-        .await
-        .map_err(|error| ServerError::Database(error.to_string()))?;
 
     let database = Arc::new(client);
     probe(&database).await?;

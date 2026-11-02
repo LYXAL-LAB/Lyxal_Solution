@@ -1,7 +1,7 @@
 # `lyxal_surreal` — transport SurrealDB de Lyxal OS
 
 Fondation technique (`.agents/AGENTS.md` §5.2, §6) : seul crate qui encapsule le client
-`Surreal<Any>` et l'appel des fonctions SurrealQL. Il dépend de `lyxal_error` et ne contient
+`Surreal<Any>` et l'appel des fonctions SurrealQL. Il dépend de `lyxal_error` et de `lyxal_crypto` (même niveau) et ne contient
 aucune logique métier ni SurrealQL.
 
 Version `0.1.0` (régime pré-production). SDK `surrealdb` 3.3, serveur cible SurrealDB 3.3.4.
@@ -11,18 +11,30 @@ Version `0.1.0` (régime pré-production). SDK `surrealdb` 3.3, serveur cible Su
 ## 1. Connexion : `create_surreal_client`
 
 ```rust
-use lyxal_surreal::{create_surreal_client, RootCredentials};
+use lyxal_surreal::{create_surreal_client, RootCredentials, SecretString, SurrealConnectOptions};
 
-let db = create_surreal_client("mem://", None).await?;
-let db = create_surreal_client("ws://127.0.0.1:8000", Some(RootCredentials::new("root", "…"))).await?;
+let db = create_surreal_client(SurrealConnectOptions {
+    endpoint: "ws://127.0.0.1:8000".into(),
+    credentials: Some(RootCredentials::new("root", SecretString::new(password)?)),
+    namespace: "lyxal".into(),
+    database: "booking".into(),
+    connect_timeout: Duration::from_secs(10),
+})
+.await?;
 ```
 
-Règles appliquées (`.agents/rules/lyxal_standards_and_checklist.md` §11.2) :
+C'est la seule façon de se connecter dans le dépôt : `lyxal-server` l'utilise. Règles
+appliquées (`.agents/rules/lyxal_standards_and_checklist.md` §11.2) :
 
 * seuls `ws://`, `wss://`, `mem://` et `memory` sont acceptés (`UnsupportedEndpoint` sinon) ;
 * `ws://` et `wss://` exigent des identifiants Root non vides (`MissingCredentials` sinon) ;
-* `mem://` et `memory` ne tentent jamais d'authentification ;
+* `mem://` et `memory` ne tentent jamais d'authentification, même avec des identifiants ;
+* connexion, authentification et sélection namespace/base tiennent dans `connect_timeout`
+  (`ConnectTimeout` sinon) ;
 * un `/` final ou un suffixe `/rpc` est retiré de l'URL.
+
+Le mot de passe est un `lyxal_crypto::SecretString` (réexporté) : masqué dans `Debug`, effacé de
+la mémoire à la libération, lu une seule fois au `signin`.
 
 ## 2. Appel de fonction : `LyxalSurrealCall::call_fn`
 
@@ -50,7 +62,7 @@ pub async fn booking_create(store: &BookingStore, params: BookingCreateParams)
   `Call(InvalidContract)` (réponse vide ou incohérente).
 
 Le crate réexporte `LyxalCallError`, `LyxalError`, `LyxalResult` et les types du SDK
-`Datetime`, `RecordId`, `SurrealValue`, `ToSql`, `Value`.
+`Datetime`, `RecordId`, `SurrealValue`, `ToSql`, `Value`, ainsi que `SecretString`.
 
 ## 3. Erreurs : `LyxalSurrealError`
 
@@ -61,6 +73,7 @@ Le crate réexporte `LyxalCallError`, `LyxalError`, `LyxalResult` et les types d
 | `InvalidFunctionName { function }` | nom de fonction refusé |
 | `UnsupportedEndpoint { endpoint }` | schéma d'URL non autorisé |
 | `MissingCredentials { endpoint }` | identifiants Root absents en distant |
+| `ConnectTimeout { endpoint }` | délai de connexion dépassé |
 
 Avec la fonctionnalité `axum`, `LyxalSurrealError` implémente `IntoResponse` : `Call` est relayé
 à `lyxal_error`, les autres variantes répondent `{ ok: false, data: null, error: {…} }`.
