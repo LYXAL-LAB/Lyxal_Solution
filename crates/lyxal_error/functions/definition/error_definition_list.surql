@@ -1,53 +1,48 @@
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │  fn::error_definition_list                                              │
--- │  Liste les définitions d'erreurs filtrées par module ou catégorie      │
--- └──────────────────────────────────────────────────────────────────────────┘
-
+-- ============================================================================
+-- LYXAL OS — LYXAL_ERROR
+-- ============================================================================
+-- Fichier  : crates/lyxal_error/functions/definition/error_definition_list.surql
+-- Fonction : fn::error_definition_list
+--
+-- Liste les définitions d'erreurs, filtrées par module, domaine, catégorie
+-- ou sévérité, triées par code.
+--
+-- Paramètres
+--   module, domain, category, severity, enabled_only (défaut true), limit (1 à 500, défaut 50), start (défaut 0), language
+--
+-- Valeur renvoyée : fn::result_ok([définition])
+--
+-- Erreurs
+--   ERROR_INVALID_INPUT : entrée invalide (details.fields)
+-- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::error_definition_list(
     $params: object
 ) {
-    LET $module = $params.module;
-    LET $category = $params.category;
-    LET $severity = $params.severity;
-    LET $domain = $params.domain;
-    LET $enabled_only = IF $params.enabled_only != NONE { $params.enabled_only } ELSE { true };
-    LET $limit = IF $params.limit != NONE { $params.limit } ELSE { 50 };
-    LET $start = IF $params.start != NONE { $params.start } ELSE { 0 };
-
-    LET $clean_mod = IF $module != NONE AND string::len(string::trim($module)) > 0 {
-        string::lowercase(string::trim($module))
-    } ELSE {
-        NONE
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+        module: { pipeline: [{ rule: "required_string", options: { min_length: 2, max_length: 64 } }, { rule: "regex", options: { pattern: "^[a-z][a-z0-9_-]+$" } }] },
+        domain: { pipeline: [{ rule: "required_string", options: { min_length: 2, max_length: 64 } }, { rule: "regex", options: { pattern: "^[a-z][a-z0-9_-]+$" } }] },
+        category: { pipeline: [{ rule: "enum", options: { allowed: ["validation", "business", "authentication", "authorization", "not_found", "conflict", "rate_limit", "dependency", "network", "timeout", "internal"], case_sensitive: false } }] },
+        severity: { pipeline: [{ rule: "enum", options: { allowed: ["info", "warning", "error", "critical"], case_sensitive: false } }] },
+        enabled_only: { pipeline: [{ rule: "boolean" }], default: true },
+        limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 500 } }], default: 50 }, start: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], default: 0 },
+        language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("ERROR_INVALID_INPUT", $params.language, { fields: $report.by_field });
     };
-
-    LET $clean_cat = IF $category != NONE AND string::len(string::trim($category)) > 0 {
-        string::lowercase(string::trim($category))
-    } ELSE {
-        NONE
-    };
-
-    LET $clean_sev = IF $severity != NONE AND string::len(string::trim($severity)) > 0 {
-        string::lowercase(string::trim($severity))
-    } ELSE {
-        NONE
-    };
-
-    LET $clean_dom = IF $domain != NONE AND string::len(string::trim($domain)) > 0 {
-        string::lowercase(string::trim($domain))
-    } ELSE {
-        NONE
-    };
-
-    LET $list = SELECT * FROM error_definition 
-                 WHERE ($clean_mod = NONE OR module = $clean_mod)
-                   AND ($clean_cat = NONE OR category = $clean_cat)
-                   AND ($clean_sev = NONE OR severity = $clean_sev)
-                   AND ($clean_dom = NONE OR domain = $clean_dom)
-                   AND ($enabled_only = false OR enabled = true)
-                 ORDER BY code ASC
-                 LIMIT $limit
-                 START $start;
-
-    RETURN fn::result_ok($list);
-} COMMENT "Liste et filtre les définitions d'erreurs du catalogue canonique au format universel"
+    LET $p = $report.value;
+    RETURN fn::result_ok(SELECT * FROM error_definition
+        WHERE ($p.module IS NONE OR module = $p.module)
+          AND ($p.domain IS NONE OR domain = $p.domain)
+          AND ($p.category IS NONE OR category = $p.category)
+          AND ($p.severity IS NONE OR severity = $p.severity)
+          AND ($p.enabled_only == false OR enabled = true)
+        ORDER BY code ASC
+        LIMIT $p.limit
+        START $p.start);
+}
+COMMENT "Liste les définitions d'erreurs, filtrées par module, domaine, catégorie ou sévérité, triées par code."
 PERMISSIONS FULL;

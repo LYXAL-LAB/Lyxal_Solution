@@ -4,29 +4,29 @@
 -- CONFORMITÉ : .agents/AGENTS.md §5.5 & SurrealDB 3.3.4 (idempotent)
 -- ============================================================================
 
-IF !record::exists(error_definition:ERROR_PARAM_REQUIRED) 
-   AND array::len((SELECT VALUE id FROM error_definition WHERE code = "ERROR_PARAM_REQUIRED" LIMIT 1)) == 0 THEN (
-    CREATE error_definition:ERROR_PARAM_REQUIRED CONTENT {
-        code: "ERROR_PARAM_REQUIRED",
+IF !record::exists(error_definition:ERROR_INVALID_INPUT)
+   AND array::len((SELECT VALUE id FROM error_definition WHERE code = "ERROR_INVALID_INPUT" LIMIT 1)) == 0 THEN (
+    CREATE error_definition:ERROR_INVALID_INPUT CONTENT {
+        code: "ERROR_INVALID_INPUT",
         module: "error",
         domain: "validation",
         category: "validation",
         severity: "error",
-        message: "A required parameter is missing or empty",
+        message: "One or more input parameters are missing or invalid",
         default_language: "en",
         http_status: 400,
         retryable: false,
         enabled: true,
         translations: {
             fr: {
-                label: "Paramètre obligatoire manquant",
-                description: "Un paramètre indispensable à l'exécution de l'opération n'a pas été renseigné ou est vide.",
-                resolution: "Veuillez renseigner l'ensemble des champs obligatoires indiqués dans les détails."
+                label: "Paramètres invalides",
+                description: "Un ou plusieurs paramètres sont absents ou ne respectent pas le format attendu.",
+                resolution: "Corrigez les champs indiqués dans les détails (details.fields)."
             },
             en: {
-                label: "Required parameter missing",
-                description: "A parameter required to execute this operation was not provided or is empty.",
-                resolution: "Please provide all required fields indicated in the details."
+                label: "Invalid parameters",
+                description: "One or more parameters are missing or do not match the expected format.",
+                resolution: "Fix the fields listed in the details (details.fields)."
             }
         }
     }
@@ -139,6 +139,62 @@ IF !record::exists(error_definition:ERROR_OCCURRENCE_NOT_FOUND)
                 label: "Error occurrence not found",
                 description: "The requested error occurrence record could not be found.",
                 resolution: "Check the occurrence identifier or retention window."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:ERROR_MAPPING_ALREADY_EXISTS)
+   AND array::len((SELECT VALUE id FROM error_definition WHERE code = "ERROR_MAPPING_ALREADY_EXISTS" LIMIT 1)) == 0 THEN (
+    CREATE error_definition:ERROR_MAPPING_ALREADY_EXISTS CONTENT {
+        code: "ERROR_MAPPING_ALREADY_EXISTS",
+        module: "error",
+        domain: "mapping",
+        category: "conflict",
+        severity: "error",
+        message: "An external error mapping with the same provider, service, code and matcher already exists",
+        default_language: "en",
+        http_status: 409,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Correspondance déjà existante",
+                description: "Une correspondance existe déjà pour ce fournisseur, ce service, ce code externe et ce mode.",
+                resolution: "Modifiez la correspondance existante plutôt que d'en créer une nouvelle."
+            },
+            en: {
+                label: "Mapping already exists",
+                description: "A mapping already exists for this provider, service, external code and matcher.",
+                resolution: "Update the existing mapping instead of creating a new one."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:ERROR_DEFINITION_CODE_PREFIX_MISMATCH)
+   AND array::len((SELECT VALUE id FROM error_definition WHERE code = "ERROR_DEFINITION_CODE_PREFIX_MISMATCH" LIMIT 1)) == 0 THEN (
+    CREATE error_definition:ERROR_DEFINITION_CODE_PREFIX_MISMATCH CONTENT {
+        code: "ERROR_DEFINITION_CODE_PREFIX_MISMATCH",
+        module: "error",
+        domain: "definition",
+        category: "validation",
+        severity: "error",
+        message: "The error code must start with its module name in uppercase followed by an underscore",
+        default_language: "en",
+        http_status: 400,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Préfixe du code incorrect",
+                description: "Le code d'erreur doit commencer par le nom de son module en majuscules suivi de « _ ».",
+                resolution: "Préfixez le code par le module (ex. module booking : BOOKING_…)."
+            },
+            en: {
+                label: "Wrong code prefix",
+                description: "The error code must start with its module name in uppercase followed by an underscore.",
+                resolution: "Prefix the code with its module (e.g. module booking: BOOKING_…)."
             }
         }
     }

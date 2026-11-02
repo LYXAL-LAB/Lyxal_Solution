@@ -221,7 +221,8 @@ fn test_lyxal_call_error_helpers() {
 #[test]
 fn test_types_surreal_value_roundtrip() {
     let create_params = ErrorDefinitionCreateParams {
-        code: "ERR_TEST_ROUNDTRIP".into(),
+        code: "TEST_ROUNDTRIP".into(),
+        module: "test".into(),
         message: "Message test".into(),
         category: Some("validation".into()),
         severity: Some("error".into()),
@@ -237,20 +238,19 @@ fn test_types_surreal_value_roundtrip() {
     };
     assert_eq!(
         obj.get("code"),
-        Some(&Value::String("ERR_TEST_ROUNDTRIP".into()))
+        Some(&Value::String("TEST_ROUNDTRIP".into()))
     );
-    // Un champ optionnel absent est transmis comme NONE (lu par `$params.x ?? défaut` en SurrealQL).
+    // Un champ optionnel absent est transmis comme NONE : le moteur de validation le traite comme non fourni.
     assert!(matches!(obj.get("translations"), None | Some(Value::None)));
     let json = val.into_json_value();
     assert_eq!(json["http_status"], 400);
 
     let mapping_params = ErrorMappingCreateParams {
         provider: "stripe".into(),
-        match_type: "exact".into(),
-        target_code: "PAYMENT_FAILED".into(),
+        external_code: "card_declined".into(),
+        definition_code: "PAYMENT_FAILED".into(),
         service: Some("charges".into()),
-        external_code: Some("card_declined".into()),
-        http_status: Some(402),
+        matcher: Some("exact".into()),
         external_http_status: Some(402),
         description: Some("Carte refusée".into()),
         retryable_override: Some(false),
@@ -259,7 +259,7 @@ fn test_types_surreal_value_roundtrip() {
 
     let val_mapping = mapping_params.into_value().into_json_value();
     assert_eq!(val_mapping["provider"], "stripe");
-    assert_eq!(val_mapping["match_type"], "exact");
+    assert_eq!(val_mapping["matcher"], "exact");
     assert_eq!(val_mapping["service"], "charges");
     assert_eq!(val_mapping["external_http_status"], 402);
     assert_eq!(val_mapping["description"], "Carte refusée");
@@ -267,7 +267,7 @@ fn test_types_surreal_value_roundtrip() {
 
     let log_params = ErrorLogParams {
         code: "ERROR_OCCURRED".into(),
-        source_module: Some("lyxal_booking".into()),
+        source_module: "lyxal_booking".into(),
         technical_message: Some("Database timeout".into()),
         ..Default::default()
     };

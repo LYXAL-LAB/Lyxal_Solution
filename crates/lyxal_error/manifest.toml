@@ -20,7 +20,6 @@ schemas = [
 ]
 functions = [
     "functions/service/result_ok.surql",
-    "functions/service/error_get.surql",
     "functions/service/error_resolve.surql",
     "functions/service/error_result.surql",
     "functions/service/error_log.surql",
@@ -35,7 +34,6 @@ functions = [
     "functions/mapping/error_mapping_list.surql",
     "functions/mapping/error_mapping_update.surql",
     "functions/mapping/error_mapping_disable.surql",
-    "functions/occurrence/error_occurrence_create.surql",
     "functions/occurrence/error_occurrence_get.surql",
     "functions/occurrence/error_occurrence_list.surql",
     "functions/occurrence/error_occurrence_purge_before.surql"

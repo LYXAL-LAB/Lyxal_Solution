@@ -1,47 +1,71 @@
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │  fn::error_log                                                           │
--- │  Crée une occurrence technique immuable dans error_occurrence           │
--- └──────────────────────────────────────────────────────────────────────────┘
-
+-- ============================================================================
+-- LYXAL OS — LYXAL_ERROR
+-- ============================================================================
+-- Fichier  : crates/lyxal_error/functions/service/error_log.surql
+-- Fonction : fn::error_log
+--
+-- Journalise une occurrence d'erreur dans error_occurrence (append-only). Si
+-- la définition du code existe et désactive la journalisation
+-- (log_occurrence = false), rien n'est écrit et data vaut NONE. La sévérité
+-- de la définition prime sur celle transmise.
+--
+-- Paramètres
+--   code (requis), source_module (requis)
+--   operation, source (record), actor (record), technical_message, context (objet)
+--   request_id, trace_id, correlation_id, fingerprint
+--   environment (development | test | staging | production, défaut production)
+--   severity (info | warning | error | critical, utilisée si le code n'a pas de définition)
+--   language
+--
+-- Valeur renvoyée : fn::result_ok(occurrence | NONE)
+--
+-- Erreurs
+--   ERROR_INVALID_INPUT : entrée invalide (details.fields)
+-- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::error_log(
     $params: object
 ) {
-    LET $code = $params.code;
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
-
-    IF $code == NONE OR string::len(string::trim($code)) == 0 {
-        RETURN fn::error_result("ERROR_PARAM_REQUIRED", $language, { field: "code" });
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+        code: { pipeline: [{ rule: "required_string", options: { min_length: 3, max_length: 128 } }, { rule: "regex", options: { pattern: "^[A-Z][A-Z0-9_]+$" } }], required: true },
+        source_module: { pipeline: [{ rule: "required_string", options: { min_length: 2, max_length: 64 } }, { rule: "regex", options: { pattern: "^[a-z][a-z0-9_-]+$" } }], required: true },
+        operation: { pipeline: [{ rule: "optional_string", options: { max_length: 255 } }] },
+        source: { pipeline: [{ rule: "record_id" }] },
+        actor: { pipeline: [{ rule: "record_id" }] },
+        technical_message: { pipeline: [{ rule: "optional_string", options: { max_length: 8000 } }] },
+        context: { pipeline: [{ rule: "is_object" }], default: {} },
+        request_id: { pipeline: [{ rule: "optional_string", options: { max_length: 255 } }] },
+        trace_id: { pipeline: [{ rule: "optional_string", options: { max_length: 255 } }] },
+        correlation_id: { pipeline: [{ rule: "optional_string", options: { max_length: 255 } }] },
+        fingerprint: { pipeline: [{ rule: "optional_string", options: { max_length: 255 } }] },
+        environment: { pipeline: [{ rule: "enum", options: { allowed: ["development", "test", "staging", "production"], case_sensitive: false } }], default: "production" },
+        severity: { pipeline: [{ rule: "enum", options: { allowed: ["info", "warning", "error", "critical"], case_sensitive: false } }] },
+        language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("ERROR_INVALID_INPUT", $params.language, { fields: $report.by_field });
     };
-
-    LET $clean_code = string::uppercase(string::trim($code));
-    LET $definition = fn::error_get($clean_code);
-
-    IF $definition != NONE AND $definition.log_occurrence == false {
-        RETURN fn::result_ok(NONE);
-    };
-
-    LET $def_id = IF $definition != NONE { $definition.id } ELSE { NONE };
-    LET $env = IF $params.environment != NONE { string::trim($params.environment) } ELSE { "production" };
-    LET $sev = IF $definition != NONE { $definition.severity } ELSE IF $params.severity != NONE { $params.severity } ELSE { "error" };
-    LET $ctx = IF $params.context != NONE { $params.context } ELSE { {} };
-    LET $mod = IF $params.source_module != NONE { string::lowercase(string::trim($params.source_module)) } ELSE { "core" };
-
-    LET $occ = CREATE ONLY error_occurrence CONTENT {
-        definition: $def_id,
-        code: $clean_code,
-        source_module: $mod,
-        operation: $params.operation,
-        source: $params.source,
-        actor: $params.actor,
-        technical_message: $params.technical_message,
-        context: $ctx,
-        trace_id: $params.trace_id,
-        correlation_id: $params.correlation_id,
-        environment: $env,
-        severity: $sev,
-        occurred_at: time::now()
-    };
-
-    RETURN fn::result_ok($occ);
-} COMMENT "Journalise une occurrence d'erreur technique dans la table error_occurrence"
+    LET $p = $report.value;
+    LET $definition = (SELECT * FROM error_definition WHERE code = $p.code AND enabled = true LIMIT 1)[0];
+    IF $definition IS NOT NONE AND $definition.log_occurrence == false { RETURN fn::result_ok(NONE); };
+    RETURN fn::result_ok(CREATE ONLY error_occurrence CONTENT {
+        definition: $definition.id,
+        code: $p.code,
+        source_module: $p.source_module,
+        operation: $p.operation,
+        source: $p.source,
+        actor: $p.actor,
+        request_id: $p.request_id,
+        trace_id: $p.trace_id,
+        correlation_id: $p.correlation_id,
+        technical_message: $p.technical_message,
+        context: $p.context,
+        fingerprint: $p.fingerprint,
+        environment: $p.environment,
+        severity: $definition.severity ?? $p.severity ?? "error"
+    });
+}
+COMMENT "Journalise une occurrence d'erreur dans error_occurrence (append-only). Si la définition du code existe et désactive la journalisation (log_occurrence = false), rien n'est écrit et data vaut NONE. La sévérité de la définition prime sur celle transmise."
 PERMISSIONS FULL;

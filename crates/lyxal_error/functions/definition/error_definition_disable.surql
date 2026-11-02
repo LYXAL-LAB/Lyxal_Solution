@@ -1,31 +1,39 @@
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │  fn::error_definition_disable                                           │
--- │  Désactive une définition d'erreur canonique sans suppression physique │
--- └──────────────────────────────────────────────────────────────────────────┘
-
+-- ============================================================================
+-- LYXAL OS — LYXAL_ERROR
+-- ============================================================================
+-- Fichier  : crates/lyxal_error/functions/definition/error_definition_disable.surql
+-- Fonction : fn::error_definition_disable
+--
+-- Désactive une définition d'erreur sans la supprimer : fn::error_resolve la
+-- traite alors comme inconnue.
+--
+-- Paramètres
+--   code (requis), language
+--
+-- Valeur renvoyée : fn::result_ok({ id, disabled })
+--
+-- Erreurs
+--   ERROR_INVALID_INPUT : entrée invalide (details.fields)
+--   ERROR_DEFINITION_NOT_FOUND : code inconnu
+-- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::error_definition_disable(
     $params: object
 ) {
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
-    LET $raw_target = $params.code ?? $params.id ?? $params.code_or_id;
-
-    IF $raw_target == NONE OR string::len(string::trim(<string>$raw_target)) == 0 {
-        RETURN fn::error_result("ERROR_PARAM_REQUIRED", $language, { field: "code" });
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+        code: { pipeline: [{ rule: "required_string", options: { min_length: 3, max_length: 128 } }, { rule: "regex", options: { pattern: "^[A-Z][A-Z0-9_]+$" } }], required: true },
+        language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("ERROR_INVALID_INPUT", $params.language, { fields: $report.by_field });
     };
-
-    LET $val = string::trim(<string>$raw_target);
-    LET $clean_code = string::uppercase($val);
-    LET $existing = SELECT VALUE id FROM error_definition 
-                     WHERE id = $val 
-                        OR id = type::record("error_definition", $clean_code) 
-                        OR code = $clean_code 
-                     LIMIT 1;
-
-    IF array::len($existing) == 0 {
-        RETURN fn::error_result("ERROR_DEFINITION_NOT_FOUND", $language, { code: $val });
-    };
-
-    UPDATE $existing[0] SET enabled = false, updated_at = time::now();
-    RETURN fn::result_ok({ disabled: true, id: <string>$existing[0] });
-} COMMENT "Désactive logiquement une définition d'erreur canonique du catalogue"
+    LET $p = $report.value;
+    LET $definition = (SELECT * FROM error_definition WHERE code = $p.code LIMIT 1)[0];
+    IF $definition IS NONE { RETURN fn::error_result("ERROR_DEFINITION_NOT_FOUND", $p.language, { code: $p.code }); };
+    UPDATE $definition.id SET enabled = false;
+    RETURN fn::result_ok({ id: $definition.id, disabled: true });
+}
+COMMENT "Désactive une définition d'erreur sans la supprimer : fn::error_resolve la traite alors comme inconnue."
 PERMISSIONS FULL;

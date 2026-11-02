@@ -485,7 +485,7 @@ functions = [
     "functions/validations/functions/vat_number_fr.surql",
     "functions/validations/functions/webhook_path.surql",
     "functions/validations/functions/weekday.surql",
-    "functions/validations/functions/workflow_delay.surql"
+    "functions/validations/functions/workflow_delay.surql",
     "functions/validations/functions/object_execute.surql",
     "functions/validations/functions/pipeline_execute.surql",
     "functions/validations/functions/step_apply.surql",

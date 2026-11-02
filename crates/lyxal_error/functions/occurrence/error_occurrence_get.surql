@@ -1,33 +1,37 @@
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │  fn::error_occurrence_get                                                │
--- │  Lecture d'une occurrence d'erreur technique par son ID                 │
--- └──────────────────────────────────────────────────────────────────────────┘
-
+-- ============================================================================
+-- LYXAL OS — LYXAL_ERROR
+-- ============================================================================
+-- Fichier  : crates/lyxal_error/functions/occurrence/error_occurrence_get.surql
+-- Fonction : fn::error_occurrence_get
+--
+-- Renvoie une occurrence d'erreur par son identifiant.
+--
+-- Paramètres
+--   occurrence_id (requis, enregistrement error_occurrence), language
+--
+-- Valeur renvoyée : fn::result_ok(occurrence)
+--
+-- Erreurs
+--   ERROR_INVALID_INPUT : entrée invalide (details.fields)
+--   ERROR_OCCURRENCE_NOT_FOUND : occurrence inconnue
+-- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::error_occurrence_get(
     $params: object
 ) {
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
-    LET $raw_id = $params.occurrence_id ?? $params.id;
-    LET $raw_str = IF $raw_id != NONE { string::trim(<string>$raw_id) } ELSE { "" };
-    LET $id_part = string::replace($raw_str, "error_occurrence:", "");
-
-    LET $occurrence_id = IF type::is_record($raw_id) {
-        $raw_id
-    } ELSE IF string::len($id_part) > 0 {
-        type::record("error_occurrence", $id_part)
-    } ELSE {
-        NONE
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+        occurrence_id: { pipeline: [{ rule: "record_id", options: { allowed_tables: ["error_occurrence"] } }], required: true },
+        language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("ERROR_INVALID_INPUT", $params.language, { fields: $report.by_field });
     };
-
-    IF $occurrence_id == NONE {
-        RETURN fn::error_result("ERROR_PARAM_REQUIRED", $language, { field: "occurrence_id" });
-    };
-
-    LET $res = SELECT * FROM error_occurrence WHERE id = $occurrence_id;
-    IF array::len($res) == 0 {
-        RETURN fn::error_result("ERROR_OCCURRENCE_NOT_FOUND", $language, { occurrence_id: <string>$occurrence_id });
-    };
-
-    RETURN fn::result_ok($res[0]);
-} COMMENT "Récupère les détails d'une occurrence d'erreur au format universel LyxalResult"
+    LET $p = $report.value;
+    LET $occurrence = (SELECT * FROM $p.occurrence_id)[0];
+    IF $occurrence IS NONE { RETURN fn::error_result("ERROR_OCCURRENCE_NOT_FOUND", $p.language, { occurrence_id: $p.occurrence_id }); };
+    RETURN fn::result_ok($occurrence);
+}
+COMMENT "Renvoie une occurrence d'erreur par son identifiant."
 PERMISSIONS FULL;

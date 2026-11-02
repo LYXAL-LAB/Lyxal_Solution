@@ -1,57 +1,52 @@
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │  fn::error_definition_update                                            │
--- │  Mise à jour des métadonnées d'une définition d'erreur canonique        │
--- └──────────────────────────────────────────────────────────────────────────┘
-
+-- ============================================================================
+-- LYXAL OS — LYXAL_ERROR
+-- ============================================================================
+-- Fichier  : crates/lyxal_error/functions/definition/error_definition_update.surql
+-- Fonction : fn::error_definition_update
+--
+-- Met à jour une définition d'erreur : seuls les champs transmis changent
+-- (le code et le module sont immuables).
+--
+-- Paramètres
+--   code (requis)
+--   message, domain, category, severity, http_status, translations, default_language, retryable, log_occurrence, documentation, metadata, enabled, language
+--
+-- Valeur renvoyée : fn::result_ok(définition)
+--
+-- Erreurs
+--   ERROR_INVALID_INPUT : entrée invalide (details.fields)
+--   ERROR_DEFINITION_NOT_FOUND : code inconnu
+-- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::error_definition_update(
     $params: object
 ) {
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
-    LET $code_or_id = $params.code_or_id ?? $params.id ?? $params.code;
-
-    IF $code_or_id == NONE OR string::len(string::trim($code_or_id)) == 0 {
-        RETURN fn::error_result("ERROR_PARAM_REQUIRED", $language, { field: "code_or_id" });
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+        code: { pipeline: [{ rule: "required_string", options: { min_length: 3, max_length: 128 } }, { rule: "regex", options: { pattern: "^[A-Z][A-Z0-9_]+$" } }], required: true },
+        domain: { pipeline: [{ rule: "required_string", options: { min_length: 2, max_length: 64 } }, { rule: "regex", options: { pattern: "^[a-z][a-z0-9_-]+$" } }] },
+        message: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 1000 } }] },
+        category: { pipeline: [{ rule: "enum", options: { allowed: ["validation", "business", "authentication", "authorization", "not_found", "conflict", "rate_limit", "dependency", "network", "timeout", "internal"], case_sensitive: false } }] },
+        severity: { pipeline: [{ rule: "enum", options: { allowed: ["info", "warning", "error", "critical"], case_sensitive: false } }] },
+        http_status: { pipeline: [{ rule: "integer", options: { min_value: 400, max_value: 599 } }] },
+        translations: { pipeline: [{ rule: "is_object" }] },
+        default_language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }] },
+        retryable: { pipeline: [{ rule: "boolean" }] },
+        log_occurrence: { pipeline: [{ rule: "boolean" }] },
+        documentation: { pipeline: [{ rule: "is_object" }] },
+        metadata: { pipeline: [{ rule: "is_object" }] },
+        enabled: { pipeline: [{ rule: "boolean" }] },
+        language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("ERROR_INVALID_INPUT", $params.language, { fields: $report.by_field });
     };
-
-    LET $val = string::trim($code_or_id);
-    LET $clean_code = string::uppercase($val);
-    LET $existing = SELECT * FROM error_definition 
-                     WHERE id = $val 
-                        OR id = type::record("error_definition", $clean_code) 
-                        OR code = $clean_code 
-                     LIMIT 1;
-
-    IF array::len($existing) == 0 {
-        RETURN fn::error_result("ERROR_DEFINITION_NOT_FOUND", $language, { code_or_id: $val });
-    };
-
-    LET $cur = $existing[0];
-    LET $clean_msg = IF $params.message != NONE AND string::len(string::trim($params.message)) > 0 { string::trim($params.message) } ELSE { $cur.message };
-    LET $cat = IF $params.category != NONE { string::lowercase(string::trim($params.category)) } ELSE { $cur.category };
-    LET $sev = IF $params.severity != NONE { string::lowercase(string::trim($params.severity)) } ELSE { $cur.severity };
-    LET $status = IF $params.http_status != NONE { $params.http_status } ELSE { $cur.http_status };
-    LET $trans = IF $params.translations != NONE { $params.translations } ELSE { $cur.translations };
-    LET $ret = IF $params.retryable != NONE { $params.retryable } ELSE { $cur.retryable };
-    LET $log_occ = IF $params.log_occurrence != NONE { $params.log_occurrence } ELSE { $cur.log_occurrence };
-    LET $doc = IF $params.documentation != NONE { $params.documentation } ELSE { $cur.documentation };
-    LET $meta = IF $params.metadata != NONE { $params.metadata } ELSE { $cur.metadata };
-    LET $enab = IF $params.active != NONE { $params.active } ELSE IF $params.enabled != NONE { $params.enabled } ELSE { $cur.enabled };
-
-    UPDATE $cur.id MERGE {
-        message: $clean_msg,
-        category: $cat,
-        severity: $sev,
-        http_status: $status,
-        translations: $trans,
-        retryable: $ret,
-        log_occurrence: $log_occ,
-        documentation: $doc,
-        metadata: $meta,
-        enabled: $enab,
-        updated_at: time::now()
-    };
-
-    LET $updated = SELECT * FROM $cur.id;
-    RETURN fn::result_ok($updated[0]);
-} COMMENT "Met à jour le message, la catégorie, la sévérité ou les traductions d'une erreur"
+    LET $p = $report.value;
+    LET $definition = (SELECT * FROM error_definition WHERE code = $p.code LIMIT 1)[0];
+    IF $definition IS NONE { RETURN fn::error_result("ERROR_DEFINITION_NOT_FOUND", $p.language, { code: $p.code }); };
+    LET $changes = object::from_entries(array::filter(object::entries($p), |$entry| $entry[0] NOT IN ["code", "language"] AND $entry[1] IS NOT NONE));
+    RETURN fn::result_ok(UPDATE ONLY $definition.id MERGE $changes);
+}
+COMMENT "Met à jour une définition d'erreur : seuls les champs transmis changent (le code et le module sont immuables)."
 PERMISSIONS FULL;

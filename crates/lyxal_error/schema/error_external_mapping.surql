@@ -106,7 +106,6 @@ DEFINE FIELD OVERWRITE matcher
         "exact",
         "prefix",
         "contains",
-        "regex",
         "http_status"
     ]
     COMMENT "Méthode utilisée pour reconnaître l'erreur externe";
