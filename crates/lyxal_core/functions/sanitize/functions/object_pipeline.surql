@@ -15,7 +15,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_object_pipeline(
         $value,
         |$current,$step| {
             IF $step.rule = "keep_keys" {
-                fn::sanitize_keep_keys($current,$step.value)
+                fn::sanitize_remove_unknown_keys($current,$step.value)
             } ELSE IF $step.rule = "remove_empty" {
                 fn::sanitize_remove_empty($current,true,true,true,true)
             } ELSE IF $step.rule = "defaults" {

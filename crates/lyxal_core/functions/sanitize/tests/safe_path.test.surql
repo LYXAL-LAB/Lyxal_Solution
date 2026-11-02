@@ -1,6 +1,19 @@
--- ============================================================================
--- TESTS — fn::sanitize_safe_path
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::sanitize_safe_path (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::sanitize_safe_path("../modules//scheduler/./manifest.surql","VALUE");
+-- test: remontées supprimées
+RETURN fn::sanitize_safe_path(" /a/../b/./c//d/ ") == "a/b/c/d";
+
+-- test: barres inverses
+RETURN fn::sanitize_safe_path("a\\b") == "a/b";
+
+-- test: entrée absente → NONE
+RETURN fn::sanitize_safe_path(NONE) == NONE;
+
+-- test: NULL refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_safe_path(NULL);
+
+-- test: mauvais type refusé
+-- attendu-erreur: CORE_SANITIZE_INVALID_TYPE
+RETURN fn::sanitize_safe_path(42);

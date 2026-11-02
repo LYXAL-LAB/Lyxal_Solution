@@ -31,5 +31,5 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_normalize_unicode(
     LET $lines = string::replace($visible, <regex>"[\u2028\u2029]", "\n");
     RETURN IF $collapse_whitespace { string::trim(string::replace($lines, <regex>"\\s+", " ")) } ELSE { $lines };
 }
-COMMENT "Normalise les espaces Unicode : espaces insécables et typographiques → espace simple, caractères invisibles (U+200B…, BOM) supprimés, séparateurs de ligne Unicode → \n. NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
+COMMENT "Normalise les espaces Unicode : espaces insécables et typographiques → espace simple, caractères invisibles (U+200B…, BOM) supprimés, séparateurs de ligne Unicode → \\n. NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
 PERMISSIONS FULL;

@@ -1,21 +1,32 @@
 -- ============================================================================
 -- LYXAL OS — CORE SANITIZE
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/sanitize/functions/strip_dangerous_attributes.surql
 -- Fonction : fn::sanitize_strip_dangerous_attributes
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Supprime les attributs style et srcdoc et neutralise les liens javascript:
+-- (href et src remplacés par "#"). Nettoyage lexical par expressions
+-- régulières : il ne remplace pas un parseur HTML anti-XSS.
+--
+-- Paramètres
+--   $value : any — valeur à nettoyer (chaîne, ou NONE)
+--
+-- Contrat sanitize (crates/lyxal_core/Readme.md)
+--   Valeur renvoyée : le texte sans attribut dangereux
+--   Entrée          : NONE → NONE ; NULL ou mauvais type → THROW CORE_SANITIZE_INVALID_TYPE
+--
+-- Exemple
+--   LET $clean = fn::sanitize_strip_dangerous_attributes($params.strip_dangerous_attributes);
 -- ============================================================================
 
-DEFINE FUNCTION OVERWRITE fn::sanitize_strip_dangerous_attributes($value:any,$field:string)->string{
-    LET $clean_field = string::trim($field);
-    IF $clean_field = "" { THROW "VALIDATION_INVALID_FIELD_NAME"; };
-    IF $value IS NONE { THROW string::concat($clean_field, "_REQUIRED"); };
-    IF type::is_null($value) { THROW string::concat($clean_field, "_NULL_NOT_ALLOWED"); };
-    IF !type::is_string($value) { THROW string::concat($clean_field, "_INVALID_TYPE"); };
-
- LET $v=string::replace($value,<regex>"(?i)\\s+(style|srcdoc)\\s*=\\s*(\"[^\"]*\"|'[^']*'|[^\\s>]+)","");
- LET $v2=string::replace($v,<regex>"(?i)href\\s*=\\s*(\"\\s*javascript:[^\"]*\"|'\\s*javascript:[^']*')","href=\"#\"");
- RETURN string::replace($v2,<regex>"(?i)src\\s*=\\s*(\"\\s*javascript:[^\"]*\"|'\\s*javascript:[^']*')","src=\"#\"");
+DEFINE FUNCTION OVERWRITE fn::sanitize_strip_dangerous_attributes(
+    $value: any
+) -> option<string> {
+    IF $value IS NONE { RETURN NONE; };
+    IF !type::is_string($value) { THROW "CORE_SANITIZE_INVALID_TYPE"; };
+    LET $without_style = string::replace($value, <regex>"(?i)\\s+(style|srcdoc)\\s*=\\s*(\"[^\"]*\"|'[^']*'|[^\\s>]+)", "");
+    LET $safe_href = string::replace($without_style, <regex>"(?i)href\\s*=\\s*(\"\\s*javascript:[^\"]*\"|'\\s*javascript:[^']*')", "href=\"#\"");
+    RETURN string::replace($safe_href, <regex>"(?i)src\\s*=\\s*(\"\\s*javascript:[^\"]*\"|'\\s*javascript:[^']*')", "src=\"#\"");
 }
-COMMENT "Supprime par pré-nettoyage lexical quelques attributs HTML dangereux courants (non anti-XSS complet)."
+COMMENT "Supprime les attributs style et srcdoc et neutralise les liens javascript: (href et src remplacés par \"#\"). Nettoyage lexical par expressions régulières : il ne remplace pas un parseur HTML anti-XSS. NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
 PERMISSIONS FULL;
