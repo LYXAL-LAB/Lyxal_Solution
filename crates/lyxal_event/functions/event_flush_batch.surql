@@ -10,18 +10,35 @@
 DEFINE FUNCTION OVERWRITE fn::event_flush_batch(
     $params: object
 ) {
-    IF $params.subscription == NONE OR $params.target_cursor == NONE OR $params.node_id == NONE OR $params.generation == NONE {
-        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", "fr", { message: "subscription, target_cursor, node_id, and generation are mandatory" });
+    -- Fonction interne du moteur d'événements (appelée par le code Rust avec des types
+    -- vérifiés, à chaque livraison) : validation par les primitives de lyxal_core plutôt que
+    -- par fn::validation_object_execute, dont le coût par appel pèserait sur le débit
+    -- (décision CTO, reprise lyxal_event).
+    LET $checks = {
+        subscription: fn::validation_record_id($params.subscription, ["event_subscription"]),
+        target_cursor: fn::validation_integer($params.target_cursor, 0, NONE),
+        node_id: fn::validation_required_string($params.node_id, 1, 128),
+        generation: fn::validation_integer($params.generation, 1, NONE),
+        delivered_ids: fn::validation_array_of_records($params.delivered_ids ?? [], "event_delivery", false),
+        dead_letter_ids: fn::validation_array_of_records($params.dead_letter_ids ?? [], "event_delivery", false),
+        dropped_ids: fn::validation_array_of_records($params.dropped_ids ?? [], "event_delivery", false),
+        drop_reason: fn::validation_optional_string(($params.drop_reason ?? "dropped_by_policy"), 1, 1024),
+        language: fn::validation_language_code($params.language ?? "fr", false, NONE)
     };
+    LET $invalid = object::from_entries(array::map(array::filter(object::entries($checks), |$e| !$e[1].valid), |$e| [$e[0], [$e[1].code]]));
+    IF object::len($invalid) > 0 {
+        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", $params.language, { fields: $invalid });
+    };
+    LET $p = object::from_entries(array::map(object::entries($checks), |$e| [$e[0], $e[1].value]));
+    LET $subscription = $p.subscription;
+    LET $target_cursor = $p.target_cursor;
+    LET $node_id = $p.node_id;
+    LET $generation = $p.generation;
+    LET $delivered_ids = $p.delivered_ids;
+    LET $dead_letter_ids = $p.dead_letter_ids;
+    LET $dropped_ids = $p.dropped_ids;
+    LET $drop_reason = $p.drop_reason;
 
-    LET $subscription = <record<event_subscription>> $params.subscription;
-    LET $target_cursor = <number> $params.target_cursor;
-    LET $node_id = <string> $params.node_id;
-    LET $generation = <number> $params.generation;
-    LET $delivered_ids = IF $params.delivered_ids != NONE AND $params.delivered_ids != NULL { $params.delivered_ids } ELSE { [] };
-    LET $dead_letter_ids = IF $params.dead_letter_ids != NONE AND $params.dead_letter_ids != NULL { $params.dead_letter_ids } ELSE { [] };
-    LET $dropped_ids = IF $params.dropped_ids != NONE AND $params.dropped_ids != NULL { $params.dropped_ids } ELSE { [] };
-    LET $drop_reason = IF $params.drop_reason != NONE AND $params.drop_reason != NULL { <string> $params.drop_reason } ELSE { "dropped_by_policy" };
     LET $now = time::now();
     LET $lease_rec = event_stream_lease:outbox_leader;
 

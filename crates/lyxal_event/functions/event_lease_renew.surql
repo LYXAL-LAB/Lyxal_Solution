@@ -9,13 +9,25 @@
 DEFINE FUNCTION OVERWRITE fn::event_lease_renew(
     $params: object
 ) {
-    IF $params.node_id == NONE OR $params.generation == NONE {
-        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", "fr", { message: "node_id and generation are mandatory" });
+    -- Fonction interne du moteur d'événements (appelée par le code Rust avec des types
+    -- vérifiés, à chaque livraison) : validation par les primitives de lyxal_core plutôt que
+    -- par fn::validation_object_execute, dont le coût par appel pèserait sur le débit
+    -- (décision CTO, reprise lyxal_event).
+    LET $checks = {
+        node_id: fn::validation_required_string($params.node_id, 1, 128),
+        generation: fn::validation_integer($params.generation, 1, NONE),
+        ttl_seconds: fn::validation_integer(($params.ttl_seconds ?? 6), 1, 3600),
+        language: fn::validation_language_code($params.language ?? "fr", false, NONE)
     };
+    LET $invalid = object::from_entries(array::map(array::filter(object::entries($checks), |$e| !$e[1].valid), |$e| [$e[0], [$e[1].code]]));
+    IF object::len($invalid) > 0 {
+        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", $params.language, { fields: $invalid });
+    };
+    LET $p = object::from_entries(array::map(object::entries($checks), |$e| [$e[0], $e[1].value]));
+    LET $node_id = $p.node_id;
+    LET $generation = $p.generation;
+    LET $ttl_seconds = $p.ttl_seconds;
 
-    LET $node_id = <string> $params.node_id;
-    LET $generation = <number> $params.generation;
-    LET $ttl_seconds = IF $params.ttl_seconds != NONE AND $params.ttl_seconds != NULL { <number> $params.ttl_seconds } ELSE { 6 };
     LET $now = time::now();
     LET $new_expiry = $now + <duration> string::concat($ttl_seconds, "s");
     LET $lease_rec = event_stream_lease:outbox_leader;

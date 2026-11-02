@@ -20,7 +20,7 @@ Audit en lecture seule (skill `lyxal-audit`), état de `main` au 2026-11-02, apr
 
 ## 2. Synthèse et verdict
 
-**NON CONFORME** : 3 écarts P0, 8 écarts P1, 6 écarts P2 (dont 4 découverts au lot 2 en éprouvant le chemin de production : V-14 à V-17).
+**NON CONFORME** : 3 écarts P0, 11 écarts P1, 6 écarts P2 (dont 7 découverts aux lots 2 et 3 en éprouvant le chemin de production : V-14 à V-20).
 
 Le cœur du moteur est solide :
 * tous les appels passent par `call_fn` ;
@@ -58,6 +58,9 @@ Les écarts majeurs :
 | V-15 | P0 | §5.6.4 (barrière DLQ) | `src/worker/worker.rs` (`dead_letter_topic`) | **Découvert au lot 2.** La politique `DeadLetter` exige un topic, absent par défaut de `EventWorkerConfig` comme de `lyxal_runtime`. Une livraison dont les tentatives sont épuisées n'est jamais transférée en DLQ (« Dead letter topic must be configured ») et reste bloquée. | Topic par défaut propre à l'abonnement. |
 | V-16 | P1 | §5.8.3 (tâches supervisées) | `src/worker/worker.rs` (heartbeat) | **Découvert au lot 2** (aggrave V-09). Si la tâche d'un worker est interrompue, sa tâche de renouvellement du bail, lancée à part, continue seule : elle garde le bail indéfiniment, aucun autre worker ne prend le relais. | Tâches de fond liées à la vie du worker (`AbortOnDropHandle`). |
 | V-17 | P1 | §5.6.3 (at-least-once), §11.4 | `src/engine/progress.rs`, `src/engine/feeder.rs` | **Découvert au lot 2** (≈ 1 exécution sur 5 du test de concurrence). Un conflit d'écriture transitoire sur `event_flush_batch` n'est pas rejoué. Le flush n'étant relancé qu'au prochain acquittement, la dernière livraison d'un abonnement reste verrouillée et le curseur bloqué. | Rejeu borné des conflits transitoires ; rattrapage du flush en attente à chaque tour du worker. |
+| V-18 | P1 | §5.6.4 (fencing), §5.8.3 | `src/engine/lease.rs` | **Découvert au lot 3.** Le jeton d'annulation du bail est unique pour toute la vie du gestionnaire. Après une première perte de mandat, il reste annulé : à la réacquisition, le worker se croit leader mais refuse tout séquencement (`NotLeader`) et garde le bail sans rien traiter. Un conflit d'écriture transitoire au renouvellement suffisait à déclencher la perte. | Jeton neuf à chaque mandat ; rejeu borné des conflits sur acquisition, renouvellement et libération. |
+| V-19 | P1 | §5.6.4 (barrière DLQ) | `src/worker/worker.rs` | **Découvert au lot 3.** Le worker appelle `watchdog_tick` du dispatcher directement, sans vider les enveloppes de dead letter produites. Un message épuisé par délais d'acquittement successifs n'est jamais transféré en DLQ. | `feeder.handle_watchdog_and_poison` (transfert DLQ puis avance du curseur). |
+| V-20 | P1 | §11.4, §5.6.1 | producteurs `DEFINE EVENT` (`lyxal_pipeline_ingestion`, tests) | **Découvert au lot 3.** Un `DEFINE EVENT` ignore la valeur renvoyée par `fn::event_publish`. Une publication refusée est donc perdue en silence (un test du runtime passait des champs de contexte au mauvais niveau, ignorés jusqu'ici). | Les producteurs vérifient le résultat : `LET $published = fn::event_publish(...); IF !$published.ok { THROW $published.error.code; };` (la mutation échoue au lieu de perdre l'événement). |
 
 ## 4. Correspondance DTO ↔ SurrealQL
 

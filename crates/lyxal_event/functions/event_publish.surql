@@ -6,23 +6,38 @@
 DEFINE FUNCTION OVERWRITE fn::event_publish(
     $params: object
 ) {
-    -- Les identifiants sont stockés en chaîne (TYPE string) ; un appelant SurrealQL peut passer
-    -- directement `rand::uuid::v7()` (type uuid natif en SurrealDB 3.x).
-    LET $event_id = <string> $params.event_id;
-    LET $event_type = $params.event_type;
-    LET $version = IF $params.version != NONE { $params.version } ELSE { 1 };
-    LET $producer = IF $params.producer != NONE { $params.producer } ELSE { "unknown" };
-    LET $source = $params.source;
-    LET $context = IF $params.context != NONE { $params.context } ELSE { {
-        instance_id: "default",
-        namespace: "default",
-        database: "default"
-    } };
-    LET $correlation_id = IF $params.correlation_id != NONE { <string> $params.correlation_id } ELSE { $event_id };
-    LET $causation_id = IF $params.causation_id != NONE AND $params.causation_id != NULL { <string> $params.causation_id } ELSE { NONE };
-    LET $payload = IF $params.payload != NONE { $params.payload } ELSE { {} };
-    LET $metadata = IF $params.metadata != NONE { $params.metadata } ELSE { {} };
-    LET $auto_fanout = IF $params.auto_fanout != NONE { $params.auto_fanout } ELSE { true };
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            event_id: { pipeline: [{ rule: "uuid" }], required: true },
+            event_type: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }, { rule: "regex", options: { pattern: "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$" } }], required: true },
+            version: { pipeline: [{ rule: "integer", options: { min_value: 1 } }], default: 1 },
+            producer: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }, { rule: "regex", options: { pattern: "^[a-z][a-z0-9_]*$" } }], required: true },
+            source: { pipeline: [{ rule: "record_id" }] },
+            context: { pipeline: [{ rule: "is_object" }], default: { instance_id: "default", namespace: "default", database: "default" } },
+            correlation_id: { pipeline: [{ rule: "uuid" }] },
+            causation_id: { pipeline: [{ rule: "uuid" }] },
+            payload: { pipeline: [{ rule: "is_object" }], default: {} },
+            metadata: { pipeline: [{ rule: "is_object" }], default: {} },
+            auto_fanout: { pipeline: [{ rule: "boolean" }], default: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", $params.language, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $event_id = <string> $p.event_id;
+    LET $event_type = $p.event_type;
+    LET $version = $p.version;
+    LET $producer = $p.producer;
+    LET $source = $p.source;
+    LET $context = $p.context;
+    LET $correlation_id = IF $p.correlation_id IS NONE { $event_id } ELSE { <string> $p.correlation_id };
+    LET $causation_id = IF $p.causation_id IS NONE { NONE } ELSE { <string> $p.causation_id };
+    LET $payload = $p.payload;
+    LET $metadata = $p.metadata;
+    LET $auto_fanout = $p.auto_fanout;
 
     -- Création durable et atomique de l'enregistrement outbox
     LET $created = (

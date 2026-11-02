@@ -29,7 +29,7 @@
 //!   dans SurrealDB par le [`SubscriptionProgressTracker`].
 
 use async_trait::async_trait;
-use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError, ToSql};
+use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError, RecordId, ToSql};
 use std::collections::HashMap;
 use std::sync::Arc;
 use surrealdb::engine::any::Any;
@@ -40,7 +40,7 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, info};
 
 use super::dispatcher::{AckReport, DispatcherError, ReliableDispatcher};
-use super::dto::DeliveryAssignSeqParams;
+use super::dto::{DeliveryAssignSeqParams, DeliveryFailureParams};
 use super::lease::OutboxLeaseManager;
 use super::progress::{ProgressError, SubscriptionProgressTracker};
 use crate::models::EventDelivery;
@@ -95,9 +95,9 @@ where
     client: Surreal<Any>,
     lease_manager: Arc<OutboxLeaseManager>,
     dispatcher: Arc<Mutex<ReliableDispatcher<T>>>,
-    trackers: HashMap<String, SubscriptionProgressTracker>,
-    delivery_seq_to_id: HashMap<u64, String>,
-    delivery_seq_to_sub: HashMap<u64, String>,
+    trackers: HashMap<RecordId, SubscriptionProgressTracker>,
+    delivery_seq_to_id: HashMap<u64, RecordId>,
+    delivery_seq_to_sub: HashMap<u64, RecordId>,
     cancellation: CancellationToken,
 }
 
@@ -130,7 +130,7 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
     /// Enregistre ou récupère le tracker de progression pour un abonnement.
     pub fn get_or_create_tracker(
         &mut self,
-        subscription: &str,
+        subscription: &RecordId,
     ) -> &mut SubscriptionProgressTracker {
         let node_id = self.lease_manager.node_id().to_string();
         let client = self.client.clone();
@@ -140,9 +140,9 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         let cancel = self.cancellation.clone();
 
         self.trackers
-            .entry(subscription.to_string())
+            .entry(subscription.clone())
             .or_insert_with(|| {
-                SubscriptionProgressTracker::new(client, subscription, node_id, gen, cancel)
+                SubscriptionProgressTracker::new(client, subscription.clone(), node_id, gen, cancel)
             })
     }
 
@@ -155,8 +155,8 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
     /// 4. Injection dans la fenêtre du dispatcher sous le numéro de séquence retourné.
     pub async fn assign_and_enqueue<F>(
         &mut self,
-        outbox_event: &str,
-        subscription: &str,
+        outbox_event: &RecordId,
+        subscription: &RecordId,
         target_module: &str,
         context: serde_json::Value,
         message: T,
@@ -180,8 +180,8 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         let node_id = self.lease_manager.node_id().to_string();
 
         let params = DeliveryAssignSeqParams {
-            outbox_event: outbox_event.to_string(),
-            subscription: subscription.to_string(),
+            outbox_event: outbox_event.clone(),
+            subscription: subscription.clone(),
             target_module: target_module.to_string(),
             node_id,
             generation,
@@ -193,8 +193,12 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         {
             Ok(del) => del,
             Err(e) => {
-                let err_str = e.to_string();
-                if err_str.contains("EVENT_STALE_LEADER_FENCED") {
+                if crate::error::is_stale_leader_fenced(&e) {
+                    tracing::warn!(
+                        node_id = %self.lease_manager.node_id(),
+                        generation,
+                        "Fencing détecté au séquencement : mandat de leader révoqué"
+                    );
                     self.cancellation.cancel();
                     return Err(FeederError::Fenced);
                 }
@@ -203,16 +207,14 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         };
 
         let seq = delivery.delivery_seq.ok_or(FeederError::MissingSequence)?;
-        let delivery_id_str = delivery.id.to_sql();
 
         if self.delivery_seq_to_id.contains_key(&seq) {
             return Ok(seq);
         }
 
         // Enregistre l'association séquence -> identifiant de livraison et abonnement
-        self.delivery_seq_to_id.insert(seq, delivery_id_str);
-        self.delivery_seq_to_sub
-            .insert(seq, subscription.to_string());
+        self.delivery_seq_to_id.insert(seq, delivery.id.clone());
+        self.delivery_seq_to_sub.insert(seq, subscription.clone());
 
         // Enqueue dans le dispatcher in-process
         {
@@ -221,7 +223,7 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         }
 
         debug!(
-            subscription = %subscription,
+            subscription = %subscription.to_sql(),
             seq = seq,
             "Message outbox séquencé et enfilé dans le Dispatcher"
         );
@@ -229,16 +231,9 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         Ok(seq)
     }
 
-    /// Relance l'avancement durable du curseur resté en attente après un échec d'écriture.
-    ///
-    /// Sans ce rattrapage, un échec de `flush_batch` sur la dernière livraison d'un abonnement
-    /// ne serait jamais rejoué (le flush n'est déclenché que par un nouvel acquittement) : la
-    /// livraison resterait verrouillée et le curseur bloqué.
-    pub async fn retry_pending_flush(&mut self) -> Result<(), FeederError> {
-        let safe_cursor = {
-            let disp = self.dispatcher.lock().await;
-            disp.safe_cursor()
-        };
+    /// Avance le curseur durable de chaque abonnement jusqu'au curseur contigu du dispatcher,
+    /// pour les trackers qui ont des résolutions en attente.
+    async fn flush_trackers(&mut self, safe_cursor: Option<u64>) -> Result<(), FeederError> {
         let Some(cursor) = safe_cursor else {
             return Ok(());
         };
@@ -256,10 +251,30 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         Ok(())
     }
 
+    /// Identifiants (livraison, abonnement) d'une séquence enfilée par ce feeder.
+    fn delivery_of(&self, offset: u64) -> Option<(RecordId, RecordId)> {
+        Some((
+            self.delivery_seq_to_id.get(&offset)?.clone(),
+            self.delivery_seq_to_sub.get(&offset)?.clone(),
+        ))
+    }
+
+    /// Relance l'avancement durable du curseur resté en attente après un échec d'écriture.
+    ///
+    /// Sans ce rattrapage, un échec de `flush_batch` sur la dernière livraison d'un abonnement
+    /// ne serait jamais rejoué (le flush n'est déclenché que par une nouvelle résolution) : la
+    /// livraison resterait verrouillée et le curseur bloqué.
+    pub async fn retry_pending_flush(&mut self) -> Result<(), FeederError> {
+        let safe_cursor = {
+            let disp = self.dispatcher.lock().await;
+            disp.safe_cursor()
+        };
+        self.flush_trackers(safe_cursor).await
+    }
+
     /// Traite un acquittement de consommation (ACK) et avance la progression durable.
     pub async fn handle_ack(
         &mut self,
-        subscription: &str,
         offset: u64,
         attempt_id: u32,
     ) -> Result<AckReport, FeederError> {
@@ -270,34 +285,38 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
             (report, cursor)
         };
 
-        let sub_resolved = self
-            .delivery_seq_to_sub
-            .get(&offset)
-            .cloned()
-            .unwrap_or_else(|| subscription.to_string());
+        if let Some((delivery_id, subscription)) = self.delivery_of(offset) {
+            self.get_or_create_tracker(&subscription)
+                .record_delivered(offset, delivery_id);
+        }
+        self.flush_trackers(safe_cursor).await?;
+        Ok(ack_report)
+    }
 
-        let del_id = self.delivery_seq_to_id.get(&offset).cloned();
-        if let Some(del_id) = del_id {
-            let tracker = self.get_or_create_tracker(&sub_resolved);
-            tracker.record_delivered(offset, del_id);
-
-            // Si le curseur contigu du dispatcher a avancé, on flushe vers SurrealDB
-            if let Some(cursor) = safe_cursor {
-                if cursor > tracker.last_persisted_cursor() {
-                    tracker.flush_progress(cursor).await?;
-                    self.delivery_seq_to_id.retain(|&seq, _| seq > cursor);
-                    self.delivery_seq_to_sub.retain(|&seq, _| seq > cursor);
-                }
+    /// Transfère en dead letter les livraisons épuisées remontées par le dispatcher.
+    async fn transfer_dead_letters(
+        &mut self,
+        dead_letters: Vec<crate::engine::poison_handler::DeadLetterEnvelope>,
+        default_reason: &str,
+    ) -> Result<(), FeederError> {
+        for envelope in dead_letters {
+            let offset = envelope.original_offset;
+            if let Some((delivery_id, subscription)) = self.delivery_of(offset) {
+                let reason = envelope
+                    .failure_reason
+                    .unwrap_or_else(|| default_reason.to_string());
+                // Barrière DLQ atomique : persistée avant toute avance du curseur
+                self.get_or_create_tracker(&subscription)
+                    .record_dead_letter(offset, delivery_id, reason)
+                    .await?;
             }
         }
-
-        Ok(ack_report)
+        Ok(())
     }
 
     /// Traite un refus de consommation (NACK) et gère le retry ou la bascule vers le poison.
     pub async fn handle_nack<F>(
         &mut self,
-        subscription: &str,
         offset: u64,
         attempt_id: u32,
         reason: Option<String>,
@@ -319,103 +338,50 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
             (report, dlqs, cursor)
         };
 
-        // Si un retry est programmé, mettre à jour la livraison en base (échec transitoire persistant)
+        // Retry programmé : l'échec transitoire est persisté sur la livraison
         if let crate::engine::dispatcher::NackReport::ScheduledRetry { offset, .. } = &nack_report {
-            if let Some(del_id) = self.delivery_seq_to_id.get(offset) {
-                let reason_str = reason
-                    .clone()
-                    .unwrap_or_else(|| "Handler failed".to_string());
-                let params = serde_json::json!({
-                    "delivery_id": del_id,
-                    "error": reason_str,
-                    "retry_delay_seconds": 1,
-                });
-                let failure_res: Result<bool, LyxalSurrealError> =
+            if let Some(delivery_id) = self.delivery_seq_to_id.get(offset).cloned() {
+                let params = DeliveryFailureParams {
+                    delivery_id,
+                    error: super::progress::bounded_error_message(
+                        reason
+                            .clone()
+                            .unwrap_or_else(|| "Handler failed".to_string()),
+                    ),
+                    retry_delay_seconds: 1,
+                };
+                let failure: Result<bool, LyxalSurrealError> =
                     self.call_fn("event_delivery_failure", params).await;
-                match failure_res {
-                    Ok(true) => {}
-                    Ok(false) => {
-                        tracing::warn!(
-                            delivery_id = %del_id,
-                            "Échec de l'enregistrement de l'erreur dans event_delivery (livraison non trouvée)"
-                        );
-                    }
-                    Err(e) => {
-                        tracing::error!(
-                            delivery_id = %del_id,
-                            error = ?e,
-                            "Erreur lors de l'appel à event_delivery_failure"
-                        );
-                        return Err(FeederError::Surreal(Box::new(e)));
-                    }
-                }
+                failure.map_err(|e| FeederError::Surreal(Box::new(e)))?;
             }
         }
 
-        let sub_resolved = self
-            .delivery_seq_to_sub
-            .get(&offset)
-            .cloned()
-            .unwrap_or_else(|| subscription.to_string());
+        self.transfer_dead_letters(dead_letters, "NACK retry budget exhausted")
+            .await?;
 
-        // Traitement des enveloppes de Dead Letter issues du NACK
-        for envelope in &dead_letters {
-            let off = envelope.original_offset;
-            let del_id = self.delivery_seq_to_id.get(&off).cloned();
-            if let Some(del_id) = del_id {
-                let dlq_sub = self
-                    .delivery_seq_to_sub
-                    .get(&off)
-                    .cloned()
-                    .unwrap_or_else(|| sub_resolved.clone());
-                let tracker = self.get_or_create_tracker(&dlq_sub);
-                let failure_reason = envelope
-                    .failure_reason
-                    .clone()
-                    .unwrap_or_else(|| "NACK retry budget exhausted".to_string());
-                tracker
-                    .record_dead_letter(off, del_id, failure_reason)
-                    .await?;
+        // Politique poison Drop : résolution sans enveloppe DLQ
+        if let crate::engine::dispatcher::NackReport::RetryExhausted {
+            offset: off,
+            resolution: crate::engine::poison_handler::PoisonResolution::Resolved,
+        } = &nack_report
+        {
+            if let Some((delivery_id, subscription)) = self.delivery_of(*off) {
+                self.get_or_create_tracker(&subscription).record_dropped(
+                    *off,
+                    delivery_id,
+                    "Poison policy drop".to_string(),
+                );
             }
         }
 
-        // Si la politique poison est Drop (résolu sans enveloppe DLQ)
-        if dead_letters.is_empty() {
-            if let crate::engine::dispatcher::NackReport::RetryExhausted {
-                offset: off,
-                resolution: crate::engine::poison_handler::PoisonResolution::Resolved,
-            } = &nack_report
-            {
-                let del_id = self.delivery_seq_to_id.get(off).cloned();
-                if let Some(del_id) = del_id {
-                    let drop_sub = self
-                        .delivery_seq_to_sub
-                        .get(off)
-                        .cloned()
-                        .unwrap_or_else(|| sub_resolved.clone());
-                    let tracker = self.get_or_create_tracker(&drop_sub);
-                    tracker.record_dropped(*off, del_id, "Poison policy drop".to_string());
-                }
-            }
-        }
-
-        // Si le curseur a progressé suite à la résolution du poison
-        if let Some(cursor) = safe_cursor {
-            let tracker = self.get_or_create_tracker(&sub_resolved);
-            if cursor > tracker.last_persisted_cursor() {
-                tracker.flush_progress(cursor).await?;
-                self.delivery_seq_to_id.retain(|&seq, _| seq > cursor);
-                self.delivery_seq_to_sub.retain(|&seq, _| seq > cursor);
-            }
-        }
-
+        self.flush_trackers(safe_cursor).await?;
         Ok(nack_report)
     }
 
-    /// Exécute un cycle de surveillance des timeouts et de traitement des poisons (DLQ / Drop).
+    /// Exécute un cycle de surveillance des délais d'acquittement : redélivrance, et transfert en
+    /// dead letter des messages dont le budget est épuisé.
     pub async fn handle_watchdog_and_poison<F>(
         &mut self,
-        subscription: &str,
         now: tokio::time::Instant,
         extractor: F,
     ) -> Result<usize, FeederError>
@@ -429,39 +395,10 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
             let cursor = disp.safe_cursor();
             (dlqs, cursor)
         };
-
         let processed_poison_count = dead_letters.len();
-
-        for envelope in dead_letters {
-            let offset = envelope.original_offset;
-            let del_id = self.delivery_seq_to_id.get(&offset).cloned();
-            if let Some(del_id) = del_id {
-                let dlq_sub = self
-                    .delivery_seq_to_sub
-                    .get(&offset)
-                    .cloned()
-                    .unwrap_or_else(|| subscription.to_string());
-                let tracker = self.get_or_create_tracker(&dlq_sub);
-                // Barrière DLQ atomique
-                let failure_reason = envelope
-                    .failure_reason
-                    .unwrap_or_else(|| "Retry budget exhausted".to_string());
-                tracker
-                    .record_dead_letter(offset, del_id, failure_reason)
-                    .await?;
-            }
-        }
-
-        // Tente de flusher le curseur si de nouvelles résolutions ont libéré le blocage
-        if let Some(cursor) = safe_cursor {
-            let tracker = self.get_or_create_tracker(subscription);
-            if cursor > tracker.last_persisted_cursor() {
-                tracker.flush_progress(cursor).await?;
-                self.delivery_seq_to_id.retain(|&seq, _| seq > cursor);
-                self.delivery_seq_to_sub.retain(|&seq, _| seq > cursor);
-            }
-        }
-
+        self.transfer_dead_letters(dead_letters, "Retry budget exhausted")
+            .await?;
+        self.flush_trackers(safe_cursor).await?;
         Ok(processed_poison_count)
     }
 
@@ -475,17 +412,8 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
             disp.safe_cursor()
         };
 
-        if let Some(cursor) = safe_cursor {
-            // Flush final de tous les trackers actifs
-            for (sub, tracker) in self.trackers.iter_mut() {
-                if cursor > tracker.last_persisted_cursor() {
-                    debug!(subscription = %sub, cursor, "Flush final lors de l'arrêt");
-                    let _ = tracker.flush_progress(cursor).await;
-                }
-            }
-        }
-
-        Ok(())
+        // Flush final des trackers actifs ; une erreur est remontée, jamais ignorée
+        self.flush_trackers(safe_cursor).await
     }
 }
 
@@ -515,8 +443,8 @@ mod tests {
         // Pas leader -> rejet immédiat
         let res = feeder
             .assign_and_enqueue(
-                "evt_1",
-                "sub_1",
+                &RecordId::new("event_outbox", "evt_1"),
+                &RecordId::new("event_subscription", "sub_1"),
                 "mod_1",
                 serde_json::Value::Null,
                 "msg_payload".to_string(),
@@ -565,8 +493,8 @@ mod tests {
         // Tentative d'attribution -> bloquée par la backpressure avant même l'appel RPC !
         let res = feeder
             .assign_and_enqueue(
-                "evt_2",
-                "sub_1",
+                &RecordId::new("event_outbox", "evt_2"),
+                &RecordId::new("event_subscription", "sub_1"),
                 "mod_1",
                 serde_json::Value::Null,
                 "second_msg".to_string(),

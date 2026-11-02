@@ -44,7 +44,7 @@ const SUBSCRIPTIONS: usize = 3;
 const EVENTS: usize = 100;
 const WORKERS: usize = 3;
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn test_concurrent_workers_and_subscriptions_deliver_exactly_once() {
     if std::env::var("LYXAL_TEST_TRACE").is_ok() {
         let _ = tracing_subscriber::fmt()

@@ -36,12 +36,13 @@ use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 use super::dto::{
     LeaseAcquireParams, LeaseAcquireResult, LeaseReleaseParams, LeaseReleaseResult,
     LeaseRenewParams, LeaseRenewResult,
 };
+use super::progress::{conflict_backoff, is_transient_conflict, MAX_CONFLICT_RETRIES};
 
 /// Erreurs liées à la gestion du bail distribué.
 #[derive(Debug, Error)]
@@ -76,7 +77,9 @@ pub struct OutboxLeaseManager {
     ttl: Duration,
     pub(crate) generation: Arc<AtomicU64>,
     pub(crate) is_leader: Arc<AtomicBool>,
-    cancellation: CancellationToken,
+    /// Jeton du mandat de leader en cours : annulé à la perte du bail, remplacé par un jeton
+    /// neuf à chaque nouvelle acquisition (un jeton annulé ne peut pas être réarmé).
+    cancellation: std::sync::Mutex<CancellationToken>,
 }
 
 #[async_trait]
@@ -95,7 +98,7 @@ impl OutboxLeaseManager {
             ttl,
             generation: Arc::new(AtomicU64::new(0)),
             is_leader: Arc::new(AtomicBool::new(false)),
-            cancellation: CancellationToken::new(),
+            cancellation: std::sync::Mutex::new(CancellationToken::new()),
         }
     }
 
@@ -122,12 +125,15 @@ impl OutboxLeaseManager {
 
     /// Indique si ce nœud détient actuellement le bail actif.
     pub fn is_leader(&self) -> bool {
-        self.is_leader.load(Ordering::SeqCst) && !self.cancellation.is_cancelled()
+        self.is_leader.load(Ordering::SeqCst) && !self.cancellation_token().is_cancelled()
     }
 
     /// Jeton d'annulation associé à la validité du leadership de ce nœud.
     pub fn cancellation_token(&self) -> CancellationToken {
-        self.cancellation.clone()
+        self.cancellation
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
     }
 
     /// Tente d'acquérir le leadership via la fonction SurrealQL canonique `fn::event_lease_acquire`.
@@ -175,8 +181,9 @@ impl OutboxLeaseManager {
             ttl_seconds: self.ttl.as_secs().max(1),
         };
 
-        let res: Result<LeaseRenewResult, LyxalSurrealError> =
-            self.call_fn("event_lease_renew", params).await;
+        let res: Result<LeaseRenewResult, LyxalSurrealError> = self
+            .call_with_conflict_retry("event_lease_renew", params)
+            .await;
 
         match res {
             Ok(result) if result.renewed => Ok(true),
@@ -205,9 +212,11 @@ impl OutboxLeaseManager {
             generation: current_gen,
         };
 
-        let result: LeaseReleaseResult = self.call_fn("event_lease_release", params).await?;
+        let result: LeaseReleaseResult = self
+            .call_with_conflict_retry("event_lease_release", params)
+            .await?;
         self.is_leader.store(false, Ordering::SeqCst);
-        self.cancellation.cancel();
+        self.cancellation_token().cancel();
 
         info!(
             node_id = %self.node_id,
@@ -218,51 +227,32 @@ impl OutboxLeaseManager {
         Ok(result.released)
     }
 
-    /// Exécute une étape de supervision du renouvellement.
-    pub async fn step_tick(&self) -> Result<(), LeaseError> {
-        if self.is_leader() {
-            let renewed = self.renew_lease().await?;
-            if !renewed {
-                return Err(LeaseError::Lost {
-                    generation: self.current_generation(),
-                });
+    /// Appel SurrealQL rejoué en cas de conflit d'écriture transitoire (bail partagé par
+    /// plusieurs nœuds qui tentent tous de l'écrire).
+    async fn call_with_conflict_retry<T, P>(
+        &self,
+        function: &'static str,
+        params: P,
+    ) -> Result<T, LyxalSurrealError>
+    where
+        T: lyxal_surreal::SurrealValue + Send,
+        P: lyxal_surreal::SurrealValue + Clone + Send + 'static,
+    {
+        let mut attempt = 0;
+        loop {
+            match self.call_fn(function, params.clone()).await {
+                Err(e) if is_transient_conflict(&e) && attempt < MAX_CONFLICT_RETRIES => {
+                    attempt += 1;
+                    conflict_backoff(attempt).await;
+                }
+                other => return other,
             }
         }
-        Ok(())
-    }
-
-    /// Démarre une tâche périodique de supervision en arrière-plan.
-    pub fn spawn_supervision_task(
-        self: Arc<Self>,
-        renew_interval: Duration,
-    ) -> tokio::task::JoinHandle<()> {
-        let cancel = self.cancellation.clone();
-        tokio::spawn(async move {
-            let mut ticker = tokio::time::interval(renew_interval);
-            ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-
-            loop {
-                tokio::select! {
-                    _ = cancel.cancelled() => {
-                        info!("Tâche de supervision de bail arrêtée suite à l'annulation");
-                        break;
-                    }
-                    _ = ticker.tick() => {
-                        if self.is_leader.load(Ordering::SeqCst) {
-                            if let Err(e) = self.step_tick().await {
-                                error!(error = ?e, "Échec de renouvellement du bail pendant la supervision");
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        })
     }
 
     fn handle_lease_lost(&self, generation: u64) {
         self.is_leader.store(false, Ordering::SeqCst);
-        self.cancellation.cancel();
+        self.cancellation_token().cancel();
         warn!(
             node_id = %self.node_id,
             generation,

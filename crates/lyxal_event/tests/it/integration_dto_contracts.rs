@@ -55,85 +55,66 @@ async fn test_rejection_of_legacy_dto_and_negative_contracts() {
         .unwrap();
     assert_eq!(deliveries.len(), 1, "Une livraison doit être initialisée");
     let delivery_id = deliveries[0].id.clone();
-    let delivery_id_str = delivery_id.to_sql();
 
-    // =========================================================================
-    // TEST 3 : fn::event_delivery_failure avec l'ancien DTO { "id": ..., "error_message": ... }
-    // Doit être rejeté (retourner false) et NE PAS incrémenter ni muter.
-    // =========================================================================
-    let mut call3 = db
+    // 1. Ancien DTO { id, error_message } : refusé, rapport par champ, aucune mutation
+    let legacy = call_json(
+        &db,
+        "RETURN fn::event_delivery_failure($params)",
+        json!({ "id": delivery_id.to_sql(), "error_message": "legacy", "retry_delay_seconds": 15 }),
+    )
+    .await;
+    assert_eq!(legacy["ok"], false);
+    assert_eq!(legacy["error"]["code"], "EVENT_INVALID_PARAMETERS");
+    assert!(legacy["error"]["details"]["fields"]["delivery_id"].is_array());
+    assert!(legacy["error"]["details"]["fields"]["error"].is_array());
+
+    // 2. Identifiant transmis en chaîne au lieu d'un Record ID : refusé
+    let stringly = call_json(
+        &db,
+        "RETURN fn::event_delivery_failure($params)",
+        json!({ "delivery_id": delivery_id.to_sql(), "error": "network error" }),
+    )
+    .await;
+    assert_eq!(stringly["error"]["code"], "EVENT_INVALID_PARAMETERS");
+    assert!(stringly["error"]["details"]["fields"]["delivery_id"].is_array());
+
+    let unmutated = store.get_delivery(&delivery_id).await.unwrap().unwrap();
+    assert_eq!(unmutated.status, DeliveryStatus::Pending);
+    assert_eq!(unmutated.last_error, None);
+    assert!(store.get_dead_letters().await.unwrap().is_empty());
+
+    // 3. Livraison inconnue : EVENT_DELIVERY_NOT_FOUND
+    let mut res = db
         .query("RETURN fn::event_delivery_failure($params)")
         .bind((
             "params",
-            json!({
-                "id": delivery_id_str,
-                "error_message": "legacy failure message",
-                "retry_delay_seconds": 15
-            }),
+            lyxal_event::engine::dto::DeliveryFailureParams {
+                delivery_id: lyxal_surreal::RecordId::new("event_delivery", "inexistante"),
+                error: "network error".into(),
+                retry_delay_seconds: 10,
+            },
         ))
         .await
         .unwrap();
-    let res3: Option<LyxalResponse> = call3.take(0).unwrap();
-    assert!(
-        !res3.unwrap().data,
-        "L'ancien DTO de failure doit être rejeté"
-    );
+    let not_found: Option<lyxal_surreal::Value> = res.take(0).unwrap();
+    let not_found = not_found.unwrap().into_json_value();
+    assert_eq!(not_found["error"]["code"], "EVENT_DELIVERY_NOT_FOUND");
 
-    let unmutated3 = store.get_delivery(&delivery_id).await.unwrap().unwrap();
-    assert_eq!(unmutated3.status, DeliveryStatus::Pending);
-    assert_eq!(unmutated3.last_error, None);
-
-    // Vérification qu'aucune dead-letter n'a été insérée
-    let dead_letters = store.get_dead_letters().await.unwrap();
-    assert_eq!(
-        dead_letters.len(),
-        0,
-        "Aucune dead letter ne doit être créée lors d'un échec de contrat"
-    );
-
-    // =========================================================================
-    // TEST 4 : fn::event_delivery_failure avec 'delivery_id' mais 'error_message' au lieu de 'error'
-    // =========================================================================
-    let mut call4 = db
+    // 4. Contrat typé : échec transitoire enregistré
+    let mut res = db
         .query("RETURN fn::event_delivery_failure($params)")
         .bind((
             "params",
-            json!({
-                "delivery_id": delivery_id_str,
-                "error_message": "missing canonical error field"
-            }),
+            lyxal_event::engine::dto::DeliveryFailureParams {
+                delivery_id: delivery_id.clone(),
+                error: "canonical network error".into(),
+                retry_delay_seconds: 10,
+            },
         ))
         .await
         .unwrap();
-    let res4: Option<LyxalResponse> = call4.take(0).unwrap();
-    assert!(
-        !res4.unwrap().data,
-        "L'absence du champ canonique 'error' doit provoquer le rejet immédiat"
-    );
-
-    let unmutated4 = store.get_delivery(&delivery_id).await.unwrap().unwrap();
-    assert_eq!(unmutated4.status, DeliveryStatus::Pending);
-
-    // =========================================================================
-    // TEST 5 : Appel avec contrat canonique valide -> Mutation acceptée
-    // =========================================================================
-    let mut call5 = db
-        .query("RETURN fn::event_delivery_failure($params)")
-        .bind((
-            "params",
-            json!({
-                "delivery_id": delivery_id_str,
-                "error": "canonical network error",
-                "retry_delay_seconds": 10
-            }),
-        ))
-        .await
-        .unwrap();
-    let res5: Option<LyxalResponse> = call5.take(0).unwrap();
-    assert!(
-        res5.unwrap().data,
-        "Le contrat canonique officiel doit être accepté"
-    );
+    let accepted: Option<LyxalResponse> = res.take(0).unwrap();
+    assert!(accepted.unwrap().data, "le contrat typé doit être accepté");
 
     let mutated = store.get_delivery(&delivery_id).await.unwrap().unwrap();
     assert_eq!(mutated.status, DeliveryStatus::Failed);
@@ -141,6 +122,18 @@ async fn test_rejection_of_legacy_dto_and_negative_contracts() {
         mutated.last_error.as_deref(),
         Some("canonical network error")
     );
+}
+
+/// Exécute une requête avec des paramètres JSON bruts (cas de contrat invalide) et renvoie le
+/// résultat `{ ok, data, error }` en JSON.
+async fn call_json(
+    db: &surrealdb::Surreal<surrealdb::engine::any::Any>,
+    query: &str,
+    params: serde_json::Value,
+) -> serde_json::Value {
+    let mut res = db.query(query).bind(("params", params)).await.unwrap();
+    let value: Option<lyxal_surreal::Value> = res.take(0).unwrap();
+    value.unwrap().into_json_value()
 }
 
 #[tokio::test]
@@ -412,7 +405,10 @@ async fn test_delivery_fetch_pending_canonical_contract() {
         .fetch_pending_deliveries(lyxal_event::engine::dto::DeliveryFetchPendingParams {
             limit: 50,
             instance_id: None,
-            subscription: Some("event_subscription:sub_fetch_beta".to_string()),
+            subscription: Some(lyxal_surreal::RecordId::new(
+                "event_subscription",
+                "sub_fetch_beta",
+            )),
         })
         .await
         .unwrap();
@@ -438,4 +434,44 @@ async fn test_delivery_fetch_pending_canonical_contract() {
     // L'ordre doit être created_at ASC : d1 puis d2
     assert_eq!(limited[0].id.to_sql(), "event_delivery:d1");
     assert_eq!(limited[1].id.to_sql(), "event_delivery:d2");
+}
+
+/// Les fonctions appelées de l'extérieur valident leurs entrées par le moteur de `lyxal_core` :
+/// un champ inconnu ou invalide renvoie `EVENT_INVALID_PARAMETERS` avec le rapport par champ.
+#[tokio::test]
+async fn test_external_functions_validate_inputs_with_core() {
+    let db = connect("mem://").await.unwrap();
+    db.use_ns("test_ns").use_db("test_inputs").await.unwrap();
+    common::setup_test_db(&db).await;
+    let store = Arc::new(EventStore::new(db.clone()));
+    store.init_schema().await.unwrap();
+
+    let publish = call_json(
+        &db,
+        "RETURN fn::event_publish($params)",
+        json!({
+            "event_id": "not-a-native-uuid",
+            "event_type": "Booking Created",
+            "producer": "lyxal_booking",
+            "instance_id": "legacy_top_level"
+        }),
+    )
+    .await;
+    assert_eq!(publish["error"]["code"], "EVENT_INVALID_PARAMETERS");
+    let fields = &publish["error"]["details"]["fields"];
+    assert!(fields["event_id"].is_array(), "{fields}");
+    assert!(fields["event_type"].is_array(), "{fields}");
+    assert!(
+        fields["instance_id"].is_array(),
+        "champ inconnu refusé : {fields}"
+    );
+
+    let register = call_json(
+        &db,
+        "RETURN fn::event_subscription_register($params)",
+        json!({ "name": "sub_x", "target_module": "lyxal_x", "event_pattern": "x.*", "handler_name": "h", "max_attempts": 0 }),
+    )
+    .await;
+    assert_eq!(register["error"]["code"], "EVENT_INVALID_PARAMETERS");
+    assert!(register["error"]["details"]["fields"]["max_attempts"].is_array());
 }

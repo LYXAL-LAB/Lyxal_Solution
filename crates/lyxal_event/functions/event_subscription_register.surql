@@ -8,16 +8,28 @@
 DEFINE FUNCTION OVERWRITE fn::event_subscription_register(
     $params: object
 ) {
-    IF $params.name == NONE OR $params.target_module == NONE OR $params.event_pattern == NONE OR $params.handler_name == NONE {
-        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", "fr", { message: "name, target_module, event_pattern, and handler_name are mandatory" });
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            name: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }, { rule: "regex", options: { pattern: "^[a-z][a-z0-9_]*$" } }], required: true },
+            target_module: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }, { rule: "regex", options: { pattern: "^[a-z][a-z0-9_]*$" } }], required: true },
+            event_pattern: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }, { rule: "regex", options: { pattern: "^(\\*|[a-z][a-z0-9_]*(\\.([a-z][a-z0-9_]*|\\*))*)$" } }], required: true },
+            handler_name: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }, { rule: "regex", options: { pattern: "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$" } }], required: true },
+            is_active: { pipeline: [{ rule: "boolean" }], default: true },
+            max_attempts: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 100 } }], default: 5 },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", $params.language, { fields: $report.by_field });
     };
-
-    LET $name = <string> $params.name;
-    LET $target_module = <string> $params.target_module;
-    LET $event_pattern = <string> $params.event_pattern;
-    LET $handler_name = <string> $params.handler_name;
-    LET $is_active = IF $params.is_active != NONE AND $params.is_active != NULL THEN <bool> $params.is_active ELSE true END;
-    LET $max_attempts = IF $params.max_attempts != NONE AND $params.max_attempts != NULL THEN <number> $params.max_attempts ELSE 5 END;
+    LET $p = $report.value;
+    LET $name = $p.name;
+    LET $target_module = $p.target_module;
+    LET $event_pattern = $p.event_pattern;
+    LET $handler_name = $p.handler_name;
+    LET $is_active = $p.is_active;
+    LET $max_attempts = $p.max_attempts;
 
     LET $existing = (SELECT * FROM event_subscription WHERE name = $name)[0];
 

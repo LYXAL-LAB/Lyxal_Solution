@@ -6,8 +6,8 @@
 
 DEFINE EVENT IF NOT EXISTS ingestion_batch_completed_event ON TABLE ingestion_batch 
 WHEN $event = "UPDATE" AND $after.statut = "Completed" AND $before.statut != "Completed" 
-THEN (
-    fn::event_publish({
+THEN {
+    LET $published = fn::event_publish({
         event_id: rand::uuid::v7(),
         event_type: "ingestion.batch.completed",
         producer: "lyxal_pipeline_ingestion",
@@ -23,13 +23,15 @@ THEN (
             source_type: $after.source_type,
             file_hash: $after.file_hash_blake3
         }
-    })
-);
+    });
+    -- Une publication refusée fait échouer la mutation au lieu d'être perdue
+    IF !$published.ok { THROW $published.error.code; };
+};
 
 DEFINE EVENT IF NOT EXISTS ingestion_manifest_approved_event ON TABLE ingestion_publication_manifest 
 WHEN $event = "UPDATE" AND $after.statut = "Approved" AND $before.statut != "Approved" 
-THEN (
-    fn::event_publish({
+THEN {
+    LET $published = fn::event_publish({
         event_id: rand::uuid::v7(),
         event_type: "ingestion.manifest.approved",
         producer: "lyxal_pipeline_ingestion",
@@ -42,5 +44,7 @@ THEN (
         metadata: {
             manifest_version: $after.manifest_version
         }
-    })
-);
+    });
+    -- Une publication refusée fait échouer la mutation au lieu d'être perdue
+    IF !$published.ok { THROW $published.error.code; };
+};

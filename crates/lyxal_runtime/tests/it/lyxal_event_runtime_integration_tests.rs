@@ -214,21 +214,24 @@ async fn test_runtime_define_event_e2e() {
         .query(
             r#"
             DEFINE TABLE OVERWRITE booking SCHEMALESS;
-            DEFINE EVENT OVERWRITE booking_created_event ON TABLE booking WHEN $event = "CREATE" THEN (
-                fn::event_publish({
+            DEFINE EVENT OVERWRITE booking_created_event ON TABLE booking WHEN $event = "CREATE" THEN {
+                LET $published = fn::event_publish({
                     event_id: rand::uuid::v7(),
                     event_type: "booking.created",
                     producer: "lyxal_booking",
-                    instance_id: "default",
-                    namespace: "test_ns",
-                    database: "test_db",
+                    context: {
+                        instance_id: "default",
+                        namespace: "test_ns",
+                        database: "test_db"
+                    },
                     payload: {
                         booking_id: <string> $after.id,
                         customer_email: $after.customer_email
                     },
                     metadata: {}
-                })
-            );
+                });
+                IF !$published.ok { THROW $published.error.code; };
+            };
             "#,
         )
         .await

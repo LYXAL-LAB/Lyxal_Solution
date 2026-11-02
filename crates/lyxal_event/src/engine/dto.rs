@@ -20,7 +20,7 @@
 //! Ce module formalise les paramètres d'appel (`*Params`) et les résultats typés (`*Result`)
 //! transmis au runtime SurrealDB via le trait universel [`lyxal_surreal::LyxalSurrealCall`].
 
-use lyxal_surreal::{Datetime, SurrealValue};
+use lyxal_surreal::{Datetime, RecordId, SurrealValue};
 
 // ----------------------------------------------------------------------------
 // 1. Bail distribué & Fencing (fn::event_lease_*)
@@ -78,8 +78,8 @@ pub struct LeaseReleaseResult {
 /// Paramètres d'attribution de séquence contiguë (`fn::event_delivery_assign_seq`).
 #[derive(Debug, Clone, SurrealValue)]
 pub struct DeliveryAssignSeqParams {
-    pub outbox_event: String,
-    pub subscription: String,
+    pub outbox_event: RecordId,
+    pub subscription: RecordId,
     pub target_module: String,
     pub node_id: String,
     pub generation: u64,
@@ -94,13 +94,13 @@ pub struct DeliveryAssignSeqParams {
 /// Paramètres de flush granulaire et d'avancement de curseur (`fn::event_flush_batch`).
 #[derive(Debug, Clone, SurrealValue)]
 pub struct FlushBatchParams {
-    pub subscription: String,
+    pub subscription: RecordId,
     pub target_cursor: u64,
     pub node_id: String,
     pub generation: u64,
-    pub delivered_ids: Vec<String>,
-    pub dead_letter_ids: Vec<String>,
-    pub dropped_ids: Vec<String>,
+    pub delivered_ids: Vec<RecordId>,
+    pub dead_letter_ids: Vec<RecordId>,
+    pub dropped_ids: Vec<RecordId>,
     pub drop_reason: Option<String>,
 }
 
@@ -121,7 +121,7 @@ pub struct FlushBatchResult {
 /// Paramètres de transfert en quarantaine DLQ (`fn::event_dead_letter_transfer`).
 #[derive(Debug, Clone, SurrealValue)]
 pub struct DeadLetterTransferParams {
-    pub delivery_id: String,
+    pub delivery_id: RecordId,
     pub error: String,
     pub node_id: String,
     pub generation: u64,
@@ -141,7 +141,7 @@ pub struct DeadLetterTransferResult {
 /// Paramètres de lecture de progression durable (`fn::event_progress_get`).
 #[derive(Debug, Clone, SurrealValue)]
 pub struct ProgressGetParams {
-    pub subscription: String,
+    pub subscription: RecordId,
 }
 
 /// Résultat de lecture de progression durable (`fn::event_progress_get`).
@@ -164,7 +164,15 @@ pub struct ProgressGetResult {
 pub struct DeliveryFetchPendingParams {
     pub limit: usize,
     pub instance_id: Option<String>,
-    pub subscription: Option<String>,
+    pub subscription: Option<RecordId>,
+}
+
+/// Paramètres de `fn::event_delivery_failure` : échec transitoire persisté et retry programmé.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct DeliveryFailureParams {
+    pub delivery_id: RecordId,
+    pub error: String,
+    pub retry_delay_seconds: u64,
 }
 
 /// Enregistrement d'une livraison éligible renvoyé par `fn::event_delivery_fetch_pending`.

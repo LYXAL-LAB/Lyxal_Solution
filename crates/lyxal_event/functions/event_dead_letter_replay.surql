@@ -6,7 +6,18 @@
 DEFINE FUNCTION OVERWRITE fn::event_dead_letter_replay(
     $params: object
 ) {
-    LET $dead_letter_id = $params.dead_letter_id;
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            dead_letter_id: { pipeline: [{ rule: "record_id", options: { allowed_tables: ["event_dead_letter"] } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", $params.language, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $dead_letter_id = $p.dead_letter_id;
 
     LET $dl = (SELECT * FROM ONLY $dead_letter_id);
 

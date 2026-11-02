@@ -6,7 +6,19 @@
 DEFINE FUNCTION OVERWRITE fn::event_purge_garbage(
     $params: object
 ) {
-    LET $retention_days = IF $params.retention_days != NONE { $params.retention_days } ELSE { 7 };
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            retention_days: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 3650 } }], default: 7 },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("EVENT_INVALID_PARAMETERS", $params.language, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $retention_days = $p.retention_days;
+
     LET $cutoff = time::now() - <duration> string::concat($retention_days, "d");
 
     -- Suppression des livraisons complétées anciennes
