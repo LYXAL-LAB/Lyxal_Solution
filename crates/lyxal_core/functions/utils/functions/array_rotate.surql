@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/array_rotate.surql
 -- Fonction : fn::utils_array_rotate
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Effectue une rotation circulaire d'un tableau.
+--
+-- Paramètres
+--   $value  : array<any>
+--   $offset : int
+--
+-- Valeur renvoyée : array<any> (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_array_rotate(
     $value: array<any>,
     $offset: int

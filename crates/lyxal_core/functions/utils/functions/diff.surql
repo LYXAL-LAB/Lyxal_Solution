@@ -1,17 +1,23 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/diff.surql
 -- Fonction : fn::utils_diff
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Produit un diff générique entre deux valeurs.
+--
+-- Paramètres
+--   $left  : any
+--   $right : any
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_diff(
     $left: any,
     $right: any
 ) -> object {
     RETURN {
-        equal:fn::utils_deep_equal($left,$right),
+        equal:$left == $right,
         left:$left,
         right:$right,
         left_type:type::of($left),

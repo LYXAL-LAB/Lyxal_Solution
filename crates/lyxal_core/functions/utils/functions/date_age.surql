@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/date_age.surql
 -- Fonction : fn::utils_date_age
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Calcule l'âge entier à une date donnée.
+--
+-- Paramètres
+--   $birth_date : datetime
+--   $at         : datetime
+--
+-- Valeur renvoyée : int (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_date_age(
     $birth_date: datetime,
     $at: datetime

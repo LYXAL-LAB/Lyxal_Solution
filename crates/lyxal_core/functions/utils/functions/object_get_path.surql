@@ -1,11 +1,18 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/object_get_path.surql
 -- Fonction : fn::utils_object_get_path
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Lit une valeur depuis un chemin d'objet.
+--
+-- Paramètres
+--   $value         : object
+--   $path          : array<string>
+--   $default_value : any
+--
+-- Valeur renvoyée : any (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_object_get_path(
     $value: object,
     $path: array<string>,

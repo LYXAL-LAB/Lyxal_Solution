@@ -1,9 +1,8 @@
--- ============================================================================
--- TESTS — fn::utils_compare_dates
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_compare_dates (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_compare_dates(
-    d"2026-08-01T00:00:00Z",
-    d"2026-08-03T00:00:00Z"
-);
+-- test: antérieure
+RETURN fn::utils_compare_dates(d"2026-01-01T00:00:00Z", d"2026-01-02T00:00:00Z") == -1;
+
+-- test: égales
+RETURN fn::utils_compare_dates(d"2026-01-01T00:00:00Z", d"2026-01-01T00:00:00Z") == 0;

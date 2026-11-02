@@ -1,11 +1,18 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/compare_records.surql
 -- Fonction : fn::utils_compare_records
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Compare deux records sur une liste de clés.
+--
+-- Paramètres
+--   $left  : object
+--   $right : object
+--   $keys  : array<string>
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_compare_records(
     $left: object,
     $right: object,

@@ -24,15 +24,15 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 745 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 725 fonctions déclarées)
 ├── Readme.md
 ├── AUDIT.md                 (document de reprise, supprimé en fin de reprise)
 ├── implementation_plan.md   (document de reprise, supprimé en fin de reprise)
 └── functions/
     ├── validations/   functions/ (321) · tests/ (321)   fn::validation_*
     ├── sanitize/      functions/ (165) · tests/ (165)   fn::sanitize_*
-    ├── security/      functions/ (139) · tests/ (139)   fn::security_*
-    └── utils/         functions/ (120) · tests/ (120)   fn::utils_*
+    ├── security/      functions/ (137) · tests/ (137)   fn::security_*
+    └── utils/         functions/ (102) · tests/ (102)   fn::utils_*
 ```
 
 Chaque fonction a son fichier (`functions/<domaine>/functions/<nom>.surql`) et son fichier de tests (`functions/<domaine>/tests/<nom>.test.surql`).
@@ -131,7 +131,14 @@ Un motif d'expression régulière syntaxiquement invalide (`fn::validation_regex
 Les fonctions `fn::security_*` gardent des **paramètres typés** et renvoient une valeur ou un objet (plan §2.3) : empreintes non secrètes, forme canonique des requêtes HMAC (la signature elle-même est calculée par `lyxal_crypto`), permissions et politiques, détection d'attaques (heuristique, score de 0 à 100), masquage, nonces et fenêtres anti-rejeu, jetons. Seul un argument invalide lève `CORE_INVALID_ARGUMENT` ou `CORE_UNSUPPORTED_OPTION`.
 
 * Les comparaisons d'empreintes (`fn::security_hash_verify`) ne sont pas à temps constant : pour un secret, la comparaison se fait dans `lyxal_crypto`.
-* **Avancement** : toutes les fonctions de valeurs de `security` sont migrées (60 fonctions). Seule la mécanique (pipeline, audit, débogage…) attend le lot 4.
+* **Avancement** : toutes les fonctions de valeurs de `security` sont migrées (58 fonctions). Seule la mécanique (pipeline, audit, débogage…) attend le lot 4.
+
+### Contrat des fonctions `utils` — migration en cours (lot 3)
+
+Les fonctions `fn::utils_*` gardent des **paramètres typés** et renvoient une valeur (plan §2.3) : tableaux, collections (tri, pagination, fenêtres), comparaisons, dates, nombres, objets et chemins. Seul un argument invalide lève `CORE_INVALID_ARGUMENT` (taille nulle, bornes inversées, total nul…) ou `CORE_UNSUPPORTED_OPTION` (sens de tri inconnu).
+
+* Les nombres et l'arrondi s'appuient sur `sanitize` (`fn::sanitize_round`) ; l'égalité profonde est l'opérateur `==` de SurrealQL.
+* **Avancement** : 52 fonctions migrées (tableaux, collections, comparaisons, dates, nombres, objets). Restent les chaînes, encodages, CSV, cache et `runtime`, puis la mécanique (pipeline…) au lot 4.
 
 ### Contrat des fonctions `sanitize` — migration en cours (lot 3)
 
@@ -161,10 +168,10 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 ## Tests
 
-* `scripts/ci/test_lyxal_core.py` charge les 745 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
+* `scripts/ci/test_lyxal_core.py` charge les 725 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
 * **Deux formats coexistent pendant la reprise** :
   * **format « assertions »** (fichiers commençant par `-- lyxal-test: assertions`) : chaque bloc `-- test:` contient une instruction qui doit renvoyer `true`, ou lever l'erreur annoncée par `-- attendu-erreur: <CODE>` ; tout écart fait échouer la CI (détails : `implementation_plan.md` §5) ;
-  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (343 fichiers aujourd'hui, ceux des fonctions migrées).
+  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (393 fichiers aujourd'hui, ceux des fonctions migrées).
 * `scripts/ci/test_lyxal_core_selftest.py` vérifie que le banc accepte les bons tests et rejette les mauvais.
 * `scripts/ci/validate_surql.sh` vérifie la syntaxe de tout le SurrealQL du dépôt.
 * Les deux scripts font partie de la CI (job « SurrealQL ») et de `scripts/ci/ci_local.sh`.

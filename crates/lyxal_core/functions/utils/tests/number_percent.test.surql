@@ -1,6 +1,12 @@
--- ============================================================================
--- TESTS — fn::utils_number_percent
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_number_percent (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_number_percent(25,200,2);
+-- test: pourcentage arrondi
+RETURN fn::utils_number_percent(1, 3, 2) == 33.33f;
+
+-- test: entiers
+RETURN fn::utils_number_percent(1, 4, 0) == 25f;
+
+-- test: total nul
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_number_percent(1, 0, 2);

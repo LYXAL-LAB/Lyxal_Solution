@@ -108,7 +108,14 @@ Même principe : un résultat ou une valeur ; `THROW` uniquement pour un argumen
 | `security_signature_headers`, `_payload`, `_request`, `_response`, `_timestamp`, `_info` | `security_hmac_*` (même forme canonique ; seule la signature HMAC existe, §11.3) |
 | `security_hmac_nonce`, `security_signature_nonce`, `security_token_nonce` | `security_nonce` (nouvelle fonction, code identique aux trois) |
 | `security_info`, `security_cipher_info`, `security_hmac_info` | aucune : fiches descriptives figées (et fausses pour `security_info`), leur contenu relève du Readme |
+| `security_permission_inherit` | `security_permission_merge` (raccourci aux mêmes paramètres) |
+| `security_redact_secret` | `security_secret_mask` avec le masque `"*"` |
 | `security_hash_compare` | aucune : égalité simple présentée comme une comparaison d'empreintes (même piège que `security_secret_compare`, §4) |
+| `utils_collection_chunk`, `utils_collection_group_by`, `utils_collection_distinct` | `utils_array_chunk`, `utils_array_group_by`, `array::distinct` (raccourcis) |
+| `utils_compare_objects` | `utils_object_diff` (raccourci) |
+| `utils_array_unique`, `utils_array_flatten`, `utils_object_clone`, `utils_object_pick`, `utils_object_defaults`, `utils_string_slug`, `utils_string_title_case`, `utils_ensure_array`, `utils_ensure_object`, `utils_number_round`, `utils_number_clamp` | la fonction `sanitize` du même rôle (doublons) |
+| `utils_deep_equal`, `utils_shallow_equal` | l'opérateur `==` de SurrealQL |
+| `utils_from_json` | `encoding::json::decode` (appel direct de la fonction native) |
 
 Raison : une responsabilité = un endroit (`.agents/AGENTS.md` §5.1). Aucun appelant.
 

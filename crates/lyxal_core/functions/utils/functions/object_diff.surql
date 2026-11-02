@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/object_diff.surql
 -- Fonction : fn::utils_object_diff
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Calcule les différences de premier niveau entre deux objets.
+--
+-- Paramètres
+--   $left  : object
+--   $right : object
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_object_diff(
     $left: object,
     $right: object

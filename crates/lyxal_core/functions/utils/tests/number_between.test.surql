@@ -1,7 +1,12 @@
--- ============================================================================
--- TESTS — fn::utils_number_between
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_number_between (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_number_between(5,1,10,true);
-RETURN fn::utils_number_between(1,1,10,false);
+-- test: inclusif
+RETURN fn::utils_number_between(10, 0, 10, true);
+
+-- test: exclusif
+RETURN !fn::utils_number_between(10, 0, 10, false);
+
+-- test: bornes inversées
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_number_between(1, 10, 0, true);

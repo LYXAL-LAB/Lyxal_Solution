@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/object_merge_deep.surql
 -- Fonction : fn::utils_object_merge_deep
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Fusionne récursivement deux objets.
+--
+-- Paramètres
+--   $base     : object
+--   $override : object
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_object_merge_deep(
     $base: object,
     $override: object

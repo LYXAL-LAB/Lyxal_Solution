@@ -1,22 +1,32 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/number_percent.surql
 -- Fonction : fn::utils_number_percent
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Calcule un pourcentage à partir d'une valeur et d'un total.
+--
+-- Paramètres
+--   $value     : number
+--   $total     : number
+--   $precision : int
+--
+-- Valeur renvoyée : number (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $total = 0
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_number_percent(
     $value: number,
     $total: number,
     $precision: int
 ) -> number {
     IF $total = 0 {
-        THROW "UTILS_PERCENT_TOTAL_ZERO";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
-    RETURN fn::utils_number_round(
-        ($value/$total)*100,
+    RETURN fn::sanitize_round(
+        (type::float($value)/$total)*100,
         $precision
     );
 }

@@ -1,17 +1,26 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/array_chunk.surql
 -- Fonction : fn::utils_array_chunk
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Découpe un tableau en groupes de taille fixe.
+--
+-- Paramètres
+--   $value : array<any>
+--   $size  : int
+--
+-- Valeur renvoyée : array<array<any>> (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $size < 1
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_array_chunk(
     $value: array<any>,
     $size: int
 ) -> array<array<any>> {
     IF $size < 1 {
-        THROW "UTILS_INVALID_CHUNK_SIZE";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     RETURN array::map(

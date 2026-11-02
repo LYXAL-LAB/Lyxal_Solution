@@ -1,10 +1,9 @@
--- ============================================================================
--- TESTS — fn::utils_object_set_path
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_object_set_path (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_object_set_path(
-    {user:{}},
-    ["user","profile","name"],
-    "Lyxal"
-);
+-- test: création des niveaux
+RETURN fn::utils_object_set_path({ a: 1 }, ["b", "c"], 2) == { a: 1, b: { c: 2 } };
+
+-- test: chemin vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_object_set_path({}, [], 1);

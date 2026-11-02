@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/object_has_path.surql
 -- Fonction : fn::utils_object_has_path
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Vérifie l'existence d'un chemin d'objet.
+--
+-- Paramètres
+--   $value : object
+--   $path  : array<string>
+--
+-- Valeur renvoyée : bool (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_object_has_path(
     $value: object,
     $path: array<string>

@@ -1,16 +1,5 @@
--- ============================================================================
--- TESTS — fn::utils_collection_order_by
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_collection_order_by (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_collection_order_by(
-    [
-        {group:"a",order:2},
-        {group:"b",order:1},
-        {group:"a",order:1}
-    ],
-    [
-        {key:"group",direction:"asc"},
-        {key:"order",direction:"asc"}
-    ]
-);
+-- test: plusieurs critères
+RETURN fn::utils_collection_order_by([{ name: "A", team: "x", age: 30 }, { name: "B", team: "y", age: 20 }, { name: "C", team: "x", age: 25 }], [{ key: "team" }, { key: "age", direction: "desc" }]).map(|$p| $p.name) == ["A", "C", "B"];

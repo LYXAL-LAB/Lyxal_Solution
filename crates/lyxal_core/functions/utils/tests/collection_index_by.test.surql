@@ -1,12 +1,5 @@
--- ============================================================================
--- TESTS — fn::utils_collection_index_by
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_collection_index_by (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_collection_index_by(
-    [
-        {id:"a",value:1},
-        {id:"b",value:2}
-    ],
-    "id"
-);
+-- test: index par clé
+RETURN fn::utils_collection_index_by([{ id: "a", v: 1 }, { id: "b", v: 2 }], "id") == { a: { id: "a", v: 1 }, b: { id: "b", v: 2 } };

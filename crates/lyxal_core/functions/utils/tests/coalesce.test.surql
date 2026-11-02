@@ -1,8 +1,8 @@
--- ============================================================================
--- TESTS — fn::utils_coalesce
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_coalesce (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_coalesce(
-    [NONE,NULL,"Lyxal","Core"]
-);
+-- test: première valeur non NONE ni NULL
+RETURN fn::utils_coalesce([NONE, NULL, "a", "b"]) == "a";
+
+-- test: aucune valeur
+RETURN fn::utils_coalesce([NONE, NULL]) == NONE;

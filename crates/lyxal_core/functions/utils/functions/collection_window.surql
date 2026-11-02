@@ -1,18 +1,28 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/collection_window.surql
 -- Fonction : fn::utils_collection_window
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Produit des fenêtres glissantes sur une collection.
+--
+-- Paramètres
+--   $value : array<any>
+--   $size  : int
+--   $step  : int
+--
+-- Valeur renvoyée : array<array<any>> (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $size < 1 OR $step < 1
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_collection_window(
     $value: array<any>,
     $size: int,
     $step: int
 ) -> array<array<any>> {
     IF $size < 1 OR $step < 1 {
-        THROW "UTILS_INVALID_WINDOW";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     IF array::len($value) < $size {

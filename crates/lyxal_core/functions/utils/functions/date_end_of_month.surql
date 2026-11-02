@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/date_end_of_month.surql
 -- Fonction : fn::utils_date_end_of_month
--- Version  : 1.0.1
--- Statut   : Stable
+--
+-- Retourne la fin du mois UTC.
+--
+-- Paramètres
+--   $value : datetime
+--
+-- Valeur renvoyée : datetime (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_date_end_of_month(
     $value: datetime
 ) -> datetime {

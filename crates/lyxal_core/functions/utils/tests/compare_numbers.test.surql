@@ -1,10 +1,12 @@
--- ============================================================================
--- TESTS — fn::utils_compare_numbers
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_compare_numbers (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_compare_numbers(
-    1.0001f,
-    1.0002f,
-    0.001f
-);
+-- test: dans la tolérance
+RETURN fn::utils_compare_numbers(1.0f, 1.05f, 0.1f) == 0;
+
+-- test: supérieur
+RETURN fn::utils_compare_numbers(3, 2, 0) == 1;
+
+-- test: tolérance négative
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_compare_numbers(1, 2, -1);
