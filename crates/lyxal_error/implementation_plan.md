@@ -19,7 +19,7 @@ Faire sortir `lyxal_error` à l'état cible, comme `lyxal_core`, sans rien garde
 | Q1 | **Code d'erreur des entrées invalides.** Aujourd'hui, seul `ERROR_PARAM_REQUIRED` existe ; toute autre valeur invalide remonte en erreur brute (E-01). | Remplacer `ERROR_PARAM_REQUIRED` par **`ERROR_INVALID_INPUT`** (`http_status` 400), avec `details.fields` = `by_field` du rapport du Core (ex. `{ category: ["CORE_VALIDATION_NOT_ALLOWED"] }`). Un seul code couvre champ manquant, type, format et valeur hors liste. |
 | Q2 | **`fn::error_get`** : signature `$params: any`, retour brut, aucun appelant hors du module (E-05). | **Supprimer.** `fn::error_definition_get` assure la consultation publique ; `error_resolve` et `error_log` lisent la définition par une requête interne. |
 | Q3 | **`fn::error_occurrence_create`** : raccourci de `fn::error_log` (E-12). | **Supprimer** et garder `fn::error_log`, le nom de service utilisé par les modules. |
-| Q4 | **Mode de correspondance `regex`** : prévu par le schéma, non implémenté (E-03). | **L'implémenter** : le motif est contrôlé à la création et à la mise à jour par `fn::validation_regex`, puis appliqué par `string::matches` dans `fn::error_map_external`. |
+| Q4 | **Mode de correspondance `regex`** : prévu par le schéma, non implémenté (E-03). SurrealQL 3.3.4 ne sait pas vérifier qu'un motif est bien formé sans lever : `fn::validation_regex` teste une valeur contre un motif, elle ne valide pas le motif, et un motif invalide (`[`) lève une erreur brute du moteur. | **Retirer `regex` des modes autorisés** (il reste `exact`, `prefix`, `contains`, `http_status`). Un motif invalide ne pourra alors jamais faire échouer une résolution. Si un besoin réel de `regex` apparaît, il faudra une validation de syntaxe qui n'existe pas dans le Core : ce serait une demande d'extension (§5.7.7), probablement côté Rust, à soumettre séparément. |
 | Q5 | **Préfixe des codes** (E-07). | Rendre `module` **obligatoire** et exiger que `code` commence par `UPPER(module)_`, sinon `ERROR_DEFINITION_CODE_PREFIX_MISMATCH`. Les codes `CORE_*` existants ont le module `core` et restent valides. |
 | Q6 | **`LyxalCallError::BusinessCode`** : répond toujours 401 « Authentication failed » (E-09). Il est utilisé par `lyxal_pipeline_ingestion` et par `lyxal_booking/engine`, hors workspace. | **Supprimer la variante.** Le code Rust qui a besoin d'une erreur métier construit un `LyxalError` résolu par SurrealQL, comme les autres. Les deux appelants sont mis à jour dans la même PR : `lyxal_booking` relit sa logique d'authentification en Rust et n'est pas compilé par la CI (je vérifierai sa compilation à la main). |
 | Q7 | **Seeds de démonstration** `seeds/error_mappings.surql` (E-19). | **Supprimer.** Aucun mapping n'est installé par défaut ; chaque module déclare les siens. |
@@ -39,7 +39,7 @@ Faire sortir `lyxal_error` à l'état cible, comme `lyxal_core`, sans rien garde
     * définition cible inexistante à la création ou à la mise à jour → `ERROR_DEFINITION_NOT_FOUND` (E-08) ;
     * préfixe → Q5.
   * `error_log` accepte `source` et `actor` (enregistrements), `request_id` et `fingerprint` (E-04, E-20).
-  * `error_map_external` gère `regex` (Q4).
+  * Le mode `regex` est retiré du schéma (Q4).
   * `PERMISSIONS FULL` explicite sur chaque fonction (E-17). `COMMENT` et en-têtes réécrits en UTF-8 (E-14).
 
 ### 3.2. Codes d'erreur (`error/error_definitions.surql`)
@@ -79,10 +79,9 @@ Faire sortir `lyxal_error` à l'état cible, comme `lyxal_core`, sans rien garde
 
 * **Réutilisées** :
   * `fn::validation_object_execute` et `fn::sanitize_object_execute` (moteur unique) ;
-  * règles `required_string`, `optional_string`, `enum`, `integer`, `boolean`, `is_object`, `record`, `datetime`, `language_code`, `regex`, `snake_case_name` et `identifier` ;
-  * `fn::validation_regex` pour les motifs `regex`.
+  * règles `required_string`, `optional_string`, `enum`, `integer`, `boolean`, `is_object`, `record`, `datetime`, `language_code`, `regex`, `snake_case_name` et `identifier`. Ici, `regex` sert à vérifier un code d'erreur contre un motif fixe écrit par le développeur, jamais un motif saisi par un utilisateur.
 * **Nouvelles fonctions** : aucune ; deux fonctions sont supprimées.
-* **Besoin Core éventuel** : aucun identifié. Si une règle manque dans le catalogue au moment de l'écriture (par exemple un code d'erreur `^[A-Z][A-Z0-9_]+$`), elle passera par `regex` ; aucune primitive ne sera ajoutée au Core sans votre accord.
+* **Besoin Core éventuel** : aucun avec la proposition Q4 (retrait de `regex`). Si vous préférez garder les correspondances par expression régulière, la validation de la syntaxe d'un motif est un besoin d'extension (§5.7.7) non couvert par le Core, à traiter avant ce lot. Aucune primitive ne sera ajoutée au Core sans votre accord.
 * **Crypto** : aucun besoin.
 
 ## 5. Tests
@@ -90,7 +89,7 @@ Faire sortir `lyxal_error` à l'état cible, comme `lyxal_core`, sans rien garde
 * Les tests d'intégration Rust (moteur embarqué `mem://`) sont réécrits pour le contrat cible. Un cas est ajouté par écart corrigé :
   * valeur hors liste → `ERROR_INVALID_INPUT` avec `fields` ;
   * doublon de mapping ;
-  * `regex` ;
+  * mode `regex` refusé (`ERROR_INVALID_INPUT`) ;
   * `source` sous forme d'enregistrement ;
   * préfixe ;
   * cible inexistante ;
@@ -101,11 +100,13 @@ Faire sortir `lyxal_error` à l'état cible, comme `lyxal_core`, sans rien garde
 
 ## 6. Lots (une PR par lot, CI verte obligatoire)
 
+Chaque changement de contrat est livré **avec** la mise à jour de tous ses appelants (SurrealQL, DTO Rust, modules dépendants) et de ses tests, dans la même PR (§0.3, point 1). Aucun lot ne laisse le workspace dans un état intermédiaire cassé.
+
 | Lot | Contenu |
 | :- | :--- |
-| 1 | **Nettoyage** : suppression des documents historiques, de la migration vide, des seeds de démonstration, de `error_get`, de `error_occurrence_create` et de `CORE_ERROR_DEFINITION_NOT_FOUND` ; encodage UTF-8 ; `PERMISSIONS FULL` ; README à l'état actuel ; manifeste. |
-| 2 | **Contrat SurrealQL** : validation par le Core, `ERROR_INVALID_INPUT`, suppression des alias, conflits et intégrité, préfixe, `regex`, `error_log` complet, bornes ; tests d'intégration. |
-| 3 | **Contrat Rust** : DTO alignés, types de résultat, suppression de `BusinessCode` et mise à jour de `lyxal_pipeline_ingestion` et `lyxal_booking/engine`, `ERROR_INVALID_FUNCTION_RESPONSE` ; tests de contrat. |
+| 1 | **Nettoyage sans changement de contrat** : suppression des documents historiques, de la migration vide, des seeds de démonstration et de `CORE_ERROR_DEFINITION_NOT_FOUND` (aucun appelant) ; encodage UTF-8 ; `PERMISSIONS FULL` explicite ; README à l'état actuel ; manifeste. |
+| 2 | **Contrat SurrealQL et DTO Rust, ensemble** : validation par le Core et `ERROR_INVALID_INPUT` ; suppression des alias **et** renommage des DTO correspondants (`matcher`, `definition_code`…) ; suppression de `error_get` **avec** la réécriture de `error_resolve` et `error_log` qui l'appelaient ; suppression de `error_occurrence_create` ; conflits, intégrité, préfixe, retrait de `regex`, `error_log` complet, bornes ; types de résultat ; tests d'intégration et de contrat. |
+| 3 | **`LyxalCallError`** : suppression de `BusinessCode` **avec** la mise à jour de `lyxal_pipeline_ingestion` et de `lyxal_booking/engine` (hors workspace, compilation vérifiée à la main) ; `ERROR_INVALID_FUNCTION_RESPONSE` ; tests. |
 | 4 | **Clôture** : audit de contrôle (`lyxal-audit`, aucun écart P0/P1), suppression de `AUDIT.md` et de ce plan. |
 
 ## 7. Checklist §13 (extraits)
