@@ -1,0 +1,11 @@
+-- lyxal-test: assertions
+-- Tests de fn::utils_engine_schema_hash (format : crates/lyxal_core/implementation_plan.md §5).
+
+-- test: empreinte stable
+RETURN fn::utils_engine_schema_hash(fn::utils_engine_schema({ name: "contact", fields: { name: { pipeline: [{ rule: "trim" }, { rule: "min", value: 2 }], required: true }, note: { pipeline: [{ rule: "trim" }], nullable: true }, lang: { default: "fr" } } }, [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10)) == fn::utils_engine_schema_hash(fn::utils_engine_schema({ name: "contact", fields: { name: { pipeline: [{ rule: "trim" }, { rule: "min", value: 2 }], required: true }, note: { pipeline: [{ rule: "trim" }], nullable: true }, lang: { default: "fr" } } }, [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10)) AND string::len(fn::utils_engine_schema_hash(fn::utils_engine_schema({ name: "contact", fields: { name: { pipeline: [{ rule: "trim" }, { rule: "min", value: 2 }], required: true }, note: { pipeline: [{ rule: "trim" }], nullable: true }, lang: { default: "fr" } } }, [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10))) == 64;
+
+-- test: types conservés
+RETURN fn::utils_engine_schema_hash({ fields: { a: { default: 1s } } }) != fn::utils_engine_schema_hash({ fields: { a: { default: "1s" } } });
+
+-- test: dépend du schéma
+RETURN fn::utils_engine_schema_hash(fn::utils_engine_schema({ name: "contact", fields: { name: { pipeline: [{ rule: "trim" }, { rule: "min", value: 2 }], required: true }, note: { pipeline: [{ rule: "trim" }], nullable: true }, lang: { default: "fr" } } }, [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10)) != fn::utils_engine_schema_hash(object::extend(fn::utils_engine_schema({ name: "contact", fields: { name: { pipeline: [{ rule: "trim" }, { rule: "min", value: 2 }], required: true }, note: { pipeline: [{ rule: "trim" }], nullable: true }, lang: { default: "fr" } } }, [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10), { version: "v2" }));

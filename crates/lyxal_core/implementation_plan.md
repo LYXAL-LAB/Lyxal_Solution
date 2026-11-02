@@ -64,7 +64,7 @@ Même principe : un résultat ou une valeur ; `THROW` uniquement pour un argumen
 * Les familles `utils_runtime_*` (identifiants, horodatages, informations d'exécution) et `utils_cache_*` sont des primitives génériques déjà uniques : elles restent en place.
 * **Point de contrôle CTO** : avant d'écrire le moteur, le lot 4 commence par une **note de conception** ajoutée à ce plan (inventaire famille par famille, tableau des divergences, comportement retenu pour chacune, API cible). Aucune ligne du moteur n'est écrite avant sa validation.
 
-### 3.1. Note de conception du lot 4 — ⏳ soumise au CTO
+### 3.1. Note de conception du lot 4 — ✅ validée par le CTO
 
 #### Inventaire (état après le lot 3)
 
@@ -125,7 +125,7 @@ SurrealQL ne permet pas d'appeler une fonction à partir de son nom. En revanche
 * **Supprimées** : environ 245 fonctions. Raisons : une responsabilité = un endroit (§5.1), raccourcis de fonctions natives, fiches figées, et le registre que SurrealQL ne peut pas exploiter.
 * **Codes d'erreur** : uniquement `CORE_INVALID_ARGUMENT`, `CORE_UNSUPPORTED_OPTION` et les codes `CORE_VALIDATION_*` ; tous les codes `VALIDATION_*`, `SANITIZE_*`, `SECURITY_*` et dynamiques disparaissent.
 * **Découpage en PR** :
-  1. le moteur et ses tests (pipeline, exécution, schéma, rapport) ;
+  1. le moteur et ses tests (pipeline, exécution, schéma, rapport) ; précision d'implémentation : l'état porte au minimum `{ value, issues, warnings, stop, path, parent }`, car les règles `each`, `object`, `when` et `one_of` agissent sur la valeur et les erreurs ; un domaine peut y ajouter ses propres clés (`security` : `findings`, `decisions`) ;
   2. le branchement de `sanitize` et la suppression de ses copies ;
   3. le branchement de `validations` ;
   4. le branchement de `security` ;

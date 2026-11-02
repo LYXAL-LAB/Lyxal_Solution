@@ -24,7 +24,7 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 719 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 735 fonctions déclarées)
 ├── Readme.md
 ├── AUDIT.md                 (document de reprise, supprimé en fin de reprise)
 ├── implementation_plan.md   (document de reprise, supprimé en fin de reprise)
@@ -32,7 +32,7 @@ lyxal_core/
     ├── validations/   functions/ (321) · tests/ (321)   fn::validation_*
     ├── sanitize/      functions/ (165) · tests/ (165)   fn::sanitize_*
     ├── security/      functions/ (137) · tests/ (137)   fn::security_*
-    └── utils/         functions/ (96) · tests/ (96)   fn::utils_*
+    └── utils/         functions/ (112) · tests/ (112)   fn::utils_*
 ```
 
 Chaque fonction a son fichier (`functions/<domaine>/functions/<nom>.surql`) et son fichier de tests (`functions/<domaine>/tests/<nom>.test.surql`).
@@ -133,6 +133,28 @@ Les fonctions `fn::security_*` gardent des **paramètres typés** et renvoient u
 * Les comparaisons d'empreintes (`fn::security_hash_verify`) ne sont pas à temps constant : pour un secret, la comparaison se fait dans `lyxal_crypto`.
 * **Avancement** : toutes les fonctions de valeurs de `security` sont migrées (58 fonctions). Seule la mécanique (pipeline, audit, débogage…) attend le lot 4.
 
+### Moteur unique `fn::utils_engine_*` — en cours (lot 4)
+
+Un seul moteur exécute les pipelines de tous les domaines (`implementation_plan.md` §3.1). Il ne connaît aucune règle métier : chaque domaine lui passe une **closure** qui applique une étape.
+
+* **Étape** : `{ rule, value, options }`. `fn::utils_engine_pipeline($steps, $catalog, $max_steps)` contrôle un pipeline contre le catalogue du domaine (`[{ rule, cost }]`).
+* **État** : `{ value, issues, warnings, stop, path, parent }` (`fn::utils_engine_state`). Le domaine peut y ajouter ses clés. Une étape signale une erreur avec `fn::utils_engine_issue`, ce qui arrête le pipeline en cours, ou un avertissement avec `fn::utils_engine_warning`.
+* **Exécution** : `fn::utils_engine_run($state, $pipeline, $apply)`, où `$apply` est une closure `|$state, $step| …` qui renvoie le nouvel état.
+* **Règles du moteur**, disponibles dans tout domaine :
+  * `each` : sous-pipeline appliqué à chaque élément d'un tableau ;
+  * `object` : schéma imbriqué ;
+  * `when` : branche selon la valeur ou un champ voisin (`field`, `equals` ou `in`, `then`, `else`) ;
+  * `one_of` : première branche sans erreur.
+* **Schéma** : `{ fields: { <champ>: { pipeline, required, nullable, default } }, unknown_keys: "reject" | "strip" | "keep" }`, contrôlé par `fn::utils_engine_schema` et appliqué par `fn::utils_engine_run_object`. Codes produits : `CORE_VALIDATION_REQUIRED`, `CORE_VALIDATION_NULL`, `CORE_VALIDATION_NOT_ALLOWED`.
+* **Rapport** : `fn::utils_engine_report` renvoie `{ valid, value, errors, warnings, by_field }` ; `fn::utils_engine_report_merge` fusionne plusieurs rapports.
+
+```surql
+LET $pipeline = fn::utils_engine_pipeline([{ rule: "trim" }], [{ rule: "trim", cost: 1 }], 20);
+LET $state = fn::utils_engine_run(fn::utils_engine_state("  a  ", "", NONE), $pipeline,
+    |$s, $step| object::extend($s, { value: string::trim($s.value) }));
+RETURN fn::utils_engine_report($state);
+```
+
 ### Contrat des fonctions `utils` — migration en cours (lot 3)
 
 Les fonctions `fn::utils_*` gardent des **paramètres typés** et renvoient une valeur (plan §2.3) : tableaux, collections (tri, pagination, fenêtres), comparaisons, dates, nombres, objets et chemins, chaînes (casse, remplissage), encodages (URI, hexadécimal), CSV, entrées de cache et métadonnées d'exécution. Seul un argument invalide lève `CORE_INVALID_ARGUMENT` (taille nulle, bornes inversées, total nul…) ou `CORE_UNSUPPORTED_OPTION` (sens de tri inconnu).
@@ -170,10 +192,10 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 ## Tests
 
-* `scripts/ci/test_lyxal_core.py` charge les 719 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
+* `scripts/ci/test_lyxal_core.py` charge les 735 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
 * **Deux formats coexistent pendant la reprise** :
   * **format « assertions »** (fichiers commençant par `-- lyxal-test: assertions`) : chaque bloc `-- test:` contient une instruction qui doit renvoyer `true`, ou lever l'erreur annoncée par `-- attendu-erreur: <CODE>` ; tout écart fait échouer la CI (détails : `implementation_plan.md` §5) ;
-  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (427 fichiers aujourd'hui, ceux des fonctions migrées).
+  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (443 fichiers aujourd'hui, ceux des fonctions migrées).
 * `scripts/ci/test_lyxal_core_selftest.py` vérifie que le banc accepte les bons tests et rejette les mauvais.
 * `scripts/ci/validate_surql.sh` vérifie la syntaxe de tout le SurrealQL du dépôt.
 * Les deux scripts font partie de la CI (job « SurrealQL ») et de `scripts/ci/ci_local.sh`.
