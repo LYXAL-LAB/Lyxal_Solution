@@ -20,7 +20,7 @@ Audit en lecture seule (skill `lyxal-audit`), état de `main` au 2026-11-02, apr
 
 ## 2. Synthèse et verdict
 
-**NON CONFORME** : 1 écart P0, 6 écarts P1, 6 écarts P2.
+**NON CONFORME** : 3 écarts P0, 8 écarts P1, 6 écarts P2 (dont 4 découverts au lot 2 en éprouvant le chemin de production : V-14 à V-17).
 
 Le cœur du moteur est solide :
 * tous les appels passent par `call_fn` ;
@@ -54,6 +54,10 @@ Les écarts majeurs :
 | V-11 | P2 | §0.3.3, §0.3.4 | `manifest.toml`, `CHANGELOG.md`, `ROADMAP.md`, `docs/*.md`, `readme.md`, `tests/it/integration_lot3b3_bridge.rs` | Manifeste en `1.0.0`. Changelog et roadmap avant toute livraison. Documents citant SurrealDB 3.2.0. `readme.md` en minuscules. Nom de test hérité d'un ancien lot. | `0.1.0`, suppression, documents à l'état actuel. |
 | V-12 | P2 | Cohérence (`lyxal_error`) | `functions/*.surql` | Aucune fonction ne déclare `PERMISSIONS` : `FULL` par défaut. | `PERMISSIONS FULL` explicite, comme `lyxal_error`. |
 | V-13 | P2 | Couverture | `tests/it/` | Le chemin de production n'est éprouvé de bout en bout que par `integration_lot3b3_bridge` et des tests unitaires du moteur. | Couvert par Q1. |
+| V-14 | P0 | §5.6.4 (un flux ordonné par abonnement) | `src/worker/worker.rs`, `src/engine/feeder.rs:208` | **Découvert au lot 2.** Le worker utilise une seule file pour tous les abonnements, rangée par numéro de séquence, alors que chaque abonnement numérote ses livraisons à partir de 1. Dès que deux abonnements reçoivent le même événement, la seconde livraison porte le même numéro : elle est ignorée et reste en `processing`. `lyxal_runtime` crée un seul worker pour tous les abonnements, donc la production est touchée. | Une file par abonnement dans le worker (décision CTO). |
+| V-15 | P0 | §5.6.4 (barrière DLQ) | `src/worker/worker.rs` (`dead_letter_topic`) | **Découvert au lot 2.** La politique `DeadLetter` exige un topic, absent par défaut de `EventWorkerConfig` comme de `lyxal_runtime`. Une livraison dont les tentatives sont épuisées n'est jamais transférée en DLQ (« Dead letter topic must be configured ») et reste bloquée. | Topic par défaut propre à l'abonnement. |
+| V-16 | P1 | §5.8.3 (tâches supervisées) | `src/worker/worker.rs` (heartbeat) | **Découvert au lot 2** (aggrave V-09). Si la tâche d'un worker est interrompue, sa tâche de renouvellement du bail, lancée à part, continue seule : elle garde le bail indéfiniment, aucun autre worker ne prend le relais. | Tâches de fond liées à la vie du worker (`AbortOnDropHandle`). |
+| V-17 | P1 | §5.6.3 (at-least-once), §11.4 | `src/engine/progress.rs`, `src/engine/feeder.rs` | **Découvert au lot 2** (≈ 1 exécution sur 5 du test de concurrence). Un conflit d'écriture transitoire sur `event_flush_batch` n'est pas rejoué. Le flush n'étant relancé qu'au prochain acquittement, la dernière livraison d'un abonnement reste verrouillée et le curseur bloqué. | Rejeu borné des conflits transitoires ; rattrapage du flush en attente à chaque tour du worker. |
 
 ## 4. Correspondance DTO ↔ SurrealQL
 

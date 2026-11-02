@@ -49,26 +49,6 @@ struct RecoverFanoutResult {
     recovered_count: usize,
 }
 
-#[derive(SurrealValue, Clone)]
-struct ClaimParams {
-    limit: usize,
-    lease_seconds: u64,
-    worker_id: String,
-    instance_id: Option<String>,
-}
-
-#[derive(SurrealValue, Clone)]
-struct DeliverySuccessParams {
-    delivery_id: RecordId,
-}
-
-#[derive(SurrealValue, Clone)]
-struct DeliveryFailureParams {
-    delivery_id: RecordId,
-    error: String,
-    retry_delay_seconds: u64,
-}
-
 #[derive(SurrealValue)]
 struct DeadLetterReplayParams {
     dead_letter_id: RecordId,
@@ -140,10 +120,6 @@ impl EventStore {
             include_str!("../../functions/event_fanout.surql"),
             "\n",
             include_str!("../../functions/event_recover_pending_fanouts.surql"),
-            "\n",
-            include_str!("../../functions/event_claim_batch.surql"),
-            "\n",
-            include_str!("../../functions/event_delivery_success.surql"),
             "\n",
             include_str!("../../functions/event_delivery_failure.surql"),
             "\n",
@@ -260,110 +236,6 @@ impl EventStore {
             .call_fn("event_recover_pending_fanouts", params)
             .await?;
         Ok(res.recovered_count)
-    }
-
-    /// Réclame atomiquement un lot de livraisons prêtes.
-    pub async fn claim_batch(
-        &self,
-        limit: usize,
-        lease_seconds: u64,
-        worker_id: &str,
-        instance_id: Option<&str>,
-    ) -> Result<Vec<EventDelivery>, LyxalEventError> {
-        let params = ClaimParams {
-            limit,
-            lease_seconds,
-            worker_id: worker_id.to_string(),
-            instance_id: instance_id.map(|s| s.to_string()),
-        };
-
-        let mut attempts = 0;
-        loop {
-            match self
-                .call_fn::<Vec<EventDelivery>, _>("event_claim_batch", params.clone())
-                .await
-            {
-                Ok(deliveries) => return Ok(deliveries),
-                Err(err) => {
-                    attempts += 1;
-                    let err_str = err.to_string();
-                    if (err_str.contains("conflict") || err_str.contains("retry")) && attempts < 5 {
-                        let jitter = fastrand::u64(5..25);
-                        tokio::time::sleep(std::time::Duration::from_millis(jitter)).await;
-                        continue;
-                    }
-                    return Err(LyxalEventError::Surreal(Box::new(err)));
-                }
-            }
-        }
-    }
-
-    /// Acquitte le succès d'une livraison.
-    pub async fn delivery_success(&self, id: &RecordId) -> Result<(), LyxalEventError> {
-        let params = DeliverySuccessParams {
-            delivery_id: id.clone(),
-        };
-        let mut attempts = 0;
-        loop {
-            match self
-                .call_fn::<bool, _>("event_delivery_success", params.clone())
-                .await
-            {
-                Ok(true) => return Ok(()),
-                Ok(false) => {
-                    return Err(LyxalEventError::Internal(
-                        "Delivery not found or invalid delivery_id".to_string(),
-                    ))
-                }
-                Err(err) => {
-                    attempts += 1;
-                    let err_str = err.to_string();
-                    if (err_str.contains("conflict") || err_str.contains("retry")) && attempts < 5 {
-                        let jitter = fastrand::u64(5..25);
-                        tokio::time::sleep(std::time::Duration::from_millis(jitter)).await;
-                        continue;
-                    }
-                    return Err(LyxalEventError::Surreal(Box::new(err)));
-                }
-            }
-        }
-    }
-
-    /// Enregistre l'échec d'une livraison et reprogramme un retry ou bascule en dead-letter.
-    pub async fn delivery_failure(
-        &self,
-        id: &RecordId,
-        error_message: &str,
-        retry_delay_seconds: u64,
-    ) -> Result<(), LyxalEventError> {
-        let params = DeliveryFailureParams {
-            delivery_id: id.clone(),
-            error: error_message.to_string(),
-            retry_delay_seconds,
-        };
-        let mut attempts = 0;
-        loop {
-            match self
-                .call_fn::<bool, _>("event_delivery_failure", params.clone())
-                .await
-            {
-                Ok(true) => return Ok(()),
-                Ok(false) => return Err(LyxalEventError::Internal(
-                    "Failed to record delivery failure (delivery not found or invalid parameters)"
-                        .to_string(),
-                )),
-                Err(err) => {
-                    attempts += 1;
-                    let err_str = err.to_string();
-                    if (err_str.contains("conflict") || err_str.contains("retry")) && attempts < 5 {
-                        let jitter = fastrand::u64(5..25);
-                        tokio::time::sleep(std::time::Duration::from_millis(jitter)).await;
-                        continue;
-                    }
-                    return Err(LyxalEventError::Surreal(Box::new(err)));
-                }
-            }
-        }
     }
 
     /// Rejoue une dead letter.

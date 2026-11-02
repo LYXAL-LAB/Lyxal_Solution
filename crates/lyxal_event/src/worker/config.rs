@@ -24,8 +24,6 @@ pub struct EventWorkerConfig {
     pub ack_timeout: Duration,
     /// Nombre maximal de tentatives de relivraison avant transfert en Dead Letter Queue.
     pub max_redelivery_count: u32,
-    /// Nom canonique de l'abonnement supervisé.
-    pub subscription_name: String,
     /// Topic optionnel de destination pour la Dead Letter Queue.
     pub dead_letter_topic: Option<String>,
     /// Délai de base pour le backoff exponentiel des retries.
@@ -51,7 +49,6 @@ impl Default for EventWorkerConfig {
             dispatch_timeout: Duration::from_secs(5),
             ack_timeout: Duration::from_secs(2),
             max_redelivery_count: 3,
-            subscription_name: "default_subscription".to_string(),
             dead_letter_topic: None,
             retry_base_delay: Duration::from_secs(1),
             retry_max_delay: Duration::from_secs(300),
@@ -136,13 +133,6 @@ impl EventWorkerConfig {
     #[must_use]
     pub fn with_max_attempts(mut self, max_attempts: u32) -> Self {
         self.max_redelivery_count = max_attempts;
-        self
-    }
-
-    /// Personnalise le nom de l'abonnement supervisé.
-    #[must_use]
-    pub fn with_subscription_name(mut self, name: impl Into<String>) -> Self {
-        self.subscription_name = name.into();
         self
     }
 

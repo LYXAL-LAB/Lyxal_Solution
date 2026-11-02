@@ -229,6 +229,33 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         Ok(seq)
     }
 
+    /// Relance l'avancement durable du curseur resté en attente après un échec d'écriture.
+    ///
+    /// Sans ce rattrapage, un échec de `flush_batch` sur la dernière livraison d'un abonnement
+    /// ne serait jamais rejoué (le flush n'est déclenché que par un nouvel acquittement) : la
+    /// livraison resterait verrouillée et le curseur bloqué.
+    pub async fn retry_pending_flush(&mut self) -> Result<(), FeederError> {
+        let safe_cursor = {
+            let disp = self.dispatcher.lock().await;
+            disp.safe_cursor()
+        };
+        let Some(cursor) = safe_cursor else {
+            return Ok(());
+        };
+        let mut flushed = false;
+        for tracker in self.trackers.values_mut() {
+            if tracker.pending_resolutions_count() > 0 && cursor > tracker.last_persisted_cursor() {
+                tracker.flush_progress(cursor).await?;
+                flushed = true;
+            }
+        }
+        if flushed {
+            self.delivery_seq_to_id.retain(|&seq, _| seq > cursor);
+            self.delivery_seq_to_sub.retain(|&seq, _| seq > cursor);
+        }
+        Ok(())
+    }
+
     /// Traite un acquittement de consommation (ACK) et avance la progression durable.
     pub async fn handle_ack(
         &mut self,

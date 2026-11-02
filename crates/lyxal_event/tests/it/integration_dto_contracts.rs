@@ -58,49 +58,6 @@ async fn test_rejection_of_legacy_dto_and_negative_contracts() {
     let delivery_id_str = delivery_id.to_sql();
 
     // =========================================================================
-    // TEST 1 : fn::event_delivery_success avec l'ancien DTO { "id": ... }
-    // Doit être rejeté (retourner false) et NE PAS modifier le statut.
-    // =========================================================================
-    let mut call1 = db
-        .query("RETURN fn::event_delivery_success($params)")
-        .bind((
-            "params",
-            json!({
-                "id": delivery_id_str
-            }),
-        ))
-        .await
-        .unwrap();
-    let res1: Option<LyxalResponse> = call1.take(0).unwrap();
-    assert!(
-        !res1.unwrap().data,
-        "L'ancien DTO {{ id: ... }} doit être rejeté sans modification"
-    );
-
-    // Vérification de non-mutation
-    let unmutated1 = store.get_delivery(&delivery_id).await.unwrap().unwrap();
-    assert_eq!(
-        unmutated1.status,
-        DeliveryStatus::Pending,
-        "Le statut doit rester 'pending'"
-    );
-    assert_eq!(unmutated1.attempts, 0);
-
-    // =========================================================================
-    // TEST 2 : fn::event_delivery_success avec un objet vide {}
-    // =========================================================================
-    let mut call2 = db
-        .query("RETURN fn::event_delivery_success($params)")
-        .bind(("params", json!({})))
-        .await
-        .unwrap();
-    let res2: Option<LyxalResponse> = call2.take(0).unwrap();
-    assert!(!res2.unwrap().data);
-
-    let unmutated2 = store.get_delivery(&delivery_id).await.unwrap().unwrap();
-    assert_eq!(unmutated2.status, DeliveryStatus::Pending);
-
-    // =========================================================================
     // TEST 3 : fn::event_delivery_failure avec l'ancien DTO { "id": ..., "error_message": ... }
     // Doit être rejeté (retourner false) et NE PAS incrémenter ni muter.
     // =========================================================================
@@ -184,19 +141,6 @@ async fn test_rejection_of_legacy_dto_and_negative_contracts() {
         mutated.last_error.as_deref(),
         Some("canonical network error")
     );
-
-    // =========================================================================
-    // TEST 6 : Acquittement canonique valide via delivery_success
-    // =========================================================================
-    let success_res = store.delivery_success(&delivery_id).await;
-    assert!(
-        success_res.is_ok(),
-        "L'acquittement via le store doit réussir avec le nouveau DTO"
-    );
-
-    let final_delivery = store.get_delivery(&delivery_id).await.unwrap().unwrap();
-    assert_eq!(final_delivery.status, DeliveryStatus::Delivered);
-    assert!(final_delivery.delivered_at.is_some());
 }
 
 #[tokio::test]

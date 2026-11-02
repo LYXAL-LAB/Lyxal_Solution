@@ -4,7 +4,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use surrealdb::engine::any::connect;
-use tokio_util::sync::CancellationToken;
 
 use crate::common;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -86,83 +85,59 @@ async fn test_retry_dlq_and_replay_cycle() {
     };
     publisher.publish(&event).await.unwrap();
 
-    // 3. Worker configuré avec handler défaillant
+    // 3. Handler toujours en échec : retries in-process, puis dead letter après 3 tentatives
     let mut registry = HandlerRegistry::new();
     registry.register(FailingPaymentHandler).unwrap();
-
-    let config = EventWorkerConfig::default()
-        .with_max_attempts(3)
-        .with_batch_size(10)
-        .with_poll_interval(Duration::from_millis(10));
-    let worker = EventWorker::new(store.clone(), registry, config);
-    let cancel = CancellationToken::new();
-
-    // Tentative 1 (échec)
-    let processed1 = worker.poll_cycle(&cancel).await.unwrap();
-    assert_eq!(processed1, 1);
-
-    // Force la ré-éligibilité immédiate pour tester le retry sans attendre la temporisation
-    db.query("UPDATE event_delivery SET next_retry_at = time::now()")
-        .await
-        .unwrap();
-
-    // Tentative 2 (échec)
-    let processed2 = worker.poll_cycle(&cancel).await.unwrap();
-    assert_eq!(processed2, 1);
-
-    db.query("UPDATE event_delivery SET next_retry_at = time::now()")
-        .await
-        .unwrap();
-
-    // Tentative 3 (échec final -> bascule en dead letter)
-    let processed3 = worker.poll_cycle(&cancel).await.unwrap();
-    assert_eq!(processed3, 1);
-
-    // Vérifie la présence de l'enregistrement dans event_dead_letter
-    let dead_letters = store.get_dead_letters().await.unwrap();
-    assert_eq!(
-        dead_letters.len(),
-        1,
-        "Expected 1 dead letter after 3 failed attempts"
+    let worker = Arc::new(EventWorker::new(
+        store.clone(),
+        registry,
+        common::fast_config("worker_failing").with_max_attempts(3),
+    ));
+    let dead_lettered = common::run_worker_until(worker, Duration::from_secs(15), || {
+        let db = db.clone();
+        async move { common::delivery_statuses(&db).await == ["dead_letter"] }
+    })
+    .await;
+    assert!(
+        dead_lettered,
+        "la livraison doit finir en dead letter : {:?}",
+        common::delivery_statuses(&db).await
     );
-    assert_eq!(dead_letters[0].attempts, 3);
+
+    let dead_letters = store.get_dead_letters().await.unwrap();
+    assert_eq!(dead_letters.len(), 1, "une seule dead letter attendue");
     assert!(dead_letters[0]
         .last_error
         .contains("Permanent card declined"));
 
-    // Vérifie que la livraison est maintenant en statut 'dead_letter'
-    let delivery = store
-        .get_delivery(&dead_letters[0].delivery)
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(delivery.status, DeliveryStatus::DeadLetter);
-
-    // 4. Replay : Réinitialisation via fn::event_dead_letter_replay
+    // 4. Rejeu : la livraison redevient éligible
+    let delivery_id = dead_letters[0].delivery.clone();
     let replay_ok = store.dead_letter_replay(&dead_letters[0].id).await.unwrap();
-    assert!(replay_ok, "Replay must succeed");
+    assert!(replay_ok, "le rejeu doit réussir");
+    let replayed = store.get_delivery(&delivery_id).await.unwrap().unwrap();
+    assert_eq!(replayed.status, DeliveryStatus::Pending);
+    assert_eq!(replayed.attempts, 0);
 
-    // Vérifie que la livraison est redevenue 'pending' avec attempts = 0
-    let replayed_delivery = store.get_delivery(&delivery.id).await.unwrap().unwrap();
-    assert_eq!(replayed_delivery.status, DeliveryStatus::Pending);
-    assert_eq!(replayed_delivery.attempts, 0);
-
-    // 5. Enregistrement d'un handler corrigé qui réussit
-    let flaky_count = Arc::new(AtomicUsize::new(2)); // va réussir immédiatement car count >= 2
+    // 5. Handler corrigé : la livraison rejouée est livrée
     let mut fix_registry = HandlerRegistry::new();
     fix_registry
         .register(FlakyPaymentHandler {
-            attempts: flaky_count,
+            attempts: Arc::new(AtomicUsize::new(2)),
         })
         .unwrap();
-
-    let fix_worker = EventWorker::new(store.clone(), fix_registry, EventWorkerConfig::default());
-    let replayed_processed = fix_worker.poll_cycle(&cancel).await.unwrap();
-    assert_eq!(
-        replayed_processed, 1,
-        "Replayed delivery must be successfully claimed and processed"
+    let fix_worker = Arc::new(EventWorker::new(
+        store.clone(),
+        fix_registry,
+        common::fast_config("worker_fixed"),
+    ));
+    let delivered = common::run_worker_until(fix_worker, Duration::from_secs(15), || {
+        let db = db.clone();
+        async move { common::delivery_statuses(&db).await == ["delivered"] }
+    })
+    .await;
+    assert!(
+        delivered,
+        "la livraison rejouée doit être livrée : {:?}",
+        common::delivery_statuses(&db).await
     );
-
-    let final_delivery = store.get_delivery(&delivery.id).await.unwrap().unwrap();
-    assert_eq!(final_delivery.status, DeliveryStatus::Delivered);
 }

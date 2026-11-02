@@ -46,5 +46,4 @@ cargo test --workspace --no-fail-fast
 # Une seule commande sur le workspace : pas de recompilation de SurrealDB avec d'autres fonctionnalités.
 # (Les tests ignorés de lyxal_crypto sont des sous-processus lancés par d'autres tests : ils ne sont pas visés.)
 cargo test --workspace -- --ignored --exact \
-    call_tests::test_remote_ws_root_signin_and_call_fn \
-    integration_concurrency_1000::test_massive_concurrency_1000_deliveries_10_workers
+    call_tests::test_remote_ws_root_signin_and_call_fn

@@ -2,8 +2,8 @@ use lyxal_event::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use surrealdb::engine::any::connect;
-use tokio_util::sync::CancellationToken;
 
 use crate::common;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -90,13 +90,20 @@ async fn test_surrealdb_define_event_triggers_lyxal_event() {
         })
         .unwrap();
 
-    let worker = EventWorker::new(store.clone(), registry, EventWorkerConfig::default());
-    let cancel = CancellationToken::new();
-
-    let processed = worker.poll_cycle(&cancel).await.unwrap();
-    assert_eq!(
-        processed, 1,
-        "Exactly 1 delivery produced from DEFINE EVENT mutation"
+    let worker = Arc::new(EventWorker::new(
+        store.clone(),
+        registry,
+        common::fast_config("worker_define_event"),
+    ));
+    let delivered = common::run_worker_until(worker, Duration::from_secs(10), || {
+        let db = db.clone();
+        async move { common::delivery_statuses(&db).await == ["delivered"] }
+    })
+    .await;
+    assert!(
+        delivered,
+        "la livraison produite par DEFINE EVENT doit être livrée : {:?}",
+        common::delivery_statuses(&db).await
     );
     assert_eq!(
         processed_count.load(Ordering::SeqCst),
