@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/redact_email.surql
 -- Fonction : fn::security_redact_email
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Masque la partie locale d'une adresse email.
+--
+-- Paramètres
+--   $value : string
+--
+-- Valeur renvoyée : string (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_redact_email(
     $value: string
 ) -> string {

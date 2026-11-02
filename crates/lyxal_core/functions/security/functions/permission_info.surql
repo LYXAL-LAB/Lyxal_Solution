@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/permission_info.surql
 -- Fonction : fn::security_permission_info
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Retourne les statistiques d'un ensemble de permissions.
+--
+-- Paramètres
+--   $permissions : array<object>
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_permission_info(
     $permissions: array<object>
 ) -> object {

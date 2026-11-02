@@ -1,13 +1,5 @@
--- ============================================================================
--- TESTS — fn::security_redact_object
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::security_redact_object (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::security_redact_object(
-    {
-        username:"yaniss",
-        password:"secret",
-        api_key:"abc"
-    },
-    ["password","api_key"]
-);
+-- test: clés sensibles, casse ignorée
+RETURN fn::security_redact_object({ Password: "x", name: "A" }, [" password "]) == { Password: "***REDACTED***", name: "A" };

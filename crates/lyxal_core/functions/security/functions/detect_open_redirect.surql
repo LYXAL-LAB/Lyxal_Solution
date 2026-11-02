@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/detect_open_redirect.surql
 -- Fonction : fn::security_detect_open_redirect
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Détecte une redirection potentiellement externe ou dangereuse.
+--
+-- Paramètres
+--   $value : string
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_detect_open_redirect(
     $value: string
 ) -> object {

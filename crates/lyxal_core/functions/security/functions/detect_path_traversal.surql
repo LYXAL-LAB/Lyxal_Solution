@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/detect_path_traversal.surql
 -- Fonction : fn::security_detect_path_traversal
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Détecte heuristiquement plusieurs motifs de path traversal.
+--
+-- Paramètres
+--   $value : string
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_detect_path_traversal(
     $value: string
 ) -> object {

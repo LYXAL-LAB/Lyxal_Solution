@@ -1,11 +1,19 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/permission_check.surql
 -- Fonction : fn::security_permission_check
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Évalue une permission avec priorité au deny explicite.
+--
+-- Paramètres
+--   $permissions : array<object>
+--   $resource    : string
+--   $action      : string
+--   $context     : option<object>
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_permission_check(
     $permissions: array<object>,
     $resource: string,

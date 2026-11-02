@@ -1,35 +1,25 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/redact_log.surql
 -- Fonction : fn::security_redact_log
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Masque les secrets courants dans une ligne de journal : jeton Bearer d'un
+-- en-tête Authorization, api_key / api-key et password. Le préfixe est
+-- réécrit sous une forme normalisée (« Authorization: Bearer », « api_key=
+-- », « password= ») suivie de ***REDACTED***.
+--
+-- Paramètres
+--   $message : string
+--
+-- Valeur renvoyée : string (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_redact_log(
     $message: string
 ) -> string {
-    LET $value = $message;
-
-    LET $value = string::replace(
-        $value,
-        <regex>"(?i)(authorization\\s*:\\s*bearer\\s+)[A-Za-z0-9._~-]+",
-        "$1***REDACTED***"
-    );
-
-    LET $value = string::replace(
-        $value,
-        <regex>"(?i)(api[_-]?key\\s*[=:]\\s*)[^\\s,;]+",
-        "$1***REDACTED***"
-    );
-
-    LET $value = string::replace(
-        $value,
-        <regex>"(?i)(password\\s*[=:]\\s*)[^\\s,;]+",
-        "$1***REDACTED***"
-    );
-
-    RETURN $value;
+    LET $bearer = string::replace($message, <regex>"(?i)authorization\\s*:\\s*bearer\\s+[A-Za-z0-9._~+/=-]+", "Authorization: Bearer ***REDACTED***");
+    LET $api_key = string::replace($bearer, <regex>"(?i)api[_-]?key\\s*[=:]\\s*[^\\s,;]+", "api_key=***REDACTED***");
+    RETURN string::replace($api_key, <regex>"(?i)password\\s*[=:]\\s*[^\\s,;]+", "password=***REDACTED***");
 }
-COMMENT "Masque plusieurs formes courantes de secrets dans un log."
+COMMENT "Masque les secrets courants dans une ligne de journal : jeton Bearer d'un en-tête Authorization, api_key / api-key et password. Le préfixe est réécrit sous une forme normalisée (« Authorization: Bearer », « api_key= », « password= ») suivie de ***REDACTED***."
 PERMISSIONS FULL;

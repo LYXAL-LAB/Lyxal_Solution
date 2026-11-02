@@ -1,18 +1,28 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/security_replay_window.surql
 -- Fonction : fn::security_replay_window
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Vérifie qu'un timestamp appartient à une fenêtre anti-rejeu.
+--
+-- Paramètres
+--   $timestamp : datetime
+--   $now       : datetime
+--   $window    : duration
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $window <= 0s
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_replay_window(
     $timestamp: datetime,
     $now: datetime,
     $window: duration
 ) -> object {
     IF $window <= 0s {
-        THROW "SECURITY_INVALID_REPLAY_WINDOW";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     LET $earliest = $now-$window;

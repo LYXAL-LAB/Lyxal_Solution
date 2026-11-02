@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/role_merge.surql
 -- Fonction : fn::security_role_merge
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Fusionne deux définitions de rôle.
+--
+-- Paramètres
+--   $base     : object
+--   $override : object
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_role_merge(
     $base: object,
     $override: object

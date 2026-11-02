@@ -24,14 +24,14 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 758 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 745 fonctions déclarées)
 ├── Readme.md
 ├── AUDIT.md                 (document de reprise, supprimé en fin de reprise)
 ├── implementation_plan.md   (document de reprise, supprimé en fin de reprise)
 └── functions/
     ├── validations/   functions/ (321) · tests/ (321)   fn::validation_*
     ├── sanitize/      functions/ (165) · tests/ (165)   fn::sanitize_*
-    ├── security/      functions/ (152) · tests/ (152)   fn::security_*
+    ├── security/      functions/ (139) · tests/ (139)   fn::security_*
     └── utils/         functions/ (120) · tests/ (120)   fn::utils_*
 ```
 
@@ -126,6 +126,13 @@ Seul un argument invalide fourni par le code appelant (borne négative, bornes i
 
 Un motif d'expression régulière syntaxiquement invalide (`fn::validation_regex`) provoque l'erreur du moteur (`string::matches`) : SurrealDB 3.3.4 n'offre aucun moyen de le détecter sans lever.
 
+### Contrat des fonctions `security` — migration en cours (lot 3)
+
+Les fonctions `fn::security_*` gardent des **paramètres typés** et renvoient une valeur ou un objet (plan §2.3) : empreintes non secrètes, forme canonique des requêtes HMAC (la signature elle-même est calculée par `lyxal_crypto`), permissions et politiques, détection d'attaques (heuristique, score de 0 à 100), masquage, nonces et fenêtres anti-rejeu, jetons. Seul un argument invalide lève `CORE_INVALID_ARGUMENT` ou `CORE_UNSUPPORTED_OPTION`.
+
+* Les comparaisons d'empreintes (`fn::security_hash_verify`) ne sont pas à temps constant : pour un secret, la comparaison se fait dans `lyxal_crypto`.
+* **Avancement** : toutes les fonctions de valeurs de `security` sont migrées (60 fonctions). Seule la mécanique (pipeline, audit, débogage…) attend le lot 4.
+
 ### Contrat des fonctions `sanitize` — migration en cours (lot 3)
 
 Une fonction `fn::sanitize_*` transforme une valeur **déjà validée** ; elle ne renvoie pas de résultat `{ valid, … }` (plan §2.2) :
@@ -154,10 +161,10 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 ## Tests
 
-* `scripts/ci/test_lyxal_core.py` charge les 758 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
+* `scripts/ci/test_lyxal_core.py` charge les 745 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
 * **Deux formats coexistent pendant la reprise** :
   * **format « assertions »** (fichiers commençant par `-- lyxal-test: assertions`) : chaque bloc `-- test:` contient une instruction qui doit renvoyer `true`, ou lever l'erreur annoncée par `-- attendu-erreur: <CODE>` ; tout écart fait échouer la CI (détails : `implementation_plan.md` §5) ;
-  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (283 fichiers aujourd'hui, ceux des fonctions migrées).
+  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (343 fichiers aujourd'hui, ceux des fonctions migrées).
 * `scripts/ci/test_lyxal_core_selftest.py` vérifie que le banc accepte les bons tests et rejette les mauvais.
 * `scripts/ci/validate_surql.sh` vérifie la syntaxe de tout le SurrealQL du dépôt.
 * Les deux scripts font partie de la CI (job « SurrealQL ») et de `scripts/ci/ci_local.sh`.

@@ -1,11 +1,23 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/hmac_request.surql
 -- Fonction : fn::security_hmac_request
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Construit la représentation canonique d'une requête HMAC.
+--
+-- Paramètres
+--   $method           : string
+--   $path             : string
+--   $timestamp        : datetime
+--   $nonce            : string
+--   $headers          : object
+--   $included_headers : array<string>
+--   $payload          : any
+--   $content_type     : string
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_hmac_request(
     $method: string,
     $path: string,

@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/redact_ip.surql
 -- Fonction : fn::security_redact_ip
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Masque partiellement une adresse IPv4 ou IPv6.
+--
+-- Paramètres
+--   $value : string
+--
+-- Valeur renvoyée : string (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_redact_ip(
     $value: string
 ) -> string {

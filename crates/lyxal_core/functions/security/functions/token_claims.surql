@@ -1,11 +1,24 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/token_claims.surql
 -- Fonction : fn::security_token_claims
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Construit un ensemble normalisé de claims.
+--
+-- Paramètres
+--   $subject    : string
+--   $audience   : array<string>
+--   $scopes     : array<string>
+--   $issued_at  : datetime
+--   $expires_at : datetime
+--   $extra      : option<object>
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $expires_at <= $issued_at
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_token_claims(
     $subject: string,
     $audience: array<string>,
@@ -15,7 +28,7 @@ DEFINE FUNCTION OVERWRITE fn::security_token_claims(
     $extra: option<object>
 ) -> object {
     IF $expires_at <= $issued_at {
-        THROW "SECURITY_INVALID_TOKEN_CLAIM_DATES";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     RETURN object::extend(

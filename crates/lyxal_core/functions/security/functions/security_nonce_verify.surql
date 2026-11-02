@@ -1,11 +1,19 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/security_nonce_verify.surql
 -- Fonction : fn::security_nonce_verify
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Vérifie un nonce stocké, son sujet, son expiration et son usage.
+--
+-- Paramètres
+--   $entry   : object
+--   $nonce   : string
+--   $subject : string
+--   $now     : datetime
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_nonce_verify(
     $entry: object,
     $nonce: string,

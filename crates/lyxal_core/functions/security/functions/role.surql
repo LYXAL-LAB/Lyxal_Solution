@@ -1,11 +1,22 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/role.surql
 -- Fonction : fn::security_role
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Construit un rôle générique.
+--
+-- Paramètres
+--   $name        : string
+--   $permissions : array<object>
+--   $inherits    : array<string>
+--   $enabled     : bool
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : !string::matches( $clean_name, "^[a-z][a-z0-9_]*(?:::[a-z][a-z0-9_]*)*$" )
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_role(
     $name: string,
     $permissions: array<object>,
@@ -18,7 +29,7 @@ DEFINE FUNCTION OVERWRITE fn::security_role(
         $clean_name,
         "^[a-z][a-z0-9_]*(?:::[a-z][a-z0-9_]*)*$"
     ) {
-        THROW "SECURITY_INVALID_ROLE_NAME";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     RETURN {

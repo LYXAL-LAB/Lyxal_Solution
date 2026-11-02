@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/detect_command_injection.surql
 -- Fonction : fn::security_detect_command_injection
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Détecte heuristiquement plusieurs motifs de command injection.
+--
+-- Paramètres
+--   $value : string
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_detect_command_injection(
     $value: string
 ) -> object {

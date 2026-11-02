@@ -1,8 +1,11 @@
--- ============================================================================
--- TESTS — fn::security_detect_xss
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::security_detect_xss (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::security_detect_xss(
-    "<img src=x onerror=alert(1)>"
-);
+-- test: balise script
+RETURN fn::security_detect_xss("<SCRIPT>alert(1)</script>").score == 20;
+
+-- test: gestionnaire et javascript:
+RETURN fn::security_detect_xss("<a onclick=x href=javascript:y>").score == 40;
+
+-- test: texte ordinaire
+RETURN !fn::security_detect_xss("Un texte <b>gras</b>").detected;

@@ -1,11 +1,20 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/hmac_signature_header.surql
 -- Fonction : fn::security_hmac_signature_header
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Construit un en-tête de signature HMAC normalisé.
+--
+-- Paramètres
+--   $algorithm : string
+--   $key_id    : string
+--   $timestamp : datetime
+--   $nonce     : string
+--   $signature : string
+--
+-- Valeur renvoyée : string (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_hmac_signature_header(
     $algorithm: string,
     $key_id: string,

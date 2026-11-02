@@ -1,10 +1,5 @@
--- ============================================================================
--- TESTS — fn::security_redact_secret
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::security_redact_secret (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::security_redact_secret(
-    "lyxal_abcdefghijklmnopqrstuvwxyz",
-    6,
-    4
-);
+-- test: début et fin visibles
+RETURN fn::security_redact_secret("sk_live_abcdef", 3, 2) == "sk_*********ef";

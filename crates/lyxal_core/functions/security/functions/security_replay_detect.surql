@@ -1,11 +1,21 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/security_replay_detect.surql
 -- Fonction : fn::security_replay_detect
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Détecte la réutilisation d'un nonce ou un timestamp hors fenêtre.
+--
+-- Paramètres
+--   $nonce_entries : array<object>
+--   $nonce         : string
+--   $subject       : string
+--   $timestamp     : datetime
+--   $now           : datetime
+--   $window        : duration
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_replay_detect(
     $nonce_entries: array<object>,
     $nonce: string,

@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/secret_strength.surql
 -- Fonction : fn::security_secret_strength
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Produit un indicateur heuristique de robustesse ; ce n'est pas une
+-- estimation cryptographique complète.
+--
+-- Paramètres
+--   $secret : string
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_secret_strength(
     $secret: string
 ) -> object {
@@ -29,8 +35,5 @@ DEFINE FUNCTION OVERWRITE fn::security_secret_strength(
         character_classes: $classes
     };
 }
-COMMENT "
-Produit un indicateur heuristique de robustesse ; ce n'est pas une estimation
-cryptographique complète.
-"
+COMMENT "Produit un indicateur heuristique de robustesse ; ce n'est pas une estimation cryptographique complète."
 PERMISSIONS FULL;

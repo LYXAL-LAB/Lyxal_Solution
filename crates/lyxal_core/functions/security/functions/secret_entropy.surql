@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/secret_entropy.surql
 -- Fonction : fn::security_secret_entropy
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Estime grossièrement l'entropie à partir des classes de caractères.
+--
+-- Paramètres
+--   $secret : string
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_secret_entropy(
     $secret: string
 ) -> object {

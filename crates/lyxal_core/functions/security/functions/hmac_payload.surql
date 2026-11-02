@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/hmac_payload.surql
 -- Fonction : fn::security_hmac_payload
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Canonise un payload avant calcul HMAC.
+--
+-- Paramètres
+--   $payload      : any
+--   $content_type : string
+--
+-- Valeur renvoyée : string (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_hmac_payload(
     $payload: any,
     $content_type: string

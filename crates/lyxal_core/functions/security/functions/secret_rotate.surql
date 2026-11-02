@@ -1,20 +1,25 @@
 -- ============================================================================
 -- LYXAL OS — CORE SECURITY
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/security/functions/secret_rotate.surql
 -- Fonction : fn::security_secret_rotate
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Construit un plan de rotation de secret par références.
+--
+-- Paramètres
+--   $current_reference : string
+--   $new_reference     : string
+--   $valid_from        : datetime
+--   $grace_period      : duration
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions security)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::security_secret_rotate(
     $current_reference: string,
     $new_reference: string,
     $valid_from: datetime,
     $grace_period: duration
 ) -> object {
-    IF $grace_period < 0s {
-        THROW "SECURITY_INVALID_SECRET_GRACE_PERIOD";
-    };
 
     RETURN {
         current_reference: string::trim($current_reference),
