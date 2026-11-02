@@ -1,11 +1,8 @@
--- ============================================================================
--- TESTS — fn::utils_compare_strings
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_compare_strings (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_compare_strings(
-    " Lyxal ",
-    "lyxal",
-    false,
-    true
-);
+-- test: insensible à la casse
+RETURN fn::utils_compare_strings(" Abc ", "abc", false, true) == 0;
+
+-- test: ordre
+RETURN fn::utils_compare_strings("a", "b", true, false) == -1;

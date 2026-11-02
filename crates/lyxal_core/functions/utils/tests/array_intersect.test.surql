@@ -1,9 +1,5 @@
--- ============================================================================
--- TESTS — fn::utils_array_intersect
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_array_intersect (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_array_intersect(
-    [1,2,3,4],
-    [3,4,5]
-);
+-- test: éléments communs sans doublon
+RETURN fn::utils_array_intersect([1, 2, 2, 3], [2, 3, 4]) == [2, 3];

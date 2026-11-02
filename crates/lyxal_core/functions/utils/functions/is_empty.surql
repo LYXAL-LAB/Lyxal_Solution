@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/is_empty.surql
 -- Fonction : fn::utils_is_empty
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Indique si une valeur est vide.
+--
+-- Paramètres
+--   $value : any
+--
+-- Valeur renvoyée : bool (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_is_empty(
     $value: any
 ) -> bool {

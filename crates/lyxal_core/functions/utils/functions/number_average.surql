@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/number_average.surql
 -- Fonction : fn::utils_number_average
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Calcule la moyenne d'un tableau de nombres.
+--
+-- Paramètres
+--   $values : array<number>
+--
+-- Valeur renvoyée : option<number> (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_number_average(
     $values: array<number>
 ) -> option<number> {

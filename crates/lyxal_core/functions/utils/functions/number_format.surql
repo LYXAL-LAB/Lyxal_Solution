@@ -1,11 +1,22 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/number_format.surql
 -- Fonction : fn::utils_number_format
--- Version  : 1.0.1
--- Statut   : Stable
+--
+-- Formate un nombre avec précision et séparateurs configurables.
+--
+-- Paramètres
+--   $value               : number
+--   $precision           : int
+--   $decimal_separator   : string
+--   $thousands_separator : string
+--
+-- Valeur renvoyée : string (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $precision < 0
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_number_format(
     $value: number,
     $precision: int,
@@ -13,15 +24,14 @@ DEFINE FUNCTION OVERWRITE fn::utils_number_format(
     $thousands_separator: string
 ) -> string {
     IF $precision < 0 {
-        THROW "UTILS_INVALID_PRECISION";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
-    LET $rounded_num = fn::utils_number_round(
+    LET $rounded_num = fn::sanitize_round(
         $value,
         $precision
     );
 
-    -- Normalisation du zéro signé (-0 -> 0) après arrondi
     LET $normalized = IF $rounded_num == 0 {
         0
     } ELSE {

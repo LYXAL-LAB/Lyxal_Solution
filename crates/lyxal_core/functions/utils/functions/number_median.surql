@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/number_median.surql
 -- Fonction : fn::utils_number_median
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Calcule la médiane d'un tableau de nombres.
+--
+-- Paramètres
+--   $values : array<number>
+--
+-- Valeur renvoyée : option<number> (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_number_median(
     $values: array<number>
 ) -> option<number> {
@@ -24,7 +29,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_number_median(
         (
             $sorted[type::int($middle)-1]
             + $sorted[type::int($middle)]
-        ) / 2
+        ) / 2f
     };
 }
 COMMENT "Calcule la médiane d'un tableau de nombres."

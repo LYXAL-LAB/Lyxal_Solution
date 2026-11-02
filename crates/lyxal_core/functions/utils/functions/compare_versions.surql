@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/compare_versions.surql
 -- Fonction : fn::utils_compare_versions
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Compare deux versions numériques de type v1.2.3.
+--
+-- Paramètres
+--   $left  : string
+--   $right : string
+--
+-- Valeur renvoyée : int (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_compare_versions(
     $left: string,
     $right: string

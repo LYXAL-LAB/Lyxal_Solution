@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/array_group_by.surql
 -- Fonction : fn::utils_array_group_by
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Regroupe un tableau d'objets selon une clé de premier niveau.
+--
+-- Paramètres
+--   $value : array<object>
+--   $key   : string
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_array_group_by(
     $value: array<object>,
     $key: string

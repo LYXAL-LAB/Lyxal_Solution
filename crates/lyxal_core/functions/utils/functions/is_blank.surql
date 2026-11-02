@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/is_blank.surql
 -- Fonction : fn::utils_is_blank
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Indique si une valeur textuelle est blanche.
+--
+-- Paramètres
+--   $value : any
+--
+-- Valeur renvoyée : bool (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_is_blank(
     $value: any
 ) -> bool {

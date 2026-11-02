@@ -1,11 +1,23 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/date_range.surql
 -- Fonction : fn::utils_date_range
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Génère une plage de dates à intervalle fixe.
+--
+-- Paramètres
+--   $start         : datetime
+--   $end           : datetime
+--   $step          : duration
+--   $inclusive_end : bool
+--
+-- Valeur renvoyée : array<datetime> (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $step <= 0s
+--   CORE_INVALID_ARGUMENT : $end < $start
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_date_range(
     $start: datetime,
     $end: datetime,
@@ -13,11 +25,11 @@ DEFINE FUNCTION OVERWRITE fn::utils_date_range(
     $inclusive_end: bool
 ) -> array<datetime> {
     IF $step <= 0s {
-        THROW "UTILS_INVALID_DATE_RANGE_STEP";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     IF $end < $start {
-        THROW "UTILS_INVALID_DATE_RANGE";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     LET $count = math::floor(

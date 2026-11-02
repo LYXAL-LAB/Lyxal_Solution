@@ -1,11 +1,22 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/number_between.surql
 -- Fonction : fn::utils_number_between
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Indique si un nombre appartient à un intervalle.
+--
+-- Paramètres
+--   $value     : number
+--   $minimum   : number
+--   $maximum   : number
+--   $inclusive : bool
+--
+-- Valeur renvoyée : bool (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $minimum > $maximum
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_number_between(
     $value: number,
     $minimum: number,
@@ -13,7 +24,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_number_between(
     $inclusive: bool
 ) -> bool {
     IF $minimum > $maximum {
-        THROW "UTILS_INVALID_BETWEEN_RANGE";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     RETURN IF $inclusive {

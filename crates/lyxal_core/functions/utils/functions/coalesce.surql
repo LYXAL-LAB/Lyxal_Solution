@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/coalesce.surql
 -- Fonction : fn::utils_coalesce
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Retourne la première valeur ni NONE ni NULL.
+--
+-- Paramètres
+--   $values : array<any>
+--
+-- Valeur renvoyée : any (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_coalesce(
     $values: array<any>
 ) -> any {

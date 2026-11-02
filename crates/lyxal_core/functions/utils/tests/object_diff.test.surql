@@ -1,9 +1,5 @@
--- ============================================================================
--- TESTS — fn::utils_object_diff
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_object_diff (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_object_diff(
-    {name:"A",active:true},
-    {name:"B",active:true}
-);
+-- test: changements
+RETURN fn::utils_object_diff({ a: 1, b: 2 }, { a: 1, c: 3 }) == { changed: true, changes: [{ key: "b", left: 2, right: NONE, changed: true }, { key: "c", left: NONE, right: 3, changed: true }], change_count: 2 };

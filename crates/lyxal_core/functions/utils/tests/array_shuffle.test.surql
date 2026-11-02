@@ -1,8 +1,5 @@
--- ============================================================================
--- TESTS — fn::utils_array_shuffle
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_array_shuffle (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_array_shuffle(
-    [1,2,3,4,5]
-);
+-- test: mêmes éléments
+RETURN array::sort::asc(fn::utils_array_shuffle([3, 1, 2])) == [1, 2, 3];

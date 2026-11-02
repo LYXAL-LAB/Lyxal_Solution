@@ -1,13 +1,5 @@
--- ============================================================================
--- TESTS — fn::utils_array_group_by
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_array_group_by (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_array_group_by(
-    [
-        {type:"a",value:1},
-        {type:"b",value:2},
-        {type:"a",value:3}
-    ],
-    "type"
-);
+-- test: groupes par clé
+RETURN fn::utils_array_group_by([{ name: "A", team: "x", age: 30 }, { name: "B", team: "y", age: 20 }, { name: "C", team: "x", age: 25 }], "team") == { x: [{ name: "A", team: "x", age: 30 }, { name: "C", team: "x", age: 25 }], y: [{ name: "B", team: "y", age: 20 }] };

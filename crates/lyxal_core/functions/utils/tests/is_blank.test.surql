@@ -1,6 +1,11 @@
--- ============================================================================
--- TESTS — fn::utils_is_blank
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_is_blank (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_is_blank("   ");
+-- test: chaîne blanche
+RETURN fn::utils_is_blank("  ");
+
+-- test: NONE
+RETURN fn::utils_is_blank(NONE);
+
+-- test: zéro n'est pas blanc
+RETURN !fn::utils_is_blank(0);

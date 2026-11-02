@@ -1,17 +1,26 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/array_sample.surql
 -- Fonction : fn::utils_array_sample
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Retourne un échantillon aléatoire sans remise.
+--
+-- Paramètres
+--   $value : array<any>
+--   $count : int
+--
+-- Valeur renvoyée : array<any> (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $count < 0
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_array_sample(
     $value: array<any>,
     $count: int
 ) -> array<any> {
     IF $count < 0 {
-        THROW "UTILS_INVALID_SAMPLE_COUNT";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     RETURN array::slice(

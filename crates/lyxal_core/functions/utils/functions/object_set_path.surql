@@ -1,18 +1,28 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/object_set_path.surql
 -- Fonction : fn::utils_object_set_path
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Définit récursivement une valeur dans un chemin d'objet.
+--
+-- Paramètres
+--   $value     : object
+--   $path      : array<string>
+--   $new_value : any
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : array::len($path) = 0
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_object_set_path(
     $value: object,
     $path: array<string>,
     $new_value: any
 ) -> object {
     IF array::len($path) = 0 {
-        THROW "UTILS_EMPTY_OBJECT_PATH";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     LET $head = $path[0];

@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/date_add_months.surql
 -- Fonction : fn::utils_date_add_months
--- Version  : 1.0.1
--- Statut   : Stable
+--
+-- Ajoute un nombre de mois à une date.
+--
+-- Paramètres
+--   $value  : datetime
+--   $months : int
+--
+-- Valeur renvoyée : datetime (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_date_add_months(
     $value: datetime,
     $months: int

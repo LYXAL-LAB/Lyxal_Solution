@@ -1,14 +1,5 @@
--- ============================================================================
--- TESTS — fn::utils_array_partition
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_array_partition (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_array_partition(
-    [
-        {active:true,id:1},
-        {active:false,id:2},
-        {active:true,id:3}
-    ],
-    "active",
-    true
-);
+-- test: deux partitions
+RETURN fn::utils_array_partition([{ name: "A", team: "x", age: 30 }, { name: "B", team: "y", age: 20 }, { name: "C", team: "x", age: 25 }], "team", "y") == { matched: [{ name: "B", team: "y", age: 20 }], unmatched: [{ name: "A", team: "x", age: 30 }, { name: "C", team: "x", age: 25 }] };

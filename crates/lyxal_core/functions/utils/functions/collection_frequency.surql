@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/collection_frequency.surql
 -- Fonction : fn::utils_collection_frequency
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Calcule la fréquence des valeurs d'une collection.
+--
+-- Paramètres
+--   $value : array<any>
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_collection_frequency(
     $value: array<any>
 ) -> object {

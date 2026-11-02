@@ -1,11 +1,19 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/compare_strings.surql
 -- Fonction : fn::utils_compare_strings
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Compare lexicalement deux chaînes.
+--
+-- Paramètres
+--   $left           : string
+--   $right          : string
+--   $case_sensitive : bool
+--   $trim           : bool
+--
+-- Valeur renvoyée : int (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_compare_strings(
     $left: string,
     $right: string,
