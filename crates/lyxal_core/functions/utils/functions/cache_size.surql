@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/cache_size.surql
 -- Fonction : fn::utils_cache_size
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Estime la taille d'un cache via sa représentation JSON.
+--
+-- Paramètres
+--   $entries : array<object>
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_cache_size(
     $entries: array<object>
 ) -> object {

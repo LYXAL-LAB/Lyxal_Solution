@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/encode_uri.surql
 -- Fonction : fn::utils_encode_uri
--- Version  : 1.0.1
--- Statut   : Stable
+--
+-- Encode une chaîne UTF-8 en Percent-Encoding RFC 3986 pour une URI.
+--
+-- Paramètres
+--   $value : string
+--
+-- Valeur renvoyée : string (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_encode_uri(
     $value: string
 ) -> string {

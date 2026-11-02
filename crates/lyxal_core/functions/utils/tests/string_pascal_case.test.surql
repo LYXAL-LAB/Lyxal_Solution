@@ -1,8 +1,11 @@
--- ============================================================================
--- TESTS — fn::utils_string_pascal_case
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_string_pascal_case (format : crates/lyxal_core/implementation_plan.md §5).
 
-RETURN fn::utils_string_pascal_case(
-    "lyxal operating system"
-);
+-- test: séparateurs
+RETURN fn::utils_string_pascal_case("hello big world") == "HelloBigWorld";
+
+-- test: depuis camelCase
+RETURN fn::utils_string_pascal_case("helloWorld") == "HelloWorld";
+
+-- test: chaîne vide
+RETURN fn::utils_string_pascal_case("") == "";

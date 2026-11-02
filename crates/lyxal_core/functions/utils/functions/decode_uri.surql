@@ -1,18 +1,26 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/decode_uri.surql
 -- Fonction : fn::utils_decode_uri
--- Version  : 1.0.1
--- Statut   : Stable
+--
+-- Décode une chaîne URI encodée en Percent-Encoding RFC 3986 (UTF-8).
+--
+-- Paramètres
+--   $value : string
+--
+-- Valeur renvoyée : string (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : « % » non suivi de deux chiffres hexadécimaux, ou octets décodés hors UTF-8 valide (RFC 3629)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_decode_uri(
     $value: string
 ) -> string {
     IF string::contains($value, "%")
         AND !string::matches($value, "^([^%]|%[0-9a-fA-F]{2})*$")
     {
-        THROW "UTILS_INVALID_URI_ENCODING";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     IF !string::contains($value, "%") {
@@ -51,13 +59,12 @@ DEFINE FUNCTION OVERWRITE fn::utils_decode_uri(
         array::flatten($tail_byte_groups)
     );
 
-    -- Validation stricte UTF-8 (RFC 3629) sans mutation de variable
     LET $len = array::len($out_bytes);
     FOR $i IN array::range(0, $len) {
         LET $b = $out_bytes[$i];
 
         IF ($b >= 192 AND $b <= 193) OR $b >= 245 {
-            THROW "UTILS_INVALID_URI_ENCODING";
+            THROW "CORE_INVALID_ARGUMENT";
         };
 
         IF $b >= 194 AND $b <= 223 {
@@ -65,7 +72,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_decode_uri(
                 OR $out_bytes[$i + 1] < 128
                 OR $out_bytes[$i + 1] > 191
             {
-                THROW "UTILS_INVALID_URI_ENCODING";
+                THROW "CORE_INVALID_ARGUMENT";
             };
         };
 
@@ -78,7 +85,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_decode_uri(
                 OR ($b = 224 AND $out_bytes[$i + 1] < 160)
                 OR ($b = 237 AND $out_bytes[$i + 1] >= 160)
             {
-                THROW "UTILS_INVALID_URI_ENCODING";
+                THROW "CORE_INVALID_ARGUMENT";
             };
         };
 
@@ -93,7 +100,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_decode_uri(
                 OR ($b = 240 AND $out_bytes[$i + 1] < 144)
                 OR ($b = 244 AND $out_bytes[$i + 1] >= 144)
             {
-                THROW "UTILS_INVALID_URI_ENCODING";
+                THROW "CORE_INVALID_ARGUMENT";
             };
         };
 
@@ -115,7 +122,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_decode_uri(
                 AND $out_bytes[$i - 1] <= 191;
 
             IF !$valid_prev1 AND !$valid_prev2 AND !$valid_prev3 {
-                THROW "UTILS_INVALID_URI_ENCODING";
+                THROW "CORE_INVALID_ARGUMENT";
             };
         };
     };

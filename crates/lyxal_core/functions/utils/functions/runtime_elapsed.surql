@@ -1,17 +1,26 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/runtime_elapsed.surql
 -- Fonction : fn::utils_runtime_elapsed
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Retourne la durée écoulée dans plusieurs unités.
+--
+-- Paramètres
+--   $started_at : datetime
+--   $now        : datetime
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : $now < $started_at
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_runtime_elapsed(
     $started_at: datetime,
     $now: datetime
 ) -> object {
     IF $now < $started_at {
-        THROW "UTILS_INVALID_RUNTIME_TIME_RANGE";
+        THROW "CORE_INVALID_ARGUMENT";
     };
 
     LET $duration = $now-$started_at;

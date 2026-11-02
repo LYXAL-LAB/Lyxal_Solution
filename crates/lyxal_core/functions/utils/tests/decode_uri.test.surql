@@ -1,32 +1,19 @@
--- ============================================================================
--- TESTS — fn::utils_decode_uri
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_decode_uri (format : crates/lyxal_core/implementation_plan.md §5).
 
--- TEST 1 — Aller-retour nominal ("Lyxal OS / Core")
-RETURN fn::utils_decode_uri(
-    fn::utils_encode_uri("Lyxal OS / Core")
-);
+-- test: UTF-8
+RETURN fn::utils_decode_uri("a%20b%2F%C3%A9") == "a b/é";
 
--- TEST 2 — Décodage UTF-8 multi-octets et réservés ("Équipe & Co=100%")
-RETURN fn::utils_decode_uri(
-    "%C3%89quipe%20%26%20Co%3D100%25"
-);
+-- test: sans encodage
+RETURN fn::utils_decode_uri("abc") == "abc";
 
--- TEST 3 — Séquence % tronquée en fin de chaîne
--- Erreur attendue : UTILS_INVALID_URI_ENCODING
-RETURN fn::utils_decode_uri(
-    "Lyxal%2"
-);
+-- test: aller-retour
+RETURN fn::utils_decode_uri(fn::utils_encode_uri("Été à 100 % ?")) == "Été à 100 % ?";
 
--- TEST 4 — Séquence % non hexadécimale
--- Erreur attendue : UTILS_INVALID_URI_ENCODING
-RETURN fn::utils_decode_uri(
-    "Lyxal%ZZ"
-);
+-- test: pourcentage isolé
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_decode_uri("100%");
 
--- TEST 5 — Séquence d'octets UTF-8 invalide (octet isolé %C3)
--- Erreur attendue : UTILS_INVALID_URI_ENCODING
-RETURN fn::utils_decode_uri(
-    "%C3"
-);
+-- test: UTF-8 invalide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_decode_uri("%C3");

@@ -1,11 +1,18 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/from_csv.surql
 -- Fonction : fn::utils_from_csv
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Décode un CSV simple sans gestion avancée des guillemets.
+--
+-- Paramètres
+--   $value      : string
+--   $delimiter  : string
+--   $has_header : bool
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_from_csv(
     $value: string,
     $delimiter: string,
@@ -13,7 +20,7 @@ DEFINE FUNCTION OVERWRITE fn::utils_from_csv(
 ) -> object {
     LET $sep = IF $delimiter = "" { "," } ELSE { $delimiter };
     LET $lines = array::filter(
-        string::split($value,"\n"),
+        array::map(string::split($value, "\n"), |$line| string::replace($line, <regex>"\r$", "")),
         |$line| string::trim($line) != ""
     );
 

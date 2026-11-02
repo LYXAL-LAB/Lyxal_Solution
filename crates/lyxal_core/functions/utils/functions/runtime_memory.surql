@@ -1,11 +1,16 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/runtime_memory.surql
 -- Fonction : fn::utils_runtime_memory
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Estime la taille mémoire d'une valeur via son JSON.
+--
+-- Paramètres
+--   $value : any
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_runtime_memory(
     $value: any
 ) -> object {

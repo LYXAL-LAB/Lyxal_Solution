@@ -1,31 +1,16 @@
--- ============================================================================
--- TESTS — fn::utils_from_hex
--- Les tests provoquant un THROW doivent être exécutés individuellement.
--- ============================================================================
+-- lyxal-test: assertions
+-- Tests de fn::utils_from_hex (format : crates/lyxal_core/implementation_plan.md §5).
 
--- TEST 1 — Aller-retour avec fn::utils_to_hex (<bytes>"Lyxal")
-RETURN fn::utils_from_hex(
-    fn::utils_to_hex(<bytes>"Lyxal")
-);
+-- test: octets
+RETURN fn::utils_from_hex(" 000FFF ") == <bytes>[0, 15, 255];
 
--- TEST 2 — Insensibilité à la casse ("4C7978616C" -> <bytes>"Lyxal")
-RETURN fn::utils_from_hex(
-    "4C7978616C"
-);
+-- test: vide
+RETURN fn::utils_from_hex("") == <bytes>[];
 
--- TEST 3 — Chaîne vide ("" -> b"")
-RETURN fn::utils_from_hex(
-    ""
-);
+-- test: longueur impaire
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_from_hex("abc");
 
--- TEST 4 — Longueur impaire invalide
--- Erreur attendue : UTILS_INVALID_HEX_STRING
-RETURN fn::utils_from_hex(
-    "4c7"
-);
-
--- TEST 5 — Caractère non hexadécimal invalide
--- Erreur attendue : UTILS_INVALID_HEX_STRING
-RETURN fn::utils_from_hex(
-    "4c7z"
-);
+-- test: caractère invalide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_from_hex("zz");

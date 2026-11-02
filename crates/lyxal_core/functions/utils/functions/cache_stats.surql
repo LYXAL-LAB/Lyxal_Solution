@@ -1,11 +1,17 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/cache_stats.surql
 -- Fonction : fn::utils_cache_stats
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Calcule les statistiques d'un cache.
+--
+-- Paramètres
+--   $entries : array<object>
+--   $now     : datetime
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_cache_stats(
     $entries: array<object>,
     $now: datetime

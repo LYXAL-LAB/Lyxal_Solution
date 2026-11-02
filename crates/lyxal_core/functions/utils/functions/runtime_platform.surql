@@ -1,11 +1,18 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/runtime_platform.surql
 -- Fonction : fn::utils_runtime_platform
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Construit les métadonnées de plateforme.
+--
+-- Paramètres
+--   $engine       : string
+--   $language     : string
+--   $architecture : string
+--
+-- Valeur renvoyée : object (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_runtime_platform(
     $engine: string,
     $language: string,

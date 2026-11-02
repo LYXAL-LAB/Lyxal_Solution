@@ -1,11 +1,20 @@
 -- ============================================================================
 -- LYXAL OS — CORE UTILS
 -- ============================================================================
+-- Fichier  : crates/lyxal_core/functions/utils/functions/ensure_bool.surql
 -- Fonction : fn::utils_ensure_bool
--- Version  : 1.0.0
--- Statut   : Stable
+--
+-- Normalise une valeur courante vers un booléen.
+--
+-- Paramètres
+--   $value         : any
+--   $default_value : bool
+--
+-- Valeur renvoyée : bool (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : valeur non convertible (nombre, booléen ou true/false/1/0/yes/no/on/off attendus)
 -- ============================================================================
-
 DEFINE FUNCTION OVERWRITE fn::utils_ensure_bool(
     $value: any,
     $default_value: bool
@@ -30,11 +39,11 @@ DEFINE FUNCTION OVERWRITE fn::utils_ensure_bool(
         } ELSE IF $clean IN ["false","0","no","off"] {
             false
         } ELSE {
-            THROW "UTILS_VALUE_IS_NOT_BOOL"
+            THROW "CORE_INVALID_ARGUMENT"
         };
     };
 
-    THROW "UTILS_VALUE_IS_NOT_BOOL";
+    THROW "CORE_INVALID_ARGUMENT";
 }
 COMMENT "Normalise une valeur courante vers un booléen."
 PERMISSIONS FULL;
