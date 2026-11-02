@@ -175,8 +175,6 @@ crates/lyxal_event/
 │   └── lib.rs               <-- Façade publique et traits fondamentaux
 ├── tests/                   <-- Tests unitaires, concurrence, crash recovery, persistance disque
 ├── docs/                    <-- Documentation détaillée d'architecture et de référence
-├── CHANGELOG.md             <-- Historique des versions
-├── ROADMAP.md               <-- Feuille de route V2 (Observabilité) & V3 (IA / Fédéré)
 └── README.md                <-- Présente documentation
 ```
 

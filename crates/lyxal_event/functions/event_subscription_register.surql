@@ -46,5 +46,6 @@ DEFINE FUNCTION OVERWRITE fn::event_subscription_register(
         );
         RETURN fn::result_ok($created[0]);
     };
-} COMMENT "Enregistre ou met à jour un abonnement d'événement de manière idempotente";
+} COMMENT "Enregistre ou met à jour un abonnement d'événement de manière idempotente"
+PERMISSIONS FULL;
 

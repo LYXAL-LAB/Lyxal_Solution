@@ -18,5 +18,6 @@ DEFINE FUNCTION OVERWRITE fn::event_dead_letter_list(
     };
 
     RETURN fn::result_ok($items);
-} COMMENT "Liste les enregistrements en quarantaine dead-letter";
+} COMMENT "Liste les enregistrements en quarantaine dead-letter"
+PERMISSIONS FULL;
 

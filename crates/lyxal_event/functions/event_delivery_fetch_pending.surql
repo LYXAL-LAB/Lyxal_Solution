@@ -41,5 +41,6 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_fetch_pending(
     );
 
     RETURN fn::result_ok($deliveries);
-} COMMENT "Récupère les livraisons éligibles au traitement outbox ou à la reprise post-crash";
+} COMMENT "Récupère les livraisons éligibles au traitement outbox ou à la reprise post-crash"
+PERMISSIONS FULL;
 

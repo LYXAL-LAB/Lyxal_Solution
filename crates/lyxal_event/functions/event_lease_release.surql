@@ -31,5 +31,6 @@ DEFINE FUNCTION OVERWRITE fn::event_lease_release(
     RETURN fn::result_ok({
         released: array::len($updated) > 0
     });
-} COMMENT "Libère formellement le bail de streaming outbox pour permettre une reprise immédiate.";
+} COMMENT "Libère formellement le bail de streaming outbox pour permettre une reprise immédiate."
+PERMISSIONS FULL;
 

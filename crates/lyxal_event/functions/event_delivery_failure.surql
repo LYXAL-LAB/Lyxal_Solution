@@ -62,4 +62,5 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_failure(
     };
 
     RETURN fn::result_ok(true);
-} COMMENT "Enregistre l'échec d'une livraison, replanifie avec backoff ou met en quarantaine (DLQ)";
+} COMMENT "Enregistre l'échec d'une livraison, replanifie avec backoff ou met en quarantaine (DLQ)"
+PERMISSIONS FULL;

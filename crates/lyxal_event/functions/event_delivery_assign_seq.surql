@@ -134,5 +134,6 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_assign_seq(
     );
 
     RETURN fn::result_ok($created[0]);
-} COMMENT "Attribue atomiquement une séquence contiguë et crée la livraison sous garde de fencing.";
+} COMMENT "Attribue atomiquement une séquence contiguë et crée la livraison sous garde de fencing."
+PERMISSIONS FULL;
 

@@ -29,4 +29,5 @@ DEFINE FUNCTION OVERWRITE fn::event_dead_letter_replay(
         last_error = NONE;
 
     RETURN fn::result_ok(true);
-} COMMENT "Rejoue une dead letter en réinitialisant sa livraison en statut pending";
+} COMMENT "Rejoue une dead letter en réinitialisant sa livraison en statut pending"
+PERMISSIONS FULL;

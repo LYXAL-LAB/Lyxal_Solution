@@ -3,7 +3,10 @@
 -- Description: Progression séquentielle persistée et curseur contigu d'acquittement par abonnement.
 -- ============================================================================
 
-DEFINE TABLE OVERWRITE event_subscription_progress SCHEMAFULL
+DEFINE TABLE OVERWRITE event_subscription_progress
+    TYPE NORMAL
+    SCHEMAFULL
+    PERMISSIONS NONE
     COMMENT "Progression séquentielle persistée et curseur contigu d'acquittement par abonnement.";
 
 DEFINE FIELD OVERWRITE subscription ON TABLE event_subscription_progress TYPE record<event_subscription>

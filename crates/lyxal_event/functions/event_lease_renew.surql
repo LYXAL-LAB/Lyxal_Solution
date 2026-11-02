@@ -44,5 +44,6 @@ DEFINE FUNCTION OVERWRITE fn::event_lease_renew(
         generation: $generation,
         expires_at: $new_expiry
     });
-} COMMENT "Renouvelle le bail de streaming outbox sous condition stricte d'identité et de génération.";
+} COMMENT "Renouvelle le bail de streaming outbox sous condition stricte d'identité et de génération."
+PERMISSIONS FULL;
 

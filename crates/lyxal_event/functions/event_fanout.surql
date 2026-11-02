@@ -63,4 +63,5 @@ DEFINE FUNCTION OVERWRITE fn::event_fanout(
         deliveries_created: $created_count,
         status: "fanned_out"
     });
-} COMMENT "Ventile un événement outbox vers ses abonnés de façon strictement idempotente";
+} COMMENT "Ventile un événement outbox vers ses abonnés de façon strictement idempotente"
+PERMISSIONS FULL;

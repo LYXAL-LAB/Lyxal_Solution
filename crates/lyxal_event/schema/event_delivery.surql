@@ -3,7 +3,10 @@
 -- Description: Unité de distribution et suivi d'état par abonné (Fan-Out persistant & Streaming).
 -- ============================================================================
 
-DEFINE TABLE OVERWRITE event_delivery SCHEMAFULL
+DEFINE TABLE OVERWRITE event_delivery
+    TYPE NORMAL
+    SCHEMAFULL
+    PERMISSIONS NONE
     COMMENT "Enregistrement de livraison unitaire pour un événement et un abonnement.";
 
 DEFINE FIELD OVERWRITE outbox_event ON TABLE event_delivery TYPE record<event_outbox>

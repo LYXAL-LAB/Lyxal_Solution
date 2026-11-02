@@ -1,7 +1,7 @@
 manifest_version = 1
 id = "lyxal_event"
 name = "Lyxal Event Engine"
-version = "1.0.0"
+version = "0.1.0"
 description = "Moteur transactionnel unifié d'événements et de messagerie streaming in-process pour Lyxal OS"
 capabilities = ["event", "outbox", "event_stream"]
 

@@ -3,7 +3,10 @@
 -- Description: Enregistrement d'origine et persistance outbox de tout événement émis.
 -- ============================================================================
 
-DEFINE TABLE OVERWRITE event_outbox SCHEMAFULL
+DEFINE TABLE OVERWRITE event_outbox
+    TYPE NORMAL
+    SCHEMAFULL
+    PERMISSIONS NONE
     COMMENT "Table transactionnelle Outbox stockant les événements bruts publiés.";
 
 DEFINE FIELD OVERWRITE event_id ON TABLE event_outbox TYPE string

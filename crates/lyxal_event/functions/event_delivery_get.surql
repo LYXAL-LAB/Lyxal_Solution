@@ -16,5 +16,6 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_get(
     LET $delivery = (SELECT * FROM ONLY $id);
 
     RETURN fn::result_ok($delivery);
-} COMMENT "Récupère un enregistrement de livraison par son identifiant";
+} COMMENT "Récupère un enregistrement de livraison par son identifiant"
+PERMISSIONS FULL;
 
