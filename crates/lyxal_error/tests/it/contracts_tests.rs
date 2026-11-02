@@ -210,12 +210,12 @@ fn test_lyxal_result_rejects_inconsistent_ok_false_with_none_error() {
 
 #[test]
 fn test_lyxal_call_error_helpers() {
-    let call_err = LyxalCallError::business_code("CUSTOM_AUTH_FAILED", json!({ "user": "alice" }));
-    assert!(call_err.is_business_code("CUSTOM_AUTH_FAILED"));
-    assert!(!call_err.is_business_code("OTHER"));
-
-    let disp = format!("{}", call_err);
-    assert!(disp.contains("CUSTOM_AUTH_FAILED"));
+    // Une violation de contrat n'est jamais une erreur métier
+    let contract_err = LyxalCallError::InvalidContract {
+        function: "test_func",
+    };
+    assert!(!contract_err.is_business_code("ERROR_INVALID_FUNCTION_RESPONSE"));
+    assert!(format!("{contract_err}").contains("test_func"));
 }
 
 #[test]

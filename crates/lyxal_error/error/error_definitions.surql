@@ -199,3 +199,31 @@ IF !record::exists(error_definition:ERROR_DEFINITION_CODE_PREFIX_MISMATCH)
         }
     }
 ) END;
+
+IF !record::exists(error_definition:ERROR_INVALID_FUNCTION_RESPONSE)
+   AND array::len((SELECT VALUE id FROM error_definition WHERE code = "ERROR_INVALID_FUNCTION_RESPONSE" LIMIT 1)) == 0 THEN (
+    CREATE error_definition:ERROR_INVALID_FUNCTION_RESPONSE CONTENT {
+        code: "ERROR_INVALID_FUNCTION_RESPONSE",
+        module: "error",
+        domain: "contract",
+        category: "internal",
+        severity: "error",
+        message: "A database function returned a response that does not match the result contract",
+        default_language: "en",
+        http_status: 500,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Réponse système invalide",
+                description: "Une fonction de la base de données a renvoyé une réponse qui ne respecte pas le contrat { ok, data, error }.",
+                resolution: "Signalez l'incident : la fonction appelée doit renvoyer fn::result_ok ou fn::error_result."
+            },
+            en: {
+                label: "Invalid system response",
+                description: "A database function returned a response that does not match the { ok, data, error } contract.",
+                resolution: "Report the incident: the called function must return fn::result_ok or fn::error_result."
+            }
+        }
+    }
+) END;

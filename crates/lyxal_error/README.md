@@ -95,6 +95,7 @@ même fournisseur, service, code externe et matcher.
 | `ERROR_OCCURRENCE_NOT_FOUND` | `not_found` | 404 | Occurrence inconnue |
 | `ERROR_DEFINITION_ALREADY_EXISTS` | `conflict` | 409 | Code déjà enregistré |
 | `ERROR_MAPPING_ALREADY_EXISTS` | `conflict` | 409 | Correspondance identique déjà enregistrée |
+| `ERROR_INVALID_FUNCTION_RESPONSE` | `internal` | 500 | Réponse d'une fonction hors contrat `{ ok, data, error }`, détectée côté Rust |
 
 `error/core/core_definitions.surql` installe aussi les codes `CORE_*` levés par `lyxal_core`.
 
@@ -106,8 +107,10 @@ même fournisseur, service, code externe et matcher.
   par l'API (`serde`). `.into_result(fonction)` donne `Result<T, LyxalCallError>` et rejette tout
   état incohérent.
 * `LyxalError` : erreur métier résolue (code, libellés, catégorie, sévérité, statut HTTP, détails).
-* `LyxalCallError` : `Business(LyxalError)`, `BusinessCode { code, details }`,
-  `InvalidContract { function }`.
+* `LyxalCallError` : `Business(LyxalError)` (erreur renvoyée par `fn::error_result`) ou
+  `InvalidContract { function }` (réponse hors contrat ; avec la fonctionnalité `axum`, réponse
+  HTTP 500 de code `ERROR_INVALID_FUNCTION_RESPONSE`). `is_business_code(code)` teste le code
+  d'une erreur `Business`.
 * Un `*Params` par fonction `fn::error_*` (`src/types.rs`), champ pour champ identique au
   SurrealQL ; les identifiants sont des `RecordId`, les dates des `Datetime`. Un champ `None` vaut
   « non fourni ».
