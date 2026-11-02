@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_totp_code (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_totp_code (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur conforme
 RETURN fn::validation_totp_code(" 123456 ", 6)

@@ -1,7 +1,6 @@
 # Lyxal Core
 
 > Bibliothèque standard SurrealQL de Lyxal OS — SurrealDB 3.3.4.
-> **Reprise en cours** : voir [`AUDIT.md`](AUDIT.md) (état constaté) et [`implementation_plan.md`](implementation_plan.md) (lots en cours). Ce Readme décrit l'état actuel ; il est mis à jour à chaque lot.
 
 ---
 
@@ -26,12 +25,10 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 lyxal_core/
 ├── manifest.toml            (id lyxal_core, version 0.1.0, 480 fonctions déclarées)
 ├── Readme.md
-├── AUDIT.md                 (document de reprise, supprimé en fin de reprise)
-├── implementation_plan.md   (document de reprise, supprimé en fin de reprise)
 └── functions/
     ├── validations/   functions/ (195) · tests/ (195)   fn::validation_*
-    ├── sanitize/      functions/ (97) · tests/ (97)   fn::sanitize_*
-    ├── security/      functions/ (71) · tests/ (71)   fn::security_*
+    ├── sanitize/      functions/ (97) · tests/ (97)     fn::sanitize_*
+    ├── security/      functions/ (71) · tests/ (71)     fn::security_*
     └── utils/         functions/ (117) · tests/ (117)   fn::utils_*
 ```
 
@@ -39,14 +36,14 @@ Chaque fonction a son fichier (`functions/<domaine>/functions/<nom>.surql`) et s
 
 | Domaine | Rôle |
 | :--- | :--- |
-| `validations` | Vérifier qu'une donnée respecte un contrat (chaînes, nombres, UUID, e-mails, URL, tableaux, objets, dates, durées, géométries…). |
-| `sanitize` | Normaliser une donnée (espaces, casse, slug, Unicode, téléphone, e-mail, tableaux, objets ; nettoyage HTML lexical léger, qui ne remplace pas un parseur DOM anti-XSS). |
-| `security` | Primitives de sécurité pures : empreintes non secrètes (SHA-256, BLAKE3), jetons (construction des claims, analyse), masquage (`redact_*`), détection d'attaques (`detect_*`), permissions, rôles, politiques, nonces et fenêtres anti-rejeu. |
-| `utils` | Fonctions techniques génériques : tableaux, objets, chaînes, nombres, dates, collections, conversions, cache, informations d'exécution, pipelines. |
+| `validations` | Vérifier qu'une donnée respecte un contrat : chaînes, nombres, UUID, e-mails, URL, tableaux, objets, dates, durées, formats techniques et métier. |
+| `sanitize` | Normaliser une donnée déjà validée : espaces, casse, slug, Unicode, téléphone, e-mail, tableaux, objets, URL, chemins, et nettoyage HTML et Markdown lexical (qui ne remplace pas un parseur anti-XSS). |
+| `security` | Primitives de sécurité pures : empreintes non secrètes (SHA-256, SHA-512, BLAKE3), forme canonique des requêtes HMAC, jetons (claims, analyse), masquage (`redact_*`), détection d'attaques (`detect_*`), permissions, rôles, politiques, nonces, fenêtres anti-rejeu, journal d'audit chaîné. |
+| `utils` | Fonctions techniques génériques (tableaux, collections, comparaisons, dates, nombres, objets, chaînes, encodages, CSV, cache, métadonnées d'exécution) et le **moteur unique** `fn::utils_engine_*`, qui exécute les pipelines de tous les domaines. |
 
-**Cryptographie** : chiffrement, HMAC, dérivation et gestion de clés, hachage de mots de passe sont exclusivement réalisés en Rust par `lyxal_crypto` (§11.3), appelé par le code Rust avant ou après `call_fn`. Le Core n'en contient aucune.
+**Cryptographie** : chiffrement, signature HMAC, dérivation et gestion de clés, hachage de mots de passe sont exclusivement réalisés en Rust par `lyxal_crypto` (`.agents/rules/lyxal_standards_and_checklist.md` §11.3), appelé par le code Rust avant ou après `call_fn`. Le Core n'en contient aucune.
 
-`fn::security_secret_generate` utilise `rand::id`, sûr en SurrealDB 3.3 (`rand::rng()`, ChaCha12) **sauf** si le serveur est démarré avec `SURREAL_RAND_SEED` (mode déterministe de test). Pour du matériel cryptographique, utiliser `lyxal_crypto`.
+`fn::security_secret_generate` et `fn::security_nonce` utilisent `rand::id`, sûr en SurrealDB 3.3 (`rand::rng()`, ChaCha12) **sauf** si le serveur est démarré avec `SURREAL_RAND_SEED` (mode déterministe de test). Pour du matériel cryptographique, utiliser `lyxal_crypto`.
 
 ---
 
@@ -60,14 +57,14 @@ COMMENT "..."
 PERMISSIONS FULL;
 ```
 
-Les primitives du Core utilisent des **signatures positionnelles typées** (exception au `$params: object` des modules, skill `lyxal-audit` Contrôle 2.3).
+Les primitives du Core utilisent des **signatures positionnelles typées** (exception au `$params: object` des modules, skill `lyxal-audit` Contrôle 2.3). Les paramètres facultatifs (`option<…>`) se passent explicitement (`NONE`). Aucune fonction ne prend de paramètre `$field` : le nom du champ n'est connu que du module appelant.
 
-### Contrat des validations — migration en cours (lot 3)
+### Fonctions `validations`
 
-Les fonctions `fn::validation_*` ne lèvent plus d'erreur pour une donnée invalide : elles renvoient un résultat que le module appelant exploite avec **son** code d'erreur (décision CTO Q1, `implementation_plan.md` §2).
+Une fonction `fn::validation_*` ne lève pas d'erreur pour une donnée invalide : elle renvoie un résultat que le module appelant exploite avec **son** code d'erreur.
 
 ```surql
--- Résultat de toute fonction fn::validation_* migrée
+-- Résultat de toute fonction fn::validation_*
 { valid: bool, value: any, code: option<string>, details: object }
 --   valid = true  → value = valeur normalisée (ex. chaîne sans espaces), code = NONE, details = {}
 --   valid = false → value = NONE, code = "CORE_VALIDATION_<CAUSE>", details = contexte (bornes, longueur…)
@@ -80,14 +77,10 @@ IF !$name.valid {
 -- $name.value contient la chaîne nettoyée
 ```
 
-* Il n'y a plus de paramètre `$field` : le nom du champ n'est connu que du module.
-* Les paramètres facultatifs (`option<…>`) doivent être passés explicitement (`NONE`).
-* **Avancement** : famille « types, nombres et chaînes » migrée (44 fonctions : `boolean`, `integer`, `number`, `decimal`, `float`, `bytes`, `value_type`, `allowed_types`, `uuid`, `uuid_v7`, `ulid`, `positive_number`, `negative_number`, `non_negative_number`, `non_zero`, `even`, `odd`, `multiple_of`, `percentage`, `integer_range`, `compare`, `required_if`, `required_unless`, `required_string`, `optional_string`, `not_blank`, `min_length`, `max_length`, `alphanumeric`, `ascii`, `lowercase`, `uppercase`, `contains`, `starts_with`, `ends_with`, `forbidden_values`, `reserved_words`, `regex`, `enum`, `enum_any`, `slug`, `identifier`, `hexadecimal`, `base64`) et famille « dates et durées » migrée (21 fonctions : `datetime`, `date`, `birthdate`, `age_range`, `business_day`, `future_datetime`, `past_datetime`, `date_range`, `time_range`, `time_of_day_range`, `time_of_day`, `weekday`, `duration`, `duration_range`, `execution_timeout`, `workflow_delay`, `date_string`, `datetime_string`, `iso8601`, `time_string`, `timezone`) et famille « tableaux, objets et références » migrée (29 fonctions : `array`, `array_non_empty`, `array_unique`, `array_without_none`, `array_without_null`, `array_length`, `tuple_length`, `tuple_types`, `array_integers`, `array_objects`, `array_of_strings`, `array_of_records`, `at_least_one`, `exactly_one`, `mutually_exclusive`, `all_or_none`, `allowed_combination`, `object`, `object_non_empty`, `object_no_none`, `object_no_null`, `object_keys`, `object_values_type`, `unknown_keys_policy`, `record`, `record_id`, `record_exists`, `exists`, `unique`) et famille « formats techniques » migrée (41 fonctions : jetons et secrets — `api_key`, `bearer_token`, `idempotency_key`, `nonce`, `recovery_code`, `totp_code`, `totp_secret`, `jwt_compact`, `hmac_signature`, `checksum`, `etag`, `password_strength` ; réseau et web — `email`, `domain`, `hostname`, `ip`, `cidr`, `mac_address`, `port`, `socket_address`, `origin`, `url`, `http_url`, `uri_scheme`, `http_method`, `webhook_path`, `content_type`, `mime_type` ; fichiers — `extension`, `filename`, `filesize`, `archive_entry_path`, `content_disposition_filename`, `storage_path`, `certificate_pem`, `public_key_pem`, `private_key_pem` ; versions et planification — `semantic_version`, `contract_version`, `cron_expression`, `retry_policy`) et famille « formats métier : identité, finance, géographie » migrée (36 fonctions : `first_name`, `last_name`, `full_name`, `display_name`, `initials`, `username`, `public_alias`, `profile_identifier`, `company_name`, `phone`, `postal_code_fr`, `country_code_iso2`, `country_code_iso3`, `currency_code`, `language_code`, `locale`, `latitude`, `longitude`, `coordinates`, `geohash`, `geometry`, `luhn`, `card_pan`, `iban`, `bic`, `rib_fr`, `siren`, `siret`, `vat_number_fr`, `ape_naf_code`, `invoice_number`, `money`, `image_width`, `image_height`, `image_dimensions`, `aspect_ratio`) et famille « noms Lyxal et SurrealQL » migrée (19 fonctions : `execution_priority`, `snake_case_name`, `queue_name`, `lyxal_bucket_name`, `lyxal_database`, `lyxal_event_name`, `lyxal_function_name`, `lyxal_instance_name`, `lyxal_module_name`, `lyxal_namespace`, `lyxal_permission_name`, `lyxal_role_name`, `lyxal_storage_path`, `surql_field`, `surql_field_path`, `surql_function`, `surql_parameter`, `surql_record_string`, `surql_variable` ; un identifiant SurrealQL de table, namespace, base ou événement se valide avec `identifier`). **Toutes les validations de valeurs sont migrées** ; seules les fonctions de mécanique de `validations` (pipeline, schéma, rapports, registre…) gardent l'ancien contrat jusqu'au lot 4. Une « date » est un datetime à minuit UTC. Le champ `details.scope` précise ce qui est en cause quand ce n'est pas la valeur elle-même : `"item"` (un élément d'un tableau), `"key"` (une clé d'objet), `"value"` (une valeur d'objet) ou `"group"` (un groupe de champs). Les autres fonctions gardent l'ancien contrat (`THROW` d'un code construit à partir de `$field`, `AUDIT.md` P1-1) jusqu'à leur PR.
-* **Pipelines et schémas** (moteur unique, lot 4) : `fn::validation_pipeline_execute($value, $pipeline, $max_steps)` et `fn::validation_object_execute($value, $schema, $max_steps)` renvoient le rapport `{ valid, value, errors, warnings, by_field }` et ne lèvent jamais pour une donnée invalide.
-  * Les étapes viennent de `fn::validation_step_catalog()` : 175 règles, une par validateur à une seule valeur. Un paramètre `option<…>` vaut NONE par défaut ; les autres sont des options obligatoires.
-  * `fn::validation_object` y figure sous le nom `is_object`.
-  * Les validateurs qui comparent plusieurs valeurs (`compare`, `date_range`, `time_range`, `coordinates`…) s'appellent directement.
-  * `fn::validation_dsl_compile($dsl)` convertit une description DSL en schéma du moteur ; la normalisation (trim, casse) relève de `sanitize`.
+* Une « date » est un datetime à minuit UTC.
+* `details.scope` précise ce qui est en cause quand ce n'est pas la valeur elle-même : `"item"` (un élément d'un tableau), `"key"` (une clé d'objet), `"value"` (une valeur d'objet) ou `"group"` (un groupe de champs). `details.bound` désigne la borne en cause d'un intervalle.
+* Un identifiant SurrealQL de table, namespace, base ou événement se valide avec `fn::validation_identifier`.
+* Un motif d'expression régulière syntaxiquement invalide (`fn::validation_regex`) provoque l'erreur du moteur (`string::matches`) : SurrealDB 3.3.4 n'offre aucun moyen de le détecter sans lever.
 
 #### Catalogue des codes `CORE_VALIDATION_*`
 
@@ -104,14 +97,14 @@ Ce sont des **motifs** de rejet, transmis par le module dans les `details` de sa
 | `CORE_VALIDATION_TOO_SMALL` | valeur (nombre, date, durée) inférieure au minimum | `{ min }` (+ `exclusive` si borne exclue) ; pour un écart ou un âge : `{ min_<nom>, <nom> }` (ex. `{ min_days, days }`) ; `bound` pour une borne d'intervalle |
 | `CORE_VALIDATION_TOO_LARGE` | valeur (nombre, date, durée) supérieure au maximum | `{ max }` (+ `exclusive` si borne exclue) ; pour un écart ou un âge : `{ max_<nom>, <nom> }` ; `bound` pour une borne d'intervalle |
 | `CORE_VALIDATION_FORMAT` | format non respecté (dont date avec heure : `{ expected: "date" }`) | `{ expected }` (+ `bound`), `{ pattern }`, `{ contains_any }`, `{ starts_with_any }` ou `{ ends_with_any }` |
-| `CORE_VALIDATION_NOT_ALLOWED` | valeur hors de la liste autorisée, ou variante exclue par l'appelant | `{ allowed }`, `{ allowed_prefixes }`, ou `{ reason }` : `"weekend"`, `"holiday"`, `"subdomain"`, `"single_label"`, `"scheme"`, `"port"`, `"parameters"`, `"wildcard"`, `"encrypted"`, `"macro"`, `"weak"`, `"ipv4"`, `"ipv6"`, `"hostname"`, `"extension"` |
+| `CORE_VALIDATION_NOT_ALLOWED` | valeur hors de la liste autorisée, variante exclue par l'appelant, ou clé d'objet inconnue (moteur) | `{ allowed }`, `{ allowed_prefixes }`, `{ scope: "key", key }`, ou `{ reason }` : `"weekend"`, `"holiday"`, `"subdomain"`, `"single_label"`, `"scheme"`, `"port"`, `"parameters"`, `"wildcard"`, `"encrypted"`, `"macro"`, `"weak"`, `"ipv4"`, `"ipv6"`, `"hostname"`, `"extension"` |
 | `CORE_VALIDATION_FORBIDDEN` | valeur interdite, mot ou nom réservé (rôle, paramètre SurrealQL, champ `id`) | `{}` |
 | `CORE_VALIDATION_NOT_MULTIPLE` | entier non multiple du diviseur | `{ divisor }` |
 | `CORE_VALIDATION_PARITY` | parité inattendue | `{ expected }` (`"even"` ou `"odd"`) |
 | `CORE_VALIDATION_ZERO` | valeur nulle interdite | `{}` |
 | `CORE_VALIDATION_EMPTY` | tableau ou objet vide | `{}` (`{ scope: "item" }` pour un objet vide dans un tableau) |
 | `CORE_VALIDATION_DUPLICATE` | tableau contenant un doublon | `{}` |
-| `CORE_VALIDATION_COMBINATION` | combinaison de champs non autorisée | `{ present, max }`, `{ present, total }` ou `{ allowed }` |
+| `CORE_VALIDATION_COMBINATION` | combinaison de champs non autorisée, ou aucune branche `one_of` valide (moteur) | `{ present, max }`, `{ present, total }`, `{ allowed }` ou `{ scope: "group", attempts }` |
 | `CORE_VALIDATION_NOT_FOUND` | enregistrement ou valeur introuvable en base | `{}` (`{ scope: "item" }` pour un élément) |
 | `CORE_VALIDATION_ALREADY_EXISTS` | valeur déjà utilisée en base | `{}` |
 | `CORE_VALIDATION_COMPARISON` | comparaison non vérifiée | `{ operator }` |
@@ -119,69 +112,9 @@ Ce sont des **motifs** de rejet, transmis par le module dans les `details` de sa
 
 Le catalogue est fermé : un nouveau motif s'ajoute ici dans la PR qui l'introduit.
 
-#### Erreurs de programmation (`THROW`)
+### Fonctions `sanitize`
 
-Seul un argument invalide fourni par le code appelant (borne négative, bornes inversées, liste vide, option inconnue) interrompt la fonction, avec un code fixe défini dans `crates/lyxal_error/error/core/core_definitions.surql` :
-
-| Code | Cas |
-| :--- | :--- |
-| `CORE_INVALID_ARGUMENT` | argument de configuration invalide |
-| `CORE_UNSUPPORTED_OPTION` | option inconnue (ex. opérateur de `fn::validation_compare`) |
-| `CORE_SANITIZE_INVALID_TYPE` | valeur NULL ou de mauvais type transmise à une fonction `fn::sanitize_*` (la donnée aurait dû être validée avant) |
-
-Un motif d'expression régulière syntaxiquement invalide (`fn::validation_regex`) provoque l'erreur du moteur (`string::matches`) : SurrealDB 3.3.4 n'offre aucun moyen de le détecter sans lever.
-
-### Contrat des fonctions `security` — migration en cours (lot 3)
-
-Les fonctions `fn::security_*` gardent des **paramètres typés** et renvoient une valeur ou un objet (plan §2.3) : empreintes non secrètes, forme canonique des requêtes HMAC (la signature elle-même est calculée par `lyxal_crypto`), permissions et politiques, détection d'attaques (heuristique, score de 0 à 100), masquage, nonces et fenêtres anti-rejeu, jetons. Seul un argument invalide lève `CORE_INVALID_ARGUMENT` ou `CORE_UNSUPPORTED_OPTION`.
-
-* Les comparaisons d'empreintes (`fn::security_hash_verify`) ne sont pas à temps constant : pour un secret, la comparaison se fait dans `lyxal_crypto`.
-* **Avancement** : toutes les fonctions de valeurs de `security` sont migrées (58 fonctions), ainsi que l'audit chaîné (`audit_*`, empreinte calculée sur la représentation SurrealQL de l'événement) et les rapports `detect_report`, `redact_report`, `signature_report`.
-* **Pipelines** (moteur unique, lot 4) : `fn::security_pipeline_execute($value, $pipeline, $max_steps)` et `fn::security_object_execute($value, $schema, $max_steps)` renvoient `{ value, findings, score, decisions, allowed, errors }`. Le catalogue `fn::security_step_catalog()` compte 22 règles :
-  * masquage et empreintes, qui transforment la valeur ;
-  * détections, qui ajoutent un constat ;
-  * `permission_check`, qui ajoute une décision.
-
-### Moteur unique `fn::utils_engine_*` — en cours (lot 4)
-
-Un seul moteur exécute les pipelines de tous les domaines (`implementation_plan.md` §3.1). Il ne connaît aucune règle métier : chaque domaine lui passe une **closure** qui applique une étape.
-
-* **Étape** : `{ rule, value, options }`. `fn::utils_engine_pipeline($steps, $catalog, $max_steps)` contrôle un pipeline contre le catalogue du domaine (`[{ rule, cost, required }]`, `required` listant les options obligatoires).
-* **État** : `{ value, issues, warnings, records, stop, path, parent }` (`fn::utils_engine_state`). `records` accueille les données propres au domaine (`fn::utils_engine_record`, ex. constats et décisions de `security`), propagées par les règles du moteur. Une étape signale une erreur avec `fn::utils_engine_issue`, ce qui arrête le pipeline en cours, ou un avertissement avec `fn::utils_engine_warning`.
-* **Exécution** : `fn::utils_engine_run($state, $pipeline, $apply)`, où `$apply` est une closure `|$state, $step| …` qui renvoie le nouvel état.
-* **Règles du moteur**, disponibles dans tout domaine :
-  * `each` : sous-pipeline appliqué à chaque élément d'un tableau ;
-  * `object` : schéma imbriqué ;
-  * `when` : branche selon la valeur ou un champ voisin (`field`, `equals` ou `in`, `then`, `else`) ;
-  * `one_of` : première branche sans erreur.
-* **Schéma** : `{ fields: { <champ>: { pipeline, required, nullable, default } }, unknown_keys: "reject" | "strip" | "keep" }`, contrôlé par `fn::utils_engine_schema` et appliqué par `fn::utils_engine_run_object`. Codes produits : `CORE_VALIDATION_REQUIRED`, `CORE_VALIDATION_NULL`, `CORE_VALIDATION_NOT_ALLOWED`.
-* **Rapport** : `fn::utils_engine_report` renvoie `{ valid, value, errors, warnings, by_field }` ; `fn::utils_engine_report_merge` fusionne plusieurs rapports.
-* **Optimiseur** : `fn::utils_engine_optimize($pipeline, $catalog)` supprime une étape identique à la précédente si le catalogue déclare sa règle idempotente (`idempotent: true`). Il ne réordonne jamais : ce serait changer le résultat (décision CTO).
-* **Débogage** : `fn::utils_engine_trace`, `_debug_session`, `_debug_add`, `_debug_failed`, `_debug_slowest`, `_debug_summary`.
-* **Mesure** : `fn::utils_engine_benchmark_sample`, `_run`, `_stats`, `_compare`, `_report`.
-  * `_stats` calcule le taux de réussite, le min, le max, la moyenne, les centiles p50 / p95 / p99 et le débit.
-  * `_compare` signale une régression quand le rapport des moyennes ou des p95 dépasse le seuil.
-* **Requête et réponse d'exécution** : `fn::utils_engine_request` et `fn::utils_engine_response`, communes à tous les domaines.
-
-```surql
-LET $pipeline = fn::utils_engine_pipeline([{ rule: "trim" }], [{ rule: "trim", cost: 1 }], 20);
-LET $state = fn::utils_engine_run(fn::utils_engine_state("  a  ", "", NONE), $pipeline,
-    |$s, $step| object::extend($s, { value: string::trim($s.value) }));
-RETURN fn::utils_engine_report($state);
-```
-
-### Contrat des fonctions `utils` — migration en cours (lot 3)
-
-Les fonctions `fn::utils_*` gardent des **paramètres typés** et renvoient une valeur (plan §2.3) : tableaux, collections (tri, pagination, fenêtres), comparaisons, dates, nombres, objets et chemins, chaînes (casse, remplissage), encodages (URI, hexadécimal), CSV, entrées de cache et métadonnées d'exécution. Seul un argument invalide lève `CORE_INVALID_ARGUMENT` (taille nulle, bornes inversées, total nul…) ou `CORE_UNSUPPORTED_OPTION` (sens de tri inconnu).
-
-* Les nombres et l'arrondi s'appuient sur `sanitize` (`fn::sanitize_round`) ; l'égalité profonde est l'opérateur `==` de SurrealQL.
-* `fn::utils_to_csv` applique les guillemets RFC 4180. La lecture d'un CSV est du parsing : elle se fait en Rust (`.agents/rules/lyxal_standards_and_checklist.md` §10).
-* Les conversions `ensure_bool`, `ensure_number`, `decode_uri` et `from_hex` lèvent `CORE_INVALID_ARGUMENT` sur une donnée non convertible : elles s'appliquent à une donnée déjà validée.
-* **Avancement** : toutes les fonctions de valeurs de `utils` sont migrées (86 fonctions) ; la mécanique est regroupée dans le moteur `fn::utils_engine_*` (31 fonctions).
-
-### Contrat des fonctions `sanitize` — migration en cours (lot 3)
-
-Une fonction `fn::sanitize_*` transforme une valeur **déjà validée** ; elle ne renvoie pas de résultat `{ valid, … }` (plan §2.2) :
+Une fonction `fn::sanitize_*` transforme une valeur **déjà validée** ; elle ne renvoie pas de résultat `{ valid, … }` :
 
 * entrée `NONE` → renvoie `NONE` (un champ facultatif absent traverse la chaîne de nettoyage) ;
 * entrée `NULL` ou d'un type inattendu → `THROW "CORE_SANITIZE_INVALID_TYPE"` ;
@@ -194,21 +127,116 @@ IF !$email.valid { RETURN fn::error_result("AUTH_EMAIL_INVALID", $params.languag
 LET $clean = fn::sanitize_email($email.value);
 ```
 
-* **Avancement** : toutes les fonctions de valeurs de `sanitize` sont migrées (93 fonctions : textes, nombres, dates, tableaux, objets, HTML, Markdown, URL, chemins). Les pipelines passent par le moteur unique (lot 4) : `fn::sanitize_pipeline_execute($value, $pipeline, $max_steps)` et `fn::sanitize_object_execute($value, $schema, $max_steps)`, avec les 93 règles de `fn::sanitize_step_catalog()` (une par fonction de valeurs sauf `date_range`, plus `default` ; `fn::sanitize_object` y figure sous le nom `object_or_empty`).
-* Le nettoyage HTML et Markdown est **lexical** (expressions régulières) : il ne remplace pas un parseur HTML anti-XSS. `string::replace` de SurrealDB 3.3.4 ne gère pas les groupes de capture (« $1 ») : les fonctions qui doivent garder une partie du motif (liens Markdown…) découpent le texte.
+Le nettoyage HTML et Markdown est **lexical** (expressions régulières) : il ne remplace pas un parseur HTML anti-XSS. `string::replace` de SurrealDB 3.3.4 ne gère pas les groupes de capture (« $1 ») : les fonctions qui doivent garder une partie du motif (liens Markdown…) découpent le texte.
+
+### Fonctions `security` et `utils`
+
+Elles gardent des **paramètres typés** et renvoient une valeur ou un objet. Seul un argument invalide les interrompt (`CORE_INVALID_ARGUMENT` ou `CORE_UNSUPPORTED_OPTION`).
+
+* Les comparaisons d'empreintes (`fn::security_hash_verify`) ne sont pas à temps constant : pour un secret, la comparaison se fait dans `lyxal_crypto`.
+* La détection d'attaques est heuristique (score de 0 à 100).
+* L'empreinte du journal d'audit (`fn::security_audit_entry`, `fn::security_audit_verify`) porte sur la représentation SurrealQL de l'événement, qui conserve les types (la durée `1s` et la chaîne `"1s"` diffèrent).
+* Les nombres et l'arrondi de `utils` s'appuient sur `sanitize` (`fn::sanitize_round`) ; l'égalité profonde est l'opérateur `==` de SurrealQL.
+* `fn::utils_to_csv` applique les guillemets RFC 4180. La lecture d'un CSV est du parsing : elle se fait en Rust (`.agents/rules/lyxal_standards_and_checklist.md` §10).
+* Les conversions `fn::utils_ensure_bool`, `ensure_number`, `decode_uri` et `from_hex` lèvent `CORE_INVALID_ARGUMENT` sur une donnée non convertible : elles s'appliquent à une donnée déjà validée.
+
+### Erreurs de programmation (`THROW`)
+
+Seul un argument invalide fourni par le code appelant (borne négative, bornes inversées, liste vide, option inconnue) interrompt une fonction, avec un code fixe défini dans `crates/lyxal_error/error/core/core_definitions.surql` :
+
+| Code | Cas |
+| :--- | :--- |
+| `CORE_INVALID_ARGUMENT` | argument de configuration invalide |
+| `CORE_UNSUPPORTED_OPTION` | option inconnue (ex. opérateur de `fn::validation_compare`, règle absente d'un catalogue) |
+| `CORE_SANITIZE_INVALID_TYPE` | valeur NULL ou de mauvais type transmise à une fonction `fn::sanitize_*` (la donnée aurait dû être validée avant) |
+
+L'en-tête de chaque fichier de fonction liste ses cas de `THROW`.
+
+---
+
+## Moteur unique `fn::utils_engine_*`
+
+Un seul moteur exécute les pipelines de tous les domaines. Il ne connaît aucune règle métier : chaque domaine lui passe une **closure** qui applique une étape (SurrealQL ne permet pas d'appeler une fonction d'après son nom, mais une fonction accepte une closure en paramètre).
+
+### Utilisation par domaine
+
+| Domaine | Catalogue | Points d'entrée | Résultat |
+| :--- | :--- | :--- | :--- |
+| `validations` | `fn::validation_step_catalog()` : 175 règles, une par validateur à une seule valeur | `fn::validation_pipeline_execute($value, $pipeline, $max_steps)`, `fn::validation_object_execute($value, $schema, $max_steps)` | rapport `{ valid, value, errors, warnings, by_field }` ; ne lève jamais pour une donnée invalide |
+| `sanitize` | `fn::sanitize_step_catalog()` : 93 règles, une par fonction de valeurs (sauf `date_range`), plus `default` | `fn::sanitize_pipeline_execute($value, $pipeline, $max_steps)`, `fn::sanitize_object_execute($value, $schema, $max_steps)` | valeur nettoyée ; donnée non nettoyable → `CORE_SANITIZE_INVALID_TYPE` |
+| `security` | `fn::security_step_catalog()` : 22 règles (masquage et empreintes, détections, `permission_check`) | `fn::security_pipeline_execute($value, $pipeline, $max_steps)`, `fn::security_object_execute($value, $schema, $max_steps)` | `{ value, findings, score, decisions, allowed, errors }` |
+
+* Une étape s'écrit `{ rule, options }` ; les options sont les paramètres de la fonction appelée. `required` (dans le catalogue) liste les options obligatoires.
+* `validations` : un paramètre `option<…>` du validateur vaut NONE par défaut, les autres sont obligatoires. Les validateurs qui comparent plusieurs valeurs (`compare`, `date_range`, `time_range`, `coordinates`…) s'appellent directement. `fn::validation_dsl_compile($dsl)` convertit une description DSL (`required`, `nullable`, `default`, `type`, `min_length`, `max_length`, `min`, `max`, `pattern`, `enum`) en schéma du moteur ; la normalisation (trim, casse) relève de `sanitize`.
+* Noms renommés, car `object` est une règle du moteur : `fn::validation_object` s'appelle `is_object`, et `fn::sanitize_object` s'appelle `object_or_empty`.
+
+```surql
+-- Valider puis nettoyer un objet
+LET $schema = { fields: { email: { pipeline: [{ rule: "email", options: { max_length: 254 } }], required: true } }, unknown_keys: "strip" };
+LET $report = fn::validation_object_execute($params, $schema, 20);
+IF !$report.valid { RETURN fn::error_result("CONTACT_INVALID", $params.language, { fields: $report.by_field }); };
+LET $clean = fn::sanitize_object_execute($report.value, { fields: { email: { pipeline: [{ rule: "lowercase" }] } } }, 20);
+```
+
+### Fonctionnement
+
+* **Pipeline** : `fn::utils_engine_pipeline($steps, $catalog, $max_steps)` contrôle et normalise un pipeline contre un catalogue `[{ rule, cost, required, idempotent }]`.
+* **État** : `{ value, issues, warnings, records, stop, path, parent }` (`fn::utils_engine_state`).
+  * `fn::utils_engine_issue` ajoute une erreur et arrête le pipeline en cours.
+  * `fn::utils_engine_warning` ajoute un avertissement.
+  * `fn::utils_engine_record` ajoute une donnée propre au domaine (constat, décision).
+* **Exécution** : `fn::utils_engine_run($state, $pipeline, $apply)`, où `$apply` est une closure `|$state, $step| …` qui renvoie le nouvel état ; `fn::utils_engine_run_batch` pour plusieurs valeurs.
+* **Règles du moteur**, disponibles dans tout domaine :
+  * `each` : sous-pipeline appliqué à chaque élément d'un tableau ;
+  * `object` : schéma imbriqué ;
+  * `when` : branche selon la valeur ou un champ voisin (`field`, `equals` ou `in`, `then`, `else`) ;
+  * `one_of` : branches essayées dans l'ordre, arrêt à la première sans erreur.
+* **Schéma** : `{ fields: { <champ>: { pipeline, required, nullable, default } }, unknown_keys: "reject" | "strip" | "keep" }`, contrôlé par `fn::utils_engine_schema` et appliqué par `fn::utils_engine_run_object`. `fn::utils_engine_schema_hash` en donne une empreinte (clé de cache, avec `fn::utils_cache_*`).
+* **Rapport** : `fn::utils_engine_report` et `fn::utils_engine_report_merge` ; `by_field` regroupe les codes par chemin (`"$"` pour la racine).
+* **Optimiseur** : `fn::utils_engine_optimize($pipeline, $catalog)` supprime une étape identique à la précédente si le catalogue déclare sa règle idempotente. C'est une liste fermée : `trim`, `trim_left`, `trim_right`, `lowercase`, `uppercase`, `collapse_whitespace` et `default` en `sanitize`, aucune en `validations` et `security`. L'optimiseur ne réordonne jamais les étapes.
+* **Débogage** : `fn::utils_engine_trace`, `_debug_session`, `_debug_add`, `_debug_failed`, `_debug_slowest`, `_debug_summary`.
+* **Mesure** : `fn::utils_engine_benchmark_sample`, `_run`, `_stats` (taux de réussite, min, max, moyenne, p50, p95, p99, débit), `_compare` (régression sur la moyenne ou le p95), `_report`.
+* **Requête et réponse d'exécution** : `fn::utils_engine_request` et `fn::utils_engine_response`.
 
 ---
 
 ## Utilisation par les modules
 
-Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque module, une fois le contrat cible en place. Les modules `lyxal_error`, `lyxal_event`, `lyxal_pipeline_ingestion` et `lyxal_catalogue` le déclarent déjà comme dépendance (`>=0.1.0`).
+Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque module. Les modules `lyxal_error`, `lyxal_event`, `lyxal_pipeline_ingestion` et `lyxal_catalogue` le déclarent déjà comme dépendance (`>=0.1.0`).
 
 ---
 
 ## Tests
 
-* `scripts/ci/test_lyxal_core.py` charge les 480 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
-* Tous les fichiers de tests (480) sont au **format « assertions »** (fichiers commençant par `-- lyxal-test: assertions`) : chaque bloc `-- test:` contient une instruction qui doit renvoyer `true`, ou lever l'erreur annoncée par `-- attendu-erreur: <CODE>` ; tout écart fait échouer la CI (détails : `implementation_plan.md` §5). Le banc sait encore lire l'ancien format, qui n'a plus aucun fichier ; ce code sera retiré au lot 5.
-* `scripts/ci/test_lyxal_core_selftest.py` vérifie que le banc accepte les bons tests et rejette les mauvais.
+`scripts/ci/test_lyxal_core.py` démarre un serveur SurrealDB 3.3.4 jetable et :
+
+1. charge les 480 fonctions et vérifie qu'elles sont toutes définies ;
+2. vérifie que chaque fonction a son fichier `<nom>.test.surql`, et inversement ;
+3. exécute chaque fichier de tests.
+
+Tous les fichiers de tests sont au format « assertions » :
+
+```surql
+-- lyxal-test: assertions
+
+-- test: adresse valide, espaces retirés
+RETURN fn::validation_email("  contact@example.com ", 254)
+    == { valid: true, value: "contact@example.com", code: NONE, details: {} };
+
+-- test: adresse invalide
+RETURN fn::validation_email("pas-un-email", 254).code == "CORE_VALIDATION_FORMAT";
+
+-- test: longueur maximale négative
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::validation_email("contact@example.com", -1);
+```
+
+* La ligne `-- lyxal-test: assertions` figure dans les 30 premières lignes ; un fichier sans elle fait échouer la CI.
+* Chaque bloc `-- test: <description>` contient **exactement une** instruction, exécutée seule. Elle doit renvoyer `true`, ou lever exactement l'erreur annoncée par `-- attendu-erreur: <CODE>`.
+* Tout autre résultat fait échouer la CI, avec le nom du bloc : `false`, une autre valeur, une autre erreur, une erreur non annoncée, plusieurs instructions, une instruction hors bloc, aucun bloc.
+
+Autres scripts :
+
+* `scripts/ci/test_lyxal_core_selftest.py` vérifie que le banc accepte les bons tests et rejette les mauvais (fixtures dans `scripts/ci/fixtures/lyxal_core_tests/`).
 * `scripts/ci/validate_surql.sh` vérifie la syntaxe de tout le SurrealQL du dépôt.
-* Les deux scripts font partie de la CI (job « SurrealQL ») et de `scripts/ci/ci_local.sh`.
+* Les trois scripts font partie de la CI (job « SurrealQL ») et de `scripts/ci/ci_local.sh`.

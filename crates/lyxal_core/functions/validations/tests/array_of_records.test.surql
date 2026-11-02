@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_array_of_records (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_array_of_records (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: Record IDs de la bonne table
 RETURN fn::validation_array_of_records([user:a, user:b], "user", false)

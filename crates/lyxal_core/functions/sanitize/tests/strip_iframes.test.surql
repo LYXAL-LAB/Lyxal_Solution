@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_strip_iframes (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_strip_iframes (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: élément iframe retiré
 RETURN fn::sanitize_strip_iframes("a<IFRAME x=1>contenu</iframe>b") == "ab";

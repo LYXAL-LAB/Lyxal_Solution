@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_secret_validate (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_secret_validate (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valide
 RETURN fn::security_secret_validate("abc12345", 8, 64).valid;

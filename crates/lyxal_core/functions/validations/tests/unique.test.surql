@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_unique (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_unique (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur libre
 RETURN { UPSERT lyxal_test_ref:one SET code = "ONE"; RETURN fn::validation_unique("TWO", "lyxal_test_ref", "code", NONE)

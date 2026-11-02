@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_enum_any (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_enum_any (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: entier autorisé
 RETURN fn::validation_enum_any(2, [1, 2, 3])

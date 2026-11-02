@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_step_catalog (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_step_catalog (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: une règle par fonction de valeurs (sauf date_range), plus default
 RETURN array::len(fn::sanitize_step_catalog()) == 93;

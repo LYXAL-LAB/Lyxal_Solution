@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_decimal (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_decimal (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur dans les bornes
 RETURN fn::validation_decimal(19.99dec, 0dec, 100dec)

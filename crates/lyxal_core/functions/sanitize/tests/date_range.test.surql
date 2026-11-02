@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_date_range (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_date_range (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: dans l'ordre
 RETURN fn::sanitize_date_range(d"2026-01-01T00:00:00Z", d"2026-01-02T00:00:00Z", false) == { start: d"2026-01-01T00:00:00Z", end: d"2026-01-02T00:00:00Z" };

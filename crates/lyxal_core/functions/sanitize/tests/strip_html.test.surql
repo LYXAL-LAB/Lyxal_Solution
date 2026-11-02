@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_strip_html (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_strip_html (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: balises retirées
 RETURN fn::sanitize_strip_html("<p>Bonjour <b>Lyxal</b></p>") == "Bonjour Lyxal";

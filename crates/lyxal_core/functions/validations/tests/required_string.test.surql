@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_required_string (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_required_string (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: espaces retirés
 RETURN fn::validation_required_string("  Équipe commerciale  ", 1, 100)

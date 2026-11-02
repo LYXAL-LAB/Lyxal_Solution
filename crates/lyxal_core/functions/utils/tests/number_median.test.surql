@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_number_median (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_number_median (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: impair
 RETURN fn::utils_number_median([3, 1, 2]) == 2;

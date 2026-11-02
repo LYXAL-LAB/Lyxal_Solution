@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_relative_url (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_relative_url (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: hôte retiré
 RETURN fn::sanitize_relative_url("https://example.com/a/b?c=1") == "/a/b?c=1";

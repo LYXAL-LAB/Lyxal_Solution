@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_idempotency_key (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_idempotency_key (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur conforme
 RETURN fn::validation_idempotency_key(" order:2026-0001 ", 8, 64)

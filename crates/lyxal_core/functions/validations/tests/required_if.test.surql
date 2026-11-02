@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_required_if (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_required_if (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: obligatoire et présente
 RETURN fn::validation_required_if("ACME", true, false)

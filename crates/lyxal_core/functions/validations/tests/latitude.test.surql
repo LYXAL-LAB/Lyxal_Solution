@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_latitude (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_latitude (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur dans les bornes
 RETURN fn::validation_latitude(48.8566f)

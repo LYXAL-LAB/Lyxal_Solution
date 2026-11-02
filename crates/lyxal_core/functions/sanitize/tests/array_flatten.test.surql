@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_array_flatten (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_array_flatten (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: un niveau
 RETURN fn::sanitize_array_flatten([[1, 2], [3, [4]]]) == [1, 2, 3, [4]];

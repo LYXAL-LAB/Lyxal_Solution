@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_markdown_safe (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_markdown_safe (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: lien javascript neutralisé
 RETURN fn::sanitize_markdown_safe("[clic](javascript:alert(1)) <script>x</script>ok") == "[clic](about:blank) ok";

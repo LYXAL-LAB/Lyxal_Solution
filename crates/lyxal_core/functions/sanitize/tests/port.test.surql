@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_port (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_port (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: chiffres seuls
 RETURN fn::sanitize_port(" :8080 ") == "8080";

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_rib_fr (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_rib_fr (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: RIB valide
 RETURN fn::validation_rib_fr("30006", "00001", "1234567890a", "89")

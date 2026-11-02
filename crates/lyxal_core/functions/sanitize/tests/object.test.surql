@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_object (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_object (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: objet inchangé
 RETURN fn::sanitize_object({ a: 1 }) == { a: 1 };

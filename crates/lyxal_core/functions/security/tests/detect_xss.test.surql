@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_detect_xss (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_detect_xss (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: balise script
 RETURN fn::security_detect_xss("<SCRIPT>alert(1)</script>").score == 20;

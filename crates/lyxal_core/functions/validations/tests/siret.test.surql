@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_siret (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_siret (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: SIRET décomposé
 RETURN fn::validation_siret("732 829 320 00074")

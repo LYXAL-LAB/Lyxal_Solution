@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_date_add_months (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_date_add_months (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: fin de mois ramenée
 RETURN fn::utils_date_add_months(d"2026-01-31T08:00:00Z", 1) == d"2026-02-28T08:00:00Z";

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_detect_path_traversal (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_detect_path_traversal (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: remontée et /etc/passwd
 RETURN fn::security_detect_path_traversal("../../etc/passwd").score == 50;

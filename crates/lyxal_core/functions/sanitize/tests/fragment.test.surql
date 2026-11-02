@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_fragment (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_fragment (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: dièse retiré
 RETURN fn::sanitize_fragment(" #section-2 ") == "section-2";

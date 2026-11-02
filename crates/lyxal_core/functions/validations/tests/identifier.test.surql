@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_identifier (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_identifier (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: identifiant valide
 RETURN fn::validation_identifier(" _user_id2 ", 1, 64)

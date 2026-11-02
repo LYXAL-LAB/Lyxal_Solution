@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_runtime_info (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_runtime_info (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: durée de fonctionnement
 RETURN fn::utils_runtime_info({}, {}, {}, d"2026-01-01T00:00:00Z").uptime > 0s;

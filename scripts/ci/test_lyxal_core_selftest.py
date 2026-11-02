@@ -28,6 +28,7 @@ EXPECTED_FAILURES = {
     "fail_two_statements.test.surql": "exactement une instruction",
     "fail_statement_before_block.test.surql": "avant le premier bloc",
     "fail_no_block.test.surql": "aucun bloc",
+    "fail_no_marker.test.surql": "lyxal-test: assertions",
 }
 
 
@@ -39,7 +40,7 @@ def main() -> int:
             return 1
 
         report = bench.run_file(server, FIXTURES / "pass.test.surql")
-        if not report.assertions or report.failures or report.passed != 4:
+        if report.failures or report.passed != 4:
             problems.append(f"pass.test.surql : attendu 4 assertions réussies, obtenu {report.passed} "
                             f"réussies et {report.failures}")
 

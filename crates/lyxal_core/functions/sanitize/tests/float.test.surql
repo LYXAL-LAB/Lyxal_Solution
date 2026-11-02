@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_float (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_float (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: format français
 RETURN fn::sanitize_float("-1.234,5", ",") == "-1234.5";

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_lowercase (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_lowercase (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur conforme nettoyée
 RETURN fn::validation_lowercase(" " + "hello-123" + " ", true, false)

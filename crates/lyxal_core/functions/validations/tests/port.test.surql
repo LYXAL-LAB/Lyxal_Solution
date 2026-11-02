@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_port (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_port (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: port dans les bornes
 RETURN fn::validation_port(8080, 1024, 65535)

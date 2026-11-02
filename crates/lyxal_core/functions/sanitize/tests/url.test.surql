@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_url (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_url (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: espaces et contrôles retirés
 RETURN fn::sanitize_url("  https://example.com/a b\t ") == "https://example.com/ab";

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_array_unique (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_array_unique (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: doublons retirés
 RETURN fn::sanitize_array_unique([1, 2, 1, "1", 2]) == [1, 2, "1"];

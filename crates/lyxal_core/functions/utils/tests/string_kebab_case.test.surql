@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_string_kebab_case (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_string_kebab_case (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: depuis camelCase
 RETURN fn::utils_string_kebab_case("helloBigWorld2") == "hello-big-world2";

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_engine_run_object (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_engine_run_object (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: objet valide
 RETURN fn::utils_engine_run_object(fn::utils_engine_state({ name: " Al ", note: NULL }, "", NONE), fn::utils_engine_schema({ name: "contact", fields: { name: { pipeline: [{ rule: "trim" }, { rule: "min", value: 2 }], required: true }, note: { pipeline: [{ rule: "trim" }], nullable: true }, lang: { default: "fr" } } }, [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10), |$s, $step| IF $step.rule = "trim" { object::extend($s, { value: string::trim($s.value) }) } ELSE IF string::len($s.value) < $step.value { fn::utils_engine_issue($s, "min", "CORE_VALIDATION_TOO_SHORT", { min: $step.value }) } ELSE { $s }).value == { name: "Al", note: NULL, lang: "fr" };

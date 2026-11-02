@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_pipeline_execute (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_pipeline_execute (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: masquage et détection
 RETURN fn::security_pipeline_execute("<script>alert(1)</script> a@b.fr", [{ rule: "detect_xss" }, { rule: "redact_log" }], 10).findings[0].result.detected;

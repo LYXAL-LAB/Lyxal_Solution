@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_ulid (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_ulid (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: ULID nettoyé et mis en majuscules
 RETURN fn::validation_ulid("  01arz3ndektsv4rrffq69g5fav ")

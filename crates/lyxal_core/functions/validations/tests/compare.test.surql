@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_compare (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_compare (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: supérieur vérifié
 RETURN fn::validation_compare(5, 3, "gt")

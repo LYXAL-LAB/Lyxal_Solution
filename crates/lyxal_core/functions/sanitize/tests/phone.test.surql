@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_phone (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_phone (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: format international
 RETURN fn::sanitize_phone(" +33 (0)6 12-34-56-78 ") == "+330612345678";

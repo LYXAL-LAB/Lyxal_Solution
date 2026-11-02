@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_record_id (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_record_id (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: Record ID de table autorisée
 RETURN fn::validation_record_id(identity_user:a, ["identity_user", "identity_team"])

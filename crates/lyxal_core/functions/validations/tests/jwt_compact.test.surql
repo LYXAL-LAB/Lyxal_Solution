@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_jwt_compact (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_jwt_compact (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur conforme
 RETURN fn::validation_jwt_compact("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl", 4096)

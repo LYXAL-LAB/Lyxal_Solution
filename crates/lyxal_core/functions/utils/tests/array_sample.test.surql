@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_array_sample (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_array_sample (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: taille de l'échantillon
 RETURN array::len(fn::utils_array_sample([1, 2, 3, 4], 2)) == 2;

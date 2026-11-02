@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_markdown_headers (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_markdown_headers (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: titres
 RETURN fn::sanitize_markdown_headers("# Titre\n### Sous-titre\ntexte") == "Titre\nSous-titre\ntexte";

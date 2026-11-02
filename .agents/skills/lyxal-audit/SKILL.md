@@ -50,7 +50,7 @@ Avant d'exiger l'implémentation de `LyxalModule` ou `LyxalSurrealCall`, situer 
    - **`lyxal_crypto`** : fondation cryptographique pure en mémoire (contrat figé [`API_CONTRACT.md`](../../../crates/lyxal_crypto/API_CONTRACT.md)), sans accès base de données (`Surreal<Any>`) ni dépendance `lyxal_runtime`.
 3. **Signatures positionnelles contractuelles de `lyxal_core` et du noyau d'erreur** :
    - Reconnaître comme conformes par contrat architectural :
-     - Les **primitives pures de `crates/lyxal_core`** (`fn::validation_*`, `fn::sanitize_*`, `fn::security_*`, `fn::utils_*`), qui constituent la bibliothèque standard SurrealQL de Couche 0 et utilisent des signatures positionnelles typées + `THROW "<CODE>"` ;
+     - Les **primitives pures de `crates/lyxal_core`** (`fn::validation_*`, `fn::sanitize_*`, `fn::security_*`, `fn::utils_*`), qui constituent la bibliothèque standard SurrealQL de Couche 0 et utilisent des signatures positionnelles typées (validations : résultat `{ valid, value, code, details }` ; `THROW` d'un code `CORE_*` fixe réservé aux arguments invalides) ;
      - Les **3 fonctions positionnelles universelles du noyau d'erreur** appelées au cœur des expressions SurrealQL de toute la suite :
        - `fn::result_ok($data: any) -> object`
        - `fn::error_result($code: string, $language: option<string>, $details: option<object>) -> object`

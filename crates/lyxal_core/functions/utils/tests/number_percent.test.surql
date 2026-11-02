@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_number_percent (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_number_percent (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: pourcentage arrondi
 RETURN fn::utils_number_percent(1, 3, 2) == 33.33f;

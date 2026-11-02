@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_markdown_lists (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_markdown_lists (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: puces et numéros
 RETURN fn::sanitize_markdown_lists("- a\n* b\n2. c") == "a\nb\nc";

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_secret_mask (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_secret_mask (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: masque personnalisé
 RETURN fn::security_secret_mask("abcdefgh", 2, 2, "#!") == "ab####gh";

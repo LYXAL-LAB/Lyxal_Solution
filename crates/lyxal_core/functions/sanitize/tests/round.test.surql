@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_round (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_round (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: arrondi
 RETURN fn::sanitize_round(3.14159f, 2) == 3.14f;

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_string_pad_center (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_string_pad_center (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: centrage
 RETURN fn::utils_string_pad_center("ab", 6, "*") == "**ab**";

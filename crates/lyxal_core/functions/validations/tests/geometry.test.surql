@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_geometry (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_geometry (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: point accepté
 RETURN fn::validation_geometry((2.35f, 48.85f), NONE, true)

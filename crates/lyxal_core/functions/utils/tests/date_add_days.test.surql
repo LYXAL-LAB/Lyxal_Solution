@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_date_add_days (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_date_add_days (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: ajout de jours
 RETURN fn::utils_date_add_days(d"2026-01-30T10:00:00Z", 3) == d"2026-02-02T10:00:00Z";

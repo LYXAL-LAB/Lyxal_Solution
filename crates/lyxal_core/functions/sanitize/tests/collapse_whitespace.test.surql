@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_collapse_whitespace (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_collapse_whitespace (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: espaces mélangés
 RETURN fn::sanitize_collapse_whitespace("  a \t\n  b   c ") == "a b c";

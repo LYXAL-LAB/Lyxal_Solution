@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_token_generate (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_token_generate (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: jeton préfixé
 RETURN string::starts_with(fn::security_token_generate(" PAT ", 32, d"2026-01-01T00:00:00Z", 1h).token, "pat_");

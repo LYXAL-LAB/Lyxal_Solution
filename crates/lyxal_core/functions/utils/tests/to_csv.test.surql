@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_to_csv (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_to_csv (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: en-tête et lignes
 RETURN fn::utils_to_csv([{ a: 1, b: "x" }, { a: 2 }], ["a", "b"], ",", true) == "a,b\n1,x\n2,";

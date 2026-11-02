@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_slug (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_slug (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: slug nettoyé et mis en minuscules
 RETURN fn::validation_slug("  Mon-Article-2026 ", 120)

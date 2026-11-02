@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_non_zero (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_non_zero (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur acceptée
 RETURN fn::validation_non_zero(-2)

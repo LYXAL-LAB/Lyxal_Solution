@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_diff (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_diff (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeurs différentes
 RETURN fn::utils_diff(1, "1") == { equal: false, left: 1, right: "1", left_type: "int", right_type: "string" };

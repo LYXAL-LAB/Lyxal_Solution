@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_image_dimensions (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_image_dimensions (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: dimensions valides
 RETURN fn::validation_image_dimensions(1920, 1080, 16, 4096, 16, 4096, NONE)

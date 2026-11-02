@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_object_remove_path (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_object_remove_path (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: clé imbriquée retirée
 RETURN fn::utils_object_remove_path({ a: { b: 1, c: 2 } }, ["a", "b"]) == { a: { c: 2 } };

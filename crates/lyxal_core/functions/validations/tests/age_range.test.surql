@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_age_range (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_age_range (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: majeur
 RETURN fn::validation_age_range(d"1990-01-01T00:00:00Z", 18, NONE).valid;

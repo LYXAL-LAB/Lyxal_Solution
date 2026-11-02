@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::utils_engine_step (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::utils_engine_step (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: règle normalisée
 RETURN fn::utils_engine_step(" Trim ", NONE, NONE) == { rule: "trim", value: NONE, options: {} };

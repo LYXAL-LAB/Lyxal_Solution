@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_html (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_html (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: fragment nettoyé
 RETURN fn::sanitize_html("<p onclick=\"x()\">Bonjour</p><script>alert(1)</script><!-- c -->") == "<p>Bonjour</p>";

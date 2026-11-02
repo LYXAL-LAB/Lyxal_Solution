@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_workflow_delay (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_workflow_delay (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: dans les bornes
 RETURN fn::validation_workflow_delay(1h, 0s, 7d, true)

@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_exists (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_exists (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur présente
 RETURN { UPSERT lyxal_test_ref:one SET code = "ONE"; RETURN fn::validation_exists("ONE", "lyxal_test_ref", "code")

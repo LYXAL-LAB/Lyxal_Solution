@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_ascii (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_ascii (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur conforme nettoyée
 RETURN fn::validation_ascii(" " + "Hello-123" + " ", true, false)

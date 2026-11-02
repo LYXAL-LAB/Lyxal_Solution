@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_time_of_day_range (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_time_of_day_range (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: plage de jour
 RETURN fn::validation_time_of_day_range(540, 1080, false, false)

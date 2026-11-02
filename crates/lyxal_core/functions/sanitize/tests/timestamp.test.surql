@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_timestamp (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_timestamp (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: secondes
 RETURN fn::sanitize_timestamp(d"2026-01-01T00:00:00Z", "seconds") == 1767225600;

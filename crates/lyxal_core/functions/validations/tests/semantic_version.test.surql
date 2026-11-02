@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_semantic_version (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_semantic_version (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: valeur conforme
 RETURN fn::validation_semantic_version(" 1.2.3-rc.1+build.5 ", false)

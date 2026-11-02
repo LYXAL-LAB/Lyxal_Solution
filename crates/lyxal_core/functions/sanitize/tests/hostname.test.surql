@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_hostname (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_hostname (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: caractères interdits
 RETURN fn::sanitize_hostname("https://ex_ample.com/x") == "example.com";

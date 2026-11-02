@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_markdown_links (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_markdown_links (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: lien remplacé par son texte
 RETURN fn::sanitize_markdown_links("Voir [la doc](https://x/doc) et [ici](/a).") == "Voir la doc et ici.";

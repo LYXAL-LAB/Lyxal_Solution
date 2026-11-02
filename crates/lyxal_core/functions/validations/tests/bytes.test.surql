@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::validation_bytes (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::validation_bytes (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: octets dans les bornes
 RETURN fn::validation_bytes(<bytes> "abc", 1, 10)

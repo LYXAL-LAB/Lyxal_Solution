@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::security_detect_open_redirect (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::security_detect_open_redirect (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: URL externe
 RETURN fn::security_detect_open_redirect(" HTTPS://evil.com ") == { detected: true, category: "open_redirect", score: 70, input: "https://evil.com" };

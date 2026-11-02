@@ -1,5 +1,5 @@
 -- lyxal-test: assertions
--- Tests de fn::sanitize_e164 (format : crates/lyxal_core/implementation_plan.md §5).
+-- Tests de fn::sanitize_e164 (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: national vers E.164
 RETURN fn::sanitize_e164("06 12 34 56 78", "33") == "+33612345678";
