@@ -51,7 +51,6 @@ functions = [
     "functions/sanitize/functions/markdown.surql",
     "functions/sanitize/functions/markdown_code.surql",
     "functions/sanitize/functions/markdown_headers.surql",
-    "functions/sanitize/functions/markdown_html.surql",
     "functions/sanitize/functions/markdown_images.surql",
     "functions/sanitize/functions/markdown_links.surql",
     "functions/sanitize/functions/markdown_lists.surql",

@@ -24,13 +24,13 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 759 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 758 fonctions déclarées)
 ├── Readme.md
 ├── AUDIT.md                 (document de reprise, supprimé en fin de reprise)
 ├── implementation_plan.md   (document de reprise, supprimé en fin de reprise)
 └── functions/
     ├── validations/   functions/ (321) · tests/ (321)   fn::validation_*
-    ├── sanitize/      functions/ (166) · tests/ (166)   fn::sanitize_*
+    ├── sanitize/      functions/ (165) · tests/ (165)   fn::sanitize_*
     ├── security/      functions/ (152) · tests/ (152)   fn::security_*
     └── utils/         functions/ (120) · tests/ (120)   fn::utils_*
 ```
@@ -141,7 +141,7 @@ IF !$email.valid { RETURN fn::error_result("AUTH_EMAIL_INVALID", $params.languag
 LET $clean = fn::sanitize_email($email.value);
 ```
 
-* **Avancement** : toutes les fonctions de valeurs de `sanitize` sont migrées (94 fonctions : textes, nombres, dates, tableaux, objets, HTML, Markdown, URL, chemins). Seule la mécanique (pipeline, schéma, débogage…) attend le lot 4.
+* **Avancement** : toutes les fonctions de valeurs de `sanitize` sont migrées (93 fonctions : textes, nombres, dates, tableaux, objets, HTML, Markdown, URL, chemins). Seule la mécanique (pipeline, schéma, débogage…) attend le lot 4.
 * Le nettoyage HTML et Markdown est **lexical** (expressions régulières) : il ne remplace pas un parseur HTML anti-XSS. `string::replace` de SurrealDB 3.3.4 ne gère pas les groupes de capture (« $1 ») : les fonctions qui doivent garder une partie du motif (liens Markdown…) découpent le texte.
 
 ---
@@ -154,10 +154,10 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 ## Tests
 
-* `scripts/ci/test_lyxal_core.py` charge les 759 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
+* `scripts/ci/test_lyxal_core.py` charge les 758 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
 * **Deux formats coexistent pendant la reprise** :
   * **format « assertions »** (fichiers commençant par `-- lyxal-test: assertions`) : chaque bloc `-- test:` contient une instruction qui doit renvoyer `true`, ou lever l'erreur annoncée par `-- attendu-erreur: <CODE>` ; tout écart fait échouer la CI (détails : `implementation_plan.md` §5) ;
-  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (284 fichiers aujourd'hui, ceux des fonctions migrées).
+  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (283 fichiers aujourd'hui, ceux des fonctions migrées).
 * `scripts/ci/test_lyxal_core_selftest.py` vérifie que le banc accepte les bons tests et rejette les mauvais.
 * `scripts/ci/validate_surql.sh` vérifie la syntaxe de tout le SurrealQL du dépôt.
 * Les deux scripts font partie de la CI (job « SurrealQL ») et de `scripts/ci/ci_local.sh`.

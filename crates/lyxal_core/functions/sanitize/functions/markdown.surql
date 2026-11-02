@@ -25,7 +25,7 @@ DEFINE FUNCTION OVERWRITE fn::sanitize_markdown(
     IF !type::is_string($value) { THROW "CORE_SANITIZE_INVALID_TYPE"; };
     LET $inline = fn::sanitize_markdown_code(fn::sanitize_markdown_links(fn::sanitize_markdown_images($value)));
     LET $blocks = fn::sanitize_markdown_tables(fn::sanitize_markdown_lists(fn::sanitize_markdown_quotes(fn::sanitize_markdown_headers($inline))));
-    RETURN fn::sanitize_markdown_html($blocks);
+    RETURN fn::sanitize_strip_html($blocks);
 }
 COMMENT "Convertit un texte Markdown en texte brut : images, liens, code, titres, citations, listes, tableaux et balises HTML retirés (texte conservé). NONE → NONE ; mauvais type → CORE_SANITIZE_INVALID_TYPE."
 PERMISSIONS FULL;
