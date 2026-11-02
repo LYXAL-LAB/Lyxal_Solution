@@ -1,6 +1,6 @@
 # Plan d'implémentation — reprise de `lyxal_crypto`
 
-> **Statut : soumis au CTO.** Aucune modification avant validation explicite (§3).
+> **Statut : ✅ validé par le CTO** (recommandations Q1 et Q2 acceptées).
 > Constats : `AUDIT.md` (C-01 à C-05). Supprimé avec `AUDIT.md` à la clôture (§0.3.4).
 
 Aucun changement de code ni d'API publique n'est proposé : le code est conforme. L'API reste
@@ -48,7 +48,7 @@ Documentation uniquement, aucun code Rust touché :
 
 | Lot | Contenu |
 | :- | :--- |
-| 1 | Suppressions, réécriture des documents, harmonisation de `hash.rs`, note `lyxal_booking`. |
+| 1 ✅ | Suppressions, réécriture des documents, harmonisation de `hash.rs`, note `lyxal_booking`. |
 | 2 | Clôture : audit de contrôle, suppression de `AUDIT.md` et de ce plan. |
 
 ## 5. Checklist §13 (extraits)

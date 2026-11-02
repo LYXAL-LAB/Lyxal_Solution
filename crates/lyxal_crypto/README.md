@@ -1,9 +1,9 @@
-# Lyxal Crypto — API V1, protocole enc:v2
+# Lyxal Crypto — fondation cryptographique de Lyxal OS
 
-Fondation Rust autonome pour secrets applicatifs, AES-256-GCM, Argon2id,
-HMAC-SHA256, HKDF-SHA256, SHA-256 et BLAKE3. Package Cargo 0.1.0 inchangé ;
-API de première production implémentée, réception CTO et qualification de déploiement encore distinctes.
-Aucune dépendance DB, runtime ou module métier. Aucun engagement de certification.
+Crate Rust unique pour la cryptographie de Lyxal OS (`.agents/rules/lyxal_standards_and_checklist.md`
+§11.3) : secrets applicatifs chiffrés en AES-256-GCM (enveloppe `enc:v2`), Argon2id,
+HMAC-SHA256, HKDF-SHA256, SHA-256 et BLAKE3. API figée, version Cargo 0.1.0.
+Aucune dépendance Lyxal, base de données ou runtime. Bibliothèque non certifiée.
 
 ## Exemple exécutable
 
@@ -35,34 +35,39 @@ les clés via l'hôte avant toute donnée dépendante ; ne pas générer une nou
 - [API publique](API_CONTRACT.md) : types opaques, snapshots, erreurs, limites.
 - [Protocole V2](ENVELOPE_FORMAT_V2.md) : octets exacts, canonisation, fixtures indépendantes.
 - [Sécurité](SECURITY.md) : menaces, quotas hôte, mémoire et stockage.
-- [Migration](MIGRATION_GUIDE.md) : ruptures assumées ; aucun fallback V1.
-- [Feuille de route](roadmap.md) : état et perspectives d'évolution.
 
-`SecretContext` ne réalise aucune autorisation métier. Tenant et record sont exacts,
-sans normalisation implicite. Un secret global requiert `SecretContext::global(purpose)` ;
-aucun chiffrement public à AAD vide. `parse` n'authentifie pas une enveloppe.
-`Current` authentifie avant de constater la clé active du snapshot capturé.
+`enc:v2` est le seul format lu et produit. `SecretContext` ne réalise aucune autorisation
+métier. Tenant et record sont exacts, sans normalisation implicite. Un secret global requiert
+`SecretContext::global(purpose)` ; aucun chiffrement public à AAD vide. `parse` n'authentifie
+pas une enveloppe. `Current` authentifie avant de constater la clé active du snapshot capturé.
 
-## Développement et contrôles
+## Vérification
 
-MSRV local : Rust 1.85 ; Linux x86_64 constitue la cible initiale de qualification.
-Les consommateurs de l'ancienne API ne sont pas adaptés par ce chantier.
+### Automatique (CI)
 
 ```sh
-cargo test --locked -p lyxal_crypto --all-targets
-cargo test --locked -p lyxal_crypto --doc
-cargo +1.85.0 test --locked -p lyxal_crypto --all-targets
-cargo clippy --locked -p lyxal_crypto --all-targets -- -D warnings
-RUSTDOCFLAGS="-D warnings" cargo doc --locked -p lyxal_crypto --no-deps
-python3 crates/lyxal_crypto/tools/check_contracts.py
+cargo test -p lyxal_crypto --all-targets
+cargo test -p lyxal_crypto --doc
+cargo clippy -p lyxal_crypto --all-targets -- -D warnings
+RUSTDOCFLAGS="-D warnings" cargo doc -p lyxal_crypto --no-deps
 ```
 
-Le test de fichiers spéciaux nécessite la création locale d'un socket Unix et d'une FIFO.
-Un bac à sable peut bloquer cette préparation : ne pas confondre ce refus avec un échec
-cryptographique et ne pas supprimer l'assertion. Deux tests ignorés dans le lancement
-ordinaire sont des helpers explicitement exécutés par les tests parents multiprocessus.
+MSRV du crate : Rust 1.85. Le test de fichiers spéciaux crée un socket Unix et une FIFO :
+un bac à sable peut bloquer cette préparation, ce qui n'est pas un échec cryptographique.
+Deux tests ignorés dans le lancement ordinaire sont des processus enfants exécutés par les
+tests parents multiprocessus.
 
-Fuzzing isolé (libfuzzer-sys 0.4.13, cargo-fuzz 0.13.2, nightly nécessaire) :
+### Manuelle
+
+Outils indépendants du crate, lancés à la demande (hors CI) :
+
+| Outil | Vérifie | Prérequis |
+| :- | :- | :- |
+| `python3 tools/check_contracts.py` | bornes de traits réelles de l'API (banc isolé `tools/contracts/`) | dépendances du banc en cache (`--offline --locked`) |
+| `python3 tools/check_fixtures.py` | vecteurs publiés recalculés par OpenSSL, sans passer par le crate | module Python `cryptography` |
+| `python3 tools/run_fuzz.py --seconds 1800 --segments 3` | campagnes de fuzz `envelope`, `context`, `phc`, `rotation` | Rust nightly, `cargo-fuzz` 0.13.2 |
+
+Fuzzing cible par cible (libfuzzer-sys 0.4.13) :
 
 ```sh
 cd crates/lyxal_crypto
@@ -74,7 +79,7 @@ cargo +nightly fuzz run rotation -- -max_total_time=1800 -max_len=8192 -rss_limi
 ```
 
 Les seeds versionnés sont dans `fuzz/seeds` ; copier ceux du domaine choisi vers
-`fuzz/corpus/<cible>` pour reproduire la campagne ensemencée. Corpus générés, artifacts
-et sorties de compilation sont ignorés. Le fuzzing PHC exerce parsing/budgets, pas un
-calcul Argon2 coûteux pour chaque entrée. Les bancs fuzz/contrats possèdent leur propre
-workspace/lockfile ; ils ne remplacent jamais le lockfile officiel de construction.
+`fuzz/corpus/<cible>` pour reproduire la campagne ensemencée. Corpus générés, artefacts
+et sorties de compilation sont ignorés. Le fuzzing PHC exerce le parsing et les budgets, pas un
+calcul Argon2 coûteux pour chaque entrée. Les bancs fuzz et contrats possèdent leur propre
+workspace et lockfile ; ils ne remplacent jamais le lockfile du workspace.

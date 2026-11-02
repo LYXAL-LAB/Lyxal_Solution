@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
-//! Lyxal cryptographic foundation. Production API V1 uses the enc:v2 protocol.
+//! Lyxal cryptographic foundation. Envelopes use the enc:v2 protocol only.
 //! Secret access is explicit; no database, scheduler or runtime dependency.
 pub mod error;
 pub mod hash;

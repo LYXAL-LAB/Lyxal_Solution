@@ -1,6 +1,6 @@
-# Protocole enc:v2 — spécification implémentée, réception CTO en attente
+# Protocole enc:v2 — spécification
 
-Cette section suffit à une implémentation indépendante de l'enveloppe, de son AAD et de ses règles de rejet. « DOIT » désigne une obligation du protocole proposé. Tous les nombres de taille sont en **octets**, sauf indication contraire. Toutes les bornes sont inclusives. Le nom « AAD V2 / lyxal:v2 » désigne ce schéma ; son préfixe binaire exact est celui indiqué ci-dessous, sans autre préfixe implicite.
+Cette section suffit à une implémentation indépendante de l'enveloppe, de son AAD et de ses règles de rejet. « DOIT » désigne une obligation du protocole. Tous les nombres de taille sont en **octets**, sauf indication contraire. Toutes les bornes sont inclusives. Le nom « AAD V2 / lyxal:v2 » désigne ce schéma ; son préfixe binaire exact est celui indiqué ci-dessous, sans autre préfixe implicite.
 
 ## 1 Suite, entrée et représentation transport
 
@@ -129,5 +129,5 @@ Ces constantes sont des oracles à recopier littéralement dans les tests de con
 
 Vecteurs de rejet minimaux : ` enc:v2:...`, `enc:V2:...`, `enc:v02:...`, `enc:v2: k1:...`, composant supplémentaire, payload avec `=`, `+` ou `/`, Base64 de longueur modulo 4 égale à 1, payload décodé de 27 bytes, payload >maximum. Variante non canonique exacte de T0 : remplacer le dernier `w` par `x` dans `DA0ODxAREhMUFRYXhF7HI-45YFCT5iV2BQo7Vw` conserve les bytes décodés chez un décodeur permissif mais DOIT être refusé pour bits terminaux non nuls. Pour T1, remplacer le key ID par `k2` alors que k2 contient la même clé DOIT échouer à l'authentification ; changer `Acme` en `acme` ou le mode en global doit également échouer, sans fallback. Deux IDs différents pointant le même matériel ne créent pas deux budgets de nonce (SECURITY.md (budgets de clés)).
 
-Conserver SHA-256, BLAKE3, HMAC-SHA256, HKDF-SHA256, Argon2id v19 et OsRng. Aucun chiffrement maison ni nouveau protocole négociable. `v2` est une rupture explicite : `ENVELOPE_FORMAT_V1.md` restera historique, et la spécification du présent paragraphe est publiée dans ce document en phase B. Aucun adaptateur V1 automatique ni migration de données extérieure.
+Conserver SHA-256, BLAKE3, HMAC-SHA256, HKDF-SHA256, Argon2id v19 et OsRng. Aucun chiffrement maison ni nouveau protocole négociable. `v2` est le seul format lu et produit : aucune version antérieure n'est acceptée, aucun adaptateur ni migration automatique.
 
