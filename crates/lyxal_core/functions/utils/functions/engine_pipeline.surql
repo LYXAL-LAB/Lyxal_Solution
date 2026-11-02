@@ -6,8 +6,8 @@
 --
 -- Contrôle et normalise un pipeline : chaque étape est un objet { rule,
 -- value, options } dont la règle figure au catalogue du domaine ({ rule,
--- cost }) ou parmi les règles du moteur (each, object, when, one_of,
--- contrôlées récursivement). Au plus $max_steps étapes par niveau.
+-- cost, required }) ou parmi les règles du moteur (each, object, when,
+-- one_of, contrôlées récursivement). Au plus $max_steps étapes par niveau.
 --
 -- Paramètres
 --   $steps     : array
@@ -17,7 +17,7 @@
 -- Valeur renvoyée : array<object> (contrat : crates/lyxal_core/Readme.md, fonctions utils)
 --
 -- Erreurs de programmation (THROW)
---   CORE_INVALID_ARGUMENT : plus de $max_steps étapes, $max_steps < 1, étape mal formée, options d'une règle du moteur invalides, règle du catalogue portant le nom d'une règle du moteur
+--   CORE_INVALID_ARGUMENT : plus de $max_steps étapes, $max_steps < 1, étape mal formée, options d'une règle du moteur invalides, règle du catalogue portant le nom d'une règle du moteur, option obligatoire (required) absente
 --   CORE_UNSUPPORTED_OPTION : règle absente du catalogue
 -- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::utils_engine_pipeline(
@@ -32,6 +32,9 @@ DEFINE FUNCTION OVERWRITE fn::utils_engine_pipeline(
         IF !type::is_object($raw) OR !type::is_string($raw.rule) { THROW "CORE_INVALID_ARGUMENT"; };
         LET $step = fn::utils_engine_step($raw.rule, $raw.value, $raw.options);
         LET $options = $step.options;
+        IF $step.rule NOT IN ["each", "object", "when", "one_of"] AND $step.rule IN $rules
+            AND array::any(array::find($catalog, |$entry| $entry.rule = $step.rule).required ?? [], |$key| $options[$key] IS NONE)
+        { THROW "CORE_INVALID_ARGUMENT"; };
         RETURN IF $step.rule = "each" {
             IF !type::is_array($options.pipeline) { THROW "CORE_INVALID_ARGUMENT"; };
             object::extend($step, { options: { pipeline: fn::utils_engine_pipeline($options.pipeline, $catalog, $max_steps) } })
@@ -62,5 +65,5 @@ DEFINE FUNCTION OVERWRITE fn::utils_engine_pipeline(
         };
     });
 }
-COMMENT "Contrôle et normalise un pipeline : chaque étape est un objet { rule, value, options } dont la règle figure au catalogue du domaine ({ rule, cost }) ou parmi les règles du moteur (each, object, when, one_of, contrôlées récursivement). Au plus $max_steps étapes par niveau."
+COMMENT "Contrôle et normalise un pipeline : chaque étape est un objet { rule, value, options } dont la règle figure au catalogue du domaine ({ rule, cost, required }) ou parmi les règles du moteur (each, object, when, one_of, contrôlées récursivement). Au plus $max_steps étapes par niveau."
 PERMISSIONS FULL;

@@ -126,7 +126,7 @@ SurrealQL ne permet pas d'appeler une fonction à partir de son nom. En revanche
 * **Codes d'erreur** : uniquement `CORE_INVALID_ARGUMENT`, `CORE_UNSUPPORTED_OPTION` et les codes `CORE_VALIDATION_*` ; tous les codes `VALIDATION_*`, `SANITIZE_*`, `SECURITY_*` et dynamiques disparaissent.
 * **Découpage en PR** :
   1. le moteur et ses tests (pipeline, exécution, schéma, rapport) ; précision d'implémentation : l'état porte au minimum `{ value, issues, warnings, stop, path, parent }`, car les règles `each`, `object`, `when` et `one_of` agissent sur la valeur et les erreurs ; un domaine peut y ajouter ses propres clés (`security` : `findings`, `decisions`) ;
-  2. le branchement de `sanitize` et la suppression de ses copies ;
+  2. le branchement de `sanitize` et la suppression de ses copies : familles pipeline, schéma, runtime et SDK (43 fonctions, dont `sanitize_debug_pipeline`, qui dépendait de `sanitize_pipeline_stats`) ; le catalogue déclare les options obligatoires (`required`), contrôlées par `fn::utils_engine_pipeline` ;
   3. le branchement de `validations` ;
   4. le branchement de `security` ;
   5. les familles optimiseur, débogage, benchmark et runtime.

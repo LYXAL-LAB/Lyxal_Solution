@@ -34,6 +34,13 @@ RETURN fn::utils_engine_pipeline([{ rule: "when", options: { then: [] } }], [{ r
 -- attendu-erreur: CORE_INVALID_ARGUMENT
 RETURN fn::utils_engine_pipeline([{ rule: "one_of", options: { pipelines: [[]] } }], [{ rule: "trim", cost: 1 }, { rule: "min", cost: 3 }], 10);
 
+-- test: option obligatoire absente
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_engine_pipeline([{ rule: "pad" }], [{ rule: "pad", required: ["width"] }], 10);
+
+-- test: option obligatoire présente
+RETURN fn::utils_engine_pipeline([{ rule: "pad", options: { width: 3 } }], [{ rule: "pad", required: ["width"] }], 10)[0].options.width == 3;
+
 -- test: catalogue masquant une règle du moteur
 -- attendu-erreur: CORE_INVALID_ARGUMENT
 RETURN fn::utils_engine_pipeline([], [{ rule: "each" }], 10);
