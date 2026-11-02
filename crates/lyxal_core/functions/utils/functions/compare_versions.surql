@@ -11,26 +11,25 @@
 --   $right : string
 --
 -- Valeur renvoyée : int (contrat : crates/lyxal_core/Readme.md, fonctions utils)
+--
+-- Erreurs de programmation (THROW)
+--   CORE_INVALID_ARGUMENT : version non numérique (segments de 1 à 18 chiffres séparés par « . », préfixe « v » toléré)
 -- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::utils_compare_versions(
     $left: string,
     $right: string
 ) -> int {
-    LET $a = array::map(
-        string::split(
-            string::replace(string::lowercase(string::trim($left)),<regex>"^v",""),
-            "."
-        ),
-        |$part| <int>$part
-    );
+    LET $left_clean = string::replace(string::lowercase(string::trim($left)), <regex>"^v", "");
+    LET $right_clean = string::replace(string::lowercase(string::trim($right)), <regex>"^v", "");
 
-    LET $b = array::map(
-        string::split(
-            string::replace(string::lowercase(string::trim($right)),<regex>"^v",""),
-            "."
-        ),
-        |$part| <int>$part
-    );
+    IF !string::matches($left_clean, "^[0-9]{1,18}(\\.[0-9]{1,18})*$")
+        OR !string::matches($right_clean, "^[0-9]{1,18}(\\.[0-9]{1,18})*$")
+    {
+        THROW "CORE_INVALID_ARGUMENT";
+    };
+
+    LET $a = array::map(string::split($left_clean, "."), |$part| <int>$part);
+    LET $b = array::map(string::split($right_clean, "."), |$part| <int>$part);
 
     LET $length = math::max([array::len($a),array::len($b)]);
 

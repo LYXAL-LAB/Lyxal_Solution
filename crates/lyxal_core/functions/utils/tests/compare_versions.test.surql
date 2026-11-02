@@ -9,3 +9,15 @@ RETURN fn::utils_compare_versions("1.2", "1.2.0") == 0;
 
 -- test: supérieure
 RETURN fn::utils_compare_versions("2.0.0", "1.99.99") == 1;
+
+-- test: segment non numérique
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_compare_versions("1.0.0-beta", "1.0.0");
+
+-- test: version vide
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_compare_versions("1.0", " ");
+
+-- test: segment trop long
+-- attendu-erreur: CORE_INVALID_ARGUMENT
+RETURN fn::utils_compare_versions("1.99999999999999999999", "1.0");
