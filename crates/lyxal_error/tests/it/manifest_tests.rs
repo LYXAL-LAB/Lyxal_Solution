@@ -44,10 +44,18 @@ fn test_manifest_validity_and_completeness() {
     };
 
     check_file_list("schemas");
-    check_file_list("migrations");
     check_file_list("functions");
-    check_file_list("seeds");
     check_file_list("error_definitions");
+
+    // Régime pré-production (AGENTS.md §0) : ni migration ni seed de démonstration.
+    assert!(
+        resources.get("migrations").is_none(),
+        "lyxal_error ne déclare aucune migration"
+    );
+    assert!(
+        resources.get("seeds").is_none(),
+        "lyxal_error ne déclare aucun seed"
+    );
 }
 
 #[test]
@@ -91,9 +99,7 @@ fn test_no_orphan_surql_files() {
     let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let mut found = Vec::new();
     collect_surql_files(&base_dir.join("schema"), &base_dir, &mut found);
-    collect_surql_files(&base_dir.join("migrations"), &base_dir, &mut found);
     collect_surql_files(&base_dir.join("functions"), &base_dir, &mut found);
-    collect_surql_files(&base_dir.join("seeds"), &base_dir, &mut found);
     collect_surql_files(&base_dir.join("error"), &base_dir, &mut found);
 
     for f in &found {

@@ -26,4 +26,5 @@ DEFINE FUNCTION OVERWRITE fn::error_get(
                 LIMIT 1;
 
     RETURN IF array::len($res) > 0 { $res[0] } ELSE { NONE };
-} COMMENT "Récupère la définition brute d'un code d'erreur canonique actif";
+} COMMENT "Récupère la définition brute d'un code d'erreur canonique actif"
+PERMISSIONS FULL;

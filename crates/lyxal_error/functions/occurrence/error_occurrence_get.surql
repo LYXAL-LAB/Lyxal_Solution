@@ -1,7 +1,7 @@
--- â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
--- â”‚  fn::error_occurrence_get                                                â”‚
--- â”‚  Lecture d'une occurrence d'erreur technique par son ID                 â”‚
--- â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+-- ┌──────────────────────────────────────────────────────────────────────────┐
+-- │  fn::error_occurrence_get                                                │
+-- │  Lecture d'une occurrence d'erreur technique par son ID                 │
+-- └──────────────────────────────────────────────────────────────────────────┘
 
 DEFINE FUNCTION OVERWRITE fn::error_occurrence_get(
     $params: object
@@ -29,4 +29,5 @@ DEFINE FUNCTION OVERWRITE fn::error_occurrence_get(
     };
 
     RETURN fn::result_ok($res[0]);
-} COMMENT "RÃ©cupÃ¨re les dÃ©tails d'une occurrence d'erreur au format universel LyxalResult";
+} COMMENT "Récupère les détails d'une occurrence d'erreur au format universel LyxalResult"
+PERMISSIONS FULL;

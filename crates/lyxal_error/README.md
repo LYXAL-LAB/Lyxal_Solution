@@ -3,7 +3,7 @@
 [![Status](https://img.shields.io/badge/Status-Production--Ready-success.svg)](#)
 [![Charte](https://img.shields.io/badge/Conformit%C3%A9-AGENTS.md%20100%25-blue.svg)](#)
 [![Tests](https://img.shields.io/badge/Tests-21%20passed%20%7C%200%20failed-brightgreen.svg)](#)
-[![SurrealDB](https://img.shields.io/badge/SurrealDB-3.2.0%20Compatible-blue.svg)](#)
+[![SurrealDB](https://img.shields.io/badge/SurrealDB-3.3.4%20Compatible-blue.svg)](#)
 
 Le module **`lyxal_error`** constitue le référentiel centralisé, le moteur de résolution linguistique et le socle du contrat de résultat universel pour l'ensemble des modules de la suite **Lyxal OS** (`lyxal_surreal`, `lyxal_booking`, `lyxal_auth`, `lyxal_notification`, `lyxal_scheduler`, etc.).
 
@@ -54,7 +54,7 @@ Toutes les opérations publiques de la plateforme Lyxal OS retournent le contrat
 
 ## 📊 2. Schémas de Données (`schema/`)
 
-Le module gère 3 tables déclaratives sous SurrealDB 3.2.0 :
+Le module gère 3 tables déclaratives sous SurrealDB 3.3.4 :
 
 | Table | Rôle | Stratégie d'évolution |
 | :--- | :--- | :--- |
@@ -104,7 +104,6 @@ Le module fournit exclusivement son propre dictionnaire d'erreurs :
 
 | Code d'Erreur | Catégorie | Sévérité | HTTP | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `CORE_ERROR_DEFINITION_NOT_FOUND` | `internal` | `error` | 500 | Définition d'erreur introuvable dans le référentiel |
 | `ERROR_PARAM_REQUIRED` | `validation` | `error` | 400 | Paramètre obligatoire manquant ou vide |
 | `ERROR_DEFINITION_NOT_FOUND` | `business` | `warning` | 404 | Définition d'erreur demandée inexistante |
 | `ERROR_DEFINITION_ALREADY_EXISTS` | `business` | `warning` | 409 | Définition d'erreur déjà enregistrée sous ce code |
@@ -141,46 +140,13 @@ pub fn resolve_call<T: SurrealValue>(result: LyxalResult<T>) -> Result<T, LyxalC
 
 ## 🚀 6. Déploiement & Intégration Runtime
 
-Le module s'intègre nativement avec `lyxal_runtime` via son fichier `manifest.toml` :
+Le module s'intègre à `lyxal_runtime` par son fichier `manifest.toml`. Il déclare :
 
-```toml
-manifest_version = 1
-id = "lyxal_error"
-name = "Lyxal Error Management"
-version = "0.1.0"
-runtime_version = ">=0.1.0"
-description = "Moteur universel d'erreurs, contrats de résultat et observabilité pour Lyxal OS"
+* ses 3 schémas (`schema/*.surql`), appliqués de manière idempotente par la phase schéma du runtime ;
+* ses fonctions (`functions/**/*.surql`) ;
+* ses définitions d'erreurs (`error/error_definitions.surql` et `error/core/core_definitions.surql`, codes `CORE_*` de `lyxal_core`), rejouables sans doublon (`IF !record::exists(...)`).
 
-[resources]
-schemas = [
-    "schema/error_definition.surql",
-    "schema/error_external_mapping.surql",
-    "schema/error_occurrence.surql",
-]
-migrations = [
-    "migrations/0001_initial_schema.surql",
-]
-functions = [ ... ]
-seeds = [
-    "error/error_definitions.surql",
-    "seeds/error_mappings.surql",
-]
-```
-
-### Exécution & Idempotence des Migrations
-Les migrations séquentielles sont gérées et tracées par `MigrationRunner` de `lyxal_runtime` :
-1. **Phase Schéma** : Importation ordonnée des schémas déclaratifs idempotents (`schema/*.surql`).
-2. **Phase Migration** : Exécution de `migrations/0001_initial_schema.surql` avec calcul de checksum SHA-256 et enregistrement automatisé dans le `RuntimeStore` (`system_migration`).
-
-```surql
--- migrations/0001_initial_schema.surql
-RETURN {
-    migration: "0001_initial_schema",
-    module: "lyxal_error",
-    status: "APPLIED",
-    executed_at: time::now()
-};
-```
+Régime pré-production (`.agents/AGENTS.md` §0) : le module n'a ni migration ni seed de démonstration. Aucun mapping externe n'est installé par défaut ; chaque module déclare les siens avec `fn::error_mapping_create`.
 
 ---
 

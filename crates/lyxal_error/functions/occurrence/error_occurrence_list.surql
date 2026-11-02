@@ -31,4 +31,5 @@ DEFINE FUNCTION OVERWRITE fn::error_occurrence_list(
                  LIMIT $lim;
 
     RETURN fn::result_ok($list);
-} COMMENT "Liste et filtre les occurrences d'erreurs journalisées au format universel LyxalResult";
+} COMMENT "Liste et filtre les occurrences d'erreurs journalisées au format universel LyxalResult"
+PERMISSIONS FULL;

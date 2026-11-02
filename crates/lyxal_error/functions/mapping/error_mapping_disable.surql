@@ -1,7 +1,7 @@
--- â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
--- â”‚  fn::error_mapping_disable                                              â”‚
--- â”‚  DÃ©sactive logiquement une rÃ¨gle de correspondance d'erreur externe     â”‚
--- â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+-- ┌──────────────────────────────────────────────────────────────────────────┐
+-- │  fn::error_mapping_disable                                              │
+-- │  Désactive logiquement une règle de correspondance d'erreur externe     │
+-- └──────────────────────────────────────────────────────────────────────────┘
 
 DEFINE FUNCTION OVERWRITE fn::error_mapping_disable(
     $params: object
@@ -30,4 +30,5 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_disable(
 
     UPDATE $existing[0] SET enabled = false, updated_at = time::now();
     RETURN fn::result_ok({ disabled: true, id: <string>$existing[0] });
-} COMMENT "DÃ©sactive logiquement une rÃ¨gle de correspondance d'erreur externe";
+} COMMENT "Désactive logiquement une règle de correspondance d'erreur externe"
+PERMISSIONS FULL;

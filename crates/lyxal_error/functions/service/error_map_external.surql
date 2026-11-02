@@ -75,4 +75,5 @@ DEFINE FUNCTION OVERWRITE fn::error_map_external(
     };
 
     RETURN fn::result_ok(NONE);
-} COMMENT "Convertit un code d'erreur fournisseur vers une correspondance canonique Lyxal";
+} COMMENT "Convertit un code d'erreur fournisseur vers une correspondance canonique Lyxal"
+PERMISSIONS FULL;

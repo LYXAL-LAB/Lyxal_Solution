@@ -26,4 +26,5 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_get(
     };
 
     RETURN fn::result_ok($res[0]);
-} COMMENT "Récupère les détails d'une définition d'erreur canonique au format universel";
+} COMMENT "Récupère les détails d'une définition d'erreur canonique au format universel"
+PERMISSIONS FULL;

@@ -74,4 +74,5 @@ DEFINE FUNCTION OVERWRITE fn::error_resolve(
         metadata: $meta,
         details: $det
     };
-} COMMENT "Résout et traduit une erreur canonique complète avec repli linguistique";
+} COMMENT "Résout et traduit une erreur canonique complète avec repli linguistique"
+PERMISSIONS FULL;

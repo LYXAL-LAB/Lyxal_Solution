@@ -1,7 +1,7 @@
--- â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
--- â”‚  fn::error_mapping_get                                                  â”‚
--- â”‚  Lecture d'une rÃ¨gle de correspondance d'erreur externe par son ID      â”‚
--- â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+-- ┌──────────────────────────────────────────────────────────────────────────┐
+-- │  fn::error_mapping_get                                                  │
+-- │  Lecture d'une règle de correspondance d'erreur externe par son ID      │
+-- └──────────────────────────────────────────────────────────────────────────┘
 
 DEFINE FUNCTION OVERWRITE fn::error_mapping_get(
     $params: object
@@ -29,4 +29,5 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_get(
     };
 
     RETURN fn::result_ok($res[0]);
-} COMMENT "RÃ©cupÃ¨re les dÃ©tails d'un mapping d'erreur externe au format universel";
+} COMMENT "Récupère les détails d'un mapping d'erreur externe au format universel"
+PERMISSIONS FULL;

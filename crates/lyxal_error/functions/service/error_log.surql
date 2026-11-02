@@ -43,4 +43,5 @@ DEFINE FUNCTION OVERWRITE fn::error_log(
     };
 
     RETURN fn::result_ok($occ);
-} COMMENT "Journalise une occurrence d'erreur technique dans la table error_occurrence";
+} COMMENT "Journalise une occurrence d'erreur technique dans la table error_occurrence"
+PERMISSIONS FULL;
