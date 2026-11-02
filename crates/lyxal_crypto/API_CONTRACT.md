@@ -1,7 +1,6 @@
-# Contrat public — API V1 de production / enc:v2
+# Contrat public — API de `lyxal_crypto` / enc:v2
 
-Implémentation phase B, soumise à réception CTO. La version Cargo reste 0.1.0 ;
-aucune publication 1.0.0 n'est implicite. L'ancienne API est remplacée, sans shim.
+API figée (`.agents/rules/lyxal_standards_and_checklist.md` §11.3), version Cargo 0.1.0.
 Le [protocole V2](ENVELOPE_FORMAT_V2.md) est la référence des octets persistants.
 Toutes les erreurs retournent `CryptoError`, sans entrée, PHC, clé ni chemin reflété.
 

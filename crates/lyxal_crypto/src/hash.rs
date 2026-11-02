@@ -1,32 +1,32 @@
 //! Generic SHA-256 and BLAKE3 hashing; never a substitute for Argon2 password hashing.
 use sha2::{Digest, Sha256};
 
-/// Calcule la somme de contrôle SHA-256 (32 octets) à partir d'un flux d'octets.
+/// Compute the SHA-256 digest (32 bytes) of a byte slice.
 pub fn sha256(data: &[u8]) -> [u8; 32] {
     let mut hasher = Sha256::new();
     hasher.update(data);
     hasher.finalize().into()
 }
 
-/// Calcule la somme de contrôle SHA-256 sous forme de chaîne hexadécimale minuscule (64 caractères).
+/// Compute the SHA-256 digest as lowercase hexadecimal (64 characters).
 pub fn sha256_hex(data: &[u8]) -> String {
     let bytes = sha256(data);
     hex::encode(bytes)
 }
 
-/// Calcule le hash BLAKE3 (32 octets) à partir d'un flux d'octets.
+/// Compute the BLAKE3 hash (32 bytes) of a byte slice.
 pub fn blake3(data: &[u8]) -> [u8; 32] {
     let hash = blake3::hash(data);
     *hash.as_bytes()
 }
 
-/// Calcule le hash BLAKE3 sous forme de chaîne hexadécimale minuscule (64 caractères).
+/// Compute the BLAKE3 hash as lowercase hexadecimal (64 characters).
 pub fn blake3_hex(data: &[u8]) -> String {
     let bytes = blake3(data);
     hex::encode(bytes)
 }
 
-/// Hasher incrémental SHA-256 pour les calculs par flux ou multi-parties.
+/// Incremental SHA-256 hasher for streamed or multi-part input.
 #[derive(Default, Clone)]
 pub struct Sha256Hasher(Sha256);
 
@@ -53,7 +53,7 @@ impl Sha256Hasher {
     }
 }
 
-/// Hasher incrémental BLAKE3 pour les calculs par flux ou multi-parties.
+/// Incremental BLAKE3 hasher for streamed or multi-part input.
 #[derive(Default, Clone)]
 pub struct Blake3Hasher(blake3::Hasher);
 

@@ -1,4 +1,17 @@
 > [!NOTE]
+> **À traiter lors de la reprise de `lyxal_booking` — ancienne API `lyxal_crypto` (reprise `lyxal_crypto`)**
+>
+> `lyxal_booking/engine` (hors workspace, non compilé par la CI) appelle une API de `lyxal_crypto` supprimée avant la première production. À remplacer par l'API actuelle (`crates/lyxal_crypto/API_CONTRACT.md`) :
+> * `CryptoEngine::encrypt_secret` / `decrypt_secret` → `CryptoEngine::seal(&SecretBytes, &SecretContext)` / `open(&EncryptedEnvelope, &SecretContext)`, avec `EncryptedEnvelope::encode` / `parse` pour le stockage ;
+> * `EncryptionKey::from_bytes` → `EncryptionKey::import(SecretBytes)` ;
+> * `lyxal_crypto::cipher::{encrypt_aes_gcm, decrypt_aes_gcm}` → module privé, plus accessible : passer par `CryptoEngine` ;
+> * `lyxal_crypto::Zeroizing`, `SecretString::from` → `SecretBytes::new` / `SecretString::new` (renvoient un `Result`).
+>
+> Fichiers concernés : `engine/src/crypto_helpers.rs`, `oauth2_caldav.rs`, `services/oauth.rs`, `services/integrations.rs`, `web/captcha.rs`, `web/csp.rs`, `web/meeting.rs`, `email/config.rs`, `email/tests.rs`, `caldav/mod.rs`, `utils/cli.rs`. Le plan Cal.rs ci-dessous s'appuie sur `lyxal_crypto::cipher::decrypt_aes_gcm`, devenu privé : il est à revoir. `enc:v1` n'est plus lu (aucune migration automatique).
+>
+> Même reprise, transport (`lyxal_surreal`) : `engine/src/db.rs` définit son propre `RootCredentials` et sa connexion. À remplacer par `lyxal_surreal::create_surreal_client(SurrealConnectOptions)` (mot de passe en `SecretString`, contrôles §11.2, délai, namespace et base).
+
+> [!NOTE]
 > **À traiter lors de la reprise de `lyxal_booking` — rupture de contrat `lyxal_error` (reprise `lyxal_error`, lot 3, décision CTO Q6)**
 >
 > `lyxal_error::LyxalCallError::BusinessCode` et `LyxalCallError::business_code(...)` n'existent plus. `lyxal_booking/engine` (hors workspace, non compilé par la CI) les utilise encore :

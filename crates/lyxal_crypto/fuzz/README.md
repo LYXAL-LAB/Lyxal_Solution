@@ -18,4 +18,4 @@ Les seeds versionnés incluent une enveloppe littérale et des profils PHC valid
 Les binaires instrumentés exigent un contexte permettant à LeakSanitizer de terminer.
 Une erreur du sanitizer liée à l'environnement est un échec de campagne ; ne pas la
 convertir en succès ou désactiver le contrôle pour faire passer le résultat.
-Le bilan réellement exécuté est dans `../IMPLEMENTATION_REPORT.md` et `../validation/`.
+Chaque campagne écrit ses journaux, commandes et codes de sortie dans `fuzz/target/campaigns/` (non versionné).

@@ -18,7 +18,7 @@ entièrement compromis ou un administrateur contrôlant sa mémoire.
 Nonces OS aléatoires96, tags128. Pour q nonces uniformes indépendants,
 Pr[collision] <= q(q-1)/2^97. À q=2^24, cette borne est <2^-49 ; elle ne constitue
 pas la sécurité globale GCM, qui dépend aussi des blocs traités et tentatives de falsification.
-Politique opérationnelle proposée au CTO/hôte : <=2^24 scellements par matériel,
+Politique opérationnelle recommandée à l'hôte : <=2^24 scellements par matériel,
 <=2^20 authentifications AEAD échouées avant blocage/rotation/investigation.
 Le crate NE COMPTE PAS ces budgets globalement et ne fournit pas de compteur durable.
 Renommage d'ID, alias de matériel, restart et réactivation ne réinitialisent jamais le budget.
@@ -95,7 +95,7 @@ L'exposition explicite de plaintext/PHC rend l'appelant responsable de ses copie
 
 ## Validation et signalement
 
-Les tests, campagnes et dépendances réellement contrôlés figurent dans IMPLEMENTATION_REPORT.md.
+Les contrôles automatiques et manuels sont décrits dans le README (section « Vérification »).
 Les scans RustSec sont datés ; l'absence d'alerte connue ne prouve pas l'absence de vulnérabilité.
 Signaler tout incident au responsable sécurité/CTO LYXAL OS ; ne jamais joindre une clé réelle
 ou un secret dans une trace publique. Aucune journalisation de contenu sensible n'est offerte.
