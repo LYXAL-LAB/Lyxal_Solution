@@ -116,6 +116,8 @@ Même principe : un résultat ou une valeur ; `THROW` uniquement pour un argumen
 | `utils_array_unique`, `utils_array_flatten`, `utils_object_clone`, `utils_object_pick`, `utils_object_defaults`, `utils_string_slug`, `utils_string_title_case`, `utils_ensure_array`, `utils_ensure_object`, `utils_number_round`, `utils_number_clamp` | la fonction `sanitize` du même rôle (doublons) |
 | `utils_deep_equal`, `utils_shallow_equal` | l'opérateur `==` de SurrealQL |
 | `utils_from_json`, `utils_to_json`, `utils_base64_to_bytes`, `utils_bytes_to_base64`, `utils_runtime_uuid` | `encoding::json::decode` / `encode`, `encoding::base64::decode` / `encode`, `rand::uuid::v7` (appels directs de la fonction native) |
+| `utils_string_reverse` | `string::reverse` (réimplémentation de la fonction native) |
+| `utils_from_csv` | aucune : lecture CSV sans guillemets ; le parsing relève de Rust (§10 des règles) |
 
 Raison : une responsabilité = un endroit (`.agents/AGENTS.md` §5.1). Aucun appelant.
 

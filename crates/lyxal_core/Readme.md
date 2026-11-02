@@ -24,7 +24,7 @@ Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modu
 
 ```text
 lyxal_core/
-├── manifest.toml            (id lyxal_core, version 0.1.0, 721 fonctions déclarées)
+├── manifest.toml            (id lyxal_core, version 0.1.0, 719 fonctions déclarées)
 ├── Readme.md
 ├── AUDIT.md                 (document de reprise, supprimé en fin de reprise)
 ├── implementation_plan.md   (document de reprise, supprimé en fin de reprise)
@@ -32,7 +32,7 @@ lyxal_core/
     ├── validations/   functions/ (321) · tests/ (321)   fn::validation_*
     ├── sanitize/      functions/ (165) · tests/ (165)   fn::sanitize_*
     ├── security/      functions/ (137) · tests/ (137)   fn::security_*
-    └── utils/         functions/ (98) · tests/ (98)   fn::utils_*
+    └── utils/         functions/ (96) · tests/ (96)   fn::utils_*
 ```
 
 Chaque fonction a son fichier (`functions/<domaine>/functions/<nom>.surql`) et son fichier de tests (`functions/<domaine>/tests/<nom>.test.surql`).
@@ -138,9 +138,9 @@ Les fonctions `fn::security_*` gardent des **paramètres typés** et renvoient u
 Les fonctions `fn::utils_*` gardent des **paramètres typés** et renvoient une valeur (plan §2.3) : tableaux, collections (tri, pagination, fenêtres), comparaisons, dates, nombres, objets et chemins, chaînes (casse, remplissage), encodages (URI, hexadécimal), CSV, entrées de cache et métadonnées d'exécution. Seul un argument invalide lève `CORE_INVALID_ARGUMENT` (taille nulle, bornes inversées, total nul…) ou `CORE_UNSUPPORTED_OPTION` (sens de tri inconnu).
 
 * Les nombres et l'arrondi s'appuient sur `sanitize` (`fn::sanitize_round`) ; l'égalité profonde est l'opérateur `==` de SurrealQL.
-* `fn::utils_to_csv` applique les guillemets RFC 4180 ; `fn::utils_from_csv` est un découpage simple (sans guillemets) : un CSV externe se lit en Rust (`.agents/rules/lyxal_standards_and_checklist.md` §10).
+* `fn::utils_to_csv` applique les guillemets RFC 4180. La lecture d'un CSV est du parsing : elle se fait en Rust (`.agents/rules/lyxal_standards_and_checklist.md` §10).
 * Les conversions `ensure_bool`, `ensure_number`, `decode_uri` et `from_hex` lèvent `CORE_INVALID_ARGUMENT` sur une donnée non convertible : elles s'appliquent à une donnée déjà validée.
-* **Avancement** : toutes les fonctions de valeurs de `utils` sont migrées (88 fonctions). Seule la mécanique (pipeline) attend le lot 4.
+* **Avancement** : toutes les fonctions de valeurs de `utils` sont migrées (86 fonctions). Seule la mécanique (pipeline) attend le lot 4.
 
 ### Contrat des fonctions `sanitize` — migration en cours (lot 3)
 
@@ -170,10 +170,10 @@ Aucun module ne l'appelle encore. L'adoption se fera à la reprise de chaque mod
 
 ## Tests
 
-* `scripts/ci/test_lyxal_core.py` charge les 721 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
+* `scripts/ci/test_lyxal_core.py` charge les 719 fonctions dans un serveur SurrealDB 3.3.4 jetable, vérifie qu'elles sont toutes définies, puis exécute chaque fichier de tests.
 * **Deux formats coexistent pendant la reprise** :
   * **format « assertions »** (fichiers commençant par `-- lyxal-test: assertions`) : chaque bloc `-- test:` contient une instruction qui doit renvoyer `true`, ou lever l'erreur annoncée par `-- attendu-erreur: <CODE>` ; tout écart fait échouer la CI (détails : `implementation_plan.md` §5) ;
-  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (429 fichiers aujourd'hui, ceux des fonctions migrées).
+  * **ancien format** : le résultat attendu n'est qu'un commentaire ; le script vérifie seulement l'absence d'erreur moteur inattendue. Les fichiers passent au format « assertions » au fil du lot 3 (427 fichiers aujourd'hui, ceux des fonctions migrées).
 * `scripts/ci/test_lyxal_core_selftest.py` vérifie que le banc accepte les bons tests et rejette les mauvais.
 * `scripts/ci/validate_surql.sh` vérifie la syntaxe de tout le SurrealQL du dépôt.
 * Les deux scripts font partie de la CI (job « SurrealQL ») et de `scripts/ci/ci_local.sh`.
