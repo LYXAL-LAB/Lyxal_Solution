@@ -26,12 +26,14 @@ pub enum LyxalEventError {
         timeout: Duration,
     },
 
-    /// Échec d'exécution du handler utilisateur.
+    /// Échec d'exécution du handler utilisateur. `terminal = true` envoie la livraison
+    /// directement en DLQ ; `false` déclenche un nouvel essai avec backoff.
     #[error("Handler execution failed for event '{event_id}' ({event_type}): {error}")]
     HandlerFailed {
         event_id: Uuid,
         event_type: String,
         error: String,
+        terminal: bool,
     },
 
     /// Non-concordance de type lors du décodage du payload.

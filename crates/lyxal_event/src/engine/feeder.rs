@@ -18,7 +18,7 @@
 //! Superviseur d'alimentation et de réconciliation de l'outbox (`OutboxFeeder`).
 //!
 //! Ce composant réconcilie les événements stockés dans `event_outbox`, orchestre la création
-//! transactionnelle des livraisons via `fn::event_delivery_assign_seq` (Lot 3B.1),
+//! transactionnelle des livraisons via `fn::event_delivery_assign_seq`,
 //! et alimente le [`ReliableDispatcher`] de distribution in-process sous contrôle strict de backpressure.
 //!
 //! # Invariants de Sûreté
@@ -37,7 +37,7 @@ use surrealdb::Surreal;
 use thiserror::Error;
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, info};
+use tracing::debug;
 
 use super::dispatcher::{AckReport, DispatcherError, ReliableDispatcher};
 use super::dto::{DeliveryAssignSeqParams, DeliveryFailureParams};
@@ -55,10 +55,6 @@ pub enum FeederError {
     /// Erreur du dispatcher LYXAL Event Engine.
     #[error("Erreur du dispatcher d'événements: {0}")]
     Dispatcher(#[from] DispatcherError),
-
-    /// Erreur interne du feeder.
-    #[error("Erreur interne du feeder: {0}")]
-    Internal(String),
 
     /// Erreur de progression ou de flush.
     #[error("Erreur de progression: {0}")]
@@ -153,18 +149,14 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
     /// 2. Contrôle de backpressure (`dispatcher.has_capacity()`).
     /// 3. Appel de la fonction SurrealQL atomique `fn::event_delivery_assign_seq`.
     /// 4. Injection dans la fenêtre du dispatcher sous le numéro de séquence retourné.
-    pub async fn assign_and_enqueue<F>(
+    pub async fn assign_and_enqueue(
         &mut self,
         outbox_event: &RecordId,
         subscription: &RecordId,
         target_module: &str,
         context: serde_json::Value,
         message: T,
-        extractor: F,
-    ) -> Result<u64, FeederError>
-    where
-        F: Fn(&T) -> (String, serde_json::Value, Option<serde_json::Value>),
-    {
+    ) -> Result<u64, FeederError> {
         if !self.lease_manager.is_leader() {
             return Err(FeederError::NotLeader);
         }
@@ -219,7 +211,7 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         // Enqueue dans le dispatcher in-process
         {
             let mut disp = self.dispatcher.lock().await;
-            disp.submit_message(seq, message, extractor)?;
+            disp.submit_message(seq, message)?;
         }
 
         debug!(
@@ -467,20 +459,6 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         self.flush_trackers(safe_cursor).await?;
         Ok(processed_poison_count)
     }
-
-    /// Déclenche l'arrêt gracieux du feeder.
-    pub async fn shutdown(&mut self) -> Result<(), FeederError> {
-        info!("Arrêt gracieux de l'OutboxFeeder demandé");
-        self.cancellation.cancel();
-
-        let safe_cursor = {
-            let disp = self.dispatcher.lock().await;
-            disp.safe_cursor()
-        };
-
-        // Flush final des trackers actifs ; une erreur est remontée, jamais ignorée
-        self.flush_trackers(safe_cursor).await
-    }
 }
 
 #[cfg(test)]
@@ -514,7 +492,6 @@ mod tests {
                 "mod_1",
                 serde_json::Value::Null,
                 "msg_payload".to_string(),
-                |_| (String::new(), serde_json::Value::Null, None),
             )
             .await;
 
@@ -547,10 +524,7 @@ mod tests {
         // Remplir la capacité du dispatcher
         {
             let mut disp = dispatcher.lock().await;
-            disp.submit_message(100, "first_msg".to_string(), |_| {
-                (String::new(), serde_json::Value::Null, None)
-            })
-            .unwrap();
+            disp.submit_message(100, "first_msg".to_string()).unwrap();
             assert!(!disp.has_capacity());
         }
 
@@ -564,7 +538,6 @@ mod tests {
                 "mod_1",
                 serde_json::Value::Null,
                 "second_msg".to_string(),
-                |_| (String::new(), serde_json::Value::Null, None),
             )
             .await;
 

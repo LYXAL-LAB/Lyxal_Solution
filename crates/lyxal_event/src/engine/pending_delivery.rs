@@ -45,7 +45,8 @@ pub enum PendingDeliveryStatus {
 /// Stratégie de temporisation entre deux tentatives de réexpédition.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BackoffStrategy {
-    /// Délai constant entre chaque tentative.
+    /// Délai constant entre chaque tentative (tests déterministes).
+    #[cfg(test)]
     Fixed,
     /// Délai doublé à chaque tentative : `base_delay * 2^(attempt - 1)`.
     Exponential,
@@ -62,7 +63,7 @@ pub struct DeliveryPolicy {
     pub base_redelivery_delay: Duration,
     /// Plafond maximal du délai de retry pour éviter des temps d'attente prohibitifs.
     pub max_redelivery_delay: Duration,
-    /// Stratégie de backoff (Fixed ou Exponential).
+    /// Stratégie de backoff.
     pub backoff_strategy: BackoffStrategy,
     /// Activation du Full Jitter uniforme sur le calcul du backoff.
     pub jitter: bool,
@@ -83,7 +84,6 @@ impl Default for DeliveryPolicy {
 
 /// Conteneur d'un message en cours de livraison avec son historique d'état.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct PendingDelivery<T> {
     /// Message ou enveloppe transportée.
     pub message: T,
@@ -122,19 +122,9 @@ impl<T> PendingDelivery<T> {
         }
     }
 
-    /// Indique si la livraison est en attente d'un accusé de réception (ACK/NACK).
-    pub fn is_awaiting_ack(&self) -> bool {
-        self.status == PendingDeliveryStatus::AwaitingAck
-    }
-
     /// Indique si le message a épuisé l'intégralité de son quota d'essais.
     pub fn is_retry_exhausted(&self) -> bool {
         self.status == PendingDeliveryStatus::RetryExhausted
-    }
-
-    /// Indique si le message est actuellement en phase d'attente de temporisation de retry.
-    pub fn is_waiting_to_retry(&self) -> bool {
-        self.status == PendingDeliveryStatus::WaitingToRetry
     }
 
     /// Indique si le message est prêt à être expédié ou réexpédié à l'instant `now`.
@@ -172,6 +162,7 @@ impl<T> PendingDelivery<T> {
         let base_delay = policy.base_redelivery_delay;
 
         let computed = match policy.backoff_strategy {
+            #[cfg(test)]
             BackoffStrategy::Fixed => base_delay,
             BackoffStrategy::Exponential => {
                 let attempt = self.delivery_attempt.max(1);
@@ -248,14 +239,14 @@ mod tests {
 
         let now = Instant::now();
         assert!(pd.is_retry_ready(now));
-        assert!(!pd.is_awaiting_ack());
+        assert_ne!(pd.status, PendingDeliveryStatus::AwaitingAck);
 
         // 1ère émission
         pd.on_send_attempt("worker_alpha", Duration::from_secs(10));
         assert_eq!(pd.status, PendingDeliveryStatus::AwaitingAck);
         assert_eq!(pd.delivery_attempt, 1);
         assert_eq!(pd.target_consumer_id.as_deref(), Some("worker_alpha"));
-        assert!(pd.is_awaiting_ack());
+        assert_eq!(pd.status, PendingDeliveryStatus::AwaitingAck);
         assert!(!pd.is_retry_ready(now));
     }
 

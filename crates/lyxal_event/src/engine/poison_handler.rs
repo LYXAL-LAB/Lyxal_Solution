@@ -29,7 +29,6 @@ use std::collections::HashMap;
 use tracing::warn;
 
 use super::pending_delivery::PendingDelivery;
-use crate::models::LyxalEventEnvelope;
 
 /// Erreur survenue lors de la résolution d'une politique de poison.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
@@ -216,30 +215,6 @@ where
             Ok((PoisonResolution::Blocked, None))
         }
     }
-}
-
-/// Helper spécialisé pour résoudre le poison directement sur une enveloppe Lyxal OS (`LyxalEventEnvelope`).
-pub fn resolve_envelope_poison(
-    pending: &PendingDelivery<LyxalEventEnvelope>,
-    offset: u64,
-    subscription_name: &str,
-    policy: &PoisonPolicy,
-    dead_letter_topic: Option<&str>,
-) -> Result<(PoisonResolution, Option<DeadLetterEnvelope>), PoisonError> {
-    resolve_poison_policy(
-        pending,
-        offset,
-        subscription_name,
-        policy,
-        dead_letter_topic,
-        |envelope| {
-            (
-                envelope.event_type.clone(),
-                envelope.payload.clone(),
-                Some(envelope.metadata.clone()),
-            )
-        },
-    )
 }
 
 #[cfg(test)]

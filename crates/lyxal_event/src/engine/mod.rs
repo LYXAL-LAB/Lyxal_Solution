@@ -22,13 +22,8 @@
 //! de suivi contigu des acquittements (`dispatch_window`), le traitement des messages poison (`poison_handler`)
 //! et le dispatcher résilient in-process (`dispatcher`).
 //!
-//! # Statut & Isolation
-//!
-//! Ce module est strictement interne (`pub(crate)`) pour les Lots 1 & 2.
-//! Aucun chemin de production ni aucun runtime actif n'est relié à ce moteur
-//! tant que l'ensemble des lots n'a pas été formellement validé par le CTO.
-
-#![allow(dead_code)]
+//! Le worker (`crate::worker::EventWorker`) assemble ces composants : un feeder, un
+//! dispatcher et un bridge par abonnement, sous un bail unique (`lease`).
 
 pub mod consumer_bridge;
 pub mod dispatch_window;
@@ -40,31 +35,23 @@ pub mod pending_delivery;
 pub mod poison_handler;
 pub mod progress;
 
-#[allow(unused_imports)]
 pub use consumer_bridge::{
     envelope_extractor, is_error_terminal, BridgeConfig, ConsumerOutcome, HandlerConsumerBridge,
     HandlerExecutionResult,
 };
 
-#[allow(unused_imports)]
 pub use dispatch_window::{AckOutcome, DispatchWindow, DispatchWindowError};
-#[allow(unused_imports)]
 pub use dispatcher::{
     AckReport, ConsumerHandle, DispatchMessage, DispatcherConfig, DispatcherError, NackReport,
     ReliableDispatcher, WatchdogReport,
 };
-#[allow(unused_imports)]
 pub use feeder::{FeederError, OutboxFeeder};
-#[allow(unused_imports)]
 pub use lease::{LeaseError, OutboxLeaseManager};
-#[allow(unused_imports)]
 pub use pending_delivery::{
     BackoffStrategy, DeliveryPolicy, PendingDelivery, PendingDeliveryStatus,
 };
-#[allow(unused_imports)]
 pub use poison_handler::{
-    build_dead_letter_envelope, resolve_envelope_poison, resolve_poison_policy, DeadLetterEnvelope,
-    PoisonError, PoisonPolicy, PoisonResolution,
+    build_dead_letter_envelope, resolve_poison_policy, DeadLetterEnvelope, PoisonError,
+    PoisonPolicy, PoisonResolution,
 };
-#[allow(unused_imports)]
 pub use progress::{ProgressError, SubscriptionProgressTracker};

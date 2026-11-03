@@ -33,6 +33,7 @@ impl Handler<PaymentProcessed> for FlakyPaymentHandler {
                 event_id: uuid::Uuid::now_v7(),
                 event_type: "payment.processed".to_string(),
                 error: "Transient gateway network error".to_string(),
+                terminal: false,
             })
         } else {
             Ok(())
@@ -53,6 +54,7 @@ impl Handler<PaymentProcessed> for FailingPaymentHandler {
             event_id: uuid::Uuid::now_v7(),
             event_type: "payment.processed".to_string(),
             error: "Permanent card declined error".to_string(),
+            terminal: false,
         })
     }
 }
@@ -91,7 +93,7 @@ async fn test_retry_dlq_and_replay_cycle() {
     let worker = Arc::new(EventWorker::new(
         store.clone(),
         registry,
-        common::fast_config("worker_failing").with_max_attempts(3),
+        common::fast_config("worker_failing").with_max_redelivery_count(3),
     ));
     let dead_lettered = common::run_worker_until(worker, Duration::from_secs(15), || {
         let db = db.clone();
@@ -179,6 +181,7 @@ impl Handler<PaymentProcessed> for VerboseFailingHandler {
             event_id: uuid::Uuid::now_v7(),
             event_type: "payment.processed".to_string(),
             error: "x".repeat(10_000),
+            terminal: false,
         })
     }
 }
@@ -214,7 +217,7 @@ async fn test_oversized_error_still_reaches_dead_letter() {
     let worker = Arc::new(EventWorker::new(
         store.clone(),
         registry,
-        common::fast_config("worker_verbose").with_max_attempts(2),
+        common::fast_config("worker_verbose").with_max_redelivery_count(2),
     ));
     let dead_lettered = common::run_worker_until(worker, Duration::from_secs(15), || {
         let db = db.clone();

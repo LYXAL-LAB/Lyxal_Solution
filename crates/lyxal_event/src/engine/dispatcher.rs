@@ -140,9 +140,6 @@ pub enum DispatcherError {
     /// Le dispatcher est en cours d'arrêt coopératif, les nouvelles soumissions sont refusées.
     #[error("Dispatcher is shutting down")]
     ShuttingDown,
-    /// Aucun consommateur actif n'est disponible pour recevoir le message.
-    #[error("No active consumer available")]
-    NoConsumersAvailable,
     /// L'offset proposé a déjà été committé au niveau du safe cursor.
     #[error("Offset {offset} already committed (safe_cursor: {safe_cursor})")]
     OffsetAlreadyCommitted { offset: u64, safe_cursor: u64 },
@@ -152,9 +149,6 @@ pub enum DispatcherError {
     /// Le curseur persisté ne peut plus être restauré : des séquences ont déjà été reçues.
     #[error("Cursor cannot be restored once sequences have been received")]
     CursorAlreadyStarted,
-    /// Erreur liée à la résolution du poison.
-    #[error("Poison resolution error: {0}")]
-    PoisonResolutionError(String),
 }
 
 /// Rapport synthétique d'une passe de surveillance du watchdog.
@@ -219,7 +213,18 @@ impl<T: Clone + Send + 'static> ReliableDispatcher<T> {
             .force_retry_for_consumer(id, Some("Consumer disconnected".to_string()));
     }
 
+    /// Indique si la fenêtre dispose de capacité pour accepter de nouveaux messages.
+    pub fn has_capacity(&self) -> bool {
+        self.window.has_capacity()
+    }
+
+    /// Curseur contigu sûr actuel.
+    pub fn safe_cursor(&self) -> Option<u64> {
+        self.window.safe_cursor()
+    }
+
     /// Retourne le nombre de consommateurs actuellement enregistrés et actifs.
+    #[cfg(test)]
     pub fn active_consumer_count(&self) -> usize {
         self.consumers
             .iter()
@@ -227,19 +232,10 @@ impl<T: Clone + Send + 'static> ReliableDispatcher<T> {
             .count()
     }
 
-    /// Indique si la fenêtre dispose de capacité pour accepter de nouveaux messages.
-    pub fn has_capacity(&self) -> bool {
-        self.window.has_capacity()
-    }
-
     /// Nombre de messages actuellement en vol.
+    #[cfg(test)]
     pub fn in_flight_count(&self) -> usize {
         self.window.in_flight_count()
-    }
-
-    /// Curseur contigu sûr actuel.
-    pub fn safe_cursor(&self) -> Option<u64> {
-        self.window.safe_cursor()
     }
 
     /// Positionne le curseur sûr sur la valeur persistée, avant toute soumission.
@@ -260,6 +256,7 @@ impl<T: Clone + Send + 'static> ReliableDispatcher<T> {
     }
 
     /// Indique si la fenêtre est entièrement vide.
+    #[cfg(test)]
     pub fn is_empty(&self) -> bool {
         self.window.is_empty()
     }
@@ -277,12 +274,7 @@ impl<T: Clone + Send + 'static> ReliableDispatcher<T> {
     /// # Errors
     /// Retourne [`DispatcherError::ShuttingDown`] si le jeton d'annulation est activé.
     /// Retourne [`DispatcherError::WindowFull`] si la fenêtre a atteint sa capacité maximale.
-    pub fn submit_message(
-        &mut self,
-        offset: u64,
-        message: T,
-        extractor: impl Fn(&T) -> (String, serde_json::Value, Option<serde_json::Value>),
-    ) -> Result<bool, DispatcherError> {
+    pub fn submit_message(&mut self, offset: u64, message: T) -> Result<bool, DispatcherError> {
         if self.cancellation_token.is_cancelled() {
             return Err(DispatcherError::ShuttingDown);
         }
@@ -340,7 +332,6 @@ impl<T: Clone + Send + 'static> ReliableDispatcher<T> {
                 DispatchWindowError::CursorAlreadyStarted => DispatcherError::CursorAlreadyStarted,
             })?;
 
-        let _ = extractor;
         Ok(dispatched)
     }
 
@@ -713,7 +704,7 @@ mod tests {
         dispatcher.register_consumer("worker_3", tx3);
 
         for offset in 1..=6 {
-            let res = dispatcher.submit_message(offset, format!("msg_{offset}"), helper_extractor);
+            let res = dispatcher.submit_message(offset, format!("msg_{offset}"));
             assert!(res.is_ok(), "Submit should succeed");
             assert!(res.unwrap(), "Message should be dispatched immediately");
         }
@@ -747,12 +738,8 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(10);
         dispatcher.register_consumer("w1", tx);
 
-        dispatcher
-            .submit_message(1, "msg1".into(), helper_extractor)
-            .unwrap();
-        dispatcher
-            .submit_message(2, "msg2".into(), helper_extractor)
-            .unwrap();
+        dispatcher.submit_message(1, "msg1".into()).unwrap();
+        dispatcher.submit_message(2, "msg2".into()).unwrap();
 
         let msg1 = rx.try_recv().unwrap();
         let msg2 = rx.try_recv().unwrap();
@@ -775,9 +762,7 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(10);
         dispatcher.register_consumer("w1", tx);
 
-        dispatcher
-            .submit_message(1, "msg1".into(), helper_extractor)
-            .unwrap();
+        dispatcher.submit_message(1, "msg1".into()).unwrap();
         let msg = rx.try_recv().unwrap();
 
         let nack_res = dispatcher.handle_nack(
@@ -811,15 +796,9 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(10);
         dispatcher.register_consumer("w1", tx);
 
-        dispatcher
-            .submit_message(1, "m1".into(), helper_extractor)
-            .unwrap();
-        dispatcher
-            .submit_message(2, "m2".into(), helper_extractor)
-            .unwrap();
-        dispatcher
-            .submit_message(3, "m3".into(), helper_extractor)
-            .unwrap();
+        dispatcher.submit_message(1, "m1".into()).unwrap();
+        dispatcher.submit_message(2, "m2".into()).unwrap();
+        dispatcher.submit_message(3, "m3".into()).unwrap();
 
         let m1 = rx.try_recv().unwrap();
         let m2 = rx.try_recv().unwrap();
@@ -853,9 +832,7 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(10);
         dispatcher.register_consumer("w1", tx);
 
-        dispatcher
-            .submit_message(1, "m1".into(), helper_extractor)
-            .unwrap();
+        dispatcher.submit_message(1, "m1".into()).unwrap();
         let m1 = rx.try_recv().unwrap();
 
         let ack1 = dispatcher.handle_ack(m1.offset, m1.attempt_id);
@@ -874,9 +851,7 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(10);
         dispatcher.register_consumer("w1", tx);
 
-        dispatcher
-            .submit_message(1, "m1".into(), helper_extractor)
-            .unwrap();
+        dispatcher.submit_message(1, "m1".into()).unwrap();
         let m1 = rx.try_recv().unwrap();
         assert_eq!(m1.attempt_id, 1);
 
@@ -919,9 +894,7 @@ mod tests {
         let (tx, _rx) = mpsc::channel(10);
         dispatcher.register_consumer("w1", tx);
 
-        dispatcher
-            .submit_message(1, "m1".into(), helper_extractor)
-            .unwrap();
+        dispatcher.submit_message(1, "m1".into()).unwrap();
 
         let report =
             dispatcher.watchdog_tick(Instant::now() + Duration::from_millis(60), helper_extractor);
@@ -945,9 +918,7 @@ mod tests {
 
         // Submit message: try_send to failing_worker fails because channel is closed.
         // Failing worker is marked disconnected, and message is routed to healthy_worker.
-        let dispatched = dispatcher
-            .submit_message(1, "m1".into(), helper_extractor)
-            .unwrap();
+        let dispatched = dispatcher.submit_message(1, "m1".into()).unwrap();
         assert!(dispatched, "Message should be routed to healthy worker");
 
         let m = rx2.try_recv().expect("Healthy worker must receive message");
@@ -966,9 +937,7 @@ mod tests {
         dispatcher.register_consumer("w1", tx1);
         dispatcher.register_consumer("w2", tx2);
 
-        dispatcher
-            .submit_message(1, "m1".into(), helper_extractor)
-            .unwrap();
+        dispatcher.submit_message(1, "m1".into()).unwrap();
         let m1 = rx1.try_recv().unwrap();
         assert_eq!(m1.offset, 1);
 
@@ -993,9 +962,7 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(10);
         dispatcher.register_consumer("w1", tx);
 
-        dispatcher
-            .submit_message(1, "bad_msg".into(), helper_extractor)
-            .unwrap();
+        dispatcher.submit_message(1, "bad_msg".into()).unwrap();
 
         // Tentative 1
         let m1 = rx.try_recv().unwrap();
@@ -1048,7 +1015,7 @@ mod tests {
         dispatcher.register_consumer("w1", tx);
 
         dispatcher
-            .submit_message(42, "poison_payload".into(), helper_extractor)
+            .submit_message(42, "poison_payload".into())
             .unwrap();
 
         // Forcer 3 NACKs
@@ -1094,16 +1061,12 @@ mod tests {
         let (tx, _rx) = mpsc::channel(10);
         dispatcher.register_consumer("w1", tx);
 
-        assert!(dispatcher
-            .submit_message(1, "m1".into(), helper_extractor)
-            .is_ok());
-        assert!(dispatcher
-            .submit_message(2, "m2".into(), helper_extractor)
-            .is_ok());
+        assert!(dispatcher.submit_message(1, "m1".into()).is_ok());
+        assert!(dispatcher.submit_message(2, "m2".into()).is_ok());
 
         // La fenêtre est pleine (2/2) -> le 3ème doit être refusé
         let err = dispatcher
-            .submit_message(3, "m3".into(), helper_extractor)
+            .submit_message(3, "m3".into())
             .expect_err("Window saturation must reject with WindowFull");
 
         assert_eq!(err, DispatcherError::WindowFull { current: 2, max: 2 });
@@ -1117,9 +1080,7 @@ mod tests {
         let (tx, _rx) = mpsc::channel(10);
         dispatcher.register_consumer("w1", tx);
 
-        dispatcher
-            .submit_message(1, "m1".into(), helper_extractor)
-            .unwrap();
+        dispatcher.submit_message(1, "m1".into()).unwrap();
         assert_eq!(dispatcher.in_flight_count(), 1);
 
         // Déclenchement de l'annulation
@@ -1127,7 +1088,7 @@ mod tests {
 
         // Les nouvelles soumissions doivent être refusées
         let err = dispatcher
-            .submit_message(2, "m2".into(), helper_extractor)
+            .submit_message(2, "m2".into())
             .expect_err("Submission after cancel must fail with ShuttingDown");
         assert_eq!(err, DispatcherError::ShuttingDown);
 
@@ -1145,12 +1106,8 @@ mod tests {
         let (tx, mut rx) = mpsc::channel(10);
         dispatcher.register_consumer("w1", tx);
 
-        dispatcher
-            .submit_message(1, "poison".into(), helper_extractor)
-            .unwrap();
-        dispatcher
-            .submit_message(2, "normal".into(), helper_extractor)
-            .unwrap();
+        dispatcher.submit_message(1, "poison".into()).unwrap();
+        dispatcher.submit_message(2, "normal".into()).unwrap();
 
         let m1 = rx.try_recv().unwrap();
         let m2 = rx.try_recv().unwrap();

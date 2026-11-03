@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//! Contrats DTO et adaptateurs typés pour les fonctions SurrealQL du Lot 3B.1.
+//! Contrats DTO et adaptateurs typés pour les fonctions SurrealQL du moteur.
 //!
 //! Ce module formalise les paramètres d'appel (`*Params`) et les résultats typés (`*Result`)
 //! transmis au runtime SurrealDB via le trait universel [`lyxal_surreal::LyxalSurrealCall`].

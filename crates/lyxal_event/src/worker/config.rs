@@ -129,13 +129,6 @@ impl EventWorkerConfig {
         self
     }
 
-    /// Alias rétrocompatible pour définir le nombre maximal d'essais.
-    #[must_use]
-    pub fn with_max_attempts(mut self, max_attempts: u32) -> Self {
-        self.max_redelivery_count = max_attempts;
-        self
-    }
-
     /// Personnalise le topic DLQ optionnel.
     #[must_use]
     pub fn with_dead_letter_topic(mut self, topic: impl Into<String>) -> Self {
