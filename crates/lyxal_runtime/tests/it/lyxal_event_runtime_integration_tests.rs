@@ -112,7 +112,7 @@ async fn test_runtime_event_worker_auto_start_and_dispatch() {
 
     // Définir la souscription dans SurrealDB
     let event_store = runtime.event_store().unwrap();
-    event_store.install().await.expect("init event schema");
+    common::install_event(&client).await;
 
     let sub = EventSubscription::new(
         "sub_notif_booking",
@@ -196,7 +196,7 @@ async fn test_runtime_define_event_e2e() {
     runtime.register_event_consumer(notification_module).await;
 
     let event_store = runtime.event_store().unwrap();
-    event_store.install().await.expect("init schema");
+    common::install_event(event_store.client()).await;
 
     let sub = EventSubscription::new(
         "sub_notif_booking_define_event",
@@ -277,7 +277,7 @@ async fn test_runtime_shutdown_graceful_no_zombies() {
         .with_event_config(event_config);
 
     let event_store = runtime.event_store().unwrap();
-    event_store.install().await.expect("init schema");
+    common::install_event(event_store.client()).await;
 
     // Démarrage complet
     runtime.start_all().await.expect("start_all");
@@ -317,7 +317,7 @@ async fn test_runtime_shutdown_graceful_no_zombies() {
 async fn test_runtime_restart_and_fanout_recovery() {
     let client = common::setup_db("test_ns", "test_db").await;
     let event_store = Arc::new(EventStore::new(client.clone()));
-    event_store.install().await.expect("init schema");
+    common::install_event(event_store.client()).await;
 
     let sub = EventSubscription::new(
         "sub_notif_booking_recovery",
@@ -430,7 +430,7 @@ async fn test_runtime_multi_instance_isolation() {
     runtime_beta.register_event_consumer(module_beta).await;
 
     let store_alpha = runtime_alpha.event_store().unwrap();
-    store_alpha.install().await.expect("init alpha");
+    common::install_event(store_alpha.client()).await;
     let sub_alpha = EventSubscription::new(
         "sub_alpha",
         "lyxal_notification",
@@ -443,7 +443,7 @@ async fn test_runtime_multi_instance_isolation() {
         .expect("sub alpha");
 
     let store_beta = runtime_beta.event_store().unwrap();
-    store_beta.install().await.expect("init beta");
+    common::install_event(store_beta.client()).await;
     let sub_beta = EventSubscription::new(
         "sub_beta",
         "lyxal_notification",
@@ -508,7 +508,7 @@ async fn test_runtime_missing_handler_behavior() {
         .with_event_config(event_config);
 
     let event_store = runtime.event_store().unwrap();
-    event_store.install().await.expect("init schema");
+    common::install_event(event_store.client()).await;
 
     // Enregistrement d'une souscription pointant vers un handler inexistant
     let sub = EventSubscription::new(

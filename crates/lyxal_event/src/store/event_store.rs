@@ -6,9 +6,13 @@ use lyxal_surreal::{LyxalSurrealCall, SurrealValue};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
-/// Ressources SurrealQL du module, dans l'ordre de `manifest.toml` (`schemas`, `functions`,
-/// `error_definitions`) ; un test vérifie l'égalité avec le manifeste.
-pub const INSTALL_RESOURCES: &[(&str, &str)] = &[
+/// Manifeste du module, embarqué pour l'installation par `lyxal_runtime`.
+pub const MANIFEST: &str = include_str!("../../manifest.toml");
+
+/// Fichiers SurrealQL déclarés dans `[resources]`, embarqués (`chemin`, `contenu`) pour que
+/// `lyxal_runtime` installe le module sans accès à ses sources. Un test vérifie que la liste
+/// et les contenus sont ceux du manifeste et du disque.
+pub const EMBEDDED_RESOURCES: &[(&str, &str)] = &[
     (
         "schema/event_outbox.surql",
         include_str!("../../schema/event_outbox.surql"),
@@ -201,21 +205,6 @@ impl EventStore {
     #[must_use]
     pub fn client(&self) -> &Surreal<Any> {
         &self.client
-    }
-
-    /// Installe les ressources SurrealQL du module (schémas, fonctions, définitions d'erreurs)
-    /// dans l'ordre du manifeste. Rejouable : chaque ressource est idempotente.
-    ///
-    /// La liste compilée [`INSTALL_RESOURCES`] est vérifiée par un test contre `manifest.toml`.
-    pub async fn install(&self) -> Result<(), LyxalEventError> {
-        for (path, script) in INSTALL_RESOURCES {
-            self.client
-                .query(*script)
-                .await
-                .and_then(|response| response.check())
-                .map_err(|e| LyxalEventError::Internal(format!("installation de {path} : {e}")))?;
-        }
-        Ok(())
     }
 
     /// Publie une enveloppe d'événement dans l'outbox.

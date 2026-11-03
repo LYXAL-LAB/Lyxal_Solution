@@ -9,6 +9,7 @@ pub const CURRENT_MANIFEST_VERSION: u32 = 1;
 
 /// Représentation déclarative d'une dépendance vers un autre module avec contrainte de version SemVer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ModuleDependency {
     /// Identifiant canonique du module requis.
     pub id: ModuleId,
@@ -45,13 +46,44 @@ impl ModuleDependency {
 
 /// Contraintes de compatibilité avec l'environnement d'exécution Lyxal OS.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct RuntimeRequirement {
     /// Version minimale du Runtime requise.
     pub min_version: Option<VersionReq>,
 }
 
+/// Ressources SurrealQL d'un module (`[resources]`), chemins relatifs à la racine du module.
+///
+/// Le runtime installe exactement ces fichiers, phase par phase :
+/// `schemas`, `functions`, `error_definitions`, `events`, puis `seeds` ; dans chaque phase,
+/// dans l'ordre déclaré. Les `migrations` sont appliquées séparément, dans l'ordre de leur numéro.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+pub struct ModuleResources {
+    /// Schémas déclaratifs (tables, champs, index).
+    #[serde(default)]
+    pub schemas: Vec<String>,
+    /// Fonctions SurrealQL.
+    #[serde(default)]
+    pub functions: Vec<String>,
+    /// Définitions d'erreurs (master data).
+    #[serde(default)]
+    pub error_definitions: Vec<String>,
+    /// Événements (`DEFINE EVENT`).
+    #[serde(default)]
+    pub events: Vec<String>,
+    /// Données initiales, rejouables.
+    #[serde(default)]
+    pub seeds: Vec<String>,
+    /// Migrations (`NNNN_description.surql`).
+    #[serde(default)]
+    pub migrations: Vec<String>,
+}
+
 /// Modèle déclaratif complet issu du parsing d'un fichier `manifest.toml`.
+/// Toute clé inconnue est refusée.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ModuleManifest {
     /// Version du format du manifeste (par défaut `1`).
     #[serde(default = "default_manifest_version")]
@@ -73,6 +105,9 @@ pub struct ModuleManifest {
     /// Capacités déclarées du module (ex: "database", "workers", "events").
     #[serde(default)]
     pub capabilities: Vec<String>,
+    /// Ressources SurrealQL installées par le runtime.
+    #[serde(default)]
+    pub resources: ModuleResources,
 }
 
 fn default_manifest_version() -> u32 {

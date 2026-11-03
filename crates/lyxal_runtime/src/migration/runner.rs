@@ -10,6 +10,7 @@ use crate::lock::manager::MigrationLeaseManager;
 use crate::lock::node_id::NodeId;
 use crate::lock::recovery::MigrationRecoveryPolicy;
 use crate::lock::surreal::SurrealMigrationLeaseManager;
+use crate::manifest::ModuleManifest;
 use crate::migration::definition::MigrationRecord;
 use crate::migration::discovery::MigrationDiscovery;
 use crate::migration::id::MigrationId;
@@ -146,16 +147,15 @@ impl MigrationRunner {
     /// Construit le plan de migration pour un module donné.
     pub async fn plan(
         &self,
-        module_id: &ModuleId,
-        module_version: &str,
+        manifest: &ModuleManifest,
         provider: &dyn ResourceProvider,
     ) -> Result<MigrationPlan, RuntimeError> {
-        let definitions =
-            MigrationDiscovery::discover_migrations(module_id, module_version, provider).await?;
+        let definitions = MigrationDiscovery::discover_migrations(manifest, provider).await?;
+        let module_version = manifest.version.to_string();
 
         MigrationPlan::from_definitions_and_store(
-            module_id,
-            module_version,
+            &manifest.id,
+            &module_version,
             &definitions,
             self.store.as_ref(),
         )
@@ -375,7 +375,7 @@ impl MigrationRunner {
 
                     // c. Chargement de la ressource
                     let res_path = item.definition.resource_path.as_deref().unwrap_or("");
-                    let resource = match provider.read_resource(res_path).await {
+                    let content = match provider.read(res_path).await {
                         Ok(r) => r,
                         Err(err) => {
                             if let (Some(mgr), Some(l)) = (&self.lease_manager, &acquired_lease) {
@@ -420,7 +420,7 @@ impl MigrationRunner {
                     let mut attempts = 0;
                     let execution_result = loop {
                         attempts += 1;
-                        let query_result = self.client.query(&resource.content).await;
+                        let query_result = self.client.query(&content).await;
 
                         match query_result {
                             Ok(res) => match res.check() {
@@ -547,11 +547,10 @@ impl MigrationRunner {
     /// Découvre, planifie et applique les migrations d'un module en un seul appel.
     pub async fn run_module(
         &self,
-        module_id: &ModuleId,
-        module_version: &str,
+        manifest: &ModuleManifest,
         provider: &dyn ResourceProvider,
     ) -> Result<MigrationRunResult, RuntimeError> {
-        let plan = self.plan(module_id, module_version, provider).await?;
+        let plan = self.plan(manifest, provider).await?;
         self.execute_plan(&plan, provider).await
     }
 }

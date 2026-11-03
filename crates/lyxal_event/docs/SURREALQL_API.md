@@ -1,7 +1,7 @@
 # Référence SurrealQL — `lyxal_event`
 
-Cible : SurrealDB 3.3.4. Les ressources sont installées dans l'ordre de `manifest.toml`
-(`EventStore::install`).
+Cible : SurrealDB 3.3.4. Les ressources sont installées par `lyxal_runtime`, dans l'ordre de
+`manifest.toml`.
 
 ---
 

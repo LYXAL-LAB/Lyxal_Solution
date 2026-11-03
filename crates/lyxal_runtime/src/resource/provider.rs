@@ -1,19 +1,11 @@
 use crate::error::RuntimeError;
-use crate::resource::model::ModuleResource;
 use async_trait::async_trait;
 
-/// Trait d'abstraction pour la récupération des ressources de modules.
-///
-/// Permet de découpler le moteur d'exécution du système de fichiers sous-jacent
-/// (supporte filesystem local, packages compressés, mocks de tests, storage distribué).
+/// Source des fichiers d'un module : système de fichiers, fichiers embarqués dans le binaire,
+/// ou double de test. Le manifeste dit quels fichiers lire ; le fournisseur les lit.
 #[async_trait]
 pub trait ResourceProvider: Send + Sync {
-    /// Liste les chemins logiques de ressources disponibles sous un préfixe donné (ex: `"schema"`, `"migrations"`).
-    async fn list_resources(&self, prefix: &str) -> Result<Vec<String>, RuntimeError>;
-
-    /// Lit le contenu et métadonnées d'une ressource à partir de son chemin logique.
-    async fn read_resource(&self, logical_path: &str) -> Result<ModuleResource, RuntimeError>;
-
-    /// Vérifie si une ressource existe à l'emplacement logique spécifié.
-    async fn exists(&self, logical_path: &str) -> bool;
+    /// Contenu UTF-8 du fichier désigné par son chemin logique (relatif à la racine du module,
+    /// séparé par `/`). Un fichier absent donne `RuntimeError::ResourceNotFound`.
+    async fn read(&self, logical_path: &str) -> Result<String, RuntimeError>;
 }

@@ -40,7 +40,7 @@ async fn test_publish_and_fanout_end_to_end() {
     common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     // Enregistrement de 2 abonnements distincts pour le même event_type
     let sub_notification = EventSubscription::new(

@@ -44,7 +44,7 @@ async fn test_strict_multi_instance_isolation() {
     common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     // Abonnement global
     let sub = EventSubscription::new(

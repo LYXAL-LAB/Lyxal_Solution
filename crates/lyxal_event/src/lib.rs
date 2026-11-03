@@ -52,6 +52,7 @@ pub use models::{
     LyxalEventEnvelope,
 };
 pub use publisher::EventPublisher;
+pub use store::event_store::{EMBEDDED_RESOURCES, MANIFEST};
 pub use store::EventStore;
 pub use types::{CausationId, CorrelationId, EventId};
 pub use worker::{EventWorker, EventWorkerConfig, EventWorkerMetrics};

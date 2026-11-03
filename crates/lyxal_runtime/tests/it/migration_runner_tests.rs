@@ -1,3 +1,4 @@
+use crate::common;
 use lyxal_runtime::migration::{
     MigrationChecksum, MigrationId, MigrationRecord, MigrationRunner, MigrationStatus,
 };
@@ -48,7 +49,10 @@ async fn test_migration_runner_happy_path_and_idempotence() {
 
     // 1. Premier run : les 3 migrations doivent être appliquées
     let res1 = runner
-        .run_module(&module_id, "1.0.0", &provider)
+        .run_module(
+            &common::manifest_with_migrations(&module_id, "1.0.0", dir.path()),
+            &provider,
+        )
         .await
         .unwrap();
 
@@ -70,7 +74,10 @@ async fn test_migration_runner_happy_path_and_idempotence() {
 
     // 2. Second run : 0 exécutée, 3 skipped
     let res2 = runner
-        .run_module(&module_id, "1.0.0", &provider)
+        .run_module(
+            &common::manifest_with_migrations(&module_id, "1.0.0", dir.path()),
+            &provider,
+        )
         .await
         .unwrap();
 
@@ -101,7 +108,10 @@ async fn test_migration_runner_checksum_drift_fails_hard() {
 
     // Première exécution normale
     runner
-        .run_module(&module_id, "1.0.0", &provider)
+        .run_module(
+            &common::manifest_with_migrations(&module_id, "1.0.0", dir.path()),
+            &provider,
+        )
         .await
         .unwrap();
 
@@ -109,7 +119,10 @@ async fn test_migration_runner_checksum_drift_fails_hard() {
     fs::write(&file1, "DEFINE TABLE drift_test_MODIFIED;").unwrap();
 
     let err = runner
-        .run_module(&module_id, "1.0.0", &provider)
+        .run_module(
+            &common::manifest_with_migrations(&module_id, "1.0.0", dir.path()),
+            &provider,
+        )
         .await
         .unwrap_err();
 
@@ -160,7 +173,10 @@ async fn test_migration_runner_failure_blocks_subsequent_migrations() {
     let module_id = ModuleId::new("lyxal-timezone");
 
     let err = runner
-        .run_module(&module_id, "1.0.0", &provider)
+        .run_module(
+            &common::manifest_with_migrations(&module_id, "1.0.0", dir.path()),
+            &provider,
+        )
         .await
         .unwrap_err();
 
@@ -232,7 +248,10 @@ async fn test_migration_runner_interrupted_applying_fails_hard() {
     store.record_migration(&record).await.unwrap();
 
     let err = runner
-        .run_module(&module_id, "1.0.0", &provider)
+        .run_module(
+            &common::manifest_with_migrations(&module_id, "1.0.0", dir.path()),
+            &provider,
+        )
         .await
         .unwrap_err();
 

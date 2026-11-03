@@ -2,49 +2,37 @@ use std::path::PathBuf;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
-/// Installe les dépendances de `lyxal_event` sur une base vierge : `lyxal_core` (validation des
-/// entrées) et `lyxal_error` (contrat de résultat, définitions d'erreurs), depuis leurs
-/// manifestes, phase par phase (schémas, puis fonctions, puis définitions d'erreurs).
+/// Installe les dépendances de `lyxal_event` sur une base vierge, par le runtime : `lyxal_core`
+/// (validation des entrées) et `lyxal_error` (contrat de résultat, définitions d'erreurs), depuis
+/// leurs manifestes, phase par phase.
 pub async fn setup_test_db(db: &Surreal<Any>) {
     let crates = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("dossier crates")
         .to_path_buf();
-    let modules = [crates.join("lyxal_core"), crates.join("lyxal_error")];
-    let manifests: Vec<(PathBuf, toml::Value)> = modules
+    let modules: Vec<_> = ["lyxal_core", "lyxal_error"]
         .iter()
-        .map(|dir| {
-            let content = std::fs::read_to_string(dir.join("manifest.toml")).expect("manifeste");
+        .map(|name| {
+            let dir = crates.join(name);
+            let manifest =
+                lyxal_runtime::manifest::ManifestParser::parse_file(dir.join("manifest.toml"))
+                    .expect("manifeste");
             (
-                dir.clone(),
-                toml::from_str(&content).expect("manifeste TOML"),
+                manifest,
+                lyxal_runtime::resource::FilesystemResourceProvider::new(dir),
             )
         })
         .collect();
-    for key in ["schemas", "functions", "error_definitions"] {
-        for (dir, manifest) in &manifests {
-            let Some(files) = manifest
-                .get("resources")
-                .and_then(|r| r.get(key))
-                .and_then(|v| v.as_array())
-            else {
-                continue;
-            };
-            let script: String = files
-                .iter()
-                .map(|f| {
-                    let path = dir.join(f.as_str().expect("chemin"));
-                    std::fs::read_to_string(&path)
-                        .unwrap_or_else(|e| panic!("{} : {e}", path.display()))
-                })
-                .collect::<Vec<_>>()
-                .join("\n");
-            db.query(script)
-                .await
-                .and_then(|r| r.check())
-                .unwrap_or_else(|e| panic!("{} [{key}] : {e}", dir.display()));
-        }
-    }
+    let batch: Vec<(
+        &lyxal_runtime::manifest::ModuleManifest,
+        &dyn lyxal_runtime::resource::ResourceProvider,
+    )> = modules
+        .iter()
+        .map(|(m, p)| (m, p as &dyn lyxal_runtime::resource::ResourceProvider))
+        .collect();
+    lyxal_runtime::schema::install_batch(db, &batch)
+        .await
+        .expect("installation de lyxal_core et lyxal_error");
 }
 
 /// Fait tourner `EventWorker::run` (chemin de production) jusqu'à ce que `done` soit vrai ou que
@@ -101,4 +89,16 @@ pub fn fast_config(worker_id: &str) -> lyxal_event::EventWorkerConfig {
         .with_retry_base_delay(std::time::Duration::from_millis(10))
         .with_retry_max_delay(std::time::Duration::from_millis(50))
         .with_dispatch_timeout(std::time::Duration::from_secs(5))
+}
+
+/// Installe `lyxal_event` comme en production : par `lyxal_runtime`, depuis son manifeste et ses
+/// fichiers embarqués.
+pub async fn install_event(db: &Surreal<Any>) {
+    lyxal_runtime::schema::install_embedded(
+        db,
+        lyxal_event::MANIFEST,
+        lyxal_event::EMBEDDED_RESOURCES,
+    )
+    .await
+    .expect("installation de lyxal_event par le runtime");
 }

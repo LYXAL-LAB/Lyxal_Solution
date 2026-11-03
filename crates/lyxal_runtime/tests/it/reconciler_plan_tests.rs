@@ -1,3 +1,4 @@
+use crate::common;
 use lyxal_runtime::descriptor::ModuleDescriptor;
 use lyxal_runtime::error::RuntimeError;
 use lyxal_runtime::lifecycle::LifecycleManager;
@@ -13,8 +14,6 @@ use lyxal_runtime::reconciler::differ::RuntimeDiffer;
 use lyxal_runtime::reconciler::observer::RuntimeObserver;
 use lyxal_runtime::reconciler::plan::{ActionKind, BlockerKind};
 use lyxal_runtime::registry::ModuleRegistry;
-use lyxal_runtime::resource::provider::ResourceProvider;
-use lyxal_runtime::resource::{ModuleResource, ResourceKind};
 use lyxal_runtime::store::memory::MemoryRuntimeStore;
 use lyxal_runtime::store::models::{StoredModule, StoredModuleRelease};
 use lyxal_runtime::store::traits::RuntimeStore;
@@ -22,25 +21,6 @@ use lyxal_runtime::types::{ModuleId, ModuleState};
 use lyxal_runtime::RuntimeConfig;
 use semver::{Version, VersionReq};
 use std::sync::Arc;
-
-struct DummyResourceProvider;
-
-#[async_trait::async_trait]
-impl ResourceProvider for DummyResourceProvider {
-    async fn read_resource(&self, path: &str) -> Result<ModuleResource, RuntimeError> {
-        Ok(ModuleResource::new(
-            path,
-            ResourceKind::Tables,
-            "DEFINE TABLE test SCHEMALESS;",
-        ))
-    }
-    async fn list_resources(&self, _prefix: &str) -> Result<Vec<String>, RuntimeError> {
-        Ok(Vec::new())
-    }
-    async fn exists(&self, _path: &str) -> bool {
-        true
-    }
-}
 
 fn make_package(id: &str, version: &str, deps: Vec<(&str, Option<&str>)>) -> ModulePackage {
     let dependencies = deps
@@ -63,9 +43,10 @@ fn make_package(id: &str, version: &str, deps: Vec<(&str, Option<&str>)>) -> Mod
         runtime: None,
         dependencies,
         capabilities: Vec::new(),
+        resources: Default::default(),
     };
 
-    ModulePackage::new(manifest, Arc::new(DummyResourceProvider))
+    ModulePackage::new(manifest, Arc::new(common::MemoryProvider::new()))
 }
 
 fn make_package_with_runtime(id: &str, version: &str, min_runtime: &str) -> ModulePackage {
@@ -80,9 +61,10 @@ fn make_package_with_runtime(id: &str, version: &str, min_runtime: &str) -> Modu
         }),
         dependencies: Vec::new(),
         capabilities: Vec::new(),
+        resources: Default::default(),
     };
 
-    ModulePackage::new(manifest, Arc::new(DummyResourceProvider))
+    ModulePackage::new(manifest, Arc::new(common::MemoryProvider::new()))
 }
 
 #[test]

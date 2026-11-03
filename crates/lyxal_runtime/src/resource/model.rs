@@ -4,12 +4,12 @@ use serde::{Deserialize, Serialize};
 
 /// Représentation portable d'une ressource d'un module Lyxal OS.
 ///
-/// Le chemin logique (`logical_path`) est décorrélé de l'OS hôte (ex: `schema/tables.surql`, `migrations/001_initial.surql`).
+/// Le chemin logique (`logical_path`) est décorrélé de l'OS hôte (ex: `schema/tables.surql`, `migrations/0001_initial.surql`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModuleResource {
     /// Chemin logique portable (toujours délimité par des `/`).
     pub logical_path: String,
-    /// Type de ressource classifié.
+    /// Phase d'installation, déduite de la section du manifeste.
     pub kind: ResourceKind,
     /// Contenu brut de la ressource.
     pub content: String,

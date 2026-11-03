@@ -67,7 +67,7 @@ async fn test_retry_dlq_and_replay_cycle() {
     common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     // 1. Abonnement avec max_attempts = 3
     let sub = EventSubscription::new(
@@ -194,7 +194,7 @@ async fn test_oversized_error_still_reaches_dead_letter() {
     db.use_ns("test_ns").use_db("test_verbose").await.unwrap();
     common::setup_test_db(&db).await;
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     let sub = EventSubscription::new(
         "payment_verbose_sub",
@@ -245,7 +245,7 @@ async fn test_incomplete_delivery_goes_to_dead_letter() {
         .unwrap();
     common::setup_test_db(&db).await;
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     let sub = EventSubscription::new(
         "payment_incomplete_sub",
@@ -308,7 +308,7 @@ async fn test_purge_keeps_events_of_unresolved_deliveries() {
     db.use_ns("test_ns").use_db("test_purge").await.unwrap();
     common::setup_test_db(&db).await;
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     let sub = EventSubscription::new(
         "payment_purge_sub",
@@ -359,7 +359,7 @@ async fn test_orphan_delivery_goes_to_dead_letter() {
     db.use_ns("test_ns").use_db("test_orphan").await.unwrap();
     common::setup_test_db(&db).await;
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     for name in ["payment_orphan_sub", "payment_live_sub"] {
         store

@@ -1,3 +1,4 @@
+use crate::common;
 use async_trait::async_trait;
 use lyxal_runtime::context::ModuleContext;
 use lyxal_runtime::descriptor::ModuleDescriptor;
@@ -11,9 +12,7 @@ use lyxal_runtime::module::LyxalModule;
 use lyxal_runtime::package::types::{
     InstallationPhase, ModuleInstallationOutcome, ModuleReleaseStatus,
 };
-use lyxal_runtime::package::ModulePackage;
-use lyxal_runtime::resource::provider::ResourceProvider;
-use lyxal_runtime::resource::{ModuleResource, ResourceKind};
+use lyxal_runtime::resource::ResourceKind;
 use lyxal_runtime::runtime::LyxalRuntime;
 use lyxal_runtime::store::memory::MemoryRuntimeStore;
 use lyxal_runtime::store::models::StoredModuleRelease;
@@ -21,56 +20,9 @@ use lyxal_runtime::store::traits::RuntimeStore;
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::RuntimeConfig;
 use semver::{Version, VersionReq};
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use surrealdb::engine::any::connect;
-
-/// Fournisseur de ressources en mémoire simulant un package de module.
-struct MemoryTestResourceProvider {
-    resources: HashMap<String, ModuleResource>,
-}
-
-impl MemoryTestResourceProvider {
-    fn new() -> Self {
-        Self {
-            resources: HashMap::new(),
-        }
-    }
-
-    fn add_resource(mut self, path: &str, kind: ResourceKind, content: &str) -> Self {
-        self.resources
-            .insert(path.to_string(), ModuleResource::new(path, kind, content));
-        self
-    }
-}
-
-#[async_trait]
-impl ResourceProvider for MemoryTestResourceProvider {
-    async fn read_resource(&self, path: &str) -> Result<ModuleResource, RuntimeError> {
-        self.resources
-            .get(path)
-            .cloned()
-            .ok_or_else(|| RuntimeError::ResourceNotFound {
-                path: path.to_string(),
-            })
-    }
-
-    async fn list_resources(&self, prefix: &str) -> Result<Vec<String>, RuntimeError> {
-        let p = prefix.trim_start_matches('/');
-        let matches: Vec<String> = self
-            .resources
-            .keys()
-            .filter(|k| k.starts_with(p))
-            .cloned()
-            .collect();
-        Ok(matches)
-    }
-
-    async fn exists(&self, path: &str) -> bool {
-        self.resources.contains_key(path)
-    }
-}
 
 /// Module mock avec compteurs d'appels atomiques pour vérifier l'idempotence et les hooks.
 struct MockTestModule {
@@ -144,13 +96,14 @@ async fn test_single_module_full_installation_pipeline() {
         runtime: None,
         dependencies: Vec::new(),
         capabilities: vec!["database".to_string()],
+        resources: Default::default(),
     };
 
     let provider = Arc::new(
-        MemoryTestResourceProvider::new()
+        common::MemoryProvider::new()
             .add_resource(
                 "schema/tables/booking.surql",
-                ResourceKind::Tables,
+                ResourceKind::Schema,
                 "DEFINE TABLE booking SCHEMALESS;",
             )
             .add_resource(
@@ -163,7 +116,7 @@ async fn test_single_module_full_installation_pipeline() {
     let mock_module = Arc::new(MockTestModule::new("lyxal-booking", "1.0.0"));
     let install_counter = mock_module.install_count.clone();
 
-    let package = ModulePackage::new(manifest, provider).with_module_impl(mock_module);
+    let package = common::package(manifest, provider).with_module_impl(mock_module);
 
     // 1. Première installation réussie
     let report = runtime.install_package(package.clone()).await.unwrap();
@@ -214,13 +167,14 @@ async fn test_installation_hook_failure_and_recovery() {
         runtime: None,
         dependencies: Vec::new(),
         capabilities: Vec::new(),
+        resources: Default::default(),
     };
 
     let provider = Arc::new(
-        MemoryTestResourceProvider::new()
+        common::MemoryProvider::new()
             .add_resource(
                 "schema/tables/calendar.surql",
-                ResourceKind::Tables,
+                ResourceKind::Schema,
                 "DEFINE TABLE calendar SCHEMALESS;",
             )
             .add_resource(
@@ -235,8 +189,8 @@ async fn test_installation_hook_failure_and_recovery() {
         .should_fail_install
         .store(true, Ordering::SeqCst);
 
-    let package = ModulePackage::new(manifest.clone(), provider.clone())
-        .with_module_impl(mock_module.clone());
+    let package =
+        common::package(manifest.clone(), provider.clone()).with_module_impl(mock_module.clone());
 
     // 1. Tentative avec échec au hook install()
     let err = runtime.install_package(package).await.unwrap_err();
@@ -259,7 +213,7 @@ async fn test_installation_hook_failure_and_recovery() {
         .should_fail_install
         .store(false, Ordering::SeqCst);
     let package_recovered =
-        ModulePackage::new(manifest, provider).with_module_impl(mock_module.clone());
+        common::package(manifest, provider).with_module_impl(mock_module.clone());
 
     let report = runtime.install_package(package_recovered).await.unwrap();
     assert_eq!(report.outcome, ModuleInstallationOutcome::Recovered);
@@ -295,11 +249,12 @@ async fn test_missing_module_implementation_fails() {
         runtime: None,
         dependencies: Vec::new(),
         capabilities: Vec::new(),
+        resources: Default::default(),
     };
 
-    let provider = Arc::new(MemoryTestResourceProvider::new());
+    let provider = Arc::new(common::MemoryProvider::new());
     // Package sans implémentation Rust
-    let package = ModulePackage::new(manifest, provider);
+    let package = common::package(manifest, provider);
 
     let err = runtime.install_package(package).await.unwrap_err();
     assert!(matches!(
@@ -333,11 +288,12 @@ async fn test_incompatible_runtime_version_fails() {
         }),
         dependencies: Vec::new(),
         capabilities: Vec::new(),
+        resources: Default::default(),
     };
 
-    let provider = Arc::new(MemoryTestResourceProvider::new());
+    let provider = Arc::new(common::MemoryProvider::new());
     let mock = Arc::new(MockTestModule::new("lyxal-future", "1.0.0"));
-    let package = ModulePackage::new(manifest, provider).with_module_impl(mock);
+    let package = common::package(manifest, provider).with_module_impl(mock);
 
     let err = runtime.install_package(package).await.unwrap_err();
     assert!(matches!(
@@ -379,11 +335,12 @@ async fn test_dependency_version_incompatibility_fails() {
             VersionReq::parse(">=2.0.0").unwrap(),
         )],
         capabilities: Vec::new(),
+        resources: Default::default(),
     };
 
-    let provider = Arc::new(MemoryTestResourceProvider::new());
+    let provider = Arc::new(common::MemoryProvider::new());
     let mock = Arc::new(MockTestModule::new("lyxal-admin", "1.0.0"));
-    let package = ModulePackage::new(manifest, provider).with_module_impl(mock);
+    let package = common::package(manifest, provider).with_module_impl(mock);
 
     let err = runtime.install_package(package).await.unwrap_err();
     assert!(matches!(

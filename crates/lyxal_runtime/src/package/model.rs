@@ -38,8 +38,7 @@ impl ModulePackage {
     /// Charge un package de module depuis une arborescence locale sur disque.
     pub async fn from_filesystem(base_path: impl AsRef<Path>) -> Result<Self, RuntimeError> {
         let provider = Arc::new(FilesystemResourceProvider::new(base_path));
-        let manifest_resource = provider.read_resource("manifest.toml").await?;
-        let manifest = ManifestParser::parse_str(&manifest_resource.content)?;
+        let manifest = ManifestParser::parse_str(&provider.read("manifest.toml").await?)?;
 
         Ok(Self::new(manifest, provider))
     }

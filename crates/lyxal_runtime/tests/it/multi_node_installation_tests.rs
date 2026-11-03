@@ -1,3 +1,4 @@
+use crate::common;
 use async_trait::async_trait;
 use lyxal_runtime::context::ModuleContext;
 use lyxal_runtime::descriptor::ModuleDescriptor;
@@ -10,65 +11,17 @@ use lyxal_runtime::manifest::model::CURRENT_MANIFEST_VERSION;
 use lyxal_runtime::manifest::ModuleManifest;
 use lyxal_runtime::module::LyxalModule;
 use lyxal_runtime::package::types::ModuleInstallationOutcome;
-use lyxal_runtime::package::ModulePackage;
-use lyxal_runtime::resource::provider::ResourceProvider;
-use lyxal_runtime::resource::{ModuleResource, ResourceKind};
+use lyxal_runtime::resource::ResourceKind;
 use lyxal_runtime::runtime::LyxalRuntime;
 use lyxal_runtime::store::surreal::SurrealRuntimeStore;
 use lyxal_runtime::store::traits::RuntimeStore;
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::RuntimeConfig;
 use semver::Version;
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use surrealdb::engine::any::connect;
-
-struct MemoryTestResourceProvider {
-    resources: HashMap<String, ModuleResource>,
-}
-
-impl MemoryTestResourceProvider {
-    fn new() -> Self {
-        Self {
-            resources: HashMap::new(),
-        }
-    }
-
-    fn add_resource(mut self, path: &str, kind: ResourceKind, content: &str) -> Self {
-        self.resources
-            .insert(path.to_string(), ModuleResource::new(path, kind, content));
-        self
-    }
-}
-
-#[async_trait]
-impl ResourceProvider for MemoryTestResourceProvider {
-    async fn read_resource(&self, path: &str) -> Result<ModuleResource, RuntimeError> {
-        self.resources
-            .get(path)
-            .cloned()
-            .ok_or_else(|| RuntimeError::ResourceNotFound {
-                path: path.to_string(),
-            })
-    }
-
-    async fn list_resources(&self, prefix: &str) -> Result<Vec<String>, RuntimeError> {
-        let p = prefix.trim_start_matches('/');
-        let matches: Vec<String> = self
-            .resources
-            .keys()
-            .filter(|k| k.starts_with(p))
-            .cloned()
-            .collect();
-        Ok(matches)
-    }
-
-    async fn exists(&self, path: &str) -> bool {
-        self.resources.contains_key(path)
-    }
-}
 
 struct SlowConcurrentModule {
     descriptor: ModuleDescriptor,
@@ -130,13 +83,14 @@ async fn test_concurrent_nodes_installation_mutual_exclusion_and_idempotence() {
         runtime: None,
         dependencies: Vec::new(),
         capabilities: Vec::new(),
+        resources: Default::default(),
     };
 
     let provider = Arc::new(
-        MemoryTestResourceProvider::new()
+        common::MemoryProvider::new()
             .add_resource(
                 "schema/tables/booking.surql",
-                ResourceKind::Tables,
+                ResourceKind::Schema,
                 "DEFINE TABLE OVERWRITE booking SCHEMALESS;",
             )
             .add_resource(
@@ -161,7 +115,7 @@ async fn test_concurrent_nodes_installation_mutual_exclusion_and_idempotence() {
         shared_counter.clone(),
         Duration::from_millis(50),
     ));
-    let pkg_a = ModulePackage::new(manifest.clone(), provider.clone()).with_module_impl(mod_a);
+    let pkg_a = common::package(manifest.clone(), provider.clone()).with_module_impl(mod_a);
 
     // Noeud B
     let node_b_id = NodeId::new("node-beta");
@@ -178,7 +132,7 @@ async fn test_concurrent_nodes_installation_mutual_exclusion_and_idempotence() {
         shared_counter.clone(),
         Duration::from_millis(50),
     ));
-    let pkg_b = ModulePackage::new(manifest, provider).with_module_impl(mod_b);
+    let pkg_b = common::package(manifest, provider).with_module_impl(mod_b);
 
     // Exécution concurrente simultanée
     let (res_a, res_b) = tokio::join!(

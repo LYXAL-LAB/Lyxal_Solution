@@ -11,20 +11,20 @@ use tempfile::tempdir;
 async fn test_schema_import_plan_ordering() {
     let module_id = ModuleId::new("lyxal-booking");
 
-    let r_seeds = ModuleResource::new("schema/seeds.surql", ResourceKind::Seeds, "CREATE x;");
+    let r_seeds = ModuleResource::new("schema/seeds.surql", ResourceKind::Seed, "CREATE x;");
     let r_tables = ModuleResource::new(
         "schema/tables.surql",
-        ResourceKind::Tables,
+        ResourceKind::Schema,
         "DEFINE TABLE t;",
     );
     let r_indexes = ModuleResource::new(
         "schema/indexes.surql",
-        ResourceKind::Indexes,
+        ResourceKind::Schema,
         "DEFINE INDEX idx;",
     );
     let r_fields = ModuleResource::new(
         "schema/fields.surql",
-        ResourceKind::Fields,
+        ResourceKind::Schema,
         "DEFINE FIELD f;",
     );
 
@@ -38,15 +38,14 @@ async fn test_schema_import_plan_ordering() {
         ],
     );
 
-    let ordered_kinds: Vec<ResourceKind> =
-        plan.resources().iter().map(|r| r.kind.clone()).collect();
+    let ordered_kinds: Vec<ResourceKind> = plan.resources().iter().map(|r| r.kind).collect();
     assert_eq!(
         ordered_kinds,
         vec![
-            ResourceKind::Tables,
-            ResourceKind::Fields,
-            ResourceKind::Indexes,
-            ResourceKind::Seeds,
+            ResourceKind::Schema,
+            ResourceKind::Schema,
+            ResourceKind::Schema,
+            ResourceKind::Seed,
         ]
     );
 }
@@ -81,7 +80,19 @@ async fn test_schema_importer_execution_on_surreal_mem() {
     fs::write(schema_dir.join("seeds.surql"), "-- Comment only seed\n").unwrap();
 
     let provider = FilesystemResourceProvider::new(dir.path());
-    let plan = SchemaImportPlan::from_provider(ModuleId::new("lyxal-booking"), &provider)
+    let manifest = lyxal_runtime::manifest::ManifestParser::parse_str(
+        r#"
+id = "lyxal-booking"
+name = "Booking"
+version = "0.1.0"
+
+[resources]
+schemas = ["schema/tables.surql", "schema/fields.surql", "schema/indexes.surql"]
+seeds = ["schema/seeds.surql"]
+"#,
+    )
+    .unwrap();
+    let plan = SchemaImportPlan::from_manifest(&manifest, &provider)
         .await
         .unwrap();
 
@@ -106,7 +117,7 @@ async fn test_schema_importer_invalid_sql_fails_hard() {
 
     let bad_resource = ModuleResource::new(
         "schema/tables.surql",
-        ResourceKind::Tables,
+        ResourceKind::Schema,
         "INVALID SYNTAX SQL NOT SURREALQL;",
     );
     let plan = SchemaImportPlan::new(ModuleId::new("lyxal-invalid"), vec![bad_resource]);

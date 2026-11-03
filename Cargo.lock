@@ -2520,6 +2520,7 @@ dependencies = [
  "async-trait",
  "fastrand",
  "lyxal_error",
+ "lyxal_runtime",
  "lyxal_surreal",
  "serde",
  "serde_json",
