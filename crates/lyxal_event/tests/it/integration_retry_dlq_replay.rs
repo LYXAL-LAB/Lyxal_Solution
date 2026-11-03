@@ -65,7 +65,7 @@ async fn test_retry_dlq_and_replay_cycle() {
     common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
-    store.init_schema().await.unwrap();
+    store.install().await.unwrap();
 
     // 1. Abonnement avec max_attempts = 3
     let sub = EventSubscription::new(
@@ -110,15 +110,32 @@ async fn test_retry_dlq_and_replay_cycle() {
         .last_error
         .contains("Permanent card declined"));
 
-    // 4. Rejeu : la livraison redevient éligible
+    // 4. Rejeu refusé tant que le curseur persisté ne couvre pas la séquence de la livraison
+    db.query("UPDATE event_subscription_progress SET last_persisted_cursor = 0")
+        .await
+        .unwrap();
+    let premature = store
+        .dead_letter_replay(&dead_letters[0].id)
+        .await
+        .expect_err("rejeu prématuré refusé");
+    assert!(
+        matches!(&premature, LyxalEventError::Surreal(e) if e.is_business_code("EVENT_DEAD_LETTER_REPLAY_NOT_SETTLED")),
+        "{premature:?}"
+    );
+    db.query("UPDATE event_subscription_progress SET last_persisted_cursor = 1")
+        .await
+        .unwrap();
+
+    // 5. Rejeu : la livraison redevient éligible et recevra une nouvelle séquence
     let delivery_id = dead_letters[0].delivery.clone();
     let replay_ok = store.dead_letter_replay(&dead_letters[0].id).await.unwrap();
     assert!(replay_ok, "le rejeu doit réussir");
     let replayed = store.get_delivery(&delivery_id).await.unwrap().unwrap();
     assert_eq!(replayed.status, DeliveryStatus::Pending);
     assert_eq!(replayed.attempts, 0);
+    assert_eq!(replayed.delivery_seq, None);
 
-    // 5. Handler corrigé : la livraison rejouée est livrée
+    // 6. Handler corrigé : la livraison rejouée est livrée
     let mut fix_registry = HandlerRegistry::new();
     fix_registry
         .register(FlakyPaymentHandler {
@@ -139,6 +156,12 @@ async fn test_retry_dlq_and_replay_cycle() {
         delivered,
         "la livraison rejouée doit être livrée : {:?}",
         common::delivery_statuses(&db).await
+    );
+    let redelivered = store.get_delivery(&delivery_id).await.unwrap().unwrap();
+    assert_eq!(
+        redelivered.delivery_seq,
+        Some(2),
+        "nouvelle séquence en fin de flux"
     );
 }
 
@@ -168,7 +191,7 @@ async fn test_oversized_error_still_reaches_dead_letter() {
     db.use_ns("test_ns").use_db("test_verbose").await.unwrap();
     common::setup_test_db(&db).await;
     let store = Arc::new(EventStore::new(db.clone()));
-    store.init_schema().await.unwrap();
+    store.install().await.unwrap();
 
     let sub = EventSubscription::new(
         "payment_verbose_sub",
@@ -206,4 +229,70 @@ async fn test_oversized_error_still_reaches_dead_letter() {
     let dead_letters = store.get_dead_letters().await.unwrap();
     assert_eq!(dead_letters.len(), 1);
     assert!(dead_letters[0].last_error.chars().count() <= 4000);
+}
+
+/// Une livraison dont l'événement d'origine a disparu n'est pas livrée avec des valeurs
+/// inventées : elle part en dead letter avec le motif des champs manquants.
+#[tokio::test]
+async fn test_incomplete_delivery_goes_to_dead_letter() {
+    let db = connect("mem://").await.unwrap();
+    db.use_ns("test_ns")
+        .use_db("test_incomplete")
+        .await
+        .unwrap();
+    common::setup_test_db(&db).await;
+    let store = Arc::new(EventStore::new(db.clone()));
+    store.install().await.unwrap();
+
+    let sub = EventSubscription::new(
+        "payment_incomplete_sub",
+        "lyxal_accounting",
+        "payment.processed",
+        "record_ledger",
+    );
+    store.register_subscription(&sub).await.unwrap();
+    EventPublisher::new(store.clone(), "lyxal_billing", EventContext::default())
+        .publish(&PaymentProcessed {
+            payment_id: "pay_orphan".to_string(),
+            amount: 1,
+        })
+        .await
+        .unwrap();
+    // L'événement d'origine disparaît (purge ou corruption) avant la livraison
+    db.query("DELETE event_outbox").await.unwrap();
+
+    let handled = Arc::new(AtomicUsize::new(0));
+    let mut registry = HandlerRegistry::new();
+    registry
+        .register(FlakyPaymentHandler {
+            attempts: handled.clone(),
+        })
+        .unwrap();
+    let worker = Arc::new(EventWorker::new(
+        store.clone(),
+        registry,
+        common::fast_config("worker_incomplete"),
+    ));
+    let dead_lettered = common::run_worker_until(worker, Duration::from_secs(10), || {
+        let db = db.clone();
+        async move { common::delivery_statuses(&db).await == ["dead_letter"] }
+    })
+    .await;
+    assert!(
+        dead_lettered,
+        "la livraison incomplète doit partir en dead letter : {:?}",
+        common::delivery_statuses(&db).await
+    );
+    assert_eq!(
+        handled.load(Ordering::SeqCst),
+        0,
+        "le handler ne doit pas être appelé"
+    );
+    let dead_letters = store.get_dead_letters().await.unwrap();
+    assert_eq!(dead_letters.len(), 1);
+    assert!(
+        dead_letters[0].last_error.contains("event_type"),
+        "{}",
+        dead_letters[0].last_error
+    );
 }

@@ -149,6 +149,9 @@ pub enum DispatcherError {
     /// L'offset est déjà présent en vol dans la fenêtre.
     #[error("Offset {0} is already in-flight")]
     DuplicateInFlightOffset(u64),
+    /// Le curseur persisté ne peut plus être restauré : des séquences ont déjà été reçues.
+    #[error("Cursor cannot be restored once sequences have been received")]
+    CursorAlreadyStarted,
     /// Erreur liée à la résolution du poison.
     #[error("Poison resolution error: {0}")]
     PoisonResolutionError(String),
@@ -239,6 +242,23 @@ impl<T: Clone + Send + 'static> ReliableDispatcher<T> {
         self.window.safe_cursor()
     }
 
+    /// Positionne le curseur sûr sur la valeur persistée, avant toute soumission.
+    pub fn restore_cursor(&mut self, cursor: u64) -> Result<(), DispatcherError> {
+        self.window
+            .restore_cursor(cursor)
+            .map_err(|_| DispatcherError::CursorAlreadyStarted)
+    }
+
+    /// Résout une séquence qui ne sera jamais soumise (livraison transférée en dead letter
+    /// sans passer par la fenêtre), pour qu'elle ne bloque pas le curseur contigu. Une séquence
+    /// déjà couverte par le curseur est ignorée.
+    pub fn skip_unsubmitted(&mut self, offset: u64) -> Option<u64> {
+        if self.window.safe_cursor().is_some_and(|sc| offset <= sc) {
+            return None;
+        }
+        self.window.on_skipped(offset)
+    }
+
     /// Indique si la fenêtre est entièrement vide.
     pub fn is_empty(&self) -> bool {
         self.window.is_empty()
@@ -274,6 +294,19 @@ impl<T: Clone + Send + 'static> ReliableDispatcher<T> {
             });
         }
 
+        // Un offset refusé par la fenêtre ne doit jamais atteindre un consommateur
+        if let Some(safe_cursor) = self.window.safe_cursor() {
+            if offset <= safe_cursor {
+                return Err(DispatcherError::OffsetAlreadyCommitted {
+                    offset,
+                    safe_cursor,
+                });
+            }
+        }
+        if self.window.get(offset).is_some() {
+            return Err(DispatcherError::DuplicateInFlightOffset(offset));
+        }
+
         let mut delivery = PendingDelivery::new(message.clone());
 
         let (dispatched, dead_ids) = Self::send_round_robin(
@@ -304,6 +337,7 @@ impl<T: Clone + Send + 'static> ReliableDispatcher<T> {
                 DispatchWindowError::DuplicateInFlightOffset(off) => {
                     DispatcherError::DuplicateInFlightOffset(off)
                 }
+                DispatchWindowError::CursorAlreadyStarted => DispatcherError::CursorAlreadyStarted,
             })?;
 
         let _ = extractor;

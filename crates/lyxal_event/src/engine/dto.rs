@@ -182,6 +182,7 @@ pub struct PendingDeliveryItem {
     pub created_at: Option<Datetime>,
     pub outbox_event: lyxal_surreal::RecordId,
     pub subscription: lyxal_surreal::RecordId,
+    pub delivery_seq: Option<u64>,
     pub target_module: String,
     pub context: Option<crate::models::EventContext>,
     pub event_id: Option<crate::types::EventId>,

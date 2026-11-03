@@ -22,7 +22,7 @@ async fn test_recover_pending_fanouts_after_crash() {
     common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
-    store.init_schema().await.unwrap();
+    store.install().await.unwrap();
 
     // Enregistrement de 2 subscriptions
     let sub1 = EventSubscription::new(
