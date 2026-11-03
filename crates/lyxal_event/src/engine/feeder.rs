@@ -378,32 +378,70 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         Ok(nack_report)
     }
 
-    /// Transfère en dead letter une livraison qui n'a pas reçu de séquence (événement d'origine
-    /// incomplet) : sans séquence, elle ne bloque pas le curseur et n'entre pas dans le flush.
-    pub async fn dead_letter_unsequenced(
+    /// Relit la progression durable d'un abonnement et positionne le curseur du dispatcher sur
+    /// la valeur persistée. À appeler à la création de la file, avant toute soumission : sans
+    /// cela, la fenêtre prendrait la première séquence reçue comme point de départ et pourrait
+    /// dépasser une séquence encore en attente de retry.
+    pub async fn restore_progress(&mut self, subscription: &RecordId) -> Result<u64, FeederError> {
+        let progress = self
+            .get_or_create_tracker(subscription)
+            .recover_durable_state()
+            .await?;
+        let cursor = progress.last_persisted_cursor;
+        self.dispatcher.lock().await.restore_cursor(cursor)?;
+        Ok(cursor)
+    }
+
+    /// Transfère en dead letter une livraison dont l'événement d'origine est incomplet.
+    ///
+    /// * Sans séquence, elle n'occupe aucune place dans le flux de l'abonnement : simple transfert.
+    /// * Avec une séquence (attribuée avant une reprise), le transfert passe par la barrière DLQ du
+    ///   tracker, puis la séquence est résolue dans le dispatcher et le curseur avancé, pour
+    ///   qu'elle ne bloque pas les livraisons suivantes.
+    pub async fn dead_letter_incomplete(
         &mut self,
         delivery_id: RecordId,
+        subscription: &RecordId,
+        delivery_seq: Option<u64>,
         reason: String,
     ) -> Result<(), FeederError> {
         if !self.lease_manager.is_leader() {
             return Err(FeederError::NotLeader);
         }
-        let params = super::dto::DeadLetterTransferParams {
-            delivery_id,
-            error: super::progress::bounded_error_message(reason),
-            node_id: self.lease_manager.node_id().to_string(),
-            generation: self.lease_manager.current_generation(),
+        let Some(seq) = delivery_seq else {
+            let params = super::dto::DeadLetterTransferParams {
+                delivery_id,
+                error: super::progress::bounded_error_message(reason),
+                node_id: self.lease_manager.node_id().to_string(),
+                generation: self.lease_manager.current_generation(),
+            };
+            let result: Result<super::dto::DeadLetterTransferResult, LyxalSurrealError> =
+                self.call_fn("event_dead_letter_transfer", params).await;
+            return match result {
+                Ok(_) => Ok(()),
+                Err(e) if crate::error::is_stale_leader_fenced(&e) => {
+                    self.cancellation.cancel();
+                    Err(FeederError::Fenced)
+                }
+                Err(e) => Err(FeederError::Surreal(Box::new(e))),
+            };
         };
-        let result: Result<super::dto::DeadLetterTransferResult, LyxalSurrealError> =
-            self.call_fn("event_dead_letter_transfer", params).await;
-        match result {
-            Ok(_) => Ok(()),
-            Err(e) if crate::error::is_stale_leader_fenced(&e) => {
-                self.cancellation.cancel();
-                Err(FeederError::Fenced)
-            }
-            Err(e) => Err(FeederError::Surreal(Box::new(e))),
+
+        match self
+            .get_or_create_tracker(subscription)
+            .record_dead_letter(seq, delivery_id, reason)
+            .await
+        {
+            Ok(_) => {}
+            Err(super::progress::ProgressError::Fenced) => return Err(FeederError::Fenced),
+            Err(e) => return Err(e.into()),
         }
+        let safe_cursor = {
+            let mut disp = self.dispatcher.lock().await;
+            disp.skip_unsubmitted(seq);
+            disp.safe_cursor()
+        };
+        self.flush_trackers(safe_cursor).await
     }
 
     /// Exécute un cycle de surveillance des délais d'acquittement : redélivrance, et transfert en

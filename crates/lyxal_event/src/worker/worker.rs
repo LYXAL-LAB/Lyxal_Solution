@@ -21,7 +21,7 @@ use crate::error::LyxalEventError;
 use crate::handler::HandlerRegistry;
 use crate::models::LyxalEventEnvelope;
 use crate::store::EventStore;
-use lyxal_surreal::ToSql;
+use lyxal_surreal::{RecordId, ToSql};
 
 /// Métriques d'observabilité en mémoire du LYXAL Event Engine.
 #[derive(Debug, Default)]
@@ -375,14 +375,15 @@ impl EventWorker {
     }
 
     /// Crée la file d'un abonnement pour le mandat en cours : dispatcher, feeder (curseur
-    /// contigu propre à l'abonnement) et passerelle d'exécution des handlers.
+    /// contigu propre à l'abonnement, repris de la base) et passerelle d'exécution des handlers.
     async fn build_pipeline(
         &self,
-        subscription: &str,
+        subscription_id: &RecordId,
         client: &surrealdb::Surreal<surrealdb::engine::any::Any>,
         lease_manager: &Arc<OutboxLeaseManager>,
         cancel: &CancellationToken,
-    ) -> SubscriptionPipeline {
+    ) -> Result<SubscriptionPipeline, LyxalEventError> {
+        let subscription = subscription_id.to_sql();
         let disp_config = DispatcherConfig {
             max_unacked: self.config.max_unacked,
             delivery_policy: DeliveryPolicy {
@@ -408,11 +409,20 @@ impl EventWorker {
             disp_config,
             cancel.clone(),
         )));
-        let feeder = OutboxFeeder::new(
+        let mut feeder = OutboxFeeder::new(
             client.clone(),
             Arc::clone(lease_manager),
             Arc::clone(&dispatcher),
         );
+        match feeder.restore_progress(subscription_id).await {
+            Ok(_) => {}
+            Err(FeederError::Fenced) => return Err(LyxalEventError::StaleLeaderFenced),
+            Err(e) => {
+                return Err(LyxalEventError::Internal(format!(
+                    "reprise de la progression de {subscription} : {e}"
+                )))
+            }
+        }
         let bridge = HandlerConsumerBridge::new(
             BridgeConfig {
                 consumer_id: format!("{}_bridge", self.config.worker_id),
@@ -427,7 +437,7 @@ impl EventWorker {
             let mut disp = dispatcher.lock().await;
             bridge.register_with_dispatcher(&mut disp, self.config.max_unacked)
         };
-        SubscriptionPipeline { feeder, bridge, rx }
+        Ok(SubscriptionPipeline { feeder, bridge, rx })
     }
 
     async fn fetch_and_enqueue_pending(
@@ -456,8 +466,8 @@ impl EventWorker {
             let sub_id = rec.subscription.to_sql();
             if !pipelines.contains_key(&sub_id) {
                 let pipeline = self
-                    .build_pipeline(&sub_id, client, lease_manager, cancel)
-                    .await;
+                    .build_pipeline(&rec.subscription, client, lease_manager, cancel)
+                    .await?;
                 pipelines.insert(sub_id.clone(), pipeline);
             }
             let Some(pipeline) = pipelines.get_mut(&sub_id) else {
@@ -475,7 +485,12 @@ impl EventWorker {
                     );
                     match pipeline
                         .feeder
-                        .dead_letter_unsequenced(rec.id.clone(), reason)
+                        .dead_letter_incomplete(
+                            rec.id.clone(),
+                            &rec.subscription,
+                            rec.delivery_seq,
+                            reason,
+                        )
                         .await
                     {
                         Ok(()) => {

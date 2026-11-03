@@ -218,3 +218,30 @@ IF !record::exists(error_definition:EVENT_INVALID_PARAMETERS) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:EVENT_DEAD_LETTER_REPLAY_NOT_SETTLED) THEN (
+    CREATE error_definition:EVENT_DEAD_LETTER_REPLAY_NOT_SETTLED CONTENT {
+        code: "EVENT_DEAD_LETTER_REPLAY_NOT_SETTLED",
+        module: "event",
+        domain: "dead_letter",
+        category: "conflict",
+        severity: "warning",
+        message: "Dead letter cannot be replayed before its sequence is covered by the persisted cursor",
+        default_language: "fr",
+        http_status: 409,
+        retryable: true,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Rejeu prématuré",
+                description: "La séquence de la livraison n'est pas encore couverte par le curseur persisté de son abonnement.",
+                resolution: "Réessayez une fois les livraisons précédentes de l'abonnement résolues."
+            },
+            en: {
+                label: "Replay not settled",
+                description: "The delivery sequence is not yet covered by the persisted cursor of its subscription.",
+                resolution: "Retry once the previous deliveries of the subscription are resolved."
+            }
+        }
+    }
+) END;

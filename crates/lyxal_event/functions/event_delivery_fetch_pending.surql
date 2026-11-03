@@ -35,6 +35,7 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_fetch_pending(
             created_at,
             outbox_event,
             subscription,
+            delivery_seq,
             target_module,
             context,
             outbox_event.event_id AS event_id,

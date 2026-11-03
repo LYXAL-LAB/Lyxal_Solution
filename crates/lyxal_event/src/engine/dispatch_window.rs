@@ -54,6 +54,8 @@ pub enum DispatchWindowError {
     OffsetAlreadyCommitted { offset: u64, safe_cursor: u64 },
     /// L'offset est déjà présent en vol dans la fenêtre.
     DuplicateInFlightOffset(u64),
+    /// Le curseur ne peut plus être restauré : la fenêtre a déjà reçu des séquences.
+    CursorAlreadyStarted,
 }
 
 /// Résultat du traitement d'un accusé de réception (ACK).
@@ -100,15 +102,16 @@ impl<T> DispatchWindow<T> {
         }
     }
 
-    /// Crée une fenêtre en restaurant un `safe_cursor` préalablement persisté.
-    pub fn with_initial_cursor(max_unacked: usize, initial_cursor: u64) -> Self {
-        Self {
-            in_flight: BTreeMap::new(),
-            acked_offsets: BTreeSet::new(),
-            safe_cursor: Some(initial_cursor),
-            first_offset: initial_cursor.checked_add(1),
-            max_unacked: max_unacked.max(1),
+    /// Positionne le curseur sûr sur la valeur persistée en base, avant toute expédition :
+    /// la contiguïté est alors vérifiée à partir de `cursor + 1`, et non à partir de la
+    /// première séquence reçue.
+    pub fn restore_cursor(&mut self, cursor: u64) -> Result<(), DispatchWindowError> {
+        if self.first_offset.is_some() || !self.in_flight.is_empty() {
+            return Err(DispatchWindowError::CursorAlreadyStarted);
         }
+        self.safe_cursor = Some(cursor);
+        self.first_offset = cursor.checked_add(1);
+        Ok(())
     }
 
     /// Indique si la fenêtre dispose de capacité disponible pour expédier de nouveaux messages.
@@ -518,7 +521,8 @@ mod tests {
     #[test]
     fn test_dispatch_window_overflow_limits() {
         let max_near = u64::MAX - 2;
-        let mut window = DispatchWindow::with_initial_cursor(5, max_near);
+        let mut window = DispatchWindow::new(5);
+        window.restore_cursor(max_near).unwrap();
         assert_eq!(window.safe_cursor(), Some(max_near));
 
         let off1 = u64::MAX - 1;
