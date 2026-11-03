@@ -62,7 +62,7 @@ async fn test_migration_runner_happy_path_and_idempotence() {
     assert_eq!(res1.applied[1].as_str(), "002_add_field");
     assert_eq!(res1.applied[2].as_str(), "003_add_index");
 
-    // Vérifier la persistance dans SurrealDB system_migration
+    // Vérifier la persistance dans SurrealDB runtime_migration
     let m1 = store
         .get_migration(&module_id, &MigrationId::new("001_create_booking").unwrap())
         .await

@@ -164,7 +164,7 @@ impl ContinuousReconciliationController {
     /// 2. Plan Desired vs Actual Initial (pur in-memory).
     /// 3. Si actions $\to$ Apply puis Observe Actual Final ; sinon Actual Final = Initial.
     /// 4. Run Health Checks sur Actual Final (uniquement modules Running).
-    /// 5. Persist Health Snapshot dans `system_health` (si configuré).
+    /// 5. Persist Health Snapshot dans `runtime_health` (si configuré).
     /// 6. Build RuntimeStatusSnapshot & mise à jour du backoff.
     pub async fn run_once(&self) -> Result<RuntimeStatusSnapshot, RuntimeError> {
         // Protection anti-chevauchement (No overlapping passes)

@@ -77,3 +77,32 @@ pub async fn install_batch(
     }
     Ok(results)
 }
+
+/// Manifeste du runtime lui-même.
+pub const RUNTIME_MANIFEST: &str = include_str!("../../manifest.toml");
+
+/// Fichiers SurrealQL déclarés dans `[resources]` du runtime, embarqués dans le binaire. Un test
+/// vérifie que la liste et les contenus sont ceux du manifeste et du disque.
+pub const RUNTIME_EMBEDDED_RESOURCES: &[(&str, &str)] = &[
+    (
+        "schema/tables.surql",
+        include_str!("../../schema/tables.surql"),
+    ),
+    (
+        "schema/fields.surql",
+        include_str!("../../schema/fields.surql"),
+    ),
+    (
+        "schema/indexes.surql",
+        include_str!("../../schema/indexes.surql"),
+    ),
+];
+
+/// Installe le schéma du runtime (tables `runtime_*`) depuis son manifeste. Rejouable : chaque
+/// définition est en `OVERWRITE`. C'est la seule source du schéma du runtime : les stores SurrealDB
+/// l'appellent dans leur `bootstrap`.
+pub async fn install_runtime_schema(client: &Surreal<Any>) -> Result<(), RuntimeError> {
+    install_embedded(client, RUNTIME_MANIFEST, RUNTIME_EMBEDDED_RESOURCES)
+        .await
+        .map(|_| ())
+}

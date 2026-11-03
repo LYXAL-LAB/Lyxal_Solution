@@ -61,7 +61,7 @@ pub enum ModuleInstallationOutcome {
     Recovered,
 }
 
-/// Statut de cycle de vie persistant d'une release de module dans `system_module_release`.
+/// Statut de cycle de vie persistant d'une release de module dans `runtime_release`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ModuleReleaseStatus {
     /// Découverte et déclarée mais non encore traitée.

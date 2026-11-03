@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
-/// Structure de désérialisation interne d'une ligne de la table `system_runtime_event`.
+/// Structure de désérialisation interne d'une ligne de la table `runtime_event_journal`.
 #[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
 pub struct SystemRuntimeEventRow {
     pub event_id: String,
@@ -38,46 +38,9 @@ impl SurrealRuntimeEventJournal {
         Self { client }
     }
 
-    /// Initialise la table `system_runtime_event` et ses index.
+    /// Initialise la table `runtime_event_journal` et ses index.
     pub async fn bootstrap(&self) -> Result<(), RuntimeError> {
-        let query = r#"
-            DEFINE TABLE OVERWRITE system_runtime_event SCHEMAFULL;
-            DEFINE FIELD OVERWRITE event_id ON TABLE system_runtime_event TYPE string;
-            DEFINE FIELD OVERWRITE sequence ON TABLE system_runtime_event TYPE int;
-            DEFINE FIELD OVERWRITE node_id ON TABLE system_runtime_event TYPE string;
-            DEFINE FIELD OVERWRITE timestamp ON TABLE system_runtime_event TYPE int;
-            DEFINE FIELD OVERWRITE kind ON TABLE system_runtime_event TYPE string;
-            DEFINE FIELD OVERWRITE module_id ON TABLE system_runtime_event TYPE option<string>;
-            DEFINE FIELD OVERWRITE correlation_id ON TABLE system_runtime_event TYPE option<string>;
-            DEFINE FIELD OVERWRITE causation_id ON TABLE system_runtime_event TYPE option<string>;
-            DEFINE FIELD OVERWRITE payload ON TABLE system_runtime_event TYPE object FLEXIBLE;
-            DEFINE FIELD OVERWRITE created_at ON TABLE system_runtime_event TYPE datetime DEFAULT time::now();
-
-            DEFINE INDEX OVERWRITE idx_system_runtime_event_id ON TABLE system_runtime_event COLUMNS event_id UNIQUE;
-            DEFINE INDEX OVERWRITE idx_system_runtime_event_node_seq ON TABLE system_runtime_event COLUMNS node_id, sequence UNIQUE;
-            DEFINE INDEX OVERWRITE idx_system_runtime_event_module ON TABLE system_runtime_event COLUMNS module_id;
-            DEFINE INDEX OVERWRITE idx_system_runtime_event_kind ON TABLE system_runtime_event COLUMNS kind;
-            DEFINE INDEX OVERWRITE idx_system_runtime_event_timestamp ON TABLE system_runtime_event COLUMNS timestamp;
-        "#;
-
-        let res = self
-            .client
-            .query(query)
-            .await
-            .map_err(|err| RuntimeError::Internal {
-                code: "EVENT_JOURNAL_BOOTSTRAP_FAILED",
-                message: format!("Failed to bootstrap system_runtime_event table: {}", err),
-            })?;
-
-        res.check().map_err(|err| RuntimeError::Internal {
-            code: "EVENT_JOURNAL_BOOTSTRAP_FAILED",
-            message: format!(
-                "Failed to check bootstrap system_runtime_event table: {}",
-                err
-            ),
-        })?;
-
-        Ok(())
+        crate::schema::install_runtime_schema(&self.client).await
     }
 
     fn make_key_id(node_id: &NodeId, sequence: u64) -> String {
@@ -126,7 +89,7 @@ impl RuntimeEventJournal for SurrealRuntimeEventJournal {
             })?;
 
         let query = r#"
-            UPSERT type::record('system_runtime_event', $key_id) SET
+            UPSERT type::record('runtime_event_journal', $key_id) SET
                 event_id = $event_id,
                 sequence = $sequence,
                 node_id = $node_id,
@@ -170,7 +133,7 @@ impl RuntimeEventJournal for SurrealRuntimeEventJournal {
     }
 
     async fn recent(&self, limit: usize) -> Result<Vec<RuntimeEvent>, RuntimeError> {
-        let query = "SELECT * FROM system_runtime_event ORDER BY sequence DESC LIMIT $limit;";
+        let query = "SELECT * FROM runtime_event_journal ORDER BY sequence DESC LIMIT $limit;";
 
         let mut res = self
             .client
@@ -196,7 +159,7 @@ impl RuntimeEventJournal for SurrealRuntimeEventJournal {
         module_id: &ModuleId,
         limit: usize,
     ) -> Result<Vec<RuntimeEvent>, RuntimeError> {
-        let query = "SELECT * FROM system_runtime_event WHERE module_id = $module_id ORDER BY sequence DESC LIMIT $limit;";
+        let query = "SELECT * FROM runtime_event_journal WHERE module_id = $module_id ORDER BY sequence DESC LIMIT $limit;";
 
         let mut res = self
             .client

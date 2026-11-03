@@ -12,9 +12,9 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
-/// Structure de persistance interne d'un verrou dans la table `system_migration_lock`.
+/// Structure de persistance interne d'un verrou dans la table `runtime_migration_lock`.
 #[derive(Debug, SurrealValue)]
-struct SystemMigrationLockRow {
+struct MigrationLockRow {
     lock_key: String,
     module_id: String,
     migration_id: String,
@@ -59,7 +59,7 @@ impl SurrealMigrationLeaseManager {
     }
 
     /// Convertit une ligne brute de base de données en modèle de domaine `MigrationLease`.
-    fn row_to_lease(row: SystemMigrationLockRow) -> Result<MigrationLease, RuntimeError> {
+    fn row_to_lease(row: MigrationLockRow) -> Result<MigrationLease, RuntimeError> {
         let key = MigrationLockKey::new(
             ModuleId::new(row.module_id),
             MigrationId::new(row.migration_id)?,
@@ -111,7 +111,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
         // 1. Initialisation idempotente du record sentinel si absent (generation = 0, is_released = true, expires_at = 0)
         {
             let _guard = MIGRATION_INIT_MUTEX.lock().await;
-            let check_query = "SELECT id FROM type::record('system_migration_lock', $key_id);";
+            let check_query = "SELECT id FROM type::record('runtime_migration_lock', $key_id);";
             let mut check_res = self
                 .client
                 .query(check_query)
@@ -135,7 +135,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
 
             if !exists {
                 let init_query = r#"
-                    CREATE ONLY type::record('system_migration_lock', $key_id) SET
+                    CREATE ONLY type::record('runtime_migration_lock', $key_id) SET
                         lock_key = $lock_key,
                         module_id = $module_id,
                         migration_id = $migration_id,
@@ -173,7 +173,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
         }
 
         // 2. Lecture de l'état actuel du verrou
-        let select_query = "SELECT * FROM type::record('system_migration_lock', $key_id);";
+        let select_query = "SELECT * FROM type::record('runtime_migration_lock', $key_id);";
         let mut sel_res = self
             .client
             .query(select_query)
@@ -184,7 +184,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
                 message: format!("Failed to inspect current lock state: {}", err),
             })?;
 
-        let rows: Vec<SystemMigrationLockRow> =
+        let rows: Vec<MigrationLockRow> =
             sel_res
                 .take(0)
                 .map_err(|err| RuntimeError::MigrationLockAcquireFailed {
@@ -220,7 +220,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
         // 3. Vrai Compare-And-Swap conditionnel : atomicité basée sur generation == expected_generation
         let next_gen = expected_gen + 1;
         let cas_query = r#"
-            UPDATE type::record('system_migration_lock', $key_id) SET
+            UPDATE type::record('runtime_migration_lock', $key_id) SET
                 owner_node_id = $owner_node_id,
                 generation = $next_gen,
                 is_released = false,
@@ -248,7 +248,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
                 message: format!("Failed to dispatch CAS lease acquire: {}", err),
             })?;
 
-        let updated_rows: Vec<SystemMigrationLockRow> =
+        let updated_rows: Vec<MigrationLockRow> =
             res.take(0)
                 .map_err(|err| RuntimeError::MigrationLockAcquireFailed {
                     key: lock_key_str.clone(),
@@ -275,7 +275,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
                     message: format!("Failed to inspect winning lock state: {}", err),
                 })?;
 
-            let check_rows: Vec<SystemMigrationLockRow> =
+            let check_rows: Vec<MigrationLockRow> =
                 check_res
                     .take(0)
                     .map_err(|err| RuntimeError::MigrationLockAcquireFailed {
@@ -313,7 +313,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
         let key_record_id = lock_key_str.replace([':', '.', '-'], "_");
 
         let update_query = r#"
-            UPDATE type::record('system_migration_lock', $key_id) SET
+            UPDATE type::record('runtime_migration_lock', $key_id) SET
                 renewed_at = $now_secs,
                 expires_at = $expires_at_secs,
                 updated_at = time::now()
@@ -338,7 +338,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
                 message: format!("Failed to renew lease: {}", err),
             })?;
 
-        let updated_rows: Vec<SystemMigrationLockRow> =
+        let updated_rows: Vec<MigrationLockRow> =
             res.take(0)
                 .map_err(|err| RuntimeError::MigrationLeaseLost {
                     key: lock_key_str.clone(),
@@ -369,7 +369,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
 
         // AUCUN DELETE ! Invariant Fencing : libération logique avec maintien de la génération N
         let update_query = r#"
-            UPDATE type::record('system_migration_lock', $key_id) SET
+            UPDATE type::record('runtime_migration_lock', $key_id) SET
                 is_released = true,
                 expires_at = 0,
                 released_at = $now_secs,
@@ -390,7 +390,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
                 message: format!("Failed to release lease '{}': {}", lock_key_str, err),
             })?;
 
-        let updated_rows: Vec<SystemMigrationLockRow> =
+        let updated_rows: Vec<MigrationLockRow> =
             res.take(0).map_err(|err| RuntimeError::Internal {
                 code: "RUNTIME_MIGRATION_LOCK_RELEASE_FAILED",
                 message: format!("Failed to decode lease release '{}': {}", lock_key_str, err),
@@ -412,7 +412,7 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
     ) -> Result<Option<MigrationLease>, RuntimeError> {
         let lock_key_str = key.canonical_string();
         let key_record_id = lock_key_str.replace([':', '.', '-'], "_");
-        let query = "SELECT * FROM type::record('system_migration_lock', $key_id);";
+        let query = "SELECT * FROM type::record('runtime_migration_lock', $key_id);";
 
         let mut res = self
             .client
@@ -424,11 +424,10 @@ impl MigrationLeaseManager for SurrealMigrationLeaseManager {
                 message: format!("Failed to inspect lease for '{}': {}", lock_key_str, err),
             })?;
 
-        let rows: Vec<SystemMigrationLockRow> =
-            res.take(0).map_err(|err| RuntimeError::Internal {
-                code: "RUNTIME_STORE_DATA_INVALID",
-                message: format!("Failed to deserialize lease inspection row: {}", err),
-            })?;
+        let rows: Vec<MigrationLockRow> = res.take(0).map_err(|err| RuntimeError::Internal {
+            code: "RUNTIME_STORE_DATA_INVALID",
+            message: format!("Failed to deserialize lease inspection row: {}", err),
+        })?;
 
         match rows.into_iter().next() {
             Some(row) => {
