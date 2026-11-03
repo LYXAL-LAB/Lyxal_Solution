@@ -54,8 +54,7 @@ pub use event::{
     MemoryRuntimeEventJournal, MigrationEvent, ModuleEvent, ReconciliationEvent, RuntimeEvent,
     RuntimeEventBus, RuntimeEventBusStats, RuntimeEventDraft, RuntimeEventFilter, RuntimeEventId,
     RuntimeEventJournal, RuntimeEventKind, RuntimeEventPayload, RuntimeEventSubscription,
-    RuntimeSystemEvent, SubscriptionError, SurrealRuntimeEventJournal, SystemRuntimeEventRow,
-    WorkerEvent,
+    RuntimeSystemEvent, SubscriptionError, SurrealRuntimeEventJournal, WorkerEvent,
 };
 pub use event_engine::{
     EventConsumerModule, EventEngineConfig, EventGarbageCollectorService, EventWorkerService,

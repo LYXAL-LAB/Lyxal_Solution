@@ -149,7 +149,7 @@ fonction du Core à créer.
 | 1 ✅ | **Nettoyage et erreurs silencieuses** : suppression des rapports historiques, du `Cargo.lock` du crate et de `fastrand` ; `README.md` (réécrit au dernier lot) ; R-02, R-03, R-11, R-12, R-17, R-18 ; `NodeId` en UUID v7 (R-08). |
 | 2 ✅ | **Manifeste** (Q1, R-04) : `resources`, installation par phases, `manifest.toml` du runtime ; `lyxal_event` installé par le runtime. |
 | 3a ✅ | **Schéma unique** (Q2, R-01, R-06, R-13) : tables `runtime_*` en `TYPE NORMAL SCHEMAFULL PERMISSIONS NONE`, installées depuis le manifeste du runtime ; les copies du DDL dans les `bootstrap` Rust sont supprimées. Les deux tables de baux sont fusionnées en `runtime_lease` au lot 4. |
-| 3b | **Persistance en SurrealQL** (Q2, R-05) : fonctions `fn::runtime_*`, `call_fn`. |
+| 3b ✅ | **Persistance en SurrealQL** (Q2, R-05) : fonctions `fn::runtime_*` (modules, releases, migrations, santé, workers, journal), appelées par `call_fn` ; identifiants d'enregistrement composés (`[module_id, version]`…) ; `RuntimeError::StoreFailed`. Ajustements au contrat : `fn::runtime_release_register` reste un enregistrement idempotent (l'installateur réenregistre une release à la reprise), donc sans `RUNTIME_RELEASE_ALREADY_EXISTS` ; les horodatages mesurés par le nœud (`applied_at`, `duration_ms`, `timestamp`, `started_at`, `stopped_at`) restent des entiers, la base écrit `created_at`, `updated_at`, `checked_at` et `installed_at`. |
 | 4 | **Baux et migrations sûrs** (R-07, R-09) ; **erreurs en master data** (R-10). |
 | 5 | **Clôture** : README à l'état actuel, convention `0001_initial.surql` (R-16), audit de contrôle, suppression de `AUDIT.md` et de ce plan. |
 

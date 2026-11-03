@@ -9,13 +9,11 @@ use lyxal_runtime::RuntimeError;
 use lyxal_surreal::LyxalSurrealCall;
 use std::fs;
 use std::sync::Arc;
-use surrealdb::engine::any::connect;
 use tempfile::tempdir;
 
 #[tokio::test]
 async fn test_migration_runner_happy_path_and_idempotence() {
-    let client = connect("mem://").await.unwrap();
-    client.use_ns("test").use_db("test").await.unwrap();
+    let client = common::setup_db("test", "test").await;
 
     let surreal_store = SurrealRuntimeStore::new(client.clone());
     surreal_store.bootstrap().await.unwrap();
@@ -87,8 +85,7 @@ async fn test_migration_runner_happy_path_and_idempotence() {
 
 #[tokio::test]
 async fn test_migration_runner_checksum_drift_fails_hard() {
-    let client = connect("mem://").await.unwrap();
-    client.use_ns("test").use_db("test").await.unwrap();
+    let client = common::setup_db("test", "test").await;
 
     let surreal_store = SurrealRuntimeStore::new(client.clone());
     surreal_store.bootstrap().await.unwrap();
@@ -143,8 +140,7 @@ async fn test_migration_runner_checksum_drift_fails_hard() {
 
 #[tokio::test]
 async fn test_migration_runner_failure_blocks_subsequent_migrations() {
-    let client = connect("mem://").await.unwrap();
-    client.use_ns("test").use_db("test").await.unwrap();
+    let client = common::setup_db("test", "test").await;
 
     let store: Arc<dyn RuntimeStore> = Arc::new(MemoryRuntimeStore::new());
     let runner = MigrationRunner::new(store.clone(), client.clone());
@@ -218,8 +214,7 @@ async fn test_migration_runner_failure_blocks_subsequent_migrations() {
 
 #[tokio::test]
 async fn test_migration_runner_interrupted_applying_fails_hard() {
-    let client = connect("mem://").await.unwrap();
-    client.use_ns("test").use_db("test").await.unwrap();
+    let client = common::setup_db("test", "test").await;
 
     let store: Arc<dyn RuntimeStore> = Arc::new(MemoryRuntimeStore::new());
     let runner = MigrationRunner::new(store.clone(), client.clone());

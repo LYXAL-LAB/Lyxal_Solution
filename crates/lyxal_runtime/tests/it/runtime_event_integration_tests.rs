@@ -31,7 +31,6 @@ use lyxal_runtime::LyxalRuntime;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use surrealdb::engine::any::connect;
 
 struct DummyModule {
     descriptor: ModuleDescriptor,
@@ -135,8 +134,7 @@ async fn test_lifecycle_emits_started_and_stopped() {
 
 #[tokio::test]
 async fn test_installation_pipeline_emits_ordered_events() {
-    let client = connect("mem://").await.unwrap();
-    client.use_ns("test_ns").use_db("test_db").await.unwrap();
+    let client = common::setup_db("test_ns", "test_db").await;
 
     let store = Arc::new(SurrealRuntimeStore::new(client.clone()));
     store.bootstrap().await.unwrap();

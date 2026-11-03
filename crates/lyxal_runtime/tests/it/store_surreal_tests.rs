@@ -1,18 +1,11 @@
+use crate::common;
 use lyxal_runtime::{
     MigrationChecksum, MigrationId, MigrationRecord, MigrationStatus, ModuleId, RuntimeStore,
     StoredModule, StoredModuleRelease, SurrealRuntimeStore,
 };
-use surrealdb::engine::any::connect;
 
 async fn create_test_store() -> SurrealRuntimeStore {
-    let client = connect("mem://")
-        .await
-        .expect("Failed to connect to mem://");
-    client
-        .use_ns("lyxal_test")
-        .use_db("runtime_test")
-        .await
-        .expect("Failed to use namespace and database");
+    let client = common::setup_db("lyxal_test", "runtime_test").await;
     SurrealRuntimeStore::new(client)
 }
 
@@ -142,4 +135,70 @@ async fn test_surreal_store_migration_crud() {
     let list = store.list_migrations(&mod_id).await.unwrap();
     assert_eq!(list.len(), 1);
     assert_eq!(list[0].migration_id.as_str(), "001_initial_cron");
+}
+
+/// Changer le statut d'une release inconnue est une erreur, jamais une création implicite.
+#[tokio::test]
+async fn test_status_update_of_unknown_release_fails() {
+    let store = create_test_store().await;
+    store.bootstrap().await.unwrap();
+    let err = store
+        .update_release_status(&ModuleId::new("lyxal_ghost"), "1.0.0", "Installed", None)
+        .await
+        .unwrap_err();
+    assert!(
+        err.to_string().contains("RUNTIME_RELEASE_NOT_FOUND"),
+        "{err}"
+    );
+    assert!(store
+        .get_release(&ModuleId::new("lyxal_ghost"), "1.0.0")
+        .await
+        .unwrap()
+        .is_none());
+}
+
+/// Des identifiants qui ne diffèrent que par la ponctuation restent distincts.
+#[tokio::test]
+async fn test_similar_module_ids_do_not_collide() {
+    let store = create_test_store().await;
+    store.bootstrap().await.unwrap();
+    store
+        .upsert_module(&StoredModule::new(ModuleId::new("lyxal-a"), "A tiret"))
+        .await
+        .unwrap();
+    store
+        .upsert_module(&StoredModule::new(ModuleId::new("lyxal_a"), "A souligné"))
+        .await
+        .unwrap();
+    let modules = store.list_modules().await.unwrap();
+    assert_eq!(modules.len(), 2, "{modules:?}");
+    assert_eq!(
+        store
+            .get_module(&ModuleId::new("lyxal-a"))
+            .await
+            .unwrap()
+            .unwrap()
+            .name,
+        "A tiret"
+    );
+}
+
+/// Une valeur invalide est refusée par la validation de lyxal_core, avec le détail par champ.
+#[tokio::test]
+async fn test_invalid_release_is_rejected() {
+    let store = create_test_store().await;
+    store.bootstrap().await.unwrap();
+    let err = store
+        .register_release(&StoredModuleRelease::new(
+            ModuleId::new("lyxal_bad"),
+            "pas-une-version",
+            1,
+            "Installing",
+        ))
+        .await
+        .unwrap_err();
+    assert!(
+        err.to_string().contains("RUNTIME_INVALID_PARAMETERS"),
+        "{err}"
+    );
 }

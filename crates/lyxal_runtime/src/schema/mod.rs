@@ -96,11 +96,39 @@ pub const RUNTIME_EMBEDDED_RESOURCES: &[(&str, &str)] = &[
         "schema/indexes.surql",
         include_str!("../../schema/indexes.surql"),
     ),
+    (
+        "functions/runtime_module.surql",
+        include_str!("../../functions/runtime_module.surql"),
+    ),
+    (
+        "functions/runtime_release.surql",
+        include_str!("../../functions/runtime_release.surql"),
+    ),
+    (
+        "functions/runtime_migration.surql",
+        include_str!("../../functions/runtime_migration.surql"),
+    ),
+    (
+        "functions/runtime_health.surql",
+        include_str!("../../functions/runtime_health.surql"),
+    ),
+    (
+        "functions/runtime_worker.surql",
+        include_str!("../../functions/runtime_worker.surql"),
+    ),
+    (
+        "functions/runtime_event_journal.surql",
+        include_str!("../../functions/runtime_event_journal.surql"),
+    ),
+    (
+        "error/runtime.surql",
+        include_str!("../../error/runtime.surql"),
+    ),
 ];
 
-/// Installe le schéma du runtime (tables `runtime_*`) depuis son manifeste. Rejouable : chaque
-/// définition est en `OVERWRITE`. C'est la seule source du schéma du runtime : les stores SurrealDB
-/// l'appellent dans leur `bootstrap`.
+/// Installe les ressources du runtime (tables `runtime_*`, fonctions `fn::runtime_*`, définitions
+/// d'erreurs) depuis son manifeste. Rejouable. `lyxal_core` et `lyxal_error` doivent être installés
+/// avant (dépendances du manifeste). Les stores SurrealDB l'appellent dans leur `bootstrap`.
 pub async fn install_runtime_schema(client: &Surreal<Any>) -> Result<(), RuntimeError> {
     install_embedded(client, RUNTIME_MANIFEST, RUNTIME_EMBEDDED_RESOURCES)
         .await

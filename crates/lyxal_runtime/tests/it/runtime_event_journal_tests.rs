@@ -1,3 +1,4 @@
+use crate::common;
 use lyxal_runtime::event::bus::{MemoryRuntimeEventBus, RuntimeEventBus};
 use lyxal_runtime::event::event::RuntimeEventDraft;
 use lyxal_runtime::event::id::RuntimeEventId;
@@ -9,7 +10,6 @@ use lyxal_runtime::lock::node_id::NodeId;
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::RuntimeEvent;
 use std::sync::Arc;
-use surrealdb::engine::any::connect;
 
 #[tokio::test]
 async fn test_memory_journal_append_and_recent() {
@@ -77,8 +77,7 @@ async fn test_memory_journal_filter_by_module() {
 
 #[tokio::test]
 async fn test_surreal_journal_append_and_query() {
-    let client = connect("mem://").await.unwrap();
-    client.use_ns("test_ns").use_db("test_db").await.unwrap();
+    let client = common::setup_db("test_ns", "test_db").await;
 
     let journal = SurrealRuntimeEventJournal::new(client);
     journal.bootstrap().await.unwrap();

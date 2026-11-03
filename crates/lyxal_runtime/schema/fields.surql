@@ -25,11 +25,8 @@ DEFINE FIELD OVERWRITE updated_at ON TABLE runtime_release TYPE option<datetime>
 DEFINE FIELD OVERWRITE migration_id ON TABLE runtime_migration TYPE string;
 DEFINE FIELD OVERWRITE module_id ON TABLE runtime_migration TYPE string;
 DEFINE FIELD OVERWRITE module_version ON TABLE runtime_migration TYPE string;
-DEFINE FIELD OVERWRITE order ON TABLE runtime_migration TYPE option<int>;
 DEFINE FIELD OVERWRITE checksum ON TABLE runtime_migration TYPE string;
 DEFINE FIELD OVERWRITE status ON TABLE runtime_migration TYPE string;
-DEFINE FIELD OVERWRITE reversible ON TABLE runtime_migration TYPE option<bool>;
-DEFINE FIELD OVERWRITE resource_path ON TABLE runtime_migration TYPE option<string>;
 DEFINE FIELD OVERWRITE applied_at ON TABLE runtime_migration TYPE option<int>;
 DEFINE FIELD OVERWRITE duration_ms ON TABLE runtime_migration TYPE option<int>;
 DEFINE FIELD OVERWRITE error ON TABLE runtime_migration TYPE option<string>;
