@@ -43,7 +43,9 @@ impl LifecycleManager {
                 RuntimeEventPayload::Lifecycle(payload),
             )
             .with_module_id(module_id.clone());
-            let _ = bus.publish(draft).await;
+            if let Err(e) = bus.publish(draft).await {
+                tracing::warn!(error = %e, "Publication d'un événement interne du runtime impossible");
+            }
         }
     }
 

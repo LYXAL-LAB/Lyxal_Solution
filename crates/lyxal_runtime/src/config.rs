@@ -13,13 +13,16 @@ pub struct RuntimeConfig {
     pub runtime_version: semver::Version,
 }
 
+/// Version du runtime, identique à celle du crate (vérifié par test).
+pub const RUNTIME_VERSION: semver::Version = semver::Version::new(0, 1, 0);
+
 impl Default for RuntimeConfig {
     fn default() -> Self {
         Self {
             install_timeout: Duration::from_secs(30),
             start_timeout: Duration::from_secs(30),
             stop_timeout: Duration::from_secs(30),
-            runtime_version: semver::Version::parse("0.1.0").expect("Static semver"),
+            runtime_version: RUNTIME_VERSION,
         }
     }
 }
@@ -57,5 +60,15 @@ impl RuntimeConfig {
     /// Retourne la version configurée du runtime.
     pub fn runtime_version(&self) -> &semver::Version {
         &self.runtime_version
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RUNTIME_VERSION;
+
+    #[test]
+    fn runtime_version_matches_crate_version() {
+        assert_eq!(RUNTIME_VERSION.to_string(), env!("CARGO_PKG_VERSION"));
     }
 }

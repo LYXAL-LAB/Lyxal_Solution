@@ -22,7 +22,6 @@ toml = { workspace = true }
 lyxal_crypto = { workspace = true }
 uuid = { workspace = true }
 tracing = { workspace = true }
-fastrand = { workspace = true }
 
 [dev-dependencies]
 tokio = { version = "1.38", features = ["full"] }

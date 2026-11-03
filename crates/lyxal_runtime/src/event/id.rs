@@ -1,13 +1,8 @@
-use lyxal_crypto::hash::Sha256Hasher;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Deref;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::SystemTime;
 
-static EVENT_COUNTER: AtomicU64 = AtomicU64::new(1);
-
-/// Identifiant unique, déterministe et fortement typé d'un événement interne du Runtime.
+/// Identifiant unique et fortement typé d'un événement interne du Runtime.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct RuntimeEventId(String);
 
@@ -17,22 +12,9 @@ impl RuntimeEventId {
         Self(id.into().trim().to_string())
     }
 
-    /// Génère un nouvel identifiant d'événement unique combinant horodatage nanoseconde, PID, compteur atomique et entropie SHA-256 via `lyxal_crypto`.
+    /// Génère un nouvel identifiant d'événement unique (UUID v7, ordonné dans le temps).
     pub fn generate() -> Self {
-        let now = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap_or_default();
-        let nanos = now.as_nanos();
-        let pid = std::process::id();
-        let count = EVENT_COUNTER.fetch_add(1, Ordering::SeqCst);
-
-        let mut hasher = Sha256Hasher::new();
-        hasher.update(&nanos.to_le_bytes());
-        hasher.update(&pid.to_le_bytes());
-        hasher.update(&count.to_le_bytes());
-        let hash = hasher.finalize_hex();
-
-        Self(format!("evt-{}-{:06x}-{}", pid, count, &hash[..8]))
+        Self(format!("evt-{}", uuid::Uuid::now_v7().simple()))
     }
 
     /// Retourne la représentation textuelle sous forme de `&str`.

@@ -69,9 +69,12 @@ impl MemoryRuntimeEventBus {
         let (tx, mut rx) = mpsc::channel::<RuntimeEvent>(Self::DEFAULT_JOURNAL_QUEUE_CAPACITY);
         let stats_clone = self.stats.clone();
 
+        // La tâche vit tant que le bus détient l'émetteur : à sa libération, le canal se ferme,
+        // la file restante est écrite, puis la tâche se termine.
         tokio::spawn(async move {
             while let Some(event) = rx.recv().await {
-                if let Err(_err) = journal.append(&event).await {
+                if let Err(err) = journal.append(&event).await {
+                    tracing::warn!(event = %event.id, error = %err, "Écriture d'un événement interne au journal impossible");
                     if let Ok(mut stats) = stats_clone.write() {
                         stats.journal_failures += 1;
                     }
@@ -119,13 +122,16 @@ impl RuntimeEventBus for MemoryRuntimeEventBus {
             match journal_tx.try_send(event.clone()) {
                 Ok(()) => {}
                 Err(TrySendError::Full(_)) => {
-                    // La file du journal est saturée : incrémenter les compteurs sans bloquer le producteur
+                    // La file du journal est saturée : l'événement n'est pas journalisé, sans
+                    // bloquer le producteur
+                    tracing::warn!(event = %event.id, "File du journal saturée : événement interne non journalisé");
                     if let Ok(mut stats) = self.stats.write() {
                         stats.journal_dropped += 1;
                         stats.journal_failures += 1;
                     }
                 }
                 Err(TrySendError::Closed(_)) => {
+                    tracing::warn!(event = %event.id, "Journal fermé : événement interne non journalisé");
                     if let Ok(mut stats) = self.stats.write() {
                         stats.journal_failures += 1;
                     }

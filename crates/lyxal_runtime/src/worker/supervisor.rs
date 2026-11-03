@@ -12,7 +12,7 @@ use crate::worker::handle::WorkerHandle;
 use crate::worker::id::WorkerId;
 use crate::worker::metrics::{WorkerHealth, WorkerMetrics};
 use crate::worker::registry::WorkerRegistry;
-use crate::worker::report::WorkerBatchReport;
+use crate::worker::report::{WorkerBatchReport, WorkerFailure};
 use crate::worker::state::{WorkerExitReason, WorkerState};
 use crate::worker::store::WorkerStore;
 use std::collections::{BTreeMap, HashMap};
@@ -54,7 +54,9 @@ impl WorkerSupervisor {
                 RuntimeEventPayload::Worker(payload),
             )
             .with_module_id(module_id.clone());
-            let _ = bus.publish(draft).await;
+            if let Err(e) = bus.publish(draft).await {
+                tracing::warn!(error = %e, "Publication d'un événement interne du runtime impossible");
+            }
         }
     }
 
@@ -490,7 +492,10 @@ impl WorkerSupervisor {
 
             match self.start_worker(&id).await {
                 Ok(()) => report.started.push(id),
-                Err(err) => report.failed.push((id, err.to_string())),
+                Err(err) => report.failed.push(WorkerFailure {
+                    worker_id: id,
+                    error: err.to_string(),
+                }),
             }
         }
 
@@ -518,7 +523,10 @@ impl WorkerSupervisor {
 
             match self.stop_worker(&id).await {
                 Ok(()) => report.stopped.push(id),
-                Err(err) => report.failed.push((id, err.to_string())),
+                Err(err) => report.failed.push(WorkerFailure {
+                    worker_id: id,
+                    error: err.to_string(),
+                }),
             }
         }
 
@@ -612,7 +620,7 @@ impl WorkerSupervisor {
         if let Some(store) = &self.store {
             let descriptor = worker.descriptor();
             let metrics = handle.metrics();
-            let _ = store
+            if let Err(e) = store
                 .upsert_worker(
                     &self.node_id,
                     &descriptor.id,
@@ -621,7 +629,10 @@ impl WorkerSupervisor {
                     descriptor.criticality,
                     &metrics,
                 )
-                .await;
+                .await
+            {
+                tracing::warn!(worker = %descriptor.id, error = %e, "Persistance de l'état du worker impossible");
+            }
         }
     }
 }

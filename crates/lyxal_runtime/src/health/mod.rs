@@ -1,4 +1,4 @@
-//! # Module Health Engine (Lyxal Runtime V1.7)
+//! # Module Health Engine
 //!
 //! Fournit le moteur de supervision de santé du Runtime local :
 //! - [`HealthStatus`], [`GlobalHealthStatus`]

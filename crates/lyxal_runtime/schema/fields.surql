@@ -1,5 +1,5 @@
 -- ==============================================================================
--- Champs des tables système de Lyxal OS (V1.4)
+-- Champs des tables système de Lyxal OS
 -- ==============================================================================
 
 -- Champs pour system_module

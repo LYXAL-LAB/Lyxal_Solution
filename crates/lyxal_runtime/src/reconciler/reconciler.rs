@@ -17,7 +17,7 @@ use std::time::Instant;
 /// Moteur principal d'orchestration déclarative DRA (Declarative Runtime Architecture).
 ///
 /// Responsable d'observer l'état réel, de calculer le différentiel avec l'état souhaité (Dry-Run),
-/// et d'appliquer les mutations nécessaires via les pipelines certifiés V1.0–V1.5.
+/// et d'appliquer les mutations nécessaires via les pipelines d'installation du runtime.
 pub struct RuntimeReconciler {
     runtime: Arc<LyxalRuntime>,
 }
@@ -86,22 +86,29 @@ impl RuntimeReconciler {
                 continue;
             }
 
-            let desc_opt = self
-                .runtime
-                .registry()
-                .get_descriptor(&mod_id)
-                .or_else(|| {
-                    action
+            // Descripteur du module : registre, sinon manifeste du package. Un manifeste qui ne
+            // se convertit pas est un échec de l'action, jamais ignoré.
+            let desc_opt = match self.runtime.registry().get_descriptor(&mod_id) {
+                Some(desc) => Some(desc),
+                None => {
+                    let package = action
                         .package
                         .as_ref()
-                        .and_then(|p| p.manifest().to_descriptor().ok())
-                })
-                .or_else(|| {
-                    available
-                        .iter()
-                        .find(|p| p.id() == &mod_id)
-                        .and_then(|p| p.manifest().to_descriptor().ok())
-                });
+                        .or_else(|| available.iter().find(|p| p.id() == &mod_id));
+                    match package.map(|p| p.manifest().to_descriptor()).transpose() {
+                        Ok(desc) => desc,
+                        Err(error) => {
+                            failed.push(ReconciliationActionFailure {
+                                module_id: mod_id.clone(),
+                                action_kind: action.kind,
+                                error,
+                            });
+                            failed_modules.insert(mod_id);
+                            continue;
+                        }
+                    }
+                }
+            };
 
             if let Some(desc) = desc_opt {
                 let has_failed_dep = desc.dependencies.iter().any(|d| failed_modules.contains(d));
@@ -123,10 +130,22 @@ impl RuntimeReconciler {
                 ActionKind::Install { candidate_version } => {
                     // Si déjà installé et conforme, ignorer
                     if let Some(store) = self.runtime.store() {
-                        if let Ok(Some(rel)) = store
+                        let release = match store
                             .get_release(&mod_id, &candidate_version.to_string())
                             .await
                         {
+                            Ok(release) => release,
+                            Err(error) => {
+                                failed.push(ReconciliationActionFailure {
+                                    module_id: mod_id.clone(),
+                                    action_kind: action.kind,
+                                    error,
+                                });
+                                failed_modules.insert(mod_id);
+                                continue;
+                            }
+                        };
+                        if let Some(rel) = release {
                             if rel.status == "Installed" || rel.status == "Active" {
                                 skipped_revalidation.push(SkippedRevalidationAction {
                                     module_id: mod_id,
@@ -166,7 +185,7 @@ impl RuntimeReconciler {
                         }
                     };
 
-                    // Exécution de l'installation via le pipeline V1.5
+                    // Exécution de l'installation
                     match self.runtime.install_package(package_to_install).await {
                         Ok(_) => {
                             executed.push(ActionOutcome {
@@ -272,9 +291,18 @@ impl RuntimeReconciler {
                             .get(&mod_id)
                             .map(|m| m.descriptor().clone())
                         {
-                            let _ = store
+                            if let Err(error) = store
                                 .update_release_status(&mod_id, &desc.version, "Inactive", None)
-                                .await;
+                                .await
+                            {
+                                failed.push(ReconciliationActionFailure {
+                                    module_id: mod_id.clone(),
+                                    action_kind: action.kind,
+                                    error,
+                                });
+                                failed_modules.insert(mod_id);
+                                continue;
+                            }
                         }
                     }
                     executed.push(ActionOutcome {

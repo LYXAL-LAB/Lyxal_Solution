@@ -1,6 +1,6 @@
 # Plan d'implémentation — reprise de `lyxal_runtime`
 
-> **Statut : soumis au CTO.** Constats : `AUDIT.md` (R-01 à R-18). Les deux documents seront
+> **Statut : ✅ validé par le CTO** (recommandations Q1 à Q3 acceptées). Constats : `AUDIT.md` (R-01 à R-18). Les deux documents seront
 > supprimés à la clôture (§0.3.4).
 
 ## 1. Décisions demandées
@@ -146,7 +146,7 @@ fonction du Core à créer.
 
 | Lot | Contenu |
 | :- | :--- |
-| 1 | **Nettoyage et erreurs silencieuses** : suppression des rapports historiques, du `Cargo.lock` du crate et de `fastrand` ; `README.md` (réécrit au dernier lot) ; R-02, R-03, R-11, R-12, R-17, R-18 ; `NodeId` en UUID v7 (R-08). |
+| 1 ✅ | **Nettoyage et erreurs silencieuses** : suppression des rapports historiques, du `Cargo.lock` du crate et de `fastrand` ; `README.md` (réécrit au dernier lot) ; R-02, R-03, R-11, R-12, R-17, R-18 ; `NodeId` en UUID v7 (R-08). |
 | 2 | **Manifeste** (Q1, R-04) : `resources`, installation par phases, `manifest.toml` du runtime ; `lyxal_event` installé par le runtime. |
 | 3 | **Persistance en SurrealQL** (Q2, R-01, R-05, R-06, R-13) : schéma unique `runtime_*`, fonctions `fn::runtime_*`, `call_fn`. |
 | 4 | **Baux et migrations sûrs** (R-07, R-09) ; **erreurs en master data** (R-10). |

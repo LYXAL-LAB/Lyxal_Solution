@@ -18,7 +18,7 @@ pub use handle::WorkerHandle;
 pub use id::WorkerId;
 pub use metrics::{WorkerHealth, WorkerMetrics};
 pub use registry::WorkerRegistry;
-pub use report::{WorkerBatchReport, WorkerOperationReport};
+pub use report::{WorkerBatchReport, WorkerFailure, WorkerOperationReport};
 pub use restart::{RestartPolicy, WorkerRestartBackoff};
 pub use state::{WorkerExitReason, WorkerState};
 pub use store::{MemoryWorkerStore, SurrealWorkerStore, WorkerStore, WorkerStoreRow};

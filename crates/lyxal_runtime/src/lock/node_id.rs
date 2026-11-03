@@ -1,8 +1,6 @@
-use lyxal_crypto::hash::Sha256Hasher;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Deref;
-use std::time::SystemTime;
 
 /// Identifiant unique et immuable d'un nœud / instance d'exécution du Lyxal Runtime.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -14,20 +12,10 @@ impl NodeId {
         Self(id.into().trim().to_string())
     }
 
-    /// Génère un identifiant de nœud unique et déterministe combinant horodatage et entropie SHA-256 via `lyxal_crypto`.
+    /// Génère un identifiant de nœud unique (UUID v7 aléatoire). Les baux distribués reposent
+    /// sur cet identifiant : deux nœuds ne doivent jamais le partager.
     pub fn generate() -> Self {
-        let now = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap_or_default();
-        let nanos = now.as_nanos();
-        let pid = std::process::id();
-
-        let mut hasher = Sha256Hasher::new();
-        hasher.update(&nanos.to_le_bytes());
-        hasher.update(&pid.to_le_bytes());
-        let hash = hasher.finalize_hex();
-
-        Self(format!("node-{}-{}", pid, &hash[..8]))
+        Self(format!("node-{}", uuid::Uuid::now_v7().simple()))
     }
 
     /// Retourne la référence slice str.

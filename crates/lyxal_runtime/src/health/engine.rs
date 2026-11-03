@@ -12,9 +12,11 @@ use crate::types::{ModuleId, ModuleState};
 use crate::worker::descriptor::WorkerCriticality;
 use crate::worker::state::WorkerState;
 use crate::worker::supervisor::WorkerSupervisor;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::Semaphore;
+use tokio::task::JoinSet;
 
 /// Configuration du moteur de santé.
 #[derive(Debug, Clone)]
@@ -77,7 +79,9 @@ impl HealthEngine {
                     RuntimeEventPayload::Health(HealthEvent::Transition(transition)),
                 )
                 .with_module_id(mod_id);
-                let _ = bus.publish(draft).await;
+                if let Err(e) = bus.publish(draft).await {
+                    tracing::warn!(error = %e, "Publication d'un événement interne du runtime impossible");
+                }
             }
         }
     }
@@ -201,7 +205,11 @@ impl HealthEngine {
         base_ctx: &ModuleContext,
     ) -> HealthSnapshot {
         let semaphore = Arc::new(Semaphore::new(self.config.max_concurrency));
-        let mut tasks = Vec::new();
+        let mut results = Vec::new();
+        // Les sondes s'exécutent en parallèle, bornées par le sémaphore ; l'ensemble des tâches
+        // appartient à cet appel et est interrompu s'il est abandonné.
+        let mut checks: JoinSet<HealthCheckResult> = JoinSet::new();
+        let mut running: HashMap<tokio::task::Id, ModuleId> = HashMap::new();
 
         for (module_id, observed) in actual_state.modules() {
             let is_running = observed.runtime_state == Some(ModuleState::Running);
@@ -211,8 +219,10 @@ impl HealthEngine {
                     "Module is not running (state: {:?})",
                     observed.runtime_state
                 );
-                let res = HealthCheckResult::not_applicable(module_id.clone(), Some(reason));
-                tasks.push(tokio::spawn(async move { res }));
+                results.push(HealthCheckResult::not_applicable(
+                    module_id.clone(),
+                    Some(reason),
+                ));
                 continue;
             }
 
@@ -221,16 +231,30 @@ impl HealthEngine {
             let ctx = base_ctx.clone();
             let sem = semaphore.clone();
 
-            tasks.push(tokio::spawn(async move {
-                let _permit = sem.acquire().await.ok();
+            let handle = checks.spawn(async move {
+                // Le sémaphore n'est jamais fermé : l'acquisition ne peut pas échouer
+                let _permit = sem.acquire_owned().await;
                 engine.check_module(&mod_id, &ctx).await
-            }));
+            });
+            running.insert(handle.id(), module_id.clone());
         }
 
-        let mut results = Vec::with_capacity(tasks.len());
-        for task in tasks {
-            if let Ok(res) = task.await {
-                results.push(res);
+        while let Some(joined) = checks.join_next_with_id().await {
+            match joined {
+                Ok((_, res)) => results.push(res),
+                Err(err) => {
+                    // Une sonde qui panique rend son module malsain, jamais absent du rapport
+                    let Some(module_id) = running.get(&err.id()).cloned() else {
+                        tracing::error!(error = %err, "Sonde de santé interrompue, module inconnu");
+                        continue;
+                    };
+                    tracing::warn!(module = %module_id, error = %err, "Sonde de santé interrompue");
+                    results.push(HealthCheckResult::unhealthy(
+                        module_id,
+                        None,
+                        Some(format!("Sonde de santé interrompue : {err}")),
+                    ));
+                }
             }
         }
 

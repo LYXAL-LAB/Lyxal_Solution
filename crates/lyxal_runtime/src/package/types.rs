@@ -162,9 +162,27 @@ pub struct ModuleBatchInstallationResult {
     /// Modules qui étaient déjà installés (idempotence).
     pub already_installed: Vec<ModuleId>,
     /// Modules dont l'installation a échoué avec l'erreur associée.
-    pub failed: Vec<(ModuleId, RuntimeError)>,
+    pub failed: Vec<ModuleInstallFailure>,
     /// Modules dont l'installation n'a pas été tentée suite à l'échec d'une dépendance en amont.
-    pub not_attempted: Vec<(ModuleId, ModuleId)>,
+    pub not_attempted: Vec<ModuleNotAttempted>,
+}
+
+/// Échec d'installation d'un module dans un batch.
+#[derive(Debug)]
+pub struct ModuleInstallFailure {
+    /// Module concerné.
+    pub module_id: ModuleId,
+    /// Erreur rencontrée.
+    pub error: RuntimeError,
+}
+
+/// Module d'un batch non installé parce qu'une de ses dépendances a échoué.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModuleNotAttempted {
+    /// Module non tenté.
+    pub module_id: ModuleId,
+    /// Dépendance en échec qui a bloqué son installation.
+    pub failed_dependency: ModuleId,
 }
 
 impl ModuleBatchInstallationResult {
