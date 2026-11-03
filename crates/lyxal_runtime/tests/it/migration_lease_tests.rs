@@ -419,7 +419,7 @@ async fn test_surreal_migration_lease_released_takeover_contention_42_to_43() {
 
     // Pré-initialisation d'un record sentinel libéré à generation = 42
     let setup_sql = r#"
-        CREATE ONLY type::record('system_migration_lock', $key_id) SET
+        CREATE ONLY type::record('runtime_migration_lock', $key_id) SET
             lock_key = $lock_key,
             module_id = 'lyxal_booking',
             migration_id = '0001_init',
@@ -520,7 +520,7 @@ async fn test_surreal_migration_lease_expired_takeover_contention_42_to_43() {
 
     // Pré-initialisation d'un record expiré à generation = 42
     let setup_sql = r#"
-        CREATE ONLY type::record('system_migration_lock', $key_id) SET
+        CREATE ONLY type::record('runtime_migration_lock', $key_id) SET
             lock_key = $lock_key,
             module_id = 'lyxal_booking',
             migration_id = '0001_init',

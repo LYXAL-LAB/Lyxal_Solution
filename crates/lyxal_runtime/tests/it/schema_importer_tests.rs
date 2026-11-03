@@ -136,3 +136,73 @@ async fn test_schema_importer_invalid_sql_fails_hard() {
         _ => panic!("Expected SchemaImportFailed, got {:?}", err),
     }
 }
+
+/// Les fichiers embarqués du runtime sont exactement ceux de son manifeste, avec le contenu du
+/// disque.
+#[test]
+fn test_runtime_embedded_resources_match_manifest() {
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let manifest =
+        lyxal_runtime::manifest::ManifestParser::parse_str(lyxal_runtime::schema::RUNTIME_MANIFEST)
+            .unwrap();
+    let declared: Vec<&str> = manifest
+        .resources
+        .schemas
+        .iter()
+        .map(String::as_str)
+        .collect();
+    let embedded: Vec<&str> = lyxal_runtime::schema::RUNTIME_EMBEDDED_RESOURCES
+        .iter()
+        .map(|(path, _)| *path)
+        .collect();
+    assert_eq!(embedded, declared);
+    for (path, content) in lyxal_runtime::schema::RUNTIME_EMBEDDED_RESOURCES {
+        assert_eq!(
+            *content,
+            std::fs::read_to_string(root.join(path)).unwrap(),
+            "{path}"
+        );
+    }
+}
+
+/// Le schéma du runtime s'installe, se rejoue, et ses tables refusent tout accès hors des
+/// fonctions du runtime (`PERMISSIONS NONE`).
+#[tokio::test]
+async fn test_runtime_schema_is_protected_and_replayable() {
+    let client = connect("mem://").await.unwrap();
+    client
+        .use_ns("test")
+        .use_db("runtime_schema")
+        .await
+        .unwrap();
+    lyxal_runtime::schema::install_runtime_schema(&client)
+        .await
+        .unwrap();
+    lyxal_runtime::schema::install_runtime_schema(&client)
+        .await
+        .unwrap();
+
+    let mut res = client.query("INFO FOR DB").await.unwrap();
+    let info: serde_json::Value = res.take::<Option<serde_json::Value>>(0).unwrap().unwrap();
+    for table in [
+        "runtime_module",
+        "runtime_release",
+        "runtime_migration",
+        "runtime_migration_lock",
+        "runtime_installation_lock",
+        "runtime_health",
+        "runtime_worker",
+        "runtime_event_journal",
+    ] {
+        let definition = info["tables"][table]
+            .as_str()
+            .unwrap_or_default()
+            .to_string();
+        assert!(
+            definition.contains("TYPE NORMAL")
+                && definition.contains("SCHEMAFULL")
+                && definition.contains("PERMISSIONS NONE"),
+            "{table}: {definition}"
+        );
+    }
+}

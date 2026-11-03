@@ -93,37 +93,9 @@ impl SurrealHealthStore {
         Self { client }
     }
 
-    /// Initialise le schéma de la table `system_health` de manière idempotente.
+    /// Initialise le schéma de la table `runtime_health` de manière idempotente.
     pub async fn bootstrap(&self) -> Result<(), RuntimeError> {
-        let ddl = r#"
-            DEFINE TABLE OVERWRITE system_health SCHEMAFULL;
-
-            DEFINE FIELD OVERWRITE node_id ON TABLE system_health TYPE string;
-            DEFINE FIELD OVERWRITE module_id ON TABLE system_health TYPE string;
-            DEFINE FIELD OVERWRITE status ON TABLE system_health TYPE string;
-            DEFINE FIELD OVERWRITE latency_ms ON TABLE system_health TYPE option<int>;
-            DEFINE FIELD OVERWRITE message ON TABLE system_health TYPE option<string>;
-            DEFINE FIELD OVERWRITE checked_at ON TABLE system_health TYPE option<datetime>;
-            DEFINE FIELD OVERWRITE updated_at ON TABLE system_health TYPE option<datetime>;
-
-            DEFINE INDEX OVERWRITE idx_system_health_unique ON TABLE system_health COLUMNS node_id, module_id UNIQUE;
-        "#;
-
-        let res = self
-            .client
-            .query(ddl)
-            .await
-            .map_err(|err| RuntimeError::Internal {
-                code: "RUNTIME_HEALTH_BOOTSTRAP_FAILED",
-                message: format!("Failed to bootstrap system_health schema: {}", err),
-            })?;
-
-        res.check().map_err(|err| RuntimeError::Internal {
-            code: "RUNTIME_HEALTH_BOOTSTRAP_FAILED",
-            message: format!("SurrealDB system_health bootstrap check failed: {}", err),
-        })?;
-
-        Ok(())
+        crate::schema::install_runtime_schema(&self.client).await
     }
 }
 
@@ -142,7 +114,7 @@ impl HealthStore for SurrealHealthStore {
             );
 
             let query = r#"
-                UPSERT ONLY type::record('system_health', $key) SET
+                UPSERT ONLY type::record('runtime_health', $key) SET
                     node_id = $node_id,
                     module_id = $module_id,
                     status = $status,
@@ -186,7 +158,7 @@ impl HealthStore for SurrealHealthStore {
         &self,
         node_id: &NodeId,
     ) -> Result<Option<HealthSnapshot>, RuntimeError> {
-        let query = "SELECT * FROM system_health WHERE node_id = $node_id ORDER BY module_id ASC;";
+        let query = "SELECT * FROM runtime_health WHERE node_id = $node_id ORDER BY module_id ASC;";
 
         let mut res = self
             .client
@@ -200,7 +172,7 @@ impl HealthStore for SurrealHealthStore {
 
         let rows: Vec<SystemHealthRow> = res.take(0).map_err(|err| RuntimeError::Internal {
             code: "RUNTIME_HEALTH_DATA_INVALID",
-            message: format!("Failed to deserialize system_health rows: {}", err),
+            message: format!("Failed to deserialize runtime_health rows: {}", err),
         })?;
 
         if rows.is_empty() {

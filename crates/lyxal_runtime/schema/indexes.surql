@@ -1,26 +1,26 @@
 -- ==============================================================================
--- Index des tables système de Lyxal OS
+-- Index des tables du runtime de Lyxal OS
 -- ==============================================================================
 
-DEFINE INDEX OVERWRITE idx_system_module_id ON TABLE system_module COLUMNS module_id UNIQUE;
+DEFINE INDEX OVERWRITE idx_runtime_module_id ON TABLE runtime_module COLUMNS module_id UNIQUE;
 
-DEFINE INDEX OVERWRITE idx_system_module_version ON TABLE system_module_release COLUMNS module_id, version UNIQUE;
+DEFINE INDEX OVERWRITE idx_runtime_module_version ON TABLE runtime_release COLUMNS module_id, version UNIQUE;
 
-DEFINE INDEX OVERWRITE idx_system_migration_module_id ON TABLE system_migration COLUMNS module_id, migration_id UNIQUE;
+DEFINE INDEX OVERWRITE idx_runtime_migration_module_id ON TABLE runtime_migration COLUMNS module_id, migration_id UNIQUE;
 
-DEFINE INDEX OVERWRITE idx_system_migration_status ON TABLE system_migration COLUMNS status;
+DEFINE INDEX OVERWRITE idx_runtime_migration_status ON TABLE runtime_migration COLUMNS status;
 
-DEFINE INDEX OVERWRITE idx_system_migration_lock_key ON TABLE system_migration_lock COLUMNS lock_key UNIQUE;
+DEFINE INDEX OVERWRITE idx_runtime_migration_lock_key ON TABLE runtime_migration_lock COLUMNS lock_key UNIQUE;
 
-DEFINE INDEX OVERWRITE idx_system_installation_lock_key ON TABLE system_installation_lock COLUMNS lock_key UNIQUE;
+DEFINE INDEX OVERWRITE idx_runtime_installation_lock_key ON TABLE runtime_installation_lock COLUMNS lock_key UNIQUE;
 
-DEFINE INDEX OVERWRITE idx_system_health_unique ON TABLE system_health COLUMNS node_id, module_id UNIQUE;
+DEFINE INDEX OVERWRITE idx_runtime_health_unique ON TABLE runtime_health COLUMNS node_id, module_id UNIQUE;
 
-DEFINE INDEX OVERWRITE idx_system_worker_unique ON TABLE system_worker COLUMNS node_id, worker_id UNIQUE;
+DEFINE INDEX OVERWRITE idx_runtime_worker_unique ON TABLE runtime_worker COLUMNS node_id, worker_id UNIQUE;
 
-DEFINE INDEX OVERWRITE idx_system_runtime_event_id ON TABLE system_runtime_event COLUMNS event_id UNIQUE;
-DEFINE INDEX OVERWRITE idx_system_runtime_event_node_seq ON TABLE system_runtime_event COLUMNS node_id, sequence UNIQUE;
-DEFINE INDEX OVERWRITE idx_system_runtime_event_module ON TABLE system_runtime_event COLUMNS module_id;
-DEFINE INDEX OVERWRITE idx_system_runtime_event_kind ON TABLE system_runtime_event COLUMNS kind;
-DEFINE INDEX OVERWRITE idx_system_runtime_event_timestamp ON TABLE system_runtime_event COLUMNS timestamp;
+DEFINE INDEX OVERWRITE idx_runtime_runtime_event_id ON TABLE runtime_event_journal COLUMNS event_id UNIQUE;
+DEFINE INDEX OVERWRITE idx_runtime_runtime_event_node_seq ON TABLE runtime_event_journal COLUMNS node_id, sequence UNIQUE;
+DEFINE INDEX OVERWRITE idx_runtime_runtime_event_module ON TABLE runtime_event_journal COLUMNS module_id;
+DEFINE INDEX OVERWRITE idx_runtime_runtime_event_kind ON TABLE runtime_event_journal COLUMNS kind;
+DEFINE INDEX OVERWRITE idx_runtime_runtime_event_timestamp ON TABLE runtime_event_journal COLUMNS timestamp;
 

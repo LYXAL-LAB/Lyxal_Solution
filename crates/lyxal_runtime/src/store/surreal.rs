@@ -83,115 +83,13 @@ struct SystemMigrationRow {
 #[async_trait]
 impl RuntimeStore for SurrealRuntimeStore {
     async fn bootstrap(&self) -> Result<(), RuntimeError> {
-        let bootstrap_sql = r#"
-            -- Tables système
-            DEFINE TABLE OVERWRITE system_module SCHEMAFULL
-                COMMENT "Table système enregistrant l'identité canonique des modules connus du Runtime";
-
-            DEFINE TABLE OVERWRITE system_module_release SCHEMAFULL
-                COMMENT "Table système enregistrant l'historique des releases de modules";
-
-            DEFINE TABLE OVERWRITE system_migration SCHEMAFULL
-                COMMENT "Table système enregistrant l'historique des migrations de schéma appliquées";
-
-            DEFINE TABLE OVERWRITE system_migration_lock SCHEMAFULL
-                COMMENT "Table système enregistrant les baux distribués temporaires de migration";
-
-            DEFINE TABLE OVERWRITE system_installation_lock SCHEMAFULL
-                COMMENT "Table système enregistrant les baux distribués temporaires d'installation de release";
-
-            -- Champs system_module
-            DEFINE FIELD OVERWRITE module_id ON TABLE system_module TYPE string;
-            DEFINE FIELD OVERWRITE name ON TABLE system_module TYPE string;
-            DEFINE FIELD OVERWRITE description ON TABLE system_module TYPE option<string>;
-            DEFINE FIELD OVERWRITE created_at ON TABLE system_module TYPE datetime DEFAULT time::now() READONLY;
-            DEFINE FIELD OVERWRITE updated_at ON TABLE system_module TYPE datetime DEFAULT time::now();
-
-            -- Champs system_module_release
-            DEFINE FIELD OVERWRITE module_id ON TABLE system_module_release TYPE string;
-            DEFINE FIELD OVERWRITE version ON TABLE system_module_release TYPE string;
-            DEFINE FIELD OVERWRITE manifest_version ON TABLE system_module_release TYPE int;
-            DEFINE FIELD OVERWRITE description ON TABLE system_module_release TYPE option<string>;
-            DEFINE FIELD OVERWRITE status ON TABLE system_module_release TYPE string;
-            DEFINE FIELD OVERWRITE checksum ON TABLE system_module_release TYPE option<string>;
-            DEFINE FIELD OVERWRITE installation_phase ON TABLE system_module_release TYPE option<string>;
-            DEFINE FIELD OVERWRITE created_at ON TABLE system_module_release TYPE datetime DEFAULT time::now() READONLY;
-            DEFINE FIELD OVERWRITE installed_at ON TABLE system_module_release TYPE option<datetime>;
-            DEFINE FIELD OVERWRITE updated_at ON TABLE system_module_release TYPE option<datetime>;
-
-            -- Champs system_migration
-            DEFINE FIELD OVERWRITE migration_id ON TABLE system_migration TYPE string;
-            DEFINE FIELD OVERWRITE module_id ON TABLE system_migration TYPE string;
-            DEFINE FIELD OVERWRITE module_version ON TABLE system_migration TYPE string;
-            DEFINE FIELD OVERWRITE order ON TABLE system_migration TYPE option<int>;
-            DEFINE FIELD OVERWRITE checksum ON TABLE system_migration TYPE string;
-            DEFINE FIELD OVERWRITE status ON TABLE system_migration TYPE string;
-            DEFINE FIELD OVERWRITE reversible ON TABLE system_migration TYPE option<bool>;
-            DEFINE FIELD OVERWRITE resource_path ON TABLE system_migration TYPE option<string>;
-            DEFINE FIELD OVERWRITE applied_at ON TABLE system_migration TYPE option<int>;
-            DEFINE FIELD OVERWRITE duration_ms ON TABLE system_migration TYPE option<int>;
-            DEFINE FIELD OVERWRITE error ON TABLE system_migration TYPE option<string>;
-            DEFINE FIELD OVERWRITE created_at ON TABLE system_migration TYPE datetime DEFAULT time::now() READONLY;
-            DEFINE FIELD OVERWRITE updated_at ON TABLE system_migration TYPE datetime DEFAULT time::now();
-
-            -- Champs system_migration_lock
-            DEFINE FIELD OVERWRITE lock_key ON TABLE system_migration_lock TYPE string;
-            DEFINE FIELD OVERWRITE module_id ON TABLE system_migration_lock TYPE string;
-            DEFINE FIELD OVERWRITE migration_id ON TABLE system_migration_lock TYPE string;
-            DEFINE FIELD OVERWRITE owner_node_id ON TABLE system_migration_lock TYPE string;
-            DEFINE FIELD OVERWRITE generation ON TABLE system_migration_lock TYPE int;
-            DEFINE FIELD OVERWRITE is_released ON TABLE system_migration_lock TYPE option<bool>;
-            DEFINE FIELD OVERWRITE acquired_at ON TABLE system_migration_lock TYPE option<int>;
-            DEFINE FIELD OVERWRITE renewed_at ON TABLE system_migration_lock TYPE option<int>;
-            DEFINE FIELD OVERWRITE expires_at ON TABLE system_migration_lock TYPE option<int>;
-            DEFINE FIELD OVERWRITE released_at ON TABLE system_migration_lock TYPE option<int>;
-            DEFINE FIELD OVERWRITE created_at ON TABLE system_migration_lock TYPE datetime DEFAULT time::now() READONLY;
-            DEFINE FIELD OVERWRITE updated_at ON TABLE system_migration_lock TYPE datetime DEFAULT time::now();
-
-            -- Champs system_installation_lock
-            DEFINE FIELD OVERWRITE lock_key ON TABLE system_installation_lock TYPE string;
-            DEFINE FIELD OVERWRITE module_id ON TABLE system_installation_lock TYPE string;
-            DEFINE FIELD OVERWRITE version ON TABLE system_installation_lock TYPE string;
-            DEFINE FIELD OVERWRITE owner_node_id ON TABLE system_installation_lock TYPE string;
-            DEFINE FIELD OVERWRITE generation ON TABLE system_installation_lock TYPE int;
-            DEFINE FIELD OVERWRITE is_released ON TABLE system_installation_lock TYPE option<bool>;
-            DEFINE FIELD OVERWRITE acquired_at ON TABLE system_installation_lock TYPE option<int>;
-            DEFINE FIELD OVERWRITE renewed_at ON TABLE system_installation_lock TYPE option<int>;
-            DEFINE FIELD OVERWRITE expires_at ON TABLE system_installation_lock TYPE option<int>;
-            DEFINE FIELD OVERWRITE released_at ON TABLE system_installation_lock TYPE option<int>;
-            DEFINE FIELD OVERWRITE created_at ON TABLE system_installation_lock TYPE datetime DEFAULT time::now() READONLY;
-            DEFINE FIELD OVERWRITE updated_at ON TABLE system_installation_lock TYPE datetime DEFAULT time::now();
-
-            -- Indexes
-            DEFINE INDEX OVERWRITE idx_system_module_id ON TABLE system_module COLUMNS module_id UNIQUE;
-            DEFINE INDEX OVERWRITE idx_system_module_version ON TABLE system_module_release COLUMNS module_id, version UNIQUE;
-            DEFINE INDEX OVERWRITE idx_system_migration_module_id ON TABLE system_migration COLUMNS module_id, migration_id UNIQUE;
-            DEFINE INDEX OVERWRITE idx_system_migration_status ON TABLE system_migration COLUMNS status;
-            DEFINE INDEX OVERWRITE idx_system_migration_lock_key ON TABLE system_migration_lock COLUMNS lock_key UNIQUE;
-            DEFINE INDEX OVERWRITE idx_system_installation_lock_key ON TABLE system_installation_lock COLUMNS lock_key UNIQUE;
-        "#;
-
-        let res = self
-            .client
-            .query(bootstrap_sql)
-            .await
-            .map_err(|err| RuntimeError::Internal {
-                code: "RUNTIME_STORE_BOOTSTRAP_FAILED",
-                message: format!("Failed to bootstrap SurrealDB runtime schema: {}", err),
-            })?;
-
-        res.check().map_err(|err| RuntimeError::Internal {
-            code: "RUNTIME_STORE_BOOTSTRAP_FAILED",
-            message: format!("SurrealDB bootstrap check failed: {}", err),
-        })?;
-
-        Ok(())
+        crate::schema::install_runtime_schema(&self.client).await
     }
 
     async fn upsert_module(&self, module: &StoredModule) -> Result<(), RuntimeError> {
         let key_id = module.module_id.as_str().replace([':', '.', '-'], "_");
         let query = r#"
-            UPSERT type::record('system_module', $key_id) SET
+            UPSERT type::record('runtime_module', $key_id) SET
                 module_id = $module_id,
                 name = $name,
                 description = $description,
@@ -248,7 +146,7 @@ impl RuntimeStore for SurrealRuntimeStore {
     }
 
     async fn get_module(&self, id: &ModuleId) -> Result<Option<StoredModule>, RuntimeError> {
-        let query = "SELECT * FROM system_module WHERE module_id = $module_id LIMIT 1;";
+        let query = "SELECT * FROM runtime_module WHERE module_id = $module_id LIMIT 1;";
 
         let mut res = self
             .client
@@ -277,7 +175,7 @@ impl RuntimeStore for SurrealRuntimeStore {
     }
 
     async fn list_modules(&self) -> Result<Vec<StoredModule>, RuntimeError> {
-        let query = "SELECT * FROM system_module ORDER BY module_id ASC;";
+        let query = "SELECT * FROM runtime_module ORDER BY module_id ASC;";
 
         let mut res = self
             .client
@@ -313,7 +211,7 @@ impl RuntimeStore for SurrealRuntimeStore {
         );
 
         let query = r#"
-            UPSERT type::record('system_module_release', $key_id) SET
+            UPSERT type::record('runtime_release', $key_id) SET
                 module_id = $module_id,
                 version = $version,
                 manifest_version = $manifest_version,
@@ -391,7 +289,7 @@ impl RuntimeStore for SurrealRuntimeStore {
             version.replace([':', '.', '-'], "_")
         );
 
-        let query = "SELECT * FROM type::record('system_module_release', $key_id);";
+        let query = "SELECT * FROM type::record('runtime_release', $key_id);";
 
         let mut res = self
             .client
@@ -431,7 +329,7 @@ impl RuntimeStore for SurrealRuntimeStore {
         module_id: &ModuleId,
     ) -> Result<Vec<StoredModuleRelease>, RuntimeError> {
         let query =
-            "SELECT * FROM system_module_release WHERE module_id = $module_id ORDER BY version ASC;";
+            "SELECT * FROM runtime_release WHERE module_id = $module_id ORDER BY version ASC;";
 
         let mut res = self
             .client
@@ -481,7 +379,7 @@ impl RuntimeStore for SurrealRuntimeStore {
         );
 
         let query = r#"
-            UPSERT type::record('system_module_release', $key_id) SET
+            UPSERT type::record('runtime_release', $key_id) SET
                 status = $status,
                 installation_phase = $phase,
                 updated_at = time::now();
@@ -549,7 +447,7 @@ impl RuntimeStore for SurrealRuntimeStore {
         );
 
         let query = r#"
-            UPSERT type::record('system_migration', $key_id) SET
+            UPSERT type::record('runtime_migration', $key_id) SET
                 migration_id = $migration_id,
                 module_id = $module_id,
                 module_version = $module_version,
@@ -629,7 +527,7 @@ impl RuntimeStore for SurrealRuntimeStore {
             migration_id.as_str().replace([':', '.', '-'], "_")
         );
 
-        let query = "SELECT * FROM type::record('system_migration', $key_id);";
+        let query = "SELECT * FROM type::record('runtime_migration', $key_id);";
 
         let mut res = self
             .client
@@ -685,7 +583,7 @@ impl RuntimeStore for SurrealRuntimeStore {
         module_id: &ModuleId,
     ) -> Result<Vec<MigrationRecord>, RuntimeError> {
         let query =
-            "SELECT * FROM system_migration WHERE module_id = $module_id ORDER BY migration_id ASC;";
+            "SELECT * FROM runtime_migration WHERE module_id = $module_id ORDER BY migration_id ASC;";
 
         let mut res = self
             .client

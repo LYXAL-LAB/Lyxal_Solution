@@ -148,7 +148,8 @@ fonction du Core à créer.
 | :- | :--- |
 | 1 ✅ | **Nettoyage et erreurs silencieuses** : suppression des rapports historiques, du `Cargo.lock` du crate et de `fastrand` ; `README.md` (réécrit au dernier lot) ; R-02, R-03, R-11, R-12, R-17, R-18 ; `NodeId` en UUID v7 (R-08). |
 | 2 ✅ | **Manifeste** (Q1, R-04) : `resources`, installation par phases, `manifest.toml` du runtime ; `lyxal_event` installé par le runtime. |
-| 3 | **Persistance en SurrealQL** (Q2, R-01, R-05, R-06, R-13) : schéma unique `runtime_*`, fonctions `fn::runtime_*`, `call_fn`. |
+| 3a ✅ | **Schéma unique** (Q2, R-01, R-06, R-13) : tables `runtime_*` en `TYPE NORMAL SCHEMAFULL PERMISSIONS NONE`, installées depuis le manifeste du runtime ; les copies du DDL dans les `bootstrap` Rust sont supprimées. Les deux tables de baux sont fusionnées en `runtime_lease` au lot 4. |
+| 3b | **Persistance en SurrealQL** (Q2, R-05) : fonctions `fn::runtime_*`, `call_fn`. |
 | 4 | **Baux et migrations sûrs** (R-07, R-09) ; **erreurs en master data** (R-10). |
 | 5 | **Clôture** : README à l'état actuel, convention `0001_initial.surql` (R-16), audit de contrôle, suppression de `AUDIT.md` et de ce plan. |
 

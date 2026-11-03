@@ -13,7 +13,7 @@ pub trait RuntimeStore: Send + Sync {
     /// Initialise et vérifie les tables et index système du Runtime de façon strictement idempotente.
     async fn bootstrap(&self) -> Result<(), RuntimeError>;
 
-    /// Enregistre ou met à jour les métadonnées d'un module (`system_module`).
+    /// Enregistre ou met à jour les métadonnées d'un module (`runtime_module`).
     async fn upsert_module(&self, module: &StoredModule) -> Result<(), RuntimeError>;
 
     /// Récupère un module par son identifiant.
@@ -22,7 +22,7 @@ pub trait RuntimeStore: Send + Sync {
     /// Liste l'ensemble des modules enregistrés dans le store système.
     async fn list_modules(&self) -> Result<Vec<StoredModule>, RuntimeError>;
 
-    /// Enregistre une nouvelle release pour un module (`system_module_release`).
+    /// Enregistre une nouvelle release pour un module (`runtime_release`).
     async fn register_release(&self, release: &StoredModuleRelease) -> Result<(), RuntimeError>;
 
     /// Récupère une release spécifique d'un module par version.
@@ -47,7 +47,7 @@ pub trait RuntimeStore: Send + Sync {
         phase: Option<&str>,
     ) -> Result<(), RuntimeError>;
 
-    /// Enregistre ou met à jour l'historique d'une migration (`system_migration`).
+    /// Enregistre ou met à jour l'historique d'une migration (`runtime_migration`).
     async fn record_migration(&self, migration: &MigrationRecord) -> Result<(), RuntimeError>;
 
     /// Récupère l'enregistrement d'une migration pour un module donné.

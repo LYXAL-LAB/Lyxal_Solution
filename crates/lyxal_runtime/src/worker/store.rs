@@ -13,7 +13,7 @@ use std::sync::{Arc, RwLock};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
-/// Enregistrement persistant d'un worker dans `system_worker`.
+/// Enregistrement persistant d'un worker dans `runtime_worker`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, SurrealValue)]
 pub struct WorkerStoreRow {
     pub node_id: String,
@@ -171,37 +171,7 @@ impl SurrealWorkerStore {
 #[async_trait]
 impl WorkerStore for SurrealWorkerStore {
     async fn bootstrap(&self) -> Result<(), RuntimeError> {
-        let query = r#"
-            DEFINE TABLE OVERWRITE system_worker SCHEMAFULL;
-            DEFINE FIELD OVERWRITE node_id ON TABLE system_worker TYPE string;
-            DEFINE FIELD OVERWRITE worker_id ON TABLE system_worker TYPE string;
-            DEFINE FIELD OVERWRITE module_id ON TABLE system_worker TYPE string;
-            DEFINE FIELD OVERWRITE state ON TABLE system_worker TYPE string;
-            DEFINE FIELD OVERWRITE criticality ON TABLE system_worker TYPE string;
-            DEFINE FIELD OVERWRITE restart_count ON TABLE system_worker TYPE int;
-            DEFINE FIELD OVERWRITE failure_count ON TABLE system_worker TYPE int;
-            DEFINE FIELD OVERWRITE last_error ON TABLE system_worker TYPE option<string>;
-            DEFINE FIELD OVERWRITE started_at ON TABLE system_worker TYPE option<int>;
-            DEFINE FIELD OVERWRITE stopped_at ON TABLE system_worker TYPE option<int>;
-            DEFINE FIELD OVERWRITE updated_at ON TABLE system_worker TYPE datetime DEFAULT time::now();
-            DEFINE INDEX OVERWRITE idx_system_worker_unique ON TABLE system_worker COLUMNS node_id, worker_id UNIQUE;
-        "#;
-
-        let res =
-            self.client
-                .query(query)
-                .await
-                .map_err(|err| RuntimeError::WorkerStoreFailed {
-                    worker: "system_worker".to_string(),
-                    message: format!("Failed to bootstrap system_worker schema: {}", err),
-                })?;
-
-        res.check().map_err(|err| RuntimeError::WorkerStoreFailed {
-            worker: "system_worker".to_string(),
-            message: format!("Failed to check bootstrap system_worker schema: {}", err),
-        })?;
-
-        Ok(())
+        crate::schema::install_runtime_schema(&self.client).await
     }
 
     async fn upsert_worker(
@@ -217,7 +187,7 @@ impl WorkerStore for SurrealWorkerStore {
         let crit_str = format!("{:?}", criticality).to_lowercase();
 
         let query = r#"
-            UPSERT type::record('system_worker', $key_id) SET
+            UPSERT type::record('runtime_worker', $key_id) SET
                 node_id = $node_id,
                 worker_id = $worker_id,
                 module_id = $module_id,
@@ -265,7 +235,7 @@ impl WorkerStore for SurrealWorkerStore {
         worker_id: &WorkerId,
     ) -> Result<Option<WorkerStoreRow>, RuntimeError> {
         let key_id = Self::make_key_id(node_id, worker_id);
-        let query = "SELECT * FROM type::record('system_worker', $key_id);";
+        let query = "SELECT * FROM type::record('runtime_worker', $key_id);";
 
         let mut res = self
             .client
@@ -289,7 +259,7 @@ impl WorkerStore for SurrealWorkerStore {
         &self,
         node_id: &NodeId,
     ) -> Result<Vec<WorkerStoreRow>, RuntimeError> {
-        let query = "SELECT * FROM system_worker WHERE node_id = $node_id ORDER BY worker_id ASC;";
+        let query = "SELECT * FROM runtime_worker WHERE node_id = $node_id ORDER BY worker_id ASC;";
 
         let mut res = self
             .client
@@ -297,13 +267,13 @@ impl WorkerStore for SurrealWorkerStore {
             .bind(("node_id", node_id.to_string()))
             .await
             .map_err(|err| RuntimeError::WorkerStoreFailed {
-                worker: "system_worker".to_string(),
+                worker: "runtime_worker".to_string(),
                 message: format!("Failed to dispatch list node workers: {}", err),
             })?;
 
         let rows: Vec<WorkerStoreRow> =
             res.take(0).map_err(|err| RuntimeError::WorkerStoreFailed {
-                worker: "system_worker".to_string(),
+                worker: "runtime_worker".to_string(),
                 message: format!("Failed to decode node worker rows: {}", err),
             })?;
         Ok(rows)

@@ -239,7 +239,7 @@ impl InstallationLeaseManager for MemoryInstallationLeaseManager {
     }
 }
 
-/// Structure de persistance interne pour `system_installation_lock`.
+/// Structure de persistance interne pour `runtime_installation_lock`.
 #[derive(Debug, SurrealValue)]
 struct SystemInstallationLockRow {
     lock_key: String,
@@ -328,7 +328,7 @@ impl InstallationLeaseManager for SurrealInstallationLeaseManager {
         // 1. Initialisation idempotente du record sentinel si absent (generation = 0, is_released = true, expires_at = 0)
         {
             let _guard = INSTALLATION_INIT_MUTEX.lock().await;
-            let check_query = "SELECT id FROM type::record('system_installation_lock', $key_id);";
+            let check_query = "SELECT id FROM type::record('runtime_installation_lock', $key_id);";
             let mut check_res = self
                 .client
                 .query(check_query)
@@ -354,7 +354,7 @@ impl InstallationLeaseManager for SurrealInstallationLeaseManager {
 
             if !exists {
                 let init_query = r#"
-                    CREATE ONLY type::record('system_installation_lock', $key_id) SET
+                    CREATE ONLY type::record('runtime_installation_lock', $key_id) SET
                         lock_key = $lock_key,
                         module_id = $module_id,
                         version = $version,
@@ -397,7 +397,7 @@ impl InstallationLeaseManager for SurrealInstallationLeaseManager {
         }
 
         // 2. Lecture de l'état actuel du verrou
-        let select_query = "SELECT * FROM type::record('system_installation_lock', $key_id);";
+        let select_query = "SELECT * FROM type::record('runtime_installation_lock', $key_id);";
         let mut sel_res = self
             .client
             .query(select_query)
@@ -446,7 +446,7 @@ impl InstallationLeaseManager for SurrealInstallationLeaseManager {
         // 3. Vrai Compare-And-Swap conditionnel : atomicité basée sur generation == expected_generation
         let next_gen = expected_gen + 1;
         let cas_query = r#"
-            UPDATE type::record('system_installation_lock', $key_id) SET
+            UPDATE type::record('runtime_installation_lock', $key_id) SET
                 owner_node_id = $owner_node_id,
                 generation = $next_gen,
                 is_released = false,
@@ -546,7 +546,7 @@ impl InstallationLeaseManager for SurrealInstallationLeaseManager {
         let key_record_id = lock_key_str.replace([':', '.', '-'], "_");
 
         let update_query = r#"
-            UPDATE type::record('system_installation_lock', $key_id) SET
+            UPDATE type::record('runtime_installation_lock', $key_id) SET
                 renewed_at = $now_secs,
                 expires_at = $expires_at_secs,
                 updated_at = time::now()
@@ -602,7 +602,7 @@ impl InstallationLeaseManager for SurrealInstallationLeaseManager {
 
         // AUCUN DELETE ! Invariant Fencing : libération logique avec maintien de la génération N
         let update_query = r#"
-            UPDATE type::record('system_installation_lock', $key_id) SET
+            UPDATE type::record('runtime_installation_lock', $key_id) SET
                 is_released = true,
                 expires_at = 0,
                 released_at = $now_secs,
@@ -653,7 +653,7 @@ impl InstallationLeaseManager for SurrealInstallationLeaseManager {
     ) -> Result<Option<InstallationLease>, RuntimeError> {
         let lock_key_str = key.canonical_string();
         let key_record_id = lock_key_str.replace([':', '.', '-'], "_");
-        let query = "SELECT * FROM type::record('system_installation_lock', $key_id);";
+        let query = "SELECT * FROM type::record('runtime_installation_lock', $key_id);";
 
         let mut res = self
             .client

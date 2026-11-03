@@ -1,7 +1,7 @@
 use crate::types::ModuleId;
 use serde::{Deserialize, Serialize};
 
-/// Représentation persistée de l'identité stable d'un module dans la table `system_module`.
+/// Représentation persistée de l'identité stable d'un module dans la table `runtime_module`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StoredModule {
     /// Identifiant canonique du module (ex: "lyxal-calendar").
@@ -38,7 +38,7 @@ impl StoredModule {
     }
 }
 
-/// Représentation persistée d'une release spécifique de module dans la table `system_module_release`.
+/// Représentation persistée d'une release spécifique de module dans la table `runtime_release`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StoredModuleRelease {
     /// Module propriétaire de cette release.
