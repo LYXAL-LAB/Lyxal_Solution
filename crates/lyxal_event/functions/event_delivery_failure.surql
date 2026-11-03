@@ -1,7 +1,6 @@
 -- ============================================================================
 -- Function: fn::event_delivery_failure
--- Description: Enregistre un échec de traitement, recalcule le retry ou bascule en Dead-Letter.
--- Invariant: 1 tentative réelle = 1 incrément (incrémenté au claim/assign_seq, non répété ici).
+-- Description: Enregistre l'échec transitoire d'une livraison et la date de son prochain essai.
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::event_delivery_failure(
@@ -32,42 +31,14 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_failure(
         RETURN fn::error_result("EVENT_DELIVERY_NOT_FOUND", $p.language, { delivery_id: $delivery_id });
     };
 
-    -- Vérifie si le quota maximal de tentatives est atteint
-    IF $delivery.attempts >= $delivery.max_attempts {
-        LET $outbox = (SELECT * FROM ONLY $delivery.outbox_event);
-
-        -- Enregistrement dans la table Dead-Letter pour audit et rejeu
-        CREATE event_dead_letter CONTENT {
-            delivery: $delivery.id,
-            outbox_event: $delivery.outbox_event,
-            target_module: $delivery.target_module,
-            context: $delivery.context,
-            attempts: $delivery.attempts,
-            last_error: $error,
-            payload: IF $outbox != NONE THEN $outbox.payload ELSE {} END,
-            metadata: IF $outbox != NONE THEN $outbox.metadata ELSE {} END,
-            replayed: false,
-            exhausted_at: time::now()
-        };
-
-        -- Marque la livraison comme dead_letter sans ré-incrémenter attempts
-        UPDATE $delivery.id SET
-            status = "dead_letter",
-            last_error = $error,
-            locked_until = NONE,
-            lease_owner = NONE;
-    } ELSE {
-        -- Calcul du prochain instant de tentative
-        LET $next_retry = time::now() + <duration> string::concat($retry_delay_seconds, "s");
-
-        UPDATE $delivery.id SET
-            status = "failed",
-            last_error = $error,
-            next_retry_at = $next_retry,
-            locked_until = NONE,
-            lease_owner = NONE;
-    };
+    -- Enregistre l'échec et la date du prochain essai. Le leader garde le message en mémoire et
+    -- son verrou : la décision de dead letter appartient au moteur (barrière DLQ protégée par le
+    -- bail, fn::event_dead_letter_transfer), jamais à cette fonction.
+    UPDATE $delivery.id SET
+        status = "failed",
+        last_error = $error,
+        next_retry_at = time::now() + <duration> string::concat($retry_delay_seconds, "s");
 
     RETURN fn::result_ok(true);
-} COMMENT "Enregistre l'échec d'une livraison, replanifie avec backoff ou met en quarantaine (DLQ)"
+} COMMENT "Enregistre l'échec transitoire d'une livraison et la date de son prochain essai ; la mise en dead letter relève de la barrière DLQ du moteur"
 PERMISSIONS FULL;

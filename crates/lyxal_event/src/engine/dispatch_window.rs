@@ -43,7 +43,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use tokio::time::Instant;
 
-use super::pending_delivery::{DeliveryPolicy, PendingDelivery};
+use super::pending_delivery::PendingDelivery;
 
 /// Erreur survenue lors des opérations de la fenêtre de dispatching.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,7 +72,6 @@ pub enum AckOutcome {
 }
 
 /// Fenêtre de dispatching pipelinée avec suivi de progression contiguë.
-#[allow(dead_code)]
 pub struct DispatchWindow<T> {
     /// Messages expédiés et en attente d'ACK, indexés par offset / séquence.
     in_flight: BTreeMap<u64, PendingDelivery<T>>,
@@ -135,19 +134,9 @@ impl<T> DispatchWindow<T> {
     }
 
     /// Indique si la fenêtre est entièrement vide (aucun message en vol).
+    #[cfg(test)]
     pub fn is_empty(&self) -> bool {
         self.in_flight.is_empty()
-    }
-
-    /// Retourne l'offset le plus élevé dispatché ou acquitté dans la fenêtre.
-    pub fn highest_dispatched_offset(&self) -> Option<u64> {
-        let last_in_flight = self.in_flight.keys().next_back().copied();
-        match (last_in_flight, self.safe_cursor) {
-            (Some(inf), Some(sc)) => Some(inf.max(sc)),
-            (Some(inf), None) => Some(inf),
-            (None, Some(sc)) => Some(sc),
-            (None, None) => None,
-        }
     }
 
     /// Enregistre l'expédition d'un nouveau message sous un offset donné.
@@ -226,23 +215,6 @@ impl<T> DispatchWindow<T> {
         self.advance_safe_cursor()
     }
 
-    /// Traite un refus explicite (NACK) pour un offset donné.
-    ///
-    /// Retourne `true` si l'offset était présent en vol et a été mis à jour.
-    pub fn on_nack(
-        &mut self,
-        offset: u64,
-        policy: &DeliveryPolicy,
-        reason: Option<String>,
-    ) -> bool {
-        if let Some(pending) = self.in_flight.get_mut(&offset) {
-            pending.on_nack(policy, reason);
-            true
-        } else {
-            false
-        }
-    }
-
     /// Récupère une référence mutable sur un message en vol.
     pub fn get_mut(&mut self, offset: u64) -> Option<&mut PendingDelivery<T>> {
         self.in_flight.get_mut(&offset)
@@ -267,15 +239,6 @@ impl<T> DispatchWindow<T> {
         self.in_flight
             .iter()
             .filter(|(_, d)| d.is_retry_ready(now))
-            .map(|(off, _)| *off)
-            .collect()
-    }
-
-    /// Collecte les offsets de tous les messages ayant épuisé leur quota d'essais.
-    pub fn collect_retry_exhausted(&self) -> Vec<u64> {
-        self.in_flight
-            .iter()
-            .filter(|(_, d)| d.is_retry_exhausted())
             .map(|(off, _)| *off)
             .collect()
     }
@@ -330,6 +293,7 @@ impl<T> DispatchWindow<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::engine::pending_delivery::{DeliveryPolicy, PendingDeliveryStatus};
     use std::time::Duration;
 
     fn create_test_delivery(payload: &str) -> PendingDelivery<String> {
@@ -509,13 +473,18 @@ mod tests {
         assert_eq!(window.safe_cursor(), Some(1));
 
         // 2 est NACKé (en attente de retry)
-        let nack_res = window.on_nack(2, &policy, Some("transient error".to_string()));
-        assert!(nack_res);
+        window
+            .get_mut(2)
+            .unwrap()
+            .on_nack(&policy, Some("transient error".to_string()));
 
         // Tant que 2 n'est pas résolu, le safe_cursor DOIT rester impérativement bloqué à 1
         assert_eq!(window.safe_cursor(), Some(1));
         assert_eq!(window.in_flight_count(), 1);
-        assert!(window.get(2).unwrap().is_waiting_to_retry());
+        assert_eq!(
+            window.get(2).unwrap().status,
+            PendingDeliveryStatus::WaitingToRetry
+        );
     }
 
     #[test]
@@ -572,8 +541,14 @@ mod tests {
         assert_eq!(timed_out, vec![1]);
 
         // Appliquer timeout sur 1
-        window.on_nack(1, &policy, Some("timeout".to_string()));
-        assert!(window.get(1).unwrap().is_waiting_to_retry());
+        window
+            .get_mut(1)
+            .unwrap()
+            .on_nack(&policy, Some("timeout".to_string()));
+        assert_eq!(
+            window.get(1).unwrap().status,
+            PendingDeliveryStatus::WaitingToRetry
+        );
 
         // Réattribution immédiate suite à déconnexion de w2
         window.force_retry_for_consumer("w2", Some("w2 died".to_string()));
@@ -581,7 +556,6 @@ mod tests {
 
         // Test des collectes et accesseurs
         assert_eq!(window.max_capacity(), 5);
-        assert_eq!(window.highest_dispatched_offset(), Some(2));
         assert!(window.get_mut(2).is_some());
 
         let ready = window.collect_retry_ready(Instant::now());
@@ -592,8 +566,10 @@ mod tests {
             .get_mut(1)
             .unwrap()
             .on_send_attempt("w1", policy.ack_timeout);
-        window.on_nack(1, &policy, Some("exhausted".to_string()));
-        let exhausted = window.collect_retry_exhausted();
-        assert_eq!(exhausted, vec![1]);
+        window
+            .get_mut(1)
+            .unwrap()
+            .on_nack(&policy, Some("exhausted".to_string()));
+        assert!(window.get(1).unwrap().is_retry_exhausted());
     }
 }

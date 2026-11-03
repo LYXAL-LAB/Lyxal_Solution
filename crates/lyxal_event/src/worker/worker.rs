@@ -21,7 +21,7 @@ use crate::error::LyxalEventError;
 use crate::handler::HandlerRegistry;
 use crate::models::LyxalEventEnvelope;
 use crate::store::EventStore;
-use lyxal_surreal::{RecordId, ToSql};
+use lyxal_surreal::{LyxalSurrealCall, RecordId, ToSql};
 
 /// Métriques d'observabilité en mémoire du LYXAL Event Engine.
 #[derive(Debug, Default)]
@@ -338,6 +338,13 @@ impl EventWorker {
                     worker_id = %self.config.worker_id,
                     "Arrêt gracieux détecté : libération formelle du bail"
                 );
+                // Enregistre les résolutions déjà acquittées, encore valides sous ce bail,
+                // pour qu'elles ne soient pas relivrées au redémarrage
+                for (sub_id, pipeline) in &mut pipelines {
+                    if let Err(e) = pipeline.feeder.retry_pending_flush().await {
+                        warn!(subscription = %sub_id, error = ?e, "Avancement final du curseur impossible : les livraisons concernées seront relivrées");
+                    }
+                }
                 if let Err(e) = lease_manager.release_lease().await {
                     warn!(error = ?e, "Échec de la libération du bail : il expirera à l'échéance de son TTL");
                 }
@@ -374,11 +381,48 @@ impl EventWorker {
         }
     }
 
+    /// Transfère en dead letter une livraison dont l'abonnement n'existe plus.
+    async fn dead_letter_orphan(
+        &self,
+        lease_manager: &Arc<OutboxLeaseManager>,
+        rec: &crate::engine::dto::PendingDeliveryItem,
+    ) -> Result<(), LyxalEventError> {
+        let params = crate::engine::dto::DeadLetterTransferParams {
+            delivery_id: rec.id.clone(),
+            error: format!(
+                "Livraison orpheline : abonnement {} introuvable",
+                rec.subscription.to_sql()
+            ),
+            node_id: lease_manager.node_id().to_string(),
+            generation: lease_manager.current_generation(),
+        };
+        let result: Result<crate::engine::dto::DeadLetterTransferResult, _> = self
+            .store
+            .call_fn("event_dead_letter_transfer", params)
+            .await;
+        match result {
+            Ok(_) => {
+                self.metrics
+                    .deliveries_dead_lettered
+                    .fetch_add(1, Ordering::SeqCst);
+                Ok(())
+            }
+            Err(e) if crate::error::is_stale_leader_fenced(&e) => {
+                Err(LyxalEventError::StaleLeaderFenced)
+            }
+            Err(e) => {
+                warn!(error = ?e, "Échec du transfert d'une livraison orpheline en dead letter");
+                Ok(())
+            }
+        }
+    }
+
     /// Crée la file d'un abonnement pour le mandat en cours : dispatcher, feeder (curseur
     /// contigu propre à l'abonnement, repris de la base) et passerelle d'exécution des handlers.
     async fn build_pipeline(
         &self,
         subscription_id: &RecordId,
+        max_attempts: u32,
         client: &surrealdb::Surreal<surrealdb::engine::any::Any>,
         lease_manager: &Arc<OutboxLeaseManager>,
         cancel: &CancellationToken,
@@ -387,7 +431,9 @@ impl EventWorker {
         let disp_config = DispatcherConfig {
             max_unacked: self.config.max_unacked,
             delivery_policy: DeliveryPolicy {
-                max_redelivery_count: self.config.max_redelivery_count,
+                // Budget d'essais déclaré par l'abonnement : seule source de la décision de
+                // dead letter, appliquée par la barrière DLQ du moteur
+                max_redelivery_count: max_attempts,
                 ack_timeout: self.config.ack_timeout,
                 base_redelivery_delay: self.config.retry_base_delay,
                 max_redelivery_delay: self.config.retry_max_delay,
@@ -426,9 +472,7 @@ impl EventWorker {
         let bridge = HandlerConsumerBridge::new(
             BridgeConfig {
                 consumer_id: format!("{}_bridge", self.config.worker_id),
-                subscription_name: subscription.to_string(),
                 dispatch_timeout: self.config.dispatch_timeout,
-                max_concurrency: self.config.max_unacked,
             },
             (*self.registry).clone(),
             cancel.clone(),
@@ -463,10 +507,22 @@ impl EventWorker {
 
         let mut enqueued = 0;
         for rec in deliveries {
+            // Livraison orpheline (abonnement supprimé) : aucun consommateur ni curseur à servir,
+            // transfert direct en dead letter avec son motif, sans bloquer les autres livraisons
+            let Some(max_attempts) = rec.max_attempts else {
+                self.dead_letter_orphan(lease_manager, &rec).await?;
+                continue;
+            };
             let sub_id = rec.subscription.to_sql();
             if !pipelines.contains_key(&sub_id) {
                 let pipeline = self
-                    .build_pipeline(&rec.subscription, client, lease_manager, cancel)
+                    .build_pipeline(
+                        &rec.subscription,
+                        max_attempts,
+                        client,
+                        lease_manager,
+                        cancel,
+                    )
                     .await?;
                 pipelines.insert(sub_id.clone(), pipeline);
             }
@@ -518,7 +574,6 @@ impl EventWorker {
                     &target_module,
                     context,
                     envelope,
-                    envelope_extractor,
                 )
                 .await
             {

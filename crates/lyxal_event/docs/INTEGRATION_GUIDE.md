@@ -1,15 +1,17 @@
-# 🚀 Guide d'Intégration Développeur — `lyxal_event`
+# Guide d'intégration — `lyxal_event`
 
-Ce guide présente comment intégrer un module métier Lyxal OS en tant que producteur ou consommateur d'événements.
+Comment un module Lyxal OS publie ou consomme des événements. Un producteur ne connaît jamais
+ses consommateurs (`.agents/AGENTS.md` §5.6.1) : il ne les importe pas et ne les déclare pas
+en dépendance.
 
 ---
 
-## 1. Émission d'Événements (Module Producteur)
+## 1. Publier un événement
 
-Un module producteur (ex: `lyxal_booking`) n'importe **jamais** de dépendances vers ses consommateurs.
+### 1.1. Depuis Rust
 
-### Étape 1 : Définir la Structure de l'Événement
-Implémenter le trait `lyxal_event::Event` :
+Définir l'événement :
+
 ```rust
 use lyxal_event::Event;
 use serde::{Deserialize, Serialize};
@@ -18,7 +20,6 @@ use serde::{Deserialize, Serialize};
 pub struct InvoiceIssued {
     pub invoice_id: String,
     pub amount_cents: u64,
-    pub customer_id: String,
 }
 
 impl Event for InvoiceIssued {
@@ -26,103 +27,137 @@ impl Event for InvoiceIssued {
 }
 ```
 
-### Étape 2 : Publier via `EventPublisher`
-Dans un store ou un service métier :
+Le publier avec `EventPublisher` (module producteur et contexte d'instance fixés à la
+construction) :
+
 ```rust
-pub async fn finalize_invoice(
-    store: &Store,
-    publisher: &EventPublisher,
-    invoice: Invoice,
-) -> Result<(), AppError> {
-    // 1. Mutation métier principale dans SurrealDB
-    store.save_invoice(&invoice).await?;
+use lyxal_event::{EventContext, EventPublisher, EventStore};
+use std::sync::Arc;
 
-    // 2. Publication d'événement transactionnelle
-    publisher.publish(&InvoiceIssued {
-        invoice_id: invoice.id.to_string(),
-        amount_cents: invoice.total_cents,
-        customer_id: invoice.customer_id,
-    }).await?;
-
-    Ok(())
-}
-```
-
-### Étape 3 : Déclencheur SurrealQL Automatique (`DEFINE EVENT`)
-Si l'événement est produit directement par une mutation SQL en base de données :
-```surql
-DEFINE EVENT IF NOT EXISTS booking_created_event ON TABLE booking WHEN $event = "CREATE" THEN (
-    fn::event_publish({
-        event_id: rand::uuid::v7(),
-        event_type: "booking.created",
-        producer: "lyxal_booking",
-        payload: {
-            booking_id: <string> $after.id,
-            customer_email: $after.customer_email
-        },
-        metadata: {}
-    })
+let publisher = EventPublisher::new(
+    Arc::new(EventStore::new(client)),
+    "lyxal_billing",
+    EventContext::new("instance_1", "lyxal", "main"),
 );
+publisher
+    .publish(&InvoiceIssued { invoice_id: "inv_1".into(), amount_cents: 1200 })
+    .await?;
 ```
 
----
+`publish_with_context` propage en plus `correlation_id`, `causation_id` et `source`.
 
-## 2. Consommation d'Événements (Module Consommateur)
+### 1.2. Depuis une mutation SurrealDB (`DEFINE EVENT`)
 
-Un module consommateur (ex: `lyxal_notification`) s'abonne aux événements déclarés sans impacter le producteur.
+Un `DEFINE EVENT` ne fait que publier : il n'écrit dans aucune table d'un autre module et
+n'appelle aucun service externe. Il **vérifie le résultat** de `fn::event_publish` et lève une
+erreur en cas d'échec, pour annuler la mutation d'origine plutôt que de perdre l'événement :
 
-### Étape 1 : Implémenter le `Handler<E>`
-```rust
-use async_trait::async_trait;
-use lyxal_event::{Handler, HandlerContext, LyxalEventError};
-
-pub struct InvoiceNotificationHandler {
-    mailer: Arc<MailerService>,
-}
-
-#[async_trait]
-impl Handler<InvoiceIssued> for InvoiceNotificationHandler {
-    async fn handle(&self, event: &InvoiceIssued, ctx: &HandlerContext) -> Result<(), LyxalEventError> {
-        // Idempotence : vérifier ctx.delivery_id si nécessaire
-        self.mailer.send_invoice_email(&event.customer_id, event.amount_cents).await
-            .map_err(|e| LyxalEventError::Handler(format!("Échec de l'envoi email: {e}")))?;
-        Ok(())
-    }
-}
-```
-
-### Étape 2 : Déclarer la Souscription au Runtime
-Dans l'implémentation de `EventConsumerModule` du module :
-```rust
-use lyxal_runtime::event_engine::EventConsumerModule;
-use lyxal_event::HandlerRegistry;
-
-impl EventConsumerModule for NotificationModule {
-    fn register_event_handlers(&self, registry: &mut HandlerRegistry) -> Result<(), RuntimeError> {
-        registry.register(InvoiceNotificationHandler { mailer: self.mailer.clone() })?;
-        Ok(())
-    }
-}
-```
-
-### Étape 3 : Abonnement Persistant SurrealDB
-Déclarer la souscription dans le script de migration ou de seed du module consommateur :
 ```surql
-CREATE event_subscription CONTENT {
-    name: "notification_on_invoice_issued",
-    target_module: "lyxal_notification",
-    event_pattern: "billing.invoice.issued",
-    handler_name: "InvoiceNotificationHandler",
-    max_attempts: 5,
-    is_active: true
+DEFINE EVENT OVERWRITE invoice_issued_event ON TABLE billing_invoice
+WHEN $event = "UPDATE" AND $after.status = "issued" AND $before.status != "issued"
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "billing.invoice.issued",
+        producer: "lyxal_billing",
+        source: $after.id,
+        payload: { invoice_id: <string> $after.id, amount_cents: $after.amount_cents },
+        metadata: {}
+    });
+    IF !$published.ok {
+        THROW $published.error.code;
+    };
 };
 ```
 
 ---
 
-## 3. Bonnes Pratiques & Erreurs à Éviter
+## 2. Consommer un événement
 
-1. **Idempotence Obligatoire** : Les handlers doivent être idempotents (utiliser `event.invoice_id` ou `ctx.delivery_id`). Le moteur garantit une livraison *At-Least-Once*.
-2. **Ne jamais masquer d'erreurs** : Retourner `Err(LyxalEventError::Handler(...))` en cas d'échec transitoire afin d'activer le retry automatique et le backoff exponentiel.
-3. **Erreurs Terminales** : Si l'échec n'est pas rejouable (ex: format de payload invalide), remonter une erreur typée pour déclencher la mise en Dead-Letter Queue immédiate sans gaspiller le budget de retries.
+### 2.1. Écrire le handler
 
+```rust
+use async_trait::async_trait;
+use lyxal_event::{Handler, HandlerContext, LyxalEventError};
+
+pub struct InvoiceMailer { /* … */ }
+
+#[async_trait]
+impl Handler<InvoiceIssued> for InvoiceMailer {
+    async fn handle(&self, event: InvoiceIssued, ctx: &HandlerContext) -> Result<(), LyxalEventError> {
+        // Clé d'idempotence : la livraison peut être reçue plusieurs fois
+        let key = format!("invoice_mail:{}", ctx.event_id.0);
+        self.send_once(&key, &event).await.map_err(|e| LyxalEventError::HandlerFailed {
+            event_id: ctx.event_id.0,
+            event_type: "billing.invoice.issued".into(),
+            error: e.to_string(),
+            terminal: e.is_permanent(),
+        })
+    }
+}
+```
+
+* **Idempotence obligatoire** : la livraison est garantie *au moins une fois*. Dédupliquer par
+  `ctx.event_id`, `ctx.delivery_id` ou une clé métier.
+* **Erreurs** : ne jamais masquer un échec. `terminal: false` déclenche un nouvel essai avec
+  backoff ; `terminal: true` envoie directement la livraison en dead letter (échec non
+  rejouable, par exemple une donnée invalide).
+* **Annulation** : un handler long surveille `ctx.cancellation` ; il est interrompu à la perte
+  du bail ou à l'arrêt du worker, et au-delà de `dispatch_timeout`.
+* `ctx.attempt` donne le numéro de l'essai en cours.
+
+### 2.2. Déclarer le handler au runtime
+
+```rust
+use lyxal_event::HandlerRegistry;
+use lyxal_runtime::{EventConsumerModule, RuntimeError};
+
+impl EventConsumerModule for BillingMailModule {
+    fn register_event_handlers(&self, registry: &mut HandlerRegistry) -> Result<(), RuntimeError> {
+        registry
+            .register::<InvoiceIssued, _>(InvoiceMailer { /* … */ })
+            .map_err(|e| RuntimeError::EventEngineError { message: e.to_string() })?;
+        Ok(())
+    }
+}
+```
+
+Un type d'événement ne peut avoir qu'un handler par registre.
+
+### 2.3. Déclarer l'abonnement persistant
+
+Sans abonnement, le fan-out ne crée aucune livraison. Le module consommateur déclare le sien
+dans ses seeds, sans écraser un abonnement déjà réglé :
+
+```surql
+IF array::len(SELECT id FROM event_subscription WHERE name = "billing_mail_on_invoice_issued") == 0 {
+    LET $registered = fn::event_subscription_register({
+        name: "billing_mail_on_invoice_issued",
+        target_module: "lyxal_billing_mail",
+        event_pattern: "billing.invoice.issued",
+        handler_name: "InvoiceMailer",
+        max_attempts: 5
+    });
+    IF !$registered.ok {
+        THROW $registered.error.code;
+    };
+};
+```
+
+* `event_pattern` : type exact, préfixe (`billing.*`) ou `*`.
+* `max_attempts` : nombre d'envois d'une livraison avant dead letter (1 à 100).
+* Une livraison n'est créée que pour les événements publiés **après** l'enregistrement de
+  l'abonnement.
+
+---
+
+## 3. Exploiter
+
+* **Dead letters** : `fn::event_dead_letter_list` les liste ; `fn::event_dead_letter_replay`
+  rejoue une livraison une fois la cause corrigée.
+* **Purge** : `fn::event_purge_garbage({ retention_days })`, ou le service
+  `EventGarbageCollectorService` du runtime.
+* **Métriques** : `EventWorker::metrics()` (livraisons envoyées, acquittées, en échec, en dead
+  letter ; prises et pertes de bail ; conflits de fencing).
+
+Référence complète des fonctions et des codes d'erreur : [`SURREALQL_API.md`](SURREALQL_API.md).

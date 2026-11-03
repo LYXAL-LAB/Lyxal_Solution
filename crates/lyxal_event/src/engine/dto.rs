@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//! Contrats DTO et adaptateurs typés pour les fonctions SurrealQL du Lot 3B.1.
+//! Contrats DTO et adaptateurs typés pour les fonctions SurrealQL du moteur.
 //!
 //! Ce module formalise les paramètres d'appel (`*Params`) et les résultats typés (`*Result`)
 //! transmis au runtime SurrealDB via le trait universel [`lyxal_surreal::LyxalSurrealCall`].
@@ -182,6 +182,9 @@ pub struct PendingDeliveryItem {
     pub created_at: Option<Datetime>,
     pub outbox_event: lyxal_surreal::RecordId,
     pub subscription: lyxal_surreal::RecordId,
+    /// Budget d'essais de l'abonnement (`event_subscription.max_attempts`) ; `None` si
+    /// l'abonnement n'existe plus.
+    pub max_attempts: Option<u32>,
     pub delivery_seq: Option<u64>,
     pub target_module: String,
     pub context: Option<crate::models::EventContext>,

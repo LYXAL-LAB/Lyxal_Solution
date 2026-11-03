@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//! Harnais d'intégration in-process isolé pour le Lot 3B.3 de `lyxal_event`.
+//! Harnais d'intégration in-process isolé pour `lyxal_event`.
 //!
 //! Valide la chaîne complète :
 //! Outbox SurrealDB → OutboxFeeder → ReliableDispatcher → HandlerConsumerBridge
@@ -96,13 +96,15 @@ impl Handler<OrderCreatedEvent> for FailingHandler {
             Err(LyxalEventError::HandlerFailed {
                 event_id: ctx.event_id.0,
                 event_type: "order.created".to_string(),
-                error: "terminal: Invalid currency code".to_string(),
+                error: "Invalid currency code".to_string(),
+                terminal: true,
             })
         } else {
             Err(LyxalEventError::HandlerFailed {
                 event_id: ctx.event_id.0,
                 event_type: "order.created".to_string(),
                 error: "Transient network timeout to payment service".to_string(),
+                terminal: false,
             })
         }
     }
@@ -179,6 +181,7 @@ impl Handler<OrderCreatedEvent> for IdempotentPaymentHandler {
                 event_id: ctx.event_id.0,
                 event_type: "order.created".to_string(),
                 error: e,
+                terminal: false,
             }
         })?;
         Ok(())
@@ -186,7 +189,12 @@ impl Handler<OrderCreatedEvent> for IdempotentPaymentHandler {
 }
 
 fn create_envelope<E: Event>(event: &E) -> LyxalEventEnvelope {
-    LyxalEventEnvelope::new("test_producer", EventContext::default_context(), event).unwrap()
+    let mut envelope =
+        LyxalEventEnvelope::new("test_producer", EventContext::default_context(), event).unwrap();
+    envelope.metadata = serde_json::json!({
+        "delivery_id": format!("event_delivery:test_{}", envelope.event_id.0.simple())
+    });
+    envelope
 }
 
 async fn build_in_memory_harness(
@@ -278,8 +286,7 @@ async fn test_scenario_01_nominal_delivery() {
 
     {
         let mut disp = dispatcher.lock().await;
-        disp.submit_message(1, envelope, envelope_extractor)
-            .unwrap();
+        disp.submit_message(1, envelope).unwrap();
     }
 
     let msg = rx.recv().await.unwrap();
@@ -321,8 +328,7 @@ async fn test_scenario_02_missing_handler_error_and_retry() {
 
     {
         let mut disp = dispatcher.lock().await;
-        disp.submit_message(2, envelope, envelope_extractor)
-            .unwrap();
+        disp.submit_message(2, envelope).unwrap();
     }
 
     let msg = rx.recv().await.unwrap();
@@ -370,8 +376,7 @@ async fn test_scenario_03_transient_error_retry() {
 
     {
         let mut disp = dispatcher.lock().await;
-        disp.submit_message(3, envelope, envelope_extractor)
-            .unwrap();
+        disp.submit_message(3, envelope).unwrap();
     }
 
     let msg = rx.recv().await.unwrap();
@@ -419,8 +424,7 @@ async fn test_scenario_04_terminal_error_poison() {
 
     {
         let mut disp = dispatcher.lock().await;
-        disp.submit_message(4, envelope, envelope_extractor)
-            .unwrap();
+        disp.submit_message(4, envelope).unwrap();
     }
 
     let msg = rx.recv().await.unwrap();
@@ -470,8 +474,7 @@ async fn test_scenario_05_handler_panic_isolation() {
 
     {
         let mut disp = dispatcher.lock().await;
-        disp.submit_message(5, envelope, envelope_extractor)
-            .unwrap();
+        disp.submit_message(5, envelope).unwrap();
     }
 
     let msg = rx.recv().await.unwrap();
@@ -528,8 +531,7 @@ async fn test_scenario_06_handler_timeout_redelivery() {
 
     {
         let mut disp = dispatcher.lock().await;
-        disp.submit_message(6, envelope, envelope_extractor)
-            .unwrap();
+        disp.submit_message(6, envelope).unwrap();
     }
 
     let msg = rx.recv().await.unwrap();
@@ -570,8 +572,7 @@ async fn test_scenario_07_stale_ack_rejected() {
 
     {
         let mut disp = dispatcher.lock().await;
-        disp.submit_message(7, envelope.clone(), envelope_extractor)
-            .unwrap();
+        disp.submit_message(7, envelope.clone()).unwrap();
     }
 
     let msg = rx.recv().await.unwrap();
@@ -623,8 +624,7 @@ async fn test_scenario_08_double_ack_no_double_advancement() {
 
     {
         let mut disp = dispatcher.lock().await;
-        disp.submit_message(8, envelope, envelope_extractor)
-            .unwrap();
+        disp.submit_message(8, envelope).unwrap();
     }
 
     let msg = rx.recv().await.unwrap();
@@ -658,8 +658,7 @@ async fn test_scenario_09_late_nack_after_valid_ack() {
 
     {
         let mut disp = dispatcher.lock().await;
-        disp.submit_message(9, envelope, envelope_extractor)
-            .unwrap();
+        disp.submit_message(9, envelope).unwrap();
     }
 
     let msg = rx.recv().await.unwrap();
@@ -707,8 +706,7 @@ async fn test_scenario_10_concurrent_handlers_execution() {
         };
         let envelope = create_envelope(&event);
         let mut disp = dispatcher.lock().await;
-        disp.submit_message(i, envelope, envelope_extractor)
-            .unwrap();
+        disp.submit_message(i, envelope).unwrap();
     }
 
     // Traitement concurrent
@@ -741,8 +739,7 @@ async fn test_scenario_11_backpressure_when_saturated() {
         };
         let envelope = create_envelope(&event);
         let mut disp = dispatcher.lock().await;
-        disp.submit_message(i, envelope, envelope_extractor)
-            .unwrap();
+        disp.submit_message(i, envelope).unwrap();
     }
 
     // Réception des 2 messages
@@ -766,7 +763,6 @@ async fn test_scenario_11_backpressure_when_saturated() {
                 order_id: "ord_11_3".to_string(),
                 amount: 300,
             }),
-            envelope_extractor,
         )
         .await;
 
@@ -800,8 +796,7 @@ async fn test_scenario_12_contiguous_cursor_gap_blocking() {
         };
         let envelope = create_envelope(&event);
         let mut disp = dispatcher.lock().await;
-        disp.submit_message(i, envelope, envelope_extractor)
-            .unwrap();
+        disp.submit_message(i, envelope).unwrap();
     }
 
     let msg1 = rx.recv().await.unwrap();
@@ -841,8 +836,7 @@ async fn test_scenario_13_dlq_barrier_before_terminal_resolution() {
         };
         let envelope = create_envelope(&event);
         let mut disp = dispatcher.lock().await;
-        disp.submit_message(i, envelope, envelope_extractor)
-            .unwrap();
+        disp.submit_message(i, envelope).unwrap();
     }
 
     let msg1 = rx.recv().await.unwrap();
@@ -996,8 +990,7 @@ async fn test_scenario_16_external_idempotence_replay() {
 
     {
         let mut disp = dispatcher.lock().await;
-        disp.submit_message(16, envelope.clone(), envelope_extractor)
-            .unwrap();
+        disp.submit_message(16, envelope.clone()).unwrap();
     }
 
     let msg = rx.recv().await.unwrap();
@@ -1024,10 +1017,10 @@ async fn test_scenario_16_external_idempotence_replay() {
 
 #[tokio::test]
 async fn test_scenario_17_cooperative_shutdown_in_flight() {
-    let (_lease, dispatcher, mut feeder) = build_in_memory_harness(10).await;
+    let (lease, dispatcher, _feeder) = build_in_memory_harness(10).await;
 
-    // Fermeture coopérative du feeder
-    feeder.shutdown().await.unwrap();
+    // Fin du terme leader : le dispatcher partage le jeton d'annulation du bail
+    lease.cancellation_token().cancel();
 
     // Toute nouvelle soumission est rejetée
     let mut disp = dispatcher.lock().await;
@@ -1037,7 +1030,6 @@ async fn test_scenario_17_cooperative_shutdown_in_flight() {
             order_id: "ord_99".to_string(),
             amount: 10,
         }),
-        envelope_extractor,
     );
 
     assert_eq!(err, Err(DispatcherError::ShuttingDown));
@@ -1070,7 +1062,7 @@ async fn test_scenario_18_mvcc_conflict_resilience() {
     tracker2.record_delivered(1, RecordId::new("event_delivery", "del_1"));
 
     // Le nœud 1 avec G=1 et le nœud 2 avec G=2 tentent d'écrire
-    // Sur SurrealDB 3.2.0, l'ancien leader G=1 est rejeté par Fencing ou MVCC
+    // L'ancien leader G=1 est rejeté par Fencing ou MVCC
     assert_eq!(tracker1.last_persisted_cursor(), 0);
     assert_eq!(tracker2.last_persisted_cursor(), 0);
 }

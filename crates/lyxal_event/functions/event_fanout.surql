@@ -58,7 +58,6 @@ DEFINE FUNCTION OVERWRITE fn::event_fanout(
                     context: $event.context,
                     status: "pending",
                     attempts: 0,
-                    max_attempts: $sub.max_attempts,
                     next_retry_at: time::now(),
                     created_at: time::now()
                 };

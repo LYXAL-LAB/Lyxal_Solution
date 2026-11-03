@@ -62,9 +62,9 @@ use lyxal_surreal::{RecordId, ToSql};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{mpsc, Mutex, Semaphore};
+use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, warn};
 
 use crate::error::LyxalEventError;
 use crate::handler::{HandlerContext, HandlerRegistry};
@@ -78,21 +78,15 @@ use super::feeder::{FeederError, OutboxFeeder};
 pub struct BridgeConfig {
     /// Identifiant unique du consommateur (ex: "consumer_bridge_node1").
     pub consumer_id: String,
-    /// Nom de la souscription logique rattachée.
-    pub subscription_name: String,
     /// Délai maximal d'exécution d'un handler avant déclenchement du timeout.
     pub dispatch_timeout: Duration,
-    /// Nombre maximal de handlers exécutés simultanément en mémoire.
-    pub max_concurrency: usize,
 }
 
 impl Default for BridgeConfig {
     fn default() -> Self {
         Self {
             consumer_id: "default_bridge_consumer".to_string(),
-            subscription_name: "default_subscription".to_string(),
             dispatch_timeout: Duration::from_secs(5),
-            max_concurrency: 16,
         }
     }
 }
@@ -189,9 +183,7 @@ pub fn envelope_extractor(
 pub fn is_error_terminal(err: &LyxalEventError) -> bool {
     match err {
         LyxalEventError::TypeMismatch { .. } | LyxalEventError::Serialization(_) => true,
-        LyxalEventError::HandlerFailed { error, .. } => {
-            error.contains("[terminal]") || error.contains("terminal:")
-        }
+        LyxalEventError::HandlerFailed { terminal, .. } => *terminal,
         _ => false,
     }
 }
@@ -220,28 +212,10 @@ impl HandlerConsumerBridge {
         }
     }
 
-    /// Identifiant du consommateur.
-    #[must_use]
-    pub fn consumer_id(&self) -> &str {
-        &self.config.consumer_id
-    }
-
     /// Indique si la passerelle est actuellement active et prête à recevoir des messages.
     #[must_use]
     pub fn is_active(&self) -> bool {
         self.active.load(Ordering::SeqCst) && !self.cancellation.is_cancelled()
-    }
-
-    /// Drapeaux atomique de disponibilité pour l'enregistrement du consommateur.
-    #[must_use]
-    pub fn active_flag(&self) -> Arc<AtomicBool> {
-        Arc::clone(&self.active)
-    }
-
-    /// Token d'annulation coopératif.
-    #[must_use]
-    pub fn cancellation_token(&self) -> CancellationToken {
-        self.cancellation.clone()
     }
 
     /// Enregistre la passerelle auprès d'un `ReliableDispatcher` et retourne
@@ -257,24 +231,24 @@ impl HandlerConsumerBridge {
         rx
     }
 
-    /// Résout l'identifiant de livraison associé à un message.
-    fn resolve_delivery_id(msg: &DispatchMessage<LyxalEventEnvelope>) -> (String, RecordId) {
-        if let Some(val) = msg.message.metadata.get("delivery_id") {
-            if let Some(s) = val.as_str() {
-                if let Ok(thing) = RecordId::parse_simple(s) {
-                    return (s.to_string(), thing);
-                }
-                return (s.to_string(), RecordId::new("event_delivery", s));
-            }
+    /// Identifiant de la livraison porté par `metadata.delivery_id`, posé par le worker.
+    /// Un message sans identifiant valide est une donnée corrompue : aucun identifiant
+    /// n'est fabriqué.
+    fn resolve_delivery_id(msg: &DispatchMessage<LyxalEventEnvelope>) -> Result<RecordId, String> {
+        let raw = msg
+            .message
+            .metadata
+            .get("delivery_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "metadata.delivery_id absent de l'enveloppe".to_string())?;
+        let id = RecordId::parse_simple(raw)
+            .map_err(|e| format!("metadata.delivery_id illisible ({raw}) : {e}"))?;
+        if id.table.as_str() != "event_delivery" {
+            return Err(format!(
+                "metadata.delivery_id ne désigne pas une livraison : {raw}"
+            ));
         }
-
-        if let Some(ref rec_id) = msg.message.id {
-            return (rec_id.to_sql(), rec_id.clone());
-        }
-
-        let fallback_id = format!("delivery_{}", msg.offset);
-        let fallback_record = RecordId::new("event_delivery", fallback_id.as_str());
-        (fallback_id, fallback_record)
+        Ok(id)
     }
 
     /// Exécute un message de manière supervisée et isolée.
@@ -288,9 +262,21 @@ impl HandlerConsumerBridge {
         &self,
         msg: &DispatchMessage<LyxalEventEnvelope>,
     ) -> HandlerExecutionResult {
-        let (delivery_id_str, delivery_record_id) = Self::resolve_delivery_id(msg);
         let offset = msg.offset;
         let attempt_id = msg.attempt_id;
+        let delivery_record_id = match Self::resolve_delivery_id(msg) {
+            Ok(id) => id,
+            Err(reason) => {
+                warn!(offset, attempt_id, %reason, "Enveloppe sans identifiant de livraison");
+                return HandlerExecutionResult::TerminalError {
+                    delivery_id: String::new(),
+                    delivery_seq: offset,
+                    attempt_id,
+                    reason,
+                };
+            }
+        };
+        let delivery_id_str = delivery_record_id.to_sql();
 
         if self.cancellation.is_cancelled() {
             debug!(
@@ -575,57 +561,6 @@ impl HandlerConsumerBridge {
         let exec_result = self.process_message(msg).await;
         self.settle_result(exec_result, feeder).await
     }
-
-    /// Boucle de traitement supervisée en tâche de fond avec contrôle de concurrence.
-    pub async fn run_supervised_loop(
-        &self,
-        mut rx: mpsc::Receiver<DispatchMessage<LyxalEventEnvelope>>,
-        feeder: Arc<Mutex<OutboxFeeder<LyxalEventEnvelope>>>,
-    ) -> Result<(), FeederError> {
-        let semaphore = Arc::new(Semaphore::new(self.config.max_concurrency));
-
-        info!(
-            consumer_id = %self.config.consumer_id,
-            subscription = %self.config.subscription_name,
-            concurrency = self.config.max_concurrency,
-            "Démarrage de la boucle de consommation HandlerConsumerBridge"
-        );
-
-        while !self.cancellation.is_cancelled() {
-            tokio::select! {
-                () = self.cancellation.cancelled() => {
-                    info!("Boucle HandlerConsumerBridge interrompue par cancellation");
-                    break;
-                }
-                maybe_msg = rx.recv() => {
-                    match maybe_msg {
-                        Some(msg) => {
-                            let permit = match semaphore.clone().acquire_owned().await {
-                                Ok(p) => p,
-                                Err(_) => break,
-                            };
-
-                            let feeder_clone = Arc::clone(&feeder);
-                            let bridge_exec = self.process_message(&msg).await;
-
-                            // Règle le résultat sous verrou asynchrone du feeder
-                            let mut f = feeder_clone.lock().await;
-                            if let Err(e) = self.settle_result(bridge_exec, &mut f).await {
-                                error!(error = %e, "Échec du règlement du résultat auprès du feeder");
-                            }
-                            drop(permit);
-                        }
-                        None => {
-                            debug!("Canal DispatchMessage fermé, arrêt de la boucle");
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -674,13 +609,15 @@ mod tests {
                 Err(LyxalEventError::HandlerFailed {
                     event_id: ctx.event_id.0,
                     event_type: "user.registered".to_string(),
-                    error: "terminal: Invalid payload constraint".to_string(),
+                    error: "Invalid payload constraint".to_string(),
+                    terminal: true,
                 })
             } else {
                 Err(LyxalEventError::HandlerFailed {
                     event_id: ctx.event_id.0,
                     event_type: "user.registered".to_string(),
                     error: "Database temporary lock timeout".to_string(),
+                    terminal: false,
                 })
             }
         }
@@ -720,7 +657,13 @@ mod tests {
     }
 
     fn make_test_envelope(event: &UserRegisteredEvent) -> LyxalEventEnvelope {
-        LyxalEventEnvelope::new("test_producer", EventContext::default_context(), event).unwrap()
+        let mut envelope =
+            LyxalEventEnvelope::new("test_producer", EventContext::default_context(), event)
+                .unwrap();
+        envelope.metadata = serde_json::json!({
+            "delivery_id": format!("event_delivery:test_{}", envelope.event_id.0.simple())
+        });
+        envelope
     }
 
     #[tokio::test]
@@ -746,11 +689,51 @@ mod tests {
         assert_eq!(
             result,
             HandlerExecutionResult::Success {
-                delivery_id: "delivery_1".to_string(),
+                delivery_id: msg.message.metadata["delivery_id"]
+                    .as_str()
+                    .unwrap()
+                    .to_string(),
                 delivery_seq: 1,
                 attempt_id: 1,
             }
         );
+    }
+
+    #[tokio::test]
+    async fn test_bridge_rejects_envelope_without_delivery_id() {
+        let mut registry = HandlerRegistry::new();
+        registry.register(SuccessHandler).unwrap();
+        let bridge =
+            HandlerConsumerBridge::new(BridgeConfig::default(), registry, CancellationToken::new());
+
+        let event = UserRegisteredEvent {
+            user_id: "usr_0".to_string(),
+            email: "zoe@example.com".to_string(),
+        };
+        for metadata in [
+            serde_json::json!({}),
+            serde_json::json!({ "delivery_id": "pas un identifiant" }),
+            serde_json::json!({ "delivery_id": "event_outbox:abc" }),
+        ] {
+            let mut envelope = make_test_envelope(&event);
+            envelope.metadata = metadata;
+            let msg = DispatchMessage {
+                offset: 9,
+                attempt_id: 1,
+                message: envelope,
+            };
+            match bridge.process_message(&msg).await {
+                HandlerExecutionResult::TerminalError {
+                    delivery_seq,
+                    reason,
+                    ..
+                } => {
+                    assert_eq!(delivery_seq, 9);
+                    assert!(reason.contains("metadata.delivery_id"), "{reason}");
+                }
+                other => panic!("erreur terminale attendue, obtenu {other:?}"),
+            }
+        }
     }
 
     #[tokio::test]
@@ -774,7 +757,10 @@ mod tests {
         assert_eq!(
             result,
             HandlerExecutionResult::MissingHandler {
-                delivery_id: "delivery_2".to_string(),
+                delivery_id: msg.message.metadata["delivery_id"]
+                    .as_str()
+                    .unwrap()
+                    .to_string(),
                 delivery_seq: 2,
                 attempt_id: 1,
                 event_type: "user.registered".to_string(),
@@ -924,7 +910,10 @@ mod tests {
         assert_eq!(
             result,
             HandlerExecutionResult::Timeout {
-                delivery_id: "delivery_6".to_string(),
+                delivery_id: msg.message.metadata["delivery_id"]
+                    .as_str()
+                    .unwrap()
+                    .to_string(),
                 delivery_seq: 6,
                 attempt_id: 1,
             }
@@ -956,7 +945,10 @@ mod tests {
         assert_eq!(
             result,
             HandlerExecutionResult::Cancelled {
-                delivery_id: "delivery_7".to_string(),
+                delivery_id: msg.message.metadata["delivery_id"]
+                    .as_str()
+                    .unwrap()
+                    .to_string(),
                 delivery_seq: 7,
                 attempt_id: 1,
             }

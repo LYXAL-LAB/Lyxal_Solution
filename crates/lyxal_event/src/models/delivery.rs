@@ -54,8 +54,6 @@ pub struct EventDelivery {
     pub drop_reason: Option<String>,
     /// Nombre de tentatives déjà consommées.
     pub attempts: u32,
-    /// Nombre maximal d'essais.
-    pub max_attempts: u32,
     /// Prochaine tentative éligible.
     pub next_retry_at: Datetime,
     /// Horodatage d'expiration du bail actif.

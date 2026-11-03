@@ -18,7 +18,7 @@
 //! Gestionnaire de bail distribué et suivi de leadership (`OutboxLeaseManager`).
 //!
 //! Ce composant coordonne l'exclusivité d'exécution du flux de distribution outbox
-//! sur SurrealDB 3.2.0 au moyen d'un bail distribué avec génération monotone stricte.
+//! sur SurrealDB au moyen d'un bail distribué avec génération monotone stricte.
 //!
 //! # Invariants de Sûreté
 //! - Le leadership et la génération active sont systématiquement confirmés par la fonction SurrealQL
@@ -50,18 +50,6 @@ pub enum LeaseError {
     /// Erreur de transport ou d'exécution SurrealDB.
     #[error("Erreur SurrealDB lors de l'opération de bail: {0}")]
     Surreal(Box<LyxalSurrealError>),
-
-    /// Le bail distribué a été perdu ou a expiré.
-    #[error("Bail distribué perdu ou expiré (génération {generation})")]
-    Lost { generation: u64 },
-
-    /// Le leader a été évincé par une génération supérieure (Fencing).
-    #[error("Leader évincé par une génération supérieure (Fencing)")]
-    StaleFenced,
-
-    /// Autre erreur interne.
-    #[error("Erreur interne du gestionnaire de bail: {0}")]
-    Internal(String),
 }
 
 impl From<LyxalSurrealError> for LeaseError {
@@ -103,6 +91,7 @@ impl OutboxLeaseManager {
     }
 
     /// Configure l'état de leadership pour les tests d'intégration in-process.
+    #[doc(hidden)]
     pub fn set_leader_for_test(&self, is_leader: bool, generation: u64) {
         self.is_leader.store(is_leader, Ordering::SeqCst);
         self.generation.store(generation, Ordering::SeqCst);
@@ -111,11 +100,6 @@ impl OutboxLeaseManager {
     /// Identifiant unique du nœud local.
     pub fn node_id(&self) -> &str {
         &self.node_id
-    }
-
-    /// TTL configuré pour le bail.
-    pub fn ttl(&self) -> Duration {
-        self.ttl
     }
 
     /// Numéro de génération actif du leader courant (0 si inactif).

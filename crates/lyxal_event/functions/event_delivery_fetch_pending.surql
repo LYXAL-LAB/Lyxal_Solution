@@ -35,6 +35,7 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_fetch_pending(
             created_at,
             outbox_event,
             subscription,
+            subscription.max_attempts AS max_attempts,
             delivery_seq,
             target_module,
             context,

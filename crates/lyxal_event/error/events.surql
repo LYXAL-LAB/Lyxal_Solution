@@ -57,33 +57,6 @@ IF !record::exists(error_definition:EVENT_STALE_LEADER_FENCED) THEN (
     }
 ) END;
 
-IF !record::exists(error_definition:EVENT_CURSOR_INVARIANT_VIOLATION) THEN (
-    CREATE error_definition:EVENT_CURSOR_INVARIANT_VIOLATION CONTENT {
-        code: "EVENT_CURSOR_INVARIANT_VIOLATION",
-        module: "event",
-        domain: "progress",
-        category: "validation",
-        severity: "error",
-        message: "Cursor advance rejected: contiguous terminal invariant violated",
-        default_language: "fr",
-        http_status: 422,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Violation d'invariant de curseur",
-                description: "Impossible d'avancer le curseur : une ou plusieurs livraisons intermédiaires ne sont pas en état terminal ou manquent.",
-                resolution: "Résolvez toutes les livraisons en suspens avant de committer le curseur."
-            },
-            en: {
-                label: "Cursor invariant violation",
-                description: "Cannot advance cursor: intermediate deliveries are unresolved or missing.",
-                resolution: "Resolve all pending deliveries before committing cursor."
-            }
-        }
-    }
-) END;
-
 IF !record::exists(error_definition:EVENT_CURSOR_NON_MONOTONIC) THEN (
     CREATE error_definition:EVENT_CURSOR_NON_MONOTONIC CONTENT {
         code: "EVENT_CURSOR_NON_MONOTONIC",

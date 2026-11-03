@@ -17,8 +17,8 @@
 
 //! Suivi et réconciliation de la progression durable par abonnement (`SubscriptionProgressTracker`).
 //!
-//! Ce composant fait le pont entre les acquittements en mémoire (Lots 1 & 2) et la persistance
-//! transactionnelle dans SurrealDB 3.2.0 (Lot 3B.1).
+//! Ce composant fait le pont entre les acquittements en mémoire et la persistance
+//! transactionnelle dans SurrealDB.
 //!
 //! # Invariants de Sûreté
 //! - La progression mémoire n'est JAMAIS confondue avec la progression durable (`last_persisted_cursor`).
@@ -58,14 +58,6 @@ pub enum ProgressError {
     /// Échec de la barrière DLQ.
     #[error("Échec de la barrière DLQ pour la livraison {delivery_id}: {reason}")]
     DlqBarrierFailed { delivery_id: String, reason: String },
-
-    /// Invariant de curseur violé (non-monotone, trou ou séquences non résolues).
-    #[error("Violation d'invariant de curseur: {0}")]
-    InvariantViolation(String),
-
-    /// Autre erreur interne.
-    #[error("Erreur interne du tracker de progression: {0}")]
-    Internal(String),
 }
 
 impl From<LyxalSurrealError> for ProgressError {
@@ -164,11 +156,6 @@ impl SubscriptionProgressTracker {
     /// Curseur durable confirmé en base de données.
     pub fn last_persisted_cursor(&self) -> u64 {
         self.last_persisted_cursor
-    }
-
-    /// Dernière séquence allouée connue.
-    pub fn last_assigned_seq(&self) -> u64 {
-        self.last_assigned_seq
     }
 
     /// Nombre total de résolutions en attente de flush.
@@ -272,7 +259,7 @@ impl SubscriptionProgressTracker {
         }
     }
 
-    /// Effectue le flush granulaire vers SurrealDB 3.2.0 et avance le curseur contigu sûr.
+    /// Effectue le flush granulaire vers SurrealDB et avance le curseur contigu sûr.
     ///
     /// # Garantie de Robustesse
     /// Si l'appel échoue (conflit MVCC ou réseau), les résolutions mémoires sont STRICTEMENT conservées.

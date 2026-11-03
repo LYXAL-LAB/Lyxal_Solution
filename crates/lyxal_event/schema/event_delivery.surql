@@ -32,8 +32,6 @@ DEFINE FIELD OVERWRITE status ON TABLE event_delivery TYPE string DEFAULT "pendi
 DEFINE FIELD OVERWRITE attempts ON TABLE event_delivery TYPE number DEFAULT 0
     COMMENT "Nombre de tentatives de traitement déjà consommées.";
 
-DEFINE FIELD OVERWRITE max_attempts ON TABLE event_delivery TYPE number DEFAULT 5
-    COMMENT "Nombre maximal de tentatives avant relégation en dead-letter.";
 
 DEFINE FIELD OVERWRITE next_retry_at ON TABLE event_delivery TYPE datetime DEFAULT time::now()
     COMMENT "Horodatage UTC à partir duquel la prochaine tentative est éligible.";

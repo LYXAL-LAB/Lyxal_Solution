@@ -33,6 +33,7 @@ impl Handler<PaymentProcessed> for FlakyPaymentHandler {
                 event_id: uuid::Uuid::now_v7(),
                 event_type: "payment.processed".to_string(),
                 error: "Transient gateway network error".to_string(),
+                terminal: false,
             })
         } else {
             Ok(())
@@ -53,6 +54,7 @@ impl Handler<PaymentProcessed> for FailingPaymentHandler {
             event_id: uuid::Uuid::now_v7(),
             event_type: "payment.processed".to_string(),
             error: "Permanent card declined error".to_string(),
+            terminal: false,
         })
     }
 }
@@ -91,7 +93,7 @@ async fn test_retry_dlq_and_replay_cycle() {
     let worker = Arc::new(EventWorker::new(
         store.clone(),
         registry,
-        common::fast_config("worker_failing").with_max_attempts(3),
+        common::fast_config("worker_failing"),
     ));
     let dead_lettered = common::run_worker_until(worker, Duration::from_secs(15), || {
         let db = db.clone();
@@ -179,6 +181,7 @@ impl Handler<PaymentProcessed> for VerboseFailingHandler {
             event_id: uuid::Uuid::now_v7(),
             event_type: "payment.processed".to_string(),
             error: "x".repeat(10_000),
+            terminal: false,
         })
     }
 }
@@ -214,7 +217,7 @@ async fn test_oversized_error_still_reaches_dead_letter() {
     let worker = Arc::new(EventWorker::new(
         store.clone(),
         registry,
-        common::fast_config("worker_verbose").with_max_attempts(2),
+        common::fast_config("worker_verbose"),
     ));
     let dead_lettered = common::run_worker_until(worker, Duration::from_secs(15), || {
         let db = db.clone();
@@ -292,6 +295,116 @@ async fn test_incomplete_delivery_goes_to_dead_letter() {
     assert_eq!(dead_letters.len(), 1);
     assert!(
         dead_letters[0].last_error.contains("event_type"),
+        "{}",
+        dead_letters[0].last_error
+    );
+}
+
+/// La purge supprime les livraisons livrées et les événements anciens, mais garde un événement
+/// tant qu'une de ses livraisons n'est pas livrée (en attente ou en dead letter rejouable).
+#[tokio::test]
+async fn test_purge_keeps_events_of_unresolved_deliveries() {
+    let db = connect("mem://").await.unwrap();
+    db.use_ns("test_ns").use_db("test_purge").await.unwrap();
+    common::setup_test_db(&db).await;
+    let store = Arc::new(EventStore::new(db.clone()));
+    store.install().await.unwrap();
+
+    let sub = EventSubscription::new(
+        "payment_purge_sub",
+        "lyxal_accounting",
+        "payment.processed",
+        "record_ledger",
+    );
+    store.register_subscription(&sub).await.unwrap();
+    let publisher = EventPublisher::new(store.clone(), "lyxal_billing", EventContext::default());
+    for id in ["pay_done", "pay_waiting"] {
+        publisher
+            .publish(&PaymentProcessed {
+                payment_id: id.to_string(),
+                amount: 1,
+            })
+            .await
+            .unwrap();
+    }
+    // Événements anciens ; seule la livraison de pay_done est livrée (depuis longtemps)
+    db.query(
+        "UPDATE event_outbox SET fanned_out_at = time::now() - 10d;
+         UPDATE event_delivery SET status = 'delivered', delivered_at = time::now() - 10d
+            WHERE outbox_event.payload.payment_id = 'pay_done';",
+    )
+    .await
+    .unwrap();
+
+    assert!(store.purge_garbage(1).await.unwrap());
+
+    let mut res = db
+        .query(
+            "SELECT VALUE payload.payment_id FROM event_outbox;
+             SELECT VALUE status FROM event_delivery;",
+        )
+        .await
+        .unwrap();
+    let outbox: Vec<String> = res.take(0).unwrap();
+    let deliveries: Vec<String> = res.take(1).unwrap();
+    assert_eq!(outbox, ["pay_waiting"]);
+    assert_eq!(deliveries, ["pending"]);
+}
+
+/// Une livraison dont l'abonnement a disparu part en dead letter avec son motif, sans bloquer
+/// les livraisons des autres abonnements.
+#[tokio::test]
+async fn test_orphan_delivery_goes_to_dead_letter() {
+    let db = connect("mem://").await.unwrap();
+    db.use_ns("test_ns").use_db("test_orphan").await.unwrap();
+    common::setup_test_db(&db).await;
+    let store = Arc::new(EventStore::new(db.clone()));
+    store.install().await.unwrap();
+
+    for name in ["payment_orphan_sub", "payment_live_sub"] {
+        store
+            .register_subscription(&EventSubscription::new(
+                name,
+                "lyxal_accounting",
+                "payment.processed",
+                "record_ledger",
+            ))
+            .await
+            .unwrap();
+    }
+    EventPublisher::new(store.clone(), "lyxal_billing", EventContext::default())
+        .publish(&PaymentProcessed {
+            payment_id: "pay_1".to_string(),
+            amount: 1,
+        })
+        .await
+        .unwrap();
+    db.query("DELETE event_subscription WHERE name = 'payment_orphan_sub'")
+        .await
+        .unwrap();
+
+    let handled = Arc::new(AtomicUsize::new(2));
+    let mut registry = HandlerRegistry::new();
+    registry
+        .register(FlakyPaymentHandler {
+            attempts: handled.clone(),
+        })
+        .unwrap();
+    let worker = Arc::new(EventWorker::new(
+        store.clone(),
+        registry,
+        common::fast_config("worker_orphan"),
+    ));
+    let settled = common::run_worker_until(worker, Duration::from_secs(10), || {
+        let db = db.clone();
+        async move { common::delivery_statuses(&db).await == ["dead_letter", "delivered"] }
+    })
+    .await;
+    assert!(settled, "{:?}", common::delivery_statuses(&db).await);
+    let dead_letters = store.get_dead_letters().await.unwrap();
+    assert_eq!(dead_letters.len(), 1);
+    assert!(
+        dead_letters[0].last_error.contains("orpheline"),
         "{}",
         dead_letters[0].last_error
     );
