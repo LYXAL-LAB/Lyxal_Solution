@@ -182,6 +182,9 @@ pub struct PendingDeliveryItem {
     pub created_at: Option<Datetime>,
     pub outbox_event: lyxal_surreal::RecordId,
     pub subscription: lyxal_surreal::RecordId,
+    /// Budget d'essais de l'abonnement (`event_subscription.max_attempts`) ; `None` si
+    /// l'abonnement n'existe plus.
+    pub max_attempts: Option<u32>,
     pub delivery_seq: Option<u64>,
     pub target_module: String,
     pub context: Option<crate::models::EventContext>,

@@ -141,7 +141,6 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_assign_seq(
             status: "processing",
             delivery_seq: $next_seq,
             attempts: 1,
-            max_attempts: 5,
             locked_until: $now + $lock_duration,
             lease_owner: $node_id,
             next_retry_at: $now,

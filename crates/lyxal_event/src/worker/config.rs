@@ -22,8 +22,6 @@ pub struct EventWorkerConfig {
     pub dispatch_timeout: Duration,
     /// Délai maximal d'attente d'acquittement (ACK watchdog).
     pub ack_timeout: Duration,
-    /// Nombre maximal de tentatives de relivraison avant transfert en Dead Letter Queue.
-    pub max_redelivery_count: u32,
     /// Topic optionnel de destination pour la Dead Letter Queue.
     pub dead_letter_topic: Option<String>,
     /// Délai de base pour le backoff exponentiel des retries.
@@ -48,7 +46,6 @@ impl Default for EventWorkerConfig {
             max_unacked: 100,
             dispatch_timeout: Duration::from_secs(5),
             ack_timeout: Duration::from_secs(2),
-            max_redelivery_count: 3,
             dead_letter_topic: None,
             retry_base_delay: Duration::from_secs(1),
             retry_max_delay: Duration::from_secs(300),
@@ -119,13 +116,6 @@ impl EventWorkerConfig {
     #[must_use]
     pub fn with_ack_timeout(mut self, timeout: Duration) -> Self {
         self.ack_timeout = timeout;
-        self
-    }
-
-    /// Personnalise le nombre maximal de retries avant DLQ.
-    #[must_use]
-    pub fn with_max_redelivery_count(mut self, count: u32) -> Self {
-        self.max_redelivery_count = count;
         self
     }
 

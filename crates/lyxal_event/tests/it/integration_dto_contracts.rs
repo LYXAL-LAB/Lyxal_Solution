@@ -122,6 +122,33 @@ async fn test_rejection_of_legacy_dto_and_negative_contracts() {
         mutated.last_error.as_deref(),
         Some("canonical network error")
     );
+
+    // 5. Quota de la livraison dépassé : la fonction n'envoie jamais en dead letter (seule la
+    //    barrière DLQ du moteur, protégée par le bail, en décide) et le verrou du leader reste
+    db.query(
+        "UPDATE $id SET attempts = 99, locked_until = time::now() + 1m, lease_owner = 'node_x'",
+    )
+    .bind(("id", delivery_id.clone()))
+    .await
+    .unwrap();
+    let mut res = db
+        .query("RETURN fn::event_delivery_failure($params)")
+        .bind((
+            "params",
+            lyxal_event::engine::dto::DeliveryFailureParams {
+                delivery_id: delivery_id.clone(),
+                error: "still failing".into(),
+                retry_delay_seconds: 10,
+            },
+        ))
+        .await
+        .unwrap();
+    let accepted: Option<LyxalResponse> = res.take(0).unwrap();
+    assert!(accepted.unwrap().data);
+    let mutated = store.get_delivery(&delivery_id).await.unwrap().unwrap();
+    assert_eq!(mutated.status, DeliveryStatus::Failed);
+    assert!(mutated.locked_until.is_some(), "verrou du leader conservé");
+    assert!(store.get_dead_letters().await.unwrap().is_empty());
 }
 
 /// Exécute une requête avec des paramètres JSON bruts (cas de contrat invalide) et renvoie le

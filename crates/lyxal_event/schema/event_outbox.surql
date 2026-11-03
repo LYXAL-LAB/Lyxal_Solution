@@ -44,8 +44,8 @@ DEFINE FIELD OVERWRITE metadata ON TABLE event_outbox TYPE object FLEXIBLE DEFAU
     COMMENT "Métadonnées transversales (acteur, horodatage client, headers).";
 
 DEFINE FIELD OVERWRITE status ON TABLE event_outbox TYPE string DEFAULT "pending"
-    ASSERT $value IN ["pending", "fanned_out", "archived"]
-    COMMENT "Statut du cycle de vie outbox (pending, fanned_out, archived).";
+    ASSERT $value IN ["pending", "fanned_out"]
+    COMMENT "Statut du cycle de vie outbox (pending, fanned_out).";
 
 DEFINE FIELD OVERWRITE created_at ON TABLE event_outbox TYPE datetime DEFAULT time::now()
     COMMENT "Horodatage UTC de création de l'enregistrement outbox.";
