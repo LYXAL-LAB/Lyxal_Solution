@@ -277,3 +277,51 @@ async fn test_health_snapshot_transition_detection() {
     assert_eq!(transitions[0].from, HealthStatus::Healthy);
     assert_eq!(transitions[0].to, HealthStatus::Unhealthy);
 }
+
+struct PanickingChecker {
+    module_id: ModuleId,
+}
+
+#[async_trait]
+impl ModuleHealthCheck for PanickingChecker {
+    fn module_id(&self) -> &ModuleId {
+        &self.module_id
+    }
+
+    async fn check(&self, _ctx: &ModuleContext) -> Result<HealthCheckResult, RuntimeError> {
+        panic!("sonde défaillante");
+    }
+}
+
+/// Une sonde qui panique rend son module malsain dans l'instantané, sans le faire disparaître.
+#[tokio::test]
+async fn test_panicking_check_reports_unhealthy() {
+    let registry = HealthRegistry::new();
+    registry
+        .register_check(Arc::new(PanickingChecker {
+            module_id: ModuleId::new("lyxal-crash"),
+        }))
+        .unwrap();
+    let engine = HealthEngine::new(registry, HealthConfig::default());
+
+    let mut actual_state = ActualRuntimeState::empty();
+    actual_state.set(
+        ModuleId::new("lyxal-crash"),
+        ObservedModuleState {
+            module_id: ModuleId::new("lyxal-crash"),
+            installed_version: Some(semver::Version::parse("1.0.0").unwrap()),
+            release_status: None,
+            runtime_state: Some(ModuleState::Running),
+            is_registered: true,
+        },
+    );
+
+    let snapshot = engine
+        .check_all(&actual_state, &ModuleContext::new("test"))
+        .await;
+    let res = snapshot
+        .modules
+        .get(&ModuleId::new("lyxal-crash"))
+        .expect("le module reste dans l'instantané");
+    assert_eq!(res.status, HealthStatus::Unhealthy);
+}

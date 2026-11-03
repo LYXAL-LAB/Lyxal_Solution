@@ -1,4 +1,4 @@
-//! # Module Controller (Lyxal Runtime V1.7)
+//! # Module Controller
 //!
 //! Fournit le contrôleur de réconciliation continue et de supervision de santé :
 //! - [`ReconciliationLoopConfig`]

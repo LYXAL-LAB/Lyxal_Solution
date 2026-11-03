@@ -1,5 +1,5 @@
 -- ==============================================================================
--- Tables système de Lyxal OS (V1.4)
+-- Tables système de Lyxal OS
 -- ==============================================================================
 
 DEFINE TABLE OVERWRITE system_module SCHEMAFULL

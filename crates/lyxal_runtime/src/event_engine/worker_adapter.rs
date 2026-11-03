@@ -24,10 +24,9 @@ pub struct EventWorkerService {
 
 impl EventWorkerService {
     /// Crée un nouvel adaptateur pour le worker d'événements.
-    #[must_use]
-    pub fn new(inner: Arc<EventWorker>, shutdown_timeout: Duration) -> Self {
+    pub fn new(inner: Arc<EventWorker>, shutdown_timeout: Duration) -> Result<Self, RuntimeError> {
         let module_id = ModuleId::new("lyxal_event");
-        let id = WorkerId::new(&module_id, "event_worker").expect("valid worker id");
+        let id = WorkerId::new(&module_id, "event_worker")?;
         let mut descriptor = WorkerDescriptor::new(id, module_id, "Lyxal Event Worker")
             .with_description("Consommateur et dispatcheur asynchrone d'événements Lyxal OS")
             .with_criticality(WorkerCriticality::Required)
@@ -37,7 +36,7 @@ impl EventWorkerService {
             backoff: WorkerRestartBackoff::default(),
         };
 
-        Self { descriptor, inner }
+        Ok(Self { descriptor, inner })
     }
 
     /// Retourne une référence vers le worker d'événements interne.

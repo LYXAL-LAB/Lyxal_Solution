@@ -30,7 +30,7 @@ impl Drop for PassGuard {
     }
 }
 
-/// Contrôleur de réconciliation continue et de supervision de santé (Lyxal Runtime V1.7).
+/// Contrôleur de réconciliation continue et de supervision de santé.
 pub struct ContinuousReconciliationController {
     reconciler: Arc<RuntimeReconciler>,
     health_engine: Arc<HealthEngine>,
@@ -91,7 +91,9 @@ impl ContinuousReconciliationController {
                 RuntimeEventKind::Reconciliation,
                 RuntimeEventPayload::Reconciliation(payload),
             );
-            let _ = bus.publish(draft).await;
+            if let Err(e) = bus.publish(draft).await {
+                tracing::warn!(error = %e, "Publication d'un événement interne du runtime impossible");
+            }
         }
     }
 
@@ -330,9 +332,12 @@ impl ContinuousReconciliationController {
 
         // 5. Persistance de l'état de santé instantané (si configuré)
         if let Some(store) = &self.health_store {
-            let _ = store
+            if let Err(e) = store
                 .record_health_snapshot(&self.node_id, &health_snapshot)
-                .await;
+                .await
+            {
+                tracing::warn!(node = %self.node_id, error = %e, "Persistance de l'état de santé impossible");
+            }
         }
 
         // 6. Mise à jour de l'état du contrôleur et réinitialisation du backoff
@@ -401,7 +406,9 @@ impl ContinuousReconciliationController {
 
         loop {
             // Exécution d'un cycle
-            let _ = self.run_once().await;
+            if let Err(e) = self.run_once().await {
+                tracing::warn!(error = %e, "Échec d'un cycle de réconciliation : nouvel essai après backoff");
+            }
 
             // Calcul du délai d'attente selon le backoff
             let delay = self

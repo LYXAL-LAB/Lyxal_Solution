@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-/// Configuration de la boucle continue de réconciliation (Lyxal Runtime V1.7).
+/// Configuration de la boucle continue de réconciliation.
 #[derive(Debug, Clone)]
 pub struct ReconciliationLoopConfig {
     /// Intervalle nominal entre deux cycles d'évaluation consécutifs.

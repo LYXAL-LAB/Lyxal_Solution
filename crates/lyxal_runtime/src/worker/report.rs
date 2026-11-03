@@ -16,6 +16,15 @@ pub struct WorkerOperationReport {
     pub error: Option<String>,
 }
 
+/// Échec d'un worker lors d'une opération groupée.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkerFailure {
+    /// Worker concerné.
+    pub worker_id: WorkerId,
+    /// Cause de l'échec.
+    pub error: String,
+}
+
 /// Rapport synthétique d'opération groupée sur l'ensemble des workers d'un module.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorkerBatchReport {
@@ -25,8 +34,8 @@ pub struct WorkerBatchReport {
     pub started: Vec<WorkerId>,
     /// Liste des workers arrêtés avec succès.
     pub stopped: Vec<WorkerId>,
-    /// Liste des workers ayant rencontré un échec (avec cause).
-    pub failed: Vec<(WorkerId, String)>,
+    /// Liste des workers ayant rencontré un échec, avec leur cause.
+    pub failed: Vec<WorkerFailure>,
     /// Liste des workers déjà dans l'état désiré (opération omise par idempotence).
     pub skipped: Vec<WorkerId>,
     /// Durée totale du batch en millisecondes.

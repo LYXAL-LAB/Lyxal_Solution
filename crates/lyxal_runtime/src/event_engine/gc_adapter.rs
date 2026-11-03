@@ -18,10 +18,12 @@ pub struct EventGarbageCollectorService {
 
 impl EventGarbageCollectorService {
     /// Crée un nouvel adaptateur pour le ramasse-miettes d'événements.
-    #[must_use]
-    pub fn new(inner: Arc<GarbageCollector>, shutdown_timeout: Duration) -> Self {
+    pub fn new(
+        inner: Arc<GarbageCollector>,
+        shutdown_timeout: Duration,
+    ) -> Result<Self, RuntimeError> {
         let module_id = ModuleId::new("lyxal_event");
-        let id = WorkerId::new(&module_id, "event_gc").expect("valid worker id");
+        let id = WorkerId::new(&module_id, "event_gc")?;
         let mut descriptor = WorkerDescriptor::new(id, module_id, "Lyxal Event Garbage Collector")
             .with_description("Purge périodique des événements archivés et livraisons finalisées")
             .with_criticality(WorkerCriticality::Optional)
@@ -31,7 +33,7 @@ impl EventGarbageCollectorService {
             backoff: WorkerRestartBackoff::default(),
         };
 
-        Self { descriptor, inner }
+        Ok(Self { descriptor, inner })
     }
 
     /// Retourne une référence vers le Garbage Collector interne.

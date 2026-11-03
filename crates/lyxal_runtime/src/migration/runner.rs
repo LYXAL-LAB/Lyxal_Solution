@@ -92,7 +92,9 @@ impl MigrationRunner {
                 RuntimeEventPayload::Migration(payload),
             )
             .with_module_id(module_id.clone());
-            let _ = bus.publish(draft).await;
+            if let Err(e) = bus.publish(draft).await {
+                tracing::warn!(error = %e, "Publication d'un événement interne du runtime impossible");
+            }
         }
     }
 
@@ -284,7 +286,9 @@ impl MigrationRunner {
                                 // Déjà appliquée par un autre nœud entre-temps !
                                 if let (Some(mgr), Some(l)) = (&self.lease_manager, &acquired_lease)
                                 {
-                                    let _ = mgr.release(l).await;
+                                    if let Err(e) = mgr.release(l).await {
+                                        tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
+                                    }
                                 }
                                 self.emit(
                                     &plan.module_id,
@@ -299,7 +303,9 @@ impl MigrationRunner {
                             } else {
                                 if let (Some(mgr), Some(l)) = (&self.lease_manager, &acquired_lease)
                                 {
-                                    let _ = mgr.release(l).await;
+                                    if let Err(e) = mgr.release(l).await {
+                                        tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
+                                    }
                                 }
                                 return Err(RuntimeError::MigrationChecksumMismatch {
                                     module: plan.module_id.clone(),
@@ -324,7 +330,9 @@ impl MigrationRunner {
                                         if let (Some(mgr), Some(l)) =
                                             (&self.lease_manager, &acquired_lease)
                                         {
-                                            let _ = mgr.release(l).await;
+                                            if let Err(e) = mgr.release(l).await {
+                                                tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
+                                            }
                                         }
                                         self.emit(
                                             &plan.module_id,
@@ -352,7 +360,9 @@ impl MigrationRunner {
                             {
                                 if let (Some(mgr), Some(l)) = (&self.lease_manager, &acquired_lease)
                                 {
-                                    let _ = mgr.release(l).await;
+                                    if let Err(e) = mgr.release(l).await {
+                                        tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
+                                    }
                                 }
                                 return Err(RuntimeError::MigrationRecoveryRequired {
                                     module: plan.module_id.clone(),
@@ -369,7 +379,9 @@ impl MigrationRunner {
                         Ok(r) => r,
                         Err(err) => {
                             if let (Some(mgr), Some(l)) = (&self.lease_manager, &acquired_lease) {
-                                let _ = mgr.release(l).await;
+                                if let Err(e) = mgr.release(l).await {
+                                    tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
+                                }
                             }
                             return Err(err);
                         }
@@ -396,7 +408,9 @@ impl MigrationRunner {
                     };
                     if let Err(err) = self.store.record_migration(&applying_record).await {
                         if let (Some(mgr), Some(l)) = (&self.lease_manager, &acquired_lease) {
-                            let _ = mgr.release(l).await;
+                            if let Err(e) = mgr.release(l).await {
+                                tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
+                            }
                         }
                         return Err(err);
                     }
@@ -476,7 +490,9 @@ impl MigrationRunner {
 
                             // Libération du verrou après succès
                             if let (Some(mgr), Some(l)) = (&self.lease_manager, &acquired_lease) {
-                                let _ = mgr.release(l).await;
+                                if let Err(e) = mgr.release(l).await {
+                                    tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
+                                }
                             }
                         }
                         Err(exec_err) => {
@@ -504,7 +520,9 @@ impl MigrationRunner {
 
                             // Libération du verrou après échec
                             if let (Some(mgr), Some(l)) = (&self.lease_manager, &acquired_lease) {
-                                let _ = mgr.release(l).await;
+                                if let Err(e) = mgr.release(l).await {
+                                    tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
+                                }
                             }
 
                             return Err(exec_err);

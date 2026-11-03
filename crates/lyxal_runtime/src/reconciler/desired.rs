@@ -33,7 +33,7 @@ impl ModuleTargetState {
         matches!(self, Self::Absent)
     }
 
-    /// Calcule la cible requise pour une dépendance directe selon le contrat CTO V1.6 :
+    /// Calcule la cible requise pour une dépendance directe :
     /// - Parent `Running`   -> Dépendance requise `Running`
     /// - Parent `Installed` -> Dépendance requise `Installed`
     /// - Parent `Stopped`   -> Dépendance requise `Installed` (satisfaite sans être démarrée)

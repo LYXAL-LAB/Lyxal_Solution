@@ -7,6 +7,6 @@ pub use installer::ModuleInstaller;
 pub use model::ModulePackage;
 pub use plan::{InstallationNature, ModuleInstallationPlan};
 pub use types::{
-    InstallationPhase, ModuleBatchInstallationResult, ModuleInstallationOutcome,
-    ModuleInstallationReport, ModuleReleaseStatus,
+    InstallationPhase, ModuleBatchInstallationResult, ModuleInstallFailure,
+    ModuleInstallationOutcome, ModuleInstallationReport, ModuleNotAttempted, ModuleReleaseStatus,
 };

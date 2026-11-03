@@ -1,5 +1,5 @@
 -- ==============================================================================
--- Index des tables système de Lyxal OS (V1.4)
+-- Index des tables système de Lyxal OS
 -- ==============================================================================
 
 DEFINE INDEX OVERWRITE idx_system_module_id ON TABLE system_module COLUMNS module_id UNIQUE;

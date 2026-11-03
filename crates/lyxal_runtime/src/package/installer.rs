@@ -17,8 +17,8 @@ use crate::migration::runner::MigrationRunner;
 use crate::package::model::ModulePackage;
 use crate::package::plan::{InstallationNature, ModuleInstallationPlan};
 use crate::package::types::{
-    InstallationPhase, ModuleBatchInstallationResult, ModuleInstallationOutcome,
-    ModuleInstallationReport, ModuleReleaseStatus,
+    InstallationPhase, ModuleBatchInstallationResult, ModuleInstallFailure,
+    ModuleInstallationOutcome, ModuleInstallationReport, ModuleNotAttempted, ModuleReleaseStatus,
 };
 use crate::resolver::DependencyResolver;
 use crate::schema::importer::SchemaImporter;
@@ -86,7 +86,9 @@ impl ModuleInstaller {
                 RuntimeEventPayload::Installation(payload),
             )
             .with_module_id(module_id.clone());
-            let _ = bus.publish(draft).await;
+            if let Err(e) = bus.publish(draft).await {
+                tracing::warn!(error = %e, "Publication d'un événement interne du runtime impossible");
+            }
         }
     }
 
@@ -97,7 +99,9 @@ impl ModuleInstaller {
                 RuntimeEventPayload::Module(payload),
             )
             .with_module_id(module_id.clone());
-            let _ = bus.publish(draft).await;
+            if let Err(e) = bus.publish(draft).await {
+                tracing::warn!(error = %e, "Publication d'un événement interne du runtime impossible");
+            }
         }
     }
 
@@ -363,7 +367,9 @@ impl ModuleInstaller {
                 if r.status == ModuleReleaseStatus::Installed.as_str()
                     || r.status == ModuleReleaseStatus::Active.as_str()
                 {
-                    let _ = lease_mgr.release(&lease).await;
+                    if let Err(e) = lease_mgr.release(&lease).await {
+                        tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
+                    }
                     return Ok(ModuleInstallationReport {
                         module_id: package.id().clone(),
                         version: package.version().to_string(),
@@ -464,7 +470,9 @@ impl ModuleInstaller {
                     if let (Some(mgr), Some(l)) =
                         (&self.installation_lease_manager, &acquired_lease)
                     {
-                        let _ = mgr.release(l).await;
+                        if let Err(e) = mgr.release(l).await {
+                            tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
+                        }
                     }
                     return Err(RuntimeError::ModuleInstallFailed {
                         module: package.id().clone(),
@@ -522,7 +530,9 @@ impl ModuleInstaller {
                     )
                     .await?;
                 if let (Some(mgr), Some(l)) = (&self.installation_lease_manager, &acquired_lease) {
-                    let _ = mgr.release(l).await;
+                    if let Err(e) = mgr.release(l).await {
+                        tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
+                    }
                 }
                 return Err(RuntimeError::ModuleInstallFailed {
                     module: package.id().clone(),
@@ -578,7 +588,9 @@ impl ModuleInstaller {
                 )
                 .await?;
             if let (Some(mgr), Some(l)) = (&self.installation_lease_manager, &acquired_lease) {
-                let _ = mgr.release(l).await;
+                if let Err(e) = mgr.release(l).await {
+                    tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
+                }
             }
             return Err(RuntimeError::ModuleInstallFailed {
                 module: package.id().clone(),
@@ -600,7 +612,9 @@ impl ModuleInstaller {
 
         // G. Libération du bail d'installation
         if let (Some(mgr), Some(l)) = (&self.installation_lease_manager, &acquired_lease) {
-            let _ = mgr.release(l).await;
+            if let Err(e) = mgr.release(l).await {
+                tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
+            }
         }
 
         let outcome = match plan.nature {
@@ -688,7 +702,12 @@ impl ModuleInstaller {
         let mut failed_ids: HashSet<ModuleId> = HashSet::new();
 
         for id in sorted_ids {
-            let pkg = package_map.remove(&id).expect("Package must exist in map");
+            let Some(pkg) = package_map.remove(&id) else {
+                return Err(RuntimeError::Internal {
+                    code: "PACKAGE_MISSING_DURING_APPLY",
+                    message: format!("Package for module '{id}' missing from the batch"),
+                });
+            };
 
             // Vérifier si une dépendance directe de ce module a échoué
             let failed_dep = pkg
@@ -698,7 +717,10 @@ impl ModuleInstaller {
                 .find(|d| failed_ids.contains(&d.id));
 
             if let Some(dep) = failed_dep {
-                result.not_attempted.push((id.clone(), dep.id.clone()));
+                result.not_attempted.push(ModuleNotAttempted {
+                    module_id: id.clone(),
+                    failed_dependency: dep.id.clone(),
+                });
                 failed_ids.insert(id);
                 continue;
             }
@@ -716,7 +738,10 @@ impl ModuleInstaller {
                 },
                 Err(err) => {
                     failed_ids.insert(id.clone());
-                    result.failed.push((id, err));
+                    result.failed.push(ModuleInstallFailure {
+                        module_id: id,
+                        error: err,
+                    });
                 }
             }
         }

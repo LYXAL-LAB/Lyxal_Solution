@@ -5,7 +5,7 @@ use lyxal_runtime::error::RuntimeError;
 use lyxal_runtime::manifest::model::{ModuleDependency, CURRENT_MANIFEST_VERSION};
 use lyxal_runtime::manifest::ModuleManifest;
 use lyxal_runtime::module::LyxalModule;
-use lyxal_runtime::package::types::ModuleReleaseStatus;
+use lyxal_runtime::package::types::{ModuleNotAttempted, ModuleReleaseStatus};
 use lyxal_runtime::package::ModulePackage;
 use lyxal_runtime::resource::provider::ResourceProvider;
 use lyxal_runtime::resource::{ModuleResource, ResourceKind};
@@ -270,10 +270,13 @@ async fn test_batch_fault_isolation_and_not_attempted_reporting() {
     assert!(!result.is_success());
     assert_eq!(result.installed, vec![ModuleId::new("lyxal-standalone")]);
     assert_eq!(result.failed.len(), 1);
-    assert_eq!(result.failed[0].0, ModuleId::new("lyxal-auth"));
+    assert_eq!(result.failed[0].module_id, ModuleId::new("lyxal-auth"));
     assert_eq!(result.not_attempted.len(), 1);
     assert_eq!(
         result.not_attempted[0],
-        (ModuleId::new("lyxal-calendar"), ModuleId::new("lyxal-auth"))
+        ModuleNotAttempted {
+            module_id: ModuleId::new("lyxal-calendar"),
+            failed_dependency: ModuleId::new("lyxal-auth"),
+        }
     );
 }

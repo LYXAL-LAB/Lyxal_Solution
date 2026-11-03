@@ -30,13 +30,15 @@ use crate::schema::importer::SchemaImporter;
 use crate::store::RuntimeStore;
 use crate::types::{ModuleId, ModuleState};
 use crate::worker::registry::WorkerRegistry;
+use crate::worker::report::{WorkerBatchReport, WorkerFailure};
 use crate::worker::store::WorkerStore;
 use crate::worker::supervisor::WorkerSupervisor;
-use crate::worker::LyxalWorker;
+use crate::worker::{LyxalWorker, WorkerCriticality};
 use lyxal_event::{
     Event, EventPublisher, EventStore, EventWorker, GarbageCollector, Handler, HandlerRegistry,
 };
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
@@ -64,6 +66,9 @@ pub struct LyxalRuntime {
     event_consumers: Arc<RwLock<Vec<Arc<dyn EventConsumerModule>>>>,
     event_store: Option<Arc<EventStore>>,
     event_publisher: Option<Arc<EventPublisher>>,
+    /// Workers du moteur d'événements déjà enregistrés : un redémarrage (`start_all` après
+    /// `stop_all`) les réutilise au lieu de les réenregistrer.
+    event_workers_registered: AtomicBool,
 }
 
 impl Default for LyxalRuntime {
@@ -106,6 +111,7 @@ impl LyxalRuntime {
             event_consumers: Arc::new(RwLock::new(Vec::new())),
             event_store: None,
             event_publisher: None,
+            event_workers_registered: AtomicBool::new(false),
         }
     }
 
@@ -342,6 +348,10 @@ impl LyxalRuntime {
             }
         }
 
+        if self.event_workers_registered.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+
         // 3. Construction du registre de handlers pour cette instance isolée
         let mut registry = {
             let reg = self.event_registry.read().await;
@@ -366,8 +376,8 @@ impl LyxalRuntime {
         let event_worker_service = Arc::new(EventWorkerService::new(
             event_worker,
             worker_config.dispatch_timeout,
-        ));
-        let _ = self.worker_registry.register(event_worker_service);
+        )?);
+        self.worker_registry.register(event_worker_service)?;
 
         let gc = Arc::new(GarbageCollector::new(
             store.clone(),
@@ -377,8 +387,9 @@ impl LyxalRuntime {
         let gc_service = Arc::new(EventGarbageCollectorService::new(
             gc,
             std::time::Duration::from_secs(5),
-        ));
-        let _ = self.worker_registry.register(gc_service);
+        )?);
+        self.worker_registry.register(gc_service)?;
+        self.event_workers_registered.store(true, Ordering::SeqCst);
 
         Ok(())
     }
@@ -482,7 +493,7 @@ impl LyxalRuntime {
         package: ModulePackage,
     ) -> Result<ModuleInstallationReport, RuntimeError> {
         if let Some(m) = package.module_impl() {
-            let _ = self.register(m.clone());
+            self.register_if_absent(m.clone())?;
         }
         let installer = self.installer()?;
         installer.execute_installation(package).await
@@ -495,11 +506,60 @@ impl LyxalRuntime {
     ) -> Result<ModuleBatchInstallationResult, RuntimeError> {
         for pkg in &packages {
             if let Some(m) = pkg.module_impl() {
-                let _ = self.register(m.clone());
+                self.register_if_absent(m.clone())?;
             }
         }
         let installer = self.installer()?;
         installer.execute_batch(packages).await
+    }
+
+    /// Vérifie le démarrage des workers d'un module : l'échec d'un worker `Required` fait
+    /// échouer le démarrage, celui d'un worker `Optional` est journalisé (module dégradé).
+    fn ensure_workers_started(&self, report: WorkerBatchReport) -> Result<(), RuntimeError> {
+        let mut required = Vec::new();
+        for failure in report.failed {
+            let criticality = self
+                .worker_registry
+                .get(&failure.worker_id)
+                .map(|w| w.descriptor().criticality);
+            if criticality == Some(WorkerCriticality::Optional) {
+                tracing::warn!(
+                    module = %report.module_id,
+                    worker = %failure.worker_id,
+                    error = %failure.error,
+                    "Worker optionnel non démarré : module dégradé"
+                );
+            } else {
+                required.push(failure);
+            }
+        }
+        if required.is_empty() {
+            return Ok(());
+        }
+        Err(RuntimeError::WorkerStartFailed {
+            worker: join_worker_ids(&required),
+            message: join_worker_errors(&required),
+        })
+    }
+
+    /// Vérifie l'arrêt des workers d'un module : un worker qui ne s'arrête pas bloque l'arrêt du
+    /// module (aucun worker ne doit lui survivre).
+    fn ensure_workers_stopped(report: WorkerBatchReport) -> Result<(), RuntimeError> {
+        if report.failed.is_empty() {
+            return Ok(());
+        }
+        Err(RuntimeError::WorkerStopFailed {
+            worker: join_worker_ids(&report.failed),
+            message: join_worker_errors(&report.failed),
+        })
+    }
+
+    /// Enregistre le module d'un package s'il ne l'est pas déjà ; toute autre erreur remonte.
+    fn register_if_absent(&self, module: Arc<dyn LyxalModule>) -> Result<(), RuntimeError> {
+        match self.register(module) {
+            Ok(()) | Err(RuntimeError::DuplicateModule { .. }) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
     /// Enregistre un module dans le runtime via un `Arc<dyn LyxalModule>`.
@@ -580,10 +640,11 @@ impl LyxalRuntime {
         self.lifecycle.start_module(&module, &ctx).await?;
 
         // Démarrer les workers déclarés pour ce module
-        let _ = self
+        let report = self
             .worker_supervisor
             .start_module_workers(module_id)
             .await?;
+        self.ensure_workers_started(report)?;
 
         Ok(())
     }
@@ -598,10 +659,11 @@ impl LyxalRuntime {
             })?;
 
         // 1. Arrêter d'abord les workers supervisés avant d'invoquer module.stop() (Invariant No Zombie)
-        let _ = self
+        let report = self
             .worker_supervisor
             .stop_module_workers(module_id)
             .await?;
+        Self::ensure_workers_stopped(report)?;
 
         // 2. Exécuter l'arrêt du cycle de vie du module
         let ctx = ModuleContext::new(module_id.clone());
@@ -641,15 +703,16 @@ impl LyxalRuntime {
                 }
                 self.lifecycle.start_module(&module, &ctx).await?;
 
-                let _ = self
+                let report = self
                     .worker_supervisor
                     .start_module_workers(&module_id)
                     .await?;
+                self.ensure_workers_started(report)?;
             }
         }
 
         // 3. Démarrer l'ensemble des workers supervisés du runtime (dont EventWorker et GC)
-        let _ = self.worker_supervisor.start_all().await?;
+        self.worker_supervisor.start_all().await?;
 
         Ok(())
     }
@@ -660,7 +723,7 @@ impl LyxalRuntime {
         order.reverse();
 
         // 1. Arrêter d'abord tous les workers supervisés de manière coopérative (Invariant No-Zombie)
-        let _ = self.worker_supervisor.stop_all().await?;
+        self.worker_supervisor.stop_all().await?;
 
         // 2. Arrêter ensuite les modules dans l'ordre inverse
         for module_id in order {
@@ -671,5 +734,120 @@ impl LyxalRuntime {
         }
 
         Ok(())
+    }
+}
+
+fn join_worker_ids(failures: &[WorkerFailure]) -> String {
+    failures
+        .iter()
+        .map(|f| f.worker_id.to_string())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn join_worker_errors(failures: &[WorkerFailure]) -> String {
+    failures
+        .iter()
+        .map(|f| format!("{} : {}", f.worker_id, f.error))
+        .collect::<Vec<_>>()
+        .join(" ; ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::worker::context::WorkerContext;
+    use crate::worker::descriptor::WorkerDescriptor;
+    use crate::worker::id::WorkerId;
+    use async_trait::async_trait;
+
+    struct IdleWorker {
+        descriptor: WorkerDescriptor,
+    }
+
+    #[async_trait]
+    impl LyxalWorker for IdleWorker {
+        fn descriptor(&self) -> &WorkerDescriptor {
+            &self.descriptor
+        }
+
+        async fn run(&self, _ctx: WorkerContext) -> Result<(), RuntimeError> {
+            Ok(())
+        }
+    }
+
+    fn worker(module: &ModuleId, name: &str, criticality: WorkerCriticality) -> IdleWorker {
+        let id = WorkerId::new(module, name).unwrap();
+        IdleWorker {
+            descriptor: WorkerDescriptor::new(id, module.clone(), name)
+                .with_criticality(criticality),
+        }
+    }
+
+    fn report(module: &ModuleId, failed: &[&str]) -> WorkerBatchReport {
+        let mut report = WorkerBatchReport::new(module.clone());
+        for name in failed {
+            report.failed.push(WorkerFailure {
+                worker_id: WorkerId::new(module, *name).unwrap(),
+                error: "transition invalide".to_string(),
+            });
+        }
+        report
+    }
+
+    #[test]
+    fn worker_start_failures_follow_criticality() {
+        let runtime = LyxalRuntime::new(RuntimeConfig::default());
+        let module = ModuleId::new("lyxal_test");
+        runtime
+            .register_worker(Arc::new(worker(
+                &module,
+                "required",
+                WorkerCriticality::Required,
+            )))
+            .unwrap();
+        runtime
+            .register_worker(Arc::new(worker(
+                &module,
+                "optional",
+                WorkerCriticality::Optional,
+            )))
+            .unwrap();
+
+        // Échec d'un worker optionnel : module dégradé, démarrage maintenu
+        runtime
+            .ensure_workers_started(report(&module, &["optional"]))
+            .unwrap();
+
+        // Échec d'un worker requis : le démarrage échoue et nomme le worker
+        let err = runtime
+            .ensure_workers_started(report(&module, &["optional", "required"]))
+            .unwrap_err();
+        match err {
+            RuntimeError::WorkerStartFailed { worker, .. } => {
+                assert!(worker.contains("required"), "{worker}");
+                assert!(!worker.contains("optional"), "{worker}");
+            }
+            other => panic!("WorkerStartFailed attendu, obtenu {other:?}"),
+        }
+    }
+
+    #[test]
+    fn worker_stop_failure_blocks_module_stop() {
+        let module = ModuleId::new("lyxal_test");
+        LyxalRuntime::ensure_workers_stopped(report(&module, &[])).unwrap();
+        let err = LyxalRuntime::ensure_workers_stopped(report(&module, &["optional"])).unwrap_err();
+        assert!(
+            matches!(err, RuntimeError::WorkerStopFailed { .. }),
+            "{err:?}"
+        );
+    }
+
+    #[test]
+    fn generated_node_ids_are_distinct() {
+        let a = NodeId::generate();
+        let b = NodeId::generate();
+        assert_ne!(a, b);
+        assert!(a.as_str().starts_with("node-"), "{a}");
     }
 }
