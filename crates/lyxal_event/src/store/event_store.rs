@@ -6,6 +6,111 @@ use lyxal_surreal::{LyxalSurrealCall, SurrealValue};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
+/// Ressources SurrealQL du module, dans l'ordre de `manifest.toml` (`schemas`, `functions`,
+/// `error_definitions`) ; un test vérifie l'égalité avec le manifeste.
+pub const INSTALL_RESOURCES: &[(&str, &str)] = &[
+    (
+        "schema/event_outbox.surql",
+        include_str!("../../schema/event_outbox.surql"),
+    ),
+    (
+        "schema/event_subscription.surql",
+        include_str!("../../schema/event_subscription.surql"),
+    ),
+    (
+        "schema/event_delivery.surql",
+        include_str!("../../schema/event_delivery.surql"),
+    ),
+    (
+        "schema/event_dead_letter.surql",
+        include_str!("../../schema/event_dead_letter.surql"),
+    ),
+    (
+        "schema/event_stream_lease.surql",
+        include_str!("../../schema/event_stream_lease.surql"),
+    ),
+    (
+        "schema/event_subscription_progress.surql",
+        include_str!("../../schema/event_subscription_progress.surql"),
+    ),
+    (
+        "functions/event_publish.surql",
+        include_str!("../../functions/event_publish.surql"),
+    ),
+    (
+        "functions/event_fanout.surql",
+        include_str!("../../functions/event_fanout.surql"),
+    ),
+    (
+        "functions/event_recover_pending_fanouts.surql",
+        include_str!("../../functions/event_recover_pending_fanouts.surql"),
+    ),
+    (
+        "functions/event_delivery_assign_seq.surql",
+        include_str!("../../functions/event_delivery_assign_seq.surql"),
+    ),
+    (
+        "functions/event_flush_batch.surql",
+        include_str!("../../functions/event_flush_batch.surql"),
+    ),
+    (
+        "functions/event_dead_letter_transfer.surql",
+        include_str!("../../functions/event_dead_letter_transfer.surql"),
+    ),
+    (
+        "functions/event_dead_letter_replay.surql",
+        include_str!("../../functions/event_dead_letter_replay.surql"),
+    ),
+    (
+        "functions/event_progress_get.surql",
+        include_str!("../../functions/event_progress_get.surql"),
+    ),
+    (
+        "functions/event_lease_acquire.surql",
+        include_str!("../../functions/event_lease_acquire.surql"),
+    ),
+    (
+        "functions/event_lease_renew.surql",
+        include_str!("../../functions/event_lease_renew.surql"),
+    ),
+    (
+        "functions/event_lease_release.surql",
+        include_str!("../../functions/event_lease_release.surql"),
+    ),
+    (
+        "functions/event_delivery_failure.surql",
+        include_str!("../../functions/event_delivery_failure.surql"),
+    ),
+    (
+        "functions/event_purge_garbage.surql",
+        include_str!("../../functions/event_purge_garbage.surql"),
+    ),
+    (
+        "functions/event_subscription_register.surql",
+        include_str!("../../functions/event_subscription_register.surql"),
+    ),
+    (
+        "functions/event_outbox_get.surql",
+        include_str!("../../functions/event_outbox_get.surql"),
+    ),
+    (
+        "functions/event_delivery_get.surql",
+        include_str!("../../functions/event_delivery_get.surql"),
+    ),
+    (
+        "functions/event_dead_letter_list.surql",
+        include_str!("../../functions/event_dead_letter_list.surql"),
+    ),
+    (
+        "functions/event_delivery_fetch_pending.surql",
+        include_str!("../../functions/event_delivery_fetch_pending.surql"),
+    ),
+    (
+        "error/events.surql",
+        include_str!("../../error/events.surql"),
+    ),
+];
+
 /// Store de persistance SurrealDB pour le moteur d'événements.
 #[derive(Clone)]
 pub struct EventStore {
@@ -98,83 +203,18 @@ impl EventStore {
         &self.client
     }
 
-    /// Initialise le schéma et les fonctions SurrealQL pour lyxal_event.
-    pub async fn init_schema(&self) -> Result<(), LyxalEventError> {
-        let ddl_schema = concat!(
-            include_str!("../../schema/event_outbox.surql"),
-            "\n",
-            include_str!("../../schema/event_subscription.surql"),
-            "\n",
-            include_str!("../../schema/event_delivery.surql"),
-            "\n",
-            include_str!("../../schema/event_dead_letter.surql"),
-            "\n",
-            include_str!("../../schema/event_stream_lease.surql"),
-            "\n",
-            include_str!("../../schema/event_subscription_progress.surql"),
-        );
-
-        let ddl_functions = concat!(
-            include_str!("../../functions/event_publish.surql"),
-            "\n",
-            include_str!("../../functions/event_fanout.surql"),
-            "\n",
-            include_str!("../../functions/event_recover_pending_fanouts.surql"),
-            "\n",
-            include_str!("../../functions/event_delivery_failure.surql"),
-            "\n",
-            include_str!("../../functions/event_dead_letter_replay.surql"),
-            "\n",
-            include_str!("../../functions/event_purge_garbage.surql"),
-            "\n",
-            include_str!("../../functions/event_lease_acquire.surql"),
-            "\n",
-            include_str!("../../functions/event_lease_renew.surql"),
-            "\n",
-            include_str!("../../functions/event_lease_release.surql"),
-            "\n",
-            include_str!("../../functions/event_progress_get.surql"),
-            "\n",
-            include_str!("../../functions/event_delivery_assign_seq.surql"),
-            "\n",
-            include_str!("../../functions/event_dead_letter_transfer.surql"),
-            "\n",
-            include_str!("../../functions/event_flush_batch.surql"),
-            "\n",
-            include_str!("../../functions/event_subscription_register.surql"),
-            "\n",
-            include_str!("../../functions/event_outbox_get.surql"),
-            "\n",
-            include_str!("../../functions/event_delivery_get.surql"),
-            "\n",
-            include_str!("../../functions/event_dead_letter_list.surql"),
-            "\n",
-            include_str!("../../functions/event_delivery_fetch_pending.surql"),
-        );
-
-        let ddl_errors = include_str!("../../error/events.surql");
-
-        self.client
-            .query(ddl_schema)
-            .await
-            .map_err(LyxalEventError::from)?
-            .check()
-            .map_err(LyxalEventError::from)?;
-
-        self.client
-            .query(ddl_functions)
-            .await
-            .map_err(LyxalEventError::from)?
-            .check()
-            .map_err(LyxalEventError::from)?;
-
-        self.client
-            .query(ddl_errors)
-            .await
-            .map_err(LyxalEventError::from)?
-            .check()
-            .map_err(LyxalEventError::from)?;
-
+    /// Installe les ressources SurrealQL du module (schémas, fonctions, définitions d'erreurs)
+    /// dans l'ordre du manifeste. Rejouable : chaque ressource est idempotente.
+    ///
+    /// La liste compilée [`INSTALL_RESOURCES`] est vérifiée par un test contre `manifest.toml`.
+    pub async fn install(&self) -> Result<(), LyxalEventError> {
+        for (path, script) in INSTALL_RESOURCES {
+            self.client
+                .query(*script)
+                .await
+                .and_then(|response| response.check())
+                .map_err(|e| LyxalEventError::Internal(format!("installation de {path} : {e}")))?;
+        }
         Ok(())
     }
 

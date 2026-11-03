@@ -60,3 +60,36 @@ fn test_handler_registry_duplicate_rejection() {
     let duplicate_res = registry.register(handler2);
     assert!(duplicate_res.is_err(), "Duplicate registration must fail");
 }
+
+/// La liste compilée des ressources installées par `EventStore::install` est exactement celle de
+/// `manifest.toml`, dans le même ordre : une ressource ajoutée d'un seul côté fait échouer ce test.
+#[test]
+fn test_install_resources_match_manifest() {
+    let manifest_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("manifest.toml");
+    let manifest: toml::Value =
+        toml::from_str(&std::fs::read_to_string(&manifest_path).unwrap()).unwrap();
+    let resources = &manifest["resources"];
+    let expected: Vec<String> = ["schemas", "functions", "error_definitions"]
+        .iter()
+        .flat_map(|key| {
+            resources[key]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|f| f.as_str().unwrap().to_string())
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    let compiled: Vec<String> = lyxal_event::store::event_store::INSTALL_RESOURCES
+        .iter()
+        .map(|(path, _)| path.to_string())
+        .collect();
+    assert_eq!(compiled, expected);
+    for (path, script) in lyxal_event::store::event_store::INSTALL_RESOURCES {
+        let on_disk = std::fs::read_to_string(
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(path),
+        )
+        .unwrap();
+        assert_eq!(*script, on_disk, "{path} compilé différent du fichier");
+    }
+}

@@ -328,7 +328,9 @@ impl EventWorker {
             }
 
             // Arrêt propre du terme leader
-            let _ = heartbeat_handle.await;
+            if let Err(e) = heartbeat_handle.await {
+                error!(error = ?e, "La tâche de renouvellement du bail s'est terminée anormalement");
+            }
 
             // Si l'arrêt est dû à une annulation globale (propre), libérer formellement le bail
             if cancel.is_cancelled() && lease_manager.is_leader() {
@@ -336,7 +338,9 @@ impl EventWorker {
                     worker_id = %self.config.worker_id,
                     "Arrêt gracieux détecté : libération formelle du bail"
                 );
-                let _ = lease_manager.release_lease().await;
+                if let Err(e) = lease_manager.release_lease().await {
+                    warn!(error = ?e, "Échec de la libération du bail : il expirera à l'échéance de son TTL");
+                }
                 break;
             }
         }
@@ -433,11 +437,11 @@ impl EventWorker {
         lease_manager: &Arc<OutboxLeaseManager>,
         cancel: &CancellationToken,
     ) -> Result<usize, LyxalEventError> {
-        // 1. Déclenche la reprise des fan-outs en attente pour créer les event_delivery correspondants
-        let _ = self
-            .store
+        // 1. Reprise des fan-outs en attente (création des event_delivery manquantes). Un échec est
+        //    remonté au tour du worker, jamais ignoré.
+        self.store
             .recover_pending_fanouts(self.config.batch_size)
-            .await;
+            .await?;
 
         // 2. Récupère les livraisons éligibles via la fonction canonique SurrealQL
         let params = crate::engine::dto::DeliveryFetchPendingParams {
@@ -460,37 +464,36 @@ impl EventWorker {
                 continue;
             };
 
-            let event_id = rec.event_id.unwrap_or_default();
-            let correlation_id = rec
-                .correlation_id
-                .unwrap_or_else(|| crate::types::CorrelationId::from_uuid(event_id.as_uuid()));
-            let causation_id = rec.causation_id;
-
-            let mut meta = rec.metadata.unwrap_or_else(|| serde_json::json!({}));
-            if let serde_json::Value::Object(ref mut map) = meta {
-                map.insert(
-                    "delivery_id".to_string(),
-                    serde_json::Value::String(rec.id.to_sql()),
-                );
-            }
-
-            let envelope = LyxalEventEnvelope {
-                id: Some(rec.outbox_event.clone()),
-                event_id,
-                event_type: rec.event_type.unwrap_or_else(|| "unknown".to_string()),
-                version: rec.version.unwrap_or(1),
-                producer: rec.producer.unwrap_or_else(|| rec.target_module.clone()),
-                source: rec.source,
-                context: rec.context.clone().unwrap_or_default(),
-                correlation_id,
-                causation_id,
-                payload: rec.payload.unwrap_or_else(|| serde_json::json!({})),
-                metadata: meta,
-                created_at: rec.created_at.unwrap_or_default(),
+            // Une livraison dont l'événement d'origine est incomplet (outbox supprimé ou corrompu)
+            // part en dead letter avec son motif : jamais d'événement aux valeurs inventées.
+            let envelope = match envelope_from_pending(&rec) {
+                Ok(envelope) => envelope,
+                Err(missing) => {
+                    let reason = format!(
+                        "Livraison incomplète : champ(s) absent(s) de l'événement d'origine : {}",
+                        missing.join(", ")
+                    );
+                    match pipeline
+                        .feeder
+                        .dead_letter_unsequenced(rec.id.clone(), reason)
+                        .await
+                    {
+                        Ok(()) => {
+                            self.metrics
+                                .deliveries_dead_lettered
+                                .fetch_add(1, Ordering::SeqCst);
+                        }
+                        Err(FeederError::Fenced) => return Err(LyxalEventError::StaleLeaderFenced),
+                        Err(e) => {
+                            warn!(error = ?e, "Échec du transfert d'une livraison incomplète en dead letter")
+                        }
+                    }
+                    continue;
+                }
             };
 
             let target_module = rec.target_module.clone();
-            let context = serde_json::to_value(&envelope.context).unwrap_or_default();
+            let context = serde_json::to_value(&envelope.context)?;
 
             match pipeline
                 .feeder
@@ -519,4 +522,83 @@ impl EventWorker {
 
         Ok(enqueued)
     }
+}
+
+/// Reconstitue l'enveloppe d'un événement depuis une livraison en attente. Renvoie la liste des
+/// champs absents si l'événement d'origine est incomplet.
+fn envelope_from_pending(
+    rec: &crate::engine::dto::PendingDeliveryItem,
+) -> Result<LyxalEventEnvelope, Vec<&'static str>> {
+    let mut missing = Vec::new();
+    if rec.event_id.is_none() {
+        missing.push("event_id");
+    }
+    if rec.event_type.is_none() {
+        missing.push("event_type");
+    }
+    if rec.version.is_none() {
+        missing.push("version");
+    }
+    if rec.producer.is_none() {
+        missing.push("producer");
+    }
+    if rec.correlation_id.is_none() {
+        missing.push("correlation_id");
+    }
+    if rec.payload.is_none() {
+        missing.push("payload");
+    }
+    if rec.context.is_none() {
+        missing.push("context");
+    }
+    if rec.created_at.is_none() {
+        missing.push("created_at");
+    }
+    let (
+        Some(event_id),
+        Some(event_type),
+        Some(version),
+        Some(producer),
+        Some(correlation_id),
+        Some(payload),
+        Some(context),
+        Some(created_at),
+    ) = (
+        rec.event_id,
+        rec.event_type.clone(),
+        rec.version,
+        rec.producer.clone(),
+        rec.correlation_id,
+        rec.payload.clone(),
+        rec.context.clone(),
+        rec.created_at,
+    )
+    else {
+        return Err(missing);
+    };
+
+    let mut metadata = rec
+        .metadata
+        .clone()
+        .unwrap_or_else(|| serde_json::json!({}));
+    if let serde_json::Value::Object(ref mut map) = metadata {
+        map.insert(
+            "delivery_id".to_string(),
+            serde_json::Value::String(rec.id.to_sql()),
+        );
+    }
+    Ok(LyxalEventEnvelope {
+        id: Some(rec.outbox_event.clone()),
+        event_id,
+        event_type,
+        version,
+        producer,
+        source: rec.source.clone(),
+        context,
+        correlation_id,
+        causation_id: rec.causation_id,
+        payload,
+        metadata,
+        created_at,
+    })
 }

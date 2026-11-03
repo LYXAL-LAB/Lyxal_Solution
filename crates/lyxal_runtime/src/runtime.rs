@@ -316,13 +316,13 @@ impl LyxalRuntime {
             None => return Ok(()),
         };
 
-        // 1. Initialisation des schémas et fonctions SurrealQL si activé
+        // 1. Installation des ressources SurrealQL de lyxal_event (ordre du manifeste) si activé
         if self.event_config.auto_init_schema {
             store
-                .init_schema()
+                .install()
                 .await
                 .map_err(|e| RuntimeError::EventEngineError {
-                    message: format!("Failed to initialize event schemas: {e}"),
+                    message: format!("Failed to install event resources: {e}"),
                 })?;
         }
 

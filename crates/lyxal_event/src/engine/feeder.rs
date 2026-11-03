@@ -378,6 +378,34 @@ impl<T: Clone + Send + 'static> OutboxFeeder<T> {
         Ok(nack_report)
     }
 
+    /// Transfère en dead letter une livraison qui n'a pas reçu de séquence (événement d'origine
+    /// incomplet) : sans séquence, elle ne bloque pas le curseur et n'entre pas dans le flush.
+    pub async fn dead_letter_unsequenced(
+        &mut self,
+        delivery_id: RecordId,
+        reason: String,
+    ) -> Result<(), FeederError> {
+        if !self.lease_manager.is_leader() {
+            return Err(FeederError::NotLeader);
+        }
+        let params = super::dto::DeadLetterTransferParams {
+            delivery_id,
+            error: super::progress::bounded_error_message(reason),
+            node_id: self.lease_manager.node_id().to_string(),
+            generation: self.lease_manager.current_generation(),
+        };
+        let result: Result<super::dto::DeadLetterTransferResult, LyxalSurrealError> =
+            self.call_fn("event_dead_letter_transfer", params).await;
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) if crate::error::is_stale_leader_fenced(&e) => {
+                self.cancellation.cancel();
+                Err(FeederError::Fenced)
+            }
+            Err(e) => Err(FeederError::Surreal(Box::new(e))),
+        }
+    }
+
     /// Exécute un cycle de surveillance des délais d'acquittement : redélivrance, et transfert en
     /// dead letter des messages dont le budget est épuisé.
     pub async fn handle_watchdog_and_poison<F>(

@@ -40,7 +40,7 @@ async fn test_worker_crash_and_lease_recovery() {
     common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
-    store.init_schema().await.unwrap();
+    store.install().await.unwrap();
 
     // 1. Abonnement
     let sub = EventSubscription::new("task_sub", "lyxal_worker", "task.assigned", "execute_task");

@@ -65,7 +65,7 @@ async fn test_retry_dlq_and_replay_cycle() {
     common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
-    store.init_schema().await.unwrap();
+    store.install().await.unwrap();
 
     // 1. Abonnement avec max_attempts = 3
     let sub = EventSubscription::new(
@@ -168,7 +168,7 @@ async fn test_oversized_error_still_reaches_dead_letter() {
     db.use_ns("test_ns").use_db("test_verbose").await.unwrap();
     common::setup_test_db(&db).await;
     let store = Arc::new(EventStore::new(db.clone()));
-    store.init_schema().await.unwrap();
+    store.install().await.unwrap();
 
     let sub = EventSubscription::new(
         "payment_verbose_sub",
@@ -206,4 +206,70 @@ async fn test_oversized_error_still_reaches_dead_letter() {
     let dead_letters = store.get_dead_letters().await.unwrap();
     assert_eq!(dead_letters.len(), 1);
     assert!(dead_letters[0].last_error.chars().count() <= 4000);
+}
+
+/// Une livraison dont l'événement d'origine a disparu n'est pas livrée avec des valeurs
+/// inventées : elle part en dead letter avec le motif des champs manquants.
+#[tokio::test]
+async fn test_incomplete_delivery_goes_to_dead_letter() {
+    let db = connect("mem://").await.unwrap();
+    db.use_ns("test_ns")
+        .use_db("test_incomplete")
+        .await
+        .unwrap();
+    common::setup_test_db(&db).await;
+    let store = Arc::new(EventStore::new(db.clone()));
+    store.install().await.unwrap();
+
+    let sub = EventSubscription::new(
+        "payment_incomplete_sub",
+        "lyxal_accounting",
+        "payment.processed",
+        "record_ledger",
+    );
+    store.register_subscription(&sub).await.unwrap();
+    EventPublisher::new(store.clone(), "lyxal_billing", EventContext::default())
+        .publish(&PaymentProcessed {
+            payment_id: "pay_orphan".to_string(),
+            amount: 1,
+        })
+        .await
+        .unwrap();
+    // L'événement d'origine disparaît (purge ou corruption) avant la livraison
+    db.query("DELETE event_outbox").await.unwrap();
+
+    let handled = Arc::new(AtomicUsize::new(0));
+    let mut registry = HandlerRegistry::new();
+    registry
+        .register(FlakyPaymentHandler {
+            attempts: handled.clone(),
+        })
+        .unwrap();
+    let worker = Arc::new(EventWorker::new(
+        store.clone(),
+        registry,
+        common::fast_config("worker_incomplete"),
+    ));
+    let dead_lettered = common::run_worker_until(worker, Duration::from_secs(10), || {
+        let db = db.clone();
+        async move { common::delivery_statuses(&db).await == ["dead_letter"] }
+    })
+    .await;
+    assert!(
+        dead_lettered,
+        "la livraison incomplète doit partir en dead letter : {:?}",
+        common::delivery_statuses(&db).await
+    );
+    assert_eq!(
+        handled.load(Ordering::SeqCst),
+        0,
+        "le handler ne doit pas être appelé"
+    );
+    let dead_letters = store.get_dead_letters().await.unwrap();
+    assert_eq!(dead_letters.len(), 1);
+    assert!(
+        dead_letters[0].last_error.contains("event_type"),
+        "{}",
+        dead_letters[0].last_error
+    );
 }
