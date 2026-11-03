@@ -18,15 +18,92 @@ branchement appartient à la reprise de `lyxal-server`.
 
 ### SurrealQL (si Q2 est validée)
 
-* `manifest.toml` du runtime : dépendances `lyxal_core` et `lyxal_error` ; ressources `schema/*`,
-  `functions/*`, `error/runtime.surql`.
-* Fonctions internes `fn::runtime_*($params: object)`, qui renvoient `fn::result_ok` ou
-  `fn::error_result`, avec `PERMISSIONS FULL` et un `COMMENT` :
-  * releases et modules ;
-  * migrations : enregistrement gardé par la génération du bail ;
-  * baux : prise, renouvellement, libération et inspection, à l'heure de la base ;
-  * santé, workers et journal.
-* `THROW` réservé, comme dans `lyxal_event`, aux échecs qui suivent l'écriture de garde du bail.
+`manifest.toml` du runtime : dépendances `lyxal_core` et `lyxal_error` ; ressources `schema/*`,
+`functions/*`, `error/runtime.surql`.
+
+**Tables** (`TYPE NORMAL SCHEMAFULL PERMISSIONS NONE`) : `runtime_module`, `runtime_release`,
+`runtime_migration`, `runtime_lease`, `runtime_health`, `runtime_worker`,
+`runtime_event_journal`. Les deux tables de baux actuelles (`system_migration_lock`,
+`system_installation_lock`), identiques champ pour champ, deviennent une seule table
+`runtime_lease` (identifiant `runtime_lease:[kind, key]`). Toutes les dates sont des `datetime`
+écrites par la base.
+
+**Fonctions** : toutes internes, de signature `DEFINE FUNCTION OVERWRITE fn::<nom>($params: object)`,
+avec `PERMISSIONS FULL` et un `COMMENT`. Elles renvoient `fn::result_ok` ou
+`fn::error_result("RUNTIME_…")`. Entrées validées par les primitives de `lyxal_core`
+(`fn::validation_required_string`, `fn::validation_integer`, `fn::validation_object`,
+`fn::validation_language_code`) ; une entrée invalide donne `RUNTIME_INVALID_PARAMETERS` avec
+`details.fields`. Chacune accepte `language` (défaut `fr`).
+
+| Fonction | `$params` (requis en gras) | Donnée renvoyée | Erreurs |
+| :--- | :--- | :--- | :--- |
+| `fn::runtime_module_upsert` | **module_id**, **name**, description | module | — |
+| `fn::runtime_module_get` | **module_id** | module ou `NONE` | — |
+| `fn::runtime_module_list` | — | modules | — |
+| `fn::runtime_release_register` | **module_id**, **version**, **manifest_version**, **status**, description, checksum | release | `RUNTIME_RELEASE_ALREADY_EXISTS` |
+| `fn::runtime_release_get` | **module_id**, **version** | release ou `NONE` | — |
+| `fn::runtime_release_list` | **module_id** | releases | — |
+| `fn::runtime_release_status_update` | **module_id**, **version**, **status** (`Discovered`, `Installing`, `Installed`, `Active`, `Inactive`, `Failed`), phase | release | `RUNTIME_RELEASE_NOT_FOUND` |
+| `fn::runtime_migration_record` | **module_id**, **migration_id**, **module_version**, **order**, **checksum**, **status**, **duration_ms**, error, **lease_key**, **node_id**, **generation** | migration | `RUNTIME_LEASE_FENCED` (`THROW`) |
+| `fn::runtime_migration_get` | **module_id**, **migration_id** | migration ou `NONE` | — |
+| `fn::runtime_migration_list` | **module_id** | migrations | — |
+| `fn::runtime_lease_acquire` | **kind** (`migration`, `installation`), **key**, **node_id**, **ttl_seconds** | `{ outcome, lease }`, `outcome` ∈ `acquired`, `already_owned`, `recovered`, `held_by_other` | — |
+| `fn::runtime_lease_renew` | **kind**, **key**, **node_id**, **generation**, **ttl_seconds** | `{ renewed, lease }` | — |
+| `fn::runtime_lease_release` | **kind**, **key**, **node_id**, **generation** | `{ released }` | — |
+| `fn::runtime_lease_get` | **kind**, **key** | bail ou `NONE` | — |
+| `fn::runtime_health_record` | **node_id**, **module_id**, **status**, latency_ms, message | santé | — |
+| `fn::runtime_health_list` | **node_id** | santé du nœud | — |
+| `fn::runtime_worker_upsert` | **node_id**, **worker_id**, **module_id**, **state**, **criticality**, **metrics** | worker | — |
+| `fn::runtime_worker_get` | **node_id**, **worker_id** | worker ou `NONE` | — |
+| `fn::runtime_worker_list` | **node_id** | workers du nœud | — |
+| `fn::runtime_event_append` | **event_id**, **sequence**, **node_id**, **kind**, module_id, correlation_id, causation_id, **payload** | événement | — |
+| `fn::runtime_event_list` | **limit**, module_id | événements récents | — |
+
+Un bail est actif si `is_released = false` et `expires_at > time::now()`. La prise est une
+écriture conditionnelle sur la génération lue, qui incrémente `generation`.
+`fn::runtime_migration_record` commence par une écriture de garde sur le bail (même nœud, même
+génération, bail actif) ; un échec lève `RUNTIME_LEASE_FENCED` par `THROW` pour annuler la
+transaction, exception documentée comme dans `lyxal_event`.
+
+### Types Rust (`src/store/dto.rs`)
+
+Un `*Params` par fonction, champ pour champ identique au SurrealQL, dérivant `SurrealValue`. Les
+identifiants sont des `ModuleId`, `MigrationId` et `NodeId` sérialisés en chaîne ; les dates sont
+des `Datetime`. Un champ `None` vaut « non fourni ».
+
+| Fonction | Paramètres | Résultat |
+| :--- | :--- | :--- |
+| `runtime_module_*` | `ModuleUpsertParams`, `ModuleGetParams` | `StoredModule` |
+| `runtime_release_*` | `ReleaseRegisterParams`, `ReleaseGetParams`, `ReleaseListParams`, `ReleaseStatusUpdateParams` | `StoredModuleRelease` (`status: ModuleReleaseStatus`, dates `Datetime`) |
+| `runtime_migration_*` | `MigrationRecordParams`, `MigrationGetParams`, `MigrationListParams` | `MigrationRecord` (`applied_at: Datetime`) |
+| `runtime_lease_*` | `LeaseAcquireParams`, `LeaseRenewParams`, `LeaseReleaseParams`, `LeaseGetParams` | `LeaseAcquireResult { outcome: LeaseOutcome, lease: Lease }`, `LeaseRenewResult`, `LeaseReleaseResult`, `Lease` |
+| `runtime_health_*` | `HealthRecordParams`, `HealthListParams` | `StoredHealth` |
+| `runtime_worker_*` | `WorkerUpsertParams`, `WorkerGetParams`, `WorkerListParams` | `StoredWorker` |
+| `runtime_event_*` | `EventAppendParams`, `EventListParams` | `StoredRuntimeEvent` |
+
+`MigrationLease` et `InstallationLease` deviennent un seul `Lease { kind, key, owner, generation,
+acquired_at, renewed_at, expires_at }` (dates `Datetime`) ; `AcquireLeaseResult` devient
+`LeaseOutcome` et garde les variantes actuelles. Les traits `RuntimeStore`,
+`MigrationLeaseManager` et `InstallationLeaseManager` sont conservés pour les implémentations en
+mémoire des tests ; leurs implémentations SurrealDB appellent `call_fn`.
+
+### Codes d'erreur (`error/runtime.surql`)
+
+* **Émis par les fonctions SurrealQL** : `RUNTIME_INVALID_PARAMETERS` (validation, 400),
+  `RUNTIME_RELEASE_ALREADY_EXISTS` (conflict, 409), `RUNTIME_RELEASE_NOT_FOUND` (not_found, 404),
+  `RUNTIME_LEASE_FENCED` (conflict, 412).
+* **Émis par le Rust** : les 57 codes actuels de `RuntimeError`, chacun avec sa définition et sa
+  catégorie, vérifiés par un test qui compare `RuntimeError::code()` à `error/runtime.surql`
+  (modèle `lyxal_surreal`).
+* **Codes ad hoc remplacés** par des variantes typées :
+  * `*_LOCK_POISONED` (`REGISTRY_`, `CONTROLLER_`, `HEALTH_REGISTRY_`, `MEMORY_HEALTH_STORE_`) → `RUNTIME_LOCK_POISONED { resource }` ;
+  * `RUNTIME_STORE_QUERY_FAILED`, `RUNTIME_STORE_DATA_INVALID`, `RUNTIME_*_PERSISTENCE_FAILED`, `RUNTIME_*_BOOTSTRAP_FAILED`, `EVENT_JOURNAL_*`, `EVENT_DESERIALIZATION_FAILED`, `EVENT_SERIALIZATION_FAILED` → `RUNTIME_STORE_FAILED { operation }` ;
+  * `EVENT_STORE_MISSING`, `RUNTIME_STORE_MISSING`, `RUNTIME_CLIENT_MISSING` → `RUNTIME_STORE_MISSING` ;
+  * `EVENT_HANDLER_REGISTRATION_FAILED`, `EVENT_WORKER_EXECUTION_FAILED`, `EVENT_GC_EXECUTION_FAILED` → `RUNTIME_EVENT_ENGINE_ERROR` (variante existante) ;
+  * `PACKAGE_MISSING_DURING_APPLY`, `INVALID_RELEASE_STATUS`, `CONTROLLER_PASS_ALREADY_RUNNING`, `HEALTH_CHECKER_ALREADY_REGISTERED`, `RUNTIME_CONFIG_INVALID`, `RUNTIME_WORKER_INVALID_ID`, `RUNTIME_MIGRATION_LOCK_RELEASE_FAILED`, `RUNTIME_INSTALLATION_LEASE_RELEASE_FAILED`, `RUNTIME_MIGRATION_FAILED`, `RUNTIME_INSTALL_HOOK_FAILED`, `RUNTIME_RESOURCE_READ_FAILED`, `RUNTIME_RESOURCE_READ_DIR_FAILED`, `RUNTIME_HEALTH_QUERY_FAILED`, `RUNTIME_HEALTH_DATA_INVALID` → une variante typée chacune, préfixée `RUNTIME_` (les doublons de variantes existantes y sont rattachés).
+
+`RuntimeError::Internal { code: &'static str }` est supprimée : tout code émis est une variante
+connue.
 
 ### Rust (rupture coordonnée, §0.3.1)
 
