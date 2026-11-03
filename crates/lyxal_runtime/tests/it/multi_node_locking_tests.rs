@@ -37,30 +37,13 @@ impl MockResourceProvider {
 
 #[async_trait::async_trait]
 impl ResourceProvider for MockResourceProvider {
-    async fn list_resources(&self, _prefix: &str) -> Result<Vec<String>, RuntimeError> {
-        Ok(self.resources.keys().cloned().collect())
-    }
-
-    async fn read_resource(
-        &self,
-        logical_path: &str,
-    ) -> Result<lyxal_runtime::resource::ModuleResource, RuntimeError> {
-        let content =
-            self.resources
-                .get(logical_path)
-                .ok_or_else(|| RuntimeError::ResourceNotFound {
-                    path: logical_path.to_string(),
-                })?;
-
-        Ok(lyxal_runtime::resource::ModuleResource::new(
-            logical_path,
-            lyxal_runtime::resource::ResourceKind::Migration,
-            content.clone(),
-        ))
-    }
-
-    async fn exists(&self, logical_path: &str) -> bool {
-        self.resources.contains_key(logical_path)
+    async fn read(&self, logical_path: &str) -> Result<String, RuntimeError> {
+        self.resources
+            .get(logical_path)
+            .cloned()
+            .ok_or_else(|| RuntimeError::ResourceNotFound {
+                path: logical_path.to_string(),
+            })
     }
 }
 

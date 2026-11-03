@@ -102,3 +102,15 @@ pub fn fast_config(worker_id: &str) -> lyxal_event::EventWorkerConfig {
         .with_retry_max_delay(std::time::Duration::from_millis(50))
         .with_dispatch_timeout(std::time::Duration::from_secs(5))
 }
+
+/// Installe `lyxal_event` à partir de ses fichiers embarqués, dans l'ordre du manifeste (le test
+/// `test_embedded_resources_match_manifest` le garantit). Le crate reste sous `lyxal_runtime` : il
+/// ne dépend pas du runtime, même en test.
+pub async fn install_event(db: &Surreal<Any>) {
+    for (path, script) in lyxal_event::EMBEDDED_RESOURCES {
+        db.query(*script)
+            .await
+            .and_then(|response| response.check())
+            .unwrap_or_else(|e| panic!("installation de {path} : {e}"));
+    }
+}

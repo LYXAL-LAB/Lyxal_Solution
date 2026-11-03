@@ -322,14 +322,14 @@ impl LyxalRuntime {
             None => return Ok(()),
         };
 
-        // 1. Installation des ressources SurrealQL de lyxal_event (ordre du manifeste) si activé
+        // 1. Installation de lyxal_event depuis son manifeste et ses fichiers embarqués
         if self.event_config.auto_init_schema {
-            store
-                .install()
-                .await
-                .map_err(|e| RuntimeError::EventEngineError {
-                    message: format!("Failed to install event resources: {e}"),
-                })?;
+            crate::schema::install_embedded(
+                store.client(),
+                lyxal_event::MANIFEST,
+                lyxal_event::EMBEDDED_RESOURCES,
+            )
+            .await?;
         }
 
         // 2. Reprise automatique des fan-outs en attente si activé

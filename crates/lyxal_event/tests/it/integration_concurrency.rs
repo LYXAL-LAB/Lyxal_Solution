@@ -59,7 +59,7 @@ async fn test_concurrent_workers_and_subscriptions_deliver_exactly_once() {
         .unwrap();
     common::setup_test_db(&db).await;
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     for i in 0..SUBSCRIPTIONS {
         let sub = EventSubscription::new(

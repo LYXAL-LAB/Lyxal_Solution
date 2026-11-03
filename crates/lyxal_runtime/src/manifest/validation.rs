@@ -60,6 +60,37 @@ impl ManifestValidator {
             }
         }
 
+        // 5. Ressources : chemins relatifs `.surql`, sans remontée de dossier ni doublon
+        let resources = &manifest.resources;
+        let mut seen_paths = HashSet::new();
+        for path in resources
+            .schemas
+            .iter()
+            .chain(&resources.functions)
+            .chain(&resources.error_definitions)
+            .chain(&resources.events)
+            .chain(&resources.seeds)
+            .chain(&resources.migrations)
+        {
+            let invalid = path.trim().is_empty()
+                || path.starts_with('/')
+                || path.contains('\\')
+                || path.split('/').any(|part| part == ".." || part.is_empty())
+                || !path.ends_with(".surql");
+            if invalid {
+                return Err(RuntimeError::InvalidManifest {
+                    message: format!(
+                        "Invalid resource path '{path}': expected a relative '.surql' path inside the module"
+                    ),
+                });
+            }
+            if !seen_paths.insert(path.as_str()) {
+                return Err(RuntimeError::InvalidManifest {
+                    message: format!("Resource '{path}' is declared more than once"),
+                });
+            }
+        }
+
         Ok(())
     }
 }

@@ -40,7 +40,7 @@ async fn test_worker_crash_and_lease_recovery() {
     common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     // 1. Abonnement
     let sub = EventSubscription::new("task_sub", "lyxal_worker", "task.assigned", "execute_task");
@@ -196,7 +196,7 @@ async fn test_recovery_resolves_sequenced_incomplete_delivery() {
         .unwrap();
     common::setup_test_db(&db).await;
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     crash_after_sequencing(&db, &store, 3).await;
     db.query("DELETE (SELECT VALUE outbox_event FROM event_delivery WHERE delivery_seq = 2)")
@@ -236,7 +236,7 @@ async fn test_recovery_starts_from_persisted_cursor() {
         .unwrap();
     common::setup_test_db(&db).await;
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     crash_after_sequencing(&db, &store, 2).await;
     // La séquence 1 attend son prochain essai au-delà de l'expiration du bail de A (2 s) ;

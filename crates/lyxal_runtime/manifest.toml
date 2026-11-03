@@ -1,0 +1,16 @@
+manifest_version = 1
+id = "lyxal_runtime"
+name = "Lyxal Runtime"
+version = "0.1.0"
+description = "Moteur d'exécution de Lyxal OS : installation, cycle de vie, workers, santé et réconciliation des modules"
+capabilities = ["runtime"]
+
+[runtime]
+min_version = ">=0.1.0"
+
+[resources]
+schemas = [
+    "schema/tables.surql",
+    "schema/fields.surql",
+    "schema/indexes.surql"
+]

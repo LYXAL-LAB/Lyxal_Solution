@@ -64,7 +64,7 @@ fn test_handler_registry_duplicate_rejection() {
 /// La liste compilée des ressources installées par `EventStore::install` est exactement celle de
 /// `manifest.toml`, dans le même ordre : une ressource ajoutée d'un seul côté fait échouer ce test.
 #[test]
-fn test_install_resources_match_manifest() {
+fn test_embedded_resources_match_manifest() {
     let manifest_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("manifest.toml");
     let manifest: toml::Value =
         toml::from_str(&std::fs::read_to_string(&manifest_path).unwrap()).unwrap();
@@ -80,12 +80,12 @@ fn test_install_resources_match_manifest() {
                 .collect::<Vec<_>>()
         })
         .collect();
-    let compiled: Vec<String> = lyxal_event::store::event_store::INSTALL_RESOURCES
+    let compiled: Vec<String> = lyxal_event::EMBEDDED_RESOURCES
         .iter()
         .map(|(path, _)| path.to_string())
         .collect();
     assert_eq!(compiled, expected);
-    for (path, script) in lyxal_event::store::event_store::INSTALL_RESOURCES {
+    for (path, script) in lyxal_event::EMBEDDED_RESOURCES {
         let on_disk = std::fs::read_to_string(
             std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(path),
         )

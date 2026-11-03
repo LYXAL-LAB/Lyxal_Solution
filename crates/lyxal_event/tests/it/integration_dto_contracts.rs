@@ -30,7 +30,7 @@ async fn test_rejection_of_legacy_dto_and_negative_contracts() {
     common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     // 1. Enregistrement d'un abonnement actif
     let sub = EventSubscription::new(
@@ -171,7 +171,7 @@ async fn test_delivery_fetch_pending_canonical_contract() {
     common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     // 1. Déclaration de 2 abonnements
     let sub1 = EventSubscription::new(
@@ -471,7 +471,7 @@ async fn test_external_functions_validate_inputs_with_core() {
     db.use_ns("test_ns").use_db("test_inputs").await.unwrap();
     common::setup_test_db(&db).await;
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     let publish = call_json(
         &db,

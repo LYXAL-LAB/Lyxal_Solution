@@ -226,7 +226,7 @@ impl ModuleInstaller {
         // 5. Planification du schéma et des migrations
         let schema_plan = if schema_required {
             Some(
-                SchemaImportPlan::from_provider(package.id().clone(), package.provider().as_ref())
+                SchemaImportPlan::from_manifest(package.manifest(), package.provider().as_ref())
                     .await?,
             )
         } else {
@@ -234,8 +234,7 @@ impl ModuleInstaller {
         };
 
         let discovered_migrations = MigrationDiscovery::discover_migrations(
-            package.id(),
-            &version_str,
+            package.manifest(),
             package.provider().as_ref(),
         )
         .await?;

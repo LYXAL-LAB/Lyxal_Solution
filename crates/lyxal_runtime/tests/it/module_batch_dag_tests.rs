@@ -1,3 +1,4 @@
+use crate::common;
 use async_trait::async_trait;
 use lyxal_runtime::context::ModuleContext;
 use lyxal_runtime::descriptor::ModuleDescriptor;
@@ -7,64 +8,16 @@ use lyxal_runtime::manifest::ModuleManifest;
 use lyxal_runtime::module::LyxalModule;
 use lyxal_runtime::package::types::{ModuleNotAttempted, ModuleReleaseStatus};
 use lyxal_runtime::package::ModulePackage;
-use lyxal_runtime::resource::provider::ResourceProvider;
-use lyxal_runtime::resource::{ModuleResource, ResourceKind};
+use lyxal_runtime::resource::ResourceKind;
 use lyxal_runtime::runtime::LyxalRuntime;
 use lyxal_runtime::store::memory::MemoryRuntimeStore;
 use lyxal_runtime::store::traits::RuntimeStore;
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::RuntimeConfig;
 use semver::{Version, VersionReq};
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use surrealdb::engine::any::connect;
-
-use crate::common;
-struct MemoryTestResourceProvider {
-    resources: HashMap<String, ModuleResource>,
-}
-
-impl MemoryTestResourceProvider {
-    fn new() -> Self {
-        Self {
-            resources: HashMap::new(),
-        }
-    }
-
-    fn add_resource(mut self, path: &str, kind: ResourceKind, content: &str) -> Self {
-        self.resources
-            .insert(path.to_string(), ModuleResource::new(path, kind, content));
-        self
-    }
-}
-
-#[async_trait]
-impl ResourceProvider for MemoryTestResourceProvider {
-    async fn read_resource(&self, path: &str) -> Result<ModuleResource, RuntimeError> {
-        self.resources
-            .get(path)
-            .cloned()
-            .ok_or_else(|| RuntimeError::ResourceNotFound {
-                path: path.to_string(),
-            })
-    }
-
-    async fn list_resources(&self, prefix: &str) -> Result<Vec<String>, RuntimeError> {
-        let p = prefix.trim_start_matches('/');
-        let matches: Vec<String> = self
-            .resources
-            .keys()
-            .filter(|k| k.starts_with(p))
-            .cloned()
-            .collect();
-        Ok(matches)
-    }
-
-    async fn exists(&self, path: &str) -> bool {
-        self.resources.contains_key(path)
-    }
-}
 
 struct MockBatchModule {
     descriptor: ModuleDescriptor,
@@ -130,13 +83,14 @@ fn create_package(
         runtime: None,
         dependencies,
         capabilities: Vec::new(),
+        resources: Default::default(),
     };
 
     let provider = Arc::new(
-        MemoryTestResourceProvider::new()
+        common::MemoryProvider::new()
             .add_resource(
                 &format!("schema/tables/{}.surql", id),
-                ResourceKind::Tables,
+                ResourceKind::Schema,
                 &format!("DEFINE TABLE {} SCHEMALESS;", id.replace('-', "_")),
             )
             .add_resource(
@@ -150,7 +104,7 @@ fn create_package(
     );
 
     let mock = Arc::new(MockBatchModule::new(id, version));
-    let pkg = ModulePackage::new(manifest, provider).with_module_impl(mock.clone());
+    let pkg = common::package(manifest, provider).with_module_impl(mock.clone());
     (pkg, mock)
 }
 

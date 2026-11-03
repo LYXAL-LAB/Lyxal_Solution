@@ -1,21 +1,19 @@
 use crate::error::RuntimeError;
+use crate::manifest::ModuleManifest;
 use crate::migration::definition::{validate_migration_definitions, MigrationDefinition};
 use crate::migration::id::MigrationId;
 use crate::resource::discovery::ResourceDiscovery;
 use crate::resource::provider::ResourceProvider;
-use crate::types::ModuleId;
 use semver::Version;
 
 /// Moteur de découverte et de parsing des définitions de migrations.
 pub struct MigrationDiscovery;
 
 impl MigrationDiscovery {
-    /// Parse un nom de fichier de migration selon la convention canonique `NNN_description.surql`.
+    /// Parse un nom de fichier de migration selon la convention canonique `NNNN_description.surql`.
     ///
     /// Exemples valides :
-    /// - `001_initial_schema.surql` -> order: 1, id: `001_initial_schema`
-    /// - `002_add_indexes.surql` -> order: 2, id: `002_add_indexes`
-    /// - `010_update_cron.surql` -> order: 10, id: `010_update_cron`
+    /// - `0001_initial.surql` -> order: 1, id: `0001_initial`
     pub fn parse_migration_filename(filename: &str) -> Result<(u64, MigrationId), RuntimeError> {
         let name = filename.trim();
         if !name.ends_with(".surql") {
@@ -31,7 +29,7 @@ impl MigrationDiscovery {
         if parts.len() < 2 || parts[0].is_empty() || parts[1].is_empty() {
             return Err(RuntimeError::InvalidMigrationId {
                 id: base_name.to_string(),
-                reason: "Migration filename must match 'NNN_description.surql' format".to_string(),
+                reason: "Migration filename must match 'NNNN_description.surql' format".to_string(),
             });
         }
 
@@ -53,17 +51,19 @@ impl MigrationDiscovery {
     /// Découvre l'ensemble des migrations d'un module, calcule leurs checksums,
     /// valide l'absence de doublons (ordre et ID) et les trie par `order` croissant.
     pub async fn discover_migrations(
-        module_id: &ModuleId,
-        module_version: &str,
+        manifest: &ModuleManifest,
         provider: &dyn ResourceProvider,
     ) -> Result<Vec<MigrationDefinition>, RuntimeError> {
+        let module_id = &manifest.id;
+        let module_version = manifest.version.to_string();
+        let module_version = module_version.as_str();
         let parsed_version =
             Version::parse(module_version).map_err(|err| RuntimeError::InvalidModuleVersion {
                 version: module_version.to_string(),
                 message: err.to_string(),
             })?;
 
-        let resources = ResourceDiscovery::discover_migration_resources(provider).await?;
+        let resources = ResourceDiscovery::migration_resources(manifest, provider).await?;
         let mut definitions = Vec::new();
 
         for res in resources {

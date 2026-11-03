@@ -102,8 +102,9 @@ Paramètres, données renvoyées et règles : [`docs/SURREALQL_API.md`](docs/SUR
   instance, bail, taille des lots, messages en vol par abonnement, délais d'exécution et d'ACK,
   backoff). Le budget d'essais vient de l'abonnement, pas du worker. `GarbageCollector::run`
   purge périodiquement. Métriques : `EventWorker::metrics()`.
-* **Persistance** : `EventStore` (`Surreal<Any>`, `LyxalSurrealCall`) ; `install()` installe les
-  ressources dans l'ordre du manifeste.
+* **Persistance** : `EventStore` (`Surreal<Any>`, `LyxalSurrealCall`).
+* **Installation** : `MANIFEST` (le manifeste) et `EMBEDDED_RESOURCES` (les fichiers déclarés,
+  embarqués dans le binaire), lus par `lyxal_runtime`.
 * **Erreurs** : `LyxalEventError`, dont `StaleLeaderFenced` pour le fencing.
 
 `lyxal_runtime` intègre le moteur : `EventConsumerModule` (déclaration des handlers d'un module),
@@ -116,9 +117,11 @@ Guide pas à pas : [`docs/INTEGRATION_GUIDE.md`](docs/INTEGRATION_GUIDE.md).
 ## 6. Installation (`manifest.toml`)
 
 Le manifeste déclare les 6 schémas, les 18 fonctions et les définitions d'erreurs (rejouables
-sans doublon, `IF !record::exists(...)`). `EventStore::install` installe exactement cette liste
-(`INSTALL_RESOURCES`) ; un test vérifie qu'elle est identique au manifeste. Pas de migration ni
-de seed : les abonnements sont déclarés par les modules consommateurs.
+sans doublon, `IF !record::exists(...)`). `lyxal_runtime` installe le module depuis ce manifeste
+(`EventEngineConfig::auto_init_schema`, ou `lyxal_runtime::schema::install_embedded` avec
+`MANIFEST` et `EMBEDDED_RESOURCES`). Un test vérifie que les fichiers embarqués sont exactement
+ceux du manifeste et du disque. Pas de migration ni de seed : les abonnements sont déclarés par
+les modules consommateurs.
 
 ---
 

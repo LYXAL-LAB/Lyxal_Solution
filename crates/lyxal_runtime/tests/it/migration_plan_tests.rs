@@ -1,3 +1,4 @@
+use crate::common;
 use lyxal_runtime::migration::{
     MigrationChecksum, MigrationDiscovery, MigrationPlan, MigrationPlanAction, MigrationRecord,
     MigrationStatus,
@@ -51,9 +52,12 @@ async fn test_migration_discovery_order_and_duplicates() {
     let provider = FilesystemResourceProvider::new(dir.path());
     let module_id = ModuleId::new("lyxal-booking");
 
-    let defs = MigrationDiscovery::discover_migrations(&module_id, "1.0.0", &provider)
-        .await
-        .unwrap();
+    let defs = MigrationDiscovery::discover_migrations(
+        &common::manifest_with_migrations(&module_id, "1.0.0", dir.path()),
+        &provider,
+    )
+    .await
+    .unwrap();
 
     assert_eq!(defs.len(), 3);
     assert_eq!(defs[0].order, 1);
@@ -76,9 +80,12 @@ async fn test_migration_discovery_rejects_duplicate_order() {
     let provider = FilesystemResourceProvider::new(dir.path());
     let module_id = ModuleId::new("lyxal-booking");
 
-    let err = MigrationDiscovery::discover_migrations(&module_id, "1.0.0", &provider)
-        .await
-        .unwrap_err();
+    let err = MigrationDiscovery::discover_migrations(
+        &common::manifest_with_migrations(&module_id, "1.0.0", dir.path()),
+        &provider,
+    )
+    .await
+    .unwrap_err();
 
     match err {
         RuntimeError::InvalidMigrationId { reason, .. } => {
@@ -108,9 +115,12 @@ async fn test_migration_plan_building_scenarios() {
     let provider = FilesystemResourceProvider::new(dir.path());
     let module_id = ModuleId::new("lyxal-scheduler");
 
-    let defs = MigrationDiscovery::discover_migrations(&module_id, "1.0.0", &provider)
-        .await
-        .unwrap();
+    let defs = MigrationDiscovery::discover_migrations(
+        &common::manifest_with_migrations(&module_id, "1.0.0", dir.path()),
+        &provider,
+    )
+    .await
+    .unwrap();
 
     let store = MemoryRuntimeStore::new();
 

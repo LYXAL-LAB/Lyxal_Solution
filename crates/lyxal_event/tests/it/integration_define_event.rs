@@ -41,7 +41,7 @@ async fn test_surrealdb_define_event_triggers_lyxal_event() {
     common::setup_test_db(&db).await;
 
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     // 1. Déclaration de la subscription
     let sub = EventSubscription::new(
@@ -122,7 +122,7 @@ async fn test_invalid_publish_in_define_event_aborts_mutation() {
     db.use_ns("test_ns").use_db("test_invalid").await.unwrap();
     common::setup_test_db(&db).await;
     let store = Arc::new(EventStore::new(db.clone()));
-    store.install().await.unwrap();
+    common::install_event(store.client()).await;
 
     db.query(
         r#"

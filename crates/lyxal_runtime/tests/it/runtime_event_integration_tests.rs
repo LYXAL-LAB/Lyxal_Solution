@@ -1,3 +1,4 @@
+use crate::common;
 use async_trait::async_trait;
 use lyxal_runtime::config::RuntimeConfig;
 use lyxal_runtime::context::ModuleContext;
@@ -18,9 +19,6 @@ use lyxal_runtime::lock::node_id::NodeId;
 use lyxal_runtime::manifest::parser::ManifestParser;
 use lyxal_runtime::module::LyxalModule;
 use lyxal_runtime::package::ModulePackage;
-use lyxal_runtime::resource::model::ModuleResource;
-use lyxal_runtime::resource::provider::ResourceProvider;
-use lyxal_runtime::resource::ResourceKind;
 use lyxal_runtime::store::{RuntimeStore, SurrealRuntimeStore};
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::worker::context::WorkerContext;
@@ -92,27 +90,6 @@ impl LyxalWorker for DummyWorker {
     }
 }
 
-struct DummyResourceProvider;
-
-#[async_trait]
-impl ResourceProvider for DummyResourceProvider {
-    async fn list_resources(&self, _prefix: &str) -> Result<Vec<String>, RuntimeError> {
-        Ok(Vec::new())
-    }
-
-    async fn read_resource(&self, path: &str) -> Result<ModuleResource, RuntimeError> {
-        Ok(ModuleResource::new(
-            path,
-            ResourceKind::Tables,
-            "DEFINE TABLE test SCHEMALESS;",
-        ))
-    }
-
-    async fn exists(&self, _logical_path: &str) -> bool {
-        false
-    }
-}
-
 #[tokio::test]
 async fn test_lifecycle_emits_started_and_stopped() {
     let runtime = LyxalRuntime::new(RuntimeConfig::default());
@@ -177,7 +154,7 @@ version = "1.0.0"
 description = "CRM Module"
 "#;
     let manifest = ManifestParser::parse_str(manifest_toml).unwrap();
-    let provider = Arc::new(DummyResourceProvider);
+    let provider = Arc::new(common::MemoryProvider::new());
     let mock_module = Arc::new(DummyModule::new("lyxal-crm"));
     let package = ModulePackage::new(manifest, provider).with_module_impl(mock_module);
 
