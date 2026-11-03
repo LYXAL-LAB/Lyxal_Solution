@@ -649,3 +649,26 @@ async fn test_runtime_event_worker_crash_supervision() {
         Some(WorkerState::Stopped)
     );
 }
+
+/// Un redémarrage complet (`start_all` → `stop_all` → `start_all`) réutilise les workers du
+/// moteur d'événements déjà enregistrés et les relance.
+#[tokio::test]
+async fn test_runtime_restart_reuses_event_workers() {
+    let client = common::setup_db("test_ns", "test_restart").await;
+    let mut event_config = EventEngineConfig::default();
+    event_config.worker_config.poll_interval = Duration::from_millis(50);
+    let runtime = LyxalRuntime::new(RuntimeConfig::default())
+        .with_client(client)
+        .with_event_config(event_config);
+
+    let worker_id = WorkerId::parse("lyxal_event:event_worker").unwrap();
+    runtime.start_all().await.expect("premier démarrage");
+    runtime.stop_all().await.expect("arrêt");
+    runtime.start_all().await.expect("redémarrage");
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    assert_eq!(
+        runtime.worker_supervisor().state(&worker_id),
+        Some(WorkerState::Running)
+    );
+    runtime.stop_all().await.expect("arrêt final");
+}

@@ -38,6 +38,7 @@ use lyxal_event::{
     Event, EventPublisher, EventStore, EventWorker, GarbageCollector, Handler, HandlerRegistry,
 };
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
@@ -65,6 +66,9 @@ pub struct LyxalRuntime {
     event_consumers: Arc<RwLock<Vec<Arc<dyn EventConsumerModule>>>>,
     event_store: Option<Arc<EventStore>>,
     event_publisher: Option<Arc<EventPublisher>>,
+    /// Workers du moteur d'événements déjà enregistrés : un redémarrage (`start_all` après
+    /// `stop_all`) les réutilise au lieu de les réenregistrer.
+    event_workers_registered: AtomicBool,
 }
 
 impl Default for LyxalRuntime {
@@ -107,6 +111,7 @@ impl LyxalRuntime {
             event_consumers: Arc::new(RwLock::new(Vec::new())),
             event_store: None,
             event_publisher: None,
+            event_workers_registered: AtomicBool::new(false),
         }
     }
 
@@ -343,6 +348,10 @@ impl LyxalRuntime {
             }
         }
 
+        if self.event_workers_registered.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+
         // 3. Construction du registre de handlers pour cette instance isolée
         let mut registry = {
             let reg = self.event_registry.read().await;
@@ -380,6 +389,7 @@ impl LyxalRuntime {
             std::time::Duration::from_secs(5),
         )?);
         self.worker_registry.register(gc_service)?;
+        self.event_workers_registered.store(true, Ordering::SeqCst);
 
         Ok(())
     }
