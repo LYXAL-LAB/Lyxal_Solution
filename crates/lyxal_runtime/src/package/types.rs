@@ -125,9 +125,8 @@ impl std::str::FromStr for ModuleReleaseStatus {
             "Active" => Ok(Self::Active),
             "Inactive" => Ok(Self::Inactive),
             "Failed" => Ok(Self::Failed),
-            other => Err(RuntimeError::Internal {
-                code: "INVALID_RELEASE_STATUS",
-                message: format!("Unknown ModuleReleaseStatus '{}'", other),
+            other => Err(RuntimeError::InvalidReleaseStatus {
+                status: other.to_string(),
             }),
         }
     }

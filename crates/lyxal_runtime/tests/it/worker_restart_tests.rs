@@ -47,8 +47,8 @@ impl LyxalWorker for FlakyWorker {
     async fn run(&self, ctx: WorkerContext) -> Result<(), RuntimeError> {
         let current = self.attempts.fetch_add(1, Ordering::SeqCst) + 1;
         if current <= self.fail_until {
-            Err(RuntimeError::Internal {
-                code: "FLAKY_ERROR",
+            Err(RuntimeError::WorkerFailed {
+                worker: "test".to_string(),
                 message: format!("Fail on attempt {}", current),
             })
         } else {

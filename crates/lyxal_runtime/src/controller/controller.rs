@@ -173,10 +173,7 @@ impl ContinuousReconciliationController {
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
             .is_err()
         {
-            return Err(RuntimeError::Internal {
-                code: "CONTROLLER_PASS_ALREADY_RUNNING",
-                message: "A continuous reconciliation pass is already in progress".to_string(),
-            });
+            return Err(RuntimeError::ReconciliationPassRunning);
         }
         let _guard = PassGuard(self.is_running_pass.clone());
 
@@ -192,9 +189,8 @@ impl ContinuousReconciliationController {
             let state = self
                 .desired_state
                 .read()
-                .map_err(|_| RuntimeError::Internal {
-                    code: "CONTROLLER_LOCK_POISONED",
-                    message: "DesiredState read lock was poisoned".to_string(),
+                .map_err(|_| RuntimeError::LockPoisoned {
+                    context: "DesiredState read lock was poisoned",
                 })?
                 .clone();
             let rev = self.desired_revision.load(Ordering::SeqCst);
@@ -204,9 +200,8 @@ impl ContinuousReconciliationController {
         let packages = {
             self.available_packages
                 .read()
-                .map_err(|_| RuntimeError::Internal {
-                    code: "CONTROLLER_LOCK_POISONED",
-                    message: "AvailablePackages read lock was poisoned".to_string(),
+                .map_err(|_| RuntimeError::LockPoisoned {
+                    context: "AvailablePackages read lock was poisoned",
                 })?
                 .clone()
         };

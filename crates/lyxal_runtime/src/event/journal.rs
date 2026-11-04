@@ -62,10 +62,12 @@ impl MemoryRuntimeEventJournal {
 #[async_trait]
 impl RuntimeEventJournal for MemoryRuntimeEventJournal {
     async fn append(&self, event: &RuntimeEvent) -> Result<(), RuntimeError> {
-        let mut lock = self.events.write().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "MemoryRuntimeEventJournal write lock poisoned".to_string(),
-        })?;
+        let mut lock = self
+            .events
+            .write()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "MemoryRuntimeEventJournal write lock poisoned",
+            })?;
 
         if lock.len() >= self.max_capacity {
             lock.pop_front();
@@ -76,9 +78,8 @@ impl RuntimeEventJournal for MemoryRuntimeEventJournal {
     }
 
     async fn recent(&self, limit: usize) -> Result<Vec<RuntimeEvent>, RuntimeError> {
-        let lock = self.events.read().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "MemoryRuntimeEventJournal read lock poisoned".to_string(),
+        let lock = self.events.read().map_err(|_| RuntimeError::LockPoisoned {
+            context: "MemoryRuntimeEventJournal read lock poisoned",
         })?;
 
         let count = limit.min(lock.len());
@@ -91,9 +92,8 @@ impl RuntimeEventJournal for MemoryRuntimeEventJournal {
         module_id: &ModuleId,
         limit: usize,
     ) -> Result<Vec<RuntimeEvent>, RuntimeError> {
-        let lock = self.events.read().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "MemoryRuntimeEventJournal read lock poisoned".to_string(),
+        let lock = self.events.read().map_err(|_| RuntimeError::LockPoisoned {
+            context: "MemoryRuntimeEventJournal read lock poisoned",
         })?;
 
         let result: Vec<RuntimeEvent> = lock

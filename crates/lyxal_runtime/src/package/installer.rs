@@ -702,10 +702,7 @@ impl ModuleInstaller {
 
         for id in sorted_ids {
             let Some(pkg) = package_map.remove(&id) else {
-                return Err(RuntimeError::Internal {
-                    code: "PACKAGE_MISSING_DURING_APPLY",
-                    message: format!("Package for module '{id}' missing from the batch"),
-                });
+                return Err(RuntimeError::PackageMissing { module: id.clone() });
             };
 
             // Vérifier si une dépendance directe de ce module a échoué

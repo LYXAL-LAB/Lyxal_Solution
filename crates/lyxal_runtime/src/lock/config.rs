@@ -30,29 +30,25 @@ impl MigrationLockConfig {
     /// Valide la cohérence interne des durées configurées.
     pub fn validate(&self) -> Result<(), RuntimeError> {
         if self.lease_duration.is_zero() {
-            return Err(RuntimeError::Internal {
-                code: "RUNTIME_CONFIG_INVALID",
+            return Err(RuntimeError::ConfigInvalid {
                 message: "lease_duration cannot be zero".to_string(),
             });
         }
 
         if self.renew_interval.is_zero() {
-            return Err(RuntimeError::Internal {
-                code: "RUNTIME_CONFIG_INVALID",
+            return Err(RuntimeError::ConfigInvalid {
                 message: "renew_interval cannot be zero".to_string(),
             });
         }
 
         if self.renew_interval >= self.lease_duration {
-            return Err(RuntimeError::Internal {
-                code: "RUNTIME_CONFIG_INVALID",
+            return Err(RuntimeError::ConfigInvalid {
                 message: "renew_interval must be strictly less than lease_duration".to_string(),
             });
         }
 
         if self.acquire_retry_delay.is_zero() {
-            return Err(RuntimeError::Internal {
-                code: "RUNTIME_CONFIG_INVALID",
+            return Err(RuntimeError::ConfigInvalid {
                 message: "acquire_retry_delay cannot be zero".to_string(),
             });
         }

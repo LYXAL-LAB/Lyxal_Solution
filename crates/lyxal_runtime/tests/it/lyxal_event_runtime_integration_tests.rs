@@ -77,8 +77,7 @@ impl EventConsumerModule for MockNotificationModule {
     fn register_event_handlers(&self, registry: &mut HandlerRegistry) -> Result<(), RuntimeError> {
         registry
             .register(self.handler.clone())
-            .map_err(|e| RuntimeError::Internal {
-                code: "REG_FAILED",
+            .map_err(|e| RuntimeError::EventEngineError {
                 message: e.to_string(),
             })?;
         Ok(())
@@ -590,8 +589,8 @@ impl LyxalWorker for CrashingWorker {
         let count = self.runs.fetch_add(1, Ordering::SeqCst);
         if count == 0 {
             // Premier démarrage : simulation d'un crash / erreur fatale
-            return Err(RuntimeError::Internal {
-                code: "SIMULATED_WORKER_CRASH",
+            return Err(RuntimeError::WorkerFailed {
+                worker: "test".to_string(),
                 message: "Worker crashed on first boot".to_string(),
             });
         }

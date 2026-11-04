@@ -101,8 +101,8 @@ impl LyxalWorker for FailingWorker {
 
     async fn run(&self, _ctx: WorkerContext) -> Result<(), RuntimeError> {
         sleep(Duration::from_millis(10)).await;
-        Err(RuntimeError::Internal {
-            code: "RUNTIME_CUSTOM_ERROR",
+        Err(RuntimeError::WorkerFailed {
+            worker: "test".to_string(),
             message: "Simulated worker explosion".to_string(),
         })
     }

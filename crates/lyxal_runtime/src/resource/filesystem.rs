@@ -85,9 +85,9 @@ impl ResourceProvider for FilesystemResourceProvider {
             });
         }
 
-        let raw_bytes = fs::read(&target_path).map_err(|err| RuntimeError::Internal {
-            code: "RUNTIME_RESOURCE_READ_FAILED",
-            message: format!("Failed to read file '{}': {}", target_path.display(), err),
+        let raw_bytes = fs::read(&target_path).map_err(|err| RuntimeError::ResourceReadFailed {
+            path: logical_path.to_string(),
+            message: err.to_string(),
         })?;
 
         String::from_utf8(raw_bytes).map_err(|err| RuntimeError::ResourceEncodingError {

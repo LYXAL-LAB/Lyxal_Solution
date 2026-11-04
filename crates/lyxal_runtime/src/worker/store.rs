@@ -112,10 +112,12 @@ impl WorkerStore for MemoryWorkerStore {
             updated_at: Some(lyxal_surreal::Datetime::now()),
         };
 
-        let mut lock = self.workers.write().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "MemoryWorkerStore write lock poisoned".to_string(),
-        })?;
+        let mut lock = self
+            .workers
+            .write()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "MemoryWorkerStore write lock poisoned",
+            })?;
         lock.insert(key, row);
         Ok(())
     }
@@ -126,10 +128,12 @@ impl WorkerStore for MemoryWorkerStore {
         worker_id: &WorkerId,
     ) -> Result<Option<WorkerStoreRow>, RuntimeError> {
         let key = (node_id.to_string(), worker_id.to_string());
-        let lock = self.workers.read().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "MemoryWorkerStore read lock poisoned".to_string(),
-        })?;
+        let lock = self
+            .workers
+            .read()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "MemoryWorkerStore read lock poisoned",
+            })?;
         Ok(lock.get(&key).cloned())
     }
 
@@ -138,10 +142,12 @@ impl WorkerStore for MemoryWorkerStore {
         node_id: &NodeId,
     ) -> Result<Vec<WorkerStoreRow>, RuntimeError> {
         let node_str = node_id.to_string();
-        let lock = self.workers.read().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "MemoryWorkerStore read lock poisoned".to_string(),
-        })?;
+        let lock = self
+            .workers
+            .read()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "MemoryWorkerStore read lock poisoned",
+            })?;
         Ok(lock
             .values()
             .filter(|r| r.node_id == node_str)

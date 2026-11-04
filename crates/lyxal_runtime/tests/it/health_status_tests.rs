@@ -40,8 +40,8 @@ impl ModuleHealthCheck for MockHealthChecker {
         }
 
         if self.should_fail.load(Ordering::SeqCst) {
-            Err(RuntimeError::Internal {
-                code: "MOCK_HEALTH_CHECK_FAILED",
+            Err(RuntimeError::StoreFailed {
+                operation: "mock_health_check",
                 message: "Simulated internal health check failure".to_string(),
             })
         } else {

@@ -79,10 +79,12 @@ impl LifecycleManager {
 
         // 1. Validation de l'état actuel et transition vers Installing
         let current_state_before = {
-            let mut states = self.states.write().map_err(|_| RuntimeError::Internal {
-                code: "RUNTIME_LOCK_POISONED",
-                message: "Failed to acquire write lock on module states".to_string(),
-            })?;
+            let mut states = self
+                .states
+                .write()
+                .map_err(|_| RuntimeError::LockPoisoned {
+                    context: "Failed to acquire write lock on module states",
+                })?;
             let current = states.entry(id.clone()).or_insert(ModuleState::Registered);
             let next = ModuleState::Installing;
 
@@ -112,10 +114,12 @@ impl LifecycleManager {
 
         // 3. Mise à jour de l'état final
         let (current_state, final_state, op_result) = {
-            let mut states = self.states.write().map_err(|_| RuntimeError::Internal {
-                code: "RUNTIME_LOCK_POISONED",
-                message: "Failed to acquire write lock on module states".to_string(),
-            })?;
+            let mut states = self
+                .states
+                .write()
+                .map_err(|_| RuntimeError::LockPoisoned {
+                    context: "Failed to acquire write lock on module states",
+                })?;
             let current_state = states.get(&id).cloned().unwrap_or(ModuleState::Installing);
 
             match result {
@@ -173,10 +177,12 @@ impl LifecycleManager {
 
         // 1. Validation de l'état actuel et transition vers Starting
         let current_state_before = {
-            let mut states = self.states.write().map_err(|_| RuntimeError::Internal {
-                code: "RUNTIME_LOCK_POISONED",
-                message: "Failed to acquire write lock on module states".to_string(),
-            })?;
+            let mut states = self
+                .states
+                .write()
+                .map_err(|_| RuntimeError::LockPoisoned {
+                    context: "Failed to acquire write lock on module states",
+                })?;
             let current = states.entry(id.clone()).or_insert(ModuleState::Registered);
             let next = ModuleState::Starting;
 
@@ -206,10 +212,12 @@ impl LifecycleManager {
 
         // 3. Mise à jour de l'état final
         let (current_state, final_state, op_result, err_payload) = {
-            let mut states = self.states.write().map_err(|_| RuntimeError::Internal {
-                code: "RUNTIME_LOCK_POISONED",
-                message: "Failed to acquire write lock on module states".to_string(),
-            })?;
+            let mut states = self
+                .states
+                .write()
+                .map_err(|_| RuntimeError::LockPoisoned {
+                    context: "Failed to acquire write lock on module states",
+                })?;
             let current_state = states.get(&id).cloned().unwrap_or(ModuleState::Starting);
 
             match result {
@@ -275,10 +283,12 @@ impl LifecycleManager {
 
         // 1. Validation de l'état actuel et transition vers Stopping
         let current_state_before = {
-            let mut states = self.states.write().map_err(|_| RuntimeError::Internal {
-                code: "RUNTIME_LOCK_POISONED",
-                message: "Failed to acquire write lock on module states".to_string(),
-            })?;
+            let mut states = self
+                .states
+                .write()
+                .map_err(|_| RuntimeError::LockPoisoned {
+                    context: "Failed to acquire write lock on module states",
+                })?;
             let current = states.entry(id.clone()).or_insert(ModuleState::Running);
             let next = ModuleState::Stopping;
 
@@ -308,10 +318,12 @@ impl LifecycleManager {
 
         // 3. Mise à jour de l'état final
         let (current_state, final_state, op_result, err_payload) = {
-            let mut states = self.states.write().map_err(|_| RuntimeError::Internal {
-                code: "RUNTIME_LOCK_POISONED",
-                message: "Failed to acquire write lock on module states".to_string(),
-            })?;
+            let mut states = self
+                .states
+                .write()
+                .map_err(|_| RuntimeError::LockPoisoned {
+                    context: "Failed to acquire write lock on module states",
+                })?;
             let current_state = states.get(&id).cloned().unwrap_or(ModuleState::Stopping);
 
             match result {

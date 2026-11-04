@@ -48,8 +48,8 @@ impl LyxalModule for TestModule {
             tokio::time::sleep(dur).await;
         }
         if self.fail_install.load(Ordering::SeqCst) {
-            return Err(RuntimeError::Internal {
-                code: "MOCK_INSTALL_ERROR",
+            return Err(RuntimeError::InstallFailure {
+                module: ModuleId::new("mock"),
                 message: "Simulated install failure".to_string(),
             });
         }
@@ -61,8 +61,8 @@ impl LyxalModule for TestModule {
             tokio::time::sleep(dur).await;
         }
         if self.fail_start.load(Ordering::SeqCst) {
-            return Err(RuntimeError::Internal {
-                code: "MOCK_START_ERROR",
+            return Err(RuntimeError::StartFailure {
+                module: ModuleId::new("mock"),
                 message: "Simulated start failure".to_string(),
             });
         }
@@ -74,8 +74,8 @@ impl LyxalModule for TestModule {
             tokio::time::sleep(dur).await;
         }
         if self.fail_stop.load(Ordering::SeqCst) {
-            return Err(RuntimeError::Internal {
-                code: "MOCK_STOP_ERROR",
+            return Err(RuntimeError::StopFailure {
+                module: ModuleId::new("mock"),
                 message: "Simulated stop failure".to_string(),
             });
         }
@@ -235,8 +235,10 @@ fn test_error_conversion_to_lyxal_error() {
 
     let lyxal_err = err.to_lyxal_error();
     assert_eq!(lyxal_err.code, "RUNTIME_MISSING_DEPENDENCY");
-    assert_eq!(lyxal_err.category, "runtime");
-    assert_eq!(lyxal_err.http_status, Some(500));
+    assert_eq!(lyxal_err.category, "validation");
+    assert_eq!(lyxal_err.http_status, Some(422));
+    assert_eq!(lyxal_err.label, "Dépendance manquante");
+    assert!(!lyxal_err.retryable);
     assert_eq!(lyxal_err.details["missing_dependency"], "scheduler");
 
     let res: lyxal_error::LyxalResult<String> = err.into_lyxal_result();

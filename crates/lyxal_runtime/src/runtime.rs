@@ -281,8 +281,7 @@ impl LyxalRuntime {
         let mut registry = self.event_registry.write().await;
         registry
             .register(handler)
-            .map_err(|e| RuntimeError::Internal {
-                code: "EVENT_HANDLER_REGISTRATION_FAILED",
+            .map_err(|e| RuntimeError::EventEngineError {
                 message: e.to_string(),
             })?;
         Ok(())
@@ -299,9 +298,8 @@ impl LyxalRuntime {
         let store = self
             .event_store
             .as_ref()
-            .ok_or_else(|| RuntimeError::Internal {
-                code: "EVENT_STORE_MISSING",
-                message: "EventStore is not configured on this runtime instance".to_string(),
+            .ok_or(RuntimeError::StoreMissing {
+                component: "event_store",
             })?;
         store
             .recover_pending_fanouts(limit)
@@ -447,14 +445,12 @@ impl LyxalRuntime {
 
     /// Construit une instance de `ModuleInstaller` injectée avec les composants du Runtime.
     pub fn installer(&self) -> Result<ModuleInstaller, RuntimeError> {
-        let store = self.store.clone().ok_or_else(|| RuntimeError::Internal {
-            code: "RUNTIME_STORE_MISSING",
-            message: "RuntimeStore is required to create a ModuleInstaller".to_string(),
+        let store = self.store.clone().ok_or(RuntimeError::StoreMissing {
+            component: "runtime_store",
         })?;
 
-        let client = self.client.clone().ok_or_else(|| RuntimeError::Internal {
-            code: "RUNTIME_CLIENT_MISSING",
-            message: "SurrealDB client is required to create a ModuleInstaller".to_string(),
+        let client = self.client.clone().ok_or(RuntimeError::StoreMissing {
+            component: "surreal_client",
         })?;
 
         let schema_importer = SchemaImporter::new(client.clone());

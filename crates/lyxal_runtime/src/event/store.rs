@@ -31,14 +31,14 @@ impl SurrealRuntimeEventJournal {
 
     fn row_to_event(row: EventRow) -> Result<RuntimeEvent, RuntimeError> {
         let kind: RuntimeEventKind = serde_json::from_value(serde_json::Value::String(row.kind))
-            .map_err(|err| RuntimeError::Internal {
-                code: "EVENT_DESERIALIZATION_FAILED",
+            .map_err(|err| RuntimeError::StoreFailed {
+                operation: "runtime_event_list",
                 message: format!("Failed to deserialize RuntimeEventKind: {}", err),
             })?;
 
         let payload: RuntimeEventPayload =
-            serde_json::from_value(row.payload).map_err(|err| RuntimeError::Internal {
-                code: "EVENT_DESERIALIZATION_FAILED",
+            serde_json::from_value(row.payload).map_err(|err| RuntimeError::StoreFailed {
+                operation: "runtime_event_list",
                 message: format!("Failed to deserialize RuntimeEventPayload: {}", err),
             })?;
 
