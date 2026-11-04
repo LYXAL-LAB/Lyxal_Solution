@@ -38,14 +38,6 @@ async fn run_inner() -> Result<(), ServerError> {
             health.set("database", HealthState::Healthy, None).await;
             database
         }
-        Err(error) if !config.database.required => {
-            health
-                .set("database", HealthState::Degraded, Some(error.to_string()))
-                .await;
-            return Err(ServerError::Database(
-                "le mode sans base requiert un adaptateur NullDatabase, non activé".into(),
-            ));
-        }
         Err(error) => {
             health
                 .set("database", HealthState::Unhealthy, Some(error.to_string()))

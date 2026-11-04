@@ -1,7 +1,7 @@
-FROM rust:1.85-bookworm AS builder
+FROM rust:1.97-bookworm AS builder
 WORKDIR /workspace
 COPY . .
-RUN cargo build --release -p lyxal-server --features full
+RUN cargo build --release -p lyxal-server
 
 FROM debian:bookworm-slim
 RUN useradd --system --uid 10001 --create-home lyxal \

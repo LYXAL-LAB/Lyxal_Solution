@@ -4,6 +4,7 @@ use serde::{Deserialize, Deserializer};
 use std::{collections::BTreeSet, fmt, net::IpAddr, path::Path, sync::Arc};
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AppConfig {
     pub application: ApplicationConfig,
     pub server: ServerConfig,
@@ -15,6 +16,7 @@ pub struct AppConfig {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ApplicationConfig {
     pub name: String,
     pub environment: String,
@@ -23,6 +25,7 @@ pub struct ApplicationConfig {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ServerConfig {
     pub host: IpAddr,
     pub port: u16,
@@ -30,10 +33,12 @@ pub struct ServerConfig {
     pub graceful_shutdown_seconds: u64,
     pub max_concurrency: usize,
     pub body_limit_bytes: usize,
-    pub trust_proxy_headers: bool,
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+/// Identifiants Root : jamais dans les fichiers de configuration, uniquement par
+/// `LYXAL__DATABASE__USERNAME` et `LYXAL__DATABASE__PASSWORD`.
 pub struct DatabaseConfig {
     pub endpoint: String,
     pub namespace: String,
@@ -41,7 +46,6 @@ pub struct DatabaseConfig {
     pub username: Option<String>,
     pub password: Option<SecretPassword>,
     pub connect_timeout_seconds: u64,
-    pub required: bool,
 }
 
 /// Mot de passe lu dans la configuration : masqué dans `Debug`, effacé de la mémoire à la
@@ -79,15 +83,16 @@ impl<'de> Deserialize<'de> for SecretPassword {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RuntimeConfig {
     pub run_migrations: bool,
     pub fail_fast: bool,
-    pub parallel_start: bool,
     pub module_start_timeout_seconds: u64,
     pub module_stop_timeout_seconds: u64,
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ObservabilityConfig {
     pub log_filter: String,
     pub json_logs: bool,
@@ -96,6 +101,7 @@ pub struct ObservabilityConfig {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CorsConfig {
     pub enabled: bool,
     pub allow_credentials: bool,
@@ -105,6 +111,7 @@ pub struct CorsConfig {
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ModulesConfig {
     #[serde(default)]
     pub enabled: BTreeSet<String>,

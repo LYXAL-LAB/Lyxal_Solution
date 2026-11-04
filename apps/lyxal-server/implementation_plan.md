@@ -68,7 +68,7 @@ Aucune fonction utilisée ni créée.
 
 | Lot | Contenu |
 | :- | :--- |
-| 1 | **Nettoyage** (S-05, S-08, S-09, S-10 en partie) : secrets retirés des TOML, `Dockerfile` aligné, fonctionnalités et champs morts supprimés, `CHANGELOG.md` supprimé. |
+| 1 ✅ | **Nettoyage** (S-05, S-08, S-09, S-10 en partie) : secrets retirés des TOML, `Dockerfile` aligné, fonctionnalités et champs morts supprimés, `CHANGELOG.md` supprimé ; `runtime_graph.rs` (test sans assertion) supprimé ; clés inconnues refusées dans la configuration (`deny_unknown_fields`). |
 | 2 | **Hôte sur `LyxalRuntime`** (Q1, Q2, Q3 ; S-01, S-02, S-03, S-04, S-07, S-11) : `build.rs`, installation en lot, workers, événements, santé, arrêt ; runtime et contrat locaux supprimés ; `manifest.toml` de `lyxal_base`, contraintes `lyxal_base >=0.1.0` ; ingestion installée depuis son manifeste, toujours active par défaut. |
 | 3 | **Erreurs** (Q4 ; S-06, S-13) : `ServerError` typé, `error/server.surql`, réponses `LyxalResult`, détail interne retiré des réponses. |
 | 4 | **Clôture** : tests de bout en bout (S-12), `README.md` et `docs/` à l'état actuel, `AGENTS.md` (§5.8.5) et skills alignés, audit de contrôle, suppression de `AUDIT.md` et de ce plan. |
