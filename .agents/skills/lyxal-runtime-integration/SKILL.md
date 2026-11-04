@@ -7,7 +7,7 @@ description: >-
 # Lyxal OS — Intégration Runtime & Bus d'Événements (`lyxal-runtime-integration`)
 
 > **Source normative** : Ce Skill applique les principes d'architecture définis dans [`.agents/AGENTS.md`](../../AGENTS.md) (§5.6 et §5.8) et [`.agents/rules/lyxal_standards_and_checklist.md`](../../rules/lyxal_standards_and_checklist.md) (§11 et §13), en les rattachant aux **contrats Rust réellement implémentés** dans [`crates/lyxal_runtime`](../../../crates/lyxal_runtime/src/lib.rs) et [`crates/lyxal_event`](../../../crates/lyxal_event/src/lib.rs).
-> **Note sur les exemples documentaires** : Lorsque les exemples illustratifs de `AGENTS.md` §5.8 diffèrent légèrement des signatures compilées du dépôt, **les signatures réelles de `crates/lyxal_runtime` et `crates/lyxal_event` documentées ci-dessous font foi** pour la compilation et l'audit.
+> **Exemples documentaires** : les exemples de `AGENTS.md` §5.6 et §5.8 correspondent aux signatures compilées du dépôt. En cas d'écart, **les signatures réelles de `crates/lyxal_runtime` et `crates/lyxal_event` font foi**, et `AGENTS.md` est corrigé à la clôture de la reprise du module concerné.
 
 ---
 
@@ -36,16 +36,16 @@ Activer ce Skill dès qu'une mission implique :
   - `async fn install(&self, ctx: &ModuleContext) -> Result<(), RuntimeError>` ;
   - `async fn start(&self, ctx: &ModuleContext) -> Result<(), RuntimeError>` ;
   - `async fn stop(&self, ctx: &ModuleContext) -> Result<(), RuntimeError>`.
-- Contexte d'exécution [`ModuleContext`](../../../crates/lyxal_runtime/src/context.rs) : fournit `module_id()`, `config()`, `get_config(key)` et `data::<T>()` (état partagé typé injecté par l'hôte, ex. `Store` ou `Surreal<Any>`).
+- Contexte d'exécution [`ModuleContext`](../../../crates/lyxal_runtime/src/context.rs) : fournit `module_id()` et des propriétés de configuration posées par l'hôte (`with_property(key, value)`, `get_property(key)`, `has_property(key)`).
 - Machine à états [`LifecycleManager`](../../../crates/lyxal_runtime/src/lifecycle.rs) :
   - Transitions strictes : `Registered` $\rightarrow$ `Installing` $\rightarrow$ `Installed` $\rightarrow$ `Starting` $\rightarrow$ `Running` $\rightarrow$ `Stopping` $\rightarrow$ `Stopped` (ou `Failed` en cas d'erreur/timeout).
-  - Un module déjà en état `Installed`, `Running` ou `Stopped` ne peut être réinstallé que si `reinstall = true` est explicitement demandé.
+  - Une transition non permise par `ModuleState::can_transition_to` est refusée (`RUNTIME_INVALID_STATE_TRANSITION`) ; une release déjà installée n'est pas réinstallée par `ModuleInstaller` (`AlreadyInstalled`).
 
 #### Règles de contrôle
 1. **[OBLIGATOIRE] Synchronisation `manifest.toml` $\leftrightarrow$ `ModuleDescriptor`** : L'`id`, la `version`, les `dependencies` et les `capabilities` déclarés dans `ModuleDescriptorBuilder` doivent correspondre exactement à ceux du fichier `manifest.toml` du module.
 2. **[OBLIGATOIRE] Respect des Timeouts de Cycle de Vie** : `LifecycleManager` encadre `install`, `start` et `stop` dans un `tokio::time::timeout` (`install_timeout`, `start_timeout`, `stop_timeout` de `RuntimeConfig`). Les hooks `start()` et `stop()` ne doivent **jamais** bloquer indéfiniment ni exécuter une boucle infinie (les boucles continues appartiennent exclusivement à `LyxalWorker::run`).
 3. **[OBLIGATOIRE] Ordre Topologique de Démarrage** : [`LyxalRuntime::start_module`](../../../crates/lyxal_runtime/src/runtime.rs) vérifie que toutes les dépendances directes du module sont dans l'état `ModuleState::Running` avant d'autoriser `start()`. Aucun module ne doit contourner cette vérification.
-4. **[OBLIGATOIRE] Propagation franche des erreurs** : Toute défaillance lors de `install`, `start` ou `stop` doit retourner `Err(RuntimeError::...)` afin que `LifecycleManager` bascule l'état sur `ModuleState::Failed` et incrémente les compteurs de santé (`install_failures`, `start_failures`).
+4. **[OBLIGATOIRE] Propagation franche des erreurs** : Toute défaillance lors de `install`, `start` ou `stop` doit retourner `Err(RuntimeError::...)` afin que `LifecycleManager` bascule l'état sur `ModuleState::Failed` (`RUNTIME_INSTALL_FAILURE`, `RUNTIME_START_FAILURE`, `RUNTIME_STOP_FAILURE`). Aucune variante générique n'existe : chaque erreur est une variante typée de `RuntimeError`, définie dans `error/runtime.surql`.
 
 ---
 
@@ -117,12 +117,15 @@ Activer ce Skill dès qu'une mission implique :
 
 #### Règles de contrôle
 1. **[OBLIGATOIRE] Monotonie du Fencing Token (`generation`) & Zéro `DELETE`** :
-   - Tout bail distribué repose sur un jeton d'escrime monotone `generation: u64` vérifié par CAS (`WHERE generation = $expected_gen`).
-   - La libération (`release`) d'un bail SurrealDB ne doit **JAMAIS exécuter `DELETE`** sur l'enregistrement de verrou (`system_installation_lock` / verrou de migration), car cela réinitialiserait `generation` à `1` et violerait la protection contre les écrivains zombies (*split-brain*). La libération doit être strictement logique (`SET is_released = true, expires_at = 0`).
+   - Les baux sont stockés dans la table unique `runtime_lease` (`runtime_lease:[kind, key]`, nature `migration` ou `installation`) et manipulés exclusivement par `fn::runtime_lease_acquire`, `_renew`, `_release` et `_get`, appelées par `call_fn` ; les échéances sont calculées à l'heure de la base (`time::now()`), jamais par l'horloge d'un nœud.
+   - Tout bail repose sur un jeton d'escrime monotone `generation` vérifié par mise à jour conditionnelle (`WHERE generation = …`).
+   - La libération ne doit **JAMAIS exécuter `DELETE`** sur l'enregistrement de bail, car cela réinitialiserait `generation` et violerait la protection contre les écrivains zombies (*split-brain*). Elle est strictement logique (`is_released = true`).
+   - Une reprise après libération renvoie `Acquired` ; `RecoveredExpiredLease` est réservé à un bail expiré (détenteur disparu).
 2. **[OBLIGATOIRE] Garantie d'Exécution Unique de `install()`** :
-   - Toute mutation d'installation de schéma ou de migration exécutée par le Runtime doit être protégée par l'acquisition préalable du bail (`acquire`), le renouvellement (`renew`) si nécessaire, et la vérification de l'état déjà installé après acquisition du verrou.
-3. **[OBLIGATOIRE] Point d'attention SurrealDB 3.3.4 sur les verrous** :
-   - Lors d'un audit de `crates/lyxal_runtime/src/lock/`, vérifier que les requêtes SurrealQL internes utilisent `type::record(...)` (et jamais `type::thing`, supprimé en 3.x), que toute lecture d'état de verrou propage ses erreurs (aucun `take(0).unwrap_or_default()` : un verrou illisible ne doit jamais être vu comme libre) et que les cas attendus sont distingués par type d'erreur (`is_not_found()` pour une table pas encore créée, `is_already_exists()` pour une création concurrente).
+   - Toute mutation d'installation de schéma ou de migration exécutée par le Runtime doit être protégée par l'acquisition préalable du bail (`acquire`) et la vérification de l'état déjà installé après acquisition.
+   - `MigrationRunner` renouvelle le bail tous les `renew_interval` pendant l'exécution (`MigrationLockConfig::validate` refuse un intervalle nul ou supérieur à la durée du bail) et enregistre chaque état sous garde de bail (`fn::runtime_migration_record` avec `lease_key`, `node_id`, `generation`) : un bail perdu lève `RUNTIME_LEASE_FENCED` (`RuntimeError::LeaseFenced`).
+3. **[OBLIGATOIRE] Point d'attention sur les baux** :
+   - Lors d'un audit de `crates/lyxal_runtime/src/lock/`, vérifier qu'aucune requête SurrealQL n'est écrite dans le Rust (tout passe par `fn::runtime_lease_*`), qu'aucune échéance n'est calculée avec l'horloge du nœud, et que toute erreur d'appel est propagée (un bail illisible ne doit jamais être vu comme libre).
 
 ---
 
@@ -135,8 +138,8 @@ Activer ce Skill dès qu'une mission implique :
 - Résultat [`HealthCheckResult`](../../../crates/lyxal_runtime/src/health/check.rs) : constructeurs `healthy(module_id, latency_ms, message: Option<String>)`, `degraded(module_id, latency_ms, message)`, `unhealthy(module_id, latency_ms: Option<u64>, message)`, `unknown(module_id)` et `not_applicable(module_id, reason: Option<String>)` produisant un `HealthStatus`.
 
 #### Règles de contrôle
-1. **[OBLIGATOIRE] Sonde légère et non bloquante** : `ModuleHealthCheck::check` est appelée périodiquement par `HealthEngine` sous un timeout strict (`health_check_timeout`). Elle doit vérifier la disponibilité des ressources critiques du module dans `ctx: &ModuleContext` sans effectuer de requêtes lourdes ou mutantes (modèle de référence : [`IngestionHealthCheck`](../../../crates/lyxal_pipeline_ingestion/src/health.rs)).
-2. **[OBLIGATOIRE] Enregistrement dans le Runtime** : Si un module définit une structure implémentant `ModuleHealthCheck`, vérifier qu'elle est effectivement enregistrée via `runtime.register_health_check(...)`.
+1. **[OBLIGATOIRE] Sonde légère et non bloquante** : `ModuleHealthCheck::check` est appelée périodiquement par `HealthEngine` sous un timeout strict (`HealthConfig::check_timeout`). Elle doit vérifier la disponibilité des ressources critiques du module dans `ctx: &ModuleContext` sans effectuer de requêtes lourdes ou mutantes (modèle de référence : [`IngestionHealthCheck`](../../../crates/lyxal_pipeline_ingestion/src/health.rs)).
+2. **[OBLIGATOIRE] Enregistrement dans le Runtime** : Si un module définit une structure implémentant `ModuleHealthCheck`, vérifier qu'elle est effectivement enregistrée dans le `HealthRegistry` du runtime (`runtime.health_registry().register_check(...)`) ; un second enregistrement pour le même module est refusé (`RUNTIME_HEALTH_CHECKER_DUPLICATE`).
 
 ---
 
