@@ -1,6 +1,6 @@
 # Checklist de mise en production
 
-- [ ] secrets retirés des fichiers TOML ;
+- [ ] identifiants SurrealDB fournis par `LYXAL__DATABASE__USERNAME` et `LYXAL__DATABASE__PASSWORD` (aucun dans les TOML) ;
 - [ ] compte SurrealDB non-root ;
 - [ ] TLS placé devant le serveur ou directement intégré ;
 - [ ] CORS limité aux origines réelles ;
@@ -17,4 +17,4 @@
 - [ ] doublons inspectés avec `cargo tree -d` ;
 - [ ] tests du workspace exécutés ;
 - [ ] binaire reproductible et signé ;
-- [ ] version et changelog renseignés.
+- [ ] version renseignée (le `CHANGELOG.md` est créé à la première version livrée, `AGENTS.md` §0).
