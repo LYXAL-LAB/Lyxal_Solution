@@ -235,8 +235,10 @@ fn test_error_conversion_to_lyxal_error() {
 
     let lyxal_err = err.to_lyxal_error();
     assert_eq!(lyxal_err.code, "RUNTIME_MISSING_DEPENDENCY");
-    assert_eq!(lyxal_err.category, "runtime");
-    assert_eq!(lyxal_err.http_status, Some(500));
+    assert_eq!(lyxal_err.category, "validation");
+    assert_eq!(lyxal_err.http_status, Some(422));
+    assert_eq!(lyxal_err.label, "Dépendance manquante");
+    assert!(!lyxal_err.retryable);
     assert_eq!(lyxal_err.details["missing_dependency"], "scheduler");
 
     let res: lyxal_error::LyxalResult<String> = err.into_lyxal_result();
