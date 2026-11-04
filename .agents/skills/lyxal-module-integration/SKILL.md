@@ -30,7 +30,7 @@ Activer ce Skill dès qu'une mission implique :
 
 #### Mécanismes réels du Runtime à vérifier
 - Modèle [`ModuleManifest`](../../../crates/lyxal_runtime/src/manifest/model.rs) et [`ManifestValidator`](../../../crates/lyxal_runtime/src/manifest/validation.rs) :
-  - Vérifie `manifest_version <= CURRENT_MANIFEST_VERSION` (`1`), la présence de `id` et `name`, l'absence d'auto-dépendance (`ManifestValidationError::SelfDependency`) et l'absence de dépendance dupliquée (`ManifestValidationError::DuplicateDependency`).
+  - Vérifie `manifest_version <= CURRENT_MANIFEST_VERSION` (`1`), la présence de `id` et `name`, l'absence d'auto-dépendance (`RuntimeError::SelfDependency`) et l'absence de dépendance dupliquée (`RuntimeError::DuplicateDependency`). Toute clé inconnue du manifeste est refusée au parsing (`deny_unknown_fields`, `RUNTIME_MANIFEST_PARSE_ERROR`).
 - Résolveur [`DependencyResolver`](../../../crates/lyxal_runtime/src/resolver.rs) (`resolve` / `resolve_descriptors`) :
   - Vérifie que chaque dépendance déclarée est enregistrée (`RuntimeError::MissingDependency`) ;
   - Construit le graphe orienté acyclique (DAG) et calcule un **ordre topologique déterministe** par l'algorithme de Kahn (file de priorité ordonnée par `(registration_index, ModuleId)`) ;

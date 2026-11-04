@@ -151,7 +151,7 @@ Implémenter :
 ```text
 module_name/
 
-├── manifest.toml            <-- Contrat Runtime (id, version, deps, schemas, migrations, workers)
+├── manifest.toml            <-- Contrat Runtime (id, version, dépendances, [resources] installées par lyxal_runtime)
 ├── schema/                  <-- Schémas déclaratifs SurrealDB (tables, index, assertions)
 ├── migrations/              <-- Scripts de migration ordonnés (ex: 0001_initial.surql)
 ├── functions/               <-- Fonctions métier SurrealQL ($params: object)
@@ -331,21 +331,25 @@ AUTH_*
 ### 5.6.1. Règle du Producteur (Découplage Absolu)
 
 * Un module producteur (ex: `lyxal_booking`) **ne connaît JAMAIS ses consommateurs** (ex: `lyxal_notification`). Il lui est strictement interdit d'importer ou de référencer un autre module métier.
-* **Émission SurrealQL (`DEFINE EVENT`)** : Tout événement déclenché par une mutation en base appelle exclusivement `fn::event_publish` :
+* **Émission SurrealQL (`DEFINE EVENT`)** : Tout événement déclenché par une mutation en base appelle exclusivement `fn::event_publish` et **vérifie son résultat** : en cas d'échec, `THROW` annule la mutation d'origine plutôt que de perdre l'événement :
 
 ```surql
-DEFINE EVENT OVERWRITE booking_created_event ON TABLE booking WHEN $event == "CREATE" THEN (
-    fn::event_publish({
+DEFINE EVENT OVERWRITE booking_created_event ON TABLE booking WHEN $event = "CREATE" THEN {
+    LET $published = fn::event_publish({
         event_id: rand::uuid::v7(),
         event_type: "booking.created",
         producer: "lyxal_booking",
+        source: $after.id,
         payload: {
             booking_id: <string> $after.id,
             customer_email: $after.customer_email
         },
         metadata: {}
-    })
-);
+    });
+    IF !$published.ok {
+        THROW $published.error.code;
+    };
+};
 ```
 
 * **Émission Rust** : Les producteurs utilisent la façade `publisher.publish(&event).await`.
@@ -388,7 +392,7 @@ impl EventConsumerModule for NotificationModule {
 
 * Le transport d'événements garantit une livraison **At-Least-Once**.
 * Tout handler de domaine **DOIT être idempotent** (déduplication par `event_id`, `correlation_id` ou clé métier).
-* En cas d'échec transitoire (ex: API externe indisponible), le handler retourne `Err(LyxalEventError::Handler(...))` pour déclencher le retry exponentiel + Full Jitter automatique. **Il est strictement interdit de masquer silencieusement une erreur.**
+* En cas d'échec transitoire (ex: API externe indisponible), le handler retourne `Err(LyxalEventError::HandlerFailed { .., terminal: false })` pour déclencher le retry exponentiel + Full Jitter automatique ; `terminal: true` envoie directement la livraison en dead letter. **Il est strictement interdit de masquer silencieusement une erreur.**
 
 ### 5.6.4. Séquencement Streaming In-Process & Invariant de Contiguïté
 
@@ -650,7 +654,7 @@ Chaque module déclare formellement ses métadonnées, sa compatibilité SemVer,
 manifest_version = 1
 id = "lyxal_booking"
 name = "Lyxal Booking Engine"
-version = "1.0.0"
+version = "0.1.0"
 description = "Moteur de réservation et gestion de calendriers Lyxal"
 capabilities = ["booking"]
 
@@ -659,12 +663,19 @@ min_version = ">=0.1.0"
 
 [[dependencies]]
 id = "lyxal_auth"
-version = ">=1.0.0"
+version = ">=0.1.0"
 
 [resources]
-schemas = ["schema/tables.surql", "schema/indexes.surql"]
+schemas = ["schema/tables.surql", "schema/fields.surql", "schema/indexes.surql"]
+functions = ["functions/booking.surql"]
+error_definitions = ["error/booking.surql"]
+events = ["events/booking.surql"]
+seeds = []
 migrations = ["migrations/0001_initial.surql"]
 ```
+
+* `lyxal_runtime` installe **exactement** les fichiers déclarés dans `[resources]`, par phase (`schemas`, `functions`, `error_definitions`, `events`, `seeds`, puis `migrations`) et dans l'ordre déclaré. Une clé inconnue du manifeste est refusée (`RUNTIME_MANIFEST_PARSE_ERROR`).
+* Les migrations s'exécutent sous un bail distribué renouvelé tant qu'elles durent ; leur résultat n'est enregistré que si le nœud détient encore le bail (sinon `RUNTIME_LEASE_FENCED`). Une migration appliquée dont le contenu a changé arrête l'installation (`RUNTIME_MIGRATION_CHECKSUM_MISMATCH`).
 
 > `lyxal_booking` ne déclare **pas** de dépendance vers `lyxal_notification` : conformément au §5.6.1, un producteur d'événements ne connaît jamais ses consommateurs. C'est `lyxal_notification` qui s'abonne à `booking.created` via `lyxal_event`.
 
@@ -674,9 +685,7 @@ Chaque module expose une structure principale implémentant le trait officiel `l
 
 ```rust
 use async_trait::async_trait;
-use lyxal_runtime::{
-    LyxalModule, ModuleContext, ModuleDescriptor, ModuleDescriptorBuilder, RuntimeError, Version,
-};
+use lyxal_runtime::{LyxalModule, ModuleContext, ModuleDescriptor, RuntimeError};
 
 pub struct BookingModule {
     descriptor: ModuleDescriptor,
@@ -688,8 +697,8 @@ impl LyxalModule for BookingModule {
         &self.descriptor
     }
 
-    /// Hook d'installation mutationnel garanti d'être exécuté exactement UNE fois
-    /// par le Runtime sous bail distribué (`InstallationLeaseManager`).
+    /// Hook d'installation, exécuté par le Runtime sous bail d'installation
+    /// (`InstallationLeaseManager`) ; une release déjà installée n'est pas réinstallée.
     async fn install(&self, _ctx: &ModuleContext) -> Result<(), RuntimeError> {
         Ok(())
     }
@@ -790,7 +799,7 @@ lyxal_error
 lyxal_surreal
 lyxal_crypto (AES-256-GCM, SHA-256, BLAKE3, Argon2id, HMAC, HKDF)
 lyxal_event
-lyxal_runtime (Manifest, Lifecycle, Workers, Health, Locks)
+lyxal_runtime (Manifeste, Installation, Migrations, Cycle de vie, Workers, Santé, Baux, Réconciliation)
 lyxal_auth
 lyxal_notification
 lyxal_scheduler
