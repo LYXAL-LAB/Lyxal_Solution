@@ -14,12 +14,9 @@ impl WorkerId {
     pub fn new(module_id: &ModuleId, name: impl Into<String>) -> Result<Self, RuntimeError> {
         let name_str = name.into().trim().to_string();
         if name_str.is_empty() {
-            return Err(RuntimeError::Internal {
-                code: "RUNTIME_WORKER_INVALID_ID",
-                message: format!(
-                    "Worker name cannot be empty for module '{}'",
-                    module_id.as_str()
-                ),
+            return Err(RuntimeError::WorkerInvalidId {
+                id: format!("{}:", module_id.as_str()),
+                reason: "worker name cannot be empty".to_string(),
             });
         }
 
@@ -32,12 +29,9 @@ impl WorkerId {
         let s = s.trim();
         let parts: Vec<&str> = s.splitn(2, ':').collect();
         if parts.len() != 2 || parts[0].trim().is_empty() || parts[1].trim().is_empty() {
-            return Err(RuntimeError::Internal {
-                code: "RUNTIME_WORKER_INVALID_ID",
-                message: format!(
-                    "Invalid canonical worker id '{}': expected format '<module-id>:<worker-name>'",
-                    s
-                ),
+            return Err(RuntimeError::WorkerInvalidId {
+                id: s.to_string(),
+                reason: "expected format '<module-id>:<worker-name>'".to_string(),
             });
         }
 

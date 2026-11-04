@@ -459,10 +459,10 @@ impl LyxalWorker for IngestionWorker {
                             let _ = publ.publish(&event).await;
                         }
 
-                        return Err(RuntimeError::Internal {
-                            code: "INGESTION_BATCH_FAILED",
+                        return Err(RuntimeError::WorkerFailed {
+                            worker: self.descriptor.id.to_string(),
                             message: format!(
-                                "Échec fatal du traitement du lot {}: {err}",
+                                "INGESTION_BATCH_FAILED: échec fatal du traitement du lot {}: {err}",
                                 job.batch_id
                             ),
                         });

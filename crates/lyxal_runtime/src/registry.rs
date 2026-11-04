@@ -36,20 +36,21 @@ impl ModuleRegistry {
     /// est déjà enregistré.
     pub fn register(&self, module: Arc<dyn LyxalModule>) -> Result<(), RuntimeError> {
         let id = module.id().clone();
-        let mut modules = self.modules.write().map_err(|_| RuntimeError::Internal {
-            code: "REGISTRY_LOCK_POISONED",
-            message: "Failed to acquire write lock on module registry".to_string(),
-        })?;
+        let mut modules = self
+            .modules
+            .write()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "Failed to acquire write lock on module registry",
+            })?;
         if modules.contains_key(&id) {
             return Err(RuntimeError::DuplicateModule { id });
         }
-        let mut order = self
-            .registration_order
-            .write()
-            .map_err(|_| RuntimeError::Internal {
-                code: "REGISTRY_LOCK_POISONED",
-                message: "Failed to acquire write lock on module registration order".to_string(),
-            })?;
+        let mut order =
+            self.registration_order
+                .write()
+                .map_err(|_| RuntimeError::LockPoisoned {
+                    context: "Failed to acquire write lock on module registration order",
+                })?;
         order.push(id.clone());
         modules.insert(id, module);
         Ok(())

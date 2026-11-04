@@ -95,8 +95,8 @@ impl LyxalWorker for ResurrectingFlakyWorker {
         let count = self.runs.fetch_add(1, Ordering::SeqCst) + 1;
         if count == 1 {
             // Premier run échoue immédiatement pour déclencher un sommeil de restart
-            Err(RuntimeError::Internal {
-                code: "FIRST_FAIL",
+            Err(RuntimeError::WorkerFailed {
+                worker: "test".to_string(),
                 message: "First run failure".to_string(),
             })
         } else {

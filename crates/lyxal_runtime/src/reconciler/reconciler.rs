@@ -168,12 +168,8 @@ impl RuntimeReconciler {
                     let package_to_install = match pkg {
                         Some(p) => p,
                         None => {
-                            let err = RuntimeError::Internal {
-                                code: "PACKAGE_MISSING_DURING_APPLY",
-                                message: format!(
-                                    "Package for module '{}' (v{}) was not provided during apply",
-                                    mod_id, candidate_version
-                                ),
+                            let err = RuntimeError::PackageMissing {
+                                module: mod_id.clone(),
                             };
                             failed.push(ReconciliationActionFailure {
                                 module_id: mod_id.clone(),

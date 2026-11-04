@@ -120,8 +120,8 @@ impl LyxalWorker for ErrorWorker {
 
     async fn run(&self, _ctx: WorkerContext) -> Result<(), RuntimeError> {
         sleep(Duration::from_millis(10)).await;
-        Err(RuntimeError::Internal {
-            code: "WORKER_FAILED",
+        Err(RuntimeError::WorkerFailed {
+            worker: "test".to_string(),
             message: "Worker failed intentionally".to_string(),
         })
     }

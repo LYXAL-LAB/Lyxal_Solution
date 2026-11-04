@@ -56,8 +56,7 @@ impl LyxalWorker for EventWorkerService {
         self.inner
             .run(ctx.cancellation)
             .await
-            .map_err(|err| RuntimeError::Internal {
-                code: "EVENT_WORKER_EXECUTION_FAILED",
+            .map_err(|err| RuntimeError::EventEngineError {
                 message: format!("Event worker encountered fatal error: {err}"),
             })
     }

@@ -48,8 +48,8 @@ impl LyxalModule for TestModule {
             tokio::time::sleep(dur).await;
         }
         if self.fail_install.load(Ordering::SeqCst) {
-            return Err(RuntimeError::Internal {
-                code: "MOCK_INSTALL_ERROR",
+            return Err(RuntimeError::InstallFailure {
+                module: ModuleId::new("mock"),
                 message: "Simulated install failure".to_string(),
             });
         }
@@ -61,8 +61,8 @@ impl LyxalModule for TestModule {
             tokio::time::sleep(dur).await;
         }
         if self.fail_start.load(Ordering::SeqCst) {
-            return Err(RuntimeError::Internal {
-                code: "MOCK_START_ERROR",
+            return Err(RuntimeError::StartFailure {
+                module: ModuleId::new("mock"),
                 message: "Simulated start failure".to_string(),
             });
         }
@@ -74,8 +74,8 @@ impl LyxalModule for TestModule {
             tokio::time::sleep(dur).await;
         }
         if self.fail_stop.load(Ordering::SeqCst) {
-            return Err(RuntimeError::Internal {
-                code: "MOCK_STOP_ERROR",
+            return Err(RuntimeError::StopFailure {
+                module: ModuleId::new("mock"),
                 message: "Simulated stop failure".to_string(),
             });
         }

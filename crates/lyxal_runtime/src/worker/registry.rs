@@ -26,10 +26,12 @@ impl WorkerRegistry {
         let descriptor = worker.descriptor();
         let id = descriptor.id.clone();
 
-        let mut lock = self.workers.write().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "WorkerRegistry write lock poisoned".to_string(),
-        })?;
+        let mut lock = self
+            .workers
+            .write()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "WorkerRegistry write lock poisoned",
+            })?;
 
         if lock.contains_key(&id) {
             return Err(RuntimeError::WorkerDuplicate {

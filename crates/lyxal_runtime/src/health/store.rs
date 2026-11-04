@@ -51,9 +51,8 @@ impl HealthStore for MemoryHealthStore {
         node_id: &NodeId,
         snapshot: &HealthSnapshot,
     ) -> Result<(), RuntimeError> {
-        let mut map = self.data.write().map_err(|_| RuntimeError::Internal {
-            code: "MEMORY_HEALTH_STORE_POISONED",
-            message: "MemoryHealthStore write lock was poisoned".to_string(),
+        let mut map = self.data.write().map_err(|_| RuntimeError::LockPoisoned {
+            context: "MemoryHealthStore write lock was poisoned",
         })?;
         map.insert(node_id.clone(), snapshot.clone());
         Ok(())
@@ -63,9 +62,8 @@ impl HealthStore for MemoryHealthStore {
         &self,
         node_id: &NodeId,
     ) -> Result<Option<HealthSnapshot>, RuntimeError> {
-        let map = self.data.read().map_err(|_| RuntimeError::Internal {
-            code: "MEMORY_HEALTH_STORE_POISONED",
-            message: "MemoryHealthStore read lock was poisoned".to_string(),
+        let map = self.data.read().map_err(|_| RuntimeError::LockPoisoned {
+            context: "MemoryHealthStore read lock was poisoned",
         })?;
         Ok(map.get(node_id).cloned())
     }

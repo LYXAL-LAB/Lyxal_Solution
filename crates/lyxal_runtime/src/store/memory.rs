@@ -27,49 +27,56 @@ impl MemoryRuntimeStore {
 #[async_trait]
 impl RuntimeStore for MemoryRuntimeStore {
     async fn bootstrap(&self) -> Result<(), RuntimeError> {
-        let mut bootstrapped = self
-            .bootstrapped
-            .write()
-            .map_err(|_| RuntimeError::Internal {
-                code: "RUNTIME_LOCK_POISONED",
-                message: "Failed to acquire write lock during bootstrap".to_string(),
-            })?;
+        let mut bootstrapped =
+            self.bootstrapped
+                .write()
+                .map_err(|_| RuntimeError::LockPoisoned {
+                    context: "Failed to acquire write lock during bootstrap",
+                })?;
         *bootstrapped = true;
         Ok(())
     }
 
     async fn upsert_module(&self, module: &StoredModule) -> Result<(), RuntimeError> {
-        let mut modules = self.modules.write().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "Failed to acquire write lock for module".to_string(),
-        })?;
+        let mut modules = self
+            .modules
+            .write()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "Failed to acquire write lock for module",
+            })?;
         modules.insert(module.module_id.clone(), module.clone());
         Ok(())
     }
 
     async fn get_module(&self, id: &ModuleId) -> Result<Option<StoredModule>, RuntimeError> {
-        let modules = self.modules.read().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "Failed to acquire read lock for module".to_string(),
-        })?;
+        let modules = self
+            .modules
+            .read()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "Failed to acquire read lock for module",
+            })?;
         Ok(modules.get(id).cloned())
     }
 
     async fn list_modules(&self) -> Result<Vec<StoredModule>, RuntimeError> {
-        let modules = self.modules.read().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "Failed to acquire read lock for module list".to_string(),
-        })?;
+        let modules = self
+            .modules
+            .read()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "Failed to acquire read lock for module list",
+            })?;
         let mut list: Vec<StoredModule> = modules.values().cloned().collect();
         list.sort_by(|a, b| a.module_id.cmp(&b.module_id));
         Ok(list)
     }
 
     async fn register_release(&self, release: &StoredModuleRelease) -> Result<(), RuntimeError> {
-        let mut releases = self.releases.write().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "Failed to acquire write lock for release".to_string(),
-        })?;
+        let mut releases = self
+            .releases
+            .write()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "Failed to acquire write lock for release",
+            })?;
         releases.insert(
             (release.module_id.clone(), release.version.clone()),
             release.clone(),
@@ -82,10 +89,12 @@ impl RuntimeStore for MemoryRuntimeStore {
         module_id: &ModuleId,
         version: &str,
     ) -> Result<Option<StoredModuleRelease>, RuntimeError> {
-        let releases = self.releases.read().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "Failed to acquire read lock for release".to_string(),
-        })?;
+        let releases = self
+            .releases
+            .read()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "Failed to acquire read lock for release",
+            })?;
         Ok(releases
             .get(&(module_id.clone(), version.to_string()))
             .cloned())
@@ -95,10 +104,12 @@ impl RuntimeStore for MemoryRuntimeStore {
         &self,
         module_id: &ModuleId,
     ) -> Result<Vec<StoredModuleRelease>, RuntimeError> {
-        let releases = self.releases.read().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "Failed to acquire read lock for release list".to_string(),
-        })?;
+        let releases = self
+            .releases
+            .read()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "Failed to acquire read lock for release list",
+            })?;
         let mut list: Vec<StoredModuleRelease> = releases
             .values()
             .filter(|r| &r.module_id == module_id)
@@ -115,10 +126,12 @@ impl RuntimeStore for MemoryRuntimeStore {
         status: &str,
         phase: Option<&str>,
     ) -> Result<(), RuntimeError> {
-        let mut releases = self.releases.write().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "Failed to acquire write lock for release status update".to_string(),
-        })?;
+        let mut releases = self
+            .releases
+            .write()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "Failed to acquire write lock for release status update",
+            })?;
         if let Some(rel) = releases.get_mut(&(module_id.clone(), version.to_string())) {
             rel.status = status.to_string();
             rel.installation_phase = phase.map(|p| p.to_string());
@@ -135,9 +148,8 @@ impl RuntimeStore for MemoryRuntimeStore {
         let mut migrations = self
             .migrations
             .write()
-            .map_err(|_| RuntimeError::Internal {
-                code: "RUNTIME_LOCK_POISONED",
-                message: "Failed to acquire write lock for migration".to_string(),
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "Failed to acquire write lock for migration",
             })?;
         migrations.insert(
             (migration.module_id.clone(), migration.migration_id.clone()),
@@ -151,10 +163,12 @@ impl RuntimeStore for MemoryRuntimeStore {
         module_id: &ModuleId,
         migration_id: &MigrationId,
     ) -> Result<Option<MigrationRecord>, RuntimeError> {
-        let migrations = self.migrations.read().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "Failed to acquire read lock for migration".to_string(),
-        })?;
+        let migrations = self
+            .migrations
+            .read()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "Failed to acquire read lock for migration",
+            })?;
         Ok(migrations
             .get(&(module_id.clone(), migration_id.clone()))
             .cloned())
@@ -164,10 +178,12 @@ impl RuntimeStore for MemoryRuntimeStore {
         &self,
         module_id: &ModuleId,
     ) -> Result<Vec<MigrationRecord>, RuntimeError> {
-        let migrations = self.migrations.read().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "Failed to acquire read lock for migration list".to_string(),
-        })?;
+        let migrations = self
+            .migrations
+            .read()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "Failed to acquire read lock for migration list",
+            })?;
         let mut list: Vec<MigrationRecord> = migrations
             .values()
             .filter(|m| &m.module_id == module_id)

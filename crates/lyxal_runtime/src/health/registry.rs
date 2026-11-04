@@ -21,19 +21,18 @@ impl HealthRegistry {
     /// Enregistre un vérificateur de santé pour un module.
     ///
     /// # Erreurs
-    /// Retourne une erreur `RuntimeError::Internal` si un checker est déjà enregistré pour ce `ModuleId`.
+    /// Retourne `RuntimeError::HealthCheckerDuplicate` si un checker est déjà enregistré pour ce `ModuleId`.
     pub fn register_check(&self, checker: Arc<dyn ModuleHealthCheck>) -> Result<(), RuntimeError> {
-        let mut map = self.checkers.write().map_err(|_| RuntimeError::Internal {
-            code: "HEALTH_REGISTRY_LOCK_POISONED",
-            message: "HealthRegistry write lock was poisoned".to_string(),
-        })?;
+        let mut map = self
+            .checkers
+            .write()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "HealthRegistry write lock was poisoned",
+            })?;
 
         let id = checker.module_id();
         if map.contains_key(id) {
-            return Err(RuntimeError::Internal {
-                code: "HEALTH_CHECKER_ALREADY_REGISTERED",
-                message: format!("A health checker for module '{}' is already registered", id),
-            });
+            return Err(RuntimeError::HealthCheckerDuplicate { module: id.clone() });
         }
 
         map.insert(id.clone(), checker);

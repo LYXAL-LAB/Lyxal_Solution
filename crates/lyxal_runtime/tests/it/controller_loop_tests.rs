@@ -50,8 +50,8 @@ impl LyxalModule for TestMockModule {
     }
     async fn install(&self, _ctx: &ModuleContext) -> Result<(), RuntimeError> {
         if self.should_fail_install.load(Ordering::SeqCst) {
-            return Err(RuntimeError::Internal {
-                code: "TEST_INSTALL_FAILURE",
+            return Err(RuntimeError::InstallFailure {
+                module: ModuleId::new("test"),
                 message: "Simulated module installation failure".to_string(),
             });
         }

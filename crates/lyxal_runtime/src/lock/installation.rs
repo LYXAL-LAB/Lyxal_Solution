@@ -132,10 +132,12 @@ impl InstallationLeaseManager for MemoryInstallationLeaseManager {
         ttl: Duration,
     ) -> Result<AcquireInstallationLeaseResult, RuntimeError> {
         let now = Self::now_secs();
-        let mut leases = self.leases.write().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "Write lock poisoned in MemoryInstallationLeaseManager".to_string(),
-        })?;
+        let mut leases = self
+            .leases
+            .write()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "Write lock poisoned in MemoryInstallationLeaseManager",
+            })?;
 
         if let Some(existing) = leases.get_mut(key) {
             if existing.is_active_at(now) {
@@ -184,10 +186,12 @@ impl InstallationLeaseManager for MemoryInstallationLeaseManager {
         ttl: Duration,
     ) -> Result<InstallationLease, RuntimeError> {
         let now = Self::now_secs();
-        let mut leases = self.leases.write().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "Write lock poisoned in MemoryInstallationLeaseManager".to_string(),
-        })?;
+        let mut leases = self
+            .leases
+            .write()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "Write lock poisoned in MemoryInstallationLeaseManager",
+            })?;
 
         if let Some(existing) = leases.get_mut(&lease.key) {
             if existing.owner == lease.owner
@@ -208,10 +212,12 @@ impl InstallationLeaseManager for MemoryInstallationLeaseManager {
     }
 
     async fn release(&self, lease: &InstallationLease) -> Result<(), RuntimeError> {
-        let mut leases = self.leases.write().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "Write lock poisoned in MemoryInstallationLeaseManager".to_string(),
-        })?;
+        let mut leases = self
+            .leases
+            .write()
+            .map_err(|_| RuntimeError::LockPoisoned {
+                context: "Write lock poisoned in MemoryInstallationLeaseManager",
+            })?;
 
         if let Some(existing) = leases.get_mut(&lease.key) {
             if existing.owner != lease.owner || existing.generation != lease.generation {
@@ -232,9 +238,8 @@ impl InstallationLeaseManager for MemoryInstallationLeaseManager {
         &self,
         key: &InstallationLockKey,
     ) -> Result<Option<InstallationLease>, RuntimeError> {
-        let leases = self.leases.read().map_err(|_| RuntimeError::Internal {
-            code: "RUNTIME_LOCK_POISONED",
-            message: "Read lock poisoned in MemoryInstallationLeaseManager".to_string(),
+        let leases = self.leases.read().map_err(|_| RuntimeError::LockPoisoned {
+            context: "Read lock poisoned in MemoryInstallationLeaseManager",
         })?;
         let now = Self::now_secs();
         if let Some(existing) = leases.get(key) {

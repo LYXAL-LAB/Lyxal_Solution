@@ -53,8 +53,7 @@ impl LyxalWorker for EventGarbageCollectorService {
         self.inner
             .run(ctx.cancellation)
             .await
-            .map_err(|err| RuntimeError::Internal {
-                code: "EVENT_GC_EXECUTION_FAILED",
+            .map_err(|err| RuntimeError::EventEngineError {
                 message: format!("Event garbage collector encountered error: {err}"),
             })
     }

@@ -202,3 +202,28 @@ async fn test_invalid_release_is_rejected() {
         "{err}"
     );
 }
+
+/// Les définitions d'erreurs du runtime s'installent dans `error_definition` (une par entrée
+/// du catalogue) et se résolvent par `fn::error_resolve`.
+#[tokio::test]
+async fn test_runtime_error_definitions_installed() {
+    let client = common::setup_db("runtime_error_defs", "runtime_error_defs").await;
+    let mut res = client
+        .query("SELECT VALUE code FROM error_definition WHERE module = 'runtime' ORDER BY code;")
+        .await
+        .unwrap();
+    let codes: Vec<String> = res.take(0).unwrap();
+    let mut expected: Vec<String> = lyxal_runtime::error::RUNTIME_ERROR_CATALOG
+        .iter()
+        .map(|info| info.code.to_string())
+        .collect();
+    expected.sort();
+    assert_eq!(codes, expected);
+
+    let mut res = client
+        .query("RETURN fn::error_resolve('RUNTIME_LEASE_FENCED', 'fr', NONE).http_status;")
+        .await
+        .unwrap();
+    let status: Option<i64> = res.take(0).unwrap();
+    assert_eq!(status, Some(412));
+}
