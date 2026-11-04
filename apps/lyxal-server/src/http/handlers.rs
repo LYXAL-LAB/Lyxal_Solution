@@ -4,9 +4,7 @@ use crate::{
     health::{HealthSnapshot, HealthState},
 };
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
-use lyxal_runtime::health::{
-    GlobalHealthStatus, HealthConfig, HealthSnapshot as ModulesHealthSnapshot,
-};
+use lyxal_runtime::health::{GlobalHealthStatus, HealthConfig, HealthStatus};
 use lyxal_runtime::reconciler::observer::RuntimeObserver;
 use lyxal_runtime::{ModuleContext, ModuleState};
 use serde::Serialize;
@@ -44,8 +42,15 @@ pub async fn ready(State(context): State<AppContext>) -> impl IntoResponse {
 pub struct HealthResponse {
     /// Composants du serveur (processus, base de données).
     server: HealthSnapshot,
-    /// Santé des modules, évaluée par le runtime (`ModuleHealthCheck`).
-    modules: ModulesHealthSnapshot,
+    /// Santé des modules, évaluée par le runtime (`ModuleHealthCheck`), sans le message des
+    /// sondes (détail interne).
+    modules: ModulesHealth,
+}
+
+#[derive(Serialize)]
+pub struct ModulesHealth {
+    status: GlobalHealthStatus,
+    modules: std::collections::BTreeMap<String, HealthStatus>,
 }
 
 pub async fn health(State(context): State<AppContext>) -> Result<impl IntoResponse, ServerError> {
@@ -67,6 +72,14 @@ pub async fn health(State(context): State<AppContext>) -> Result<impl IntoRespon
         StatusCode::OK
     } else {
         StatusCode::SERVICE_UNAVAILABLE
+    };
+    let modules = ModulesHealth {
+        status: modules.global_status,
+        modules: modules
+            .modules
+            .into_iter()
+            .map(|(id, result)| (id.to_string(), result.status))
+            .collect(),
     };
     Ok((status, Json(HealthResponse { server, modules })))
 }

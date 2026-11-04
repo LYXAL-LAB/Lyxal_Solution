@@ -55,13 +55,24 @@ impl LyxalModule for ManifestModule {
 }
 
 fn manifest(module: &EmbeddedModule) -> Result<ModuleManifest, ServerError> {
-    ManifestParser::parse_str(module.manifest).map_err(|source| ServerError::Module {
+    ManifestParser::parse_str(module.manifest).map_err(|source| ServerError::ModuleInstall {
         module: module.id.to_string(),
         message: source.to_string(),
     })
 }
 
-/// Installe `lyxal_core`, `lyxal_error` puis le schéma du runtime. Rejouable.
+/// Manifeste de l'hôte et ses définitions d'erreurs `SERVER_*`.
+const SERVER_MODULE: EmbeddedModule = EmbeddedModule {
+    id: "lyxal_server",
+    manifest: include_str!("../../manifest.toml"),
+    files: &[(
+        "error/server.surql",
+        include_str!("../../error/server.surql"),
+    )],
+};
+
+/// Installe `lyxal_core`, `lyxal_error`, les définitions d'erreurs de l'hôte, puis le schéma du
+/// runtime. Rejouable.
 pub async fn install_foundation(client: &Surreal<Any>) -> Result<(), ServerError> {
     let mut manifests = Vec::new();
     for module in EMBEDDED_MODULES
@@ -73,6 +84,10 @@ pub async fn install_foundation(client: &Surreal<Any>) -> Result<(), ServerError
             EmbeddedResourceProvider::new(module.files),
         ));
     }
+    manifests.push((
+        manifest(&SERVER_MODULE)?,
+        EmbeddedResourceProvider::new(SERVER_MODULE.files),
+    ));
     let batch: Vec<(&ModuleManifest, &dyn ResourceProvider)> = manifests
         .iter()
         .map(|(m, p)| (m, p as &dyn ResourceProvider))

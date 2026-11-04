@@ -47,13 +47,13 @@ pub async fn start(
 
     let report = runtime.install_packages(modules::packages()?).await?;
     if let Some(failure) = report.failed.first() {
-        return Err(ServerError::Module {
+        return Err(ServerError::ModuleInstall {
             module: failure.module_id.to_string(),
             message: failure.error.to_string(),
         });
     }
     if let Some(skipped) = report.not_attempted.first() {
-        return Err(ServerError::Module {
+        return Err(ServerError::ModuleInstall {
             module: skipped.module_id.to_string(),
             message: format!(
                 "non installé : la dépendance {} a échoué",

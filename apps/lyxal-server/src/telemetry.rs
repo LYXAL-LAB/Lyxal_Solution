@@ -2,8 +2,10 @@ use crate::{config::ObservabilityConfig, error::ServerError};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 pub fn init(config: &ObservabilityConfig) -> Result<(), ServerError> {
-    let filter = EnvFilter::try_new(&config.log_filter)
-        .map_err(|error| ServerError::Configuration(error.to_string()))?;
+    let filter =
+        EnvFilter::try_new(&config.log_filter).map_err(|error| ServerError::Configuration {
+            message: error.to_string(),
+        })?;
 
     let registry = tracing_subscriber::registry().with(filter);
 
@@ -16,7 +18,9 @@ pub fn init(config: &ObservabilityConfig) -> Result<(), ServerError> {
                     .with_thread_ids(config.include_thread_ids),
             )
             .try_init()
-            .map_err(|error| ServerError::Internal(error.to_string()))?;
+            .map_err(|error| ServerError::Telemetry {
+                message: error.to_string(),
+            })?;
     } else {
         registry
             .with(
@@ -25,7 +29,9 @@ pub fn init(config: &ObservabilityConfig) -> Result<(), ServerError> {
                     .with_thread_ids(config.include_thread_ids),
             )
             .try_init()
-            .map_err(|error| ServerError::Internal(error.to_string()))?;
+            .map_err(|error| ServerError::Telemetry {
+                message: error.to_string(),
+            })?;
     }
     Ok(())
 }

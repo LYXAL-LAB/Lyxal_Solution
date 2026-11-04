@@ -56,7 +56,13 @@ async fn run_inner() -> Result<(), ServerError> {
     );
     let router = http::build_router(context)?;
 
-    let listener = TcpListener::bind(config.bind_address()).await?;
+    let address = config.bind_address();
+    let listener = TcpListener::bind(&address)
+        .await
+        .map_err(|error| ServerError::Bind {
+            address: address.clone(),
+            message: error.to_string(),
+        })?;
     health.set("server", HealthState::Healthy, None).await;
 
     tracing::info!(address = %config.bind_address(), "serveur HTTP prêt");
@@ -79,7 +85,9 @@ async fn run_inner() -> Result<(), ServerError> {
             tokio::time::sleep(Duration::from_millis(50)).await;
         })
         .await
-        .map_err(|error| ServerError::Http(error.to_string()))?;
+        .map_err(|error| ServerError::HttpServe {
+            message: error.to_string(),
+        })?;
 
     tracing::info!(
         graceful_shutdown_seconds = graceful_seconds,

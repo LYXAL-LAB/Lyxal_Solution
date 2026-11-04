@@ -56,13 +56,18 @@ impl SecretPassword {
     pub fn new(text: String) -> Result<Self, ServerError> {
         SecretString::new(text)
             .map(|secret| Self(Arc::new(secret)))
-            .map_err(|error| ServerError::Configuration(format!("database.password : {error}")))
+            .map_err(|error| ServerError::Configuration {
+                message: format!("database.password : {error}"),
+            })
     }
 
     /// Copie protégée du secret, pour une utilisation unique (connexion Root).
     pub fn to_secret(&self) -> Result<SecretString, ServerError> {
-        SecretString::new(self.0.expose_secret().to_owned())
-            .map_err(|error| ServerError::Configuration(format!("database.password : {error}")))
+        SecretString::new(self.0.expose_secret().to_owned()).map_err(|error| {
+            ServerError::Configuration {
+                message: format!("database.password : {error}"),
+            }
+        })
     }
 }
 
@@ -133,7 +138,9 @@ impl AppConfig {
         let value: Self = builder
             .build()
             .and_then(config::Config::try_deserialize)
-            .map_err(|error| ServerError::Configuration(error.to_string()))?;
+            .map_err(|error| ServerError::Configuration {
+                message: error.to_string(),
+            })?;
 
         value.validate()?;
         Ok(value)
@@ -141,24 +148,24 @@ impl AppConfig {
 
     pub fn validate(&self) -> Result<(), ServerError> {
         if self.application.name.trim().is_empty() {
-            return Err(ServerError::Configuration(
-                "application.name ne peut pas être vide".into(),
-            ));
+            return Err(ServerError::Configuration {
+                message: "application.name ne peut pas être vide".into(),
+            });
         }
         if self.database.endpoint.trim().is_empty() {
-            return Err(ServerError::Configuration(
-                "database.endpoint ne peut pas être vide".into(),
-            ));
+            return Err(ServerError::Configuration {
+                message: "database.endpoint ne peut pas être vide".into(),
+            });
         }
         if self.database.namespace.trim().is_empty() || self.database.database.trim().is_empty() {
-            return Err(ServerError::Configuration(
-                "namespace et database sont obligatoires".into(),
-            ));
+            return Err(ServerError::Configuration {
+                message: "namespace et database sont obligatoires".into(),
+            });
         }
         if self.server.max_concurrency == 0 {
-            return Err(ServerError::Configuration(
-                "server.max_concurrency doit être supérieur à zéro".into(),
-            ));
+            return Err(ServerError::Configuration {
+                message: "server.max_concurrency doit être supérieur à zéro".into(),
+            });
         }
         Ok(())
     }

@@ -39,6 +39,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
 lyxal_surreal.workspace = true
+lyxal_error.workspace = true
 lyxal_runtime.workspace = true
 lyxal_event.workspace = true
 lyxal_pipeline_ingestion = { workspace = true, optional = true }
