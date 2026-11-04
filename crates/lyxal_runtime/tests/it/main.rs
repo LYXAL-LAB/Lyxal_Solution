@@ -9,6 +9,7 @@ mod catalogue_runtime_integration_tests;
 mod controller_loop_tests;
 mod health_status_tests;
 mod health_store_tests;
+mod lease_fencing_tests;
 mod lifecycle_tests;
 mod lyxal_event_runtime_integration_tests;
 mod manifest_tests;

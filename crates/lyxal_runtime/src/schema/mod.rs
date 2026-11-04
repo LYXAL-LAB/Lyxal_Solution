@@ -121,6 +121,10 @@ pub const RUNTIME_EMBEDDED_RESOURCES: &[(&str, &str)] = &[
         include_str!("../../functions/runtime_event_journal.surql"),
     ),
     (
+        "functions/runtime_lease.surql",
+        include_str!("../../functions/runtime_lease.surql"),
+    ),
+    (
         "error/runtime.surql",
         include_str!("../../error/runtime.surql"),
     ),

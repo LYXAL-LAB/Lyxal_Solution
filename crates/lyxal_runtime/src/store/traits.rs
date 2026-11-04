@@ -1,4 +1,5 @@
 use crate::error::RuntimeError;
+use crate::lock::MigrationLease;
 use crate::migration::{MigrationId, MigrationRecord};
 use crate::store::models::{StoredModule, StoredModuleRelease};
 use crate::types::ModuleId;
@@ -48,7 +49,14 @@ pub trait RuntimeStore: Send + Sync {
     ) -> Result<(), RuntimeError>;
 
     /// Enregistre ou met à jour l'historique d'une migration (`runtime_migration`).
-    async fn record_migration(&self, migration: &MigrationRecord) -> Result<(), RuntimeError>;
+    ///
+    /// Sous bail (`lease`), l'écriture n'a lieu que si ce bail est encore détenu, dans la même
+    /// génération ; sinon `RuntimeError::LeaseFenced` et rien n'est écrit.
+    async fn record_migration(
+        &self,
+        migration: &MigrationRecord,
+        lease: Option<&MigrationLease>,
+    ) -> Result<(), RuntimeError>;
 
     /// Récupère l'enregistrement d'une migration pour un module donné.
     async fn get_migration(

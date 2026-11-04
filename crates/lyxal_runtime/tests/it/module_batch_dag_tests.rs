@@ -17,7 +17,6 @@ use lyxal_runtime::RuntimeConfig;
 use semver::{Version, VersionReq};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use surrealdb::engine::any::connect;
 
 struct MockBatchModule {
     descriptor: ModuleDescriptor,
@@ -178,8 +177,7 @@ async fn test_batch_dag_diamond_installation_and_start_order() {
 
 #[tokio::test]
 async fn test_batch_duplicate_module_rejection() {
-    let client = connect("mem://").await.unwrap();
-    client.use_ns("test").use_db("test").await.unwrap();
+    let client = common::setup_db("test", "test").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let runtime = LyxalRuntime::new(RuntimeConfig::default())
@@ -198,8 +196,7 @@ async fn test_batch_duplicate_module_rejection() {
 
 #[tokio::test]
 async fn test_batch_fault_isolation_and_not_attempted_reporting() {
-    let client = connect("mem://").await.unwrap();
-    client.use_ns("test").use_db("test").await.unwrap();
+    let client = common::setup_db("test", "test").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let runtime = LyxalRuntime::new(RuntimeConfig::default())

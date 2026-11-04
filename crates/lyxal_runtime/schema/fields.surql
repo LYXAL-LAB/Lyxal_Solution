@@ -33,33 +33,17 @@ DEFINE FIELD OVERWRITE error ON TABLE runtime_migration TYPE option<string>;
 DEFINE FIELD OVERWRITE created_at ON TABLE runtime_migration TYPE datetime DEFAULT time::now() READONLY;
 DEFINE FIELD OVERWRITE updated_at ON TABLE runtime_migration TYPE datetime DEFAULT time::now();
 
--- Champs pour runtime_migration_lock
-DEFINE FIELD OVERWRITE lock_key ON TABLE runtime_migration_lock TYPE string;
-DEFINE FIELD OVERWRITE module_id ON TABLE runtime_migration_lock TYPE string;
-DEFINE FIELD OVERWRITE migration_id ON TABLE runtime_migration_lock TYPE string;
-DEFINE FIELD OVERWRITE owner_node_id ON TABLE runtime_migration_lock TYPE string;
-DEFINE FIELD OVERWRITE generation ON TABLE runtime_migration_lock TYPE int;
-DEFINE FIELD OVERWRITE is_released ON TABLE runtime_migration_lock TYPE option<bool>;
-DEFINE FIELD OVERWRITE acquired_at ON TABLE runtime_migration_lock TYPE option<int>;
-DEFINE FIELD OVERWRITE renewed_at ON TABLE runtime_migration_lock TYPE option<int>;
-DEFINE FIELD OVERWRITE expires_at ON TABLE runtime_migration_lock TYPE option<int>;
-DEFINE FIELD OVERWRITE released_at ON TABLE runtime_migration_lock TYPE option<int>;
-DEFINE FIELD OVERWRITE created_at ON TABLE runtime_migration_lock TYPE datetime DEFAULT time::now() READONLY;
-DEFINE FIELD OVERWRITE updated_at ON TABLE runtime_migration_lock TYPE datetime DEFAULT time::now();
-
--- Champs pour runtime_installation_lock
-DEFINE FIELD OVERWRITE lock_key ON TABLE runtime_installation_lock TYPE string;
-DEFINE FIELD OVERWRITE module_id ON TABLE runtime_installation_lock TYPE string;
-DEFINE FIELD OVERWRITE version ON TABLE runtime_installation_lock TYPE string;
-DEFINE FIELD OVERWRITE owner_node_id ON TABLE runtime_installation_lock TYPE string;
-DEFINE FIELD OVERWRITE generation ON TABLE runtime_installation_lock TYPE int;
-DEFINE FIELD OVERWRITE is_released ON TABLE runtime_installation_lock TYPE option<bool>;
-DEFINE FIELD OVERWRITE acquired_at ON TABLE runtime_installation_lock TYPE option<int>;
-DEFINE FIELD OVERWRITE renewed_at ON TABLE runtime_installation_lock TYPE option<int>;
-DEFINE FIELD OVERWRITE expires_at ON TABLE runtime_installation_lock TYPE option<int>;
-DEFINE FIELD OVERWRITE released_at ON TABLE runtime_installation_lock TYPE option<int>;
-DEFINE FIELD OVERWRITE created_at ON TABLE runtime_installation_lock TYPE datetime DEFAULT time::now() READONLY;
-DEFINE FIELD OVERWRITE updated_at ON TABLE runtime_installation_lock TYPE datetime DEFAULT time::now();
+-- Champs pour runtime_lease (instants en secondes Unix, heure de la base)
+DEFINE FIELD OVERWRITE kind ON TABLE runtime_lease TYPE string ASSERT $value IN ["migration", "installation"];
+DEFINE FIELD OVERWRITE key ON TABLE runtime_lease TYPE string;
+DEFINE FIELD OVERWRITE owner_node_id ON TABLE runtime_lease TYPE string;
+DEFINE FIELD OVERWRITE generation ON TABLE runtime_lease TYPE int;
+DEFINE FIELD OVERWRITE is_released ON TABLE runtime_lease TYPE bool;
+DEFINE FIELD OVERWRITE acquired_at ON TABLE runtime_lease TYPE int;
+DEFINE FIELD OVERWRITE renewed_at ON TABLE runtime_lease TYPE int;
+DEFINE FIELD OVERWRITE expires_at ON TABLE runtime_lease TYPE int;
+DEFINE FIELD OVERWRITE released_at ON TABLE runtime_lease TYPE option<int>;
+DEFINE FIELD OVERWRITE updated_at ON TABLE runtime_lease TYPE datetime DEFAULT time::now();
 
 -- Champs pour runtime_health
 DEFINE FIELD OVERWRITE node_id ON TABLE runtime_health TYPE string;

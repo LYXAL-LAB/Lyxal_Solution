@@ -5,7 +5,7 @@ use crate::event::kind::RuntimeEventKind;
 use crate::event::payload::{MigrationEvent, RuntimeEventPayload};
 use crate::lock::config::MigrationLockConfig;
 use crate::lock::key::MigrationLockKey;
-use crate::lock::lease::AcquireLeaseResult;
+use crate::lock::lease::{AcquireLeaseResult, MigrationLease};
 use crate::lock::manager::MigrationLeaseManager;
 use crate::lock::node_id::NodeId;
 use crate::lock::recovery::MigrationRecoveryPolicy;
@@ -14,7 +14,7 @@ use crate::manifest::ModuleManifest;
 use crate::migration::definition::MigrationRecord;
 use crate::migration::discovery::MigrationDiscovery;
 use crate::migration::id::MigrationId;
-use crate::migration::plan::{MigrationPlan, MigrationPlanAction};
+use crate::migration::plan::{MigrationPlan, MigrationPlanAction, MigrationPlanItem};
 use crate::migration::status::MigrationStatus;
 use crate::resource::provider::ResourceProvider;
 use crate::store::traits::RuntimeStore;
@@ -284,12 +284,7 @@ impl MigrationRunner {
                         if r.status == MigrationStatus::Applied {
                             if r.checksum == item.definition.checksum {
                                 // Déjà appliquée par un autre nœud entre-temps !
-                                if let (Some(mgr), Some(l)) = (&self.lease_manager, &acquired_lease)
-                                {
-                                    if let Err(e) = mgr.release(l).await {
-                                        tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
-                                    }
-                                }
+                                self.release_lease(acquired_lease.as_ref()).await;
                                 self.emit(
                                     &plan.module_id,
                                     MigrationEvent::Skipped {
@@ -301,12 +296,7 @@ impl MigrationRunner {
                                 skipped.push(item.definition.id.clone());
                                 continue;
                             } else {
-                                if let (Some(mgr), Some(l)) = (&self.lease_manager, &acquired_lease)
-                                {
-                                    if let Err(e) = mgr.release(l).await {
-                                        tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
-                                    }
-                                }
+                                self.release_lease(acquired_lease.as_ref()).await;
                                 return Err(RuntimeError::MigrationChecksumMismatch {
                                     module: plan.module_id.clone(),
                                     migration: item.definition.id.to_string(),
@@ -327,13 +317,7 @@ impl MigrationRunner {
                                     if r2.status == MigrationStatus::Applied
                                         && r2.checksum == item.definition.checksum
                                     {
-                                        if let (Some(mgr), Some(l)) =
-                                            (&self.lease_manager, &acquired_lease)
-                                        {
-                                            if let Err(e) = mgr.release(l).await {
-                                                tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
-                                            }
-                                        }
+                                        self.release_lease(acquired_lease.as_ref()).await;
                                         self.emit(
                                             &plan.module_id,
                                             MigrationEvent::Skipped {
@@ -358,12 +342,7 @@ impl MigrationRunner {
                             if self.recovery_policy
                                 == MigrationRecoveryPolicy::RequireManualIntervention
                             {
-                                if let (Some(mgr), Some(l)) = (&self.lease_manager, &acquired_lease)
-                                {
-                                    if let Err(e) = mgr.release(l).await {
-                                        tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
-                                    }
-                                }
+                                self.release_lease(acquired_lease.as_ref()).await;
                                 return Err(RuntimeError::MigrationRecoveryRequired {
                                     module: plan.module_id.clone(),
                                     migration: item.definition.id.to_string(),
@@ -374,20 +353,16 @@ impl MigrationRunner {
                     }
 
                     // c. Chargement de la ressource
-                    let res_path = item.definition.resource_path.as_deref().unwrap_or("");
-                    let content = match provider.read(res_path).await {
+                    let mut lease = acquired_lease;
+                    let content = match provider.read(res_path(item)).await {
                         Ok(r) => r,
                         Err(err) => {
-                            if let (Some(mgr), Some(l)) = (&self.lease_manager, &acquired_lease) {
-                                if let Err(e) = mgr.release(l).await {
-                                    tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
-                                }
-                            }
+                            self.release_lease(lease.as_ref()).await;
                             return Err(err);
                         }
                     };
 
-                    // d. Enregistrement de l'état 'Applying'
+                    // d. Enregistrement de l'état 'Applying', sous garde du bail
                     self.emit(
                         &plan.module_id,
                         MigrationEvent::Applying {
@@ -396,88 +371,53 @@ impl MigrationRunner {
                     )
                     .await;
 
-                    let applying_record = MigrationRecord {
+                    let record = |status, applied_at, duration_ms, error| MigrationRecord {
                         migration_id: item.definition.id.clone(),
                         module_id: plan.module_id.clone(),
                         module_version: plan.module_version.clone(),
                         checksum: item.definition.checksum.clone(),
-                        applied_at: 0,
-                        duration_ms: 0,
-                        status: MigrationStatus::Applying,
-                        error: None,
+                        applied_at,
+                        duration_ms,
+                        status,
+                        error,
                     };
-                    if let Err(err) = self.store.record_migration(&applying_record).await {
-                        if let (Some(mgr), Some(l)) = (&self.lease_manager, &acquired_lease) {
-                            if let Err(e) = mgr.release(l).await {
-                                tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
-                            }
-                        }
+                    if let Err(err) = self
+                        .store
+                        .record_migration(
+                            &record(MigrationStatus::Applying, 0, 0, None),
+                            lease.as_ref(),
+                        )
+                        .await
+                    {
+                        self.release_lease(lease.as_ref()).await;
                         return Err(err);
                     }
 
-                    // e. Exécution chronométrée SurrealQL
+                    // e. Exécution chronométrée, bail renouvelé tant qu'elle dure
                     let step_start = Instant::now();
-                    let mut attempts = 0;
-                    let execution_result = loop {
-                        attempts += 1;
-                        let query_result = self.client.query(&content).await;
+                    let execution_result = self
+                        .execute_with_heartbeat(plan, item, &content, lease.as_mut())
+                        .await;
+                    let duration_ms = elapsed_ms(step_start);
 
-                        match query_result {
-                            Ok(res) => match res.check() {
-                                Ok(_) => break Ok(()),
-                                Err(err) => {
-                                    let err_str = err.to_string();
-                                    if attempts < 5
-                                        && (err_str.contains("conflict")
-                                            || err_str.contains("retried")
-                                            || err_str.contains("retry"))
-                                    {
-                                        sleep(Duration::from_millis(25 * attempts)).await;
-                                        continue;
-                                    }
-                                    break Err(RuntimeError::MigrationExecutionFailed {
-                                        module: plan.module_id.clone(),
-                                        migration: item.definition.id.to_string(),
-                                        message: format!(
-                                            "SurrealDB execution check failed: {}",
-                                            err
-                                        ),
-                                    });
-                                }
-                            },
-                            Err(err) => {
-                                let err_str = err.to_string();
-                                if attempts < 5
-                                    && (err_str.contains("conflict")
-                                        || err_str.contains("retried")
-                                        || err_str.contains("retry"))
-                                {
-                                    sleep(Duration::from_millis(25 * attempts)).await;
-                                    continue;
-                                }
-                                break Err(RuntimeError::MigrationExecutionFailed {
-                                    module: plan.module_id.clone(),
-                                    migration: item.definition.id.to_string(),
-                                    message: format!("SurrealDB query dispatch failed: {}", err),
-                                });
-                            }
-                        }
-                    };
-
+                    // f. Enregistrement du résultat, sous garde du bail : un nœud qui a perdu
+                    //    son bail n'écrit jamais le résultat (RuntimeError::LeaseFenced).
                     match execution_result {
                         Ok(()) => {
-                            let duration_ms = step_start.elapsed().as_millis() as u64;
-                            let applied_record = MigrationRecord {
-                                migration_id: item.definition.id.clone(),
-                                module_id: plan.module_id.clone(),
-                                module_version: plan.module_version.clone(),
-                                checksum: item.definition.checksum.clone(),
-                                applied_at: chrono_timestamp_now(),
-                                duration_ms,
-                                status: MigrationStatus::Applied,
-                                error: None,
-                            };
-                            self.store.record_migration(&applied_record).await?;
+                            let recorded = self
+                                .store
+                                .record_migration(
+                                    &record(
+                                        MigrationStatus::Applied,
+                                        unix_now_secs(),
+                                        duration_ms,
+                                        None,
+                                    ),
+                                    lease.as_ref(),
+                                )
+                                .await;
+                            self.release_lease(lease.as_ref()).await;
+                            recorded?;
                             self.emit(
                                 &plan.module_id,
                                 MigrationEvent::Applied {
@@ -487,44 +427,37 @@ impl MigrationRunner {
                             )
                             .await;
                             applied.push(item.definition.id.clone());
-
-                            // Libération du verrou après succès
-                            if let (Some(mgr), Some(l)) = (&self.lease_manager, &acquired_lease) {
-                                if let Err(e) = mgr.release(l).await {
-                                    tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
-                                }
-                            }
                         }
                         Err(exec_err) => {
-                            let duration_ms = step_start.elapsed().as_millis() as u64;
-                            let failed_record = MigrationRecord {
-                                migration_id: item.definition.id.clone(),
-                                module_id: plan.module_id.clone(),
-                                module_version: plan.module_version.clone(),
-                                checksum: item.definition.checksum.clone(),
-                                applied_at: 0,
-                                duration_ms,
-                                status: MigrationStatus::Failed,
-                                error: Some(exec_err.to_string()),
-                            };
-                            self.store.record_migration(&failed_record).await?;
+                            let recorded = self
+                                .store
+                                .record_migration(
+                                    &record(
+                                        MigrationStatus::Failed,
+                                        0,
+                                        duration_ms,
+                                        Some(exec_err.to_string()),
+                                    ),
+                                    lease.as_ref(),
+                                )
+                                .await;
+                            self.release_lease(lease.as_ref()).await;
+                            if let Err(record_err) = recorded {
+                                tracing::error!(
+                                    error = %record_err,
+                                    migration = %item.definition.id,
+                                    "Échec de migration non enregistré"
+                                );
+                            }
                             self.emit(
                                 &plan.module_id,
                                 MigrationEvent::Failed {
                                     migration_id: item.definition.id.clone(),
-                                    error_code: "RUNTIME_MIGRATION_EXECUTION_FAILED".to_string(),
+                                    error_code: exec_err.code().to_string(),
                                     message: exec_err.to_string(),
                                 },
                             )
                             .await;
-
-                            // Libération du verrou après échec
-                            if let (Some(mgr), Some(l)) = (&self.lease_manager, &acquired_lease) {
-                                if let Err(e) = mgr.release(l).await {
-                                    tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
-                                }
-                            }
-
                             return Err(exec_err);
                         }
                     }
@@ -555,14 +488,102 @@ impl MigrationRunner {
     }
 }
 
+impl MigrationRunner {
+    /// Libère le bail s'il y en a un ; un échec est journalisé, le bail expirant à son échéance.
+    async fn release_lease(&self, lease: Option<&MigrationLease>) {
+        if let (Some(mgr), Some(lease)) = (&self.lease_manager, lease) {
+            if let Err(e) = mgr.release(lease).await {
+                tracing::warn!(error = %e, "Libération du bail impossible : il expirera à son échéance");
+            }
+        }
+    }
+
+    /// Exécute le SurrealQL de la migration en renouvelant le bail tous les `renew_interval`.
+    /// Un renouvellement refusé n'interrompt pas la requête en cours : il est journalisé, et
+    /// l'enregistrement du résultat sera refusé par la garde de bail.
+    async fn execute_with_heartbeat(
+        &self,
+        plan: &MigrationPlan,
+        item: &MigrationPlanItem,
+        content: &str,
+        lease: Option<&mut MigrationLease>,
+    ) -> Result<(), RuntimeError> {
+        let execution = self.execute_content(plan, item, content);
+        let (Some(mgr), Some(lease)) = (&self.lease_manager, lease) else {
+            return execution.await;
+        };
+        tokio::pin!(execution);
+        let mut ticker = tokio::time::interval(self.lock_config.renew_interval);
+        ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        ticker.tick().await;
+        let mut renewing = true;
+        loop {
+            tokio::select! {
+                result = &mut execution => return result,
+                _ = ticker.tick(), if renewing => {
+                    match mgr.renew(lease, self.lock_config.lease_duration).await {
+                        Ok(renewed) => *lease = renewed,
+                        Err(e) => {
+                            tracing::error!(
+                                error = %e,
+                                migration = %item.definition.id,
+                                "Bail de migration perdu pendant l'exécution"
+                            );
+                            renewing = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Exécute le SurrealQL de la migration, avec quelques reprises sur conflit transactionnel.
+    async fn execute_content(
+        &self,
+        plan: &MigrationPlan,
+        item: &MigrationPlanItem,
+        content: &str,
+    ) -> Result<(), RuntimeError> {
+        let failure = |message: String| RuntimeError::MigrationExecutionFailed {
+            module: plan.module_id.clone(),
+            migration: item.definition.id.to_string(),
+            message,
+        };
+        let mut attempts: u64 = 0;
+        loop {
+            attempts += 1;
+            let message = match self.client.query(content).await {
+                Ok(res) => match res.check() {
+                    Ok(_) => return Ok(()),
+                    Err(err) => format!("SurrealDB execution check failed: {err}"),
+                },
+                Err(err) => format!("SurrealDB query dispatch failed: {err}"),
+            };
+            let retryable = message.contains("conflict") || message.contains("retry");
+            if attempts >= 5 || !retryable {
+                return Err(failure(message));
+            }
+            sleep(Duration::from_millis(25 * attempts)).await;
+        }
+    }
+}
+
+fn res_path(item: &MigrationPlanItem) -> &str {
+    item.definition.resource_path.as_deref().unwrap_or("")
+}
+
+fn elapsed_ms(start: Instant) -> u64 {
+    u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX)
+}
+
 impl LyxalSurrealCall for MigrationRunner {
     fn surreal_client(&self) -> &Surreal<Any> {
         &self.client
     }
 }
 
-/// Helper interne pour produire un horodatage unix en secondes.
-fn chrono_timestamp_now() -> u64 {
+/// Horodatage Unix en secondes du nœud (`applied_at`).
+fn unix_now_secs() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()

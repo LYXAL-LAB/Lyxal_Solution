@@ -1,4 +1,5 @@
 use crate::error::RuntimeError;
+use crate::lock::MigrationLease;
 use crate::migration::{MigrationId, MigrationRecord};
 use crate::store::models::{StoredModule, StoredModuleRelease};
 use crate::store::traits::RuntimeStore;
@@ -125,7 +126,12 @@ impl RuntimeStore for MemoryRuntimeStore {
         Ok(())
     }
 
-    async fn record_migration(&self, migration: &MigrationRecord) -> Result<(), RuntimeError> {
+    /// Le store mémoire sert un seul processus : il n'applique pas de garde de bail.
+    async fn record_migration(
+        &self,
+        migration: &MigrationRecord,
+        _lease: Option<&MigrationLease>,
+    ) -> Result<(), RuntimeError> {
         let mut migrations = self
             .migrations
             .write()

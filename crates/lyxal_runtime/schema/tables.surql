@@ -11,11 +11,8 @@ DEFINE TABLE OVERWRITE runtime_release TYPE NORMAL SCHEMAFULL PERMISSIONS NONE
 DEFINE TABLE OVERWRITE runtime_migration TYPE NORMAL SCHEMAFULL PERMISSIONS NONE
     COMMENT "Table système enregistrant l'historique des migrations de schéma appliquées";
 
-DEFINE TABLE OVERWRITE runtime_migration_lock TYPE NORMAL SCHEMAFULL PERMISSIONS NONE
-    COMMENT "Table système enregistrant les baux distribués temporaires de migration";
-
-DEFINE TABLE OVERWRITE runtime_installation_lock TYPE NORMAL SCHEMAFULL PERMISSIONS NONE
-    COMMENT "Table système enregistrant les baux distribués temporaires d'installation de release";
+DEFINE TABLE OVERWRITE runtime_lease TYPE NORMAL SCHEMAFULL PERMISSIONS NONE
+    COMMENT "Baux distribués du runtime (migrations, installations), échéances à l'heure de la base";
 
 DEFINE TABLE OVERWRITE runtime_health TYPE NORMAL SCHEMAFULL PERMISSIONS NONE
     COMMENT "Table système enregistrant l'état de santé instantané des modules par nœud";
