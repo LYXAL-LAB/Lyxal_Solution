@@ -43,6 +43,12 @@ fn test_lock_config_validation() {
         acquire_retry_delay: Duration::from_millis(50),
     };
     assert!(invalid.validate().is_err());
+
+    let zero_renew = MigrationLockConfig {
+        renew_interval: Duration::ZERO,
+        ..MigrationLockConfig::default()
+    };
+    assert!(zero_renew.validate().is_err());
 }
 
 #[tokio::test]

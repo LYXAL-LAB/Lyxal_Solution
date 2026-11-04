@@ -195,6 +195,9 @@ impl MigrationRunner {
         plan: &MigrationPlan,
         provider: &dyn ResourceProvider,
     ) -> Result<MigrationRunResult, RuntimeError> {
+        if self.lease_manager.is_some() {
+            self.lock_config.validate()?;
+        }
         let total_start = Instant::now();
         let mut applied = Vec::new();
         let mut skipped = Vec::new();
