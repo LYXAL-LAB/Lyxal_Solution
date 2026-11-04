@@ -1,10 +1,10 @@
+use crate::common;
 use lyxal_runtime::health::check::HealthCheckResult;
 use lyxal_runtime::health::snapshot::HealthSnapshot;
 use lyxal_runtime::health::status::HealthStatus;
 use lyxal_runtime::health::store::{HealthStore, MemoryHealthStore, SurrealHealthStore};
 use lyxal_runtime::lock::node_id::NodeId;
 use lyxal_runtime::types::ModuleId;
-use surrealdb::engine::any::connect;
 
 #[tokio::test]
 async fn test_memory_health_store_crud() {
@@ -36,12 +36,7 @@ async fn test_memory_health_store_crud() {
 
 #[tokio::test]
 async fn test_surreal_health_store_bootstrap_and_upsert() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_health_store_1")
-        .use_db("test_health_store_1")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_health_store_1", "test_health_store_1").await;
 
     let store = SurrealHealthStore::new(client);
     store.bootstrap().await.unwrap();
@@ -79,12 +74,7 @@ async fn test_surreal_health_store_bootstrap_and_upsert() {
 
 #[tokio::test]
 async fn test_surreal_health_store_idempotence_and_status_update() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_health_store_2")
-        .use_db("test_health_store_2")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_health_store_2", "test_health_store_2").await;
 
     let store = SurrealHealthStore::new(client);
     store.bootstrap().await.unwrap();
@@ -127,12 +117,7 @@ async fn test_surreal_health_store_idempotence_and_status_update() {
 
 #[tokio::test]
 async fn test_health_status_not_stale_after_module_stop() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_health_store_3")
-        .use_db("test_health_store_3")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_health_store_3", "test_health_store_3").await;
 
     let store = SurrealHealthStore::new(client);
     store.bootstrap().await.unwrap();

@@ -1,5 +1,7 @@
 use crate::error::RuntimeError;
 use crate::lock::node_id::NodeId;
+use crate::store::dto::{NodeParams, WorkerGetParams, WorkerUpsertParams};
+use crate::store::surreal::store_error;
 use crate::types::ModuleId;
 use crate::worker::descriptor::WorkerCriticality;
 use crate::worker::id::WorkerId;
@@ -158,14 +160,6 @@ impl SurrealWorkerStore {
     pub fn new(client: Surreal<Any>) -> Self {
         Self { client }
     }
-
-    fn make_key_id(node_id: &NodeId, worker_id: &WorkerId) -> String {
-        format!(
-            "{}_{}",
-            node_id.as_str().replace([':', '.', '-'], "_"),
-            worker_id.as_str().replace([':', '.', '-'], "_")
-        )
-    }
 }
 
 #[async_trait]
@@ -183,49 +177,42 @@ impl WorkerStore for SurrealWorkerStore {
         criticality: WorkerCriticality,
         metrics: &WorkerMetrics,
     ) -> Result<(), RuntimeError> {
-        let key_id = Self::make_key_id(node_id, worker_id);
-        let crit_str = format!("{:?}", criticality).to_lowercase();
-
-        let query = r#"
-            UPSERT type::record('runtime_worker', $key_id) SET
-                node_id = $node_id,
-                worker_id = $worker_id,
-                module_id = $module_id,
-                state = $state,
-                criticality = $criticality,
-                restart_count = $restart_count,
-                failure_count = $failure_count,
-                last_error = $last_error,
-                started_at = $started_at,
-                stopped_at = $stopped_at,
-                updated_at = time::now();
-        "#;
-
-        let res = self
-            .client
-            .query(query)
-            .bind(("key_id", key_id))
-            .bind(("node_id", node_id.to_string()))
-            .bind(("worker_id", worker_id.to_string()))
-            .bind(("module_id", module_id.to_string()))
-            .bind(("state", state.as_str().to_string()))
-            .bind(("criticality", crit_str))
-            .bind(("restart_count", metrics.restart_count as i64))
-            .bind(("failure_count", metrics.failure_count as i64))
-            .bind(("last_error", metrics.last_error.clone()))
-            .bind(("started_at", metrics.started_at.map(|v| v as i64)))
-            .bind(("stopped_at", metrics.stopped_at.map(|v| v as i64)))
-            .await
-            .map_err(|err| RuntimeError::WorkerStoreFailed {
+        use lyxal_surreal::LyxalSurrealCall;
+        let to_i64 = |field: &str, v: u64| {
+            i64::try_from(v).map_err(|_| RuntimeError::WorkerStoreFailed {
                 worker: worker_id.to_string(),
-                message: format!("Failed to dispatch upsert worker: {}", err),
+                message: format!("{field} hors bornes : {v}"),
+            })
+        };
+        let params = WorkerUpsertParams {
+            node_id: node_id.to_string(),
+            worker_id: worker_id.to_string(),
+            module_id: module_id.to_string(),
+            state: state.as_str().to_string(),
+            criticality: match criticality {
+                WorkerCriticality::Required => "required",
+                WorkerCriticality::Optional => "optional",
+            }
+            .to_string(),
+            restart_count: to_i64("restart_count", metrics.restart_count)?,
+            failure_count: to_i64("failure_count", metrics.failure_count)?,
+            last_error: metrics.last_error.clone(),
+            started_at: metrics
+                .started_at
+                .map(|v| to_i64("started_at", v))
+                .transpose()?,
+            stopped_at: metrics
+                .stopped_at
+                .map(|v| to_i64("stopped_at", v))
+                .transpose()?,
+        };
+        let _: WorkerStoreRow = self
+            .call_fn("runtime_worker_upsert", params)
+            .await
+            .map_err(|e| RuntimeError::WorkerStoreFailed {
+                worker: worker_id.to_string(),
+                message: e.to_string(),
             })?;
-
-        res.check().map_err(|err| RuntimeError::WorkerStoreFailed {
-            worker: worker_id.to_string(),
-            message: format!("Failed to check upsert worker: {}", err),
-        })?;
-
         Ok(())
     }
 
@@ -234,48 +221,39 @@ impl WorkerStore for SurrealWorkerStore {
         node_id: &NodeId,
         worker_id: &WorkerId,
     ) -> Result<Option<WorkerStoreRow>, RuntimeError> {
-        let key_id = Self::make_key_id(node_id, worker_id);
-        let query = "SELECT * FROM type::record('runtime_worker', $key_id);";
-
-        let mut res = self
-            .client
-            .query(query)
-            .bind(("key_id", key_id))
-            .await
-            .map_err(|err| RuntimeError::WorkerStoreFailed {
-                worker: worker_id.to_string(),
-                message: format!("Failed to dispatch get worker: {}", err),
-            })?;
-
-        let rows: Vec<WorkerStoreRow> =
-            res.take(0).map_err(|err| RuntimeError::WorkerStoreFailed {
-                worker: worker_id.to_string(),
-                message: format!("Failed to decode worker row: {}", err),
-            })?;
-        Ok(rows.into_iter().next())
+        use lyxal_surreal::LyxalSurrealCall;
+        self.call_fn(
+            "runtime_worker_get",
+            WorkerGetParams {
+                node_id: node_id.to_string(),
+                worker_id: worker_id.to_string(),
+            },
+        )
+        .await
+        .map_err(|e| RuntimeError::WorkerStoreFailed {
+            worker: worker_id.to_string(),
+            message: e.to_string(),
+        })
     }
 
     async fn list_node_workers(
         &self,
         node_id: &NodeId,
     ) -> Result<Vec<WorkerStoreRow>, RuntimeError> {
-        let query = "SELECT * FROM runtime_worker WHERE node_id = $node_id ORDER BY worker_id ASC;";
+        use lyxal_surreal::LyxalSurrealCall;
+        self.call_fn(
+            "runtime_worker_list",
+            NodeParams {
+                node_id: node_id.to_string(),
+            },
+        )
+        .await
+        .map_err(|e| store_error("runtime_worker_list", e))
+    }
+}
 
-        let mut res = self
-            .client
-            .query(query)
-            .bind(("node_id", node_id.to_string()))
-            .await
-            .map_err(|err| RuntimeError::WorkerStoreFailed {
-                worker: "runtime_worker".to_string(),
-                message: format!("Failed to dispatch list node workers: {}", err),
-            })?;
-
-        let rows: Vec<WorkerStoreRow> =
-            res.take(0).map_err(|err| RuntimeError::WorkerStoreFailed {
-                worker: "runtime_worker".to_string(),
-                message: format!("Failed to decode node worker rows: {}", err),
-            })?;
-        Ok(rows)
+impl lyxal_surreal::LyxalSurrealCall for SurrealWorkerStore {
+    fn surreal_client(&self) -> &Surreal<Any> {
+        &self.client
     }
 }

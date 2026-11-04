@@ -21,5 +21,5 @@ pub use payload::{
     ReconciliationEvent, RuntimeEventPayload, RuntimeSystemEvent, WorkerEvent,
 };
 pub use stats::RuntimeEventBusStats;
-pub use store::{SurrealRuntimeEventJournal, SystemRuntimeEventRow};
+pub use store::SurrealRuntimeEventJournal;
 pub use subscription::{RuntimeEventSubscription, SubscriptionError};

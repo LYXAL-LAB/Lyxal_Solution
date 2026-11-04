@@ -1,10 +1,10 @@
+use crate::common;
 use lyxal_runtime::lock::node_id::NodeId;
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::worker::{
     MemoryWorkerStore, SurrealWorkerStore, WorkerCriticality, WorkerId, WorkerMetrics, WorkerState,
     WorkerStore,
 };
-use surrealdb::engine::any::connect;
 
 #[tokio::test]
 async fn test_worker_state_persistence_memory() {
@@ -55,12 +55,7 @@ async fn test_worker_state_persistence_memory() {
 
 #[tokio::test]
 async fn test_worker_state_persistence_surreal() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_worker_store")
-        .use_db("test_worker_store")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_worker_store", "test_worker_store").await;
 
     let store = SurrealWorkerStore::new(client);
     store.bootstrap().await.unwrap();

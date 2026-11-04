@@ -21,7 +21,6 @@ use semver::Version;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use surrealdb::engine::any::connect;
 
 struct SlowConcurrentModule {
     descriptor: ModuleDescriptor,
@@ -62,12 +61,7 @@ impl LyxalModule for SlowConcurrentModule {
 
 #[tokio::test]
 async fn test_concurrent_nodes_installation_mutual_exclusion_and_idempotence() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_concurrent_inst")
-        .use_db("test_concurrent_inst")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_concurrent_inst", "test_concurrent_inst").await;
 
     let store = Arc::new(SurrealRuntimeStore::new(client.clone()));
     store.bootstrap().await.unwrap();
@@ -169,12 +163,7 @@ async fn test_concurrent_nodes_installation_mutual_exclusion_and_idempotence() {
 
 #[tokio::test]
 async fn test_expired_installation_lease_recovery() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_recovery")
-        .use_db("test_recovery")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_recovery", "test_recovery").await;
 
     let lease_mgr = SurrealInstallationLeaseManager::new(client.clone());
     let key = InstallationLockKey::new(ModuleId::new("lyxal-scheduler"), "1.0.0");

@@ -3,9 +3,10 @@ use crate::health::check::HealthCheckResult;
 use crate::health::snapshot::HealthSnapshot;
 use crate::health::status::HealthStatus;
 use crate::lock::node_id::NodeId;
+use crate::store::dto::{HealthRecordParams, HealthRow, NodeParams};
+use crate::store::surreal::store_error;
 use crate::types::ModuleId;
 use async_trait::async_trait;
-use lyxal_surreal::SurrealValue;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use surrealdb::engine::any::Any;
@@ -70,17 +71,6 @@ impl HealthStore for MemoryHealthStore {
     }
 }
 
-#[derive(Debug, SurrealValue)]
-struct SystemHealthRow {
-    pub node_id: String,
-    pub module_id: String,
-    pub status: String,
-    pub latency_ms: Option<u64>,
-    pub message: Option<String>,
-    pub checked_at: Option<lyxal_surreal::Datetime>,
-    pub updated_at: Option<lyxal_surreal::Datetime>,
-}
-
 /// Implémentation SurrealDB officielle de `HealthStore`.
 #[derive(Clone)]
 pub struct SurrealHealthStore {
@@ -99,6 +89,28 @@ impl SurrealHealthStore {
     }
 }
 
+impl lyxal_surreal::LyxalSurrealCall for SurrealHealthStore {
+    fn surreal_client(&self) -> &Surreal<Any> {
+        &self.client
+    }
+}
+
+fn health_status(value: &str) -> Result<HealthStatus, RuntimeError> {
+    Ok(match value {
+        "healthy" => HealthStatus::Healthy,
+        "degraded" => HealthStatus::Degraded,
+        "unhealthy" => HealthStatus::Unhealthy,
+        "unknown" => HealthStatus::Unknown,
+        "not_applicable" => HealthStatus::NotApplicable,
+        other => {
+            return Err(RuntimeError::StoreFailed {
+                operation: "runtime_health",
+                message: format!("statut de santé inconnu : {other}"),
+            })
+        }
+    })
+}
+
 #[async_trait]
 impl HealthStore for SurrealHealthStore {
     async fn record_health_snapshot(
@@ -106,51 +118,31 @@ impl HealthStore for SurrealHealthStore {
         node_id: &NodeId,
         snapshot: &HealthSnapshot,
     ) -> Result<(), RuntimeError> {
+        use lyxal_surreal::LyxalSurrealCall;
         for (module_id, res) in &snapshot.modules {
-            let key = format!(
-                "{}_{}",
-                node_id.as_str().replace([':', '.', '-'], "_"),
-                module_id.as_str().replace([':', '.', '-'], "_")
-            );
-
-            let query = r#"
-                UPSERT ONLY type::record('runtime_health', $key) SET
-                    node_id = $node_id,
-                    module_id = $module_id,
-                    status = $status,
-                    latency_ms = $latency_ms,
-                    message = $message,
-                    checked_at = time::now(),
-                    updated_at = time::now();
-            "#;
-
-            let db_res = self
-                .client
-                .query(query)
-                .bind(("key", key))
-                .bind(("node_id", node_id.to_string()))
-                .bind(("module_id", module_id.to_string()))
-                .bind(("status", res.status.as_str().to_string()))
-                .bind(("latency_ms", res.latency_ms))
-                .bind(("message", res.message.clone()))
+            let latency_ms = res
+                .latency_ms
+                .map(|v| {
+                    i64::try_from(v).map_err(|_| RuntimeError::StoreFailed {
+                        operation: "runtime_health_record",
+                        message: format!("latency_ms hors bornes : {v}"),
+                    })
+                })
+                .transpose()?;
+            let _: HealthRow = self
+                .call_fn(
+                    "runtime_health_record",
+                    HealthRecordParams {
+                        node_id: node_id.to_string(),
+                        module_id: module_id.to_string(),
+                        status: res.status.as_str().to_string(),
+                        latency_ms,
+                        message: res.message.clone(),
+                    },
+                )
                 .await
-                .map_err(|err| RuntimeError::Internal {
-                    code: "RUNTIME_HEALTH_PERSISTENCE_FAILED",
-                    message: format!(
-                        "Failed to persist health for module '{}' on node '{}': {}",
-                        module_id, node_id, err
-                    ),
-                })?;
-
-            db_res.check().map_err(|err| RuntimeError::Internal {
-                code: "RUNTIME_HEALTH_PERSISTENCE_FAILED",
-                message: format!(
-                    "Check failed on persisting health for module '{}': {}",
-                    module_id, err
-                ),
-            })?;
+                .map_err(|e| store_error("runtime_health_record", e))?;
         }
-
         Ok(())
     }
 
@@ -158,51 +150,37 @@ impl HealthStore for SurrealHealthStore {
         &self,
         node_id: &NodeId,
     ) -> Result<Option<HealthSnapshot>, RuntimeError> {
-        let query = "SELECT * FROM runtime_health WHERE node_id = $node_id ORDER BY module_id ASC;";
-
-        let mut res = self
-            .client
-            .query(query)
-            .bind(("node_id", node_id.to_string()))
+        use lyxal_surreal::LyxalSurrealCall;
+        let rows: Vec<HealthRow> = self
+            .call_fn(
+                "runtime_health_list",
+                NodeParams {
+                    node_id: node_id.to_string(),
+                },
+            )
             .await
-            .map_err(|err| RuntimeError::Internal {
-                code: "RUNTIME_HEALTH_QUERY_FAILED",
-                message: format!("Failed to query health for node '{}': {}", node_id, err),
-            })?;
-
-        let rows: Vec<SystemHealthRow> = res.take(0).map_err(|err| RuntimeError::Internal {
-            code: "RUNTIME_HEALTH_DATA_INVALID",
-            message: format!("Failed to deserialize runtime_health rows: {}", err),
-        })?;
-
+            .map_err(|e| store_error("runtime_health_list", e))?;
         if rows.is_empty() {
             return Ok(None);
         }
-
-        let mut results = Vec::new();
-        for r in rows {
-            let status = match r.status.as_str() {
-                "healthy" => HealthStatus::Healthy,
-                "degraded" => HealthStatus::Degraded,
-                "unhealthy" => HealthStatus::Unhealthy,
-                "unknown" => HealthStatus::Unknown,
-                _ => HealthStatus::NotApplicable,
-            };
-
-            let checked_at_str = r
-                .checked_at
-                .map(|d| d.to_string())
-                .unwrap_or_else(crate::health::check::chrono_now_string);
-
+        let mut results = Vec::with_capacity(rows.len());
+        for row in rows {
             results.push(HealthCheckResult {
-                module_id: ModuleId::new(r.module_id),
-                status,
-                checked_at: checked_at_str,
-                latency_ms: r.latency_ms,
-                message: r.message,
+                module_id: ModuleId::new(row.module_id),
+                status: health_status(&row.status)?,
+                checked_at: row.checked_at.to_string(),
+                latency_ms: row
+                    .latency_ms
+                    .map(|v| {
+                        u64::try_from(v).map_err(|_| RuntimeError::StoreFailed {
+                            operation: "runtime_health_list",
+                            message: format!("latency_ms négatif : {v}"),
+                        })
+                    })
+                    .transpose()?,
+                message: row.message,
             });
         }
-
         Ok(Some(HealthSnapshot::new(results)))
     }
 }

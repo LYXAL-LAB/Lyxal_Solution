@@ -1,3 +1,4 @@
+use crate::common;
 use lyxal_runtime::resource::{FilesystemResourceProvider, ModuleResource, ResourceKind};
 use lyxal_runtime::schema::{SchemaImportPlan, SchemaImporter};
 use lyxal_runtime::types::ModuleId;
@@ -145,10 +146,12 @@ fn test_runtime_embedded_resources_match_manifest() {
     let manifest =
         lyxal_runtime::manifest::ManifestParser::parse_str(lyxal_runtime::schema::RUNTIME_MANIFEST)
             .unwrap();
-    let declared: Vec<&str> = manifest
-        .resources
+    let r = &manifest.resources;
+    let declared: Vec<&str> = r
         .schemas
         .iter()
+        .chain(&r.functions)
+        .chain(&r.error_definitions)
         .map(String::as_str)
         .collect();
     let embedded: Vec<&str> = lyxal_runtime::schema::RUNTIME_EMBEDDED_RESOURCES
@@ -169,12 +172,7 @@ fn test_runtime_embedded_resources_match_manifest() {
 /// fonctions du runtime (`PERMISSIONS NONE`).
 #[tokio::test]
 async fn test_runtime_schema_is_protected_and_replayable() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test")
-        .use_db("runtime_schema")
-        .await
-        .unwrap();
+    let client = common::setup_db("test", "runtime_schema").await;
     lyxal_runtime::schema::install_runtime_schema(&client)
         .await
         .unwrap();

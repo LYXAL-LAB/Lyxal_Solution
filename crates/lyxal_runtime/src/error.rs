@@ -286,6 +286,13 @@ pub enum RuntimeError {
     #[error("Worker store operation failed for '{worker}': {message}")]
     WorkerStoreFailed { worker: String, message: String },
 
+    /// Échec d'un appel de persistance du runtime (`fn::runtime_*`).
+    #[error("Runtime store operation '{operation}' failed: {message}")]
+    StoreFailed {
+        operation: &'static str,
+        message: String,
+    },
+
     #[error(
         "Event handler '{handler_name}' for event type '{event_type}' was not found in registry"
     )]
@@ -363,6 +370,7 @@ impl RuntimeError {
             Self::WorkerFailed { .. } => "RUNTIME_WORKER_FAILED",
             Self::WorkerRestartExhausted { .. } => "RUNTIME_WORKER_RESTART_EXHAUSTED",
             Self::WorkerStoreFailed { .. } => "RUNTIME_WORKER_STORE_FAILED",
+            Self::StoreFailed { .. } => "RUNTIME_STORE_FAILED",
             Self::EventHandlerNotFound { .. } => "RUNTIME_EVENT_HANDLER_NOT_FOUND",
             Self::EventEngineError { .. } => "RUNTIME_EVENT_ENGINE_ERROR",
             Self::Internal { code, .. } => code,
@@ -605,6 +613,9 @@ impl RuntimeError {
             }
             Self::WorkerStoreFailed { worker, .. } => {
                 format!("Erreur de persistance pour le worker '{}'", worker)
+            }
+            Self::StoreFailed { operation, .. } => {
+                format!("Erreur de persistance du runtime ({operation})")
             }
             Self::EventHandlerNotFound { handler_name, .. } => {
                 format!("Handler d'événement '{}' introuvable", handler_name)
@@ -893,6 +904,10 @@ impl RuntimeError {
             Self::WorkerRestartExhausted { worker, retries } => json!({
                 "worker_id": worker,
                 "retries": retries,
+            }),
+            Self::StoreFailed { operation, message } => json!({
+                "operation": operation,
+                "error": message,
             }),
             Self::WorkerStoreFailed { worker, message } => json!({
                 "worker_id": worker,

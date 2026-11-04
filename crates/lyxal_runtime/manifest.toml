@@ -8,9 +8,28 @@ capabilities = ["runtime"]
 [runtime]
 min_version = ">=0.1.0"
 
+[[dependencies]]
+id = "lyxal_core"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_error"
+version = ">=0.1.0"
+
 [resources]
 schemas = [
     "schema/tables.surql",
     "schema/fields.surql",
     "schema/indexes.surql"
+]
+functions = [
+    "functions/runtime_module.surql",
+    "functions/runtime_release.surql",
+    "functions/runtime_migration.surql",
+    "functions/runtime_health.surql",
+    "functions/runtime_worker.surql",
+    "functions/runtime_event_journal.surql"
+]
+error_definitions = [
+    "error/runtime.surql"
 ]

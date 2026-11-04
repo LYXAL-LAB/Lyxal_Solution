@@ -1,3 +1,4 @@
+use crate::common;
 use lyxal_runtime::lock::{
     AcquireInstallationLeaseResult, AcquireLeaseResult, InstallationLeaseManager,
     InstallationLockKey, MigrationLeaseManager, MigrationLockConfig, MigrationLockKey,
@@ -14,7 +15,6 @@ use lyxal_runtime::RuntimeError;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use surrealdb::engine::any::connect;
 use surrealdb::types::SurrealValue;
 use tokio::sync::Barrier;
 
@@ -54,8 +54,7 @@ async fn setup_shared_surreal_db(
     surrealdb::Surreal<surrealdb::engine::any::Any>,
     Arc<SurrealRuntimeStore>,
 ) {
-    let client = connect("mem://").await.unwrap();
-    client.use_ns(ns).use_db(db).await.unwrap();
+    let client = common::setup_db(ns, db).await;
 
     let store = Arc::new(SurrealRuntimeStore::new(client.clone()));
     store.bootstrap().await.unwrap();
@@ -361,12 +360,7 @@ async fn test_surreal_recovery_interrupted_applying() {
 
 #[tokio::test]
 async fn test_surreal_installation_lease_monotone_generation_anti_aba() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_anti_aba_inst")
-        .use_db("test_anti_aba_inst")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_anti_aba_inst", "test_anti_aba_inst").await;
 
     let store = SurrealRuntimeStore::new(client.clone());
     store.bootstrap().await.unwrap();
@@ -459,12 +453,7 @@ async fn test_surreal_installation_lease_monotone_generation_anti_aba() {
 
 #[tokio::test]
 async fn test_surreal_installation_lease_exactly_one_winner() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_concurrent_inst_lease")
-        .use_db("test_concurrent_inst_lease")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_concurrent_inst_lease", "test_concurrent_inst_lease").await;
 
     let store = SurrealRuntimeStore::new(client.clone());
     store.bootstrap().await.unwrap();
@@ -527,12 +516,7 @@ async fn test_surreal_installation_lease_exactly_one_winner() {
 
 #[tokio::test]
 async fn test_surreal_installation_lease_released_takeover_contention_42_to_43() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_inst_42_rel")
-        .use_db("test_inst_42_rel")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_inst_42_rel", "test_inst_42_rel").await;
 
     let store = SurrealRuntimeStore::new(client.clone());
     store.bootstrap().await.unwrap();
@@ -625,12 +609,7 @@ async fn test_surreal_installation_lease_released_takeover_contention_42_to_43()
 
 #[tokio::test]
 async fn test_surreal_installation_lease_expired_takeover_contention_42_to_43() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_inst_42_exp")
-        .use_db("test_inst_42_exp")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_inst_42_exp", "test_inst_42_exp").await;
 
     let store = SurrealRuntimeStore::new(client.clone());
     store.bootstrap().await.unwrap();
