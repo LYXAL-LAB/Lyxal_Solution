@@ -298,7 +298,7 @@ impl LyxalRuntime {
         let store = self
             .event_store
             .as_ref()
-            .ok_or_else(|| RuntimeError::StoreMissing {
+            .ok_or(RuntimeError::StoreMissing {
                 component: "event_store",
             })?;
         store
@@ -445,19 +445,13 @@ impl LyxalRuntime {
 
     /// Construit une instance de `ModuleInstaller` injectée avec les composants du Runtime.
     pub fn installer(&self) -> Result<ModuleInstaller, RuntimeError> {
-        let store = self
-            .store
-            .clone()
-            .ok_or_else(|| RuntimeError::StoreMissing {
-                component: "runtime_store",
-            })?;
+        let store = self.store.clone().ok_or(RuntimeError::StoreMissing {
+            component: "runtime_store",
+        })?;
 
-        let client = self
-            .client
-            .clone()
-            .ok_or_else(|| RuntimeError::StoreMissing {
-                component: "surreal_client",
-            })?;
+        let client = self.client.clone().ok_or(RuntimeError::StoreMissing {
+            component: "surreal_client",
+        })?;
 
         let schema_importer = SchemaImporter::new(client.clone());
         let mut migration_runner = MigrationRunner::new(store.clone(), client)
