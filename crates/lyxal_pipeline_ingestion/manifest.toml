@@ -1,7 +1,7 @@
 manifest_version = 1
 id = "lyxal_pipeline_ingestion"
 name = "Lyxal Pipeline Ingestion"
-version = "1.0.0"
+version = "0.1.0"
 description = "Moteur industriel d'ingestion, normalisation, qualification et préparation des catalogues fabricants pour Lyxal OS"
 capabilities = ["database", "workers", "events"]
 
@@ -14,10 +14,6 @@ version = ">=0.1.0"
 
 [[dependencies]]
 id = "lyxal_base"
-version = ">=1.0.0"
-
-[[dependencies]]
-id = "lyxal_crypto"
 version = ">=0.1.0"
 
 [[dependencies]]

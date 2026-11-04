@@ -15,7 +15,6 @@ struct MetricsInner {
     requests_total: AtomicU64,
     requests_in_flight: AtomicU64,
     requests_failed: AtomicU64,
-    module_failures: AtomicU64,
 }
 
 #[derive(Debug, Serialize)]
@@ -24,7 +23,6 @@ pub struct MetricsSnapshot {
     pub requests_total: u64,
     pub requests_in_flight: u64,
     pub requests_failed: u64,
-    pub module_failures: u64,
 }
 
 impl Default for Metrics {
@@ -35,7 +33,6 @@ impl Default for Metrics {
                 requests_total: AtomicU64::new(0),
                 requests_in_flight: AtomicU64::new(0),
                 requests_failed: AtomicU64::new(0),
-                module_failures: AtomicU64::new(0),
             }),
         }
     }
@@ -58,17 +55,12 @@ impl Metrics {
         }
     }
 
-    pub fn module_failed(&self) {
-        self.inner.module_failures.fetch_add(1, Ordering::Relaxed);
-    }
-
     pub fn snapshot(&self) -> MetricsSnapshot {
         MetricsSnapshot {
             uptime_seconds: self.inner.started_at.elapsed().as_secs(),
             requests_total: self.inner.requests_total.load(Ordering::Relaxed),
             requests_in_flight: self.inner.requests_in_flight.load(Ordering::Relaxed),
             requests_failed: self.inner.requests_failed.load(Ordering::Relaxed),
-            module_failures: self.inner.module_failures.load(Ordering::Relaxed),
         }
     }
 }

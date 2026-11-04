@@ -30,8 +30,7 @@ password = "mot-de-passe-de-test"
 connect_timeout_seconds = 1
 
 [runtime]
-run_migrations = false
-fail_fast = true
+module_install_timeout_seconds = 5
 module_start_timeout_seconds = 5
 module_stop_timeout_seconds = 5
 
@@ -48,9 +47,6 @@ allowed_origins = []
 allowed_methods = ["GET"]
 allowed_headers = []
 
-[modules]
-enabled = []
-disabled = []
 "#,
     )
     .expect("write config");

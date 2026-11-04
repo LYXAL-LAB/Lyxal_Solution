@@ -4,6 +4,7 @@
 //! au lieu d'un par fichier (chaque exécutable embarque le moteur SurrealDB complet).
 
 mod integration_btp_41_qualification;
+mod integration_manifest_install;
 mod integration_phase2_flow;
 mod integration_phase3_qualification;
 mod integration_phase4_alignment;
