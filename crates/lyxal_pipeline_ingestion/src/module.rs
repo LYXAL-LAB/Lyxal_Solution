@@ -26,7 +26,6 @@ impl PipelineIngestionModule {
             .capability("events")
             .dependency(ModuleId::new("lyxal_core"))
             .dependency(ModuleId::new("lyxal_base"))
-            .dependency(ModuleId::new("lyxal_crypto"))
             .dependency(ModuleId::new("lyxal_error"))
             .dependency(ModuleId::new("lyxal_event"))
             .build();

@@ -16,7 +16,7 @@ pub enum ServerError {
     Database(String),
 
     #[error("erreur du runtime : {0}")]
-    Runtime(String),
+    Runtime(#[from] lyxal_runtime::RuntimeError),
 
     #[error("erreur du module `{module}` : {message}")]
     Module { module: String, message: String },

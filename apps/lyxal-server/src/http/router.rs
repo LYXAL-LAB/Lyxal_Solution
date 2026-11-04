@@ -17,8 +17,6 @@ use tower_http::{
 };
 
 pub fn build_router(context: AppContext) -> Result<Router, ServerError> {
-    let module_routes = context.runtime.router();
-
     let api = Router::new()
         .route("/system/info", get(handlers::root))
         .route("/system/modules", get(handlers::modules));
@@ -31,7 +29,6 @@ pub fn build_router(context: AppContext) -> Result<Router, ServerError> {
         .route("/metrics", get(handlers::metrics))
         .nest("/api/v1", api)
         .with_state(context.clone())
-        .merge(module_routes)
         .layer(from_fn_with_state(
             context.clone(),
             middleware::request_context,

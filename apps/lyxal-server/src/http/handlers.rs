@@ -1,5 +1,14 @@
-use crate::{context::AppContext, health::HealthState};
+use crate::{
+    context::AppContext,
+    error::ServerError,
+    health::{HealthSnapshot, HealthState},
+};
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use lyxal_runtime::health::{
+    GlobalHealthStatus, HealthConfig, HealthSnapshot as ModulesHealthSnapshot,
+};
+use lyxal_runtime::reconciler::observer::RuntimeObserver;
+use lyxal_runtime::{ModuleContext, ModuleState};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -31,20 +40,64 @@ pub async fn ready(State(context): State<AppContext>) -> impl IntoResponse {
     }
 }
 
-pub async fn health(State(context): State<AppContext>) -> impl IntoResponse {
-    let snapshot = context.health.snapshot().await;
-    let status = match snapshot.state {
-        HealthState::Healthy | HealthState::Degraded => StatusCode::OK,
-        HealthState::Starting => StatusCode::SERVICE_UNAVAILABLE,
-        HealthState::Unhealthy | HealthState::Stopping => StatusCode::SERVICE_UNAVAILABLE,
+#[derive(Serialize)]
+pub struct HealthResponse {
+    /// Composants du serveur (processus, base de données).
+    server: HealthSnapshot,
+    /// Santé des modules, évaluée par le runtime (`ModuleHealthCheck`).
+    modules: ModulesHealthSnapshot,
+}
+
+pub async fn health(State(context): State<AppContext>) -> Result<impl IntoResponse, ServerError> {
+    let server = context.health.snapshot().await;
+    let observer = RuntimeObserver::new(
+        context.runtime.store(),
+        context.runtime.registry(),
+        context.runtime.lifecycle(),
+    );
+    let actual = observer.observe().await?;
+    let modules = context
+        .runtime
+        .health_engine(HealthConfig::default())
+        .check_all(&actual, &ModuleContext::new("lyxal_server"))
+        .await;
+    let serving = matches!(server.state, HealthState::Healthy | HealthState::Degraded)
+        && modules.global_status != GlobalHealthStatus::Unhealthy;
+    let status = if serving {
+        StatusCode::OK
+    } else {
+        StatusCode::SERVICE_UNAVAILABLE
     };
-    (status, Json(snapshot))
+    Ok((status, Json(HealthResponse { server, modules })))
 }
 
 pub async fn metrics(State(context): State<AppContext>) -> Json<crate::metrics::MetricsSnapshot> {
     Json(context.metrics.snapshot())
 }
 
-pub async fn modules(State(context): State<AppContext>) -> Json<Vec<crate::runtime::ModuleStatus>> {
-    Json(context.runtime.statuses().await)
+#[derive(Serialize)]
+pub struct ModuleStatus {
+    id: String,
+    name: String,
+    version: String,
+    state: Option<ModuleState>,
+}
+
+pub async fn modules(State(context): State<AppContext>) -> Json<Vec<ModuleStatus>> {
+    let mut statuses: Vec<ModuleStatus> = context
+        .runtime
+        .modules()
+        .iter()
+        .map(|module| {
+            let descriptor = module.descriptor();
+            ModuleStatus {
+                id: descriptor.id.to_string(),
+                name: descriptor.name.clone(),
+                version: descriptor.version.to_string(),
+                state: context.runtime.module_state(&descriptor.id),
+            }
+        })
+        .collect();
+    statuses.sort_by(|a, b| a.id.cmp(&b.id));
+    Json(statuses)
 }

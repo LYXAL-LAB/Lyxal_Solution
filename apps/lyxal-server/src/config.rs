@@ -1,7 +1,7 @@
 use crate::error::ServerError;
 use lyxal_surreal::SecretString;
 use serde::{Deserialize, Deserializer};
-use std::{collections::BTreeSet, fmt, net::IpAddr, path::Path, sync::Arc};
+use std::{fmt, net::IpAddr, path::Path, sync::Arc};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -12,7 +12,6 @@ pub struct AppConfig {
     pub runtime: RuntimeConfig,
     pub observability: ObservabilityConfig,
     pub cors: CorsConfig,
-    pub modules: ModulesConfig,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -85,8 +84,7 @@ impl<'de> Deserialize<'de> for SecretPassword {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RuntimeConfig {
-    pub run_migrations: bool,
-    pub fail_fast: bool,
+    pub module_install_timeout_seconds: u64,
     pub module_start_timeout_seconds: u64,
     pub module_stop_timeout_seconds: u64,
 }
@@ -108,15 +106,6 @@ pub struct CorsConfig {
     pub allowed_origins: Vec<String>,
     pub allowed_methods: Vec<String>,
     pub allowed_headers: Vec<String>,
-}
-
-#[derive(Clone, Debug, Default, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ModulesConfig {
-    #[serde(default)]
-    pub enabled: BTreeSet<String>,
-    #[serde(default)]
-    pub disabled: BTreeSet<String>,
 }
 
 impl AppConfig {
@@ -170,18 +159,6 @@ impl AppConfig {
             return Err(ServerError::Configuration(
                 "server.max_concurrency doit être supérieur à zéro".into(),
             ));
-        }
-        let overlap: Vec<_> = self
-            .modules
-            .enabled
-            .intersection(&self.modules.disabled)
-            .cloned()
-            .collect();
-        if !overlap.is_empty() {
-            return Err(ServerError::Configuration(format!(
-                "modules présents à la fois dans enabled et disabled : {}",
-                overlap.join(", ")
-            )));
         }
         Ok(())
     }

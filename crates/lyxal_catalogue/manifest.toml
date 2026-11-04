@@ -14,7 +14,7 @@ version = ">=0.1.0"
 
 [[dependencies]]
 id = "lyxal_base"
-version = ">=1.0.0"
+version = ">=0.1.0"
 
 [resources]
 schemas = [

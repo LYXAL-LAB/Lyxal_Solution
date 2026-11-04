@@ -6,9 +6,7 @@ use crate::{
     health::{HealthRegistry, HealthState},
     http,
     metrics::Metrics,
-    modules::{compiled_modules, ModuleContext},
-    runtime::RuntimeHandle,
-    shutdown, telemetry,
+    runtime, shutdown, telemetry,
 };
 use std::{sync::Arc, time::Duration};
 use tokio::net::TcpListener;
@@ -47,19 +45,7 @@ async fn run_inner() -> Result<(), ServerError> {
     };
 
     let metrics = Metrics::default();
-    let module_context = ModuleContext {
-        database: database.clone(),
-        health: health.clone(),
-        metrics: metrics.clone(),
-    };
-
-    let runtime = RuntimeHandle::build(
-        compiled_modules(&config),
-        &config.modules,
-        config.runtime.clone(),
-        module_context,
-    )?;
-    runtime.install_and_start().await?;
+    let runtime = runtime::start(&config, &database).await?;
 
     let context = AppContext::new(
         config.clone(),
@@ -87,7 +73,9 @@ async fn run_inner() -> Result<(), ServerError> {
             shutdown_health
                 .set("server", HealthState::Stopping, None)
                 .await;
-            shutdown_runtime.stop_all().await;
+            if let Err(error) = shutdown_runtime.stop_all().await {
+                tracing::error!(%error, "arrêt des modules incomplet");
+            }
             tokio::time::sleep(Duration::from_millis(50)).await;
         })
         .await

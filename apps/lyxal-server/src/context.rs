@@ -1,7 +1,5 @@
-use crate::{
-    config::AppConfig, database::Database, health::HealthRegistry, metrics::Metrics,
-    runtime::RuntimeHandle,
-};
+use crate::{config::AppConfig, database::Database, health::HealthRegistry, metrics::Metrics};
+use lyxal_runtime::LyxalRuntime;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -10,7 +8,7 @@ pub struct AppContext {
     pub database: Database,
     pub health: HealthRegistry,
     pub metrics: Metrics,
-    pub runtime: RuntimeHandle,
+    pub runtime: Arc<LyxalRuntime>,
 }
 
 impl AppContext {
@@ -19,7 +17,7 @@ impl AppContext {
         database: Database,
         health: HealthRegistry,
         metrics: Metrics,
-        runtime: RuntimeHandle,
+        runtime: Arc<LyxalRuntime>,
     ) -> Self {
         Self {
             config,

@@ -4,4 +4,4 @@
 //! au lieu d'un par fichier (chaque exécutable embarque le moteur SurrealDB complet).
 
 mod configuration;
-mod http_staging_integration;
+mod startup;
