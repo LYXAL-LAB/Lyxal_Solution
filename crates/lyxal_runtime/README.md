@@ -1,262 +1,164 @@
-# Lyxal Runtime
+# Module `lyxal_runtime` — Moteur d'exécution de Lyxal OS
 
-> **Le moteur d'exécution, d'orchestration, de ressources SurrealQL, de migrations et de verrouillage distribué pour Lyxal OS**
+`lyxal_runtime` installe les modules de Lyxal OS depuis leur manifeste, applique leurs
+migrations, pilote leur cycle de vie (installation, démarrage, arrêt), supervise leurs workers,
+agrège leur santé et fait converger le nœud vers un état désiré. Les modules métiers ne dépendent
+que de ses traits ; le binaire hôte instancie le runtime (`AGENTS.md` §5.8.5).
 
----
-
-## 🌟 Présentation
-
-Le **Lyxal Runtime** est le noyau d'orchestration de **Lyxal OS**. Il est responsable de l'installation, de l'initialisation, de l'exécution, de la supervision, de la persistance et de la désinstallation de tous les modules de la plateforme.
-
-Le Runtime sépare strictement les contrats déclaratifs du moteur d'exécution, des ressources et du stockage :
-1. **Runtime Core** : Gestionnaire de cycle de vie (`LifecycleManager`), registre de modules (`ModuleRegistry`) et résolveur de graphe de dépendances (`DependencyResolver`).
-2. **Manifest System** : Déclaration externe via `manifest.toml` convertie en `ModuleDescriptor`.
-3. **Resource Architecture** : Abstraction portable (`ResourceProvider`, `ModuleResource`, `ResourceKind`) avec sécurité anti-traversal.
-4. **Schema Importer** : Découverte et exécution ordonnée des ressources structurelles de base (`SchemaImportPlan`, `SchemaImporter`).
-5. **Distributed Locking & Coordination** : Baux distribués temporaires (`MigrationLeaseManager`, `SurrealMigrationLeaseManager`), fencing tokens anti-zombies et réconciliation TOCTOU.
-6. **Migration Engine** : Découverte (`MigrationDiscovery`), planification (`MigrationPlan`) et exécution transactionnelle déterministe (`MigrationRunner`).
-7. **Runtime Persistence** : Couche d'abstraction `RuntimeStore` et implémentation officielle `SurrealRuntimeStore` (reposant sur `lyxal_surreal`).
+Version `0.1.0` (régime pré-production, `.agents/AGENTS.md` §0). Cible : SurrealDB 3.3.4,
+SDK `surrealdb` 3.3. Dépend de `lyxal_core` (validation des entrées), `lyxal_error` (contrat de
+résultat, définitions d'erreurs), `lyxal_surreal` (transport), `lyxal_crypto` (empreintes) et
+`lyxal_event` (moteur d'événements intégré).
 
 ---
 
-## 🏛️ Architecture Globale & Diagramme
+## 1. Garanties
 
-```text
-Module Package
-      │
-      ├── manifest.toml ────► ManifestParser ────► ModuleDescriptor
-      │
-      ├── schema/ ──────────► ResourceDiscovery ──► SchemaImportPlan ──► SchemaImporter
-      │                                                                        │
-      └── migrations/ ──────► MigrationDiscovery ─► MigrationPlan ─────► MigrationRunner
-                                                                               │
-                                    ┌──────────────────────────────────────────┴────────┐
-                                    ▼                                                   ▼
-                         MigrationLeaseManager (lock)                          RuntimeStore (trait)
-                                    │                                                   │
-                        SurrealMigrationLeaseManager                           SurrealRuntimeStore
-                                    │                                                   │
-                                    └─────────────────────┬─────────────────────────────┘
-                                                          ▼
-                                                      SurrealDB
-                                          ┌───────────────────────┐
-                                          │ system_module         │
-                                          │ system_module_release │
-                                          │ system_migration      │
-                                          │ system_migration_lock │
-                                          └───────────────────────┘
+* **Installation depuis le manifeste** : seuls les fichiers déclarés dans `[resources]` sont
+  installés, dans l'ordre des phases (schémas, fonctions, définitions d'erreurs, événements,
+  seeds, migrations) puis dans l'ordre déclaré. Une clé inconnue du manifeste est refusée.
+* **Une migration n'est exécutée qu'une fois**, même avec plusieurs nœuds : elle s'exécute sous
+  un bail distribué, renouvelé tant qu'elle dure, et son résultat n'est enregistré que si le
+  nœud détient encore le bail dans la même génération (sinon `RUNTIME_LEASE_FENCED`).
+* **Baux à l'heure de la base** : les échéances sont calculées par SurrealDB, jamais par
+  l'horloge d'un nœud. Chaque reprise incrémente la génération ; un ancien détenteur ne peut
+  plus renouveler, libérer ni écrire.
+* **Dérive détectée** : une migration appliquée dont le contenu a changé arrête l'installation
+  (`RUNTIME_MIGRATION_CHECKSUM_MISMATCH`) ; une migration restée `Applying` exige une reprise
+  explicite (`MigrationRecoveryPolicy`).
+* **Aucune erreur masquée** : un échec de persistance, de worker ou de journal est propagé, ou
+  journalisé et compté quand l'appelant ne peut pas échouer.
+
+---
+
+## 2. Manifeste d'un module (`manifest.toml`)
+
+```toml
+manifest_version = 1
+id = "lyxal_booking"
+name = "Lyxal Booking"
+version = "0.1.0"
+capabilities = ["booking"]
+
+[runtime]
+min_version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_core"
+version = ">=0.1.0"
+
+[resources]
+schemas = ["schema/tables.surql", "schema/fields.surql", "schema/indexes.surql"]
+functions = ["functions/booking.surql"]
+error_definitions = ["error/booking.surql"]
+events = ["events/booking.surql"]
+seeds = []
+migrations = ["migrations/0001_initial.surql"]
 ```
 
----
-
-## 📁 Différence fondamentale : `schema/` vs `migrations/`
-
-Lyxal OS distingue formellement deux répertoires de ressources déclaratives :
-
-| Répertoire | Rôle | Moment d'exécution | Idempotence |
-| :--- | :--- | :--- | :--- |
-| **`schema/`** | Définitions structurelles de base du module (Tables, Fields, Indexes, Functions, Permissions, Events, Seeds). | Installation initiale du module (`bootstrap`). | Doit être idempotent (`OVERWRITE`). |
-| **`migrations/`** | Évolutions incrémentales versionnées (`NNN_description.surql`). | Cycle de migration du Runtime. | Exécuté une seule et unique fois, tracé dans `system_migration`. |
+Migrations : en pré-production, une seule par module, `migrations/0001_initial.surql`,
+réécrite en place (`AGENTS.md` §0.3.2). Le format de nom est `NNNN_description.surql`.
 
 ---
 
-## 🏗️ Ordre Officiel des Ressources de Schéma
+## 3. Tables (`schema/`)
 
-Lors de l'importation via `SchemaImporter`, l'ordre de priorité strict est garanti :
+| Table | Rôle |
+| :--- | :--- |
+| `runtime_module` | Modules connus. |
+| `runtime_release` | Releases installées (`[module_id, version]`), statut et phase d'installation. |
+| `runtime_migration` | Migrations appliquées (`[module_id, migration_id]`), empreinte, statut. |
+| `runtime_lease` | Baux distribués (`[kind, key]`, nature `migration` ou `installation`) : détenteur, génération, échéances. |
+| `runtime_health` | Dernier état de santé par nœud et module. |
+| `runtime_worker` | État des workers par nœud. |
+| `runtime_event_journal` | Journal des événements techniques du runtime. |
 
-```text
-1. Tables       (schema/tables.surql)
-2. Fields       (schema/fields.surql)
-3. Indexes      (schema/indexes.surql)
-4. Functions    (schema/functions.surql)
-5. Permissions  (schema/permissions.surql)
-6. Events       (schema/events.surql)
-7. Seeds        (schema/seeds.surql)
-```
-
-Les fichiers absents ou vides (espaces / commentaires) sont gérés de façon déterministe et ignorés sans générer de requêtes superflues.
+Toutes en `TYPE NORMAL SCHEMAFULL PERMISSIONS NONE` : seules les fonctions du module y accèdent.
 
 ---
 
-## 🛡️ Sécurité & ResourceProvider
+## 4. Fonctions SurrealQL (`functions/`)
 
-L'accès aux ressources est abstrait par le trait `ResourceProvider`.
-L'implémentation `FilesystemResourceProvider` applique des garde-fous stricts :
-* **Interdiction du Directory Traversal** : rejet immédiat des chemins contenant `..`.
-* **Interdiction des chemins absolus** : rejet des chemins Unix (`/etc/...`) ou Windows (`C:\...`).
-* **Plafond de taille configurable** : rejet des fichiers dépassant `DEFAULT_MAX_RESOURCE_SIZE` (10 Mo par défaut).
-* **Validation UTF-8 stricte** : détection immédiate des corruptions d'encodage.
+Fonctions internes du runtime, appelées par `call_fn`. Toutes prennent un objet unique
+`$params`, acceptent `language` (défaut `fr`), renvoient `{ ok, data, error }` et valident leurs
+entrées par les primitives de `lyxal_core` (décision CTO). Une entrée invalide renvoie
+`RUNTIME_INVALID_PARAMETERS` avec le détail par champ.
 
----
+| Domaine | Fonctions |
+| :--- | :--- |
+| Modules | `fn::runtime_module_upsert`, `_get`, `_list` |
+| Releases | `fn::runtime_release_register`, `_get`, `_list`, `_status_update` (`RUNTIME_RELEASE_NOT_FOUND`) |
+| Migrations | `fn::runtime_migration_record` (garde de bail : `lease_key`, `node_id`, `generation`), `_get`, `_list` |
+| Baux | `fn::runtime_lease_acquire` (`acquired`, `recovered`, `already_owned`, `held_by_other`), `_renew`, `_release`, `_get` |
+| Santé | `fn::runtime_health_record`, `_list` |
+| Workers | `fn::runtime_worker_upsert`, `_get`, `_list` |
+| Journal | `fn::runtime_event_append`, `fn::runtime_event_list` |
 
-## 🔒 Coordination Distribuée des Migrations (V1.4)
-
-Dans un environnement multi-instances où plusieurs nœuds de Lyxal OS démarrent en parallèle, `MigrationRunner` empêche formellement l'exécution concurrente d'une même migration.
-
-### 1. Identité du Nœud (`NodeId`)
-Chaque processus possède un `NodeId` fort (`NodeId::generate()` ou configuré explicitement), combinant PID, horodatage haute résolution et entropie SHA-256.
-
-### 2. Clé et Modèle de Bail (`MigrationLockKey`, `MigrationLease`)
-* **Clé logique** : `module_id + migration_id` (ex: `lyxal-booking:001_initial_schema`).
-* **Bail** : `owner: NodeId`, `generation: u64` (fencing token), `acquired_at: u64`, `renewed_at: u64`, `expires_at: u64`.
-* **Table dédiée** : `system_migration_lock` avec index d'unicité `idx_system_migration_lock_key`.
-
-### 3. Jeton de Clôture (Fencing Token)
-Chaque reprise de bail expiré incrémente de façon monotone `generation = generation + 1`. Un nœud "zombie" ralenti ne peut plus renouveler (`renew`) ni libérer (`release`) un bail dont la génération a changé.
-
-### 4. Cycle de Vie du Bail
-```text
-Acquisition (acquire) ──► Revalidation TOCTOU ──► Exécution ──► Libération (release)
-       ▲                                                              │
-       │ (si échec/wait)                                              ▼
-       └──────────────── Attente (retry/timeout) ──────────── Bail libéré
-```
-
-### 5. Réconciliation TOCTOU (Time-of-Check to Time-of-Use)
-Le `MigrationPlan` initial est une vue à un instant $T$. Dès l'acquisition du verrou, `MigrationRunner` réinterroge immédiatement `RuntimeStore` :
-- Si un autre nœud a complété la migration pendant l'attente du verrou (`Applied` avec même checksum) -> le nœud libère le verrou et marque la migration comme `Skip`.
-- Si un checksum drift est détecté -> arrêt dur immédiat.
-
-### 6. Détection de Crash & Politique de Récupération (`MigrationRecoveryPolicy`)
-- **`RequireManualIntervention` (défaut)** : si une migration est trouvée en état `Applying` avec un bail expiré, le runner refuse l'exécution automatique pour éviter de réappliquer un script non idempotent et lève `RUNTIME_MIGRATION_RECOVERY_REQUIRED`.
-- **`AllowRetryIfChecksumMatches`** : autorise la réapplication si le checksum est rigoureusement identique.
+`fn::runtime_migration_record` écrit d'abord sur le bail pour se protéger ; un bail perdu lève
+`RUNTIME_LEASE_FENCED` par `THROW` afin d'annuler toute la transaction (exception documentée,
+comme dans `lyxal_event`). Côté Rust, ce code devient `RuntimeError::LeaseFenced`.
 
 ---
 
-## 🧭 Architecture Déclarative du Runtime — DRA Reconciler Core (V1.6)
+## 5. Codes d'erreur (`error/runtime.surql`)
 
-La version V1.6 introduit le moteur de réconciliation déclaratif officiel de Lyxal OS (**Declarative Runtime Architecture**).
+60 définitions, une par code `RUNTIME_*`. Elles sont générées depuis le catalogue Rust
+`RUNTIME_ERROR_CATALOG` (`src/error/catalog.rs`) : code, catégorie, statut HTTP, caractère
+réessayable, message et libellé. `RuntimeError::info()` et `to_lyxal_error()` lisent ce catalogue.
+Un test vérifie que chaque entrée est définie à l'identique dans le fichier, sans code en plus ;
+un autre vérifie qu'elles s'installent dans `error_definition`.
 
-### 1. Philosophie & Principe de Convergence
-
-Au lieu d'exécuter des suites d'instructions impératives, le Runtime accepte un **état souhaité** (`DesiredRuntimeState`) et calcule automatiquement le chemin de convergence minimal vers cet état :
-
-```text
-DesiredRuntimeState
-        │
-        ▼
-RuntimeObserver (Read-only observation) ──► ActualRuntimeState
-        │
-        ▼
-RuntimeDiffer (Pure in-memory diffing) ───► ReconciliationPlan (Dry-Run)
-        │
-        ▼
-RuntimeReconciler (Safe execution) ───────► Revalidation TOCTOU ──► Apply
-        │
-        ▼
-ReconciliationReport (Convergence, Drift résiduel, Durée)
-```
-
-### 2. Piliers & Règles d'Or du Reconciler
-
-1. **Zéro Upgrade Indésirable** : Si un module est déjà installé dans une version satisfaisant la contrainte déclarée (`VersionReq`), le Reconciler conserve la version en place (0 mutation).
-2. **Version Drift vs Update** : Un drift n'existe que si l'état réel ne satisfait pas l'état souhaité. Une version plus récente disponible n'est pas un drift.
-3. **Fermeture des Dépendances (Dependency Closure)** : Déclarer `booking: Running` propage automatiquement l'exigence `Running` sur ses dépendances (`calendar`, `scheduler`, `timezone`). Déclarer `Installed` propage `Installed` (sans démarrer les dépendances).
-4. **Détection Préventive des Conflits** : Si une dépendance est explicitement déclarée `Absent` ou `Stopped` alors qu'un parent requiert son exécution, le Reconciler refuse immédiatement le plan avec `RUNTIME_DESIRED_STATE_CONFLICT`.
-5. **Séparation Stricte Actions vs Bloqueurs** : Les blockers (`MissingPackage`, `UnsatisfiedVersion`, `UnsupportedDowngrade`) sont isolés et n'apparaissent jamais comme des actions mutationnelles exécutables.
-6. **Revalidation TOCTOU** : Avant chaque action mutationnelle (`Install`, `Start`, `Stop`), l'état réel est réinterrogé pour détecter les convergences concurrentes (`SkippedRevalidationReason::AlreadyConverged`) ou les échecs de préconditions.
-7. **One-Pass Idempotent** : Deux passes successives avec le même état souhaité produisent immédiatement `Converged` avec `planned_actions = 0`.
-
-### 3. Sémantique Node-Local & Limitations V1.6
-
-- **Node-Local** : Les états de processus `Running` et `Stopped` sont gérés localement par le `LifecycleManager` du nœud courant. Les installations et migrations bénéficient quant à elles des baux distribués certifiés V1.4–V1.5.
-- **Absence de désinstallation destructive** : La cible `Absent` arrête le module et le marque inactif, mais n'effectue aucun `DROP TABLE` ni suppression de données métier.
-- **Rétrogradations non supportées** : Tout downgrade automatique est bloqué avec `UnsupportedDowngrade` et nécessite une intervention administrative.
+Exemples : `RUNTIME_LEASE_FENCED` (`conflict`, 412), `RUNTIME_STORE_FAILED` (`dependency`, 503,
+réessayable), `RUNTIME_INVALID_MANIFEST` (`validation`, 422).
 
 ---
 
-## 🩺 Health Engine & Boucle Continue de Réconciliation (V1.7)
+## 6. Contrats Rust (`src/`)
 
-La version V1.7 dote Lyxal Runtime de son moteur de santé proactif et de son contrôleur de réconciliation continue (**Continuous Reconciliation Controller**).
-
-### 1. Découplage Santé vs Cycle de Vie
-
-La santé d'un module est découplée de son cycle de vie :
-* `ModuleState = Running` n'implique pas obligatoirement `Healthy`.
-* Statuts fortement typés :
-  * `Healthy` : Fonctionnement nominal.
-  * `Degraded` : Dégradation partielle.
-  * `Unhealthy` : Panne avérée ou timeout de check.
-  * `Unknown` : Module `Running` sans vérificateur de santé enregistré.
-  * `NotApplicable` : Module non en cours d'exécution (ex: `Stopped`, `Installed`) — **n'altère pas la santé globale du nœud**.
-
-### 2. Contrat `ModuleHealthCheck` & `HealthEngine`
-
-Les modules exposent leur diagnostic via le trait asynchrone `ModuleHealthCheck` :
-```rust
-#[async_trait]
-pub trait ModuleHealthCheck: Send + Sync {
-    fn module_id(&self) -> &ModuleId;
-    async fn check(&self, ctx: &ModuleContext) -> Result<HealthCheckResult, RuntimeError>;
-}
-```
-* **Exécution Parallèle Bornée** : `HealthEngine` limite la concurrence (`max_concurrency`) et applique un timeout strict (`check_timeout`). Tout dépassement produit `HealthStatus::Unhealthy`.
-* **Transitions Observées** : `HealthSnapshot::transitions_from()` détecte les transitions réelles entre états applicables (`Healthy` $\leftrightarrow$ `Degraded` $\leftrightarrow$ `Unhealthy` $\leftrightarrow$ `Unknown`).
-* **Persistance Instantanée** : Stockage de l'état courant par nœud dans la table `system_health` (clé unique `node_id + module_id`).
-
-### 3. Contrôleur Continu (`ContinuousReconciliationController`)
-
-Le contrôleur orchestre l'observation, la réconciliation et le monitoring en continu :
-```text
-Cycle Start
-    ↓
-Observe Actual Initial
-    ↓
-Plan Desired vs Actual
-    ↓
-If actions: Apply -> Observe Final; Else: Final = Initial
-    ↓
-Run Health on Final Running Modules
-    ↓
-Persist Health Snapshot
-    ↓
-Build RuntimeStatusSnapshot
-    ↓
-Wait Backoff / Interval
-```
-
-* **Garantie Anti-Chevauchement (*No Overlapping Passes*)** : Un verrou atomique sync RAII empêche formellement deux passes simultanées sur le même contrôleur.
-* **Repli Exponentiel Borné (*Exponential Backoff*)** : En cas d'erreur d'infrastructure, le délai s'ajuste selon `max(interval, base_backoff * factor^failures)` plafonné à `max_backoff`, puis se réinitialise immédiatement dès le premier cycle réussi.
-* **Zéro Faux Drift** : Un module `Unhealthy` mais déjà `Running` n'entraîne aucune mutation de cycle de vie superflue (*DRA Lifecycle Converged*).
-* **Arrêt Gracieux (*Graceful Shutdown*)** : La boucle s'arrête proprement dès résolution du signal d'interruption sans jamais maintenir de verrou pendant le sommeil.
+* **Module** : `LyxalModule` (`descriptor`, `install`, `start`, `stop`), `ModuleContext`,
+  `ModuleDescriptor`.
+* **Workers** : `LyxalWorker` (`run(WorkerContext)`, coopération avec le `CancellationToken`),
+  `WorkerSupervisor` (redémarrage, arrêt gracieux), `WorkerStore`.
+* **Santé** : `ModuleHealthCheck`, `HealthEngine` (concurrence et délai bornés), `HealthStore`.
+* **Installation** : `ModulePackage`, `ModuleInstaller` (lots ordonnés par dépendances, isolement
+  des échecs), `schema::install_resources`, `install_embedded`, `install_batch`,
+  `install_runtime_schema`.
+* **Migrations** : `MigrationDiscovery`, `MigrationPlan`, `MigrationRunner` (`MigrationLockConfig` :
+  durée du bail, intervalle de renouvellement, attente).
+* **Baux** : `MigrationLeaseManager`, `InstallationLeaseManager` ; implémentations SurrealDB
+  (`fn::runtime_lease_*`) et mémoire (tests, processus unique).
+* **Persistance** : `RuntimeStore` ; `SurrealRuntimeStore` (`Surreal<Any>`, `LyxalSurrealCall`),
+  `MemoryRuntimeStore`.
+* **Réconciliation** : `DesiredRuntimeState`, `RuntimeObserver`, `RuntimeDiffer`,
+  `RuntimeReconciler`, `ContinuousReconciliationController` (une passe à la fois, repli
+  exponentiel borné).
+* **Événements** : bus interne `RuntimeEventBus` et journal ; intégration de `lyxal_event` par
+  `EventConsumerModule`, `EventWorkerService`, `EventGarbageCollectorService`.
+* **Erreurs** : `RuntimeError`, `RuntimeErrorInfo`, `RUNTIME_ERROR_CATALOG`.
+* **Hôte** : `LyxalRuntime` assemble ces composants ; il est instancié par le binaire hôte.
 
 ---
 
-## ⚖️ Garanties & Limitations
+## 7. Limites
 
-### Ce qui est garanti :
-- **Unicité de l'exécuteur actif** (*Single active migration executor*) : Deux instances concurrentes ne peuvent jamais exécuter simultanément la même migration.
-- **Récupération des baux orphelins** : Un crash d'instance ne bloque pas indéfiniment le système (expiration TTL).
-- **Protection anti-zombies** : Les anciens propriétaires ne peuvent pas écraser les baux réattribués grâce au fencing token.
-- **Détection des migrations interrompues** : Traçabilité des états `Applying` sans bail actif.
-- **Réconciliation continue et supervision de santé locale** : Convergence déclarative continue sans chevauchement ni boucle agressive.
-
-### Limitations connues :
-- Une panne intervenant au milieu d'un script SurrealQL contenant des instructions non transactionnelles multiples peut laisser la base dans un état partiel. La politique conservatrice `RequireManualIntervention` protège contre les réexécutions aveugles.
-- Cette version V1.7 est strictement node-locale pour la santé et la réconciliation continue. Elle n'introduit pas de cluster manager global, de supervision de workers distribués ni de restart automatique agressif.
+* La santé, le démarrage et l'arrêt des modules sont locaux au nœud ; seuls les installations et
+  les migrations sont coordonnés entre nœuds (baux).
+* La cible `Absent` arrête un module sans supprimer ses données ; les rétrogradations sont
+  bloquées.
+* Une migration interrompue au milieu d'un script non transactionnel peut laisser un état
+  partiel ; la politique par défaut exige alors une reprise manuelle.
 
 ---
 
-## 🧪 Commandes de Validation
+## 8. Vérification
 
 ```bash
-# Vérification du formatage
-cargo fmt --all -- --check
-
-# Analyse statique stricte
-cargo clippy --workspace --all-targets -- -D warnings
-
-# Exécution de l'ensemble des tests (y compris concurrence et multi-nœuds mem://)
-cargo test --workspace
+cargo test -p lyxal_runtime
 ```
 
----
-
-## Défauts connus (à traiter à la reprise du module)
-
-Relevés lors de la migration du SDK `surrealdb` vers 3.3 (novembre 2026), sans être corrigés car hors de son périmètre.
-
-1. **Schéma défini deux fois** : `schema/*.surql` et des copies en dur dans `store/surreal.rs`, `worker/store.rs`, `event/store.rs`, `health/store.rs`. Les deux versions divergeaient déjà (`installation_phase`).
-2. **Tables de verrous créées par `SurrealRuntimeStore::bootstrap()`** uniquement : utiliser les verrous SurrealDB avec un autre store repose sur la création implicite de table.
-3. **Résultats ignorés (`let _ =`)** dans `runtime.rs`, `package/installer.rs`, `worker/supervisor.rs`, `reconciler/reconciler.rs` : enregistrement de workers, libération de baux, publication d'événements, persistance d'état. À examiner un par un (au mieux assumé ou erreur masquée).
-4. **`apps/lyxal-server` n'utilise ni `SurrealRuntimeStore` ni les verrous du runtime** : il gère ses migrations avec sa propre table `lyxal_module_migration` — doublon fonctionnel avec `lyxal_runtime`.
+Les tests d'intégration installent `lyxal_core`, `lyxal_error` et le schéma du runtime dans une
+base embarquée : manifeste et installation par phases, migrations (dérive, reprise, migration
+plus longue que le bail exécutée une seule fois), baux (concurrence, heure de la base, écriture
+refusée après reprise), workers, santé, réconciliation, intégration de `lyxal_event`.
+`scripts/ci/ci_local.sh` rejoue la CI complète, dont la validation du SurrealQL par un binaire
+SurrealDB 3.3.4.

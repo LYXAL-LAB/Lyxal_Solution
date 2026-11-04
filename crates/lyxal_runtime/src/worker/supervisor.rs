@@ -606,7 +606,10 @@ impl WorkerSupervisor {
 
     /// Retourne les métriques d'un worker.
     pub fn metrics(&self, worker_id: &WorkerId) -> Option<WorkerMetrics> {
-        let handles = self.handles.read().ok()?;
+        let handles = self
+            .handles
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         handles.get(worker_id).map(|h| h.metrics())
     }
 

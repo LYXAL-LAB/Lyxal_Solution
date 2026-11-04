@@ -637,7 +637,7 @@ impl RuntimeDiffer {
         }
 
         // 3. Chercher dans actual
-        if let Some(act) = actual.get(module_id) {
+        if actual.get(module_id).is_some() {
             if let Some(desc_list) = descriptor_map.get(module_id) {
                 if let Some(desc) = desc_list.first() {
                     return desc
@@ -647,7 +647,6 @@ impl RuntimeDiffer {
                         .collect();
                 }
             }
-            let _ = act;
         }
 
         Vec::new()

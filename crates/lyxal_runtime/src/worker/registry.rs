@@ -45,7 +45,10 @@ impl WorkerRegistry {
 
     /// Récupère un worker par son identifiant unique.
     pub fn get(&self, worker_id: &WorkerId) -> Option<Arc<dyn LyxalWorker>> {
-        let lock = self.workers.read().ok()?;
+        let lock = self
+            .workers
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         lock.get(worker_id).cloned()
     }
 

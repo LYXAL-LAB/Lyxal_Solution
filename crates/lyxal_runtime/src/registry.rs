@@ -58,7 +58,11 @@ impl ModuleRegistry {
 
     /// Récupère un module par son identifiant.
     pub fn get(&self, id: &ModuleId) -> Option<Arc<dyn LyxalModule>> {
-        self.modules.read().ok()?.get(id).cloned()
+        self.modules
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(id)
+            .cloned()
     }
 
     /// Vérifie si un module est présent dans le registre.
@@ -115,7 +119,10 @@ impl ModuleRegistry {
 
     /// Récupère le descripteur d'un module spécifique.
     pub fn get_descriptor(&self, id: &ModuleId) -> Option<ModuleDescriptor> {
-        let modules = self.modules.read().ok()?;
+        let modules = self
+            .modules
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         modules.get(id).map(|m| m.descriptor().clone())
     }
 }
