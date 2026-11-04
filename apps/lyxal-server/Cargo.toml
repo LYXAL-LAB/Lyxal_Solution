@@ -20,18 +20,6 @@ default = ["surreal-ws", "module-ingestion"]
 surreal-ws = ["surrealdb/protocol-ws"]
 surreal-http = ["surrealdb/protocol-http"]
 module-ingestion = ["dep:lyxal_pipeline_ingestion"]
-module-timezone = []
-module-scheduler = []
-module-calendar = ["module-timezone"]
-module-booking = ["module-calendar", "module-scheduler"]
-full = [
-    "surreal-ws",
-    "module-ingestion",
-    "module-timezone",
-    "module-scheduler",
-    "module-calendar",
-    "module-booking",
-]
 
 [dependencies]
 anyhow.workspace = true

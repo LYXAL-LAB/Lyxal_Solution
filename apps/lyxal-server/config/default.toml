@@ -11,21 +11,16 @@ request_timeout_seconds = 30
 graceful_shutdown_seconds = 30
 max_concurrency = 1024
 body_limit_bytes = 10485760
-trust_proxy_headers = false
 
 [database]
 endpoint = "ws://127.0.0.1:8000"
 namespace = "lyxal"
 database = "system"
-username = "root"
-password = "root"
 connect_timeout_seconds = 15
-required = true
 
 [runtime]
 run_migrations = true
 fail_fast = true
-parallel_start = false
 module_start_timeout_seconds = 30
 module_stop_timeout_seconds = 20
 

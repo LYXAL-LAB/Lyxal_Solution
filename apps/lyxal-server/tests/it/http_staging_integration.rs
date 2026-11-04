@@ -57,7 +57,6 @@ async fn test_http_server_endpoints_and_ingestion_module() {
             graceful_shutdown_seconds: 5,
             max_concurrency: 128,
             body_limit_bytes: 1048576,
-            trust_proxy_headers: false,
         },
         database: lyxal_server::config::DatabaseConfig {
             endpoint: "mem://".into(),
@@ -66,12 +65,10 @@ async fn test_http_server_endpoints_and_ingestion_module() {
             username: None,
             password: None,
             connect_timeout_seconds: 5,
-            required: true,
         },
         runtime: RuntimeConfig {
             run_migrations: false,
             fail_fast: true,
-            parallel_start: false,
             module_start_timeout_seconds: 10,
             module_stop_timeout_seconds: 5,
         },

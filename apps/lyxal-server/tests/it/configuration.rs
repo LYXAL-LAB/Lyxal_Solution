@@ -20,7 +20,6 @@ request_timeout_seconds = 5
 graceful_shutdown_seconds = 5
 max_concurrency = 32
 body_limit_bytes = 1024
-trust_proxy_headers = false
 
 [database]
 endpoint = "ws://127.0.0.1:8000"
@@ -29,12 +28,10 @@ database = "test"
 username = "root"
 password = "mot-de-passe-de-test"
 connect_timeout_seconds = 1
-required = true
 
 [runtime]
 run_migrations = false
 fail_fast = true
-parallel_start = false
 module_start_timeout_seconds = 5
 module_stop_timeout_seconds = 5
 
@@ -77,7 +74,6 @@ async fn remote_database_without_credentials_is_refused() {
         username: None,
         password: None,
         connect_timeout_seconds: 1,
-        required: true,
     };
     let error = lyxal_server::database::connect_database(&config)
         .await
