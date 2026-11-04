@@ -210,3 +210,23 @@ async fn module_resources_are_replayable() {
     assert_eq!(types, Some(6));
     assert_eq!(definitions, Some(1));
 }
+
+/// Les définitions `SERVER_*` sont installées au démarrage, une par entrée du catalogue.
+#[tokio::test]
+async fn server_error_definitions_are_installed() {
+    let client = database("server_errors").await;
+    lyxal_server::modules::install_foundation(&client)
+        .await
+        .expect("noyau");
+    let mut res = client
+        .query("SELECT VALUE code FROM error_definition WHERE module = 'server' ORDER BY code;")
+        .await
+        .expect("requête");
+    let codes: Vec<String> = res.take(0).expect("codes");
+    let mut expected: Vec<String> = lyxal_server::error::SERVER_ERROR_CATALOG
+        .iter()
+        .map(|info| info.code.to_string())
+        .collect();
+    expected.sort();
+    assert_eq!(codes, expected);
+}

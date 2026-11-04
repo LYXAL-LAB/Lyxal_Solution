@@ -16,6 +16,8 @@ pub enum HealthState {
 #[derive(Clone, Debug, Serialize)]
 pub struct ComponentHealth {
     pub state: HealthState,
+    /// Détail interne (erreur de connexion…) : journalisé, jamais renvoyé par `/health`.
+    #[serde(skip)]
     pub message: Option<String>,
     pub checked_at: DateTime<Utc>,
 }

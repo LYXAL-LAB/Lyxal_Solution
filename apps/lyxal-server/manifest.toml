@@ -1,0 +1,18 @@
+# Manifeste de l'hôte : il n'est pas un module du runtime (aucun LyxalModule) ; il déclare
+# seulement ses définitions d'erreurs, installées avec lyxal_core et lyxal_error au démarrage.
+manifest_version = 1
+id = "lyxal_server"
+name = "Lyxal Server"
+version = "0.1.0"
+description = "Hôte de processus de Lyxal OS : définitions d'erreurs SERVER_*"
+capabilities = []
+
+[runtime]
+min_version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_error"
+version = ">=0.1.0"
+
+[resources]
+error_definitions = ["error/server.surql"]

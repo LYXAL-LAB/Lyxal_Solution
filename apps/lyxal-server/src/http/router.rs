@@ -57,8 +57,9 @@ fn cors_layer(config: &CorsConfig) -> Result<CorsLayer, ServerError> {
         .allowed_origins
         .iter()
         .map(|value| {
-            HeaderValue::from_str(value)
-                .map_err(|error| ServerError::Configuration(error.to_string()))
+            HeaderValue::from_str(value).map_err(|error| ServerError::Configuration {
+                message: error.to_string(),
+            })
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -66,7 +67,9 @@ fn cors_layer(config: &CorsConfig) -> Result<CorsLayer, ServerError> {
         .allowed_methods
         .iter()
         .map(|value| {
-            Method::from_str(value).map_err(|error| ServerError::Configuration(error.to_string()))
+            Method::from_str(value).map_err(|error| ServerError::Configuration {
+                message: error.to_string(),
+            })
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -74,8 +77,9 @@ fn cors_layer(config: &CorsConfig) -> Result<CorsLayer, ServerError> {
         .allowed_headers
         .iter()
         .map(|value| {
-            HeaderName::from_str(value)
-                .map_err(|error| ServerError::Configuration(error.to_string()))
+            HeaderName::from_str(value).map_err(|error| ServerError::Configuration {
+                message: error.to_string(),
+            })
         })
         .collect::<Result<Vec<_>, _>>()?;
 

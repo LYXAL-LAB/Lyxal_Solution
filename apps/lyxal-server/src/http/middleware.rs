@@ -27,7 +27,7 @@ pub async fn request_context(
     }
 
     context.metrics.request_started();
-    let response = next.run(request).await;
+    let response = super::request_id::scope(request_id.clone(), next.run(request)).await;
     context
         .metrics
         .request_finished(response.status().is_server_error());

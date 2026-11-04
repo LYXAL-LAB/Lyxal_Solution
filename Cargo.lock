@@ -2461,6 +2461,7 @@ dependencies = [
  "chrono",
  "config",
  "http",
+ "lyxal_error",
  "lyxal_event",
  "lyxal_pipeline_ingestion",
  "lyxal_runtime",

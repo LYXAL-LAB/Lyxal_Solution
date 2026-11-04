@@ -4,14 +4,18 @@ pub async fn signal() -> Result<(), ServerError> {
     let ctrl_c = async {
         tokio::signal::ctrl_c()
             .await
-            .map_err(|error| ServerError::Shutdown(error.to_string()))
+            .map_err(|error| ServerError::ShutdownSignal {
+                message: error.to_string(),
+            })
     };
 
     #[cfg(unix)]
     let terminate = async {
         use tokio::signal::unix::{signal, SignalKind};
-        let mut stream = signal(SignalKind::terminate())
-            .map_err(|error| ServerError::Shutdown(error.to_string()))?;
+        let mut stream =
+            signal(SignalKind::terminate()).map_err(|error| ServerError::ShutdownSignal {
+                message: error.to_string(),
+            })?;
         stream.recv().await;
         Ok::<(), ServerError>(())
     };
