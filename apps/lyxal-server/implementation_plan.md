@@ -1,6 +1,6 @@
 # Plan d'implémentation — reprise de `lyxal-server`
 
-Suite de `AUDIT.md`. Rien n'est modifié avant validation du CTO (§3).
+Suite de `AUDIT.md`. **Q1 à Q4 validées par le CTO** (Q3 : option B, voir ci-dessous).
 
 ## 1. Décisions demandées
 
@@ -8,10 +8,10 @@ Suite de `AUDIT.md`. Rien n'est modifié avant validation du CTO (§3).
 | :- | :--- | :--- | :--- |
 | Q1 | Que devient le runtime local (S-01, S-03, S-04) ? | **A.** Supprimé : l'hôte instancie `LyxalRuntime` (store SurrealDB, baux, migrations, workers, santé, événements). **B.** Conservé et corrigé. | **A** : §5.8.5, et c'est la seule voie qui donne les baux, la garde de migration et la dérive sans les recopier. |
 | Q2 | D'où viennent les fichiers SurrealQL des modules installés ? | **A.** Embarqués dans le binaire : un `build.rs` du serveur lit le `manifest.toml` de chaque module hébergé et embarque exactement les fichiers déclarés (échec de compilation si un fichier manque). **B.** Lus sur disque au démarrage (`FilesystemResourceProvider`, répertoire configuré, copié dans l'image). | **A** : un binaire autonome, sans écart possible entre le code et les fichiers installés ; marche aussi pour `lyxal_core`, qui n'a pas de crate Rust. |
-| Q3 | Le module d'ingestion (S-02) ? Son manifeste dépend de `lyxal_base >=1.0.0`, qui n'a **pas de manifeste**, et son adaptateur actuel écrase `fn::error_result`. | **A.** Le serveur héberge `PipelineIngestionModule` installé depuis son manifeste ; la fonctionnalité `module-ingestion` est retirée des fonctionnalités par défaut tant que la reprise de `lyxal_pipeline_ingestion` (et de `lyxal_base`) n'est pas faite ; `init_schema` n'est plus jamais appelé par le serveur. **B.** Corriger ici le minimum dans l'ingestion et `lyxal_base` pour qu'ils s'installent. | **A** : le serveur ne garde aucun chemin qui écrase `fn::error_result` ; corriger l'ingestion et `lyxal_base` relève de leur propre reprise (plan et validation distincts). |
+| Q3 | Le module d'ingestion (S-02) ? Son manifeste dépend de `lyxal_base >=1.0.0`, qui n'a **pas de manifeste**, et son adaptateur actuel écrase `fn::error_result`. | **A.** Retirer l'ingestion des fonctionnalités par défaut jusqu'à sa reprise. **B.** Garder l'ingestion et la rendre installable par le runtime. | **Décision CTO : B.** L'ingestion reste active par défaut (pas de régression fonctionnelle). `lyxal_base` reçoit un `manifest.toml` (version `0.1.0`, ressources existantes), les contraintes `lyxal_base >=1.0.0` de l'ingestion et du catalogue passent à `>=0.1.0` (§0.3.3) ; le serveur héberge `PipelineIngestionModule` installé depuis son manifeste et n'appelle plus jamais `init_schema`. La suppression d'`init_schema` dans l'ingestion relève de sa propre reprise. |
 | Q4 | Erreurs HTTP (S-06) ? | **A.** Variantes typées préfixées `SERVER_`, définitions dans `error/server.surql`, réponses au format `LyxalResult` (`{ ok, data, error }`), `trace_id` = `x-request-id`, aucun détail interne au client. **B.** Garder l'enveloppe actuelle et ajouter seulement les définitions. | **A** : même contrat que le reste de la suite (`lyxal_error`, `lyxal_surreal`). |
 
-## 2. Contrat cible (si Q1-A, Q2-A, Q3-A, Q4-A)
+## 2. Contrat cible (Q1-A, Q2-A, Q3-B, Q4-A)
 
 ### Démarrage
 
@@ -69,7 +69,7 @@ Aucune fonction utilisée ni créée.
 | Lot | Contenu |
 | :- | :--- |
 | 1 | **Nettoyage** (S-05, S-08, S-09, S-10 en partie) : secrets retirés des TOML, `Dockerfile` aligné, fonctionnalités et champs morts supprimés, `CHANGELOG.md` supprimé. |
-| 2 | **Hôte sur `LyxalRuntime`** (Q1, Q2, Q3 ; S-01, S-02, S-03, S-04, S-07, S-11) : `build.rs`, installation en lot, workers, événements, santé, arrêt ; runtime et contrat locaux supprimés ; ingestion hors des fonctionnalités par défaut. |
+| 2 | **Hôte sur `LyxalRuntime`** (Q1, Q2, Q3 ; S-01, S-02, S-03, S-04, S-07, S-11) : `build.rs`, installation en lot, workers, événements, santé, arrêt ; runtime et contrat locaux supprimés ; `manifest.toml` de `lyxal_base`, contraintes `lyxal_base >=0.1.0` ; ingestion installée depuis son manifeste, toujours active par défaut. |
 | 3 | **Erreurs** (Q4 ; S-06, S-13) : `ServerError` typé, `error/server.surql`, réponses `LyxalResult`, détail interne retiré des réponses. |
 | 4 | **Clôture** : tests de bout en bout (S-12), `README.md` et `docs/` à l'état actuel, `AGENTS.md` (§5.8.5) et skills alignés, audit de contrôle, suppression de `AUDIT.md` et de ce plan. |
 
