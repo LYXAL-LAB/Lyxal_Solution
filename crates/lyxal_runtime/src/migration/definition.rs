@@ -13,7 +13,7 @@ use std::collections::HashSet;
 /// L'ordre d'exécution est exclusivement déterminé par le champ `order: u64`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MigrationDefinition {
-    /// Identifiant unique et lisible de la migration (ex: "001_initial_schema").
+    /// Identifiant unique et lisible de la migration (ex: "0001_initial").
     pub id: MigrationId,
     /// Module propriétaire de cette migration (garantit l'ownership strict).
     pub module_id: ModuleId,

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Deref;
 
-/// Identifiant typé, stable et comparable d'une migration de schéma (ex: "001_initial_schema", "002_add_indexes").
+/// Identifiant typé, stable et comparable d'une migration de schéma (ex: "0001_initial").
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct MigrationId(String);
 

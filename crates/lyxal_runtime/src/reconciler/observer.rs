@@ -112,7 +112,13 @@ impl<'a> RuntimeObserver<'a> {
         // 2. Observation du ModuleRegistry en mémoire
         for desc in self.registry.descriptors() {
             let id = desc.id.clone();
-            let parsed_v = Version::parse(&desc.version).ok();
+            let parsed_v = match Version::parse(&desc.version) {
+                Ok(v) => Some(v),
+                Err(err) => {
+                    tracing::warn!(module = %id, version = %desc.version, error = %err, "Version de module illisible : module observé sans version");
+                    None
+                }
+            };
             let entry = modules_map
                 .entry(id.clone())
                 .or_insert_with(|| ObservedModuleState {

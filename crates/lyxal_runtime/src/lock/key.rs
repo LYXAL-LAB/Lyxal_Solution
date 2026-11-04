@@ -5,7 +5,7 @@ use std::fmt;
 
 /// Clé canonique désignant l'unité logique protégée par un verrou de migration.
 ///
-/// La granularité standard est `module_id + migration_id` (ex: `lyxal-booking:001_initial_schema`).
+/// La granularité standard est `module_id + migration_id` (ex: `lyxal_booking:0001_initial`).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct MigrationLockKey {
     pub module_id: ModuleId,

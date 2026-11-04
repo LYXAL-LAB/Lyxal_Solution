@@ -10,7 +10,10 @@ use semver::Version;
 pub struct MigrationDiscovery;
 
 impl MigrationDiscovery {
-    /// Parse un nom de fichier de migration selon la convention canonique `NNNN_description.surql`.
+    /// Parse un nom de fichier de migration `NNNN_description.surql` (ordre, puis description).
+    ///
+    /// En pré-production (`AGENTS.md` §0.3.2), chaque module n'a qu'une migration,
+    /// `migrations/0001_initial.surql`, réécrite en place.
     ///
     /// Exemples valides :
     /// - `0001_initial.surql` -> order: 1, id: `0001_initial`

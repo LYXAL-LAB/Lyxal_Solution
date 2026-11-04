@@ -92,7 +92,10 @@ impl WorkerHandle {
 
     /// Extrait la `JoinHandle` active (si présente).
     pub fn take_join_handle(&self) -> Option<JoinHandle<()>> {
-        let mut lock = self.join_handle.write().ok()?;
+        let mut lock = self
+            .join_handle
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         lock.take()
     }
 
@@ -166,7 +169,10 @@ impl WorkerHandle {
 
     /// Retourne la dernière raison de sortie enregistrée.
     pub fn last_exit_reason(&self) -> Option<WorkerExitReason> {
-        self.last_exit_reason.read().ok()?.clone()
+        self.last_exit_reason
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
     }
 
     /// Retourne un instantané des métriques du worker.
