@@ -164,8 +164,10 @@ impl IngestionWorker {
             });
         }
 
-        // Si le lot était reçu, le faire passer en PARSING
-        if batch.statut == BatchStatus::Received {
+        // Un lot reçu, ou en échec et repris, repasse en PARSING (machine à états du schéma :
+        // RECEIVED/FAILED -> PARSING -> VALIDATING -> STAGED).
+        let resume_validating = batch.statut == BatchStatus::Validating;
+        if matches!(batch.statut, BatchStatus::Received | BatchStatus::Failed) {
             self.store
                 .update_batch_status(
                     batch_id,
@@ -317,7 +319,7 @@ impl IngestionWorker {
                     code_barre_gtin: normalized.gtin,
                     libelle_commercial: normalized.commercial_label,
                     description_technique: None,
-                    type_item: "MATERIEL_BTP".to_string(),
+                    type_item: "PRODUIT".to_string(),
                     unite_reference: normalized.unit_code.unwrap_or_else(|| "PCE".to_string()),
                     conditionnement,
                     qualification: normalized.qualification,
@@ -365,7 +367,17 @@ impl IngestionWorker {
                 .await?;
         }
 
-        // 5. Clôture avec succès : passage à l'état STAGED
+        // 5. Clôture avec succès : VALIDATING puis STAGED
+        if !resume_validating {
+            self.store
+                .update_batch_status(
+                    batch_id,
+                    BatchStatus::Validating,
+                    "ingestion_worker",
+                    Some("Lignes normalisées : validation finale du lot"),
+                )
+                .await?;
+        }
         self.store
             .update_batch_status(
                 batch_id,

@@ -181,3 +181,32 @@ async fn restart_on_installed_database_is_idempotent() {
     );
     assert_eq!(releases, Some(hosted));
 }
+
+/// Une installation interrompue est reprise en rejouant les ressources des modules : chaque
+/// module embarqué doit pouvoir être installé deux fois sans erreur ni doublon.
+#[tokio::test]
+async fn module_resources_are_replayable() {
+    use lyxal_runtime::manifest::ManifestParser;
+    use lyxal_runtime::resource::EmbeddedResourceProvider;
+    use lyxal_server::modules::{install_foundation, EMBEDDED_MODULES};
+
+    let client = database("replay").await;
+    install_foundation(&client).await.expect("noyau");
+    for _ in 0..2 {
+        for module in EMBEDDED_MODULES {
+            let manifest = ManifestParser::parse_str(module.manifest).expect("manifeste");
+            let provider = EmbeddedResourceProvider::new(module.files);
+            lyxal_runtime::schema::install_resources(&client, &manifest, &provider)
+                .await
+                .unwrap_or_else(|e| panic!("{} : {e}", module.id));
+        }
+    }
+    let mut res = client
+        .query("RETURN count(SELECT * FROM base_unite_type); RETURN count(SELECT * FROM error_definition WHERE code = 'BASE_UNITE_TYPE_NOT_FOUND');")
+        .await
+        .expect("requête");
+    let types: Option<i64> = res.take(0).expect("types");
+    let definitions: Option<i64> = res.take(1).expect("définitions");
+    assert_eq!(types, Some(6));
+    assert_eq!(definitions, Some(1));
+}
