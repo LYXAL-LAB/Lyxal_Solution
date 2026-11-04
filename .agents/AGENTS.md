@@ -780,7 +780,12 @@ impl ModuleHealthCheck for BookingHealthCheck {
 
 * Les modules métiers (`lyxal_booking`, `lyxal_crm`, etc.) dépendent **uniquement des traits et contrats** de `lyxal_runtime`.
 * Les modules métiers **n'instancient jamais le Runtime** eux-mêmes.
-* C'est le binaire hôte (`lyxal_server` ou CLI) qui instancie le `LyxalRuntime`, enregistre les modules dans le `ModuleRegistry`, exécute les réconciliations et démarre le serveur réseau.
+* C'est le binaire hôte (`apps/lyxal-server` ou CLI) qui instancie le `LyxalRuntime` et démarre le serveur réseau. Au démarrage, `lyxal-server` :
+  1. installe `lyxal_core`, `lyxal_error`, ses définitions `SERVER_*` et le schéma du runtime (rejouable) ;
+  2. installe tous les modules hébergés par `install_packages` (releases, migrations sous bail) ;
+  3. enregistre leurs workers et sondes de santé, puis démarre l'ensemble par `start_all` (moteur d'événements compris).
+* Les modules hébergés sont **embarqués dans le binaire** : `build.rs` du serveur lit le `manifest.toml` de chaque module et inclut exactement les fichiers de `[resources]` (compilation en échec si un fichier manque). Héberger un module = l'inscrire dans `build.rs` et, s'il a du code Rust, déclarer son `LyxalModule` et ses services dans `apps/lyxal-server/src/modules/` ; un module sans code Rust est porté par un `ManifestModule` construit depuis son manifeste.
+* Les erreurs de l'hôte sont préfixées `SERVER_` et répondent au contrat `LyxalResult` (`{ ok, data, error }`), sans détail interne pour le client.
 
 ---
 
@@ -816,7 +821,7 @@ lyxal_btp
         │
         ▼
 UI / Process Host
-lyxal_server (Axum Handlers, HTTP API, Process Boot)
+lyxal-server (hôte : LyxalRuntime, modules embarqués, API HTTP système)
 Console Web / Mobile
 CLI
 ```

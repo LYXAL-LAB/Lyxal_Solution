@@ -147,6 +147,7 @@ Activer ce Skill dès qu'une mission implique :
 
 1. **[OBLIGATOIRE] Règle de Séparation Module / Hôte ([`AGENTS.md` §5.8.5](../../AGENTS.md))** :
    - Un module métier (`crates/lyxal_*`) implémente les traits `LyxalModule`, `LyxalWorker`, `ModuleHealthCheck` et `EventConsumerModule`, mais **n'instancie jamais `LyxalRuntime`** en production (seuls `apps/lyxal-server`, la CLI ou les tests d'intégration du module instancient `LyxalRuntime`).
+   - Pour être hébergé, un module est inscrit dans `apps/lyxal-server/build.rs` (manifeste et ressources embarqués) ; ses workers et sondes sont enregistrés dans `apps/lyxal-server/src/modules/`. Vérifier que toutes ses ressources s'installent depuis son manifeste et sont rejouables (test `startup::module_resources_are_replayable` du serveur).
 2. **[OBLIGATOIRE] Direction du graphe Cargo** :
    - Les crates de fondation situés sous `lyxal_runtime` (`lyxal_error`, `lyxal_surreal`, `lyxal_crypto`, `lyxal_event`) ne doivent **jamais** dépendre de `lyxal_runtime`.
 
