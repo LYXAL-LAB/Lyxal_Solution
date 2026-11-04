@@ -1,3 +1,4 @@
+use crate::common;
 use lyxal_runtime::lock::{
     AcquireLeaseResult, MemoryMigrationLeaseManager, MigrationLeaseManager, MigrationLockConfig,
     MigrationLockKey, NodeId, SurrealMigrationLeaseManager,
@@ -8,7 +9,6 @@ use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::RuntimeError;
 use std::sync::Arc;
 use std::time::Duration;
-use surrealdb::engine::any::connect;
 use tokio::sync::Barrier;
 use tokio::time::sleep;
 
@@ -43,6 +43,12 @@ fn test_lock_config_validation() {
         acquire_retry_delay: Duration::from_millis(50),
     };
     assert!(invalid.validate().is_err());
+
+    let zero_renew = MigrationLockConfig {
+        renew_interval: Duration::ZERO,
+        ..MigrationLockConfig::default()
+    };
+    assert!(zero_renew.validate().is_err());
 }
 
 #[tokio::test]
@@ -109,14 +115,11 @@ async fn test_memory_lease_manager_lifecycle() {
         .await
         .unwrap();
     match res_b2 {
-        AcquireLeaseResult::RecoveredExpiredLease(l) => {
+        AcquireLeaseResult::Acquired(l) => {
             assert_eq!(l.owner, node_b);
             assert_eq!(l.generation, 2);
         }
-        _ => panic!(
-            "Expected RecoveredExpiredLease for node-b, got {:?}",
-            res_b2
-        ),
+        _ => panic!("Expected Acquired for node-b, got {:?}", res_b2),
     }
 }
 
@@ -227,12 +230,7 @@ async fn test_concurrent_lease_contention() {
 
 #[tokio::test]
 async fn test_surreal_migration_lease_monotone_generation_anti_aba() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_anti_aba_mig")
-        .use_db("test_anti_aba_mig")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_anti_aba_mig", "test_anti_aba_mig").await;
 
     let store = SurrealRuntimeStore::new(client.clone());
     store.bootstrap().await.unwrap();
@@ -270,7 +268,7 @@ async fn test_surreal_migration_lease_monotone_generation_anti_aba() {
         .await
         .unwrap();
     let lease_b = match res_b {
-        AcquireLeaseResult::RecoveredExpiredLease(l) => {
+        AcquireLeaseResult::Acquired(l) => {
             assert_eq!(
                 l.generation, 2,
                 "Generation must monotonically increase to 2"
@@ -278,7 +276,7 @@ async fn test_surreal_migration_lease_monotone_generation_anti_aba() {
             assert_eq!(l.owner, node_b);
             l
         }
-        _ => panic!("Expected RecoveredExpiredLease for node-b, got {:?}", res_b),
+        _ => panic!("Expected Acquired for node-b, got {:?}", res_b),
     };
 
     // 4. Node B libère -> Record conservé avec generation == 2
@@ -290,7 +288,7 @@ async fn test_surreal_migration_lease_monotone_generation_anti_aba() {
         .await
         .unwrap();
     let lease_c = match res_c {
-        AcquireLeaseResult::RecoveredExpiredLease(l) => {
+        AcquireLeaseResult::Acquired(l) => {
             assert_eq!(
                 l.generation, 3,
                 "Generation must monotonically increase to 3"
@@ -298,7 +296,7 @@ async fn test_surreal_migration_lease_monotone_generation_anti_aba() {
             assert_eq!(l.owner, node_c);
             l
         }
-        _ => panic!("Expected RecoveredExpiredLease for node-c, got {:?}", res_c),
+        _ => panic!("Expected Acquired for node-c, got {:?}", res_c),
     };
 
     // 6. Zombie Node A (gen 1) tente renew -> REJETÉ
@@ -328,12 +326,7 @@ async fn test_surreal_migration_lease_monotone_generation_anti_aba() {
 
 #[tokio::test]
 async fn test_surreal_migration_lease_exactly_one_winner() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_concurrent_mig_lease")
-        .use_db("test_concurrent_mig_lease")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_concurrent_mig_lease", "test_concurrent_mig_lease").await;
 
     let store = SurrealRuntimeStore::new(client.clone());
     store.bootstrap().await.unwrap();
@@ -399,12 +392,7 @@ async fn test_surreal_migration_lease_exactly_one_winner() {
 
 #[tokio::test]
 async fn test_surreal_migration_lease_released_takeover_contention_42_to_43() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_lease_42_rel")
-        .use_db("test_lease_42_rel")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_lease_42_rel", "test_lease_42_rel").await;
 
     let store = SurrealRuntimeStore::new(client.clone());
     store.bootstrap().await.unwrap();
@@ -415,26 +403,22 @@ async fn test_surreal_migration_lease_released_takeover_contention_42_to_43() {
         ModuleId::new("lyxal_booking"),
         MigrationId::new("0001_init").unwrap(),
     );
-    let key_record_id = key.canonical_string().replace([':', '.', '-'], "_");
 
     // Pré-initialisation d'un record sentinel libéré à generation = 42
     let setup_sql = r#"
-        CREATE ONLY type::record('runtime_migration_lock', $key_id) SET
-            lock_key = $lock_key,
-            module_id = 'lyxal_booking',
-            migration_id = '0001_init',
+        CREATE ONLY type::record('runtime_lease', ['migration', $lock_key]) SET
+            kind = 'migration',
+            key = $lock_key,
             owner_node_id = 'previous-node',
             generation = 42,
             is_released = true,
-            expires_at = 0,
             acquired_at = 1000,
             renewed_at = 1000,
-            released_at = 1050,
-            updated_at = time::now();
+            expires_at = 0,
+            released_at = 1050;
     "#;
     client
         .query(setup_sql)
-        .bind(("key_id", key_record_id.clone()))
         .bind(("lock_key", key.canonical_string()))
         .await
         .unwrap()
@@ -467,7 +451,7 @@ async fn test_surreal_migration_lease_released_takeover_contention_42_to_43() {
     for h in handles {
         let res = h.await.unwrap().unwrap();
         match res {
-            AcquireLeaseResult::RecoveredExpiredLease(l) => {
+            AcquireLeaseResult::Acquired(l) => {
                 winners.push(l);
             }
             AcquireLeaseResult::HeldByOther { .. } => {
@@ -500,12 +484,7 @@ async fn test_surreal_migration_lease_released_takeover_contention_42_to_43() {
 
 #[tokio::test]
 async fn test_surreal_migration_lease_expired_takeover_contention_42_to_43() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_lease_42_exp")
-        .use_db("test_lease_42_exp")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_lease_42_exp", "test_lease_42_exp").await;
 
     let store = SurrealRuntimeStore::new(client.clone());
     store.bootstrap().await.unwrap();
@@ -516,26 +495,22 @@ async fn test_surreal_migration_lease_expired_takeover_contention_42_to_43() {
         ModuleId::new("lyxal_booking"),
         MigrationId::new("0001_init").unwrap(),
     );
-    let key_record_id = key.canonical_string().replace([':', '.', '-'], "_");
 
     // Pré-initialisation d'un record expiré à generation = 42
     let setup_sql = r#"
-        CREATE ONLY type::record('runtime_migration_lock', $key_id) SET
-            lock_key = $lock_key,
-            module_id = 'lyxal_booking',
-            migration_id = '0001_init',
+        CREATE ONLY type::record('runtime_lease', ['migration', $lock_key]) SET
+            kind = 'migration',
+            key = $lock_key,
             owner_node_id = 'previous-node',
             generation = 42,
             is_released = false,
-            expires_at = 1,
             acquired_at = 1,
             renewed_at = 1,
-            released_at = 0,
-            updated_at = time::now();
+            expires_at = 1,
+            released_at = 0;
     "#;
     client
         .query(setup_sql)
-        .bind(("key_id", key_record_id.clone()))
         .bind(("lock_key", key.canonical_string()))
         .await
         .unwrap()

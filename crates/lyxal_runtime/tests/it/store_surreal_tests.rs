@@ -119,7 +119,7 @@ async fn test_surreal_store_migration_crud() {
     };
 
     // 1. Enregistrement
-    store.record_migration(&record).await.unwrap();
+    store.record_migration(&record, None).await.unwrap();
 
     // 2. Lecture
     let fetched = store.get_migration(&mod_id, &mig_id).await.unwrap();

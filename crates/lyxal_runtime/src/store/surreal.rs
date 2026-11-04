@@ -1,4 +1,5 @@
 use crate::error::RuntimeError;
+use crate::lock::MigrationLease;
 use crate::migration::{MigrationChecksum, MigrationId, MigrationRecord, MigrationStatus};
 use crate::store::dto::{
     ListParams, MigrationGetParams, MigrationListParams, MigrationRecordParams, MigrationRow,
@@ -48,6 +49,14 @@ pub(crate) fn store_error(function: &'static str, err: LyxalSurrealError) -> Run
         operation: function,
         message: err.to_string(),
     }
+}
+
+/// Code levé par `THROW` quand une écriture sous bail est refusée. SurrealDB ne le transmet que
+/// dans le texte de l'erreur ; c'est le seul endroit qui l'y reconnaît.
+const LEASE_FENCED_CODE: &str = "RUNTIME_LEASE_FENCED";
+
+fn is_lease_fenced(err: &LyxalSurrealError) -> bool {
+    err.to_string().contains(LEASE_FENCED_CODE)
 }
 
 impl LyxalSurrealCall for SurrealRuntimeStore {
@@ -239,9 +248,13 @@ impl RuntimeStore for SurrealRuntimeStore {
         Ok(())
     }
 
-    async fn record_migration(&self, migration: &MigrationRecord) -> Result<(), RuntimeError> {
-        let _: MigrationRow = self
-            .call(
+    async fn record_migration(
+        &self,
+        migration: &MigrationRecord,
+        lease: Option<&MigrationLease>,
+    ) -> Result<(), RuntimeError> {
+        let result: Result<MigrationRow, LyxalSurrealError> = self
+            .call_fn(
                 "runtime_migration_record",
                 MigrationRecordParams {
                     module_id: migration.module_id.to_string(),
@@ -252,10 +265,23 @@ impl RuntimeStore for SurrealRuntimeStore {
                     applied_at: to_i64("applied_at", migration.applied_at)?,
                     duration_ms: to_i64("duration_ms", migration.duration_ms)?,
                     error: migration.error.clone(),
+                    lease_key: lease.map(|l| l.key.canonical_string()),
+                    node_id: lease.map(|l| l.owner.to_string()),
+                    generation: lease
+                        .map(|l| to_i64("generation", l.generation))
+                        .transpose()?,
                 },
             )
-            .await?;
-        Ok(())
+            .await;
+        match (result, lease) {
+            (Ok(_), _) => Ok(()),
+            (Err(err), Some(lease)) if is_lease_fenced(&err) => Err(RuntimeError::LeaseFenced {
+                key: lease.key.canonical_string(),
+                owner: lease.owner.to_string(),
+                generation: lease.generation,
+            }),
+            (Err(err), _) => Err(store_error("runtime_migration_record", err)),
+        }
     }
 
     async fn get_migration(

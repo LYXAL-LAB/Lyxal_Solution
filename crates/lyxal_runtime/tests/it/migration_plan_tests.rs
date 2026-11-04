@@ -144,7 +144,7 @@ async fn test_migration_plan_building_scenarios() {
         status: MigrationStatus::Applied,
         error: None,
     };
-    store.record_migration(&rec1).await.unwrap();
+    store.record_migration(&rec1, None).await.unwrap();
 
     let plan2 = MigrationPlan::from_definitions_and_store(&module_id, "1.0.0", &defs, &store)
         .await
@@ -167,7 +167,7 @@ async fn test_migration_plan_building_scenarios() {
         status: MigrationStatus::Applied,
         error: None,
     };
-    store.record_migration(&bad_rec1).await.unwrap();
+    store.record_migration(&bad_rec1, None).await.unwrap();
 
     let plan3 = MigrationPlan::from_definitions_and_store(&module_id, "1.0.0", &defs, &store)
         .await

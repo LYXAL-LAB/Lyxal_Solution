@@ -19,7 +19,6 @@ use lyxal_runtime::RuntimeConfig;
 use semver::Version;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use surrealdb::engine::any::connect;
 
 struct TestMockModule {
     descriptor: ModuleDescriptor,
@@ -103,12 +102,7 @@ fn create_test_package(
 
 #[tokio::test]
 async fn test_apply_empty_to_full_convergence() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_rec_apply_1")
-        .use_db("test_rec_apply_1")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_rec_apply_1", "test_rec_apply_1").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
@@ -173,12 +167,7 @@ async fn test_apply_empty_to_full_convergence() {
 
 #[tokio::test]
 async fn test_stop_booking_while_calendar_running() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_rec_apply_2")
-        .use_db("test_rec_apply_2")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_rec_apply_2", "test_rec_apply_2").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
@@ -236,12 +225,7 @@ async fn test_stop_booking_while_calendar_running() {
 
 #[tokio::test]
 async fn test_partial_failure_and_not_attempted_reporting() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_rec_apply_3")
-        .use_db("test_rec_apply_3")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_rec_apply_3", "test_rec_apply_3").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
@@ -287,12 +271,7 @@ async fn test_partial_failure_and_not_attempted_reporting() {
 
 #[tokio::test]
 async fn test_revalidation_already_converged_is_successful_skip() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_rec_apply_4")
-        .use_db("test_rec_apply_4")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_rec_apply_4", "test_rec_apply_4").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
@@ -338,12 +317,7 @@ async fn test_revalidation_already_converged_is_successful_skip() {
 
 #[tokio::test]
 async fn test_revalidation_failed_state_is_not_silent_skip() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_rec_apply_5")
-        .use_db("test_rec_apply_5")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_rec_apply_5", "test_rec_apply_5").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());

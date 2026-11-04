@@ -36,6 +36,13 @@ impl MigrationLockConfig {
             });
         }
 
+        if self.renew_interval.is_zero() {
+            return Err(RuntimeError::Internal {
+                code: "RUNTIME_CONFIG_INVALID",
+                message: "renew_interval cannot be zero".to_string(),
+            });
+        }
+
         if self.renew_interval >= self.lease_duration {
             return Err(RuntimeError::Internal {
                 code: "RUNTIME_CONFIG_INVALID",

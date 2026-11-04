@@ -86,7 +86,7 @@ async fn test_memory_store_migration_records() {
         error: None,
     };
 
-    store.record_migration(&record).await.unwrap();
+    store.record_migration(&record, None).await.unwrap();
 
     let fetched = store.get_migration(&mod_id, &mig_id).await.unwrap();
     assert!(fetched.is_some());

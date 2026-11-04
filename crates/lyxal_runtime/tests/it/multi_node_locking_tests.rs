@@ -129,14 +129,11 @@ async fn test_surreal_lease_manager_lifecycle() {
         .await
         .unwrap();
     match res_b2 {
-        AcquireLeaseResult::RecoveredExpiredLease(l) => {
+        AcquireLeaseResult::Acquired(l) => {
             assert_eq!(l.owner, node_b);
             assert_eq!(l.generation, 2);
         }
-        _ => panic!(
-            "Expected RecoveredExpiredLease for node-b, got {:?}",
-            res_b2
-        ),
+        _ => panic!("Expected Acquired for node-b, got {:?}", res_b2),
     }
 }
 
@@ -282,7 +279,10 @@ async fn test_surreal_recovery_interrupted_applying() {
         status: MigrationStatus::Applying,
         error: None,
     };
-    store.record_migration(&applying_record).await.unwrap();
+    store
+        .record_migration(&applying_record, None)
+        .await
+        .unwrap();
 
     // 2. Un runner avec politique par défaut (RequireManualIntervention) doit échouer et exiger recovery
     let runner_conservative = MigrationRunner::new(store.clone(), client.clone())
@@ -395,7 +395,7 @@ async fn test_surreal_installation_lease_monotone_generation_anti_aba() {
         .await
         .unwrap();
     let lease_b = match res_b {
-        AcquireInstallationLeaseResult::RecoveredExpiredLease(l) => {
+        AcquireInstallationLeaseResult::Acquired(l) => {
             assert_eq!(
                 l.generation, 2,
                 "Generation must monotonically increase to 2"
@@ -403,7 +403,7 @@ async fn test_surreal_installation_lease_monotone_generation_anti_aba() {
             assert_eq!(l.owner, node_b);
             l
         }
-        _ => panic!("Expected RecoveredExpiredLease for node-b, got {:?}", res_b),
+        _ => panic!("Expected Acquired for node-b, got {:?}", res_b),
     };
 
     // 4. Node B libère -> Record conservé avec generation == 2
@@ -415,7 +415,7 @@ async fn test_surreal_installation_lease_monotone_generation_anti_aba() {
         .await
         .unwrap();
     let lease_c = match res_c {
-        AcquireInstallationLeaseResult::RecoveredExpiredLease(l) => {
+        AcquireInstallationLeaseResult::Acquired(l) => {
             assert_eq!(
                 l.generation, 3,
                 "Generation must monotonically increase to 3"
@@ -423,7 +423,7 @@ async fn test_surreal_installation_lease_monotone_generation_anti_aba() {
             assert_eq!(l.owner, node_c);
             l
         }
-        _ => panic!("Expected RecoveredExpiredLease for node-c, got {:?}", res_c),
+        _ => panic!("Expected Acquired for node-c, got {:?}", res_c),
     };
 
     // 6. Zombie Node A (gen 1) tente renew -> REJETÉ
@@ -524,26 +524,22 @@ async fn test_surreal_installation_lease_released_takeover_contention_42_to_43()
     let manager = Arc::new(SurrealInstallationLeaseManager::new(client.clone()));
 
     let key = InstallationLockKey::new(ModuleId::new("lyxal_booking"), "1.0.0".to_string());
-    let key_record_id = key.canonical_string().replace([':', '.', '-'], "_");
 
     // Pré-initialisation d'un record sentinel libéré à generation = 42
     let setup_sql = r#"
-        CREATE ONLY type::record('runtime_installation_lock', $key_id) SET
-            lock_key = $lock_key,
-            module_id = 'lyxal_booking',
-            version = '1.0.0',
+        CREATE ONLY type::record('runtime_lease', ['installation', $lock_key]) SET
+            kind = 'installation',
+            key = $lock_key,
             owner_node_id = 'previous-node',
             generation = 42,
             is_released = true,
-            expires_at = 0,
             acquired_at = 1000,
             renewed_at = 1000,
-            released_at = 1050,
-            updated_at = time::now();
+            expires_at = 0,
+            released_at = 1050;
     "#;
     client
         .query(setup_sql)
-        .bind(("key_id", key_record_id.clone()))
         .bind(("lock_key", key.canonical_string()))
         .await
         .unwrap()
@@ -576,7 +572,7 @@ async fn test_surreal_installation_lease_released_takeover_contention_42_to_43()
     for h in handles {
         let res = h.await.unwrap().unwrap();
         match res {
-            AcquireInstallationLeaseResult::RecoveredExpiredLease(l) => {
+            AcquireInstallationLeaseResult::Acquired(l) => {
                 winners.push(l);
             }
             AcquireInstallationLeaseResult::HeldByOther { .. } => {
@@ -617,26 +613,22 @@ async fn test_surreal_installation_lease_expired_takeover_contention_42_to_43() 
     let manager = Arc::new(SurrealInstallationLeaseManager::new(client.clone()));
 
     let key = InstallationLockKey::new(ModuleId::new("lyxal_booking"), "1.0.0".to_string());
-    let key_record_id = key.canonical_string().replace([':', '.', '-'], "_");
 
     // Pré-initialisation d'un record expiré à generation = 42
     let setup_sql = r#"
-        CREATE ONLY type::record('runtime_installation_lock', $key_id) SET
-            lock_key = $lock_key,
-            module_id = 'lyxal_booking',
-            version = '1.0.0',
+        CREATE ONLY type::record('runtime_lease', ['installation', $lock_key]) SET
+            kind = 'installation',
+            key = $lock_key,
             owner_node_id = 'previous-node',
             generation = 42,
             is_released = false,
-            expires_at = 1,
             acquired_at = 1,
             renewed_at = 1,
-            released_at = 0,
-            updated_at = time::now();
+            expires_at = 1,
+            released_at = 0;
     "#;
     client
         .query(setup_sql)
-        .bind(("key_id", key_record_id.clone()))
         .bind(("lock_key", key.canonical_string()))
         .await
         .unwrap()

@@ -22,7 +22,6 @@ use lyxal_runtime::RuntimeConfig;
 use semver::{Version, VersionReq};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
-use surrealdb::engine::any::connect;
 
 /// Module mock avec compteurs d'appels atomiques pour vérifier l'idempotence et les hooks.
 struct MockTestModule {
@@ -72,12 +71,7 @@ impl LyxalModule for MockTestModule {
 
 #[tokio::test]
 async fn test_single_module_full_installation_pipeline() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_single_mod_inst")
-        .use_db("test_single_mod_inst")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_single_mod_inst", "test_single_mod_inst").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
@@ -146,12 +140,7 @@ async fn test_single_module_full_installation_pipeline() {
 
 #[tokio::test]
 async fn test_installation_hook_failure_and_recovery() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_hook_failure")
-        .use_db("test_hook_failure")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_hook_failure", "test_hook_failure").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let runtime = LyxalRuntime::new(RuntimeConfig::default())
@@ -232,8 +221,7 @@ async fn test_installation_hook_failure_and_recovery() {
 
 #[tokio::test]
 async fn test_missing_module_implementation_fails() {
-    let client = connect("mem://").await.unwrap();
-    client.use_ns("test").use_db("test").await.unwrap();
+    let client = common::setup_db("test", "test").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let runtime = LyxalRuntime::new(RuntimeConfig::default())
@@ -265,8 +253,7 @@ async fn test_missing_module_implementation_fails() {
 
 #[tokio::test]
 async fn test_incompatible_runtime_version_fails() {
-    let client = connect("mem://").await.unwrap();
-    client.use_ns("test").use_db("test").await.unwrap();
+    let client = common::setup_db("test", "test").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     // Runtime version = 0.1.0
@@ -304,8 +291,7 @@ async fn test_incompatible_runtime_version_fails() {
 
 #[tokio::test]
 async fn test_dependency_version_incompatibility_fails() {
-    let client = connect("mem://").await.unwrap();
-    client.use_ns("test").use_db("test").await.unwrap();
+    let client = common::setup_db("test", "test").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
 

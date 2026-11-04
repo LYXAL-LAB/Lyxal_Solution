@@ -59,13 +59,19 @@ impl MigrationLeaseManager for MemoryMigrationLeaseManager {
                     });
                 }
             } else {
-                // Lease expiré : récupération atomique avec incrément de génération
+                // Bail libéré (échéance 0) ou expiré : nouvelle génération. Seul un bail expiré
+                // (détenteur disparu sans libérer) compte comme une reprise.
+                let was_released = existing.expires_at == 0;
                 existing.generation += 1;
                 existing.owner = node_id.clone();
                 existing.acquired_at = now;
                 existing.renewed_at = now;
                 existing.expires_at = expires_at;
-                return Ok(AcquireLeaseResult::RecoveredExpiredLease(existing.clone()));
+                return Ok(if was_released {
+                    AcquireLeaseResult::Acquired(existing.clone())
+                } else {
+                    AcquireLeaseResult::RecoveredExpiredLease(existing.clone())
+                });
             }
         }
 
@@ -92,7 +98,10 @@ impl MigrationLeaseManager for MemoryMigrationLeaseManager {
         let now = Self::now_secs();
 
         if let Some(existing) = guard.get_mut(&lease.key) {
-            if existing.owner == lease.owner && existing.generation == lease.generation {
+            if existing.owner == lease.owner
+                && existing.generation == lease.generation
+                && existing.expires_at > now
+            {
                 existing.renewed_at = now;
                 existing.expires_at = now + ttl.as_secs().max(1);
                 return Ok(existing.clone());

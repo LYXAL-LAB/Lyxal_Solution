@@ -24,7 +24,6 @@ use semver::Version;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use surrealdb::engine::any::connect;
 
 struct TestMockModule {
     descriptor: ModuleDescriptor,
@@ -138,12 +137,7 @@ fn create_test_package(
 
 #[tokio::test]
 async fn test_controller_converged_loop_zero_mutations() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_ctrl_1")
-        .use_db("test_ctrl_1")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_ctrl_1", "test_ctrl_1").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
@@ -201,12 +195,7 @@ async fn test_controller_converged_loop_zero_mutations() {
 
 #[tokio::test]
 async fn test_unhealthy_running_module_does_not_trigger_reconciliation_mutation() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_ctrl_2")
-        .use_db("test_ctrl_2")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_ctrl_2", "test_ctrl_2").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
@@ -265,12 +254,7 @@ async fn test_unhealthy_running_module_does_not_trigger_reconciliation_mutation(
 
 #[tokio::test]
 async fn test_controller_drift_detection_and_automatic_restoration() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_ctrl_3")
-        .use_db("test_ctrl_3")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_ctrl_3", "test_ctrl_3").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
@@ -316,12 +300,7 @@ async fn test_controller_drift_detection_and_automatic_restoration() {
 
 #[tokio::test]
 async fn test_controller_empty_to_full_reconciliation() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_ctrl_4")
-        .use_db("test_ctrl_4")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_ctrl_4", "test_ctrl_4").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
@@ -365,12 +344,7 @@ async fn test_controller_empty_to_full_reconciliation() {
 
 #[tokio::test]
 async fn test_controller_partial_failure_retry_and_convergence() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_ctrl_5")
-        .use_db("test_ctrl_5")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_ctrl_5", "test_ctrl_5").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
@@ -415,12 +389,7 @@ async fn test_controller_partial_failure_retry_and_convergence() {
 
 #[tokio::test]
 async fn test_run_once_concurrent_calls_do_not_overlap() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_ctrl_6")
-        .use_db("test_ctrl_6")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_ctrl_6", "test_ctrl_6").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());
@@ -447,12 +416,7 @@ async fn test_run_once_concurrent_calls_do_not_overlap() {
 
 #[tokio::test]
 async fn test_controller_graceful_shutdown() {
-    let client = connect("mem://").await.unwrap();
-    client
-        .use_ns("test_ctrl_7")
-        .use_db("test_ctrl_7")
-        .await
-        .unwrap();
+    let client = common::setup_db("test_ctrl_7", "test_ctrl_7").await;
 
     let store = Arc::new(MemoryRuntimeStore::new());
     let lease_mgr = Arc::new(MemoryInstallationLeaseManager::new());

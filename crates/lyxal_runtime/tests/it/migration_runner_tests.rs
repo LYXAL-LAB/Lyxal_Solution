@@ -240,7 +240,7 @@ async fn test_migration_runner_interrupted_applying_fails_hard() {
         status: MigrationStatus::Applying,
         error: None,
     };
-    store.record_migration(&record).await.unwrap();
+    store.record_migration(&record, None).await.unwrap();
 
     let err = runner
         .run_module(

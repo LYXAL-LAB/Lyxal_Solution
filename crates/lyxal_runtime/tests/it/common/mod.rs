@@ -36,6 +36,9 @@ pub async fn setup_db(ns: &str, db: &str) -> surrealdb::Surreal<surrealdb::engin
     lyxal_runtime::schema::install_batch(&client, &batch)
         .await
         .expect("installation de lyxal_core et lyxal_error");
+    lyxal_runtime::schema::install_runtime_schema(&client)
+        .await
+        .expect("installation du schéma du runtime");
     client
 }
 

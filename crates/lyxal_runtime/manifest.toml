@@ -28,7 +28,8 @@ functions = [
     "functions/runtime_migration.surql",
     "functions/runtime_health.surql",
     "functions/runtime_worker.surql",
-    "functions/runtime_event_journal.surql"
+    "functions/runtime_event_journal.surql",
+    "functions/runtime_lease.surql"
 ]
 error_definitions = [
     "error/runtime.surql"

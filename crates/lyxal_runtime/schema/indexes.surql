@@ -10,9 +10,7 @@ DEFINE INDEX OVERWRITE idx_runtime_migration_module_id ON TABLE runtime_migratio
 
 DEFINE INDEX OVERWRITE idx_runtime_migration_status ON TABLE runtime_migration COLUMNS status;
 
-DEFINE INDEX OVERWRITE idx_runtime_migration_lock_key ON TABLE runtime_migration_lock COLUMNS lock_key UNIQUE;
-
-DEFINE INDEX OVERWRITE idx_runtime_installation_lock_key ON TABLE runtime_installation_lock COLUMNS lock_key UNIQUE;
+DEFINE INDEX OVERWRITE idx_runtime_lease_key ON TABLE runtime_lease COLUMNS kind, key UNIQUE;
 
 DEFINE INDEX OVERWRITE idx_runtime_health_unique ON TABLE runtime_health COLUMNS node_id, module_id UNIQUE;
 

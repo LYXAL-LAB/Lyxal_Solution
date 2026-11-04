@@ -114,6 +114,10 @@ pub struct MigrationRecordParams {
     pub applied_at: i64,
     pub duration_ms: i64,
     pub error: Option<String>,
+    /// Clé du bail sous lequel la migration est exécutée (garde de bail), sinon `None`.
+    pub lease_key: Option<String>,
+    pub node_id: Option<String>,
+    pub generation: Option<i64>,
 }
 
 /// `fn::runtime_migration_get`.

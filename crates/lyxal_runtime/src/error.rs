@@ -150,6 +150,14 @@ pub enum RuntimeError {
         message: String,
     },
 
+    /// Écriture refusée par la base : le bail n'est plus détenu par ce nœud dans cette génération.
+    #[error("Lease '{key}' (owner '{owner}', generation {generation}) was fenced: write refused")]
+    LeaseFenced {
+        key: String,
+        owner: String,
+        generation: u64,
+    },
+
     #[error("Migration lease for key '{key}' has expired at {expired_at}")]
     MigrationLeaseExpired { key: String, expired_at: u64 },
 
@@ -342,6 +350,7 @@ impl RuntimeError {
             Self::MigrationLockTimeout { .. } => "RUNTIME_MIGRATION_LOCK_TIMEOUT",
             Self::MigrationLockHeld { .. } => "RUNTIME_MIGRATION_LOCK_HELD",
             Self::MigrationLeaseLost { .. } => "RUNTIME_MIGRATION_LEASE_LOST",
+            Self::LeaseFenced { .. } => "RUNTIME_LEASE_FENCED",
             Self::MigrationLeaseExpired { .. } => "RUNTIME_MIGRATION_LEASE_EXPIRED",
             Self::MigrationLockNotOwner { .. } => "RUNTIME_MIGRATION_LOCK_NOT_OWNER",
             Self::MigrationRecoveryRequired { .. } => "RUNTIME_MIGRATION_RECOVERY_REQUIRED",
@@ -481,6 +490,12 @@ impl RuntimeError {
             }
             Self::MigrationLeaseLost { key, owner, .. } => {
                 format!("Bail de migration '{}' perdu par le nœud '{}'", key, owner)
+            }
+            Self::LeaseFenced { key, owner, .. } => {
+                format!(
+                    "Écriture refusée : le nœud '{}' ne détient plus le bail '{}'",
+                    owner, key
+                )
             }
             Self::MigrationLeaseExpired { key, .. } => {
                 format!("Bail de migration '{}' expiré", key)
@@ -756,6 +771,15 @@ impl RuntimeError {
                 "lock_key": key,
                 "owner_node_id": owner,
                 "expires_at": expires_at,
+            }),
+            Self::LeaseFenced {
+                key,
+                owner,
+                generation,
+            } => json!({
+                "lock_key": key,
+                "owner_node_id": owner,
+                "generation": generation,
             }),
             Self::MigrationLeaseLost {
                 key,
