@@ -49,4 +49,5 @@ toml.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+lyxal_crypto.workspace = true
 tower = { workspace = true, features = ["util"] }

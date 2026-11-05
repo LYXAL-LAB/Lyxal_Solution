@@ -4,6 +4,7 @@
 #[cfg(feature = "module-ingestion")]
 mod ingestion;
 
+use crate::config::AppConfig;
 use crate::error::ServerError;
 use async_trait::async_trait;
 use lyxal_event::EventContext;
@@ -127,14 +128,39 @@ fn implementation(
     }))
 }
 
-/// Enregistre auprès du runtime les workers et sondes de santé des modules hébergés.
+/// Services des modules hébergés à compléter après leur installation.
+#[derive(Default)]
+pub struct HostedServices {
+    #[cfg(feature = "module-ingestion")]
+    publication: Option<ingestion::PublicationSetup>,
+}
+
+/// Enregistre auprès du runtime les workers, consommateurs d'événements et sondes de santé des
+/// modules hébergés (avant leur installation et le démarrage du runtime).
 #[cfg_attr(not(feature = "module-ingestion"), allow(unused_variables))]
-pub fn register_services(
+pub async fn register_services(
     runtime: &LyxalRuntime,
     client: &Surreal<Any>,
     context: &EventContext,
+    config: &AppConfig,
+) -> Result<HostedServices, ServerError> {
+    #[cfg(feature = "module-ingestion")]
+    {
+        let publication = ingestion::register_services(runtime, client, context, config).await?;
+        Ok(HostedServices { publication })
+    }
+    #[cfg(not(feature = "module-ingestion"))]
+    Ok(HostedServices::default())
+}
+
+/// Configuration qui dépend des modules installés (accès, abonnements), avant le démarrage.
+#[cfg_attr(not(feature = "module-ingestion"), allow(unused_variables))]
+pub async fn complete_services(
+    runtime: &LyxalRuntime,
+    client: &Surreal<Any>,
+    services: &HostedServices,
 ) -> Result<(), ServerError> {
     #[cfg(feature = "module-ingestion")]
-    ingestion::register_services(runtime, client, context)?;
+    ingestion::reconcile_publication(runtime, client, services.publication.as_ref()).await?;
     Ok(())
 }

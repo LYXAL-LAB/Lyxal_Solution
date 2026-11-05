@@ -17,12 +17,17 @@ configuration (config/*.toml + variables LYXAL__*)
   → connexion SurrealDB (lyxal_surreal)
   → installation rejouable : lyxal_core, lyxal_error, définitions SERVER_*, schéma du runtime
   → LyxalRuntime (store SurrealDB, baux, moteur d'événements)
-  → services des modules (workers, sondes de santé)
+  → services des modules (workers, consommateurs d'événements, sondes de santé)
   → install_packages : tous les modules hébergés (releases, migrations sous bail)
+  → services dépendant des modules installés (accès JWT, abonnements)
   → start_all : modules, workers, EventWorker et ramasse-miettes
   → HTTP
 arrêt (SIGINT / SIGTERM) → stop_all (workers puis modules, ordre inverse)
 ```
+
+L'`EventWorker` traite toutes les livraisons de la base de l'instance : les événements émis par
+la base (`DEFINE EVENT`) ne portent pas l'identifiant de l'instance hôte, et chaque instance a sa
+propre base.
 
 Un module déjà installé dans la même version n'est pas réinstallé ; une installation
 interrompue est reprise en rejouant ses ressources (toutes rejouables). Un échec d'installation
@@ -63,10 +68,18 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/`.
 | `runtime` | `module_install_timeout_seconds`, `module_start_timeout_seconds`, `module_stop_timeout_seconds` |
 | `observability` | `log_filter`, `json_logs`, `include_target`, `include_thread_ids` |
 | `cors` | `enabled`, `allow_credentials`, `allowed_origins`, `allowed_methods`, `allowed_headers` |
+| `catalogue_sync` | `signing_key` (facultative) |
 
 Les identifiants Root ne figurent dans aucun fichier : `LYXAL__DATABASE__USERNAME` et
 `LYXAL__DATABASE__PASSWORD` (mot de passe en `SecretString`, masqué). Une connexion `ws://` ou
 `wss://` sans identifiants est refusée.
+
+La publication du pipeline d'ingestion vers le catalogue utilise un jeton de service
+`catalogue_sync_agent` signé par l'hôte (HS256). Sa clé, 32 caractères `A-Z a-z 0-9 _ -`, ne
+figure dans aucun fichier : `LYXAL__CATALOGUE_SYNC__SIGNING_KEY`. Au démarrage, l'hôte définit
+avec elle l'accès JWT `lyxal_catalogue_sync` et abonne la publication à
+`ingestion.manifest.approved`. Sans clé, la publication est désactivée et la sonde de santé du
+pipeline est dégradée.
 
 ```bash
 LYXAL__DATABASE__ENDPOINT=ws://127.0.0.1:8000 \

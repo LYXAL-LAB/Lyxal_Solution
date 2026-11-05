@@ -58,10 +58,15 @@ pub use technical_grouping::{
 };
 
 // Re-exports Phase 3 & 4
-pub use events::{BatchFailedEvent, BatchStagedEvent, ManifestPublishedEvent};
+pub use events::{
+    BatchFailedEvent, BatchStagedEvent, ManifestApprovedEvent, ManifestPublishedEvent,
+};
 pub use health::IngestionHealthCheck;
 pub use proof::{CommercialProof, CommercialProofType};
-pub use publisher::{ControlledPublisher, PublicationExecutionReport, SyncAgentSession};
+pub use publisher::{
+    CatalogueSyncKey, CatalogueTokenIssuer, ControlledPublisher, HmacCatalogueTokenIssuer,
+    PublicationConsumer, PublicationExecutionReport,
+};
 pub use worker::{BatchProcessingReport, IngestionWorker};
 
 #[cfg(test)]
