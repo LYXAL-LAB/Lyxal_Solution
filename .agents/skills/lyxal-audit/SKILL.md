@@ -151,13 +151,13 @@ Tant que le CTO n'a pas déclaré la première mise en production, signaler comm
 1. Plus d'un fichier dans `migrations/` (le module ne doit avoir que `0001_initial.surql`, à l'état cible).
 2. Tout élément conservé pour compatibilité : alias, fonction / champ / code d'erreur déprécié, `#[deprecated]`, branche `legacy` / `v1` / `fallback` lisant un ancien format.
 3. Code mort, commenté ou non appelé.
-4. Documents historiques dans le module : rapports de clôture, d'audit ou de recette passés, `CHANGELOG.md` de versions jamais livrées, `implementation_plan.md` déjà exécuté.
+4. Documents historiques dans le module : rapports de clôture, d'audit ou de recette passés, `CHANGELOG.md` de versions jamais livrées, `implementation_plan.md` déjà exécuté. Une `ROADMAP.md` (évolutions à venir) n'en est **pas** un : signaler seulement ses parties périmées (étapes réalisées, références fausses) à mettre à jour, jamais sa suppression.
 5. Version `manifest.toml` / `Cargo.toml` ≥ `1.0.0`.
 
 Une rupture de contrat public n'est **pas** un écart en pré-production si tous les appelants du dépôt ont été mis à jour ; elle est un **P1** si un appelant n'a pas été mis à jour (workspace cassé ou dépendance implicite rompue).
 
 ### Contrôle 8 — Exécution des Contrôles & Preuves de Tests [OBLIGATOIRE]
-0. **Banc de vérification commun** : `scripts/ci/ci_local.sh` rejoue exactement la CI (formatage, `clippy`, `surreal validate` de tout le SurrealQL, suite `lyxal_core`, tous les tests y compris contre un serveur SurrealDB 3.3.4 réel). Le citer comme preuve (commande et code retour) plutôt que des commandes isolées.
+0. **Banc de vérification commun** : `scripts/ci/ci_local.sh` rejoue exactement la CI (formatage, `clippy`, `surreal validate` de tout le SurrealQL, suite `lyxal_core`, tests SurrealQL des modules sous identités simulées (`test_lyxal_modules.py`), tous les tests y compris contre un serveur SurrealDB 3.3.4 réel). Le citer comme preuve (commande et code retour) plutôt que des commandes isolées.
 1. Distinguer avec une rigueur absolue dans le rapport :
    - **Contrôles statiques effectués** (lecture intégrale des fichiers, vérification des graphes, croisement DTO $\leftrightarrow$ SurrealQL) ;
    - **Tests réellement exécutés et réussis** (commande exacte, code retour `0`, nombre de tests passés et moteur utilisé) ;

@@ -52,7 +52,7 @@ Avant d'écrire ou de recommander une construction SurrealQL, appliquer ces règ
   ```
 - **`TYPE NORMAL` vs `TYPE RELATION`** :
   - Toujours utiliser `TYPE NORMAL` avec des champs `TYPE record<cible> REFERENCE` par défaut.
-  - **Interdiction** de convertir une table existante (notamment les 13 tables gelées de `lyxal_catalogue` V1.1 et les 11 tables de `lyxal_pipeline_ingestion` V1.0.0) en `TYPE RELATION`.
+  - **Interdiction** de convertir une table existante (notamment les 13 tables de `lyxal_catalogue` et les 11 tables de `lyxal_pipeline_ingestion`) en `TYPE RELATION`.
   - Toute nouvelle table `TYPE RELATION IN ... OUT ... SCHEMAFULL` requiert une validation formelle préalable du CTO (cf. [`AUDIT_SURREALDB_RELATION_TABLES.md`](../../../docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md)).
 - **Champs optionnels et tableaux typés** :
   - Utiliser `TYPE option<string>`, `TYPE option<decimal>`, `TYPE option<datetime>`, `TYPE option<record<...>>`.
@@ -153,7 +153,7 @@ Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.3.4
 
 ## 4. Protocole de Test Reproductible SurrealDB 3.3.4
 
-Outillage versionné dans `scripts/ci/` : `install_surreal.sh` (binaire 3.3.4 exact), `validate_surql.sh` (`surreal validate` de tout le workspace), `test_lyxal_core.py` (suite `lyxal_core`), `test_all.sh` (tests Rust + serveurs de test), `ci_local.sh` (tout, comme la CI).
+Outillage versionné dans `scripts/ci/` : `install_surreal.sh` (binaire 3.3.4 exact), `validate_surql.sh` (`surreal validate` de tout le workspace), `test_lyxal_core.py` (suite `lyxal_core`), `test_lyxal_modules.py` (tests `tests/*.test.surql` de chaque module, installé depuis son manifeste dans une base neuve, blocs exécutés sous des identités JWT simulées : `-- identité <nom>: {claims}`, `-- en tant que: <nom>`, `-- préparation:` ; format en tête du script, exemple : `crates/lyxal_catalogue/tests/`), `test_all.sh` (tests Rust + serveurs de test), `ci_local.sh` (tout, comme la CI).
 
 Pour valider un schéma, une fonction ou une migration :
 
@@ -166,5 +166,6 @@ Pour valider un schéma, une fonction ou une migration :
    - **Cas nominal** : Vérification que la fonction retourne `{ ok: true, data: ..., error: NONE }`.
    - **Cas d'erreurs métier** : Vérification que chaque validation retourne `{ ok: false, data: NONE, error: { code: "<MODULE>_...", ... } }`.
    - **Cas d'idempotence & unicité** : Double appel ou double exécution des seeds sans erreur ni doublon.
-   - **Cas de sécurité RLS / Guard** : Tentative d'accès inter-tenant (`tenant_id` tiers) ou d'écriture non autorisée rejetée par les permissions ou le verrou `DEFINE EVENT`.
+   - **Cas de sécurité RLS / Guard** : Tentative d'accès inter-tenant (`tenant_id` tiers) ou d'écriture non autorisée rejetée par les permissions ou le verrou `DEFINE EVENT`. Une écriture filtrée par les permissions ne lève pas d'erreur (`CREATE` → `[]`, `UPDATE ONLY` / `DELETE ONLY` → `NONE`) : la fonction doit renvoyer `<MODULE>_WRITE_FORBIDDEN`, et le test le vérifie sous une session d'utilisateur d'enregistrement (claim `id`), seule session où les permissions de table s'appliquent.
+   - **Comptage** : `count(SELECT ...)`, jamais `(SELECT count() ...)[0].count` (vaut `NONE` sans ligne).
 

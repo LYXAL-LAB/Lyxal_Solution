@@ -29,7 +29,7 @@ Avant toute proposition d'architecture, inspecter obligatoirement l'existant dan
    - Lire [`Cargo.toml`](../../../Cargo.toml) à la racine pour identifier les membres actifs (`crates/lyxal_error`, `crates/lyxal_surreal`, `crates/lyxal_runtime`, `crates/lyxal_event`, `crates/lyxal_crypto`, `crates/lyxal_pipeline_ingestion`, `apps/lyxal-server`) et les versions partagées dans `[workspace.dependencies]`.
 2. **Modules de référence validés** :
    - **Module Hybride Rust + SurrealQL** : [`crates/lyxal_pipeline_ingestion`](../../../crates/lyxal_pipeline_ingestion/manifest.toml) (`manifest.toml`, `src/module.rs`, `src/storage/store.rs`, `schema/`, `functions/`, `events/`, `error/`, `seeds/`).
-   - **Module Déclaratif SurrealQL** : [`crates/lyxal_catalogue`](../../../crates/lyxal_catalogue/manifest.toml) (`manifest.toml`, `schema/`, `functions/`, `seeds/`, `ROADMAP.md`).
+   - **Module Déclaratif SurrealQL** : [`crates/lyxal_catalogue`](../../../crates/lyxal_catalogue/manifest.toml) (`manifest.toml`, `schema/`, `functions/`, `error/`, `seeds/`, `tests/*.test.surql`, `README.md`).
    - **Moteur d'Erreurs** : [`crates/lyxal_error`](../../../crates/lyxal_error/manifest.toml).
 3. **Vérification de non-duplication & Graphe DAG** :
    - Vérifier si la responsabilité existe déjà dans `lyxal_core` (`validations/`, `sanitize/`, `security/`, `utils/` ; contrat dans `crates/lyxal_core/Readme.md`), `lyxal_base` (`base_unite`, `base_unite_type`), `lyxal_crypto` ou `lyxal_error`.
@@ -71,7 +71,7 @@ Le plan soumis doit impérativement documenter :
    - Sondes de santé éventuelles (`ModuleHealthCheck`).
 7. **Risques & Stratégie de Tests** :
    - Tests unitaires Rust (`cargo test -p lyxal_<domaine>`) ;
-   - Scénarios de tests SurrealQL sur SurrealDB 3.3.4 (cas nominaux, erreurs attendues, permissions RLS, idempotence des seeds).
+   - Scénarios de tests SurrealQL sur SurrealDB 3.3.4 dans `tests/*.test.surql`, exécutés par `scripts/ci/test_lyxal_modules.py` (cas nominaux, erreurs attendues, permissions RLS sous identités simulées, idempotence des seeds).
 
 **Fin de l'Étape 2** : Présenter le plan et attendre l'instruction explicite de validation avant de passer à l'Étape 3.
 
