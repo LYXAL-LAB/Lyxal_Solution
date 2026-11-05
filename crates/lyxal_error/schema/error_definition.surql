@@ -7,7 +7,9 @@
 DEFINE TABLE OVERWRITE error_definition
     TYPE NORMAL
     SCHEMAFULL
-    PERMISSIONS NONE
+    PERMISSIONS
+        FOR select FULL
+        FOR create, update, delete NONE
     COMMENT "Catalogue central des codes d'erreur de tous les modules Lyxal";
 
 

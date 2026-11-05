@@ -51,6 +51,7 @@ functions = [
     "functions/attribut/catalogue_attribut_create.surql",
     "functions/attribut/catalogue_attribut_valeur_create.surql",
     "functions/attribut/catalogue_attribut_set_static.surql",
+    "functions/variante/catalogue_variante_fingerprint.surql",
     "functions/variante/catalogue_variante_create.surql",
     "functions/variante/catalogue_variante_set_attributs.surql",
     "functions/composition/catalogue_composition_check_cycle.surql",
@@ -65,6 +66,7 @@ functions = [
 
 error_definitions = [
     "error/parametres/error_parametres.surql",
+    "error/permissions/error_permission.surql",
     "error/items/error_item.surql",
     "error/categories/error_categorie.surql",
     "error/attributs/error_attribut.surql",

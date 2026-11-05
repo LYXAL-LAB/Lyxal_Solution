@@ -51,6 +51,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_attribut_set_static($params: object) {
         attribut: $attribut_id,
         attribut_valeur: $valeur_id
     });
+    IF array::len($created) == 0 {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_variante_attribut" });
+    };
 
     RETURN fn::result_ok($created[0]);
 } COMMENT "Affecte un attribut commun/statique à un item parent";

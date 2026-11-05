@@ -62,6 +62,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_variante_create($params: object) {
         created_at: time::now(),
         updated_at: time::now()
     });
+    IF array::len($created) == 0 {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_variante" });
+    };
 
     -- Si la variante est marquée par défaut, désactiver les autres
     IF $is_default == true {

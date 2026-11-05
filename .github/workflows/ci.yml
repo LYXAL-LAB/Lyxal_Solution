@@ -57,6 +57,8 @@ jobs:
         run: python3 -I scripts/ci/test_lyxal_core_selftest.py
       - name: Bibliothèque lyxal_core
         run: python3 -I scripts/ci/test_lyxal_core.py
+      - name: Tests SurrealQL des modules
+        run: python3 -I scripts/ci/test_lyxal_modules.py
 
   test:
     name: Tests

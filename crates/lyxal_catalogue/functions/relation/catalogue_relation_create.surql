@@ -95,6 +95,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_relation_create($params: object) {
         enabled: true,
         created_at: time::now()
     });
+    IF array::len($created) == 0 {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_relation" });
+    };
 
     -- Si bidirectionnelle, création de la réciproque si elle n'existe pas
     IF $rel_type.is_bidirectionnelle == true {

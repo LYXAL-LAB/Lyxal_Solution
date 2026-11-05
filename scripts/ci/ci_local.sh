@@ -10,6 +10,7 @@ step "Clippy";               scripts/ci/clippy.sh
 step "SurrealQL";            scripts/ci/validate_surql.sh
 step "Auto-test du banc lyxal_core"; python3 -I scripts/ci/test_lyxal_core_selftest.py
 step "Bibliothèque lyxal_core"; python3 -I scripts/ci/test_lyxal_core.py
+step "Tests SurrealQL des modules"; python3 -I scripts/ci/test_lyxal_modules.py
 step "Tests";                scripts/ci/test_all.sh
 
 printf '\nToutes les vérifications sont passées.\n'

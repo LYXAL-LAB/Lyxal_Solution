@@ -233,15 +233,21 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_create($params: object) {
         created_at: time::now(),
         updated_at: time::now()
     });
+    IF array::len($created) == 0 {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_item" });
+    };
 
     LET $new_item = $created[0];
 
     -- 9. Affectation facultative aux catégories
     FOR $link IN $categories {
-        CREATE catalogue_item_categorie CONTENT {
+        LET $linked = (CREATE catalogue_item_categorie CONTENT {
             item: $new_item.id,
             categorie: $link.categorie,
             is_primary: $link.is_primary
+        });
+        IF array::len($linked) == 0 {
+            RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_item_categorie" });
         };
     };
 

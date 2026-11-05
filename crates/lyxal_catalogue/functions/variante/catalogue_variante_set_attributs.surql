@@ -69,16 +69,29 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_variante_set_attributs($params: object) 
         };
     };
 
-    -- 4. Suppression des anciennes lignes
-    DELETE catalogue_variante_attribut WHERE variante = $var_id;
+    -- 4. Combinaison déjà portée par une autre variante de l'article
+    LET $fingerprint = fn::catalogue_variante_fingerprint({ pairs: array::map($pairs, |$c| { attribut: $c.attribut, attribut_valeur: $c.valeur }) });
+    IF count(SELECT id FROM catalogue_variante WHERE item = $item_id AND id != $var_id AND empreinte_attributs = $fingerprint) > 0 {
+        RETURN fn::error_result("CATALOGUE_VARIANTE_DUPLICATE_COMBINAISON", $language, { variante_id: <string> $var_id });
+    };
 
-    -- 5. Création des nouvelles lignes (l'événement moteur evt_cva_recalc_fingerprint recalculera et synchronisera l'empreinte)
+    -- 5. Suppression des anciennes lignes
+    LET $existing = count(SELECT id FROM catalogue_variante_attribut WHERE variante = $var_id);
+    LET $removed = (DELETE catalogue_variante_attribut WHERE variante = $var_id RETURN BEFORE);
+    IF array::len($removed) != $existing {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_variante_attribut" });
+    };
+
+    -- 6. Création des nouvelles lignes (l'événement moteur evt_cva_recalc_fingerprint recalculera et synchronisera l'empreinte)
     FOR $pair IN $pairs {
-        CREATE catalogue_variante_attribut CONTENT {
+        LET $line = (CREATE catalogue_variante_attribut CONTENT {
             item: $item_id,
             variante: $var_id,
             attribut: $pair.attribut,
             attribut_valeur: $pair.valeur
+        });
+        IF array::len($line) == 0 {
+            RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_variante_attribut" });
         };
     };
 

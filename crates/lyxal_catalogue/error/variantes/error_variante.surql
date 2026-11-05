@@ -137,3 +137,30 @@ IF !record::exists(error_definition:CATALOGUE_VARIANTE_FINGERPRINT_FORBIDDEN) TH
         }
     }
 ) END;
+
+IF !record::exists(error_definition:CATALOGUE_VARIANTE_DUPLICATE_COMBINAISON) THEN (
+    CREATE error_definition:CATALOGUE_VARIANTE_DUPLICATE_COMBINAISON CONTENT {
+        code: "CATALOGUE_VARIANTE_DUPLICATE_COMBINAISON",
+        module: "catalogue",
+        domain: "variante",
+        category: "conflict",
+        severity: "error",
+        message: "Une variante avec cette exacte combinaison d'attributs existe déjà",
+        default_language: "fr",
+        http_status: 409,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Combinaison d'attributs en doublon",
+                description: "L'empreinte SHA-256 de cette combinaison est déjà assignée à une autre variante de cet item.",
+                resolution: "Choisissez une combinaison distinctive d'attributs."
+            },
+            en: {
+                label: "Duplicate variant combination",
+                description: "The SHA-256 fingerprint for this combination is already in use by another variant.",
+                resolution: "Select a distinct combination of attributes."
+            }
+        }
+    }
+) END;

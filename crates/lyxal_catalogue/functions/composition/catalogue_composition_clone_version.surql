@@ -41,6 +41,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_composition_clone_version($params: objec
         created_at: time::now(),
         updated_at: time::now()
     });
+    IF array::len($created_comp) == 0 {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_composition" });
+    };
 
     LET $new_comp_id = $created_comp[0].id;
 

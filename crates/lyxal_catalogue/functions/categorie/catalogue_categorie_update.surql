@@ -68,6 +68,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_categorie_update($params: object) {
         enabled: $enabled ?? $cat.enabled,
         updated_at: time::now()
     });
+    IF $updated == NONE {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_categorie" });
+    };
 
     RETURN fn::result_ok($updated);
 } COMMENT "Met à jour une catégorie avec détection stricte des boucles cycliques";

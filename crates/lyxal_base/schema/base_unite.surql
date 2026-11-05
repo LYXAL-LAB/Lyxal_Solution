@@ -7,7 +7,9 @@
 DEFINE TABLE OVERWRITE base_unite
     TYPE NORMAL
     SCHEMAFULL
-    PERMISSIONS NONE
+    PERMISSIONS
+        FOR select FULL
+        FOR create, update, delete NONE
     COMMENT "Référentiel universel des unités de mesure";
 
 -- ----------------------------------------------------------------------------

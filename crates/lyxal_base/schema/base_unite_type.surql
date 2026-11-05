@@ -7,7 +7,9 @@
 DEFINE TABLE OVERWRITE base_unite_type
     TYPE NORMAL
     SCHEMAFULL
-    PERMISSIONS NONE
+    PERMISSIONS
+        FOR select FULL
+        FOR create, update, delete NONE
     COMMENT "Types et catégories d'unités de mesure";
 
 -- ----------------------------------------------------------------------------

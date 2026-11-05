@@ -67,6 +67,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_attribut_valeur_create($params: object) 
         created_at: time::now(),
         updated_at: time::now()
     });
+    IF array::len($created) == 0 {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_attribut_valeur" });
+    };
 
     RETURN fn::result_ok($created[0]);
 } COMMENT "Ajoute une valeur autorisée typée pour un attribut donné";
