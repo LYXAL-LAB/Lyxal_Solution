@@ -8,7 +8,6 @@ Ce dossier regroupe les feuilles de route stratégiques et d'intégration transv
    - [`ROADMAP_LYXAL_SPACE.md`](./ROADMAP_LYXAL_SPACE.md) — Intégration de `lyxal_catalogue` et `lyxal_pipeline_ingestion` dans la console unifiée LYXAL SPACE (Étapes A, B, C, D).
 
 2. **Feuilles de Route des Modules Métiers** :
-   - [`crates/lyxal_catalogue/ROADMAP.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/ROADMAP.md) — Évolutions V1.1 à V2.0 du Master Catalogue universel.
    - [`crates/lyxal_pipeline_ingestion/ROADMAP.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/ROADMAP.md) — Évolutions V1.0.0 à V2.0 du Pipeline d'ingestion.
 
 3. **Audits d'Architecture & Décisions Structurantes** :

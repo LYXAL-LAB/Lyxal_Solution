@@ -277,6 +277,14 @@ ou :
 Vec::new()
 ```
 
+### Écritures SurrealQL filtrées par les permissions
+
+Une écriture refusée par les permissions de table ne lève pas d'erreur : `CREATE` renvoie `[]`,
+`UPDATE ONLY` et `DELETE ONLY` renvoient `NONE`. Toute fonction publique qui écrit vérifie donc le
+résultat de son écriture principale (`DELETE ... RETURN BEFORE` pour une suppression) et renvoie
+`fn::error_result("<MODULE>_WRITE_FORBIDDEN", ...)` au lieu d'annoncer un succès. Les tests du
+module l'exercent sous une identité non autorisée.
+
 ### Propagation par `Result`
 
 Les extracteurs d'infrastructure doivent systématiquement retourner :
@@ -508,7 +516,8 @@ Avant toute implémentation, Antigravity doit vérifier les points suivants.
 * [ ] Retour `result_ok` / `error_result`.
 * [ ] `COMMENT` présent.
 * [ ] Fonction inférieure à environ 300 lignes.
-* [ ] Tests prévus.
+* [ ] Écriture principale vérifiée : une écriture filtrée par les permissions renvoie `<MODULE>_WRITE_FORBIDDEN` (§11.4).
+* [ ] Tests `tests/*.test.surql` exécutés par `scripts/ci/test_lyxal_modules.py` (cas nominaux, erreurs, identités et permissions) ; chaque fonction publique appelée.
 
 ## Rust
 

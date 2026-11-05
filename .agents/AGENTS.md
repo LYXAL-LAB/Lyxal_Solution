@@ -160,7 +160,8 @@ module_name/
 │   ├── auth/
 │   ├── bookings/
 │   └── ...
-├── seeds/                   <-- Données de démonstration ou initiales
+├── seeds/                   <-- Données initiales de référence (rejouables) ; démonstration : tests/fixtures/
+├── tests/                   <-- Tests SurrealQL `*.test.surql`, exécutés en CI par scripts/ci/test_lyxal_modules.py
 ├── src/                     <-- Code source Rust (Types, Wrappers, LyxalModule, Workers)
 ├── README.md                <-- Documentation du module
 ├── CHANGELOG.md             <-- Historique des versions (créé à la première version livrée, cf. §0)
@@ -812,7 +813,7 @@ lyxal_scheduler
         ▼
 Modules Métiers
 lyxal_booking
-lyxal_catalogue (Master Catalogue & Référentiel Commercial V1.1)
+lyxal_catalogue (référentiel des articles, SurrealQL seul)
 lyxal_pipeline_ingestion (Ingestion, Normalisation, Qualification Catalogues V1.0.0 — Clôturé Staging)
 lyxal_crm
 lyxal_documents

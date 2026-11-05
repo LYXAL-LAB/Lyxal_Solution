@@ -42,6 +42,7 @@ déclaré manque.
 | `lyxal_error` | toujours | `ManifestModule` |
 | `lyxal_event` | toujours | `ManifestModule` ; moteur démarré par le runtime |
 | `lyxal_base` | toujours | `ManifestModule` |
+| `lyxal_catalogue` | toujours | `ManifestModule` (SurrealQL seul) |
 | `lyxal_pipeline_ingestion` | fonctionnalité `module-ingestion` (par défaut) | `PipelineIngestionModule`, `IngestionWorker`, `IngestionHealthCheck` |
 
 Ajouter un module : l'inscrire dans `MODULES` de `build.rs` (ordre des dépendances), et, s'il a
