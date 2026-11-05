@@ -24,6 +24,11 @@ version = ">=0.1.0"
 id = "lyxal_event"
 version = ">=0.1.0"
 
+# Publication des manifestes approuvés : fonctions publiques d'articles du catalogue
+[[dependencies]]
+id = "lyxal_catalogue"
+version = ">=0.1.0"
+
 [resources]
 schemas = [
     "schema/00_ingestion_session.surql",

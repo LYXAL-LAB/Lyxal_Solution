@@ -22,8 +22,11 @@ pub async fn start(
         .with_start_timeout(Duration::from_secs(timeouts.module_start_timeout_seconds))
         .with_stop_timeout(Duration::from_secs(timeouts.module_stop_timeout_seconds));
     let event_config = EventEngineConfig {
+        // Le worker traite toutes les livraisons de la base de l'instance : les événements émis
+        // par la base (`DEFINE EVENT`) ne connaissent pas l'instance hôte (contexte `default`),
+        // et chaque instance a sa propre base (`database.namespace` / `database.database`).
         worker_config: EventWorkerConfig {
-            instance_id: Some(config.application.instance_id.clone()),
+            instance_id: None,
             ..EventWorkerConfig::default()
         },
         // `lyxal_event` est installé comme les autres modules, depuis son manifeste.
@@ -43,7 +46,7 @@ pub async fn start(
         config.database.namespace.clone(),
         config.database.database.clone(),
     );
-    modules::register_services(&runtime, client, &event_context)?;
+    let services = modules::register_services(&runtime, client, &event_context, config).await?;
 
     let report = runtime.install_packages(modules::packages()?).await?;
     if let Some(failure) = report.failed.first() {
@@ -67,6 +70,7 @@ pub async fn start(
         "modules installés"
     );
 
+    modules::complete_services(&runtime, client, &services).await?;
     runtime.start_all().await?;
     Ok(Arc::new(runtime))
 }

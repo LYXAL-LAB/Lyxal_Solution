@@ -41,6 +41,24 @@ impl Event for BatchFailedEvent {
     const EVENT_TYPE: &'static str = "ingestion.batch.failed";
 }
 
+/// Événement émis par la base (`DEFINE EVENT`, `events/01_events.surql`) quand un manifeste
+/// passe à l'état `APPROVED` ; il déclenche la publication vers le catalogue.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ManifestApprovedEvent {
+    /// Référence du manifeste approuvé.
+    pub manifest_ref: String,
+    /// Lot d'origine (`ingestion_batch:<clé>`).
+    pub batch_id: String,
+    /// Identité de l'approbateur.
+    pub approved_by: Option<String>,
+    /// Sceau BLAKE3 approuvé.
+    pub seal_hash: String,
+}
+
+impl Event for ManifestApprovedEvent {
+    const EVENT_TYPE: &'static str = "ingestion.manifest.approved";
+}
+
 /// Événement émis lorsqu'un manifeste scellé et approuvé est publié dans le Catalogue.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ManifestPublishedEvent {

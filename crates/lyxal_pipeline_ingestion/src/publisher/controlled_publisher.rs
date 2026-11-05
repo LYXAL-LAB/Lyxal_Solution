@@ -1,359 +1,271 @@
-//! Implémentation du moteur de publication strictement contrôlée vers LYXAL Catalogue V1.1.
+//! Publication contrôlée d'un manifeste approuvé vers le catalogue maître.
 //!
-//! Exigences de sécurité et d'intégrité :
-//! - Manifeste formellement scellé par BLAKE3 et approuvé par un `steward_admin`.
-//! - Authentification et autorisation de la session : rôle `catalogue_sync_agent` et scope `catalogue:sync:write`.
-//! - Zéro publication directe : seuls les articles qualifiés `VERIFIED` avec preuve commerciale sont éligibles.
-//! - Les articles `TO_CONFIRM` et `REJECTED` sont strictement exclus du Master Catalogue.
-//! - Reprise idempotente par journalisation détaillée article par article dans `execution_items`.
-//! - Aucun accès direct en écriture SQL aux tables du Master : appel exclusif des fonctions publiques autorisées.
+//! * Session dédiée : le client de l'hôte est cloné (nouvelle session SurrealDB sur la même
+//!   connexion) puis authentifié par un jeton de service `catalogue_sync_agent` court ; la
+//!   session système de l'hôte n'est jamais modifiée.
+//! * Seuls les articles `VERIFIED`, dont la preuve commerciale est éligible à la production,
+//!   sont publiés ; `TO_CONFIRM` et `REJECTED` sont exclus.
+//! * Le sceau BLAKE3 du manifeste est recalculé sur les articles du lot avant toute écriture.
+//! * Chaque article est journalisé dans le manifeste (`fn::ingestion_manifest_execution_item_update`) ;
+//!   une reprise saute les articles déjà publiés.
+//! * Issue : `COMMITTED` si tous les articles éligibles sont publiés, sinon `FAILED` (le Data
+//!   Steward corrige puis réapprouve). Une erreur de transport remonte telle quelle : la
+//!   publication sera rejouée.
 
 use lyxal_event::EventPublisher;
-use lyxal_surreal::SurrealValue;
-use serde::{Deserialize, Serialize};
+use lyxal_surreal::{LyxalSurrealError, SurrealValue};
 use std::collections::HashSet;
+use std::sync::Arc;
+use surrealdb::engine::any::Any;
+use surrealdb::Surreal;
 
+use super::catalogue::{catalogue_master_id, CatalogueSyncClient};
+use super::token::{CatalogueTokenIssuer, CATALOGUE_SYNC_SUBJECT};
 use crate::error::{IngestionError, IngestionResult};
 use crate::events::ManifestPublishedEvent;
 use crate::fingerprint::FingerprintEngine;
+use crate::models::StagedItem;
 use crate::storage::IngestionStore;
 use crate::types::{ItemQualification, ManifestStatus, PublicationAction};
 
-/// Session d'un agent de synchronisation de catalogue.
-#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
-pub struct SyncAgentSession {
-    /// Identifiant de l'agent ou de la machine.
-    pub agent_id: String,
-    /// Rôle système attribué (ex: "catalogue_sync_agent").
-    pub role: String,
-    /// Scopes de privilèges accordés dans le token JWT.
-    pub scopes: Vec<String>,
-}
-
-impl SyncAgentSession {
-    /// Crée une nouvelle session d'agent.
-    pub fn new(agent_id: impl Into<String>, role: impl Into<String>, scopes: Vec<String>) -> Self {
-        Self {
-            agent_id: agent_id.into(),
-            role: role.into(),
-            scopes,
-        }
-    }
-
-    /// Vérifie que la session possède l'identité et les privilèges stricts requis pour la publication.
-    pub fn is_authorized(&self) -> bool {
-        self.role == "catalogue_sync_agent"
-            && self
-                .scopes
-                .iter()
-                .any(|s| s == "catalogue:sync:write" || s == "*")
-    }
-}
-
 /// Rapport d'exécution de la publication d'un manifeste.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, SurrealValue)]
+#[derive(Debug, Clone, PartialEq, Eq, SurrealValue)]
 pub struct PublicationExecutionReport {
     /// Référence du manifeste traité.
     pub manifest_ref: String,
-    /// Nombre total d'articles présents en staging pour le lot.
+    /// Nombre total d'articles du lot en staging.
     pub total_staged: usize,
-    /// Nombre d'articles éligibles car qualifiés `VERIFIED`.
+    /// Articles qualifiés `VERIFIED`.
     pub eligible_verified: usize,
-    /// Nombre d'articles ignorés car en attente de preuve (`TO_CONFIRM`).
+    /// Articles exclus car en attente de preuve (`TO_CONFIRM`).
     pub skipped_to_confirm: usize,
-    /// Nombre d'articles rejetés car non conformes (`REJECTED`).
+    /// Articles exclus car rejetés (`REJECTED`).
     pub skipped_rejected: usize,
-    /// Nombre d'articles déjà publiés lors d'un run précédent (idempotence).
+    /// Articles déjà publiés lors d'une exécution précédente (ou sans changement).
     pub already_published: usize,
-    /// Nombre d'articles nouvellement insérés ou mis à jour dans le Master Catalogue.
+    /// Articles créés ou mis à jour dans le catalogue par cette exécution.
     pub newly_published: usize,
-    /// Nombre d'articles ayant échoué à l'insertion/mise à jour.
+    /// Articles refusés (preuve non éligible, refus du catalogue).
     pub failed: usize,
-    /// Indique si la publication intégrale des articles éligibles est achevée.
-    pub is_completed: bool,
+    /// Statut final du manifeste.
+    pub final_status: ManifestStatus,
 }
 
-/// Moteur de publication contrôlée pour Lyxal OS.
+impl PublicationExecutionReport {
+    /// Indique si tous les articles éligibles sont publiés.
+    pub fn is_completed(&self) -> bool {
+        self.final_status == ManifestStatus::Committed
+    }
+}
+
+/// Moteur de publication des manifestes approuvés.
 pub struct ControlledPublisher {
-    store: IngestionStore,
+    client: Surreal<Any>,
+    issuer: Arc<dyn CatalogueTokenIssuer>,
     event_publisher: Option<EventPublisher>,
-    isolated_test_mode: bool,
 }
 
 impl ControlledPublisher {
-    /// Crée un nouveau moteur de publication raccordé au store.
-    pub fn new(store: IngestionStore) -> Self {
+    /// `client` : client de l'hôte (session système), cloné pour chaque publication ;
+    /// `issuer` : émetteur des jetons de service `catalogue_sync_agent`.
+    pub fn new(client: Surreal<Any>, issuer: Arc<dyn CatalogueTokenIssuer>) -> Self {
         Self {
-            store,
+            client,
+            issuer,
             event_publisher: None,
-            isolated_test_mode: true, // Par défaut et impérativement en mode isolé pour Phase 4
         }
     }
 
-    /// Associe un bus d'événements pour tracer la publication du manifeste.
+    /// Publie `ingestion.manifest.published` après un manifeste exécuté.
     pub fn with_event_publisher(mut self, publisher: EventPublisher) -> Self {
         self.event_publisher = Some(publisher);
         self
     }
 
-    /// Active ou désactive le mode de production simulée pour éprouver les verrous de sécurité sans Master réel.
-    pub fn with_simulated_production_mode(mut self, simulated_prod: bool) -> Self {
-        self.isolated_test_mode = !simulated_prod;
-        self
-    }
-
-    /// Exécute la publication strictement contrôlée d'un manifeste vers le Catalogue V1.1.
+    /// Publie un manifeste approuvé (ou repris en cours d'exécution) vers le catalogue.
     pub async fn publish_manifest(
         &self,
         manifest_ref: &str,
-        session: &SyncAgentSession,
     ) -> IngestionResult<PublicationExecutionReport> {
-        // 1. Contrôle d'autorisation et d'identité
-        if !session.is_authorized() {
-            return Err(IngestionError::Unauthorized(format!(
-                "Session non autorisée : rôle '{}' ou scope 'catalogue:sync:write' absent",
-                session.role
-            )));
-        }
+        // 1. Session dédiée de l'agent de synchronisation
+        let token = self.issuer.issue()?;
+        let session = self.client.clone();
+        session
+            .authenticate(token.expose_secret().to_string())
+            .await
+            .map_err(|e| IngestionError::Surreal(LyxalSurrealError::Database(e)))?;
+        let store = IngestionStore::new(session.clone());
+        let catalogue = CatalogueSyncClient::new(session);
 
-        // 2. Récupération du manifeste
-        let manifest = self
-            .store
-            .get_manifest(manifest_ref)
-            .await?
-            .ok_or_else(|| {
-                IngestionError::Storage(format!("Manifeste '{manifest_ref}' introuvable"))
-            })?;
-
-        // 3. Contrôle de scellement BLAKE3
-        if !manifest.is_sealed || manifest.seal_hash.is_empty() {
-            return Err(IngestionError::IllegalTransition(
-                "Le manifeste doit être préalablement scellé par BLAKE3".to_string(),
+        // 2. Manifeste : approuvé, ou en cours d'exécution (reprise) ; un manifeste exécuté
+        // n'est pas republié
+        let manifest = store.get_manifest(manifest_ref).await?.ok_or_else(|| {
+            IngestionError::Storage(format!("Manifeste '{manifest_ref}' introuvable"))
+        })?;
+        let staged_items = store.get_staged_items_by_batch(&manifest.batch).await?;
+        if manifest.statut == ManifestStatus::Committed {
+            return Ok(report(
+                manifest_ref,
+                &staged_items,
+                manifest.items_committed,
+                0,
+                0,
+                ManifestStatus::Committed,
             ));
         }
-
-        // 4. Contrôle d'approbation préalable par le steward_admin
-        if manifest.statut != ManifestStatus::Approved {
+        if !matches!(
+            manifest.statut,
+            ManifestStatus::Approved | ManifestStatus::Executing
+        ) {
             return Err(IngestionError::IllegalTransition(format!(
-                "Publication interdite : le manifeste est en statut '{}' (statut 'APPROVED' requis)",
+                "Publication du manifeste {manifest_ref} impossible à l'état {}",
                 manifest.statut.as_str()
             )));
         }
 
-        // 5. Récupération des articles en staging associés au lot
-        let staged_items = self
-            .store
-            .get_staged_items_by_batch(&manifest.batch)
-            .await?;
-
-        // 6. Vérification cryptographique de l'intégrité du scellement
+        // 3. Intégrité : le sceau recalculé sur les articles du lot doit être celui approuvé
         let fingerprints: Vec<String> = staged_items
             .iter()
             .map(|it| it.canonical_fingerprint.clone())
             .collect();
-        let expected_seal = FingerprintEngine::compute_manifest_seal(&fingerprints);
-        if expected_seal != manifest.seal_hash {
-            return Err(IngestionError::FingerprintTampered(
-                "L'empreinte de scellement BLAKE3 du manifeste ne correspond pas aux articles du lot".to_string(),
-            ));
+        if FingerprintEngine::compute_manifest_seal(&fingerprints) != manifest.seal_hash {
+            return Err(IngestionError::FingerprintTampered(format!(
+                "Le sceau du manifeste {manifest_ref} ne correspond plus aux articles du lot {}",
+                manifest.batch
+            )));
         }
 
-        // 7. Reprise après exécution partielle : indexation des articles déjà engagés avec succès
-        let mut already_committed_refs = HashSet::new();
-        for item in &manifest.execution_items {
-            if let Some(success) = item.get("success").and_then(|v| v.as_bool()) {
-                if success {
-                    if let Some(r) = item.get("item_ref").and_then(|v| v.as_str()) {
-                        already_committed_refs.insert(r.to_string());
-                    }
-                }
-            }
-        }
+        // 4. Reprise : articles déjà publiés avec succès
+        let already_committed: HashSet<String> = manifest
+            .execution_items
+            .iter()
+            .filter(|e| e.get("success").and_then(|v| v.as_bool()) == Some(true))
+            .filter_map(|e| {
+                e.get("item_ref")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string)
+            })
+            .collect();
 
-        let total_staged = staged_items.len();
-        let mut eligible_verified = 0;
-        let mut skipped_to_confirm = 0;
-        let mut skipped_rejected = 0;
+        // 5. Publication article par article
         let mut already_published = 0;
         let mut newly_published = 0;
         let mut failed = 0;
-
-        // 8. Boucle de publication contrôlée article par article
-        for item in &staged_items {
-            match item.qualification {
-                ItemQualification::ToConfirm => {
-                    // RÈGLE FORMELLE CTO : ZÉRO publication d'article non prouvé commercialement
-                    skipped_to_confirm += 1;
-                    continue;
-                }
-                ItemQualification::Rejected => {
-                    // RÈGLE FORMELLE CTO : ZÉRO publication d'article rejeté
-                    skipped_rejected += 1;
-                    continue;
-                }
-                ItemQualification::Verified => {
-                    // VERROU DE SÉCURITÉ INVIOLABLE CTO :
-                    // Interdire formellement à toute preuve pilote ou synthétique d'autoriser une publication réelle
-                    if !self.isolated_test_mode {
-                        let is_eligible = item
-                            .commercial_proof
-                            .as_ref()
-                            .map_or(false, |proof| proof.is_eligible_for_production());
-
-                        if !is_eligible {
-                            let proof_ref = item
-                                .commercial_proof
-                                .as_ref()
-                                .map(|p| p.proof_reference.as_str())
-                                .unwrap_or("AUCUNE_PREUVE");
-
-                            return Err(IngestionError::Unauthorized(format!(
-                                "VERROU SÉCURITÉ PRODUCTION ACTIVÉ : Publication refusée pour l'article '{}' (preuve '{}'). Les preuves pilotes et synthétiques sont strictement interdites pour le Master réel.",
-                                item.reference_fabricant, proof_ref
-                            )));
-                        }
-                    }
-                    eligible_verified += 1;
-                }
-            }
-
-            // Vérification d'idempotence : l'article a-t-il déjà été publié ?
-            if already_committed_refs.contains(&item.reference_fabricant) {
+        for item in staged_items
+            .iter()
+            .filter(|i| i.qualification == ItemQualification::Verified)
+        {
+            let item_ref = catalogue_master_id(&item.fabricant, &item.reference_fabricant);
+            if already_committed.contains(&item_ref)
+                || item.publication_action == PublicationAction::Unchanged
+            {
                 already_published += 1;
                 continue;
             }
-
-            // Exécution de l'opération via l'API publique de Catalogue V1.1
-            let action_str = match item.publication_action {
-                PublicationAction::Insert => "fn::catalogue_item_create",
-                PublicationAction::Update => "fn::catalogue_item_update",
-                PublicationAction::Unchanged | PublicationAction::Deprecate => "none",
+            let refusal = match refusal_before_call(item) {
+                Some(reason) => Some(reason),
+                None => match catalogue.publish(item, item.publication_action).await {
+                    Ok(()) => None,
+                    Err(LyxalSurrealError::Call(lyxal_error::LyxalCallError::Business(err))) => {
+                        Some(format!("{} : {}", err.code, err.message))
+                    }
+                    Err(e) => return Err(IngestionError::Surreal(e)),
+                },
             };
-
-            // Payload public standardisé pour les fonctions de catalogue
-            let call_payload = serde_json::json!({
-                "reference_fabricant": item.reference_fabricant,
-                "fabricant": item.fabricant,
-                "marque": item.marque,
-                "libelle": item.libelle_commercial,
-                "gtin": item.code_barre_gtin,
-                "type_item": item.type_item,
-                "unite": item.unite_reference,
-                "conditionnement": item.conditionnement,
-                "tenant_id": serde_json::Value::Null
-            });
-
-            // Exécution sécurisée en environnement isolé
-            let exec_result = self.execute_catalogue_api(action_str, &call_payload).await;
-
-            match exec_result {
-                Ok(_) => {
-                    newly_published += 1;
-                    self.store
-                        .update_manifest_execution_item(
-                            manifest_ref,
-                            &item.reference_fabricant,
-                            item.publication_action,
-                            true,
-                            None,
-                        )
-                        .await?;
-                }
-                Err(err) => {
-                    failed += 1;
-                    self.store
-                        .update_manifest_execution_item(
-                            manifest_ref,
-                            &item.reference_fabricant,
-                            item.publication_action,
-                            false,
-                            Some(&err.to_string()),
-                        )
-                        .await?;
-                }
+            store
+                .update_manifest_execution_item(
+                    manifest_ref,
+                    &item_ref,
+                    item.publication_action,
+                    refusal.is_none(),
+                    refusal.as_deref(),
+                )
+                .await?;
+            match refusal {
+                None => newly_published += 1,
+                Some(_) => failed += 1,
             }
         }
 
-        let is_completed =
-            failed == 0 && (already_published + newly_published) == eligible_verified;
-
-        // 9. Si tous les articles vérifiés ont été publiés sans erreur, sceller la transition finale à COMMITTED via fn::ingestion_manifest_record_exec
-        if is_completed {
-            self.store
-                .record_manifest_exec(
-                    manifest_ref,
-                    ManifestStatus::Committed,
-                    newly_published + already_published,
-                    failed,
-                )
-                .await?;
-
-            // 10. Émission de l'événement de domaine
+        // 6. Issue du manifeste
+        let final_status = if failed == 0 {
+            ManifestStatus::Committed
+        } else {
+            ManifestStatus::Failed
+        };
+        store
+            .record_manifest_exec(
+                manifest_ref,
+                final_status,
+                already_published + newly_published,
+                failed,
+            )
+            .await?;
+        if final_status == ManifestStatus::Committed {
             if let Some(ref publ) = self.event_publisher {
                 let event = ManifestPublishedEvent {
                     manifest_ref: manifest_ref.to_string(),
                     batch_id: manifest.batch.clone(),
-                    items_committed: newly_published + already_published,
+                    items_committed: already_published + newly_published,
                     items_failed: failed,
-                    publisher_agent: session.agent_id.clone(),
+                    publisher_agent: CATALOGUE_SYNC_SUBJECT.to_string(),
                 };
                 publ.publish(&event).await.map_err(|e| {
                     IngestionError::Storage(format!(
-                        "Événement de publication du manifeste {manifest_ref} non publié : {e}"
+                        "Événement ingestion.manifest.published non publié pour {manifest_ref} : {e}"
                     ))
                 })?;
             }
         }
 
-        Ok(PublicationExecutionReport {
-            manifest_ref: manifest_ref.to_string(),
-            total_staged,
-            eligible_verified,
-            skipped_to_confirm,
-            skipped_rejected,
+        Ok(report(
+            manifest_ref,
+            &staged_items,
             already_published,
             newly_published,
             failed,
-            is_completed,
-        })
+            final_status,
+        ))
     }
+}
 
-    /// Exécute l'appel de fonction publique du Catalogue dans l'environnement SurrealDB isolé.
-    async fn execute_catalogue_api(
-        &self,
-        function_name: &str,
-        payload: &serde_json::Value,
-    ) -> IngestionResult<()> {
-        if !self.isolated_test_mode {
-            return Err(IngestionError::Unauthorized(
-                "Interdiction CTO formelle de publier dans le Master de production !".to_string(),
-            ));
-        }
+/// Motif de refus d'un article avant tout appel au catalogue.
+fn refusal_before_call(item: &StagedItem) -> Option<String> {
+    let eligible = item
+        .commercial_proof
+        .as_ref()
+        .is_some_and(|proof| proof.is_eligible_for_production());
+    if !eligible {
+        return Some(
+            "INGESTION_PROOF_INVALID : preuve commerciale absente, pilote ou synthétique, non éligible à la publication".to_string(),
+        );
+    }
+    if item.publication_action == PublicationAction::Deprecate {
+        return Some(
+            "INGESTION_MANIFEST_ILLEGAL_STATE_TRANSITION : le retrait d'un article du catalogue n'est pas pris en charge par la publication".to_string(),
+        );
+    }
+    None
+}
 
-        // Simulation/exécution de l'API publique en environnement isolé
-        // On effectue un appel typé SurrealDB sans toucher aux tables de prod
-        let query =
-            format!("RETURN {{ function_called: '{function_name}', status: 'OK', payload: $p }};");
-        let mut res = self
-            .store
-            .client()
-            .query(query)
-            .bind(("p", payload.clone()))
-            .await
-            .map_err(|e| {
-                IngestionError::Storage(format!("Échec appel API catalogue {function_name} : {e}"))
-            })?;
-
-        let val: Option<serde_json::Value> = res.take(0).map_err(|e| {
-            IngestionError::Storage(format!("Erreur retour fonction catalogue : {e}"))
-        })?;
-
-        if val.is_none() {
-            return Err(IngestionError::Storage(format!(
-                "La fonction {function_name} a renvoyé un résultat vide"
-            )));
-        }
-
-        Ok(())
+fn report(
+    manifest_ref: &str,
+    staged_items: &[StagedItem],
+    already_published: usize,
+    newly_published: usize,
+    failed: usize,
+    final_status: ManifestStatus,
+) -> PublicationExecutionReport {
+    let count = |q: ItemQualification| staged_items.iter().filter(|i| i.qualification == q).count();
+    PublicationExecutionReport {
+        manifest_ref: manifest_ref.to_string(),
+        total_staged: staged_items.len(),
+        eligible_verified: count(ItemQualification::Verified),
+        skipped_to_confirm: count(ItemQualification::ToConfirm),
+        skipped_rejected: count(ItemQualification::Rejected),
+        already_published,
+        newly_published,
+        failed,
+        final_status,
     }
 }

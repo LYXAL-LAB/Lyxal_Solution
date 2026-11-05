@@ -13,6 +13,7 @@ use crate::storage::store::IngestionStore;
 pub struct IngestionHealthCheck {
     module_id: ModuleId,
     store: Option<IngestionStore>,
+    publication_enabled: bool,
 }
 
 impl IngestionHealthCheck {
@@ -21,6 +22,7 @@ impl IngestionHealthCheck {
         Self {
             module_id: ModuleId::new("lyxal_pipeline_ingestion"),
             store: None,
+            publication_enabled: true,
         }
     }
 
@@ -29,7 +31,15 @@ impl IngestionHealthCheck {
         Self {
             module_id: ModuleId::new("lyxal_pipeline_ingestion"),
             store: Some(store),
+            publication_enabled: true,
         }
+    }
+
+    /// Publication vers le catalogue active ou non (clé de signature fournie à l'hôte) ; sans
+    /// publication, la sonde est dégradée.
+    pub fn with_publication(mut self, enabled: bool) -> Self {
+        self.publication_enabled = enabled;
+        self
     }
 }
 
@@ -50,6 +60,14 @@ impl ModuleHealthCheck for IngestionHealthCheck {
         let start = std::time::Instant::now();
         if let Some(store) = &self.store {
             match store.get_dashboard_metrics(None).await {
+                Ok(_metrics) if !self.publication_enabled => Ok(HealthCheckResult::degraded(
+                    self.module_id.clone(),
+                    start.elapsed().as_millis() as u64,
+                    Some(
+                        "Publication vers le catalogue désactivée : clé de signature du jeton de service absente (LYXAL__CATALOGUE_SYNC__SIGNING_KEY)"
+                            .to_string(),
+                    ),
+                )),
                 Ok(_metrics) => {
                     let latency = start.elapsed().as_millis() as u64;
                     Ok(HealthCheckResult::healthy(

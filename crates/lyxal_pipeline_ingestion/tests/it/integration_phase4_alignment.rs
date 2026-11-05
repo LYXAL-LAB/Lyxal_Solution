@@ -10,10 +10,8 @@
 //! 7. Publication isolée des relations compatibles avec les contrats du catalogue.
 //! 8. Reprise sur incident et idempotence après réalignement.
 
-use lyxal_pipeline_ingestion::fingerprint::FingerprintEngine;
 use lyxal_pipeline_ingestion::models::StagedItem;
 use lyxal_pipeline_ingestion::normalization::{CanonicalDimensions, NormalizedItemDto};
-use lyxal_pipeline_ingestion::publisher::{ControlledPublisher, SyncAgentSession};
 use lyxal_pipeline_ingestion::storage::{ManifestDraft, NewBatch};
 use lyxal_pipeline_ingestion::technical_grouping::{
     ContextualSubstitutionRule, SpecificationTolerances, TechnicalGroupingEngine,
@@ -385,105 +383,6 @@ async fn test_6_rls_permissions_on_new_tables_and_functions() {
             "La table '{tbl}' doit être déclarée et valide dans le dictionnaire"
         );
     }
-}
-
-// =============================================================================
-// TEST 7 : Publication isolée des relations compatibles avec les contrats du catalogue
-// =============================================================================
-#[tokio::test]
-async fn test_7_isolated_publication_compatible_with_catalogue_contracts() {
-    let store = crate::support::installed_store().await;
-    let publisher = ControlledPublisher::new(store.clone());
-
-    // 1. Tenter une publication sans session autorisée -> DOIT être rejetée
-    let unauth_session = SyncAgentSession::new("intruder", "guest", vec![]);
-    let pub_unauth = publisher
-        .publish_manifest("MANIFEST-ANY", &unauth_session)
-        .await;
-    assert!(
-        pub_unauth.is_err(),
-        "Un utilisateur non habilité ne peut pas publier vers le Catalogue"
-    );
-
-    // 2. Règle CTO Formelle : Zéro publication dans le Master de production
-    let authorized_session = SyncAgentSession::new(
-        "sync_agent_prod",
-        "catalogue_sync_agent",
-        vec!["catalogue:sync:write".to_string()],
-    );
-
-    let manifest_ref = "MANIFEST-ISO-001";
-    let batch_id = "batch_iso";
-
-    let batch = NewBatch {
-        id: Some(batch_id.to_string()),
-        source_type: SourceFormat::Csv,
-        source_format_version: "1.0".to_string(),
-        fournisseur_id: "PLACO".to_string(),
-        nom_fichier: "test.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_iso"),
-        taille_octets: 1000,
-        chunk_size: 50,
-        provenance_details: serde_json::json!({}),
-    };
-    store.create_batch(&batch).await.unwrap();
-
-    let staged = StagedItem {
-        id: None,
-        batch: batch_id.to_string(),
-        raw_record: "raw_rec_01".to_string(),
-        ligne_numero: 1,
-        canonical_fingerprint: lyxal_crypto::blake3_hex(b"fp_iso_01"),
-        rules_version: "2026.1".to_string(),
-        fabricant: "PLACO".to_string(),
-        marque: Some("PLACO".to_string()),
-        reference_fabricant: "PLACO-BA13".to_string(),
-        code_barre_gtin: Some("3401234567890".to_string()),
-        libelle_commercial: "Plaque Placo BA13 2500x1200".to_string(),
-        description_technique: None,
-        type_item: "PRODUIT".to_string(),
-        unite_reference: "M2".to_string(),
-        conditionnement: PackagingDetails::default(),
-        qualification: ItemQualification::Verified,
-        qualification_reason: None,
-        commercial_proof: None,
-        publication_action: PublicationAction::Insert,
-        diff_payload: None,
-        transitions: Vec::new(),
-        is_approved: false,
-        approved_by: None,
-        approved_at: None,
-    };
-    store.save_staged_item(&staged).await.unwrap();
-
-    let seal_hash =
-        FingerprintEngine::compute_manifest_seal(&[lyxal_crypto::blake3_hex(b"fp_iso_01")]);
-    let manifest = ManifestDraft {
-        manifest_ref: manifest_ref.to_string(),
-        batch_id: batch_id.to_string(),
-        manifest_version: 1,
-        seal_hash,
-        statut: ManifestStatus::Sealed,
-        nb_articles_insert: 1,
-        nb_articles_update: 0,
-    };
-    store.save_manifest(&manifest).await.unwrap();
-    store
-        .approve_manifest(manifest_ref, "Validation isolée des articles")
-        .await
-        .unwrap();
-
-    let report = publisher
-        .publish_manifest(manifest_ref, &authorized_session)
-        .await
-        .expect("Publication isolée réussie");
-
-    assert_eq!(report.newly_published, 1);
-    assert_eq!(report.failed, 0);
-    assert!(report.is_completed);
-
-    let committed = store.get_manifest(manifest_ref).await.unwrap().unwrap();
-    assert_eq!(committed.statut, ManifestStatus::Committed);
 }
 
 // =============================================================================

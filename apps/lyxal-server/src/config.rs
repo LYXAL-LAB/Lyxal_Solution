@@ -12,6 +12,19 @@ pub struct AppConfig {
     pub runtime: RuntimeConfig,
     pub observability: ObservabilityConfig,
     pub cors: CorsConfig,
+    #[serde(default)]
+    pub catalogue_sync: CatalogueSyncConfig,
+}
+
+/// Publication du pipeline d'ingestion vers le catalogue : clé de signature du jeton de service
+/// `catalogue_sync_agent`, jamais dans les fichiers de configuration, uniquement par
+/// `LYXAL__CATALOGUE_SYNC__SIGNING_KEY` (32 caractères `A-Z a-z 0-9 _ -`). Sans clé, la
+/// publication est désactivée et la sonde de santé du module le signale.
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CatalogueSyncConfig {
+    #[serde(default)]
+    pub signing_key: Option<SecretPassword>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -47,8 +60,8 @@ pub struct DatabaseConfig {
     pub connect_timeout_seconds: u64,
 }
 
-/// Mot de passe lu dans la configuration : masqué dans `Debug`, effacé de la mémoire à la
-/// libération (`lyxal_crypto::SecretString`).
+/// Secret lu dans la configuration (mot de passe de la base, clé de signature) : masqué dans
+/// `Debug`, effacé de la mémoire à la libération (`lyxal_crypto::SecretString`).
 #[derive(Clone)]
 pub struct SecretPassword(Arc<SecretString>);
 
@@ -61,7 +74,7 @@ impl SecretPassword {
             })
     }
 
-    /// Copie protégée du secret, pour une utilisation unique (connexion Root).
+    /// Copie protégée du secret, pour une utilisation unique.
     pub fn to_secret(&self) -> Result<SecretString, ServerError> {
         SecretString::new(self.0.expose_secret().to_owned()).map_err(|error| {
             ServerError::Configuration {

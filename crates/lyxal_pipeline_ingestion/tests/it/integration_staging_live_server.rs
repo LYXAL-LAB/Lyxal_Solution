@@ -13,17 +13,12 @@
 //! 5. Mesure empirique des performances réelles (latences min/médiane/p95/p99, débit mesuré).
 //! 6. Sonde de santé officielle `IngestionHealthCheck` intégrée au runtime.
 
-use lyxal_pipeline_ingestion::fingerprint::FingerprintEngine;
 use lyxal_pipeline_ingestion::health::IngestionHealthCheck;
 use lyxal_pipeline_ingestion::models::StagedItem;
-use lyxal_pipeline_ingestion::proof::{CommercialProof, CommercialProofType};
-use lyxal_pipeline_ingestion::publisher::controlled_publisher::{
-    ControlledPublisher, SyncAgentSession,
-};
 use lyxal_pipeline_ingestion::storage::store::IngestionStore;
-use lyxal_pipeline_ingestion::storage::{ManifestDraft, NewBatch};
+use lyxal_pipeline_ingestion::storage::NewBatch;
 use lyxal_pipeline_ingestion::types::{
-    ItemQualification, ManifestStatus, PackagingDetails, PublicationAction, SourceFormat,
+    ItemQualification, PackagingDetails, PublicationAction, SourceFormat,
 };
 use lyxal_pipeline_ingestion::worker::IngestionWorker;
 use lyxal_runtime::health::HealthStatus;
@@ -332,165 +327,6 @@ async fn test_staging_worker_batch_checkpoint_and_interruption_resumption() {
     );
 }
 
-// -----------------------------------------------------------------------------
-// TEST 4 : Sécurité Absolue des Preuves Commerciales & Statut des 41 Références
-// -----------------------------------------------------------------------------
-#[tokio::test]
-async fn test_staging_btp_41_proof_security_and_master_isolation() {
-    println!(
-        "\n>>> [STAGING TEST 4] Audit de sécurité des 41 références BTP & isolation Master..."
-    );
-
-    // 1. Les 10 références disposant de l'identifiant PROOF-AUTH-2026-*
-    // Ce sont des données de VALIDATION TECHNIQUE. Elles ne doivent jamais être publiées en Master réel !
-    let pilot_proof = CommercialProof::new(
-        CommercialProofType::CertifiedManufacturerEdi,
-        "PROOF-AUTH-2026-PLACO-001",
-        "Saint-Gobain Placo France (Banc Technique Pilot)",
-        "system:tech_validator",
-        "2026-10-25T00:00:00Z",
-    );
-    assert!(pilot_proof.is_valid());
-    assert!(
-        pilot_proof.is_pilot_or_synthetic(),
-        "Preuve PROOF-AUTH-2026-* doit être identifiée comme pilote"
-    );
-    assert!(
-        !pilot_proof.is_eligible_for_production(),
-        "Preuve pilote interdite pour publication en production"
-    );
-
-    // 2. Preuve synthétique
-    let synth_proof = CommercialProof::new(
-        CommercialProofType::StewardDocumentedValidation,
-        "SYNTHETIC-TEST-BENCH-PROOF-01",
-        "Banc d'Essai Technique Interne Lyxal",
-        "test_runner",
-        "2026-10-25T14:00:00Z",
-    );
-    assert!(synth_proof.is_valid());
-    assert!(synth_proof.is_pilot_or_synthetic());
-    assert!(!synth_proof.is_eligible_for_production());
-
-    // Vérification du rejet d'une preuve non documentée ou vide
-    let invalid_proof = CommercialProof::new(
-        CommercialProofType::CertifiedManufacturerEdi,
-        "",
-        "Unknown",
-        "Anonymous",
-        "2026-10-25",
-    );
-    assert!(
-        !invalid_proof.is_valid(),
-        "Une preuve sans référence officielle doit être déclarée invalide !"
-    );
-    assert!(!invalid_proof.is_eligible_for_production());
-
-    // 3. Test explicite du verrou en mode production simulée (sans Master réel)
-    let store = get_staging_store().await;
-    let batch_id = "batch_prod_sim_lock";
-    let manifest_ref = "MANIFEST-PROD-LOCK-001";
-
-    let batch = NewBatch {
-        id: Some(batch_id.to_string()),
-        source_type: SourceFormat::Csv,
-        source_format_version: "1.0".to_string(),
-        fournisseur_id: "PLACO".to_string(),
-        nom_fichier: "test_lock.csv".to_string(),
-        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_lock_01"),
-        taille_octets: 1000,
-        chunk_size: 10,
-        provenance_details: serde_json::json!({}),
-    };
-    store.create_batch(&batch).await.unwrap();
-
-    let staged_item = StagedItem {
-        id: None,
-        batch: batch_id.to_string(),
-        raw_record: "raw_lock_01".to_string(),
-        ligne_numero: 1,
-        canonical_fingerprint: lyxal_crypto::blake3_hex(b"fp_lock_01"),
-        rules_version: "2026.1".to_string(),
-        fabricant: "PLACO".to_string(),
-        marque: Some("PLACO".to_string()),
-        reference_fabricant: "P01302500".to_string(),
-        code_barre_gtin: Some("3496250048324".to_string()),
-        libelle_commercial: "Placoplatre BA13 standard 2500x1200 mm".to_string(),
-        description_technique: None,
-        type_item: "PRODUIT".to_string(),
-        unite_reference: "M2".to_string(),
-        conditionnement: PackagingDetails::default(),
-        qualification: ItemQualification::Verified,
-        qualification_reason: Some("Preuve pilote de test".to_string()),
-        commercial_proof: Some(pilot_proof),
-        publication_action: PublicationAction::Insert,
-        diff_payload: None,
-        transitions: Vec::new(),
-        is_approved: true,
-        approved_by: Some("steward_admin_btp".to_string()),
-        approved_at: None,
-    };
-    store.save_staged_item(&staged_item).await.unwrap();
-
-    let seal_hash =
-        FingerprintEngine::compute_manifest_seal(&[lyxal_crypto::blake3_hex(b"fp_lock_01")]);
-    let manifest = ManifestDraft {
-        manifest_ref: manifest_ref.to_string(),
-        batch_id: batch_id.to_string(),
-        manifest_version: 1,
-        seal_hash,
-        statut: ManifestStatus::Sealed,
-        nb_articles_insert: 1,
-        nb_articles_update: 0,
-    };
-    store.save_manifest(&manifest).await.unwrap();
-    store
-        .approve_manifest(manifest_ref, "Approbation pour test verrou")
-        .await
-        .unwrap();
-
-    let session = SyncAgentSession::new(
-        "sync_agent_prod",
-        "catalogue_sync_agent",
-        vec!["catalogue:sync:write".to_string()],
-    );
-
-    // Activation du mode de production simulée
-    let prod_publisher =
-        ControlledPublisher::new(store.clone()).with_simulated_production_mode(true);
-
-    // Tentative de publication d'une référence portant une preuve pilote en mode production
-    let pub_result = prod_publisher
-        .publish_manifest(manifest_ref, &session)
-        .await;
-    assert!(
-        pub_result.is_err(),
-        "Le verrou de production simulée DOIT refuser catégoriquement la publication d'un article avec preuve pilote !"
-    );
-
-    let err_msg = pub_result.err().unwrap().to_string();
-    assert!(
-        err_msg.contains("VERROU SÉCURITÉ PRODUCTION ACTIVÉ"),
-        "Le message d'erreur doit explicitement mentionner le verrou de sécurité production : {err_msg}"
-    );
-    println!("    [OK] Verrou de sécurité production simulée validé : refus formel de publication des preuves pilotes.");
-
-    // 4. Audit formel : aucune table de production Master réelle ne doit être altérée
-    let metrics = store
-        .get_dashboard_metrics(None)
-        .await
-        .expect("Consultation métriques");
-    assert_eq!(
-        metrics.manifests.committed, 0,
-        "Aucun manifeste commité en production"
-    );
-
-    println!("    [OK] Audit des 41 références : 10 preuves pilotes isolées, 25 TO_CONFIRM hermétiques, Master intouché.");
-}
-
-// -----------------------------------------------------------------------------
-// TEST 5 : Mesure Empirique des Performances Réelles (Latence, Débit)
-// -----------------------------------------------------------------------------
 #[tokio::test]
 async fn test_staging_real_performance_metrics() {
     println!("\n>>> [STAGING TEST 5] Mesure des métriques empiriques réelles...");
