@@ -9,26 +9,13 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_requalify($params: object) {
     LET $item_id = <string> $params.item_id;
     LET $language = IF $params.language != NONE { <string> $params.language } ELSE { "fr" };
     
-    -- 1. Contrôle d'habilitation strict depuis la session authentifiée
-    LET $role = IF $auth != NONE AND $auth.role != NONE { 
-        <string> $auth.role 
-    } ELSE IF $params._session_auth != NONE AND $params._session_auth.role != NONE { 
-        <string> $params._session_auth.role 
-    } ELSE { 
-        "guest" 
-    };
-
-    LET $operator = IF $auth != NONE AND $auth.id != NONE { 
-        <string> $auth.id 
-    } ELSE IF $params._session_auth != NONE AND $params._session_auth.user_id != NONE { 
-        <string> $params._session_auth.user_id 
-    } ELSE { 
-        "anonymous" 
-    };
-
-    IF $role != "steward_admin" {
-        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $language, { 
-            role: $role, 
+    -- 1. Habilitation : identité lue dans la session (jamais dans les paramètres)
+    LET $who = fn::ingestion_session_identity({});
+    LET $role = $who.role;
+    LET $operator = $who.operator;
+    IF $role NOT IN ["steward_admin", "system"] {
+        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $language, {
+            role: $role,
             expected_role: "steward_admin",
             message: "Seul un Data Steward authentifié peut requalifier un article"
         });
@@ -107,8 +94,10 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_requalify($params: object) {
         commercial_proof = IF $target_qual == "VERIFIED" { $proof } ELSE { commercial_proof },
         is_approved = IF $target_qual == "VERIFIED" { true } ELSE { is_approved },
         approved_by = IF $target_qual == "VERIFIED" { $operator } ELSE { approved_by },
+        approver_role = IF $target_qual == "VERIFIED" { $role } ELSE { approver_role },
         approved_at = IF $target_qual == "VERIFIED" { $now } ELSE { approved_at },
         transitions = array::concat(IF transitions != NONE { transitions } ELSE { [] }, [$trans]);
 
     RETURN fn::result_ok(true);
-} COMMENT "Requalifie formellement un article en staging sous contrôle strict de session steward_admin et exigence de preuve commerciale";
+} COMMENT "Requalifie formellement un article en staging sous contrôle strict de session steward_admin et exigence de preuve commerciale"
+PERMISSIONS WHERE $token != NONE OR $auth != NONE;

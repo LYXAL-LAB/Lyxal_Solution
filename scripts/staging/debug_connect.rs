@@ -10,8 +10,8 @@ async fn main() {
     match connect_res {
         Ok(Ok(db)) => {
             println!("Connected successfully! Trying signin...");
-            let user = std::env::var("LYXAL_STAGING_USER").unwrap_or_else(|_| "lyxal_stg_admin_v1".to_string());
-            let pass = std::env::var("LYXAL_STAGING_PASS").unwrap_or_else(|_| "Stg_SecLyxal#2026!Rotated9x".to_string());
+            let user = std::env::var("LYXAL_STAGING_USER").expect("LYXAL_STAGING_USER requis");
+            let pass = std::env::var("LYXAL_STAGING_PASS").expect("LYXAL_STAGING_PASS requis");
             let signin_res = tokio::time::timeout(Duration::from_secs(5), db.signin(Root {
                 username: &user,
                 password: &pass,

@@ -3,50 +3,9 @@
 //! `lyxal_runtime` pour le serveur hôte.
 
 use lyxal_pipeline_ingestion::models::IngestionBatch;
-use lyxal_pipeline_ingestion::storage::IngestionStore;
 use lyxal_pipeline_ingestion::types::{BatchStatus, SourceFormat};
 use lyxal_pipeline_ingestion::worker::IngestionWorker;
-use lyxal_runtime::manifest::{ManifestParser, ModuleManifest};
-use lyxal_runtime::resource::{FilesystemResourceProvider, ResourceProvider};
 use lyxal_runtime::worker::CancellationToken;
-use std::path::PathBuf;
-
-async fn installed_store() -> IngestionStore {
-    let client = surrealdb::engine::any::connect("mem://")
-        .await
-        .expect("connexion");
-    client
-        .use_ns("ingestion")
-        .use_db("manifest")
-        .await
-        .expect("ns/db");
-    let crates = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("dossier crates")
-        .to_path_buf();
-    let load = |name: &str| {
-        let dir = crates.join(name);
-        (
-            ManifestParser::parse_file(dir.join("manifest.toml")).expect("manifeste"),
-            FilesystemResourceProvider::new(dir),
-        )
-    };
-    let foundation = [load("lyxal_core"), load("lyxal_error")];
-    let batch: Vec<(&ModuleManifest, &dyn ResourceProvider)> = foundation
-        .iter()
-        .map(|(m, p)| (m, p as &dyn ResourceProvider))
-        .collect();
-    lyxal_runtime::schema::install_batch(&client, &batch)
-        .await
-        .expect("noyau");
-    for name in ["lyxal_event", "lyxal_base", "lyxal_pipeline_ingestion"] {
-        let (manifest, provider) = load(name);
-        lyxal_runtime::schema::install_resources(&client, &manifest, &provider)
-            .await
-            .unwrap_or_else(|e| panic!("{name} : {e}"));
-    }
-    IngestionStore::new(client)
-}
 
 fn batch(id: &str, statut: BatchStatus) -> IngestionBatch {
     IngestionBatch {
@@ -73,7 +32,7 @@ fn batch(id: &str, statut: BatchStatus) -> IngestionBatch {
 
 #[tokio::test]
 async fn worker_follows_installed_batch_state_machine() {
-    let store = installed_store().await;
+    let store = crate::support::installed_store().await;
     let mut csv = String::from("reference;designation;gtin;fabricant;unite;prix\n");
     for i in 1..=5 {
         csv.push_str(&format!("REF_{i};Plaque de plâtre {i};;Placo;M2;8.50\n"));

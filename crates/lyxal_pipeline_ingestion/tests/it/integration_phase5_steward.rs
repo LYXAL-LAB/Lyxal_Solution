@@ -16,7 +16,7 @@ use lyxal_pipeline_ingestion::models::{
 use lyxal_pipeline_ingestion::proof::{CommercialProof, CommercialProofType};
 use lyxal_pipeline_ingestion::storage::store::{
     IngestionStore, ManifestListFilter, QuarantineListFilter, QuarantineResolveParams,
-    SessionAuthContext, StagedListFilter, StagedRequalifyParams,
+    StagedListFilter, StagedRequalifyParams,
 };
 use lyxal_pipeline_ingestion::types::{
     BatchStatus, ItemQualification, ManifestStatus, PackagingDetails, PublicationAction,
@@ -26,9 +26,7 @@ use lyxal_runtime::{ModuleContext, ModuleHealthCheck};
 
 /// Helper créant un store in-memory préconfiguré
 async fn setup_test_store() -> IngestionStore {
-    IngestionStore::create_in_memory()
-        .await
-        .expect("Initialisation du store in-memory")
+    crate::support::installed_store().await
 }
 
 #[tokio::test]
@@ -42,7 +40,7 @@ async fn test_1_dashboard_metrics_aggregation() {
         source_format_version: "3.0".to_string(),
         fournisseur_id: "FOURN_PLACO".to_string(),
         nom_fichier: "placo_catalogue.csv".to_string(),
-        file_hash_blake3: "hash_dash_01".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_dash_01"),
         taille_octets: 1024,
         statut: BatchStatus::Staged,
         cursor_offset: 2,
@@ -64,7 +62,7 @@ async fn test_1_dashboard_metrics_aggregation() {
         batch: "batch_dash_01".to_string(),
         raw_record: "raw_1".to_string(),
         ligne_numero: 1,
-        canonical_fingerprint: "fp_dash_01".to_string(),
+        canonical_fingerprint: lyxal_crypto::blake3_hex(b"fp_dash_01"),
         rules_version: "1.0.0".to_string(),
         fabricant: "PLACO".to_string(),
         marque: Some("PLACO".to_string()),
@@ -72,7 +70,7 @@ async fn test_1_dashboard_metrics_aggregation() {
         code_barre_gtin: Some("3401234567890".to_string()),
         libelle_commercial: "Plaque Placo BA13 Standard".to_string(),
         description_technique: None,
-        type_item: "PLAQUE_PLATRE".to_string(),
+        type_item: "PRODUIT".to_string(),
         unite_reference: "M2".to_string(),
         conditionnement: PackagingDetails::default(),
         qualification: ItemQualification::Verified,
@@ -95,7 +93,7 @@ async fn test_1_dashboard_metrics_aggregation() {
         batch: "batch_dash_01".to_string(),
         raw_record: "raw_2".to_string(),
         ligne_numero: 2,
-        canonical_fingerprint: "fp_dash_02".to_string(),
+        canonical_fingerprint: lyxal_crypto::blake3_hex(b"fp_dash_02"),
         rules_version: "1.0.0".to_string(),
         fabricant: "PLACO".to_string(),
         marque: Some("PLACO".to_string()),
@@ -103,7 +101,7 @@ async fn test_1_dashboard_metrics_aggregation() {
         code_barre_gtin: Some("3401234567891".to_string()),
         libelle_commercial: "Plaque Placo BA13 Hydrofuge".to_string(),
         description_technique: None,
-        type_item: "PLAQUE_PLATRE".to_string(),
+        type_item: "PRODUIT".to_string(),
         unite_reference: "M2".to_string(),
         conditionnement: PackagingDetails::default(),
         qualification: ItemQualification::ToConfirm,
@@ -145,7 +143,7 @@ async fn test_2_staged_listing_and_filtering() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "FOURN_ISOVER".to_string(),
         nom_fichier: "isover.csv".to_string(),
-        file_hash_blake3: "hash_list_01".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_list_01"),
         taille_octets: 512,
         statut: BatchStatus::Staged,
         cursor_offset: 2,
@@ -166,7 +164,7 @@ async fn test_2_staged_listing_and_filtering() {
         batch: "batch_list_01".to_string(),
         raw_record: "raw_1".to_string(),
         ligne_numero: 1,
-        canonical_fingerprint: "fp_list_01".to_string(),
+        canonical_fingerprint: lyxal_crypto::blake3_hex(b"fp_list_01"),
         rules_version: "1.0.0".to_string(),
         fabricant: "ISOVER".to_string(),
         marque: Some("ISOVER".to_string()),
@@ -174,7 +172,7 @@ async fn test_2_staged_listing_and_filtering() {
         code_barre_gtin: Some("3401234567892".to_string()),
         libelle_commercial: "Laine de verre GR32 100mm".to_string(),
         description_technique: None,
-        type_item: "ISOLATION".to_string(),
+        type_item: "PRODUIT".to_string(),
         unite_reference: "M2".to_string(),
         conditionnement: PackagingDetails::default(),
         qualification: ItemQualification::Verified,
@@ -197,7 +195,7 @@ async fn test_2_staged_listing_and_filtering() {
         batch: "batch_list_01".to_string(),
         raw_record: "raw_2".to_string(),
         ligne_numero: 2,
-        canonical_fingerprint: "fp_list_02".to_string(),
+        canonical_fingerprint: lyxal_crypto::blake3_hex(b"fp_list_02"),
         rules_version: "1.0.0".to_string(),
         fabricant: "ISOVER".to_string(),
         marque: Some("ISOVER".to_string()),
@@ -205,7 +203,7 @@ async fn test_2_staged_listing_and_filtering() {
         code_barre_gtin: Some("3401234567893".to_string()),
         libelle_commercial: "Rouleau IBR 200mm".to_string(),
         description_technique: None,
-        type_item: "ISOLATION".to_string(),
+        type_item: "PRODUIT".to_string(),
         unite_reference: "M2".to_string(),
         conditionnement: PackagingDetails::default(),
         qualification: ItemQualification::ToConfirm,
@@ -253,7 +251,7 @@ async fn test_3_steward_requalification_session_security() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "FOURN_PLACO".to_string(),
         nom_fichier: "placo.csv".to_string(),
-        file_hash_blake3: "hash_sec_01".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_sec_01"),
         taille_octets: 512,
         statut: BatchStatus::Staged,
         cursor_offset: 1,
@@ -274,7 +272,7 @@ async fn test_3_steward_requalification_session_security() {
         batch: "batch_sec_01".to_string(),
         raw_record: "raw_1".to_string(),
         ligne_numero: 1,
-        canonical_fingerprint: "fp_sec_01".to_string(),
+        canonical_fingerprint: lyxal_crypto::blake3_hex(b"fp_sec_01"),
         rules_version: "1.0.0".to_string(),
         fabricant: "PLACO".to_string(),
         marque: Some("PLACO".to_string()),
@@ -297,24 +295,8 @@ async fn test_3_steward_requalification_session_security() {
     };
     let item_id = store.save_staged_item(&staged).await.expect("Save staged");
 
-    // TENTATIVE 1 : Utilisateur non authentifié ou simple opérateur (rôle guest / operator)
-    // DOIT ÊTRE REJETÉ PAR LE CONTRÔLE SURREALQL
-    let unauth_params = StagedRequalifyParams {
-        item_id: item_id.clone(),
-        new_qualification: "REJECTED".to_string(),
-        justification: "Rejet motif arbitraire opérateur non habilité".to_string(),
-        proof: None,
-        language: Some("fr".to_string()),
-        _session_auth: Some(SessionAuthContext {
-            user_id: "user_operator_42".to_string(),
-            role: "catalog_operator".to_string(), // NON steward_admin
-        }),
-    };
-    let unauth_res = store.requalify_staged_item(unauth_params).await;
-    assert!(
-        unauth_res.is_err(),
-        "Un opérateur non steward_admin DOIT être formellement rejeté"
-    );
+    // Les refus par rôle (session non steward_admin) sont prouvés sous de vraies identités
+    // dans tests/securite.test.surql ; ici, session système de l'hôte.
 
     // TENTATIVE 2 : Justification trop courte (< 10 caractères) avec steward_admin
     // DOIT ÊTRE REJETÉ PAR SURREALQL
@@ -324,10 +306,6 @@ async fn test_3_steward_requalification_session_security() {
         justification: "Court".to_string(), // 5 car. < 10 car.
         proof: None,
         language: Some("fr".to_string()),
-        _session_auth: Some(SessionAuthContext {
-            user_id: "steward_bob".to_string(),
-            role: "steward_admin".to_string(),
-        }),
     };
     let short_res = store.requalify_staged_item(short_justif_params).await;
     assert!(
@@ -346,7 +324,7 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "FOURN_KNAUF".to_string(),
         nom_fichier: "knauf.csv".to_string(),
-        file_hash_blake3: "hash_proof_01".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_proof_01"),
         taille_octets: 512,
         statut: BatchStatus::Staged,
         cursor_offset: 1,
@@ -367,7 +345,7 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
         batch: "batch_proof_01".to_string(),
         raw_record: "raw_1".to_string(),
         ligne_numero: 1,
-        canonical_fingerprint: "fp_proof_01".to_string(),
+        canonical_fingerprint: lyxal_crypto::blake3_hex(b"fp_proof_01"),
         rules_version: "1.0.0".to_string(),
         fabricant: "KNAUF".to_string(),
         marque: Some("KNAUF".to_string()),
@@ -375,7 +353,7 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
         code_barre_gtin: Some("3401234567895".to_string()),
         libelle_commercial: "Plaque Knauf Feu KF 13mm".to_string(),
         description_technique: None,
-        type_item: "PLAQUE_PLATRE".to_string(),
+        type_item: "PRODUIT".to_string(),
         unite_reference: "M2".to_string(),
         conditionnement: PackagingDetails::default(),
         qualification: ItemQualification::ToConfirm,
@@ -398,10 +376,6 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
         justification: "Validation arbitraire sans attestation documentaire".to_string(),
         proof: None,
         language: Some("fr".to_string()),
-        _session_auth: Some(SessionAuthContext {
-            user_id: "steward_alice".to_string(),
-            role: "steward_admin".to_string(),
-        }),
     };
     let no_proof_res = store.requalify_staged_item(no_proof_params).await;
     assert!(
@@ -424,10 +398,6 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
         justification: "Preuve tarifaire officielle 2026 validée et vérifiée au greffe".to_string(),
         proof: Some(valid_proof),
         language: Some("fr".to_string()),
-        _session_auth: Some(SessionAuthContext {
-            user_id: "steward_alice".to_string(),
-            role: "steward_admin".to_string(),
-        }),
     };
     let with_proof_res = store.requalify_staged_item(with_proof_params).await;
     assert!(
@@ -447,7 +417,7 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
         .expect("List verified");
     assert_eq!(list_res.total, 1);
     assert_eq!(list_res.items[0]["is_approved"], true);
-    assert_eq!(list_res.items[0]["approved_by"], "steward_alice");
+    assert_eq!(list_res.items[0]["approved_by"], "system");
 }
 
 #[tokio::test]
@@ -460,7 +430,7 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "FOURN_SINIAT".to_string(),
         nom_fichier: "siniat_anomalies.csv".to_string(),
-        file_hash_blake3: "hash_quar_01".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_quar_01"),
         taille_octets: 256,
         statut: BatchStatus::Staged,
         cursor_offset: 1,
@@ -482,7 +452,7 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
         batch: "batch_quar_01".to_string(),
         raw_record: "raw_q_1".to_string(),
         ligne_numero: 1,
-        canonical_fingerprint: "fp_siniat_01".to_string(),
+        canonical_fingerprint: lyxal_crypto::blake3_hex(b"fp_siniat_01"),
         rules_version: "1.0.0".to_string(),
         fabricant: "SINIAT".to_string(),
         marque: Some("SINIAT".to_string()),
@@ -490,7 +460,7 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
         code_barre_gtin: Some("0000000000000".to_string()), // GTIN invalide
         libelle_commercial: "Plaque Prégydro BA13".to_string(),
         description_technique: None,
-        type_item: "PLAQUE_PLATRE".to_string(),
+        type_item: "PRODUIT".to_string(),
         unite_reference: "M2".to_string(),
         conditionnement: PackagingDetails::default(),
         qualification: ItemQualification::Rejected,
@@ -510,6 +480,7 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
         id: None,
         batch: "batch_quar_01".to_string(),
         raw_record: "raw_q_1".to_string(),
+        ligne_numero: 1,
         code_erreur: "INGESTION_GTIN_INVALID".to_string(),
         severite: "CRITICAL".to_string(),
         champ_concerne: "code_barre_gtin".to_string(),
@@ -546,10 +517,6 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
             "corrected_gtin": "3401234567896"
         })),
         language: Some("fr".to_string()),
-        _session_auth: Some(SessionAuthContext {
-            user_id: "steward_bob".to_string(),
-            role: "steward_admin".to_string(),
-        }),
     };
     let res = store
         .resolve_quarantine_record(resolve_params)
@@ -566,7 +533,7 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
         .await
         .expect("List resolved");
     assert_eq!(list_resolved.total, 1);
-    assert_eq!(list_resolved.records[0]["resolved_by"], "steward_bob");
+    assert_eq!(list_resolved.records[0]["resolved_by"], "system");
 
     // 4. VÉRIFICATION DE LA RÈGLE D'OR CTO : L'article est repassé en TO_CONFIRM (PAS VERIFIED !)
     let staged_list = store
@@ -591,7 +558,7 @@ async fn test_6_manifest_listing_and_detail_integrity() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "FOURN_LEGRAND".to_string(),
         nom_fichier: "legrand.csv".to_string(),
-        file_hash_blake3: "hash_manif_01".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_manif_01"),
         taille_octets: 1024,
         statut: BatchStatus::Staged,
         cursor_offset: 1,
@@ -613,7 +580,7 @@ async fn test_6_manifest_listing_and_detail_integrity() {
         batch: "batch_manif_01".to_string(),
         manifest_ref: "PUB-2026-LEGRAND-001".to_string(),
         manifest_version: 1,
-        seal_hash: "blake3_seal_hash_abcdef0123456789abcdef0123456789".to_string(),
+        seal_hash: lyxal_crypto::blake3_hex(b"blake3_seal_hash_abcdef0123456789abcdef0123456789"),
         is_sealed: true,
         statut: ManifestStatus::Sealed,
         approved_by: None,
@@ -654,7 +621,7 @@ async fn test_6_manifest_listing_and_detail_integrity() {
     assert_eq!(detail.is_sealed, true);
     assert_eq!(
         detail.seal_hash,
-        "blake3_seal_hash_abcdef0123456789abcdef0123456789"
+        lyxal_crypto::blake3_hex(b"blake3_seal_hash_abcdef0123456789abcdef0123456789")
     );
     assert_eq!(detail.execution_count, 1);
     assert_eq!(detail.transition_count, 1);

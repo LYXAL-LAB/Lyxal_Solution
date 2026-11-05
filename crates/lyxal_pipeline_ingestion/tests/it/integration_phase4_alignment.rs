@@ -14,7 +14,6 @@ use lyxal_pipeline_ingestion::fingerprint::FingerprintEngine;
 use lyxal_pipeline_ingestion::models::{IngestionBatch, PublicationManifest, StagedItem};
 use lyxal_pipeline_ingestion::normalization::{CanonicalDimensions, NormalizedItemDto};
 use lyxal_pipeline_ingestion::publisher::{ControlledPublisher, SyncAgentSession};
-use lyxal_pipeline_ingestion::storage::IngestionStore;
 use lyxal_pipeline_ingestion::technical_grouping::{
     ContextualSubstitutionRule, SpecificationTolerances, TechnicalGroupingEngine,
     TechnicalSpecification,
@@ -29,7 +28,7 @@ use lyxal_pipeline_ingestion::types::{
 // =============================================================================
 #[tokio::test]
 async fn test_1_add_family_carrelage_dynamically_without_recompilation() {
-    let store = IngestionStore::create_in_memory().await.unwrap();
+    let store = crate::support::installed_store().await;
 
     // 1. Déclaration de la nouvelle famille Carrelage via fn::ingestion_rule_family_add
     let family_code = store
@@ -114,7 +113,7 @@ async fn test_1_add_family_carrelage_dynamically_without_recompilation() {
         commercial_proof: None,
         qualification: ItemQualification::Verified,
         qualification_reason: "Vérifié".to_string(),
-        canonical_fingerprint: "fp_carrelage_01".to_string(),
+        canonical_fingerprint: lyxal_crypto::blake3_hex(b"fp_carrelage_01"),
         raw_payload: serde_json::json!({ "designation": "Carrelage Grès 60x60" }),
         raw_hash: "hash_raw_carrelage".to_string(),
         rules_engine_version: "2026.1".to_string(),
@@ -132,7 +131,7 @@ async fn test_1_add_family_carrelage_dynamically_without_recompilation() {
 // =============================================================================
 #[tokio::test]
 async fn test_2_add_manufacturer_alias_dynamically_without_recompilation() {
-    let store = IngestionStore::create_in_memory().await.unwrap();
+    let store = crate::support::installed_store().await;
 
     // 1. Résolution préalable d'un fabricant inconnu
     let before_res = store
@@ -171,7 +170,7 @@ async fn test_2_add_manufacturer_alias_dynamically_without_recompilation() {
 // =============================================================================
 #[tokio::test]
 async fn test_3_resolve_unit_from_base_unite() {
-    let store = IngestionStore::create_in_memory().await.unwrap();
+    let store = crate::support::installed_store().await;
 
     // 1. Résolution d'un code officiel direct présent dans base_unite
     let res_m2 = store.resolve_unit("M2").await.unwrap();
@@ -230,7 +229,7 @@ async fn test_3_resolve_unit_from_base_unite() {
 // =============================================================================
 #[tokio::test]
 async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
-    let store = IngestionStore::create_in_memory().await.unwrap();
+    let store = crate::support::installed_store().await;
     let batch_id = "batch_exclusive_fn";
     let manifest_ref = "MANIFEST-EXCL-001";
 
@@ -241,7 +240,7 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "PLACO".to_string(),
         nom_fichier: "test.csv".to_string(),
-        file_hash_blake3: "hash_001".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_001"),
         taille_octets: 1000,
         statut: BatchStatus::Received,
         cursor_offset: 0,
@@ -274,7 +273,7 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
         manifest_ref: manifest_ref.to_string(),
         batch: batch_id.to_string(),
         manifest_version: 1,
-        seal_hash: "".to_string(),
+        seal_hash: String::new(),
         is_sealed: true,
         statut: ManifestStatus::Draft,
         approved_by: None,
@@ -298,17 +297,14 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
     // 4. Sauvegarde d'un brouillon non scellé -> Succès, mais rejet à l'approbation
     let mut draft_manifest = invalid_sealed_manifest;
     draft_manifest.is_sealed = false;
+    draft_manifest.seal_hash = lyxal_crypto::blake3_hex(b"brouillon");
     store
         .save_manifest(&draft_manifest)
         .await
         .expect("Sauvegarde brouillon réussie");
 
     let approve_unsealed = store
-        .approve_manifest(
-            manifest_ref,
-            "steward_alice",
-            "Tentative d'approbation non scellé",
-        )
+        .approve_manifest(manifest_ref, "Tentative d'approbation non scellé")
         .await;
     assert!(
         approve_unsealed.is_err(),
@@ -317,8 +313,9 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
 
     // 5. Sauvegarde avec scellement BLAKE3 valide
     let mut valid_manifest = draft_manifest;
-    valid_manifest.seal_hash = "blake3_seal_valid_hash".to_string();
+    valid_manifest.seal_hash = lyxal_crypto::blake3_hex(b"blake3_seal_valid_hash");
     valid_manifest.is_sealed = true;
+    valid_manifest.statut = ManifestStatus::Sealed;
     store
         .save_manifest(&valid_manifest)
         .await
@@ -326,11 +323,7 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
 
     // 5. Approbation sous contrôle strict du rôle steward_admin
     let approve_ok = store
-        .approve_manifest(
-            manifest_ref,
-            "steward_alice",
-            "Bordereau vérifié et validé conforme",
-        )
+        .approve_manifest(manifest_ref, "Bordereau vérifié et validé conforme")
         .await;
     assert!(
         approve_ok.is_ok(),
@@ -339,7 +332,9 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
 
     let loaded_manif = store.get_manifest(manifest_ref).await.unwrap().unwrap();
     assert_eq!(loaded_manif.statut, ManifestStatus::Approved);
-    assert_eq!(loaded_manif.approved_by, Some("steward_alice".to_string()));
+    // Approbateur lu dans la session : ici la session système de l'hôte.
+    assert_eq!(loaded_manif.approved_by, Some("system".to_string()));
+    assert_eq!(loaded_manif.approver_role, Some("system".to_string()));
 }
 
 // =============================================================================
@@ -347,7 +342,7 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
 // =============================================================================
 #[tokio::test]
 async fn test_5_persistence_of_rules_and_substitutions_across_instances() {
-    let store = IngestionStore::create_in_memory().await.unwrap();
+    let store = crate::support::installed_store().await;
 
     // 1. Insertion d'une règle de substitution contextualisée
     let rule = ContextualSubstitutionRule {
@@ -393,7 +388,7 @@ async fn test_5_persistence_of_rules_and_substitutions_across_instances() {
 // =============================================================================
 #[tokio::test]
 async fn test_6_rls_permissions_on_new_tables_and_functions() {
-    let store = IngestionStore::create_in_memory().await.unwrap();
+    let store = crate::support::installed_store().await;
 
     // Vérifier les permissions définies sur les schémas déclaratifs
     let tables = vec![
@@ -419,7 +414,7 @@ async fn test_6_rls_permissions_on_new_tables_and_functions() {
 // =============================================================================
 #[tokio::test]
 async fn test_7_isolated_publication_compatible_with_catalogue_contracts() {
-    let store = IngestionStore::create_in_memory().await.unwrap();
+    let store = crate::support::installed_store().await;
     let publisher = ControlledPublisher::new(store.clone());
 
     // 1. Tenter une publication sans session autorisée -> DOIT être rejetée
@@ -448,7 +443,7 @@ async fn test_7_isolated_publication_compatible_with_catalogue_contracts() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "PLACO".to_string(),
         nom_fichier: "test.csv".to_string(),
-        file_hash_blake3: "hash_iso".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_iso"),
         taille_octets: 1000,
         statut: BatchStatus::Received,
         cursor_offset: 0,
@@ -469,7 +464,7 @@ async fn test_7_isolated_publication_compatible_with_catalogue_contracts() {
         batch: batch_id.to_string(),
         raw_record: "raw_rec_01".to_string(),
         ligne_numero: 1,
-        canonical_fingerprint: "fp_iso_01".to_string(),
+        canonical_fingerprint: lyxal_crypto::blake3_hex(b"fp_iso_01"),
         rules_version: "2026.1".to_string(),
         fabricant: "PLACO".to_string(),
         marque: Some("PLACO".to_string()),
@@ -477,7 +472,7 @@ async fn test_7_isolated_publication_compatible_with_catalogue_contracts() {
         code_barre_gtin: Some("3401234567890".to_string()),
         libelle_commercial: "Plaque Placo BA13 2500x1200".to_string(),
         description_technique: None,
-        type_item: "PLAQUE_PLATRE".to_string(),
+        type_item: "PRODUIT".to_string(),
         unite_reference: "M2".to_string(),
         conditionnement: PackagingDetails::default(),
         qualification: ItemQualification::Verified,
@@ -492,7 +487,8 @@ async fn test_7_isolated_publication_compatible_with_catalogue_contracts() {
     };
     store.save_staged_item(&staged).await.unwrap();
 
-    let seal_hash = FingerprintEngine::compute_manifest_seal(&["fp_iso_01".to_string()]);
+    let seal_hash =
+        FingerprintEngine::compute_manifest_seal(&[lyxal_crypto::blake3_hex(b"fp_iso_01")]);
     let manifest = PublicationManifest {
         id: None,
         manifest_ref: manifest_ref.to_string(),
@@ -500,7 +496,7 @@ async fn test_7_isolated_publication_compatible_with_catalogue_contracts() {
         manifest_version: 1,
         seal_hash,
         is_sealed: true,
-        statut: ManifestStatus::Draft,
+        statut: ManifestStatus::Sealed,
         approved_by: None,
         approved_at: None,
         approver_role: None,
@@ -514,11 +510,7 @@ async fn test_7_isolated_publication_compatible_with_catalogue_contracts() {
     };
     store.save_manifest(&manifest).await.unwrap();
     store
-        .approve_manifest(
-            manifest_ref,
-            "steward_chief",
-            "Validation isolée des articles",
-        )
+        .approve_manifest(manifest_ref, "Validation isolée des articles")
         .await
         .unwrap();
 
@@ -540,7 +532,7 @@ async fn test_7_isolated_publication_compatible_with_catalogue_contracts() {
 // =============================================================================
 #[tokio::test]
 async fn test_8_crash_recovery_and_idempotence_after_realignment() {
-    let store = IngestionStore::create_in_memory().await.unwrap();
+    let store = crate::support::installed_store().await;
     let batch_id = "batch_crash_recovery";
 
     let batch = IngestionBatch {
@@ -549,7 +541,7 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "ISOVER".to_string(),
         nom_fichier: "isover_100_items.csv".to_string(),
-        file_hash_blake3: "hash_crash_01".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_crash_01"),
         taille_octets: 5000,
         statut: BatchStatus::Received,
         cursor_offset: 0,
@@ -572,7 +564,7 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
             batch: batch_id.to_string(),
             raw_record: format!("raw_{i}"),
             ligne_numero: i,
-            canonical_fingerprint: format!("fp_isover_{i:03}"),
+            canonical_fingerprint: lyxal_crypto::blake3_hex(format!("fp_isover_{i:03}").as_bytes()),
             rules_version: "2026.1".to_string(),
             fabricant: "ISOVER".to_string(),
             marque: Some("ISOVER".to_string()),
@@ -580,7 +572,7 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
             code_barre_gtin: Some(format!("3401234567{i:02}")),
             libelle_commercial: format!("Laine de verre GR32 {i}"),
             description_technique: None,
-            type_item: "ISOLATION_ROULEAU".to_string(),
+            type_item: "PRODUIT".to_string(),
             unite_reference: "M2".to_string(),
             conditionnement: PackagingDetails::default(),
             qualification: ItemQualification::Verified,
@@ -613,7 +605,7 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
             batch: batch_id.to_string(),
             raw_record: format!("raw_{i}"),
             ligne_numero: i,
-            canonical_fingerprint: format!("fp_isover_{i:03}"),
+            canonical_fingerprint: lyxal_crypto::blake3_hex(format!("fp_isover_{i:03}").as_bytes()),
             rules_version: "2026.1".to_string(),
             fabricant: "ISOVER".to_string(),
             marque: Some("ISOVER".to_string()),
@@ -621,7 +613,7 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
             code_barre_gtin: Some(format!("3401234567{i:02}")),
             libelle_commercial: format!("Laine de verre GR32 {i}"),
             description_technique: None,
-            type_item: "ISOLATION_ROULEAU".to_string(),
+            type_item: "PRODUIT".to_string(),
             unite_reference: "M2".to_string(),
             conditionnement: PackagingDetails::default(),
             qualification: ItemQualification::Verified,

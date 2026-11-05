@@ -7,7 +7,6 @@
 
 use lyxal_pipeline_ingestion::models::{IngestionBatch, QuarantineRecord, StagedItem};
 use lyxal_pipeline_ingestion::proof::{CommercialProof, CommercialProofType};
-use lyxal_pipeline_ingestion::storage::store::IngestionStore;
 use lyxal_pipeline_ingestion::types::SourceFormat;
 use lyxal_pipeline_ingestion::types::{
     BatchStatus, ItemQualification, PackagingDetails, PublicationAction,
@@ -15,9 +14,7 @@ use lyxal_pipeline_ingestion::types::{
 
 #[tokio::test]
 async fn test_full_pilot_41_btp_references_lifecycle() {
-    let store = IngestionStore::create_in_memory()
-        .await
-        .expect("Store in-memory");
+    let store = crate::support::installed_store().await;
 
     // 1. Initialisation du lot pilote BTP
     let batch = IngestionBatch {
@@ -26,7 +23,7 @@ async fn test_full_pilot_41_btp_references_lifecycle() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "DISTRIBUTEUR_BTP_PILOTE".to_string(),
         nom_fichier: "catalogue_btp_lot1_41_refs.csv".to_string(),
-        file_hash_blake3: "blake3_btp_lot1_pilot_hash_20261025".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"blake3_btp_lot1_pilot_hash_20261025"),
         taille_octets: 16384,
         statut: BatchStatus::Staged,
         cursor_offset: 41,
@@ -547,6 +544,7 @@ async fn test_full_pilot_41_btp_references_lifecycle() {
                 id: None,
                 batch: "batch_btp_pilot_41".to_string(),
                 raw_record: format!("raw_pilot_{line_num}"),
+                ligne_numero: 1,
                 code_erreur: "INGESTION_GTIN_INVALID".to_string(),
                 severite: "CRITICAL".to_string(),
                 champ_concerne: "code_barre_gtin".to_string(),
@@ -601,7 +599,9 @@ async fn test_full_pilot_41_btp_references_lifecycle() {
             batch: "batch_btp_pilot_41".to_string(),
             raw_record: format!("raw_pilot_{line_num}"),
             ligne_numero: line_num,
-            canonical_fingerprint: format!("fp_pilot_{line_num:03}"),
+            canonical_fingerprint: lyxal_crypto::blake3_hex(
+                format!("fp_pilot_{line_num:03}").as_bytes(),
+            ),
             rules_version: "2026-10-V1.1".to_string(),
             fabricant: entry.manufacturer.to_string(),
             marque: Some(entry.manufacturer.to_string()),
@@ -609,7 +609,7 @@ async fn test_full_pilot_41_btp_references_lifecycle() {
             code_barre_gtin: Some(entry.gtin.to_string()),
             libelle_commercial: entry.label.to_string(),
             description_technique: None,
-            type_item: "MATERIEL_BTP".to_string(),
+            type_item: "PRODUIT".to_string(),
             unite_reference: entry.unit.to_string(),
             conditionnement: PackagingDetails::default(),
             qualification,

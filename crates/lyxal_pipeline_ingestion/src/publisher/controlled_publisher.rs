@@ -297,7 +297,11 @@ impl ControlledPublisher {
                     items_failed: failed,
                     publisher_agent: session.agent_id.clone(),
                 };
-                let _ = publ.publish(&event).await;
+                publ.publish(&event).await.map_err(|e| {
+                    IngestionError::Storage(format!(
+                        "Événement de publication du manifeste {manifest_ref} non publié : {e}"
+                    ))
+                })?;
             }
         }
 

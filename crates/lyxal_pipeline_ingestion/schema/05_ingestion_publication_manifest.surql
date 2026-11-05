@@ -141,10 +141,15 @@ DEFINE INDEX OVERWRITE idx_manifest_statut ON TABLE ingestion_publication_manife
 -- GARDIEN MOTEUR : Validation des transitions de manifeste et contrôles de sécurité
 -- ----------------------------------------------------------------------------
 DEFINE EVENT OVERWRITE evt_manifest_guard ON TABLE ingestion_publication_manifest
-WHEN $event = "UPDATE"
+WHEN $event = "CREATE" OR $event = "UPDATE"
 THEN {
+    -- 0. Un manifeste naît brouillon ou scellé : approbation et exécution passent par les transitions
+    IF $event = "CREATE" AND $after.statut NOT IN ["DRAFT", "SEALED"] {
+        THROW "INGESTION_MANIFEST_ILLEGAL_STATE_TRANSITION: Un manifeste ne peut être créé qu'à l'état DRAFT ou SEALED.";
+    };
+
     -- 1. Validation de la machine à états
-    IF $before.statut != $after.statut {
+    IF $event = "UPDATE" AND $before.statut != $after.statut {
         LET $valid_m_trans = (
             ($before.statut = "DRAFT" AND ($after.statut = "SEALED" OR $after.statut = "FAILED"))
             OR ($before.statut = "SEALED" AND ($after.statut = "APPROVED" OR $after.statut = "DRAFT" OR $after.statut = "FAILED"))
@@ -162,15 +167,16 @@ THEN {
             IF $after.is_sealed != true OR $after.seal_hash == NONE {
                 THROW "INGESTION_MANIFEST_SEAL_REQUIRED: L'approbation requiert obligatoirement un manifeste préalablement scellé avec son empreinte BLAKE3.";
             };
-            IF $after.approved_by == NONE OR $after.approver_role != "steward_admin" {
-                THROW "INGESTION_MANIFEST_APPROVAL_REQUIRES_STEWARD: L'approbation d'un manifeste requiert formellement l'identité steward_admin (auto-approbation interdite).";
+            -- Approbateur lu dans la session : steward_admin, ou session système (hôte)
+            LET $who = fn::ingestion_session_identity({});
+            IF $who.role NOT IN ["steward_admin", "system"] OR $after.approver_role != $who.role OR $after.approved_by != $who.operator {
+                THROW "INGESTION_MANIFEST_APPROVAL_REQUIRES_STEWARD: L'approbation d'un manifeste requiert la session d'un steward_admin, dont l'identité est enregistrée (auto-approbation interdite).";
             };
         };
 
         -- 3. Transition vers EXECUTING / COMMITTED : réservée exclusivement à catalogue_sync_agent
         IF $after.statut = "EXECUTING" OR $after.statut = "COMMITTED" {
-            LET $caller_role = IF $token != NONE AND $token.role != NONE { string::trim($token.role) } ELSE IF $auth != NONE AND $auth.role != NONE { string::trim($auth.role) } ELSE { NONE };
-            IF $caller_role != "catalogue_sync_agent" {
+            IF fn::ingestion_session_identity({}).role NOT IN ["catalogue_sync_agent", "system"] {
                 THROW "INGESTION_MANIFEST_EXECUTION_UNAUTHORIZED: Seul le service catalogue_sync_agent est habilité à exécuter la publication vers le Master Catalogue.";
             };
         };

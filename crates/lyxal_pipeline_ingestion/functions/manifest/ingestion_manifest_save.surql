@@ -11,9 +11,6 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_save($params: object) {
     LET $seal_hash = <string> $params.seal_hash;
     LET $is_sealed = IF $params.is_sealed != NONE { <bool> $params.is_sealed } ELSE { true };
     LET $statut = IF $params.statut != NONE { string::uppercase(<string> $params.statut) } ELSE { "DRAFT" };
-    LET $approved_by = IF $params.approved_by != NONE { <string> $params.approved_by } ELSE { NONE };
-    LET $approved_at = IF $params.approved_at != NONE { <datetime> $params.approved_at } ELSE { NONE };
-    LET $approver_role = IF $params.approver_role != NONE { <string> $params.approver_role } ELSE { NONE };
     LET $nb_articles_insert = IF $params.nb_articles_insert != NONE { <int> $params.nb_articles_insert } ELSE { 0 };
     LET $nb_articles_update = IF $params.nb_articles_update != NONE { <int> $params.nb_articles_update } ELSE { 0 };
     LET $items_committed = IF $params.items_committed != NONE { <int> $params.items_committed } ELSE { 0 };
@@ -37,9 +34,6 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_save($params: object) {
             seal_hash = $seal_hash,
             is_sealed = $is_sealed,
             statut = $statut,
-            approved_by = $approved_by,
-            approved_at = $approved_at,
-            approver_role = $approver_role,
             nb_articles_insert = $nb_articles_insert,
             nb_articles_update = $nb_articles_update,
             items_committed = $items_committed,
@@ -55,9 +49,6 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_save($params: object) {
             seal_hash: $seal_hash,
             is_sealed: $is_sealed,
             statut: $statut,
-            approved_by: $approved_by,
-            approved_at: $approved_at,
-            approver_role: $approver_role,
             nb_articles_insert: $nb_articles_insert,
             nb_articles_update: $nb_articles_update,
             items_committed: $items_committed,
@@ -69,4 +60,4 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_save($params: object) {
     };
 
     RETURN fn::result_ok($manifest_ref);
-} COMMENT "Enregistre ou met à jour un manifeste de publication avec empreinte cryptographique BLAKE3";
+} COMMENT "Enregistre ou met à jour un manifeste de publication scellé par BLAKE3 ; l'approbation ne passe que par fn::ingestion_manifest_approve";

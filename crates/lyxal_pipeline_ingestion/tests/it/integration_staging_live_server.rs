@@ -20,9 +20,7 @@ use lyxal_pipeline_ingestion::proof::{CommercialProof, CommercialProofType};
 use lyxal_pipeline_ingestion::publisher::controlled_publisher::{
     ControlledPublisher, SyncAgentSession,
 };
-use lyxal_pipeline_ingestion::storage::store::{
-    IngestionStore, SessionAuthContext, StagedRequalifyParams,
-};
+use lyxal_pipeline_ingestion::storage::store::IngestionStore;
 use lyxal_pipeline_ingestion::types::{
     BatchStatus, ItemQualification, ManifestStatus, PackagingDetails, PublicationAction,
     SourceFormat,
@@ -39,20 +37,21 @@ const STAGING_HOST: &str = "127.0.0.1:8001";
 const STAGING_NS: &str = "lyxal_staging";
 const STAGING_DB: &str = "pipeline_staging";
 
+/// Identifiants du serveur de recette, fournis par `scripts/ci/test_all.sh` (générés à chaque
+/// exécution) : aucun identifiant par défaut dans le dépôt.
 fn staging_user() -> String {
-    std::env::var("LYXAL_STAGING_USER").unwrap_or_else(|_| "lyxal_stg_admin_v1".to_string())
+    std::env::var("LYXAL_STAGING_USER")
+        .expect("LYXAL_STAGING_USER requis (serveur de recette démarré par scripts/ci/test_all.sh)")
 }
 
 fn staging_pass() -> String {
     std::env::var("LYXAL_STAGING_PASS")
-        .unwrap_or_else(|_| "Stg_SecLyxal#2026!Rotated9x".to_string())
+        .expect("LYXAL_STAGING_PASS requis (serveur de recette démarré par scripts/ci/test_all.sh)")
 }
 
 /// Helper initialisant le store pour les tests typés
 async fn get_staging_store() -> IngestionStore {
-    IngestionStore::create_in_memory()
-        .await
-        .expect("Initialisation du store pour la recette")
+    crate::support::installed_store().await
 }
 
 // -----------------------------------------------------------------------------
@@ -237,7 +236,7 @@ async fn test_staging_four_roles_authentication_and_rls() {
         source_format_version: "3.0".to_string(),
         fournisseur_id: "FOURN_RLS".to_string(),
         nom_fichier: "catalogue_rls.csv".to_string(),
-        file_hash_blake3: "hash_rls_01".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_rls_01"),
         taille_octets: 4096,
         statut: BatchStatus::Received,
         cursor_offset: 0,
@@ -256,28 +255,6 @@ async fn test_staging_four_roles_authentication_and_rls() {
         .await
         .expect("Création du lot par ingestion_agent");
 
-    // B. Rôle 2 : qualification_agent
-    // Tente une requalification sans session steward autorisée : DOIT ÊTRE REJETÉ
-    let unauth_session = SessionAuthContext {
-        user_id: "agent_qualif_01".to_string(),
-        role: "qualification_agent".to_string(),
-    };
-
-    let requal_unauth = store
-        .requalify_staged_item(StagedRequalifyParams {
-            item_id: "staged_rls_01".to_string(),
-            new_qualification: "VERIFIED".to_string(),
-            justification: "Arbitrage non autorisé".to_string(),
-            proof: None,
-            language: Some("fr".to_string()),
-            _session_auth: Some(unauth_session),
-        })
-        .await;
-    assert!(
-        requal_unauth.is_err(),
-        "Le rôle qualification_agent ne doit PAS pouvoir requalifier un article !"
-    );
-
     // C. Rôle 3 : steward_admin
     // Autorisé à consulter le tableau de bord des métriques consolidées
     let metrics = store
@@ -286,26 +263,8 @@ async fn test_staging_four_roles_authentication_and_rls() {
         .expect("Consultation métriques par steward_admin");
     assert!(metrics.batches.total >= 1, "Nombre de lots cohérent");
 
-    // D. Rôle 4 : catalogue_sync_agent
-    // Tente une requalification arbitraire : DOIT ÉCHOUER (rôle insuffisant)
-    let unauth_sync_session = SessionAuthContext {
-        user_id: "sync_daemon_01".to_string(),
-        role: "catalogue_sync_agent".to_string(),
-    };
-    let requal_sync = store
-        .requalify_staged_item(StagedRequalifyParams {
-            item_id: "staged_rls_02".to_string(),
-            new_qualification: "VERIFIED".to_string(),
-            justification: "Requalification illégitime".to_string(),
-            proof: None,
-            language: Some("fr".to_string()),
-            _session_auth: Some(unauth_sync_session),
-        })
-        .await;
-    assert!(
-        requal_sync.is_err(),
-        "Le rôle catalogue_sync_agent ne doit PAS pouvoir requalifier un article !"
-    );
+    // Les refus par rôle (qualification_agent, catalogue_sync_agent) sont prouvés sous de
+    // vraies identités dans tests/securite.test.surql.
 
     println!("    [OK] Cloisonnement strict des 4 rôles et contrôles RLS validés.");
 }
@@ -328,7 +287,7 @@ async fn test_staging_worker_batch_checkpoint_and_interruption_resumption() {
         source_format_version: "3.0".to_string(),
         fournisseur_id: "FOURN_WORKER".to_string(),
         nom_fichier: "worker_batch.csv".to_string(),
-        file_hash_blake3: "hash_worker_01".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_worker_01"),
         taille_octets: 8192,
         statut: BatchStatus::Parsing,
         cursor_offset: 0,
@@ -456,7 +415,7 @@ async fn test_staging_btp_41_proof_security_and_master_isolation() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "PLACO".to_string(),
         nom_fichier: "test_lock.csv".to_string(),
-        file_hash_blake3: "hash_lock_01".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_lock_01"),
         taille_octets: 1000,
         statut: BatchStatus::Received,
         cursor_offset: 0,
@@ -477,7 +436,7 @@ async fn test_staging_btp_41_proof_security_and_master_isolation() {
         batch: batch_id.to_string(),
         raw_record: "raw_lock_01".to_string(),
         ligne_numero: 1,
-        canonical_fingerprint: "fp_lock_01".to_string(),
+        canonical_fingerprint: lyxal_crypto::blake3_hex(b"fp_lock_01"),
         rules_version: "2026.1".to_string(),
         fabricant: "PLACO".to_string(),
         marque: Some("PLACO".to_string()),
@@ -485,7 +444,7 @@ async fn test_staging_btp_41_proof_security_and_master_isolation() {
         code_barre_gtin: Some("3496250048324".to_string()),
         libelle_commercial: "Placoplatre BA13 standard 2500x1200 mm".to_string(),
         description_technique: None,
-        type_item: "MATERIEL_BTP".to_string(),
+        type_item: "PRODUIT".to_string(),
         unite_reference: "M2".to_string(),
         conditionnement: PackagingDetails::default(),
         qualification: ItemQualification::Verified,
@@ -500,7 +459,8 @@ async fn test_staging_btp_41_proof_security_and_master_isolation() {
     };
     store.save_staged_item(&staged_item).await.unwrap();
 
-    let seal_hash = FingerprintEngine::compute_manifest_seal(&["fp_lock_01".to_string()]);
+    let seal_hash =
+        FingerprintEngine::compute_manifest_seal(&[lyxal_crypto::blake3_hex(b"fp_lock_01")]);
     let manifest = PublicationManifest {
         id: None,
         manifest_ref: manifest_ref.to_string(),
@@ -508,7 +468,7 @@ async fn test_staging_btp_41_proof_security_and_master_isolation() {
         manifest_version: 1,
         seal_hash,
         is_sealed: true,
-        statut: ManifestStatus::Draft,
+        statut: ManifestStatus::Sealed,
         approved_by: None,
         approved_at: None,
         approver_role: None,
@@ -522,11 +482,7 @@ async fn test_staging_btp_41_proof_security_and_master_isolation() {
     };
     store.save_manifest(&manifest).await.unwrap();
     store
-        .approve_manifest(
-            manifest_ref,
-            "steward_chief",
-            "Approbation pour test verrou",
-        )
+        .approve_manifest(manifest_ref, "Approbation pour test verrou")
         .await
         .unwrap();
 
@@ -587,7 +543,7 @@ async fn test_staging_real_performance_metrics() {
         source_format_version: "3.0".to_string(),
         fournisseur_id: "FOURN_BENCH".to_string(),
         nom_fichier: "bench_catalogue.csv".to_string(),
-        file_hash_blake3: "hash_bench_01".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_bench_01"),
         taille_octets: 1024 * 1024,
         statut: BatchStatus::Staged,
         cursor_offset: 0,
@@ -615,7 +571,7 @@ async fn test_staging_real_performance_metrics() {
             batch: batch_id.to_string(),
             raw_record: format!("raw_{i}"),
             ligne_numero: i + 1,
-            canonical_fingerprint: format!("fp_bench_{i:04}"),
+            canonical_fingerprint: lyxal_crypto::blake3_hex(format!("fp_bench_{i:04}").as_bytes()),
             rules_version: "v1.0".to_string(),
             fabricant: "BENCH_CORP".to_string(),
             marque: None,
@@ -623,7 +579,7 @@ async fn test_staging_real_performance_metrics() {
             code_barre_gtin: Some(format!("34567890123{:02}", i % 100)),
             libelle_commercial: format!("Produit de banc d'essai {i}"),
             description_technique: None,
-            type_item: "FOURNITURE".to_string(),
+            type_item: "PRODUIT".to_string(),
             unite_reference: "PCE".to_string(),
             conditionnement: PackagingDetails::default(),
             qualification: ItemQualification::ToConfirm,

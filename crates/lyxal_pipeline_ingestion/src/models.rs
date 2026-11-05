@@ -85,6 +85,8 @@ pub struct QuarantineRecord {
     pub id: Option<String>,
     pub batch: String,
     pub raw_record: String,
+    /// Numéro de la ligne du fichier source (à partir de 1).
+    pub ligne_numero: usize,
     pub code_erreur: String,
     pub severite: String, // "CRITICAL", "ERROR", "WARNING"
     pub champ_concerne: String,

@@ -198,10 +198,15 @@ DEFINE INDEX OVERWRITE idx_staged_qualif ON TABLE ingestion_staged_item FIELDS b
 -- GARDIEN MOTEUR : Validation des transitions de qualification et verrou d'approbation
 -- ----------------------------------------------------------------------------
 DEFINE EVENT OVERWRITE evt_staged_guard ON TABLE ingestion_staged_item
-WHEN $event = "UPDATE"
+WHEN $event = "CREATE" OR $event = "UPDATE"
 THEN {
+    -- 0. Un article n'est jamais créé déjà approuvé : l'approbation passe par la requalification
+    IF $event = "CREATE" AND $after.is_approved = true {
+        THROW "INGESTION_STAGED_APPROVAL_REQUIRES_STEWARD: Un article ne peut pas être créé déjà approuvé.";
+    };
+
     -- 1. Contrôle des transitions de qualification
-    IF $before.qualification != $after.qualification {
+    IF $event = "UPDATE" AND $before.qualification != $after.qualification {
         LET $valid_q_trans = (
             ($before.qualification = "TO_CONFIRM" AND ($after.qualification = "VERIFIED" OR $after.qualification = "REJECTED"))
             OR ($before.qualification = "REJECTED" AND $after.qualification = "TO_CONFIRM")
@@ -213,12 +218,14 @@ THEN {
     };
 
     -- 2. Verrouillage d'approbation : seuls les articles VERIFIED peuvent être approuvés par un steward_admin
-    IF $before.is_approved = false AND $after.is_approved = true {
+    IF $event = "UPDATE" AND $before.is_approved = false AND $after.is_approved = true {
         IF $after.qualification != "VERIFIED" {
             THROW "INGESTION_STAGED_CANNOT_APPROVE_NON_VERIFIED: Seul un article au statut VERIFIED peut être approuvé pour publication.";
         };
-        IF $after.approved_by == NONE OR $after.approver_role != "steward_admin" {
-            THROW "INGESTION_STAGED_APPROVAL_REQUIRES_STEWARD: L'approbation requiert formellement l'identité et le rôle steward_admin (auto-approbation interdite).";
+        -- Approbateur lu dans la session : steward_admin, ou session système (hôte)
+        LET $who = fn::ingestion_session_identity({});
+        IF $who.role NOT IN ["steward_admin", "system"] OR $after.approver_role != $who.role OR $after.approved_by != $who.operator {
+            THROW "INGESTION_STAGED_APPROVAL_REQUIRES_STEWARD: L'approbation requiert la session d'un steward_admin, dont l'identité est enregistrée (auto-approbation interdite).";
         };
     };
 };

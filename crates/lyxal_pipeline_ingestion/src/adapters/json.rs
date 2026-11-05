@@ -125,8 +125,7 @@ impl JsonAdapter {
             }
         }
 
-        let raw_hash =
-            lyxal_crypto::blake3_hex(serde_json::to_string(obj).unwrap_or_default().as_bytes());
+        let raw_hash = lyxal_crypto::blake3_hex(obj.to_string().as_bytes());
 
         Some(RawRecordDto {
             line_number: line_num,

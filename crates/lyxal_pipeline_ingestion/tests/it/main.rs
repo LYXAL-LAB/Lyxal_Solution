@@ -11,3 +11,4 @@ mod integration_phase4_alignment;
 mod integration_phase4_industrial;
 mod integration_phase5_steward;
 mod integration_staging_live_server;
+mod support;

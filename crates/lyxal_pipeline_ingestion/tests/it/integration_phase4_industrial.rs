@@ -18,7 +18,6 @@ use lyxal_pipeline_ingestion::models::{IngestionBatch, PublicationManifest};
 use lyxal_pipeline_ingestion::normalization::NormalizationEngine;
 use lyxal_pipeline_ingestion::proof::{CommercialProof, CommercialProofType};
 use lyxal_pipeline_ingestion::publisher::{ControlledPublisher, SyncAgentSession};
-use lyxal_pipeline_ingestion::storage::IngestionStore;
 use lyxal_pipeline_ingestion::technical_grouping::{
     ContextualSubstitutionRule, TechnicalGroupLevel, TechnicalGroupingEngine,
 };
@@ -110,9 +109,7 @@ fn test_verified_qualification_strict_requirement_phase4() {
 // =============================================================================
 #[tokio::test]
 async fn test_worker_interruption_checkpoint_and_resume_no_duplication() {
-    let store = IngestionStore::create_in_memory()
-        .await
-        .expect("Store in-memory initialisé");
+    let store = crate::support::installed_store().await;
 
     let batch_id = "batch_test_interruption_01";
     let batch = IngestionBatch {
@@ -121,7 +118,7 @@ async fn test_worker_interruption_checkpoint_and_resume_no_duplication() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "FOURNISSEUR_PLACO".to_string(),
         nom_fichier: "catalogue_placo_60.csv".to_string(),
-        file_hash_blake3: "blake3_hash_60_items_test".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"blake3_hash_60_items_test"),
         taille_octets: 4096,
         statut: BatchStatus::Received,
         cursor_offset: 0,
@@ -213,7 +210,7 @@ async fn test_worker_interruption_checkpoint_and_resume_no_duplication() {
 // =============================================================================
 #[tokio::test]
 async fn test_batch_reexecution_idempotence() {
-    let store = IngestionStore::create_in_memory().await.unwrap();
+    let store = crate::support::installed_store().await;
     let batch_id = "batch_test_idempotence";
 
     let batch = IngestionBatch {
@@ -222,7 +219,7 @@ async fn test_batch_reexecution_idempotence() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "FOURNISSEUR_ISOVER".to_string(),
         nom_fichier: "isover_10.csv".to_string(),
-        file_hash_blake3: "hash_isover_idempotence".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_isover_idempotence"),
         taille_octets: 1024,
         statut: BatchStatus::Received,
         cursor_offset: 0,
@@ -287,7 +284,7 @@ async fn test_batch_reexecution_idempotence() {
 // =============================================================================
 #[tokio::test]
 async fn test_concurrent_batch_locking_prevention() {
-    let store = IngestionStore::create_in_memory().await.unwrap();
+    let store = crate::support::installed_store().await;
     let worker = IngestionWorker::new(store.clone());
 
     let batch1 = IngestionBatch {
@@ -296,7 +293,7 @@ async fn test_concurrent_batch_locking_prevention() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "F1".to_string(),
         nom_fichier: "a.csv".to_string(),
-        file_hash_blake3: "hash_a".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_a"),
         taille_octets: 100,
         statut: BatchStatus::Received,
         cursor_offset: 0,
@@ -328,7 +325,7 @@ async fn test_concurrent_batch_locking_prevention() {
 // =============================================================================
 #[tokio::test]
 async fn test_publication_requires_blake3_seal_and_steward_approval() {
-    let store = IngestionStore::create_in_memory().await.unwrap();
+    let store = crate::support::installed_store().await;
     let publisher = ControlledPublisher::new(store.clone());
     let session = SyncAgentSession::new(
         "agent_sync_01",
@@ -345,7 +342,7 @@ async fn test_publication_requires_blake3_seal_and_steward_approval() {
         batch: batch_id.to_string(),
         manifest_ref: manifest_ref.to_string(),
         manifest_version: 1,
-        seal_hash: "".to_string(),
+        seal_hash: lyxal_crypto::blake3_hex(b"manifeste non scelle"),
         is_sealed: false,
         statut: ManifestStatus::Draft,
         approved_by: None,
@@ -371,7 +368,7 @@ async fn test_publication_requires_blake3_seal_and_steward_approval() {
     // 2. Manifeste scellé mais NON approuvé
     let mut sealed_manifest = unsealed_manifest.clone();
     sealed_manifest.is_sealed = true;
-    sealed_manifest.seal_hash = "blake3_seal_dummy".to_string();
+    sealed_manifest.seal_hash = lyxal_crypto::blake3_hex(b"blake3_seal_dummy");
     sealed_manifest.statut = ManifestStatus::Sealed;
     store.save_manifest(&sealed_manifest).await.unwrap();
 
@@ -382,9 +379,7 @@ async fn test_publication_requires_blake3_seal_and_steward_approval() {
     );
 
     // 3. Approbation par le steward_admin avec justification formelle
-    let res_short_reason = store
-        .approve_manifest(manifest_ref, "steward_01", "court")
-        .await;
+    let res_short_reason = store.approve_manifest(manifest_ref, "court").await;
     assert!(
         res_short_reason.is_err(),
         "Justification trop courte (< 10 caractères) doit être refusée"
@@ -393,7 +388,6 @@ async fn test_publication_requires_blake3_seal_and_steward_approval() {
     store
         .approve_manifest(
             manifest_ref,
-            "steward_01",
             "Bordereau fournisseur certifié par Saint-Gobain conforme au protocole",
         )
         .await
@@ -401,7 +395,8 @@ async fn test_publication_requires_blake3_seal_and_steward_approval() {
 
     let approved = store.get_manifest(manifest_ref).await.unwrap().unwrap();
     assert_eq!(approved.statut, ManifestStatus::Approved);
-    assert_eq!(approved.approved_by, Some("steward_01".to_string()));
+    // Approbateur lu dans la session : ici la session système de l'hôte.
+    assert_eq!(approved.approved_by, Some("system".to_string()));
 }
 
 // =============================================================================
@@ -409,7 +404,7 @@ async fn test_publication_requires_blake3_seal_and_steward_approval() {
 // =============================================================================
 #[tokio::test]
 async fn test_publication_requires_authorized_sync_agent() {
-    let store = IngestionStore::create_in_memory().await.unwrap();
+    let store = crate::support::installed_store().await;
     let publisher = ControlledPublisher::new(store.clone());
 
     // 1. Utilisateur standard sans rôle de sync
@@ -446,7 +441,7 @@ async fn test_publication_requires_authorized_sync_agent() {
 // =============================================================================
 #[tokio::test]
 async fn test_publication_strict_filtering_verified_only() {
-    let store = IngestionStore::create_in_memory().await.unwrap();
+    let store = crate::support::installed_store().await;
     let batch_id = "batch_mixed_qualification";
     let manifest_ref = "MANIFEST-MIXED-001";
 
@@ -457,7 +452,7 @@ async fn test_publication_strict_filtering_verified_only() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "PLACO".to_string(),
         nom_fichier: "placo_mixed.csv".to_string(),
-        file_hash_blake3: "hash_mixed".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_mixed"),
         taille_octets: 1000,
         statut: BatchStatus::Received,
         cursor_offset: 0,
@@ -520,7 +515,7 @@ PLACO_REJ;;;;;0.00
         manifest_version: 1,
         seal_hash,
         is_sealed: true,
-        statut: ManifestStatus::Draft,
+        statut: ManifestStatus::Sealed,
         approved_by: None,
         approved_at: None,
         approver_role: None,
@@ -534,11 +529,7 @@ PLACO_REJ;;;;;0.00
     };
     store.save_manifest(&manifest).await.unwrap();
     store
-        .approve_manifest(
-            manifest_ref,
-            "steward_chief",
-            "Approbation des références vérifiées",
-        )
+        .approve_manifest(manifest_ref, "Approbation des références vérifiées")
         .await
         .unwrap();
 
@@ -577,7 +568,7 @@ PLACO_REJ;;;;;0.00
 // =============================================================================
 #[tokio::test]
 async fn test_publication_partial_failure_and_idempotent_resume() {
-    let store = IngestionStore::create_in_memory().await.unwrap();
+    let store = crate::support::installed_store().await;
     let batch_id = "batch_partial_pub";
     let manifest_ref = "MANIFEST-PARTIAL-001";
 
@@ -587,7 +578,7 @@ async fn test_publication_partial_failure_and_idempotent_resume() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "PLACO".to_string(),
         nom_fichier: "two_items.csv".to_string(),
-        file_hash_blake3: "hash_partial".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_partial"),
         taille_octets: 500,
         statut: BatchStatus::Received,
         cursor_offset: 0,
@@ -642,7 +633,7 @@ ITEM_P2;Item Partiel 2;3017620422003;Placo Saint-Gobain;PCE;12.0
         manifest_version: 1,
         seal_hash,
         is_sealed: true,
-        statut: ManifestStatus::Draft,
+        statut: ManifestStatus::Sealed,
         approved_by: None,
         approved_at: None,
         approver_role: None,
@@ -661,7 +652,7 @@ ITEM_P2;Item Partiel 2;3017620422003;Placo Saint-Gobain;PCE;12.0
     };
     store.save_manifest(&manifest).await.unwrap();
     store
-        .approve_manifest(manifest_ref, "steward_01", "Approbation de reprise")
+        .approve_manifest(manifest_ref, "Approbation de reprise")
         .await
         .unwrap();
 
@@ -723,7 +714,7 @@ fn test_contextual_substitution_revocation() {
         commercial_proof: None,
         qualification: ItemQualification::Verified,
         qualification_reason: "Initial qualification".to_string(),
-        canonical_fingerprint: "hash_test_placo".to_string(),
+        canonical_fingerprint: lyxal_crypto::blake3_hex(b"hash_test_placo"),
         raw_payload: serde_json::json!({}),
         raw_hash: "raw_hash_test_placo".to_string(),
         rules_engine_version: "2026.1".to_string(),
@@ -754,7 +745,7 @@ fn test_contextual_substitution_revocation() {
         commercial_proof: None,
         qualification: ItemQualification::Verified,
         qualification_reason: "Initial qualification".to_string(),
-        canonical_fingerprint: "hash_test_knauf".to_string(),
+        canonical_fingerprint: lyxal_crypto::blake3_hex(b"hash_test_knauf"),
         raw_payload: serde_json::json!({}),
         raw_hash: "raw_hash_test_knauf".to_string(),
         rules_engine_version: "2026.1".to_string(),
@@ -809,7 +800,7 @@ fn test_contextual_substitution_revocation() {
 // =============================================================================
 #[tokio::test]
 async fn test_graceful_shutdown_under_cancellation_token() {
-    let store = IngestionStore::create_in_memory().await.unwrap();
+    let store = crate::support::installed_store().await;
     let worker = IngestionWorker::new(store.clone());
 
     let token = CancellationToken::new();
@@ -821,7 +812,7 @@ async fn test_graceful_shutdown_under_cancellation_token() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "F1".to_string(),
         nom_fichier: "shutdown.csv".to_string(),
-        file_hash_blake3: "hash_shutdown".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_shutdown"),
         taille_octets: 1000,
         statut: BatchStatus::Received,
         cursor_offset: 0,
@@ -868,9 +859,7 @@ async fn test_graceful_shutdown_under_cancellation_token() {
 // =============================================================================
 #[tokio::test]
 async fn test_industrial_benchmark_over_1500_items() {
-    let store = IngestionStore::create_in_memory()
-        .await
-        .expect("Store in-memory initialisé");
+    let store = crate::support::installed_store().await;
 
     let batch_id = "batch_benchmark_1600_items";
     let total_items = 1600;
@@ -881,7 +870,7 @@ async fn test_industrial_benchmark_over_1500_items() {
         source_format_version: "1.0".to_string(),
         fournisseur_id: "FOURNISSEUR_BTP_GLOBAL".to_string(),
         nom_fichier: "catalogue_btp_1600.csv".to_string(),
-        file_hash_blake3: "blake3_benchmark_1600_btp".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"blake3_benchmark_1600_btp"),
         taille_octets: 128 * 1024,
         statut: BatchStatus::Received,
         cursor_offset: 0,

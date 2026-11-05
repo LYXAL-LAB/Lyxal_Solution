@@ -7,6 +7,7 @@
 DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_log($params: object) {
     LET $batch_id = <string> $params.batch_id;
     LET $raw_record_id = IF $params.raw_record_id != NONE { <string> $params.raw_record_id } ELSE { NONE };
+    LET $ligne_numero = <int> $params.ligne_numero;
     LET $code_erreur = <string> $params.code_erreur;
     LET $severite = IF $params.severite != NONE { <string> $params.severite } ELSE { "Error" };
     LET $champ_concerne = <string> $params.champ_concerne;
@@ -20,6 +21,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_log($params: object) {
     LET $created = (CREATE ingestion_quarantine_record CONTENT {
         batch: $batch_rec,
         raw_record: $raw_rec,
+        ligne_numero: $ligne_numero,
         code_erreur: $code_erreur,
         severite: $severite,
         champ_concerne: $champ_concerne,
