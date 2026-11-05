@@ -5,15 +5,33 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::catalogue_composition_add_line($params: object) {
-    LET $comp_id = <record<catalogue_composition>> $params.composition_id;
-    LET $composant_item_id = <record<catalogue_item>> $params.composant_item;
-    LET $composant_variante_id = IF $params.composant_variante != NONE { <record<catalogue_variante>> $params.composant_variante } ELSE { NONE };
-    LET $quantite = <decimal> $params.quantite;
-    LET $unite_id = <record<base_unite>> $params.unite;
-    LET $coeff = IF $params.coefficient_perte != NONE { <decimal> $params.coefficient_perte } ELSE { 1.0 };
-    LET $ordre = IF $params.ordre != NONE { <int> $params.ordre } ELSE { 0 };
-    LET $commentaire = IF $params.commentaire != NONE { string::trim($params.commentaire) } ELSE { NONE };
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            composition_id: { pipeline: [{ rule: "record", options: { expected_table: "catalogue_composition" } }], required: true },
+            composant_item: { pipeline: [{ rule: "record", options: { expected_table: "catalogue_item" } }], required: true },
+            composant_variante: { pipeline: [{ rule: "record", options: { expected_table: "catalogue_variante" } }] },
+            quantite: { pipeline: [{ rule: "positive_number" }], required: true },
+            unite: { pipeline: [{ rule: "record", options: { expected_table: "base_unite" } }], required: true },
+            coefficient_perte: { pipeline: [{ rule: "number", options: { min_value: 1 } }], default: 1 },
+            ordre: { pipeline: [{ rule: "integer", options: { min_value: 0, max_value: 1000000 } }], default: 0 },
+            commentaire: { pipeline: [{ rule: "optional_string", options: { max_length: 1000 } }] },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $comp_id = $p.composition_id;
+    LET $composant_item_id = $p.composant_item;
+    LET $composant_variante_id = $p.composant_variante;
+    LET $quantite = <decimal> $p.quantite;
+    LET $unite_id = $p.unite;
+    LET $coeff = <decimal> $p.coefficient_perte;
+    LET $ordre = $p.ordre;
+    LET $commentaire = $p.commentaire;
+    LET $language = $p.language;
 
     -- 1. Contrôle d'existence et statut de la composition
     LET $comp = (SELECT * FROM ONLY $comp_id);

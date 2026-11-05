@@ -5,25 +5,32 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::catalogue_attribut_create($params: object) {
-    LET $raw_code = $params.code;
-    LET $raw_libelle = $params.libelle;
-    LET $type_donnee = $params.type_donnee;
-    LET $unite_id = IF $params.unite != NONE { <record<base_unite>> $params.unite } ELSE { NONE };
-    LET $is_variant_driver = IF $params.is_variant_driver != NONE { <bool> $params.is_variant_driver } ELSE { false };
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
-
-    IF $raw_code == NONE OR string::len(string::trim($raw_code)) == 0 {
-        RETURN fn::error_result("CATALOGUE_ATTRIBUT_CODE_REQUIRED", $language, { field: "code" });
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            code: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }], required: true },
+            libelle: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 255 } }], required: true },
+            type_donnee: { pipeline: [{ rule: "enum", options: { allowed: ["STRING", "NUMBER", "BOOLEAN", "DATE", "COLOR"], case_sensitive: true } }], required: true },
+            unite: { pipeline: [{ rule: "record", options: { expected_table: "base_unite" } }] },
+            is_variant_driver: { pipeline: [{ rule: "boolean" }], default: false },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    IF $raw_libelle == NONE OR string::len(string::trim($raw_libelle)) == 0 {
-        RETURN fn::error_result("CATALOGUE_ATTRIBUT_LIBELLE_REQUIRED", $language, { field: "libelle" });
-    };
-    IF $type_donnee == NONE OR !($type_donnee IN ["STRING", "NUMBER", "BOOLEAN", "DATE", "COLOR"]) {
-        RETURN fn::error_result("CATALOGUE_ATTRIBUT_TYPE_INVALID", $language, { type_donnee: $type_donnee });
-    };
-
-    LET $code = string::uppercase(string::trim($raw_code));
-    LET $libelle = string::trim($raw_libelle);
+    LET $p = fn::sanitize_object_execute($report.value, {
+        fields: {
+            code: { pipeline: [{ rule: "uppercase" }] }
+        },
+        unknown_keys: "keep"
+    }, 40);
+    LET $code = $p.code;
+    LET $libelle = $p.libelle;
+    LET $type_donnee = $p.type_donnee;
+    LET $unite_id = $p.unite;
+    LET $is_variant_driver = $p.is_variant_driver;
+    LET $language = $p.language;
 
     -- Contrôle d'unicité du code
     LET $existing = (SELECT id FROM catalogue_attribut WHERE code = $code);

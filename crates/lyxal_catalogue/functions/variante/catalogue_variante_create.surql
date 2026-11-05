@@ -5,25 +5,41 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::catalogue_variante_create($params: object) {
-    LET $item_id = <record<catalogue_item>> $params.item_id;
-    LET $raw_code = $params.code;
-    LET $raw_libelle = $params.libelle;
-    LET $ref_fabricant = IF $params.reference_fabricant != NONE { string::trim($params.reference_fabricant) } ELSE { NONE };
-    LET $code_barre = IF $params.code_barre != NONE { string::trim($params.code_barre) } ELSE { NONE };
-    LET $is_default = IF $params.is_default != NONE { <bool> $params.is_default } ELSE { false };
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            item_id: { pipeline: [{ rule: "record", options: { expected_table: "catalogue_item" } }], required: true },
+            code: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }], required: true },
+            libelle: { pipeline: [{ rule: "optional_string", options: { max_length: 255 } }] },
+            reference_fabricant: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
+            code_barre: { pipeline: [{ rule: "gtin" }] },
+            is_default: { pipeline: [{ rule: "boolean" }], default: false },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = fn::sanitize_object_execute($report.value, {
+        fields: {
+            code: { pipeline: [{ rule: "uppercase" }] }
+        },
+        unknown_keys: "keep"
+    }, 40);
+    LET $item_id = $p.item_id;
+    LET $code = $p.code;
+    LET $raw_libelle = $p.libelle;
+    LET $ref_fabricant = $p.reference_fabricant;
+    LET $code_barre = $p.code_barre;
+    LET $is_default = $p.is_default;
+    LET $language = $p.language;
 
     LET $item = (SELECT * FROM ONLY $item_id);
     IF $item == NONE {
         RETURN fn::error_result("CATALOGUE_ITEM_NOT_FOUND", $language, { id: <string> $item_id });
     };
 
-    IF $raw_code == NONE OR string::len(string::trim($raw_code)) == 0 {
-        RETURN fn::error_result("CATALOGUE_VARIANTE_CODE_REQUIRED", $language, { field: "code" });
-    };
-
-    LET $code = string::uppercase(string::trim($raw_code));
-    LET $libelle = IF $raw_libelle != NONE { string::trim($raw_libelle) } ELSE { string::concat($item.libelle, " - ", $code) };
+    LET $libelle = $raw_libelle ?? string::concat($item.libelle, " - ", $code);
 
     -- Contrôle d'unicité du code variante
     LET $existing = (SELECT id FROM catalogue_variante WHERE code = $code);

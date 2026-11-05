@@ -5,22 +5,60 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
-    LET $id = <record<catalogue_item>> $params.id;
-    LET $raw_libelle = $params.libelle;
-    LET $description = $params.description;
-    LET $unite_id = IF $params.unite_reference != NONE { <record<base_unite>> $params.unite_reference } ELSE { NONE };
-    LET $enabled = $params.enabled;
-    LET $statut_comm = IF $params.statut_commercial != NONE { string::uppercase(string::trim($params.statut_commercial)) } ELSE { NONE };
-    LET $documents = $params.documents;
-    LET $conditionnement = $params.conditionnement;
-    -- GTIN ramené à sa forme normalisée par lyxal_core (chiffres seuls) ; une valeur invalide est conservée telle quelle et refusée plus loin.
-    LET $code_barre = IF $params.code_barre != NONE { fn::validation_gtin($params.code_barre).value ?? string::trim($params.code_barre) } ELSE { NONE };
-    LET $fabricant = IF $params.fabricant != NONE { string::uppercase(string::trim($params.fabricant)) } ELSE { NONE };
-    LET $marque = IF $params.marque != NONE { string::uppercase(string::trim($params.marque)) } ELSE { NONE };
-    LET $ref_fab = IF $params.reference_fabricant != NONE { string::trim($params.reference_fabricant) } ELSE { NONE };
-    LET $code_interne = IF $params.code_interne_client != NONE { string::trim($params.code_interne_client) } ELSE { NONE };
-    LET $libelle_custom = IF $params.libelle_personnalise != NONE { string::trim($params.libelle_personnalise) } ELSE { NONE };
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            id: { pipeline: [{ rule: "record", options: { expected_table: "catalogue_item" } }], required: true },
+            code: { pipeline: [{ rule: "optional_string", options: { max_length: 64 } }] },
+            type: { pipeline: [{ rule: "record", options: { expected_table: "catalogue_type" } }] },
+            nature_reference: { pipeline: [{ rule: "enum", options: { allowed: ["GENERIQUE", "COMMERCIALE"], case_sensitive: false } }] },
+            libelle: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 255 } }] },
+            description: { pipeline: [{ rule: "optional_string", options: { max_length: 4000 } }] },
+            unite_reference: { pipeline: [{ rule: "record", options: { expected_table: "base_unite" } }] },
+            enabled: { pipeline: [{ rule: "boolean" }] },
+            statut_commercial: { pipeline: [{ rule: "enum", options: { allowed: ["ACTIF", "FIN_DE_SERIE", "OBSOLETE", "REMPLACE"], case_sensitive: false } }] },
+            documents: { pipeline: [{ rule: "array_objects", options: { allow_empty_objects: false } }] },
+            conditionnement: { pipeline: [{ rule: "object_non_empty" }] },
+            code_barre: { pipeline: [{ rule: "gtin" }] },
+            fabricant: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
+            marque: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
+            reference_fabricant: { pipeline: [{ rule: "optional_string", options: { max_length: 64 } }] },
+            code_interne_client: { pipeline: [{ rule: "optional_string", options: { max_length: 64 } }] },
+            libelle_personnalise: { pipeline: [{ rule: "optional_string", options: { max_length: 255 } }] },
+            master_id: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
+            is_custom: { pipeline: [{ rule: "boolean" }] },
+            tenant_id: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 60);
+    IF !$report.valid {
+        RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = fn::sanitize_object_execute($report.value, {
+        fields: {
+            code: { pipeline: [{ rule: "uppercase" }] },
+            nature_reference: { pipeline: [{ rule: "uppercase" }] },
+            statut_commercial: { pipeline: [{ rule: "uppercase" }] },
+            fabricant: { pipeline: [{ rule: "uppercase" }] },
+            marque: { pipeline: [{ rule: "uppercase" }] }
+        },
+        unknown_keys: "keep"
+    }, 60);
+    LET $id = $p.id;
+    LET $raw_libelle = $p.libelle;
+    LET $description = $p.description;
+    LET $unite_id = $p.unite_reference;
+    LET $enabled = $p.enabled;
+    LET $statut_comm = $p.statut_commercial;
+    LET $documents = $p.documents;
+    LET $conditionnement = $p.conditionnement;
+    LET $code_barre = $p.code_barre;
+    LET $fabricant = $p.fabricant;
+    LET $marque = $p.marque;
+    LET $ref_fab = $p.reference_fabricant;
+    LET $code_interne = $p.code_interne_client;
+    LET $libelle_custom = $p.libelle_personnalise;
+    LET $language = $p.language;
 
     LET $item = (SELECT * FROM ONLY $id);
     IF $item == NONE {
@@ -33,13 +71,13 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
     };
 
     -- Contrôle d'immutabilité structurelle (code, type, nature_reference)
-    IF $params.code != NONE AND string::uppercase(string::trim($params.code)) != $item.code {
+    IF $p.code != NONE AND $p.code != $item.code {
         RETURN fn::error_result("CATALOGUE_ITEM_CODE_IMMUTABLE", $language, { code: $item.code });
     };
-    IF $params.type != NONE AND <record<catalogue_type>> $params.type != $item.type {
+    IF $p.type != NONE AND $p.type != $item.type {
         RETURN fn::error_result("CATALOGUE_ITEM_TYPE_IMMUTABLE", $language, { type: $item.type });
     };
-    IF $params.nature_reference != NONE AND string::uppercase(string::trim($params.nature_reference)) != $item.nature_reference {
+    IF $p.nature_reference != NONE AND $p.nature_reference != $item.nature_reference {
         RETURN fn::error_result("CATALOGUE_ITEM_NATURE_IMMUTABLE", $language, { nature_reference: $item.nature_reference });
     };
 
@@ -109,13 +147,13 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
                 notice: "Cet article privé appartient exclusivement à une autre organisation."
             });
         };
-        IF $params.tenant_id != NONE AND string::trim($params.tenant_id) != $item.tenant_id {
+        IF $p.tenant_id != NONE AND $p.tenant_id != $item.tenant_id {
             RETURN fn::error_result("CATALOGUE_ITEM_TENANT_ID_IMMUTABLE", $language, {
                 tenant_id: $item.tenant_id,
                 notice: "Le propriétaire tenant_id d'un article est strictement immuable."
             });
         };
-        IF $params.is_custom != NONE AND <bool> $params.is_custom == false {
+        IF $p.is_custom == false {
             RETURN fn::error_result("CATALOGUE_ITEM_CUSTOM_CANNOT_CONVERT_MASTER", $language, {
                 id: <string> $id,
                 notice: "Un article privé ne peut pas être converti en article maître."
@@ -125,10 +163,10 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
 
     -- Protection des champs synchronisés du Master
     IF $item.is_custom == false AND $item.master_id != NONE {
-        IF $params.master_id != NONE AND $params.master_id != $item.master_id {
+        IF $p.master_id != NONE AND $p.master_id != $item.master_id {
             RETURN fn::error_result("CATALOGUE_ITEM_MASTER_ID_IMMUTABLE", $language, { master_id: $item.master_id });
         };
-        IF $params.is_custom != NONE AND <bool> $params.is_custom == true {
+        IF $p.is_custom == true {
             RETURN fn::error_result("CATALOGUE_ITEM_SYNC_CANNOT_CONVERT_CUSTOM", $language, { id: <string> $id });
         };
 
@@ -142,8 +180,8 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
                OR ($unite_id != NONE AND $unite_id != $item.unite_reference)
                OR ($conditionnement != NONE AND $conditionnement != $item.conditionnement)
                OR ($documents != NONE AND $documents != $item.documents)
-               OR ($raw_libelle != NONE AND string::trim($raw_libelle) != $item.libelle)
-               OR ($description != NONE AND string::trim($description) != $item.description)
+               OR ($raw_libelle != NONE AND $raw_libelle != $item.libelle)
+               OR ($description != NONE AND $description != $item.description)
                OR ($statut_comm != NONE AND $statut_comm != $item.statut_commercial) {
                 RETURN fn::error_result("CATALOGUE_ITEM_SYNC_FIELD_PROTECTED", $language, { 
                     id: <string> $id,
@@ -163,7 +201,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
                     notice: "Le flux Master de synchronisation ne peut en aucun cas modifier ou écraser les personnalisations locales du client."
                 });
             };
-            IF $item.enabled == false AND $enabled != NONE AND <bool> $enabled == true {
+            IF $item.enabled == false AND $enabled == true {
                 RETURN fn::error_result("CATALOGUE_ITEM_SYNC_CANNOT_REACTIVATE_DISABLED", $language, {
                     id: <string> $id,
                     notice: "Une mise à jour Master ne peut jamais réactiver un article désactivé localement par l'organisation cliente."
@@ -172,13 +210,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
         };
     };
 
-    -- Validation GS1 si le code-barres est modifié
-    LET $final_gtin = IF $code_barre != NONE { $code_barre } ELSE { $item.code_barre };
+    -- Unicité du GTIN s'il est modifié (format et clé GS1 contrôlés par la règle gtin de lyxal_core)
+    LET $final_gtin = $code_barre ?? $item.code_barre;
     IF $code_barre != NONE AND $code_barre != $item.code_barre {
-        LET $is_gtin_valid = fn::validation_gtin($code_barre).valid;
-        IF $is_gtin_valid != true {
-            RETURN fn::error_result("CATALOGUE_ITEM_GTIN_INVALID", $language, { code_barre: $code_barre });
-        };
         LET $existing_gtin = (SELECT id FROM catalogue_item WHERE code_barre = $code_barre AND id != $id);
         IF array::len($existing_gtin) > 0 {
             RETURN fn::error_result("CATALOGUE_ITEM_GTIN_ALREADY_EXISTS", $language, { code_barre: $code_barre });
@@ -186,8 +220,8 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
     };
 
     -- Contrôle d'unicité fabricant + ref_fab si modifié
-    LET $final_fab = IF $fabricant != NONE { $fabricant } ELSE { $item.fabricant };
-    LET $final_ref = IF $ref_fab != NONE { $ref_fab } ELSE { $item.reference_fabricant };
+    LET $final_fab = $fabricant ?? $item.fabricant;
+    LET $final_ref = $ref_fab ?? $item.reference_fabricant;
     IF $final_fab != NONE AND $final_ref != NONE AND ($final_fab != $item.fabricant OR $final_ref != $item.reference_fabricant) {
         LET $existing_fab_ref = (SELECT id FROM catalogue_item WHERE fabricant = $final_fab AND reference_fabricant = $final_ref AND id != $id);
         IF array::len($existing_fab_ref) > 0 {
@@ -199,29 +233,27 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
     LET $final_enabled = IF $is_sync_auth {
         IF $item.enabled == false {
             false
-        } ELSE IF $enabled != NONE {
-            <bool> $enabled
         } ELSE {
-            $item.enabled
+            $enabled ?? $item.enabled
         }
     } ELSE {
-        IF $enabled != NONE { <bool> $enabled } ELSE { $item.enabled }
+        $enabled ?? $item.enabled
     };
 
     LET $updated = (UPDATE ONLY $id MERGE {
-        libelle: IF $raw_libelle != NONE { string::trim($raw_libelle) } ELSE { $item.libelle },
-        description: IF $description != NONE { string::trim($description) } ELSE { $item.description },
-        unite_reference: IF $unite_id != NONE { $unite_id } ELSE { $item.unite_reference },
+        libelle: $raw_libelle ?? $item.libelle,
+        description: $description ?? $item.description,
+        unite_reference: $unite_id ?? $item.unite_reference,
         enabled: $final_enabled,
-        statut_commercial: IF $statut_comm != NONE { $statut_comm } ELSE { $item.statut_commercial },
-        documents: IF $documents != NONE { $documents } ELSE { $item.documents },
-        conditionnement: IF $conditionnement != NONE { $conditionnement } ELSE { $item.conditionnement },
+        statut_commercial: $statut_comm ?? $item.statut_commercial,
+        documents: $documents ?? $item.documents,
+        conditionnement: $conditionnement ?? $item.conditionnement,
         code_barre: $final_gtin,
         fabricant: $final_fab,
-        marque: IF $marque != NONE { $marque } ELSE { $item.marque },
+        marque: $marque ?? $item.marque,
         reference_fabricant: $final_ref,
-        code_interne_client: IF $code_interne != NONE { $code_interne } ELSE { $item.code_interne_client },
-        libelle_personnalise: IF $libelle_custom != NONE { $libelle_custom } ELSE { $item.libelle_personnalise },
+        code_interne_client: $code_interne ?? $item.code_interne_client,
+        libelle_personnalise: $libelle_custom ?? $item.libelle_personnalise,
         updated_at: time::now()
     });
 

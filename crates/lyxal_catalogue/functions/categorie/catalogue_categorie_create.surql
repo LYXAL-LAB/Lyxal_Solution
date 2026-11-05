@@ -5,22 +5,30 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::catalogue_categorie_create($params: object) {
-    LET $raw_code = $params.code;
-    LET $raw_libelle = $params.libelle;
-    LET $parent_id = IF $params.parent != NONE { <record<catalogue_categorie>> $params.parent } ELSE { NONE };
-    LET $ordre = IF $params.ordre != NONE { <int> $params.ordre } ELSE { 0 };
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
-
-    IF $raw_code == NONE OR string::len(string::trim($raw_code)) == 0 {
-        RETURN fn::error_result("CATALOGUE_CATEGORIE_CODE_REQUIRED", $language, { field: "code" });
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            code: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }], required: true },
+            libelle: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 255 } }], required: true },
+            parent: { pipeline: [{ rule: "record", options: { expected_table: "catalogue_categorie" } }] },
+            ordre: { pipeline: [{ rule: "integer", options: { min_value: 0, max_value: 1000000 } }], default: 0 },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-
-    IF $raw_libelle == NONE OR string::len(string::trim($raw_libelle)) == 0 {
-        RETURN fn::error_result("CATALOGUE_CATEGORIE_LIBELLE_REQUIRED", $language, { field: "libelle" });
-    };
-
-    LET $code = string::uppercase(string::trim($raw_code));
-    LET $libelle = string::trim($raw_libelle);
+    LET $p = fn::sanitize_object_execute($report.value, {
+        fields: {
+            code: { pipeline: [{ rule: "uppercase" }] }
+        },
+        unknown_keys: "keep"
+    }, 40);
+    LET $code = $p.code;
+    LET $libelle = $p.libelle;
+    LET $parent_id = $p.parent;
+    LET $ordre = $p.ordre;
+    LET $language = $p.language;
 
     -- Contrôle d'unicité du code
     LET $existing = (SELECT id FROM catalogue_categorie WHERE code = $code);

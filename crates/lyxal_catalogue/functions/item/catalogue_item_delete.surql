@@ -5,8 +5,19 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::catalogue_item_delete($params: object) {
-    LET $id = <record<catalogue_item>> $params.id;
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            id: { pipeline: [{ rule: "record", options: { expected_table: "catalogue_item" } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $id = $p.id;
+    LET $language = $p.language;
 
     LET $item = (SELECT * FROM ONLY $id);
     IF $item == NONE {

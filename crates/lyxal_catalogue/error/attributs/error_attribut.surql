@@ -30,87 +30,6 @@ IF !record::exists(error_definition:CATALOGUE_ATTRIBUT_NOT_FOUND) THEN (
     }
 ) END;
 
-IF !record::exists(error_definition:CATALOGUE_ATTRIBUT_CODE_REQUIRED) THEN (
-    CREATE error_definition:CATALOGUE_ATTRIBUT_CODE_REQUIRED CONTENT {
-        code: "CATALOGUE_ATTRIBUT_CODE_REQUIRED",
-        module: "catalogue",
-        domain: "attribut",
-        category: "validation",
-        severity: "error",
-        message: "Le code de l'attribut est obligatoire",
-        default_language: "fr",
-        http_status: 400,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Code d'attribut obligatoire",
-                description: "Le code de la caractéristique ne peut être vide.",
-                resolution: "Fournissez un code pour l'attribut."
-            },
-            en: {
-                label: "Attribute code required",
-                description: "The attribute code cannot be empty.",
-                resolution: "Provide an attribute code."
-            }
-        }
-    }
-) END;
-
-IF !record::exists(error_definition:CATALOGUE_ATTRIBUT_LIBELLE_REQUIRED) THEN (
-    CREATE error_definition:CATALOGUE_ATTRIBUT_LIBELLE_REQUIRED CONTENT {
-        code: "CATALOGUE_ATTRIBUT_LIBELLE_REQUIRED",
-        module: "catalogue",
-        domain: "attribut",
-        category: "validation",
-        severity: "error",
-        message: "Le libellé de l'attribut est obligatoire",
-        default_language: "fr",
-        http_status: 400,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Libellé d'attribut obligatoire",
-                description: "La désignation de l'attribut ne peut être vide.",
-                resolution: "Renseignez un libellé pour l'attribut."
-            },
-            en: {
-                label: "Attribute label required",
-                description: "The attribute label cannot be empty.",
-                resolution: "Provide an attribute label."
-            }
-        }
-    }
-) END;
-
-IF !record::exists(error_definition:CATALOGUE_ATTRIBUT_TYPE_INVALID) THEN (
-    CREATE error_definition:CATALOGUE_ATTRIBUT_TYPE_INVALID CONTENT {
-        code: "CATALOGUE_ATTRIBUT_TYPE_INVALID",
-        module: "catalogue",
-        domain: "attribut",
-        category: "validation",
-        severity: "error",
-        message: "Type de donnée d'attribut invalide (STRING, NUMBER, BOOLEAN, DATE, COLOR requis)",
-        default_language: "fr",
-        http_status: 400,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Type de donnée invalide",
-                description: "Le type doit faire partie des types autorisés : STRING, NUMBER, BOOLEAN, DATE, COLOR.",
-                resolution: "Utilisez un type de donnée valide."
-            },
-            en: {
-                label: "Invalid attribute data type",
-                description: "The data type must be one of: STRING, NUMBER, BOOLEAN, DATE, COLOR.",
-                resolution: "Use a supported data type."
-            }
-        }
-    }
-) END;
-
 IF !record::exists(error_definition:CATALOGUE_ATTRIBUT_ALREADY_EXISTS) THEN (
     CREATE error_definition:CATALOGUE_ATTRIBUT_ALREADY_EXISTS CONTENT {
         code: "CATALOGUE_ATTRIBUT_ALREADY_EXISTS",
@@ -187,33 +106,6 @@ IF !record::exists(error_definition:CATALOGUE_ATTRIBUT_VALEUR_NOT_FOUND) THEN (
                 label: "Attribute value not found",
                 description: "The specified attribute value does not exist.",
                 resolution: "Check attribute value ID."
-            }
-        }
-    }
-) END;
-
-IF !record::exists(error_definition:CATALOGUE_ATTRIBUT_VALEUR_CODE_REQUIRED) THEN (
-    CREATE error_definition:CATALOGUE_ATTRIBUT_VALEUR_CODE_REQUIRED CONTENT {
-        code: "CATALOGUE_ATTRIBUT_VALEUR_CODE_REQUIRED",
-        module: "catalogue",
-        domain: "attribut",
-        category: "validation",
-        severity: "error",
-        message: "Le code de la valeur d'attribut est obligatoire",
-        default_language: "fr",
-        http_status: 400,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Code de valeur obligatoire",
-                description: "Le code de la valeur d'attribut ne peut pas être vide.",
-                resolution: "Renseignez un code pour la valeur."
-            },
-            en: {
-                label: "Value code required",
-                description: "The attribute value code cannot be empty.",
-                resolution: "Provide a value code."
             }
         }
     }
