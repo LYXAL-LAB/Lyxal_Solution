@@ -6,9 +6,24 @@
 
 DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_approve($params: object) {
     LET $manifest_ref = <string> $params.manifest_ref;
-    LET $approved_by = <string> $params.approved_by;
-    LET $approver_role = IF $params.approver_role != NONE { <string> $params.approver_role } ELSE { "steward_admin" };
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+
+    -- Habilitation : identité lue dans la session (jamais dans les paramètres)
+    LET $who = fn::ingestion_session_identity({});
+    IF $who.role NOT IN ["steward_admin", "system"] {
+        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $language, {
+            manifest_ref: $manifest_ref,
+            role: $who.role,
+            expected_role: "steward_admin"
+        });
+    };
+
+    -- Justification obligatoire (10 caractères au moins), contrôlée par lyxal_core
+    LET $justif = fn::validation_required_string($params.justification, 10, 2000);
+    IF !$justif.valid {
+        RETURN fn::error_result("INGESTION_JUSTIFICATION_TOO_SHORT", $language, { field: "justification", reason: $justif.code, min_required: 10 });
+    };
+    LET $justification = $justif.value;
 
     LET $manifests = (SELECT * FROM ingestion_publication_manifest WHERE manifest_ref = $manifest_ref);
     IF array::len($manifests) == 0 {
@@ -22,30 +37,25 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_approve($params: object) {
         RETURN fn::error_result("INGESTION_MANIFEST_UNSEALED", $language, { manifest_ref: $manifest_ref });
     };
 
-    -- Contrôle d'habilitation
-    IF $approver_role != "steward_admin" {
-        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $language, { 
-            manifest_ref: $manifest_ref, 
-            role: $approver_role, 
-            expected_role: "steward_admin" 
-        });
-    };
-
     LET $now = time::now();
     LET $trans = {
         from_state: $manif.statut,
         to_state: "APPROVED",
-        triggered_by: $approved_by,
-        reason: "Approbation formelle du Data Steward",
+        triggered_by: $who.operator,
+        reason: $justification,
         transitioned_at: $now
     };
 
-    UPDATE $manif.id SET
+    LET $updated = (UPDATE ONLY $manif.id SET
         statut = "APPROVED",
-        approved_by = $approved_by,
-        approver_role = "steward_admin",
+        approved_by = $who.operator,
+        approver_role = $who.role,
         approved_at = $now,
-        transitions = array::concat(IF transitions != NONE { transitions } ELSE { [] }, [$trans]);
+        transitions = array::concat(IF transitions != NONE { transitions } ELSE { [] }, [$trans]));
+    IF $updated == NONE {
+        RETURN fn::error_result("INGESTION_WRITE_FORBIDDEN", $language, { table: "ingestion_publication_manifest" });
+    };
 
     RETURN fn::result_ok(true);
-} COMMENT "Valide formellement un manifeste scellé sous contrôle strict du rôle steward_admin";
+} COMMENT "Approuve un manifeste scellé ; l'approbateur (steward_admin, ou session système) est lu dans la session, jamais dans les paramètres"
+PERMISSIONS WHERE $token != NONE OR $auth != NONE;

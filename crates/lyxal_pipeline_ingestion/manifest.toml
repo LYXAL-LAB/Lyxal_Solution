@@ -42,6 +42,7 @@ migrations = [
     "migrations/0001_initial_schema.surql"
 ]
 functions = [
+    "functions/session/ingestion_session_identity.surql",
     "functions/batch/ingestion_batch_create.surql",
     "functions/batch/ingestion_batch_checkpoint.surql",
     "functions/batch/ingestion_batch_transition.surql",

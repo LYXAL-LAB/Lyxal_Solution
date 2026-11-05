@@ -23,9 +23,6 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_save($params: object) {
     LET $publication_action = IF $params.publication_action != NONE { <string> $params.publication_action } ELSE { "Insert" };
     LET $diff_payload = IF $params.diff_payload != NONE { $params.diff_payload } ELSE { NONE };
     LET $transitions = IF $params.transitions != NONE { $params.transitions } ELSE { [] };
-    LET $is_approved = IF $params.is_approved != NONE { <bool> $params.is_approved } ELSE { false };
-    LET $approved_by = IF $params.approved_by != NONE { <string> $params.approved_by } ELSE { NONE };
-    LET $approved_at = IF $params.approved_at != NONE { <datetime> $params.approved_at } ELSE { NONE };
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     IF string::len($fabricant) == 0 {
@@ -39,7 +36,8 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_save($params: object) {
     LET $batch_rec = <record> string::concat('ingestion_batch:', $batch_id);
     LET $raw_rec = IF $raw_record_id != NONE { <record> string::concat('ingestion_raw_record:', $raw_record_id) } ELSE { NONE };
 
-    LET $existing = (SELECT id FROM ingestion_staged_item WHERE batch = $batch_rec AND reference_fabricant = $reference_fabricant);
+    -- Clé métier unique (index idx_staged_business_id) : lot, fabricant, référence fabricant
+    LET $existing = (SELECT id FROM ingestion_staged_item WHERE batch = $batch_rec AND fabricant = $fabricant AND reference_fabricant = $reference_fabricant);
     IF array::len($existing) > 0 {
         LET $target_id = $existing[0].id;
         UPDATE $target_id SET
@@ -58,10 +56,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_save($params: object) {
             qualification = $qualification,
             publication_action = $publication_action,
             diff_payload = $diff_payload,
-            transitions = $transitions,
-            is_approved = $is_approved,
-            approved_by = $approved_by,
-            approved_at = $approved_at;
+            transitions = $transitions;
         RETURN fn::result_ok(<string> $target_id);
     } ELSE {
         LET $created = (CREATE ingestion_staged_item CONTENT {
@@ -83,9 +78,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_save($params: object) {
             publication_action: $publication_action,
             diff_payload: $diff_payload,
             transitions: $transitions,
-            is_approved: $is_approved,
-            approved_by: $approved_by,
-            approved_at: $approved_at
+            is_approved: false
         });
         RETURN fn::result_ok(<string> $created[0].id);
     };

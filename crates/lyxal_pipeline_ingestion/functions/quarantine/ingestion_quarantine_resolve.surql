@@ -10,47 +10,24 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_resolve($params: object) {
     LET $quarantine_id = <string> $params.quarantine_id;
     LET $language = IF $params.language != NONE { <string> $params.language } ELSE { "fr" };
 
-    -- 1. Contrôle d'habilitation strict depuis la session authentifiée
-    LET $role = IF $auth != NONE AND $auth.role != NONE { 
-        <string> $auth.role 
-    } ELSE IF $params._session_auth != NONE AND $params._session_auth.role != NONE { 
-        <string> $params._session_auth.role 
-    } ELSE { 
-        "guest" 
-    };
-
-    LET $operator = IF $auth != NONE AND $auth.id != NONE { 
-        <string> $auth.id 
-    } ELSE IF $params._session_auth != NONE AND $params._session_auth.user_id != NONE { 
-        <string> $params._session_auth.user_id 
-    } ELSE { 
-        "anonymous" 
-    };
-
-    IF $role != "steward_admin" {
-        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $language, { 
-            role: $role, 
+    -- 1. Habilitation : identité lue dans la session (jamais dans les paramètres)
+    LET $who = fn::ingestion_session_identity({});
+    LET $role = $who.role;
+    LET $operator = $who.operator;
+    IF $role NOT IN ["steward_admin", "system"] {
+        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $language, {
+            role: $role,
             expected_role: "steward_admin",
             message: "Seul un Data Steward authentifié peut résoudre une anomalie en quarantaine"
         });
     };
 
-    -- 2. Validation de la justification obligatoire (min 10 caractères)
-    LET $justification = IF $params.comment != NONE { 
-        string::trim(<string> $params.comment) 
-    } ELSE IF $params.justification != NONE { 
-        string::trim(<string> $params.justification) 
-    } ELSE { 
-        "" 
+    -- 2. Justification obligatoire (10 caractères au moins), contrôlée par lyxal_core
+    LET $justif = fn::validation_required_string($params.comment, 10, 2000);
+    IF !$justif.valid {
+        RETURN fn::error_result("INGESTION_JUSTIFICATION_TOO_SHORT", $language, { field: "comment", reason: $justif.code, min_required: 10 });
     };
-
-    IF string::len($justification) < 10 {
-        RETURN fn::error_result("INGESTION_JUSTIFICATION_TOO_SHORT", $language, { 
-            length: string::len($justification), 
-            min_required: 10,
-            message: "La justification de résolution d'anomalie doit contenir au moins 10 caractères"
-        });
-    };
+    LET $justification = $justif.value;
 
     -- 3. Recherche du record de quarantaine
     LET $clean_id = string::replace($quarantine_id, "ingestion_quarantine_record:", "");
@@ -112,4 +89,5 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_resolve($params: object) {
     };
 
     RETURN fn::result_ok(true);
-} COMMENT "Résout de manière auditable une anomalie en quarantaine sous contrôle steward_admin et repasse l'article en TO_CONFIRM";
+} COMMENT "Résout de manière auditable une anomalie en quarantaine sous contrôle steward_admin et repasse l'article en TO_CONFIRM"
+PERMISSIONS WHERE $token != NONE OR $auth != NONE;

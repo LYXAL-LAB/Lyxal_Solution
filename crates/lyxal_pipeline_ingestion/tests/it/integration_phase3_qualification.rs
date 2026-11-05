@@ -51,7 +51,7 @@ fn create_test_item(
         commercial_proof: None,
         qualification: qual,
         qualification_reason: "Initial qualification".to_string(),
-        canonical_fingerprint: "hash_test".to_string(),
+        canonical_fingerprint: lyxal_crypto::blake3_hex(b"hash_test"),
         raw_payload: serde_json::json!({}),
         raw_hash: "raw_hash_test".to_string(),
         rules_engine_version: "2026.1".to_string(),

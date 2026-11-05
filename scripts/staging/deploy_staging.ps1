@@ -26,8 +26,9 @@ if (Test-Path $envStagingPath) {
 
 if (-not $Username) { $Username = $env:LYXAL_STAGING_USER }
 if (-not $Password) { $Password = $env:LYXAL_STAGING_PASS }
-if (-not $Username) { $Username = "lyxal_stg_admin_v1" }
-if (-not $Password) { $Password = "Stg_SecLyxal#2026!Rotated9x" }
+if (-not $Username -or -not $Password) {
+    throw "LYXAL_STAGING_USER et LYXAL_STAGING_PASS sont requis (aucun identifiant par défaut dans le dépôt)."
+}
 
 Write-Host "=========================================================="
 Write-Host "DEPLOIEMENT STAGING REEL -- LYXAL PIPELINE INGESTION V1"

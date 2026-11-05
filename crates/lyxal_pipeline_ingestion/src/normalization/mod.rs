@@ -232,11 +232,8 @@ impl NormalizationEngine {
             "rules_version": self.rules_version,
         });
 
-        let canonical_fingerprint = lyxal_crypto::blake3_hex(
-            serde_json::to_string(&canonical_repr)
-                .unwrap_or_default()
-                .as_bytes(),
-        );
+        // `Value` s'affiche toujours en JSON : aucune erreur de sérialisation possible.
+        let canonical_fingerprint = lyxal_crypto::blake3_hex(canonical_repr.to_string().as_bytes());
 
         NormalizedItemDto {
             line_number: raw.line_number,

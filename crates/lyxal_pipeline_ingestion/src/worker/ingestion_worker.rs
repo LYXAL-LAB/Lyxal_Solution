@@ -141,6 +141,24 @@ impl IngestionWorker {
         *lock = Some(batch_id.to_string());
         drop(lock);
 
+        // Le verrou est libéré quelle que soit l'issue (succès, interruption ou erreur) :
+        // une erreur ne doit jamais bloquer les lots suivants.
+        let result = self
+            .process_locked_batch(batch_id, raw_bytes, format, commercial_proof, cancellation)
+            .await;
+        *self.active_batch_lock.lock().await = None;
+        result
+    }
+
+    /// Traitement d'un lot dont le verrou logique est déjà pris par `process_batch`.
+    async fn process_locked_batch(
+        &self,
+        batch_id: &str,
+        raw_bytes: &[u8],
+        format: SourceFormat,
+        commercial_proof: Option<CommercialProof>,
+        cancellation: &CancellationToken,
+    ) -> IngestionResult<BatchProcessingReport> {
         // 2. Vérification et transition d'état du lot
         let batch = self
             .store
@@ -150,8 +168,6 @@ impl IngestionWorker {
 
         // Idempotence : si le lot est déjà terminé, pas de réexécution inutile
         if batch.statut == BatchStatus::Staged || batch.statut == BatchStatus::Published {
-            let mut lock = self.active_batch_lock.lock().await;
-            *lock = None;
             return Ok(BatchProcessingReport {
                 batch_id: batch_id.to_string(),
                 final_status: batch.statut,
@@ -219,9 +235,6 @@ impl IngestionWorker {
                     )
                     .await?;
 
-                let mut lock = self.active_batch_lock.lock().await;
-                *lock = None;
-
                 return Ok(BatchProcessingReport {
                     batch_id: batch_id.to_string(),
                     final_status: BatchStatus::Parsing,
@@ -256,7 +269,11 @@ impl IngestionWorker {
                     batch: batch_id.to_string(),
                     ligne_numero: line_num,
                     row_hash: normalized.canonical_fingerprint.clone(),
-                    payload_brut: serde_json::to_value(dto).unwrap_or_default(),
+                    payload_brut: serde_json::to_value(dto).map_err(|e| {
+                        IngestionError::Validation(format!(
+                            "Ligne {line_num} : contenu brut non sérialisable : {e}"
+                        ))
+                    })?,
                     created_at: Some(lyxal_surreal::Datetime::now()),
                 };
                 let raw_record_id = format!("{batch_id}_{line_num}");
@@ -271,12 +288,13 @@ impl IngestionWorker {
                             id: None,
                             batch: batch_id.to_string(),
                             raw_record: raw_record_id.clone(),
-                            code_erreur: "REJECTED_QUALIFICATION".to_string(),
-                            severite: "CRITIQUE".to_string(),
+                            ligne_numero: line_num,
+                            code_erreur: "INGESTION_QUALIFICATION_REJECTED".to_string(),
+                            severite: "CRITICAL".to_string(),
                             champ_concerne: "commercial_proof_and_specs".to_string(),
-                            valeur_fautive: Some(
-                                serde_json::to_value(&dto.raw_reference).unwrap_or_default(),
-                            ),
+                            valeur_fautive: Some(serde_json::Value::from(
+                                dto.raw_reference.clone(),
+                            )),
                             cause_detaillee: normalized.qualification_reason.clone(),
                             created_at: Some(lyxal_surreal::Datetime::now()),
                             is_resolved: false,
@@ -397,12 +415,12 @@ impl IngestionWorker {
                 to_confirm_count,
                 rejected_count,
             };
-            let _ = publ.publish(&event).await;
+            publ.publish(&event).await.map_err(|e| {
+                IngestionError::Storage(format!(
+                    "Événement ingestion.batch.staged non publié pour le lot {batch_id} : {e}"
+                ))
+            })?;
         }
-
-        // Libération du verrou actif
-        let mut lock = self.active_batch_lock.lock().await;
-        *lock = None;
 
         Ok(BatchProcessingReport {
             batch_id: batch_id.to_string(),
@@ -451,8 +469,10 @@ impl LyxalWorker for IngestionWorker {
                         }
                     }
                     Err(err) => {
-                        // En cas d'erreur fatale, marquer le lot FAILED
-                        let _ = self
+                        // Échec fatal : le lot passe en FAILED et l'échec est publié. Toute
+                        // erreur de ces deux étapes est jointe au compte rendu, jamais perdue.
+                        let mut causes = vec![err.to_string()];
+                        if let Err(e) = self
                             .store
                             .update_batch_status(
                                 &job.batch_id,
@@ -460,7 +480,10 @@ impl LyxalWorker for IngestionWorker {
                                 "ingestion_worker",
                                 Some(&err.to_string()),
                             )
-                            .await;
+                            .await
+                        {
+                            causes.push(format!("passage du lot en FAILED impossible : {e}"));
+                        }
 
                         if let Some(ref publ) = self.publisher {
                             let event = BatchFailedEvent {
@@ -468,14 +491,17 @@ impl LyxalWorker for IngestionWorker {
                                 error_code: "INGESTION_BATCH_FAILED".to_string(),
                                 message: err.to_string(),
                             };
-                            let _ = publ.publish(&event).await;
+                            if let Err(e) = publ.publish(&event).await {
+                                causes.push(format!("événement d'échec non publié : {e}"));
+                            }
                         }
 
                         return Err(RuntimeError::WorkerFailed {
                             worker: self.descriptor.id.to_string(),
                             message: format!(
-                                "INGESTION_BATCH_FAILED: échec fatal du traitement du lot {}: {err}",
-                                job.batch_id
+                                "INGESTION_BATCH_FAILED: échec fatal du traitement du lot {} : {}",
+                                job.batch_id,
+                                causes.join(" ; ")
                             ),
                         });
                     }

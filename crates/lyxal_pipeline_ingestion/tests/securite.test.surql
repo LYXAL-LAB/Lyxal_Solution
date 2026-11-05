@@ -1,0 +1,122 @@
+-- lyxal-test: assertions
+-- Sécurité : identité lue uniquement dans la session (jamais dans les paramètres),
+-- approbations réservées au steward_admin, gardes des articles et des manifestes.
+-- Exécuté par scripts/ci/test_lyxal_modules.py (format en tête du script).
+--
+-- identité ingestion: { "id": "ingestion_session:ingestion", "sub": "service:ingestion", "role": "ingestion_agent", "scope": ["ingestion:batch:write"] }
+-- identité qualif: { "id": "ingestion_session:qualif", "sub": "service:qualif", "role": "qualification_agent", "scope": ["ingestion:staged:qualify"] }
+-- identité steward: { "id": "ingestion_session:steward", "sub": "user:steward", "role": "steward_admin", "scope": ["ingestion:manifest:approve"] }
+-- identité sync: { "id": "ingestion_session:sync", "sub": "service:sync", "role": "catalogue_sync_agent", "scope": ["catalogue:sync:write"] }
+
+-- préparation: table de test lisible par toutes les identités
+DEFINE TABLE test_ref SCHEMALESS PERMISSIONS FULL;
+
+-- test: l'agent d'ingestion crée un lot
+-- en tant que: ingestion
+RETURN fn::ingestion_batch_create({ id: "lot_sec", source_type: "CSV", fournisseur_id: "FOURN_PLACO", nom_fichier: "placo.csv", file_hash_blake3: crypto::blake3("placo.csv"), statut: "RECEIVED" }).data == "lot_sec";
+
+-- préparation: lignes brutes du fichier (écrites par le worker)
+FOR $n IN [1, 2, 3] { CREATE type::record("ingestion_raw_record", string::concat("lot_sec_", <string> $n)) CONTENT { batch: ingestion_batch:lot_sec, ligne_numero: $n, row_hash: crypto::blake3(<string> $n), payload_brut: {}, created_at: time::now() }; };
+
+-- test: l'agent de qualification enregistre deux articles, jamais approuvés à la création
+-- en tant que: qualif
+RETURN [
+    fn::ingestion_staged_save({ batch_id: "lot_sec", raw_record_id: "lot_sec_1", ligne_numero: 1, canonical_fingerprint: crypto::blake3("a1"), rules_version: "1", fabricant: "PLACO", reference_fabricant: "BA13", libelle_commercial: "Plaque BA13", type_item: "PRODUIT", unite_reference: "PCE", conditionnement: { unite_vente: "PCE", quantite_par_colis: 1.0 }, qualification: "TO_CONFIRM", publication_action: "INSERT", transitions: [] }).ok,
+    fn::ingestion_staged_save({ batch_id: "lot_sec", raw_record_id: "lot_sec_2", ligne_numero: 2, canonical_fingerprint: crypto::blake3("a2"), rules_version: "1", fabricant: "PLACO", reference_fabricant: "BA18", libelle_commercial: "Plaque BA18", type_item: "PRODUIT", unite_reference: "PCE", conditionnement: { unite_vente: "PCE", quantite_par_colis: 1.0 }, qualification: "TO_CONFIRM", publication_action: "INSERT", transitions: [], is_approved: true, approved_by: "pirate" }).ok
+] == [true, true];
+
+-- test: une approbation passée en paramètre est ignorée
+RETURN (SELECT VALUE [is_approved, approved_by] FROM ingestion_staged_item ORDER BY ligne_numero) == [[false, NONE], [false, NONE]];
+
+-- préparation: identifiants des articles
+CREATE test_ref:items SET
+    a1 = <string> (SELECT VALUE id FROM ONLY ingestion_staged_item WHERE reference_fabricant = "BA13" LIMIT 1),
+    a2 = <string> (SELECT VALUE id FROM ONLY ingestion_staged_item WHERE reference_fabricant = "BA18" LIMIT 1);
+
+-- test: un rôle forgé dans les paramètres ne donne aucun droit
+-- en tant que: qualif
+RETURN fn::ingestion_staged_requalify({ item_id: test_ref:items.a1, new_qualification: "REJECTED", justification: "Rejet par usurpation de rôle", _session_auth: { role: "steward_admin", user_id: "pirate" } }).error.code == "INGESTION_UNAUTHORIZED_APPROVER";
+
+-- test: l'agent de synchronisation ne requalifie pas
+-- en tant que: sync
+RETURN fn::ingestion_staged_requalify({ item_id: test_ref:items.a1, new_qualification: "REJECTED", justification: "Requalification illégitime" }).error.code == "INGESTION_UNAUTHORIZED_APPROVER";
+
+-- test: le steward requalifie avec preuve ; son identité est enregistrée
+-- en tant que: steward
+RETURN fn::ingestion_staged_requalify({ item_id: test_ref:items.a1, new_qualification: "VERIFIED", justification: "Bordereau fabricant vérifié", proof: { proof_type: "SIGNED_VENDOR_CATALOG", proof_reference: "CAT-PLACO-2026", source_authority: "Saint-Gobain Placo" } }).ok;
+
+-- test: approbation enregistrée au nom du steward de la session
+RETURN (SELECT VALUE [qualification, is_approved, approved_by, approver_role] FROM ONLY <record> test_ref:items.a1) == ["VERIFIED", true, "user:steward", "steward_admin"];
+
+-- test: l'agent de qualification n'approuve pas un article en écrivant les champs lui-même
+-- en tant que: qualif
+-- attendu-erreur: INGESTION_STAGED_APPROVAL_REQUIRES_STEWARD
+UPDATE <record> test_ref:items.a2 SET qualification = "VERIFIED", is_approved = true, approved_by = "user:steward", approver_role = "steward_admin";
+
+-- test: un article n'est jamais créé déjà approuvé
+-- en tant que: qualif
+-- attendu-erreur: INGESTION_STAGED_APPROVAL_REQUIRES_STEWARD
+CREATE ingestion_staged_item CONTENT { batch: ingestion_batch:lot_sec, raw_record: ingestion_raw_record:lot_sec_3, ligne_numero: 3, canonical_fingerprint: crypto::blake3("a3"), rules_version: "1", fabricant: "PLACO", reference_fabricant: "BA25", libelle_commercial: "Plaque BA25", type_item: "PRODUIT", unite_reference: "PCE", conditionnement: { unite_vente: "PCE", quantite_par_colis: 1.0 }, qualification: "VERIFIED", publication_action: "INSERT", transitions: [], is_approved: true, approved_by: "user:steward", approver_role: "steward_admin", created_at: time::now(), updated_at: time::now() };
+
+-- test: le steward enregistre un manifeste scellé
+-- en tant que: steward
+RETURN fn::ingestion_manifest_save({ manifest_ref: "MAN-SEC", batch_id: "lot_sec", seal_hash: crypto::blake3("MAN-SEC"), is_sealed: true, statut: "SEALED", nb_articles_insert: 1 }).ok;
+
+-- test: un manifeste n'est jamais créé déjà approuvé
+-- en tant que: steward
+-- attendu-erreur: INGESTION_MANIFEST_ILLEGAL_STATE_TRANSITION
+RETURN fn::ingestion_manifest_save({ manifest_ref: "MAN-PIRATE", batch_id: "lot_sec", manifest_version: 2, seal_hash: crypto::blake3("MAN-PIRATE"), is_sealed: true, statut: "APPROVED", approved_by: "pirate", approver_role: "steward_admin" });
+
+-- test: un rôle d'approbateur passé en paramètre ne donne aucun droit
+-- en tant que: sync
+RETURN fn::ingestion_manifest_approve({ manifest_ref: "MAN-SEC", justification: "Approbation par usurpation", approver_role: "steward_admin", approved_by: "pirate" }).error.code == "INGESTION_UNAUTHORIZED_APPROVER";
+
+-- test: l'agent de synchronisation n'approuve pas en écrivant les champs lui-même
+-- en tant que: sync
+-- attendu-erreur: INGESTION_MANIFEST_APPROVAL_REQUIRES_STEWARD
+UPDATE ingestion_publication_manifest SET statut = "APPROVED", approved_by = "user:steward", approver_role = "steward_admin" WHERE manifest_ref = "MAN-SEC";
+
+-- test: une justification trop courte est refusée
+-- en tant que: steward
+RETURN fn::ingestion_manifest_approve({ manifest_ref: "MAN-SEC", justification: "court" }).error.code == "INGESTION_JUSTIFICATION_TOO_SHORT";
+
+-- test: le steward approuve ; son identité et sa justification sont enregistrées
+-- en tant que: steward
+RETURN fn::ingestion_manifest_approve({ manifest_ref: "MAN-SEC", justification: "Lot contrôlé et conforme au bordereau" }).ok;
+
+-- test: approbation du manifeste au nom du steward de la session
+RETURN (SELECT VALUE [statut, approved_by, approver_role, array::last(transitions).reason] FROM ONLY ingestion_publication_manifest WHERE manifest_ref = "MAN-SEC" LIMIT 1) == ["APPROVED", "user:steward", "steward_admin", "Lot contrôlé et conforme au bordereau"];
+
+-- test: le steward n'exécute pas la publication
+-- en tant que: steward
+-- attendu-erreur: INGESTION_MANIFEST_EXECUTION_UNAUTHORIZED
+RETURN fn::ingestion_manifest_record_exec({ manifest_ref: "MAN-SEC", statut: "COMMITTED", items_committed: 1, items_failed: 0 });
+
+-- test: l'agent de synchronisation enregistre l'exécution (APPROVED → EXECUTING → COMMITTED)
+-- en tant que: sync
+RETURN fn::ingestion_manifest_record_exec({ manifest_ref: "MAN-SEC", statut: "COMMITTED", items_committed: 1, items_failed: 0 }).ok AND (SELECT VALUE transitions.to_state FROM ONLY ingestion_publication_manifest WHERE manifest_ref = "MAN-SEC" LIMIT 1) == ["APPROVED", "EXECUTING", "COMMITTED"];
+
+-- test: l'agent de qualification consigne une anomalie en quarantaine
+-- en tant que: qualif
+RETURN fn::ingestion_quarantine_log({ batch_id: "lot_sec", raw_record_id: "lot_sec_2", ligne_numero: 2, code_erreur: "INGESTION_QUALIFICATION_REJECTED", severite: "ERROR", champ_concerne: "gtin", valeur_fautive: "123", cause_detaillee: "Clé GS1 invalide" }).ok;
+
+-- préparation: identifiant de l'anomalie
+CREATE test_ref:quarantaine SET id_q = <string> (SELECT VALUE id FROM ONLY ingestion_quarantine_record LIMIT 1);
+
+-- test: l'agent de qualification ne résout pas une quarantaine
+-- en tant que: qualif
+RETURN fn::ingestion_quarantine_resolve({ quarantine_id: test_ref:quarantaine.id_q, comment: "Résolution illégitime", _session_auth: { role: "steward_admin", user_id: "pirate" } }).error.code == "INGESTION_UNAUTHORIZED_APPROVER";
+
+-- test: le steward résout la quarantaine ; l'article corrigé repasse à confirmer
+-- en tant que: steward
+RETURN fn::ingestion_quarantine_resolve({ quarantine_id: test_ref:quarantaine.id_q, comment: "GTIN corrigé d'après la fiche fabricant", staged_item_id: test_ref:items.a2 }).ok;
+
+-- test: résolution enregistrée au nom du steward de la session
+RETURN (SELECT VALUE [is_resolved, resolved_by] FROM ONLY <record> test_ref:quarantaine.id_q) == [true, "user:steward"] AND (SELECT VALUE qualification FROM ONLY <record> test_ref:items.a2) == "TO_CONFIRM";
+
+-- test: identité de session lue par la fonction interne
+-- en tant que: steward
+RETURN fn::ingestion_session_identity({}) == { role: "steward_admin", operator: "user:steward", is_system: false };
+
+-- test: session système de l'hôte
+RETURN fn::ingestion_session_identity({}) == { role: "system", operator: "system", is_system: true };

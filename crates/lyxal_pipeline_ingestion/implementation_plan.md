@@ -1,6 +1,6 @@
 # Plan d'implémentation — reprise de `lyxal_pipeline_ingestion`
 
-Suite de `AUDIT.md`. **En attente de validation CTO (Q1 à Q4).**
+Suite de `AUDIT.md`. **Q1 à Q4 validées par le CTO (option A pour chacune).**
 
 > Ce fichier remplace l'ancien `implementation_plan.md` du module (plan de réalignement déjà
 > exécuté), document historique supprimé par cette reprise (§0.2).
@@ -73,10 +73,10 @@ Appliqué sans question (règles déjà fixées) :
 
 | Lot | Contenu |
 | :- | :--- |
-| 1 | **Sécurité et erreurs masquées** (P0) : I-01, I-02, I-03, I-12, I-14, I-15 ; tests des refus. |
+| 1 ✅ | **Sécurité, erreurs masquées, tests sur le module installé** (P0) : identité lue uniquement dans la session par `fn::ingestion_session_identity` (interne ; session système de l'hôte = `system`, invités refusés par `PERMISSIONS`), `_session_auth` et `approver_role` / `approved_by` sortis des contrats ; approbation des articles et des manifestes impossible par paramètre, à la création ou par écriture directe (gardes sur la session) ; justification de l'approbation transmise au journal (I-01, I-02). Erreurs propagées : `resolve_unit`, passage en `FAILED`, événements, sérialisations (I-03, I-12). Identifiants de staging retirés du dépôt (I-14 ; à changer sur le serveur). `schema/00_core_primitives.surql` supprimé (I-15). Tests Rust basculés sur le module installé depuis son manifeste (`tests/it/support.rs`), `init_schema` / `create_in_memory` supprimés (partie Rust de Q3) ; banc SurrealQL `tests/securite.test.surql` (quatre rôles) et `tests/fonctions.test.surql`. Défauts révélés et corrigés : quarantaine sans `ligne_numero` et sévérité `CRITIQUE` (aucune ligne rejetée ne pouvait être consignée), requalification en `VERIFIED` toujours refusée, exécution de manifeste sans l'état `EXECUTING`, recherche d'article hors index (débit divisé par deux). |
 | 2 | **Master data, événements, installation** : I-05, I-06, I-13 (défauts), I-17 (Q4), I-18, migration unique ; module retiré de `PENDING_TAKEOVER`. |
 | 3 | **Entrées et persistance par SurrealQL** : I-07, I-09, I-10 (Q2), I-11, I-13 (écritures vérifiées). |
-| 4 | **Tests** (Q3) : I-08 ; banc SurrealQL sous identités ; tests Rust sur le module installé. |
+| 4 | **Tests** (Q3) : banc SurrealQL complété (lots, qualification, quarantaine, manifestes, référentiels, permissions de lecture) ; suite PowerShell supprimée. |
 | 5 | **Publication vers le catalogue** (Q1) : I-04. |
 | 6 | **Clôture** : `README.md` à l'état actuel, `ROADMAP.md` mise à jour (étapes réalisées retirées, références corrigées), `docs/ARCHITECTURE_DESIGN.md` confronté au code (mis à jour ou repris dans le README), suppression de `CHANGELOG.md`, des rapports et plans de `docs/`, d'`AUDIT.md` et de ce plan ; `AGENTS.md` (§6 : statut « Clôturé Staging ») et skills alignés. |
 
