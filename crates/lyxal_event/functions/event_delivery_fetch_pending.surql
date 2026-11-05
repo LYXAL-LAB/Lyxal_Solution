@@ -54,11 +54,13 @@ DEFINE FUNCTION OVERWRITE fn::event_delivery_fetch_pending(
           AND (next_retry_at = NONE OR next_retry_at <= $now)
           AND ($instance_id = NONE OR context.instance_id = $instance_id)
           AND ($subscription = NONE OR subscription = $subscription)
+          -- Abonnement suspendu (is_active = false) : ses livraisons attendent sa réactivation
+          AND subscription.is_active != false
         ORDER BY created_at ASC
         LIMIT $limit
     );
 
     RETURN fn::result_ok($deliveries);
-} COMMENT "Récupère les livraisons éligibles au traitement outbox ou à la reprise post-crash"
+} COMMENT "Récupère les livraisons éligibles au traitement outbox ou à la reprise post-crash ; celles d'un abonnement suspendu attendent sa réactivation"
 PERMISSIONS FULL;
 

@@ -92,10 +92,54 @@ pub async fn register_services(
     Ok(setup)
 }
 
-/// Après l'installation des modules : accès JWT de l'agent de synchronisation (clé de la
-/// configuration) et abonnement de la publication à `ingestion.manifest.approved`.
-pub async fn enable_publication(
+/// Après l'installation des modules : abonnement de la publication à
+/// `ingestion.manifest.approved`, actif avec la clé de signature (accès JWT de l'agent de
+/// synchronisation défini avec elle), suspendu sans clé : les approbations attendent alors en
+/// file au lieu d'épuiser leurs essais sans publisher, et reprennent quand la clé est fournie.
+pub async fn reconcile_publication(
     runtime: &LyxalRuntime,
+    client: &Surreal<Any>,
+    setup: Option<&PublicationSetup>,
+) -> Result<(), ServerError> {
+    match setup {
+        Some(setup) => define_sync_access(client, setup).await?,
+        // Sans clé, aucun jeton signé avec une clé antérieure ne reste accepté
+        None => client
+            .query(format!(
+                "REMOVE ACCESS IF EXISTS {CATALOGUE_SYNC_ACCESS} ON DATABASE;"
+            ))
+            .await
+            .and_then(|response| response.check())
+            .map(|_| ())
+            .map_err(|error| ServerError::Database {
+                message: format!("accès {CATALOGUE_SYNC_ACCESS} : {error}"),
+            })?,
+    }
+    let event_store = runtime.event_store().ok_or(ServerError::Runtime(
+        lyxal_runtime::RuntimeError::StoreMissing {
+            component: "event_store",
+        },
+    ))?;
+    event_store
+        .register_subscription(&EventSubscription {
+            id: None,
+            name: PUBLICATION_SUBSCRIPTION.to_string(),
+            target_module: PUBLICATION_MODULE.to_string(),
+            event_pattern: "ingestion.manifest.approved".to_string(),
+            handler_name: PUBLICATION_HANDLER.to_string(),
+            is_active: setup.is_some(),
+            max_attempts: PUBLICATION_MAX_ATTEMPTS,
+            created_at: None,
+        })
+        .await
+        .map_err(|error| ServerError::Database {
+            message: format!("abonnement {PUBLICATION_SUBSCRIPTION} : {error}"),
+        })?;
+    Ok(())
+}
+
+/// Accès JWT de l'agent de synchronisation, défini avec la clé de la configuration.
+async fn define_sync_access(
     client: &Surreal<Any>,
     setup: &PublicationSetup,
 ) -> Result<(), ServerError> {
@@ -110,27 +154,6 @@ pub async fn enable_publication(
         .and_then(|response| response.check())
         .map_err(|error| ServerError::Database {
             message: format!("accès {CATALOGUE_SYNC_ACCESS} : {error}"),
-        })?;
-
-    let event_store = runtime.event_store().ok_or(ServerError::Runtime(
-        lyxal_runtime::RuntimeError::StoreMissing {
-            component: "event_store",
-        },
-    ))?;
-    event_store
-        .register_subscription(&EventSubscription {
-            id: None,
-            name: PUBLICATION_SUBSCRIPTION.to_string(),
-            target_module: PUBLICATION_MODULE.to_string(),
-            event_pattern: "ingestion.manifest.approved".to_string(),
-            handler_name: PUBLICATION_HANDLER.to_string(),
-            is_active: true,
-            max_attempts: PUBLICATION_MAX_ATTEMPTS,
-            created_at: None,
-        })
-        .await
-        .map_err(|error| ServerError::Database {
-            message: format!("abonnement {PUBLICATION_SUBSCRIPTION} : {error}"),
         })?;
     Ok(())
 }

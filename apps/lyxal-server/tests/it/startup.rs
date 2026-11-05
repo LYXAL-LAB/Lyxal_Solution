@@ -380,6 +380,25 @@ async fn approved_manifest_is_published_through_the_event_engine() {
     assert_eq!(items[0][2], "BA13");
 
     runtime.stop_all().await.expect("arrêt");
+
+    // Redémarrage sans clé : abonnement suspendu, accès JWT retiré
+    let keyless = runtime::start(&config_with("publication", ""), &client)
+        .await
+        .expect("redémarrage sans clé");
+    let mut state = client
+        .query("SELECT VALUE is_active FROM event_subscription WHERE name = 'ingestion_manifest_publication'; INFO FOR DB;")
+        .await
+        .expect("état");
+    let active: Vec<bool> = state.take(0).expect("abonnement");
+    let info: Option<serde_json::Value> = state.take(1).expect("infos");
+    assert_eq!(active, vec![false]);
+    assert!(
+        info.as_ref()
+            .and_then(|i| i["accesses"]["lyxal_catalogue_sync"].as_str())
+            .is_none(),
+        "{info:?}"
+    );
+    keyless.stop_all().await.expect("arrêt");
 }
 
 /// Sans clé de signature, la publication est désactivée et la sonde du module le signale.

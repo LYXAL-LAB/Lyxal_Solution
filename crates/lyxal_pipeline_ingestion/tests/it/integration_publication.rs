@@ -527,3 +527,64 @@ async fn approval_event_handler_publishes_the_manifest() {
         .expect("rejeu");
     assert_eq!(catalogue_rows(&store).await.len(), 1);
 }
+
+#[tokio::test]
+async fn later_batch_revision_updates_the_published_item() {
+    let store = crate::support::installed_store().await;
+    let issuer = crate::support::sync_issuer(&store).await;
+    let publisher = ControlledPublisher::new(store.client().clone(), issuer);
+    let first = vec![item(
+        "lot_v1",
+        1,
+        "BA13",
+        ItemQualification::Verified,
+        Some(proof("EDI-2026-PLACO-001", "EDI_HUB_SAINT_GOBAIN")),
+    )];
+    approved_manifest(&store, "lot_v1", "MAN-V1", &first).await;
+    publisher
+        .publish_manifest("MAN-V1")
+        .await
+        .expect("première publication");
+
+    // Lot ultérieur : même fabricant et même référence, libellé et code-barres révisés
+    let mut revised = item(
+        "lot_v2",
+        1,
+        "BA13",
+        ItemQualification::Verified,
+        Some(proof("EDI-2026-PLACO-009", "EDI_HUB_SAINT_GOBAIN")),
+    );
+    revised.libelle_commercial = "Plaque de plâtre BA13 hydrofuge".to_string();
+    revised.code_barre_gtin = Some("4006381333931".to_string());
+    approved_manifest(&store, "lot_v2", "MAN-V2", &[revised]).await;
+    let report = publisher
+        .publish_manifest("MAN-V2")
+        .await
+        .expect("révision");
+    assert_eq!(report.final_status, ManifestStatus::Committed);
+    assert_eq!(report.newly_published, 1);
+
+    let rows: Vec<(String, Option<String>)> = store
+        .client()
+        .query("SELECT VALUE [libelle, code_barre] FROM catalogue_item")
+        .await
+        .expect("lecture")
+        .take::<Vec<Vec<serde_json::Value>>>(0)
+        .expect("articles")
+        .into_iter()
+        .map(|r| {
+            (
+                r[0].as_str().unwrap_or_default().to_string(),
+                r[1].as_str().map(str::to_string),
+            )
+        })
+        .collect();
+    assert_eq!(
+        rows,
+        vec![(
+            "Plaque de plâtre BA13 hydrofuge".to_string(),
+            Some("4006381333931".to_string())
+        )],
+        "un seul article maître, porteur de la révision"
+    );
+}

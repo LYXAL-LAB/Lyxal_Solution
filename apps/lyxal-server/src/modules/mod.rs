@@ -161,8 +161,6 @@ pub async fn complete_services(
     services: &HostedServices,
 ) -> Result<(), ServerError> {
     #[cfg(feature = "module-ingestion")]
-    if let Some(publication) = &services.publication {
-        ingestion::enable_publication(runtime, client, publication).await?;
-    }
+    ingestion::reconcile_publication(runtime, client, services.publication.as_ref()).await?;
     Ok(())
 }

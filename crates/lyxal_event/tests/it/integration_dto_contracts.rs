@@ -463,6 +463,71 @@ async fn test_delivery_fetch_pending_canonical_contract() {
     assert_eq!(limited[1].id.to_sql(), "event_delivery:d2");
 }
 
+/// Les livraisons d'un abonnement suspendu (`is_active = false`) ne sont pas consommées : elles
+/// attendent sa réactivation au lieu d'épuiser leur budget d'essais sans handler.
+#[tokio::test]
+async fn test_suspended_subscription_holds_its_deliveries() {
+    let db = connect("mem://").await.unwrap();
+    db.use_ns("test_ns").use_db("test_suspend").await.unwrap();
+    common::setup_test_db(&db).await;
+    let store = Arc::new(EventStore::new(db.clone()));
+    common::install_event(store.client()).await;
+
+    let mut sub = EventSubscription::new(
+        "sub_suspendue",
+        "test_consumer_module",
+        "test.event",
+        "handle_suspendue",
+    );
+    let registered = store.register_subscription(&sub).await.unwrap();
+    db.query(
+        r#"
+        CREATE event_outbox:ev_s CONTENT {
+            event_id: <string> rand::uuid::v7(), event_type: "test.event", version: 1,
+            producer: "test_producer", source: NONE,
+            context: { instance_id: "inst", namespace: "test_ns", database: "test_suspend" },
+            correlation_id: <string> rand::uuid::v7(), causation_id: NONE,
+            payload: {}, metadata: {}, status: "fanned_out", fanned_out_at: time::now()
+        };
+        CREATE event_delivery:ds CONTENT {
+            outbox_event: event_outbox:ev_s, subscription: $sub, target_module: "test_consumer_module",
+            status: "pending", attempts: 0,
+            context: { instance_id: "inst", namespace: "test_ns", database: "test_suspend" },
+            locked_until: NONE, next_retry_at: NONE, created_at: time::now()
+        };
+        "#,
+    )
+    .bind(("sub", registered.id.clone().unwrap()))
+    .await
+    .unwrap()
+    .check()
+    .unwrap();
+
+    let fetch = || {
+        store.fetch_pending_deliveries(lyxal_event::engine::dto::DeliveryFetchPendingParams {
+            limit: 10,
+            instance_id: None,
+            subscription: None,
+        })
+    };
+    assert_eq!(fetch().await.unwrap().len(), 1);
+
+    sub.is_active = false;
+    store.register_subscription(&sub).await.unwrap();
+    assert!(
+        fetch().await.unwrap().is_empty(),
+        "abonnement suspendu : livraison en attente"
+    );
+
+    sub.is_active = true;
+    store.register_subscription(&sub).await.unwrap();
+    assert_eq!(
+        fetch().await.unwrap().len(),
+        1,
+        "réactivation : livraison reprise"
+    );
+}
+
 /// Les fonctions appelées de l'extérieur valident leurs entrées par le moteur de `lyxal_core` :
 /// un champ inconnu ou invalide renvoie `EVENT_INVALID_PARAMETERS` avec le rapport par champ.
 #[tokio::test]

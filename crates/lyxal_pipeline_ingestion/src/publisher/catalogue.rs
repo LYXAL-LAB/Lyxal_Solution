@@ -5,7 +5,7 @@
 //! `base_unite:<CODE>`. Les identifiants sont stables : `code = master_id = ING-<empreinte>`,
 //! empreinte BLAKE3 du fabricant et de la référence fabricant.
 
-use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError, RecordId, SurrealValue};
+use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError, RecordId, SurrealValue, ToSql};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
@@ -59,7 +59,8 @@ struct CatalogueItemCreateParams {
 
 #[derive(SurrealValue)]
 struct CatalogueItemUpdateParams {
-    id: RecordId,
+    /// `catalogue_item:<clé>` en texte (règle `record` de lyxal_core).
+    id: String,
     libelle: String,
     unite_reference: String,
     description: Option<String>,
@@ -107,7 +108,9 @@ impl CatalogueSyncClient {
     }
 
     /// Crée (`Insert`) ou met à jour (`Update`) l'article maître correspondant à `item`.
-    /// Une création déjà faite (même code, même `master_id`) est reconnue comme publiée.
+    /// Un article déjà présent au catalogue (même code, même `master_id` : reprise après
+    /// incident ou nouvelle révision importée par un lot ultérieur) est mis à jour avec le
+    /// contenu du staging, jamais compté comme publié sans écriture.
     pub(crate) async fn publish(
         &self,
         item: &StagedItem,
@@ -123,10 +126,9 @@ impl CatalogueSyncClient {
                     Err(LyxalSurrealError::Call(call))
                         if call.is_business_code("CATALOGUE_ITEM_ALREADY_EXISTS") =>
                     {
-                        // Reprise après incident : l'article a déjà été créé par ce pipeline.
                         let existing = self.get_by_code(&params.code).await?;
                         if existing.master_id.as_deref() == Some(params.master_id.as_str()) {
-                            Ok(())
+                            self.update(existing.id, params).await
                         } else {
                             Err(LyxalSurrealError::Call(call))
                         }
@@ -136,22 +138,30 @@ impl CatalogueSyncClient {
             }
             PublicationAction::Update => {
                 let existing = self.get_by_code(&params.code).await?;
-                let update = CatalogueItemUpdateParams {
-                    id: existing.id,
-                    libelle: params.libelle,
-                    unite_reference: params.unite_reference,
-                    description: params.description,
-                    fabricant: params.fabricant,
-                    marque: params.marque,
-                    reference_fabricant: params.reference_fabricant,
-                    code_barre: params.code_barre,
-                    conditionnement: params.conditionnement,
-                };
-                let _: CatalogueItemRef = self.call_fn("catalogue_item_update", update).await?;
-                Ok(())
+                self.update(existing.id, params).await
             }
             PublicationAction::Unchanged | PublicationAction::Deprecate => Ok(()),
         }
+    }
+
+    async fn update(
+        &self,
+        id: RecordId,
+        params: CatalogueItemCreateParams,
+    ) -> Result<(), LyxalSurrealError> {
+        let update = CatalogueItemUpdateParams {
+            id: id.to_sql(),
+            libelle: params.libelle,
+            unite_reference: params.unite_reference,
+            description: params.description,
+            fabricant: params.fabricant,
+            marque: params.marque,
+            reference_fabricant: params.reference_fabricant,
+            code_barre: params.code_barre,
+            conditionnement: params.conditionnement,
+        };
+        let _: CatalogueItemRef = self.call_fn("catalogue_item_update", update).await?;
+        Ok(())
     }
 
     async fn get_by_code(&self, code: &str) -> Result<CatalogueItemRef, LyxalSurrealError> {
