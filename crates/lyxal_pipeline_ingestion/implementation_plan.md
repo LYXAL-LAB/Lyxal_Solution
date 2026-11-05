@@ -1,144 +1,83 @@
-# 📋 Plan d'Implémentation — RÉALIGNEMENT ARCHITECTURAL LYXAL PIPELINE INGESTION
+# Plan d'implémentation — reprise de `lyxal_pipeline_ingestion`
 
-> **Module :** `crates/lyxal_pipeline_ingestion`  
-> **Décision CTO :** AUDIT ACCEPTÉ — RÉALIGNEMENT AUTORISÉ — PHASE 5 BLOQUÉE  
-> **Référentiel Obligatoire :** `C:\Users\HP\Desktop\Lyxal_OS\.agents\AGENTS.md`  
-> **Objectif :** Rétablir la stricte conformité architecturale Lyxal OS : frontière SurrealQL/Rust, wrappers `store.call_fn(...)`, externalisation des règles métier en tables/seeds configurables, réutilisation des référentiels existants (`base_unite`, `catalogue_relation_type`), structure canonique complète, et validation des 8 tests exigés.
+Suite de `AUDIT.md`. **En attente de validation CTO (Q1 à Q4).**
 
----
+> Ce fichier remplace l'ancien `implementation_plan.md` du module (plan de réalignement déjà
+> exécuté), document historique supprimé par cette reprise (§0.2).
 
-## 1. Analyse de Réutilisation `lyxal_core` et Modules Existants
+## 1. Décisions demandées
 
-Conformément à la Charte d'Architecture Lyxal OS (§ 3 & § 5.7) :
+| # | Question | Options | Recommandation |
+| :- | :--- | :--- | :--- |
+| Q1 | Publication vers le catalogue (I-04) : le catalogue n'accepte un article maître que d'une identité `catalogue_sync_agent` (jeton `aud = lyxal-catalogue`, `iss = lyxal-os`, scope `catalogue:sync:write`). Le worker se connecte en session système et n'a pas cette identité. | **A.** Publication réelle par jeton de service : l'hôte (`lyxal-server`) définit l'accès JWT du catalogue (`DEFINE ACCESS`, clé lue dans la configuration, jamais dans le dépôt) et signe un jeton court `catalogue_sync_agent` (HS256 par `lyxal_crypto::hmac`, primitive existante) ; le publisher ouvre une session authentifiée et appelle `fn::catalogue_item_create` / `_update` avec le contrat documenté du catalogue ; simulation supprimée ; dépendance `lyxal_catalogue` déclarée. **B.** Pas de publication dans ce module : il s'arrête au manifeste approuvé et à l'événement `ingestion.manifest.approved` ; la simulation est supprimée ; la publication relèvera d'un service à venir (`lyxal_auth` ou agent de synchronisation). | **A** : seule option qui rend le pipeline utile de bout en bout et vérifiable par le banc (identités simulées) ; aucune primitive crypto nouvelle. Le contrat d'identité reste celui du catalogue. |
+| Q2 | Validation GTIN (I-10) : clé GS1 réimplémentée en Rust. | **A.** Supprimée du Rust ; `fn::ingestion_staged_save` valide le code-barres par `fn::validation_gtin` et renvoie `INGESTION_GTIN_INVALID`, que le worker oriente vers la quarantaine. **B.** Le Rust appelle `fn::validation_gtin` par `call_fn` pour chaque ligne. **C.** Conserver le Rust (exception « parsing »). | **A** : une seule implémentation, dans le Core (§5.7.6), sans aller-retour supplémentaire par ligne. |
+| Q3 | Tests (I-08, I-14) : schéma recopié dans le Rust pour les tests ; secret de staging dans le dépôt. | **A.** `init_schema` et `create_in_memory` supprimés ; tests Rust sur le module installé depuis son manifeste (comme `integration_manifest_install.rs`) ; banc SurrealQL `tests/*.test.surql` exécuté en CI par `test_lyxal_modules.py`, sous identités simulées (`ingestion_agent`, `qualification_agent`, `steward_admin`, `catalogue_sync_agent`) ; tests serveur réel sans secret par défaut ; suite PowerShell supprimée. **B.** Garder le schéma recopié. | **A** : les tests doivent prouver le SurrealQL réellement installé, permissions comprises. |
+| Q4 | Seed de démonstration `seeds/04_carrelage_demo.surql` (I-17), installé partout. | **A.** Déplacé dans `tests/fixtures/`, jamais installé. **B.** Gardé en seed. **C.** Supprimé. | **A** : même décision que pour le catalogue. |
 
-### 1.1. Fonctions Core & Transversales Réutilisées
-- **`lyxal_base`** :
-  - Référentiel universel des unités de mesure (`base_unite`).
-  - Utilisation de la table `base_unite` et validation des codes officiels (`M`, `ML`, `CM`, `M2`, `M3`, `KG`, `T`, `PCE`, `ROUL`, `BTE`, `SAC`, `ENS`, etc.).
-  - Table de liaison dynamique `ingestion_unit_alias` pour résoudre les alias commerciaux et UN/CEFACT sans modifier Rust.
-- **`lyxal_catalogue`** :
-  - Référentiel des types de relations `catalogue_relation_type` (`SUBSTITUT`, `SIMILAIRE`, `COMMERCIAL_SPECIFICATION`).
-  - Fonction publique officielle `fn::catalogue_relation_create` pour la publication contrôlée des relations globales.
-  - **Limitation documentée CTO :** La table `catalogue_relation` du Catalogue V1.1 comporte un index unique sur `(source, cible, relation_type)` sans champ `contexte` de système constructif. Par conséquent, les substitutions contextualisées restent stockées avec toute leur traçabilité dans la table propre au pipeline `ingestion_substitution_rule`.
-- **`lyxal_surreal`** :
-  - Trait universel `LyxalSurrealCall` et méthode `call_fn<T, P>(&self, "function_name", params)`.
-  - Contrats universels de retour `fn::result_ok($data)` et `fn::error_result($code, $language, $details)`.
-- **`lyxal_crypto`** :
-  - `lyxal_crypto::blake3_hex` pour les empreintes immuables BLAKE3 de fichiers, lignes et scellements.
-- **`lyxal_error`** :
-  - Codes d'erreurs normalisés `INGESTION_*` définis dans `error/ingestion/error_definitions.surql`.
-- **`lyxal_event`** :
-  - Outbox transactionnelle `fn::event_publish` déclenchée par SurrealDB (`events/01_events.surql`).
-- **`lyxal_runtime`** :
-  - Traits `LyxalModule`, `LyxalWorker`, `HealthCheck`.
+Appliqué sans question (règles déjà fixées) :
 
----
+* **Identités** (I-01, I-02) : rôle et opérateur lus uniquement dans la session (`$token` /
+  `$auth`) ; `_session_auth`, `approver_role` et `approved_by` sortent du contrat ; la garde du
+  manifeste vérifie la session.
+* **Entrées** (I-07), selon l'option B déjà retenue par le CTO : moteur
+  `fn::validation_object_execute` / `fn::sanitize_object_execute` pour les fonctions appelées
+  de l'extérieur (console du Data Steward, référentiels, listes, approbation) ; primitives du
+  Core pour les fonctions internes appelées ligne à ligne par le worker (`staged_save`,
+  `quarantine_log`, `batch_checkpoint`, enregistrement des lignes brutes). Donnée invalide →
+  `INGESTION_INVALID_PARAMETERS`.
 
-## 2. DTOs Typés Rust (`XxxParams` & `XxxResult`)
+## 2. Contrat cible
 
-Conformément à AGENTS.md § 5.3 & § 5.4, toutes les opérations du store Rust transitent par `store.call_fn(...)` avec des structures de paramètres et de résultats typées :
+### SurrealQL
 
-```rust
-// Gestion des Lots
-pub struct BatchCreateParams { ... }
-pub struct BatchCheckpointParams { ... }
-pub struct BatchTransitionParams { ... }
+* Fonctions existantes conservées dans leur nom ; ajouts pour remplacer les requêtes Rust
+  (I-09) : `fn::ingestion_batch_get`, `_batch_find_by_hash`, `_raw_records_save`,
+  `_staged_list_by_batch`, `_quarantine_list_by_batch`, `_manifest_get`,
+  `_manifest_execution_item_update`, `_rules_load` (familles, spécifications, substitutions).
+* Écriture principale vérifiée, `INGESTION_WRITE_FORBIDDEN` sinon (§11.4).
+* `DEFINE EVENT OVERWRITE` sur les statuts réels : `ingestion.batch.published` (passage à
+  `PUBLISHED`) et `ingestion.manifest.approved` (passage à `APPROVED`) ; nom de l'événement de
+  lot à valider avec le contrat ci-dessous.
+* `TYPE NORMAL SCHEMAFULL` explicite ; une seule migration `migrations/0001_initial.surql`.
 
-// Gestion du Staging & Quarantaine
-pub struct StagedSaveParams { ... }
-pub struct QuarantineLogParams { ... }
+### Erreurs
 
-// Gestion des Manifestes de Publication
-pub struct ManifestSaveParams { ... }
-pub struct ManifestApproveParams { ... }
-pub struct ManifestRecordExecParams { ... }
+* `error/<thème>/*.surql` : les 40 codes utilisés définis (lots, lignes, staging, quarantaine,
+  manifestes, référentiels, preuves, paramètres, permissions, techniques), protégés par
+  `record::exists`.
+* `src/error.rs` : catalogue Rust aligné sur les définitions, test de correspondance (comme
+  `lyxal_runtime`) ; catégories du référentiel `lyxal_error`.
+* Module retiré de `PENDING_TAKEOVER` dans le test serveur `every_emitted_error_code_is_defined`.
 
-// Résolution Dynamique des Règles & Référentiels
-pub struct ResolveUnitParams { pub raw_unit: String }
-pub struct ResolveUnitResult { pub canonical_code: String, pub resolved: bool }
+### Rust
 
-pub struct ResolveManufacturerParams { pub raw_name: String }
-pub struct ResolveManufacturerResult { pub canonical_name: String, pub is_verified: bool }
+* `_session_auth` et `SessionAuthContext` supprimés ; `approver_role` / `approved_by` retirés
+  des DTO d'approbation.
+* Aucune erreur masquée : `resolve_unit`, passage en `FAILED`, événements d'échec, sérialisation
+  des empreintes (I-03, I-12).
+* Aucun `unwrap()` / `panic!` en exécution (I-11) ; un lot en échec ne fait plus s'arrêter le
+  worker.
+* Requêtes métier remplacées par `call_fn` (I-09) ; `schema/00_core_primitives.surql` supprimé
+  (I-15).
+* Q1-A : publisher réel (contrat du catalogue : `code`, `type`, `unite_reference` résolue en
+  `base_unite:<CODE>`, `code_barre`, `nature_reference = COMMERCIALE`, `master_id`) ; session de
+  service ouverte par l'hôte.
 
-// Configuration Dynamique (Sans Recompilation)
-pub struct FamilyRuleAddParams { ... }
-pub struct SpecAddParams { ... }
-pub struct SubstitutionRuleAddParams { ... }
-```
+### `lyxal_core`
 
----
+* Réutilisées : `fn::validation_object_execute`, `fn::sanitize_object_execute`, primitives
+  (`required_string`, `record`, `integer`, `enum`, `gtin`, `uppercase`, `trim`…).
+* Aucune fonction Core nouvelle prévue ; aucun besoin crypto nouveau.
 
-## 3. Fonctions Publiques SurrealQL (`fn::ingestion_*`)
+## 3. Lots
 
-Toutes les fonctions acceptent obligatoirement un objet unique `$params`, sont bornées à < 300 lignes, et retournent systématiquement `fn::result_ok($data)` ou `fn::error_result($code, $language, $details)`.
+| Lot | Contenu |
+| :- | :--- |
+| 1 | **Sécurité et erreurs masquées** (P0) : I-01, I-02, I-03, I-12, I-14, I-15 ; tests des refus. |
+| 2 | **Master data, événements, installation** : I-05, I-06, I-13 (défauts), I-17 (Q4), I-18, migration unique ; module retiré de `PENDING_TAKEOVER`. |
+| 3 | **Entrées et persistance par SurrealQL** : I-07, I-09, I-10 (Q2), I-11, I-13 (écritures vérifiées). |
+| 4 | **Tests** (Q3) : I-08 ; banc SurrealQL sous identités ; tests Rust sur le module installé. |
+| 5 | **Publication vers le catalogue** (Q1) : I-04. |
+| 6 | **Clôture** : `README.md` à l'état actuel, `ROADMAP.md` mise à jour (étapes réalisées retirées, références corrigées), `docs/ARCHITECTURE_DESIGN.md` confronté au code (mis à jour ou repris dans le README), suppression de `CHANGELOG.md`, des rapports et plans de `docs/`, d'`AUDIT.md` et de ce plan ; `AGENTS.md` (§6 : statut « Clôturé Staging ») et skills alignés. |
 
-| Fonction | Fichier | Rôle Métier |
-| :--- | :--- | :--- |
-| `fn::ingestion_batch_create` | `functions/batch/ingestion_batch_create.surql` | Crée ou met à jour un lot avec contrôle d'idempotence et validation de schéma. |
-| `fn::ingestion_batch_checkpoint` | `functions/batch/ingestion_batch_checkpoint.surql` | Met à jour le curseur, les compteurs de qualification et l'horodatage de checkpoint. |
-| `fn::ingestion_batch_transition` | `functions/batch/ingestion_batch_transition.surql` | Valide et applique une transition d'état sur un lot avec audit trail immuable. |
-| `fn::ingestion_staged_save` | `functions/staged/ingestion_staged_save.surql` | Enregistre un article en staging avec empreinte canonique. |
-| `fn::ingestion_quarantine_log` | `functions/quarantine/ingestion_quarantine_log.surql` | Consigne une anomalie typée dans la quarantaine industrielle. |
-| `fn::ingestion_manifest_save` | `functions/manifest/ingestion_manifest_save.surql` | Crée ou met à jour un manifeste de publication scellé. |
-| `fn::ingestion_manifest_approve` | `functions/manifest/ingestion_manifest_approve.surql` | Contrôle les permissions `steward_admin`, vérifie le scellement et approuve le manifeste. |
-| `fn::ingestion_manifest_record_exec`| `functions/manifest/ingestion_manifest_record_exec.surql` | Enregistre le compte-rendu d'exécution et les métriques de publication. |
-| `fn::ingestion_resolve_unit` | `functions/rule/ingestion_resolve_unit.surql` | Résout un alias d'unité via `ingestion_unit_alias` raccordé à `base_unite`. |
-| `fn::ingestion_resolve_manufacturer`| `functions/rule/ingestion_resolve_manufacturer.surql` | Résout un nom de fabricant via `ingestion_manufacturer_alias`. |
-| `fn::ingestion_rule_family_add` | `functions/rule/ingestion_rule_family_add.surql` | Déclare ou met à jour une famille de produits sans recompilation. |
-| `fn::ingestion_rule_spec_add` | `functions/rule/ingestion_rule_spec_add.surql` | Déclare une spécification technique patronne avec tolérances et critères. |
-| `fn::ingestion_rule_substitution_add`| `functions/rule/ingestion_rule_substitution_add.surql` | Déclare une règle de substitution contextualisée et révocable. |
-
----
-
-## 4. Tables de Règles Métier Externalisées (`schema/`)
-
-Suppression de toutes les règles en dur dans Rust. Définition des tables déclaratives `SCHEMAFULL` :
-1. `06_ingestion_family_rule.surql` : Définition des familles de produits, mots-clés de classification, unités par défaut.
-2. `07_ingestion_specification.surql` : Spécifications techniques patronnes, cotes nominales, tolérances configurables (`length_tol_mm`, etc.), normes exigées, classements feu, attributs techniques requis.
-3. `08_ingestion_manufacturer_alias.surql` : Correspondances des dénominations commerciales vers les fabricants canoniques et gestion des holdings.
-4. `09_ingestion_unit_alias.surql` : Correspondance des unités fabricants et codes internationaux (UN/CEFACT) vers `base_unite`.
-5. `10_ingestion_substitution_rule.surql` : Règles de substitution contextualisées (champ d'application système constructif, organisme certificateur, numéro d'agrément, date de validité, révocation).
-
----
-
-## 5. Données de Configuration Initiales (`seeds/`)
-
-1. `01_initial_families.surql` : Les 4 familles clés BTP (Plaques de plâtre, Rails/Montants, Appareillage électrique, Isolants thermiques).
-2. `02_initial_specifications.surql` : Spécifications patronnes (BA13, R48, Prise 2P+T, GR32, Laine de roche).
-3. `03_initial_aliases.surql` : Alias fabricants (Placo, Isover, Weber, Knauf, Siniat, Legrand, Schneider...) et alias unités (`base_unite`).
-4. `04_carrelage_demo.surql` : Famille "Carrelage" pour validation de l'extensibilité sans recompilation Rust.
-
----
-
-## 6. Structure Canonique & Manifeste (`manifest.toml`)
-
-- Déclaration de toutes les ressources dans `manifest.toml` :
-  - `schemas` (11 schémas ordonnés)
-  - `migrations` (`migrations/0001_initial_schema.surql`)
-  - `functions` (13 fonctions réparties par domaine)
-  - `events` (`events/01_events.surql`)
-  - `error` (`error/ingestion/error_definitions.surql`)
-- Documentation canonique : `README.md` et `CHANGELOG.md`.
-
----
-
-## 7. Plan des Tests de Validation du Réalignement
-
-En plus des **46 tests existants maintenus à 100% au vert**, ajout d'une suite dédiée validant les 8 exigences CTO :
-1. **Test 1 — Extensibilité Famille sans Recompilation :** Ajout de la famille "Carrelage Sol" dans SurrealDB, évaluation immédiate d'un article "Carrelage Grès Cérame 60x60" par le moteur Rust sans aucune recompilation.
-2. **Test 2 — Ajout Fabricant / Alias Dynamique :** Enregistrement d'un nouvel alias fabricant dans SurrealDB et résolution immédiate sans modification Rust.
-3. **Test 3 — Résolution Unité depuis `base_unite` :** Résolution dynamique d'alias vers `base_unite:M2` et `base_unite:PCE`.
-4. **Test 4 — Utilisation Exclusive des Fonctions Publiques :** Vérification que toutes les opérations de `IngestionStore` transitent exclusivement par `call_fn` et les fonctions `fn::ingestion_*`.
-5. **Test 5 — Persistance & Rechargement après Redémarrage :** Persistance des règles, spécifications et substitutions, réinstanciation du store et reprise nominale.
-6. **Test 6 — Contrôles RLS & Permissions :** Validation des restrictions d'accès sur les tables et fonctions (rejet des rôles non autorisés).
-7. **Test 7 — Publication Isolée & Contrats Catalogue :** Publication d'une relation `SUBSTITUT` via `fn::catalogue_relation_create`, documentation de la distinction entre relation globale et substitution contextualisée.
-8. **Test 8 — Reprise sur Incident & Idempotence :** Simulation d'interruption avec reprise sur checkpoint sans duplication d'articles.
-
----
-
-## 8. Respect des Restrictions Formelles
-- **ZÉRO modification de `lyxal_catalogue` V1.1.**
-- **ZÉRO refonte générale des modules existants.**
-- **ZÉRO publication dans le Master de production.**
-- **Préserver les 41 références BTP en quarantaine pour Phase 5.**
-- **Aucun lancement de Phase 5 avant validation formelle CTO.**
+Chaque lot fait l'objet d'une PR, fusionnée quand la CI est verte.
