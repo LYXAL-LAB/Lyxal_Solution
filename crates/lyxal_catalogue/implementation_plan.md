@@ -1,6 +1,6 @@
 # Plan d'implémentation — reprise de `lyxal_catalogue`
 
-Suite de `AUDIT.md`. Rien n'est modifié avant validation du CTO (§3).
+Suite de `AUDIT.md`. **Q1 à Q4 validées par le CTO** (option A pour chacune).
 
 > Ce fichier remplace l'ancien `implementation_plan.md` du module (rapport d'exécution du
 > 2026-10-23), document historique supprimé par cette reprise (§0.2).
