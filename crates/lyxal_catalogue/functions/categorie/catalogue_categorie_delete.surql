@@ -40,7 +40,10 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_categorie_delete($params: object) {
         RETURN fn::error_result("CATALOGUE_CATEGORIE_IN_USE", $language, { items_count: $items_count });
     };
 
-    DELETE ONLY $cat_id;
+    LET $deleted = (DELETE ONLY $cat_id RETURN BEFORE);
+    IF $deleted == NONE {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_categorie" });
+    };
 
     RETURN fn::result_ok({ id: <string> $cat_id, deleted: true });
 } COMMENT "Supprime une catégorie si elle ne possède ni sous-catégories ni articles liés";

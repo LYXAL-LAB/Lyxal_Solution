@@ -74,11 +74,14 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_variante_set_attributs($params: object) 
 
     -- 5. Création des nouvelles lignes (l'événement moteur evt_cva_recalc_fingerprint recalculera et synchronisera l'empreinte)
     FOR $pair IN $pairs {
-        CREATE catalogue_variante_attribut CONTENT {
+        LET $line = (CREATE catalogue_variante_attribut CONTENT {
             item: $item_id,
             variante: $var_id,
             attribut: $pair.attribut,
             attribut_valeur: $pair.valeur
+        });
+        IF array::len($line) == 0 {
+            RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_variante_attribut" });
         };
     };
 

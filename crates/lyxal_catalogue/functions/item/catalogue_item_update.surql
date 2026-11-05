@@ -256,6 +256,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
         libelle_personnalise: $libelle_custom ?? $item.libelle_personnalise,
         updated_at: time::now()
     });
+    IF $updated == NONE {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_item" });
+    };
 
     RETURN fn::result_ok($updated);
 } COMMENT "Met à jour les informations éditables d'un élément avec protection des données maîtres";

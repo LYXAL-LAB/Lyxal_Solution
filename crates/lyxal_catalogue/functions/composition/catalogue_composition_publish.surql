@@ -47,6 +47,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_composition_publish($params: object) {
         is_locked = true,
         published_at = time::now()
     );
+    IF $published == NONE {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_composition" });
+    };
 
     -- 6. Mise à jour du flag is_composite sur l'item parent
     UPDATE ONLY $comp.parent_item SET is_composite = true;

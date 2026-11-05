@@ -24,13 +24,16 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_relation_delete($params: object) {
         RETURN fn::error_result("CATALOGUE_RELATION_NOT_FOUND", $language, { id: <string> $relation_id });
     };
 
+    LET $deleted = (DELETE ONLY $relation_id RETURN BEFORE);
+    IF $deleted == NONE {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_relation" });
+    };
+
     -- Si bidirectionnelle, suppression de la réciproque
     LET $rel_type = (SELECT * FROM ONLY $rel.relation_type);
     IF $rel_type != NONE AND $rel_type.is_bidirectionnelle == true {
         DELETE catalogue_relation WHERE source = $rel.cible AND cible = $rel.source AND relation_type = $rel.relation_type;
     };
-
-    DELETE ONLY $relation_id;
 
     RETURN fn::result_ok({ id: <string> $relation_id, deleted: true });
 } COMMENT "Supprime une relation entre deux éléments";

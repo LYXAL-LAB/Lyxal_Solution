@@ -54,6 +54,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_categorie_create($params: object) {
         created_at: time::now(),
         updated_at: time::now()
     });
+    IF array::len($created) == 0 {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_categorie" });
+    };
 
     RETURN fn::result_ok($created[0]);
 } COMMENT "Crée une nouvelle catégorie arborescente";

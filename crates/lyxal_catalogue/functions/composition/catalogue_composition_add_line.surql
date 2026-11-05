@@ -90,6 +90,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_composition_add_line($params: object) {
         created_at: time::now(),
         updated_at: time::now()
     });
+    IF array::len($created) == 0 {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_composition_ligne" });
+    };
 
     RETURN fn::result_ok($created[0]);
 } COMMENT "Ajoute une ligne de composant avec détection récursive des cycles";

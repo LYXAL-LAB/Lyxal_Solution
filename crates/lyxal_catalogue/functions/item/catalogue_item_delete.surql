@@ -106,7 +106,10 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_delete($params: object) {
     DELETE catalogue_variante_attribut WHERE item = $id;
     DELETE catalogue_variante WHERE item = $id;
     DELETE catalogue_relation WHERE source = $id OR cible = $id;
-    DELETE ONLY $id;
+    LET $deleted = (DELETE ONLY $id RETURN BEFORE);
+    IF $deleted == NONE {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_item" });
+    };
 
     RETURN fn::result_ok({ id: <string> $id, deleted: true });
 } COMMENT "Supprime un élément s'il n'est pas consommé dans des nomenclatures";

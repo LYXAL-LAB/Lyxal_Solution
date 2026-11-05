@@ -57,6 +57,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_attribut_create($params: object) {
         created_at: time::now(),
         updated_at: time::now()
     });
+    IF array::len($created) == 0 {
+        RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_attribut" });
+    };
 
     RETURN fn::result_ok($created[0]);
 } COMMENT "Crée une caractéristique typée dans le dictionnaire des attributs";
