@@ -1,0 +1,85 @@
+-- ============================================================================
+-- MASTER DATA : définitions d'erreurs du pipeline d'ingestion, permissions
+-- Rejouable : chaque définition est créée seulement si elle n'existe pas.
+-- ============================================================================
+
+IF !record::exists(error_definition:INGESTION_UNAUTHORIZED) THEN (
+    CREATE error_definition:INGESTION_UNAUTHORIZED CONTENT {
+        code: "INGESTION_UNAUTHORIZED",
+        module: "ingestion",
+        domain: "permissions",
+        category: "authorization",
+        severity: "error",
+        message: "Opération non autorisée pour cette identité",
+        default_language: "fr",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Opération non autorisée",
+                description: "L'identité de la session n'a pas le droit d'effectuer cette opération.",
+                resolution: "Utiliser une identité autorisée."
+            },
+            en: {
+                label: "Operation not allowed for this identity",
+                description: "The session identity is not allowed to perform this operation.",
+                resolution: "Use an authorised identity."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:INGESTION_UNAUTHORIZED_APPROVER) THEN (
+    CREATE error_definition:INGESTION_UNAUTHORIZED_APPROVER CONTENT {
+        code: "INGESTION_UNAUTHORIZED_APPROVER",
+        module: "ingestion",
+        domain: "permissions",
+        category: "authorization",
+        severity: "error",
+        message: "Action réservée au Data Steward",
+        default_language: "fr",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Data Steward requis",
+                description: "Seule la session d'un steward_admin (ou de l'hôte) peut requalifier, résoudre une quarantaine ou approuver.",
+                resolution: "Se connecter avec le rôle steward_admin."
+            },
+            en: {
+                label: "Data Steward action",
+                description: "Only a steward_admin session (or the host) can requalify, resolve quarantine or approve.",
+                resolution: "Sign in with the steward_admin role."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:INGESTION_WRITE_FORBIDDEN) THEN (
+    CREATE error_definition:INGESTION_WRITE_FORBIDDEN CONTENT {
+        code: "INGESTION_WRITE_FORBIDDEN",
+        module: "ingestion",
+        domain: "permissions",
+        category: "authorization",
+        severity: "error",
+        message: "Écriture refusée par les permissions du pipeline",
+        default_language: "fr",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Écriture refusée",
+                description: "L'identité de la session n'a pas le droit d'écrire cet enregistrement ; rien n'a été écrit.",
+                resolution: "Utiliser une identité autorisée pour cette table."
+            },
+            en: {
+                label: "Write forbidden",
+                description: "The session identity may not write this record; nothing was written.",
+                resolution: "Use an identity authorised for this table."
+            }
+        }
+    }
+) END;

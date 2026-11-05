@@ -5,6 +5,7 @@
 -- ============================================================================
 
 DEFINE TABLE OVERWRITE ingestion_unit_alias
+    TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
         FOR select WHERE (

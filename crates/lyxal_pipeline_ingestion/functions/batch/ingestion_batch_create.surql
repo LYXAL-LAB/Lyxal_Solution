@@ -12,7 +12,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_batch_create($params: object) {
     LET $nom_fichier = IF $params.nom_fichier != NONE { string::trim($params.nom_fichier) } ELSE { "" };
     LET $file_hash_blake3 = IF $params.file_hash_blake3 != NONE { string::trim($params.file_hash_blake3) } ELSE { "" };
     LET $taille_octets = IF $params.taille_octets != NONE { <int> $params.taille_octets } ELSE { 0 };
-    LET $statut = IF $params.statut != NONE { string::trim($params.statut) } ELSE { "Staged" };
+    LET $statut = IF $params.statut != NONE { string::trim($params.statut) } ELSE { "RECEIVED" };
     LET $cursor_offset = IF $params.cursor_offset != NONE { <int> $params.cursor_offset } ELSE { 0 };
     LET $chunk_size = IF $params.chunk_size != NONE { <int> $params.chunk_size } ELSE { 500 };
     LET $total_lignes = IF $params.total_lignes != NONE { <int> $params.total_lignes } ELSE { 0 };

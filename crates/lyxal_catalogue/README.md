@@ -141,7 +141,7 @@ Un article maître ne se supprime pas (désactivation par `enabled = false`).
 
 ## 4. Erreurs (`error/`) et seeds
 
-65 définitions `CATALOGUE_*` (`error/<thème>/*.surql`), protégées par `record::exists` donc
+72 définitions `CATALOGUE_*` (`error/<thème>/*.surql`), protégées par `record::exists` donc
 rejouables : articles, catégories, attributs, variantes, compositions, relations, paramètres
 (`CATALOGUE_INVALID_PARAMETERS`), permissions (`CATALOGUE_WRITE_FORBIDDEN`). Un test du serveur
 vérifie que chaque code émis par une fonction est défini.

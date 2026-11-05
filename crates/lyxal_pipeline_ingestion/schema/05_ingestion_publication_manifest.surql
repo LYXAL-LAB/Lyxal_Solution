@@ -5,6 +5,7 @@
 -- ============================================================================
 
 DEFINE TABLE OVERWRITE ingestion_publication_manifest
+    TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
         FOR select WHERE (
@@ -165,7 +166,7 @@ THEN {
         -- 2. Transition vers APPROVED : exige le scellement effectif et l'approbation explicite d'un steward_admin
         IF $after.statut = "APPROVED" {
             IF $after.is_sealed != true OR $after.seal_hash == NONE {
-                THROW "INGESTION_MANIFEST_SEAL_REQUIRED: L'approbation requiert obligatoirement un manifeste préalablement scellé avec son empreinte BLAKE3.";
+                THROW "INGESTION_MANIFEST_UNSEALED: L'approbation requiert obligatoirement un manifeste préalablement scellé avec son empreinte BLAKE3.";
             };
             -- Approbateur lu dans la session : steward_admin, ou session système (hôte)
             LET $who = fn::ingestion_session_identity({});

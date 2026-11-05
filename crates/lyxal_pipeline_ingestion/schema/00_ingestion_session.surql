@@ -5,6 +5,7 @@
 -- ============================================================================
 
 DEFINE TABLE OVERWRITE ingestion_session
+    TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
         FOR select WHERE id = $auth.id

@@ -9,7 +9,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_log($params: object) {
     LET $raw_record_id = IF $params.raw_record_id != NONE { <string> $params.raw_record_id } ELSE { NONE };
     LET $ligne_numero = <int> $params.ligne_numero;
     LET $code_erreur = <string> $params.code_erreur;
-    LET $severite = IF $params.severite != NONE { <string> $params.severite } ELSE { "Error" };
+    LET $severite = IF $params.severite != NONE { <string> $params.severite } ELSE { "ERROR" };
     LET $champ_concerne = <string> $params.champ_concerne;
     LET $valeur_fautive = $params.valeur_fautive;
     LET $cause_detaillee = <string> $params.cause_detaillee;

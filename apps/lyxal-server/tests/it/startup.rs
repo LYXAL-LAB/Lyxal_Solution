@@ -247,8 +247,6 @@ async fn every_emitted_error_code_is_defined() {
 
     let client = database("error_codes").await;
     install_foundation(&client).await.expect("noyau");
-    // Modules dont la reprise n'est pas encore faite : leurs codes manquants y seront traités.
-    const PENDING_TAKEOVER: [&str; 1] = ["lyxal_pipeline_ingestion"];
     let mut emitted = std::collections::BTreeSet::new();
     for module in EMBEDDED_MODULES {
         let manifest = ManifestParser::parse_str(module.manifest).expect("manifeste");
@@ -259,15 +257,17 @@ async fn every_emitted_error_code_is_defined() {
         )
         .await
         .unwrap_or_else(|e| panic!("{} : {e}", module.id));
-        if PENDING_TAKEOVER.contains(&module.id) {
-            continue;
-        }
         for (path, content) in module.files {
-            if !path.starts_with("functions/") {
-                continue;
-            }
-            for chunk in content.split("fn::error_result(\"").skip(1) {
-                let code = chunk.split('"').next().unwrap_or_default();
+            // Codes renvoyés par les fonctions et codes levés par les gardes (`THROW "CODE: …"`).
+            let markers: &[&str] = if path.starts_with("functions/") {
+                &["fn::error_result(\"", "THROW \""]
+            } else if path.starts_with("schema/") || path.starts_with("events/") {
+                &["THROW \""]
+            } else {
+                &[]
+            };
+            for chunk in markers.iter().flat_map(|m| content.split(m).skip(1)) {
+                let code = chunk.split(['"', ':']).next().unwrap_or_default();
                 if !code.is_empty()
                     && code
                         .chars()

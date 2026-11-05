@@ -38,9 +38,6 @@ schemas = [
     "schema/09_ingestion_unit_alias.surql",
     "schema/10_ingestion_substitution_rule.surql"
 ]
-migrations = [
-    "migrations/0001_initial_schema.surql"
-]
 functions = [
     "functions/session/ingestion_session_identity.surql",
     "functions/batch/ingestion_batch_create.surql",
@@ -70,9 +67,15 @@ events = [
 seeds = [
     "seeds/01_initial_families.surql",
     "seeds/02_initial_specifications.surql",
-    "seeds/03_initial_aliases.surql",
-    "seeds/04_carrelage_demo.surql"
+    "seeds/03_initial_aliases.surql"
 ]
 error_definitions = [
-    "error/ingestion/error_definitions.surql"
+    "error/lots/error_lots.surql",
+    "error/articles/error_articles.surql",
+    "error/quarantaine/error_quarantaine.surql",
+    "error/preuves/error_preuves.surql",
+    "error/manifestes/error_manifestes.surql",
+    "error/referentiels/error_referentiels.surql",
+    "error/permissions/error_permissions.surql",
+    "error/techniques/error_techniques.surql"
 ]

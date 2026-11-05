@@ -191,3 +191,192 @@ IF !record::exists(error_definition:CATALOGUE_RELATION_CYCLE_DEPTH_EXCEEDED) THE
         }
     }
 ) END;
+
+IF !record::exists(error_definition:CATALOGUE_RELATION_BEFORE_SOURCE_UNAUTHORIZED) THEN (
+    CREATE error_definition:CATALOGUE_RELATION_BEFORE_SOURCE_UNAUTHORIZED CONTENT {
+        code: "CATALOGUE_RELATION_BEFORE_SOURCE_UNAUTHORIZED",
+        module: "catalogue",
+        domain: "relation",
+        category: "authorization",
+        severity: "error",
+        message: "L'article source d'origine de la relation appartient à un autre locataire",
+        default_language: "fr",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Source d'origine non autorisée",
+                description: "Une relation existante dont la source est un article privé d'un autre locataire ne peut pas être modifiée ni supprimée.",
+                resolution: "Ne modifier que les relations de son propre locataire."
+            },
+            en: {
+                label: "Original source not allowed",
+                description: "An existing relation whose source is another tenant's private item cannot be changed or deleted.",
+                resolution: "Only change your own tenant's relations."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:CATALOGUE_RELATION_BEFORE_TARGET_UNAUTHORIZED) THEN (
+    CREATE error_definition:CATALOGUE_RELATION_BEFORE_TARGET_UNAUTHORIZED CONTENT {
+        code: "CATALOGUE_RELATION_BEFORE_TARGET_UNAUTHORIZED",
+        module: "catalogue",
+        domain: "relation",
+        category: "authorization",
+        severity: "error",
+        message: "L'article cible d'origine de la relation appartient à un autre locataire",
+        default_language: "fr",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Cible d'origine non autorisée",
+                description: "Une relation existante dont la cible est un article privé d'un autre locataire ne peut pas être modifiée ni supprimée.",
+                resolution: "Ne modifier que les relations de son propre locataire."
+            },
+            en: {
+                label: "Original target not allowed",
+                description: "An existing relation whose target is another tenant's private item cannot be changed or deleted.",
+                resolution: "Only change your own tenant's relations."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:CATALOGUE_RELATION_AFTER_SOURCE_UNAUTHORIZED) THEN (
+    CREATE error_definition:CATALOGUE_RELATION_AFTER_SOURCE_UNAUTHORIZED CONTENT {
+        code: "CATALOGUE_RELATION_AFTER_SOURCE_UNAUTHORIZED",
+        module: "catalogue",
+        domain: "relation",
+        category: "authorization",
+        severity: "error",
+        message: "L'article source indiqué appartient à un autre locataire",
+        default_language: "fr",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Source non autorisée",
+                description: "La source d'une relation ne peut pas être un article privé d'un autre locataire.",
+                resolution: "Choisir un article maître ou un article de son locataire."
+            },
+            en: {
+                label: "Source not allowed",
+                description: "A relation source cannot be another tenant's private item.",
+                resolution: "Choose a master item or one of your tenant's items."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:CATALOGUE_RELATION_AFTER_TARGET_UNAUTHORIZED) THEN (
+    CREATE error_definition:CATALOGUE_RELATION_AFTER_TARGET_UNAUTHORIZED CONTENT {
+        code: "CATALOGUE_RELATION_AFTER_TARGET_UNAUTHORIZED",
+        module: "catalogue",
+        domain: "relation",
+        category: "authorization",
+        severity: "error",
+        message: "L'article cible indiqué appartient à un autre locataire",
+        default_language: "fr",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Cible non autorisée",
+                description: "La cible d'une relation ne peut pas être un article privé d'un autre locataire.",
+                resolution: "Choisir un article maître ou un article de son locataire."
+            },
+            en: {
+                label: "Target not allowed",
+                description: "A relation target cannot be another tenant's private item.",
+                resolution: "Choose a master item or one of your tenant's items."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:CATALOGUE_RELATION_CANNOT_LINK_MASTER) THEN (
+    CREATE error_definition:CATALOGUE_RELATION_CANNOT_LINK_MASTER CONTENT {
+        code: "CATALOGUE_RELATION_CANNOT_LINK_MASTER",
+        module: "catalogue",
+        domain: "relation",
+        category: "authorization",
+        severity: "error",
+        message: "Un locataire ne relie pas deux articles maîtres entre eux",
+        default_language: "fr",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Relation maître réservée",
+                description: "Les relations entre deux articles maîtres relèvent de l'agent de synchronisation.",
+                resolution: "Relier un article privé à un article maître, ou passer par la synchronisation."
+            },
+            en: {
+                label: "Master relation reserved",
+                description: "Relations between two master items belong to the sync agent.",
+                resolution: "Link a private item to a master item, or go through synchronisation."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:CATALOGUE_RELATION_CANNOT_ALTER_MASTER) THEN (
+    CREATE error_definition:CATALOGUE_RELATION_CANNOT_ALTER_MASTER CONTENT {
+        code: "CATALOGUE_RELATION_CANNOT_ALTER_MASTER",
+        module: "catalogue",
+        domain: "relation",
+        category: "authorization",
+        severity: "error",
+        message: "Un locataire ne modifie pas une relation entre deux articles maîtres",
+        default_language: "fr",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Relation maître non modifiable",
+                description: "Une relation entre deux articles maîtres ne peut être modifiée ou supprimée que par l'agent de synchronisation.",
+                resolution: "Passer par la synchronisation du catalogue maître."
+            },
+            en: {
+                label: "Master relation read-only",
+                description: "A relation between two master items can only be changed by the sync agent.",
+                resolution: "Go through master catalogue synchronisation."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:CATALOGUE_RELATION_SYNC_CANNOT_ACCESS_CUSTOM) THEN (
+    CREATE error_definition:CATALOGUE_RELATION_SYNC_CANNOT_ACCESS_CUSTOM CONTENT {
+        code: "CATALOGUE_RELATION_SYNC_CANNOT_ACCESS_CUSTOM",
+        module: "catalogue",
+        domain: "relation",
+        category: "authorization",
+        severity: "error",
+        message: "L'agent de synchronisation ne touche pas aux relations d'articles privés",
+        default_language: "fr",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Relation privée inaccessible",
+                description: "L'agent de synchronisation ne crée, ne modifie ni ne supprime de relation impliquant un article privé.",
+                resolution: "Limiter la synchronisation aux articles maîtres."
+            },
+            en: {
+                label: "Private relation off-limits",
+                description: "The sync agent never creates, changes or deletes a relation involving a private item.",
+                resolution: "Limit synchronisation to master items."
+            }
+        }
+    }
+) END;

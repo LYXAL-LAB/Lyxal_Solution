@@ -87,6 +87,9 @@ RETURN fn::ingestion_manifest_approve({ manifest_ref: "MAN-SEC", justification: 
 -- test: approbation du manifeste au nom du steward de la session
 RETURN (SELECT VALUE [statut, approved_by, approver_role, array::last(transitions).reason] FROM ONLY ingestion_publication_manifest WHERE manifest_ref = "MAN-SEC" LIMIT 1) == ["APPROVED", "user:steward", "steward_admin", "Lot contrôlé et conforme au bordereau"];
 
+-- test: l'approbation publie ingestion.manifest.approved dans l'outbox
+RETURN (SELECT VALUE payload.manifest_ref FROM event_outbox WHERE event_type = "ingestion.manifest.approved") == ["MAN-SEC"];
+
 -- test: le steward n'exécute pas la publication
 -- en tant que: steward
 -- attendu-erreur: INGESTION_MANIFEST_EXECUTION_UNAUTHORIZED
