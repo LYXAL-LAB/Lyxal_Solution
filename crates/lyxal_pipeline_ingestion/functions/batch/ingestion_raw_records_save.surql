@@ -2,14 +2,23 @@
 -- FONCTION : fn::ingestion_raw_records_save
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Enregistrement d'un bloc de lignes brutes d'un lot (zone tampon immuable)
--- APPEL    : interne (worker, par bloc), entrées contrôlées par les primitives de lyxal_core
+-- APPEL    : interne (worker, par bloc) : paramètres du bloc par le moteur de lyxal_core, lignes par primitives
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::ingestion_raw_records_save($params: object) {
-    LET $batch = fn::validation_record($params.batch_id, "ingestion_batch");
-    IF !$batch.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "batch_id", reason: $batch.code }); };
-    LET $records = fn::validation_array_objects($params.records, false);
-    IF !$records.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "records", reason: $records.code }); };
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            batch_id: { pipeline: [{ rule: "record", options: { expected_table: "ingestion_batch" } }], required: true },
+            records: { pipeline: [{ rule: "array_objects", options: { allow_empty_objects: false } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 10);
+    IF !$report.valid {
+        RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $batch = { value: $report.value.batch_id };
+    LET $records = { value: $report.value.records };
     LET $batch_key = <string> record::id($batch.value);
 
     FOR $record IN $records.value {

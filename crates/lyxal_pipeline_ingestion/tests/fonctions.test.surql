@@ -54,6 +54,12 @@ RETURN fn::ingestion_manifest_get_detail({ manifest_ref: "MAN-INCONNU" }).error.
 -- test: un fichier déjà reçu (même format, même empreinte) est refusé
 RETURN fn::ingestion_batch_create({ id: "lot_f_bis", source_type: "csv", fournisseur_id: "FOURN_ISOVER", nom_fichier: "isover.csv", file_hash_blake3: crypto::blake3("isover.csv") }).error.code == "INGESTION_BATCH_DUPLICATE";
 
+-- test: lot sans identifiant fourni, retrouvé par l'identifiant renvoyé
+RETURN fn::ingestion_batch_get({ id: fn::ingestion_batch_create({ source_type: "XML", fournisseur_id: "FOURN_KNAUF", nom_fichier: "knauf.xml", file_hash_blake3: crypto::blake3("knauf.xml") }).data }).data.{ statut, cle_texte: type::is_string(id) AND string::len(id) == 36 } == { statut: "RECEIVED", cle_texte: true };
+
+-- test: paramètre inconnu refusé à la création d'un lot
+RETURN fn::ingestion_batch_create({ id: "lot_x", source_type: "CSV", fournisseur_id: "F", nom_fichier: "x.csv", file_hash_blake3: crypto::blake3("x.csv"), statut: "PUBLISHED" }).error.code == "INGESTION_INVALID_PARAMETERS";
+
 -- test: une empreinte de fichier invalide est refusée
 RETURN fn::ingestion_batch_create({ id: "lot_court", source_type: "CSV", fournisseur_id: "FOURN_ISOVER", nom_fichier: "court.csv", file_hash_blake3: "abc" }).error.code == "INGESTION_SOURCE_INVALID";
 
