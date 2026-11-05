@@ -6,7 +6,6 @@
 
 DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_approve($params: object) {
     LET $manifest_ref = <string> $params.manifest_ref;
-    LET $justification = IF $params.justification != NONE { string::trim(<string> $params.justification) } ELSE { "" };
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
 
     -- Habilitation : identité lue dans la session (jamais dans les paramètres)
@@ -19,12 +18,12 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_approve($params: object) {
         });
     };
 
-    IF string::len($justification) < 10 {
-        RETURN fn::error_result("INGESTION_JUSTIFICATION_TOO_SHORT", $language, {
-            length: string::len($justification),
-            min_required: 10
-        });
+    -- Justification obligatoire (10 caractères au moins), contrôlée par lyxal_core
+    LET $justif = fn::validation_required_string($params.justification, 10, 2000);
+    IF !$justif.valid {
+        RETURN fn::error_result("INGESTION_JUSTIFICATION_TOO_SHORT", $language, { field: "justification", reason: $justif.code, min_required: 10 });
     };
+    LET $justification = $justif.value;
 
     LET $manifests = (SELECT * FROM ingestion_publication_manifest WHERE manifest_ref = $manifest_ref);
     IF array::len($manifests) == 0 {

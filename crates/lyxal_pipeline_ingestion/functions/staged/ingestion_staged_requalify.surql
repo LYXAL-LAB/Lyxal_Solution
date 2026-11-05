@@ -30,14 +30,12 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_requalify($params: object) {
         });
     };
 
-    -- 3. Validation de la justification obligatoire (min 10 caractères)
-    LET $justification = IF $params.justification != NONE { string::trim(<string> $params.justification) } ELSE { "" };
-    IF string::len($justification) < 10 {
-        RETURN fn::error_result("INGESTION_JUSTIFICATION_TOO_SHORT", $language, { 
-            length: string::len($justification), 
-            min_required: 10 
-        });
+    -- 3. Justification obligatoire (10 caractères au moins), contrôlée par lyxal_core
+    LET $justif = fn::validation_required_string($params.justification, 10, 2000);
+    IF !$justif.valid {
+        RETURN fn::error_result("INGESTION_JUSTIFICATION_TOO_SHORT", $language, { field: "justification", reason: $justif.code, min_required: 10 });
     };
+    LET $justification = $justif.value;
 
     -- 4. Recherche de l'article en staging
     LET $clean_id = string::replace($item_id, "ingestion_staged_item:", "");

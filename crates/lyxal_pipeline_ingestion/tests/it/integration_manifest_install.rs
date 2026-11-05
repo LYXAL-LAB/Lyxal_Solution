@@ -74,3 +74,40 @@ async fn worker_follows_installed_batch_state_machine() {
         .expect("reprise");
     assert_eq!(report.final_status, BatchStatus::Staged);
 }
+
+#[tokio::test]
+async fn failed_batch_does_not_block_the_next_one() {
+    let store = crate::support::installed_store().await;
+    let csv = "reference;designation;gtin;fabricant;unite;prix\nREF_1;Plaque;;Placo;M2;8.50\n";
+    let worker = IngestionWorker::new(store.clone());
+    let token = CancellationToken::new();
+
+    // Lot inconnu : le traitement échoue après la prise du verrou logique.
+    let failure = worker
+        .process_batch(
+            "lot_absent",
+            csv.as_bytes(),
+            SourceFormat::Csv,
+            None,
+            &token,
+        )
+        .await;
+    assert!(failure.is_err());
+
+    // Le verrou a été libéré : un autre lot se traite normalement.
+    store
+        .create_batch(&batch("lot_suivant", BatchStatus::Received))
+        .await
+        .expect("lot");
+    let report = worker
+        .process_batch(
+            "lot_suivant",
+            csv.as_bytes(),
+            SourceFormat::Csv,
+            None,
+            &token,
+        )
+        .await
+        .expect("le lot suivant n'est pas bloqué");
+    assert_eq!(report.final_status, BatchStatus::Staged);
+}

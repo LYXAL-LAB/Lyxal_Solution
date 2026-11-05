@@ -141,6 +141,24 @@ impl IngestionWorker {
         *lock = Some(batch_id.to_string());
         drop(lock);
 
+        // Le verrou est libéré quelle que soit l'issue (succès, interruption ou erreur) :
+        // une erreur ne doit jamais bloquer les lots suivants.
+        let result = self
+            .process_locked_batch(batch_id, raw_bytes, format, commercial_proof, cancellation)
+            .await;
+        *self.active_batch_lock.lock().await = None;
+        result
+    }
+
+    /// Traitement d'un lot dont le verrou logique est déjà pris par `process_batch`.
+    async fn process_locked_batch(
+        &self,
+        batch_id: &str,
+        raw_bytes: &[u8],
+        format: SourceFormat,
+        commercial_proof: Option<CommercialProof>,
+        cancellation: &CancellationToken,
+    ) -> IngestionResult<BatchProcessingReport> {
         // 2. Vérification et transition d'état du lot
         let batch = self
             .store
@@ -150,8 +168,6 @@ impl IngestionWorker {
 
         // Idempotence : si le lot est déjà terminé, pas de réexécution inutile
         if batch.statut == BatchStatus::Staged || batch.statut == BatchStatus::Published {
-            let mut lock = self.active_batch_lock.lock().await;
-            *lock = None;
             return Ok(BatchProcessingReport {
                 batch_id: batch_id.to_string(),
                 final_status: batch.statut,
@@ -218,9 +234,6 @@ impl IngestionWorker {
                         rejected_count,
                     )
                     .await?;
-
-                let mut lock = self.active_batch_lock.lock().await;
-                *lock = None;
 
                 return Ok(BatchProcessingReport {
                     batch_id: batch_id.to_string(),
@@ -408,10 +421,6 @@ impl IngestionWorker {
                 ))
             })?;
         }
-
-        // Libération du verrou actif
-        let mut lock = self.active_batch_lock.lock().await;
-        *lock = None;
 
         Ok(BatchProcessingReport {
             batch_id: batch_id.to_string(),

@@ -22,22 +22,12 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_resolve($params: object) {
         });
     };
 
-    -- 2. Validation de la justification obligatoire (min 10 caractères)
-    LET $justification = IF $params.comment != NONE { 
-        string::trim(<string> $params.comment) 
-    } ELSE IF $params.justification != NONE { 
-        string::trim(<string> $params.justification) 
-    } ELSE { 
-        "" 
+    -- 2. Justification obligatoire (10 caractères au moins), contrôlée par lyxal_core
+    LET $justif = fn::validation_required_string($params.comment, 10, 2000);
+    IF !$justif.valid {
+        RETURN fn::error_result("INGESTION_JUSTIFICATION_TOO_SHORT", $language, { field: "comment", reason: $justif.code, min_required: 10 });
     };
-
-    IF string::len($justification) < 10 {
-        RETURN fn::error_result("INGESTION_JUSTIFICATION_TOO_SHORT", $language, { 
-            length: string::len($justification), 
-            min_required: 10,
-            message: "La justification de résolution d'anomalie doit contenir au moins 10 caractères"
-        });
-    };
+    LET $justification = $justif.value;
 
     -- 3. Recherche du record de quarantaine
     LET $clean_id = string::replace($quarantine_id, "ingestion_quarantine_record:", "");

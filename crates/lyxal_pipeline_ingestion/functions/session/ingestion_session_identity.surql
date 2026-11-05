@@ -9,12 +9,13 @@
 -- * Session utilisateur (jeton ou session d'enregistrement `ingestion_session`) :
 --   rôle = claim `role` du jeton, sinon champ `role` de la session ; opérateur = claim `sub`
 --   du jeton, sinon identifiant de la session.
--- * Session système (hôte, root : ni jeton ni session) : rôle et opérateur `system`. Elle
---   maîtrise déjà toute la base ; un invité n'est pas une session système (refusé par
---   PERMISSIONS ci-dessous et par celles des fonctions appelantes).
+-- * Session système (utilisateur système : root de l'hôte, en mode embarqué, par identifiants
+--   ou par jeton root ; aucune méthode d'accès `$session.ac` ni session `$auth`) : rôle et
+--   opérateur `system`. Elle maîtrise déjà toute la base. Un invité n'est pas une session
+--   système : il est refusé par PERMISSIONS ci-dessous et par celles des fonctions appelantes.
 
 DEFINE FUNCTION OVERWRITE fn::ingestion_session_identity($params: object) -> object {
-    IF $token == NONE AND $auth == NONE {
+    IF $session.ac == NONE AND $auth == NONE {
         RETURN { role: "system", operator: "system", is_system: true };
     };
     LET $role = $token.role ?? $auth.role;
