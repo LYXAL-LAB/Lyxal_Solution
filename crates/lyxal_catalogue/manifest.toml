@@ -1,7 +1,7 @@
 manifest_version = 1
 id = "lyxal_catalogue"
 name = "Lyxal Catalogue"
-version = "1.0.0"
+version = "0.1.0"
 description = "Référentiel universel des produits, services, ouvrages, ressources et ensembles de LYXAL OS"
 capabilities = ["database"]
 
@@ -10,6 +10,10 @@ min_version = ">=0.1.0"
 
 [[dependencies]]
 id = "lyxal_core"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_error"
 version = ">=0.1.0"
 
 [[dependencies]]
@@ -60,8 +64,16 @@ functions = [
     "functions/relation/catalogue_relation_delete.surql"
 ]
 
+error_definitions = [
+    "error/items/error_item.surql",
+    "error/categories/error_categorie.surql",
+    "error/attributs/error_attribut.surql",
+    "error/variantes/error_variante.surql",
+    "error/compositions/error_composition.surql",
+    "error/relations/error_relation.surql"
+]
+
 seeds = [
-    "seeds/error_definitions.surql",
     "seeds/catalogue_type_initial.surql",
     "seeds/catalogue_relation_type_initial.surql"
 ]
