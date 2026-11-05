@@ -5,6 +5,7 @@
 -- ============================================================================
 
 DEFINE TABLE OVERWRITE ingestion_raw_record
+    TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
         FOR select WHERE (

@@ -5,6 +5,7 @@
 -- ============================================================================
 
 DEFINE TABLE OVERWRITE ingestion_staged_item
+    TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
         FOR select WHERE (

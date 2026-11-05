@@ -165,7 +165,9 @@ async fn restart_on_installed_database_is_idempotent() {
     let second = runtime::start(&config, &client).await.expect("redémarrage");
     second.stop_all().await.expect("arrêt");
 
-    // Chaque module n'a qu'une release, et chaque migration n'a été appliquée qu'une fois.
+    // Chaque module n'a qu'une release. Aucun module hébergé ne déclare de migration (schémas
+    // installés par la phase `schemas`) ; l'application unique d'une migration est prouvée par
+    // les tests de lyxal_runtime (lease_fencing_tests, multi_node_locking_tests).
     let mut res = client
         .query("RETURN count(SELECT * FROM runtime_migration); RETURN count(SELECT * FROM runtime_release);")
         .await
@@ -177,14 +179,7 @@ async fn restart_on_installed_database_is_idempotent() {
     } else {
         5
     };
-    assert_eq!(
-        migrations,
-        Some(if cfg!(feature = "module-ingestion") {
-            1
-        } else {
-            0
-        })
-    );
+    assert_eq!(migrations, Some(0));
     assert_eq!(releases, Some(hosted));
 }
 
@@ -247,8 +242,6 @@ async fn every_emitted_error_code_is_defined() {
 
     let client = database("error_codes").await;
     install_foundation(&client).await.expect("noyau");
-    // Modules dont la reprise n'est pas encore faite : leurs codes manquants y seront traités.
-    const PENDING_TAKEOVER: [&str; 1] = ["lyxal_pipeline_ingestion"];
     let mut emitted = std::collections::BTreeSet::new();
     for module in EMBEDDED_MODULES {
         let manifest = ManifestParser::parse_str(module.manifest).expect("manifeste");
@@ -259,15 +252,17 @@ async fn every_emitted_error_code_is_defined() {
         )
         .await
         .unwrap_or_else(|e| panic!("{} : {e}", module.id));
-        if PENDING_TAKEOVER.contains(&module.id) {
-            continue;
-        }
         for (path, content) in module.files {
-            if !path.starts_with("functions/") {
-                continue;
-            }
-            for chunk in content.split("fn::error_result(\"").skip(1) {
-                let code = chunk.split('"').next().unwrap_or_default();
+            // Codes renvoyés par les fonctions et codes levés par les gardes (`THROW "CODE: …"`).
+            let markers: &[&str] = if path.starts_with("functions/") {
+                &["fn::error_result(\"", "THROW \""]
+            } else if path.starts_with("schema/") || path.starts_with("events/") {
+                &["THROW \""]
+            } else {
+                &[]
+            };
+            for chunk in markers.iter().flat_map(|m| content.split(m).skip(1)) {
+                let code = chunk.split(['"', ':']).next().unwrap_or_default();
                 if !code.is_empty()
                     && code
                         .chars()

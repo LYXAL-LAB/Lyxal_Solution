@@ -19,8 +19,8 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_save($params: object) {
     LET $type_item = IF $params.type_item != NONE { <string> $params.type_item } ELSE { "PRODUIT" };
     LET $unite_reference = <string> $params.unite_reference;
     LET $conditionnement = IF $params.conditionnement != NONE { $params.conditionnement } ELSE { NONE };
-    LET $qualification = IF $params.qualification != NONE { <string> $params.qualification } ELSE { "ToConfirm" };
-    LET $publication_action = IF $params.publication_action != NONE { <string> $params.publication_action } ELSE { "Insert" };
+    LET $qualification = IF $params.qualification != NONE { <string> $params.qualification } ELSE { "TO_CONFIRM" };
+    LET $publication_action = IF $params.publication_action != NONE { <string> $params.publication_action } ELSE { "INSERT" };
     LET $diff_payload = IF $params.diff_payload != NONE { $params.diff_payload } ELSE { NONE };
     LET $transitions = IF $params.transitions != NONE { $params.transitions } ELSE { [] };
     LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };

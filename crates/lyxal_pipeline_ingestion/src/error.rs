@@ -56,58 +56,166 @@ pub enum IngestionError {
     LyxalCall(#[from] lyxal_error::LyxalCallError),
 }
 
+/// Référence d'un code d'erreur du pipeline, identique à sa définition dans `error/<thème>/`
+/// (un test vérifie la correspondance).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct IngestionErrorInfo {
+    pub code: &'static str,
+    pub category: &'static str,
+    pub http_status: u16,
+    pub retryable: bool,
+}
+
+const fn info(
+    code: &'static str,
+    category: &'static str,
+    http_status: u16,
+    retryable: bool,
+) -> IngestionErrorInfo {
+    IngestionErrorInfo {
+        code,
+        category,
+        http_status,
+        retryable,
+    }
+}
+
+impl IngestionError {
+    /// Code, catégorie, statut HTTP et caractère réessayable de l'erreur.
+    pub fn info(&self) -> IngestionErrorInfo {
+        match self {
+            Self::InvalidSourceFormat(_) => {
+                info("INGESTION_SOURCE_INVALID", "validation", 400, false)
+            }
+            Self::Validation(_) => info("INGESTION_VALIDATION_ERROR", "validation", 400, false),
+            Self::Adapter(_) => info("INGESTION_ADAPTER_ERROR", "validation", 400, false),
+            Self::DuplicateBatch { .. } => {
+                info("INGESTION_BATCH_DUPLICATE", "conflict", 409, false)
+            }
+            Self::InvalidGtin { .. } => info("INGESTION_GTIN_INVALID", "validation", 400, false),
+            Self::MissingManufacturerRef { .. } => info(
+                "INGESTION_MANUFACTURER_REF_MISSING",
+                "validation",
+                400,
+                false,
+            ),
+            Self::UnresolvedBaseUnit { .. } => {
+                info("INGESTION_UNIT_UNRESOLVED", "validation", 422, false)
+            }
+            Self::IncoherentPackaging { .. } => {
+                info("INGESTION_PACKAGING_INCOHERENT", "validation", 422, false)
+            }
+            Self::IllegalStateTransition { .. } | Self::IllegalTransition(_) => {
+                info("INGESTION_ILLEGAL_STATE_TRANSITION", "conflict", 409, false)
+            }
+            Self::SealVerificationFailed { .. } => {
+                info("INGESTION_SEAL_VERIFICATION_FAILED", "conflict", 409, false)
+            }
+            Self::FingerprintTampered(_) => {
+                info("INGESTION_FINGERPRINT_TAMPERED", "conflict", 409, false)
+            }
+            Self::Unauthorized(_) => info("INGESTION_UNAUTHORIZED", "authorization", 403, false),
+            Self::Database(_) => info("INGESTION_DB_ERROR", "dependency", 503, true),
+            Self::Storage(_) => info("INGESTION_STORAGE_ERROR", "dependency", 503, true),
+            Self::LyxalCall(_) => info("INGESTION_CALL_ERROR", "internal", 500, false),
+        }
+    }
+}
+
 impl From<IngestionError> for LyxalError {
     fn from(err: IngestionError) -> Self {
-        let (code, category, retryable) = match &err {
-            IngestionError::InvalidSourceFormat(_) => {
-                ("INGESTION_SOURCE_INVALID", "validation", false)
-            }
-            IngestionError::Validation(_) => ("INGESTION_VALIDATION_ERROR", "validation", false),
-            IngestionError::Adapter(_) => ("INGESTION_ADAPTER_ERROR", "validation", false),
-            IngestionError::DuplicateBatch { .. } => {
-                ("INGESTION_BATCH_DUPLICATE", "business", false)
-            }
-            IngestionError::InvalidGtin { .. } => ("INGESTION_GTIN_INVALID", "validation", false),
-            IngestionError::MissingManufacturerRef { .. } => {
-                ("INGESTION_MANUFACTURER_REF_MISSING", "validation", false)
-            }
-            IngestionError::UnresolvedBaseUnit { .. } => {
-                ("INGESTION_UNIT_UNRESOLVED", "validation", false)
-            }
-            IngestionError::IncoherentPackaging { .. } => {
-                ("INGESTION_PACKAGING_INCOHERENT", "validation", false)
-            }
-            IngestionError::IllegalStateTransition { .. } => {
-                ("INGESTION_ILLEGAL_STATE_TRANSITION", "business", false)
-            }
-            IngestionError::IllegalTransition(_) => {
-                ("INGESTION_ILLEGAL_STATE_TRANSITION", "business", false)
-            }
-            IngestionError::SealVerificationFailed { .. } => {
-                ("INGESTION_SEAL_VERIFICATION_FAILED", "security", false)
-            }
-            IngestionError::FingerprintTampered(_) => {
-                ("INGESTION_FINGERPRINT_TAMPERED", "security", false)
-            }
-            IngestionError::Unauthorized(_) => ("INGESTION_UNAUTHORIZED", "security", false),
-            IngestionError::Database(_) => ("INGESTION_DB_ERROR", "technical", true),
-            IngestionError::Storage(_) => ("INGESTION_STORAGE_ERROR", "technical", true),
-            IngestionError::LyxalCall(_) => ("INGESTION_CALL_ERROR", "technical", false),
-        };
-
+        let info = err.info();
         LyxalError {
-            code: code.to_string(),
+            code: info.code.to_string(),
             message: err.to_string(),
-            label: code.to_string(),
+            label: info.code.to_string(),
             description: Some(err.to_string()),
             resolution: None,
-            category: category.to_string(),
-            severity: "error".to_string(),
-            http_status: Some(400),
-            retryable,
+            category: info.category.to_string(),
+            severity: if info.category == "internal" {
+                "critical"
+            } else {
+                "error"
+            }
+            .to_string(),
+            http_status: Some(info.http_status),
+            retryable: info.retryable,
             documentation: serde_json::json!({}),
             metadata: serde_json::json!({}),
             details: serde_json::json!({}),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Une valeur de chaque variante d'`IngestionError`.
+    fn every_variant() -> Vec<IngestionError> {
+        let text = || "détail".to_string();
+        vec![
+            IngestionError::InvalidSourceFormat(text()),
+            IngestionError::Validation(text()),
+            IngestionError::DuplicateBatch { hash: text() },
+            IngestionError::InvalidGtin { gtin: text() },
+            IngestionError::MissingManufacturerRef { fabricant: text() },
+            IngestionError::UnresolvedBaseUnit { unite: text() },
+            IngestionError::IncoherentPackaging { details: text() },
+            IngestionError::IllegalStateTransition {
+                from: text(),
+                to: text(),
+            },
+            IngestionError::SealVerificationFailed {
+                manifest_id: text(),
+            },
+            IngestionError::Unauthorized(text()),
+            IngestionError::Adapter(text()),
+            IngestionError::IllegalTransition(text()),
+            IngestionError::FingerprintTampered(text()),
+            IngestionError::Database(text()),
+            IngestionError::Storage(text()),
+            IngestionError::LyxalCall(lyxal_error::LyxalCallError::InvalidContract {
+                function: "fn::test",
+            }),
+        ]
+    }
+
+    /// Bloc de définition d'un code dans `error/<thème>/*.surql`.
+    fn definition(code: &str) -> Option<String> {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("error");
+        for theme in std::fs::read_dir(dir).ok()?.flatten() {
+            for file in std::fs::read_dir(theme.path()).ok()?.flatten() {
+                let text = std::fs::read_to_string(file.path()).ok()?;
+                let marker = format!("CREATE error_definition:{code} CONTENT");
+                if let Some(start) = text.find(&marker) {
+                    let block = &text[start..];
+                    let end = block.find(") END;").unwrap_or(block.len());
+                    return Some(block[..end].to_string());
+                }
+            }
+        }
+        None
+    }
+
+    #[test]
+    fn rust_codes_match_their_definitions() {
+        for err in every_variant() {
+            let info = err.info();
+            let Some(block) = definition(info.code) else {
+                panic!("{} : aucune définition dans error/", info.code);
+            };
+            for expected in [
+                format!("category: \"{}\"", info.category),
+                format!("http_status: {}", info.http_status),
+                format!("retryable: {}", info.retryable),
+            ] {
+                assert!(
+                    block.contains(&expected),
+                    "{} : {expected} attendu dans sa définition",
+                    info.code
+                );
+            }
         }
     }
 }

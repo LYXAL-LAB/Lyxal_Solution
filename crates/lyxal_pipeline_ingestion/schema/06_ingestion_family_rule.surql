@@ -5,6 +5,7 @@
 -- ============================================================================
 
 DEFINE TABLE OVERWRITE ingestion_family_rule
+    TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
         FOR select WHERE (

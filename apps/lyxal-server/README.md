@@ -135,6 +135,6 @@ cargo test -p lyxal-server
 
 Les tests démarrent réellement le serveur sur une base embarquée : installation et démarrage de
 tous les modules, routes système, `fn::error_result` de `lyxal_error` intact, redémarrage sur une
-base installée (une release par module, une seule application de chaque migration), rejeu des
+base installée (une release par module), rejeu des
 ressources de chaque module, définitions `SERVER_*`, corps des réponses d'erreur.
 `scripts/ci/ci_local.sh` rejoue la CI complète.

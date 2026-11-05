@@ -238,7 +238,7 @@ mod tests {
             Some("PLACO"),
             AnomalySeverity::Warning,
             AnomalyCategory::MissingCommercialProof,
-            "INGESTION_MISSING_PROOF",
+            "INGESTION_PROOF_MISSING",
             "Preuve tarifaire absente",
             None,
             None,
