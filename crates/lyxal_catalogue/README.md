@@ -111,10 +111,11 @@ Toutes les erreurs sont strictement définies selon la charte Lyxal OS via la di
 
 ---
 
-## 🧪 6. Suites de Tests (`tests/`)
+## 🧪 6. Jeux de données (`tests/fixtures/`)
 
-| Fichier de Test | Objectif de Validation | Statut |
-|---|---|:---:|
+`tests/fixtures/` contient deux jeux de démonstration (`btp_lot1_commercial.surql`, `pilote_btp_habitat.surql`). Ils ne sont pas déclarés dans le manifeste et ne sont jamais installés.
+
+---|---|:---:|
 | `tests/test_deep_cycle.surql` | Chaîne récursive sur 8 niveaux (> 5 niveaux), détection cycle profond, cycle intermédiaire, non-faux-positif | ✅ Conforme |
 | `tests/test_variant_transfer.surql` | Déplacement d'attribut entre variantes, transition vers `NONE`, collision d'empreinte et rollback | ✅ Conforme |
 | `tests/test_catalogue_integrity.surql` | Scellement immuable des nomenclatures et verrous de suppression | ✅ Conforme |

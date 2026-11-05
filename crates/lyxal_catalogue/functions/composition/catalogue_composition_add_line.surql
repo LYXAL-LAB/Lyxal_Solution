@@ -20,7 +20,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_composition_add_line($params: object) {
         unknown_keys: "reject"
     }, 40);
     IF !$report.valid {
-        RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", $params.language, { fields: $report.by_field });
+        RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
     LET $comp_id = $p.composition_id;

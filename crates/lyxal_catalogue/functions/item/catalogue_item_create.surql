@@ -32,7 +32,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_create($params: object) {
         unknown_keys: "reject"
     }, 60);
     IF !$report.valid {
-        RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", $params.language, { fields: $report.by_field });
+        RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = fn::sanitize_object_execute($report.value, {
         fields: {
