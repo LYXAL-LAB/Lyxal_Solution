@@ -121,6 +121,7 @@ jetons.
 | Claim | Valeur |
 | :--- | :--- |
 | `aud` | `lyxal-catalogue` (sinon aucun article n'est visible) |
+| `iss` | `lyxal-os`, exigé pour l'agent de synchronisation (fonctions d'articles, gardes des articles et des relations) |
 | `role` | `catalogue_sync_agent` ou `tenant_user` |
 | `scope` | `["catalogue:sync:write"]` pour l'agent de synchronisation |
 | `tenant_id` | locataire de l'utilisateur (`tenant_user`) |
@@ -128,7 +129,7 @@ jetons.
 
 | Identité | Articles maîtres | Articles privés |
 | :--- | :--- | :--- |
-| `catalogue_sync_agent` + `catalogue:sync:write` | crée, modifie les champs maîtres ; ne réactive pas un article désactivé localement, n'écrase pas une personnalisation locale | ne voit rien |
+| `catalogue_sync_agent` + `catalogue:sync:write` + `iss = lyxal-os` | crée, modifie les champs maîtres ; ne réactive pas un article désactivé localement, n'écrase pas une personnalisation locale | ne voit rien |
 | `tenant_user` avec `tenant_id` | lit ; personnalise `libelle_personnalise`, `code_interne_client`, `enabled` ; ne modifie pas les champs maîtres | crée, lit, modifie, supprime les siens seulement |
 | autre rôle, sans `tenant_id`, autre audience | lit au plus | rien |
 
