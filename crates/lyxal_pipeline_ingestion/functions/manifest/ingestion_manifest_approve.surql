@@ -5,57 +5,58 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_approve($params: object) {
-    LET $manifest_ref = <string> $params.manifest_ref;
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+    LET $fallback_language = IF type::is_string($params.language) { $params.language } ELSE { NONE };
 
     -- Habilitation : identité lue dans la session (jamais dans les paramètres)
     LET $who = fn::ingestion_session_identity({});
     IF $who.role NOT IN ["steward_admin", "system"] {
-        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $language, {
-            manifest_ref: $manifest_ref,
-            role: $who.role,
-            expected_role: "steward_admin"
-        });
+        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $fallback_language, { role: $who.role, expected_role: "steward_admin" });
     };
 
-    -- Justification obligatoire (10 caractères au moins), contrôlée par lyxal_core
-    LET $justif = fn::validation_required_string($params.justification, 10, 2000);
+    -- Entrées (la justification est contrôlée à part : code métier dédié)
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            manifest_ref: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
+            justification: { pipeline: [] },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 10);
+    IF !$report.valid {
+        RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", $fallback_language, { fields: $report.by_field });
+    };
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { manifest_ref: { pipeline: [{ rule: "trim" }] } }, unknown_keys: "keep" }, 10);
+    LET $justif = fn::validation_required_string($p.justification, 10, 2000);
     IF !$justif.valid {
-        RETURN fn::error_result("INGESTION_JUSTIFICATION_TOO_SHORT", $language, { field: "justification", reason: $justif.code, min_required: 10 });
-    };
-    LET $justification = $justif.value;
-
-    LET $manifests = (SELECT * FROM ingestion_publication_manifest WHERE manifest_ref = $manifest_ref);
-    IF array::len($manifests) == 0 {
-        RETURN fn::error_result("INGESTION_MANIFEST_NOT_FOUND", $language, { manifest_ref: $manifest_ref });
+        RETURN fn::error_result("INGESTION_JUSTIFICATION_TOO_SHORT", $p.language, { field: "justification", reason: $justif.code, min_required: 10 });
     };
 
-    LET $manif = $manifests[0];
-
-    -- Vérification du scellement
-    IF $manif.is_sealed != true OR string::len($manif.seal_hash) == 0 {
-        RETURN fn::error_result("INGESTION_MANIFEST_UNSEALED", $language, { manifest_ref: $manifest_ref });
+    LET $manif = (SELECT id, statut, is_sealed, seal_hash FROM ONLY ingestion_publication_manifest WHERE manifest_ref = $p.manifest_ref LIMIT 1);
+    IF $manif == NONE {
+        RETURN fn::error_result("INGESTION_MANIFEST_NOT_FOUND", $p.language, { manifest_ref: $p.manifest_ref });
+    };
+    IF $manif.is_sealed != true {
+        RETURN fn::error_result("INGESTION_MANIFEST_UNSEALED", $p.language, { manifest_ref: $p.manifest_ref });
     };
 
+    -- La machine à états (SEALED ou FAILED vers APPROVED) est vérifiée par la garde evt_manifest_guard
     LET $now = time::now();
-    LET $trans = {
-        from_state: $manif.statut,
-        to_state: "APPROVED",
-        triggered_by: $who.operator,
-        reason: $justification,
-        transitioned_at: $now
-    };
-
     LET $updated = (UPDATE ONLY $manif.id SET
         statut = "APPROVED",
         approved_by = $who.operator,
         approver_role = $who.role,
         approved_at = $now,
-        transitions = array::concat(IF transitions != NONE { transitions } ELSE { [] }, [$trans]));
+        transitions = array::append(transitions ?? [], {
+            from_state: $manif.statut,
+            to_state: "APPROVED",
+            triggered_by: $who.operator,
+            reason: $justif.value,
+            transitioned_at: $now
+        }));
     IF $updated == NONE {
-        RETURN fn::error_result("INGESTION_WRITE_FORBIDDEN", $language, { table: "ingestion_publication_manifest" });
+        RETURN fn::error_result("INGESTION_WRITE_FORBIDDEN", $p.language, { table: "ingestion_publication_manifest" });
     };
 
     RETURN fn::result_ok(true);
-} COMMENT "Approuve un manifeste scellé ; l'approbateur (steward_admin, ou session système) est lu dans la session, jamais dans les paramètres"
+} COMMENT "Approuve un manifeste scellé ; l'approbateur (steward_admin, ou session système) est lu dans la session, jamais dans les paramètres ; la justification est journalisée"
 PERMISSIONS WHERE $token != NONE OR $auth != NONE;

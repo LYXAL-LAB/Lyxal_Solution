@@ -92,3 +92,6 @@ DEFINE FIELD OVERWRITE resolution_comment ON TABLE ingestion_quarantine_record
 -- ----------------------------------------------------------------------------
 DEFINE INDEX OVERWRITE idx_quarantine_batch_severite ON TABLE ingestion_quarantine_record FIELDS batch, severite;
 DEFINE INDEX OVERWRITE idx_quarantine_code ON TABLE ingestion_quarantine_record FIELDS code_erreur;
+
+-- Rejeu d'une ligne (reprise après incident) : une anomalie ouverte n'est consignée qu'une fois
+DEFINE INDEX OVERWRITE idx_quarantine_raw_code ON TABLE ingestion_quarantine_record FIELDS raw_record, code_erreur;

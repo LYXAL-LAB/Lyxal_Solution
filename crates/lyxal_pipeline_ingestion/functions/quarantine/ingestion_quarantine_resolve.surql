@@ -2,92 +2,88 @@
 -- FONCTION : fn::ingestion_quarantine_resolve
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Résolution auditable d'une anomalie en quarantaine par le Data Steward
--- SÉCURITÉ : Contrôle de session steward_admin obligatoire
--- RÈGLE CTO: Une correction repasse l'article en TO_CONFIRM, JAMAIS en VERIFIED
+-- APPEL    : externe (console Data Steward), entrées contrôlées par le moteur de lyxal_core
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_resolve($params: object) {
-    LET $quarantine_id = <string> $params.quarantine_id;
-    LET $language = IF $params.language != NONE { <string> $params.language } ELSE { "fr" };
+    LET $fallback_language = IF type::is_string($params.language) { $params.language } ELSE { NONE };
 
     -- 1. Habilitation : identité lue dans la session (jamais dans les paramètres)
     LET $who = fn::ingestion_session_identity({});
-    LET $role = $who.role;
-    LET $operator = $who.operator;
-    IF $role NOT IN ["steward_admin", "system"] {
-        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $language, {
-            role: $role,
-            expected_role: "steward_admin",
-            message: "Seul un Data Steward authentifié peut résoudre une anomalie en quarantaine"
-        });
+    IF $who.role NOT IN ["steward_admin", "system"] {
+        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $fallback_language, { role: $who.role, expected_role: "steward_admin" });
     };
 
-    -- 2. Justification obligatoire (10 caractères au moins), contrôlée par lyxal_core
-    LET $justif = fn::validation_required_string($params.comment, 10, 2000);
+    -- 2. Entrées (le commentaire est contrôlé à part : code métier dédié)
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            quarantine_id: { pipeline: [{ rule: "record", options: { expected_table: "ingestion_quarantine_record" } }], required: true },
+            comment: { pipeline: [] },
+            staged_item_id: { pipeline: [{ rule: "record", options: { expected_table: "ingestion_staged_item" } }] },
+            corrections: { pipeline: [{ rule: "is_object" }] },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 10);
+    IF !$report.valid {
+        RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", $fallback_language, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $justif = fn::validation_required_string($p.comment, 10, 2000);
     IF !$justif.valid {
-        RETURN fn::error_result("INGESTION_JUSTIFICATION_TOO_SHORT", $language, { field: "comment", reason: $justif.code, min_required: 10 });
+        RETURN fn::error_result("INGESTION_JUSTIFICATION_TOO_SHORT", $p.language, { field: "comment", reason: $justif.code, min_required: 10 });
     };
-    LET $justification = $justif.value;
 
-    -- 3. Recherche du record de quarantaine
-    LET $clean_id = string::replace($quarantine_id, "ingestion_quarantine_record:", "");
-    LET $rec_thing = <record> string::concat('ingestion_quarantine_record:', $clean_id);
-    LET $records = (SELECT * FROM $rec_thing);
-    IF array::len($records) == 0 {
-        RETURN fn::error_result("INGESTION_RECORD_NOT_FOUND", $language, { quarantine_id: $quarantine_id });
+    -- 3. Corrections : code-barres contrôlé par lyxal_core, unité résolue par le référentiel
+    LET $corrections = $p.corrections ?? {};
+    LET $gtin = IF $corrections.corrected_gtin != NONE { fn::validation_gtin($corrections.corrected_gtin) } ELSE { { valid: true, value: NONE } };
+    IF !$gtin.valid {
+        RETURN fn::error_result("INGESTION_GTIN_INVALID", $p.language, { field: "corrections.corrected_gtin", reason: $gtin.code });
     };
-    LET $q_item = $records[0];
+    LET $unit = IF $corrections.corrected_unit != NONE { fn::ingestion_resolve_unit({ raw_unit: $corrections.corrected_unit }) } ELSE { { ok: true, data: NONE } };
+    IF !$unit.ok {
+        RETURN fn::error_result("INGESTION_UNIT_UNRESOLVED", $p.language, { field: "corrections.corrected_unit", raw_unit: $corrections.corrected_unit });
+    };
 
-    -- 4. Marquer la quarantaine comme résolue
+    -- 4. Anomalie
+    IF (SELECT VALUE id FROM ONLY $p.quarantine_id) == NONE {
+        RETURN fn::error_result("INGESTION_RECORD_NOT_FOUND", $p.language, { quarantine_id: <string> record::id($p.quarantine_id) });
+    };
+    LET $staged = IF $p.staged_item_id != NONE { (SELECT qualification, code_barre_gtin, unite_reference, transitions FROM ONLY $p.staged_item_id) } ELSE { NONE };
+    IF $p.staged_item_id != NONE AND $staged == NONE {
+        RETURN fn::error_result("INGESTION_ITEM_NOT_FOUND", $p.language, { item_id: <string> record::id($p.staged_item_id) });
+    };
+
     LET $now = time::now();
-    UPDATE $rec_thing SET
+    LET $resolved = (UPDATE ONLY $p.quarantine_id SET
         is_resolved = true,
-        resolved_by = $operator,
+        resolved_by = $who.operator,
         resolved_at = $now,
-        resolution_comment = $justification;
+        resolution_comment = $justif.value);
+    IF $resolved == NONE {
+        RETURN fn::error_result("INGESTION_WRITE_FORBIDDEN", $p.language, { table: "ingestion_quarantine_record" });
+    };
 
-    -- 5. Si corrections fournies pour un article staged lié
-    -- RÈGLE STRICTE CTO : Toute correction d'anomalie repasse l'article en TO_CONFIRM (JAMAIS VERIFIED direct)
-    LET $corrections = IF $params.corrections != NONE { $params.corrections } ELSE { NONE };
-    LET $staged_item_id = IF $params.staged_item_id != NONE { <string> $params.staged_item_id } ELSE { NONE };
-
-    IF $staged_item_id != NONE {
-        LET $clean_staged = string::replace($staged_item_id, "ingestion_staged_item:", "");
-        LET $staged_rec = <record> string::concat('ingestion_staged_item:', $clean_staged);
-        LET $staged_items = (SELECT * FROM $staged_rec);
-        
-        IF array::len($staged_items) > 0 {
-            LET $cur_staged = $staged_items[0];
-            LET $trans = {
-                from_state: $cur_staged.qualification,
+    -- 5. Article lié : toute correction le repasse en TO_CONFIRM (jamais VERIFIED directement)
+    IF $staged != NONE {
+        LET $reason = string::concat("Correction suite anomalie quarantaine : ", $justif.value);
+        LET $updated = (UPDATE ONLY $p.staged_item_id SET
+            qualification = "TO_CONFIRM",
+            qualification_reason = $reason,
+            code_barre_gtin = $gtin.value ?? code_barre_gtin,
+            unite_reference = $unit.data.canonical_code ?? unite_reference,
+            transitions = array::append(transitions ?? [], {
+                from_state: $staged.qualification,
                 to_state: "TO_CONFIRM",
-                triggered_by: $operator,
-                reason: string::concat("Correction suite anomalie quarantaine: ", $justification),
+                triggered_by: $who.operator,
+                reason: $reason,
                 transitioned_at: $now
-            };
-
-            -- Application des corrections éventuelles de données
-            LET $new_gtin = IF $corrections != NONE AND $corrections.corrected_gtin != NONE { 
-                <string> $corrections.corrected_gtin 
-            } ELSE { 
-                $cur_staged.code_barre_gtin 
-            };
-
-            LET $new_unit = IF $corrections != NONE AND $corrections.corrected_unit != NONE { 
-                <string> $corrections.corrected_unit 
-            } ELSE { 
-                $cur_staged.unite_reference 
-            };
-
-            UPDATE $staged_rec SET
-                qualification = "TO_CONFIRM",
-                qualification_reason = string::concat("Correction anomalie quarantaine: ", $justification),
-                code_barre_gtin = $new_gtin,
-                unite_reference = $new_unit,
-                transitions = array::concat(IF transitions != NONE { transitions } ELSE { [] }, [$trans]);
+            }));
+        IF $updated == NONE {
+            RETURN fn::error_result("INGESTION_WRITE_FORBIDDEN", $p.language, { table: "ingestion_staged_item" });
         };
     };
 
     RETURN fn::result_ok(true);
-} COMMENT "Résout de manière auditable une anomalie en quarantaine sous contrôle steward_admin et repasse l'article en TO_CONFIRM"
+} COMMENT "Résout une anomalie en quarantaine ; réservé au steward_admin (ou à la session système) lu dans la session ; l'article lié, corrigé (code-barres, unité), repasse en TO_CONFIRM"
 PERMISSIONS WHERE $token != NONE OR $auth != NONE;

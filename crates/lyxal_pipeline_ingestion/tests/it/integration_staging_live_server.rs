@@ -15,15 +15,15 @@
 
 use lyxal_pipeline_ingestion::fingerprint::FingerprintEngine;
 use lyxal_pipeline_ingestion::health::IngestionHealthCheck;
-use lyxal_pipeline_ingestion::models::{IngestionBatch, PublicationManifest, StagedItem};
+use lyxal_pipeline_ingestion::models::StagedItem;
 use lyxal_pipeline_ingestion::proof::{CommercialProof, CommercialProofType};
 use lyxal_pipeline_ingestion::publisher::controlled_publisher::{
     ControlledPublisher, SyncAgentSession,
 };
 use lyxal_pipeline_ingestion::storage::store::IngestionStore;
+use lyxal_pipeline_ingestion::storage::{ManifestDraft, NewBatch};
 use lyxal_pipeline_ingestion::types::{
-    BatchStatus, ItemQualification, ManifestStatus, PackagingDetails, PublicationAction,
-    SourceFormat,
+    ItemQualification, ManifestStatus, PackagingDetails, PublicationAction, SourceFormat,
 };
 use lyxal_pipeline_ingestion::worker::IngestionWorker;
 use lyxal_runtime::health::HealthStatus;
@@ -230,7 +230,7 @@ async fn test_staging_four_roles_authentication_and_rls() {
 
     // A. Rôle 1 : ingestion_agent
     // Autorisé à créer un lot d'ingestion brut
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some("batch_rls_test_01".to_string()),
         source_type: SourceFormat::FabDis,
         source_format_version: "3.0".to_string(),
@@ -238,17 +238,8 @@ async fn test_staging_four_roles_authentication_and_rls() {
         nom_fichier: "catalogue_rls.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_rls_01"),
         taille_octets: 4096,
-        statut: BatchStatus::Received,
-        cursor_offset: 0,
         chunk_size: 500,
-        total_lignes: 1,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: 1,
-        lignes_rejetees: 0,
-        transitions: vec![],
         provenance_details: serde_json::json!({ "agent": "ingestion_agent" }),
-        created_at: None,
-        completed_at: None,
     };
     store
         .create_batch(&batch)
@@ -281,7 +272,7 @@ async fn test_staging_worker_batch_checkpoint_and_interruption_resumption() {
     let total_items = 20;
 
     // Création du lot
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some(batch_id.clone()),
         source_type: SourceFormat::FabDis,
         source_format_version: "3.0".to_string(),
@@ -289,17 +280,8 @@ async fn test_staging_worker_batch_checkpoint_and_interruption_resumption() {
         nom_fichier: "worker_batch.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_worker_01"),
         taille_octets: 8192,
-        statut: BatchStatus::Parsing,
-        cursor_offset: 0,
         chunk_size: 5,
-        total_lignes: total_items,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: total_items,
-        lignes_rejetees: 0,
-        transitions: vec![],
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store
         .create_batch(&batch)
@@ -308,7 +290,7 @@ async fn test_staging_worker_batch_checkpoint_and_interruption_resumption() {
 
     // Phase 1 : Traitement partiel interrompu par CancellationToken
     let token1 = CancellationToken::new();
-    let _worker1 = IngestionWorker::new(store.clone());
+    let _worker1 = IngestionWorker::new(store.clone()).expect("worker");
 
     // Simulation d'un traitement avec interruption à l'offset 10
     let checkpoint_offset = 10;
@@ -409,7 +391,7 @@ async fn test_staging_btp_41_proof_security_and_master_isolation() {
     let batch_id = "batch_prod_sim_lock";
     let manifest_ref = "MANIFEST-PROD-LOCK-001";
 
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some(batch_id.to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -417,17 +399,8 @@ async fn test_staging_btp_41_proof_security_and_master_isolation() {
         nom_fichier: "test_lock.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_lock_01"),
         taille_octets: 1000,
-        statut: BatchStatus::Received,
-        cursor_offset: 0,
         chunk_size: 10,
-        total_lignes: 1,
-        lignes_verifiees: 1,
-        lignes_a_confirmer: 0,
-        lignes_rejetees: 0,
-        transitions: Vec::new(),
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch).await.unwrap();
 
@@ -461,24 +434,14 @@ async fn test_staging_btp_41_proof_security_and_master_isolation() {
 
     let seal_hash =
         FingerprintEngine::compute_manifest_seal(&[lyxal_crypto::blake3_hex(b"fp_lock_01")]);
-    let manifest = PublicationManifest {
-        id: None,
+    let manifest = ManifestDraft {
         manifest_ref: manifest_ref.to_string(),
-        batch: batch_id.to_string(),
+        batch_id: batch_id.to_string(),
         manifest_version: 1,
         seal_hash,
-        is_sealed: true,
         statut: ManifestStatus::Sealed,
-        approved_by: None,
-        approved_at: None,
-        approver_role: None,
         nb_articles_insert: 1,
         nb_articles_update: 0,
-        items_committed: 0,
-        items_failed: 0,
-        execution_items: Vec::new(),
-        transitions: Vec::new(),
-        executed_at: None,
     };
     store.save_manifest(&manifest).await.unwrap();
     store
@@ -537,7 +500,7 @@ async fn test_staging_real_performance_metrics() {
     let mut latencies: Vec<f64> = Vec::with_capacity(iterations);
 
     let batch_id = "batch_bench_perf_01";
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some(batch_id.to_string()),
         source_type: SourceFormat::FabDis,
         source_format_version: "3.0".to_string(),
@@ -545,17 +508,8 @@ async fn test_staging_real_performance_metrics() {
         nom_fichier: "bench_catalogue.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_bench_01"),
         taille_octets: 1024 * 1024,
-        statut: BatchStatus::Staged,
-        cursor_offset: 0,
         chunk_size: 500,
-        total_lignes: iterations,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: iterations,
-        lignes_rejetees: 0,
-        transitions: vec![],
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store
         .create_batch(&batch)
@@ -576,7 +530,7 @@ async fn test_staging_real_performance_metrics() {
             fabricant: "BENCH_CORP".to_string(),
             marque: None,
             reference_fabricant: format!("REF-BENCH-{i:04}"),
-            code_barre_gtin: Some(format!("34567890123{:02}", i % 100)),
+            code_barre_gtin: None,
             libelle_commercial: format!("Produit de banc d'essai {i}"),
             description_technique: None,
             type_item: "PRODUIT".to_string(),

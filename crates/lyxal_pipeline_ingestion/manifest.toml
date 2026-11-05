@@ -43,16 +43,20 @@ functions = [
     "functions/batch/ingestion_batch_create.surql",
     "functions/batch/ingestion_batch_checkpoint.surql",
     "functions/batch/ingestion_batch_transition.surql",
+    "functions/batch/ingestion_batch_get.surql",
+    "functions/batch/ingestion_raw_records_save.surql",
     "functions/staged/ingestion_staged_save.surql",
     "functions/quarantine/ingestion_quarantine_log.surql",
     "functions/manifest/ingestion_manifest_save.surql",
     "functions/manifest/ingestion_manifest_approve.surql",
     "functions/manifest/ingestion_manifest_record_exec.surql",
+    "functions/manifest/ingestion_manifest_execution_item_update.surql",
     "functions/rule/ingestion_resolve_unit.surql",
     "functions/rule/ingestion_resolve_manufacturer.surql",
     "functions/rule/ingestion_rule_family_add.surql",
     "functions/rule/ingestion_rule_spec_add.surql",
     "functions/rule/ingestion_rule_substitution_add.surql",
+    "functions/rule/ingestion_rules_load.surql",
     "functions/dashboard/ingestion_dashboard_metrics.surql",
     "functions/staged/ingestion_staged_list.surql",
     "functions/staged/ingestion_staged_requalify.surql",
@@ -77,5 +81,6 @@ error_definitions = [
     "error/manifestes/error_manifestes.surql",
     "error/referentiels/error_referentiels.surql",
     "error/permissions/error_permissions.surql",
-    "error/techniques/error_techniques.surql"
+    "error/techniques/error_techniques.surql",
+    "error/parametres/error_parametres.surql"
 ]

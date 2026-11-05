@@ -25,6 +25,18 @@ RETURN fn::validation_gtin("10614141000415")
 RETURN fn::validation_gtin("4006381333932")
     == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "gtin_check_digit" } };
 
+-- test: clé de contrôle fausse, GTIN-8
+RETURN fn::validation_gtin("96385075").code == "CORE_VALIDATION_FORMAT";
+
+-- test: clé de contrôle fausse, UPC-A (GTIN-12)
+RETURN fn::validation_gtin("036000291453").details == { expected: "gtin_check_digit" };
+
+-- test: clé de contrôle fausse, GTIN-14
+RETURN fn::validation_gtin("10614141000416").details == { expected: "gtin_check_digit" };
+
+-- test: chiffres nuls (clé 0 conforme)
+RETURN [fn::validation_gtin("00000000").valid, fn::validation_gtin("0000000000000").valid] == [true, true];
+
 -- test: longueur non GTIN
 RETURN fn::validation_gtin("123456789")
     == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "gtin_length", length: 9 } };

@@ -1,101 +1,90 @@
 -- ============================================================================
 -- FONCTION : fn::ingestion_staged_requalify
 -- MODULE   : lyxal_pipeline_ingestion
--- RÔLE     : Requalification formelle et auditable d'un article par le Data Steward
--- SÉCURITÉ : Contrôle de session steward_admin obligatoire et preuve formelle
+-- RÔLE     : Requalification auditable d'un article en staging par le Data Steward
+-- APPEL    : externe (console Data Steward), entrées contrôlées par le moteur de lyxal_core
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::ingestion_staged_requalify($params: object) {
-    LET $item_id = <string> $params.item_id;
-    LET $language = IF $params.language != NONE { <string> $params.language } ELSE { "fr" };
-    
+    LET $fallback_language = IF type::is_string($params.language) { $params.language } ELSE { NONE };
+
     -- 1. Habilitation : identité lue dans la session (jamais dans les paramètres)
     LET $who = fn::ingestion_session_identity({});
-    LET $role = $who.role;
-    LET $operator = $who.operator;
-    IF $role NOT IN ["steward_admin", "system"] {
-        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $language, {
-            role: $role,
-            expected_role: "steward_admin",
-            message: "Seul un Data Steward authentifié peut requalifier un article"
-        });
+    IF $who.role NOT IN ["steward_admin", "system"] {
+        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $fallback_language, { role: $who.role, expected_role: "steward_admin" });
     };
 
-    -- 2. Validation du statut cible
-    LET $target_qual = string::uppercase(string::trim(<string> $params.new_qualification));
-    IF $target_qual NOT IN ["VERIFIED", "TO_CONFIRM", "REJECTED"] {
-        RETURN fn::error_result("INGESTION_INVALID_QUALIFICATION", $language, { 
-            qualification: $target_qual,
-            allowed: ["VERIFIED", "TO_CONFIRM", "REJECTED"]
-        });
+    -- 2. Entrées (la justification est contrôlée à part : code métier dédié)
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            item_id: { pipeline: [{ rule: "record", options: { expected_table: "ingestion_staged_item" } }], required: true },
+            new_qualification: { pipeline: [{ rule: "enum", options: { allowed: ["VERIFIED", "TO_CONFIRM", "REJECTED"], case_sensitive: false } }], required: true },
+            justification: { pipeline: [] },
+            proof: { pipeline: [{ rule: "is_object" }] },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 10);
+    IF !$report.valid {
+        RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", $fallback_language, { fields: $report.by_field });
     };
-
-    -- 3. Justification obligatoire (10 caractères au moins), contrôlée par lyxal_core
-    LET $justif = fn::validation_required_string($params.justification, 10, 2000);
+    LET $p = $report.value;
+    LET $justif = fn::validation_required_string($p.justification, 10, 2000);
     IF !$justif.valid {
-        RETURN fn::error_result("INGESTION_JUSTIFICATION_TOO_SHORT", $language, { field: "justification", reason: $justif.code, min_required: 10 });
+        RETURN fn::error_result("INGESTION_JUSTIFICATION_TOO_SHORT", $p.language, { field: "justification", reason: $justif.code, min_required: 10 });
     };
-    LET $justification = $justif.value;
+    LET $target = string::uppercase($p.new_qualification);
 
-    -- 4. Recherche de l'article en staging
-    LET $clean_id = string::replace($item_id, "ingestion_staged_item:", "");
-    LET $item_rec = <record> string::concat('ingestion_staged_item:', $clean_id);
-    LET $items = (SELECT * FROM $item_rec);
-    IF array::len($items) == 0 {
-        RETURN fn::error_result("INGESTION_ITEM_NOT_FOUND", $language, { item_id: $item_id });
+    -- 3. Article en staging
+    LET $cur = (SELECT qualification FROM ONLY $p.item_id);
+    IF $cur == NONE {
+        RETURN fn::error_result("INGESTION_ITEM_NOT_FOUND", $p.language, { item_id: <string> record::id($p.item_id) });
     };
-    LET $cur = $items[0];
 
-    -- 5. RÈGLE D'OR CTO : Preuve commerciale authentifiée OBLIGATOIRE pour passage en VERIFIED
-    LET $proof = IF $params.proof != NONE { $params.proof } ELSE { NONE };
-    IF $target_qual == "VERIFIED" {
-        IF $proof == NONE {
-            RETURN fn::error_result("INGESTION_PROOF_MISSING", $language, {
-                item_id: $item_id,
-                message: "Toute requalification vers VERIFIED exige une preuve commerciale formelle authentifiée (CommercialProof)"
-            });
+    -- 4. Règle d'or : preuve commerciale authentifiée obligatoire pour VERIFIED
+    IF $target == "VERIFIED" {
+        IF $p.proof == NONE {
+            RETURN fn::error_result("INGESTION_PROOF_MISSING", $p.language, { item_id: <string> record::id($p.item_id) });
         };
-
-        LET $proof_ref = IF $proof.proof_reference != NONE { string::trim(<string> $proof.proof_reference) } ELSE { "" };
-        LET $source_auth = IF $proof.source_authority != NONE { string::trim(<string> $proof.source_authority) } ELSE { "" };
-        LET $proof_type = IF $proof.proof_type != NONE { string::uppercase(string::trim(<string> $proof.proof_type)) } ELSE { "" };
-
-        IF string::len($proof_ref) < 3 OR string::len($source_auth) < 3 {
-            RETURN fn::error_result("INGESTION_PROOF_INVALID", $language, {
-                proof_reference: $proof_ref,
-                source_authority: $source_auth,
-                message: "La référence documentaire et l'autorité émettrice de la preuve sont obligatoires"
-            });
+        LET $proof = fn::validation_object_execute($p.proof, {
+            fields: {
+                proof_type: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }], required: true },
+                proof_reference: { pipeline: [{ rule: "required_string", options: { min_length: 3, max_length: 255 } }], required: true },
+                source_authority: { pipeline: [{ rule: "required_string", options: { min_length: 3, max_length: 255 } }], required: true }
+            },
+            unknown_keys: "keep"
+        }, 10);
+        IF !$proof.valid {
+            RETURN fn::error_result("INGESTION_PROOF_INVALID", $p.language, { fields: $proof.by_field });
         };
-
-        IF $proof_type NOT IN ["CERTIFIED_MANUFACTURER_EDI", "SIGNED_VENDOR_CATALOG", "OFFICIAL_TARIFF_CERTIFICATE", "STEWARD_DOCUMENTED_VALIDATION"] {
-            RETURN fn::error_result("INGESTION_PROOF_TYPE_UNKNOWN", $language, {
-                proof_type: $proof_type
-            });
+        IF !fn::validation_enum($proof.value.proof_type, ["CERTIFIED_MANUFACTURER_EDI", "SIGNED_VENDOR_CATALOG", "OFFICIAL_TARIFF_CERTIFICATE", "STEWARD_DOCUMENTED_VALIDATION"], false).valid {
+            RETURN fn::error_result("INGESTION_PROOF_TYPE_UNKNOWN", $p.language, { proof_type: $proof.value.proof_type });
         };
     };
 
-    -- 6. Journalisation et transition d'état atomique
+    -- 5. Transition journalisée ; l'approbation n'accompagne que VERIFIED
     LET $now = time::now();
-    LET $trans = {
-        from_state: $cur.qualification,
-        to_state: $target_qual,
-        triggered_by: $operator,
-        reason: $justification,
-        transitioned_at: $now,
-        proof_reference: IF $target_qual == "VERIFIED" { $proof.proof_reference } ELSE { NONE }
+    LET $is_verified = $target == "VERIFIED";
+    LET $updated = (UPDATE ONLY $p.item_id SET
+        qualification = $target,
+        qualification_reason = $justif.value,
+        commercial_proof = IF $is_verified { $p.proof } ELSE { commercial_proof },
+        is_approved = IF $is_verified { true } ELSE { is_approved },
+        approved_by = IF $is_verified { $who.operator } ELSE { approved_by },
+        approver_role = IF $is_verified { $who.role } ELSE { approver_role },
+        approved_at = IF $is_verified { $now } ELSE { approved_at },
+        transitions = array::append(transitions ?? [], {
+            from_state: $cur.qualification,
+            to_state: $target,
+            triggered_by: $who.operator,
+            reason: $justif.value,
+            transitioned_at: $now,
+            proof_reference: IF $is_verified { $p.proof.proof_reference } ELSE { NONE }
+        }));
+    IF $updated == NONE {
+        RETURN fn::error_result("INGESTION_WRITE_FORBIDDEN", $p.language, { table: "ingestion_staged_item" });
     };
-
-    UPDATE $item_rec SET
-        qualification = $target_qual,
-        qualification_reason = $justification,
-        commercial_proof = IF $target_qual == "VERIFIED" { $proof } ELSE { commercial_proof },
-        is_approved = IF $target_qual == "VERIFIED" { true } ELSE { is_approved },
-        approved_by = IF $target_qual == "VERIFIED" { $operator } ELSE { approved_by },
-        approver_role = IF $target_qual == "VERIFIED" { $role } ELSE { approver_role },
-        approved_at = IF $target_qual == "VERIFIED" { $now } ELSE { approved_at },
-        transitions = array::concat(IF transitions != NONE { transitions } ELSE { [] }, [$trans]);
 
     RETURN fn::result_ok(true);
-} COMMENT "Requalifie formellement un article en staging sous contrôle strict de session steward_admin et exigence de preuve commerciale"
+} COMMENT "Requalifie un article en staging ; réservé au steward_admin (ou à la session système) lu dans la session ; VERIFIED exige une preuve commerciale et enregistre l'approbation"
 PERMISSIONS WHERE $token != NONE OR $auth != NONE;

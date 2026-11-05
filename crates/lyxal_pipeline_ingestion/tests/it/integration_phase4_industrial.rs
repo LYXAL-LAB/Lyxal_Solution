@@ -14,15 +14,15 @@ use std::time::Instant;
 use lyxal_pipeline_ingestion::adapters::RawRecordDto;
 use lyxal_pipeline_ingestion::error::IngestionError;
 use lyxal_pipeline_ingestion::fingerprint::FingerprintEngine;
-use lyxal_pipeline_ingestion::models::{IngestionBatch, PublicationManifest};
 use lyxal_pipeline_ingestion::normalization::NormalizationEngine;
 use lyxal_pipeline_ingestion::proof::{CommercialProof, CommercialProofType};
 use lyxal_pipeline_ingestion::publisher::{ControlledPublisher, SyncAgentSession};
+use lyxal_pipeline_ingestion::storage::{ManifestDraft, NewBatch};
 use lyxal_pipeline_ingestion::technical_grouping::{
     ContextualSubstitutionRule, TechnicalGroupLevel, TechnicalGroupingEngine,
 };
 use lyxal_pipeline_ingestion::types::{
-    BatchStatus, ItemQualification, ManifestStatus, SourceFormat,
+    BatchStatus, ItemQualification, ManifestStatus, PublicationAction, SourceFormat,
 };
 use lyxal_pipeline_ingestion::worker::IngestionWorker;
 
@@ -112,7 +112,7 @@ async fn test_worker_interruption_checkpoint_and_resume_no_duplication() {
     let store = crate::support::installed_store().await;
 
     let batch_id = "batch_test_interruption_01";
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some(batch_id.to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -120,17 +120,8 @@ async fn test_worker_interruption_checkpoint_and_resume_no_duplication() {
         nom_fichier: "catalogue_placo_60.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"blake3_hash_60_items_test"),
         taille_octets: 4096,
-        statut: BatchStatus::Received,
-        cursor_offset: 0,
         chunk_size: 20, // 3 chunks de 20 lignes
-        total_lignes: 0,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: 0,
-        lignes_rejetees: 0,
-        transitions: Vec::new(),
         provenance_details: serde_json::json!({ "format": "CSV" }),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch).await.expect("Lot créé en base");
 
@@ -142,7 +133,7 @@ async fn test_worker_interruption_checkpoint_and_resume_no_duplication() {
         ));
     }
 
-    let worker = IngestionWorker::new(store.clone());
+    let worker = IngestionWorker::new(store.clone()).expect("worker");
 
     // 1. Première passe : Annulation anticipée du CancellationToken pour forcer l'interruption
     let cancel_token = CancellationToken::new();
@@ -213,7 +204,7 @@ async fn test_batch_reexecution_idempotence() {
     let store = crate::support::installed_store().await;
     let batch_id = "batch_test_idempotence";
 
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some(batch_id.to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -221,17 +212,8 @@ async fn test_batch_reexecution_idempotence() {
         nom_fichier: "isover_10.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_isover_idempotence"),
         taille_octets: 1024,
-        statut: BatchStatus::Received,
-        cursor_offset: 0,
         chunk_size: 10,
-        total_lignes: 0,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: 0,
-        lignes_rejetees: 0,
-        transitions: Vec::new(),
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch).await.unwrap();
 
@@ -240,7 +222,7 @@ async fn test_batch_reexecution_idempotence() {
         csv_data.push_str(&format!("ISO_{i};Isolant GR32 Roul {i};;Isover;M2;14.20\n"));
     }
 
-    let worker = IngestionWorker::new(store.clone());
+    let worker = IngestionWorker::new(store.clone()).expect("worker");
     let token = CancellationToken::new();
 
     // 1ère exécution -> Passe en STAGED
@@ -285,9 +267,9 @@ async fn test_batch_reexecution_idempotence() {
 #[tokio::test]
 async fn test_concurrent_batch_locking_prevention() {
     let store = crate::support::installed_store().await;
-    let worker = IngestionWorker::new(store.clone());
+    let worker = IngestionWorker::new(store.clone()).expect("worker");
 
-    let batch1 = IngestionBatch {
+    let batch1 = NewBatch {
         id: Some("batch_A".to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -295,17 +277,8 @@ async fn test_concurrent_batch_locking_prevention() {
         nom_fichier: "a.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_a"),
         taille_octets: 100,
-        statut: BatchStatus::Received,
-        cursor_offset: 0,
         chunk_size: 50,
-        total_lignes: 0,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: 0,
-        lignes_rejetees: 0,
-        transitions: Vec::new(),
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch1).await.unwrap();
 
@@ -337,24 +310,14 @@ async fn test_publication_requires_blake3_seal_and_steward_approval() {
     let manifest_ref = "MANIFEST-2026-001";
 
     // 1. Manifeste non scellé
-    let unsealed_manifest = PublicationManifest {
-        id: None,
-        batch: batch_id.to_string(),
+    let unsealed_manifest = ManifestDraft {
+        batch_id: batch_id.to_string(),
         manifest_ref: manifest_ref.to_string(),
         manifest_version: 1,
         seal_hash: lyxal_crypto::blake3_hex(b"manifeste non scelle"),
-        is_sealed: false,
         statut: ManifestStatus::Draft,
-        approved_by: None,
-        approved_at: None,
-        approver_role: None,
         nb_articles_insert: 1,
         nb_articles_update: 0,
-        items_committed: 0,
-        items_failed: 0,
-        execution_items: Vec::new(),
-        transitions: Vec::new(),
-        executed_at: None,
     };
     store.save_manifest(&unsealed_manifest).await.unwrap();
 
@@ -367,7 +330,6 @@ async fn test_publication_requires_blake3_seal_and_steward_approval() {
 
     // 2. Manifeste scellé mais NON approuvé
     let mut sealed_manifest = unsealed_manifest.clone();
-    sealed_manifest.is_sealed = true;
     sealed_manifest.seal_hash = lyxal_crypto::blake3_hex(b"blake3_seal_dummy");
     sealed_manifest.statut = ManifestStatus::Sealed;
     store.save_manifest(&sealed_manifest).await.unwrap();
@@ -446,7 +408,7 @@ async fn test_publication_strict_filtering_verified_only() {
     let manifest_ref = "MANIFEST-MIXED-001";
 
     // Création du lot
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some(batch_id.to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -454,17 +416,8 @@ async fn test_publication_strict_filtering_verified_only() {
         nom_fichier: "placo_mixed.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_mixed"),
         taille_octets: 1000,
-        statut: BatchStatus::Received,
-        cursor_offset: 0,
         chunk_size: 100,
-        total_lignes: 0,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: 0,
-        lignes_rejetees: 0,
-        transitions: Vec::new(),
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch).await.unwrap();
 
@@ -476,7 +429,7 @@ PLACO_TOCONF;Plaque Sans Preuve;3017620422003;Placo Saint-Gobain;M2;9.50
 PLACO_REJ;;;;;0.00
 ";
 
-    let worker = IngestionWorker::new(store.clone());
+    let worker = IngestionWorker::new(store.clone()).expect("worker");
     let proof = CommercialProof::new(
         CommercialProofType::CertifiedManufacturerEdi,
         "EDI-SG-PLACO-OK",
@@ -508,24 +461,14 @@ PLACO_REJ;;;;;0.00
     let seal_hash = FingerprintEngine::compute_manifest_seal(&fingerprints);
 
     // Création et approbation du manifeste
-    let manifest = PublicationManifest {
-        id: None,
-        batch: batch_id.to_string(),
+    let manifest = ManifestDraft {
+        batch_id: batch_id.to_string(),
         manifest_ref: manifest_ref.to_string(),
         manifest_version: 1,
         seal_hash,
-        is_sealed: true,
         statut: ManifestStatus::Sealed,
-        approved_by: None,
-        approved_at: None,
-        approver_role: None,
         nb_articles_insert: 1,
         nb_articles_update: 0,
-        items_committed: 0,
-        items_failed: 0,
-        execution_items: Vec::new(),
-        transitions: Vec::new(),
-        executed_at: None,
     };
     store.save_manifest(&manifest).await.unwrap();
     store
@@ -572,7 +515,7 @@ async fn test_publication_partial_failure_and_idempotent_resume() {
     let batch_id = "batch_partial_pub";
     let manifest_ref = "MANIFEST-PARTIAL-001";
 
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some(batch_id.to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -580,17 +523,8 @@ async fn test_publication_partial_failure_and_idempotent_resume() {
         nom_fichier: "two_items.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_partial"),
         taille_octets: 500,
-        statut: BatchStatus::Received,
-        cursor_offset: 0,
         chunk_size: 50,
-        total_lignes: 0,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: 0,
-        lignes_rejetees: 0,
-        transitions: Vec::new(),
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch).await.unwrap();
 
@@ -599,7 +533,7 @@ reference;designation;gtin;fabricant;unite;prix
 ITEM_P1;Item Partiel 1;3017620422003;Placo Saint-Gobain;PCE;10.0
 ITEM_P2;Item Partiel 2;3017620422003;Placo Saint-Gobain;PCE;12.0
 ";
-    let worker = IngestionWorker::new(store.clone());
+    let worker = IngestionWorker::new(store.clone()).expect("worker");
     let proof = CommercialProof::new(
         CommercialProofType::CertifiedManufacturerEdi,
         "EDI-SG-OK",
@@ -625,34 +559,29 @@ ITEM_P2;Item Partiel 2;3017620422003;Placo Saint-Gobain;PCE;12.0
         .collect();
     let seal_hash = FingerprintEngine::compute_manifest_seal(&fingerprints);
 
-    // Manifeste avec le premier article DÉJÀ publié lors d'un run précédent
-    let manifest = PublicationManifest {
-        id: None,
-        batch: batch_id.to_string(),
+    // Manifeste dont le premier article a DÉJÀ été publié lors d'un run précédent
+    let manifest = ManifestDraft {
+        batch_id: batch_id.to_string(),
         manifest_ref: manifest_ref.to_string(),
         manifest_version: 1,
         seal_hash,
-        is_sealed: true,
         statut: ManifestStatus::Sealed,
-        approved_by: None,
-        approved_at: None,
-        approver_role: None,
         nb_articles_insert: 2,
         nb_articles_update: 0,
-        items_committed: 1,
-        items_failed: 0,
-        execution_items: vec![serde_json::json!({
-            "item_ref": "ITEM_P1",
-            "action": "fn::catalogue_item_create",
-            "success": true,
-            "executed_at": "2026-10-25T10:30:00Z"
-        })],
-        transitions: Vec::new(),
-        executed_at: None,
     };
     store.save_manifest(&manifest).await.unwrap();
     store
         .approve_manifest(manifest_ref, "Approbation de reprise")
+        .await
+        .unwrap();
+    store
+        .update_manifest_execution_item(
+            manifest_ref,
+            "ITEM_P1",
+            PublicationAction::Insert,
+            true,
+            None,
+        )
         .await
         .unwrap();
 
@@ -697,7 +626,6 @@ fn test_contextual_substitution_revocation() {
         brand: Some("PLACO".to_string()),
         commercial_label: "Placoplatre BA13 2500x1200".to_string(),
         gtin: Some("3017620422003".to_string()),
-        is_gtin_valid: true,
         unit_code: Some("M2".to_string()),
         price: Some(8.50),
         currency: "EUR".to_string(),
@@ -728,7 +656,6 @@ fn test_contextual_substitution_revocation() {
         brand: Some("KNAUF".to_string()),
         commercial_label: "Knauf Standard KS 13 2500x1200".to_string(),
         gtin: Some("3017620422003".to_string()),
-        is_gtin_valid: true,
         unit_code: Some("M2".to_string()),
         price: Some(8.30),
         currency: "EUR".to_string(),
@@ -801,12 +728,12 @@ fn test_contextual_substitution_revocation() {
 #[tokio::test]
 async fn test_graceful_shutdown_under_cancellation_token() {
     let store = crate::support::installed_store().await;
-    let worker = IngestionWorker::new(store.clone());
+    let worker = IngestionWorker::new(store.clone()).expect("worker");
 
     let token = CancellationToken::new();
     token.cancel(); // Annulé immédiatement
 
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some("batch_shutdown_test".to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -814,17 +741,8 @@ async fn test_graceful_shutdown_under_cancellation_token() {
         nom_fichier: "shutdown.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_shutdown"),
         taille_octets: 1000,
-        statut: BatchStatus::Received,
-        cursor_offset: 0,
         chunk_size: 10,
-        total_lignes: 0,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: 0,
-        lignes_rejetees: 0,
-        transitions: Vec::new(),
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch).await.unwrap();
 
@@ -864,7 +782,7 @@ async fn test_industrial_benchmark_over_1500_items() {
     let batch_id = "batch_benchmark_1600_items";
     let total_items = 1600;
 
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some(batch_id.to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -872,17 +790,8 @@ async fn test_industrial_benchmark_over_1500_items() {
         nom_fichier: "catalogue_btp_1600.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"blake3_benchmark_1600_btp"),
         taille_octets: 128 * 1024,
-        statut: BatchStatus::Received,
-        cursor_offset: 0,
         chunk_size: 200, // 8 blocs de 200 lignes avec checkpoints persistants
-        total_lignes: 0,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: 0,
-        lignes_rejetees: 0,
-        transitions: Vec::new(),
         provenance_details: serde_json::json!({ "benchmark": true }),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch).await.unwrap();
 
@@ -905,7 +814,7 @@ async fn test_industrial_benchmark_over_1500_items() {
         ));
     }
 
-    let worker = IngestionWorker::new(store.clone());
+    let worker = IngestionWorker::new(store.clone()).expect("worker");
     let proof = CommercialProof::new(
         CommercialProofType::CertifiedManufacturerEdi,
         "EDI-BENCHMARK-2026-X1600",

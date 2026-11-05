@@ -24,7 +24,6 @@ pub mod module;
 pub mod normalization;
 pub mod proof;
 pub mod publisher;
-pub mod quarantine;
 pub mod state_machine;
 pub mod storage;
 pub mod technical_grouping;
@@ -50,8 +49,8 @@ pub use adapters::{
 };
 pub use normalization::{
     normalize_dimensions, normalize_manufacturer, normalize_technical_attributes, normalize_unit,
-    normalize_weight, validate_and_normalize_gtin, CanonicalDimensions,
-    CanonicalTechnicalAttributes, CanonicalWeight, NormalizationEngine, NormalizedItemDto,
+    normalize_weight, CanonicalDimensions, CanonicalTechnicalAttributes, CanonicalWeight,
+    NormalizationEngine, NormalizedItemDto,
 };
 pub use technical_grouping::{
     ContextualSubstitutionRule, FamilyRule, SpecificationTolerances, TechnicalGroupLevel,
@@ -63,10 +62,6 @@ pub use events::{BatchFailedEvent, BatchStagedEvent, ManifestPublishedEvent};
 pub use health::IngestionHealthCheck;
 pub use proof::{CommercialProof, CommercialProofType};
 pub use publisher::{ControlledPublisher, PublicationExecutionReport, SyncAgentSession};
-pub use quarantine::{
-    AnomalyCategory, AnomalySeverity, QuarantineEngine, QuarantineEntry, QuarantineStats,
-    QuarantineStatus,
-};
 pub use worker::{BatchProcessingReport, IngestionWorker};
 
 #[cfg(test)]

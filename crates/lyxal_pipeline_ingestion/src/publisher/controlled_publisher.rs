@@ -253,7 +253,7 @@ impl ControlledPublisher {
                         .update_manifest_execution_item(
                             manifest_ref,
                             &item.reference_fabricant,
-                            action_str,
+                            item.publication_action,
                             true,
                             None,
                         )
@@ -265,7 +265,7 @@ impl ControlledPublisher {
                         .update_manifest_execution_item(
                             manifest_ref,
                             &item.reference_fabricant,
-                            action_str,
+                            item.publication_action,
                             false,
                             Some(&err.to_string()),
                         )

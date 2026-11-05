@@ -3,33 +3,6 @@
 -- Rejouable : chaque définition est créée seulement si elle n'existe pas.
 -- ============================================================================
 
-IF !record::exists(error_definition:INGESTION_RULE_FAMILY_INVALID) THEN (
-    CREATE error_definition:INGESTION_RULE_FAMILY_INVALID CONTENT {
-        code: "INGESTION_RULE_FAMILY_INVALID",
-        module: "ingestion",
-        domain: "rules",
-        category: "validation",
-        severity: "error",
-        message: "Famille de produits invalide",
-        default_language: "fr",
-        http_status: 400,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Famille invalide",
-                description: "Le code et le libellé de la famille sont obligatoires.",
-                resolution: "Compléter la famille de produits."
-            },
-            en: {
-                label: "Invalid product family",
-                description: "Family code and label are required.",
-                resolution: "Complete the product family."
-            }
-        }
-    }
-) END;
-
 IF !record::exists(error_definition:INGESTION_SPEC_INVALID) THEN (
     CREATE error_definition:INGESTION_SPEC_INVALID CONTENT {
         code: "INGESTION_SPEC_INVALID",

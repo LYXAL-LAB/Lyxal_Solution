@@ -1,58 +1,62 @@
 -- ============================================================================
 -- FONCTION : fn::ingestion_batch_create
 -- MODULE   : lyxal_pipeline_ingestion
--- RÔLE     : Création ou mise à jour idempotente d'un lot d'ingestion fabricant
+-- RÔLE     : Création d'un lot d'ingestion (état initial RECEIVED)
+-- APPEL    : interne (worker, une fois par lot), entrées contrôlées par le moteur de lyxal_core
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::ingestion_batch_create($params: object) {
-    LET $id = IF $params.id != NONE { <string> $params.id } ELSE { rand::uuid::v7() };
-    LET $source_type = IF $params.source_type != NONE { string::uppercase(string::trim($params.source_type)) } ELSE { "CSV" };
-    LET $source_format_version = IF $params.source_format_version != NONE { string::trim($params.source_format_version) } ELSE { "1.0" };
-    LET $fournisseur_id = IF $params.fournisseur_id != NONE { string::trim($params.fournisseur_id) } ELSE { "" };
-    LET $nom_fichier = IF $params.nom_fichier != NONE { string::trim($params.nom_fichier) } ELSE { "" };
-    LET $file_hash_blake3 = IF $params.file_hash_blake3 != NONE { string::trim($params.file_hash_blake3) } ELSE { "" };
-    LET $taille_octets = IF $params.taille_octets != NONE { <int> $params.taille_octets } ELSE { 0 };
-    LET $statut = IF $params.statut != NONE { string::trim($params.statut) } ELSE { "RECEIVED" };
-    LET $cursor_offset = IF $params.cursor_offset != NONE { <int> $params.cursor_offset } ELSE { 0 };
-    LET $chunk_size = IF $params.chunk_size != NONE { <int> $params.chunk_size } ELSE { 500 };
-    LET $total_lignes = IF $params.total_lignes != NONE { <int> $params.total_lignes } ELSE { 0 };
-    LET $lignes_verifiees = IF $params.lignes_verifiees != NONE { <int> $params.lignes_verifiees } ELSE { 0 };
-    LET $lignes_a_confirmer = IF $params.lignes_a_confirmer != NONE { <int> $params.lignes_a_confirmer } ELSE { 0 };
-    LET $lignes_rejetees = IF $params.lignes_rejetees != NONE { <int> $params.lignes_rejetees } ELSE { 0 };
-    LET $transitions = IF $params.transitions != NONE { $params.transitions } ELSE { [] };
-    LET $provenance_details = IF $params.provenance_details != NONE { $params.provenance_details } ELSE { {} };
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            id: { pipeline: [{ rule: "record", options: { expected_table: "ingestion_batch" } }] },
+            source_type: { pipeline: [{ rule: "enum", options: { allowed: ["FAB_DIS", "CSV", "XML", "JSON"], case_sensitive: false } }], required: true },
+            file_hash_blake3: { pipeline: [{ rule: "required_string", options: { min_length: 64, max_length: 64 } }], required: true },
+            fournisseur_id: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
+            nom_fichier: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 255 } }], required: true },
+            source_format_version: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }], default: "1.0" },
+            taille_octets: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], default: 0 },
+            chunk_size: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 100000 } }], default: 500 },
+            provenance_details: { pipeline: [{ rule: "is_object" }], default: {} },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        LET $fields = object::keys($report.by_field);
+        LET $code = IF "source_type" IN $fields OR "file_hash_blake3" IN $fields { "INGESTION_SOURCE_INVALID" }
+            ELSE IF "fournisseur_id" IN $fields { "INGESTION_MANUFACTURER_REF_MISSING" }
+            ELSE { "INGESTION_INVALID_PARAMETERS" };
+        RETURN fn::error_result($code, IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    -- Identifiant fourni, sinon UUID v7 en clé texte (même forme que les identifiants fournis)
+    LET $id = $p.id ?? type::record("ingestion_batch", <string> rand::uuid::v7());
 
-    -- Contrôles de validation métier
-    IF string::len($fournisseur_id) == 0 {
-        RETURN fn::error_result("INGESTION_MANUFACTURER_REF_MISSING", $language, { champ: "fournisseur_id" });
+    -- Idempotence : un même fichier (format + empreinte) ou un même identifiant n'est reçu qu'une fois
+    LET $hash = string::lowercase(string::trim($p.file_hash_blake3));
+    LET $source = string::uppercase($p.source_type);
+    LET $existing = (SELECT VALUE id FROM ingestion_batch WHERE (source_type = $source AND file_hash_blake3 = $hash) OR id = $id LIMIT 1);
+    IF array::len($existing) > 0 {
+        RETURN fn::error_result("INGESTION_BATCH_DUPLICATE", $p.language, { batch_id: <string> record::id($existing[0]), file_hash_blake3: $hash });
     };
 
-    IF string::len($file_hash_blake3) == 0 {
-        RETURN fn::error_result("INGESTION_SOURCE_INVALID", $language, { champ: "file_hash_blake3" });
-    };
-
-    LET $record_id = <record> string::concat('ingestion_batch:', $id);
-
-    LET $created = (UPSERT $record_id CONTENT {
-        source_type: $source_type,
-        source_format_version: $source_format_version,
-        fournisseur_id: $fournisseur_id,
-        nom_fichier: $nom_fichier,
-        file_hash_blake3: $file_hash_blake3,
-        taille_octets: $taille_octets,
-        statut: $statut,
-        cursor_offset: $cursor_offset,
-        chunk_size: $chunk_size,
-        total_lignes: $total_lignes,
-        lignes_verifiees: $lignes_verifiees,
-        lignes_a_confirmer: $lignes_a_confirmer,
-        lignes_rejetees: $lignes_rejetees,
-        transitions: $transitions,
-        provenance_details: $provenance_details,
-        last_checkpoint_at: time::now(),
-        created_at: time::now()
+    LET $who = fn::ingestion_session_identity({});
+    LET $created = (CREATE ONLY $id CONTENT {
+        source_type: $source,
+        source_format_version: $p.source_format_version,
+        fournisseur_id: $p.fournisseur_id,
+        nom_fichier: $p.nom_fichier,
+        file_hash_blake3: $hash,
+        taille_octets: $p.taille_octets,
+        statut: "RECEIVED",
+        chunk_size: $p.chunk_size,
+        provenance_details: $p.provenance_details,
+        transitions: [{ from_state: NONE, to_state: "RECEIVED", triggered_by: $who.operator, reason: "Réception du fichier", transitioned_at: time::now() }],
+        last_checkpoint_at: time::now()
     });
+    IF $created == NONE {
+        RETURN fn::error_result("INGESTION_WRITE_FORBIDDEN", $p.language, { table: "ingestion_batch" });
+    };
 
-    RETURN fn::result_ok(<string> $id);
-} COMMENT "Crée ou initialise un lot d'ingestion avec contrôle d'intégrité et idempotence BLAKE3";
+    RETURN fn::result_ok(<string> record::id($created.id));
+} COMMENT "Crée un lot d'ingestion à l'état RECEIVED ; un fichier déjà reçu (format et empreinte BLAKE3) ou un identifiant existant renvoie INGESTION_BATCH_DUPLICATE";

@@ -10,17 +10,14 @@
 //! 7. Sonde de santé industrielle `IngestionHealthCheck` conforme à `lyxal_runtime`.
 
 use lyxal_pipeline_ingestion::health::IngestionHealthCheck;
-use lyxal_pipeline_ingestion::models::{
-    IngestionBatch, PublicationManifest, QuarantineRecord, StagedItem,
-};
+use lyxal_pipeline_ingestion::models::{QuarantineRecord, StagedItem};
 use lyxal_pipeline_ingestion::proof::{CommercialProof, CommercialProofType};
 use lyxal_pipeline_ingestion::storage::store::{
-    IngestionStore, ManifestListFilter, QuarantineListFilter, QuarantineResolveParams,
-    StagedListFilter, StagedRequalifyParams,
+    IngestionStore, ManifestDraft, ManifestListFilter, NewBatch, QuarantineCorrections,
+    QuarantineListFilter, QuarantineResolveParams, StagedListFilter, StagedRequalifyParams,
 };
 use lyxal_pipeline_ingestion::types::{
-    BatchStatus, ItemQualification, ManifestStatus, PackagingDetails, PublicationAction,
-    SourceFormat, StateTransitionRecord,
+    ItemQualification, ManifestStatus, PackagingDetails, PublicationAction, SourceFormat,
 };
 use lyxal_runtime::{ModuleContext, ModuleHealthCheck};
 
@@ -34,7 +31,7 @@ async fn test_1_dashboard_metrics_aggregation() {
     let store = setup_test_store().await;
 
     // 1. Création d'un lot
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some("batch_dash_01".to_string()),
         source_type: SourceFormat::FabDis,
         source_format_version: "3.0".to_string(),
@@ -42,17 +39,8 @@ async fn test_1_dashboard_metrics_aggregation() {
         nom_fichier: "placo_catalogue.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_dash_01"),
         taille_octets: 1024,
-        statut: BatchStatus::Staged,
-        cursor_offset: 2,
         chunk_size: 500,
-        total_lignes: 2,
-        lignes_verifiees: 1,
-        lignes_a_confirmer: 1,
-        lignes_rejetees: 0,
-        transitions: vec![],
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch).await.expect("Création lot");
 
@@ -98,7 +86,7 @@ async fn test_1_dashboard_metrics_aggregation() {
         fabricant: "PLACO".to_string(),
         marque: Some("PLACO".to_string()),
         reference_fabricant: "BA13-HYDRO".to_string(),
-        code_barre_gtin: Some("3401234567891".to_string()),
+        code_barre_gtin: Some("3401234567814".to_string()),
         libelle_commercial: "Plaque Placo BA13 Hydrofuge".to_string(),
         description_technique: None,
         type_item: "PRODUIT".to_string(),
@@ -126,7 +114,7 @@ async fn test_1_dashboard_metrics_aggregation() {
         .expect("get_dashboard_metrics");
 
     assert_eq!(metrics.batches.total, 1);
-    assert_eq!(metrics.batches.staged, 1);
+    assert_eq!(metrics.batches.active, 1); // lot reçu (RECEIVED)
     assert_eq!(metrics.items.total, 2);
     assert_eq!(metrics.items.verified, 1);
     assert_eq!(metrics.items.to_confirm, 1);
@@ -137,7 +125,7 @@ async fn test_1_dashboard_metrics_aggregation() {
 async fn test_2_staged_listing_and_filtering() {
     let store = setup_test_store().await;
 
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some("batch_list_01".to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -145,17 +133,8 @@ async fn test_2_staged_listing_and_filtering() {
         nom_fichier: "isover.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_list_01"),
         taille_octets: 512,
-        statut: BatchStatus::Staged,
-        cursor_offset: 2,
         chunk_size: 500,
-        total_lignes: 2,
-        lignes_verifiees: 1,
-        lignes_a_confirmer: 1,
-        lignes_rejetees: 0,
-        transitions: vec![],
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch).await.expect("Création lot");
 
@@ -169,7 +148,7 @@ async fn test_2_staged_listing_and_filtering() {
         fabricant: "ISOVER".to_string(),
         marque: Some("ISOVER".to_string()),
         reference_fabricant: "GR32-100".to_string(),
-        code_barre_gtin: Some("3401234567892".to_string()),
+        code_barre_gtin: Some("3401234567821".to_string()),
         libelle_commercial: "Laine de verre GR32 100mm".to_string(),
         description_technique: None,
         type_item: "PRODUIT".to_string(),
@@ -200,7 +179,7 @@ async fn test_2_staged_listing_and_filtering() {
         fabricant: "ISOVER".to_string(),
         marque: Some("ISOVER".to_string()),
         reference_fabricant: "IBR-200".to_string(),
-        code_barre_gtin: Some("3401234567893".to_string()),
+        code_barre_gtin: Some("3401234567838".to_string()),
         libelle_commercial: "Rouleau IBR 200mm".to_string(),
         description_technique: None,
         type_item: "PRODUIT".to_string(),
@@ -232,7 +211,7 @@ async fn test_2_staged_listing_and_filtering() {
     // 2. Filtre par qualification TO_CONFIRM (total = 1)
     let res_to_confirm = store
         .list_staged_items(StagedListFilter {
-            qualification: Some("TO_CONFIRM".to_string()),
+            qualification: Some(ItemQualification::ToConfirm),
             ..Default::default()
         })
         .await
@@ -245,7 +224,7 @@ async fn test_2_staged_listing_and_filtering() {
 async fn test_3_steward_requalification_session_security() {
     let store = setup_test_store().await;
 
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some("batch_sec_01".to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -253,17 +232,8 @@ async fn test_3_steward_requalification_session_security() {
         nom_fichier: "placo.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_sec_01"),
         taille_octets: 512,
-        statut: BatchStatus::Staged,
-        cursor_offset: 1,
         chunk_size: 500,
-        total_lignes: 1,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: 1,
-        lignes_rejetees: 0,
-        transitions: vec![],
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch).await.expect("Création lot");
 
@@ -277,7 +247,7 @@ async fn test_3_steward_requalification_session_security() {
         fabricant: "PLACO".to_string(),
         marque: Some("PLACO".to_string()),
         reference_fabricant: "SEC-REF-01".to_string(),
-        code_barre_gtin: Some("3401234567894".to_string()),
+        code_barre_gtin: Some("3401234567845".to_string()),
         libelle_commercial: "Article Test Sécurité".to_string(),
         description_technique: None,
         type_item: "PRODUIT".to_string(),
@@ -302,7 +272,7 @@ async fn test_3_steward_requalification_session_security() {
     // DOIT ÊTRE REJETÉ PAR SURREALQL
     let short_justif_params = StagedRequalifyParams {
         item_id: item_id.clone(),
-        new_qualification: "REJECTED".to_string(),
+        new_qualification: ItemQualification::Rejected,
         justification: "Court".to_string(), // 5 car. < 10 car.
         proof: None,
         language: Some("fr".to_string()),
@@ -318,7 +288,7 @@ async fn test_3_steward_requalification_session_security() {
 async fn test_4_requalification_verified_requires_strict_commercial_proof() {
     let store = setup_test_store().await;
 
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some("batch_proof_01".to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -326,17 +296,8 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
         nom_fichier: "knauf.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_proof_01"),
         taille_octets: 512,
-        statut: BatchStatus::Staged,
-        cursor_offset: 1,
         chunk_size: 500,
-        total_lignes: 1,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: 1,
-        lignes_rejetees: 0,
-        transitions: vec![],
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch).await.expect("Création lot");
 
@@ -350,7 +311,7 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
         fabricant: "KNAUF".to_string(),
         marque: Some("KNAUF".to_string()),
         reference_fabricant: "KNAUF-KF-13".to_string(),
-        code_barre_gtin: Some("3401234567895".to_string()),
+        code_barre_gtin: Some("3401234567852".to_string()),
         libelle_commercial: "Plaque Knauf Feu KF 13mm".to_string(),
         description_technique: None,
         type_item: "PRODUIT".to_string(),
@@ -372,7 +333,7 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
     // RÈGLE D'OR CTO : STRICTEMENT INTERDIT
     let no_proof_params = StagedRequalifyParams {
         item_id: item_id.clone(),
-        new_qualification: "VERIFIED".to_string(),
+        new_qualification: ItemQualification::Verified,
         justification: "Validation arbitraire sans attestation documentaire".to_string(),
         proof: None,
         language: Some("fr".to_string()),
@@ -394,7 +355,7 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
 
     let with_proof_params = StagedRequalifyParams {
         item_id: item_id.clone(),
-        new_qualification: "VERIFIED".to_string(),
+        new_qualification: ItemQualification::Verified,
         justification: "Preuve tarifaire officielle 2026 validée et vérifiée au greffe".to_string(),
         proof: Some(valid_proof),
         language: Some("fr".to_string()),
@@ -408,7 +369,7 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
 
     // Vérification de la transition d'état et de l'approbation
     let filter = StagedListFilter {
-        qualification: Some("VERIFIED".to_string()),
+        qualification: Some(ItemQualification::Verified),
         ..Default::default()
     };
     let list_res = store
@@ -416,15 +377,15 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
         .await
         .expect("List verified");
     assert_eq!(list_res.total, 1);
-    assert_eq!(list_res.items[0]["is_approved"], true);
-    assert_eq!(list_res.items[0]["approved_by"], "system");
+    assert!(list_res.items[0].is_approved);
+    assert_eq!(list_res.items[0].approved_by.as_deref(), Some("system"));
 }
 
 #[tokio::test]
 async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
     let store = setup_test_store().await;
 
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some("batch_quar_01".to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -432,17 +393,8 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
         nom_fichier: "siniat_anomalies.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_quar_01"),
         taille_octets: 256,
-        statut: BatchStatus::Staged,
-        cursor_offset: 1,
         chunk_size: 500,
-        total_lignes: 1,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: 0,
-        lignes_rejetees: 1,
-        transitions: vec![],
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch).await.expect("Création lot");
 
@@ -513,9 +465,10 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
         quarantine_id: q_id.clone(),
         comment: "GTIN fabricant corrigé suite consultation fiche produit officielle".to_string(),
         staged_item_id: Some(staged_id.clone()),
-        corrections: Some(serde_json::json!({
-            "corrected_gtin": "3401234567896"
-        })),
+        corrections: Some(QuarantineCorrections {
+            corrected_gtin: Some("3401234567869".to_string()),
+            corrected_unit: None,
+        }),
         language: Some("fr".to_string()),
     };
     let res = store
@@ -533,26 +486,35 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
         .await
         .expect("List resolved");
     assert_eq!(list_resolved.total, 1);
-    assert_eq!(list_resolved.records[0]["resolved_by"], "system");
+    assert_eq!(
+        list_resolved.records[0].resolved_by.as_deref(),
+        Some("system")
+    );
 
     // 4. VÉRIFICATION DE LA RÈGLE D'OR CTO : L'article est repassé en TO_CONFIRM (PAS VERIFIED !)
     let staged_list = store
         .list_staged_items(StagedListFilter {
-            qualification: Some("TO_CONFIRM".to_string()),
+            qualification: Some(ItemQualification::ToConfirm),
             ..Default::default()
         })
         .await
         .expect("List TO_CONFIRM");
     assert_eq!(staged_list.total, 1);
-    assert_eq!(staged_list.items[0]["qualification"], "TO_CONFIRM");
-    assert_eq!(staged_list.items[0]["code_barre_gtin"], "3401234567896");
+    assert_eq!(
+        staged_list.items[0].qualification,
+        ItemQualification::ToConfirm
+    );
+    assert_eq!(
+        staged_list.items[0].code_barre_gtin.as_deref(),
+        Some("3401234567869")
+    );
 }
 
 #[tokio::test]
 async fn test_6_manifest_listing_and_detail_integrity() {
     let store = setup_test_store().await;
 
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some("batch_manif_01".to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -560,45 +522,20 @@ async fn test_6_manifest_listing_and_detail_integrity() {
         nom_fichier: "legrand.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_manif_01"),
         taille_octets: 1024,
-        statut: BatchStatus::Staged,
-        cursor_offset: 1,
         chunk_size: 500,
-        total_lignes: 1,
-        lignes_verifiees: 1,
-        lignes_a_confirmer: 0,
-        lignes_rejetees: 0,
-        transitions: vec![],
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch).await.expect("Création lot");
 
     // Création d'un manifeste scellé
-    let manifest = PublicationManifest {
-        id: None,
-        batch: "batch_manif_01".to_string(),
+    let manifest = ManifestDraft {
+        batch_id: "batch_manif_01".to_string(),
         manifest_ref: "PUB-2026-LEGRAND-001".to_string(),
         manifest_version: 1,
         seal_hash: lyxal_crypto::blake3_hex(b"blake3_seal_hash_abcdef0123456789abcdef0123456789"),
-        is_sealed: true,
         statut: ManifestStatus::Sealed,
-        approved_by: None,
-        approved_at: None,
-        approver_role: None,
         nb_articles_insert: 10,
         nb_articles_update: 0,
-        items_committed: 0,
-        items_failed: 0,
-        execution_items: vec![serde_json::json!({"ref": "LEG-001", "action": "INSERT"})],
-        transitions: vec![StateTransitionRecord {
-            from_statut: "DRAFT".to_string(),
-            to_statut: "SEALED".to_string(),
-            transition_at: "2026-10-25T12:00:00Z".to_string(),
-            transition_by: "system".to_string(),
-            reason: "Scellement BLAKE3".to_string(),
-        }],
-        executed_at: None,
     };
     store.save_manifest(&manifest).await.expect("Save manifest");
 
@@ -608,10 +545,7 @@ async fn test_6_manifest_listing_and_detail_integrity() {
         .await
         .expect("List manifests");
     assert_eq!(res_list.total, 1);
-    assert_eq!(
-        res_list.manifests[0]["manifest_ref"],
-        "PUB-2026-LEGRAND-001"
-    );
+    assert_eq!(res_list.manifests[0].manifest_ref, "PUB-2026-LEGRAND-001");
 
     // 2. Consultation détaillée avec contrôle de scellement
     let detail = store
@@ -623,7 +557,7 @@ async fn test_6_manifest_listing_and_detail_integrity() {
         detail.seal_hash,
         lyxal_crypto::blake3_hex(b"blake3_seal_hash_abcdef0123456789abcdef0123456789")
     );
-    assert_eq!(detail.execution_count, 1);
+    assert_eq!(detail.execution_count, 0);
     assert_eq!(detail.transition_count, 1);
 }
 

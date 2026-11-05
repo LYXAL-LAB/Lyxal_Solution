@@ -14,9 +14,6 @@ pub enum IngestionError {
     #[error("Lot dupliqué détecté avec l'empreinte BLAKE3 '{hash}'.")]
     DuplicateBatch { hash: String },
 
-    #[error("Code GTIN-13 '{gtin}' invalide (clé GS1 Modulo 10 incorrecte).")]
-    InvalidGtin { gtin: String },
-
     #[error("Référence fabricant obligatoire manquante ou vide pour le fabricant '{fabricant}'.")]
     MissingManufacturerRef { fabricant: String },
 
@@ -46,14 +43,13 @@ pub enum IngestionError {
     #[error("Altération d'empreinte ou de scellement détectée : {0}")]
     FingerprintTampered(String),
 
-    #[error("Erreur de persistance SurrealDB : {0}")]
-    Database(String),
-
     #[error("Erreur de stockage ou d'accès aux données : {0}")]
     Storage(String),
 
-    #[error("Erreur d'appel ou de contrat Lyxal : {0}")]
-    LyxalCall(#[from] lyxal_error::LyxalCallError),
+    /// Erreur d'une fonction SurrealQL du module : erreur métier (`fn::error_result`, code
+    /// `INGESTION_*` conservé) ou erreur de transport.
+    #[error("{0}")]
+    Surreal(#[from] lyxal_surreal::LyxalSurrealError),
 }
 
 /// Référence d'un code d'erreur du pipeline, identique à sa définition dans `error/<thème>/`
@@ -92,7 +88,6 @@ impl IngestionError {
             Self::DuplicateBatch { .. } => {
                 info("INGESTION_BATCH_DUPLICATE", "conflict", 409, false)
             }
-            Self::InvalidGtin { .. } => info("INGESTION_GTIN_INVALID", "validation", 400, false),
             Self::MissingManufacturerRef { .. } => info(
                 "INGESTION_MANUFACTURER_REF_MISSING",
                 "validation",
@@ -115,15 +110,43 @@ impl IngestionError {
                 info("INGESTION_FINGERPRINT_TAMPERED", "conflict", 409, false)
             }
             Self::Unauthorized(_) => info("INGESTION_UNAUTHORIZED", "authorization", 403, false),
-            Self::Database(_) => info("INGESTION_DB_ERROR", "dependency", 503, true),
             Self::Storage(_) => info("INGESTION_STORAGE_ERROR", "dependency", 503, true),
-            Self::LyxalCall(_) => info("INGESTION_CALL_ERROR", "internal", 500, false),
+            // Erreur métier ou contrat de réponse non respecté (une erreur métier garde son
+            // propre code, transmis tel quel par la conversion en `LyxalError`).
+            Self::Surreal(lyxal_surreal::LyxalSurrealError::Call(_)) => {
+                info("INGESTION_CALL_ERROR", "internal", 500, false)
+            }
+            Self::Surreal(_) => info("INGESTION_DB_ERROR", "dependency", 503, true),
         }
+    }
+}
+
+impl IngestionError {
+    /// Code de l'erreur : celui de l'erreur métier SurrealQL, sinon celui de [`Self::info`].
+    pub fn code(&self) -> String {
+        match self {
+            Self::Surreal(lyxal_surreal::LyxalSurrealError::Call(
+                lyxal_error::LyxalCallError::Business(business),
+            )) => business.code.clone(),
+            _ => self.info().code.to_string(),
+        }
+    }
+
+    /// Indique si l'erreur est l'erreur métier SurrealQL `code`.
+    pub fn is_business_code(&self, code: &str) -> bool {
+        matches!(self, Self::Surreal(lyxal_surreal::LyxalSurrealError::Call(call)) if call.is_business_code(code))
     }
 }
 
 impl From<IngestionError> for LyxalError {
     fn from(err: IngestionError) -> Self {
+        // Une erreur métier est déjà résolue par lyxal_error : elle est transmise telle quelle.
+        if let IngestionError::Surreal(lyxal_surreal::LyxalSurrealError::Call(
+            lyxal_error::LyxalCallError::Business(business),
+        )) = err
+        {
+            return business;
+        }
         let info = err.info();
         LyxalError {
             code: info.code.to_string(),
@@ -158,7 +181,6 @@ mod tests {
             IngestionError::InvalidSourceFormat(text()),
             IngestionError::Validation(text()),
             IngestionError::DuplicateBatch { hash: text() },
-            IngestionError::InvalidGtin { gtin: text() },
             IngestionError::MissingManufacturerRef { fabricant: text() },
             IngestionError::UnresolvedBaseUnit { unite: text() },
             IngestionError::IncoherentPackaging { details: text() },
@@ -173,11 +195,15 @@ mod tests {
             IngestionError::Adapter(text()),
             IngestionError::IllegalTransition(text()),
             IngestionError::FingerprintTampered(text()),
-            IngestionError::Database(text()),
             IngestionError::Storage(text()),
-            IngestionError::LyxalCall(lyxal_error::LyxalCallError::InvalidContract {
-                function: "fn::test",
+            IngestionError::Surreal(lyxal_surreal::LyxalSurrealError::UnsupportedEndpoint {
+                endpoint: text(),
             }),
+            IngestionError::Surreal(lyxal_surreal::LyxalSurrealError::Call(
+                lyxal_error::LyxalCallError::InvalidContract {
+                    function: "fn::test",
+                },
+            )),
         ]
     }
 

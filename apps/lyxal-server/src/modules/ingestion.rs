@@ -30,7 +30,7 @@ pub fn register_services(
     ))?;
     let publisher = EventPublisher::new(event_store.clone(), MODULE_ID, context.clone());
     runtime.register_worker(Arc::new(
-        IngestionWorker::new(store.clone()).with_publisher(publisher),
+        IngestionWorker::new(store.clone())?.with_publisher(publisher),
     ))?;
     runtime
         .health_registry()

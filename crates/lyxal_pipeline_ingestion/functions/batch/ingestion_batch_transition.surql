@@ -1,38 +1,53 @@
 -- ============================================================================
 -- FONCTION : fn::ingestion_batch_transition
 -- MODULE   : lyxal_pipeline_ingestion
--- RÔLE     : Transition d'état contrôlée d'un lot d'ingestion avec audit trail
+-- RÔLE     : Transition d'état d'un lot, journalisée au nom de l'identité de session
+-- APPEL    : interne (worker, à chaque changement d'état), entrées contrôlées par le moteur de lyxal_core
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::ingestion_batch_transition($params: object) {
-    LET $id = <string> $params.id;
-    LET $nouveau_statut = <string> $params.nouveau_statut;
-    LET $transition = $params.transition;
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            id: { pipeline: [{ rule: "record", options: { expected_table: "ingestion_batch" } }], required: true },
+            nouveau_statut: { pipeline: [{ rule: "enum", options: { allowed: ["RECEIVED", "PARSING", "VALIDATING", "STAGED", "PUBLISHED", "FAILED"], case_sensitive: false } }], required: true },
+            reason: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 2000 } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 10);
+    IF !$report.valid {
+        RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $id = { value: $p.id };
+    LET $statut = { value: $p.nouveau_statut };
+    LET $reason = { value: $p.reason };
 
-    LET $record_id = <record> string::concat('ingestion_batch:', $id);
-
-    LET $existing = (SELECT * FROM ONLY $record_id);
+    LET $existing = (SELECT statut FROM ONLY $id.value);
     IF $existing == NONE {
-        RETURN fn::error_result("INGESTION_BATCH_NOT_FOUND", $language, { batch_id: $id });
+        RETURN fn::error_result("INGESTION_BATCH_NOT_FOUND", $p.language, { batch_id: <string> record::id($id.value) });
+    };
+    LET $target = string::uppercase($statut.value);
+    IF $existing.statut == "PUBLISHED" {
+        RETURN fn::error_result("INGESTION_BATCH_TERMINAL_STATE", $p.language, { batch_id: <string> record::id($id.value), current_status: $existing.statut, requested_status: $target });
     };
 
-    -- Contrôle d'état terminal
-    IF $existing.statut IN ["Completed", "Failed", "Aborted"] AND $nouveau_statut != $existing.statut {
-        RETURN fn::error_result("INGESTION_BATCH_TERMINAL_STATE", $language, { 
-            batch_id: $id, 
-            current_status: $existing.statut, 
-            requested_status: $nouveau_statut 
-        });
+    -- La machine à états est vérifiée par la garde evt_batch_guard (INGESTION_BATCH_ILLEGAL_STATE_TRANSITION)
+    LET $now = time::now();
+    LET $updated = (UPDATE ONLY $id.value SET
+        statut = $target,
+        transitions = array::append(transitions ?? [], {
+            from_state: $existing.statut,
+            to_state: $target,
+            triggered_by: fn::ingestion_session_identity({}).operator,
+            reason: $reason.value,
+            transitioned_at: $now
+        }),
+        completed_at = IF $target IN ["STAGED", "PUBLISHED", "FAILED"] { $now } ELSE { completed_at },
+        last_checkpoint_at = $now);
+    IF $updated == NONE {
+        RETURN fn::error_result("INGESTION_WRITE_FORBIDDEN", $p.language, { table: "ingestion_batch" });
     };
-
-    LET $is_completed = $nouveau_statut IN ["Completed", "Failed", "Aborted"];
-
-    UPDATE $record_id SET
-        statut = $nouveau_statut,
-        transitions = array::concat(IF transitions != NONE { transitions } ELSE { [] }, [$transition]),
-        completed_at = IF $is_completed { time::now() } ELSE { completed_at },
-        last_checkpoint_at = time::now();
 
     RETURN fn::result_ok(true);
-} COMMENT "Applique une transition d'état sur un lot avec contrôle des états terminaux et consignation immuable";
+} COMMENT "Applique une transition d'état sur un lot ; la transition (état d'origine, auteur de la session, motif, horodatage) est construite et journalisée par la fonction";
