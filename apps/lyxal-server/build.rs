@@ -12,6 +12,7 @@ const MODULES: &[(&str, Option<&str>)] = &[
     ("lyxal_error", None),
     ("lyxal_event", None),
     ("lyxal_base", None),
+    ("lyxal_catalogue", None),
     (
         "lyxal_pipeline_ingestion",
         Some("CARGO_FEATURE_MODULE_INGESTION"),

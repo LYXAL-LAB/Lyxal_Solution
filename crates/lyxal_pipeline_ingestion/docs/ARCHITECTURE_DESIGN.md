@@ -428,7 +428,7 @@ Pour respecter le scellement et les restrictions RLS de `lyxal_catalogue` V1.1 :
 ## 8. Plan de Validation & Benchmark sur les 41 Références BTP en Quarantaine
 
 ### 8.1. Sanctuarisation
-Le fichier [`crates/lyxal_catalogue/seeds/btp_lot1_commercial.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/seeds/btp_lot1_commercial.surql) contient 41 références réelles de Second Œuvre / Cloisons (Saint-Gobain Placo, Knauf France, Siniat, Isover, Semin, Spit Paslode).  
+Le fichier `crates/lyxal_catalogue/tests/fixtures/btp_lot1_commercial.surql` contient 41 références réelles de Second Œuvre / Cloisons (Saint-Gobain Placo, Knauf France, Siniat, Isover, Semin, Spit Paslode).  
 Ce fichier reste strictement exclu du Master Catalogue tant que le pipeline d'ingestion n'a pas validé son épreuve de qualification.
 
 ### 8.2. L'Épreuve de Qualification Industrielle (Benchmark Ingestion)

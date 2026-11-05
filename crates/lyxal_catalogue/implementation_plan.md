@@ -65,7 +65,7 @@ Suite de `AUDIT.md`. **Q1 à Q4 validées par le CTO** (option A pour chacune).
 
 | Lot | Contenu |
 | :- | :--- |
-| 1 | **Installation et master data** (C-01, C-03, C-04, C-08 en partie, C-10) : seeds rejouables, source unique des erreurs, codes manquants, manifeste (`0.1.0`, `lyxal_error`, `error_definitions`), seeds de démonstration en fixtures (Q3), catalogue hébergé par le serveur. |
+| 1 ✅ | **Installation et master data** (C-01, C-03, C-04, C-08 en partie, C-10) : `error/<thème>/*.surql` source unique (68 définitions reprises de `seeds/error_definitions.surql`, supprimé, + 6 codes manquants), protégées par `record::exists` et déclarées en `error_definitions` ; seeds de référence rejouables ; seeds de démonstration déplacés dans `tests/fixtures/` (Q3) ; manifeste `0.1.0` avec dépendance `lyxal_error` ; catalogue hébergé par le serveur (`build.rs`) ; test serveur `every_emitted_error_code_is_defined` (tous les modules repris ; l'ingestion, dont 14 codes émis n'ont pas de définition, y entrera à sa reprise). |
 | 2 | **Primitive GTIN** (Q1, C-05) : `fn::validation_gtin` dans `lyxal_core` avec ses tests ; fonction locale supprimée. |
 | 3 | **Entrées par le Core** (Q2, C-02) : 23 fonctions sur le moteur de validation et de nettoyage. |
 | 4 | **Tests** (Q4, C-06) : banc SurrealQL du catalogue exécuté par la CI ; suite PowerShell supprimée. |
