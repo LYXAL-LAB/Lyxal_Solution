@@ -38,16 +38,20 @@ DEFINE FUNCTION OVERWRITE fn::validation_gtin($value: any) -> object {
     LET $digits = string::replace(string::replace($clean, " ", ""), "-", "");
     IF !string::matches($digits, "^[0-9]+$") { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "digits" } }; };
     LET $length = string::len($digits);
-    IF $length NOT IN [8, 12, 13, 14] {
+    -- Poids GS1 : 3 pour le chiffre placé juste avant la clé, puis 1, 3, 1… vers la gauche ;
+    -- 0 pour la clé. Somme pondérée calculée d'un bloc (vector::multiply), sans boucle.
+    LET $weights = IF $length = 8 { [3, 1, 3, 1, 3, 1, 3, 0] }
+        ELSE IF $length = 12 { [3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 0] }
+        ELSE IF $length = 13 { [1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 0] }
+        ELSE IF $length = 14 { [3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 0] }
+        ELSE { NONE };
+    IF $weights IS NONE {
         RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "gtin_length", length: $length } };
     };
-    -- Poids GS1 : 3 pour le chiffre placé juste avant la clé, puis 1, 3, 1… vers la gauche.
-    LET $sum = array::fold(<array> (0..($length - 1)), 0, |$acc, $index| {
-        LET $digit = <int> string::slice($digits, $index, $index + 1);
-        $acc + IF ($length - 1 - $index) % 2 = 1 { $digit * 3 } ELSE { $digit }
-    });
-    LET $check = <int> string::slice($digits, $length - 1, $length);
-    IF (10 - ($sum % 10)) % 10 != $check {
+    -- string::split($digits, "") encadre les chiffres de deux chaînes vides, écartées par le slice
+    LET $values = <array<int>> array::slice(string::split($digits, ""), 1, $length + 1);
+    LET $sum = math::sum(vector::multiply($values, $weights));
+    IF (10 - ($sum % 10)) % 10 != $values[$length - 1] {
         RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "gtin_check_digit" } };
     };
     RETURN { valid: true, value: $digits, code: NONE, details: {} };

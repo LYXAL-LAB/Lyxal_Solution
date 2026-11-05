@@ -54,4 +54,7 @@ debug = "line-tables-only"
 
 [profile.dev.package."*"]
 debug = false
+# Dépendances (dont le moteur SurrealDB embarqué des tests) compilées avec optimisation :
+# les tests sur base mesurent le code Lyxal, pas un moteur non optimisé. Sans effet en release.
+opt-level = 1
 
