@@ -48,7 +48,6 @@ functions = [
     "functions/item/catalogue_item_list.surql",
     "functions/item/catalogue_item_update.surql",
     "functions/item/catalogue_item_delete.surql",
-    "functions/item/catalogue_validate_gtin.surql",
     "functions/attribut/catalogue_attribut_create.surql",
     "functions/attribut/catalogue_attribut_valeur_create.surql",
     "functions/attribut/catalogue_attribut_set_static.surql",

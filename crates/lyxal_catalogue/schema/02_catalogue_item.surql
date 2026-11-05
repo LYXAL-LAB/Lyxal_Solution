@@ -311,7 +311,7 @@ THEN {
 
         -- 2. Validation de la clé de contrôle GS1 Modulo 10 si code_barre est fourni
         IF $after.code_barre != NONE {
-            LET $is_gtin_valid = fn::catalogue_validate_gtin($after.code_barre);
+            LET $is_gtin_valid = fn::validation_gtin($after.code_barre).valid;
             IF $is_gtin_valid != true {
                 THROW "CATALOGUE_ITEM_GTIN_INVALID: Le code GTIN/EAN est invalide (clé de contrôle GS1 modulo 10 incorrecte).";
             };

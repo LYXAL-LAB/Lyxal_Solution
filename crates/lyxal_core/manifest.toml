@@ -369,6 +369,7 @@ functions = [
     "functions/validations/functions/future_datetime.surql",
     "functions/validations/functions/geohash.surql",
     "functions/validations/functions/geometry.surql",
+    "functions/validations/functions/gtin.surql",
     "functions/validations/functions/hexadecimal.surql",
     "functions/validations/functions/hmac_signature.surql",
     "functions/validations/functions/hostname.surql",

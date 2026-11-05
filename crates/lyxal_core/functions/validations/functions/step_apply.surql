@@ -90,6 +90,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_step_apply(
         ELSE IF $step.rule = "future_datetime" { fn::validation_future_datetime($value, $options.reference_value, $options.allow_equal, $options.min_advance, $options.max_advance) }
         ELSE IF $step.rule = "geohash" { fn::validation_geohash($value, $options.min_length, $options.max_length) }
         ELSE IF $step.rule = "geometry" { fn::validation_geometry($value, $options.allowed_types, $options.require_valid) }
+        ELSE IF $step.rule = "gtin" { fn::validation_gtin($value) }
         ELSE IF $step.rule = "hexadecimal" { fn::validation_hexadecimal($value, $options.min_length, $options.max_length, $options.allow_prefix) }
         ELSE IF $step.rule = "hmac_signature" { fn::validation_hmac_signature($value, $options.encoding, $options.expected_length) }
         ELSE IF $step.rule = "hostname" { fn::validation_hostname($value, $options.allow_single_label) }

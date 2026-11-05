@@ -2,10 +2,10 @@
 -- Tests de fn::validation_step_catalog (format : crates/lyxal_core/Readme.md, section « Tests »).
 
 -- test: une règle par validateur à une seule valeur
-RETURN array::len(fn::validation_step_catalog()) == 175;
+RETURN array::len(fn::validation_step_catalog()) == 176;
 
 -- test: règles uniques
-RETURN array::len(array::distinct(fn::validation_step_catalog().map(|$e| $e.rule))) == 175;
+RETURN array::len(array::distinct(fn::validation_step_catalog().map(|$e| $e.rule))) == 176;
 
 -- test: paramètres non optionnels obligatoires
 RETURN array::find(fn::validation_step_catalog(), |$e| $e.rule = "min_length").required == ["min_length"];

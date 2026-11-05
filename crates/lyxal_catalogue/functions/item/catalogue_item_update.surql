@@ -174,7 +174,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
     -- Validation GS1 si le code-barres est modifié
     LET $final_gtin = IF $code_barre != NONE { $code_barre } ELSE { $item.code_barre };
     IF $code_barre != NONE AND $code_barre != $item.code_barre {
-        LET $is_gtin_valid = fn::catalogue_validate_gtin($code_barre);
+        LET $is_gtin_valid = fn::validation_gtin($code_barre).valid;
         IF $is_gtin_valid != true {
             RETURN fn::error_result("CATALOGUE_ITEM_GTIN_INVALID", $language, { code_barre: $code_barre });
         };

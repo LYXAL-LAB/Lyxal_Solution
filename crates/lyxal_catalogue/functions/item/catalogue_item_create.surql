@@ -148,7 +148,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_create($params: object) {
 
     -- 6. Contrôle de validité du GTIN (Modulo 10 GS1)
     IF $code_barre != NONE {
-        LET $is_gtin_valid = fn::catalogue_validate_gtin($code_barre);
+        LET $is_gtin_valid = fn::validation_gtin($code_barre).valid;
         IF $is_gtin_valid != true {
             RETURN fn::error_result("CATALOGUE_ITEM_GTIN_INVALID", $language, { code_barre: $code_barre });
         };
