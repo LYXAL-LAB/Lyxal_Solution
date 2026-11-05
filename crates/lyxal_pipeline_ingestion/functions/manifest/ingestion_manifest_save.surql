@@ -45,6 +45,11 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_save($params: object) {
     };
 
     LET $existing = (SELECT id, batch, statut, transitions FROM ONLY ingestion_publication_manifest WHERE manifest_ref = $p.manifest_ref LIMIT 1);
+    -- Une version par lot (index idx_manifest_batch_version) : refus métier plutôt qu'erreur d'index
+    LET $same_version = (SELECT VALUE manifest_ref FROM ONLY ingestion_publication_manifest WHERE batch = $batch.value AND manifest_version = $p.manifest_version AND manifest_ref != $p.manifest_ref LIMIT 1);
+    IF $same_version != NONE {
+        RETURN fn::error_result("INGESTION_MANIFEST_VERSION_DUPLICATE", $p.language, { batch_id: <string> record::id($batch.value), manifest_version: $p.manifest_version, manifest_ref: $same_version });
+    };
     IF $existing != NONE {
         -- Un manifeste approuvé, en cours d'exécution ou exécuté n'est plus modifiable
         IF $existing.statut NOT IN ["DRAFT", "SEALED"] OR $existing.batch != $batch.value {

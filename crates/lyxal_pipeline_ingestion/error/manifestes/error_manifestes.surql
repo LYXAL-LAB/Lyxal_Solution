@@ -191,3 +191,30 @@ IF !record::exists(error_definition:INGESTION_FINGERPRINT_TAMPERED) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:INGESTION_MANIFEST_VERSION_DUPLICATE) THEN (
+    CREATE error_definition:INGESTION_MANIFEST_VERSION_DUPLICATE CONTENT {
+        code: "INGESTION_MANIFEST_VERSION_DUPLICATE",
+        module: "ingestion",
+        domain: "manifestes",
+        category: "conflict",
+        severity: "error",
+        message: "Version de manifeste déjà utilisée pour ce lot",
+        default_language: "fr",
+        http_status: 409,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Version de manifeste déjà utilisée",
+                description: "Un autre manifeste du même lot porte déjà ce numéro de version.",
+                resolution: "Utiliser le numéro de version suivant ou mettre à jour le manifeste existant."
+            },
+            en: {
+                label: "Manifest version already used",
+                description: "Another manifest of the same batch already has this version number.",
+                resolution: "Use the next version number or update the existing manifest."
+            }
+        }
+    }
+) END;

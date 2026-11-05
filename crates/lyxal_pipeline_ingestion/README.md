@@ -114,4 +114,4 @@ Relevés lors de la migration du SDK `surrealdb` vers 3.3 (novembre 2026), sans 
 3. **Mot de passe de recette par défaut en clair** dans `tests/integration_staging_live_server.rs` (repli quand `LYXAL_STAGING_PASS` est absent) : à retirer du code et à considérer comme compromis s'il a servi sur un serveur réel.
 4. **Requêtes directes** (§11.5) : 12 `.query(...)` dans un module métier, à remplacer par des fonctions `fn::ingestion_*` (décision CTO Q3).
 5. **13 remarques `clippy`** préexistantes.
-6. **Documents historiques** (§0) : `CHANGELOG.md`, `ROADMAP.md`, `docs/*` (rapports de clôture et de recette), script `tests/run_ingestion_phase1_tests.ps1`.
+6. **Documents historiques** (§0) : `CHANGELOG.md`, `ROADMAP.md`, `docs/*` (rapports de clôture et de recette).
