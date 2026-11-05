@@ -57,60 +57,6 @@ IF !record::exists(error_definition:CATALOGUE_ITEM_ALREADY_EXISTS) THEN (
     }
 ) END;
 
-IF !record::exists(error_definition:CATALOGUE_ITEM_CODE_REQUIRED) THEN (
-    CREATE error_definition:CATALOGUE_ITEM_CODE_REQUIRED CONTENT {
-        code: "CATALOGUE_ITEM_CODE_REQUIRED",
-        module: "catalogue",
-        domain: "item",
-        category: "validation",
-        severity: "error",
-        message: "Le code de l'élément de catalogue est obligatoire",
-        default_language: "fr",
-        http_status: 400,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Code d'élément obligatoire",
-                description: "Le code unique identifiant l'élément ne peut pas être vide.",
-                resolution: "Fournissez une chaîne de caractères non vide pour le code."
-            },
-            en: {
-                label: "Item code required",
-                description: "The unique item identifier code cannot be empty.",
-                resolution: "Provide a non-empty string for the code."
-            }
-        }
-    }
-) END;
-
-IF !record::exists(error_definition:CATALOGUE_ITEM_LIBELLE_REQUIRED) THEN (
-    CREATE error_definition:CATALOGUE_ITEM_LIBELLE_REQUIRED CONTENT {
-        code: "CATALOGUE_ITEM_LIBELLE_REQUIRED",
-        module: "catalogue",
-        domain: "item",
-        category: "validation",
-        severity: "error",
-        message: "Le libellé de l'élément de catalogue est obligatoire",
-        default_language: "fr",
-        http_status: 400,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Libellé d'élément obligatoire",
-                description: "La désignation de l'élément de catalogue ne peut pas être vide.",
-                resolution: "Renseignez un libellé textuel pour l'article ou ouvrage."
-            },
-            en: {
-                label: "Item label required",
-                description: "The item title or designation cannot be empty.",
-                resolution: "Provide a descriptive label for the item."
-            }
-        }
-    }
-) END;
-
 IF !record::exists(error_definition:CATALOGUE_ITEM_TYPE_NOT_FOUND) THEN (
     CREATE error_definition:CATALOGUE_ITEM_TYPE_NOT_FOUND CONTENT {
         code: "CATALOGUE_ITEM_TYPE_NOT_FOUND",
@@ -219,33 +165,6 @@ IF !record::exists(error_definition:CATALOGUE_ITEM_SYSTEM_IMMUTABLE) THEN (
     }
 ) END;
 
-IF !record::exists(error_definition:CATALOGUE_PAGINATION_INVALID) THEN (
-    CREATE error_definition:CATALOGUE_PAGINATION_INVALID CONTENT {
-        code: "CATALOGUE_PAGINATION_INVALID",
-        module: "catalogue",
-        domain: "item",
-        category: "validation",
-        severity: "error",
-        message: "Paramètres de pagination invalides",
-        default_language: "fr",
-        http_status: 400,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Pagination invalide",
-                description: "Le paramètre limit doit être compris entre 1 et 200, et start doit être supérieur ou égal à 0.",
-                resolution: "Ajustez les paramètres limit et start."
-            },
-            en: {
-                label: "Invalid pagination",
-                description: "Limit must be between 1 and 200, and start must be non-negative.",
-                resolution: "Adjust limit and start parameters."
-            }
-        }
-    }
-) END;
-
 IF !record::exists(error_definition:CATALOGUE_ITEM_GENERIC_CANNOT_HAVE_BRAND) THEN (
     CREATE error_definition:CATALOGUE_ITEM_GENERIC_CANNOT_HAVE_BRAND CONTENT {
         code: "CATALOGUE_ITEM_GENERIC_CANNOT_HAVE_BRAND",
@@ -295,33 +214,6 @@ IF !record::exists(error_definition:CATALOGUE_ITEM_COMMERCIAL_REQUIRES_BRAND) TH
                 label: "Commercial item requires brand or manufacturer",
                 description: "Every commercial item must be linked to a manufacturer or brand.",
                 resolution: "Provide manufacturer or brand field."
-            }
-        }
-    }
-) END;
-
-IF !record::exists(error_definition:CATALOGUE_ITEM_NATURE_INVALID) THEN (
-    CREATE error_definition:CATALOGUE_ITEM_NATURE_INVALID CONTENT {
-        code: "CATALOGUE_ITEM_NATURE_INVALID",
-        module: "catalogue",
-        domain: "item",
-        category: "validation",
-        severity: "error",
-        message: "Nature de référence invalide (doit être GENERIQUE ou COMMERCIALE)",
-        default_language: "fr",
-        http_status: 422,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Nature de référence invalide",
-                description: "La nature de référence doit obligatoirement valoir GENERIQUE ou COMMERCIALE.",
-                resolution: "Indiquez GENERIQUE ou COMMERCIALE."
-            },
-            en: {
-                label: "Invalid item nature",
-                description: "Item nature must be either GENERIQUE or COMMERCIALE.",
-                resolution: "Set nature to GENERIQUE or COMMERCIALE."
             }
         }
     }

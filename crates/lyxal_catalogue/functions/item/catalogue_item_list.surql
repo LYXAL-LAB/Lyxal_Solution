@@ -5,24 +5,34 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::catalogue_item_list($params: object) {
-    LET $type = IF $params.type != NONE { <record<catalogue_type>> $params.type } ELSE { NONE };
-    LET $categorie = IF $params.categorie != NONE { <record<catalogue_categorie>> $params.categorie } ELSE { NONE };
-    LET $enabled = $params.enabled;
-    LET $search = IF $params.search != NONE AND string::len(string::trim($params.search)) > 0 {
-        string::lowercase(string::trim($params.search))
-    } ELSE {
-        NONE
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            type: { pipeline: [{ rule: "record", options: { expected_table: "catalogue_type" } }] },
+            categorie: { pipeline: [{ rule: "record", options: { expected_table: "catalogue_categorie" } }] },
+            enabled: { pipeline: [{ rule: "boolean" }] },
+            search: { pipeline: [{ rule: "optional_string", options: { max_length: 255 } }] },
+            limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 200 } }], default: 50 },
+            start: { pipeline: [{ rule: "integer", options: { min_value: 0, max_value: 1000000 } }], default: 0 },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", $params.language, { fields: $report.by_field });
     };
-    LET $raw_limit = IF $params.limit != NONE { $params.limit } ELSE { 50 };
-    LET $raw_start = IF $params.start != NONE { $params.start } ELSE { 0 };
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
-
-    IF $raw_limit < 1 OR $raw_limit > 200 OR $raw_start < 0 {
-        RETURN fn::error_result("CATALOGUE_PAGINATION_INVALID", $language, { limit: $raw_limit, start: $raw_start });
-    };
-
-    LET $limit = <int> $raw_limit;
-    LET $start = <int> $raw_start;
+    LET $p = fn::sanitize_object_execute($report.value, {
+        fields: {
+            search: { pipeline: [{ rule: "lowercase" }] }
+        },
+        unknown_keys: "keep"
+    }, 40);
+    LET $type = $p.type;
+    LET $categorie = $p.categorie;
+    LET $enabled = $p.enabled;
+    LET $search = $p.search;
+    LET $limit = $p.limit;
+    LET $start = $p.start;
+    LET $language = $p.language;
 
     -- Si filtrage par catégorie demandé, on sélectionne via catalogue_item_categorie
     LET $category_item_ids = IF $categorie != NONE {

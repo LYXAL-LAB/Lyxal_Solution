@@ -5,12 +5,27 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::catalogue_relation_create($params: object) {
-    LET $source_id = <record<catalogue_item>> $params.source;
-    LET $cible_id = <record<catalogue_item>> $params.cible;
-    LET $type_id = <record<catalogue_relation_type>> $params.relation_type;
-    LET $ordre = IF $params.ordre != NONE { <int> $params.ordre } ELSE { 0 };
-    LET $commentaire = IF $params.commentaire != NONE { string::trim($params.commentaire) } ELSE { NONE };
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            source: { pipeline: [{ rule: "record", options: { expected_table: "catalogue_item" } }], required: true },
+            cible: { pipeline: [{ rule: "record", options: { expected_table: "catalogue_item" } }], required: true },
+            relation_type: { pipeline: [{ rule: "record", options: { expected_table: "catalogue_relation_type" } }], required: true },
+            ordre: { pipeline: [{ rule: "integer", options: { min_value: 0, max_value: 1000000 } }], default: 0 },
+            commentaire: { pipeline: [{ rule: "optional_string", options: { max_length: 1000 } }] },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", $params.language, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $source_id = $p.source;
+    LET $cible_id = $p.cible;
+    LET $type_id = $p.relation_type;
+    LET $ordre = $p.ordre;
+    LET $commentaire = $p.commentaire;
+    LET $language = $p.language;
 
     -- Contrôle d'auto-référence
     IF $source_id == $cible_id {

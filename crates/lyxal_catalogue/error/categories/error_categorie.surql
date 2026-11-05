@@ -30,60 +30,6 @@ IF !record::exists(error_definition:CATALOGUE_CATEGORIE_NOT_FOUND) THEN (
     }
 ) END;
 
-IF !record::exists(error_definition:CATALOGUE_CATEGORIE_CODE_REQUIRED) THEN (
-    CREATE error_definition:CATALOGUE_CATEGORIE_CODE_REQUIRED CONTENT {
-        code: "CATALOGUE_CATEGORIE_CODE_REQUIRED",
-        module: "catalogue",
-        domain: "categorie",
-        category: "validation",
-        severity: "error",
-        message: "Le code de la catégorie est obligatoire",
-        default_language: "fr",
-        http_status: 400,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Code catégorie obligatoire",
-                description: "Le code identifiant la catégorie ne peut être vide.",
-                resolution: "Fournissez un code pour la catégorie."
-            },
-            en: {
-                label: "Category code required",
-                description: "The category identifier code cannot be empty.",
-                resolution: "Provide a category code."
-            }
-        }
-    }
-) END;
-
-IF !record::exists(error_definition:CATALOGUE_CATEGORIE_LIBELLE_REQUIRED) THEN (
-    CREATE error_definition:CATALOGUE_CATEGORIE_LIBELLE_REQUIRED CONTENT {
-        code: "CATALOGUE_CATEGORIE_LIBELLE_REQUIRED",
-        module: "catalogue",
-        domain: "categorie",
-        category: "validation",
-        severity: "error",
-        message: "Le libellé de la catégorie est obligatoire",
-        default_language: "fr",
-        http_status: 400,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Libellé catégorie obligatoire",
-                description: "Le nom ou libellé de la catégorie ne peut être vide.",
-                resolution: "Renseignez un libellé descriptif pour la catégorie."
-            },
-            en: {
-                label: "Category label required",
-                description: "The category label cannot be empty.",
-                resolution: "Provide a category label."
-            }
-        }
-    }
-) END;
-
 IF !record::exists(error_definition:CATALOGUE_CATEGORIE_ALREADY_EXISTS) THEN (
     CREATE error_definition:CATALOGUE_CATEGORIE_ALREADY_EXISTS CONTENT {
         code: "CATALOGUE_CATEGORIE_ALREADY_EXISTS",

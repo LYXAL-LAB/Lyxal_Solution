@@ -30,33 +30,6 @@ IF !record::exists(error_definition:CATALOGUE_VARIANTE_NOT_FOUND) THEN (
     }
 ) END;
 
-IF !record::exists(error_definition:CATALOGUE_VARIANTE_CODE_REQUIRED) THEN (
-    CREATE error_definition:CATALOGUE_VARIANTE_CODE_REQUIRED CONTENT {
-        code: "CATALOGUE_VARIANTE_CODE_REQUIRED",
-        module: "catalogue",
-        domain: "variante",
-        category: "validation",
-        severity: "error",
-        message: "Le code de la déclinaison variante est obligatoire",
-        default_language: "fr",
-        http_status: 400,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Code variante obligatoire",
-                description: "Le code SKU de la variante ne peut pas être vide.",
-                resolution: "Fournissez un code pour la variante."
-            },
-            en: {
-                label: "Variant code required",
-                description: "The variant SKU code cannot be empty.",
-                resolution: "Provide a variant code."
-            }
-        }
-    }
-) END;
-
 IF !record::exists(error_definition:CATALOGUE_VARIANTE_ALREADY_EXISTS) THEN (
     CREATE error_definition:CATALOGUE_VARIANTE_ALREADY_EXISTS CONTENT {
         code: "CATALOGUE_VARIANTE_ALREADY_EXISTS",
@@ -106,33 +79,6 @@ IF !record::exists(error_definition:CATALOGUE_VARIANTE_ITEM_MISMATCH) THEN (
                 label: "Variant item mismatch",
                 description: "The variant does not belong to the specified parent item.",
                 resolution: "Ensure variant matches the parent item."
-            }
-        }
-    }
-) END;
-
-IF !record::exists(error_definition:CATALOGUE_VARIANTE_DUPLICATE_COMBINAISON) THEN (
-    CREATE error_definition:CATALOGUE_VARIANTE_DUPLICATE_COMBINAISON CONTENT {
-        code: "CATALOGUE_VARIANTE_DUPLICATE_COMBINAISON",
-        module: "catalogue",
-        domain: "variante",
-        category: "conflict",
-        severity: "error",
-        message: "Une variante avec cette exacte combinaison d'attributs existe déjà",
-        default_language: "fr",
-        http_status: 409,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Combinaison d'attributs en doublon",
-                description: "L'empreinte SHA-256 de cette combinaison est déjà assignée à une autre variante de cet item.",
-                resolution: "Choisissez une combinaison distinctive d'attributs."
-            },
-            en: {
-                label: "Duplicate variant combination",
-                description: "The SHA-256 fingerprint for this combination is already in use by another variant.",
-                resolution: "Select a distinct combination of attributes."
             }
         }
     }

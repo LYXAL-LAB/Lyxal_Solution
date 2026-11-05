@@ -64,6 +64,7 @@ functions = [
 ]
 
 error_definitions = [
+    "error/parametres/error_parametres.surql",
     "error/items/error_item.surql",
     "error/categories/error_categorie.surql",
     "error/attributs/error_attribut.surql",

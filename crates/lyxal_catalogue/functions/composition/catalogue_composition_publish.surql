@@ -5,8 +5,19 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::catalogue_composition_publish($params: object) {
-    LET $comp_id = <record<catalogue_composition>> $params.composition_id;
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            composition_id: { pipeline: [{ rule: "record", options: { expected_table: "catalogue_composition" } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", $params.language, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $comp_id = $p.composition_id;
+    LET $language = $p.language;
 
     -- 1. Contrôle d'existence
     LET $comp = (SELECT * FROM ONLY $comp_id);
@@ -41,4 +52,4 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_composition_publish($params: object) {
     UPDATE ONLY $comp.parent_item SET is_composite = true;
 
     RETURN fn::result_ok($published);
-};
+} COMMENT "Publie une version de composition : elle devient la version active du parent et les autres versions publiées sont archivées.";

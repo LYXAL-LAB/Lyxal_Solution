@@ -5,8 +5,19 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::catalogue_composition_clone_version($params: object) {
-    LET $source_comp_id = <record<catalogue_composition>> $params.source_composition_id;
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            source_composition_id: { pipeline: [{ rule: "record", options: { expected_table: "catalogue_composition" } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", $params.language, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $source_comp_id = $p.source_composition_id;
+    LET $language = $p.language;
 
     LET $source = (SELECT * FROM ONLY $source_comp_id);
     IF $source == NONE {

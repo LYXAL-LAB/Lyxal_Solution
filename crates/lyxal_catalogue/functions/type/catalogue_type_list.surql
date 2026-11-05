@@ -5,7 +5,18 @@
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::catalogue_type_list($params: object) {
-    LET $enabled = $params.enabled;
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            enabled: { pipeline: [{ rule: "boolean" }] },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", $params.language, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $enabled = $p.enabled;
     LET $records = IF $enabled != NONE {
         SELECT * FROM catalogue_type WHERE enabled = $enabled ORDER BY code ASC
     } ELSE {
