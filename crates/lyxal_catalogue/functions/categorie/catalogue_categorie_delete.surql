@@ -29,13 +29,13 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_categorie_delete($params: object) {
     };
 
     -- Contrôle d'absence de sous-catégories
-    LET $children_count = (SELECT count() FROM catalogue_categorie WHERE parent = $cat_id)[0].count;
+    LET $children_count = count(SELECT id FROM catalogue_categorie WHERE parent = $cat_id);
     IF $children_count > 0 {
         RETURN fn::error_result("CATALOGUE_CATEGORIE_HAS_CHILDREN", $language, { children_count: $children_count });
     };
 
     -- Contrôle d'absence d'items rattachés
-    LET $items_count = (SELECT count() FROM catalogue_item_categorie WHERE categorie = $cat_id)[0].count;
+    LET $items_count = count(SELECT id FROM catalogue_item_categorie WHERE categorie = $cat_id);
     IF $items_count > 0 {
         RETURN fn::error_result("CATALOGUE_CATEGORIE_IN_USE", $language, { items_count: $items_count });
     };

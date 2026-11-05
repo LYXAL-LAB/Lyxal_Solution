@@ -31,7 +31,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_composition_publish($params: object) {
     };
 
     -- 3. Contrôle de présence de lignes
-    LET $lignes_count = (SELECT count() FROM catalogue_composition_ligne WHERE composition = $comp_id)[0].count;
+    LET $lignes_count = count(SELECT id FROM catalogue_composition_ligne WHERE composition = $comp_id);
     IF $lignes_count = 0 {
         RETURN fn::error_result("CATALOGUE_COMPOSITION_EMPTY", $language, { composition_id: <string> $comp_id });
     };

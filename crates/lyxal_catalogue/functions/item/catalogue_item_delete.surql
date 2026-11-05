@@ -96,7 +96,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_delete($params: object) {
     };
 
     -- Contrôle d'absence de compositions utilisant cet élément en composant
-    LET $usage_count = (SELECT count() FROM catalogue_composition_ligne WHERE composant_item = $id)[0].count;
+    LET $usage_count = count(SELECT id FROM catalogue_composition_ligne WHERE composant_item = $id);
     IF $usage_count > 0 {
         RETURN fn::error_result("CATALOGUE_ITEM_IN_USE", $language, { usage_in_compositions: $usage_count });
     };

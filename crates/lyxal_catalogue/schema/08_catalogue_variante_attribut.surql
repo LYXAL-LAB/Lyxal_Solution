@@ -80,9 +80,7 @@ THEN {
     LET $target_var = IF $event = "DELETE" { $before.variante } ELSE { $after.variante };
     IF $target_var != NONE {
         -- Calcule déterministement la nouvelle empreinte canonique à partir de l'état réel en base
-        LET $attrs = (SELECT attribut, attribut_valeur FROM catalogue_variante_attribut WHERE variante = $target_var);
-        LET $pairs = array::sort(array::map($attrs, |$a| string::concat(<string> $a.attribut, ":", <string> $a.attribut_valeur)));
-        LET $fingerprint = crypto::sha256(array::join($pairs, "|"));
+        LET $fingerprint = fn::catalogue_variante_fingerprint({ pairs: (SELECT attribut, attribut_valeur FROM catalogue_variante_attribut WHERE variante = $target_var) });
         
         -- Met à jour atomiquement l'empreinte sur la variante parente
         UPDATE ONLY $target_var SET empreinte_attributs = $fingerprint;
@@ -90,9 +88,7 @@ THEN {
 
     -- 2. Recalcul pour la variante source si déplacement ($event = "UPDATE" avec changement de variante)
     IF $event = "UPDATE" AND $before.variante != NONE AND $before.variante != $after.variante {
-        LET $src_attrs = (SELECT attribut, attribut_valeur FROM catalogue_variante_attribut WHERE variante = $before.variante);
-        LET $src_pairs = array::sort(array::map($src_attrs, |$a| string::concat(<string> $a.attribut, ":", <string> $a.attribut_valeur)));
-        LET $src_fingerprint = crypto::sha256(array::join($src_pairs, "|"));
+        LET $src_fingerprint = fn::catalogue_variante_fingerprint({ pairs: (SELECT attribut, attribut_valeur FROM catalogue_variante_attribut WHERE variante = $before.variante) });
         UPDATE ONLY $before.variante SET empreinte_attributs = $src_fingerprint;
     };
 };

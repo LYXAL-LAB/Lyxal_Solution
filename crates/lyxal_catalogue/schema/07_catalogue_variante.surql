@@ -92,14 +92,14 @@ DEFINE INDEX OVERWRITE idx_catalogue_variante_item ON TABLE catalogue_variante F
 
 -- ----------------------------------------------------------------------------
 -- VERROU MOTEUR : Protection absolue de l'empreinte de la variante
--- Empêche toute tentative de falsification ou modification arbitraire
+-- Empêche toute tentative de falsification ou modification arbitraire. Seule une
+-- modification de l'empreinte est contrôlée : l'empreinte provisoire posée à la
+-- création (variante sans combinaison) n'empêche pas de modifier les autres champs.
 -- ----------------------------------------------------------------------------
 DEFINE EVENT OVERWRITE evt_variante_protect_fingerprint ON TABLE catalogue_variante
-WHEN $event = "UPDATE"
+WHEN $event = "UPDATE" AND $before.empreinte_attributs != $after.empreinte_attributs
 THEN {
-    LET $attrs = (SELECT attribut, attribut_valeur FROM catalogue_variante_attribut WHERE variante = $after.id);
-    LET $pairs = array::sort(array::map($attrs, |$a| string::concat(<string> $a.attribut, ":", <string> $a.attribut_valeur)));
-    LET $real_fp = crypto::sha256(array::join($pairs, "|"));
+    LET $real_fp = fn::catalogue_variante_fingerprint({ pairs: (SELECT attribut, attribut_valeur FROM catalogue_variante_attribut WHERE variante = $after.id) });
     IF $after.empreinte_attributs != $real_fp {
         THROW "CATALOGUE_VARIANTE_FINGERPRINT_FORBIDDEN: Modification directe de l'empreinte interdite. L'empreinte doit correspondre aux attributs reels.";
     };
