@@ -8,7 +8,7 @@ intelligent.
 
 | Étape | Thème | Dépendances |
 | :--- | :--- | :--- |
-| 1 | Substitutions et équivalences contextualisées | publication de `lyxal_pipeline_ingestion` conforme au contrat de `fn::catalogue_item_create` |
+| 1 | Substitutions et équivalences contextualisées | regroupement technique de `lyxal_pipeline_ingestion` (étape 2 de sa [feuille de route](../lyxal_pipeline_ingestion/ROADMAP.md)) |
 | 2 | Recherche avancée et qualité des références | étape 1 ; index composites et plein texte |
 | 3 | Historisation et cycle de vie | étape 2 |
 | 4 | Catalogue intelligent (agents IA) | étape 3 ; bus `lyxal_event` ; validation humaine obligatoire |

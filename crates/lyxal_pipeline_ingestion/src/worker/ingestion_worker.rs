@@ -32,9 +32,6 @@ use crate::types::{
     BatchStatus, Dimensions, ItemQualification, PackagingDetails, PublicationAction, SourceFormat,
 };
 
-/// Version des règles de normalisation enregistrée avec chaque article.
-const RULES_VERSION: &str = "2026-10-V1.1";
-
 /// Rapport d'exécution du traitement d'un lot par le worker.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BatchProcessingReport {
@@ -302,7 +299,7 @@ impl IngestionWorker {
                         raw_record: format!("{batch_id}_{line_num}"),
                         ligne_numero: line_num,
                         canonical_fingerprint: normalized.canonical_fingerprint,
-                        rules_version: RULES_VERSION.to_string(),
+                        rules_version: normalized.rules_engine_version,
                         fabricant: normalized.manufacturer,
                         marque: normalized.brand,
                         reference_fabricant: normalized.manufacturer_ref,

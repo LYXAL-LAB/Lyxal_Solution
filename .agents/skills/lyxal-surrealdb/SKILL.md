@@ -139,7 +139,7 @@ Lors de l'écriture ou de la migration de fichiers `.surql` pour SurrealDB 3.3.4
    - Interdiction formelle des instructions destructives (`REMOVE TABLE`, `REMOVE FIELD`, `DELETE` non borné) sans plan de migration validé par le CTO.
 2. **Idempotence Non Destructive des Seeds & Erreurs (`seeds/*.surql`, `error/**/*.surql`)** :
    - Ne jamais écraser ni supprimer des données existantes ou personnalisées lors de la réexécution d'un seed.
-   - Standard recommandé (modèle [`crates/lyxal_pipeline_ingestion/error/ingestion/error_definitions.surql`](../../../crates/lyxal_pipeline_ingestion/error/ingestion/error_definitions.surql)) :
+   - Standard recommandé (modèle [`crates/lyxal_pipeline_ingestion/error/lots/error_lots.surql`](../../../crates/lyxal_pipeline_ingestion/error/lots/error_lots.surql)) :
      ```surql
      IF !record::exists(error_definition:<CODE>) THEN (
          CREATE error_definition:<CODE> CONTENT {
