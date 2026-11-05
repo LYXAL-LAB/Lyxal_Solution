@@ -19,7 +19,8 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_create($params: object) {
     LET $fabricant = IF $params.fabricant != NONE { string::uppercase(string::trim($params.fabricant)) } ELSE { NONE };
     LET $marque = IF $params.marque != NONE { string::uppercase(string::trim($params.marque)) } ELSE { NONE };
     LET $ref_fab = IF $params.reference_fabricant != NONE { string::trim($params.reference_fabricant) } ELSE { NONE };
-    LET $code_barre = IF $params.code_barre != NONE { string::trim($params.code_barre) } ELSE { NONE };
+    -- GTIN ramené à sa forme normalisée par lyxal_core (chiffres seuls) ; une valeur invalide est conservée telle quelle et refusée plus loin.
+    LET $code_barre = IF $params.code_barre != NONE { fn::validation_gtin($params.code_barre).value ?? string::trim($params.code_barre) } ELSE { NONE };
     LET $statut_comm = IF $params.statut_commercial != NONE { string::uppercase(string::trim($params.statut_commercial)) } ELSE { "ACTIF" };
     LET $documents = IF $params.documents != NONE { $params.documents } ELSE { [] };
     LET $conditionnement = IF $params.conditionnement != NONE { $params.conditionnement } ELSE { NONE };
