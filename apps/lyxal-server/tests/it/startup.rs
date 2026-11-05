@@ -165,7 +165,9 @@ async fn restart_on_installed_database_is_idempotent() {
     let second = runtime::start(&config, &client).await.expect("redémarrage");
     second.stop_all().await.expect("arrêt");
 
-    // Chaque module n'a qu'une release, et chaque migration n'a été appliquée qu'une fois.
+    // Chaque module n'a qu'une release. Aucun module hébergé ne déclare de migration (schémas
+    // installés par la phase `schemas`) ; l'application unique d'une migration est prouvée par
+    // les tests de lyxal_runtime (lease_fencing_tests, multi_node_locking_tests).
     let mut res = client
         .query("RETURN count(SELECT * FROM runtime_migration); RETURN count(SELECT * FROM runtime_release);")
         .await
@@ -177,14 +179,7 @@ async fn restart_on_installed_database_is_idempotent() {
     } else {
         5
     };
-    assert_eq!(
-        migrations,
-        Some(if cfg!(feature = "module-ingestion") {
-            1
-        } else {
-            0
-        })
-    );
+    assert_eq!(migrations, Some(0));
     assert_eq!(releases, Some(hosted));
 }
 
