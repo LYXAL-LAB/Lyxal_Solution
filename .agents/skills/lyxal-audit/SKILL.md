@@ -151,7 +151,7 @@ Tant que le CTO n'a pas déclaré la première mise en production, signaler comm
 1. Plus d'un fichier dans `migrations/` (le module ne doit avoir que `0001_initial.surql`, à l'état cible).
 2. Tout élément conservé pour compatibilité : alias, fonction / champ / code d'erreur déprécié, `#[deprecated]`, branche `legacy` / `v1` / `fallback` lisant un ancien format.
 3. Code mort, commenté ou non appelé.
-4. Documents historiques dans le module : rapports de clôture, d'audit ou de recette passés, `CHANGELOG.md` de versions jamais livrées, `implementation_plan.md` déjà exécuté.
+4. Documents historiques dans le module : rapports de clôture, d'audit ou de recette passés, `CHANGELOG.md` de versions jamais livrées, `implementation_plan.md` déjà exécuté. Une `ROADMAP.md` (évolutions à venir) n'en est **pas** un : signaler seulement ses parties périmées (étapes réalisées, références fausses) à mettre à jour, jamais sa suppression.
 5. Version `manifest.toml` / `Cargo.toml` ≥ `1.0.0`.
 
 Une rupture de contrat public n'est **pas** un écart en pré-production si tous les appelants du dépôt ont été mis à jour ; elle est un **P1** si un appelant n'a pas été mis à jour (workspace cassé ou dépendance implicite rompue).

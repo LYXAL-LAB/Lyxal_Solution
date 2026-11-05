@@ -95,5 +95,6 @@
 ## 🔗 Références & Documentation Associée
 - Charte d'architecture Lyxal OS : [`LYXAL_ARCHITECTURE.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/LYXAL_ARCHITECTURE.md)
 - Audit architectural des tables relationnelles SurrealDB : [`docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md`](../01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md)
+- Roadmap Master Catalogue : [`crates/lyxal_catalogue/ROADMAP.md`](../../crates/lyxal_catalogue/ROADMAP.md)
 - Roadmap Pipeline Ingestion : [`crates/lyxal_pipeline_ingestion/ROADMAP.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/ROADMAP.md)
 - Serveur hôte officiel : [`apps/lyxal-server/README.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/apps/lyxal-server/)

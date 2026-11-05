@@ -9,6 +9,8 @@ crate Rust, hébergé par `lyxal-server` (`ManifestModule`). Cible : SurrealDB 3
 `lyxal_core` (validation et nettoyage des entrées, règle `gtin`), `lyxal_error` (contrat de
 résultat, définitions d'erreurs) et `lyxal_base` (unités de mesure).
 
+Évolutions prévues : [`ROADMAP.md`](ROADMAP.md).
+
 ---
 
 ## 1. Tables (`schema/`)

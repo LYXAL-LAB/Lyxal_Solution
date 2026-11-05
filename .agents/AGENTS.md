@@ -30,7 +30,7 @@ Chaque module repris doit sortir **propre, à l'état cible**, comme s'il était
 1. **Rupture libre et coordonnée** : un contrat public (SurrealQL, Rust, événement) peut être renommé, modifié ou supprimé. Obligation unique : mettre à jour **dans le même changement** tous les appelants du dépôt, pour que le workspace compile et que les tests passent. Le changement de contrat reste mentionné dans l'`implementation_plan.md` soumis au CTO.
 2. **Une seule migration par module** : `migrations/0001_initial.surql` décrit le schéma cible complet et **est réécrite en place** à chaque évolution. Une base de développement existante est **supprimée et recréée** ; la vérification du `MigrationChecksum` n'impose donc rien en pré-production.
 3. **Versions `0.x`** : tant qu'aucun module n'est livré, les versions (`manifest.toml`, `Cargo.toml`) restent en `0.y.z` et les contraintes de dépendance en `>=0.1.0`. Un statut annoncé (« gelé », « V1.1 », « clôturé staging ») décrit un état d'avancement, **pas** une obligation de compatibilité. Les décisions d'architecture associées (ex. pas de `TYPE RELATION` sur les tables existantes) restent valables.
-4. **Documentation de l'état actuel uniquement** : le `README.md` du module décrit ce qui existe aujourd'hui. Pas de `CHANGELOG.md` avant la première version livrée. Un `implementation_plan.md` est supprimé une fois exécuté et fusionné.
+4. **Documentation de l'état actuel uniquement** : le `README.md` du module décrit ce qui existe aujourd'hui. Pas de `CHANGELOG.md` avant la première version livrée. Un `implementation_plan.md` est supprimé une fois exécuté et fusionné. La **feuille de route** `ROADMAP.md` décrit les évolutions à venir : elle n'est pas un document historique, elle est **conservée** et remise à jour à chaque reprise (étapes réalisées retirées car décrites par le `README.md`, références corrigées), jamais supprimée.
 5. **Nettoyage à la reprise** : lors de la reprise d'un module, tout élément relevant du §0.2 est supprimé dans le même chantier et listé dans le plan.
 
 ## 0.4. Ce qui reste inchangé
@@ -164,6 +164,7 @@ module_name/
 ├── tests/                   <-- Tests SurrealQL `*.test.surql`, exécutés en CI par scripts/ci/test_lyxal_modules.py
 ├── src/                     <-- Code source Rust (Types, Wrappers, LyxalModule, Workers)
 ├── README.md                <-- Documentation du module
+├── ROADMAP.md               <-- Évolutions à venir (conservée et mise à jour à chaque reprise, cf. §0)
 ├── CHANGELOG.md             <-- Historique des versions (créé à la première version livrée, cf. §0)
 └── implementation_plan.md   <-- Plan courant d'implémentation (supprimé une fois exécuté, cf. §0)
 ```

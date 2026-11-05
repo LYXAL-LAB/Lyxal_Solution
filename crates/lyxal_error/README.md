@@ -7,6 +7,9 @@ journal des occurrences. Il ne contient aucune logique métier d'un autre module
 Version `0.1.0` (régime pré-production, `.agents/AGENTS.md` §0). Cible : SurrealDB 3.3.4,
 SDK `surrealdb` 3.3. Dépend de `lyxal_core` (validation des entrées).
 
+
+Évolutions prévues : [`ROADMAP.md`](ROADMAP.md).
+
 ---
 
 ## 1. Contrat de résultat

@@ -570,6 +570,7 @@ Avant toute implémentation, Antigravity doit vérifier les points suivants.
 * [ ] Une seule migration `migrations/0001_initial.surql`, à l'état cible.
 * [ ] Aucun code mort ou commenté.
 * [ ] Aucun document historique (rapport de clôture/audit/recette passé, changelog non livré, plan déjà exécuté) conservé dans le module.
+* [ ] `ROADMAP.md` conservée et mise à jour (évolutions à venir seulement), jamais supprimée.
 * [ ] Versions en `0.y.z`.
 
 ## Validation CTO

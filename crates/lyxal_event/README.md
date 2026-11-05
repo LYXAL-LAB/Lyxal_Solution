@@ -9,6 +9,9 @@ Version `0.1.0` (régime pré-production, `.agents/AGENTS.md` §0). Cible : Surr
 SDK `surrealdb` 3.3. Dépend de `lyxal_core` (validation des entrées), `lyxal_error` (contrat de
 résultat, définitions d'erreurs) et `lyxal_surreal` (transport).
 
+
+Évolutions prévues : [`ROADMAP.md`](ROADMAP.md).
+
 ---
 
 ## 1. Garanties
