@@ -66,7 +66,7 @@ Suite de `AUDIT.md`. **Q1 à Q4 validées par le CTO** (option A pour chacune).
 | Lot | Contenu |
 | :- | :--- |
 | 1 ✅ | **Installation et master data** (C-01, C-03, C-04, C-08 en partie, C-10) : `error/<thème>/*.surql` source unique (68 définitions reprises de `seeds/error_definitions.surql`, supprimé, + 6 codes manquants), protégées par `record::exists` et déclarées en `error_definitions` ; seeds de référence rejouables ; seeds de démonstration déplacés dans `tests/fixtures/` (Q3) ; manifeste `0.1.0` avec dépendance `lyxal_error` ; catalogue hébergé par le serveur (`build.rs`) ; test serveur `every_emitted_error_code_is_defined` (tous les modules repris ; l'ingestion, dont 14 codes émis n'ont pas de définition, y entrera à sa reprise). |
-| 2 | **Primitive GTIN** (Q1, C-05) : `fn::validation_gtin` dans `lyxal_core` avec ses tests ; fonction locale supprimée. |
+| 2 ✅ | **Primitive GTIN** (Q1, C-05) : `fn::validation_gtin($value)` dans `lyxal_core/validations` (GTIN-8/12/13/14, clé GS1 modulo 10, espaces et tirets retirés), règle `gtin` du moteur (176 règles), 13 tests au banc ; `fn::catalogue_validate_gtin` supprimée, garde de schéma et fonctions `catalogue_item_create` / `_update` sur la primitive du Core. |
 | 3 | **Entrées par le Core** (Q2, C-02) : 23 fonctions sur le moteur de validation et de nettoyage. |
 | 4 | **Tests** (Q4, C-06) : banc SurrealQL du catalogue exécuté par la CI ; suite PowerShell supprimée. |
 | 5 | **Clôture** : `README.md` à l'état actuel (dont le contrat de publication), `COMMENT` manquants (C-09), suppression de `CHANGELOG.md`, `ROADMAP.md`, `AUDIT.md` et de ce plan ; `AGENTS.md` aligné. |

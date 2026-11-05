@@ -80,6 +80,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_step_catalog() -> array<object> {
         { rule: "full_name", cost: 1, required: ["min_words", "max_words", "max_length"] },
         { rule: "future_datetime", cost: 1, required: ["allow_equal"] },
         { rule: "geohash", cost: 1, required: ["min_length", "max_length"] },
+        { rule: "gtin", cost: 1 },
         { rule: "geometry", cost: 1, required: ["require_valid"] },
         { rule: "hexadecimal", cost: 1, required: ["allow_prefix"] },
         { rule: "hmac_signature", cost: 1, required: ["encoding"] },

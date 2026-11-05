@@ -162,7 +162,7 @@ Un seul moteur exécute les pipelines de tous les domaines. Il ne connaît aucun
 
 | Domaine | Catalogue | Points d'entrée | Résultat |
 | :--- | :--- | :--- | :--- |
-| `validations` | `fn::validation_step_catalog()` : 175 règles, une par validateur à une seule valeur | `fn::validation_pipeline_execute($value, $pipeline, $max_steps)`, `fn::validation_object_execute($value, $schema, $max_steps)` | rapport `{ valid, value, errors, warnings, by_field }` ; ne lève jamais pour une donnée invalide |
+| `validations` | `fn::validation_step_catalog()` : 176 règles, une par validateur à une seule valeur | `fn::validation_pipeline_execute($value, $pipeline, $max_steps)`, `fn::validation_object_execute($value, $schema, $max_steps)` | rapport `{ valid, value, errors, warnings, by_field }` ; ne lève jamais pour une donnée invalide |
 | `sanitize` | `fn::sanitize_step_catalog()` : 93 règles, une par fonction de valeurs (sauf `date_range`), plus `default` | `fn::sanitize_pipeline_execute($value, $pipeline, $max_steps)`, `fn::sanitize_object_execute($value, $schema, $max_steps)` | valeur nettoyée ; donnée non nettoyable → `CORE_SANITIZE_INVALID_TYPE` |
 | `security` | `fn::security_step_catalog()` : 22 règles (masquage et empreintes, détections, `permission_check`) | `fn::security_pipeline_execute($value, $pipeline, $max_steps)`, `fn::security_object_execute($value, $schema, $max_steps)` | `{ value, findings, score, decisions, allowed, errors }` |
 

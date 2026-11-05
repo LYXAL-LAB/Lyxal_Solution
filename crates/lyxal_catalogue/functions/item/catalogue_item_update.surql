@@ -13,7 +13,8 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
     LET $statut_comm = IF $params.statut_commercial != NONE { string::uppercase(string::trim($params.statut_commercial)) } ELSE { NONE };
     LET $documents = $params.documents;
     LET $conditionnement = $params.conditionnement;
-    LET $code_barre = IF $params.code_barre != NONE { string::trim($params.code_barre) } ELSE { NONE };
+    -- GTIN ramené à sa forme normalisée par lyxal_core (chiffres seuls) ; une valeur invalide est conservée telle quelle et refusée plus loin.
+    LET $code_barre = IF $params.code_barre != NONE { fn::validation_gtin($params.code_barre).value ?? string::trim($params.code_barre) } ELSE { NONE };
     LET $fabricant = IF $params.fabricant != NONE { string::uppercase(string::trim($params.fabricant)) } ELSE { NONE };
     LET $marque = IF $params.marque != NONE { string::uppercase(string::trim($params.marque)) } ELSE { NONE };
     LET $ref_fab = IF $params.reference_fabricant != NONE { string::trim($params.reference_fabricant) } ELSE { NONE };
@@ -174,7 +175,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
     -- Validation GS1 si le code-barres est modifié
     LET $final_gtin = IF $code_barre != NONE { $code_barre } ELSE { $item.code_barre };
     IF $code_barre != NONE AND $code_barre != $item.code_barre {
-        LET $is_gtin_valid = fn::catalogue_validate_gtin($code_barre);
+        LET $is_gtin_valid = fn::validation_gtin($code_barre).valid;
         IF $is_gtin_valid != true {
             RETURN fn::error_result("CATALOGUE_ITEM_GTIN_INVALID", $language, { code_barre: $code_barre });
         };
