@@ -1,13 +1,12 @@
-//! Implémentation du store de persistance industrielle SurrealDB pour le pipeline d'ingestion.
+//! Store SurrealDB du pipeline d'ingestion.
 //!
-//! Entièrement réaligné avec la Charte d'Architecture Lyxal OS (AGENTS.md) :
-//! - Implémentation du trait universel `LyxalSurrealCall`.
-//! - Appel exclusif des fonctions publiques `fn::ingestion_*` via `self.call_fn(...)`.
-//! - Externalisation des règles métier (familles, spécifications, alias, substitutions) dans SurrealDB.
-//! - Découplage complet de la logique métier Rust vers SurrealQL.
+//! Chaque opération appelle une fonction publique `fn::ingestion_*` par
+//! [`LyxalSurrealCall::call_fn`] : validation des entrées, écritures, transitions d'état et
+//! contrôles d'identité vivent dans le SurrealQL du module ; le Rust ne construit aucune requête.
+//! Une erreur métier (`fn::error_result`) remonte avec son code dans
+//! [`IngestionError::Surreal`].
 
-use lyxal_surreal::SurrealValue;
-use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError};
+use lyxal_surreal::{Datetime, LyxalSurrealCall, LyxalSurrealError, SurrealValue};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use surrealdb::engine::any::Any;
@@ -16,30 +15,75 @@ use surrealdb::Surreal;
 use crate::error::{IngestionError, IngestionResult};
 use crate::models::{IngestionBatch, PublicationManifest, QuarantineRecord, RawRecord, StagedItem};
 use crate::technical_grouping::{ContextualSubstitutionRule, FamilyRule, TechnicalSpecification};
-use crate::types::{BatchStatus, ManifestStatus, StateTransitionRecord};
+use crate::types::{
+    BatchStatus, ItemQualification, ManifestStatus, PackagingDetails, PublicationAction,
+    SourceFormat,
+};
+
+/// Taille des pages lues pour charger tous les articles ou anomalies d'un lot.
+const PAGE_SIZE: i64 = 1000;
+
+/// Identifiant court d'un enregistrement (`table:clé` ou `clé`).
+fn key<'a>(id: &'a str, table: &str) -> &'a str {
+    id.strip_prefix(table)
+        .and_then(|rest| rest.strip_prefix(':'))
+        .unwrap_or(id)
+}
+
+/// Indique si l'erreur est l'erreur métier `code`.
+fn is_business(err: &LyxalSurrealError, code: &str) -> bool {
+    matches!(err, LyxalSurrealError::Call(call) if call.is_business_code(code))
+}
 
 // =============================================================================
-// DTOs DE PARAMÈTRES POUR call_fn
+// PARAMÈTRES PUBLICS
+// =============================================================================
+
+/// Nouveau lot d'ingestion (`fn::ingestion_batch_create`), créé à l'état `RECEIVED`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct NewBatch {
+    /// Identifiant choisi par l'appelant ; généré (UUID v7) si absent.
+    pub id: Option<String>,
+    pub source_type: SourceFormat,
+    pub source_format_version: String,
+    pub fournisseur_id: String,
+    pub nom_fichier: String,
+    /// Empreinte BLAKE3 (64 caractères hexadécimaux) du fichier : clé d'idempotence.
+    pub file_hash_blake3: String,
+    pub taille_octets: i64,
+    pub chunk_size: i64,
+    pub provenance_details: serde_json::Value,
+}
+
+/// Manifeste brouillon ou scellé (`fn::ingestion_manifest_save`).
+#[derive(Debug, Clone, SurrealValue)]
+pub struct ManifestDraft {
+    pub manifest_ref: String,
+    pub batch_id: String,
+    pub manifest_version: i64,
+    /// Sceau BLAKE3 des empreintes canoniques des articles du lot.
+    pub seal_hash: String,
+    /// `Draft` ou `Sealed` ; approbation et exécution ont leurs propres fonctions.
+    pub statut: ManifestStatus,
+    pub nb_articles_insert: i64,
+    pub nb_articles_update: i64,
+}
+
+/// Référentiels du regroupement technique (`fn::ingestion_rules_load`).
+#[derive(Debug, Clone, SurrealValue)]
+pub struct RulesSnapshot {
+    pub families: Vec<FamilyRule>,
+    pub specifications: Vec<TechnicalSpecification>,
+    pub substitutions: Vec<ContextualSubstitutionRule>,
+}
+
+// =============================================================================
+// PARAMÈTRES INTERNES
 // =============================================================================
 
 #[derive(SurrealValue)]
-struct BatchCreateParams {
-    id: Option<String>,
-    source_type: String,
-    source_format_version: String,
-    fournisseur_id: String,
-    nom_fichier: String,
-    file_hash_blake3: String,
-    taille_octets: i64,
-    statut: String,
-    cursor_offset: i64,
-    chunk_size: i64,
-    total_lignes: i64,
-    lignes_verifiees: i64,
-    lignes_a_confirmer: i64,
-    lignes_rejetees: i64,
-    transitions: Vec<StateTransitionRecord>,
-    provenance_details: serde_json::Value,
+struct IdParams {
+    id: String,
 }
 
 #[derive(SurrealValue)]
@@ -55,17 +99,27 @@ struct BatchCheckpointParams {
 #[derive(SurrealValue)]
 struct BatchTransitionParams {
     id: String,
-    nouveau_statut: String,
-    transition: StateTransitionRecord,
+    nouveau_statut: BatchStatus,
+    reason: String,
 }
 
 #[derive(SurrealValue)]
-struct StagedSaveParams {
+struct RawRecordParams {
+    ligne_numero: i64,
+    row_hash: String,
+    payload_brut: serde_json::Value,
+}
+
+#[derive(SurrealValue)]
+struct RawRecordsSaveParams {
     batch_id: String,
-    raw_record_id: Option<String>,
+    records: Vec<RawRecordParams>,
+}
+
+#[derive(SurrealValue)]
+struct StagedItemParams {
     ligne_numero: i64,
     canonical_fingerprint: String,
-    rules_version: String,
     fabricant: String,
     marque: Option<String>,
     reference_fabricant: String,
@@ -74,17 +128,55 @@ struct StagedSaveParams {
     description_technique: Option<String>,
     type_item: String,
     unite_reference: String,
-    conditionnement: crate::types::PackagingDetails,
-    qualification: String,
-    publication_action: String,
+    conditionnement: PackagingDetails,
+    qualification: ItemQualification,
+    qualification_reason: Option<String>,
+    commercial_proof: Option<crate::proof::CommercialProof>,
+    publication_action: PublicationAction,
     diff_payload: Option<serde_json::Value>,
-    transitions: Vec<StateTransitionRecord>,
+}
+
+impl From<&StagedItem> for StagedItemParams {
+    fn from(item: &StagedItem) -> Self {
+        Self {
+            ligne_numero: item.ligne_numero as i64,
+            canonical_fingerprint: item.canonical_fingerprint.clone(),
+            fabricant: item.fabricant.clone(),
+            marque: item.marque.clone(),
+            reference_fabricant: item.reference_fabricant.clone(),
+            code_barre_gtin: item.code_barre_gtin.clone(),
+            libelle_commercial: item.libelle_commercial.clone(),
+            description_technique: item.description_technique.clone(),
+            type_item: item.type_item.clone(),
+            unite_reference: item.unite_reference.clone(),
+            conditionnement: item.conditionnement.clone(),
+            qualification: item.qualification,
+            qualification_reason: item.qualification_reason.clone(),
+            commercial_proof: item.commercial_proof.clone(),
+            publication_action: item.publication_action,
+            diff_payload: item.diff_payload.clone(),
+        }
+    }
+}
+
+#[derive(SurrealValue)]
+struct StagedSaveParams {
+    batch_id: String,
+    rules_version: String,
+    items: Vec<StagedItemParams>,
+}
+
+/// Résultat d'un article de `fn::ingestion_staged_save`.
+#[derive(SurrealValue)]
+struct StagedSaveOutcome {
+    ok: bool,
+    id: Option<String>,
+    error: Option<lyxal_error::LyxalError>,
 }
 
 #[derive(SurrealValue)]
 struct QuarantineLogParams {
     batch_id: String,
-    raw_record_id: Option<String>,
     ligne_numero: i64,
     code_erreur: String,
     severite: String,
@@ -94,20 +186,8 @@ struct QuarantineLogParams {
 }
 
 #[derive(SurrealValue)]
-struct ManifestSaveParams {
+struct ManifestRefParams {
     manifest_ref: String,
-    batch_id: String,
-    manifest_version: i64,
-    seal_hash: String,
-    is_sealed: bool,
-    statut: String,
-    nb_articles_insert: i64,
-    nb_articles_update: i64,
-    items_committed: i64,
-    items_failed: i64,
-    execution_items: Option<Vec<serde_json::Value>>,
-    transitions: Option<Vec<StateTransitionRecord>>,
-    executed_at: Option<lyxal_surreal::Datetime>,
 }
 
 #[derive(SurrealValue)]
@@ -119,38 +199,28 @@ struct ManifestApproveParams {
 #[derive(SurrealValue)]
 struct ManifestRecordExecParams {
     manifest_ref: String,
-    statut: String,
+    statut: ManifestStatus,
     items_committed: i64,
     items_failed: i64,
-    execution_items: Option<Vec<serde_json::Value>>,
+}
+
+#[derive(SurrealValue)]
+struct ManifestExecutionItemParams {
+    manifest_ref: String,
+    item_ref: String,
+    action: PublicationAction,
+    success: bool,
+    error: Option<String>,
 }
 
 #[derive(SurrealValue)]
 struct ResolveUnitParams {
     raw_unit: String,
-    language: String,
-}
-
-/// Résultat de la résolution dynamique d'unité vers base_unite
-#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
-pub struct ResolveUnitResult {
-    pub canonical_code: String,
-    pub resolved: bool,
 }
 
 #[derive(SurrealValue)]
 struct ResolveManufacturerParams {
     raw_name: String,
-    language: String,
-}
-
-/// Résultat de la résolution dynamique de fabricant
-#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
-pub struct ResolveManufacturerResult {
-    pub canonical_name: String,
-    pub holding_or_group: Option<String>,
-    pub is_verified: bool,
-    pub resolved: bool,
 }
 
 #[derive(SurrealValue)]
@@ -184,18 +254,34 @@ struct SubstitutionRuleAddParams {
     system_scope: String,
     certification_body: String,
     certification_ref: String,
-    valid_until: String,
+    valid_until: Datetime,
     is_revoked: bool,
     revocation_reason: Option<String>,
 }
 
-// =============================================================================
-// DTOs PHASE 5 : DATA STEWARD & OBSERVABILITÉ
-// =============================================================================
-
 #[derive(SurrealValue)]
 struct DashboardMetricsParams {
     batch_id: Option<String>,
+}
+
+// =============================================================================
+// RÉSULTATS
+// =============================================================================
+
+/// Unité résolue vers `base_unite`.
+#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
+pub struct ResolveUnitResult {
+    pub canonical_code: String,
+    pub resolved: bool,
+}
+
+/// Fabricant résolu par ses alias (ou nom normalisé si inconnu).
+#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
+pub struct ResolveManufacturerResult {
+    pub canonical_name: String,
+    pub holding_or_group: Option<String>,
+    pub is_verified: bool,
+    pub resolved: bool,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
@@ -239,33 +325,36 @@ pub struct ManifestsMetrics {
     pub committed: i64,
 }
 
-#[derive(Serialize, Default, Debug, Clone, SurrealValue)]
+/// Filtre de `fn::ingestion_staged_list`.
+#[derive(Default, Debug, Clone, SurrealValue)]
 pub struct StagedListFilter {
     pub batch_id: Option<String>,
-    pub qualification: Option<String>,
+    pub qualification: Option<ItemQualification>,
     pub fabricant: Option<String>,
     pub limit: Option<i64>,
     pub start: Option<i64>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct StagedListResult {
-    pub items: Vec<serde_json::Value>,
+    pub items: Vec<StagedItem>,
     pub total: i64,
     pub limit: i64,
     pub start: i64,
 }
 
-#[derive(Serialize, Debug, Clone, SurrealValue)]
+/// Paramètres de `fn::ingestion_staged_requalify` (identité lue dans la session).
+#[derive(Debug, Clone, SurrealValue)]
 pub struct StagedRequalifyParams {
     pub item_id: String,
-    pub new_qualification: String,
+    pub new_qualification: ItemQualification,
     pub justification: String,
     pub proof: Option<crate::proof::CommercialProof>,
     pub language: Option<String>,
 }
 
-#[derive(Serialize, Default, Debug, Clone, SurrealValue)]
+/// Filtre de `fn::ingestion_quarantine_list`.
+#[derive(Default, Debug, Clone, SurrealValue)]
 pub struct QuarantineListFilter {
     pub batch_id: Option<String>,
     pub severite: Option<String>,
@@ -274,49 +363,52 @@ pub struct QuarantineListFilter {
     pub start: Option<i64>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct QuarantineListResult {
-    pub records: Vec<serde_json::Value>,
+    pub records: Vec<QuarantineRecord>,
     pub total: i64,
     pub limit: i64,
     pub start: i64,
 }
 
-#[derive(Serialize, Debug, Clone, SurrealValue)]
+/// Corrections appliquées à l'article lié lors d'une résolution de quarantaine.
+#[derive(Default, Debug, Clone, SurrealValue)]
+pub struct QuarantineCorrections {
+    pub corrected_gtin: Option<String>,
+    pub corrected_unit: Option<String>,
+}
+
+/// Paramètres de `fn::ingestion_quarantine_resolve` (identité lue dans la session).
+#[derive(Debug, Clone, SurrealValue)]
 pub struct QuarantineResolveParams {
     pub quarantine_id: String,
     pub comment: String,
     pub staged_item_id: Option<String>,
-    pub corrections: Option<serde_json::Value>,
+    pub corrections: Option<QuarantineCorrections>,
     pub language: Option<String>,
 }
 
-#[derive(Serialize, Default, Debug, Clone, SurrealValue)]
+/// Filtre de `fn::ingestion_manifest_list`.
+#[derive(Default, Debug, Clone, SurrealValue)]
 pub struct ManifestListFilter {
     pub batch_id: Option<String>,
-    pub statut: Option<String>,
+    pub statut: Option<ManifestStatus>,
     pub limit: Option<i64>,
     pub start: Option<i64>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct ManifestListResult {
-    pub manifests: Vec<serde_json::Value>,
+    pub manifests: Vec<PublicationManifest>,
     pub total: i64,
     pub limit: i64,
     pub start: i64,
 }
 
-#[derive(Serialize, Debug, Clone, SurrealValue)]
-pub struct ManifestGetDetailParams {
-    pub manifest_ref: String,
-    pub language: Option<String>,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
+#[derive(Debug, Clone, SurrealValue)]
 pub struct ManifestDetailResult {
-    pub manifest: serde_json::Value,
-    pub batch: Option<serde_json::Value>,
+    pub manifest: PublicationManifest,
+    pub batch: Option<IngestionBatch>,
     pub is_sealed: bool,
     pub seal_hash: String,
     pub execution_count: i64,
@@ -324,7 +416,7 @@ pub struct ManifestDetailResult {
 }
 
 // =============================================================================
-// STORE INDUSTRIEL
+// STORE
 // =============================================================================
 
 /// Store de persistance SurrealDB pour le pipeline d'ingestion Lyxal OS.
@@ -341,101 +433,38 @@ impl LyxalSurrealCall for IngestionStore {
 }
 
 impl IngestionStore {
-    /// Initialise le store avec une instance `Surreal<Any>` existante
+    /// Initialise le store avec une instance `Surreal<Any>` existante.
     pub fn new(db: Surreal<Any>) -> Self {
         Self { db: Arc::new(db) }
     }
 
-    /// Récupère la référence au client SurrealDB
+    /// Client SurrealDB sous-jacent.
     pub fn client(&self) -> &Surreal<Any> {
         &self.db
     }
 
-    // =========================================================================
-    // 1. GESTION DES LOTS (Appels via store.call_fn)
-    // =========================================================================
+    // --- Lots ---------------------------------------------------------------
 
-    /// Crée un nouveau lot en base avec contrôle d'idempotence via fn::ingestion_batch_create
-    pub async fn create_batch(&self, batch: &IngestionBatch) -> IngestionResult<String> {
-        let id_val_raw = batch
-            .id
-            .clone()
-            .unwrap_or_else(|| format!("batch_{}", &batch.file_hash_blake3[..16]));
-        let id_val = id_val_raw
-            .strip_prefix("ingestion_batch:")
-            .unwrap_or(&id_val_raw)
-            .to_string();
-
-        let params = BatchCreateParams {
-            id: Some(id_val.clone()),
-            source_type: batch.source_type.as_str().to_string(),
-            source_format_version: batch.source_format_version.clone(),
-            fournisseur_id: batch.fournisseur_id.clone(),
-            nom_fichier: batch.nom_fichier.clone(),
-            file_hash_blake3: batch.file_hash_blake3.clone(),
-            taille_octets: batch.taille_octets as i64,
-            statut: batch.statut.as_str().to_string(),
-            cursor_offset: batch.cursor_offset as i64,
-            chunk_size: batch.chunk_size as i64,
-            total_lignes: batch.total_lignes as i64,
-            lignes_verifiees: batch.lignes_verifiees as i64,
-            lignes_a_confirmer: batch.lignes_a_confirmer as i64,
-            lignes_rejetees: batch.lignes_rejetees as i64,
-            transitions: batch.transitions.clone(),
-            provenance_details: batch.provenance_details.clone(),
-        };
-
-        let result: String = self
-            .call_fn("ingestion_batch_create", params)
-            .await
-            .map_err(|e| {
-                IngestionError::Storage(format!("Échec fn::ingestion_batch_create : {e}"))
-            })?;
-
-        Ok(result)
+    /// Crée un lot à l'état `RECEIVED` ; un fichier déjà reçu renvoie `INGESTION_BATCH_DUPLICATE`.
+    pub async fn create_batch(&self, batch: &NewBatch) -> IngestionResult<String> {
+        Ok(self
+            .call_fn("ingestion_batch_create", batch.clone())
+            .await?)
     }
 
-    /// Récupère un lot par son identifiant
+    /// Lit un lot ; `None` s'il n'existe pas.
     pub async fn get_batch(&self, batch_id: &str) -> IngestionResult<Option<IngestionBatch>> {
-        let clean_id = batch_id
-            .strip_prefix("ingestion_batch:")
-            .unwrap_or(batch_id);
-        let mut res = self
-            .db
-            .query("SELECT *, <string> record::id(id) AS id FROM ingestion_batch WHERE id = <record> string::concat('ingestion_batch:⟨', $id, '⟩');")
-            .bind(("id", clean_id.to_string()))
-            .await
-            .map_err(|e| IngestionError::Storage(format!("Échec lecture lot : {e}")))?;
-
-        let batch: Option<IngestionBatch> = res
-            .take(0)
-            .map_err(|e| IngestionError::Storage(format!("Erreur désérialisation lot : {e}")))?;
-
-        Ok(batch)
+        let params = IdParams {
+            id: key(batch_id, "ingestion_batch").to_string(),
+        };
+        match self.call_fn("ingestion_batch_get", params).await {
+            Ok(batch) => Ok(Some(batch)),
+            Err(e) if is_business(&e, "INGESTION_BATCH_NOT_FOUND") => Ok(None),
+            Err(e) => Err(e.into()),
+        }
     }
 
-    /// Recherche un lot par hash BLAKE3 du fichier pour vérifier l'idempotence globale
-    pub async fn find_batch_by_hash(
-        &self,
-        source_type: &str,
-        file_hash: &str,
-    ) -> IngestionResult<Option<IngestionBatch>> {
-        let mut res = self
-            .db
-            .query("SELECT *, <string> record::id(id) AS id FROM ingestion_batch WHERE source_type = $st AND file_hash_blake3 = $hash LIMIT 1;")
-            .bind(("st", source_type.to_uppercase()))
-            .bind(("hash", file_hash.to_lowercase()))
-            .await
-            .map_err(|e| IngestionError::Storage(format!("Échec recherche lot par hash : {e}")))?;
-
-        let batches: Vec<IngestionBatch> = res
-            .take(0)
-            .map_err(|e| IngestionError::Storage(format!("Erreur lecture recherche : {e}")))?;
-
-        Ok(batches.into_iter().next())
-    }
-
-    /// Enregistre un point de reprise (checkpoint) via fn::ingestion_batch_checkpoint
+    /// Enregistre un point de reprise du lot.
     pub async fn save_checkpoint(
         &self,
         batch_id: &str,
@@ -445,218 +474,159 @@ impl IngestionStore {
         to_confirm: usize,
         rejected: usize,
     ) -> IngestionResult<()> {
-        let clean_id = batch_id
-            .strip_prefix("ingestion_batch:")
-            .unwrap_or(batch_id);
         let params = BatchCheckpointParams {
-            id: clean_id.to_string(),
+            id: key(batch_id, "ingestion_batch").to_string(),
             cursor_offset: cursor_offset as i64,
             total_lignes: total_lignes as i64,
             lignes_verifiees: verified as i64,
             lignes_a_confirmer: to_confirm as i64,
             lignes_rejetees: rejected as i64,
         };
-
-        let _: bool = self
-            .call_fn("ingestion_batch_checkpoint", params)
-            .await
-            .map_err(|e| {
-                IngestionError::Storage(format!("Échec fn::ingestion_batch_checkpoint : {e}"))
-            })?;
-
+        let _: bool = self.call_fn("ingestion_batch_checkpoint", params).await?;
         Ok(())
     }
 
-    /// Charge le dernier offset de checkpoint d'un lot
+    /// Dernier offset enregistré d'un lot.
     pub async fn load_checkpoint(&self, batch_id: &str) -> IngestionResult<usize> {
-        let clean_id = batch_id
-            .strip_prefix("ingestion_batch:")
-            .unwrap_or(batch_id);
         let batch = self
-            .get_batch(clean_id)
+            .get_batch(batch_id)
             .await?
             .ok_or_else(|| IngestionError::Storage(format!("Lot '{batch_id}' introuvable")))?;
         Ok(batch.cursor_offset)
     }
 
-    /// Met à jour l'état d'un lot via fn::ingestion_batch_transition
+    /// Fait passer un lot dans un nouvel état ; la transition est journalisée par SurrealQL
+    /// au nom de l'identité de la session.
     pub async fn update_batch_status(
         &self,
         batch_id: &str,
         new_status: BatchStatus,
-        actor: &str,
-        reason: Option<&str>,
+        reason: &str,
     ) -> IngestionResult<()> {
-        let clean_id = batch_id
-            .strip_prefix("ingestion_batch:")
-            .unwrap_or(batch_id);
-        let batch = self
-            .get_batch(clean_id)
-            .await?
-            .ok_or_else(|| IngestionError::Storage(format!("Lot '{batch_id}' introuvable")))?;
-
-        let old_status = batch.statut;
-        let transition = StateTransitionRecord {
-            from_statut: old_status.as_str().to_string(),
-            to_statut: new_status.as_str().to_string(),
-            transition_at: "2026-10-25T11:00:00Z".to_string(),
-            transition_by: actor.to_string(),
-            reason: reason.unwrap_or("Transition d'état de lot").to_string(),
-        };
-
         let params = BatchTransitionParams {
-            id: clean_id.to_string(),
-            nouveau_statut: new_status.as_str().to_string(),
-            transition,
+            id: key(batch_id, "ingestion_batch").to_string(),
+            nouveau_statut: new_status,
+            reason: reason.to_string(),
         };
-
-        let _: bool = self
-            .call_fn("ingestion_batch_transition", params)
-            .await
-            .map_err(|e| {
-                IngestionError::Storage(format!("Échec fn::ingestion_batch_transition : {e}"))
-            })?;
-
+        let _: bool = self.call_fn("ingestion_batch_transition", params).await?;
         Ok(())
     }
 
-    // =========================================================================
-    // 2. PERSISTANCE DES LIGNES ET DU STAGING (via store.call_fn)
-    // =========================================================================
+    // --- Lignes brutes et staging -----------------------------------------
 
-    /// Sauvegarde un bloc de lignes brutes
-    pub async fn save_raw_records_chunk(&self, records: &[RawRecord]) -> IngestionResult<()> {
-        for rec in records {
-            let clean_batch = rec
-                .batch
-                .strip_prefix("ingestion_batch:")
-                .unwrap_or(&rec.batch);
-            let rec_id = format!("{}_{}", clean_batch, rec.ligne_numero);
-
-            let query = r#"
-                LET $target = <record> string::concat('ingestion_raw_record:⟨', $rec_id, '⟩');
-                LET $b_target = <record> string::concat('ingestion_batch:⟨', $batch_id, '⟩');
-                UPSERT $target CONTENT {
-                    batch: $b_target,
-                    ligne_numero: $ligne_numero,
-                    payload_brut: $payload,
-                    row_hash: $row_hash
-                };
-            "#;
-
-            self.db
-                .query(query)
-                .bind(("rec_id", rec_id))
-                .bind(("batch_id", clean_batch.to_string()))
-                .bind(("ligne_numero", rec.ligne_numero as i64))
-                .bind(("payload", rec.payload_brut.clone()))
-                .bind(("row_hash", rec.row_hash.clone()))
-                .await
-                .map_err(|e| {
-                    IngestionError::Storage(format!("Échec sauvegarde raw record : {e}"))
-                })?;
-        }
-        Ok(())
+    /// Enregistre un bloc de lignes brutes ; une ligne déjà présente est conservée.
+    /// Renvoie le nombre de lignes créées.
+    pub async fn save_raw_records_chunk(
+        &self,
+        batch_id: &str,
+        records: &[RawRecord],
+    ) -> IngestionResult<usize> {
+        let params = RawRecordsSaveParams {
+            batch_id: key(batch_id, "ingestion_batch").to_string(),
+            records: records
+                .iter()
+                .map(|r| RawRecordParams {
+                    ligne_numero: r.ligne_numero as i64,
+                    row_hash: r.row_hash.clone(),
+                    payload_brut: r.payload_brut.clone(),
+                })
+                .collect(),
+        };
+        let created: i64 = self.call_fn("ingestion_raw_records_save", params).await?;
+        Ok(created as usize)
     }
 
-    /// Sauvegarde un article en staging via fn::ingestion_staged_save
+    /// Enregistre un article en staging ; un code-barres invalide renvoie
+    /// `INGESTION_GTIN_INVALID` (clé GS1 contrôlée par `lyxal_core`).
     pub async fn save_staged_item(&self, item: &StagedItem) -> IngestionResult<String> {
-        let clean_batch = item
-            .batch
-            .strip_prefix("ingestion_batch:")
-            .unwrap_or(&item.batch);
-        let clean_raw = item
-            .raw_record
-            .strip_prefix("ingestion_raw_record:")
-            .unwrap_or(&item.raw_record);
+        self.save_staged_items_chunk(std::slice::from_ref(item))
+            .await?
+            .pop()
+            .unwrap_or_else(|| {
+                Err(IngestionError::Storage(
+                    "fn::ingestion_staged_save : aucun résultat".to_string(),
+                ))
+            })
+    }
 
-        let params = StagedSaveParams {
-            batch_id: clean_batch.to_string(),
-            raw_record_id: if clean_raw.is_empty() {
-                None
-            } else {
-                Some(clean_raw.to_string())
-            },
-            ligne_numero: item.ligne_numero as i64,
-            canonical_fingerprint: item.canonical_fingerprint.clone(),
-            rules_version: item.rules_version.clone(),
-            fabricant: item.fabricant.clone(),
-            marque: item.marque.clone(),
-            reference_fabricant: item.reference_fabricant.clone(),
-            code_barre_gtin: item.code_barre_gtin.clone(),
-            libelle_commercial: item.libelle_commercial.clone(),
-            description_technique: item.description_technique.clone(),
-            type_item: item.type_item.clone(),
-            unite_reference: item.unite_reference.clone(),
-            conditionnement: item.conditionnement.clone(),
-            qualification: item.qualification.as_str().to_string(),
-            publication_action: item.publication_action.as_str().to_string(),
-            diff_payload: item.diff_payload.clone(),
-            transitions: item.transitions.clone(),
+    /// Enregistre en une requête un bloc d'articles d'un même lot ; renvoie, dans l'ordre,
+    /// l'identifiant de chaque article ou son erreur métier (code-barres invalide, champ
+    /// manquant), que le worker consigne en quarantaine.
+    pub async fn save_staged_items_chunk(
+        &self,
+        items: &[StagedItem],
+    ) -> IngestionResult<Vec<IngestionResult<String>>> {
+        let Some(first) = items.first() else {
+            return Ok(Vec::new());
         };
-
-        let result: String = self
-            .call_fn("ingestion_staged_save", params)
-            .await
-            .map_err(|e| {
-                IngestionError::Storage(format!("Échec fn::ingestion_staged_save : {e}"))
-            })?;
-
-        Ok(result)
-    }
-
-    /// Sauvegarde un bloc d'articles en staging
-    pub async fn save_staged_items_chunk(&self, items: &[StagedItem]) -> IngestionResult<()> {
-        for item in items {
-            self.save_staged_item(item).await?;
+        if let Some(other) = items
+            .iter()
+            .find(|i| i.batch != first.batch || i.rules_version != first.rules_version)
+        {
+            return Err(IngestionError::Validation(format!(
+                "Un bloc d'articles appartient à un seul lot et une seule version de règles (ligne {})",
+                other.ligne_numero
+            )));
         }
-        Ok(())
+        let params = StagedSaveParams {
+            batch_id: key(&first.batch, "ingestion_batch").to_string(),
+            rules_version: first.rules_version.clone(),
+            items: items.iter().map(StagedItemParams::from).collect(),
+        };
+        let outcomes: Vec<StagedSaveOutcome> =
+            self.call_fn("ingestion_staged_save", params).await?;
+        if outcomes.len() != items.len() {
+            return Err(IngestionError::Storage(format!(
+                "fn::ingestion_staged_save : {} résultats pour {} articles",
+                outcomes.len(),
+                items.len()
+            )));
+        }
+        Ok(outcomes
+            .into_iter()
+            .map(|outcome| match (outcome.ok, outcome.id, outcome.error) {
+                (true, Some(id), _) => Ok(id),
+                (false, _, Some(error)) => Err(IngestionError::Surreal(LyxalSurrealError::Call(
+                    lyxal_error::LyxalCallError::Business(error),
+                ))),
+                _ => Err(IngestionError::Surreal(LyxalSurrealError::Call(
+                    lyxal_error::LyxalCallError::InvalidContract {
+                        function: "fn::ingestion_staged_save",
+                    },
+                ))),
+            })
+            .collect())
     }
 
-    /// Récupère tous les articles en staging pour un lot
+    /// Tous les articles en staging d'un lot, par pages.
     pub async fn get_staged_items_by_batch(
         &self,
         batch_id: &str,
     ) -> IngestionResult<Vec<StagedItem>> {
-        let clean_batch = batch_id
-            .strip_prefix("ingestion_batch:")
-            .unwrap_or(batch_id);
-        let mut res = self
-            .db
-            .query("SELECT *, <string> record::id(id) AS id, <string> record::id(batch) AS batch, <string> record::id(raw_record) AS raw_record FROM ingestion_staged_item WHERE batch = <record> string::concat('ingestion_batch:', $b);")
-            .bind(("b", clean_batch.to_string()))
-            .await
-            .map_err(|e| IngestionError::Storage(format!("Échec lecture staged items : {e}")))?;
-
-        let items: Vec<StagedItem> = res.take(0).map_err(|e| {
-            IngestionError::Storage(format!("Erreur désérialisation staged items : {e}"))
-        })?;
-
-        Ok(items)
+        let mut items = Vec::new();
+        loop {
+            let page = self
+                .list_staged_items(StagedListFilter {
+                    batch_id: Some(key(batch_id, "ingestion_batch").to_string()),
+                    limit: Some(PAGE_SIZE),
+                    start: Some(items.len() as i64),
+                    ..Default::default()
+                })
+                .await?;
+            let received = page.items.len();
+            items.extend(page.items);
+            if received == 0 || items.len() as i64 >= page.total {
+                return Ok(items);
+            }
+        }
     }
 
-    // =========================================================================
-    // 3. QUARANTAINE PERSISTÉE (via store.call_fn)
-    // =========================================================================
+    // --- Quarantaine --------------------------------------------------------
 
-    /// Consigne une anomalie en quarantaine via fn::ingestion_quarantine_log
+    /// Consigne une anomalie en quarantaine.
     pub async fn log_quarantine(&self, record: &QuarantineRecord) -> IngestionResult<String> {
-        let clean_batch = record
-            .batch
-            .strip_prefix("ingestion_batch:")
-            .unwrap_or(&record.batch);
-        let clean_raw = record
-            .raw_record
-            .strip_prefix("ingestion_raw_record:")
-            .unwrap_or(&record.raw_record);
-
         let params = QuarantineLogParams {
-            batch_id: clean_batch.to_string(),
-            raw_record_id: if clean_raw.is_empty() {
-                None
-            } else {
-                Some(clean_raw.to_string())
-            },
+            batch_id: key(&record.batch, "ingestion_batch").to_string(),
             ligne_numero: record.ligne_numero as i64,
             code_erreur: record.code_erreur.clone(),
             severite: record.severite.clone(),
@@ -664,108 +634,57 @@ impl IngestionStore {
             valeur_fautive: record.valeur_fautive.clone(),
             cause_detaillee: record.cause_detaillee.clone(),
         };
-
-        let result: String = self
-            .call_fn("ingestion_quarantine_log", params)
-            .await
-            .map_err(|e| {
-                IngestionError::Storage(format!("Échec fn::ingestion_quarantine_log : {e}"))
-            })?;
-
-        Ok(result)
+        Ok(self.call_fn("ingestion_quarantine_log", params).await?)
     }
 
-    /// Sauvegarde un bloc d'anomalies en quarantaine
-    pub async fn save_quarantine_records_chunk(
-        &self,
-        records: &[QuarantineRecord],
-    ) -> IngestionResult<()> {
-        for rec in records {
-            self.log_quarantine(rec).await?;
-        }
-        Ok(())
-    }
-
-    /// Récupère toutes les anomalies de quarantaine pour un lot
+    /// Toutes les anomalies d'un lot, par pages.
     pub async fn get_quarantine_by_batch(
         &self,
         batch_id: &str,
     ) -> IngestionResult<Vec<QuarantineRecord>> {
-        let clean_batch = batch_id
-            .strip_prefix("ingestion_batch:")
-            .unwrap_or(batch_id);
-        let mut res = self
-            .db
-            .query("SELECT *, <string> record::id(id) AS id, <string> record::id(batch) AS batch, <string> record::id(raw_record) AS raw_record FROM ingestion_quarantine_record WHERE batch = <record> string::concat('ingestion_batch:', $b);")
-            .bind(("b", clean_batch.to_string()))
-            .await
-            .map_err(|e| IngestionError::Storage(format!("Échec lecture anomalies quarantaine : {e}")))?;
-
-        let records: Vec<QuarantineRecord> = res
-            .take(0)
-            .map_err(|e| IngestionError::Storage(format!("Erreur lecture quarantaine : {e}")))?;
-
-        Ok(records)
+        let mut records = Vec::new();
+        loop {
+            let page = self
+                .list_quarantine_records(QuarantineListFilter {
+                    batch_id: Some(key(batch_id, "ingestion_batch").to_string()),
+                    limit: Some(PAGE_SIZE),
+                    start: Some(records.len() as i64),
+                    ..Default::default()
+                })
+                .await?;
+            let received = page.records.len();
+            records.extend(page.records);
+            if received == 0 || records.len() as i64 >= page.total {
+                return Ok(records);
+            }
+        }
     }
 
-    // =========================================================================
-    // 4. MANIFESTES DE PUBLICATION (via store.call_fn)
-    // =========================================================================
+    // --- Manifestes ---------------------------------------------------------
 
-    /// Crée ou met à jour un manifeste de publication via fn::ingestion_manifest_save
-    pub async fn save_manifest(&self, manifest: &PublicationManifest) -> IngestionResult<String> {
-        let clean_batch = manifest
-            .batch
-            .strip_prefix("ingestion_batch:")
-            .unwrap_or(&manifest.batch);
-
-        let params = ManifestSaveParams {
-            manifest_ref: manifest.manifest_ref.clone(),
-            batch_id: clean_batch.to_string(),
-            manifest_version: manifest.manifest_version as i64,
-            seal_hash: manifest.seal_hash.clone(),
-            is_sealed: manifest.is_sealed,
-            statut: manifest.statut.as_str().to_string(),
-            nb_articles_insert: manifest.nb_articles_insert as i64,
-            nb_articles_update: manifest.nb_articles_update as i64,
-            items_committed: manifest.items_committed as i64,
-            items_failed: manifest.items_failed as i64,
-            execution_items: Some(manifest.execution_items.clone()),
-            transitions: Some(manifest.transitions.clone()),
-            executed_at: manifest.executed_at,
-        };
-
-        let result: String = self
-            .call_fn("ingestion_manifest_save", params)
-            .await
-            .map_err(|e| {
-                IngestionError::Storage(format!("Échec fn::ingestion_manifest_save : {e}"))
-            })?;
-
-        Ok(result)
+    /// Enregistre un manifeste brouillon ou scellé (modifiable tant qu'il n'est pas approuvé).
+    pub async fn save_manifest(&self, manifest: &ManifestDraft) -> IngestionResult<String> {
+        let mut params = manifest.clone();
+        params.batch_id = key(&manifest.batch_id, "ingestion_batch").to_string();
+        Ok(self.call_fn("ingestion_manifest_save", params).await?)
     }
 
-    /// Récupère un manifeste par sa référence
+    /// Lit un manifeste ; `None` s'il n'existe pas.
     pub async fn get_manifest(
         &self,
         manifest_ref: &str,
     ) -> IngestionResult<Option<PublicationManifest>> {
-        let mut res = self
-            .db
-            .query("SELECT *, <string> record::id(id) AS id, <string> record::id(batch) AS batch FROM ingestion_publication_manifest WHERE manifest_ref = $ref;")
-            .bind(("ref", manifest_ref.to_string()))
-            .await
-            .map_err(|e| IngestionError::Storage(format!("Échec lecture manifeste : {e}")))?;
-
-        let manifest: Option<PublicationManifest> = res.take(0).map_err(|e| {
-            IngestionError::Storage(format!("Erreur désérialisation manifeste : {e}"))
-        })?;
-
-        Ok(manifest)
+        match self.get_manifest_detail(manifest_ref).await {
+            Ok(detail) => Ok(Some(detail.manifest)),
+            Err(IngestionError::Surreal(e)) if is_business(&e, "INGESTION_MANIFEST_NOT_FOUND") => {
+                Ok(None)
+            }
+            Err(e) => Err(e),
+        }
     }
 
-    /// Approbation d'un manifeste via fn::ingestion_manifest_approve. L'approbateur est
-    /// l'identité de la session (steward_admin, ou `system` pour une session de l'hôte).
+    /// Approuve un manifeste scellé ; l'approbateur est l'identité de la session
+    /// (`steward_admin`, ou `system` pour une session de l'hôte).
     pub async fn approve_manifest(
         &self,
         manifest_ref: &str,
@@ -775,21 +694,11 @@ impl IngestionStore {
             manifest_ref: manifest_ref.to_string(),
             justification: justification.to_string(),
         };
-
-        let _: bool = self
-            .call_fn("ingestion_manifest_approve", params)
-            .await
-            .map_err(|e| match e {
-                LyxalSurrealError::Call(lyxal_error::LyxalCallError::Business(err)) => {
-                    IngestionError::IllegalTransition(err.message)
-                }
-                _ => IngestionError::Storage(format!("Échec fn::ingestion_manifest_approve : {e}")),
-            })?;
-
+        let _: bool = self.call_fn("ingestion_manifest_approve", params).await?;
         Ok(())
     }
 
-    /// Enregistre les métriques d'exécution de publication et met à jour le statut du manifeste via fn::ingestion_manifest_record_exec
+    /// Consigne l'issue (`Committed` ou `Failed`) de l'exécution d'un manifeste approuvé.
     pub async fn record_manifest_exec(
         &self,
         manifest_ref: &str,
@@ -799,109 +708,69 @@ impl IngestionStore {
     ) -> IngestionResult<()> {
         let params = ManifestRecordExecParams {
             manifest_ref: manifest_ref.to_string(),
-            statut: statut.as_str().to_string(),
+            statut,
             items_committed: items_committed as i64,
             items_failed: items_failed as i64,
-            execution_items: None,
         };
-
         let _: bool = self
             .call_fn("ingestion_manifest_record_exec", params)
-            .await
-            .map_err(|e| {
-                IngestionError::Storage(format!("Échec fn::ingestion_manifest_record_exec : {e}"))
-            })?;
-
+            .await?;
         Ok(())
     }
 
-    /// Enregistre l'exécution ligne par ligne d'un article dans le manifeste
+    /// Journalise l'exécution d'un article d'un manifeste en cours de publication.
     pub async fn update_manifest_execution_item(
         &self,
         manifest_ref: &str,
         item_ref: &str,
-        action: &str,
+        action: PublicationAction,
         success: bool,
-        error_msg: Option<&str>,
+        error: Option<&str>,
     ) -> IngestionResult<()> {
-        let exec_record = serde_json::json!({
-            "item_ref": item_ref,
-            "action": action,
-            "success": success,
-            "error": error_msg,
-            "executed_at": "2026-10-25T11:10:00Z"
-        });
-
-        let query = r#"
-            UPDATE ingestion_publication_manifest SET
-                execution_items += $record,
-                items_committed += IF $success == true { 1 } ELSE { 0 },
-                items_failed += IF $success == false { 1 } ELSE { 0 }
-            WHERE manifest_ref = $ref;
-        "#;
-
-        self.db
-            .query(query)
-            .bind(("ref", manifest_ref.to_string()))
-            .bind(("record", exec_record))
-            .bind(("success", success))
-            .await
-            .map_err(|e| {
-                IngestionError::Storage(format!("Échec journalisation exécution article : {e}"))
-            })?;
-
+        let params = ManifestExecutionItemParams {
+            manifest_ref: manifest_ref.to_string(),
+            item_ref: item_ref.to_string(),
+            action,
+            success,
+            error: error.map(str::to_string),
+        };
+        let _: bool = self
+            .call_fn("ingestion_manifest_execution_item_update", params)
+            .await?;
         Ok(())
     }
 
-    // =========================================================================
-    // 5. GESTION DYNAMIQUE DES RÈGLES & RÉFÉRENTIELS (Sans recompilation)
-    // =========================================================================
+    // --- Référentiels -------------------------------------------------------
 
-    /// Résout dynamiquement une unité via fn::ingestion_resolve_unit
+    /// Résout une unité vers `base_unite` ; `None` si elle est inconnue
+    /// (`INGESTION_UNIT_UNRESOLVED`), toute autre erreur remonte.
     pub async fn resolve_unit(&self, raw_unit: &str) -> IngestionResult<Option<String>> {
         let params = ResolveUnitParams {
             raw_unit: raw_unit.to_string(),
-            language: "fr".to_string(),
         };
-
-        let res: Result<ResolveUnitResult, LyxalSurrealError> =
+        let resolved: Result<ResolveUnitResult, _> =
             self.call_fn("ingestion_resolve_unit", params).await;
-
-        // Seule une unité inconnue donne `None` ; toute autre erreur (base, transport) remonte.
-        match res {
+        match resolved {
             Ok(r) => Ok(Some(r.canonical_code)),
-            Err(LyxalSurrealError::Call(lyxal_error::LyxalCallError::Business(err)))
-                if err.code == "INGESTION_UNIT_UNRESOLVED" =>
-            {
-                Ok(None)
-            }
-            Err(e) => Err(IngestionError::Storage(format!(
-                "Échec fn::ingestion_resolve_unit : {e}"
-            ))),
+            Err(e) if is_business(&e, "INGESTION_UNIT_UNRESOLVED") => Ok(None),
+            Err(e) => Err(e.into()),
         }
     }
 
-    /// Résout dynamiquement un fabricant via fn::ingestion_resolve_manufacturer
+    /// Résout un fabricant par ses alias.
     pub async fn resolve_manufacturer(
         &self,
         raw_name: &str,
     ) -> IngestionResult<ResolveManufacturerResult> {
         let params = ResolveManufacturerParams {
             raw_name: raw_name.to_string(),
-            language: "fr".to_string(),
         };
-
-        let result: ResolveManufacturerResult = self
+        Ok(self
             .call_fn("ingestion_resolve_manufacturer", params)
-            .await
-            .map_err(|e| {
-                IngestionError::Storage(format!("Échec fn::ingestion_resolve_manufacturer : {e}"))
-            })?;
-
-        Ok(result)
+            .await?)
     }
 
-    /// Ajoute ou met à jour une famille de produits sans recompilation
+    /// Ajoute ou met à jour une famille de produits.
     pub async fn add_family_rule(
         &self,
         code: &str,
@@ -913,20 +782,12 @@ impl IngestionStore {
             code: code.to_string(),
             label: label.to_string(),
             keywords: keywords.iter().map(|s| s.to_string()).collect(),
-            standard_unit: standard_unit.map(|s| s.to_string()),
+            standard_unit: standard_unit.map(str::to_string),
         };
-
-        let res: String = self
-            .call_fn("ingestion_rule_family_add", params)
-            .await
-            .map_err(|e| {
-                IngestionError::Storage(format!("Échec fn::ingestion_rule_family_add : {e}"))
-            })?;
-
-        Ok(res)
+        Ok(self.call_fn("ingestion_rule_family_add", params).await?)
     }
 
-    /// Ajoute ou met à jour une spécification patronne sans recompilation
+    /// Ajoute ou met à jour une spécification patronne.
     pub async fn add_specification(
         &self,
         spec: &TechnicalSpecification,
@@ -942,22 +803,20 @@ impl IngestionStore {
             fire_rating: spec.fire_rating.clone(),
             required_features: spec.required_features.clone(),
         };
-
-        let res: String = self
-            .call_fn("ingestion_rule_spec_add", params)
-            .await
-            .map_err(|e| {
-                IngestionError::Storage(format!("Échec fn::ingestion_rule_spec_add : {e}"))
-            })?;
-
-        Ok(res)
+        Ok(self.call_fn("ingestion_rule_spec_add", params).await?)
     }
 
-    /// Ajoute ou met à jour une règle de substitution contextualisée
+    /// Ajoute ou met à jour une règle de substitution certifiée.
     pub async fn add_substitution_rule(
         &self,
         rule: &ContextualSubstitutionRule,
     ) -> IngestionResult<String> {
+        let valid_until = rule.valid_until.parse::<Datetime>().map_err(|e| {
+            IngestionError::Validation(format!(
+                "Règle {} : date de validité '{}' invalide : {e}",
+                rule.rule_id, rule.valid_until
+            ))
+        })?;
         let params = SubstitutionRuleAddParams {
             rule_id: rule.rule_id.clone(),
             source_mfg: rule.source_manufacturer.clone(),
@@ -967,150 +826,85 @@ impl IngestionStore {
             system_scope: rule.system_scope.clone(),
             certification_body: rule.certification_body.clone(),
             certification_ref: rule.certification_reference.clone(),
-            valid_until: rule.valid_until.clone(),
+            valid_until,
             is_revoked: rule.is_revoked,
             revocation_reason: rule.revocation_reason.clone(),
         };
-
-        let res: String = self
+        Ok(self
             .call_fn("ingestion_rule_substitution_add", params)
-            .await
-            .map_err(|e| {
-                IngestionError::Storage(format!("Échec fn::ingestion_rule_substitution_add : {e}"))
-            })?;
-
-        Ok(res)
+            .await?)
     }
 
-    /// Charge toutes les familles de produits configurées depuis SurrealDB
-    pub async fn load_family_rules(&self) -> IngestionResult<Vec<FamilyRule>> {
-        let mut res = self
-            .db
-            .query("SELECT * FROM ingestion_family_rule;")
-            .await
-            .map_err(|e| {
-                IngestionError::Storage(format!("Échec lecture ingestion_family_rule : {e}"))
-            })?;
-
-        let families: Vec<FamilyRule> = res.take(0).map_err(|e| {
-            IngestionError::Storage(format!("Erreur désérialisation family_rule : {e}"))
-        })?;
-
-        Ok(families)
+    /// Familles, spécifications et règles de substitution configurées.
+    pub async fn load_rules(&self) -> IngestionResult<RulesSnapshot> {
+        Ok(self
+            .call_fn("ingestion_rules_load", serde_json::json!({}))
+            .await?)
     }
 
-    /// Charge toutes les spécifications configurées depuis SurrealDB
-    pub async fn load_specifications(&self) -> IngestionResult<Vec<TechnicalSpecification>> {
-        let mut res = self
-            .db
-            .query("SELECT * FROM ingestion_specification;")
-            .await
-            .map_err(|e| {
-                IngestionError::Storage(format!("Échec lecture ingestion_specification : {e}"))
-            })?;
+    // --- Console Data Steward ---------------------------------------------
 
-        let specs: Vec<TechnicalSpecification> = res.take(0).map_err(|e| {
-            IngestionError::Storage(format!("Erreur désérialisation specification : {e}"))
-        })?;
-
-        Ok(specs)
-    }
-
-    /// Charge toutes les règles de substitution contextualisées depuis SurrealDB
-    pub async fn load_substitution_rules(
-        &self,
-    ) -> IngestionResult<Vec<ContextualSubstitutionRule>> {
-        let mut res = self
-            .db
-            .query("SELECT rule_id, source_mfg AS source_manufacturer, source_ref, target_mfg AS target_manufacturer, target_ref, system_scope, certification_body, certification_ref AS certification_reference, <string> valid_until AS valid_until, is_revoked, revocation_reason FROM ingestion_substitution_rule;")
-            .await
-            .map_err(|e| IngestionError::Storage(format!("Échec lecture ingestion_substitution_rule : {e}")))?;
-
-        let rules: Vec<ContextualSubstitutionRule> = res.take(0).map_err(|e| {
-            IngestionError::Storage(format!("Erreur désérialisation substitution_rule : {e}"))
-        })?;
-
-        Ok(rules)
-    }
-
-    // =========================================================================
-    // 5. DATA STEWARD & OBSERVABILITÉ (Phase 5 - Appels 1-ligne call_fn)
-    // =========================================================================
-
-    /// Récupère les métriques consolidées du tableau de bord d'ingestion
+    /// Indicateurs du pipeline, pour un lot ou pour l'ensemble.
     pub async fn get_dashboard_metrics(
         &self,
         batch_id: Option<&str>,
     ) -> IngestionResult<DashboardMetricsResult> {
         let params = DashboardMetricsParams {
-            batch_id: batch_id.map(|s| s.to_string()),
+            batch_id: batch_id.map(|b| key(b, "ingestion_batch").to_string()),
         };
-        self.call_fn("ingestion_dashboard_metrics", params)
-            .await
-            .map_err(|e| IngestionError::Storage(format!("Échec get_dashboard_metrics : {e}")))
+        Ok(self.call_fn("ingestion_dashboard_metrics", params).await?)
     }
 
-    /// Liste paginée et filtrée des articles en staging pour la console Data Steward
+    /// Liste paginée et filtrée des articles en staging.
     pub async fn list_staged_items(
         &self,
         filter: StagedListFilter,
     ) -> IngestionResult<StagedListResult> {
-        self.call_fn("ingestion_staged_list", filter)
-            .await
-            .map_err(|e| IngestionError::Storage(format!("Échec list_staged_items : {e}")))
+        Ok(self.call_fn("ingestion_staged_list", filter).await?)
     }
 
-    /// Requalification formelle et auditable d'un article en staging sous contrôle Data Steward
+    /// Requalifie un article (steward_admin de la session).
     pub async fn requalify_staged_item(
         &self,
         params: StagedRequalifyParams,
     ) -> IngestionResult<bool> {
-        self.call_fn("ingestion_staged_requalify", params)
-            .await
-            .map_err(|e| IngestionError::Storage(format!("Échec requalify_staged_item : {e}")))
+        Ok(self.call_fn("ingestion_staged_requalify", params).await?)
     }
 
-    /// Liste paginée et filtrée des anomalies en zone de quarantaine
+    /// Liste paginée et filtrée des anomalies en quarantaine.
     pub async fn list_quarantine_records(
         &self,
         filter: QuarantineListFilter,
     ) -> IngestionResult<QuarantineListResult> {
-        self.call_fn("ingestion_quarantine_list", filter)
-            .await
-            .map_err(|e| IngestionError::Storage(format!("Échec list_quarantine_records : {e}")))
+        Ok(self.call_fn("ingestion_quarantine_list", filter).await?)
     }
 
-    /// Résout de manière auditable une anomalie en quarantaine sous contrôle steward_admin
+    /// Résout une anomalie en quarantaine (steward_admin de la session).
     pub async fn resolve_quarantine_record(
         &self,
         params: QuarantineResolveParams,
     ) -> IngestionResult<bool> {
-        self.call_fn("ingestion_quarantine_resolve", params)
-            .await
-            .map_err(|e| IngestionError::Storage(format!("Échec resolve_quarantine_record : {e}")))
+        Ok(self.call_fn("ingestion_quarantine_resolve", params).await?)
     }
 
-    /// Liste paginée et filtrée des manifestes de publication
+    /// Liste paginée et filtrée des manifestes.
     pub async fn list_manifests(
         &self,
         filter: ManifestListFilter,
     ) -> IngestionResult<ManifestListResult> {
-        self.call_fn("ingestion_manifest_list", filter)
-            .await
-            .map_err(|e| IngestionError::Storage(format!("Échec list_manifests : {e}")))
+        Ok(self.call_fn("ingestion_manifest_list", filter).await?)
     }
 
-    /// Consultation détaillée d'un manifeste avec intégrité de scellement
+    /// Détail d'un manifeste et de son lot.
     pub async fn get_manifest_detail(
         &self,
         manifest_ref: &str,
     ) -> IngestionResult<ManifestDetailResult> {
-        let params = ManifestGetDetailParams {
+        let params = ManifestRefParams {
             manifest_ref: manifest_ref.to_string(),
-            language: Some("fr".to_string()),
         };
-        self.call_fn("ingestion_manifest_get_detail", params)
-            .await
-            .map_err(|e| IngestionError::Storage(format!("Échec get_manifest_detail : {e}")))
+        Ok(self
+            .call_fn("ingestion_manifest_get_detail", params)
+            .await?)
     }
 }

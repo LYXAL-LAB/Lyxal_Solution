@@ -192,33 +192,6 @@ IF !record::exists(error_definition:INGESTION_ITEM_NOT_FOUND) THEN (
     }
 ) END;
 
-IF !record::exists(error_definition:INGESTION_INVALID_QUALIFICATION) THEN (
-    CREATE error_definition:INGESTION_INVALID_QUALIFICATION CONTENT {
-        code: "INGESTION_INVALID_QUALIFICATION",
-        module: "ingestion",
-        domain: "staged",
-        category: "validation",
-        severity: "error",
-        message: "Qualification cible inconnue",
-        default_language: "fr",
-        http_status: 400,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Qualification invalide",
-                description: "La qualification doit être VERIFIED, TO_CONFIRM ou REJECTED.",
-                resolution: "Choisir une qualification autorisée."
-            },
-            en: {
-                label: "Invalid qualification",
-                description: "Qualification must be VERIFIED, TO_CONFIRM or REJECTED.",
-                resolution: "Choose an allowed qualification."
-            }
-        }
-    }
-) END;
-
 IF !record::exists(error_definition:INGESTION_QUALIFICATION_REJECTED) THEN (
     CREATE error_definition:INGESTION_QUALIFICATION_REJECTED CONTENT {
         code: "INGESTION_QUALIFICATION_REJECTED",

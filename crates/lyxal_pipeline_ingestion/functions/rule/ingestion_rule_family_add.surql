@@ -1,29 +1,43 @@
 -- ============================================================================
 -- FONCTION : fn::ingestion_rule_family_add
 -- MODULE   : lyxal_pipeline_ingestion
--- RÔLE     : Déclaration ou mise à jour dynamique d'une famille de produits BTP
+-- RÔLE     : Ajout ou mise à jour d'une famille de produits (console Data Steward)
+-- APPEL    : externe, entrées contrôlées par le moteur de lyxal_core
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::ingestion_rule_family_add($params: object) {
-    LET $code = string::uppercase(string::trim($params.code));
-    LET $label = string::trim($params.label);
-    LET $keywords = IF $params.keywords != NONE { $params.keywords } ELSE { [] };
-    LET $standard_unit = IF $params.standard_unit != NONE { string::uppercase(string::trim($params.standard_unit)) } ELSE { NONE };
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
-
-    IF string::len($code) < 2 {
-        RETURN fn::error_result("INGESTION_RULE_FAMILY_INVALID", $language, { code: $code });
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            code: { pipeline: [{ rule: "required_string", options: { min_length: 2, max_length: 64 } }], required: true },
+            label: { pipeline: [{ rule: "required_string", options: { min_length: 2, max_length: 255 } }], required: true },
+            keywords: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: false, max_length: 128 } }], default: [] },
+            standard_unit: { pipeline: [{ rule: "optional_string", options: { min_length: 1, max_length: 32 } }] },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
+    LET $p = fn::sanitize_object_execute($report.value, {
+        fields: {
+            code: { pipeline: [{ rule: "trim" }, { rule: "uppercase" }] },
+            label: { pipeline: [{ rule: "trim" }] },
+            standard_unit: { pipeline: [{ rule: "trim" }, { rule: "uppercase" }] }
+        },
+        unknown_keys: "keep"
+    }, 20);
 
-    LET $rec_id = <record> string::concat('ingestion_family_rule:⟨', $code, '⟩');
-
-    UPSERT $rec_id CONTENT {
-        code: $code,
-        label: $label,
-        keywords: $keywords,
-        standard_unit: $standard_unit,
+    LET $saved = (UPSERT ONLY type::record("ingestion_family_rule", $p.code) CONTENT {
+        code: $p.code,
+        label: $p.label,
+        keywords: $p.keywords,
+        standard_unit: $p.standard_unit,
         updated_at: time::now()
+    });
+    IF $saved == NONE {
+        RETURN fn::error_result("INGESTION_WRITE_FORBIDDEN", $p.language, { table: "ingestion_family_rule" });
     };
 
-    RETURN fn::result_ok($code);
-} COMMENT "Ajoute ou configure une famille de produits sans recompilation du moteur Rust";
+    RETURN fn::result_ok($p.code);
+} COMMENT "Ajoute ou met à jour une famille de produits (code, libellé, mots-clés, unité standard) sans recompilation du moteur Rust";

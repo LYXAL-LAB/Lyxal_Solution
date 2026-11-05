@@ -1,67 +1,53 @@
 -- ============================================================================
 -- FONCTION : fn::ingestion_dashboard_metrics
 -- MODULE   : lyxal_pipeline_ingestion
--- RÔLE     : Fournit les métriques et KPIs temps réel pour la console Data Steward
+-- RÔLE     : Indicateurs du pipeline pour la console Data Steward
+-- APPEL    : externe (console Data Steward), entrées contrôlées par le moteur de lyxal_core
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::ingestion_dashboard_metrics($params: object) {
-    LET $batch_filter = IF $params.batch_id != NONE { <string> $params.batch_id } ELSE { NONE };
-    LET $b_rec = IF $batch_filter != NONE { <record> string::concat('ingestion_batch:', $batch_filter) } ELSE { NONE };
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            batch_id: { pipeline: [{ rule: "record", options: { expected_table: "ingestion_batch" } }] },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 10);
+    IF !$report.valid {
+        RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $b = $report.value.batch_id;
 
-    -- Métriques des lots
-    LET $batches = (SELECT statut, total_lignes, lignes_verifiees, lignes_a_confirmer, lignes_rejetees FROM ingestion_batch);
-    LET $total_batches = array::len($batches);
-    LET $batches_active = array::len((SELECT id FROM ingestion_batch WHERE statut IN ["RECEIVED", "PARSING", "VALIDATING"]));
-    LET $batches_staged = array::len((SELECT id FROM ingestion_batch WHERE statut = "STAGED"));
-    LET $batches_published = array::len((SELECT id FROM ingestion_batch WHERE statut = "PUBLISHED"));
-    LET $batches_failed = array::len((SELECT id FROM ingestion_batch WHERE statut = "FAILED"));
-
-    -- Métriques des articles en staging (filtrées par lot si spécifié)
-    LET $all_staged = (SELECT qualification, is_approved FROM ingestion_staged_item WHERE ($b_rec == NONE OR batch = $b_rec));
-    LET $total_staged = array::len($all_staged);
-    LET $verified_items = array::len((SELECT id FROM $all_staged WHERE qualification = "VERIFIED"));
-    LET $to_confirm_items = array::len((SELECT id FROM $all_staged WHERE qualification = "TO_CONFIRM"));
-    LET $rejected_items = array::len((SELECT id FROM $all_staged WHERE qualification = "REJECTED"));
-    LET $approved_items = array::len((SELECT id FROM $all_staged WHERE is_approved = true));
-
-    -- Métriques de quarantaine (filtrées par lot si spécifié)
-    LET $all_quarantine = (SELECT severite, is_resolved FROM ingestion_quarantine_record WHERE ($b_rec == NONE OR batch = $b_rec));
-    LET $total_quarantine = array::len($all_quarantine);
-    LET $quarantine_critical = array::len((SELECT id FROM $all_quarantine WHERE severite = "CRITICAL"));
-    LET $quarantine_pending = array::len((SELECT id FROM $all_quarantine WHERE is_resolved != true));
-
-    -- Métriques des manifestes de publication
-    LET $manifests = (SELECT statut, is_sealed, items_committed, items_failed FROM ingestion_publication_manifest WHERE ($b_rec == NONE OR batch = $b_rec));
-    LET $total_manifests = array::len($manifests);
-    LET $sealed_manifests = array::len((SELECT id FROM $manifests WHERE is_sealed = true));
-    LET $approved_manifests = array::len((SELECT id FROM $manifests WHERE statut = "APPROVED"));
-    LET $committed_manifests = array::len((SELECT id FROM $manifests WHERE statut = "COMMITTED"));
+    LET $batches = (SELECT VALUE statut FROM ingestion_batch WHERE $b == NONE OR id = $b);
+    LET $items = (SELECT qualification, is_approved FROM ingestion_staged_item WHERE $b == NONE OR batch = $b);
+    LET $quarantine = (SELECT severite, is_resolved FROM ingestion_quarantine_record WHERE $b == NONE OR batch = $b);
+    LET $manifests = (SELECT statut, is_sealed FROM ingestion_publication_manifest WHERE $b == NONE OR batch = $b);
 
     RETURN fn::result_ok({
         batches: {
-            total: $total_batches,
-            active: $batches_active,
-            staged: $batches_staged,
-            published: $batches_published,
-            failed: $batches_failed
+            total: count($batches),
+            active: count($batches[WHERE $this IN ["RECEIVED", "PARSING", "VALIDATING"]]),
+            staged: count($batches[WHERE $this = "STAGED"]),
+            published: count($batches[WHERE $this = "PUBLISHED"]),
+            failed: count($batches[WHERE $this = "FAILED"])
         },
         items: {
-            total: $total_staged,
-            verified: $verified_items,
-            to_confirm: $to_confirm_items,
-            rejected: $rejected_items,
-            approved: $approved_items
+            total: count($items),
+            verified: count($items[WHERE qualification = "VERIFIED"]),
+            to_confirm: count($items[WHERE qualification = "TO_CONFIRM"]),
+            rejected: count($items[WHERE qualification = "REJECTED"]),
+            approved: count($items[WHERE is_approved = true])
         },
         quarantine: {
-            total: $total_quarantine,
-            critical: $quarantine_critical,
-            pending: $quarantine_pending
+            total: count($quarantine),
+            critical: count($quarantine[WHERE severite = "CRITICAL"]),
+            pending: count($quarantine[WHERE is_resolved != true])
         },
         manifests: {
-            total: $total_manifests,
-            sealed: $sealed_manifests,
-            approved: $approved_manifests,
-            committed: $committed_manifests
+            total: count($manifests),
+            sealed: count($manifests[WHERE is_sealed = true]),
+            approved: count($manifests[WHERE statut = "APPROVED"]),
+            committed: count($manifests[WHERE statut = "COMMITTED"])
         }
     });
-} COMMENT "Fournit les indicateurs clés d'avancement et de conformité du pipeline pour la console Data Steward";
+} COMMENT "Fournit les indicateurs d'avancement et de conformité du pipeline (lots, articles, quarantaine, manifestes), pour un lot ou pour l'ensemble";

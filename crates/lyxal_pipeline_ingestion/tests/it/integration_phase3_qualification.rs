@@ -2,8 +2,7 @@
 //! 1. Qualification commerciale stricte (VERIFIED, TO_CONFIRM, REJECTED).
 //! 2. Rapprochement technique des 4 familles (Plaques, Rails, Électricité, Isolants) & non-confusion groupe/filiales.
 //! 3. Substitution autorisée contextualisée (CSTB/Avis Technique) et révocable.
-//! 4. Quarantaine industrielle, classification des anomalies, audit trail et requalification steward_admin.
-//! 5. Test de streaming et de volume à grande échelle (1 500+ articles).
+//! 4. Test de streaming et de volume à grande échelle (1 500+ articles).
 
 use std::collections::HashMap;
 use std::time::Instant;
@@ -11,9 +10,6 @@ use std::time::Instant;
 use lyxal_pipeline_ingestion::adapters::{AdapterRegistry, RawRecordDto};
 use lyxal_pipeline_ingestion::normalization::{
     normalize_manufacturer, CanonicalDimensions, NormalizationEngine, NormalizedItemDto,
-};
-use lyxal_pipeline_ingestion::quarantine::{
-    AnomalyCategory, AnomalySeverity, QuarantineEngine, QuarantineStatus,
 };
 use lyxal_pipeline_ingestion::technical_grouping::{
     ContextualSubstitutionRule, TechnicalGroupLevel, TechnicalGroupingEngine,
@@ -28,7 +24,6 @@ fn create_test_item(
     unit: Option<&str>,
     price: Option<f64>,
     gtin: Option<&str>,
-    is_gtin_valid: bool,
     dims: Option<CanonicalDimensions>,
     features: HashMap<String, String>,
     qual: ItemQualification,
@@ -41,7 +36,6 @@ fn create_test_item(
         brand: Some(mfg.to_string()),
         commercial_label: label.to_string(),
         gtin: gtin.map(|g| g.to_string()),
-        is_gtin_valid,
         unit_code: unit.map(|u| u.to_string()),
         price,
         currency: "EUR".to_string(),
@@ -128,7 +122,8 @@ fn test_commercial_qualification_strict_separation() {
         .qualification_reason
         .contains("preuve commerciale formelle absente"));
 
-    // 1.3. Cas REJECTED : Code GTIN avec checksum corrompu (Modulo 10 faux)
+    // 1.3. Code-barres à clé GS1 fausse : la normalisation le transmet tel quel ; il est refusé
+    // à l'enregistrement par fn::ingestion_staged_save (fn::validation_gtin de lyxal_core).
     let raw_corrupt_gtin = RawRecordDto {
         line_number: 3,
         raw_reference: "REF_BAD_GTIN".to_string(),
@@ -146,8 +141,11 @@ fn test_commercial_qualification_strict_separation() {
         raw_hash: "hash_03".to_string(),
     };
     let norm_corrupt_gtin = norm_engine.normalize(&raw_corrupt_gtin, None, SourceFormat::Csv);
-    assert_eq!(norm_corrupt_gtin.qualification, ItemQualification::Rejected);
-    assert!(norm_corrupt_gtin.qualification_reason.contains("GTIN"));
+    assert_eq!(norm_corrupt_gtin.gtin.as_deref(), Some("3017620422009"));
+    assert_eq!(
+        norm_corrupt_gtin.qualification,
+        ItemQualification::ToConfirm
+    );
 
     // 1.4. Cas REJECTED : Prix négatif
     let raw_neg_price = RawRecordDto {
@@ -233,7 +231,6 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
         Some("M2"),
         Some(8.50),
         Some("3017620422003"),
-        true,
         Some(CanonicalDimensions {
             length_mm: Some(2500.0),
             width_mm: Some(1200.0),
@@ -250,7 +247,6 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
         Some("M2"),
         Some(8.30),
         Some("3017620422003"),
-        true,
         Some(CanonicalDimensions {
             length_mm: Some(2500.0),
             width_mm: Some(1200.0),
@@ -280,7 +276,6 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
         Some("ML"),
         Some(3.20),
         Some("3017620422003"),
-        true,
         Some(CanonicalDimensions {
             length_mm: Some(3000.0),
             width_mm: Some(48.0),
@@ -297,7 +292,6 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
         Some("ML"),
         Some(3.10),
         Some("3017620422003"),
-        true,
         Some(CanonicalDimensions {
             length_mm: Some(3000.0),
             width_mm: Some(48.0),
@@ -327,7 +321,6 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
         Some("PCE"),
         Some(7.90),
         Some("3017620422003"),
-        true,
         None,
         feat_prise.clone(),
         ItemQualification::Verified,
@@ -340,7 +333,6 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
         Some("PCE"),
         Some(6.80),
         Some("3017620422003"),
-        true,
         None,
         feat_prise,
         ItemQualification::Verified,
@@ -371,7 +363,6 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
         Some("M2"),
         Some(14.50),
         Some("3017620422003"),
-        true,
         Some(CanonicalDimensions {
             length_mm: Some(2700.0),
             width_mm: Some(1200.0),
@@ -395,7 +386,6 @@ fn test_technical_grouping_four_families_and_entity_distinction() {
         Some("M2"),
         Some(16.00),
         Some("3017620422003"),
-        true,
         Some(CanonicalDimensions {
             length_mm: Some(1200.0),
             width_mm: Some(600.0),
@@ -464,7 +454,6 @@ fn test_contextual_and_revocable_substitution() {
         Some("M2"),
         Some(8.50),
         Some("3017620422003"),
-        true,
         Some(CanonicalDimensions {
             length_mm: Some(2500.0),
             width_mm: Some(1200.0),
@@ -484,7 +473,6 @@ fn test_contextual_and_revocable_substitution() {
         Some("M2"),
         Some(8.30),
         Some("3017620422003"),
-        true,
         Some(CanonicalDimensions {
             length_mm: Some(2500.0),
             width_mm: Some(1200.0),
@@ -564,131 +552,12 @@ fn test_contextual_and_revocable_substitution() {
 }
 
 // =============================================================================
-// TEST 4 : Quarantaine industrielle, classification et requalification steward_admin
-// =============================================================================
-#[test]
-fn test_quarantine_engine_lifecycle_and_audit() {
-    let quarantine = QuarantineEngine::new();
-
-    // 4.1. Enregistrement d'une anomalie GTIN invalide
-    let inserted1 = quarantine.log_anomaly(
-        "batch_20261025_01",
-        42,
-        "raw_hash_42",
-        Some("REF-42"),
-        Some("PLACO"),
-        AnomalySeverity::Error,
-        AnomalyCategory::InvalidGtin,
-        "INGESTION_GTIN_CHECKSUM_INVALID",
-        "Clé de contrôle GS1 Modulo 10 erronée",
-        Some("gtin"),
-        Some("3017620422009"),
-        serde_json::json!({"ref": "REF-42", "gtin": "3017620422009"}),
-        ItemQualification::Rejected,
-    );
-    assert!(inserted1);
-    assert_eq!(quarantine.len(), 1);
-
-    // 4.2. Test d'idempotence : double insertion identique ignorée
-    let inserted_dup = quarantine.log_anomaly(
-        "batch_20261025_01",
-        42,
-        "raw_hash_42",
-        Some("REF-42"),
-        Some("PLACO"),
-        AnomalySeverity::Error,
-        AnomalyCategory::InvalidGtin,
-        "INGESTION_GTIN_CHECKSUM_INVALID",
-        "Clé de contrôle GS1 Modulo 10 erronée",
-        Some("gtin"),
-        Some("3017620422009"),
-        serde_json::json!({"ref": "REF-42", "gtin": "3017620422009"}),
-        ItemQualification::Rejected,
-    );
-    assert!(!inserted_dup);
-    assert_eq!(quarantine.len(), 1);
-
-    // 4.3. Enregistrement d'une seconde anomalie MissingCommercialProof
-    quarantine.log_anomaly(
-        "batch_20261025_01",
-        43,
-        "raw_hash_43",
-        Some("REF-43"),
-        Some("KNAUF"),
-        AnomalySeverity::Warning,
-        AnomalyCategory::MissingCommercialProof,
-        "INGESTION_PRICE_MISSING",
-        "Absence de tarif fournisseur dans le bordereau",
-        Some("price"),
-        None,
-        serde_json::json!({"ref": "REF-43"}),
-        ItemQualification::ToConfirm,
-    );
-    assert_eq!(quarantine.len(), 2);
-
-    let entries = quarantine.list_by_batch("batch_20261025_01");
-    assert_eq!(entries.len(), 2);
-    let entry_to_requalify = &entries[1];
-
-    // 4.4. Tentative de requalification non autorisée (rôle insuffisant)
-    let res_unauth = quarantine.requalify_entry(
-        &entry_to_requalify.entry_id,
-        ItemQualification::Verified,
-        "agent:qualification_worker",
-        "qualification_agent",
-        "Je valide sans droit d'administration",
-    );
-    assert!(res_unauth.is_err());
-    assert!(res_unauth.unwrap_err().contains("steward_admin"));
-
-    // 4.5. Tentative de requalification avec justification trop courte (< 10 caractères)
-    let res_short_justif = quarantine.requalify_entry(
-        &entry_to_requalify.entry_id,
-        ItemQualification::Verified,
-        "user:chief_steward",
-        "steward_admin",
-        "ok",
-    );
-    assert!(res_short_justif.is_err());
-    assert!(res_short_justif
-        .unwrap_err()
-        .contains("au moins 10 caractères"));
-
-    // 4.6. Requalification formelle valide par steward_admin
-    let res_ok = quarantine.requalify_entry(
-        &entry_to_requalify.entry_id,
-        ItemQualification::Verified,
-        "user:chief_steward",
-        "steward_admin",
-        "Avenant tarifaire officiel n°2026-B validé et signé par le fabricant Knauf",
-    );
-    assert!(res_ok.is_ok());
-
-    let updated = res_ok.unwrap();
-    assert_eq!(updated.status, QuarantineStatus::Requalified);
-    assert_eq!(updated.resulting_qualification, ItemQualification::Verified);
-    assert_eq!(updated.audit_trail.len(), 2);
-    assert_eq!(updated.audit_trail[1].to_statut, "Verified");
-    assert!(updated.audit_trail[1]
-        .transition_by
-        .contains("chief_steward"));
-
-    // 4.7. Statistiques de quarantaine
-    let stats = quarantine.get_stats_for_batch("batch_20261025_01");
-    assert_eq!(stats.total_anomalies, 2);
-    assert_eq!(stats.error_count, 1);
-    assert_eq!(stats.warning_count, 1);
-    assert_eq!(stats.requalified_count, 1);
-}
-
-// =============================================================================
-// TEST 5 : Streaming et volume à grande échelle (1 500+ articles réels)
+// TEST 4 : Streaming et volume à grande échelle (1 500 articles)
 // =============================================================================
 #[test]
 fn test_streaming_and_volume_large_scale() {
     let registry = AdapterRegistry::new();
     let norm_engine = NormalizationEngine::new();
-    let quarantine = QuarantineEngine::new();
 
     // Génération synthétique d'un flux CSV de 1 500 articles BTP représentatifs
     let mut csv_buffer = String::with_capacity(300_000);
@@ -712,7 +581,7 @@ fn test_streaming_and_volume_large_scale() {
                 "ISO_{i};Panneau roulé laine de verre GR32 100mm;Saint-Gobain Isover;M2;14.50;2700;1200;100;3017620422003\n"
             ));
         } else {
-            // Anomalie volontaire (GTIN corrompu) pour tester le routage quarantaine
+            // Code-barres à clé GS1 fausse : contrôlé plus tard par fn::ingestion_staged_save
             csv_buffer.push_str(&format!(
                 "ERR_{i};Prise 2P+T Legrand avec GTIN erroné;Legrand France;PCE;7.50;80;80;40;3017620422009\n"
             ));
@@ -732,7 +601,6 @@ fn test_streaming_and_volume_large_scale() {
     assert_eq!(records.len(), 1500);
 
     let mut verified_count = 0;
-    let mut rejected_count = 0;
 
     let stream_proof = lyxal_pipeline_ingestion::proof::CommercialProof::new(
         lyxal_pipeline_ingestion::proof::CommercialProofType::CertifiedManufacturerEdi,
@@ -742,7 +610,7 @@ fn test_streaming_and_volume_large_scale() {
         "2026-10-25T10:00:00Z",
     );
 
-    // 2. Normalisation et routage quarantaine
+    // 2. Normalisation et qualification
     for rec in &records {
         let normalized = norm_engine.normalize_with_proof(
             rec,
@@ -750,37 +618,15 @@ fn test_streaming_and_volume_large_scale() {
             SourceFormat::Csv,
             Some(stream_proof.clone()),
         );
-
-        match normalized.qualification {
-            ItemQualification::Verified => verified_count += 1,
-            ItemQualification::Rejected => {
-                rejected_count += 1;
-                quarantine.log_anomaly(
-                    "batch_large_scale_01",
-                    rec.line_number,
-                    &rec.raw_hash,
-                    Some(&rec.raw_reference),
-                    rec.raw_manufacturer.as_deref(),
-                    AnomalySeverity::Error,
-                    AnomalyCategory::InvalidGtin,
-                    "INGESTION_GTIN_CHECKSUM_INVALID",
-                    &normalized.qualification_reason,
-                    Some("gtin"),
-                    rec.raw_gtin.as_deref(),
-                    rec.raw_payload.clone(),
-                    ItemQualification::Rejected,
-                );
-            }
-            ItemQualification::ToConfirm => {}
+        if normalized.qualification == ItemQualification::Verified {
+            verified_count += 1;
         }
     }
 
     let duration = start_time.elapsed();
 
     // Vérification des volumétries
-    assert_eq!(rejected_count, 375); // 1500 / 4 = 375 anomalies
-    assert_eq!(verified_count, 1125); // 1500 - 375 = 1125 vérifiés
-    assert_eq!(quarantine.len(), 375);
+    assert_eq!(verified_count, 1500);
 
     // Débit de streaming et performance industrielle : 1 500 articles traités en streaming
     assert!(

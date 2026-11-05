@@ -159,22 +159,19 @@ pub struct PackagingDetails {
     pub dimensions: Option<Dimensions>,
 }
 
-/// Journal d'audit d'une transition d'état.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, SurrealValue)]
+/// Transition d'état journalisée par les fonctions SurrealQL (lot, article, manifeste) :
+/// état d'origine (absent à la création), état atteint, identité de la session, motif et
+/// horodatage. Lecture seule : le Rust ne construit jamais une transition.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, SurrealValue)]
 pub struct StateTransitionRecord {
     #[serde(default)]
-    #[surreal(default)]
-    pub from_statut: String,
+    pub from_state: Option<String>,
+    pub to_state: String,
     #[serde(default)]
-    #[surreal(default)]
-    pub to_statut: String,
-    #[serde(default)]
-    #[surreal(default)]
-    pub transition_at: String,
-    #[serde(default)]
-    #[surreal(default)]
-    pub transition_by: String,
-    #[serde(default)]
-    #[surreal(default)]
+    pub triggered_by: Option<String>,
     pub reason: String,
+    pub transitioned_at: lyxal_surreal::Datetime,
+    /// Référence de la preuve commerciale d'une requalification en `VERIFIED`.
+    #[serde(default)]
+    pub proof_reference: Option<String>,
 }

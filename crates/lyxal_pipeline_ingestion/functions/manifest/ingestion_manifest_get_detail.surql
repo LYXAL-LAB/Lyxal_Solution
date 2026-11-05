@@ -1,58 +1,36 @@
 -- ============================================================================
 -- FONCTION : fn::ingestion_manifest_get_detail
 -- MODULE   : lyxal_pipeline_ingestion
--- RÔLE     : Consultation détaillée d'un manifeste avec intégrité de scellement
+-- RÔLE     : Détail d'un manifeste de publication et de son lot
+-- APPEL    : externe (console Data Steward, publication), entrées contrôlées par le moteur de lyxal_core
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_get_detail($params: object) {
-    LET $manifest_ref = <string> $params.manifest_ref;
-    LET $language = IF $params.language != NONE { <string> $params.language } ELSE { "fr" };
-
-    LET $records = (SELECT 
-        <string> id AS id,
-        <string> batch AS batch,
-        manifest_ref,
-        manifest_version,
-        seal_hash,
-        is_sealed,
-        statut,
-        approved_by,
-        IF approved_at != NONE { <string> approved_at } ELSE { NONE } AS approved_at,
-        approver_role,
-        nb_articles_insert,
-        nb_articles_update,
-        items_committed,
-        items_failed,
-        execution_items,
-        transitions,
-        IF executed_at != NONE { <string> executed_at } ELSE { NONE } AS executed_at
-    FROM ingestion_publication_manifest WHERE manifest_ref = $manifest_ref);
-
-    IF array::len($records) == 0 {
-        RETURN fn::error_result("INGESTION_MANIFEST_NOT_FOUND", $language, { manifest_ref: $manifest_ref });
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            manifest_ref: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 10);
+    IF !$report.valid {
+        RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { manifest_ref: { pipeline: [{ rule: "trim" }] } }, unknown_keys: "keep" }, 10);
 
-    LET $manif = $records[0];
-    LET $clean_b = string::replace($manif.batch, "ingestion_batch:", "");
-    LET $b_rec = <record> string::concat('ingestion_batch:', $clean_b);
-    LET $batch_info = (SELECT 
-        <string> id AS id,
-        fournisseur_id,
-        nom_fichier,
-        file_hash_blake3,
-        statut,
-        total_lignes,
-        lignes_verifiees,
-        lignes_a_confirmer,
-        lignes_rejetees
-    FROM $b_rec);
+    LET $found = (SELECT * FROM ONLY ingestion_publication_manifest WHERE manifest_ref = $p.manifest_ref LIMIT 1);
+    IF $found == NONE {
+        RETURN fn::error_result("INGESTION_MANIFEST_NOT_FOUND", $p.language, { manifest_ref: $p.manifest_ref });
+    };
+    LET $manifest = object::extend($found, { id: <string> record::id($found.id), batch: <string> record::id($found.batch) });
+    LET $batch = (SELECT *, <string> record::id(id) AS id FROM ONLY $found.batch);
 
     RETURN fn::result_ok({
-        manifest: $manif,
-        batch: IF array::len($batch_info) > 0 { $batch_info[0] } ELSE { NONE },
-        is_sealed: $manif.is_sealed,
-        seal_hash: $manif.seal_hash,
-        execution_count: IF $manif.execution_items != NONE { array::len($manif.execution_items) } ELSE { 0 },
-        transition_count: IF $manif.transitions != NONE { array::len($manif.transitions) } ELSE { 0 }
+        manifest: $manifest,
+        batch: $batch,
+        is_sealed: $manifest.is_sealed,
+        seal_hash: $manifest.seal_hash,
+        execution_count: array::len($manifest.execution_items ?? []),
+        transition_count: array::len($manifest.transitions ?? [])
     });
-} COMMENT "Retourne le détail complet et l'état d'intégrité d'un manifeste de publication";
+} COMMENT "Retourne un manifeste de publication (référence), son lot, son scellement et le nombre d'exécutions et de transitions ; INGESTION_MANIFEST_NOT_FOUND sinon";

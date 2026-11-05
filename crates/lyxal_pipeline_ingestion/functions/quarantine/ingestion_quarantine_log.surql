@@ -2,33 +2,46 @@
 -- FONCTION : fn::ingestion_quarantine_log
 -- MODULE   : lyxal_pipeline_ingestion
 -- RÔLE     : Consignation d'une anomalie typée dans la table de quarantaine
+-- APPEL    : interne (worker, ligne à ligne), entrées contrôlées par les primitives de lyxal_core
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_log($params: object) {
-    LET $batch_id = <string> $params.batch_id;
-    LET $raw_record_id = IF $params.raw_record_id != NONE { <string> $params.raw_record_id } ELSE { NONE };
-    LET $ligne_numero = <int> $params.ligne_numero;
-    LET $code_erreur = <string> $params.code_erreur;
-    LET $severite = IF $params.severite != NONE { <string> $params.severite } ELSE { "ERROR" };
-    LET $champ_concerne = <string> $params.champ_concerne;
-    LET $valeur_fautive = $params.valeur_fautive;
-    LET $cause_detaillee = <string> $params.cause_detaillee;
-    LET $language = IF $params.language != NONE { $params.language } ELSE { "fr" };
+    LET $batch = fn::validation_record($params.batch_id, "ingestion_batch");
+    IF !$batch.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "batch_id", reason: $batch.code }); };
+    LET $checks = {
+        ligne_numero: fn::validation_integer($params.ligne_numero, 1, NONE),
+        code_erreur: fn::validation_required_string($params.code_erreur, 1, 128),
+        severite: fn::validation_enum($params.severite ?? "ERROR", ["CRITICAL", "ERROR", "WARNING"], false),
+        champ_concerne: fn::validation_required_string($params.champ_concerne, 1, 128),
+        cause_detaillee: fn::validation_required_string($params.cause_detaillee, 1, 4000)
+    };
+    FOR $entry IN object::entries($checks) {
+        IF !$entry[1].valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: $entry[0], reason: $entry[1].code }); };
+    };
 
-    LET $batch_rec = <record> string::concat('ingestion_batch:', $batch_id);
-    LET $raw_rec = IF $raw_record_id != NONE { <record> string::concat('ingestion_raw_record:', $raw_record_id) } ELSE { NONE };
+    -- Ligne brute concernée : même convention que fn::ingestion_raw_records_save
+    LET $raw = { value: type::record("ingestion_raw_record", string::concat(<string> record::id($batch.value), "_", <string> $checks.ligne_numero.value)) };
 
-    LET $created = (CREATE ingestion_quarantine_record CONTENT {
-        batch: $batch_rec,
-        raw_record: $raw_rec,
-        ligne_numero: $ligne_numero,
-        code_erreur: $code_erreur,
-        severite: $severite,
-        champ_concerne: $champ_concerne,
-        valeur_fautive: $valeur_fautive,
-        cause_detaillee: $cause_detaillee,
-        created_at: time::now()
+    -- Rejeu d'une ligne (reprise après incident) : l'anomalie ouverte déjà consignée est conservée
+    LET $code = string::uppercase(string::trim($checks.code_erreur.value));
+    LET $open = (SELECT VALUE id FROM ONLY ingestion_quarantine_record WHERE raw_record = $raw.value AND code_erreur = $code AND is_resolved = false LIMIT 1);
+    IF $open != NONE {
+        RETURN fn::result_ok(<string> record::id($open));
+    };
+
+    LET $created = (CREATE ONLY ingestion_quarantine_record CONTENT {
+        batch: $batch.value,
+        raw_record: $raw.value,
+        ligne_numero: $checks.ligne_numero.value,
+        code_erreur: $code,
+        severite: $checks.severite.value,
+        champ_concerne: $checks.champ_concerne.value,
+        valeur_fautive: $params.valeur_fautive,
+        cause_detaillee: $checks.cause_detaillee.value
     });
+    IF $created == NONE {
+        RETURN fn::error_result("INGESTION_WRITE_FORBIDDEN", NONE, { table: "ingestion_quarantine_record" });
+    };
 
-    RETURN fn::result_ok(<string> $created[0].id);
-} COMMENT "Consigne une anomalie typée avec sévérité, valeur fautive et cause détaillée en quarantaine";
+    RETURN fn::result_ok(<string> record::id($created.id));
+} COMMENT "Consigne une anomalie typée (lot, numéro de ligne, code, sévérité, champ, valeur fautive, cause) en quarantaine ; rejouable : une anomalie ouverte de même ligne et de même code n'est pas dupliquée";

@@ -5,19 +5,18 @@
 //! - Aucune attribution artificielle de VERIFIED.
 //! - Rapport de qualification auditable par référence et par fabricant.
 
-use lyxal_pipeline_ingestion::models::{IngestionBatch, QuarantineRecord, StagedItem};
+use lyxal_pipeline_ingestion::models::{QuarantineRecord, StagedItem};
 use lyxal_pipeline_ingestion::proof::{CommercialProof, CommercialProofType};
+use lyxal_pipeline_ingestion::storage::NewBatch;
 use lyxal_pipeline_ingestion::types::SourceFormat;
-use lyxal_pipeline_ingestion::types::{
-    BatchStatus, ItemQualification, PackagingDetails, PublicationAction,
-};
+use lyxal_pipeline_ingestion::types::{ItemQualification, PackagingDetails, PublicationAction};
 
 #[tokio::test]
 async fn test_full_pilot_41_btp_references_lifecycle() {
     let store = crate::support::installed_store().await;
 
     // 1. Initialisation du lot pilote BTP
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some("batch_btp_pilot_41".to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -25,21 +24,12 @@ async fn test_full_pilot_41_btp_references_lifecycle() {
         nom_fichier: "catalogue_btp_lot1_41_refs.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"blake3_btp_lot1_pilot_hash_20261025"),
         taille_octets: 16384,
-        statut: BatchStatus::Staged,
-        cursor_offset: 41,
         chunk_size: 500,
-        total_lignes: 41,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: 0,
-        lignes_rejetees: 0,
-        transitions: vec![],
         provenance_details: serde_json::json!({
             "pilot_project": "Lyxal BTP Lot 1",
             "source_authority": "Federation Francaise du Batiment (FFB) & Industriels",
             "audit_date": "2026-10-25"
         }),
-        created_at: None,
-        completed_at: None,
     };
     store
         .create_batch(&batch)
@@ -543,8 +533,8 @@ async fn test_full_pilot_41_btp_references_lifecycle() {
             let quar = QuarantineRecord {
                 id: None,
                 batch: "batch_btp_pilot_41".to_string(),
-                raw_record: format!("raw_pilot_{line_num}"),
-                ligne_numero: 1,
+                raw_record: format!("batch_btp_pilot_41_{line_num}"),
+                ligne_numero: line_num,
                 code_erreur: "INGESTION_GTIN_INVALID".to_string(),
                 severite: "CRITICAL".to_string(),
                 champ_concerne: "code_barre_gtin".to_string(),

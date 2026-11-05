@@ -13,17 +13,17 @@ DEFINE TABLE test_ref SCHEMALESS PERMISSIONS FULL;
 
 -- test: l'agent d'ingestion crée un lot
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_create({ id: "lot_sec", source_type: "CSV", fournisseur_id: "FOURN_PLACO", nom_fichier: "placo.csv", file_hash_blake3: crypto::blake3("placo.csv"), statut: "RECEIVED" }).data == "lot_sec";
+RETURN fn::ingestion_batch_create({ id: "lot_sec", source_type: "CSV", fournisseur_id: "FOURN_PLACO", nom_fichier: "placo.csv", file_hash_blake3: crypto::blake3("placo.csv") }).data == "lot_sec";
 
 -- préparation: lignes brutes du fichier (écrites par le worker)
 FOR $n IN [1, 2, 3] { CREATE type::record("ingestion_raw_record", string::concat("lot_sec_", <string> $n)) CONTENT { batch: ingestion_batch:lot_sec, ligne_numero: $n, row_hash: crypto::blake3(<string> $n), payload_brut: {}, created_at: time::now() }; };
 
 -- test: l'agent de qualification enregistre deux articles, jamais approuvés à la création
 -- en tant que: qualif
-RETURN [
-    fn::ingestion_staged_save({ batch_id: "lot_sec", raw_record_id: "lot_sec_1", ligne_numero: 1, canonical_fingerprint: crypto::blake3("a1"), rules_version: "1", fabricant: "PLACO", reference_fabricant: "BA13", libelle_commercial: "Plaque BA13", type_item: "PRODUIT", unite_reference: "PCE", conditionnement: { unite_vente: "PCE", quantite_par_colis: 1.0 }, qualification: "TO_CONFIRM", publication_action: "INSERT", transitions: [] }).ok,
-    fn::ingestion_staged_save({ batch_id: "lot_sec", raw_record_id: "lot_sec_2", ligne_numero: 2, canonical_fingerprint: crypto::blake3("a2"), rules_version: "1", fabricant: "PLACO", reference_fabricant: "BA18", libelle_commercial: "Plaque BA18", type_item: "PRODUIT", unite_reference: "PCE", conditionnement: { unite_vente: "PCE", quantite_par_colis: 1.0 }, qualification: "TO_CONFIRM", publication_action: "INSERT", transitions: [], is_approved: true, approved_by: "pirate" }).ok
-] == [true, true];
+RETURN fn::ingestion_staged_save({ batch_id: "lot_sec", rules_version: "1", items: [
+    { ligne_numero: 1, canonical_fingerprint: crypto::blake3("a1"), fabricant: "PLACO", reference_fabricant: "BA13", libelle_commercial: "Plaque BA13", type_item: "PRODUIT", unite_reference: "PCE", conditionnement: { unite_vente: "PCE", quantite_par_colis: 1.0 }, qualification: "TO_CONFIRM", publication_action: "INSERT" },
+    { ligne_numero: 2, canonical_fingerprint: crypto::blake3("a2"), fabricant: "PLACO", reference_fabricant: "BA18", libelle_commercial: "Plaque BA18", type_item: "PRODUIT", unite_reference: "PCE", conditionnement: { unite_vente: "PCE", quantite_par_colis: 1.0 }, qualification: "TO_CONFIRM", publication_action: "INSERT", is_approved: true, approved_by: "pirate" }
+] }).data.ok == [true, true];
 
 -- test: une approbation passée en paramètre est ignorée
 RETURN (SELECT VALUE [is_approved, approved_by] FROM ingestion_staged_item ORDER BY ligne_numero) == [[false, NONE], [false, NONE]];
@@ -60,12 +60,16 @@ CREATE ingestion_staged_item CONTENT { batch: ingestion_batch:lot_sec, raw_recor
 
 -- test: le steward enregistre un manifeste scellé
 -- en tant que: steward
-RETURN fn::ingestion_manifest_save({ manifest_ref: "MAN-SEC", batch_id: "lot_sec", seal_hash: crypto::blake3("MAN-SEC"), is_sealed: true, statut: "SEALED", nb_articles_insert: 1 }).ok;
+RETURN fn::ingestion_manifest_save({ manifest_ref: "MAN-SEC", batch_id: "lot_sec", seal_hash: crypto::blake3("MAN-SEC"), statut: "SEALED", nb_articles_insert: 1 }).ok;
 
--- test: un manifeste n'est jamais créé déjà approuvé
+-- test: la fonction n'enregistre qu'un manifeste brouillon ou scellé
+-- en tant que: steward
+RETURN fn::ingestion_manifest_save({ manifest_ref: "MAN-PIRATE", batch_id: "lot_sec", manifest_version: 2, seal_hash: crypto::blake3("MAN-PIRATE"), statut: "APPROVED" }).error.code == "INGESTION_INVALID_PARAMETERS";
+
+-- test: un manifeste n'est jamais créé déjà approuvé par écriture directe
 -- en tant que: steward
 -- attendu-erreur: INGESTION_MANIFEST_ILLEGAL_STATE_TRANSITION
-RETURN fn::ingestion_manifest_save({ manifest_ref: "MAN-PIRATE", batch_id: "lot_sec", manifest_version: 2, seal_hash: crypto::blake3("MAN-PIRATE"), is_sealed: true, statut: "APPROVED", approved_by: "pirate", approver_role: "steward_admin" });
+CREATE ingestion_publication_manifest CONTENT { batch: ingestion_batch:lot_sec, manifest_ref: "MAN-PIRATE", manifest_version: 2, seal_hash: crypto::blake3("MAN-PIRATE"), is_sealed: true, statut: "APPROVED", approved_by: "user:steward", approver_role: "steward_admin" };
 
 -- test: un rôle d'approbateur passé en paramètre ne donne aucun droit
 -- en tant que: sync
@@ -92,16 +96,27 @@ RETURN (SELECT VALUE payload.manifest_ref FROM event_outbox WHERE event_type = "
 
 -- test: le steward n'exécute pas la publication
 -- en tant que: steward
+RETURN fn::ingestion_manifest_record_exec({ manifest_ref: "MAN-SEC", statut: "COMMITTED", items_committed: 1, items_failed: 0 }).error.code == "INGESTION_MANIFEST_EXECUTION_UNAUTHORIZED";
+
+-- test: le steward ne passe pas un manifeste en exécution par écriture directe
+-- en tant que: steward
 -- attendu-erreur: INGESTION_MANIFEST_EXECUTION_UNAUTHORIZED
-RETURN fn::ingestion_manifest_record_exec({ manifest_ref: "MAN-SEC", statut: "COMMITTED", items_committed: 1, items_failed: 0 });
+UPDATE ingestion_publication_manifest SET statut = "EXECUTING" WHERE manifest_ref = "MAN-SEC";
 
 -- test: l'agent de synchronisation enregistre l'exécution (APPROVED → EXECUTING → COMMITTED)
 -- en tant que: sync
-RETURN fn::ingestion_manifest_record_exec({ manifest_ref: "MAN-SEC", statut: "COMMITTED", items_committed: 1, items_failed: 0 }).ok AND (SELECT VALUE transitions.to_state FROM ONLY ingestion_publication_manifest WHERE manifest_ref = "MAN-SEC" LIMIT 1) == ["APPROVED", "EXECUTING", "COMMITTED"];
+RETURN fn::ingestion_manifest_record_exec({ manifest_ref: "MAN-SEC", statut: "COMMITTED", items_committed: 1, items_failed: 0 }).ok;
+
+-- test: transitions du manifeste journalisées au nom des identités de session
+RETURN (SELECT VALUE transitions.map(|$t| [$t.from_state, $t.to_state, $t.triggered_by]) FROM ONLY ingestion_publication_manifest WHERE manifest_ref = "MAN-SEC" LIMIT 1) == [[NONE, "SEALED", "user:steward"], ["SEALED", "APPROVED", "user:steward"], ["APPROVED", "EXECUTING", "service:sync"], ["EXECUTING", "COMMITTED", "service:sync"]];
+
+-- test: un manifeste exécuté ne reçoit pas de second compte rendu
+-- en tant que: sync
+RETURN fn::ingestion_manifest_record_exec({ manifest_ref: "MAN-SEC", statut: "COMMITTED", items_committed: 1, items_failed: 0 }).error.code == "INGESTION_MANIFEST_ILLEGAL_STATE_TRANSITION";
 
 -- test: l'agent de qualification consigne une anomalie en quarantaine
 -- en tant que: qualif
-RETURN fn::ingestion_quarantine_log({ batch_id: "lot_sec", raw_record_id: "lot_sec_2", ligne_numero: 2, code_erreur: "INGESTION_QUALIFICATION_REJECTED", severite: "ERROR", champ_concerne: "gtin", valeur_fautive: "123", cause_detaillee: "Clé GS1 invalide" }).ok;
+RETURN fn::ingestion_quarantine_log({ batch_id: "lot_sec", ligne_numero: 2, code_erreur: "INGESTION_QUALIFICATION_REJECTED", severite: "ERROR", champ_concerne: "gtin", valeur_fautive: "123", cause_detaillee: "Clé GS1 invalide" }).ok;
 
 -- préparation: identifiant de l'anomalie
 CREATE test_ref:quarantaine SET id_q = <string> (SELECT VALUE id FROM ONLY ingestion_quarantine_record LIMIT 1);

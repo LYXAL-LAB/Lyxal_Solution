@@ -4,7 +4,6 @@
 //! et l'évaluation initiale de la qualification commerciale (`VERIFIED`, `TO_CONFIRM`, `REJECTED`).
 
 pub mod dimensions;
-pub mod gtin;
 pub mod manufacturer;
 pub mod technical_attributes;
 pub mod units;
@@ -12,7 +11,6 @@ pub mod units;
 pub use dimensions::{
     normalize_dimensions, normalize_weight, CanonicalDimensions, CanonicalWeight,
 };
-pub use gtin::{validate_and_normalize_gtin, GtinValidationError};
 pub use manufacturer::normalize_manufacturer;
 pub use technical_attributes::{normalize_technical_attributes, CanonicalTechnicalAttributes};
 pub use units::normalize_unit;
@@ -39,10 +37,9 @@ pub struct NormalizedItemDto {
     pub brand: Option<String>,
     /// Libellé commercial propre
     pub commercial_label: String,
-    /// Code GTIN validé (None si absent ou invalide)
+    /// Code-barres fourni (espaces retirés) ; sa clé GS1 est contrôlée par
+    /// `fn::ingestion_staged_save` (`fn::validation_gtin` de lyxal_core).
     pub gtin: Option<String>,
-    /// Statut de validité du GTIN
-    pub is_gtin_valid: bool,
     /// Unité de mesure officielle `base_unite` (None si non résolue)
     pub unit_code: Option<String>,
     /// Prix tarif normalisé
@@ -170,22 +167,13 @@ impl NormalizationEngine {
         // 4. Normalisation libellé commercial
         let clean_label = raw.raw_designation.trim().to_string();
 
-        // 5. Validation et normalisation GTIN
-        let mut clean_gtin = None;
-        let mut is_gtin_valid = false;
-        let mut gtin_error = None;
-
-        if let Some(ref g) = raw.raw_gtin {
-            match validate_and_normalize_gtin(g) {
-                Ok(norm_gtin) => {
-                    clean_gtin = Some(norm_gtin);
-                    is_gtin_valid = true;
-                }
-                Err(err) => {
-                    gtin_error = Some(err.to_string());
-                }
-            }
-        }
+        // 5. Code-barres : transmis tel quel ; sa clé GS1 est contrôlée par SurrealQL
+        let clean_gtin = raw
+            .raw_gtin
+            .as_deref()
+            .map(str::trim)
+            .filter(|g| !g.is_empty())
+            .map(str::to_string);
 
         // 6. Normalisation unité vers `base_unite`
         let clean_unit = raw.raw_unit.as_deref().and_then(|u| self.resolve_unit(u));
@@ -210,8 +198,7 @@ impl NormalizationEngine {
             &clean_ref,
             &clean_manufacturer,
             &clean_label,
-            is_gtin_valid,
-            gtin_error.as_deref(),
+            clean_gtin.is_some(),
             clean_unit.is_some(),
             raw.raw_price,
             &clean_dims,
@@ -243,7 +230,6 @@ impl NormalizationEngine {
             brand: clean_brand,
             commercial_label: clean_label,
             gtin: clean_gtin,
-            is_gtin_valid,
             unit_code: clean_unit,
             price: raw.raw_price,
             currency: raw
@@ -270,8 +256,7 @@ impl NormalizationEngine {
         reference: &str,
         manufacturer: &str,
         designation: &str,
-        is_gtin_valid: bool,
-        gtin_error: Option<&str>,
+        has_gtin: bool,
         is_unit_resolved: bool,
         price: Option<f64>,
         dimensions: &Option<CanonicalDimensions>,
@@ -282,13 +267,6 @@ impl NormalizationEngine {
             return (
                 ItemQualification::Rejected,
                 "Référence fabricant absente ou non renseignée".to_string(),
-            );
-        }
-
-        if let Some(err) = gtin_error {
-            return (
-                ItemQualification::Rejected,
-                format!("Code GTIN fourni invalide : {err}"),
             );
         }
 
@@ -308,19 +286,13 @@ impl NormalizationEngine {
             && !manufacturer.contains("(INDETERMINE)");
         let has_detailed_designation =
             designation.len() >= 8 && !designation.contains("Article sans libellé");
-        let has_tech_coherence = price.is_some() || is_gtin_valid || dimensions.is_some();
-        let has_valid_proof = commercial_proof
-            .as_ref()
-            .map(|p| p.is_valid())
-            .unwrap_or(false);
+        let has_tech_coherence = price.is_some() || has_gtin || dimensions.is_some();
+        let valid_proof = commercial_proof.as_ref().filter(|p| p.is_valid());
+        let has_valid_proof = valid_proof.is_some();
 
-        if is_mfg_known
-            && is_unit_resolved
-            && has_detailed_designation
-            && has_tech_coherence
-            && has_valid_proof
-        {
-            let p = commercial_proof.as_ref().unwrap();
+        if let Some(p) = valid_proof.filter(|_| {
+            is_mfg_known && is_unit_resolved && has_detailed_designation && has_tech_coherence
+        }) {
             return (
                 ItemQualification::Verified,
                 format!(

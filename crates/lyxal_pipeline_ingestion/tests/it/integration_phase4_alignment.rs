@@ -11,16 +11,16 @@
 //! 8. Reprise sur incident et idempotence après réalignement.
 
 use lyxal_pipeline_ingestion::fingerprint::FingerprintEngine;
-use lyxal_pipeline_ingestion::models::{IngestionBatch, PublicationManifest, StagedItem};
+use lyxal_pipeline_ingestion::models::StagedItem;
 use lyxal_pipeline_ingestion::normalization::{CanonicalDimensions, NormalizedItemDto};
 use lyxal_pipeline_ingestion::publisher::{ControlledPublisher, SyncAgentSession};
+use lyxal_pipeline_ingestion::storage::{ManifestDraft, NewBatch};
 use lyxal_pipeline_ingestion::technical_grouping::{
     ContextualSubstitutionRule, SpecificationTolerances, TechnicalGroupingEngine,
     TechnicalSpecification,
 };
 use lyxal_pipeline_ingestion::types::{
-    BatchStatus, ItemQualification, ManifestStatus, PackagingDetails, PublicationAction,
-    SourceFormat,
+    ItemQualification, ManifestStatus, PackagingDetails, PublicationAction, SourceFormat,
 };
 
 // =============================================================================
@@ -73,8 +73,8 @@ async fn test_1_add_family_carrelage_dynamically_without_recompilation() {
     assert_eq!(spec_key, "SPEC_CARRELAGE_GRES_60X60");
 
     // 3. Rechargement dynamique des règles depuis SurrealDB
-    let loaded_families = store.load_family_rules().await.unwrap();
-    let loaded_specs = store.load_specifications().await.unwrap();
+    let loaded_families = store.load_rules().await.unwrap().families;
+    let loaded_specs = store.load_rules().await.unwrap().specifications;
 
     let carrelage_family = loaded_families
         .iter()
@@ -96,8 +96,7 @@ async fn test_1_add_family_carrelage_dynamically_without_recompilation() {
         manufacturer: "MARAZZI".to_string(),
         brand: Some("MARAZZI".to_string()),
         commercial_label: "Carrelage Grès Cérame 60x60 Grey R10".to_string(),
-        gtin: Some("8012345678901".to_string()),
-        is_gtin_valid: true,
+        gtin: Some("8012345678907".to_string()),
         unit_code: Some("M2".to_string()),
         price: Some(29.90),
         currency: "EUR".to_string(),
@@ -234,7 +233,7 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
     let manifest_ref = "MANIFEST-EXCL-001";
 
     // 1. Création de lot via fn::ingestion_batch_create
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some(batch_id.to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -242,17 +241,8 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
         nom_fichier: "test.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_001"),
         taille_octets: 1000,
-        statut: BatchStatus::Received,
-        cursor_offset: 0,
         chunk_size: 50,
-        total_lignes: 10,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: 0,
-        lignes_rejetees: 0,
-        transitions: Vec::new(),
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store
         .create_batch(&batch)
@@ -268,24 +258,14 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
     assert_eq!(offset, 5);
 
     // 3. Sauvegarde d'un manifeste déclaré scellé mais avec un hash vide -> Rejet
-    let invalid_sealed_manifest = PublicationManifest {
-        id: None,
+    let invalid_sealed_manifest = ManifestDraft {
         manifest_ref: manifest_ref.to_string(),
-        batch: batch_id.to_string(),
+        batch_id: batch_id.to_string(),
         manifest_version: 1,
         seal_hash: String::new(),
-        is_sealed: true,
         statut: ManifestStatus::Draft,
-        approved_by: None,
-        approved_at: None,
-        approver_role: None,
         nb_articles_insert: 1,
         nb_articles_update: 0,
-        items_committed: 0,
-        items_failed: 0,
-        execution_items: Vec::new(),
-        transitions: Vec::new(),
-        executed_at: None,
     };
 
     let save_err = store.save_manifest(&invalid_sealed_manifest).await;
@@ -296,7 +276,6 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
 
     // 4. Sauvegarde d'un brouillon non scellé -> Succès, mais rejet à l'approbation
     let mut draft_manifest = invalid_sealed_manifest;
-    draft_manifest.is_sealed = false;
     draft_manifest.seal_hash = lyxal_crypto::blake3_hex(b"brouillon");
     store
         .save_manifest(&draft_manifest)
@@ -314,7 +293,6 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
     // 5. Sauvegarde avec scellement BLAKE3 valide
     let mut valid_manifest = draft_manifest;
     valid_manifest.seal_hash = lyxal_crypto::blake3_hex(b"blake3_seal_valid_hash");
-    valid_manifest.is_sealed = true;
     valid_manifest.statut = ManifestStatus::Sealed;
     store
         .save_manifest(&valid_manifest)
@@ -366,7 +344,7 @@ async fn test_5_persistence_of_rules_and_substitutions_across_instances() {
     assert_eq!(inserted_id, "SUBST-PLACO-SINIAT-CLOISON-01");
 
     // 2. Rechargement des règles de substitution
-    let loaded_rules = store.load_substitution_rules().await.unwrap();
+    let loaded_rules = store.load_rules().await.unwrap().substitutions;
     let found = loaded_rules
         .iter()
         .find(|r| r.rule_id == "SUBST-PLACO-SINIAT-CLOISON-01");
@@ -437,7 +415,7 @@ async fn test_7_isolated_publication_compatible_with_catalogue_contracts() {
     let manifest_ref = "MANIFEST-ISO-001";
     let batch_id = "batch_iso";
 
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some(batch_id.to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -445,17 +423,8 @@ async fn test_7_isolated_publication_compatible_with_catalogue_contracts() {
         nom_fichier: "test.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_iso"),
         taille_octets: 1000,
-        statut: BatchStatus::Received,
-        cursor_offset: 0,
         chunk_size: 50,
-        total_lignes: 1,
-        lignes_verifiees: 1,
-        lignes_a_confirmer: 0,
-        lignes_rejetees: 0,
-        transitions: Vec::new(),
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch).await.unwrap();
 
@@ -489,24 +458,14 @@ async fn test_7_isolated_publication_compatible_with_catalogue_contracts() {
 
     let seal_hash =
         FingerprintEngine::compute_manifest_seal(&[lyxal_crypto::blake3_hex(b"fp_iso_01")]);
-    let manifest = PublicationManifest {
-        id: None,
+    let manifest = ManifestDraft {
         manifest_ref: manifest_ref.to_string(),
-        batch: batch_id.to_string(),
+        batch_id: batch_id.to_string(),
         manifest_version: 1,
         seal_hash,
-        is_sealed: true,
         statut: ManifestStatus::Sealed,
-        approved_by: None,
-        approved_at: None,
-        approver_role: None,
         nb_articles_insert: 1,
         nb_articles_update: 0,
-        items_committed: 0,
-        items_failed: 0,
-        execution_items: Vec::new(),
-        transitions: Vec::new(),
-        executed_at: None,
     };
     store.save_manifest(&manifest).await.unwrap();
     store
@@ -535,7 +494,7 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
     let store = crate::support::installed_store().await;
     let batch_id = "batch_crash_recovery";
 
-    let batch = IngestionBatch {
+    let batch = NewBatch {
         id: Some(batch_id.to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
@@ -543,17 +502,8 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
         nom_fichier: "isover_100_items.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_crash_01"),
         taille_octets: 5000,
-        statut: BatchStatus::Received,
-        cursor_offset: 0,
         chunk_size: 10,
-        total_lignes: 20,
-        lignes_verifiees: 0,
-        lignes_a_confirmer: 0,
-        lignes_rejetees: 0,
-        transitions: Vec::new(),
         provenance_details: serde_json::json!({}),
-        created_at: None,
-        completed_at: None,
     };
     store.create_batch(&batch).await.unwrap();
 
@@ -569,7 +519,7 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
             fabricant: "ISOVER".to_string(),
             marque: Some("ISOVER".to_string()),
             reference_fabricant: format!("ISO-GR32-{i:03}"),
-            code_barre_gtin: Some(format!("3401234567{i:02}")),
+            code_barre_gtin: None,
             libelle_commercial: format!("Laine de verre GR32 {i}"),
             description_technique: None,
             type_item: "PRODUIT".to_string(),
@@ -610,7 +560,7 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
             fabricant: "ISOVER".to_string(),
             marque: Some("ISOVER".to_string()),
             reference_fabricant: format!("ISO-GR32-{i:03}"),
-            code_barre_gtin: Some(format!("3401234567{i:02}")),
+            code_barre_gtin: None,
             libelle_commercial: format!("Laine de verre GR32 {i}"),
             description_technique: None,
             type_item: "PRODUIT".to_string(),

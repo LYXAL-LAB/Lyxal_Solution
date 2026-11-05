@@ -30,8 +30,10 @@ use crate::proof::CommercialProof;
 use crate::storage::IngestionStore;
 use crate::types::{
     BatchStatus, Dimensions, ItemQualification, PackagingDetails, PublicationAction, SourceFormat,
-    StateTransitionRecord,
 };
+
+/// Version des règles de normalisation enregistrée avec chaque article.
+const RULES_VERSION: &str = "2026-10-V1.1";
 
 /// Rapport d'exécution du traitement d'un lot par le worker.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,10 +77,9 @@ pub struct IngestionWorker {
 
 impl IngestionWorker {
     /// Initialise un nouveau worker supervisé d'ingestion raccordé au store SurrealDB.
-    pub fn new(store: IngestionStore) -> Self {
+    pub fn new(store: IngestionStore) -> Result<Self, RuntimeError> {
         let module_id = ModuleId::new("lyxal_pipeline_ingestion");
-        let worker_id = WorkerId::new(&module_id, "batch_worker")
-            .unwrap_or_else(|_| panic!("Identifiant de worker 'batch_worker' invalide"));
+        let worker_id = WorkerId::new(&module_id, "batch_worker")?;
 
         let mut descriptor =
             WorkerDescriptor::new(worker_id, module_id, "Lyxal Ingestion Batch Processor");
@@ -87,14 +88,14 @@ impl IngestionWorker {
         descriptor.restart_policy = RestartPolicy::default();
         descriptor.shutdown_timeout = Duration::from_secs(10);
 
-        Self {
+        Ok(Self {
             descriptor,
             store,
             queue: Arc::new(Mutex::new(VecDeque::new())),
             publisher: None,
             active_batch_lock: Arc::new(Mutex::new(None)),
             norm_engine: NormalizationEngine::new(),
-        }
+        })
     }
 
     /// Associe un bus d'événements pour la publication des transitions de domaine.
@@ -188,8 +189,7 @@ impl IngestionWorker {
                 .update_batch_status(
                     batch_id,
                     BatchStatus::Parsing,
-                    "ingestion_worker",
-                    Some("Démarrage de la phase de normalisation et qualification"),
+                    "Démarrage de la phase de normalisation et qualification",
                 )
                 .await?;
         }
@@ -252,7 +252,6 @@ impl IngestionWorker {
 
             let mut db_raw_records = Vec::with_capacity(slice.len());
             let mut db_staged_items = Vec::with_capacity(slice.len());
-            let mut db_quarantine_records = Vec::new();
 
             for (idx, dto) in slice.iter().enumerate() {
                 let line_num = current_offset + idx + 1;
@@ -264,7 +263,7 @@ impl IngestionWorker {
                 );
 
                 // Enregistrement brut persistant
-                let raw_rec = RawRecord {
+                db_raw_records.push(RawRecord {
                     id: None,
                     batch: batch_id.to_string(),
                     ligne_numero: line_num,
@@ -274,36 +273,8 @@ impl IngestionWorker {
                             "Ligne {line_num} : contenu brut non sérialisable : {e}"
                         ))
                     })?,
-                    created_at: Some(lyxal_surreal::Datetime::now()),
-                };
-                let raw_record_id = format!("{batch_id}_{line_num}");
-
-                // Décompte de la qualification
-                match normalized.qualification {
-                    ItemQualification::Verified => verified_count += 1,
-                    ItemQualification::ToConfirm => to_confirm_count += 1,
-                    ItemQualification::Rejected => {
-                        rejected_count += 1;
-                        db_quarantine_records.push(QuarantineRecord {
-                            id: None,
-                            batch: batch_id.to_string(),
-                            raw_record: raw_record_id.clone(),
-                            ligne_numero: line_num,
-                            code_erreur: "INGESTION_QUALIFICATION_REJECTED".to_string(),
-                            severite: "CRITICAL".to_string(),
-                            champ_concerne: "commercial_proof_and_specs".to_string(),
-                            valeur_fautive: Some(serde_json::Value::from(
-                                dto.raw_reference.clone(),
-                            )),
-                            cause_detaillee: normalized.qualification_reason.clone(),
-                            created_at: Some(lyxal_surreal::Datetime::now()),
-                            is_resolved: false,
-                            resolved_by: None,
-                            resolved_at: None,
-                            resolution_comment: None,
-                        });
-                    }
-                }
+                    created_at: None,
+                });
 
                 // Conditionnement logistique
                 let conditionnement = PackagingDetails {
@@ -323,51 +294,101 @@ impl IngestionWorker {
                     }),
                 };
 
-                // Article en staging
-                let staged = StagedItem {
-                    id: None,
-                    batch: batch_id.to_string(),
-                    raw_record: raw_record_id,
-                    ligne_numero: line_num,
-                    canonical_fingerprint: normalized.canonical_fingerprint,
-                    rules_version: "2026-10-V1.1".to_string(),
-                    fabricant: normalized.manufacturer,
-                    marque: normalized.brand,
-                    reference_fabricant: normalized.manufacturer_ref,
-                    code_barre_gtin: normalized.gtin,
-                    libelle_commercial: normalized.commercial_label,
-                    description_technique: None,
-                    type_item: "PRODUIT".to_string(),
-                    unite_reference: normalized.unit_code.unwrap_or_else(|| "PCE".to_string()),
-                    conditionnement,
-                    qualification: normalized.qualification,
-                    qualification_reason: Some(normalized.qualification_reason.clone()),
-                    commercial_proof: normalized.commercial_proof,
-                    publication_action: PublicationAction::Insert,
-                    diff_payload: None,
-                    transitions: vec![StateTransitionRecord {
-                        from_statut: "RAW".to_string(),
-                        to_statut: normalized.qualification.as_str().to_string(),
-                        transition_at: "2026-10-25T11:00:00Z".to_string(),
-                        transition_by: "ingestion_worker".to_string(),
-                        reason: normalized.qualification_reason,
-                    }],
-                    is_approved: false,
-                    approved_by: None,
-                    approved_at: None,
-                };
-
-                db_raw_records.push(raw_rec);
-                db_staged_items.push(staged);
+                db_staged_items.push((
+                    dto.raw_reference.clone(),
+                    StagedItem {
+                        id: None,
+                        batch: batch_id.to_string(),
+                        raw_record: format!("{batch_id}_{line_num}"),
+                        ligne_numero: line_num,
+                        canonical_fingerprint: normalized.canonical_fingerprint,
+                        rules_version: RULES_VERSION.to_string(),
+                        fabricant: normalized.manufacturer,
+                        marque: normalized.brand,
+                        reference_fabricant: normalized.manufacturer_ref,
+                        code_barre_gtin: normalized.gtin,
+                        libelle_commercial: normalized.commercial_label,
+                        description_technique: None,
+                        type_item: "PRODUIT".to_string(),
+                        unite_reference: normalized.unit_code.unwrap_or_else(|| "PCE".to_string()),
+                        conditionnement,
+                        qualification: normalized.qualification,
+                        qualification_reason: Some(normalized.qualification_reason),
+                        commercial_proof: normalized.commercial_proof,
+                        publication_action: PublicationAction::Insert,
+                        diff_payload: None,
+                        transitions: Vec::new(),
+                        is_approved: false,
+                        approved_by: None,
+                        approved_at: None,
+                    },
+                ));
             }
 
-            // Persistance atomique par blocs
-            self.store.save_raw_records_chunk(&db_raw_records).await?;
-            self.store.save_staged_items_chunk(&db_staged_items).await?;
-            if !db_quarantine_records.is_empty() {
-                self.store
-                    .save_quarantine_records_chunk(&db_quarantine_records)
-                    .await?;
+            // Persistance du bloc : lignes brutes, puis articles ; une ligne refusée par le
+            // contrôle SurrealQL (code-barres invalide) ou rejetée par la qualification est
+            // consignée en quarantaine.
+            self.store
+                .save_raw_records_chunk(batch_id, &db_raw_records)
+                .await?;
+            let items: Vec<StagedItem> = db_staged_items
+                .iter()
+                .map(|(_, item)| item.clone())
+                .collect();
+            let outcomes = self.store.save_staged_items_chunk(&items).await?;
+            for ((raw_reference, staged), outcome) in db_staged_items.iter().zip(outcomes) {
+                let anomaly = match outcome {
+                    Ok(_) => match staged.qualification {
+                        ItemQualification::Verified => {
+                            verified_count += 1;
+                            None
+                        }
+                        ItemQualification::ToConfirm => {
+                            to_confirm_count += 1;
+                            None
+                        }
+                        ItemQualification::Rejected => Some((
+                            "INGESTION_QUALIFICATION_REJECTED",
+                            "CRITICAL",
+                            "commercial_proof_and_specs",
+                            serde_json::Value::from(raw_reference.clone()),
+                            staged
+                                .qualification_reason
+                                .clone()
+                                .unwrap_or_else(|| "Qualification rejetée".to_string()),
+                        )),
+                    },
+                    Err(err) if err.is_business_code("INGESTION_GTIN_INVALID") => Some((
+                        "INGESTION_GTIN_INVALID",
+                        "ERROR",
+                        "code_barre_gtin",
+                        serde_json::Value::from(staged.code_barre_gtin.clone()),
+                        err.to_string(),
+                    )),
+                    Err(err) => return Err(err),
+                };
+
+                if let Some((code, severite, champ, valeur, cause)) = anomaly {
+                    rejected_count += 1;
+                    self.store
+                        .log_quarantine(&QuarantineRecord {
+                            id: None,
+                            batch: batch_id.to_string(),
+                            raw_record: staged.raw_record.clone(),
+                            ligne_numero: staged.ligne_numero,
+                            code_erreur: code.to_string(),
+                            severite: severite.to_string(),
+                            champ_concerne: champ.to_string(),
+                            valeur_fautive: Some(valeur),
+                            cause_detaillee: cause,
+                            created_at: None,
+                            is_resolved: false,
+                            resolved_by: None,
+                            resolved_at: None,
+                            resolution_comment: None,
+                        })
+                        .await?;
+                }
             }
 
             current_offset = end_offset;
@@ -391,8 +412,7 @@ impl IngestionWorker {
                 .update_batch_status(
                     batch_id,
                     BatchStatus::Validating,
-                    "ingestion_worker",
-                    Some("Lignes normalisées : validation finale du lot"),
+                    "Lignes normalisées : validation finale du lot",
                 )
                 .await?;
         }
@@ -400,8 +420,7 @@ impl IngestionWorker {
             .update_batch_status(
                 batch_id,
                 BatchStatus::Staged,
-                "ingestion_worker",
-                Some("Normalisation et qualification intégrale des lignes achevées avec succès"),
+                "Normalisation et qualification intégrale des lignes achevées avec succès",
             )
             .await?;
 
@@ -469,16 +488,16 @@ impl LyxalWorker for IngestionWorker {
                         }
                     }
                     Err(err) => {
-                        // Échec fatal : le lot passe en FAILED et l'échec est publié. Toute
-                        // erreur de ces deux étapes est jointe au compte rendu, jamais perdue.
-                        let mut causes = vec![err.to_string()];
+                        // Le lot passe en FAILED et l'échec est publié ; le worker continue avec
+                        // les lots suivants. Si l'une de ces deux étapes échoue, l'échec ne peut
+                        // plus être consigné : le worker s'arrête et le superviseur le signale.
+                        let mut causes = Vec::new();
                         if let Err(e) = self
                             .store
                             .update_batch_status(
                                 &job.batch_id,
                                 BatchStatus::Failed,
-                                "ingestion_worker",
-                                Some(&err.to_string()),
+                                &err.to_string(),
                             )
                             .await
                         {
@@ -488,7 +507,7 @@ impl LyxalWorker for IngestionWorker {
                         if let Some(ref publ) = self.publisher {
                             let event = BatchFailedEvent {
                                 batch_id: job.batch_id.clone(),
-                                error_code: "INGESTION_BATCH_FAILED".to_string(),
+                                error_code: err.code(),
                                 message: err.to_string(),
                             };
                             if let Err(e) = publ.publish(&event).await {
@@ -496,14 +515,22 @@ impl LyxalWorker for IngestionWorker {
                             }
                         }
 
-                        return Err(RuntimeError::WorkerFailed {
-                            worker: self.descriptor.id.to_string(),
-                            message: format!(
-                                "INGESTION_BATCH_FAILED: échec fatal du traitement du lot {} : {}",
-                                job.batch_id,
-                                causes.join(" ; ")
-                            ),
-                        });
+                        if !causes.is_empty() {
+                            return Err(RuntimeError::WorkerFailed {
+                                worker: self.descriptor.id.to_string(),
+                                message: format!(
+                                    "INGESTION_BATCH_FAILED: échec du lot {} ({err}) non consigné : {}",
+                                    job.batch_id,
+                                    causes.join(" ; ")
+                                ),
+                            });
+                        }
+                        tracing::error!(
+                            batch_id = %job.batch_id,
+                            code = %err.code(),
+                            error = %err,
+                            "INGESTION_BATCH_FAILED : lot passé en FAILED, traitement des lots suivants"
+                        );
                     }
                 }
             } else {
