@@ -15,9 +15,6 @@ use lyxal_pipeline_ingestion::adapters::RawRecordDto;
 use lyxal_pipeline_ingestion::normalization::NormalizationEngine;
 use lyxal_pipeline_ingestion::proof::{CommercialProof, CommercialProofType};
 use lyxal_pipeline_ingestion::storage::NewBatch;
-use lyxal_pipeline_ingestion::technical_grouping::{
-    ContextualSubstitutionRule, TechnicalGroupLevel, TechnicalGroupingEngine,
-};
 use lyxal_pipeline_ingestion::types::{BatchStatus, ItemQualification, SourceFormat};
 use lyxal_pipeline_ingestion::worker::IngestionWorker;
 
@@ -286,120 +283,6 @@ async fn test_concurrent_batch_locking_prevention() {
         .await
         .unwrap();
     assert_eq!(rep.final_status, BatchStatus::Staged);
-}
-
-// =============================================================================
-// TEST 9 : Révocation Formelle d'une Substitution Contextuelle
-// =============================================================================
-#[test]
-fn test_contextual_substitution_revocation() {
-    use lyxal_pipeline_ingestion::normalization::{CanonicalDimensions, NormalizedItemDto};
-    use std::collections::HashMap;
-
-    let mut grouping_engine = TechnicalGroupingEngine::new();
-
-    let placo = NormalizedItemDto {
-        line_number: 1,
-        source_format: SourceFormat::Csv,
-        manufacturer_ref: "BA13_2500".to_string(),
-        manufacturer: "PLACO".to_string(),
-        brand: Some("PLACO".to_string()),
-        commercial_label: "Placoplatre BA13 2500x1200".to_string(),
-        gtin: Some("3017620422003".to_string()),
-        unit_code: Some("M2".to_string()),
-        price: Some(8.50),
-        currency: "EUR".to_string(),
-        dimensions: Some(CanonicalDimensions {
-            length_mm: Some(2500.0),
-            width_mm: Some(1200.0),
-            height_mm: Some(12.5),
-        }),
-        weight: None,
-        technical_features: HashMap::from([
-            ("edge_type".to_string(), "BA".to_string()),
-            ("fire_rating".to_string(), "A2-S1,D0".to_string()),
-        ]),
-        commercial_proof: None,
-        qualification: ItemQualification::Verified,
-        qualification_reason: "Initial qualification".to_string(),
-        canonical_fingerprint: lyxal_crypto::blake3_hex(b"hash_test_placo"),
-        raw_payload: serde_json::json!({}),
-        raw_hash: "raw_hash_test_placo".to_string(),
-        rules_engine_version: "2026.1".to_string(),
-    };
-
-    let knauf = NormalizedItemDto {
-        line_number: 2,
-        source_format: SourceFormat::Csv,
-        manufacturer_ref: "KS13_2500".to_string(),
-        manufacturer: "KNAUF".to_string(),
-        brand: Some("KNAUF".to_string()),
-        commercial_label: "Knauf Standard KS 13 2500x1200".to_string(),
-        gtin: Some("3017620422003".to_string()),
-        unit_code: Some("M2".to_string()),
-        price: Some(8.30),
-        currency: "EUR".to_string(),
-        dimensions: Some(CanonicalDimensions {
-            length_mm: Some(2500.0),
-            width_mm: Some(1200.0),
-            height_mm: Some(12.5),
-        }),
-        weight: None,
-        technical_features: HashMap::from([
-            ("edge_type".to_string(), "BA".to_string()),
-            ("fire_rating".to_string(), "A2-S1,D0".to_string()),
-        ]),
-        commercial_proof: None,
-        qualification: ItemQualification::Verified,
-        qualification_reason: "Initial qualification".to_string(),
-        canonical_fingerprint: lyxal_crypto::blake3_hex(b"hash_test_knauf"),
-        raw_payload: serde_json::json!({}),
-        raw_hash: "raw_hash_test_knauf".to_string(),
-        rules_engine_version: "2026.1".to_string(),
-    };
-
-    let rule_id = "CSTB-ATE-2026-01";
-    let rule = ContextualSubstitutionRule {
-        rule_id: rule_id.to_string(),
-        source_manufacturer: "PLACO".to_string(),
-        source_ref: "BA13_2500".to_string(),
-        target_manufacturer: "KNAUF".to_string(),
-        target_ref: "KS13_2500".to_string(),
-        system_scope: "ZONE_SISMIQUE_3_ERP".to_string(),
-        certification_body: "CSTB".to_string(),
-        certification_reference: "Avis Technique n° 9/21-1050_V1".to_string(),
-        valid_until: "2028-12-31".to_string(),
-        is_revoked: false,
-        revocation_reason: None,
-    };
-    grouping_engine.register_contextual_substitution(rule);
-
-    // 1. Avant révocation : substitution autorisée dans le contexte précis
-    let dec_before =
-        grouping_engine.compare_items_in_context(&placo, &knauf, Some("ZONE_SISMIQUE_3_ERP"));
-    assert_eq!(
-        dec_before.reached_level,
-        TechnicalGroupLevel::AuthorizedSubstitution
-    );
-    assert_eq!(dec_before.confidence_score, 1.0);
-
-    // 2. Révocation formelle de la règle CSTB
-    let revoked =
-        grouping_engine.revoke_substitution(rule_id, "Directive de sécurité renforcée CSTB 2026");
-    assert!(revoked, "La règle de substitution doit être révoquée");
-
-    // 3. Après révocation : la substitution DOIT être refusée et redescendre au niveau équivalence
-    let dec_after =
-        grouping_engine.compare_items_in_context(&placo, &knauf, Some("ZONE_SISMIQUE_3_ERP"));
-    assert_eq!(
-        dec_after.reached_level,
-        TechnicalGroupLevel::FunctionalEquivalence,
-        "Une substitution révoquée ne doit plus être accordée"
-    );
-    assert!(dec_after
-        .missing_evidence
-        .iter()
-        .any(|m| m.contains("révoquée")));
 }
 
 // =============================================================================

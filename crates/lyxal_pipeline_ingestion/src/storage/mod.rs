@@ -4,4 +4,4 @@
 
 pub mod store;
 
-pub use store::{IngestionStore, ManifestDraft, NewBatch, QuarantineCorrections, RulesSnapshot};
+pub use store::{IngestionStore, ManifestDraft, NewBatch, QuarantineCorrections};

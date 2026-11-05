@@ -815,7 +815,7 @@ lyxal_scheduler
 Modules Métiers
 lyxal_booking
 lyxal_catalogue (référentiel des articles, SurrealQL seul)
-lyxal_pipeline_ingestion (Ingestion, Normalisation, Qualification Catalogues V1.0.0 — Clôturé Staging)
+lyxal_pipeline_ingestion (ingestion, normalisation, qualification et publication des catalogues fabricants — Clôturé Staging)
 lyxal_crm
 lyxal_documents
 lyxal_btp

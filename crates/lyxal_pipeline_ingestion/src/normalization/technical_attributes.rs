@@ -135,7 +135,7 @@ pub fn normalize_technical_attributes(
         result.electrical_ip_rating = Some("IP20".to_string());
     }
 
-    // 7. Isolation thermique & acoustique (Nouvelle famille Phase 3)
+    // 7. Isolation thermique & acoustique
     // Conductivité thermique (lambda)
     if let Some(l_str) = find_attr(
         raw_attrs,

@@ -1,44 +1,12 @@
-//! Types et contrats formels du regroupement technique Lyxal OS.
-//!
-//! Définit les 4 niveaux stricts de rapprochement exigés par le CTO :
-//! 1. Famille
-//! 2. Spécification technique
-//! 3. Équivalence fonctionnelle
-//! 4. Substitution autorisée
+//! Référentiels du regroupement technique, administrés par le Data Steward et stockés en base
+//! (`ingestion_family_rule`, `ingestion_specification`, `ingestion_substitution_rule`) :
+//! familles de produits, spécifications patronnes et règles de substitution certifiées.
 
 use lyxal_surreal::SurrealValue;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::normalization::{CanonicalDimensions, CanonicalWeight};
-use crate::types::ItemQualification;
-
-/// Les quatre niveaux stricts de regroupement technique (Directive CTO).
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, SurrealValue,
-)]
-#[surreal(untagged)]
-pub enum TechnicalGroupLevel {
-    /// Niveau 1 : Appartenance taxonomique à une même famille (ex: PLAQUES_DE_PLATRE, OSSATURES_METALLIQUES).
-    Family = 1,
-    /// Niveau 2 : Correspondance à une même spécification technique (mêmes cotes physiques et normes de base).
-    Specification = 2,
-    /// Niveau 3 : Équivalence fonctionnelle démontrée (mêmes performances d'emploi, de feu et de tenue mécanique).
-    FunctionalEquivalence = 3,
-    /// Niveau 4 : Substitution contractuellement et réglementairement autorisée (compatibilité système CSTB / ATec).
-    AuthorizedSubstitution = 4,
-}
-
-impl std::fmt::Display for TechnicalGroupLevel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Family => write!(f, "NIVEAU_1_FAMILLE"),
-            Self::Specification => write!(f, "NIVEAU_2_SPECIFICATION"),
-            Self::FunctionalEquivalence => write!(f, "NIVEAU_3_EQUIVALENCE_FONCTIONNELLE"),
-            Self::AuthorizedSubstitution => write!(f, "NIVEAU_4_SUBSTITUTION_AUTORISEE"),
-        }
-    }
-}
 
 /// Règle de classification d'une famille technique de produits BTP.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, SurrealValue)]
@@ -116,32 +84,7 @@ pub struct TechnicalSpecification {
     pub required_features: HashMap<String, String>,
 }
 
-/// Résultat de l'analyse de rapprochement technique entre un article et un patron technique.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, SurrealValue)]
-pub struct TechnicalGroupingDecision {
-    /// Référence fabricant de l'article analysé
-    pub manufacturer_ref: String,
-    /// Fabricant de l'article analysé
-    pub manufacturer: String,
-    /// Clé technique associée
-    pub technical_identity_key: String,
-    /// Niveau maximal de rapprochement atteint
-    pub reached_level: TechnicalGroupLevel,
-    /// Qualification commerciale attribuée à ce rapprochement (VERIFIED, TO_CONFIRM, REJECTED)
-    pub qualification: ItemQualification,
-    /// Score de confiance technique (0.0 à 1.0)
-    pub confidence_score: f32,
-    /// Critères techniques effectivement validés
-    pub matched_criteria: Vec<String>,
-    /// Éléments de preuve manquants pour atteindre le niveau supérieur
-    pub missing_evidence: Vec<String>,
-    /// Justification de la décision
-    pub decision_reason: String,
-    /// Version des règles de rapprochement
-    pub rules_engine_version: String,
-}
-
-/// Règle de substitution certifiée contextualisée et révocable (Directive CTO Phase 3).
+/// Règle de substitution certifiée contextualisée et révocable.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, SurrealValue)]
 pub struct ContextualSubstitutionRule {
     /// Identifiant unique de la règle (ex: "RULE-SUBST-PLACO-KNAUF-72-48")

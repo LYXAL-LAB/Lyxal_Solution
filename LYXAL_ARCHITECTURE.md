@@ -188,7 +188,7 @@ Les feuilles de route officielles par module et transversales sont documentées 
 - **Moteur d'erreurs :** [`crates/lyxal_error/ROADMAP.md`](crates/lyxal_error/ROADMAP.md)
 - **Moteur d'événements :** [`crates/lyxal_event/ROADMAP.md`](crates/lyxal_event/ROADMAP.md)
 - **Master Catalogue Universel :** [`crates/lyxal_catalogue/ROADMAP.md`](crates/lyxal_catalogue/ROADMAP.md)
-- **Pipeline d'Ingestion :** [`crates/lyxal_pipeline_ingestion/ROADMAP.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/ROADMAP.md)
+- **Pipeline d'Ingestion :** [`crates/lyxal_pipeline_ingestion/ROADMAP.md`](crates/lyxal_pipeline_ingestion/ROADMAP.md)
 
 ---
 

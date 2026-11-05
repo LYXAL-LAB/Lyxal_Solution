@@ -1,18 +1,18 @@
 //! # `lyxal_pipeline_ingestion`
 //!
-//! Moteur industriel d'ingestion, normalisation, qualification et préparation des catalogues fabricants
-//! pour le Master Catalogue de Lyxal OS.
+//! Ingestion, normalisation, qualification et publication des catalogues fabricants vers le
+//! catalogue maître de Lyxal OS. Les données, les règles métier, les contrôles d'identité et les
+//! transitions d'état vivent dans le SurrealQL du module (`fn::ingestion_*`) ; le Rust fournit :
 //!
-//! ## Architecture
-//!
-//! Ce module implémente :
-//! - Le contrat universel [`lyxal_runtime::LyxalModule`] via [`PipelineIngestionModule`].
-//! - La machine à états stricte de cycle de vie de lot et de qualification via [`BatchStateMachine`], [`StagedItemStateMachine`] et [`ManifestStateMachine`].
-//! - Le calcul d'empreintes canoniques et de scellement de publication par hachage BLAKE3 via [`FingerprintEngine`].
-//! - Les adaptateurs de sources multiformats ([`adapters::FabDisAdapter`], [`adapters::CsvAdapter`], [`adapters::XmlAdapter`], [`adapters::JsonAdapter`]).
-//! - Le moteur de normalisation universel ([`normalization::NormalizationEngine`]).
-//! - Le moteur de regroupement technique multi-niveaux à 4 niveaux stricts ([`technical_grouping::TechnicalGroupingEngine`]).
-//! - Les modèles typés du staging et de la quarantaine : [`IngestionBatch`], [`RawRecord`], [`StagedItem`], [`QuarantineRecord`], [`PublicationManifest`].
+//! - [`PipelineIngestionModule`] (contrat `LyxalModule`) et [`IngestionHealthCheck`] ;
+//! - les adaptateurs de sources ([`adapters::FabDisAdapter`], [`adapters::CsvAdapter`],
+//!   [`adapters::XmlAdapter`], [`adapters::JsonAdapter`]) ;
+//! - la normalisation et la qualification initiale ([`normalization::NormalizationEngine`]) ;
+//! - les empreintes canoniques et le sceau des manifestes ([`FingerprintEngine`], BLAKE3) ;
+//! - le worker supervisé ([`IngestionWorker`]) ;
+//! - le store ([`IngestionStore`], appels `call_fn` des fonctions du module) ;
+//! - la publication vers le catalogue ([`ControlledPublisher`], [`PublicationConsumer`]) sous le
+//!   jeton de service `catalogue_sync_agent` ([`HmacCatalogueTokenIssuer`]).
 
 pub mod adapters;
 pub mod error;
@@ -24,25 +24,23 @@ pub mod module;
 pub mod normalization;
 pub mod proof;
 pub mod publisher;
-pub mod state_machine;
+pub mod rules;
 pub mod storage;
-pub mod technical_grouping;
 pub mod types;
 pub mod worker;
 
-// Re-exports Phase 1 & Storage
+// Ré-exports : modèles, store, types
 pub use error::{IngestionError, IngestionResult};
 pub use fingerprint::FingerprintEngine;
 pub use models::{IngestionBatch, PublicationManifest, QuarantineRecord, RawRecord, StagedItem};
 pub use module::PipelineIngestionModule;
-pub use state_machine::{BatchStateMachine, ManifestStateMachine, StagedItemStateMachine};
 pub use storage::IngestionStore;
 pub use types::{
     BatchStatus, Dimensions, ItemQualification, ManifestStatus, PackagingDetails,
     PublicationAction, SourceFormat, StateTransitionRecord,
 };
 
-// Re-exports Phase 2
+// Ré-exports : adaptateurs, normalisation, référentiels
 pub use adapters::{
     AdapterRegistry, CsvAdapter, FabDisAdapter, JsonAdapter, RawDimensionsDto, RawRecordDto,
     RawWeightDto, SourceAdapter, XmlAdapter,
@@ -52,12 +50,11 @@ pub use normalization::{
     normalize_weight, CanonicalDimensions, CanonicalTechnicalAttributes, CanonicalWeight,
     NormalizationEngine, NormalizedItemDto,
 };
-pub use technical_grouping::{
-    ContextualSubstitutionRule, FamilyRule, SpecificationTolerances, TechnicalGroupLevel,
-    TechnicalGroupingDecision, TechnicalGroupingEngine, TechnicalSpecification,
+pub use rules::{
+    ContextualSubstitutionRule, FamilyRule, SpecificationTolerances, TechnicalSpecification,
 };
 
-// Re-exports Phase 3 & 4
+// Ré-exports : événements, santé, preuves, publication, worker
 pub use events::{
     BatchFailedEvent, BatchStagedEvent, ManifestApprovedEvent, ManifestPublishedEvent,
 };

@@ -1,9 +1,8 @@
 //! Test d'intégration de bout en bout de la Phase 2 :
-//! Parsing multiformat -> Normalisation universelle -> Regroupement technique multi-niveaux.
+//! Parsing multiformat -> Normalisation universelle.
 
 use lyxal_pipeline_ingestion::adapters::AdapterRegistry;
 use lyxal_pipeline_ingestion::normalization::NormalizationEngine;
-use lyxal_pipeline_ingestion::technical_grouping::{TechnicalGroupLevel, TechnicalGroupingEngine};
 use lyxal_pipeline_ingestion::types::{ItemQualification, SourceFormat};
 
 #[test]
@@ -13,10 +12,6 @@ fn test_end_to_end_phase2_flow() {
     // -------------------------------------------------------------------------
     let registry = AdapterRegistry::new();
     let norm_engine = NormalizationEngine::new();
-    let mut grouping_engine = TechnicalGroupingEngine::new();
-
-    // Enregistrement d'une substitution certifiée officielle (Avis Technique CSTB)
-    grouping_engine.register_certified_substitution("PLACO", "BA13_2500", "KNAUF", "KS13_2500");
 
     // -------------------------------------------------------------------------
     // 2. Flux FAB-DIS BTP multi-blocs (Placo BA13 + Rail R48)
@@ -118,46 +113,8 @@ R;RAIL_R48_3M;EC000382;NF EN 14195;A1
     assert_eq!(norm_ba13_siniat.manufacturer, "SINIAT");
 
     // -------------------------------------------------------------------------
-    // 5. Évaluation du regroupement technique et des 4 niveaux
+    // 5. Règle absolue d'anti-fusion : les références commerciales restent distinctes
     // -------------------------------------------------------------------------
-
-    // A. Placo BA13 vs Spécification générique patronne
-    let dec_placo_spec = grouping_engine.evaluate_item(&norm_ba13_placo);
-    assert_eq!(
-        dec_placo_spec.reached_level,
-        TechnicalGroupLevel::FunctionalEquivalence
-    );
-    assert_eq!(dec_placo_spec.qualification, ItemQualification::Verified);
-
-    // B. Placo BA13 vs Knauf KS13 (substitution certifiée préalable)
-    let dec_placo_knauf = grouping_engine.compare_items(&norm_ba13_placo, &norm_ba13_knauf);
-    // Atteint le Niveau 4 (Substitution autorisée) car enregistré dans certified_substitutions !
-    assert_eq!(
-        dec_placo_knauf.reached_level,
-        TechnicalGroupLevel::AuthorizedSubstitution
-    );
-    assert_eq!(dec_placo_knauf.confidence_score, 1.0);
-    assert_eq!(dec_placo_knauf.qualification, ItemQualification::Verified);
-
-    // C. Placo BA13 vs Siniat BA13 (Siniat n'a pas de preuve de classement feu dans son XML)
-    let dec_placo_siniat = grouping_engine.compare_items(&norm_ba13_placo, &norm_ba13_siniat);
-    // Doit être cantonné au Niveau 2 (Spécification) avec qualification TO_CONFIRM
-    // car la similitude de libellé ne suffit jamais !
-    assert_eq!(
-        dec_placo_siniat.reached_level,
-        TechnicalGroupLevel::Specification
-    );
-    assert_eq!(dec_placo_siniat.qualification, ItemQualification::ToConfirm);
-    assert!(dec_placo_siniat
-        .missing_evidence
-        .iter()
-        .any(|m| m.contains("feu")));
-
-    // D. Placo BA13 vs Placo Rail R48 (familles différentes : cloison vs ossature)
-    let dec_diff_family = grouping_engine.compare_items(&norm_ba13_placo, &norm_rail_placo);
-    assert_eq!(dec_diff_family.qualification, ItemQualification::Rejected);
-
-    // E. Règle absolue d'anti-fusion : vérification que les références commerciales restent distinctes
     assert_eq!(norm_ba13_placo.manufacturer_ref, "BA13_2500");
     assert_eq!(norm_ba13_knauf.manufacturer_ref, "KS13_2500");
     assert_ne!(norm_ba13_placo.manufacturer, norm_ba13_knauf.manufacturer);

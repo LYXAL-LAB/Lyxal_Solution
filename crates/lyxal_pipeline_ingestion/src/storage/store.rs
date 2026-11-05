@@ -14,7 +14,7 @@ use surrealdb::Surreal;
 
 use crate::error::{IngestionError, IngestionResult};
 use crate::models::{IngestionBatch, PublicationManifest, QuarantineRecord, RawRecord, StagedItem};
-use crate::technical_grouping::{ContextualSubstitutionRule, FamilyRule, TechnicalSpecification};
+use crate::rules::{ContextualSubstitutionRule, TechnicalSpecification};
 use crate::types::{
     BatchStatus, ItemQualification, ManifestStatus, PackagingDetails, PublicationAction,
     SourceFormat,
@@ -67,14 +67,6 @@ pub struct ManifestDraft {
     pub statut: ManifestStatus,
     pub nb_articles_insert: i64,
     pub nb_articles_update: i64,
-}
-
-/// Référentiels du regroupement technique (`fn::ingestion_rules_load`).
-#[derive(Debug, Clone, SurrealValue)]
-pub struct RulesSnapshot {
-    pub families: Vec<FamilyRule>,
-    pub specifications: Vec<TechnicalSpecification>,
-    pub substitutions: Vec<ContextualSubstitutionRule>,
 }
 
 // =============================================================================
@@ -237,7 +229,7 @@ struct SpecAddParams {
     family_code: String,
     generic_title: String,
     nominal_dimensions: Option<crate::normalization::dimensions::CanonicalDimensions>,
-    tolerances: Option<crate::technical_grouping::types::SpecificationTolerances>,
+    tolerances: Option<crate::rules::SpecificationTolerances>,
     nominal_weight: Option<f64>,
     standard_norm: Option<String>,
     fire_rating: Option<String>,
@@ -832,13 +824,6 @@ impl IngestionStore {
         };
         Ok(self
             .call_fn("ingestion_rule_substitution_add", params)
-            .await?)
-    }
-
-    /// Familles, spécifications et règles de substitution configurées.
-    pub async fn load_rules(&self) -> IngestionResult<RulesSnapshot> {
-        Ok(self
-            .call_fn("ingestion_rules_load", serde_json::json!({}))
             .await?)
     }
 

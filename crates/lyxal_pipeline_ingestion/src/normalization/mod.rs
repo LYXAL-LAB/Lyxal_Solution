@@ -52,7 +52,7 @@ pub struct NormalizedItemDto {
     pub weight: Option<CanonicalWeight>,
     /// Caractéristiques techniques structurées
     pub technical_features: HashMap<String, String>,
-    /// Preuve commerciale formelle traçable (Directive CTO Phase 4)
+    /// Preuve commerciale formelle traçable
     pub commercial_proof: Option<crate::proof::CommercialProof>,
     /// Statut initial de qualification commerciale (VERIFIED, TO_CONFIRM, REJECTED)
     pub qualification: ItemQualification,
@@ -133,7 +133,7 @@ impl NormalizationEngine {
         self.normalize_with_proof(raw, default_manufacturer, source_format, None)
     }
 
-    /// Normalise un enregistrement brut avec preuve commerciale formelle (Directive CTO Phase 4)
+    /// Normalise un enregistrement brut avec preuve commerciale formelle
     pub fn normalize_with_proof(
         &self,
         raw: &RawRecordDto,
@@ -193,7 +193,7 @@ impl NormalizationEngine {
         // 8. Normalisation caractéristiques techniques
         let tech_attrs = normalize_technical_attributes(&raw.raw_attributes, &clean_label);
 
-        // 9. Évaluation stricte de la qualification (Directive CTO Phase 4)
+        // 9. Évaluation stricte de la qualification
         let (qualification, qualification_reason) = self.evaluate_qualification(
             &clean_ref,
             &clean_manufacturer,
@@ -249,7 +249,7 @@ impl NormalizationEngine {
         }
     }
 
-    /// Applique les règles de qualification commerciale CTO (Phase 4)
+    /// Applique les règles de qualification commerciale CTO
     #[allow(clippy::too_many_arguments)]
     fn evaluate_qualification(
         &self,
@@ -279,7 +279,7 @@ impl NormalizationEngine {
             }
         }
 
-        // 2. Cas VERIFIED : REQUIERT STRICTEMENT UNE PREUVE COMMERCIALE FORMELLE ET AUDITABLE (Directive CTO Phase 4)
+        // 2. Cas VERIFIED : REQUIERT STRICTEMENT UNE PREUVE COMMERCIALE FORMELLE ET AUDITABLE
         // La simple conjonction GTIN + cotes + prix + fabricant ne prouve que la cohérence technique, jamais la provenance commerciale !
         let is_mfg_known = manufacturer != "FABRICANT_NON_SPECIFIE"
             && !manufacturer.is_empty()
@@ -355,7 +355,7 @@ mod tests {
         };
 
         let engine = NormalizationEngine::new();
-        // 1. Sans preuve commerciale formelle -> Maintien strict en TO_CONFIRM (Directive CTO Phase 4)
+        // 1. Sans preuve commerciale formelle -> Maintien strict en TO_CONFIRM
         let norm_no_proof = engine.normalize(&raw, None, SourceFormat::FabDis);
         assert_eq!(norm_no_proof.qualification, ItemQualification::ToConfirm);
         assert!(norm_no_proof

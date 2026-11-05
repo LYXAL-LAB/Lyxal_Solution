@@ -11,12 +11,11 @@
 //! 8. Reprise sur incident et idempotence après réalignement.
 
 use lyxal_pipeline_ingestion::models::StagedItem;
-use lyxal_pipeline_ingestion::normalization::{CanonicalDimensions, NormalizedItemDto};
-use lyxal_pipeline_ingestion::storage::{ManifestDraft, NewBatch};
-use lyxal_pipeline_ingestion::technical_grouping::{
-    ContextualSubstitutionRule, SpecificationTolerances, TechnicalGroupingEngine,
-    TechnicalSpecification,
+use lyxal_pipeline_ingestion::normalization::CanonicalDimensions;
+use lyxal_pipeline_ingestion::rules::{
+    ContextualSubstitutionRule, SpecificationTolerances, TechnicalSpecification,
 };
+use lyxal_pipeline_ingestion::storage::{ManifestDraft, NewBatch};
 use lyxal_pipeline_ingestion::types::{
     ItemQualification, ManifestStatus, PackagingDetails, PublicationAction, SourceFormat,
 };
@@ -70,56 +69,17 @@ async fn test_1_add_family_carrelage_dynamically_without_recompilation() {
         .expect("Ajout dynamique de la spécification Carrelage");
     assert_eq!(spec_key, "SPEC_CARRELAGE_GRES_60X60");
 
-    // 3. Rechargement dynamique des règles depuis SurrealDB
-    let loaded_families = store.load_rules().await.unwrap().families;
-    let loaded_specs = store.load_rules().await.unwrap().specifications;
-
-    let carrelage_family = loaded_families
-        .iter()
-        .find(|f| f.code.to_lowercase() == "carrelage");
-    assert!(
-        carrelage_family.is_some(),
-        "La famille Carrelage doit exister dans les règles chargées depuis SurrealDB"
-    );
-
-    // 4. Instanciation du moteur de regroupement avec les règles rechargées dynamiquement
-    let mut grouping_engine = TechnicalGroupingEngine::new();
-    grouping_engine.clear_and_load(loaded_families, loaded_specs, vec![]);
-
-    // 5. Test de qualification d'un article Carrelage
-    let candidate = NormalizedItemDto {
-        line_number: 1,
-        source_format: SourceFormat::Csv,
-        manufacturer_ref: "MZ-GRES-6060-GREY".to_string(),
-        manufacturer: "MARAZZI".to_string(),
-        brand: Some("MARAZZI".to_string()),
-        commercial_label: "Carrelage Grès Cérame 60x60 Grey R10".to_string(),
-        gtin: Some("8012345678907".to_string()),
-        unit_code: Some("M2".to_string()),
-        price: Some(29.90),
-        currency: "EUR".to_string(),
-        dimensions: Some(CanonicalDimensions {
-            length_mm: Some(600.0),
-            width_mm: Some(600.0),
-            height_mm: Some(10.0),
-        }),
-        weight: None,
-        technical_features: [("anti_glissance".to_string(), "R10".to_string())]
-            .into_iter()
-            .collect(),
-        commercial_proof: None,
-        qualification: ItemQualification::Verified,
-        qualification_reason: "Vérifié".to_string(),
-        canonical_fingerprint: lyxal_crypto::blake3_hex(b"fp_carrelage_01"),
-        raw_payload: serde_json::json!({ "designation": "Carrelage Grès 60x60" }),
-        raw_hash: "hash_raw_carrelage".to_string(),
-        rules_engine_version: "2026.1".to_string(),
-    };
-
-    let decision = grouping_engine.evaluate_item(&candidate);
+    // 3. Référentiels relus en base par fn::ingestion_rules_load
+    let mut res = store
+        .client()
+        .query("RETURN fn::ingestion_rules_load({}).data.{ f: families[WHERE code = 'CARRELAGE'].standard_unit, s: specifications[WHERE technical_identity_key = 'SPEC_CARRELAGE_GRES_60X60'].family_code }")
+        .await
+        .expect("chargement des référentiels");
+    let loaded: Option<serde_json::Value> = res.take(0).expect("référentiels");
     assert_eq!(
-        decision.technical_identity_key, "SPEC_CARRELAGE_GRES_60X60",
-        "Le moteur DOIT associer l'article à la nouvelle spécification Carrelage sans recompilation Rust"
+        loaded,
+        Some(serde_json::json!({ "f": ["M2"], "s": ["CARRELAGE"] })),
+        "famille et spécification enregistrées sans recompilation Rust"
     );
 }
 
@@ -341,22 +301,24 @@ async fn test_5_persistence_of_rules_and_substitutions_across_instances() {
         .expect("Insertion de la règle de substitution");
     assert_eq!(inserted_id, "SUBST-PLACO-SINIAT-CLOISON-01");
 
-    // 2. Rechargement des règles de substitution
-    let loaded_rules = store.load_rules().await.unwrap().substitutions;
-    let found = loaded_rules
-        .iter()
-        .find(|r| r.rule_id == "SUBST-PLACO-SINIAT-CLOISON-01");
-
-    assert!(
-        found.is_some(),
+    // 2. Règle relue en base par fn::ingestion_rules_load
+    let mut res = store
+        .client()
+        .query("RETURN fn::ingestion_rules_load({}).data.substitutions[WHERE rule_id = 'SUBST-PLACO-SINIAT-CLOISON-01'].{ source_manufacturer, target_manufacturer, system_scope, certification_reference, is_revoked }")
+        .await
+        .expect("chargement des règles");
+    let loaded: Option<serde_json::Value> = res.take(0).expect("règles");
+    assert_eq!(
+        loaded,
+        Some(serde_json::json!({
+            "source_manufacturer": "PLACO",
+            "target_manufacturer": "SINIAT",
+            "system_scope": "CLOISON_DISTRIBUTIVE_98_48",
+            "certification_reference": "ATec-09-14-1234",
+            "is_revoked": false
+        })),
         "La règle de substitution DOIT être persistée"
     );
-    let loaded = found.unwrap();
-    assert_eq!(loaded.source_manufacturer, "PLACO");
-    assert_eq!(loaded.target_manufacturer, "SINIAT");
-    assert_eq!(loaded.system_scope, "CLOISON_DISTRIBUTIVE_98_48");
-    assert_eq!(loaded.certification_reference, "ATec-09-14-1234");
-    assert!(!loaded.is_revoked);
 }
 
 // =============================================================================

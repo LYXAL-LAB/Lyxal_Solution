@@ -1,117 +1,157 @@
-# 📦 Module Lyxal Pipeline Ingestion
+# `lyxal_pipeline_ingestion` — Ingestion des catalogues fabricants
 
-> **Module ID :** `lyxal_pipeline_ingestion`  
-> **Version :** `1.0.0`  
-> **Statut Officiel CTO :** **`FUNCTIONALLY COMPLETE — STAGING VALIDATED — PRODUCTION NOT AUTHORIZED`**  
+Ingestion, normalisation, qualification et publication des catalogues fabricants (FAB-DIS, CSV,
+XML / BMEcat, JSON) vers le catalogue maître (`lyxal_catalogue`). Module hybride : les données,
+les règles métier, les contrôles d'identité et les transitions d'état vivent dans le SurrealQL
+du module ; le Rust lit les fichiers, normalise, calcule les empreintes, pilote le traitement par
+blocs et publie vers le catalogue.
 
-
-Le module **Lyxal Pipeline Ingestion** assure l'ingestion industrielle, la normalisation, la qualification multi-niveaux et la publication strictement contrôlée des flux catalogues fabricants (FAB-DIS, CSV, XML/BMEcat, JSON) vers le Master Catalogue de Lyxal OS.
-
----
-
-## 🏛️ Architecture & Respect des Frontières
-
-Conformément à `AGENTS.md` :
-
-1. **Persistance & Règles Métier dans SurrealDB** :
-   - 11 tables `SCHEMAFULL` déclaratives sécurisées par RLS.
-   - Fonctions publiques `fn::ingestion_*` respectant le contrat universel `fn::result_ok` / `fn::error_result`.
-   - Externalisation complète des règles métier configurables :
-     - Familles BTP (`ingestion_family_rule`)
-     - Spécifications patronnes et tolérances (`ingestion_specification`)
-     - Alias fabricants et holdings (`ingestion_manufacturer_alias`)
-     - Alias unités raccordés à `base_unite` (`ingestion_unit_alias`)
-     - Substitutions contextualisées et révocables (`ingestion_substitution_rule`)
-2. **Rust comme Moteur Technique & Adaptateurs** :
-   - Streaming et parsing zéro allocation.
-   - Empreintes cryptographiques BLAKE3 (`lyxal_crypto`).
-   - Appels SurrealDB systématiquement enveloppés via le trait `LyxalSurrealCall` et `store.call_fn(...)`.
-   - Worker supervisé coopérant avec `CancellationToken` (`lyxal_runtime`).
-   - Événements publiés sur `lyxal_event` Transactional Outbox.
-3. **Publication Contrôlée vers Catalogue V1.1** :
-   - Scellement BLAKE3 obligatoire et approbation formelle du Data Steward (`steward_admin`).
-   - Utilisation exclusive des fonctions publiques de `lyxal_catalogue` (`fn::catalogue_relation_create`).
-   - Distinction stricte entre référence commerciale vérifiée, similarité technique, équivalence fonctionnelle et substitution contextualisée.
-
----
-
-## 📂 Structure Canonique
+| | |
+| :--- | :--- |
+| Identifiant | `lyxal_pipeline_ingestion` (version `0.1.0`) |
+| Dépendances (`manifest.toml`) | `lyxal_core`, `lyxal_base`, `lyxal_error`, `lyxal_event`, `lyxal_catalogue` |
+| Hébergement | `apps/lyxal-server` (fonctionnalité `module-ingestion`) |
+| Évolutions prévues | [`ROADMAP.md`](ROADMAP.md) |
 
 ```text
-lyxal_pipeline_ingestion/
-├── manifest.toml            <-- Déclaration formelle du runtime, ressources et dépendances
-├── schema/                  <-- 12 schémas déclaratifs (11 tables SCHEMAFULL + 00_core_primitives.surql)
-├── migrations/              <-- Scripts de migration ordonnés
-├── functions/               <-- 20 fonctions métier SurrealQL fn::ingestion_*
-│   ├── batch/               <-- 3 fonctions : create, checkpoint, transition
-│   ├── staged/              <-- 3 fonctions : save, list, requalify
-│   ├── quarantine/          <-- 3 fonctions : log, list, resolve
-│   ├── manifest/            <-- 5 fonctions : save, approve, record_exec, list, get_detail
-│   ├── rule/                <-- 5 fonctions : resolve_manufacturer, resolve_unit, rule_family_add, rule_spec_add, rule_substitution_add
-│   └── dashboard/           <-- 1 fonction  : dashboard_metrics
-├── events/                  <-- DEFINE EVENT raccordés à fn::event_publish
-├── seeds/                   <-- Données initiales et démo (Familles, Specs, Alias, Carrelage)
-├── error/                   <-- Définitions d'erreurs master data INGESTION_*
-├── src/                     <-- Code source Rust (Store call_fn, Workers, Grouping Engine, Adapters)
-├── docs/                    <-- Dossier documentaire de recette (STAGING_RECETTE_REPORT.md, V1_CLOSURE_REPORT.md)
-├── README.md                <-- Documentation officielle du module
-├── CHANGELOG.md             <-- Historique des versions et réalignements
-└── implementation_plan.md   <-- Plan de cadrage et validation CTO
+fichier → lot (RECEIVED) → lignes brutes immuables → normalisation → articles en staging
+        → (anomalies en quarantaine) → manifeste scellé (BLAKE3) → approbation du Data Steward
+        → ingestion.manifest.approved → publication au catalogue (catalogue_sync_agent)
 ```
 
 ---
 
-## 📋 Inventaire Officiel des 22 Fonctions SurrealQL Déployées
+## 1. Tables (`schema/`)
 
-L'environnement Staging réel instancie **22 fonctions SurrealQL** réparties en deux catégories strictement délimitées :
+11 tables `TYPE NORMAL SCHEMAFULL`, sans suppression possible (`FOR delete NONE`).
 
-### 1. Primitives Communes Transversales (2 fonctions — `schema/00_core_primitives.surql`)
-* `fn::result_ok($data)` : Enveloppe canonique de succès universel (`{ success: true, data: $data }`).
-* `fn::error_result($code, $language, $details)` : Enveloppe canonique d'erreur universelle conforme à `lyxal_error`.
+| Table | Contenu | Lecture | Écriture |
+| :--- | :--- | :--- | :--- |
+| `ingestion_session` | session d'enregistrement | elle-même | — |
+| `ingestion_batch` | lot : source, empreinte du fichier (unique par format), statut, compteurs, point de reprise, transitions | les quatre rôles | création : `ingestion_agent` ; mise à jour : agents et steward |
+| `ingestion_raw_record` | ligne brute immuable (`<lot>_<ligne>`) | `ingestion_agent`, `qualification_agent`, `steward_admin` | création : `ingestion_agent` ; jamais modifiée |
+| `ingestion_staged_item` | article normalisé : identité (lot, fabricant, référence uniques), code-barres, conditionnement, qualification, preuve, approbation, transitions | `qualification_agent`, `steward_admin`, `catalogue_sync_agent` | `qualification_agent` ; requalification : `steward_admin` |
+| `ingestion_quarantine_record` | anomalie : ligne, code, sévérité, champ, valeur, cause, résolution | `qualification_agent`, `steward_admin` | création : `qualification_agent` ; résolution : `steward_admin` |
+| `ingestion_publication_manifest` | manifeste : sceau BLAKE3, statut, approbation, journal d'exécution, transitions | `steward_admin`, `catalogue_sync_agent` | `steward_admin` ; exécution : `catalogue_sync_agent` |
+| `ingestion_family_rule`, `ingestion_specification`, `ingestion_manufacturer_alias`, `ingestion_unit_alias`, `ingestion_substitution_rule` | référentiels (familles, spécifications patronnes, alias, substitutions certifiées) | les quatre rôles | `steward_admin` |
 
-### 2. Fonctions Métier Dédiées au Pipeline (20 fonctions — `functions/`)
-* **Gestion des Lots (`batch/`) :** `fn::ingestion_batch_create`, `fn::ingestion_batch_checkpoint`, `fn::ingestion_batch_transition`.
-* **Articles en Staging (`staged/`) :** `fn::ingestion_staged_save`, `fn::ingestion_staged_list`, `fn::ingestion_staged_requalify`.
-* **Gestion de la Quarantaine (`quarantine/`) :** `fn::ingestion_quarantine_log`, `fn::ingestion_quarantine_list`, `fn::ingestion_quarantine_resolve`.
-* **Manifestes de Publication (`manifest/`) :** `fn::ingestion_manifest_save`, `fn::ingestion_manifest_approve`, `fn::ingestion_manifest_record_exec`, `fn::ingestion_manifest_list`, `fn::ingestion_manifest_get_detail`.
-* **Règles & Référentiels Dynamiques (`rule/`) :** `fn::ingestion_resolve_manufacturer`, `fn::ingestion_resolve_unit`, `fn::ingestion_rule_family_add`, `fn::ingestion_rule_spec_add`, `fn::ingestion_rule_substitution_add`.
-* **Pilotage & Métriques (`dashboard/`) :** `fn::ingestion_dashboard_metrics`.
+Gardes (`DEFINE EVENT`) :
 
----
-
-## 🧪 Tests & Recette Industrielle Staging
-
-- **70 tests automatisés exécutés, 70 tests passés avec succès (100% au vert)** :
-  - 30 tests unitaires internes (`src/lib.rs`).
-  - 39 tests d'intégration industrielle (dont benchmark de 1 600 articles à 98 ops/sec, RLS 4 rôles, résilience et checkpoints worker).
-  - 1 test d'intégration du serveur hôte officiel (`apps/lyxal-server`) couvrant le cycle de vie complet (`install_and_start` -> endpoints HTTP `/live`, `/ready`, `/health`, `/api/v1/system/modules` -> `stop_all`).
-- **Déploiement réel** : SurrealDB 3.2.0 persistant (`surrealkv`), double passe d'idempotence 100% validée.
-
----
-
-## 🔒 Gouvernance & Conditions de Mise en Production Future (CTO)
-
-1. **Gel Fonctionnel V1.0.0 :** Le périmètre fonctionnel est gelé. Le module entre en phase de maintenance corrective et d'intégration globale Lyxal OS.
-2. **Condition Stricte de Production :** Les références du banc pilote BTP possèdent des identifiants techniques (`PROOF-AUTH-2026-*`), et non des pièces justificatives fabricant physiquement authentifiées.
-3. **Exigence de Preuve Positive :** L'ouverture future de la publication vers le Master réel (`lyxal_catalogue`) exigera impérativement une vérification positive de la provenance physique (flux EDI certifié, tiers certificateur ou audit physique documenté par le Data Steward). Le verrou automatique par préfixe demeure actif pour bloquer toute mise en production prématurée.
+* `evt_batch_guard` : `RECEIVED → PARSING → VALIDATING → STAGED → PUBLISHED`, `FAILED` depuis
+  chaque étape, reprise `FAILED → RECEIVED | PARSING` (`INGESTION_BATCH_ILLEGAL_STATE_TRANSITION`).
+* `evt_staged_guard` : transitions de qualification autorisées ; un article n'est jamais créé
+  approuvé ; approbation réservée à un article `VERIFIED` et à l'identité de session d'un
+  `steward_admin` (ou de la session système).
+* `evt_manifest_guard` : `DRAFT → SEALED → APPROVED → EXECUTING → COMMITTED`, `FAILED` ;
+  approbation : scellement et identité de session du steward ; exécution : `catalogue_sync_agent`
+  (ou session système).
 
 ---
 
-## 🗺️ 7. Feuille de Route & Évolutions Stratégiques
+## 2. Fonctions (`functions/`)
 
-Pour le détail des versions, objectifs et critères d'acceptation de `lyxal_pipeline_ingestion` (V1.0.0 clôturée, V1.1 à V2.0 planifiées) :
-* 📄 **Feuille de Route Officielle du Module :** [`ROADMAP.md`](./ROADMAP.md)
-* 🌐 **Intégration Transversale LYXAL SPACE :** [`docs/14-roadmap/ROADMAP_LYXAL_SPACE.md`](file:///c:/Users/HP/Desktop/Lyxal_OS/docs/14-roadmap/ROADMAP_LYXAL_SPACE.md)
+25 fonctions `fn::ingestion_*($params: object)`, au contrat `fn::result_ok` /
+`fn::error_result`. Entrées contrôlées par `lyxal_core` : moteur
+`fn::validation_object_execute` / `fn::sanitize_object_execute` (`unknown_keys: "reject"`) pour
+les fonctions appelées de l'extérieur ou une fois par lot ou par bloc ; primitives, en contrôles
+successifs, pour les articles d'un bloc (appel ligne à ligne). Donnée invalide :
+`INGESTION_INVALID_PARAMETERS` (détail par champ). Toute écriture est vérifiée
+(`INGESTION_WRITE_FORBIDDEN` si les permissions la filtrent). Les transitions sont construites
+par SurrealQL au nom de l'identité de session (`triggered_by`) et horodatées par la base.
+
+| Groupe | Fonctions |
+| :--- | :--- |
+| Lots (`batch/`) | `batch_create` (état `RECEIVED` ; fichier ou identifiant déjà reçu : `INGESTION_BATCH_DUPLICATE`), `batch_get`, `batch_transition`, `batch_checkpoint`, `raw_records_save` (bloc ; ligne existante jamais réécrite) |
+| Staging (`staged/`) | `staged_save` (bloc d'articles d'un lot, un résultat par article ; code-barres contrôlé par `fn::validation_gtin` : `INGESTION_GTIN_INVALID`), `staged_list`, `staged_requalify` (steward ; `VERIFIED` exige une preuve commerciale) |
+| Quarantaine (`quarantine/`) | `quarantine_log` (rejouable : une anomalie ouverte par ligne et par code), `quarantine_list`, `quarantine_resolve` (steward ; corrections contrôlées, article repassé `TO_CONFIRM`) |
+| Manifestes (`manifest/`) | `manifest_save` (`DRAFT` / `SEALED`, modifiable tant qu'il n'est pas approuvé ; une version par lot), `manifest_approve` (steward, justification journalisée), `manifest_execution_item_update`, `manifest_record_exec` (agent de synchronisation), `manifest_list`, `manifest_get_detail` |
+| Référentiels (`rule/`) | `resolve_unit`, `resolve_manufacturer`, `rule_family_add`, `rule_spec_add`, `rule_substitution_add` (révocation motivée), `rules_load` |
+| Pilotage | `dashboard_metrics` |
+| Session (`session/`) | `session_identity` (interne) : rôle et opérateur lus dans `$token` / `$auth` ; session de l'hôte = `system` ; jamais dans les paramètres |
 
 ---
 
-## Défauts connus (à traiter à la reprise du module)
+## 3. Identités
 
-Relevés lors de la migration du SDK `surrealdb` vers 3.3 (novembre 2026), sans être corrigés car hors de son périmètre.
+| Rôle (claims `role`, `scope`) | Responsabilité |
+| :--- | :--- |
+| `ingestion_agent` (`ingestion:batch:write`) | lots et lignes brutes |
+| `qualification_agent` (`ingestion:staged:qualify`) | articles en staging, anomalies |
+| `steward_admin` (`ingestion:manifest:approve`) | requalification, résolution, manifestes, approbation, référentiels |
+| `catalogue_sync_agent` (`catalogue:sync:write`) | exécution des manifestes approuvés |
 
-1. **Journal des transitions incohérent** (prioritaire) : le SurrealQL écrit `{ from_state, to_state, triggered_by, reason, transitioned_at }` (date native) ; le Rust lit et écrit `{ from_statut, to_statut, transition_by, reason, transition_at }` (texte). Les transitions relues depuis la base sont donc des chaînes vides (champs remplis par défaut), et la base contient deux formats selon l'écrivain.
-2. **Horodatages écrits en dur dans le code de production** : `transition_at: "2026-10-25T11:00:00Z"` dans `storage/store.rs`, `worker/ingestion_worker.rs`, `quarantine/engine.rs` (champs texte, non touchés par la migration).
-3. **Mot de passe de recette par défaut en clair** dans `tests/integration_staging_live_server.rs` (repli quand `LYXAL_STAGING_PASS` est absent) : à retirer du code et à considérer comme compromis s'il a servi sur un serveur réel.
-4. **Requêtes directes** (§11.5) : 12 `.query(...)` dans un module métier, à remplacer par des fonctions `fn::ingestion_*` (décision CTO Q3).
-5. **13 remarques `clippy`** préexistantes.
-6. **Documents historiques** (§0) : `CHANGELOG.md`, `ROADMAP.md`, `docs/*` (rapports de clôture et de recette).
+La session système de l'hôte (root, sans accès d'enregistrement) agit comme `system`. Un rôle
+inconnu ne lit rien et n'écrit rien.
+
+---
+
+## 4. Événements
+
+| Événement | Émetteur |
+| :--- | :--- |
+| `ingestion.manifest.approved` | `DEFINE EVENT` sur le passage à `APPROVED` (`fn::event_publish` vérifié) |
+| `ingestion.batch.staged`, `ingestion.batch.failed` | worker |
+| `ingestion.manifest.published` | publication, manifeste `COMMITTED` |
+
+---
+
+## 5. Publication vers le catalogue
+
+`PublicationConsumer` (consommateur `lyxal_event`, abonnement `ingestion_manifest_publication`)
+publie chaque manifeste approuvé ; la livraison est au moins une fois, la publication idempotente.
+
+* **Identité** : jeton HS256 `catalogue_sync_agent` (`iss = lyxal-os`, `aud = lyxal-catalogue`,
+  5 min) signé par `HmacCatalogueTokenIssuer` (`lyxal_crypto::hmac`) avec la clé de l'hôte
+  (`CatalogueSyncKey`, 32 caractères `A-Z a-z 0-9 _ -`) ; le client de l'hôte est cloné (nouvelle
+  session SurrealDB) puis authentifié par ce jeton.
+* **Contrôles** : sceau recalculé sur les articles du lot ; seuls les articles `VERIFIED` dont la
+  preuve est éligible à la production (ni pilote, ni synthétique) sont publiés.
+* **Écriture** : `fn::catalogue_item_create` (article commercial maître, `code = master_id =
+  ING-<empreinte BLAKE3 de fabricant et référence>`, type, unité `base_unite`, conditionnement) ;
+  un article déjà présent est mis à jour (`fn::catalogue_item_update`).
+* **Journal et issue** : chaque article est journalisé dans le manifeste ; une reprise saute les
+  articles déjà publiés. `COMMITTED` si tout est publié, sinon `FAILED` (le steward corrige puis
+  réapprouve). Panne de base : l'événement est rejoué ; manifeste non publiable : lettre morte.
+* **Hôte** : clé `LYXAL__CATALOGUE_SYNC__SIGNING_KEY` ; avec elle, l'hôte définit l'accès JWT
+  `lyxal_catalogue_sync` et active l'abonnement ; sans elle, l'abonnement est suspendu, l'accès
+  retiré et la sonde de santé du module dégradée.
+
+---
+
+## 6. Rust (`src/`)
+
+| Composant | Rôle |
+| :--- | :--- |
+| `adapters/` | lecture FAB-DIS, CSV (délimiteurs), XML / BMEcat, JSON / NDJSON |
+| `normalization/` | nettoyage, dimensions et poids, attributs techniques, qualification initiale (`VERIFIED` exige une preuve commerciale valide) |
+| `fingerprint.rs` | empreintes canoniques et sceau des manifestes (BLAKE3, `lyxal_crypto`) |
+| `worker/` | `IngestionWorker` (`LyxalWorker`) : traitement par blocs, point de reprise, verrou de lot ; GTIN refusé ou article rejeté consigné en quarantaine ; un lot en échec passe en `FAILED` sans arrêter le worker |
+| `storage/` | `IngestionStore` : appels `call_fn` des fonctions du module ; erreur métier transmise avec son code (`IngestionError::Surreal`) |
+| `publisher/` | publication (§5) |
+| `rules.rs` | modèles des référentiels |
+| `module.rs`, `health.rs` | `PipelineIngestionModule` (`LyxalModule`), `IngestionHealthCheck` |
+| `error.rs` | `IngestionError` et correspondance avec les définitions (`info()`, test) |
+
+---
+
+## 7. Erreurs (`error/`) et seeds
+
+40 définitions `INGESTION_*` par thème (`articles`, `lots`, `manifestes`, `parametres`,
+`permissions`, `preuves`, `quarantaine`, `referentiels`, `techniques`), créées seulement si elles
+n'existent pas. Seeds rejouables : familles (`01`), spécifications (`02`), alias de fabricants et
+d'unités (`03`). Démonstration carrelage : `tests/fixtures/carrelage_demo.surql`, jamais installée.
+
+---
+
+## 8. Vérification
+
+* Banc SurrealQL (`scripts/ci/test_lyxal_modules.py`, module installé depuis son manifeste,
+  identités simulées) : `lots`, `qualification`, `quarantaine`, `manifestes`, `referentiels`,
+  `permissions`, `securite` ; chaque fonction publique est appelée.
+* `cargo test -p lyxal_pipeline_ingestion` : module installé depuis son manifeste
+  (`tests/it/support.rs`), adaptateurs, normalisation, worker (reprise, interruption, lot en
+  échec, GTIN), console du steward, publication réelle dans le catalogue, débit (1 600 articles).
+  Les tests « serveur réel » utilisent le serveur de recette démarré par `scripts/ci/test_all.sh`
+  (identifiants générés à chaque exécution).
+* `apps/lyxal-server` : publication de bout en bout par le moteur d'événements.
+* `scripts/ci/ci_local.sh` rejoue la CI complète.

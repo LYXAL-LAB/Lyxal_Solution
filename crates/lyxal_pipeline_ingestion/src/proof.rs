@@ -1,4 +1,4 @@
-//! Modèle formel de preuve commerciale traçable (Directive CTO Phase 4).
+//! Modèle formel de preuve commerciale traçable.
 //!
 //! Exigence absolue :
 //! Un GTIN valide, des cotes cohérentes, un prix positif et un fabricant reconnu démontrent
