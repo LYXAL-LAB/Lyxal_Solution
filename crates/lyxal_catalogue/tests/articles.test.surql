@@ -167,6 +167,11 @@ RETURN fn::catalogue_item_update({ id: test_ref:placo.item, fabricant: "pirate" 
 -- attendu-erreur: CATALOGUE_ITEM_SYNC_FIELD_PROTECTED
 UPDATE catalogue_item SET description = "Piraté" WHERE code = "PLACO-BA13";
 
+-- test: un locataire ne change pas en direct l'unité de conditionnement d'un article maître
+-- en tant que: alpha
+-- attendu-erreur: CATALOGUE_ITEM_SYNC_FIELD_PROTECTED
+UPDATE catalogue_item SET unite_conditionnement = base_unite:KG WHERE code = "PLACO-BA13";
+
 -- test: un locataire personnalise un article maître
 -- en tant que: alpha
 RETURN fn::catalogue_item_update({ id: test_ref:placo.item, code_interne_client: "A-BA13", libelle_personnalise: "Placo maison" }).data.{ code_interne_client, libelle_personnalise } == { code_interne_client: "A-BA13", libelle_personnalise: "Placo maison" };

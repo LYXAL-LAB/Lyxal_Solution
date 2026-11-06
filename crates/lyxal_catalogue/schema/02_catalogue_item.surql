@@ -431,6 +431,7 @@ THEN {
                OR $after.code_barre != $before.code_barre
                OR $after.unite_reference != $before.unite_reference
                OR $after.conditionnement != $before.conditionnement
+               OR $after.unite_conditionnement != $before.unite_conditionnement
                OR $after.documents != $before.documents
                OR $after.libelle != $before.libelle
                OR $after.description != $before.description
