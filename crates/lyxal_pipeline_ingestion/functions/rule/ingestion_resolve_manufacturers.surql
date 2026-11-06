@@ -21,20 +21,24 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_resolve_manufacturers($params: object) {
     -- variante sans suffixe juridique ou géographique, retirés de la fin, dans cet ordre
     LET $suffixes = [" SAS", " SA", " SARL", " EURL", " GMBH", " LTD", " INC", " CORP", " SPA", " SL", " FRANCE", " EUROPE", " INTERNATIONAL", " DISTRIBUTION"];
     LET $pairs = array::distinct($report.value.raw_names).map(|$raw| {
-        LET $key = fn::sanitize_trim(fn::sanitize_collapse_whitespace(string::replace(string::replace(string::replace(fn::sanitize_uppercase($raw), ".", " "), ",", " "), ";", " ")));
-        RETURN { raw: $raw, key: $key };
+        LET $exact = fn::sanitize_uppercase($raw);
+        LET $key = fn::sanitize_trim(fn::sanitize_collapse_whitespace(string::replace(string::replace(string::replace($exact, ".", " "), ",", " "), ";", " ")));
+        RETURN { raw: $raw, exact: $exact, key: $key };
     });
     LET $prepared = SELECT
         raw,
+        exact,
         key,
-        array::fold($suffixes, key, |$acc, $suffix| IF string::ends_with($acc, $suffix) { string::trim(string::slice($acc, 0, string::len($acc) - string::len($suffix))) } ELSE { $acc }) AS stripped
+        array::fold($suffixes, key, |$acc, $suffix| IF string::ends_with($acc, $suffix) { fn::sanitize_trim(string::slice($acc, 0, string::len($acc) - string::len($suffix))) } ELSE { $acc }) AS stripped
         FROM $pairs;
 
-    -- Alias sur le nom normalisé, puis sur le nom sans suffixe
+    -- Alias sur la forme exacte (majuscules, comme raw_alias est enregistré), puis sur le nom
+    -- normalisé, puis sur le nom sans suffixe
     LET $rows = SELECT
         raw,
         stripped,
-        (SELECT canonical_name, holding_or_group, is_verified FROM ingestion_manufacturer_alias WHERE raw_alias = $parent.key LIMIT 1)[0]
+        (SELECT canonical_name, holding_or_group, is_verified FROM ingestion_manufacturer_alias WHERE raw_alias = $parent.exact LIMIT 1)[0]
+            ?? (SELECT canonical_name, holding_or_group, is_verified FROM ingestion_manufacturer_alias WHERE raw_alias = $parent.key LIMIT 1)[0]
             ?? (SELECT canonical_name, holding_or_group, is_verified FROM ingestion_manufacturer_alias WHERE raw_alias = $parent.stripped LIMIT 1)[0] AS hit
         FROM $prepared;
 
@@ -46,4 +50,4 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_resolve_manufacturers($params: object) {
             { canonical_name: $row.stripped, holding_or_group: NONE, is_verified: false, resolved: false }
         }
     ])));
-} COMMENT "Résout un bloc de fabricants ou de marques (500 au plus) par leurs alias, après normalisation et retrait des suffixes juridiques ; un nom inconnu est renvoyé normalisé avec resolved = false";
+} COMMENT "Résout un bloc de fabricants ou de marques (500 au plus) par leurs alias : forme exacte, puis nom normalisé, puis sans suffixe juridique ; un nom inconnu est renvoyé normalisé avec resolved = false";

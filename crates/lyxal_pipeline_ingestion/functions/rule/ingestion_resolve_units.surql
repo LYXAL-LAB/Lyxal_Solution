@@ -18,14 +18,19 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_resolve_units($params: object) {
         RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
 
-    -- Clé d'alias : majuscules, sans point, tiret ni souligné (« m.l. » → « ML »)
+    -- Forme exacte (majuscules, comme raw_alias est enregistré), puis clé sans point, tiret ni
+    -- souligné (« m.l. » → « ML »)
     LET $pairs = array::distinct($report.value.raw_units).map(|$raw| {
-        raw: $raw,
-        key: string::replace(string::replace(string::replace(fn::sanitize_uppercase($raw), ".", ""), "-", ""), "_", "")
+        LET $exact = fn::sanitize_uppercase($raw);
+        RETURN { raw: $raw, exact: $exact, key: string::replace(string::replace(string::replace($exact, ".", ""), "-", ""), "_", "") };
     }).filter(|$pair| $pair.key != "");
 
-    -- 1. Alias de l'ingestion (libellés commerciaux), sinon la clé elle-même
-    LET $lookups = SELECT raw, (SELECT VALUE canonical_unit FROM ingestion_unit_alias WHERE raw_alias = $parent.key LIMIT 1)[0] ?? key AS lookup FROM $pairs;
+    -- 1. Alias de l'ingestion (libellés commerciaux) sur la forme exacte puis sur la clé, sinon la clé
+    LET $lookups = SELECT raw,
+        (SELECT VALUE canonical_unit FROM ingestion_unit_alias WHERE raw_alias = $parent.exact LIMIT 1)[0]
+            ?? (SELECT VALUE canonical_unit FROM ingestion_unit_alias WHERE raw_alias = $parent.key LIMIT 1)[0]
+            ?? key AS lookup
+        FROM $pairs;
 
     -- 2. Référentiel de lyxal_base (code Lyxal ou code d'échange) ; seule une unité utilisable est retenue
     LET $base = fn::base_unite_resolve({ codes: IF array::len($lookups) > 0 { array::distinct($lookups.lookup) } ELSE { [] } });

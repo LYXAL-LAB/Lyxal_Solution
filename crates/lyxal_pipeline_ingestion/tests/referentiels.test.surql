@@ -51,6 +51,17 @@ RETURN fn::ingestion_resolve_manufacturers({ raw_names: ["Saint-Gobain Isover", 
     d: { canonical_name: "FABRICANT LOCAL", is_verified: false, resolved: false }
 };
 
+-- préparation: alias de fabricant avec ponctuation
+CREATE ingestion_manufacturer_alias:ACME CONTENT { raw_alias: "ACME S.A.", canonical_name: "ACME", holding_or_group: "ACME GROUP", is_verified: true };
+
+-- préparation: alias d'unité avec tiret
+CREATE ingestion_unit_alias:PACK10 CONTENT { raw_alias: "PACK-10", canonical_unit: "PCE" };
+
+-- test: alias avec ponctuation trouvés sur la forme exacte
+-- en tant que: qualif
+RETURN fn::ingestion_resolve_manufacturers({ raw_names: ["acme s.a."] }).data["acme s.a."].{ canonical_name, resolved } == { canonical_name: "ACME", resolved: true }
+    AND fn::ingestion_resolve_units({ raw_units: ["pack-10"] }).data == { "pack-10": "PCE" };
+
 -- test: groupe sans entité déterminée : résolu mais non vérifié
 -- en tant que: qualif
 RETURN fn::ingestion_resolve_manufacturers({ raw_names: ["Saint Gobain"] }).data["Saint Gobain"] == { canonical_name: "SAINT-GOBAIN", holding_or_group: "SAINT-GOBAIN", is_verified: false, resolved: true };
