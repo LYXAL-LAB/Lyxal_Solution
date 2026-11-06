@@ -6,33 +6,69 @@
 -- identité steward: { "id": "ingestion_session:steward", "sub": "user:steward", "role": "steward_admin", "scope": ["ingestion:manifest:approve"] }
 -- identité sync: { "id": "ingestion_session:sync", "sub": "service:sync", "role": "catalogue_sync_agent", "scope": ["catalogue:sync:write"] }
 
--- test: unité résolue par alias
+-- test: bloc d'unités : alias commerciaux, codes Lyxal, codes d'échange, clé sans points
 -- en tant que: qualif
-RETURN fn::ingestion_resolve_unit({ raw_unit: " sqm " }).data == { canonical_code: "M2", resolved: true };
+RETURN fn::ingestion_resolve_units({ raw_units: [" sqm ", "m3", "Rouleau", "M²", "c62", "RO", "m.l.", "Mètre carré"] }).data == {
+    "sqm": "M2", "m3": "M3", "Rouleau": "ROUL", "M²": "M2", "c62": "U", "RO": "ROUL", "m.l.": "ML", "Mètre carré": "M2"
+};
 
--- test: unité résolue directement par base_unite
+-- test: unités inconnues absentes du résultat
 -- en tant que: qualif
-RETURN fn::ingestion_resolve_unit({ raw_unit: "m3" }).data.canonical_code == "M3";
+RETURN fn::ingestion_resolve_units({ raw_units: ["XYZ", "...", "KG"] }).data == { "KG": "KG" };
 
--- test: unité inconnue
+-- test: bloc d'unités vide
 -- en tant que: qualif
-RETURN fn::ingestion_resolve_unit({ raw_unit: "BOITE" }).error.{ code, raw: details.raw_unit } == { code: "INGESTION_UNIT_UNRESOLVED", raw: "BOITE" };
+RETURN fn::ingestion_resolve_units({ raw_units: [] }).data == {};
 
--- test: unité vide
+-- test: unités non textuelles refusées
 -- en tant que: qualif
-RETURN fn::ingestion_resolve_unit({ raw_unit: "   " }).error.code == "INGESTION_UNIT_UNRESOLVED";
+RETURN fn::ingestion_resolve_units({ raw_units: "M2" }).error.code == "INGESTION_INVALID_PARAMETERS";
 
--- test: fabricant résolu par alias, avec son groupe
--- en tant que: qualif
-RETURN fn::ingestion_resolve_manufacturer({ raw_name: "Saint-Gobain Isover" }).data == { canonical_name: "ISOVER", holding_or_group: "SAINT-GOBAIN", is_verified: true, resolved: true };
+-- test: chaque alias d'unité seedé pointe vers une unité utilisable
+RETURN object::len(fn::ingestion_resolve_units({ raw_units: (SELECT VALUE raw_alias FROM ingestion_unit_alias) }).data) == count(SELECT id FROM ingestion_unit_alias);
 
--- test: fabricant inconnu : nom normalisé, non vérifié
--- en tant que: qualif
-RETURN fn::ingestion_resolve_manufacturer({ raw_name: " Fabricant Local " }).data == { canonical_name: "FABRICANT LOCAL", holding_or_group: NONE, is_verified: false, resolved: false };
+-- préparation: alias vers une unité dont le type est désactivé
+fn::base_unite_type_update({ id: "base_unite_type:ENERGIE", enabled: false });
 
--- test: fabricant absent
+-- test: unité d'un type désactivé non résolue
 -- en tant que: qualif
-RETURN fn::ingestion_resolve_manufacturer({ raw_name: "" }).error.code == "INGESTION_MANUFACTURER_REF_MISSING";
+RETURN fn::ingestion_resolve_units({ raw_units: ["KWH"] }).data == {};
+
+-- préparation: type réactivé
+fn::base_unite_type_update({ id: "base_unite_type:ENERGIE", enabled: true });
+
+-- test: bloc de fabricants : alias, groupe, suffixes juridiques et ponctuation retirés
+-- en tant que: qualif
+RETURN fn::ingestion_resolve_manufacturers({ raw_names: ["Saint-Gobain Isover", "Knauf SAS", "Schneider Electric, France", " Fabricant  Local SARL "] }).data.{
+    a: `Saint-Gobain Isover`,
+    b: `Knauf SAS`,
+    c: `Schneider Electric, France`,
+    d: `Fabricant  Local SARL`.{ canonical_name, is_verified, resolved }
+} == {
+    a: { canonical_name: "ISOVER", holding_or_group: "SAINT-GOBAIN", is_verified: true, resolved: true },
+    b: { canonical_name: "KNAUF", holding_or_group: "KNAUF GROUP", is_verified: true, resolved: true },
+    c: { canonical_name: "SCHNEIDER ELECTRIC", holding_or_group: "SCHNEIDER GROUP", is_verified: true, resolved: true },
+    d: { canonical_name: "FABRICANT LOCAL", is_verified: false, resolved: false }
+};
+
+-- préparation: alias de fabricant avec ponctuation
+CREATE ingestion_manufacturer_alias:ACME CONTENT { raw_alias: "ACME S.A.", canonical_name: "ACME", holding_or_group: "ACME GROUP", is_verified: true };
+
+-- préparation: alias d'unité avec tiret
+CREATE ingestion_unit_alias:PACK10 CONTENT { raw_alias: "PACK-10", canonical_unit: "PCE" };
+
+-- test: alias avec ponctuation trouvés sur la forme exacte
+-- en tant que: qualif
+RETURN fn::ingestion_resolve_manufacturers({ raw_names: ["acme s.a."] }).data["acme s.a."].{ canonical_name, resolved } == { canonical_name: "ACME", resolved: true }
+    AND fn::ingestion_resolve_units({ raw_units: ["pack-10"] }).data == { "pack-10": "PCE" };
+
+-- test: groupe sans entité déterminée : résolu mais non vérifié
+-- en tant que: qualif
+RETURN fn::ingestion_resolve_manufacturers({ raw_names: ["Saint Gobain"] }).data["Saint Gobain"] == { canonical_name: "SAINT-GOBAIN", holding_or_group: "SAINT-GOBAIN", is_verified: false, resolved: true };
+
+-- test: fabricant absent refusé
+-- en tant que: qualif
+RETURN fn::ingestion_resolve_manufacturers({ raw_names: [""] }).error.code == "INGESTION_INVALID_PARAMETERS";
 
 -- test: le steward ajoute une famille (code normalisé)
 -- en tant que: steward
