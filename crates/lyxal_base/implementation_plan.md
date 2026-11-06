@@ -100,8 +100,8 @@ Banc SurrealQL (`tests/*.test.surql`, CI, SurrealDB 3.3.4), chaque fonction appe
 | Lot | Contenu |
 | :- | :--- |
 | 1 | **Entrées et écritures** (B-01, B-02, B-04, B-06, B-07) : 10 fonctions sur le moteur du Core, identifiants contrôlés par table, écritures vérifiées, erreurs dans `error/<thème>/`, libellés selon Q2 ; premiers tests du banc (paramètres, permissions). |
-| 2 | **Référentiel** (B-08, Q3) : types et unités ajoutés aux seeds ; `GR` → `G`, `L` → `LTR` ; appelants du dépôt mis à jour. |
-| 3 | **Intégrité et frontières** (B-03, Q1, B-11) : références entrantes, `REFERENCE ON DELETE REJECT` dans `lyxal_base` et le catalogue ; lectures directes du catalogue et de l'ingestion remplacées par `fn::base_unite_get` ; test de l'ingestion corrigé (B-09). |
+| 2 | **Référentiel** (B-08, Q3, B-09) : types et unités ajoutés aux seeds, dont `MM` (millimètre, produit par la normalisation de l'ingestion mais absent de sa liste `CANONICAL_UNITS`, complétée) ; `GR` → `G`, `L` → `LTR` ; test de l'ingestion : chaque code canonique existe dans `base_unite`, plus d'écriture directe dans `base_unite`. |
+| 3 | **Intégrité et frontières** (B-03, Q1, B-11) : références entrantes, `REFERENCE ON DELETE REJECT` dans `lyxal_base` et le catalogue ; lectures directes du catalogue et de l'ingestion remplacées par `fn::base_unite_get`. |
 | 4 | **Tests** (B-05) : banc complet. |
 | 5 | **Clôture** (B-10) : `README.md` à l'état actuel (dont le format des identifiants), `ROADMAP.md`, suppression de `AUDIT.md` et de ce plan ; `docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md` et `AGENTS.md` alignés. |
 

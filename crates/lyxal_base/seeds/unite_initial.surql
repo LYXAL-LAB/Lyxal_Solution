@@ -53,6 +53,17 @@ IF !record::exists(base_unite:CM) THEN (
     }
 ) END;
 
+IF !record::exists(base_unite:MM) THEN (
+    CREATE base_unite:MM CONTENT {
+        code: "MM",
+        libelle: "Millimètre",
+        abreviation: "mm",
+        type: base_unite_type:LONGUEUR,
+        enabled: true,
+        is_system: true
+    }
+) END;
+
 -- ============================================================================
 -- 2. SURFACES (base_unite_type:SURFACE)
 -- ============================================================================
@@ -94,9 +105,9 @@ IF !record::exists(base_unite:M3) THEN (
     }
 ) END;
 
-IF !record::exists(base_unite:L) THEN (
-    CREATE base_unite:L CONTENT {
-        code: "L",
+IF !record::exists(base_unite:LTR) THEN (
+    CREATE base_unite:LTR CONTENT {
+        code: "LTR",
         libelle: "Litre",
         abreviation: "L",
         type: base_unite_type:VOLUME,
@@ -131,11 +142,11 @@ IF !record::exists(base_unite:KG) THEN (
     }
 ) END;
 
-IF !record::exists(base_unite:GR) THEN (
-    CREATE base_unite:GR CONTENT {
-        code: "GR",
+IF !record::exists(base_unite:G) THEN (
+    CREATE base_unite:G CONTENT {
+        code: "G",
         libelle: "Gramme",
-        abreviation: "gr",
+        abreviation: "g",
         type: base_unite_type:MASSE,
         enabled: true,
         is_system: true
@@ -191,7 +202,7 @@ IF !record::exists(base_unite:H) THEN (
 ) END;
 
 -- ============================================================================
--- 6. QUANTITÉS, DÉCOMPTES & CONDITIONNEMENTS (base_unite_type:QUANTITE)
+-- 6. QUANTITÉS ET DÉCOMPTES (base_unite_type:QUANTITE)
 -- ============================================================================
 
 IF !record::exists(base_unite:U) THEN (
@@ -244,6 +255,125 @@ IF !record::exists(base_unite:FORFAIT) THEN (
         libelle: "Forfait",
         abreviation: "forf",
         type: base_unite_type:QUANTITE,
+        enabled: true,
+        is_system: true
+    }
+) END;
+
+-- ============================================================================
+-- 7. CONDITIONNEMENTS (base_unite_type:CONDITIONNEMENT)
+-- ============================================================================
+
+IF !record::exists(base_unite:ROUL) THEN (
+    CREATE base_unite:ROUL CONTENT {
+        code: "ROUL",
+        libelle: "Rouleau",
+        abreviation: "roul",
+        type: base_unite_type:CONDITIONNEMENT,
+        enabled: true,
+        is_system: true
+    }
+) END;
+
+IF !record::exists(base_unite:SAC) THEN (
+    CREATE base_unite:SAC CONTENT {
+        code: "SAC",
+        libelle: "Sac",
+        abreviation: "sac",
+        type: base_unite_type:CONDITIONNEMENT,
+        enabled: true,
+        is_system: true
+    }
+) END;
+
+IF !record::exists(base_unite:PAL) THEN (
+    CREATE base_unite:PAL CONTENT {
+        code: "PAL",
+        libelle: "Palette",
+        abreviation: "pal",
+        type: base_unite_type:CONDITIONNEMENT,
+        enabled: true,
+        is_system: true
+    }
+) END;
+
+IF !record::exists(base_unite:BTE) THEN (
+    CREATE base_unite:BTE CONTENT {
+        code: "BTE",
+        libelle: "Boîte",
+        abreviation: "bte",
+        type: base_unite_type:CONDITIONNEMENT,
+        enabled: true,
+        is_system: true
+    }
+) END;
+
+IF !record::exists(base_unite:CART) THEN (
+    CREATE base_unite:CART CONTENT {
+        code: "CART",
+        libelle: "Carton",
+        abreviation: "cart",
+        type: base_unite_type:CONDITIONNEMENT,
+        enabled: true,
+        is_system: true
+    }
+) END;
+
+-- ============================================================================
+-- 8. ÉNERGIE (base_unite_type:ENERGIE)
+-- ============================================================================
+
+IF !record::exists(base_unite:KWH) THEN (
+    CREATE base_unite:KWH CONTENT {
+        code: "KWH",
+        libelle: "Kilowatt-heure",
+        abreviation: "kWh",
+        type: base_unite_type:ENERGIE,
+        enabled: true,
+        is_system: true
+    }
+) END;
+
+-- ============================================================================
+-- 9. PUISSANCE (base_unite_type:PUISSANCE)
+-- ============================================================================
+
+IF !record::exists(base_unite:W) THEN (
+    CREATE base_unite:W CONTENT {
+        code: "W",
+        libelle: "Watt",
+        abreviation: "W",
+        type: base_unite_type:PUISSANCE,
+        enabled: true,
+        is_system: true
+    }
+) END;
+
+-- ============================================================================
+-- 10. PRESSION (base_unite_type:PRESSION)
+-- ============================================================================
+
+IF !record::exists(base_unite:BAR) THEN (
+    CREATE base_unite:BAR CONTENT {
+        code: "BAR",
+        libelle: "Bar",
+        abreviation: "bar",
+        type: base_unite_type:PRESSION,
+        enabled: true,
+        is_system: true
+    }
+) END;
+
+-- ============================================================================
+-- 11. DÉBIT (base_unite_type:DEBIT)
+-- ============================================================================
+
+IF !record::exists(base_unite:M3H) THEN (
+    CREATE base_unite:M3H CONTENT {
+        code: "M3H",
+        libelle: "Mètre cube par heure",
+        abreviation: "m³/h",
+        type: base_unite_type:DEBIT,
         enabled: true,
         is_system: true
     }

@@ -54,8 +54,8 @@ RETURN fn::base_unite_type_get({}).error.details.fields == { code: ["CORE_VALIDA
 -- test: aucun champ modifiable
 RETURN fn::base_unite_update({ id: "base_unite:M" }).error.code == "BASE_NO_UPDATABLE_FIELDS_PROVIDED";
 
--- test: type par identifiant texte dans la liste (4 longueurs)
-RETURN array::len(fn::base_unite_list({ type: "base_unite_type:LONGUEUR" }).data) == 4;
+-- test: type par identifiant texte dans la liste (5 longueurs)
+RETURN array::len(fn::base_unite_list({ type: "base_unite_type:LONGUEUR" }).data) == 5;
 
 -- test: lecture par identifiant texte
 RETURN fn::base_unite_get({ id: "base_unite:M" }).data.{ code, libelle, usable } == { code: "M", libelle: "Mètre", usable: true };

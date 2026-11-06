@@ -58,3 +58,48 @@ IF !record::exists(base_unite_type:QUANTITE) THEN (
         is_system: true
     }
 ) END;
+
+IF !record::exists(base_unite_type:CONDITIONNEMENT) THEN (
+    CREATE base_unite_type:CONDITIONNEMENT CONTENT {
+        code: "CONDITIONNEMENT",
+        libelle: "Conditionnement",
+        enabled: true,
+        is_system: true
+    }
+) END;
+
+IF !record::exists(base_unite_type:ENERGIE) THEN (
+    CREATE base_unite_type:ENERGIE CONTENT {
+        code: "ENERGIE",
+        libelle: "Énergie",
+        enabled: true,
+        is_system: true
+    }
+) END;
+
+IF !record::exists(base_unite_type:PUISSANCE) THEN (
+    CREATE base_unite_type:PUISSANCE CONTENT {
+        code: "PUISSANCE",
+        libelle: "Puissance",
+        enabled: true,
+        is_system: true
+    }
+) END;
+
+IF !record::exists(base_unite_type:PRESSION) THEN (
+    CREATE base_unite_type:PRESSION CONTENT {
+        code: "PRESSION",
+        libelle: "Pression",
+        enabled: true,
+        is_system: true
+    }
+) END;
+
+IF !record::exists(base_unite_type:DEBIT) THEN (
+    CREATE base_unite_type:DEBIT CONTENT {
+        code: "DEBIT",
+        libelle: "Débit",
+        enabled: true,
+        is_system: true
+    }
+) END;
