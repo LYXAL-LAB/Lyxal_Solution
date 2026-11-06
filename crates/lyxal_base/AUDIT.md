@@ -14,8 +14,9 @@ Audit en lecture seule (skill `lyxal-audit`), réalisé sur `main` après la cl�
 * **Consommateurs** (aucun n'appelle `fn::base_*`) :
   * `lyxal_catalogue` : 4 champs `record<base_unite>` (`catalogue_item.unite_reference`,
     `catalogue_item.conditionnement.type_unite`, `catalogue_composition_ligne`,
-    `catalogue_attribut.unite`) ; lit `base_unite.enabled` pour refuser une unité inactive ;
-  * `lyxal_pipeline_ingestion` : `fn::ingestion_resolve_unit` lit `base_unite.code` ; la
+    `catalogue_attribut.unite`) ; **lit directement** l'enregistrement `base_unite` pour refuser
+    une unité inactive (4 fonctions) ;
+  * `lyxal_pipeline_ingestion` : `fn::ingestion_resolve_unit` **lit directement** `base_unite` ; la
     publication écrit `base_unite:<CODE>` dans le conditionnement des articles.
 
 Fichiers lus intégralement : `manifest.toml`, `schema/*`, `functions/**`, `seeds/*`,
@@ -41,7 +42,9 @@ code émis est défini. Mais, vérifié sur un serveur SurrealDB 3.3.4 :
    pendante ;
 4. les entrées ne passent jamais par `lyxal_core` ; plusieurs entrées invalides lèvent une
    erreur SurrealDB brute ou renvoient un résultat faux sans erreur ;
-5. le module n'a **aucun test**.
+5. le module n'a **aucun test** ;
+6. deux modules consommateurs lisent directement ses tables au lieu de passer par ses fonctions
+   publiques (interdit par §1).
 
 ## 3. Écarts constatés
 
@@ -52,6 +55,7 @@ code émis est défini. Mais, vérifié sur un serveur SurrealDB 3.3.4 :
 | B-03 | P1 | Intégrité référentielle | `unite/unite_delete.surql:45-46` ; `schema/base_unite.surql:64-68` ; `lyxal_catalogue/schema/02_catalogue_item.surql:78-81` et `:173-175` | Le commentaire annonce une suppression « non référencée » ; aucun contrôle n'est fait (`BASE_UNITE_IN_USE` est défini mais jamais émis). Les champs `REFERENCE` sont en `ON DELETE IGNORE` par défaut : sonde 3.3.4, la suppression de la cible laisse la référence en place. `catalogue_item.conditionnement.type_unite` n'a même pas `REFERENCE` (les 3 autres champs du catalogue l'ont, sans `ON DELETE`). `unite_type_delete` ne compte que les unités de `base_unite`. | Q1 : références entrantes comptées de façon générique (`<~?`, vérifié en 3.3.4) → `BASE_UNITE_IN_USE` / `BASE_UNITE_TYPE_IN_USE` ; `REFERENCE ON DELETE REJECT` sur tous les champs qui pointent vers `lyxal_base`. |
 | B-04 | P1 | §5.7.8 (entrées par `lyxal_core`) | `functions/**` (10 fonctions, 0 appel `fn::validation_*` / `fn::sanitize_*`) | Contrôles et nettoyage locaux (`string::trim`, `string::uppercase`, `string::is_alphanum`, bornes de longueur), recopiés dans 6 fonctions. Sondes : `language: 42` → erreur brute `string::trim()` ; `enabled: "oui"` → erreur brute `Could not cast into bool` ; `fn::base_unite_list({ type: "base_unite_type:LONGUEUR" })` → 0 résultat sans erreur (4 attendus) ; `fn::base_unite_get({ id: "base_unite:M" })` → `data` = la chaîne elle-même. Champs inconnus acceptés en silence. | Moteur `fn::validation_object_execute` puis `fn::sanitize_object_execute` (`unknown_keys: "reject"`), erreur `BASE_INVALID_PARAMETERS` avec le détail par champ. |
 | B-05 | P1 | Tests (§13) | `crates/lyxal_base/` (aucun dossier `tests/`) | Aucun test : ni permissions, ni règles de hiérarchie (unité active sur type inactif), ni protection du socle système. | Banc SurrealQL `tests/*.test.surql` exécuté par la CI (`scripts/ci/test_lyxal_modules.py`), chaque fonction appelée. |
+| B-11 | P1 | §1 (interactions par contrats publics uniquement) | `lyxal_catalogue/functions/item/catalogue_item_create.surql:170`, `item/catalogue_item_update.surql:86`, `attribut/catalogue_attribut_create.surql:43`, `composition/catalogue_composition_add_line.surql:75` ; `lyxal_pipeline_ingestion/functions/rule/ingestion_resolve_unit.surql:20` | `SELECT * FROM ONLY $unite_id` / `SELECT VALUE code FROM ONLY base_unite WHERE code = ...` : lecture du stockage interne de `lyxal_base`. La règle « unité utilisable » est en outre recopiée (le catalogue ne contrôle que `enabled` de l'unité, pas celui de son type, contrairement à `fn::base_unite_list({ for_new_documents: true })`). | Lecture par `fn::base_unite_get`, qui renvoie aussi `usable` (unité **et** type actifs) : règle à un seul endroit. Les champs `record<base_unite>` restent : ce sont des références typées, pas des lectures. |
 | B-06 | P2 | §5.5 (`error/<thème>/`) | `seeds/error_definitions.surql` (23 définitions, déclaré en `error_definitions`) | Définitions rangées dans `seeds/` au lieu de `error/<thème>/`. 12 codes par champ (`*_CODE_REQUIRED`, `*_LIBELLE_INVALID`, `BASE_PAGINATION_INVALID`…) deviennent inutiles avec le rapport par champ du Core. | `error/{parametres,permissions,unite_type,unite}/` ; codes par champ remplacés par `BASE_INVALID_PARAMETERS`. |
 | B-07 | P2 | §5.1 (un seul endroit) | `schema/*.surql` (`VALUE string::uppercase(string::trim($value))`) ; fonctions | Le nettoyage est fait deux fois : dans la fonction et dans le `VALUE` du schéma. Les libellés sont stockés en majuscules (`MÈTRE CARRÉ`), y compris les libellés saisis. `created_at` / `updated_at` sont passés à la main alors que le schéma les calcule. | Nettoyage par le Core dans la fonction ; le schéma garde ses `ASSERT` (intégrité) ; casse des libellés : Q2. |
 | B-08 | P2 | Couverture du référentiel | `seeds/unite_initial.surql` (21 unités) ; `lyxal_pipeline_ingestion/src/normalization/units.rs:6-31` ; `lyxal_catalogue/schema/02_catalogue_item.surql:175` | 11 codes canoniques de l'ingestion n'existent pas dans `base_unite` : conditionnements `ROUL`, `SAC`, `PAL`, `BTE`, `CART` ; grandeurs `KWH`, `W`, `BAR`, `M3H` ; `G` et `LTR` (le référentiel a `GR` et `L`). Le catalogue cite `base_unite:ROUL` en exemple. Un article vendu au rouleau ne peut pas être publié. | Q3. |
@@ -60,14 +64,16 @@ code émis est défini. Mais, vérifié sur un serveur SurrealDB 3.3.4 :
 
 ## 4. Correspondance des appels
 
-Pas de DTO Rust et aucun appelant de `fn::base_*` dans le dépôt. Les consommateurs utilisent
-directement les tables : `base_unite` et `base_unite_type` (champs `code`, `enabled`, `type`)
-forment donc un **contrat public de fait**, à documenter dans le `README.md`.
+Pas de DTO Rust et aucun appelant de `fn::base_*` dans le dépôt : les consommateurs lisent
+directement les tables, ce qui est un écart (B-11), pas un contrat. Seul le format des
+identifiants (`base_unite:<CODE>`, `base_unite_type:<CODE>`), porté par les champs
+`record<base_unite>`, est un contrat public, à documenter dans le `README.md`.
 
 | Consommateur | Usage | Statut |
 | :--- | :--- | :--- |
-| `lyxal_catalogue` | `record<base_unite>` sur 4 champs ; contrôle `enabled` | conforme ; `REFERENCE` absent sur `conditionnement.type_unite`, `ON DELETE` absent partout (B-03) |
-| `lyxal_pipeline_ingestion` (`fn::ingestion_resolve_unit`) | lecture de `base_unite.code` | conforme |
+| `lyxal_catalogue` | `record<base_unite>` sur 4 champs | conforme ; `REFERENCE` absent sur `conditionnement.type_unite`, `ON DELETE` absent partout (B-03) |
+| `lyxal_catalogue` | lecture directe de `base_unite` (contrôle `enabled`), 4 fonctions | **non conforme** (B-11) |
+| `lyxal_pipeline_ingestion` (`fn::ingestion_resolve_unit`) | lecture directe de `base_unite.code` | **non conforme** (B-11) |
 | `lyxal_pipeline_ingestion` (publication) | `base_unite:<CODE>` construit depuis l'unité normalisée | 11 codes absents (B-08) |
 
 ## 5. Preuves d'exécution et points non vérifiés

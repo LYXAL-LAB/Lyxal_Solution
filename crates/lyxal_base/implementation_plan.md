@@ -28,7 +28,10 @@ Suite de `AUDIT.md`. **Q1 à Q3 validées par le CTO** : Q1-A, Q2-A, Q3-A sans a
   * chaque écriture vérifiée → `BASE_WRITE_FORBIDDEN` ;
   * `delete` : refus si l'entrée est système (`*_IS_SYSTEM`) ou référencée (`*_IN_USE`, avec
     le nombre de références) ;
-  * horodatages laissés au schéma.
+  * horodatages laissés au schéma ;
+  * `fn::base_unite_get` renvoie en plus `usable` : unité **et** type actifs (règle
+    « utilisable pour un nouveau document », à un seul endroit, partagée avec
+    `fn::base_unite_list({ for_new_documents: true })`) (B-11).
 * Rupture de contrat : aucun appelant de `fn::base_*` dans le dépôt.
 
 ### Schéma
@@ -68,6 +71,12 @@ Suite de `AUDIT.md`. **Q1 à Q3 validées par le CTO** : Q1-A, Q2-A, Q3-A sans a
 ### Appelants à mettre à jour dans le même changement
 
 * `lyxal_catalogue` : `REFERENCE ON DELETE REJECT` sur les 4 champs (lot 3).
+* Lectures directes de `base_unite` remplacées par `fn::base_unite_get` (B-11, lot 3) :
+  `fn::catalogue_item_create`, `_update`, `fn::catalogue_attribut_create`,
+  `fn::catalogue_composition_add_line` (unité refusée si `usable` est faux : le type parent
+  inactif est désormais pris en compte) ; `fn::ingestion_resolve_unit` (code inconnu →
+  `INGESTION_UNIT_UNRESOLVED`, comme aujourd'hui). Tests de non-régression ajoutés dans les
+  deux modules : aucune fonction hors `lyxal_base` ne lit `base_unite` ni `base_unite_type`.
 * `lyxal_pipeline_ingestion/tests/it/integration_phase4_alignment.rs` : unité `LTR` remplacée
   par une création via `fn::base_unite_create`, résultat vérifié (B-09).
 
@@ -92,8 +101,8 @@ Banc SurrealQL (`tests/*.test.surql`, CI, SurrealDB 3.3.4), chaque fonction appe
 | :- | :--- |
 | 1 | **Entrées et écritures** (B-01, B-02, B-04, B-06, B-07) : 10 fonctions sur le moteur du Core, identifiants contrôlés par table, écritures vérifiées, erreurs dans `error/<thème>/`, libellés selon Q2 ; premiers tests du banc (paramètres, permissions). |
 | 2 | **Référentiel** (B-08, Q3) : types et unités ajoutés aux seeds ; `GR` → `G`, `L` → `LTR` ; appelants du dépôt mis à jour. |
-| 3 | **Intégrité référentielle** (B-03, Q1) : références entrantes, `REFERENCE ON DELETE REJECT` dans `lyxal_base` et le catalogue ; test de l'ingestion corrigé (B-09). |
+| 3 | **Intégrité et frontières** (B-03, Q1, B-11) : références entrantes, `REFERENCE ON DELETE REJECT` dans `lyxal_base` et le catalogue ; lectures directes du catalogue et de l'ingestion remplacées par `fn::base_unite_get` ; test de l'ingestion corrigé (B-09). |
 | 4 | **Tests** (B-05) : banc complet. |
-| 5 | **Clôture** (B-10) : `README.md` à l'état actuel (dont le contrat public des tables), `ROADMAP.md`, suppression de `AUDIT.md` et de ce plan ; `docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md` et `AGENTS.md` alignés. |
+| 5 | **Clôture** (B-10) : `README.md` à l'état actuel (dont le format des identifiants), `ROADMAP.md`, suppression de `AUDIT.md` et de ce plan ; `docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md` et `AGENTS.md` alignés. |
 
 Chaque lot fait l'objet d'une PR, fusionnée quand la CI est verte.
