@@ -20,25 +20,25 @@ DEFINE TABLE OVERWRITE base_unite
 DEFINE FIELD OVERWRITE code
     ON TABLE base_unite
     TYPE string
-    VALUE string::uppercase(string::trim($value))
     ASSERT
         string::len($value) >= 1
         AND string::len($value) <= 32
         AND string::is_alphanum($value)
-    COMMENT "Code technique unique de l'unité";
+        AND $value == string::uppercase($value)
+    COMMENT "Code technique unique de l'unité (alphanumérique, majuscules), clé de l'identifiant base_unite:<CODE>";
 
 -- ----------------------------------------------------------------------------
 -- Libelle
--- Exemple : Mètre, Centimètre, Mètre carré, Kilogramme
+-- Exemple : Mètre, Centimètre, Mètre carré, Kilogramme (tel que saisi, sans espaces périphériques)
 -- ----------------------------------------------------------------------------
 
 DEFINE FIELD OVERWRITE libelle
     ON TABLE base_unite
     TYPE string
-    VALUE string::uppercase(string::trim($value))
     ASSERT
         string::len($value) >= 1
         AND string::len($value) <= 128
+        AND $value == string::trim($value)
     COMMENT "Libellé de l'unité";
 
 -- ----------------------------------------------------------------------------
@@ -49,10 +49,10 @@ DEFINE FIELD OVERWRITE libelle
 DEFINE FIELD OVERWRITE abreviation
     ON TABLE base_unite
     TYPE string
-    VALUE string::trim($value)
     ASSERT
         string::len($value) >= 1
         AND string::len($value) <= 10
+        AND $value == string::trim($value)
     COMMENT "Abréviation de l'unité";
 
 -- ----------------------------------------------------------------------------

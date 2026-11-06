@@ -1,54 +1,35 @@
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │  fn::base_unite_type_create                                              │
--- │  Création d'un nouveau type d'unité de mesure                           │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- ============================================================================
+-- FONCTION : fn::base_unite_type_create
+-- MODULE   : lyxal_base
+-- RÔLE     : Création d'un type d'unité de mesure
+-- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::base_unite_type_create($params: object) {
-    LET $raw_code = $params.code;
-    LET $raw_libelle = $params.libelle;
-    LET $language = IF $params.language != NONE AND string::len(string::trim($params.language)) > 0 {
-        string::lowercase(string::trim($params.language))
-    } ELSE {
-        "fr"
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            code: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 32 } }, { rule: "alphanumeric", options: { trim_value: true } }], required: true },
+            libelle: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("BASE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = fn::sanitize_object_execute($report.value, {
+        fields: { code: { pipeline: [{ rule: "uppercase" }] } },
+        unknown_keys: "keep"
+    }, 40);
+    LET $language = $p.language;
+    LET $record_id = type::record("base_unite_type", $p.code);
+
+    IF record::exists($record_id) {
+        RETURN fn::error_result("BASE_UNITE_TYPE_ALREADY_EXISTS", $language, { code: $p.code });
     };
 
-    -- 1. Validation de présence du code
-    IF $raw_code == NONE OR string::len(string::trim($raw_code)) == 0 {
-        RETURN fn::error_result("BASE_UNITE_TYPE_CODE_REQUIRED", $language, { field: "code" });
+    LET $created = (CREATE ONLY $record_id CONTENT { code: $p.code, libelle: $p.libelle, enabled: true });
+    IF $created == NONE {
+        RETURN fn::error_result("BASE_WRITE_FORBIDDEN", $language, { table: "base_unite_type" });
     };
-
-    LET $code = string::uppercase(string::trim($raw_code));
-
-    -- 2. Validation de format du code (1-32 caractères alphanumériques)
-    IF string::len($code) < 1 OR string::len($code) > 32 OR !string::is_alphanum($code) {
-        RETURN fn::error_result("BASE_UNITE_TYPE_CODE_INVALID", $language, { field: "code", value: $code });
-    };
-
-    -- 3. Validation de présence et longueur du libellé
-    IF $raw_libelle == NONE OR string::len(string::trim($raw_libelle)) == 0 {
-        RETURN fn::error_result("BASE_UNITE_TYPE_LIBELLE_REQUIRED", $language, { field: "libelle" });
-    };
-
-    LET $libelle = string::uppercase(string::trim($raw_libelle));
-    IF string::len($libelle) < 1 OR string::len($libelle) > 128 {
-        RETURN fn::error_result("BASE_UNITE_TYPE_LIBELLE_INVALID", $language, { field: "libelle", value: $libelle });
-    };
-
-    -- 4. Pré-vérification d'unicité
-    LET $existing = SELECT VALUE id FROM base_unite_type WHERE code = $code LIMIT 1;
-    IF array::len($existing) > 0 {
-        RETURN fn::error_result("BASE_UNITE_TYPE_ALREADY_EXISTS", $language, { code: $code });
-    };
-
-    -- 5. Création déterministe
-    LET $record_id = type::record("base_unite_type", $code);
-    LET $created = CREATE ONLY $record_id CONTENT {
-        code: $code,
-        libelle: $libelle,
-        enabled: true,
-        created_at: time::now(),
-        updated_at: time::now()
-    };
-
     RETURN fn::result_ok($created);
-} COMMENT "Crée un nouveau type d'unité de mesure dans le référentiel";
+} COMMENT "Crée un type d'unité de mesure (code alphanumérique en majuscules, unique ; libellé tel que saisi)";

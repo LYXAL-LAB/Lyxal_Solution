@@ -34,7 +34,10 @@ functions = [
     "functions/unite/unite_delete.surql"
 ]
 error_definitions = [
-    "seeds/error_definitions.surql"
+    "error/parametres/error_parametres.surql",
+    "error/permissions/error_permissions.surql",
+    "error/unite_type/error_unite_type.surql",
+    "error/unite/error_unite.surql"
 ]
 seeds = [
     "seeds/unite_type_initial.surql",
