@@ -51,6 +51,10 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_save($params: object) {
         IF !$type_item.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "type_item", reason: $type_item.code }); };
         LET $qualif = fn::validation_enum($item.qualification ?? "TO_CONFIRM", ["VERIFIED", "TO_CONFIRM", "REJECTED"], false);
         IF !$qualif.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "qualification", reason: $qualif.code }); };
+        -- Un article VERIFIED a une unité du référentiel (refus de l'article seul, avant écriture)
+        IF string::uppercase($qualif.value) == "VERIFIED" AND $unite.value == NONE {
+            RETURN fn::error_result("INGESTION_UNIT_UNRESOLVED", NONE, { field: "unite_reference" });
+        };
         LET $action = fn::validation_enum($item.publication_action ?? "INSERT", ["INSERT", "UPDATE", "UNCHANGED", "DEPRECATE"], false);
         IF !$action.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "publication_action", reason: $action.code }); };
         LET $marque = IF $item.marque != NONE { fn::validation_optional_string($item.marque, 1, 255) } ELSE { { valid: true } };

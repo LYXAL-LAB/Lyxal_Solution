@@ -757,12 +757,12 @@ impl IngestionStore {
         records: &[RawRecordDto],
         default_manufacturer: Option<&str>,
     ) -> IngestionResult<BlockReferentials> {
-        let (units, names) = BlockReferentials::raw_values(records, default_manufacturer);
+        let raw = BlockReferentials::raw_values(records, default_manufacturer);
         let mut referentials = BlockReferentials::default();
-        for chunk in units.chunks(RESOLVE_CHUNK) {
+        for chunk in raw.units.chunks(RESOLVE_CHUNK) {
             referentials.units.extend(self.resolve_units(chunk).await?);
         }
-        for chunk in names.chunks(RESOLVE_CHUNK) {
+        for chunk in raw.manufacturers.chunks(RESOLVE_CHUNK) {
             referentials
                 .manufacturers
                 .extend(self.resolve_manufacturers(chunk).await?);

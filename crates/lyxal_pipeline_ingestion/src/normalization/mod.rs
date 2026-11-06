@@ -86,12 +86,21 @@ pub struct BlockReferentials {
     pub manufacturers: HashMap<String, ResolvedManufacturer>,
 }
 
+/// Valeurs brutes distinctes d'un bloc, sans espaces périphériques, à résoudre en base.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct BlockRawValues {
+    /// Unités fournisseurs, pour `fn::ingestion_resolve_units`.
+    pub(crate) units: Vec<String>,
+    /// Fabricants et marques, pour `fn::ingestion_resolve_manufacturers`.
+    pub(crate) manufacturers: Vec<String>,
+}
+
 impl BlockReferentials {
     /// Unités brutes et fabricants ou marques bruts distincts d'un bloc, à résoudre en base.
-    pub fn raw_values(
+    pub(crate) fn raw_values(
         records: &[RawRecordDto],
         default_manufacturer: Option<&str>,
-    ) -> (Vec<String>, Vec<String>) {
+    ) -> BlockRawValues {
         let mut units = Vec::new();
         let mut names = Vec::new();
         let push = |list: &mut Vec<String>, value: Option<&str>| {
@@ -107,7 +116,10 @@ impl BlockReferentials {
             push(&mut names, record.raw_brand.as_deref());
         }
         push(&mut names, default_manufacturer);
-        (units, names)
+        BlockRawValues {
+            units,
+            manufacturers: names,
+        }
     }
 
     fn unit(&self, raw: &str) -> Option<String> {
@@ -479,10 +491,10 @@ mod tests {
         };
         let second = line.clone();
         line.raw_unit = Some("m2".to_string());
-        let (units, names) = BlockReferentials::raw_values(&[line, second], Some("KNAUF"));
-        assert_eq!(units, vec!["m2".to_string()]);
+        let raw = BlockReferentials::raw_values(&[line, second], Some("KNAUF"));
+        assert_eq!(raw.units, vec!["m2".to_string()]);
         assert_eq!(
-            names,
+            raw.manufacturers,
             vec![
                 "Placo".to_string(),
                 "PLACO".to_string(),

@@ -125,6 +125,13 @@ RETURN fn::ingestion_staged_save({ batch_id: "lot_q", rules_version: "2026.1", i
 ] }).data[0].ok == true
     AND (SELECT VALUE [unite_reference, conditionnement.unite_vente] FROM ONLY ingestion_staged_item WHERE reference_fabricant = "SANS_UNITE" LIMIT 1) == [NONE, NONE];
 
+-- test: un article VERIFIED sans unité est refusé seul, sans interrompre le bloc
+-- en tant que: qualif
+RETURN fn::ingestion_staged_save({ batch_id: "lot_q", rules_version: "2026.1", items: [
+    { ligne_numero: 10, canonical_fingerprint: crypto::blake3("q10"), fabricant: "PLACO", reference_fabricant: "VERIF_SANS_UNITE", libelle_commercial: "Article vérifié sans unité", conditionnement: {}, qualification: "VERIFIED" },
+    { ligne_numero: 11, canonical_fingerprint: crypto::blake3("q11"), fabricant: "PLACO", reference_fabricant: "AVEC_UNITE", libelle_commercial: "Article avec unité", unite_reference: "M2", conditionnement: {} }
+] }).data.map(|$r| [$r.ok, $r.error.code]) == [[false, "INGESTION_UNIT_UNRESOLVED"], [true, NONE]];
+
 -- préparation: identifiant de l'article sans unité
 CREATE test_ref:sans_unite SET item = <string> (SELECT VALUE id FROM ONLY ingestion_staged_item WHERE reference_fabricant = "SANS_UNITE" LIMIT 1);
 
