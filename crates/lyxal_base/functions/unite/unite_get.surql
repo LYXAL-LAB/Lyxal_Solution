@@ -29,12 +29,12 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_get($params: object) {
     LET $record_id = IF $p.id != NONE { $p.id } ELSE { type::record("base_unite", $p.code) };
     -- usable : unité et type actifs, seule règle d'emploi d'une unité dans un nouveau document
     LET $found = IF $p.fetch_type {
-        (SELECT *, (enabled AND type.enabled == true) AS usable, type.* AS type_detail FROM ONLY $record_id)
+        (SELECT *, (enabled AND type.enabled == true) AS usable, type.* AS type_detail, (SELECT norme, code FROM base_unite_code WHERE unite = $parent.id ORDER BY norme, code) AS codes FROM ONLY $record_id)
     } ELSE {
-        (SELECT *, (enabled AND type.enabled == true) AS usable FROM ONLY $record_id)
+        (SELECT *, (enabled AND type.enabled == true) AS usable, (SELECT norme, code FROM base_unite_code WHERE unite = $parent.id ORDER BY norme, code) AS codes FROM ONLY $record_id)
     };
     IF $found == NONE {
         RETURN fn::error_result("BASE_UNITE_NOT_FOUND", $language, { id: <string> $record_id });
     };
     RETURN fn::result_ok($found);
-} COMMENT "Lit une unité par son identifiant (base_unite:<CODE>) ou par son code ; usable indique si l'unité et son type sont actifs";
+} COMMENT "Lit une unité par son identifiant (base_unite:<CODE>) ou par son code ; usable indique si l'unité et son type sont actifs, codes liste ses codes d'échange normalisés";

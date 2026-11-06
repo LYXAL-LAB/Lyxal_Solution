@@ -25,12 +25,14 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_delete($params: object) {
     IF $existing.is_system {
         RETURN fn::error_result("BASE_UNITE_IS_SYSTEM", $language, { id: <string> $p.id });
     };
-    -- Références entrantes de toute table (champs déclarés REFERENCE), sans connaître les consommateurs
-    LET $references = array::len((SELECT VALUE <~? FROM ONLY $p.id) ?? []);
+    -- Références entrantes de toute table (champs déclarés REFERENCE), sans connaître les
+    -- consommateurs ; les codes d'échange de l'unité lui appartiennent et sont supprimés avec elle
+    LET $references = array::len(((SELECT VALUE <~? FROM ONLY $p.id) ?? []).filter(|$r| record::tb($r) != "base_unite_code"));
     IF $references > 0 {
         RETURN fn::error_result("BASE_UNITE_IN_USE", $language, { id: <string> $p.id, references: $references });
     };
 
+    DELETE base_unite_code WHERE unite = $p.id;
     LET $deleted = (DELETE ONLY $p.id RETURN BEFORE);
     IF $deleted == NONE {
         RETURN fn::error_result("BASE_WRITE_FORBIDDEN", $language, { table: "base_unite" });

@@ -19,7 +19,8 @@ version = ">=0.1.0"
 [resources]
 schemas = [
     "schema/base_unite_type.surql",
-    "schema/base_unite.surql"
+    "schema/base_unite.surql",
+    "schema/base_unite_code.surql"
 ]
 functions = [
     "functions/unite_type/unite_type_create.surql",
@@ -31,7 +32,8 @@ functions = [
     "functions/unite/unite_get.surql",
     "functions/unite/unite_list.surql",
     "functions/unite/unite_update.surql",
-    "functions/unite/unite_delete.surql"
+    "functions/unite/unite_delete.surql",
+    "functions/unite/unite_resolve.surql"
 ]
 error_definitions = [
     "error/parametres/error_parametres.surql",
@@ -41,5 +43,6 @@ error_definitions = [
 ]
 seeds = [
     "seeds/unite_type_initial.surql",
-    "seeds/unite_initial.surql"
+    "seeds/unite_initial.surql",
+    "seeds/unite_code_initial.surql"
 ]
