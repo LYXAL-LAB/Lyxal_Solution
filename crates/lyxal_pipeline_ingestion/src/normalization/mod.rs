@@ -1,20 +1,19 @@
 //! Moteur de normalisation universel des catalogues fabricants Lyxal OS.
 //!
-//! Assure le nettoyage canonique, la conversion SI, le rapprochement `base_unite`
-//! et l'évaluation initiale de la qualification commerciale (`VERIFIED`, `TO_CONFIRM`, `REJECTED`).
+//! Assure le nettoyage canonique, la conversion SI et l'évaluation initiale de la qualification
+//! commerciale (`VERIFIED`, `TO_CONFIRM`, `REJECTED`). Unités et fabricants sont résolus par les
+//! référentiels en base, une fois par bloc (`IngestionStore::block_referentials`) ; le moteur
+//! reçoit ces résolutions (`BlockReferentials`) et ne contient aucune table de correspondance.
 
 pub mod dimensions;
-pub mod manufacturer;
 pub mod technical_attributes;
-pub mod units;
 
 pub use dimensions::{
     normalize_dimensions, normalize_weight, CanonicalDimensions, CanonicalWeight,
 };
-pub use manufacturer::normalize_manufacturer;
 pub use technical_attributes::{normalize_technical_attributes, CanonicalTechnicalAttributes};
-pub use units::normalize_unit;
 
+use lyxal_surreal::SurrealValue;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
@@ -68,59 +67,81 @@ pub struct NormalizedItemDto {
     pub rules_engine_version: String,
 }
 
+/// Fabricant ou marque résolu par `fn::ingestion_resolve_manufacturers` (nom normalisé et
+/// `resolved = false` si aucun alias ne le connaît).
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, SurrealValue)]
+pub struct ResolvedManufacturer {
+    pub canonical_name: String,
+    pub holding_or_group: Option<String>,
+    pub is_verified: bool,
+    pub resolved: bool,
+}
+
+/// Résolutions d'un bloc de lignes, indexées par valeur brute sans espaces périphériques :
+/// unités utilisables (`fn::ingestion_resolve_units`) et fabricants ou marques
+/// (`fn::ingestion_resolve_manufacturers`).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct BlockReferentials {
+    pub units: HashMap<String, String>,
+    pub manufacturers: HashMap<String, ResolvedManufacturer>,
+}
+
+impl BlockReferentials {
+    /// Unités brutes et fabricants ou marques bruts distincts d'un bloc, à résoudre en base.
+    pub fn raw_values(
+        records: &[RawRecordDto],
+        default_manufacturer: Option<&str>,
+    ) -> (Vec<String>, Vec<String>) {
+        let mut units = Vec::new();
+        let mut names = Vec::new();
+        let push = |list: &mut Vec<String>, value: Option<&str>| {
+            if let Some(v) = value.map(str::trim).filter(|v| !v.is_empty()) {
+                if !list.iter().any(|known| known == v) {
+                    list.push(v.to_string());
+                }
+            }
+        };
+        for record in records {
+            push(&mut units, record.raw_unit.as_deref());
+            push(&mut names, record.raw_manufacturer.as_deref());
+            push(&mut names, record.raw_brand.as_deref());
+        }
+        push(&mut names, default_manufacturer);
+        (units, names)
+    }
+
+    fn unit(&self, raw: &str) -> Option<String> {
+        self.units.get(raw.trim()).cloned()
+    }
+
+    /// Nom canonique et fabricant connu (renseigné et non signalé comme groupe sans entité
+    /// déterminée). Un nom que le bloc n'a pas résolu reste tel quel, non connu.
+    fn manufacturer(&self, raw: &str) -> (String, bool) {
+        match self.manufacturers.get(raw.trim()) {
+            Some(m) => (m.canonical_name.clone(), !(m.resolved && !m.is_verified)),
+            None => (raw.trim().to_string(), false),
+        }
+    }
+}
+
+/// Fabricant retenu lorsqu'aucune source n'en indique.
+const UNSPECIFIED_MANUFACTURER: &str = "FABRICANT_NON_SPECIFIE";
+
 /// Moteur de normalisation
 #[derive(Debug, Clone)]
 pub struct NormalizationEngine {
     rules_version: String,
-    custom_unit_aliases: HashMap<String, String>,
-    custom_mfg_aliases: HashMap<String, String>,
 }
 
 impl NormalizationEngine {
     pub fn new() -> Self {
-        Self {
-            rules_version: "2026.1".to_string(),
-            custom_unit_aliases: HashMap::new(),
-            custom_mfg_aliases: HashMap::new(),
-        }
+        Self::with_version("2026.1")
     }
 
     pub fn with_version(version: &str) -> Self {
         Self {
             rules_version: version.to_string(),
-            custom_unit_aliases: HashMap::new(),
-            custom_mfg_aliases: HashMap::new(),
         }
-    }
-
-    /// Enregistre un alias d'unité dynamique vers base_unite
-    pub fn register_unit_alias(&mut self, raw: &str, canonical: &str) {
-        self.custom_unit_aliases
-            .insert(raw.trim().to_uppercase(), canonical.trim().to_uppercase());
-    }
-
-    /// Enregistre un alias de fabricant dynamique
-    pub fn register_manufacturer_alias(&mut self, raw: &str, canonical: &str) {
-        self.custom_mfg_aliases
-            .insert(raw.trim().to_uppercase(), canonical.trim().to_uppercase());
-    }
-
-    /// Résout une unité brute via les alias dynamiques puis le référentiel statique
-    pub fn resolve_unit(&self, raw: &str) -> Option<String> {
-        let trimmed = raw.trim().to_uppercase();
-        if let Some(canonical) = self.custom_unit_aliases.get(&trimmed) {
-            return Some(canonical.clone());
-        }
-        normalize_unit(raw).map(|u| u.to_string())
-    }
-
-    /// Résout un fabricant brut via les alias dynamiques puis la normalisation statique
-    pub fn resolve_manufacturer(&self, raw: &str) -> String {
-        let trimmed = raw.trim().to_uppercase();
-        if let Some(canonical) = self.custom_mfg_aliases.get(&trimmed) {
-            return canonical.clone();
-        }
-        normalize_manufacturer(raw)
     }
 
     /// Normalise un enregistrement brut sans preuve commerciale (oriente en TO_CONFIRM si cohérent)
@@ -129,8 +150,9 @@ impl NormalizationEngine {
         raw: &RawRecordDto,
         default_manufacturer: Option<&str>,
         source_format: SourceFormat,
+        referentials: &BlockReferentials,
     ) -> NormalizedItemDto {
-        self.normalize_with_proof(raw, default_manufacturer, source_format, None)
+        self.normalize_with_proof(raw, default_manufacturer, source_format, None, referentials)
     }
 
     /// Normalise un enregistrement brut avec preuve commerciale formelle
@@ -140,6 +162,7 @@ impl NormalizationEngine {
         default_manufacturer: Option<&str>,
         source_format: SourceFormat,
         commercial_proof: Option<crate::proof::CommercialProof>,
+        referentials: &BlockReferentials,
     ) -> NormalizedItemDto {
         // 1. Normalisation référence
         let raw_ref = raw.raw_reference.trim();
@@ -155,14 +178,18 @@ impl NormalizationEngine {
             .as_deref()
             .or(raw.raw_brand.as_deref())
             .or(default_manufacturer)
-            .unwrap_or("FABRICANT_NON_SPECIFIE");
-        let clean_manufacturer = self.resolve_manufacturer(mfg_input);
+            .filter(|m| !m.trim().is_empty());
+        let (clean_manufacturer, is_mfg_known) = match mfg_input {
+            Some(name) => referentials.manufacturer(name),
+            None => (UNSPECIFIED_MANUFACTURER.to_string(), false),
+        };
 
         // 3. Normalisation marque
         let clean_brand = raw
             .raw_brand
             .as_deref()
-            .map(|b| self.resolve_manufacturer(b));
+            .filter(|b| !b.trim().is_empty())
+            .map(|b| referentials.manufacturer(b).0);
 
         // 4. Normalisation libellé commercial
         let clean_label = raw.raw_designation.trim().to_string();
@@ -175,8 +202,8 @@ impl NormalizationEngine {
             .filter(|g| !g.is_empty())
             .map(str::to_string);
 
-        // 6. Normalisation unité vers `base_unite`
-        let clean_unit = raw.raw_unit.as_deref().and_then(|u| self.resolve_unit(u));
+        // 6. Unité résolue par le référentiel (None si inconnue : jamais de valeur par défaut)
+        let clean_unit = raw.raw_unit.as_deref().and_then(|u| referentials.unit(u));
 
         // 7. Normalisation dimensions et poids (depuis champs structurés ou texte)
         let (text_dims, text_weight) = dimensions::extract_specs_from_text(&clean_label);
@@ -196,7 +223,7 @@ impl NormalizationEngine {
         // 9. Évaluation stricte de la qualification
         let (qualification, qualification_reason) = self.evaluate_qualification(
             &clean_ref,
-            &clean_manufacturer,
+            is_mfg_known,
             &clean_label,
             clean_gtin.is_some(),
             clean_unit.is_some(),
@@ -254,7 +281,7 @@ impl NormalizationEngine {
     fn evaluate_qualification(
         &self,
         reference: &str,
-        manufacturer: &str,
+        is_mfg_known: bool,
         designation: &str,
         has_gtin: bool,
         is_unit_resolved: bool,
@@ -281,9 +308,6 @@ impl NormalizationEngine {
 
         // 2. Cas VERIFIED : REQUIERT STRICTEMENT UNE PREUVE COMMERCIALE FORMELLE ET AUDITABLE
         // La simple conjonction GTIN + cotes + prix + fabricant ne prouve que la cohérence technique, jamais la provenance commerciale !
-        let is_mfg_known = manufacturer != "FABRICANT_NON_SPECIFIE"
-            && !manufacturer.is_empty()
-            && !manufacturer.contains("(INDETERMINE)");
         let has_detailed_designation =
             designation.len() >= 8 && !designation.contains("Article sans libellé");
         let has_tech_coherence = price.is_some() || has_gtin || dimensions.is_some();
@@ -335,6 +359,24 @@ mod tests {
     use super::*;
     use crate::adapters::RawRecordDto;
 
+    /// Résolutions telles que les renvoient les référentiels en base pour ces lignes.
+    fn referentials() -> BlockReferentials {
+        let mut refs = BlockReferentials::default();
+        refs.units.insert("m2".to_string(), "M2".to_string());
+        for (raw, canonical) in [("Saint-Gobain Placo SAS", "PLACO"), ("PLACO", "PLACO")] {
+            refs.manufacturers.insert(
+                raw.to_string(),
+                ResolvedManufacturer {
+                    canonical_name: canonical.to_string(),
+                    holding_or_group: Some("SAINT-GOBAIN".to_string()),
+                    is_verified: true,
+                    resolved: true,
+                },
+            );
+        }
+        refs
+    }
+
     #[test]
     fn test_normalization_and_qualification_verified() {
         let raw = RawRecordDto {
@@ -356,7 +398,7 @@ mod tests {
 
         let engine = NormalizationEngine::new();
         // 1. Sans preuve commerciale formelle -> Maintien strict en TO_CONFIRM
-        let norm_no_proof = engine.normalize(&raw, None, SourceFormat::FabDis);
+        let norm_no_proof = engine.normalize(&raw, None, SourceFormat::FabDis, &referentials());
         assert_eq!(norm_no_proof.qualification, ItemQualification::ToConfirm);
         assert!(norm_no_proof
             .qualification_reason
@@ -370,8 +412,13 @@ mod tests {
             "system:edi_receiver",
             "2026-10-25T10:00:00Z",
         );
-        let norm_verified =
-            engine.normalize_with_proof(&raw, None, SourceFormat::FabDis, Some(proof));
+        let norm_verified = engine.normalize_with_proof(
+            &raw,
+            None,
+            SourceFormat::FabDis,
+            Some(proof),
+            &referentials(),
+        );
         assert_eq!(norm_verified.manufacturer, "PLACO");
         assert_eq!(norm_verified.manufacturer_ref, "BA13_2500");
         assert_eq!(norm_verified.unit_code, Some("M2".to_string()));
@@ -404,9 +451,62 @@ mod tests {
         };
 
         let engine = NormalizationEngine::new();
-        let norm = engine.normalize(&raw, None, SourceFormat::Csv);
+        let norm = engine.normalize(&raw, None, SourceFormat::Csv, &referentials());
 
-        // Strictement TO_CONFIRM selon la règle d'or du CTO !
+        // Strictement TO_CONFIRM selon la règle d'or du CTO ; unité inconnue : aucune valeur
         assert_eq!(norm.qualification, ItemQualification::ToConfirm);
+        assert_eq!(norm.unit_code, None);
+        assert_eq!(norm.manufacturer, UNSPECIFIED_MANUFACTURER);
+    }
+
+    #[test]
+    fn raw_values_are_distinct_and_trimmed() {
+        let mut line = RawRecordDto {
+            line_number: 1,
+            raw_reference: "R".to_string(),
+            raw_designation: "D".to_string(),
+            raw_gtin: None,
+            raw_manufacturer: Some(" Placo ".to_string()),
+            raw_brand: Some("PLACO".to_string()),
+            raw_unit: Some(" m2 ".to_string()),
+            raw_price: None,
+            raw_currency: None,
+            raw_dimensions: None,
+            raw_weight: None,
+            raw_attributes: HashMap::new(),
+            raw_payload: json!({}),
+            raw_hash: "hash".to_string(),
+        };
+        let second = line.clone();
+        line.raw_unit = Some("m2".to_string());
+        let (units, names) = BlockReferentials::raw_values(&[line, second], Some("KNAUF"));
+        assert_eq!(units, vec!["m2".to_string()]);
+        assert_eq!(
+            names,
+            vec![
+                "Placo".to_string(),
+                "PLACO".to_string(),
+                "KNAUF".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn group_without_determined_entity_is_not_a_known_manufacturer() {
+        let mut refs = BlockReferentials::default();
+        refs.manufacturers.insert(
+            "Saint Gobain".to_string(),
+            ResolvedManufacturer {
+                canonical_name: "SAINT-GOBAIN".to_string(),
+                holding_or_group: Some("SAINT-GOBAIN".to_string()),
+                is_verified: false,
+                resolved: true,
+            },
+        );
+        assert_eq!(
+            refs.manufacturer("Saint Gobain"),
+            ("SAINT-GOBAIN".to_string(), false)
+        );
+        assert_eq!(refs.manufacturer("Inconnu").1, false);
     }
 }

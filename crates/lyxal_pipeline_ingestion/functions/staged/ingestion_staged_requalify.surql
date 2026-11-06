@@ -43,6 +43,9 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_requalify($params: object) {
 
     -- 4. Règle d'or : preuve commerciale authentifiée obligatoire pour VERIFIED
     IF $target == "VERIFIED" {
+        IF (SELECT VALUE unite_reference FROM ONLY $p.item_id) == NONE {
+            RETURN fn::error_result("INGESTION_UNIT_UNRESOLVED", $p.language, { item_id: <string> record::id($p.item_id), field: "unite_reference" });
+        };
         IF $p.proof == NONE {
             RETURN fn::error_result("INGESTION_PROOF_MISSING", $p.language, { item_id: <string> record::id($p.item_id) });
         };
@@ -86,5 +89,5 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_requalify($params: object) {
     };
 
     RETURN fn::result_ok(true);
-} COMMENT "Requalifie un article en staging ; réservé au steward_admin (ou à la session système) lu dans la session ; VERIFIED exige une preuve commerciale et enregistre l'approbation"
+} COMMENT "Requalifie un article en staging ; réservé au steward_admin (ou à la session système) lu dans la session ; VERIFIED exige une unité du référentiel et une preuve commerciale, et enregistre l'approbation"
 PERMISSIONS WHERE $token != NONE OR $auth != NONE;

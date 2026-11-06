@@ -12,7 +12,12 @@ use std::sync::Arc;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
+use crate::adapters::RawRecordDto;
 use crate::error::{IngestionError, IngestionResult};
+use crate::normalization::{BlockReferentials, ResolvedManufacturer};
+
+/// Taille maximale d'un appel de résolution (`fn::ingestion_resolve_units` / `_manufacturers`).
+const RESOLVE_CHUNK: usize = 500;
 use crate::models::{IngestionBatch, PublicationManifest, QuarantineRecord, RawRecord, StagedItem};
 use crate::rules::{ContextualSubstitutionRule, TechnicalSpecification};
 use crate::types::{
@@ -119,7 +124,7 @@ struct StagedItemParams {
     libelle_commercial: String,
     description_technique: Option<String>,
     type_item: String,
-    unite_reference: String,
+    unite_reference: Option<String>,
     conditionnement: PackagingDetails,
     qualification: ItemQualification,
     qualification_reason: Option<String>,
@@ -259,15 +264,6 @@ struct DashboardMetricsParams {
 // =============================================================================
 // RÉSULTATS
 // =============================================================================
-
-/// Fabricant résolu par ses alias (ou nom normalisé si inconnu).
-#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
-pub struct ResolveManufacturerResult {
-    pub canonical_name: String,
-    pub holding_or_group: Option<String>,
-    pub is_verified: bool,
-    pub resolved: bool,
-}
 
 #[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
 pub struct DashboardMetricsResult {
@@ -745,13 +741,33 @@ impl IngestionStore {
     pub async fn resolve_manufacturers(
         &self,
         raw_names: &[String],
-    ) -> IngestionResult<std::collections::HashMap<String, ResolveManufacturerResult>> {
+    ) -> IngestionResult<std::collections::HashMap<String, ResolvedManufacturer>> {
         let params = ResolveManufacturersParams {
             raw_names: raw_names.to_vec(),
         };
         Ok(self
             .call_fn("ingestion_resolve_manufacturers", params)
             .await?)
+    }
+
+    /// Résolutions d'un bloc de lignes : unités et fabricants ou marques distincts, résolus par
+    /// appels de 500 valeurs au plus (deux appels pour un bloc ordinaire).
+    pub async fn block_referentials(
+        &self,
+        records: &[RawRecordDto],
+        default_manufacturer: Option<&str>,
+    ) -> IngestionResult<BlockReferentials> {
+        let (units, names) = BlockReferentials::raw_values(records, default_manufacturer);
+        let mut referentials = BlockReferentials::default();
+        for chunk in units.chunks(RESOLVE_CHUNK) {
+            referentials.units.extend(self.resolve_units(chunk).await?);
+        }
+        for chunk in names.chunks(RESOLVE_CHUNK) {
+            referentials
+                .manufacturers
+                .extend(self.resolve_manufacturers(chunk).await?);
+        }
+        Ok(referentials)
     }
 
     /// Ajoute ou met à jour une famille de produits.

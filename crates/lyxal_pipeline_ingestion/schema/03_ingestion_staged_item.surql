@@ -94,10 +94,10 @@ DEFINE FIELD OVERWRITE type_item ON TABLE ingestion_staged_item
     COMMENT "Type fondamental de l'article";
 
 DEFINE FIELD OVERWRITE unite_reference ON TABLE ingestion_staged_item
-    TYPE string
-    VALUE string::uppercase(string::trim($value))
-    ASSERT string::len($value) >= 1 AND string::len($value) <= 32
-    COMMENT "Code de l'unité de vente rapprochée de base_unite (ex: PCE, M2, ML)";
+    TYPE option<string>
+    VALUE IF $value != NONE { string::uppercase(string::trim($value)) } ELSE { NONE }
+    ASSERT $value = NONE OR (string::len($value) >= 1 AND string::len($value) <= 32)
+    COMMENT "Code de l'unité du référentiel lyxal_base (ex: PCE, M2, ML) ; absent tant que l'unité fournisseur n'est pas résolue (anomalie INGESTION_UNIT_UNRESOLVED)";
 
 DEFINE FIELD OVERWRITE conditionnement ON TABLE ingestion_staged_item
     TYPE object FLEXIBLE
@@ -218,7 +218,12 @@ THEN {
         };
     };
 
-    -- 2. Verrouillage d'approbation : seuls les articles VERIFIED peuvent être approuvés par un steward_admin
+    -- 2. Un article VERIFIED a toujours une unité du référentiel
+    IF $after.qualification = "VERIFIED" AND $after.unite_reference = NONE {
+        THROW "INGESTION_UNIT_UNRESOLVED: Un article sans unité du référentiel ne peut pas être VERIFIED.";
+    };
+
+    -- 3. Verrouillage d'approbation : seuls les articles VERIFIED peuvent être approuvés par un steward_admin
     IF $event = "UPDATE" AND $before.is_approved = false AND $after.is_approved = true {
         IF $after.qualification != "VERIFIED" {
             THROW "INGESTION_STAGED_CANNOT_APPROVE_NON_VERIFIED: Seul un article au statut VERIFIED peut être approuvé pour publication.";

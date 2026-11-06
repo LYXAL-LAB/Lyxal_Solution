@@ -82,8 +82,8 @@ RETURN (SELECT VALUE is_resolved FROM ingestion_quarantine_record) == [false, fa
 -- en tant que: steward
 RETURN fn::ingestion_quarantine_resolve({ quarantine_id: test_ref:q.unite, comment: "Unité corrigée d'après la fiche", staged_item_id: test_ref:q.article, corrections: { corrected_unit: "piece", corrected_gtin: "3017620422003" } }).ok
     AND (SELECT VALUE [is_resolved, resolved_by, resolution_comment] FROM ONLY type::record("ingestion_quarantine_record", test_ref:q.unite)) == [true, "user:steward", "Unité corrigée d'après la fiche"]
-    AND (SELECT VALUE [qualification, unite_reference, code_barre_gtin, array::last(transitions).from_state, array::last(transitions).to_state] FROM ONLY type::record("ingestion_staged_item", test_ref:q.article))
-        == ["TO_CONFIRM", "PCE", "3017620422003", "REJECTED", "TO_CONFIRM"];
+    AND (SELECT VALUE [qualification, unite_reference, conditionnement.unite_vente, code_barre_gtin, array::last(transitions).from_state, array::last(transitions).to_state] FROM ONLY type::record("ingestion_staged_item", test_ref:q.article))
+        == ["TO_CONFIRM", "PCE", "PCE", "3017620422003", "REJECTED", "TO_CONFIRM"];
 
 -- test: une fois l'anomalie résolue, une nouvelle occurrence est consignée à part
 -- en tant que: qualif

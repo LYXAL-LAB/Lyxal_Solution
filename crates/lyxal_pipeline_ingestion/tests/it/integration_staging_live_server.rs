@@ -370,7 +370,7 @@ async fn test_staging_real_performance_metrics() {
             libelle_commercial: format!("Produit de banc d'essai {i}"),
             description_technique: None,
             type_item: "PRODUIT".to_string(),
-            unite_reference: "PCE".to_string(),
+            unite_reference: Some("PCE".to_string()),
             conditionnement: PackagingDetails::default(),
             qualification: ItemQualification::ToConfirm,
             qualification_reason: Some("Attente recette".to_string()),

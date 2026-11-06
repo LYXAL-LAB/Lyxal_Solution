@@ -120,10 +120,6 @@ impl ManifestStatus {
     }
 }
 
-fn default_unite_vente() -> String {
-    "PCE".to_string()
-}
-
 fn default_quantite() -> f64 {
     1.0
 }
@@ -145,9 +141,10 @@ pub struct Dimensions {
 /// Conditionnement logistique et commercial.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, SurrealValue)]
 pub struct PackagingDetails {
-    #[serde(default = "default_unite_vente")]
-    #[surreal(default = "default_unite_vente")]
-    pub unite_vente: String,
+    /// Unité de vente du référentiel ; absente tant que l'unité fournisseur n'est pas résolue.
+    #[serde(default)]
+    #[surreal(default)]
+    pub unite_vente: Option<String>,
     #[serde(default = "default_quantite")]
     #[surreal(default = "default_quantite")]
     pub quantite_par_colis: f64,

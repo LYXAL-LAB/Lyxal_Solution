@@ -247,6 +247,12 @@ impl IngestionWorker {
             let end_offset = (current_offset + chunk_size).min(total_lines);
             let slice = &raw_records[current_offset..end_offset];
 
+            // Unités et fabricants du bloc résolus par les référentiels en base, en un appel chacun
+            let referentials = self
+                .store
+                .block_referentials(slice, Some(&batch.fournisseur_id))
+                .await?;
+
             let mut db_raw_records = Vec::with_capacity(slice.len());
             let mut db_staged_items = Vec::with_capacity(slice.len());
 
@@ -257,6 +263,7 @@ impl IngestionWorker {
                     Some(&batch.fournisseur_id),
                     format,
                     commercial_proof.clone(),
+                    &referentials,
                 );
 
                 // Enregistrement brut persistant
@@ -275,10 +282,7 @@ impl IngestionWorker {
 
                 // Conditionnement logistique
                 let conditionnement = PackagingDetails {
-                    unite_vente: normalized
-                        .unit_code
-                        .clone()
-                        .unwrap_or_else(|| "PCE".to_string()),
+                    unite_vente: normalized.unit_code.clone(),
                     quantite_par_colis: 1.0,
                     poids_brut_kg: normalized
                         .weight
@@ -293,6 +297,7 @@ impl IngestionWorker {
 
                 db_staged_items.push((
                     dto.raw_reference.clone(),
+                    dto.raw_unit.clone(),
                     StagedItem {
                         id: None,
                         batch: batch_id.to_string(),
@@ -307,7 +312,7 @@ impl IngestionWorker {
                         libelle_commercial: normalized.commercial_label,
                         description_technique: None,
                         type_item: "PRODUIT".to_string(),
-                        unite_reference: normalized.unit_code.unwrap_or_else(|| "PCE".to_string()),
+                        unite_reference: normalized.unit_code,
                         conditionnement,
                         qualification: normalized.qualification,
                         qualification_reason: Some(normalized.qualification_reason),
@@ -330,10 +335,39 @@ impl IngestionWorker {
                 .await?;
             let items: Vec<StagedItem> = db_staged_items
                 .iter()
-                .map(|(_, item)| item.clone())
+                .map(|(_, _, item)| item.clone())
                 .collect();
             let outcomes = self.store.save_staged_items_chunk(&items).await?;
-            for ((raw_reference, staged), outcome) in db_staged_items.iter().zip(outcomes) {
+            for ((raw_reference, raw_unit, staged), outcome) in db_staged_items.iter().zip(outcomes)
+            {
+                // Article en staging sans unité : anomalie liée à sa ligne, que le steward corrige
+                // (fn::ingestion_quarantine_resolve, corrected_unit) ; l'article reste compté.
+                if outcome.is_ok() && staged.unite_reference.is_none() {
+                    self.store
+                        .log_quarantine(&QuarantineRecord {
+                            id: None,
+                            batch: batch_id.to_string(),
+                            raw_record: staged.raw_record.clone(),
+                            ligne_numero: staged.ligne_numero,
+                            code_erreur: "INGESTION_UNIT_UNRESOLVED".to_string(),
+                            severite: "WARNING".to_string(),
+                            champ_concerne: "unite_reference".to_string(),
+                            valeur_fautive: raw_unit.clone().map(serde_json::Value::from),
+                            cause_detaillee: match raw_unit {
+                                Some(unit) => format!(
+                                    "Unité fournisseur « {unit} » inconnue des référentiels : article en staging sans unité"
+                                ),
+                                None => "Unité absente de la ligne : article en staging sans unité"
+                                    .to_string(),
+                            },
+                            created_at: None,
+                            is_resolved: false,
+                            resolved_by: None,
+                            resolved_at: None,
+                            resolution_comment: None,
+                        })
+                        .await?;
+                }
                 let anomaly = match outcome {
                     Ok(_) => match staged.qualification {
                         ItemQualification::Verified => {

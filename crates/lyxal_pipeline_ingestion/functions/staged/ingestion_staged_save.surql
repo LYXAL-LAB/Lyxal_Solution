@@ -44,7 +44,8 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_save($params: object) {
         IF !$fingerprint.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "canonical_fingerprint", reason: $fingerprint.code }); };
         LET $libelle = fn::validation_required_string($item.libelle_commercial, 1, 500);
         IF !$libelle.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "libelle_commercial", reason: $libelle.code }); };
-        LET $unite = fn::validation_required_string($item.unite_reference, 1, 32);
+        -- Unité absente tant qu'elle n'est pas résolue (anomalie consignée par le worker)
+        LET $unite = IF $item.unite_reference != NONE { fn::validation_required_string($item.unite_reference, 1, 32) } ELSE { { valid: true, value: NONE } };
         IF !$unite.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "unite_reference", reason: $unite.code }); };
         LET $type_item = fn::validation_enum($item.type_item ?? "PRODUIT", ["PRODUIT", "SERVICE", "OUVRAGE", "RESSOURCE", "ENSEMBLE"], false);
         IF !$type_item.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "type_item", reason: $type_item.code }); };

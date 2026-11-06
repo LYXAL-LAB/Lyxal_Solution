@@ -59,7 +59,11 @@ pub struct StagedItem {
     pub libelle_commercial: String,
     pub description_technique: Option<String>,
     pub type_item: String,
-    pub unite_reference: String,
+    /// Unité du référentiel ; absente tant que l'unité fournisseur n'est pas résolue
+    /// (anomalie `INGESTION_UNIT_UNRESOLVED` en quarantaine, jamais de valeur par défaut).
+    #[serde(default)]
+    #[surreal(default)]
+    pub unite_reference: Option<String>,
     pub conditionnement: PackagingDetails,
 
     // Triptyque de qualification et publication
