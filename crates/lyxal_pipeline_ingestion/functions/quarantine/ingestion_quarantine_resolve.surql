@@ -40,8 +40,11 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_resolve($params: object) {
     IF !$gtin.valid {
         RETURN fn::error_result("INGESTION_GTIN_INVALID", $p.language, { field: "corrections.corrected_gtin", reason: $gtin.code });
     };
-    LET $unit = IF $corrections.corrected_unit != NONE { fn::ingestion_resolve_unit({ raw_unit: $corrections.corrected_unit }) } ELSE { { ok: true, data: NONE } };
-    IF !$unit.ok {
+    LET $unit_code = IF $corrections.corrected_unit != NONE {
+        LET $units = fn::ingestion_resolve_units({ raw_units: [$corrections.corrected_unit] });
+        IF $units.ok { object::values($units.data)[0] } ELSE { NONE }
+    } ELSE { NONE };
+    IF $corrections.corrected_unit != NONE AND $unit_code == NONE {
         RETURN fn::error_result("INGESTION_UNIT_UNRESOLVED", $p.language, { field: "corrections.corrected_unit", raw_unit: $corrections.corrected_unit });
     };
 
@@ -71,7 +74,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_resolve($params: object) {
             qualification = "TO_CONFIRM",
             qualification_reason = $reason,
             code_barre_gtin = $gtin.value ?? code_barre_gtin,
-            unite_reference = $unit.data.canonical_code ?? unite_reference,
+            unite_reference = $unit_code ?? unite_reference,
             transitions = array::append(transitions ?? [], {
                 from_state: $staged.qualification,
                 to_state: "TO_CONFIRM",

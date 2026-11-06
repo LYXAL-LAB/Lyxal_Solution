@@ -206,13 +206,13 @@ struct ManifestExecutionItemParams {
 }
 
 #[derive(SurrealValue)]
-struct ResolveUnitParams {
-    raw_unit: String,
+struct ResolveUnitsParams {
+    raw_units: Vec<String>,
 }
 
 #[derive(SurrealValue)]
-struct ResolveManufacturerParams {
-    raw_name: String,
+struct ResolveManufacturersParams {
+    raw_names: Vec<String>,
 }
 
 #[derive(SurrealValue)]
@@ -259,13 +259,6 @@ struct DashboardMetricsParams {
 // =============================================================================
 // RÉSULTATS
 // =============================================================================
-
-/// Unité résolue vers `base_unite`.
-#[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
-pub struct ResolveUnitResult {
-    pub canonical_code: String,
-    pub resolved: bool,
-}
 
 /// Fabricant résolu par ses alias (ou nom normalisé si inconnu).
 #[derive(Deserialize, Serialize, Debug, Clone, SurrealValue)]
@@ -734,31 +727,30 @@ impl IngestionStore {
 
     // --- Référentiels -------------------------------------------------------
 
-    /// Résout une unité vers `base_unite` ; `None` si elle est inconnue
-    /// (`INGESTION_UNIT_UNRESOLVED`), toute autre erreur remonte.
-    pub async fn resolve_unit(&self, raw_unit: &str) -> IngestionResult<Option<String>> {
-        let params = ResolveUnitParams {
-            raw_unit: raw_unit.to_string(),
+    /// Résout un bloc d'unités fournisseurs (500 au plus) : alias de l'ingestion, puis
+    /// référentiel de `lyxal_base`. Seules les unités utilisables figurent dans le résultat,
+    /// indexé par l'unité brute sans espaces périphériques.
+    pub async fn resolve_units(
+        &self,
+        raw_units: &[String],
+    ) -> IngestionResult<std::collections::HashMap<String, String>> {
+        let params = ResolveUnitsParams {
+            raw_units: raw_units.to_vec(),
         };
-        let resolved: Result<ResolveUnitResult, _> =
-            self.call_fn("ingestion_resolve_unit", params).await;
-        match resolved {
-            Ok(r) => Ok(Some(r.canonical_code)),
-            Err(e) if is_business(&e, "INGESTION_UNIT_UNRESOLVED") => Ok(None),
-            Err(e) => Err(e.into()),
-        }
+        Ok(self.call_fn("ingestion_resolve_units", params).await?)
     }
 
-    /// Résout un fabricant par ses alias.
-    pub async fn resolve_manufacturer(
+    /// Résout un bloc de fabricants ou de marques (500 au plus) par leurs alias ; un nom
+    /// inconnu est renvoyé normalisé avec `resolved = false`.
+    pub async fn resolve_manufacturers(
         &self,
-        raw_name: &str,
-    ) -> IngestionResult<ResolveManufacturerResult> {
-        let params = ResolveManufacturerParams {
-            raw_name: raw_name.to_string(),
+        raw_names: &[String],
+    ) -> IngestionResult<std::collections::HashMap<String, ResolveManufacturerResult>> {
+        let params = ResolveManufacturersParams {
+            raw_names: raw_names.to_vec(),
         };
         Ok(self
-            .call_fn("ingestion_resolve_manufacturer", params)
+            .call_fn("ingestion_resolve_manufacturers", params)
             .await?)
     }
 

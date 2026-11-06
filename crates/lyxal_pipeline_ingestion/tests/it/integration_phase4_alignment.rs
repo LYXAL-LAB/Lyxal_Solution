@@ -90,32 +90,34 @@ async fn test_1_add_family_carrelage_dynamically_without_recompilation() {
 async fn test_2_add_manufacturer_alias_dynamically_without_recompilation() {
     let store = crate::support::installed_store().await;
 
-    // 1. Résolution préalable d'un fabricant inconnu
-    let before_res = store
-        .resolve_manufacturer("MAPEI FRANCE SAS")
-        .await
-        .unwrap();
-    assert!(
-        !before_res.is_verified,
-        "Le fabricant ne doit pas être certifié au départ"
-    );
+    let names = vec!["MAPEI FRANCE SAS".to_string()];
 
-    // 2. Déclaration dynamique d'un nouvel alias fabricant dans SurrealDB
+    // 1. Fabricant inconnu : nom normalisé (suffixes retirés), non résolu ni vérifié
+    let before = store.resolve_manufacturers(&names).await.unwrap();
+    let before_res = &before["MAPEI FRANCE SAS"];
+    assert!(!before_res.resolved && !before_res.is_verified);
+    assert_eq!(before_res.canonical_name, "MAPEI");
+
+    // 2. Déclaration d'un nouvel alias fabricant dans SurrealDB
     let q = r#"
-        UPSERT ingestion_manufacturer_alias:MAPEI_FRANCE CONTENT {
-            raw_alias: "MAPEI FRANCE SAS",
+        UPSERT ingestion_manufacturer_alias:MAPEI CONTENT {
+            raw_alias: "MAPEI",
             canonical_name: "MAPEI",
             holding_or_group: "MAPEI GROUP",
             is_verified: true
         };
     "#;
-    store.client().query(q).await.unwrap();
-
-    // 3. Résolution dynamique via fn::ingestion_resolve_manufacturer
-    let after_res = store
-        .resolve_manufacturer("MAPEI FRANCE SAS")
+    store
+        .client()
+        .query(q)
         .await
-        .unwrap();
+        .unwrap()
+        .check()
+        .expect("alias MAPEI");
+
+    // 3. Résolution par l'alias, après retrait des suffixes juridiques
+    let after = store.resolve_manufacturers(&names).await.unwrap();
+    let after_res = &after["MAPEI FRANCE SAS"];
     assert!(after_res.resolved, "L'alias doit être résolu dynamiquement");
     assert_eq!(after_res.canonical_name, "MAPEI");
     assert_eq!(after_res.holding_or_group, Some("MAPEI GROUP".to_string()));
@@ -123,64 +125,46 @@ async fn test_2_add_manufacturer_alias_dynamically_without_recompilation() {
 }
 
 // =============================================================================
-// TEST 3 : Résolution d'une unité depuis base_unite
+// TEST 3 : Résolution d'un bloc d'unités par les alias et le référentiel de lyxal_base
 // =============================================================================
 #[tokio::test]
-async fn test_3_resolve_unit_from_base_unite() {
+async fn test_3_resolve_units_from_base_unite() {
     let store = crate::support::installed_store().await;
+    let raw: Vec<String> = [
+        "M2",
+        "PCE",
+        "SQM",
+        "PIECE",
+        "MTK",
+        "m.l.",
+        "BIDON",
+        "UNITE_FICTIVE_XYZ",
+    ]
+    .iter()
+    .map(|u| u.to_string())
+    .collect();
 
-    // 1. Résolution d'un code officiel direct présent dans base_unite
-    let res_m2 = store.resolve_unit("M2").await.unwrap();
-    assert_eq!(
-        res_m2,
-        Some("M2".to_string()),
-        "M2 doit être résolu depuis base_unite"
-    );
+    // Codes Lyxal, alias commerciaux, codes d'échange (lyxal_base), clé sans points
+    let resolved = store.resolve_units(&raw).await.unwrap();
+    assert_eq!(resolved.get("M2").map(String::as_str), Some("M2"));
+    assert_eq!(resolved.get("PCE").map(String::as_str), Some("PCE"));
+    assert_eq!(resolved.get("SQM").map(String::as_str), Some("M2"));
+    assert_eq!(resolved.get("PIECE").map(String::as_str), Some("PCE"));
+    assert_eq!(resolved.get("MTK").map(String::as_str), Some("M2"));
+    assert_eq!(resolved.get("m.l.").map(String::as_str), Some("ML"));
+    assert!(!resolved.contains_key("BIDON"));
+    assert!(!resolved.contains_key("UNITE_FICTIVE_XYZ"));
 
-    let res_pce = store.resolve_unit("PCE").await.unwrap();
-    assert_eq!(
-        res_pce,
-        Some("PCE".to_string()),
-        "PCE doit être résolu depuis base_unite"
-    );
-
-    // 2. Résolution d'un alias commercial vers base_unite (SQM -> M2)
-    let res_sqm = store.resolve_unit("SQM").await.unwrap();
-    assert_eq!(
-        res_sqm,
-        Some("M2".to_string()),
-        "SQM doit être normalisé vers M2"
-    );
-
-    let res_piece = store.resolve_unit("PIECE").await.unwrap();
-    assert_eq!(
-        res_piece,
-        Some("PCE".to_string()),
-        "PIECE doit être normalisé vers PCE"
-    );
-
-    // 3. Alias ajouté vers une unité du référentiel (base_unite:LTR, seed de lyxal_base)
+    // Alias ajouté par le steward vers une unité du référentiel
     store
         .client()
-        .query(r#"UPSERT ingestion_unit_alias:LITRE CONTENT { raw_alias: "LITRE", canonical_unit: "LTR" };"#)
+        .query(r#"UPSERT ingestion_unit_alias:BIDON CONTENT { raw_alias: "BIDON", canonical_unit: "LTR" };"#)
         .await
         .unwrap()
         .check()
-        .expect("alias LITRE");
-
-    let res_litre = store.resolve_unit("LITRE").await.unwrap();
-    assert_eq!(
-        res_litre,
-        Some("LTR".to_string()),
-        "L'alias dynamique LITRE doit pointer vers LTR"
-    );
-
-    // 4. Unité inconnue non résolue
-    let res_unknown = store.resolve_unit("UNITE_FICTIVE_XYZ").await.unwrap();
-    assert_eq!(
-        res_unknown, None,
-        "Une unité inconnue ne doit pas être résolue"
-    );
+        .expect("alias BIDON");
+    let resolved = store.resolve_units(&raw).await.unwrap();
+    assert_eq!(resolved.get("BIDON").map(String::as_str), Some("LTR"));
 }
 
 // =============================================================================

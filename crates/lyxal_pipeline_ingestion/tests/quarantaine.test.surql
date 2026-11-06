@@ -61,7 +61,7 @@ RETURN fn::ingestion_quarantine_resolve({ quarantine_id: test_ref:q.gtin, commen
 
 -- test: correction d'unité inconnue refusée
 -- en tant que: steward
-RETURN fn::ingestion_quarantine_resolve({ quarantine_id: test_ref:q.unite, comment: "Unité corrigée d'après la fiche", staged_item_id: test_ref:q.article, corrections: { corrected_unit: "BOITE" } }).error.code == "INGESTION_UNIT_UNRESOLVED";
+RETURN fn::ingestion_quarantine_resolve({ quarantine_id: test_ref:q.unite, comment: "Unité corrigée d'après la fiche", staged_item_id: test_ref:q.article, corrections: { corrected_unit: "XYZ" } }).error.code == "INGESTION_UNIT_UNRESOLVED";
 
 -- test: anomalie inconnue
 -- en tant que: steward

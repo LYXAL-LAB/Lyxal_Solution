@@ -65,7 +65,7 @@ par SurrealQL au nom de l'identité de session (`triggered_by`) et horodatées p
 | Staging (`staged/`) | `staged_save` (bloc d'articles d'un lot, un résultat par article ; code-barres contrôlé par `fn::validation_gtin` : `INGESTION_GTIN_INVALID`), `staged_list`, `staged_requalify` (steward ; `VERIFIED` exige une preuve commerciale) |
 | Quarantaine (`quarantine/`) | `quarantine_log` (rejouable : une anomalie ouverte par ligne et par code), `quarantine_list`, `quarantine_resolve` (steward ; corrections contrôlées, article repassé `TO_CONFIRM`) |
 | Manifestes (`manifest/`) | `manifest_save` (`DRAFT` / `SEALED`, modifiable tant qu'il n'est pas approuvé ; une version par lot), `manifest_approve` (steward, justification journalisée), `manifest_execution_item_update`, `manifest_record_exec` (agent de synchronisation), `manifest_list`, `manifest_get_detail` |
-| Référentiels (`rule/`) | `resolve_unit` (alias, puis unité utilisable lue par `fn::base_unite_get` de `lyxal_base`), `resolve_manufacturer`, `rule_family_add`, `rule_spec_add`, `rule_substitution_add` (révocation motivée), `rules_load` |
+| Référentiels (`rule/`) | `resolve_units` (bloc de 500 au plus : alias commerciaux, puis codes Lyxal et codes d'échange par `fn::base_unite_resolve` de `lyxal_base` ; seules les unités utilisables), `resolve_manufacturers` (bloc : alias après normalisation et retrait des suffixes juridiques ; `is_verified = false` pour un groupe sans entité déterminée), `rule_family_add`, `rule_spec_add`, `rule_substitution_add` (révocation motivée), `rules_load` |
 | Pilotage | `dashboard_metrics` |
 | Session (`session/`) | `session_identity` (interne) : rôle et opérateur lus dans `$token` / `$auth` ; session de l'hôte = `system` ; jamais dans les paramètres |
 
@@ -139,8 +139,9 @@ publie chaque manifeste approuvé ; la livraison est au moins une fois, la publi
 
 40 définitions `INGESTION_*` par thème (`articles`, `lots`, `manifestes`, `parametres`,
 `permissions`, `preuves`, `quarantaine`, `referentiels`, `techniques`), créées seulement si elles
-n'existent pas. Seeds rejouables : familles (`01`), spécifications (`02`), alias de fabricants et
-d'unités (`03`). Démonstration carrelage : `tests/fixtures/carrelage_demo.surql`, jamais installée.
+n'existent pas. Seeds rejouables : familles (`01`), spécifications (`02`), alias de fabricants (44) et
+libellés d'unités fournisseurs (46) (`03`) ; les codes Lyxal et d'échange des unités sont résolus par
+`lyxal_base`, sans alias. Démonstration carrelage : `tests/fixtures/carrelage_demo.surql`, jamais installée.
 
 ---
 

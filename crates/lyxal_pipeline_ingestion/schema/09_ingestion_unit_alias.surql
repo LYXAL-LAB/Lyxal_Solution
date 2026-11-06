@@ -27,7 +27,7 @@ DEFINE FIELD OVERWRITE raw_alias ON TABLE ingestion_unit_alias
     TYPE string
     VALUE string::uppercase(string::trim($value))
     ASSERT string::len($value) >= 1
-    COMMENT "Unité brute fournisseur ou code UN/CEFACT (ex: M2, SQM, MTK, C62)";
+    COMMENT "Libellé d'unité fournisseur (ex: SQM, ROULEAU, M²) ; codes Lyxal et codes d'échange résolus par lyxal_base";
 
 DEFINE FIELD OVERWRITE canonical_unit ON TABLE ingestion_unit_alias
     TYPE string
@@ -37,7 +37,7 @@ DEFINE FIELD OVERWRITE canonical_unit ON TABLE ingestion_unit_alias
 
 DEFINE FIELD OVERWRITE comment ON TABLE ingestion_unit_alias
     TYPE option<string>
-    COMMENT "Commentaire explicatif ou norme UN/CEFACT correspondante";
+    COMMENT "Commentaire explicatif";
 
 DEFINE FIELD OVERWRITE created_at ON TABLE ingestion_unit_alias
     TYPE option<datetime>

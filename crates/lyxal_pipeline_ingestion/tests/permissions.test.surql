@@ -89,5 +89,5 @@ RETURN (UPDATE ingestion_publication_manifest SET nb_articles_insert = 99) == []
 
 -- test: l'agent de qualification n'administre pas les alias
 -- en tant que: qualif
-RETURN (CREATE ingestion_unit_alias CONTENT { raw_alias: "BOITE", canonical_unit: "PCE", created_at: time::now(), updated_at: time::now() }) == []
-    AND count(SELECT id FROM ingestion_unit_alias WHERE raw_alias = "BOITE") == 0;
+RETURN (CREATE ingestion_unit_alias CONTENT { raw_alias: "BIDON", canonical_unit: "PCE", created_at: time::now(), updated_at: time::now() }) == []
+    AND count(SELECT id FROM ingestion_unit_alias WHERE raw_alias = "BIDON") == 0;
