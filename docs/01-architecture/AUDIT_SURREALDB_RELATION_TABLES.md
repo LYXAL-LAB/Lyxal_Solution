@@ -342,7 +342,7 @@ Au sein du périmètre audité, **27 tables au total** ont été inventoriées, 
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE ingestion_manufacturer_alias SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create, update WHERE ... FOR delete NONE`
 - **Type actuel :** `TYPE NORMAL` (implicite)
 - **Champs `record` et références :** Aucun.
-- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_resolve_manufacturer`](../../crates/lyxal_pipeline_ingestion/functions/rule/ingestion_resolve_manufacturer.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_resolve_manufacturers`](../../crates/lyxal_pipeline_ingestion/functions/rule/ingestion_resolve_manufacturers.surql).
 - **Index et contraintes :** `idx_mfg_raw_alias` (`raw_alias UNIQUE`), `idx_mfg_canonical` (`canonical_name`).
 
 #### Table 23 : `ingestion_unit_alias`
@@ -350,7 +350,7 @@ Au sein du périmètre audité, **27 tables au total** ont été inventoriées, 
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE ingestion_unit_alias SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create, update WHERE ... FOR delete NONE`
 - **Type actuel :** `TYPE NORMAL` (implicite)
 - **Champs `record` et références :** `canonical_unit: string` (clé textuelle vers `base_unite.code`).
-- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_resolve_unit`](../../crates/lyxal_pipeline_ingestion/functions/rule/ingestion_resolve_unit.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_resolve_units`](../../crates/lyxal_pipeline_ingestion/functions/rule/ingestion_resolve_units.surql).
 - **Index et contraintes :** `idx_unit_raw_alias` (`raw_alias UNIQUE`), `idx_unit_canonical` (`canonical_unit`).
 
 #### Table 24 : `ingestion_substitution_rule`
@@ -377,7 +377,7 @@ Au sein du périmètre audité, **27 tables au total** ont été inventoriées, 
 - **Champs `record` et références :** `type: record<base_unite_type>` (REFERENCE ON DELETE REJECT).
 - **Consommateurs** (références typées `record<base_unite>` en `REFERENCE ON DELETE REJECT` ; lectures par `fn::base_unite_get`, jamais par la table) :  
   - `lyxal_catalogue` : `catalogue_item.unite_reference`, `catalogue_item.unite_conditionnement`, `catalogue_composition_ligne.unite`, `catalogue_attribut.unite`.  
-  - `lyxal_pipeline_ingestion` : résolution dans `fn::ingestion_resolve_unit`, publication vers le catalogue.
+  - `lyxal_pipeline_ingestion` : résolution par bloc dans `fn::ingestion_resolve_units` (par `fn::base_unite_resolve`), publication vers le catalogue.
 - **Index et contraintes :** `idx_base_unite_code` (`code UNIQUE`).
 
 #### Table 26 : `base_unite_type`

@@ -108,7 +108,7 @@ Socle système (`is_system: true`), rejouable (`IF !record::exists(...) THEN ( C
 | `DEBIT` | `M3H` |
 
 Les codes sont ceux que produit la normalisation de `lyxal_pipeline_ingestion`, sans alias : un
-test de l'ingestion vérifie que chacun de ses codes canoniques existe ici.
+banc de l'ingestion vérifie que chacun de ses alias d'unités pointe vers une unité utilisable.
 
 Codes d'échange (31) : Rec. 20 pour les grandeurs (`KMT`, `MTR`, `LM`, `CMT`, `MMT`, `HAR`, `MTK`,
 `MTQ`, `LTR`, `TNE`, `KGM`, `GRM`, `MON`, `WEE`, `DAY`, `HUR`, `C62` → `U`, `H87` et `EA` → `PCE`,

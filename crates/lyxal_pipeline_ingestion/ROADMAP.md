@@ -1,7 +1,7 @@
 # Feuille de route — `lyxal_pipeline_ingestion`
 
 Évolutions prévues du pipeline d'ingestion. L'état actuel (11 tables, 25 fonctions, worker par
-blocs, quarantaine, manifestes scellés, publication réelle vers le catalogue sous
+blocs, unités et fabricants résolus par bloc sur les référentiels en base, quarantaine, manifestes scellés, publication réelle vers le catalogue sous
 `catalogue_sync_agent`, banc de tests) est décrit dans le [`README.md`](README.md). Aucune étape
 ne démarre sans ordre du CTO et `implementation_plan.md` validé (`.agents/AGENTS.md` §3). Les 11
 tables restent en `TYPE NORMAL` ; toute table `TYPE RELATION` est soumise à validation du CTO
@@ -9,31 +9,15 @@ tables restent en `TYPE NORMAL` ; toute table `TYPE RELATION` est soumise à val
 
 | Étape | Thème | Dépendances |
 | :--- | :--- | :--- |
-| 1 | Normalisation sur les référentiels en base | codes d'échange des unités (étape 1 de la [feuille de route de `lyxal_base`](../lyxal_base/ROADMAP.md)) |
-| 2 | Regroupement technique en SurrealQL | étape 1 |
-| 3 | Connecteurs fabricants et preuves documentaires | services de fichiers et de secrets de Lyxal OS |
-| 4 | Synchronisation incrémentale et retraits | étape 3 ; `lyxal_catalogue` |
-| 5 | Résolution des conflits multisources | étape 4 |
-| 6 | Ingestion assistée par agents IA | étape 5 ; bus `lyxal_event` ; validation humaine obligatoire |
+| 1 | Regroupement technique en SurrealQL | — |
+| 2 | Connecteurs fabricants et preuves documentaires | services de fichiers et de secrets de Lyxal OS |
+| 3 | Synchronisation incrémentale et retraits | étape 2 ; `lyxal_catalogue` |
+| 4 | Résolution des conflits multisources | étape 3 |
+| 5 | Ingestion assistée par agents IA | étape 4 ; bus `lyxal_event` ; validation humaine obligatoire |
 
 ---
 
-## 1. Normalisation sur les référentiels en base
-
-La normalisation Rust du worker résout encore unités et fabricants par des tables statiques
-(`normalization/units.rs`, `normalization/manufacturer.rs`), alors que les référentiels
-administrés par le Data Steward sont en base (`ingestion_unit_alias`,
-`ingestion_manufacturer_alias`, unités de `lyxal_base` lues par `fn::base_unite_get`) avec
-`fn::ingestion_resolve_unit` et `fn::ingestion_resolve_manufacturer`.
-
-Critères d'acceptation :
-
-- [ ] résolution par les fonctions SurrealQL (par bloc, sans aller-retour par ligne) ; tables
-  statiques Rust supprimées ;
-- [ ] unité inconnue : article `TO_CONFIRM` ou anomalie en quarantaine, selon la décision du CTO ;
-- [ ] débit du banc Rust maintenu (seuil actuel : 50 articles/s).
-
-## 2. Regroupement technique en SurrealQL
+## 1. Regroupement technique en SurrealQL
 
 Rapprocher les articles du staging sur quatre niveaux (famille, spécification patronne,
 équivalence fonctionnelle, substitution autorisée) à partir des référentiels en base
@@ -49,7 +33,7 @@ Critères d'acceptation :
 - [ ] réutilisables par l'étape « substitutions » de `lyxal_catalogue`
   ([`ROADMAP`](../lyxal_catalogue/ROADMAP.md)).
 
-## 3. Connecteurs fabricants et preuves documentaires
+## 2. Connecteurs fabricants et preuves documentaires
 
 1. Collecte automatisée (SFTP, API partenaires, EDI, stockage objet), sous worker supervisé.
 2. Authentification des flux (OAuth2 M2M, mTLS, clés API) par le gestionnaire de secrets de
@@ -65,7 +49,7 @@ Critères d'acceptation :
 - [ ] preuve rattachée à un document haché, consultable par le steward avant requalification
   (`fn::ingestion_staged_requalify`).
 
-## 4. Synchronisation incrémentale et retraits
+## 3. Synchronisation incrémentale et retraits
 
 1. Comparaison avec la dernière version publiée : articles nouveaux, modifiés, retirés.
 2. Pas de requalification d'un article dont l'empreinte canonique est inchangée
@@ -80,7 +64,7 @@ Critères d'acceptation :
 - [ ] calcul différentiel inférieur à 1 s pour 10 000 références ;
 - [ ] aucune suppression dans `catalogue_item`.
 
-## 5. Résolution des conflits multisources
+## 4. Résolution des conflits multisources
 
 1. Rapprochement d'un même article distribué par plusieurs sources.
 2. Détection des divergences (libellés, conditionnements, cotes, unités) et indice de confiance
@@ -93,7 +77,7 @@ Critères d'acceptation :
 - [ ] matrice de priorité des sources ;
 - [ ] arbitrage enregistré par `fn::ingestion_quarantine_resolve`.
 
-## 6. Ingestion assistée par agents IA
+## 5. Ingestion assistée par agents IA
 
 1. Découverte de nouveaux catalogues et tarifs.
 2. Extraction de données techniques depuis des formats non structurés (PDF, pages web).

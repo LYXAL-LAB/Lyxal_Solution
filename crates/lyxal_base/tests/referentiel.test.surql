@@ -1,6 +1,6 @@
 -- lyxal-test: assertions
 -- Référentiel installé par les seeds : types et unités du socle système, codes alignés sur les
--- codes canoniques de l'ingestion (sans alias). Exécuté par scripts/ci/test_lyxal_modules.py.
+-- codes que produit la résolution de l'ingestion (sans alias). Exécuté par scripts/ci/test_lyxal_modules.py.
 
 -- test: 11 types d'unités, tous système et actifs
 RETURN (SELECT count() AS n FROM base_unite_type WHERE is_system AND enabled GROUP ALL)[0].n == 11;
