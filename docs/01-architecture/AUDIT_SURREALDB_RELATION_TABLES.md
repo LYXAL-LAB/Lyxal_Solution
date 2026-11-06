@@ -102,8 +102,8 @@ Au sein du périmètre audité, **27 tables au total** ont été inventoriées, 
 - **Type actuel :** `TYPE NORMAL`
 - **Champs `record` et références :**  
   - `type: record<catalogue_type>` (REFERENCE)  
-  - `unite_reference: record<base_unite>` (REFERENCE)  
-  - `conditionnement.type_unite: option<record<base_unite>>`
+  - `unite_reference: record<base_unite>` (REFERENCE ON DELETE REJECT)  
+  - `unite_conditionnement: option<record<base_unite>>` (REFERENCE ON DELETE REJECT)
 - **Fonctions SurrealQL consommatrices :**  
   - Écriture : [`fn::catalogue_item_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_create.surql), [`fn::catalogue_item_update`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_update.surql), [`fn::catalogue_item_delete`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_delete.surql).  
   - Lecture : [`fn::catalogue_item_get`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_get.surql), [`fn::catalogue_item_list`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_list.surql), [`fn::catalogue_relation_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/relation/catalogue_relation_create.surql), [`fn::catalogue_composition_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/composition/catalogue_composition_create.surql), [`fn::catalogue_composition_add_line`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/composition/catalogue_composition_add_line.surql).

@@ -25,7 +25,8 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_type_delete($params: object) {
     IF $existing.is_system {
         RETURN fn::error_result("BASE_UNITE_TYPE_IS_SYSTEM", $language, { id: <string> $p.id });
     };
-    LET $references = (SELECT count() FROM base_unite WHERE type = $p.id GROUP ALL)[0].count ?? 0;
+    -- Références entrantes de toute table (champs déclarés REFERENCE), sans connaître les consommateurs
+    LET $references = array::len((SELECT VALUE <~? FROM ONLY $p.id) ?? []);
     IF $references > 0 {
         RETURN fn::error_result("BASE_UNITE_TYPE_IN_USE", $language, { id: <string> $p.id, references: $references });
     };
@@ -35,4 +36,4 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_type_delete($params: object) {
         RETURN fn::error_result("BASE_WRITE_FORBIDDEN", $language, { table: "base_unite_type" });
     };
     RETURN fn::result_ok({ id: <string> $p.id, deleted: true });
-} COMMENT "Supprime un type d'unité qui n'est ni système ni rattaché à une unité ; sinon, le désactiver";
+} COMMENT "Supprime un type d'unité qui n'est ni système ni référencé (unités ou autres modules) ; sinon, le désactiver";

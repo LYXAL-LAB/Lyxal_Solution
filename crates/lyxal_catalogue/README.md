@@ -91,7 +91,7 @@ Référence pour les appelants (dont la publication de `lyxal_pipeline_ingestion
 | `code` | texte ≤ 64 | **requis**, unique, mis en majuscules |
 | `type` | `"catalogue_type:<CODE>"` | **requis**, type actif |
 | `libelle` | texte ≤ 255 | **requis** |
-| `unite_reference` | `"base_unite:<CODE>"` | **requis**, unité active de `lyxal_base` |
+| `unite_reference` | `"base_unite:<CODE>"` | **requis**, unité utilisable selon `fn::base_unite_get` (unité et type actifs) |
 | `description` | texte ≤ 4000 | |
 | `nature_reference` | `GENERIQUE` (défaut) ou `COMMERCIALE` | un générique n'a ni fabricant, ni marque, ni référence, ni code-barres ; un commercial a un fabricant ou une marque |
 | `fabricant`, `marque` | texte ≤ 128 | mis en majuscules |
@@ -99,13 +99,20 @@ Référence pour les appelants (dont la publication de `lyxal_pipeline_ingestion
 | `code_barre` | GTIN-8/12/13/14 | règle `gtin` de `lyxal_core` (clé GS1), enregistré sous forme normalisée, unique |
 | `statut_commercial` | `ACTIF` (défaut), `FIN_DE_SERIE`, `OBSOLETE`, `REMPLACE` | |
 | `documents` | liste d'objets `{ type, titre, url, date, version }` | |
-| `conditionnement` | objet `{ type_unite, quantite, poids_kg, volume_m3, dimensions }` | |
+| `conditionnement` | objet `{ quantite, poids_kg, volume_m3, dimensions }` | |
+| `unite_conditionnement` | `"base_unite:<CODE>"` | unité utilisable selon `fn::base_unite_get` ; champ de premier niveau, car SurrealDB 3.3.4 ne suit pas `REFERENCE` sur un champ imbriqué |
 | `has_variants` | booléen (défaut `false`) | |
 | `categories` | liste d'identifiants ou de `{ id, is_primary }` | erreurs signalées par position |
 | `master_id` | texte ≤ 128 | article maître seulement, unique |
 | `is_custom` | booléen | défaut : `false` si `master_id` est fourni, sinon `true` |
 | `code_interne_client`, `libelle_personnalise` | texte | personnalisation locale |
 | `tenant_id` | texte | facultatif ; s'il est fourni, il doit être celui du jeton |
+
+Les quatre champs qui pointent vers `lyxal_base` (`catalogue_item.unite_reference`,
+`catalogue_item.unite_conditionnement`, `catalogue_composition_ligne.unite`,
+`catalogue_attribut.unite`) sont déclarés `REFERENCE ON DELETE REJECT` : une unité utilisée par
+le catalogue ne peut pas être supprimée (`fn::base_unite_delete` renvoie `BASE_UNITE_IN_USE`, la
+base refuse une suppression directe).
 
 `fn::catalogue_item_update` accepte les mêmes champs (sauf `categories`, `has_variants`) et `id` ;
 `code`, `type`, `nature_reference`, `tenant_id`, `master_id` et le passage privé ↔ maître sont

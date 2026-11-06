@@ -2,7 +2,7 @@
 //!
 //! Contrat de `lyxal_catalogue` (README §2–3) : article commercial maître (`nature_reference =
 //! COMMERCIALE`, `master_id` renseigné), type `catalogue_type:<TYPE>`, unité de référence
-//! `base_unite:<CODE>`. Les identifiants sont stables : `code = master_id = ING-<empreinte>`,
+//! `base_unite:<CODE>` (unité de référence et unité de conditionnement). Les identifiants sont stables : `code = master_id = ING-<empreinte>`,
 //! empreinte BLAKE3 du fabricant et de la référence fabricant.
 
 use lyxal_surreal::{LyxalSurrealCall, LyxalSurrealError, RecordId, SurrealValue, ToSql};
@@ -34,7 +34,6 @@ struct CatalogueDimensions {
 
 #[derive(Clone, SurrealValue)]
 struct CatalogueConditionnement {
-    type_unite: RecordId,
     quantite: f64,
     poids_kg: Option<f64>,
     dimensions: Option<CatalogueDimensions>,
@@ -54,6 +53,8 @@ struct CatalogueItemCreateParams {
     reference_fabricant: String,
     code_barre: Option<String>,
     conditionnement: CatalogueConditionnement,
+    /// `base_unite:<CODE>` en texte (règle `record` de lyxal_core).
+    unite_conditionnement: String,
     master_id: String,
 }
 
@@ -69,6 +70,7 @@ struct CatalogueItemUpdateParams {
     reference_fabricant: String,
     code_barre: Option<String>,
     conditionnement: CatalogueConditionnement,
+    unite_conditionnement: String,
 }
 
 #[derive(SurrealValue)]
@@ -159,6 +161,7 @@ impl CatalogueSyncClient {
             reference_fabricant: params.reference_fabricant,
             code_barre: params.code_barre,
             conditionnement: params.conditionnement,
+            unite_conditionnement: params.unite_conditionnement,
         };
         let _: CatalogueItemRef = self.call_fn("catalogue_item_update", update).await?;
         Ok(())
@@ -192,7 +195,6 @@ fn create_params(item: &StagedItem) -> CatalogueItemCreateParams {
         reference_fabricant: item.reference_fabricant.clone(),
         code_barre: item.code_barre_gtin.clone(),
         conditionnement: CatalogueConditionnement {
-            type_unite: RecordId::new("base_unite", packaging.unite_vente.trim().to_uppercase()),
             quantite: packaging.quantite_par_colis,
             poids_kg: packaging.poids_brut_kg,
             dimensions: packaging.dimensions.as_ref().map(|d| CatalogueDimensions {
@@ -201,6 +203,10 @@ fn create_params(item: &StagedItem) -> CatalogueItemCreateParams {
                 epaisseur: d.epaisseur_mm,
             }),
         },
+        unite_conditionnement: format!(
+            "base_unite:{}",
+            packaging.unite_vente.trim().to_uppercase()
+        ),
         master_id,
     }
 }

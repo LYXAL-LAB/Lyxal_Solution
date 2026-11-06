@@ -53,7 +53,7 @@ DEFINE FIELD OVERWRITE quantite ON TABLE catalogue_composition_ligne
 
 DEFINE FIELD OVERWRITE unite ON TABLE catalogue_composition_ligne
     TYPE record<base_unite>
-    REFERENCE
+    REFERENCE ON DELETE REJECT
     COMMENT "Unité de consommation";
 
 DEFINE FIELD OVERWRITE coefficient_perte ON TABLE catalogue_composition_ligne

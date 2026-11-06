@@ -65,7 +65,7 @@ par SurrealQL au nom de l'identité de session (`triggered_by`) et horodatées p
 | Staging (`staged/`) | `staged_save` (bloc d'articles d'un lot, un résultat par article ; code-barres contrôlé par `fn::validation_gtin` : `INGESTION_GTIN_INVALID`), `staged_list`, `staged_requalify` (steward ; `VERIFIED` exige une preuve commerciale) |
 | Quarantaine (`quarantine/`) | `quarantine_log` (rejouable : une anomalie ouverte par ligne et par code), `quarantine_list`, `quarantine_resolve` (steward ; corrections contrôlées, article repassé `TO_CONFIRM`) |
 | Manifestes (`manifest/`) | `manifest_save` (`DRAFT` / `SEALED`, modifiable tant qu'il n'est pas approuvé ; une version par lot), `manifest_approve` (steward, justification journalisée), `manifest_execution_item_update`, `manifest_record_exec` (agent de synchronisation), `manifest_list`, `manifest_get_detail` |
-| Référentiels (`rule/`) | `resolve_unit`, `resolve_manufacturer`, `rule_family_add`, `rule_spec_add`, `rule_substitution_add` (révocation motivée), `rules_load` |
+| Référentiels (`rule/`) | `resolve_unit` (alias, puis unité utilisable lue par `fn::base_unite_get` de `lyxal_base`), `resolve_manufacturer`, `rule_family_add`, `rule_spec_add`, `rule_substitution_add` (révocation motivée), `rules_load` |
 | Pilotage | `dashboard_metrics` |
 | Session (`session/`) | `session_identity` (interne) : rôle et opérateur lus dans `$token` / `$auth` ; session de l'hôte = `system` ; jamais dans les paramètres |
 
@@ -107,7 +107,8 @@ publie chaque manifeste approuvé ; la livraison est au moins une fois, la publi
 * **Contrôles** : sceau recalculé sur les articles du lot ; seuls les articles `VERIFIED` dont la
   preuve est éligible à la production (ni pilote, ni synthétique) sont publiés.
 * **Écriture** : `fn::catalogue_item_create` (article commercial maître, `code = master_id =
-  ING-<empreinte BLAKE3 de fabricant et référence>`, type, unité `base_unite`, conditionnement) ;
+  ING-<empreinte BLAKE3 de fabricant et référence>`, type, unité de référence, unité de
+  conditionnement `unite_conditionnement`, conditionnement) ;
   un article déjà présent est mis à jour (`fn::catalogue_item_update`).
 * **Journal et issue** : chaque article est journalisé dans le manifeste ; une reprise saute les
   articles déjà publiés. `COMMITTED` si tout est publié, sinon `FAILED` (le steward corrige puis
