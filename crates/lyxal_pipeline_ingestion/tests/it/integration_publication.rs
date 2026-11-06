@@ -138,7 +138,7 @@ struct CatalogueRow {
     unite_reference: RecordId,
     #[surreal(rename = "type")]
     type_item: RecordId,
-    type_unite: Option<RecordId>,
+    unite_conditionnement: Option<RecordId>,
 }
 
 async fn catalogue_rows(store: &IngestionStore) -> Vec<CatalogueRow> {
@@ -146,7 +146,7 @@ async fn catalogue_rows(store: &IngestionStore) -> Vec<CatalogueRow> {
         .client()
         .query(
             "SELECT code, master_id, is_custom, nature_reference, fabricant, reference_fabricant, \
-             code_barre, unite_reference, type, conditionnement.type_unite AS type_unite \
+             code_barre, unite_reference, type, unite_conditionnement \
              FROM catalogue_item ORDER BY code",
         )
         .await
@@ -211,7 +211,25 @@ async fn approved_manifest_is_published_to_the_catalogue() {
     assert_eq!(ba13.code_barre.as_deref(), Some("3017620422003"));
     assert_eq!(ba13.unite_reference, RecordId::new("base_unite", "M2"));
     assert_eq!(ba13.type_item, RecordId::new("catalogue_type", "PRODUIT"));
-    assert_eq!(ba13.type_unite, Some(RecordId::new("base_unite", "PCE")));
+    assert_eq!(
+        ba13.unite_conditionnement,
+        Some(RecordId::new("base_unite", "PCE"))
+    );
+
+    // Unités utilisées par les articles publiés : la base refuse leur suppression directe
+    // (REFERENCE ON DELETE REJECT sur unite_reference et unite_conditionnement)
+    for unit in ["M2", "PCE"] {
+        let deleted = store
+            .client()
+            .query(format!("DELETE base_unite:{unit};"))
+            .await
+            .expect("requête")
+            .check();
+        assert!(
+            deleted.is_err(),
+            "base_unite:{unit} ne doit pas être supprimable"
+        );
+    }
 
     // Manifeste exécuté au nom de l'agent de synchronisation
     let manifest = store

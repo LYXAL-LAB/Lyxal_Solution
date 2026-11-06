@@ -40,8 +40,8 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_attribut_create($params: object) {
 
     -- Contrôle d'unité si spécifiée
     IF $unite_id != NONE {
-        LET $unite_rec = (SELECT * FROM ONLY $unite_id);
-        IF $unite_rec == NONE OR $unite_rec.enabled != true {
+        -- Unité existante et utilisable (unité et type actifs), selon lyxal_base
+        IF !(fn::base_unite_get({ id: <string> $unite_id }).data.usable ?? false) {
             RETURN fn::error_result("CATALOGUE_ATTRIBUT_UNITE_INVALID", $language, { unite: <string> $unite_id });
         };
     };

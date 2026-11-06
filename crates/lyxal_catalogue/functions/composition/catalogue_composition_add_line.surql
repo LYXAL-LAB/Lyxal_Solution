@@ -71,9 +71,8 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_composition_add_line($params: object) {
         };
     };
 
-    -- 5. Contrôle de l'unité de consommation
-    LET $unite_rec = (SELECT * FROM ONLY $unite_id);
-    IF $unite_rec == NONE {
+    -- 5. Unité de consommation existante et utilisable (unité et type actifs), selon lyxal_base
+    IF !(fn::base_unite_get({ id: <string> $unite_id }).data.usable ?? false) {
         RETURN fn::error_result("CATALOGUE_COMPOSITION_UNITE_INCOMPATIBLE", $language, { unite: <string> $unite_id });
     };
 

@@ -23,8 +23,8 @@ CREATE catalogue_item CONTENT {
     nature_reference: "GENERIQUE",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 28.5,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -48,8 +48,8 @@ CREATE catalogue_item CONTENT {
     nature_reference: "GENERIQUE",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 30.5,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -73,8 +73,8 @@ CREATE catalogue_item CONTENT {
     nature_reference: "GENERIQUE",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 36.0,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -98,8 +98,8 @@ CREATE catalogue_item CONTENT {
     nature_reference: "GENERIQUE",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 37.0,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -132,8 +132,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 27.5,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -172,8 +172,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.12,
         poids_kg: 28.6,
         dimensions: { longueur: 2600, largeur: 1200, epaisseur: 12.5 }
@@ -205,8 +205,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.6,
         poids_kg: 33.0,
         dimensions: { longueur: 3000, largeur: 1200, epaisseur: 12.5 }
@@ -238,8 +238,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 26.7,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -273,8 +273,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.12,
         poids_kg: 27.8,
         dimensions: { longueur: 2600, largeur: 1200, epaisseur: 12.5 }
@@ -303,8 +303,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 27.0,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -338,8 +338,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.12,
         poids_kg: 28.1,
         dimensions: { longueur: 2600, largeur: 1200, epaisseur: 12.5 }
@@ -372,8 +372,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 28.5,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -407,8 +407,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.12,
         poids_kg: 29.6,
         dimensions: { longueur: 2600, largeur: 1200, epaisseur: 12.5 }
@@ -437,8 +437,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 28.0,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -471,8 +471,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 28.2,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -509,8 +509,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 30.5,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -543,8 +543,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 30.2,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -573,8 +573,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 30.3,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -607,8 +607,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 36.0,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -641,8 +641,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 35.5,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -675,8 +675,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 37.0,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -709,8 +709,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 37.5,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -739,8 +739,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 36.8,
         dimensions: { longueur: 2500, largeur: 1200, epaisseur: 12.5 }
@@ -773,8 +773,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 2.49,
         poids_kg: 1.87
     },
@@ -806,8 +806,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 2.59,
         poids_kg: 1.94
     },
@@ -835,8 +835,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 2.1
     },
@@ -868,8 +868,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 2.5,
         poids_kg: 1.85
     },
@@ -897,8 +897,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 2.05
     },
@@ -926,8 +926,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 2.49,
         poids_kg: 1.86
     },
@@ -955,8 +955,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 3.0,
         poids_kg: 2.08
     },
@@ -988,8 +988,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:ROUL,
     conditionnement: {
-        type_unite: base_unite:ROUL,
         quantite: 15.6,
         poids_kg: 10.9
     },
@@ -1022,8 +1022,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 8.1,
         poids_kg: 24.3
     },
@@ -1059,8 +1059,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 1000.0,
         poids_kg: 1.45
     },
@@ -1092,8 +1092,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 1000.0,
         poids_kg: 1.50
     },
@@ -1121,8 +1121,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 1000.0,
         poids_kg: 1.48
     },
@@ -1154,8 +1154,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 150.0,
         poids_kg: 1.15
     },
@@ -1191,8 +1191,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:ROUL,
     conditionnement: {
-        type_unite: base_unite:ROUL,
         quantite: 150.0,
         poids_kg: 0.88
     },
@@ -1224,8 +1224,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:ROUL,
     conditionnement: {
-        type_unite: base_unite:ROUL,
         quantite: 150.0,
         poids_kg: 0.86
     },
@@ -1257,8 +1257,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 25.0,
         poids_kg: 25.0
     },
@@ -1290,8 +1290,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 25.0,
         poids_kg: 25.0
     },
@@ -1323,8 +1323,8 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     is_composite: false,
     has_variants: false,
+    unite_conditionnement: base_unite:PCE,
     conditionnement: {
-        type_unite: base_unite:PCE,
         quantite: 25.0,
         poids_kg: 25.0
     },

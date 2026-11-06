@@ -31,7 +31,7 @@ DEFINE FIELD OVERWRITE type_donnee ON TABLE catalogue_attribut
 
 DEFINE FIELD OVERWRITE unite ON TABLE catalogue_attribut
     TYPE option<record<base_unite>>
-    REFERENCE
+    REFERENCE ON DELETE REJECT
     COMMENT "Unité associée pour les grandeurs physiques";
 
 DEFINE FIELD OVERWRITE is_variant_driver ON TABLE catalogue_attribut

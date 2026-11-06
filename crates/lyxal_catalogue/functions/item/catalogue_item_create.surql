@@ -22,6 +22,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_create($params: object) {
             statut_commercial: { pipeline: [{ rule: "enum", options: { allowed: ["ACTIF", "FIN_DE_SERIE", "OBSOLETE", "REMPLACE"], case_sensitive: false } }], default: "ACTIF" },
             documents: { pipeline: [{ rule: "array_objects", options: { allow_empty_objects: false } }] },
             conditionnement: { pipeline: [{ rule: "object_non_empty" }] },
+            unite_conditionnement: { pipeline: [{ rule: "record", options: { expected_table: "base_unite" } }] },
             master_id: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
             is_custom: { pipeline: [{ rule: "boolean" }] },
             code_interne_client: { pipeline: [{ rule: "optional_string", options: { max_length: 64 } }] },
@@ -62,6 +63,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_create($params: object) {
     LET $statut_comm = $p.statut_commercial;
     LET $documents = $p.documents ?? [];
     LET $conditionnement = $p.conditionnement;
+    LET $unite_cond = $p.unite_conditionnement;
     
     -- Paramètres de synchronisation et personnalisation locale
     LET $master_id = $p.master_id;
@@ -166,10 +168,12 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_create($params: object) {
         RETURN fn::error_result("CATALOGUE_ITEM_TYPE_NOT_FOUND", $language, { type: <string> $type_id });
     };
 
-    -- 3. Contrôle de l'unité de référence
-    LET $unite_rec = (SELECT * FROM ONLY $unite_id);
-    IF $unite_rec == NONE OR $unite_rec.enabled != true {
+    -- 3. Unités : existantes et utilisables (unité et type actifs), selon lyxal_base
+    IF !(fn::base_unite_get({ id: <string> $unite_id }).data.usable ?? false) {
         RETURN fn::error_result("CATALOGUE_ITEM_UNITE_INVALID", $language, { unite_reference: <string> $unite_id });
+    };
+    IF $unite_cond != NONE AND !(fn::base_unite_get({ id: <string> $unite_cond }).data.usable ?? false) {
+        RETURN fn::error_result("CATALOGUE_ITEM_UNITE_INVALID", $language, { unite_conditionnement: <string> $unite_cond });
     };
 
     -- 4. Contrôles de cohérence nature générique vs commerciale
@@ -222,6 +226,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_create($params: object) {
         statut_commercial: $statut_comm,
         documents: $documents,
         conditionnement: $conditionnement,
+        unite_conditionnement: $unite_cond,
         master_id: $master_id,
         is_custom: $is_custom,
         tenant_id: $final_tenant_id,

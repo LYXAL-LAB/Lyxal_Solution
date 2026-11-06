@@ -1,7 +1,7 @@
 -- ============================================================================
 -- FONCTION : fn::base_unite_delete
 -- MODULE   : lyxal_base
--- RÔLE     : Suppression d'une unité non système
+-- RÔLE     : Suppression d'une unité ni système ni référencée
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::base_unite_delete($params: object) {
@@ -25,10 +25,15 @@ DEFINE FUNCTION OVERWRITE fn::base_unite_delete($params: object) {
     IF $existing.is_system {
         RETURN fn::error_result("BASE_UNITE_IS_SYSTEM", $language, { id: <string> $p.id });
     };
+    -- Références entrantes de toute table (champs déclarés REFERENCE), sans connaître les consommateurs
+    LET $references = array::len((SELECT VALUE <~? FROM ONLY $p.id) ?? []);
+    IF $references > 0 {
+        RETURN fn::error_result("BASE_UNITE_IN_USE", $language, { id: <string> $p.id, references: $references });
+    };
 
     LET $deleted = (DELETE ONLY $p.id RETURN BEFORE);
     IF $deleted == NONE {
         RETURN fn::error_result("BASE_WRITE_FORBIDDEN", $language, { table: "base_unite" });
     };
     RETURN fn::result_ok({ id: <string> $p.id, deleted: true });
-} COMMENT "Supprime une unité qui n'est pas système ; une unité système se désactive";
+} COMMENT "Supprime une unité qui n'est ni système ni référencée par une autre table ; sinon, la désactiver";

@@ -18,6 +18,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
             statut_commercial: { pipeline: [{ rule: "enum", options: { allowed: ["ACTIF", "FIN_DE_SERIE", "OBSOLETE", "REMPLACE"], case_sensitive: false } }] },
             documents: { pipeline: [{ rule: "array_objects", options: { allow_empty_objects: false } }] },
             conditionnement: { pipeline: [{ rule: "object_non_empty" }] },
+            unite_conditionnement: { pipeline: [{ rule: "record", options: { expected_table: "base_unite" } }] },
             code_barre: { pipeline: [{ rule: "gtin" }] },
             fabricant: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
             marque: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
@@ -52,6 +53,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
     LET $statut_comm = $p.statut_commercial;
     LET $documents = $p.documents;
     LET $conditionnement = $p.conditionnement;
+    LET $unite_cond = $p.unite_conditionnement;
     LET $code_barre = $p.code_barre;
     LET $fabricant = $p.fabricant;
     LET $marque = $p.marque;
@@ -81,12 +83,12 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
         RETURN fn::error_result("CATALOGUE_ITEM_NATURE_IMMUTABLE", $language, { nature_reference: $item.nature_reference });
     };
 
-    -- Contrôle de l'unité de référence si modifiée
-    IF $unite_id != NONE {
-        LET $unite_rec = (SELECT * FROM ONLY $unite_id);
-        IF $unite_rec == NONE OR $unite_rec.enabled != true {
-            RETURN fn::error_result("CATALOGUE_ITEM_UNITE_INVALID", $language, { unite_reference: <string> $unite_id });
-        };
+    -- Unités modifiées : existantes et utilisables (unité et type actifs), selon lyxal_base
+    IF $unite_id != NONE AND !(fn::base_unite_get({ id: <string> $unite_id }).data.usable ?? false) {
+        RETURN fn::error_result("CATALOGUE_ITEM_UNITE_INVALID", $language, { unite_reference: <string> $unite_id });
+    };
+    IF $unite_cond != NONE AND !(fn::base_unite_get({ id: <string> $unite_cond }).data.usable ?? false) {
+        RETURN fn::error_result("CATALOGUE_ITEM_UNITE_INVALID", $language, { unite_conditionnement: <string> $unite_cond });
     };
 
     LET $is_sync_auth = (
@@ -179,6 +181,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
                OR ($code_barre != NONE AND $code_barre != $item.code_barre)
                OR ($unite_id != NONE AND $unite_id != $item.unite_reference)
                OR ($conditionnement != NONE AND $conditionnement != $item.conditionnement)
+               OR ($unite_cond != NONE AND $unite_cond != $item.unite_conditionnement)
                OR ($documents != NONE AND $documents != $item.documents)
                OR ($raw_libelle != NONE AND $raw_libelle != $item.libelle)
                OR ($description != NONE AND $description != $item.description)
@@ -248,6 +251,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
         statut_commercial: $statut_comm ?? $item.statut_commercial,
         documents: $documents ?? $item.documents,
         conditionnement: $conditionnement ?? $item.conditionnement,
+        unite_conditionnement: $unite_cond ?? $item.unite_conditionnement,
         code_barre: $final_gtin,
         fabricant: $final_fab,
         marque: $marque ?? $item.marque,

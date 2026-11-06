@@ -40,7 +40,7 @@ Suite de `AUDIT.md`. **Q1 à Q3 validées par le CTO** : Q1-A, Q2-A, Q3-A sans a
 * Le nettoyage (`VALUE string::uppercase(...)`) quitte le schéma pour la fonction ; les `ASSERT`
   restent. Code : majuscules, alphanumérique, 1 à 32 caractères ; libellé selon Q2.
 * Catalogue (même changement, §0.3.1) : `REFERENCE ON DELETE REJECT` sur
-  `catalogue_item.unite_reference`, `catalogue_item.conditionnement.type_unite`,
+  `catalogue_item.unite_reference`, `catalogue_item.unite_conditionnement` (ex-`conditionnement.type_unite`, remonté au premier niveau sur décision du CTO : SurrealDB 3.3.4 ne suit pas `REFERENCE` sur un champ imbriqué),
   `catalogue_composition_ligne.unite`, `catalogue_attribut.unite`.
 
 ### Erreurs (`error/<thème>/*.surql`)

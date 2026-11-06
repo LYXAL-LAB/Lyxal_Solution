@@ -64,7 +64,7 @@ DEFINE FIELD OVERWRITE abreviation
 DEFINE FIELD OVERWRITE type
     ON TABLE base_unite
     TYPE record<base_unite_type>
-    REFERENCE
+    REFERENCE ON DELETE REJECT
     COMMENT "Référence vers le type d'unité";
 
 -- ----------------------------------------------------------------------------

@@ -77,7 +77,7 @@ DEFINE FIELD OVERWRITE description ON TABLE catalogue_item
 
 DEFINE FIELD OVERWRITE unite_reference ON TABLE catalogue_item
     TYPE record<base_unite>
-    REFERENCE
+    REFERENCE ON DELETE REJECT
     COMMENT "Unité de mesure principale de référence";
 
 DEFINE FIELD OVERWRITE is_composite ON TABLE catalogue_item
@@ -166,13 +166,15 @@ DEFINE FIELD OVERWRITE documents[*].version ON TABLE catalogue_item
     TYPE option<string>
     COMMENT "Indice de révision ou version";
 
+-- Champ de premier niveau : SurrealDB 3.3.4 ne suit pas REFERENCE sur un champ imbriqué
+DEFINE FIELD OVERWRITE unite_conditionnement ON TABLE catalogue_item
+    TYPE option<record<base_unite>>
+    REFERENCE ON DELETE REJECT
+    COMMENT "Unité physique de conditionnement (ex: base_unite:PCE, base_unite:ROUL)";
+
 DEFINE FIELD OVERWRITE conditionnement ON TABLE catalogue_item
     TYPE option<object>
     COMMENT "Caractéristiques physiques intrinsèques du conditionnement produit";
-
-DEFINE FIELD OVERWRITE conditionnement.type_unite ON TABLE catalogue_item
-    TYPE option<record<base_unite>>
-    COMMENT "Unité physique de conditionnement (ex: base_unite:PCE, base_unite:ROUL)";
 
 DEFINE FIELD OVERWRITE conditionnement.quantite ON TABLE catalogue_item
     TYPE option<decimal>
@@ -429,6 +431,7 @@ THEN {
                OR $after.code_barre != $before.code_barre
                OR $after.unite_reference != $before.unite_reference
                OR $after.conditionnement != $before.conditionnement
+               OR $after.unite_conditionnement != $before.unite_conditionnement
                OR $after.documents != $before.documents
                OR $after.libelle != $before.libelle
                OR $after.description != $before.description
