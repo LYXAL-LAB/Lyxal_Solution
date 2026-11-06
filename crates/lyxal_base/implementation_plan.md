@@ -1,6 +1,6 @@
 # Plan d'implémentation — reprise de `lyxal_base`
 
-Suite de `AUDIT.md`. **En attente de validation du CTO (Q1 à Q3).**
+Suite de `AUDIT.md`. **Q1 à Q3 validées par le CTO** : Q1-A, Q2-A, Q3-A sans alias (codes du référentiel corrigés, voir ci-dessous).
 
 > Ce fichier remplace l'ancien `implementation_plan.md` du module (« Plan V4 (Final) »), déjà
 > exécuté, document historique supprimé par cette reprise (§0.2).
@@ -11,7 +11,7 @@ Suite de `AUDIT.md`. **En attente de validation du CTO (Q1 à Q3).**
 | :- | :--- | :--- | :--- |
 | Q1 | Suppression d'une unité ou d'un type référencé (B-03) ? | **A.** Suppression conservée pour une entrée non système et **non référencée** : `lyxal_base` compte les références entrantes de façon générique (`<~?`, sans connaître les modules consommateurs) → `BASE_UNITE_IN_USE` / `BASE_UNITE_TYPE_IN_USE` ; en garantie, tous les champs qui pointent vers `lyxal_base` passent en `REFERENCE ON DELETE REJECT` (`base_unite.type` et les 4 champs du catalogue, dans le même changement). **B.** Plus de suppression physique : désactivation seulement, `fn::base_*_delete` supprimées. | **A** : une unité créée par erreur et jamais utilisée doit pouvoir disparaître ; une unité utilisée est protégée deux fois (message clair, puis refus par la base). Le module ne référence aucun consommateur. |
 | Q2 | Casse des libellés (B-07) ? | **A.** Libellé conservé tel que saisi, espaces retirés (`Mètre carré`) ; codes toujours en majuscules ; seeds réécrits en casse normale. **B.** Libellés en majuscules, comme aujourd'hui (`MÈTRE CARRÉ`). | **A** : un libellé est un texte d'affichage (devis, factures, console) ; la majuscule est une présentation, pas une donnée. |
-| Q3 | Unités absentes du référentiel (B-08) ? | **A.** Ajout aux seeds système : type `CONDITIONNEMENT` (`ROUL`, `SAC`, `PAL`, `BTE`, `CART`), types `ENERGIE` (`KWH`), `PUISSANCE` (`W`), `PRESSION` (`BAR`), `DEBIT` (`M3H`). `G` et `LTR` restent des alias de `GR` et `L`, résolus par l'ingestion (étape 1 de sa ROADMAP). **B.** Conditionnements seulement. **C.** Rien : à traiter dans la ROADMAP de l'ingestion. | **A** : chaque code canonique de l'ingestion existe alors dans le référentiel ; les articles vendus au rouleau, au sac ou à la palette deviennent publiables. |
+| Q3 | Unités absentes du référentiel (B-08) ? | **A.** Ajout aux seeds système : type `CONDITIONNEMENT` (`ROUL`, `SAC`, `PAL`, `BTE`, `CART`), types `ENERGIE` (`KWH`), `PUISSANCE` (`W`), `PRESSION` (`BAR`), `DEBIT` (`M3H`). ~~`G` et `LTR` restent des alias de `GR` et `L`~~ → **décision CTO : aucun alias ; un seed qui ne suit pas la norme est corrigé** : `GR` devient `G` (symbole SI du gramme) et `L` devient `LTR` (code UN/CEFACT du litre, `L` seul étant ambigu). **B.** Conditionnements seulement. **C.** Rien : à traiter dans la ROADMAP de l'ingestion. | **A** : chaque code canonique de l'ingestion existe alors dans le référentiel ; les articles vendus au rouleau, au sac ou à la palette deviennent publiables. |
 
 ## 2. Contrat cible (si Q1-A à Q3-A)
 
@@ -56,6 +56,7 @@ Suite de `AUDIT.md`. **En attente de validation du CTO (Q1 à Q3).**
 ### Seeds
 
 * Libellés selon Q2 ; unités et types ajoutés selon Q3 (`is_system: true`), rejouables.
+* Codes corrigés (Q3, sans alias) : `base_unite:GR` → `base_unite:G`, `base_unite:L` → `base_unite:LTR`. Chaque code canonique de l'ingestion (`normalization/units.rs`) existe alors dans le référentiel ; un test le vérifie.
 
 ### `lyxal_core`
 
@@ -90,7 +91,7 @@ Banc SurrealQL (`tests/*.test.surql`, CI, SurrealDB 3.3.4), chaque fonction appe
 | Lot | Contenu |
 | :- | :--- |
 | 1 | **Entrées et écritures** (B-01, B-02, B-04, B-06, B-07) : 10 fonctions sur le moteur du Core, identifiants contrôlés par table, écritures vérifiées, erreurs dans `error/<thème>/`, libellés selon Q2 ; premiers tests du banc (paramètres, permissions). |
-| 2 | **Référentiel** (B-08, Q3) : types et unités ajoutés aux seeds. |
+| 2 | **Référentiel** (B-08, Q3) : types et unités ajoutés aux seeds ; `GR` → `G`, `L` → `LTR` ; appelants du dépôt mis à jour. |
 | 3 | **Intégrité référentielle** (B-03, Q1) : références entrantes, `REFERENCE ON DELETE REJECT` dans `lyxal_base` et le catalogue ; test de l'ingestion corrigé (B-09). |
 | 4 | **Tests** (B-05) : banc complet. |
 | 5 | **Clôture** (B-10) : `README.md` à l'état actuel (dont le contrat public des tables), `ROADMAP.md`, suppression de `AUDIT.md` et de ce plan ; `docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md` et `AGENTS.md` alignés. |
