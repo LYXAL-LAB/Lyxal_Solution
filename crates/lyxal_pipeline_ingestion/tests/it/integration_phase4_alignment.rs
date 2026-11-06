@@ -159,12 +159,14 @@ async fn test_3_resolve_unit_from_base_unite() {
         "PIECE doit être normalisé vers PCE"
     );
 
-    // 3. Ajout dynamique d'un nouveau code dans base_unite
-    let q = r#"
-        UPSERT base_unite:LTR CONTENT { code: "LTR", libelle: "Litre", symbole: "l" };
-        UPSERT ingestion_unit_alias:LITRE CONTENT { raw_alias: "LITRE", canonical_unit: "LTR" };
-    "#;
-    store.client().query(q).await.unwrap();
+    // 3. Alias ajouté vers une unité du référentiel (base_unite:LTR, seed de lyxal_base)
+    store
+        .client()
+        .query(r#"UPSERT ingestion_unit_alias:LITRE CONTENT { raw_alias: "LITRE", canonical_unit: "LTR" };"#)
+        .await
+        .unwrap()
+        .check()
+        .expect("alias LITRE");
 
     let res_litre = store.resolve_unit("LITRE").await.unwrap();
     assert_eq!(
@@ -461,5 +463,29 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
         after_replay.len(),
         20,
         "La réexécution complète DOIT être strictement idempotente"
+    );
+}
+
+// =============================================================================
+// TEST 3 bis : chaque code canonique de la normalisation existe dans base_unite
+// =============================================================================
+#[tokio::test]
+async fn test_3b_canonical_units_exist_in_base_unite() {
+    let store = crate::support::installed_store().await;
+    let codes: Vec<String> = lyxal_pipeline_ingestion::normalization::units::CANONICAL_UNITS
+        .iter()
+        .map(|c| c.to_string())
+        .collect();
+    let missing: Vec<String> = store
+        .client()
+        .query("RETURN array::filter($codes, |$c| !fn::base_unite_get({ code: $c }).ok);")
+        .bind(("codes", codes))
+        .await
+        .expect("requête")
+        .take(0)
+        .expect("résultat");
+    assert!(
+        missing.is_empty(),
+        "codes canoniques absents de base_unite : {missing:?}"
     );
 }

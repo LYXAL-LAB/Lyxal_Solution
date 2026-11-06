@@ -10,6 +10,7 @@ pub const CANONICAL_UNITS: &[&str] = &[
     "M",    // Mètre
     "ML",   // Mètre linéaire
     "CM",   // Centimètre
+    "MM",   // Millimètre
     "KM",   // Kilomètre
     "M2",   // Mètre carré
     "M3",   // Mètre cube
@@ -151,5 +152,15 @@ mod tests {
         assert_eq!(normalize_unit("BOÎTE"), Some("BTE"));
         assert_eq!(normalize_unit("sac"), Some("SAC"));
         assert_eq!(normalize_unit("invalide_xyz"), None);
+    }
+
+    #[test]
+    fn every_mapped_unit_is_canonical() {
+        for target in get_units_mapping().values() {
+            assert!(
+                CANONICAL_UNITS.contains(target),
+                "{target} absent de CANONICAL_UNITS"
+            );
+        }
     }
 }
