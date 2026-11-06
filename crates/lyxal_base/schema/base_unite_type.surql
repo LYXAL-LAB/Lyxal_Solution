@@ -20,12 +20,12 @@ DEFINE TABLE OVERWRITE base_unite_type
 DEFINE FIELD OVERWRITE code
     ON TABLE base_unite_type
     TYPE string
-    VALUE string::uppercase(string::trim($value))
     ASSERT
         string::len($value) >= 1
         AND string::len($value) <= 32
         AND string::is_alphanum($value)
-    COMMENT "Code technique unique du type d'unité";
+        AND $value == string::uppercase($value)
+    COMMENT "Code technique unique du type d'unité (alphanumérique, majuscules), clé de l'identifiant base_unite_type:<CODE>";
 
 -- ----------------------------------------------------------------------------
 -- Libelle
@@ -35,10 +35,10 @@ DEFINE FIELD OVERWRITE code
 DEFINE FIELD OVERWRITE libelle
     ON TABLE base_unite_type
     TYPE string
-    VALUE string::uppercase(string::trim($value))
     ASSERT
         string::len($value) >= 1
         AND string::len($value) <= 128
+        AND $value == string::trim($value)
     COMMENT "Libellé du type d'unité";
 
 -- ----------------------------------------------------------------------------

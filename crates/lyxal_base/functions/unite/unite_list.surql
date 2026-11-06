@@ -1,44 +1,29 @@
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │  fn::base_unite_list                                                     │
--- │  Liste paginée des unités avec double filtrage hiérarchique d'état      │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- ============================================================================
+-- FONCTION : fn::base_unite_list
+-- MODULE   : lyxal_base
+-- RÔLE     : Liste paginée des unités
+-- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::base_unite_list($params: object) {
-    LET $type = $params.type;
-    LET $enabled = $params.enabled;
-    LET $for_new_documents = IF $params.for_new_documents != NONE { <bool> $params.for_new_documents } ELSE { false };
-    LET $raw_limit = IF $params.limit != NONE { $params.limit } ELSE { 50 };
-    LET $raw_start = IF $params.start != NONE { $params.start } ELSE { 0 };
-    LET $language = IF $params.language != NONE AND string::len(string::trim($params.language)) > 0 {
-        string::lowercase(string::trim($params.language))
-    } ELSE {
-        "fr"
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            type: { pipeline: [{ rule: "record", options: { expected_table: "base_unite_type" } }] },
+            enabled: { pipeline: [{ rule: "boolean" }] },
+            for_new_documents: { pipeline: [{ rule: "boolean" }], default: false },
+            limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 200 } }], default: 50 },
+            start: { pipeline: [{ rule: "integer", options: { min_value: 0, max_value: 1000000 } }], default: 0 },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("BASE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-
-    -- Validation de la pagination
-    IF $raw_limit < 1 OR $raw_limit > 200 OR $raw_start < 0 {
-        RETURN fn::error_result("BASE_PAGINATION_INVALID", $language, { limit: $raw_limit, start: $raw_start });
-    };
-
-    LET $limit = <int> $raw_limit;
-    LET $start = <int> $raw_start;
-
-    -- Règle CTO n°3 : Pour les nouveaux devis/documents, filtrer simultanément base_unite.enabled = true ET base_unite_type.enabled = true
-    LET $records = IF $for_new_documents == true {
-        IF $type != NONE {
-            SELECT * FROM base_unite WHERE type = $type AND enabled = true AND type.enabled = true ORDER BY code ASC LIMIT $limit START $start
-        } ELSE {
-            SELECT * FROM base_unite WHERE enabled = true AND type.enabled = true ORDER BY code ASC LIMIT $limit START $start
-        }
-    } ELSE IF $type != NONE AND $enabled != NONE {
-        SELECT * FROM base_unite WHERE type = $type AND enabled = $enabled ORDER BY code ASC LIMIT $limit START $start
-    } ELSE IF $type != NONE {
-        SELECT * FROM base_unite WHERE type = $type ORDER BY code ASC LIMIT $limit START $start
-    } ELSE IF $enabled != NONE {
-        SELECT * FROM base_unite WHERE enabled = $enabled ORDER BY code ASC LIMIT $limit START $start
-    } ELSE {
-        SELECT * FROM base_unite ORDER BY code ASC LIMIT $limit START $start
-    };
-
+    LET $p = $report.value;
+    -- Nouveaux documents : unité et type actifs (même règle que usable de fn::base_unite_get)
+    LET $records = SELECT * FROM base_unite
+        WHERE ($p.type == NONE OR type == $p.type)
+          AND IF $p.for_new_documents { enabled AND type.enabled == true } ELSE { $p.enabled == NONE OR enabled == $p.enabled }
+        ORDER BY code ASC LIMIT $p.limit START $p.start;
     RETURN fn::result_ok($records);
-} COMMENT "Liste les unités avec pagination bornée et double filtrage d'activation unité et type parent";
+} COMMENT "Liste les unités par code, avec pagination bornée, filtres type et activation, ou les seules unités utilisables pour un nouveau document";

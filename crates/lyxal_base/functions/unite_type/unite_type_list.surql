@@ -1,31 +1,27 @@
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │  fn::base_unite_type_list                                                │
--- │  Liste paginée des types d'unités de mesure avec filtrage d'état        │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- ============================================================================
+-- FONCTION : fn::base_unite_type_list
+-- MODULE   : lyxal_base
+-- RÔLE     : Liste paginée des types d'unités
+-- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::base_unite_type_list($params: object) {
-    LET $enabled = $params.enabled;
-    LET $raw_limit = IF $params.limit != NONE { $params.limit } ELSE { 50 };
-    LET $raw_start = IF $params.start != NONE { $params.start } ELSE { 0 };
-    LET $language = IF $params.language != NONE AND string::len(string::trim($params.language)) > 0 {
-        string::lowercase(string::trim($params.language))
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            enabled: { pipeline: [{ rule: "boolean" }] },
+            limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 200 } }], default: 50 },
+            start: { pipeline: [{ rule: "integer", options: { min_value: 0, max_value: 1000000 } }], default: 0 },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("BASE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $records = IF $p.enabled != NONE {
+        SELECT * FROM base_unite_type WHERE enabled = $p.enabled ORDER BY code ASC LIMIT $p.limit START $p.start
     } ELSE {
-        "fr"
+        SELECT * FROM base_unite_type ORDER BY code ASC LIMIT $p.limit START $p.start
     };
-
-    -- Validation de la pagination
-    IF $raw_limit < 1 OR $raw_limit > 200 OR $raw_start < 0 {
-        RETURN fn::error_result("BASE_PAGINATION_INVALID", $language, { limit: $raw_limit, start: $raw_start });
-    };
-
-    LET $limit = <int> $raw_limit;
-    LET $start = <int> $raw_start;
-
-    LET $records = IF $enabled != NONE {
-        SELECT * FROM base_unite_type WHERE enabled = $enabled ORDER BY code ASC LIMIT $limit START $start
-    } ELSE {
-        SELECT * FROM base_unite_type ORDER BY code ASC LIMIT $limit START $start
-    };
-
     RETURN fn::result_ok($records);
-} COMMENT "Liste les types d'unités avec pagination bornée et filtre facultatif d'activation";
+} COMMENT "Liste les types d'unités par code, avec pagination bornée et filtre facultatif d'activation";

@@ -1,67 +1,39 @@
--- ┌──────────────────────────────────────────────────────────────────────────┐
--- │  fn::base_unite_type_update                                              │
--- │  Mise à jour sélective d'un type d'unité (libellé, activation)          │
--- └──────────────────────────────────────────────────────────────────────────┘
+-- ============================================================================
+-- FONCTION : fn::base_unite_type_update
+-- MODULE   : lyxal_base
+-- RÔLE     : Mise à jour du libellé ou de l'activation d'un type d'unité
+-- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::base_unite_type_update($params: object) {
-    LET $id = $params.id;
-    LET $raw_libelle = $params.libelle;
-    LET $enabled = $params.enabled;
-    LET $language = IF type::is_string($params.language) AND string::len(string::trim($params.language)) > 0 {
-        string::lowercase(string::trim($params.language))
-    } ELSE {
-        "fr"
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            id: { pipeline: [{ rule: "record", options: { expected_table: "base_unite_type" } }], required: true },
+            libelle: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }] },
+            enabled: { pipeline: [{ rule: "boolean" }] },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 40);
+    IF !$report.valid {
+        RETURN fn::error_result("BASE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-
-    IF $id == NONE {
-        RETURN fn::error_result("BASE_UNITE_TYPE_NOT_FOUND", $language, { field: "id" });
-    };
-
-    -- Normalisation du Record ID si passé sous forme de chaîne JSON
-    LET $record_id = IF type::is_record($id) {
-        $id
-    } ELSE IF type::is_string($id) {
-        IF string::starts_with($id, "base_unite_type:") {
-            type::record($id)
-        } ELSE {
-            type::record("base_unite_type", $id)
-        }
-    } ELSE {
-        $id
-    };
-
-    -- Vérification de l'existence
-    LET $existing = SELECT * FROM ONLY $record_id;
-    IF $existing == NONE {
-        RETURN fn::error_result("BASE_UNITE_TYPE_NOT_FOUND", $language, { id: $record_id });
-    };
-
-    -- Vérification qu'au moins un champ modifiable est fourni
-    IF $raw_libelle == NONE AND $enabled == NONE {
+    LET $p = $report.value;
+    LET $language = $p.language;
+    IF $p.libelle == NONE AND $p.enabled == NONE {
         RETURN fn::error_result("BASE_NO_UPDATABLE_FIELDS_PROVIDED", $language, { allowed_fields: ["libelle", "enabled"] });
     };
 
-    -- Vérification et nettoyage du libellé si fourni
-    IF $raw_libelle != NONE AND string::len(string::trim($raw_libelle)) == 0 {
-        RETURN fn::error_result("BASE_UNITE_TYPE_LIBELLE_REQUIRED", $language, { field: "libelle" });
+    LET $existing = (SELECT * FROM ONLY $p.id);
+    IF $existing == NONE {
+        RETURN fn::error_result("BASE_UNITE_TYPE_NOT_FOUND", $language, { id: <string> $p.id });
     };
 
-    IF $raw_libelle != NONE AND string::len(string::trim($raw_libelle)) > 128 {
-        RETURN fn::error_result("BASE_UNITE_TYPE_LIBELLE_INVALID", $language, { field: "libelle", value: $raw_libelle });
+    LET $updated = (UPDATE ONLY $p.id MERGE {
+        libelle: $p.libelle ?? $existing.libelle,
+        enabled: $p.enabled ?? $existing.enabled
+    });
+    IF $updated == NONE {
+        RETURN fn::error_result("BASE_WRITE_FORBIDDEN", $language, { table: "base_unite_type" });
     };
-
-    LET $final_libelle = IF $raw_libelle != NONE {
-        string::uppercase(string::trim($raw_libelle))
-    } ELSE {
-        $existing.libelle
-    };
-    LET $final_enabled = IF $enabled != NONE { <bool> $enabled } ELSE { $existing.enabled };
-
-    LET $updated = UPDATE ONLY $record_id MERGE {
-        libelle: $final_libelle,
-        enabled: $final_enabled,
-        updated_at: time::now()
-    };
-
     RETURN fn::result_ok($updated);
-} COMMENT "Met à jour sélectivement le libellé ou l'état d'un type d'unité de mesure";
+} COMMENT "Met à jour le libellé ou l'activation d'un type d'unité ; la désactivation ne modifie pas les unités rattachées";
