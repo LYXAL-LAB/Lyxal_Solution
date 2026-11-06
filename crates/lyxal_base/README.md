@@ -1,7 +1,7 @@
 # `lyxal_base` — Référentiels de base
 
-Référentiel transversal des unités de mesure et de leurs types (longueur, surface, conditionnement,
-énergie…), utilisé par les modules métiers. Module **SurrealQL seul** : tables, fonctions, erreurs
+Référentiel transversal des unités de mesure, de leurs types (longueur, surface, conditionnement,
+énergie…) et de leurs codes d'échange normalisés, utilisé par les modules métiers. Module **SurrealQL seul** : tables, fonctions, erreurs
 et seeds, sans crate Rust.
 
 | | |
@@ -31,13 +31,14 @@ et seeds, sans crate Rust.
 
 ## 2. Tables (`schema/`)
 
-2 tables `TYPE NORMAL SCHEMAFULL`, lisibles par toute identité, écrites seulement par une session
+3 tables `TYPE NORMAL SCHEMAFULL`, lisibles par toute identité, écrites seulement par une session
 d'administration (root ou système de l'hôte).
 
 | Table | Champs | Contraintes |
 | :--- | :--- | :--- |
 | `base_unite_type` | `code`, `libelle`, `enabled`, `is_system`, `created_at`, `updated_at` | `code` unique, alphanumérique en majuscules (1 à 32) ; `libelle` sans espaces périphériques (1 à 128) ; `is_system` et `created_at` immuables |
 | `base_unite` | idem, plus `abreviation` (1 à 10) et `type` (`record<base_unite_type>`, `REFERENCE ON DELETE REJECT`) | mêmes contraintes ; un type portant des unités ne se supprime pas |
+| `base_unite_code` | `norme` (`UNECE_REC20` : unités de mesure ; `UNECE_REC21` : types d'emballage), `code`, `unite` (`record<base_unite>`, `REFERENCE ON DELETE REJECT`), `created_at` | identifiant `base_unite_code:[<NORME>, <CODE>]` ; (`norme`, `code`) unique ; plusieurs codes par unité |
 
 Les libellés sont conservés tels que saisis (« Mètre carré ») ; le nettoyage est fait par les
 fonctions, le schéma vérifie le résultat (`ASSERT`).
@@ -46,7 +47,7 @@ fonctions, le schéma vérifie le résultat (`ASSERT`).
 
 ## 3. Fonctions (`functions/`)
 
-10 fonctions. Entrées validées puis nettoyées par le moteur de `lyxal_core`
+11 fonctions. Entrées validées puis nettoyées par le moteur de `lyxal_core`
 (`fn::validation_object_execute`, `fn::sanitize_object_execute`, `unknown_keys: "reject"`) ;
 donnée invalide : `BASE_INVALID_PARAMETERS` avec le détail par champ (`details.fields`).
 Identifiants transmis en texte et contrôlés par table (règle `record`) : un identifiant d'une
@@ -61,10 +62,11 @@ la filtrent. Paramètre commun : `language` (`fr` par défaut), langue des messa
 | `fn::base_unite_type_update` | `id`, `libelle`, `enabled` | au moins un champ (`BASE_NO_UPDATABLE_FIELDS_PROVIDED`) ; la désactivation ne modifie pas les unités rattachées |
 | `fn::base_unite_type_delete` | `id` | refus si système (`BASE_UNITE_TYPE_IS_SYSTEM`) ou référencé (`BASE_UNITE_TYPE_IN_USE`, nombre de références) |
 | `fn::base_unite_create` | `code`, `libelle`, `abreviation`, `type` | type existant (`BASE_UNITE_TYPE_INVALID`) et actif (`BASE_UNITE_TYPE_DISABLED`) ; code unique (`BASE_UNITE_ALREADY_EXISTS`) |
-| `fn::base_unite_get` | `id` ou `code`, `fetch_type` | renvoie l'unité, `usable` et, si `fetch_type`, le type (`type_detail`) ; `BASE_UNITE_NOT_FOUND` |
+| `fn::base_unite_get` | `id` ou `code`, `fetch_type` | renvoie l'unité, `usable`, ses codes d'échange (`codes` : `[{ norme, code }]`) et, si `fetch_type`, le type (`type_detail`) ; `BASE_UNITE_NOT_FOUND` |
+| `fn::base_unite_resolve` | `codes` (tableau de chaînes, 500 au plus) | résolution d'un bloc en une requête : code Lyxal, puis code d'échange (`UNECE_REC20` avant `UNECE_REC21`), recherche en majuscules ; renvoie `{ <brut sans espaces périphériques>: { code, usable } }`, sans entrée pour un code inconnu |
 | `fn::base_unite_list` | `type`, `enabled`, `for_new_documents`, `limit`, `start` | `for_new_documents` : unités utilisables seulement |
 | `fn::base_unite_update` | `id`, `libelle`, `abreviation`, `type`, `enabled` | jamais rattachée à un type inactif ni réactivée sur un type inactif (`BASE_UNITE_TYPE_DISABLED`) |
-| `fn::base_unite_delete` | `id` | refus si système (`BASE_UNITE_IS_SYSTEM`) ou référencée (`BASE_UNITE_IN_USE`) |
+| `fn::base_unite_delete` | `id` | refus si système (`BASE_UNITE_IS_SYSTEM`) ou référencée par une autre table (`BASE_UNITE_IN_USE`) ; ses codes d'échange sont supprimés avec elle |
 
 Les références entrantes sont comptées de façon générique (`SELECT VALUE <~? FROM ONLY $id`) :
 `lyxal_base` ne connaît pas les tables qui le référencent. Seuls les champs de premier niveau
@@ -108,12 +110,17 @@ Socle système (`is_system: true`), rejouable (`IF !record::exists(...) THEN ( C
 Les codes sont ceux que produit la normalisation de `lyxal_pipeline_ingestion`, sans alias : un
 test de l'ingestion vérifie que chacun de ses codes canoniques existe ici.
 
+Codes d'échange (31) : Rec. 20 pour les grandeurs (`KMT`, `MTR`, `LM`, `CMT`, `MMT`, `HAR`, `MTK`,
+`MTQ`, `LTR`, `TNE`, `KGM`, `GRM`, `MON`, `WEE`, `DAY`, `HUR`, `C62` → `U`, `H87` et `EA` → `PCE`,
+`SET`, `PR`, `LS` → `FORFAIT`, `KWH`, `WTT`, `BAR`, `MQH`) ; Rec. 21 pour les conditionnements
+(`RO` → `ROUL`, `BG` → `SAC`, `PX` → `PAL`, `BX` → `BTE`, `CT` → `CART`).
+
 ---
 
 ## 6. Vérification
 
 * Banc SurrealQL (`scripts/ci/test_lyxal_modules.py`, module installé depuis son manifeste dans
   une base neuve, identités simulées) : `parametres`, `permissions`, `referentiel`, `integrite`,
-  `types`, `unites` ; chaque fonction publique est appelée.
+  `types`, `unites`, `codes` ; chaque fonction publique est appelée.
 * `apps/lyxal-server` : installation et rejeu sans doublon (11 types).
 * `scripts/ci/ci_local.sh` rejoue la CI complète.
