@@ -44,12 +44,17 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_save($params: object) {
         IF !$fingerprint.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "canonical_fingerprint", reason: $fingerprint.code }); };
         LET $libelle = fn::validation_required_string($item.libelle_commercial, 1, 500);
         IF !$libelle.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "libelle_commercial", reason: $libelle.code }); };
-        LET $unite = fn::validation_required_string($item.unite_reference, 1, 32);
+        -- Unité absente tant qu'elle n'est pas résolue (anomalie consignée par le worker)
+        LET $unite = IF $item.unite_reference != NONE { fn::validation_required_string($item.unite_reference, 1, 32) } ELSE { { valid: true, value: NONE } };
         IF !$unite.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "unite_reference", reason: $unite.code }); };
         LET $type_item = fn::validation_enum($item.type_item ?? "PRODUIT", ["PRODUIT", "SERVICE", "OUVRAGE", "RESSOURCE", "ENSEMBLE"], false);
         IF !$type_item.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "type_item", reason: $type_item.code }); };
         LET $qualif = fn::validation_enum($item.qualification ?? "TO_CONFIRM", ["VERIFIED", "TO_CONFIRM", "REJECTED"], false);
         IF !$qualif.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "qualification", reason: $qualif.code }); };
+        -- Un article VERIFIED a une unité du référentiel (refus de l'article seul, avant écriture)
+        IF string::uppercase($qualif.value) == "VERIFIED" AND $unite.value == NONE {
+            RETURN fn::error_result("INGESTION_UNIT_UNRESOLVED", NONE, { field: "unite_reference" });
+        };
         LET $action = fn::validation_enum($item.publication_action ?? "INSERT", ["INSERT", "UPDATE", "UNCHANGED", "DEPRECATE"], false);
         IF !$action.valid { RETURN fn::error_result("INGESTION_INVALID_PARAMETERS", NONE, { field: "publication_action", reason: $action.code }); };
         LET $marque = IF $item.marque != NONE { fn::validation_optional_string($item.marque, 1, 255) } ELSE { { valid: true } };

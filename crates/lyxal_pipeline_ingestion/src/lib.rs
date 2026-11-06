@@ -46,9 +46,9 @@ pub use adapters::{
     RawWeightDto, SourceAdapter, XmlAdapter,
 };
 pub use normalization::{
-    normalize_dimensions, normalize_manufacturer, normalize_technical_attributes, normalize_unit,
-    normalize_weight, CanonicalDimensions, CanonicalTechnicalAttributes, CanonicalWeight,
-    NormalizationEngine, NormalizedItemDto,
+    normalize_dimensions, normalize_technical_attributes, normalize_weight, BlockReferentials,
+    CanonicalDimensions, CanonicalTechnicalAttributes, CanonicalWeight, NormalizationEngine,
+    NormalizedItemDto, ResolvedManufacturer,
 };
 pub use rules::{
     ContextualSubstitutionRule, FamilyRule, SpecificationTolerances, TechnicalSpecification,

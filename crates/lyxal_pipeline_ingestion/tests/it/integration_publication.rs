@@ -53,9 +53,9 @@ fn item(
         libelle_commercial: format!("Plaque de plâtre {reference}"),
         description_technique: None,
         type_item: "PRODUIT".to_string(),
-        unite_reference: "M2".to_string(),
+        unite_reference: Some("M2".to_string()),
         conditionnement: PackagingDetails {
-            unite_vente: "PCE".to_string(),
+            unite_vente: Some("PCE".to_string()),
             quantite_par_colis: 1.0,
             poids_brut_kg: Some(25.5),
             dimensions: Some(Dimensions {
@@ -297,7 +297,7 @@ async fn catalogue_refusal_is_journaled_and_others_are_published() {
         ItemQualification::Verified,
         Some(proof("EDI-2026-PLACO-002", "EDI_HUB_SAINT_GOBAIN")),
     );
-    unknown_unit.unite_reference = "BOITE".to_string();
+    unknown_unit.unite_reference = Some("BOITE".to_string());
     let items = vec![
         item(
             "lot_mixte",

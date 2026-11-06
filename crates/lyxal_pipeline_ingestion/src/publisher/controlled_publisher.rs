@@ -162,9 +162,16 @@ impl ControlledPublisher {
                 already_published += 1;
                 continue;
             }
-            let refusal = match refusal_before_call(item) {
-                Some(reason) => Some(reason),
-                None => match catalogue.publish(item, item.publication_action).await {
+            let refusal = match (refusal_before_call(item), item.unite_reference.as_deref()) {
+                (Some(reason), _) => Some(reason),
+                (None, None) => Some(
+                    "INGESTION_UNIT_UNRESOLVED : article sans unité du référentiel, non publiable"
+                        .to_string(),
+                ),
+                (None, Some(unite)) => match catalogue
+                    .publish(item, unite, item.publication_action)
+                    .await
+                {
                     Ok(()) => None,
                     Err(LyxalSurrealError::Call(lyxal_error::LyxalCallError::Business(err))) => {
                         Some(format!("{} : {}", err.code, err.message))

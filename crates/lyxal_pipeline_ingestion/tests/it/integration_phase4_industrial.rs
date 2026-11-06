@@ -46,8 +46,9 @@ fn make_test_dto(
 // =============================================================================
 // TEST 1 : Qualification VERIFIED exigeant formellement une Preuve Commerciale
 // =============================================================================
-#[test]
-fn test_verified_qualification_strict_requirement_phase4() {
+#[tokio::test]
+async fn test_verified_qualification_strict_requirement_phase4() {
+    let store = crate::support::installed_store().await;
     let engine = NormalizationEngine::new();
 
     // DTO avec cohérence parfaite : GTIN-13 Modulo 10 valide + Fabricant reconnu + Prix positif
@@ -59,7 +60,13 @@ fn test_verified_qualification_strict_requirement_phase4() {
     );
 
     // 1. SANS Preuve Commerciale formelle -> STRICTEMENT MAINTENU EN TO_CONFIRM
-    let unverified = engine.normalize_with_proof(&dto, Some("PLACO"), SourceFormat::Csv, None);
+    let unverified = engine.normalize_with_proof(
+        &dto,
+        Some("PLACO"),
+        SourceFormat::Csv,
+        None,
+        &crate::support::referentials_for(&store, &dto, Some("PLACO")).await,
+    );
     assert_eq!(
         unverified.qualification,
         ItemQualification::ToConfirm,
@@ -81,7 +88,13 @@ fn test_verified_qualification_strict_requirement_phase4() {
         "2026-10-25T08:00:00Z",
         "Certificat EDI X.509 vérifié avec signature RSA-4096",
     );
-    let verified = engine.normalize_with_proof(&dto, Some("PLACO"), SourceFormat::Csv, Some(proof));
+    let verified = engine.normalize_with_proof(
+        &dto,
+        Some("PLACO"),
+        SourceFormat::Csv,
+        Some(proof),
+        &crate::support::referentials_for(&store, &dto, Some("PLACO")).await,
+    );
     assert_eq!(
         verified.qualification,
         ItemQualification::Verified,
@@ -443,4 +456,91 @@ async fn test_industrial_benchmark_over_1500_items() {
         1600,
         "1 600 articles doivent être présents dans la table ingestion_staged_item"
     );
+}
+
+// =============================================================================
+// TEST : Unité fournisseur inconnue — article sans unité, anomalie, jamais de valeur inventée
+// =============================================================================
+#[tokio::test]
+async fn test_unresolved_unit_is_quarantined_never_defaulted() {
+    let store = crate::support::installed_store().await;
+    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    let batch = NewBatch {
+        id: Some("batch_unites".to_string()),
+        source_type: SourceFormat::Csv,
+        source_format_version: "1.0".to_string(),
+        fournisseur_id: "Saint-Gobain Placo SAS".to_string(),
+        nom_fichier: "unites.csv".to_string(),
+        file_hash_blake3: lyxal_crypto::blake3_hex(b"unites"),
+        taille_octets: 100,
+        chunk_size: 50,
+        provenance_details: serde_json::json!({}),
+    };
+    store.create_batch(&batch).await.unwrap();
+
+    // Libellé commercial (alias), code d'échange (lyxal_base) et unité inconnue
+    let csv = "reference;designation;unite\nREF_1;Plaque BA13 standard;Mètre carré\nREF_2;Rouleau isolant 100mm;RO\nREF_3;Article en bidons;BIDON\n";
+    let token = CancellationToken::new();
+    let report = worker
+        .process_batch(
+            "batch_unites",
+            csv.as_bytes(),
+            SourceFormat::Csv,
+            None,
+            &token,
+        )
+        .await
+        .unwrap();
+    assert_eq!(report.final_status, BatchStatus::Staged);
+
+    let items = store
+        .get_staged_items_by_batch("batch_unites")
+        .await
+        .unwrap();
+    let unit_of = |reference: &str| {
+        let item = items
+            .iter()
+            .find(|i| i.reference_fabricant == reference)
+            .expect("article");
+        (
+            item.unite_reference.clone(),
+            item.conditionnement.unite_vente.clone(),
+            item.fabricant.clone(),
+        )
+    };
+    assert_eq!(
+        unit_of("REF_1"),
+        (
+            Some("M2".to_string()),
+            Some("M2".to_string()),
+            "PLACO".to_string()
+        )
+    );
+    assert_eq!(unit_of("REF_2").0, Some("ROUL".to_string()));
+    assert_eq!(
+        unit_of("REF_3").0,
+        None,
+        "unité inconnue : aucune valeur par défaut"
+    );
+    assert_eq!(unit_of("REF_3").1, None);
+    let unresolved = items
+        .iter()
+        .find(|i| i.reference_fabricant == "REF_3")
+        .unwrap();
+    assert_eq!(unresolved.qualification, ItemQualification::ToConfirm);
+
+    // Une seule anomalie, liée à la ligne de l'article sans unité
+    let anomalies = store.get_quarantine_by_batch("batch_unites").await.unwrap();
+    let unit_anomalies: Vec<_> = anomalies
+        .iter()
+        .filter(|a| a.code_erreur == "INGESTION_UNIT_UNRESOLVED")
+        .collect();
+    assert_eq!(unit_anomalies.len(), 1);
+    assert_eq!(unit_anomalies[0].ligne_numero, unresolved.ligne_numero);
+    assert_eq!(
+        unit_anomalies[0].valeur_fautive,
+        Some(serde_json::json!("BIDON"))
+    );
+    assert_eq!(report.to_confirm_count, 3);
+    assert_eq!(report.rejected_count, 0);
 }

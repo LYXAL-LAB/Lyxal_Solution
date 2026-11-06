@@ -82,3 +82,15 @@ pub async fn sync_issuer(store: &IngestionStore) -> Arc<HmacCatalogueTokenIssuer
         .expect("émetteur"),
     )
 }
+
+/// Résolutions d'une ligne par les référentiels installés (comme le worker pour un bloc).
+pub async fn referentials_for(
+    store: &IngestionStore,
+    record: &lyxal_pipeline_ingestion::adapters::RawRecordDto,
+    default_manufacturer: Option<&str>,
+) -> lyxal_pipeline_ingestion::normalization::BlockReferentials {
+    store
+        .block_referentials(std::slice::from_ref(record), default_manufacturer)
+        .await
+        .expect("résolution des référentiels")
+}

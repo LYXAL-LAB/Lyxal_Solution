@@ -62,7 +62,7 @@ par SurrealQL au nom de l'identité de session (`triggered_by`) et horodatées p
 | Groupe | Fonctions |
 | :--- | :--- |
 | Lots (`batch/`) | `batch_create` (état `RECEIVED` ; fichier ou identifiant déjà reçu : `INGESTION_BATCH_DUPLICATE`), `batch_get`, `batch_transition`, `batch_checkpoint`, `raw_records_save` (bloc ; ligne existante jamais réécrite) |
-| Staging (`staged/`) | `staged_save` (bloc d'articles d'un lot, un résultat par article ; code-barres contrôlé par `fn::validation_gtin` : `INGESTION_GTIN_INVALID`), `staged_list`, `staged_requalify` (steward ; `VERIFIED` exige une preuve commerciale) |
+| Staging (`staged/`) | `staged_save` (bloc d'articles d'un lot, un résultat par article ; code-barres contrôlé par `fn::validation_gtin` : `INGESTION_GTIN_INVALID`), `staged_list`, `staged_requalify` (steward ; `VERIFIED` exige une unité du référentiel et une preuve commerciale) ; unité et unité de vente facultatives tant que l'unité fournisseur n'est pas résolue |
 | Quarantaine (`quarantine/`) | `quarantine_log` (rejouable : une anomalie ouverte par ligne et par code), `quarantine_list`, `quarantine_resolve` (steward ; corrections contrôlées, article repassé `TO_CONFIRM`) |
 | Manifestes (`manifest/`) | `manifest_save` (`DRAFT` / `SEALED`, modifiable tant qu'il n'est pas approuvé ; une version par lot), `manifest_approve` (steward, justification journalisée), `manifest_execution_item_update`, `manifest_record_exec` (agent de synchronisation), `manifest_list`, `manifest_get_detail` |
 | Référentiels (`rule/`) | `resolve_units` (bloc de 500 au plus : alias commerciaux, puis codes Lyxal et codes d'échange par `fn::base_unite_resolve` de `lyxal_base` ; seules les unités utilisables), `resolve_manufacturers` (bloc : alias après normalisation et retrait des suffixes juridiques ; `is_verified = false` pour un groupe sans entité déterminée), `rule_family_add`, `rule_spec_add`, `rule_substitution_add` (révocation motivée), `rules_load` |
@@ -124,9 +124,9 @@ publie chaque manifeste approuvé ; la livraison est au moins une fois, la publi
 | Composant | Rôle |
 | :--- | :--- |
 | `adapters/` | lecture FAB-DIS, CSV (délimiteurs), XML / BMEcat, JSON / NDJSON |
-| `normalization/` | nettoyage, dimensions et poids, attributs techniques, qualification initiale (`VERIFIED` exige une preuve commerciale valide) |
+| `normalization/` | nettoyage, dimensions et poids, attributs techniques, qualification initiale (`VERIFIED` exige une preuve commerciale valide et une unité) ; unités et fabricants lus dans les résolutions du bloc (`BlockReferentials`), sans table de correspondance en Rust |
 | `fingerprint.rs` | empreintes canoniques et sceau des manifestes (BLAKE3, `lyxal_crypto`) |
-| `worker/` | `IngestionWorker` (`LyxalWorker`) : traitement par blocs, point de reprise, verrou de lot ; GTIN refusé ou article rejeté consigné en quarantaine ; un lot en échec passe en `FAILED` sans arrêter le worker |
+| `worker/` | `IngestionWorker` (`LyxalWorker`) : traitement par blocs, point de reprise, verrou de lot ; unités et fabricants du bloc résolus en base en deux appels (`IngestionStore::block_referentials`) ; GTIN refusé ou article rejeté consigné en quarantaine ; unité inconnue : article en staging sans unité et anomalie `INGESTION_UNIT_UNRESOLVED` (jamais de valeur par défaut) ; un lot en échec passe en `FAILED` sans arrêter le worker |
 | `storage/` | `IngestionStore` : appels `call_fn` des fonctions du module ; erreur métier transmise avec son code (`IngestionError::Surreal`) |
 | `publisher/` | publication (§5) |
 | `rules.rs` | modèles des référentiels |
@@ -152,7 +152,8 @@ libellés d'unités fournisseurs (46) (`03`) ; les codes Lyxal et d'échange des
   `permissions`, `securite` ; chaque fonction publique est appelée.
 * `cargo test -p lyxal_pipeline_ingestion` : module installé depuis son manifeste
   (`tests/it/support.rs`), adaptateurs, normalisation, worker (reprise, interruption, lot en
-  échec, GTIN), console du steward, publication réelle dans le catalogue, débit (1 600 articles).
+  échec, GTIN, unité inconnue), console du steward, publication réelle dans le catalogue, débit
+  (1 600 articles, seuil 50 articles/s).
   Les tests « serveur réel » utilisent le serveur de recette démarré par `scripts/ci/test_all.sh`
   (identifiants générés à chaque exécution).
 * `apps/lyxal-server` : publication de bout en bout par le moteur d'événements.

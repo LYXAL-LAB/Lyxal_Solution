@@ -117,3 +117,28 @@ RETURN fn::ingestion_dashboard_metrics({ batch_id: "lot_q" }).data.{ items, lots
 -- test: indicateurs : paramètre inconnu refusé
 -- en tant que: steward
 RETURN fn::ingestion_dashboard_metrics({ lot: "lot_q" }).error.code == "INGESTION_INVALID_PARAMETERS";
+
+-- test: article sans unité résolue enregistré sans unité (jamais de valeur par défaut)
+-- en tant que: qualif
+RETURN fn::ingestion_staged_save({ batch_id: "lot_q", rules_version: "2026.1", items: [
+    { ligne_numero: 9, canonical_fingerprint: crypto::blake3("q9"), fabricant: "PLACO", reference_fabricant: "SANS_UNITE", libelle_commercial: "Article sans unité", conditionnement: { quantite_par_colis: 1.0 }, qualification: "TO_CONFIRM" }
+] }).data[0].ok == true
+    AND (SELECT VALUE [unite_reference, conditionnement.unite_vente] FROM ONLY ingestion_staged_item WHERE reference_fabricant = "SANS_UNITE" LIMIT 1) == [NONE, NONE];
+
+-- test: un article VERIFIED sans unité est refusé seul, sans interrompre le bloc
+-- en tant que: qualif
+RETURN fn::ingestion_staged_save({ batch_id: "lot_q", rules_version: "2026.1", items: [
+    { ligne_numero: 10, canonical_fingerprint: crypto::blake3("q10"), fabricant: "PLACO", reference_fabricant: "VERIF_SANS_UNITE", libelle_commercial: "Article vérifié sans unité", conditionnement: {}, qualification: "VERIFIED" },
+    { ligne_numero: 11, canonical_fingerprint: crypto::blake3("q11"), fabricant: "PLACO", reference_fabricant: "AVEC_UNITE", libelle_commercial: "Article avec unité", unite_reference: "M2", conditionnement: {} }
+] }).data.map(|$r| [$r.ok, $r.error.code]) == [[false, "INGESTION_UNIT_UNRESOLVED"], [true, NONE]];
+
+-- préparation: identifiant de l'article sans unité
+CREATE test_ref:sans_unite SET item = <string> (SELECT VALUE id FROM ONLY ingestion_staged_item WHERE reference_fabricant = "SANS_UNITE" LIMIT 1);
+
+-- test: un article sans unité ne devient pas VERIFIED
+-- en tant que: steward
+RETURN fn::ingestion_staged_requalify({ item_id: test_ref:sans_unite.item, new_qualification: "VERIFIED", justification: "Validation documentée par le steward", proof: { proof_type: "STEWARD_DOCUMENTED_VALIDATION", proof_reference: "DOC-1", source_authority: "Steward" } }).error.code == "INGESTION_UNIT_UNRESOLVED";
+
+-- test: même par écriture directe, un article VERIFIED a une unité
+-- attendu-erreur: INGESTION_UNIT_UNRESOLVED
+UPDATE ingestion_staged_item SET qualification = "VERIFIED" WHERE reference_fabricant = "SANS_UNITE";

@@ -600,7 +600,7 @@ async fn test_full_pilot_41_btp_references_lifecycle() {
             libelle_commercial: entry.label.to_string(),
             description_technique: None,
             type_item: "PRODUIT".to_string(),
-            unite_reference: entry.unit.to_string(),
+            unite_reference: Some(entry.unit.to_string()),
             conditionnement: PackagingDetails::default(),
             qualification,
             qualification_reason: Some(if qualification == ItemQualification::Verified {

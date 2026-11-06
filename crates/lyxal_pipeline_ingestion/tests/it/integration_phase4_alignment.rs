@@ -370,7 +370,7 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
             libelle_commercial: format!("Laine de verre GR32 {i}"),
             description_technique: None,
             type_item: "PRODUIT".to_string(),
-            unite_reference: "M2".to_string(),
+            unite_reference: Some("M2".to_string()),
             conditionnement: PackagingDetails::default(),
             qualification: ItemQualification::Verified,
             qualification_reason: None,
@@ -411,7 +411,7 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
             libelle_commercial: format!("Laine de verre GR32 {i}"),
             description_technique: None,
             type_item: "PRODUIT".to_string(),
-            unite_reference: "M2".to_string(),
+            unite_reference: Some("M2".to_string()),
             conditionnement: PackagingDetails::default(),
             qualification: ItemQualification::Verified,
             qualification_reason: None,
@@ -447,29 +447,5 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
         after_replay.len(),
         20,
         "La réexécution complète DOIT être strictement idempotente"
-    );
-}
-
-// =============================================================================
-// TEST 3 bis : chaque code canonique de la normalisation existe dans base_unite
-// =============================================================================
-#[tokio::test]
-async fn test_3b_canonical_units_exist_in_base_unite() {
-    let store = crate::support::installed_store().await;
-    let codes: Vec<String> = lyxal_pipeline_ingestion::normalization::units::CANONICAL_UNITS
-        .iter()
-        .map(|c| c.to_string())
-        .collect();
-    let missing: Vec<String> = store
-        .client()
-        .query("RETURN array::filter($codes, |$c| !fn::base_unite_get({ code: $c }).ok);")
-        .bind(("codes", codes))
-        .await
-        .expect("requête")
-        .take(0)
-        .expect("résultat");
-    assert!(
-        missing.is_empty(),
-        "codes canoniques absents de base_unite : {missing:?}"
     );
 }

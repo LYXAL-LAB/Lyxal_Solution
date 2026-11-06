@@ -75,6 +75,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_resolve($params: object) {
             qualification_reason = $reason,
             code_barre_gtin = $gtin.value ?? code_barre_gtin,
             unite_reference = $unit_code ?? unite_reference,
+            conditionnement.unite_vente = $unit_code ?? conditionnement.unite_vente,
             transitions = array::append(transitions ?? [], {
                 from_state: $staged.qualification,
                 to_state: "TO_CONFIRM",

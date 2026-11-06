@@ -54,7 +54,7 @@ struct CatalogueItemCreateParams {
     code_barre: Option<String>,
     conditionnement: CatalogueConditionnement,
     /// `base_unite:<CODE>` en texte (règle `record` de lyxal_core).
-    unite_conditionnement: String,
+    unite_conditionnement: Option<String>,
     master_id: String,
 }
 
@@ -70,7 +70,7 @@ struct CatalogueItemUpdateParams {
     reference_fabricant: String,
     code_barre: Option<String>,
     conditionnement: CatalogueConditionnement,
-    unite_conditionnement: String,
+    unite_conditionnement: Option<String>,
 }
 
 #[derive(SurrealValue)]
@@ -116,9 +116,10 @@ impl CatalogueSyncClient {
     pub(crate) async fn publish(
         &self,
         item: &StagedItem,
+        unite_reference: &str,
         action: PublicationAction,
     ) -> Result<(), LyxalSurrealError> {
-        let params = create_params(item);
+        let params = create_params(item, unite_reference);
         match action {
             PublicationAction::Insert => {
                 let created: Result<CatalogueItemRef, LyxalSurrealError> =
@@ -180,14 +181,14 @@ impl CatalogueSyncClient {
     }
 }
 
-fn create_params(item: &StagedItem) -> CatalogueItemCreateParams {
+fn create_params(item: &StagedItem, unite_reference: &str) -> CatalogueItemCreateParams {
     let master_id = catalogue_master_id(&item.fabricant, &item.reference_fabricant);
     let packaging = &item.conditionnement;
     CatalogueItemCreateParams {
         code: master_id.clone(),
         type_item: item.type_item.clone(),
         libelle: item.libelle_commercial.clone(),
-        unite_reference: item.unite_reference.clone(),
+        unite_reference: unite_reference.to_string(),
         description: item.description_technique.clone(),
         nature_reference: "COMMERCIALE".to_string(),
         fabricant: item.fabricant.clone(),
@@ -203,10 +204,10 @@ fn create_params(item: &StagedItem) -> CatalogueItemCreateParams {
                 epaisseur: d.epaisseur_mm,
             }),
         },
-        unite_conditionnement: format!(
-            "base_unite:{}",
-            packaging.unite_vente.trim().to_uppercase()
-        ),
+        unite_conditionnement: packaging
+            .unite_vente
+            .as_deref()
+            .map(|u| format!("base_unite:{}", u.trim().to_uppercase())),
         master_id,
     }
 }

@@ -12,8 +12,9 @@ use lyxal_pipeline_ingestion::types::{ItemQualification, SourceFormat};
 // =============================================================================
 // TEST 1 : Qualification commerciale stricte & Découplage de l'équivalence
 // =============================================================================
-#[test]
-fn test_commercial_qualification_strict_separation() {
+#[tokio::test]
+async fn test_commercial_qualification_strict_separation() {
+    let store = crate::support::installed_store().await;
     let norm_engine = NormalizationEngine::new();
 
     // 1.1. Cas Nominal : fabricant vérifié, unité résolue, libellé explicite, tarif ET cotes
@@ -35,7 +36,12 @@ fn test_commercial_qualification_strict_separation() {
     };
 
     // a) Sans preuve formelle de provenance commerciale -> Maintien strict en TO_CONFIRM (Directive CTO Phase 4)
-    let norm_no_proof = norm_engine.normalize(&raw_verified, None, SourceFormat::Csv);
+    let norm_no_proof = norm_engine.normalize(
+        &raw_verified,
+        None,
+        SourceFormat::Csv,
+        &crate::support::referentials_for(&store, &raw_verified, None).await,
+    );
     assert_eq!(norm_no_proof.qualification, ItemQualification::ToConfirm);
     assert!(norm_no_proof
         .qualification_reason
@@ -49,8 +55,13 @@ fn test_commercial_qualification_strict_separation() {
         "system:edi_receiver",
         "2026-10-25T10:00:00Z",
     );
-    let norm_verified =
-        norm_engine.normalize_with_proof(&raw_verified, None, SourceFormat::Csv, Some(proof));
+    let norm_verified = norm_engine.normalize_with_proof(
+        &raw_verified,
+        None,
+        SourceFormat::Csv,
+        Some(proof),
+        &crate::support::referentials_for(&store, &raw_verified, None).await,
+    );
     assert_eq!(norm_verified.qualification, ItemQualification::Verified);
     assert_eq!(norm_verified.manufacturer, "PLACO");
 
@@ -71,7 +82,12 @@ fn test_commercial_qualification_strict_separation() {
         raw_payload: serde_json::json!({}),
         raw_hash: "hash_02".to_string(),
     };
-    let norm_gtin_only = norm_engine.normalize(&raw_gtin_only, None, SourceFormat::Csv);
+    let norm_gtin_only = norm_engine.normalize(
+        &raw_gtin_only,
+        None,
+        SourceFormat::Csv,
+        &crate::support::referentials_for(&store, &raw_gtin_only, None).await,
+    );
     // Exigence CTO : Une clé GTIN valide ne suffit jamais à attribuer VERIFIED
     assert_eq!(norm_gtin_only.qualification, ItemQualification::ToConfirm);
     assert!(norm_gtin_only
@@ -96,7 +112,12 @@ fn test_commercial_qualification_strict_separation() {
         raw_payload: serde_json::json!({}),
         raw_hash: "hash_03".to_string(),
     };
-    let norm_corrupt_gtin = norm_engine.normalize(&raw_corrupt_gtin, None, SourceFormat::Csv);
+    let norm_corrupt_gtin = norm_engine.normalize(
+        &raw_corrupt_gtin,
+        None,
+        SourceFormat::Csv,
+        &crate::support::referentials_for(&store, &raw_corrupt_gtin, None).await,
+    );
     assert_eq!(norm_corrupt_gtin.gtin.as_deref(), Some("3017620422009"));
     assert_eq!(
         norm_corrupt_gtin.qualification,
@@ -120,7 +141,12 @@ fn test_commercial_qualification_strict_separation() {
         raw_payload: serde_json::json!({}),
         raw_hash: "hash_04".to_string(),
     };
-    let norm_neg_price = norm_engine.normalize(&raw_neg_price, None, SourceFormat::Csv);
+    let norm_neg_price = norm_engine.normalize(
+        &raw_neg_price,
+        None,
+        SourceFormat::Csv,
+        &crate::support::referentials_for(&store, &raw_neg_price, None).await,
+    );
     assert_eq!(norm_neg_price.qualification, ItemQualification::Rejected);
 
     // 1.5. Règle inviolable CTO : des caractéristiques techniques complètes ne confèrent jamais
@@ -145,7 +171,12 @@ fn test_commercial_qualification_strict_separation() {
         raw_payload: serde_json::json!({}),
         raw_hash: "hash_05".to_string(),
     };
-    let norm_spec_to_confirm = norm_engine.normalize(&raw_spec_to_confirm, None, SourceFormat::Csv);
+    let norm_spec_to_confirm = norm_engine.normalize(
+        &raw_spec_to_confirm,
+        None,
+        SourceFormat::Csv,
+        &crate::support::referentials_for(&store, &raw_spec_to_confirm, None).await,
+    );
     assert_eq!(
         norm_spec_to_confirm.qualification,
         ItemQualification::ToConfirm
@@ -155,8 +186,9 @@ fn test_commercial_qualification_strict_separation() {
 // =============================================================================
 // TEST 2 : Streaming et volume à grande échelle (1 500 articles)
 // =============================================================================
-#[test]
-fn test_streaming_and_volume_large_scale() {
+#[tokio::test]
+async fn test_streaming_and_volume_large_scale() {
+    let store = crate::support::installed_store().await;
     let registry = AdapterRegistry::new();
     let norm_engine = NormalizationEngine::new();
 
@@ -211,13 +243,15 @@ fn test_streaming_and_volume_large_scale() {
         "2026-10-25T10:00:00Z",
     );
 
-    // 2. Normalisation et qualification
+    // 2. Normalisation et qualification ; référentiels résolus une fois pour le bloc
+    let referentials = store.block_referentials(&records, None).await.unwrap();
     for rec in &records {
         let normalized = norm_engine.normalize_with_proof(
             rec,
             None,
             SourceFormat::Csv,
             Some(stream_proof.clone()),
+            &referentials,
         );
         if normalized.qualification == ItemQualification::Verified {
             verified_count += 1;
