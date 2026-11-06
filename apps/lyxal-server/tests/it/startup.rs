@@ -214,7 +214,7 @@ async fn module_resources_are_replayable() {
         .expect("requête");
     let types: Option<i64> = res.take(0).expect("types");
     let definitions: Option<i64> = res.take(1).expect("définitions");
-    assert_eq!(types, Some(6));
+    assert_eq!(types, Some(11));
     assert_eq!(definitions, Some(1));
 }
 
