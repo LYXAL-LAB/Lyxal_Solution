@@ -8,7 +8,7 @@
 > **Versions auditées :**  
 > - `crates/lyxal_catalogue` : **V1.1 (Clôturé et Gelé)**  
 > - `crates/lyxal_pipeline_ingestion` : **V1.0.0 (Clôturé Staging et Gelé)**  
-> - Référentiels transversaux : `lyxal_base` V1.0 / `lyxal_error` V1.0  
+> - Référentiels transversaux : `lyxal_base` (reprise clôturée, `0.1.0`) / `lyxal_error` V1.0  
 > **Environnement cible :** SurrealDB 3.2.0 persistant  
 
 ---
@@ -17,7 +17,7 @@
 
 ### 1.1. Contexte du Mandat CTO
 
-À la suite de la clôture officielle des modules [`lyxal_catalogue`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue) (V1.1) et [`lyxal_pipeline_ingestion`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion) (V1.0.0), la Direction Technique (CTO) a mandaté un audit exhaustif de l'ensemble des modèles de données et schémas relationnels déployés dans le workspace.
+À la suite de la clôture officielle des modules [`lyxal_catalogue`](../../crates/lyxal_catalogue) (V1.1) et [`lyxal_pipeline_ingestion`](../../crates/lyxal_pipeline_ingestion) (V1.0.0), la Direction Technique (CTO) a mandaté un audit exhaustif de l'ensemble des modèles de données et schémas relationnels déployés dans le workspace.
 
 L'objectif cardinal de cet audit est de :
 1. **Évaluer l'opportunité d'utiliser le type natif SurrealDB `TYPE RELATION`** par rapport au modèle actuel fondé sur `TYPE NORMAL` et des pointeurs `record<...>` typés.
@@ -40,9 +40,9 @@ Conformément à la directive stricte du CTO :
 ## 2. Inventaire Exhaustif des Tables
 
 Au sein du périmètre audité, **27 tables au total** ont été inventoriées, comprenant **24 tables appartenant en propre aux deux modules audités** et **3 tables transversales** appartenant aux fondations du workspace :
-- **13 tables propriétaires** pour [`lyxal_catalogue`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema)
-- **11 tables propriétaires** pour [`lyxal_pipeline_ingestion`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema)
-- **3 tables transversales** consommées par ces modules, sans transfert de propriété ([`lyxal_base`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_base/schema) : `base_unite`, `base_unite_type` ; [`lyxal_error`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_error/schema) : `error_definition`)
+- **13 tables propriétaires** pour [`lyxal_catalogue`](../../crates/lyxal_catalogue/schema)
+- **11 tables propriétaires** pour [`lyxal_pipeline_ingestion`](../../crates/lyxal_pipeline_ingestion/schema)
+- **3 tables transversales** consommées par ces modules, sans transfert de propriété ([`lyxal_base`](../../crates/lyxal_base/schema) : `base_unite`, `base_unite_type` ; [`lyxal_error`](../../crates/lyxal_error/schema) : `error_definition`)
 
 ---
 
@@ -74,7 +74,7 @@ Au sein du périmètre audité, **27 tables au total** ont été inventoriées, 
 ```
 
 #### Table 1 : `catalogue_session`
-- **Fichier de schéma :** [`00_catalogue_session.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/00_catalogue_session.surql)
+- **Fichier de schéma :** [`00_catalogue_session.surql`](../../crates/lyxal_catalogue/schema/00_catalogue_session.surql)
 - **Module propriétaire :** `lyxal_catalogue`
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE catalogue_session TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select WHERE id = $auth.id FOR create, update, delete NONE`
 - **Type actuel :** `TYPE NORMAL`
@@ -85,18 +85,18 @@ Au sein du périmètre audité, **27 tables au total** ont été inventoriées, 
 - **Événements :** Aucun.
 
 #### Table 2 : `catalogue_type`
-- **Fichier de schéma :** [`01_catalogue_type.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/01_catalogue_type.surql)
+- **Fichier de schéma :** [`01_catalogue_type.surql`](../../crates/lyxal_catalogue/schema/01_catalogue_type.surql)
 - **Module propriétaire :** `lyxal_catalogue`
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE catalogue_type TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select FULL FOR create, update, delete NONE`
 - **Type actuel :** `TYPE NORMAL`
 - **Champs `record` et références :** Aucun.
-- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_type_list`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/type/catalogue_type_list.surql), [`fn::catalogue_item_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_create.surql), [`fn::catalogue_item_update`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_update.surql), [`fn::catalogue_item_list`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_list.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_type_list`](../../crates/lyxal_catalogue/functions/type/catalogue_type_list.surql), [`fn::catalogue_item_create`](../../crates/lyxal_catalogue/functions/item/catalogue_item_create.surql), [`fn::catalogue_item_update`](../../crates/lyxal_catalogue/functions/item/catalogue_item_update.surql), [`fn::catalogue_item_list`](../../crates/lyxal_catalogue/functions/item/catalogue_item_list.surql).
 - **Utilisation du graphe / RELATE :** Aucune.
 - **Index et contraintes :** `idx_catalogue_type_code` (`code UNIQUE`). Valeurs normalisées `PRODUIT`, `SERVICE`, `OUVRAGE`, `RESSOURCE`, `ENSEMBLE`.
 - **Événements :** Aucun.
 
 #### Table 3 : `catalogue_item`
-- **Fichier de schéma :** [`02_catalogue_item.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/02_catalogue_item.surql)
+- **Fichier de schéma :** [`02_catalogue_item.surql`](../../crates/lyxal_catalogue/schema/02_catalogue_item.surql)
 - **Module propriétaire :** `lyxal_catalogue`
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE catalogue_item TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create WHERE ... FOR update WHERE ... FOR delete WHERE ...`
 - **Type actuel :** `TYPE NORMAL`
@@ -105,68 +105,68 @@ Au sein du périmètre audité, **27 tables au total** ont été inventoriées, 
   - `unite_reference: record<base_unite>` (REFERENCE ON DELETE REJECT)  
   - `unite_conditionnement: option<record<base_unite>>` (REFERENCE ON DELETE REJECT)
 - **Fonctions SurrealQL consommatrices :**  
-  - Écriture : [`fn::catalogue_item_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_create.surql), [`fn::catalogue_item_update`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_update.surql), [`fn::catalogue_item_delete`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_delete.surql).  
-  - Lecture : [`fn::catalogue_item_get`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_get.surql), [`fn::catalogue_item_list`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_list.surql), [`fn::catalogue_relation_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/relation/catalogue_relation_create.surql), [`fn::catalogue_composition_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/composition/catalogue_composition_create.surql), [`fn::catalogue_composition_add_line`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/composition/catalogue_composition_add_line.surql).
+  - Écriture : [`fn::catalogue_item_create`](../../crates/lyxal_catalogue/functions/item/catalogue_item_create.surql), [`fn::catalogue_item_update`](../../crates/lyxal_catalogue/functions/item/catalogue_item_update.surql), [`fn::catalogue_item_delete`](../../crates/lyxal_catalogue/functions/item/catalogue_item_delete.surql).  
+  - Lecture : [`fn::catalogue_item_get`](../../crates/lyxal_catalogue/functions/item/catalogue_item_get.surql), [`fn::catalogue_item_list`](../../crates/lyxal_catalogue/functions/item/catalogue_item_list.surql), [`fn::catalogue_relation_create`](../../crates/lyxal_catalogue/functions/relation/catalogue_relation_create.surql), [`fn::catalogue_composition_create`](../../crates/lyxal_catalogue/functions/composition/catalogue_composition_create.surql), [`fn::catalogue_composition_add_line`](../../crates/lyxal_catalogue/functions/composition/catalogue_composition_add_line.surql).
 - **Utilisation du graphe / RELATE :** Nœud central (Node). Non utilisé en arête.
 - **Index et contraintes :** `idx_catalogue_item_code` (`code UNIQUE`), `idx_catalogue_item_code_barre` (`code_barre UNIQUE`), `idx_catalogue_item_fab_ref` (`fabricant, reference_fabricant UNIQUE`), `idx_catalogue_item_master_id` (`master_id UNIQUE`), `idx_catalogue_item_tenant`.
-- **Événements :** [`evt_catalogue_item_guard`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/02_catalogue_item.surql#L296) (contrôle strict générique vs commercial, validation GS1 Modulo 10, isolation multi-tenant et protection immuable des articles Master).
+- **Événements :** [`evt_catalogue_item_guard`](../../crates/lyxal_catalogue/schema/02_catalogue_item.surql#L296) (contrôle strict générique vs commercial, validation GS1 Modulo 10, isolation multi-tenant et protection immuable des articles Master).
 
 #### Table 4 : `catalogue_categorie`
-- **Fichier de schéma :** [`03_catalogue_categorie.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/03_catalogue_categorie.surql)
+- **Fichier de schéma :** [`03_catalogue_categorie.surql`](../../crates/lyxal_catalogue/schema/03_catalogue_categorie.surql)
 - **Module propriétaire :** `lyxal_catalogue`
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE catalogue_categorie TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select FULL FOR create, update, delete NONE`
 - **Type actuel :** `TYPE NORMAL`
 - **Champs `record` et références :** `parent: option<record<catalogue_categorie>>` (auto-référence hiérarchique).
-- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_categorie_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/categorie/catalogue_categorie_create.surql), [`fn::catalogue_categorie_update`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/categorie/catalogue_categorie_update.surql), [`fn::catalogue_categorie_delete`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/categorie/catalogue_categorie_delete.surql), [`fn::catalogue_categorie_tree`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/categorie/catalogue_categorie_tree.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_categorie_create`](../../crates/lyxal_catalogue/functions/categorie/catalogue_categorie_create.surql), [`fn::catalogue_categorie_update`](../../crates/lyxal_catalogue/functions/categorie/catalogue_categorie_update.surql), [`fn::catalogue_categorie_delete`](../../crates/lyxal_catalogue/functions/categorie/catalogue_categorie_delete.surql), [`fn::catalogue_categorie_tree`](../../crates/lyxal_catalogue/functions/categorie/catalogue_categorie_tree.surql).
 - **Utilisation du graphe / RELATE :** Structure arborescente gérée par liste d'adjacence (`parent`). Pas de `RELATE`.
 - **Index et contraintes :** `idx_catalogue_categorie_code` (`code UNIQUE`), `idx_catalogue_categorie_parent`.
 - **Événements :** Aucun.
 
 #### Table 5 : `catalogue_item_categorie`
-- **Fichier de schéma :** [`04_catalogue_item_categorie.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/04_catalogue_item_categorie.surql)
+- **Fichier de schéma :** [`04_catalogue_item_categorie.surql`](../../crates/lyxal_catalogue/schema/04_catalogue_item_categorie.surql)
 - **Module propriétaire :** `lyxal_catalogue`
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE catalogue_item_categorie TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create, update, delete WHERE ...`
 - **Type actuel :** `TYPE NORMAL`
 - **Champs `record` et références :**  
   - `item: record<catalogue_item>` (REFERENCE)  
   - `categorie: record<catalogue_categorie>` (REFERENCE)
-- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_item_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_create.surql), [`fn::catalogue_item_delete`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_delete.surql), [`fn::catalogue_item_get`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_get.surql), [`fn::catalogue_item_list`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_list.surql), [`fn::catalogue_categorie_delete`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/categorie/catalogue_categorie_delete.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_item_create`](../../crates/lyxal_catalogue/functions/item/catalogue_item_create.surql), [`fn::catalogue_item_delete`](../../crates/lyxal_catalogue/functions/item/catalogue_item_delete.surql), [`fn::catalogue_item_get`](../../crates/lyxal_catalogue/functions/item/catalogue_item_get.surql), [`fn::catalogue_item_list`](../../crates/lyxal_catalogue/functions/item/catalogue_item_list.surql), [`fn::catalogue_categorie_delete`](../../crates/lyxal_catalogue/functions/categorie/catalogue_categorie_delete.surql).
 - **Utilisation du graphe / RELATE :** Table de jonction N-à-N relationnelle classique (`is_primary: bool`).
 - **Index et contraintes :** `idx_item_cat_unique` (`item, categorie UNIQUE`), `idx_item_cat_lookup` (`categorie, item`).
 - **Événements :** Aucun.
 
 #### Table 6 : `catalogue_attribut`
-- **Fichier de schéma :** [`05_catalogue_attribut.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/05_catalogue_attribut.surql)
+- **Fichier de schéma :** [`05_catalogue_attribut.surql`](../../crates/lyxal_catalogue/schema/05_catalogue_attribut.surql)
 - **Module propriétaire :** `lyxal_catalogue`
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE catalogue_attribut TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select FULL FOR create, update, delete NONE`
 - **Type actuel :** `TYPE NORMAL`
 - **Champs `record` et références :** `unite: option<record<base_unite>>` (REFERENCE).
-- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_attribut_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/attribut/catalogue_attribut_create.surql), [`fn::catalogue_attribut_set_static`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/attribut/catalogue_attribut_set_static.surql), [`fn::catalogue_variante_set_attributs`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/variante/catalogue_variante_set_attributs.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_attribut_create`](../../crates/lyxal_catalogue/functions/attribut/catalogue_attribut_create.surql), [`fn::catalogue_attribut_set_static`](../../crates/lyxal_catalogue/functions/attribut/catalogue_attribut_set_static.surql), [`fn::catalogue_variante_set_attributs`](../../crates/lyxal_catalogue/functions/variante/catalogue_variante_set_attributs.surql).
 - **Index et contraintes :** `idx_catalogue_attribut_code` (`code UNIQUE`). Types autorisés : `STRING`, `NUMBER`, `BOOLEAN`, `DATE`, `COLOR`.
 - **Événements :** Aucun.
 
 #### Table 7 : `catalogue_attribut_valeur`
-- **Fichier de schéma :** [`06_catalogue_attribut_valeur.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/06_catalogue_attribut_valeur.surql)
+- **Fichier de schéma :** [`06_catalogue_attribut_valeur.surql`](../../crates/lyxal_catalogue/schema/06_catalogue_attribut_valeur.surql)
 - **Module propriétaire :** `lyxal_catalogue`
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE catalogue_attribut_valeur TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select FULL FOR create, update, delete NONE`
 - **Type actuel :** `TYPE NORMAL`
 - **Champs `record` et références :** `attribut: record<catalogue_attribut>` (REFERENCE).
-- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_attribut_valeur_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/attribut/catalogue_attribut_valeur_create.surql), [`fn::catalogue_attribut_set_static`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/attribut/catalogue_attribut_set_static.surql), [`fn::catalogue_variante_set_attributs`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/variante/catalogue_variante_set_attributs.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_attribut_valeur_create`](../../crates/lyxal_catalogue/functions/attribut/catalogue_attribut_valeur_create.surql), [`fn::catalogue_attribut_set_static`](../../crates/lyxal_catalogue/functions/attribut/catalogue_attribut_set_static.surql), [`fn::catalogue_variante_set_attributs`](../../crates/lyxal_catalogue/functions/variante/catalogue_variante_set_attributs.surql).
 - **Index et contraintes :** `idx_attr_val_unique` (`attribut, code UNIQUE`), `idx_attr_val_lookup` (`attribut, enabled`).
 - **Événements :** Aucun.
 
 #### Table 8 : `catalogue_variante`
-- **Fichier de schéma :** [`07_catalogue_variante.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/07_catalogue_variante.surql)
+- **Fichier de schéma :** [`07_catalogue_variante.surql`](../../crates/lyxal_catalogue/schema/07_catalogue_variante.surql)
 - **Module propriétaire :** `lyxal_catalogue`
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE catalogue_variante TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create, update, delete WHERE ...`
 - **Type actuel :** `TYPE NORMAL`
 - **Champs `record` et références :** `item: record<catalogue_item>` (REFERENCE).
-- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_variante_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/variante/catalogue_variante_create.surql), [`fn::catalogue_variante_set_attributs`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/variante/catalogue_variante_set_attributs.surql), [`fn::catalogue_item_get`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_get.surql), [`fn::catalogue_item_delete`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_delete.surql), [`fn::catalogue_composition_add_line`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/composition/catalogue_composition_add_line.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_variante_create`](../../crates/lyxal_catalogue/functions/variante/catalogue_variante_create.surql), [`fn::catalogue_variante_set_attributs`](../../crates/lyxal_catalogue/functions/variante/catalogue_variante_set_attributs.surql), [`fn::catalogue_item_get`](../../crates/lyxal_catalogue/functions/item/catalogue_item_get.surql), [`fn::catalogue_item_delete`](../../crates/lyxal_catalogue/functions/item/catalogue_item_delete.surql), [`fn::catalogue_composition_add_line`](../../crates/lyxal_catalogue/functions/composition/catalogue_composition_add_line.surql).
 - **Index et contraintes :** `idx_catalogue_variante_code` (`code UNIQUE`), `idx_var_item_fingerprint` (`item, empreinte_attributs UNIQUE`), `idx_catalogue_variante_item`.
-- **Événements :** [`evt_variante_protect_fingerprint`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/07_catalogue_variante.surql#L97) (recalcul et vérification de conformité de l'empreinte SHA-256 des attributs).
+- **Événements :** [`evt_variante_protect_fingerprint`](../../crates/lyxal_catalogue/schema/07_catalogue_variante.surql#L97) (recalcul et vérification de conformité de l'empreinte SHA-256 des attributs).
 
 #### Table 9 : `catalogue_variante_attribut`
-- **Fichier de schéma :** [`08_catalogue_variante_attribut.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/08_catalogue_variante_attribut.surql)
+- **Fichier de schéma :** [`08_catalogue_variante_attribut.surql`](../../crates/lyxal_catalogue/schema/08_catalogue_variante_attribut.surql)
 - **Module propriétaire :** `lyxal_catalogue`
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE catalogue_variante_attribut TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create, update, delete WHERE ...`
 - **Type actuel :** `TYPE NORMAL`
@@ -175,22 +175,22 @@ Au sein du périmètre audité, **27 tables au total** ont été inventoriées, 
   - `variante: option<record<catalogue_variante>>` (REFERENCE)  
   - `attribut: record<catalogue_attribut>` (REFERENCE)  
   - `attribut_valeur: record<catalogue_attribut_valeur>` (REFERENCE)
-- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_attribut_set_static`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/attribut/catalogue_attribut_set_static.surql), [`fn::catalogue_variante_set_attributs`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/variante/catalogue_variante_set_attributs.surql), [`fn::catalogue_item_get`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_get.surql), [`fn::catalogue_item_delete`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_delete.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_attribut_set_static`](../../crates/lyxal_catalogue/functions/attribut/catalogue_attribut_set_static.surql), [`fn::catalogue_variante_set_attributs`](../../crates/lyxal_catalogue/functions/variante/catalogue_variante_set_attributs.surql), [`fn::catalogue_item_get`](../../crates/lyxal_catalogue/functions/item/catalogue_item_get.surql), [`fn::catalogue_item_delete`](../../crates/lyxal_catalogue/functions/item/catalogue_item_delete.surql).
 - **Index et contraintes :** `idx_scope_attr` (`target_scope, attribut UNIQUE`), `idx_attr_val_lookup` (`attribut, attribut_valeur`).
-- **Événements :** [`evt_cva_recalc_fingerprint`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/08_catalogue_variante_attribut.surql#L76) (recalcul atomique automatique de l'empreinte SHA-256 sur la variante parente).
+- **Événements :** [`evt_cva_recalc_fingerprint`](../../crates/lyxal_catalogue/schema/08_catalogue_variante_attribut.surql#L76) (recalcul atomique automatique de l'empreinte SHA-256 sur la variante parente).
 
 #### Table 10 : `catalogue_composition`
-- **Fichier de schéma :** [`09_catalogue_composition.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/09_catalogue_composition.surql)
+- **Fichier de schéma :** [`09_catalogue_composition.surql`](../../crates/lyxal_catalogue/schema/09_catalogue_composition.surql)
 - **Module propriétaire :** `lyxal_catalogue`
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE catalogue_composition TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create, update, delete WHERE ...`
 - **Type actuel :** `TYPE NORMAL`
 - **Champs `record` et références :** `parent_item: record<catalogue_item>` (REFERENCE).
-- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_composition_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/composition/catalogue_composition_create.surql), [`fn::catalogue_composition_publish`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/composition/catalogue_composition_publish.surql), [`fn::catalogue_composition_clone_version`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/composition/catalogue_composition_clone_version.surql), [`fn::catalogue_composition_add_line`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/composition/catalogue_composition_add_line.surql), [`fn::catalogue_item_get`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_get.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_composition_create`](../../crates/lyxal_catalogue/functions/composition/catalogue_composition_create.surql), [`fn::catalogue_composition_publish`](../../crates/lyxal_catalogue/functions/composition/catalogue_composition_publish.surql), [`fn::catalogue_composition_clone_version`](../../crates/lyxal_catalogue/functions/composition/catalogue_composition_clone_version.surql), [`fn::catalogue_composition_add_line`](../../crates/lyxal_catalogue/functions/composition/catalogue_composition_add_line.surql), [`fn::catalogue_item_get`](../../crates/lyxal_catalogue/functions/item/catalogue_item_get.surql).
 - **Index et contraintes :** `idx_comp_parent_version` (`parent_item, version UNIQUE`), `idx_comp_parent_statut` (`parent_item, statut`).
-- **Événements :** [`evt_composition_protect`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/09_catalogue_composition.surql#L88) (verrou d'immuabilité scellé), [`evt_composition_no_del`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/09_catalogue_composition.surql#L111).
+- **Événements :** [`evt_composition_protect`](../../crates/lyxal_catalogue/schema/09_catalogue_composition.surql#L88) (verrou d'immuabilité scellé), [`evt_composition_no_del`](../../crates/lyxal_catalogue/schema/09_catalogue_composition.surql#L111).
 
 #### Table 11 : `catalogue_composition_ligne`
-- **Fichier de schéma :** [`10_catalogue_composition_ligne.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/10_catalogue_composition_ligne.surql)
+- **Fichier de schéma :** [`10_catalogue_composition_ligne.surql`](../../crates/lyxal_catalogue/schema/10_catalogue_composition_ligne.surql)
 - **Module propriétaire :** `lyxal_catalogue`
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE catalogue_composition_ligne TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create, update, delete WHERE ...`
 - **Type actuel :** `TYPE NORMAL`
@@ -199,22 +199,22 @@ Au sein du périmètre audité, **27 tables au total** ont été inventoriées, 
   - `composant_item: record<catalogue_item>` (REFERENCE)  
   - `composant_variante: option<record<catalogue_variante>>` (REFERENCE)  
   - `unite: record<base_unite>` (REFERENCE)
-- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_composition_add_line`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/composition/catalogue_composition_add_line.surql), [`fn::catalogue_composition_check_cycle`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/composition/catalogue_composition_check_cycle.surql), [`fn::catalogue_composition_clone_version`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/composition/catalogue_composition_clone_version.surql), [`fn::catalogue_composition_publish`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/composition/catalogue_composition_publish.surql), [`fn::catalogue_item_delete`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_delete.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_composition_add_line`](../../crates/lyxal_catalogue/functions/composition/catalogue_composition_add_line.surql), [`fn::catalogue_composition_check_cycle`](../../crates/lyxal_catalogue/functions/composition/catalogue_composition_check_cycle.surql), [`fn::catalogue_composition_clone_version`](../../crates/lyxal_catalogue/functions/composition/catalogue_composition_clone_version.surql), [`fn::catalogue_composition_publish`](../../crates/lyxal_catalogue/functions/composition/catalogue_composition_publish.surql), [`fn::catalogue_item_delete`](../../crates/lyxal_catalogue/functions/item/catalogue_item_delete.surql).
 - **Index et contraintes :** `idx_comp_ligne_unique` (`composition, composant_item, composant_variante UNIQUE`).
-- **Événements :** [`evt_comp_ligne_guard`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/10_catalogue_composition_ligne.surql#L93) (interdiction d'ajout, modification ou suppression sur composition scellée).
+- **Événements :** [`evt_comp_ligne_guard`](../../crates/lyxal_catalogue/schema/10_catalogue_composition_ligne.surql#L93) (interdiction d'ajout, modification ou suppression sur composition scellée).
 
 #### Table 12 : `catalogue_relation_type`
-- **Fichier de schéma :** [`11_catalogue_relation_type.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/11_catalogue_relation_type.surql)
+- **Fichier de schéma :** [`11_catalogue_relation_type.surql`](../../crates/lyxal_catalogue/schema/11_catalogue_relation_type.surql)
 - **Module propriétaire :** `lyxal_catalogue`
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE catalogue_relation_type TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select FULL FOR create, update, delete NONE`
 - **Type actuel :** `TYPE NORMAL`
 - **Champs `record` et références :** Aucun.
-- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_relation_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/relation/catalogue_relation_create.surql), [`fn::catalogue_relation_check_cycle`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/relation/catalogue_relation_check_cycle.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_relation_create`](../../crates/lyxal_catalogue/functions/relation/catalogue_relation_create.surql), [`fn::catalogue_relation_check_cycle`](../../crates/lyxal_catalogue/functions/relation/catalogue_relation_check_cycle.surql).
 - **Index et contraintes :** `idx_catalogue_relation_type_code` (`code UNIQUE`). Types standards : `ACCESSOIRE`, `SUBSTITUT`, `SIMILAIRE`, `COMPATIBLE`, `OBLIGATOIRE`, `COMMERCIAL_SPECIFICATION`, `REMPLACEMENT`.
 - **Événements :** Aucun.
 
 #### Table 13 : `catalogue_relation`
-- **Fichier de schéma :** [`12_catalogue_relation.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/12_catalogue_relation.surql)
+- **Fichier de schéma :** [`12_catalogue_relation.surql`](../../crates/lyxal_catalogue/schema/12_catalogue_relation.surql)
 - **Module propriétaire :** `lyxal_catalogue`
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE catalogue_relation TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create, update, delete WHERE ...`
 - **Type actuel :** `TYPE NORMAL`
@@ -222,10 +222,10 @@ Au sein du périmètre audité, **27 tables au total** ont été inventoriées, 
   - `source: record<catalogue_item>` (REFERENCE)  
   - `cible: record<catalogue_item>` (REFERENCE, `ASSERT $value != source`)  
   - `relation_type: record<catalogue_relation_type>` (REFERENCE)
-- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_relation_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/relation/catalogue_relation_create.surql), [`fn::catalogue_relation_delete`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/relation/catalogue_relation_delete.surql), [`fn::catalogue_relation_check_cycle`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/relation/catalogue_relation_check_cycle.surql), [`fn::catalogue_item_delete`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_delete.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::catalogue_relation_create`](../../crates/lyxal_catalogue/functions/relation/catalogue_relation_create.surql), [`fn::catalogue_relation_delete`](../../crates/lyxal_catalogue/functions/relation/catalogue_relation_delete.surql), [`fn::catalogue_relation_check_cycle`](../../crates/lyxal_catalogue/functions/relation/catalogue_relation_check_cycle.surql), [`fn::catalogue_item_delete`](../../crates/lyxal_catalogue/functions/item/catalogue_item_delete.surql).
 - **Utilisation du graphe / RELATE :** **Modélisation d'arête relationnelle sous forme de table normale**. Requêtée par `SELECT ... WHERE source = $s AND relation_type = $rt` et DFS manuel via sous-fonctions récursives.
 - **Index et contraintes :** `idx_cat_rel_unique` (`source, cible, relation_type UNIQUE`), `idx_cat_rel_reverse` (`cible, relation_type`).
-- **Événements :** [`evt_catalogue_relation_guard`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/12_catalogue_relation.surql#L99) (187 lignes de contrôles : habilitation multi-tenant sur `$before` et `$after`, validation de sens commercial pour `COMMERCIAL_SPECIFICATION`, conformité d'obsolescence et détection anti-cycle pour `REMPLACEMENT`).
+- **Événements :** [`evt_catalogue_relation_guard`](../../crates/lyxal_catalogue/schema/12_catalogue_relation.surql#L99) (187 lignes de contrôles : habilitation multi-tenant sur `$before` et `$after`, validation de sens commercial pour `COMMERCIAL_SPECIFICATION`, conformité d'obsolescence et détection anti-cycle pour `REMPLACEMENT`).
 
 ---
 
@@ -266,102 +266,102 @@ Au sein du périmètre audité, **27 tables au total** ont été inventoriées, 
 ```
 
 #### Table 14 : `ingestion_session`
-- **Fichier de schéma :** [`00_ingestion_session.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema/00_ingestion_session.surql)
+- **Fichier de schéma :** [`00_ingestion_session.surql`](../../crates/lyxal_pipeline_ingestion/schema/00_ingestion_session.surql)
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE ingestion_session SCHEMAFULL PERMISSIONS FOR select WHERE id = $auth.id FOR create, update, delete NONE`
 - **Type actuel :** `TYPE NORMAL` (implicite)
 - **Champs `record` et références :** Aucun.
 - **Rôle :** Table d'authentification des agents Record Users (`ingestion_agent`, `qualification_agent`, `steward_admin`, `catalogue_sync_agent`).
 
 #### Table 15 : `ingestion_batch`
-- **Fichier de schéma :** [`01_ingestion_batch.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema/01_ingestion_batch.surql)
+- **Fichier de schéma :** [`01_ingestion_batch.surql`](../../crates/lyxal_pipeline_ingestion/schema/01_ingestion_batch.surql)
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE ingestion_batch SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create WHERE ... FOR update WHERE ... FOR delete NONE`
 - **Type actuel :** `TYPE NORMAL` (implicite)
 - **Champs `record` et références :** Aucun.
-- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_batch_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/batch/ingestion_batch_create.surql), [`fn::ingestion_batch_transition`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/batch/ingestion_batch_transition.surql), [`fn::ingestion_batch_checkpoint`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/batch/ingestion_batch_checkpoint.surql), [`fn::ingestion_dashboard_metrics`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/dashboard/ingestion_dashboard_metrics.surql), [`fn::ingestion_manifest_save`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/manifest/ingestion_manifest_save.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_batch_create`](../../crates/lyxal_pipeline_ingestion/functions/batch/ingestion_batch_create.surql), [`fn::ingestion_batch_transition`](../../crates/lyxal_pipeline_ingestion/functions/batch/ingestion_batch_transition.surql), [`fn::ingestion_batch_checkpoint`](../../crates/lyxal_pipeline_ingestion/functions/batch/ingestion_batch_checkpoint.surql), [`fn::ingestion_dashboard_metrics`](../../crates/lyxal_pipeline_ingestion/functions/dashboard/ingestion_dashboard_metrics.surql), [`fn::ingestion_manifest_save`](../../crates/lyxal_pipeline_ingestion/functions/manifest/ingestion_manifest_save.surql).
 - **Index et contraintes :** `idx_batch_source_file_hash` (`source_type, file_hash_blake3 UNIQUE`), `idx_batch_fournisseur_statut` (`fournisseur_id, statut`).
-- **Événements :** [`evt_batch_guard`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema/01_ingestion_batch.surql#L153) (machine à états `RECEIVED -> PARSING -> VALIDATING -> STAGED -> PUBLISHED / FAILED`).
+- **Événements :** [`evt_batch_guard`](../../crates/lyxal_pipeline_ingestion/schema/01_ingestion_batch.surql#L153) (machine à états `RECEIVED -> PARSING -> VALIDATING -> STAGED -> PUBLISHED / FAILED`).
 
 #### Table 16 : `ingestion_raw_record`
-- **Fichier de schéma :** [`02_ingestion_raw_record.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema/02_ingestion_raw_record.surql)
+- **Fichier de schéma :** [`02_ingestion_raw_record.surql`](../../crates/lyxal_pipeline_ingestion/schema/02_ingestion_raw_record.surql)
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE ingestion_raw_record SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create WHERE ... FOR update, delete NONE`
 - **Type actuel :** `TYPE NORMAL` (implicite)
 - **Champs `record` et références :** `batch: record<ingestion_batch>` (REFERENCE).
-- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_staged_save`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/staged/ingestion_staged_save.surql), [`fn::ingestion_quarantine_log`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/quarantine/ingestion_quarantine_log.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_staged_save`](../../crates/lyxal_pipeline_ingestion/functions/staged/ingestion_staged_save.surql), [`fn::ingestion_quarantine_log`](../../crates/lyxal_pipeline_ingestion/functions/quarantine/ingestion_quarantine_log.surql).
 - **Index et contraintes :** `idx_raw_batch_line` (`batch, ligne_numero UNIQUE`), `idx_raw_batch_row_hash` (`batch, row_hash`).
 - **Rôle :** Zone tampon immuable garantissant la traçabilité intégrale du flux d'entrée.
 
 #### Table 17 : `ingestion_staged_item`
-- **Fichier de schéma :** [`03_ingestion_staged_item.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema/03_ingestion_staged_item.surql)
+- **Fichier de schéma :** [`03_ingestion_staged_item.surql`](../../crates/lyxal_pipeline_ingestion/schema/03_ingestion_staged_item.surql)
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE ingestion_staged_item SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create WHERE ... FOR update WHERE ... FOR delete NONE`
 - **Type actuel :** `TYPE NORMAL` (implicite)
 - **Champs `record` et références :**  
   - `batch: record<ingestion_batch>` (REFERENCE)  
   - `raw_record: record<ingestion_raw_record>` (REFERENCE)
-- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_staged_save`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/staged/ingestion_staged_save.surql), [`fn::ingestion_staged_list`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/staged/ingestion_staged_list.surql), [`fn::ingestion_staged_requalify`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/staged/ingestion_staged_requalify.surql), [`fn::ingestion_quarantine_resolve`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/quarantine/ingestion_quarantine_resolve.surql), [`fn::ingestion_dashboard_metrics`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/dashboard/ingestion_dashboard_metrics.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_staged_save`](../../crates/lyxal_pipeline_ingestion/functions/staged/ingestion_staged_save.surql), [`fn::ingestion_staged_list`](../../crates/lyxal_pipeline_ingestion/functions/staged/ingestion_staged_list.surql), [`fn::ingestion_staged_requalify`](../../crates/lyxal_pipeline_ingestion/functions/staged/ingestion_staged_requalify.surql), [`fn::ingestion_quarantine_resolve`](../../crates/lyxal_pipeline_ingestion/functions/quarantine/ingestion_quarantine_resolve.surql), [`fn::ingestion_dashboard_metrics`](../../crates/lyxal_pipeline_ingestion/functions/dashboard/ingestion_dashboard_metrics.surql).
 - **Index et contraintes :** `idx_staged_batch_line` (`batch, ligne_numero UNIQUE`), `idx_staged_business_id` (`batch, fabricant, reference_fabricant UNIQUE`), `idx_staged_fingerprint` (`batch, canonical_fingerprint`), `idx_staged_qualif` (`batch, qualification`).
-- **Événements :** [`evt_staged_guard`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema/03_ingestion_staged_item.surql#L200) (transitions de qualification `VERIFIED / TO_CONFIRM / REJECTED` et verrou d'approbation `steward_admin`).
+- **Événements :** [`evt_staged_guard`](../../crates/lyxal_pipeline_ingestion/schema/03_ingestion_staged_item.surql#L200) (transitions de qualification `VERIFIED / TO_CONFIRM / REJECTED` et verrou d'approbation `steward_admin`).
 
 #### Table 18 : `ingestion_quarantine_record`
-- **Fichier de schéma :** [`04_ingestion_quarantine_record.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema/04_ingestion_quarantine_record.surql)
+- **Fichier de schéma :** [`04_ingestion_quarantine_record.surql`](../../crates/lyxal_pipeline_ingestion/schema/04_ingestion_quarantine_record.surql)
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE ingestion_quarantine_record SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create WHERE ... FOR update WHERE ... FOR delete NONE`
 - **Type actuel :** `TYPE NORMAL` (implicite)
 - **Champs `record` et références :**  
   - `batch: record<ingestion_batch>` (REFERENCE)  
   - `raw_record: record<ingestion_raw_record>` (REFERENCE)
-- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_quarantine_log`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/quarantine/ingestion_quarantine_log.surql), [`fn::ingestion_quarantine_list`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/quarantine/ingestion_quarantine_list.surql), [`fn::ingestion_quarantine_resolve`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/quarantine/ingestion_quarantine_resolve.surql), [`fn::ingestion_dashboard_metrics`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/dashboard/ingestion_dashboard_metrics.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_quarantine_log`](../../crates/lyxal_pipeline_ingestion/functions/quarantine/ingestion_quarantine_log.surql), [`fn::ingestion_quarantine_list`](../../crates/lyxal_pipeline_ingestion/functions/quarantine/ingestion_quarantine_list.surql), [`fn::ingestion_quarantine_resolve`](../../crates/lyxal_pipeline_ingestion/functions/quarantine/ingestion_quarantine_resolve.surql), [`fn::ingestion_dashboard_metrics`](../../crates/lyxal_pipeline_ingestion/functions/dashboard/ingestion_dashboard_metrics.surql).
 - **Index et contraintes :** `idx_quarantine_batch_severite` (`batch, severite`), `idx_quarantine_code` (`code_erreur`).
 - **Rôle :** Journal d'audit d'anomalies (dead-letter table).
 
 #### Table 19 : `ingestion_publication_manifest`
-- **Fichier de schéma :** [`05_ingestion_publication_manifest.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema/05_ingestion_publication_manifest.surql)
+- **Fichier de schéma :** [`05_ingestion_publication_manifest.surql`](../../crates/lyxal_pipeline_ingestion/schema/05_ingestion_publication_manifest.surql)
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE ingestion_publication_manifest SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create WHERE ... FOR update WHERE ... FOR delete NONE`
 - **Type actuel :** `TYPE NORMAL` (implicite)
 - **Champs `record` et références :** `batch: record<ingestion_batch>` (REFERENCE).
-- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_manifest_save`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/manifest/ingestion_manifest_save.surql), [`fn::ingestion_manifest_approve`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/manifest/ingestion_manifest_approve.surql), [`fn::ingestion_manifest_record_exec`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/manifest/ingestion_manifest_record_exec.surql), [`fn::ingestion_manifest_list`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/manifest/ingestion_manifest_list.surql), [`fn::ingestion_manifest_get_detail`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/manifest/ingestion_manifest_get_detail.surql), [`fn::ingestion_dashboard_metrics`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/dashboard/ingestion_dashboard_metrics.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_manifest_save`](../../crates/lyxal_pipeline_ingestion/functions/manifest/ingestion_manifest_save.surql), [`fn::ingestion_manifest_approve`](../../crates/lyxal_pipeline_ingestion/functions/manifest/ingestion_manifest_approve.surql), [`fn::ingestion_manifest_record_exec`](../../crates/lyxal_pipeline_ingestion/functions/manifest/ingestion_manifest_record_exec.surql), [`fn::ingestion_manifest_list`](../../crates/lyxal_pipeline_ingestion/functions/manifest/ingestion_manifest_list.surql), [`fn::ingestion_manifest_get_detail`](../../crates/lyxal_pipeline_ingestion/functions/manifest/ingestion_manifest_get_detail.surql), [`fn::ingestion_dashboard_metrics`](../../crates/lyxal_pipeline_ingestion/functions/dashboard/ingestion_dashboard_metrics.surql).
 - **Index et contraintes :** `idx_manifest_batch_version` (`batch, manifest_version UNIQUE`), `idx_manifest_ref` (`manifest_ref UNIQUE`), `idx_manifest_statut` (`statut`).
-- **Événements :** [`evt_manifest_guard`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema/05_ingestion_publication_manifest.surql#L143) (machine à états `DRAFT -> SEALED -> APPROVED -> EXECUTING -> COMMITTED`).
+- **Événements :** [`evt_manifest_guard`](../../crates/lyxal_pipeline_ingestion/schema/05_ingestion_publication_manifest.surql#L143) (machine à états `DRAFT -> SEALED -> APPROVED -> EXECUTING -> COMMITTED`).
 
 #### Table 20 : `ingestion_family_rule`
-- **Fichier de schéma :** [`06_ingestion_family_rule.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema/06_ingestion_family_rule.surql)
+- **Fichier de schéma :** [`06_ingestion_family_rule.surql`](../../crates/lyxal_pipeline_ingestion/schema/06_ingestion_family_rule.surql)
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE ingestion_family_rule SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create, update WHERE ... FOR delete NONE`
 - **Type actuel :** `TYPE NORMAL` (implicite)
 - **Champs `record` et références :** `standard_unit: option<string>` (code textuel vers `base_unite`).
-- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_rule_family_add`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/rule/ingestion_rule_family_add.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_rule_family_add`](../../crates/lyxal_pipeline_ingestion/functions/rule/ingestion_rule_family_add.surql).
 - **Index et contraintes :** `idx_family_rule_code` (`code UNIQUE`).
 
 #### Table 21 : `ingestion_specification`
-- **Fichier de schéma :** [`07_ingestion_specification.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema/07_ingestion_specification.surql)
+- **Fichier de schéma :** [`07_ingestion_specification.surql`](../../crates/lyxal_pipeline_ingestion/schema/07_ingestion_specification.surql)
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE ingestion_specification SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create, update WHERE ... FOR delete NONE`
 - **Type actuel :** `TYPE NORMAL` (implicite)
 - **Champs `record` et références :** `family_code: string` (clé étrangère textuelle vers `ingestion_family_rule.code`).
-- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_rule_spec_add`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/rule/ingestion_rule_spec_add.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_rule_spec_add`](../../crates/lyxal_pipeline_ingestion/functions/rule/ingestion_rule_spec_add.surql).
 - **Index et contraintes :** `idx_spec_tech_key` (`technical_identity_key UNIQUE`), `idx_spec_family` (`family_code`).
 
 #### Table 22 : `ingestion_manufacturer_alias`
-- **Fichier de schéma :** [`08_ingestion_manufacturer_alias.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema/08_ingestion_manufacturer_alias.surql)
+- **Fichier de schéma :** [`08_ingestion_manufacturer_alias.surql`](../../crates/lyxal_pipeline_ingestion/schema/08_ingestion_manufacturer_alias.surql)
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE ingestion_manufacturer_alias SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create, update WHERE ... FOR delete NONE`
 - **Type actuel :** `TYPE NORMAL` (implicite)
 - **Champs `record` et références :** Aucun.
-- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_resolve_manufacturer`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/rule/ingestion_resolve_manufacturer.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_resolve_manufacturer`](../../crates/lyxal_pipeline_ingestion/functions/rule/ingestion_resolve_manufacturer.surql).
 - **Index et contraintes :** `idx_mfg_raw_alias` (`raw_alias UNIQUE`), `idx_mfg_canonical` (`canonical_name`).
 
 #### Table 23 : `ingestion_unit_alias`
-- **Fichier de schéma :** [`09_ingestion_unit_alias.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema/09_ingestion_unit_alias.surql)
+- **Fichier de schéma :** [`09_ingestion_unit_alias.surql`](../../crates/lyxal_pipeline_ingestion/schema/09_ingestion_unit_alias.surql)
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE ingestion_unit_alias SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create, update WHERE ... FOR delete NONE`
 - **Type actuel :** `TYPE NORMAL` (implicite)
 - **Champs `record` et références :** `canonical_unit: string` (clé textuelle vers `base_unite.code`).
-- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_resolve_unit`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/rule/ingestion_resolve_unit.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_resolve_unit`](../../crates/lyxal_pipeline_ingestion/functions/rule/ingestion_resolve_unit.surql).
 - **Index et contraintes :** `idx_unit_raw_alias` (`raw_alias UNIQUE`), `idx_unit_canonical` (`canonical_unit`).
 
 #### Table 24 : `ingestion_substitution_rule`
-- **Fichier de schéma :** [`10_ingestion_substitution_rule.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema/10_ingestion_substitution_rule.surql)
+- **Fichier de schéma :** [`10_ingestion_substitution_rule.surql`](../../crates/lyxal_pipeline_ingestion/schema/10_ingestion_substitution_rule.surql)
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE ingestion_substitution_rule SCHEMAFULL PERMISSIONS FOR select WHERE ... FOR create, update WHERE ... FOR delete NONE`
 - **Type actuel :** `TYPE NORMAL` (implicite)
 - **Champs `record` et références :** Aucun champ de type `record<...>`. Utilise des quadruplets textuels :  
   - `source_mfg: string`, `source_ref: string`  
   - `target_mfg: string`, `target_ref: string`  
   - `system_scope: string` (ex: `SYSTEME_CLOISON_DISTRIBUTION_72_48`)
-- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_rule_substitution_add`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/functions/rule/ingestion_rule_substitution_add.surql).
+- **Fonctions SurrealQL consommatrices :** [`fn::ingestion_rule_substitution_add`](../../crates/lyxal_pipeline_ingestion/functions/rule/ingestion_rule_substitution_add.surql).
 - **Index et contraintes :** `idx_subst_rule_id` (`rule_id UNIQUE`), `idx_subst_source_target` (`source_mfg, source_ref, target_mfg, target_ref`).
 - **Rôle :** Table de règles d'équivalence constructive Niveau 4 certifiées par PV technique.
 
@@ -370,26 +370,26 @@ Au sein du périmètre audité, **27 tables au total** ont été inventoriées, 
 ### 2.3. Référentiels Transversaux (3 Tables)
 
 #### Table 25 : `base_unite`
-- **Fichier de schéma :** [`crates/lyxal_base/schema/base_unite.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_base/schema/base_unite.surql)
+- **Fichier de schéma :** [`crates/lyxal_base/schema/base_unite.surql`](../../crates/lyxal_base/schema/base_unite.surql)
 - **Module propriétaire :** `lyxal_base`
-- **Déclaration actuelle :** `DEFINE TABLE OVERWRITE base_unite TYPE NORMAL SCHEMAFULL PERMISSIONS NONE`
+- **Déclaration actuelle :** `DEFINE TABLE OVERWRITE base_unite TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select FULL FOR create, update, delete NONE`
 - **Type actuel :** `TYPE NORMAL`
-- **Champs `record` et références :** `type: record<base_unite_type>` (REFERENCE).
-- **Consommateurs :**  
-  - `lyxal_catalogue` : `catalogue_item.unite_reference`, `catalogue_composition_ligne.unite`, `catalogue_attribut.unite`.  
-  - `lyxal_pipeline_ingestion` : Rapprochement dans `ingestion_resolve_unit` et validation staging.
+- **Champs `record` et références :** `type: record<base_unite_type>` (REFERENCE ON DELETE REJECT).
+- **Consommateurs** (références typées `record<base_unite>` en `REFERENCE ON DELETE REJECT` ; lectures par `fn::base_unite_get`, jamais par la table) :  
+  - `lyxal_catalogue` : `catalogue_item.unite_reference`, `catalogue_item.unite_conditionnement`, `catalogue_composition_ligne.unite`, `catalogue_attribut.unite`.  
+  - `lyxal_pipeline_ingestion` : résolution dans `fn::ingestion_resolve_unit`, publication vers le catalogue.
 - **Index et contraintes :** `idx_base_unite_code` (`code UNIQUE`).
 
 #### Table 26 : `base_unite_type`
-- **Fichier de schéma :** [`crates/lyxal_base/schema/base_unite_type.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_base/schema/base_unite_type.surql)
+- **Fichier de schéma :** [`crates/lyxal_base/schema/base_unite_type.surql`](../../crates/lyxal_base/schema/base_unite_type.surql)
 - **Module propriétaire :** `lyxal_base`
-- **Déclaration actuelle :** `DEFINE TABLE OVERWRITE base_unite_type TYPE NORMAL SCHEMAFULL PERMISSIONS NONE`
+- **Déclaration actuelle :** `DEFINE TABLE OVERWRITE base_unite_type TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select FULL FOR create, update, delete NONE`
 - **Type actuel :** `TYPE NORMAL`
 - **Champs `record` et références :** Aucun.
 - **Index et contraintes :** `idx_base_unite_type_code` (`code UNIQUE`). Typologie dimensionnelle (`LONGUEUR`, `SURFACE`, `VOLUME`, `MASSE`, etc.).
 
 #### Table 27 : `error_definition`
-- **Fichier de schéma :** [`crates/lyxal_error/schema/error_definition.surql`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_error/schema/error_definition.surql)
+- **Fichier de schéma :** [`crates/lyxal_error/schema/error_definition.surql`](../../crates/lyxal_error/schema/error_definition.surql)
 - **Module propriétaire :** `lyxal_error`
 - **Déclaration actuelle :** `DEFINE TABLE OVERWRITE error_definition SCHEMAFULL`
 - **Type actuel :** `TYPE NORMAL` (implicite)
@@ -455,7 +455,7 @@ Pour chaque table ou famille de tables, l'analyse répond aux **7 questions obli
 
 ### 4.1. Relations entre Articles (`catalogue_relation`)
 
-La table [`catalogue_relation`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/12_catalogue_relation.surql) gère actuellement 7 types de liaisons fondamentales :
+La table [`catalogue_relation`](../../crates/lyxal_catalogue/schema/12_catalogue_relation.surql) gère actuellement 7 types de liaisons fondamentales :
 
 ```
                                ┌─────────────────────────┐
@@ -477,12 +477,12 @@ COMMERCIAL_SPECIFICATION               REMPLACEMENT
 #### Architecture Actuelle
 - Modélisée en `TYPE NORMAL SCHEMAFULL`.
 - Deux pointeurs de nœuds : `source: record<catalogue_item>` et `cible: record<catalogue_item>`.
-- La bidirectionnalité est implémentée dans [`fn::catalogue_relation_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/relation/catalogue_relation_create.surql#L85-L98) par l'insertion de **deux enregistrements physiques symétriques** :
+- La bidirectionnalité est implémentée dans [`fn::catalogue_relation_create`](../../crates/lyxal_catalogue/functions/relation/catalogue_relation_create.surql#L85-L98) par l'insertion de **deux enregistrements physiques symétriques** :
   ```surql
   CREATE catalogue_relation CONTENT { source: $source_id, cible: $cible_id, ... };
   CREATE catalogue_relation CONTENT { source: $cible_id, cible: $source_id, ... };
   ```
-- La détection de cycles orientés pour `REMPLACEMENT` est déléguée à [`fn::catalogue_relation_check_cycle`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/relation/catalogue_relation_check_cycle.surql), qui effectue un **parcours récursif en profondeur (DFS) manuel** en interrogeant la table via `SELECT VALUE cible FROM catalogue_relation WHERE source = $current AND relation_type = $rel_type`.
+- La détection de cycles orientés pour `REMPLACEMENT` est déléguée à [`fn::catalogue_relation_check_cycle`](../../crates/lyxal_catalogue/functions/relation/catalogue_relation_check_cycle.surql), qui effectue un **parcours récursif en profondeur (DFS) manuel** en interrogeant la table via `SELECT VALUE cible FROM catalogue_relation WHERE source = $current AND relation_type = $rel_type`.
 
 #### Opportunité d'une Modélisation en Graphe Natif (`TYPE RELATION`)
 `catalogue_relation` est la **seule table du catalogue** répondant intrinsèquement à la définition d'une arête de graphe SurrealDB :
@@ -502,7 +502,7 @@ COMMERCIAL_SPECIFICATION               REMPLACEMENT
 #### Pourquoi Antigravity Recommande de Conserver `TYPE NORMAL` en V1.1 ?
 Bien que la modélisation en graphe soit élégante, une conversion immédiate en V1.1 présente des **risques architecturaux inacceptables** :
 1. **Rupture des champs obligatoires :** `TYPE RELATION` impose `in` et `out`. Les champs `source` et `cible` doivent être renommés, brisant l'ensemble des fonctions SurrealQL consommatrices.
-2. **Complexité du gardien moteur :** [`evt_catalogue_relation_guard`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/12_catalogue_relation.surql#L99) compte 187 lignes de vérifications multi-tenants (`$before.source`, `$after.cible`, etc.). Adapter ces règles sur `$before.in` / `$after.out` sous SurrealDB 3.2.0 présente un risque élevé de régression de sécurité.
+2. **Complexité du gardien moteur :** [`evt_catalogue_relation_guard`](../../crates/lyxal_catalogue/schema/12_catalogue_relation.surql#L99) compte 187 lignes de vérifications multi-tenants (`$before.source`, `$after.cible`, etc.). Adapter ces règles sur `$before.in` / `$after.out` sous SurrealDB 3.2.0 présente un risque élevé de régression de sécurité.
 3. **Statut clôturé et scellé :** `lyxal_catalogue` V1.1 est officiellement figé.
 
 ---
@@ -510,18 +510,18 @@ Bien que la modélisation en graphe soit élégante, une conversion immédiate e
 ### 4.2. Nomenclatures et Compositions (`catalogue_composition_ligne`)
 
 Certains moteurs de graphes recommandent de transformer les lignes de nomenclature (BOM) en arêtes `composant_de`. Dans Lyxal OS, l'audit démontre que ce choix serait une **erreur de conception** :
-- Une ligne de nomenclature [`catalogue_composition_ligne`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/10_catalogue_composition_ligne.surql) ne relie pas simplement deux articles : elle appartient à une **version précise d'une composition** (`composition: record<catalogue_composition>`), porte une quantité décimale, une unité de consommation, un coefficient de perte (`coefficient_perte`), un ordre d'affichage et un commentaire technique.
-- Elle est protégée par un verrou d'immuabilité scellé ([`evt_comp_ligne_guard`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/10_catalogue_composition_ligne.surql#L93)) qui dépend du statut de l'en-tête de recette (`is_locked = true`).
+- Une ligne de nomenclature [`catalogue_composition_ligne`](../../crates/lyxal_catalogue/schema/10_catalogue_composition_ligne.surql) ne relie pas simplement deux articles : elle appartient à une **version précise d'une composition** (`composition: record<catalogue_composition>`), porte une quantité décimale, une unité de consommation, un coefficient de perte (`coefficient_perte`), un ordre d'affichage et un commentaire technique.
+- Elle est protégée par un verrou d'immuabilité scellé ([`evt_comp_ligne_guard`](../../crates/lyxal_catalogue/schema/10_catalogue_composition_ligne.surql#L93)) qui dépend du statut de l'en-tête de recette (`is_locked = true`).
 - Le modèle En-tête / Lignes relationnel actuel est **robuste, auditable, versionnable et parfaitement adapté**.
 
 ---
 
 ### 4.3. Matrice d'Attributs (`catalogue_variante_attribut`)
 
-[`catalogue_variante_attribut`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/08_catalogue_variante_attribut.surql) est une **relation ternaire (hyper-arête)** liant :
+[`catalogue_variante_attribut`](../../crates/lyxal_catalogue/schema/08_catalogue_variante_attribut.surql) est une **relation ternaire (hyper-arête)** liant :
 1. Une cible (Item ou Variante via `target_scope`)
-2. Une caractéristique ([`catalogue_attribut`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/05_catalogue_attribut.surql))
-3. Une valeur prédéfinie ([`catalogue_attribut_valeur`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/06_catalogue_attribut_valeur.surql))
+2. Une caractéristique ([`catalogue_attribut`](../../crates/lyxal_catalogue/schema/05_catalogue_attribut.surql))
+3. Une valeur prédéfinie ([`catalogue_attribut_valeur`](../../crates/lyxal_catalogue/schema/06_catalogue_attribut_valeur.surql))
 
 Dans SurrealDB, `TYPE RELATION` est strictement binaire (`in` $\rightarrow$ `out`). Tenter de forcer une relation ternaire dans une arête binaire nécessiterait d'attacher `attribut_valeur` comme simple propriété d'arête, perdant l'intégrité référentielle native et compliquant l'index d'unicité `idx_scope_attr`.  
 Le modèle relationnel actuel avec recalcul d'empreinte SHA-256 par événement est optimal.
@@ -531,7 +531,7 @@ Le modèle relationnel actuel avec recalcul d'empreinte SHA-256 par événement 
 ### 4.4. Affectation des Catégories (`catalogue_item_categorie`)
 
 #### Faisabilité Technique d'une Modélisation en Arête
-Techniquement, [`catalogue_item_categorie`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/04_catalogue_item_categorie.surql) pourrait être déclarée en arête de graphe native :
+Techniquement, [`catalogue_item_categorie`](../../crates/lyxal_catalogue/schema/04_catalogue_item_categorie.surql) pourrait être déclarée en arête de graphe native :
 ```surql
 DEFINE TABLE catalogue_item_categorie TYPE RELATION IN catalogue_item OUT catalogue_categorie SCHEMAFULL;
 ```
@@ -551,8 +551,8 @@ Malgré cette élégance syntaxique, la table est **maintenue en `TYPE NORMAL`**
    - Lister les catégories rattachées à un article (`WHERE item = $item`)
    - Lister les articles rattachés à une catégorie (`WHERE categorie = $categorie`)  
    Ces deux accès sont déjà couverts de manière optimale par les index composites bidirectionnels `idx_item_cat_unique` (`item, categorie UNIQUE`) et `idx_item_cat_lookup` (`categorie, item`).
-3. **Sécurité Row-Level Security (RLS) étanche :** Les règles RLS actuelles de [`catalogue_item_categorie`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/schema/04_catalogue_item_categorie.surql#L10-L30) évaluent `item.is_custom` et `item.tenant_id`. Sur une table normale, la résolution de ces propriétés sur le champ de clé étrangère `item` est directe. Sur une table `TYPE RELATION`, l'évaluation via `$this.in` dans les clauses RLS sous concurrence présente des subtilités sans gain métier.
-4. **Impact sur les fonctions existantes :** Une conversion briserait immédiatement 5 fonctions SurrealQL en production ([`fn::catalogue_item_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_create.surql), [`fn::catalogue_item_delete`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_delete.surql), [`fn::catalogue_item_get`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_get.surql), [`fn::catalogue_item_list`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/item/catalogue_item_list.surql), [`fn::catalogue_categorie_delete`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/categorie/catalogue_categorie_delete.surql)).
+3. **Sécurité Row-Level Security (RLS) étanche :** Les règles RLS actuelles de [`catalogue_item_categorie`](../../crates/lyxal_catalogue/schema/04_catalogue_item_categorie.surql#L10-L30) évaluent `item.is_custom` et `item.tenant_id`. Sur une table normale, la résolution de ces propriétés sur le champ de clé étrangère `item` est directe. Sur une table `TYPE RELATION`, l'évaluation via `$this.in` dans les clauses RLS sous concurrence présente des subtilités sans gain métier.
+4. **Impact sur les fonctions existantes :** Une conversion briserait immédiatement 5 fonctions SurrealQL en production ([`fn::catalogue_item_create`](../../crates/lyxal_catalogue/functions/item/catalogue_item_create.surql), [`fn::catalogue_item_delete`](../../crates/lyxal_catalogue/functions/item/catalogue_item_delete.surql), [`fn::catalogue_item_get`](../../crates/lyxal_catalogue/functions/item/catalogue_item_get.surql), [`fn::catalogue_item_list`](../../crates/lyxal_catalogue/functions/item/catalogue_item_list.surql), [`fn::catalogue_categorie_delete`](../../crates/lyxal_catalogue/functions/categorie/catalogue_categorie_delete.surql)).
 5. **Sanctuarisation de la V1.1 gelée :** Le module est formellement clôturé. Une telle modification représenterait un coût de dégel et de non-régression sans aucun bénéfice fonctionnel.
 
 ---
@@ -561,7 +561,7 @@ Malgré cette élégance syntaxique, la table est **maintenue en `TYPE NORMAL`**
 
 ### 5.1. Nature du Pipeline ETL : Traçabilité vs Graphe
 
-L'ensemble du module [`lyxal_pipeline_ingestion`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion) repose sur une **chaîne séquentielle de traitement par lots** :
+L'ensemble du module [`lyxal_pipeline_ingestion`](../../crates/lyxal_pipeline_ingestion) repose sur une **chaîne séquentielle de traitement par lots** :
 
 $$\text{Fichier Fabricant} \xrightarrow{\text{BLAKE3}} \text{Batch} \xrightarrow{\text{Chunk}} \text{Raw Records} \xrightarrow{\text{Normalisation}} \text{Staged Items} \xrightarrow{\text{Approbation}} \text{Manifeste}$$
 
@@ -577,7 +577,7 @@ Transformer ces liens en arêtes `TYPE RELATION` alourdirait le schéma, imposer
 
 ### 5.2. Règles de Substitution Industrielle (`ingestion_substitution_rule`)
 
-La table [`ingestion_substitution_rule`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_pipeline_ingestion/schema/10_ingestion_substitution_rule.surql) gère les équivalences certifiées de Niveau 4 :
+La table [`ingestion_substitution_rule`](../../crates/lyxal_pipeline_ingestion/schema/10_ingestion_substitution_rule.surql) gère les équivalences certifiées de Niveau 4 :
 - Elle n'utilise délibérément **aucun champ `record<catalogue_item>`**, mais des quadruplets textuels (`source_mfg`, `source_ref`, `target_mfg`, `target_ref`) associés à un `system_scope` (ex: `SYSTEME_CLOISON_DISTRIBUTION_72_48`) et à une référence de certification (ex: `Avis Technique CSTB n° 9/21-1050_V1`).
 - **Justification architecturale :** Les règles de substitution sont ingérées et configurées **avant** que les articles correspondants ne soient créés ou publiés dans le Master Catalogue. Elles constituent des règles d'évaluation pour le moteur de qualification, et non des liens entre des enregistrements existants en base.
 - **Évolution future (V1.2) :** Lors de l'exécution de la publication vers le Master Catalogue, ces règles pourront générer des arêtes de substitution contextualisées dans `lyxal_catalogue` (voir Section 7). Mais au sein du pipeline, la table doit impérativement rester `TYPE NORMAL`.
@@ -608,8 +608,8 @@ Pour toute tentative de conversion de table vers `TYPE RELATION`, la matrice d'i
 ### 6.1. Détail par Type d'Impact
 
 1. **Impact sur les Fonctions SurrealQL :**
-   - [`fn::catalogue_relation_create`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/relation/catalogue_relation_create.surql) utilise actuellement `CREATE catalogue_relation CONTENT { source: ..., cible: ... }`. Avec `TYPE RELATION`, cette écriture doit être convertie en `RELATE $source->catalogue_relation->$cible SET ...`.
-   - [`fn::catalogue_relation_check_cycle`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/relation/catalogue_relation_check_cycle.surql) et [`fn::catalogue_relation_delete`](file:///c:/Users/HP/Desktop/Lyxal_OS/crates/lyxal_catalogue/functions/relation/catalogue_relation_delete.surql) doivent être réécrites pour interroger `in` et `out`.
+   - [`fn::catalogue_relation_create`](../../crates/lyxal_catalogue/functions/relation/catalogue_relation_create.surql) utilise actuellement `CREATE catalogue_relation CONTENT { source: ..., cible: ... }`. Avec `TYPE RELATION`, cette écriture doit être convertie en `RELATE $source->catalogue_relation->$cible SET ...`.
+   - [`fn::catalogue_relation_check_cycle`](../../crates/lyxal_catalogue/functions/relation/catalogue_relation_check_cycle.surql) et [`fn::catalogue_relation_delete`](../../crates/lyxal_catalogue/functions/relation/catalogue_relation_delete.surql) doivent être réécrites pour interroger `in` et `out`.
 
 2. **Impact sur le Code Rust :**
    - Dans les structs Rust (`RelationModel`, `CreateRelationParams`), le mot-clé `in` est un mot réservé Rust. Il impose l'utilisation de syntaxe brute `r#in` ou d'attributs Serde :
