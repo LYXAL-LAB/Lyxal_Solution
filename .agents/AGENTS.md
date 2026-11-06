@@ -807,6 +807,7 @@ lyxal_surreal
 lyxal_crypto (AES-256-GCM, SHA-256, BLAKE3, Argon2id, HMAC, HKDF)
 lyxal_event
 lyxal_runtime (Manifeste, Installation, Migrations, Cycle de vie, Workers, Santé, Baux, Réconciliation)
+lyxal_base (référentiels transversaux : unités de mesure et types d'unités, SurrealQL seul)
 lyxal_auth
 lyxal_notification
 lyxal_scheduler

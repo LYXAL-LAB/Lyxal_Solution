@@ -9,7 +9,7 @@ tables restent en `TYPE NORMAL` ; toute table `TYPE RELATION` est soumise à val
 
 | Étape | Thème | Dépendances |
 | :--- | :--- | :--- |
-| 1 | Normalisation sur les référentiels en base | — |
+| 1 | Normalisation sur les référentiels en base | codes d'échange des unités (étape 1 de la [feuille de route de `lyxal_base`](../lyxal_base/ROADMAP.md)) |
 | 2 | Regroupement technique en SurrealQL | étape 1 |
 | 3 | Connecteurs fabricants et preuves documentaires | services de fichiers et de secrets de Lyxal OS |
 | 4 | Synchronisation incrémentale et retraits | étape 3 ; `lyxal_catalogue` |
@@ -23,8 +23,8 @@ tables restent en `TYPE NORMAL` ; toute table `TYPE RELATION` est soumise à val
 La normalisation Rust du worker résout encore unités et fabricants par des tables statiques
 (`normalization/units.rs`, `normalization/manufacturer.rs`), alors que les référentiels
 administrés par le Data Steward sont en base (`ingestion_unit_alias`,
-`ingestion_manufacturer_alias`, `base_unite`) avec `fn::ingestion_resolve_unit` et
-`fn::ingestion_resolve_manufacturer`.
+`ingestion_manufacturer_alias`, unités de `lyxal_base` lues par `fn::base_unite_get`) avec
+`fn::ingestion_resolve_unit` et `fn::ingestion_resolve_manufacturer`.
 
 Critères d'acceptation :
 
