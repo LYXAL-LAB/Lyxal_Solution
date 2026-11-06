@@ -2,7 +2,7 @@
 
 Étape 1 de la [feuille de route de l'ingestion](ROADMAP.md) et son prérequis, l'étape 1 de la
 [feuille de route de `lyxal_base`](../lyxal_base/ROADMAP.md) (codes d'échange des unités).
-**En attente de validation du CTO (Q1 à Q3).** Changement multi-modules : `lyxal_base`,
+**Q1 à Q3 validées par le CTO (option A pour chacune).** Changement multi-modules : `lyxal_base`,
 `lyxal_pipeline_ingestion` (skill `lyxal-module-integration`) ; aucun autre consommateur.
 
 ## 1. Constat (lecture seule, `main` après #77)
