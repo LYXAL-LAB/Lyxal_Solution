@@ -389,6 +389,130 @@ async fn catalogue_refusal_is_journaled_and_others_are_published() {
         .starts_with("CATALOGUE_ITEM_UNITE_INVALID"));
 }
 
+/// Manifeste en échec rouvert, corrigé et rescellé : les succès de l'ancien contenu ne
+/// dispensent pas de publier le contenu corrigé (un article déjà publié est mis à jour).
+#[tokio::test]
+async fn reopened_manifest_republishes_corrected_items() {
+    let store = crate::support::installed_store().await;
+    let issuer = crate::support::sync_issuer(&store).await;
+    let mut unknown_unit = item(
+        "lot_rouvert",
+        2,
+        "BA18",
+        ItemQualification::Verified,
+        Some(proof("EDI-2026-PLACO-002", "EDI_HUB_SAINT_GOBAIN")),
+    );
+    unknown_unit.unite_reference = Some("BOITE".to_string());
+    let items = vec![
+        item(
+            "lot_rouvert",
+            1,
+            "BA13",
+            ItemQualification::Verified,
+            Some(proof("EDI-2026-PLACO-001", "EDI_HUB_SAINT_GOBAIN")),
+        ),
+        unknown_unit,
+    ];
+    approved_manifest(&store, "lot_rouvert", "MAN-ROUVERT", &items).await;
+    let publisher = ControlledPublisher::new(store.client().clone(), issuer);
+    let first = publisher
+        .publish_manifest("MAN-ROUVERT")
+        .await
+        .expect("publication");
+    assert_eq!(first.final_status, ManifestStatus::Failed);
+
+    // Lot verrouillé tant que le manifeste en échec n'est pas rouvert
+    let locked = store
+        .client()
+        .query("UPDATE ingestion_staged_item SET libelle_commercial = 'Corrigé' WHERE batch = ingestion_batch:lot_rouvert")
+        .await
+        .expect("requête")
+        .check();
+    assert!(locked.is_err(), "un lot en échec reste verrouillé");
+
+    // Remise en brouillon, correction de BA13 (déjà publié) et de l'unité de BA18, rescellement
+    let draft = ManifestDraft {
+        manifest_ref: "MAN-ROUVERT".to_string(),
+        batch_id: "lot_rouvert".to_string(),
+        manifest_version: 1,
+        statut: ManifestStatus::Draft,
+        nb_articles_insert: 2,
+        nb_articles_update: 0,
+    };
+    store
+        .save_manifest(&draft)
+        .await
+        .expect("remise en brouillon");
+    store
+        .client()
+        .query(
+            "UPDATE ingestion_staged_item SET libelle_commercial = 'Plaque BA13 corrigée' WHERE batch = ingestion_batch:lot_rouvert AND reference_fabricant = 'BA13';
+             UPDATE ingestion_staged_item SET unite_reference = 'M2' WHERE batch = ingestion_batch:lot_rouvert AND reference_fabricant = 'BA18';",
+        )
+        .await
+        .expect("corrections")
+        .check()
+        .expect("corrections appliquées");
+    store
+        .save_manifest(&ManifestDraft {
+            statut: ManifestStatus::Sealed,
+            ..draft
+        })
+        .await
+        .expect("rescellement");
+    store
+        .approve_manifest("MAN-ROUVERT", "Corrections vérifiées avant republication")
+        .await
+        .expect("réapprobation");
+
+    let second = publisher
+        .publish_manifest("MAN-ROUVERT")
+        .await
+        .expect("republication");
+    assert_eq!(second.final_status, ManifestStatus::Committed);
+    assert_eq!((second.newly_published, second.failed), (2, 0));
+    let libelles: Vec<String> = store
+        .client()
+        .query("SELECT VALUE libelle FROM catalogue_item WHERE reference_fabricant = 'BA13'")
+        .await
+        .expect("lecture")
+        .take(0)
+        .expect("libellés");
+    assert_eq!(libelles, ["Plaque BA13 corrigée"]);
+}
+
+/// Un article ne quitte pas son lot : le rattachement est immuable.
+#[tokio::test]
+async fn staged_item_batch_is_immutable() {
+    let store = crate::support::installed_store().await;
+    let items = vec![item(
+        "lot_fixe",
+        1,
+        "BA13",
+        ItemQualification::Verified,
+        Some(proof("EDI-2026-PLACO-001", "EDI_HUB_SAINT_GOBAIN")),
+    )];
+    approved_manifest(&store, "lot_fixe", "MAN-FIXE", &items).await;
+    let moved = store
+        .client()
+        .query(
+            "RETURN fn::ingestion_batch_create({ id: 'lot_libre', source_type: 'CSV', fournisseur_id: 'FOURN_PLACO', nom_fichier: 'libre.csv', file_hash_blake3: crypto::blake3('libre.csv') }).ok;
+             UPDATE ingestion_staged_item SET batch = ingestion_batch:lot_libre WHERE batch = ingestion_batch:lot_fixe;",
+        )
+        .await
+        .expect("requête")
+        .check();
+    assert!(moved.is_err(), "le lot d'un article ne change pas");
+    let count: Option<i64> = store
+        .client()
+        .query("RETURN count(SELECT * FROM ingestion_staged_item WHERE batch = ingestion_batch:lot_fixe)")
+        .await
+        .expect("lecture")
+        .take(0)
+        .expect("compte");
+    assert_eq!(count, Some(1));
+}
+
 #[tokio::test]
 async fn resumed_publication_skips_journaled_and_already_created_items() {
     let store = crate::support::installed_store().await;

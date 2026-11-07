@@ -128,11 +128,15 @@ impl ControlledPublisher {
             }
         };
 
-        // 4. Reprise : articles déjà publiés avec succès
+        // 4. Reprise : articles déjà publiés avec succès sous ce sceau ; après une remise en
+        // brouillon et un nouveau scellement, les succès de l'ancien contenu ne comptent plus
         let already_committed: HashSet<String> = manifest
             .execution_items
             .iter()
             .filter(|e| e.get("success").and_then(|v| v.as_bool()) == Some(true))
+            .filter(|e| {
+                e.get("seal_hash").and_then(|v| v.as_str()) == manifest.seal_hash.as_deref()
+            })
             .filter_map(|e| {
                 e.get("item_ref")
                     .and_then(|v| v.as_str())

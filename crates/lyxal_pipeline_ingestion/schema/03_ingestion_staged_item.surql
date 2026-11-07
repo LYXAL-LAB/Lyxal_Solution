@@ -35,7 +35,8 @@ DEFINE TABLE OVERWRITE ingestion_staged_item
 DEFINE FIELD OVERWRITE batch ON TABLE ingestion_staged_item
     TYPE record<ingestion_batch>
     REFERENCE
-    COMMENT "Lot parent propriétaire";
+    READONLY
+    COMMENT "Lot parent propriétaire, immuable (un article ne quitte pas son lot, scellé ou non)";
 
 DEFINE FIELD OVERWRITE raw_record ON TABLE ingestion_staged_item
     TYPE record<ingestion_raw_record>

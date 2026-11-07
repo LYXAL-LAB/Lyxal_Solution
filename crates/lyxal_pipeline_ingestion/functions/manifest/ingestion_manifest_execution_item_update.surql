@@ -43,6 +43,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_execution_item_update($params: 
             action: $p.action,
             success: $p.success,
             error: $p.error,
+            seal_hash: seal_hash,
             executed_at: time::now()
         }),
         items_committed += IF $p.success { 1 } ELSE { 0 },
@@ -52,5 +53,5 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_execution_item_update($params: 
     };
 
     RETURN fn::result_ok(true);
-} COMMENT "Journalise l'exécution d'un article (référence, action, succès, erreur) d'un manifeste approuvé ou en cours d'exécution et met à jour ses compteurs ; réservé à catalogue_sync_agent (ou à la session système)"
+} COMMENT "Journalise l'exécution d'un article (référence, action, succès, erreur, sceau du contenu publié) d'un manifeste approuvé ou en cours d'exécution et met à jour ses compteurs ; réservé à catalogue_sync_agent (ou à la session système)"
 PERMISSIONS WHERE $token != NONE OR $auth != NONE;
