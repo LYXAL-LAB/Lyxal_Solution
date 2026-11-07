@@ -6,6 +6,8 @@ aucune logique métier ni fonction SurrealQL ; il ne porte que les définitions 
 
 Version `0.1.0` (régime pré-production). SDK `surrealdb` 3.3, serveur cible SurrealDB 3.3.4.
 
+Évolutions prévues : [`ROADMAP.md`](ROADMAP.md).
+
 ---
 
 ## 1. Connexion : `create_surreal_client`

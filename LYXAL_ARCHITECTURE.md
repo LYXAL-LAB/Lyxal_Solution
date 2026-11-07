@@ -88,7 +88,7 @@ Une logique métier ne doit exister qu'à **un seul endroit**.
 ### 5.2. Règles sur les Fonctions SurrealQL
 - **Signature Obligatoire** : Toujours `DEFINE FUNCTION OVERWRITE fn::<module>_<nom>($params: object)`.
 - **Paramètre Unique `$params`** : Toutes les fonctions acceptent un objet `$params` unique (`LET $email = $params.email; LET $language = $params.language ?? "fr";`).
-- **Contrat Universel de Retour** : Toujours retourner `fn::result_ok($data)` ou `fn::result_error($code, $language, $details)`.
+- **Contrat Universel de Retour** : Toujours retourner `fn::result_ok($data)` ou `fn::error_result($code, $language, $details)` ; `fn::result_error` est interdit.
 - **Taille Maximale** : Une fonction SurrealQL ne fait qu'une seule responsabilité métier et **ne dépasse pas ~300 lignes**. Elle découpe et appelle des sous-fonctions si la logique grandit.
 
 ### 5.3. Découpage Stricte des Crates Rust
@@ -96,10 +96,14 @@ Une logique métier ne doit exister qu'à **un seul endroit**.
 lyxal_error      (Modèles purs & contrat d'erreur, zéro dépendance DB/Axum)
      ▲
      │
-lyxal_surreal    (Transport WS V1, LyxalSurrealError, trait LyxalSurrealCall)
+lyxal_surreal    (Transport, LyxalSurrealError, trait LyxalSurrealCall)   lyxal_crypto
      ▲
      │
-Modules Métiers  (lyxal_booking, lyxal_notification, lyxal_scheduler...)
+lyxal_event · lyxal_runtime · services du Noyau
+(lyxal_auth, lyxal_i18n, lyxal_storage, lyxal_secrets, lyxal_scheduler, lyxal_notification)
+     ▲
+     │
+Modules Métiers  (lyxal_booking, lyxal_catalogue, lyxal_crm...)
 ```
 
 ### 5.4. Wrappers Rust 1-Ligne (`store.call_fn`)
@@ -133,10 +137,14 @@ Modules Métiers  (lyxal_booking, lyxal_notification, lyxal_scheduler...)
 
 ## 🏗️ 6. Hiérarchie des Dépendances & Structure Cible
 
-Les dépendances sont strictement unidirectionnelles :
+Les dépendances sont strictement unidirectionnelles. Le détail faisant foi est `.agents/AGENTS.md` §6 :
 
 ```text
-Noyau Technique (lyxal_core: error, surreal, crypto, event, runtime, auth, storage, notification, scheduler)
+Fondation Transversale (lyxal_core : validation, sanitize, security, utils)
+  │
+  ▼
+Noyau Technique (lyxal_error, lyxal_surreal, lyxal_crypto, lyxal_event, lyxal_runtime, lyxal_base,
+                 lyxal_auth, lyxal_i18n, lyxal_storage, lyxal_secrets, lyxal_scheduler, lyxal_notification)
   │
   ▼
 Modules Métiers (lyxal_booking, lyxal_catalogue, lyxal_pipeline_ingestion, lyxal_crm, lyxal_documents, lyxal_btp)

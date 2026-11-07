@@ -10,6 +10,8 @@ SDK `surrealdb` 3.3. Dépend de `lyxal_core` (validation des entrées), `lyxal_e
 résultat, définitions d'erreurs), `lyxal_surreal` (transport), `lyxal_crypto` (empreintes) et
 `lyxal_event` (moteur d'événements intégré).
 
+Évolutions prévues : [`ROADMAP.md`](ROADMAP.md).
+
 ---
 
 ## 1. Garanties

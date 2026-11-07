@@ -7,6 +7,8 @@ Il ne contient aucune logique métier (`AGENTS.md` §5.8.5).
 Version `0.1.0` (régime pré-production, `.agents/AGENTS.md` §0). Cible : SurrealDB 3.3.4,
 SDK `surrealdb` 3.3.
 
+Évolutions prévues : [`ROADMAP.md`](ROADMAP.md).
+
 ---
 
 ## 1. Démarrage
