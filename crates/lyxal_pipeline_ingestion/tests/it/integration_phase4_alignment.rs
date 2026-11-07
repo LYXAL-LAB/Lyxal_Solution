@@ -188,14 +188,11 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
         chunk_size: 50,
         provenance_details: serde_json::json!({}),
     };
-    store
-        .create_batch(&batch)
-        .await
-        .expect("fn::ingestion_batch_create");
+    let claim = crate::support::claimed_batch(&store, &batch).await;
 
     // 2. Checkpoint via fn::ingestion_batch_checkpoint
     store
-        .save_checkpoint(batch_id, 5, 10, 4, 1, 0)
+        .save_checkpoint(&claim, batch_id, 5, 10, 4, 1, 0)
         .await
         .expect("fn::ingestion_batch_checkpoint");
     let offset = store.load_checkpoint(batch_id).await.unwrap();
@@ -346,7 +343,7 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
         chunk_size: 10,
         provenance_details: serde_json::json!({}),
     };
-    store.create_batch(&batch).await.unwrap();
+    let claim = crate::support::claimed_batch(&store, &batch).await;
 
     // 1. Simulation du traitement du premier tronçon (offset 0 -> 10)
     for i in 1..=10 {
@@ -376,11 +373,11 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
             approved_by: None,
             approved_at: None,
         };
-        store.save_staged_item(&staged).await.unwrap();
+        store.save_staged_item(&claim, &staged).await.unwrap();
     }
     // Checkpoint intermédiaire enregistré
     store
-        .save_checkpoint(batch_id, 10, 20, 10, 0, 0)
+        .save_checkpoint(&claim, batch_id, 10, 20, 10, 0, 0)
         .await
         .unwrap();
 
@@ -417,10 +414,10 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
             approved_by: None,
             approved_at: None,
         };
-        store.save_staged_item(&staged).await.unwrap();
+        store.save_staged_item(&claim, &staged).await.unwrap();
     }
     store
-        .save_checkpoint(batch_id, 20, 20, 20, 0, 0)
+        .save_checkpoint(&claim, batch_id, 20, 20, 20, 0, 0)
         .await
         .unwrap();
 
@@ -434,7 +431,7 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
 
     // 5. Re-jeu complet identique pour tester l'idempotence stricte
     for item in &all_staged {
-        store.save_staged_item(item).await.unwrap();
+        store.save_staged_item(&claim, item).await.unwrap();
     }
     let after_replay = store.get_staged_items_by_batch(batch_id).await.unwrap();
     assert_eq!(

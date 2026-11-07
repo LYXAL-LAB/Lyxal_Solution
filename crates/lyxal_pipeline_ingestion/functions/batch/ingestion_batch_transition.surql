@@ -13,6 +13,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_batch_transition($params: object) {
             id: { pipeline: [{ rule: "record", options: { expected_table: "ingestion_batch" } }], required: true },
             nouveau_statut: { pipeline: [{ rule: "enum", options: { allowed: ["RECEIVED", "PARSING", "VALIDATING", "STAGED", "PUBLISHED", "FAILED"], case_sensitive: false } }], required: true },
             reason: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 2000 } }], required: true },
+            claim: { pipeline: [{ rule: "is_object" }], required: true },
             error_code: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }, { rule: "regex", options: { pattern: "^[A-Z][A-Z0-9_]*$" } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
@@ -25,6 +26,10 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_batch_transition($params: object) {
     LET $id = { value: $p.id };
     LET $statut = { value: $p.nouveau_statut };
     LET $reason = { value: $p.reason };
+
+    -- Cloisonnement : seule l'exécution qui détient la réservation du lot écrit
+    LET $held = fn::ingestion_batch_claim_verify({ batch_id: $id.value, claim: $report.value.claim, language: $p.language });
+    IF !$held.ok { RETURN $held; };
 
     LET $existing = (SELECT statut FROM ONLY $id.value);
     IF $existing == NONE {
@@ -61,4 +66,4 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_batch_transition($params: object) {
     };
 
     RETURN fn::result_ok(true);
-} COMMENT "Applique une transition d'état sur un lot ; la transition (état d'origine, auteur de la session, motif, code d'erreur pour FAILED, horodatage) est construite et journalisée par la fonction";
+} COMMENT "Applique une transition d'état sur un lot ; la transition (état d'origine, auteur de la session, motif, code d'erreur pour FAILED, horodatage) est construite et journalisée par la fonction ; écriture réservée à l'exécution qui détient le lot (claim { owner, generation }, sinon INGESTION_BATCH_CLAIM_LOST)";

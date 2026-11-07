@@ -191,3 +191,57 @@ IF !record::exists(error_definition:INGESTION_ILLEGAL_STATE_TRANSITION) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:INGESTION_BATCH_ALREADY_CLAIMED) THEN (
+    CREATE error_definition:INGESTION_BATCH_ALREADY_CLAIMED CONTENT {
+        code: "INGESTION_BATCH_ALREADY_CLAIMED",
+        module: "ingestion",
+        domain: "batch",
+        category: "conflict",
+        severity: "warning",
+        message: "Le lot est déjà en cours de traitement par une autre exécution",
+        default_language: "fr",
+        http_status: 409,
+        retryable: true,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Lot déjà en traitement",
+                description: "Une autre exécution détient la réservation du lot jusqu'à son échéance.",
+                resolution: "Attendre la fin du traitement en cours ou l'expiration de sa réservation (details.until)."
+            },
+            en: {
+                label: "Batch already being processed",
+                description: "Another execution holds the batch claim until it expires.",
+                resolution: "Wait for the running processing to finish or for its claim to expire (details.until)."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:INGESTION_BATCH_CLAIM_LOST) THEN (
+    CREATE error_definition:INGESTION_BATCH_CLAIM_LOST CONTENT {
+        code: "INGESTION_BATCH_CLAIM_LOST",
+        module: "ingestion",
+        domain: "batch",
+        category: "conflict",
+        severity: "error",
+        message: "L'exécution ne détient plus la réservation du lot : l'écriture est refusée",
+        default_language: "fr",
+        http_status: 409,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Réservation du lot perdue",
+                description: "La réservation a expiré ou a été reprise par une autre exécution ; rien n'a été écrit.",
+                resolution: "Relancer le traitement du lot : il reprendra au dernier point de reprise."
+            },
+            en: {
+                label: "Batch claim lost",
+                description: "The claim expired or was taken over by another execution; nothing was written.",
+                resolution: "Restart the batch processing: it resumes from the last checkpoint."
+            }
+        }
+    }
+) END;

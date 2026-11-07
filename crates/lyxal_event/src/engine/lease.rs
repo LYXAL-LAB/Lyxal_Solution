@@ -42,7 +42,7 @@ use super::dto::{
     LeaseAcquireParams, LeaseAcquireResult, LeaseReleaseParams, LeaseReleaseResult,
     LeaseRenewParams, LeaseRenewResult,
 };
-use super::progress::{conflict_backoff, is_transient_conflict, MAX_CONFLICT_RETRIES};
+use super::progress::{conflict_backoff, MAX_CONFLICT_RETRIES};
 
 /// Erreurs liées à la gestion du bail distribué.
 #[derive(Debug, Error)]
@@ -225,7 +225,7 @@ impl OutboxLeaseManager {
         let mut attempt = 0;
         loop {
             match self.call_fn(function, params.clone()).await {
-                Err(e) if is_transient_conflict(&e) && attempt < MAX_CONFLICT_RETRIES => {
+                Err(e) if e.is_transient_conflict() && attempt < MAX_CONFLICT_RETRIES => {
                     attempt += 1;
                     conflict_backoff(attempt).await;
                 }

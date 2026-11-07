@@ -46,6 +46,21 @@ pub enum IngestionError {
     #[error("Erreur de stockage ou d'accès aux données : {0}")]
     Storage(String),
 
+    /// Le lot est réservé par une autre exécution de traitement (réservation active) : il n'est
+    /// ni traité ni marqué `FAILED`.
+    #[error("Le lot '{batch_id}' est déjà en cours de traitement par une autre exécution.")]
+    BatchAlreadyClaimed { batch_id: String },
+
+    /// Le traitement du lot a échoué et son passage en `FAILED` n'a pas pu être enregistré.
+    #[error(
+        "Échec du lot '{batch_id}' ({cause}) non consigné : passage en FAILED impossible : {error}"
+    )]
+    FailureNotRecorded {
+        batch_id: String,
+        cause: String,
+        error: String,
+    },
+
     /// Erreur d'une fonction SurrealQL du module : erreur métier (`fn::error_result`, code
     /// `INGESTION_*` conservé) ou erreur de transport. En boîte : `LyxalSurrealError` est
     /// volumineuse et alourdirait chaque `IngestionResult`.
@@ -118,6 +133,12 @@ impl IngestionError {
             }
             Self::Unauthorized(_) => info("INGESTION_UNAUTHORIZED", "authorization", 403, false),
             Self::Storage(_) => info("INGESTION_STORAGE_ERROR", "dependency", 503, true),
+            Self::BatchAlreadyClaimed { .. } => {
+                info("INGESTION_BATCH_ALREADY_CLAIMED", "conflict", 409, true)
+            }
+            Self::FailureNotRecorded { .. } => {
+                info("INGESTION_BATCH_FAILED", "internal", 500, false)
+            }
             // Erreur métier ou contrat de réponse non respecté (une erreur métier garde son
             // propre code, transmis tel quel par la conversion en `LyxalError`).
             Self::Surreal(err) => match err.as_ref() {
@@ -142,6 +163,12 @@ impl IngestionError {
             }
         }
         self.info().code.to_string()
+    }
+
+    /// Indique si l'exécution a perdu la réservation de son lot (`INGESTION_BATCH_CLAIM_LOST`) :
+    /// elle ne doit plus rien écrire sur ce lot.
+    pub fn is_claim_lost(&self) -> bool {
+        self.is_business_code("INGESTION_BATCH_CLAIM_LOST")
     }
 
     /// Indique si l'erreur est l'erreur métier SurrealQL `code`.
@@ -211,6 +238,12 @@ mod tests {
             IngestionError::IllegalTransition(text()),
             IngestionError::FingerprintTampered(text()),
             IngestionError::Storage(text()),
+            IngestionError::BatchAlreadyClaimed { batch_id: text() },
+            IngestionError::FailureNotRecorded {
+                batch_id: text(),
+                cause: text(),
+                error: text(),
+            },
             IngestionError::from(lyxal_surreal::LyxalSurrealError::UnsupportedEndpoint {
                 endpoint: text(),
             }),

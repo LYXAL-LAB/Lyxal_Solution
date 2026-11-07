@@ -5,6 +5,9 @@
 //! - Découpage en blocs de traitement (`chunk_size`) avec sauvegarde systématique de checkpoints.
 //! - Reprise sur incident (crash, interruption réseau, redémarrage du processus) sans retraiter les lignes antérieures.
 //! - Idempotence durable et détection des doublons.
+//! - Exclusion entre exécutions, workers et instances par la réservation du lot en base
+//!   (`fn::ingestion_batch_claim`) : chaque écriture du traitement la présente, le point de
+//!   reprise la renouvelle, elle est libérée à la fin quelle que soit l'issue.
 //! - Événements de domaine (`ingestion.batch.staged`, `ingestion.batch.failed`) émis par la base
 //!   dans la transaction de la transition d'état (`events/01_events.surql`).
 
@@ -26,10 +29,13 @@ use crate::error::{IngestionError, IngestionResult};
 use crate::models::{QuarantineRecord, RawRecord, StagedItem};
 use crate::normalization::NormalizationEngine;
 use crate::proof::CommercialProof;
-use crate::storage::IngestionStore;
+use crate::storage::{BatchClaim, IngestionStore};
 use crate::types::{
     BatchStatus, Dimensions, ItemQualification, PackagingDetails, PublicationAction, SourceFormat,
 };
+
+/// Durée de la réservation d'un lot, renouvelée à chaque point de reprise (fin de bloc).
+const CLAIM_TTL_SECONDS: u32 = 60;
 
 /// Rapport d'exécution du traitement d'un lot par le worker.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,7 +72,6 @@ pub struct IngestionWorker {
     descriptor: WorkerDescriptor,
     store: IngestionStore,
     queue: Arc<Mutex<VecDeque<IngestionJob>>>,
-    active_batch_lock: Arc<Mutex<Option<String>>>,
     norm_engine: NormalizationEngine,
 }
 
@@ -87,7 +92,6 @@ impl IngestionWorker {
             descriptor,
             store,
             queue: Arc::new(Mutex::new(VecDeque::new())),
-            active_batch_lock: Arc::new(Mutex::new(None)),
             norm_engine: NormalizationEngine::new(),
         })
     }
@@ -110,6 +114,14 @@ impl IngestionWorker {
     }
 
     /// Traitement contrôlé d'un lot avec streaming par blocs, checkpoints et reprise sur incident.
+    ///
+    /// L'exécution tire son propre jeton et réserve le lot en base : un lot déjà réservé
+    /// (autre exécution, autre worker, autre instance) renvoie
+    /// [`IngestionError::BatchAlreadyClaimed`] sans rien modifier. Un échec du traitement fait
+    /// passer le lot en `FAILED` tant que la réservation est détenue (la base émet
+    /// `ingestion.batch.failed`), sauf si la réservation a été perdue ; si ce passage échoue,
+    /// l'erreur est [`IngestionError::FailureNotRecorded`]. La réservation est libérée à la fin
+    /// quelle que soit l'issue.
     pub async fn process_batch(
         &self,
         batch_id: &str,
@@ -118,30 +130,62 @@ impl IngestionWorker {
         commercial_proof: Option<CommercialProof>,
         cancellation: &CancellationToken,
     ) -> IngestionResult<BatchProcessingReport> {
-        // 1. Anti-concurrence : acquisition du verrou logique sur le lot actif
-        let mut lock = self.active_batch_lock.lock().await;
-        if let Some(ref current) = *lock {
-            if current != batch_id {
-                return Err(IngestionError::Storage(format!(
-                    "Un autre lot '{current}' est déjà en cours de traitement par ce worker"
-                )));
+        // 1. Exclusion : réservation du lot pour cette exécution (jeton propre à l'appel)
+        let owner = uuid::Uuid::now_v7().to_string();
+        let claim = self
+            .store
+            .claim_batch(batch_id, &owner, CLAIM_TTL_SECONDS)
+            .await?;
+
+        let result = match self
+            .process_claimed_batch(
+                &claim,
+                batch_id,
+                raw_bytes,
+                format,
+                commercial_proof,
+                cancellation,
+            )
+            .await
+        {
+            // Échec consigné pendant que la réservation est détenue ; une exécution qui l'a
+            // perdue n'écrit plus rien (le lot appartient à une autre exécution).
+            Err(err) if !err.is_claim_lost() => match self
+                .store
+                .fail_batch(&claim, batch_id, &err.code(), &err.to_string())
+                .await
+            {
+                Ok(()) => Err(err),
+                Err(fail) => Err(IngestionError::FailureNotRecorded {
+                    batch_id: batch_id.to_string(),
+                    cause: err.to_string(),
+                    error: fail.to_string(),
+                }),
+            },
+            other => other,
+        };
+
+        // Libération quelle que soit l'issue ; l'erreur du traitement prime sur celle de la
+        // libération, qui est alors journalisée (la réservation expirera d'elle-même).
+        match (result, self.store.release_batch(batch_id, &claim).await) {
+            (result, Ok(())) => result,
+            (Ok(_), Err(release)) => Err(release),
+            (Err(err), Err(release)) => {
+                tracing::error!(
+                    batch_id = %batch_id,
+                    code = %release.code(),
+                    error = %release,
+                    "INGESTION_BATCH_CLAIM_LOST : réservation non libérée après l'échec du lot"
+                );
+                Err(err)
             }
         }
-        *lock = Some(batch_id.to_string());
-        drop(lock);
-
-        // Le verrou est libéré quelle que soit l'issue (succès, interruption ou erreur) :
-        // une erreur ne doit jamais bloquer les lots suivants.
-        let result = self
-            .process_locked_batch(batch_id, raw_bytes, format, commercial_proof, cancellation)
-            .await;
-        *self.active_batch_lock.lock().await = None;
-        result
     }
 
-    /// Traitement d'un lot dont le verrou logique est déjà pris par `process_batch`.
-    async fn process_locked_batch(
+    /// Traitement d'un lot réservé par `process_batch` : chaque écriture présente `claim`.
+    async fn process_claimed_batch(
         &self,
+        claim: &BatchClaim,
         batch_id: &str,
         raw_bytes: &[u8],
         format: SourceFormat,
@@ -175,6 +219,7 @@ impl IngestionWorker {
         if matches!(batch.statut, BatchStatus::Received | BatchStatus::Failed) {
             self.store
                 .update_batch_status(
+                    claim,
                     batch_id,
                     BatchStatus::Parsing,
                     "Démarrage de la phase de normalisation et qualification",
@@ -214,6 +259,7 @@ impl IngestionWorker {
                 // Sauvegarde du checkpoint actuel avant coupure
                 self.store
                     .save_checkpoint(
+                        claim,
                         batch_id,
                         current_offset,
                         total_lines,
@@ -322,20 +368,20 @@ impl IngestionWorker {
             // contrôle SurrealQL (code-barres invalide) ou rejetée par la qualification est
             // consignée en quarantaine.
             self.store
-                .save_raw_records_chunk(batch_id, &db_raw_records)
+                .save_raw_records_chunk(claim, batch_id, &db_raw_records)
                 .await?;
             let items: Vec<StagedItem> = db_staged_items
                 .iter()
                 .map(|(_, _, item)| item.clone())
                 .collect();
-            let outcomes = self.store.save_staged_items_chunk(&items).await?;
+            let outcomes = self.store.save_staged_items_chunk(claim, &items).await?;
             for ((raw_reference, raw_unit, staged), outcome) in db_staged_items.iter().zip(outcomes)
             {
                 // Article en staging sans unité : anomalie liée à sa ligne, que le steward corrige
                 // (fn::ingestion_quarantine_resolve, corrected_unit) ; l'article reste compté.
                 if outcome.is_ok() && staged.unite_reference.is_none() {
                     self.store
-                        .log_quarantine(&QuarantineRecord {
+                        .log_quarantine(claim, &QuarantineRecord {
                             id: None,
                             batch: batch_id.to_string(),
                             raw_record: staged.raw_record.clone(),
@@ -393,22 +439,25 @@ impl IngestionWorker {
                 if let Some((code, severite, champ, valeur, cause)) = anomaly {
                     rejected_count += 1;
                     self.store
-                        .log_quarantine(&QuarantineRecord {
-                            id: None,
-                            batch: batch_id.to_string(),
-                            raw_record: staged.raw_record.clone(),
-                            ligne_numero: staged.ligne_numero,
-                            code_erreur: code.to_string(),
-                            severite: severite.to_string(),
-                            champ_concerne: champ.to_string(),
-                            valeur_fautive: Some(valeur),
-                            cause_detaillee: cause,
-                            created_at: None,
-                            is_resolved: false,
-                            resolved_by: None,
-                            resolved_at: None,
-                            resolution_comment: None,
-                        })
+                        .log_quarantine(
+                            claim,
+                            &QuarantineRecord {
+                                id: None,
+                                batch: batch_id.to_string(),
+                                raw_record: staged.raw_record.clone(),
+                                ligne_numero: staged.ligne_numero,
+                                code_erreur: code.to_string(),
+                                severite: severite.to_string(),
+                                champ_concerne: champ.to_string(),
+                                valeur_fautive: Some(valeur),
+                                cause_detaillee: cause,
+                                created_at: None,
+                                is_resolved: false,
+                                resolved_by: None,
+                                resolved_at: None,
+                                resolution_comment: None,
+                            },
+                        )
                         .await?;
                 }
             }
@@ -418,6 +467,7 @@ impl IngestionWorker {
             // Enregistrement systématique du checkpoint à la fin du chunk
             self.store
                 .save_checkpoint(
+                    claim,
                     batch_id,
                     current_offset,
                     total_lines,
@@ -432,6 +482,7 @@ impl IngestionWorker {
         if !resume_validating {
             self.store
                 .update_batch_status(
+                    claim,
                     batch_id,
                     BatchStatus::Validating,
                     "Lignes normalisées : validation finale du lot",
@@ -440,6 +491,7 @@ impl IngestionWorker {
         }
         self.store
             .update_batch_status(
+                claim,
                 batch_id,
                 BatchStatus::Staged,
                 "Normalisation et qualification intégrale des lignes achevées avec succès",
@@ -492,24 +544,30 @@ impl LyxalWorker for IngestionWorker {
                             break;
                         }
                     }
+                    // Si l'échec du lot n'a pas pu être consigné, le worker s'arrête et le
+                    // superviseur le signale.
+                    Err(err @ IngestionError::FailureNotRecorded { .. }) => {
+                        return Err(RuntimeError::WorkerFailed {
+                            worker: self.descriptor.id.to_string(),
+                            message: format!("INGESTION_BATCH_FAILED: {err}"),
+                        });
+                    }
+                    // Lot traité par une autre exécution : il lui appartient, ni rejoué ni
+                    // marqué en échec ici.
+                    Err(err)
+                        if matches!(err, IngestionError::BatchAlreadyClaimed { .. })
+                            || err.is_claim_lost() =>
+                    {
+                        tracing::warn!(
+                            batch_id = %job.batch_id,
+                            code = %err.code(),
+                            error = %err,
+                            "Lot traité par une autre exécution : travail abandonné par ce worker"
+                        );
+                    }
+                    // Le lot est passé en FAILED (la base a émis ingestion.batch.failed) ; le
+                    // worker continue avec les lots suivants.
                     Err(err) => {
-                        // Le lot passe en FAILED avec son code d'erreur ; la base émet
-                        // ingestion.batch.failed dans la même transaction. Le worker continue avec
-                        // les lots suivants ; si l'échec ne peut pas être consigné, il s'arrête et
-                        // le superviseur le signale.
-                        if let Err(e) = self
-                            .store
-                            .fail_batch(&job.batch_id, &err.code(), &err.to_string())
-                            .await
-                        {
-                            return Err(RuntimeError::WorkerFailed {
-                                worker: self.descriptor.id.to_string(),
-                                message: format!(
-                                    "INGESTION_BATCH_FAILED: échec du lot {} ({err}) non consigné : passage en FAILED impossible : {e}",
-                                    job.batch_id
-                                ),
-                            });
-                        }
                         tracing::error!(
                             batch_id = %job.batch_id,
                             code = %err.code(),

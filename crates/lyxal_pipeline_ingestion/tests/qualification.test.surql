@@ -13,9 +13,12 @@ DEFINE TABLE test_ref SCHEMALESS PERMISSIONS FULL;
 -- préparation: lot
 RETURN fn::ingestion_batch_create({ id: "lot_q", source_type: "CSV", fournisseur_id: "FOURN_PLACO", nom_fichier: "q.csv", file_hash_blake3: crypto::blake3("q.csv") });
 
+-- préparation: le banc réserve le lot lot_q (génération 1)
+RETURN fn::ingestion_batch_claim({ id: "lot_q", owner: "banc" }).data.generation == 1;
+
 -- test: un bloc d'articles : un résultat par article, dans l'ordre
 -- en tant que: qualif
-RETURN fn::ingestion_staged_save({ batch_id: "lot_q", rules_version: "2026.1", items: [
+RETURN fn::ingestion_staged_save({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_q", rules_version: "2026.1", items: [
     { ligne_numero: 1, canonical_fingerprint: crypto::blake3("q1"), fabricant: " placo ", reference_fabricant: "BA13", code_barre_gtin: "3017620422003", libelle_commercial: "Plaque BA13", unite_reference: "m2", conditionnement: { unite_vente: "M2", quantite_par_colis: 1.0 }, qualification: "to_confirm", qualification_reason: "Preuve absente" },
     { ligne_numero: 2, canonical_fingerprint: crypto::blake3("q2"), fabricant: "PLACO", reference_fabricant: "BA18", code_barre_gtin: "3017620422009", libelle_commercial: "Plaque BA18", unite_reference: "M2", conditionnement: {} },
     { ligne_numero: 3, canonical_fingerprint: crypto::blake3("q3"), fabricant: "PLACO", reference_fabricant: "BA25", unite_reference: "M2", conditionnement: {} },
@@ -32,7 +35,7 @@ RETURN (SELECT VALUE [type_item, publication_action] FROM ONLY ingestion_staged_
 
 -- test: rejeu : même clé métier, même article ; un changement de qualification est journalisé
 -- en tant que: qualif
-RETURN fn::ingestion_staged_save({ batch_id: "lot_q", rules_version: "2026.1", items: [
+RETURN fn::ingestion_staged_save({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_q", rules_version: "2026.1", items: [
     { ligne_numero: 1, canonical_fingerprint: crypto::blake3("q1"), fabricant: "PLACO", reference_fabricant: "BA13", code_barre_gtin: "3017620422003", libelle_commercial: "Plaque BA13", unite_reference: "M2", conditionnement: {}, qualification: "REJECTED", qualification_reason: "Prix incohérent" }
 ] }).data[0].ok
     AND count(SELECT id FROM ingestion_staged_item WHERE reference_fabricant = "BA13") == 1
@@ -41,18 +44,18 @@ RETURN fn::ingestion_staged_save({ batch_id: "lot_q", rules_version: "2026.1", i
 
 -- test: rejeu sans changement de qualification : aucune transition ajoutée
 -- en tant que: qualif
-RETURN fn::ingestion_staged_save({ batch_id: "lot_q", rules_version: "2026.1", items: [
+RETURN fn::ingestion_staged_save({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_q", rules_version: "2026.1", items: [
     { ligne_numero: 1, canonical_fingerprint: crypto::blake3("q1"), fabricant: "PLACO", reference_fabricant: "BA13", libelle_commercial: "Plaque BA13 bis", unite_reference: "M2", conditionnement: {}, qualification: "REJECTED" }
 ] }).data[0].ok
     AND (SELECT VALUE [array::len(transitions), libelle_commercial] FROM ONLY ingestion_staged_item WHERE reference_fabricant = "BA13" LIMIT 1) == [2, "Plaque BA13 bis"];
 
 -- test: paramètre inconnu au niveau du bloc
 -- en tant que: qualif
-RETURN fn::ingestion_staged_save({ batch_id: "lot_q", rules_version: "1", items: [], transitions: [] }).error.code == "INGESTION_INVALID_PARAMETERS";
+RETURN fn::ingestion_staged_save({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_q", rules_version: "1", items: [], transitions: [] }).error.code == "INGESTION_INVALID_PARAMETERS";
 
 -- test: l'agent d'ingestion n'enregistre pas d'articles (le bloc entier est refusé)
 -- en tant que: ingestion
-RETURN fn::ingestion_staged_save({ batch_id: "lot_q", rules_version: "1", items: [
+RETURN fn::ingestion_staged_save({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_q", rules_version: "1", items: [
     { ligne_numero: 7, canonical_fingerprint: crypto::blake3("q7"), fabricant: "PLACO", reference_fabricant: "BA07", libelle_commercial: "Plaque", unite_reference: "M2", conditionnement: {} }
 ] }).error.code == "INGESTION_WRITE_FORBIDDEN";
 
@@ -120,14 +123,14 @@ RETURN fn::ingestion_dashboard_metrics({ lot: "lot_q" }).error.code == "INGESTIO
 
 -- test: article sans unité résolue enregistré sans unité (jamais de valeur par défaut)
 -- en tant que: qualif
-RETURN fn::ingestion_staged_save({ batch_id: "lot_q", rules_version: "2026.1", items: [
+RETURN fn::ingestion_staged_save({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_q", rules_version: "2026.1", items: [
     { ligne_numero: 9, canonical_fingerprint: crypto::blake3("q9"), fabricant: "PLACO", reference_fabricant: "SANS_UNITE", libelle_commercial: "Article sans unité", conditionnement: { quantite_par_colis: 1.0 }, qualification: "TO_CONFIRM" }
 ] }).data[0].ok == true
     AND (SELECT VALUE [unite_reference, conditionnement.unite_vente] FROM ONLY ingestion_staged_item WHERE reference_fabricant = "SANS_UNITE" LIMIT 1) == [NONE, NONE];
 
 -- test: un article VERIFIED sans unité est refusé seul, sans interrompre le bloc
 -- en tant que: qualif
-RETURN fn::ingestion_staged_save({ batch_id: "lot_q", rules_version: "2026.1", items: [
+RETURN fn::ingestion_staged_save({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_q", rules_version: "2026.1", items: [
     { ligne_numero: 10, canonical_fingerprint: crypto::blake3("q10"), fabricant: "PLACO", reference_fabricant: "VERIF_SANS_UNITE", libelle_commercial: "Article vérifié sans unité", conditionnement: {}, qualification: "VERIFIED" },
     { ligne_numero: 11, canonical_fingerprint: crypto::blake3("q11"), fabricant: "PLACO", reference_fabricant: "AVEC_UNITE", libelle_commercial: "Article avec unité", unite_reference: "M2", conditionnement: {} }
 ] }).data.map(|$r| [$r.ok, $r.error.code]) == [[false, "INGESTION_UNIT_UNRESOLVED"], [true, NONE]];
