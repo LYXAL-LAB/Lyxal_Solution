@@ -84,13 +84,6 @@ pub(crate) fn bounded_error_message(message: String) -> String {
     bounded
 }
 
-/// Conflit d'écriture transitoire de SurrealDB (contrôle de concurrence optimiste) : la
-/// transaction n'a pas été validée et peut être rejouée telle quelle.
-pub(crate) fn is_transient_conflict(err: &LyxalSurrealError) -> bool {
-    let message = err.to_string();
-    message.contains("Transaction conflict") || message.contains("can be retried")
-}
-
 /// Attente aléatoire croissante avant un rejeu, pour désynchroniser les écrivains concurrents.
 pub(crate) async fn conflict_backoff(attempt: u32) {
     let upper = 10 + 20 * u64::from(attempt);
@@ -220,7 +213,7 @@ impl SubscriptionProgressTracker {
                 .call_fn("event_dead_letter_transfer", params.clone())
                 .await
             {
-                Err(e) if is_transient_conflict(&e) && attempt < MAX_CONFLICT_RETRIES => {
+                Err(e) if e.is_transient_conflict() && attempt < MAX_CONFLICT_RETRIES => {
                     attempt += 1;
                     conflict_backoff(attempt).await;
                 }
@@ -299,7 +292,7 @@ impl SubscriptionProgressTracker {
         let mut attempt = 0;
         let flush_res: Result<FlushBatchResult, LyxalSurrealError> = loop {
             match self.call_fn("event_flush_batch", params.clone()).await {
-                Err(e) if is_transient_conflict(&e) && attempt < MAX_CONFLICT_RETRIES => {
+                Err(e) if e.is_transient_conflict() && attempt < MAX_CONFLICT_RETRIES => {
                     attempt += 1;
                     conflict_backoff(attempt).await;
                 }

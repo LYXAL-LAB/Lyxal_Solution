@@ -15,6 +15,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_log($params: object) {
             champ_concerne: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
             valeur_fautive: { pipeline: [] },
             cause_detaillee: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 4000 } }], required: true },
+            claim: { pipeline: [{ rule: "is_object" }], required: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -27,6 +28,10 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_log($params: object) {
         unknown_keys: "keep"
     }, 10);
     LET $batch = { value: $p.batch_id };
+
+    -- Cloisonnement : seule l'exécution qui détient la réservation du lot écrit
+    LET $held = fn::ingestion_batch_claim_verify({ batch_id: $batch.value, claim: $report.value.claim, language: $p.language });
+    IF !$held.ok { RETURN $held; };
 
     -- Ligne brute concernée : même convention que fn::ingestion_raw_records_save
     LET $raw = { value: type::record("ingestion_raw_record", string::concat(<string> record::id($batch.value), "_", <string> $p.ligne_numero)) };
@@ -53,4 +58,4 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_log($params: object) {
     };
 
     RETURN fn::result_ok(<string> record::id($created.id));
-} COMMENT "Consigne une anomalie typée (lot, numéro de ligne, code, sévérité, champ, valeur fautive, cause) en quarantaine ; rejouable : une anomalie ouverte de même ligne et de même code n'est pas dupliquée";
+} COMMENT "Consigne une anomalie typée (lot, numéro de ligne, code, sévérité, champ, valeur fautive, cause) en quarantaine ; rejouable : une anomalie ouverte de même ligne et de même code n'est pas dupliquée ; écriture réservée à l'exécution qui détient le lot (claim { owner, generation }, sinon INGESTION_BATCH_CLAIM_LOST)";

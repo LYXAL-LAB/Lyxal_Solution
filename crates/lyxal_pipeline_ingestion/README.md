@@ -28,7 +28,7 @@ fichier → lot (RECEIVED) → lignes brutes immuables → normalisation → art
 | Table | Contenu | Lecture | Écriture |
 | :--- | :--- | :--- | :--- |
 | `ingestion_session` | session d'enregistrement | elle-même | — |
-| `ingestion_batch` | lot : source, empreinte du fichier (unique par format), statut, compteurs, point de reprise, transitions | les quatre rôles | création : `ingestion_agent` ; mise à jour : agents et steward |
+| `ingestion_batch` | lot : source, empreinte du fichier (unique par format), statut, compteurs, point de reprise, réservation du traitement, transitions | les quatre rôles | création : `ingestion_agent` ; mise à jour : agents et steward |
 | `ingestion_raw_record` | ligne brute immuable (`<lot>_<ligne>`) | `ingestion_agent`, `qualification_agent`, `steward_admin` | création : `ingestion_agent` ; jamais modifiée |
 | `ingestion_staged_item` | article normalisé : identité (lot, fabricant, référence uniques), code-barres, conditionnement, qualification, preuve, approbation, transitions | `qualification_agent`, `steward_admin`, `catalogue_sync_agent` | `qualification_agent` ; requalification : `steward_admin` |
 | `ingestion_quarantine_record` | anomalie : ligne, code, sévérité, champ, valeur, cause, résolution | `qualification_agent`, `steward_admin` | création : `qualification_agent` ; résolution : `steward_admin` |
@@ -48,7 +48,22 @@ Gardes (`DEFINE EVENT`) :
   `catalogue_sync_agent` (ou session système) ; contenu et sceau ne changent qu'en brouillon ou
   au scellement.
 * `evt_batch_guard` refuse aussi qu'un autre rôle que le steward (ou la session système) pose ou
-  retire le verrou `sealed_manifest` d'un lot.
+  retire le verrou `sealed_manifest` d'un lot, et qu'une génération de réservation recule
+  (`INGESTION_BATCH_CLAIM_LOST`).
+
+**Réservation du traitement.** Un lot n'est traité que par une exécution à la fois, tous workers
+et toutes instances confondus. `fn::ingestion_batch_claim` (jeton propre à l'exécution, durée de
+5 à 600 s, 60 par défaut) prend la réservation seulement si elle est libre ou expirée — une
+réservation active est refusée même au même jeton (`INGESTION_BATCH_ALREADY_CLAIMED`,
+`details.until`) — et incrémente sa génération (`claim_owner`, `claim_generation`, `claim_until`,
+heure de la base). Les écritures du traitement (`raw_records_save`, `staged_save`,
+`quarantine_log`, `batch_checkpoint`, `batch_transition`) reçoivent `claim: { owner, generation }`
+et vérifient dans leur requête (`fn::ingestion_batch_claim_verify`) que la réservation est
+détenue et non expirée, sinon `INGESTION_BATCH_CLAIM_LOST` sans rien écrire. Seul le point de reprise la renouvelle : le worker l'enregistre en fin de bloc et le rejoue au
+tiers de la durée de réservation pendant le traitement (lecture du fichier, bloc long), ses
+écritures étant sérialisées ; `fn::ingestion_batch_release` la libère (exécution détentrice seulement).
+Une réservation expirée (exécution arrêtée) est reprise à la génération suivante, ce qui écarte
+l'ancienne exécution.
 
 **Scellement.** `fn::ingestion_manifest_save` au statut `SEALED` fige dans le manifeste le contenu
 exact à publier (`contenu`, construit par `fn::ingestion_manifest_content` : un élément par
@@ -74,7 +89,7 @@ par SurrealQL au nom de l'identité de session (`triggered_by`) et horodatées p
 
 | Groupe | Fonctions |
 | :--- | :--- |
-| Lots (`batch/`) | `batch_create` (état `RECEIVED` ; fichier ou identifiant déjà reçu : `INGESTION_BATCH_DUPLICATE`), `batch_get`, `batch_transition`, `batch_checkpoint`, `raw_records_save` (bloc ; ligne existante jamais réécrite) |
+| Lots (`batch/`) | `batch_create` (état `RECEIVED` ; fichier ou identifiant déjà reçu : `INGESTION_BATCH_DUPLICATE`), `batch_get`, `batch_claim`, `batch_release`, `batch_claim_verify` (interne), `batch_transition`, `batch_checkpoint` (renouvelle la réservation), `raw_records_save` (bloc ; ligne existante jamais réécrite) ; écritures du traitement sous réservation (`claim`) |
 | Staging (`staged/`) | `staged_save` (bloc d'articles d'un lot, un résultat par article ; code-barres contrôlé par `fn::validation_gtin` : `INGESTION_GTIN_INVALID`), `staged_list`, `staged_requalify` (steward ; `VERIFIED` exige une unité du référentiel et une preuve commerciale) ; unité et unité de vente facultatives tant que l'unité fournisseur n'est pas résolue |
 | Quarantaine (`quarantine/`) | `quarantine_log` (rejouable : une anomalie ouverte par ligne et par code), `quarantine_list`, `quarantine_resolve` (steward ; corrections contrôlées, article repassé `TO_CONFIRM`) |
 | Manifestes (`manifest/`) | `manifest_save` (`DRAFT` / `SEALED`, modifiable tant qu'il n'est pas approuvé ; une version par lot), `manifest_approve` (steward, justification journalisée), `manifest_execution_item_update`, `manifest_record_exec` (agent de synchronisation), `manifest_list`, `manifest_get_detail` |
@@ -147,7 +162,7 @@ publie chaque manifeste approuvé ; la livraison est au moins une fois, la publi
 | `adapters/` | lecture FAB-DIS, CSV (délimiteurs), XML / BMEcat, JSON / NDJSON |
 | `normalization/` | nettoyage, dimensions et poids, attributs techniques, qualification initiale (`VERIFIED` exige une preuve commerciale valide et une unité) ; unités et fabricants lus dans les résolutions du bloc (`BlockReferentials`), sans table de correspondance en Rust |
 | `fingerprint.rs` | empreintes canoniques et sceau des manifestes (BLAKE3, `lyxal_crypto`) |
-| `worker/` | `IngestionWorker` (`LyxalWorker`) : traitement par blocs, point de reprise, verrou de lot ; unités et fabricants du bloc résolus en base en deux appels (`IngestionStore::block_referentials`) ; GTIN refusé ou article rejeté consigné en quarantaine ; unité inconnue : article en staging sans unité et anomalie `INGESTION_UNIT_UNRESOLVED` (jamais de valeur par défaut) ; un lot en échec passe en `FAILED` sans arrêter le worker |
+| `worker/` | `IngestionWorker` (`LyxalWorker`) : traitement par blocs, point de reprise ; chaque `process_batch` tire un jeton (UUID v7), réserve le lot en base, présente la réservation à chaque écriture et la libère quelle que soit l'issue (lot déjà réservé : `IngestionError::BatchAlreadyClaimed`, ni traité ni marqué `FAILED` ; réservation perdue : travail remis en file ; réservation ou passage en `FAILED` impossibles pour une raison technique : `IngestionError::FailureNotRecorded`, travail conservé et worker arrêté pour relance par le superviseur) ; unités et fabricants du bloc résolus en base en deux appels (`IngestionStore::block_referentials`) ; GTIN refusé ou article rejeté consigné en quarantaine ; unité inconnue : article en staging sans unité et anomalie `INGESTION_UNIT_UNRESOLVED` (jamais de valeur par défaut) ; un lot en échec passe en `FAILED` pendant que la réservation est détenue, sans arrêter le worker |
 | `storage/` | `IngestionStore` : appels `call_fn` des fonctions du module ; erreur métier transmise avec son code (`IngestionError::Surreal`) |
 | `publisher/` | publication (§5) |
 | `rules.rs` | modèles des référentiels |

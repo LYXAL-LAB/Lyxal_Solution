@@ -46,6 +46,9 @@ schemas = [
 functions = [
     "functions/session/ingestion_session_identity.surql",
     "functions/batch/ingestion_batch_create.surql",
+    "functions/batch/ingestion_batch_claim.surql",
+    "functions/batch/ingestion_batch_release.surql",
+    "functions/batch/ingestion_batch_claim_verify.surql",
     "functions/batch/ingestion_batch_checkpoint.surql",
     "functions/batch/ingestion_batch_transition.surql",
     "functions/batch/ingestion_batch_get.surql",

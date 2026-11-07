@@ -12,6 +12,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_save($params: object) {
             batch_id: { pipeline: [{ rule: "record", options: { expected_table: "ingestion_batch" } }], required: true },
             rules_version: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }], required: true },
             items: { pipeline: [{ rule: "array_objects", options: { allow_empty_objects: false } }], required: true },
+            claim: { pipeline: [{ rule: "is_object" }], required: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -23,6 +24,10 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_save($params: object) {
     LET $rules_version = { value: $report.value.rules_version };
     LET $items = { value: $report.value.items };
     LET $batch_key = <string> record::id($batch.value);
+
+    -- Cloisonnement : seule l'exécution qui détient la réservation du lot écrit
+    LET $held = fn::ingestion_batch_claim_verify({ batch_id: $batch.value, claim: $report.value.claim, language: $report.value.language });
+    IF !$held.ok { RETURN $held; };
     LET $operator = fn::ingestion_session_identity({}).operator;
     LET $now = time::now();
 
@@ -117,4 +122,4 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_save($params: object) {
         RETURN $forbidden;
     };
     RETURN fn::result_ok($results.map(|$r| { ok: $r.ok, id: $r.data, error: $r.error }));
-} COMMENT "Enregistre un bloc d'articles d'un lot ({ batch_id, rules_version, items }) de façon idempotente (clé : lot, fabricant, référence) ; code-barres contrôlé par fn::validation_gtin (INGESTION_GTIN_INVALID) ; renvoie dans l'ordre le résultat de chaque article ({ ok, id, error }) ; une écriture interdite arrête le bloc (INGESTION_WRITE_FORBIDDEN)";
+} COMMENT "Enregistre un bloc d'articles d'un lot ({ batch_id, rules_version, items }) de façon idempotente (clé : lot, fabricant, référence) ; code-barres contrôlé par fn::validation_gtin (INGESTION_GTIN_INVALID) ; renvoie dans l'ordre le résultat de chaque article ({ ok, id, error }) ; une écriture interdite arrête le bloc (INGESTION_WRITE_FORBIDDEN) ; écriture réservée à l'exécution qui détient le lot (claim { owner, generation }, sinon INGESTION_BATCH_CLAIM_LOST)";

@@ -15,12 +15,15 @@ DEFINE TABLE test_ref SCHEMALESS PERMISSIONS FULL;
 -- en tant que: ingestion
 RETURN fn::ingestion_batch_create({ id: "lot_sec", source_type: "CSV", fournisseur_id: "FOURN_PLACO", nom_fichier: "placo.csv", file_hash_blake3: crypto::blake3("placo.csv") }).data == "lot_sec";
 
+-- préparation: le banc réserve le lot lot_sec (génération 1)
+RETURN fn::ingestion_batch_claim({ id: "lot_sec", owner: "banc" }).data.generation == 1;
+
 -- préparation: lignes brutes du fichier (écrites par le worker)
 FOR $n IN [1, 2, 3] { CREATE type::record("ingestion_raw_record", string::concat("lot_sec_", <string> $n)) CONTENT { batch: ingestion_batch:lot_sec, ligne_numero: $n, row_hash: crypto::blake3(<string> $n), payload_brut: {}, created_at: time::now() }; };
 
 -- test: l'agent de qualification enregistre deux articles, jamais approuvés à la création
 -- en tant que: qualif
-RETURN fn::ingestion_staged_save({ batch_id: "lot_sec", rules_version: "1", items: [
+RETURN fn::ingestion_staged_save({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_sec", rules_version: "1", items: [
     { ligne_numero: 1, canonical_fingerprint: crypto::blake3("a1"), fabricant: "PLACO", reference_fabricant: "BA13", libelle_commercial: "Plaque BA13", type_item: "PRODUIT", unite_reference: "PCE", conditionnement: { unite_vente: "PCE", quantite_par_colis: 1.0 }, qualification: "TO_CONFIRM", publication_action: "INSERT" },
     { ligne_numero: 2, canonical_fingerprint: crypto::blake3("a2"), fabricant: "PLACO", reference_fabricant: "BA18", libelle_commercial: "Plaque BA18", type_item: "PRODUIT", unite_reference: "PCE", conditionnement: { unite_vente: "PCE", quantite_par_colis: 1.0 }, qualification: "TO_CONFIRM", publication_action: "INSERT", is_approved: true, approved_by: "pirate" }
 ] }).data.ok == [true, true];
@@ -141,7 +144,7 @@ RETURN (SELECT VALUE payload FROM event_outbox WHERE event_type = "ingestion.man
 
 -- test: l'agent de qualification consigne une anomalie en quarantaine
 -- en tant que: qualif
-RETURN fn::ingestion_quarantine_log({ batch_id: "lot_sec", ligne_numero: 2, code_erreur: "INGESTION_QUALIFICATION_REJECTED", severite: "ERROR", champ_concerne: "gtin", valeur_fautive: "123", cause_detaillee: "Clé GS1 invalide" }).ok;
+RETURN fn::ingestion_quarantine_log({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_sec", ligne_numero: 2, code_erreur: "INGESTION_QUALIFICATION_REJECTED", severite: "ERROR", champ_concerne: "gtin", valeur_fautive: "123", cause_detaillee: "Clé GS1 invalide" }).ok;
 
 -- préparation: identifiant de l'anomalie
 CREATE test_ref:quarantaine SET id_q = <string> (SELECT VALUE id FROM ONLY ingestion_quarantine_record LIMIT 1);

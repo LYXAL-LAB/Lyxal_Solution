@@ -10,6 +10,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_raw_records_save($params: object) {
         fields: {
             batch_id: { pipeline: [{ rule: "record", options: { expected_table: "ingestion_batch" } }], required: true },
             records: { pipeline: [{ rule: "array_objects", options: { allow_empty_objects: false } }], required: true },
+            claim: { pipeline: [{ rule: "is_object" }], required: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -20,6 +21,10 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_raw_records_save($params: object) {
     LET $batch = { value: $report.value.batch_id };
     LET $records = { value: $report.value.records };
     LET $batch_key = <string> record::id($batch.value);
+
+    -- Cloisonnement : seule l'exécution qui détient la réservation du lot écrit
+    LET $held = fn::ingestion_batch_claim_verify({ batch_id: $batch.value, claim: $report.value.claim, language: $report.value.language });
+    IF !$held.ok { RETURN $held; };
 
     FOR $record IN $records.value {
         LET $line = fn::validation_integer($record.ligne_numero, 1, NONE);
@@ -49,4 +54,4 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_raw_records_save($params: object) {
     };
 
     RETURN fn::result_ok(array::len($new));
-} COMMENT "Enregistre un bloc de lignes brutes ({ batch_id, records: [{ ligne_numero, row_hash, payload_brut }] }) ; identifiant <lot>_<ligne>, une ligne existante n'est jamais réécrite ; renvoie le nombre de lignes créées";
+} COMMENT "Enregistre un bloc de lignes brutes ({ batch_id, records: [{ ligne_numero, row_hash, payload_brut }] }) ; identifiant <lot>_<ligne>, une ligne existante n'est jamais réécrite ; renvoie le nombre de lignes créées ; écriture réservée à l'exécution qui détient le lot (claim { owner, generation }, sinon INGESTION_BATCH_CLAIM_LOST)";

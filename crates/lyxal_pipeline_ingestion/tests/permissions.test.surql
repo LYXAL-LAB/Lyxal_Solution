@@ -11,14 +11,17 @@
 -- préparation: lot
 RETURN fn::ingestion_batch_create({ id: "lot_p", source_type: "CSV", fournisseur_id: "FOURN_PLACO", nom_fichier: "p.csv", file_hash_blake3: crypto::blake3("p.csv") });
 
+-- préparation: le banc réserve le lot lot_p (génération 1)
+RETURN fn::ingestion_batch_claim({ id: "lot_p", owner: "banc" }).data.generation == 1;
+
 -- préparation: ligne brute
-RETURN fn::ingestion_raw_records_save({ batch_id: "lot_p", records: [{ ligne_numero: 1, row_hash: crypto::blake3("p1"), payload_brut: { reference: "BA13" } }] });
+RETURN fn::ingestion_raw_records_save({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_p", records: [{ ligne_numero: 1, row_hash: crypto::blake3("p1"), payload_brut: { reference: "BA13" } }] });
 
 -- préparation: article
-RETURN fn::ingestion_staged_save({ batch_id: "lot_p", rules_version: "1", items: [{ ligne_numero: 1, canonical_fingerprint: crypto::blake3("p1"), fabricant: "PLACO", reference_fabricant: "BA13", libelle_commercial: "Plaque BA13", unite_reference: "M2", conditionnement: {} }] });
+RETURN fn::ingestion_staged_save({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_p", rules_version: "1", items: [{ ligne_numero: 1, canonical_fingerprint: crypto::blake3("p1"), fabricant: "PLACO", reference_fabricant: "BA13", libelle_commercial: "Plaque BA13", unite_reference: "M2", conditionnement: {} }] });
 
 -- préparation: anomalie
-RETURN fn::ingestion_quarantine_log({ batch_id: "lot_p", ligne_numero: 1, code_erreur: "INGESTION_UNIT_UNRESOLVED", champ_concerne: "unite_reference", cause_detaillee: "Unité à confirmer" });
+RETURN fn::ingestion_quarantine_log({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_p", ligne_numero: 1, code_erreur: "INGESTION_UNIT_UNRESOLVED", champ_concerne: "unite_reference", cause_detaillee: "Unité à confirmer" });
 
 -- préparation: manifeste scellé
 RETURN fn::ingestion_manifest_save({ manifest_ref: "MAN-P", batch_id: "lot_p", statut: "SEALED" });

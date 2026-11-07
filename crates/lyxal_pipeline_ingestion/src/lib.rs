@@ -34,7 +34,7 @@ pub use models::{
     PublicationManifest, QuarantineRecord, RawRecord, StagedItem,
 };
 pub use module::PipelineIngestionModule;
-pub use storage::IngestionStore;
+pub use storage::{BatchClaim, BatchProgress, IngestionStore};
 pub use types::{
     BatchStatus, Dimensions, ItemQualification, ManifestStatus, PackagingDetails,
     PublicationAction, SourceFormat, StateTransitionRecord,

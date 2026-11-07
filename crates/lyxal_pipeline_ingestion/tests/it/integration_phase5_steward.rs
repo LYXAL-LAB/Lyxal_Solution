@@ -42,7 +42,7 @@ async fn test_1_dashboard_metrics_aggregation() {
         chunk_size: 500,
         provenance_details: serde_json::json!({}),
     };
-    store.create_batch(&batch).await.expect("Création lot");
+    let claim = crate::support::claimed_batch(&store, &batch).await;
 
     // 2. Création de deux articles en staging (1 VERIFIED, 1 TO_CONFIRM)
     let staged1 = StagedItem {
@@ -72,7 +72,7 @@ async fn test_1_dashboard_metrics_aggregation() {
         approved_at: None,
     };
     store
-        .save_staged_item(&staged1)
+        .save_staged_item(&claim, &staged1)
         .await
         .expect("Save staged 1");
 
@@ -103,7 +103,7 @@ async fn test_1_dashboard_metrics_aggregation() {
         approved_at: None,
     };
     store
-        .save_staged_item(&staged2)
+        .save_staged_item(&claim, &staged2)
         .await
         .expect("Save staged 2");
 
@@ -136,7 +136,7 @@ async fn test_2_staged_listing_and_filtering() {
         chunk_size: 500,
         provenance_details: serde_json::json!({}),
     };
-    store.create_batch(&batch).await.expect("Création lot");
+    let claim = crate::support::claimed_batch(&store, &batch).await;
 
     let staged1 = StagedItem {
         id: None,
@@ -165,7 +165,7 @@ async fn test_2_staged_listing_and_filtering() {
         approved_at: None,
     };
     store
-        .save_staged_item(&staged1)
+        .save_staged_item(&claim, &staged1)
         .await
         .expect("Save staged 1");
 
@@ -196,7 +196,7 @@ async fn test_2_staged_listing_and_filtering() {
         approved_at: None,
     };
     store
-        .save_staged_item(&staged2)
+        .save_staged_item(&claim, &staged2)
         .await
         .expect("Save staged 2");
 
@@ -235,7 +235,7 @@ async fn test_3_steward_requalification_session_security() {
         chunk_size: 500,
         provenance_details: serde_json::json!({}),
     };
-    store.create_batch(&batch).await.expect("Création lot");
+    let claim = crate::support::claimed_batch(&store, &batch).await;
 
     let staged = StagedItem {
         id: None,
@@ -263,7 +263,10 @@ async fn test_3_steward_requalification_session_security() {
         approved_by: None,
         approved_at: None,
     };
-    let item_id = store.save_staged_item(&staged).await.expect("Save staged");
+    let item_id = store
+        .save_staged_item(&claim, &staged)
+        .await
+        .expect("Save staged");
 
     // Les refus par rôle (session non steward_admin) sont prouvés sous de vraies identités
     // dans tests/securite.test.surql ; ici, session système de l'hôte.
@@ -299,7 +302,7 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
         chunk_size: 500,
         provenance_details: serde_json::json!({}),
     };
-    store.create_batch(&batch).await.expect("Création lot");
+    let claim = crate::support::claimed_batch(&store, &batch).await;
 
     let staged = StagedItem {
         id: None,
@@ -327,7 +330,10 @@ async fn test_4_requalification_verified_requires_strict_commercial_proof() {
         approved_by: None,
         approved_at: None,
     };
-    let item_id = store.save_staged_item(&staged).await.expect("Save staged");
+    let item_id = store
+        .save_staged_item(&claim, &staged)
+        .await
+        .expect("Save staged");
 
     // TENTATIVE 1 : Promotion vers VERIFIED SANS CommercialProof
     // RÈGLE D'OR CTO : STRICTEMENT INTERDIT
@@ -396,7 +402,7 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
         chunk_size: 500,
         provenance_details: serde_json::json!({}),
     };
-    store.create_batch(&batch).await.expect("Création lot");
+    let claim = crate::support::claimed_batch(&store, &batch).await;
 
     // Article en staging rejeté initialement
     let staged = StagedItem {
@@ -425,7 +431,10 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
         approved_by: None,
         approved_at: None,
     };
-    let staged_id = store.save_staged_item(&staged).await.expect("Save staged");
+    let staged_id = store
+        .save_staged_item(&claim, &staged)
+        .await
+        .expect("Save staged");
 
     // Enregistrement d'une anomalie en quarantaine
     let quar_rec = QuarantineRecord {
@@ -445,7 +454,7 @@ async fn test_5_quarantine_listing_and_resolution_forces_to_confirm() {
         resolution_comment: None,
     };
     let q_id = store
-        .log_quarantine(&quar_rec)
+        .log_quarantine(&claim, &quar_rec)
         .await
         .expect("Log quarantine");
 

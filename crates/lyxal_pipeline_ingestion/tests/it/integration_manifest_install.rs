@@ -49,14 +49,20 @@ async fn worker_follows_installed_batch_state_machine() {
     assert_eq!(report.total_lignes, 5);
 
     // Un lot en échec est repris : FAILED -> PARSING -> VALIDATING -> STAGED.
+    let claim = crate::support::claimed_batch(&store, &batch("batch_retry")).await;
     store
-        .create_batch(&batch("batch_retry"))
-        .await
-        .expect("lot");
-    store
-        .fail_batch("batch_retry", "INGESTION_TEST_FAILURE", "Échec simulé")
+        .fail_batch(
+            &claim,
+            "batch_retry",
+            "INGESTION_TEST_FAILURE",
+            "Échec simulé",
+        )
         .await
         .expect("lot en échec");
+    store
+        .release_batch("batch_retry", &claim)
+        .await
+        .expect("réservation libérée");
     let report = worker
         .process_batch(
             "batch_retry",
@@ -77,7 +83,7 @@ async fn failed_batch_does_not_block_the_next_one() {
     let worker = IngestionWorker::new(store.clone()).expect("worker");
     let token = CancellationToken::new();
 
-    // Lot inconnu : le traitement échoue après la prise du verrou logique.
+    // Lot inconnu : la réservation est refusée, rien n'est écrit.
     let failure = worker
         .process_batch(
             "lot_absent",
@@ -89,7 +95,7 @@ async fn failed_batch_does_not_block_the_next_one() {
         .await;
     assert!(failure.is_err());
 
-    // Le verrou a été libéré : un autre lot se traite normalement.
+    // Le worker n'est pas bloqué : un autre lot se traite normalement.
     store
         .create_batch(&batch("lot_suivant"))
         .await

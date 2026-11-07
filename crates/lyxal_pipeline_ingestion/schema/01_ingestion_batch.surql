@@ -144,6 +144,27 @@ DEFINE FIELD OVERWRITE sealed_manifest ON TABLE ingestion_batch
     COMMENT "Référence du manifeste qui fige le contenu publié du lot (posée au scellement, retirée à la remise en brouillon par fn::ingestion_manifest_save) : ses articles ne se créent ni ne se modifient plus";
 
 -- ----------------------------------------------------------------------------
+-- RÉSERVATION DU TRAITEMENT (un seul traitement à la fois, toutes instances confondues)
+-- ----------------------------------------------------------------------------
+DEFINE FIELD OVERWRITE claim_owner ON TABLE ingestion_batch
+    TYPE option<string>
+    COMMENT "Jeton de l'exécution de traitement qui réserve le lot (fn::ingestion_batch_claim), NONE si libre";
+
+DEFINE FIELD OVERWRITE claim_generation ON TABLE ingestion_batch
+    TYPE int
+    DEFAULT 0
+    ASSERT $value >= 0
+    COMMENT "Génération de la réservation, incrémentée à chaque prise : une exécution écartée ne peut plus écrire";
+
+DEFINE FIELD OVERWRITE claim_until ON TABLE ingestion_batch
+    TYPE option<datetime>
+    COMMENT "Échéance de la réservation (heure de la base), prolongée à chaque point de reprise";
+
+DEFINE FIELD OVERWRITE claim_ttl ON TABLE ingestion_batch
+    TYPE option<duration>
+    COMMENT "Durée de la réservation choisie à la prise, réappliquée à chaque renouvellement";
+
+-- ----------------------------------------------------------------------------
 -- INDEX D'IDEMPOTENCE ET DE RECHERCHE
 -- ----------------------------------------------------------------------------
 -- Idempotence absolue : un même fichier pour un même format ne peut être réimporté en doublon
@@ -158,6 +179,11 @@ DEFINE INDEX OVERWRITE idx_batch_fournisseur_statut ON TABLE ingestion_batch FIE
 DEFINE EVENT OVERWRITE evt_batch_guard ON TABLE ingestion_batch
 WHEN $event = "UPDATE"
 THEN {
+    -- La génération de réservation ne recule jamais (une exécution écartée ne revient pas)
+    IF $after.claim_generation < $before.claim_generation {
+        THROW "INGESTION_BATCH_CLAIM_LOST: La génération de réservation d'un lot ne recule jamais.";
+    };
+
     -- Le verrou du contenu scellé n'est posé ou retiré que par le steward (ou la session système),
     -- au scellement et à la remise en brouillon d'un manifeste
     IF $before.sealed_manifest != $after.sealed_manifest AND fn::ingestion_session_identity({}).role NOT IN ["steward_admin", "system"] {

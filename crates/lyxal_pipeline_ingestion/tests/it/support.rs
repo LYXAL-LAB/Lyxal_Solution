@@ -3,12 +3,23 @@
 
 use lyxal_crypto::SecretString;
 use lyxal_pipeline_ingestion::publisher::{CatalogueSyncKey, HmacCatalogueTokenIssuer};
-use lyxal_pipeline_ingestion::storage::IngestionStore;
+use lyxal_pipeline_ingestion::storage::{BatchClaim, IngestionStore, NewBatch};
 use lyxal_runtime::manifest::{ManifestParser, ModuleManifest};
 use lyxal_runtime::resource::ResourceProvider;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
+
+/// Crée un lot et le réserve pour le test, comme le fait le worker avant d'écrire (lignes,
+/// articles, anomalies, points de reprise, transitions). Le test libère la réservation
+/// (`release_batch`) avant de confier le lot au worker.
+pub async fn claimed_batch(store: &IngestionStore, batch: &NewBatch) -> BatchClaim {
+    let id = store.create_batch(batch).await.expect("lot");
+    store
+        .claim_batch(&id, "test", 600)
+        .await
+        .expect("réservation du lot")
+}
 
 /// Nouvelle base embarquée où `lyxal_core`, `lyxal_error`, `lyxal_event`, `lyxal_base`,
 /// `lyxal_catalogue` et le module sont installés depuis leurs manifestes.

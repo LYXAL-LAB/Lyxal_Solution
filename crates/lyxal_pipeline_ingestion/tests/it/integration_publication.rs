@@ -11,7 +11,7 @@ use lyxal_pipeline_ingestion::proof::{CommercialProof, CommercialProofType};
 use lyxal_pipeline_ingestion::publisher::{
     CatalogueTokenIssuer, ControlledPublisher, ManifestApprovedHandler, PublicationConsumer,
 };
-use lyxal_pipeline_ingestion::storage::{IngestionStore, ManifestDraft, NewBatch};
+use lyxal_pipeline_ingestion::storage::{BatchClaim, IngestionStore, ManifestDraft, NewBatch};
 use lyxal_pipeline_ingestion::types::{
     Dimensions, ItemQualification, ManifestStatus, PackagingDetails, PublicationAction,
     SourceFormat,
@@ -74,15 +74,17 @@ fn item(
     }
 }
 
-/// Lot, articles et manifeste scellé (sceau des empreintes du lot), approuvé en session système.
+/// Lot, articles et manifeste scellé (sceau des empreintes du lot), approuvé en session système ;
+/// renvoie la réservation du lot prise pour enregistrer les articles.
 async fn approved_manifest(
     store: &IngestionStore,
     batch: &str,
     manifest_ref: &str,
     items: &[StagedItem],
-) {
-    store
-        .create_batch(&NewBatch {
+) -> BatchClaim {
+    let claim = crate::support::claimed_batch(
+        store,
+        &NewBatch {
             id: Some(batch.to_string()),
             source_type: SourceFormat::Csv,
             source_format_version: "1.0".to_string(),
@@ -92,11 +94,11 @@ async fn approved_manifest(
             taille_octets: 512,
             chunk_size: 50,
             provenance_details: serde_json::json!({}),
-        })
-        .await
-        .expect("lot");
+        },
+    )
+    .await;
     for outcome in store
-        .save_staged_items_chunk(items)
+        .save_staged_items_chunk(&claim, items)
         .await
         .expect("articles")
     {
@@ -117,6 +119,7 @@ async fn approved_manifest(
         .approve_manifest(manifest_ref, "Manifeste contrôlé avant publication")
         .await
         .expect("approbation");
+    claim
 }
 
 /// Identifiant maître (`item_ref`) d'un article, lu dans le contenu figé du manifeste.
@@ -598,17 +601,20 @@ async fn sealed_batch_is_locked_and_tampered_content_is_refused() {
         ItemQualification::Verified,
         Some(proof("EDI-2026-PLACO-001", "EDI_HUB_SAINT_GOBAIN")),
     )];
-    approved_manifest(&store, "lot_altere", "MAN-ALTERE", &items).await;
+    let claim = approved_manifest(&store, "lot_altere", "MAN-ALTERE", &items).await;
 
     // Le lot est verrouillé par le manifeste scellé : aucun article ne s'y ajoute plus
     let added = store
-        .save_staged_items_chunk(&[item(
-            "lot_altere",
-            2,
-            "BA18",
-            ItemQualification::Verified,
-            Some(proof("EDI-2026-PLACO-002", "EDI_HUB_SAINT_GOBAIN")),
-        )])
+        .save_staged_items_chunk(
+            &claim,
+            &[item(
+                "lot_altere",
+                2,
+                "BA18",
+                ItemQualification::Verified,
+                Some(proof("EDI-2026-PLACO-002", "EDI_HUB_SAINT_GOBAIN")),
+            )],
+        )
         .await;
     let refused = match added {
         Err(_) => true,

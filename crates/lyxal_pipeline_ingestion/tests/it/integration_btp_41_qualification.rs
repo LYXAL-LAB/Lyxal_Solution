@@ -31,10 +31,7 @@ async fn test_full_pilot_41_btp_references_lifecycle() {
             "audit_date": "2026-10-25"
         }),
     };
-    store
-        .create_batch(&batch)
-        .await
-        .expect("Création lot pilote");
+    let claim = crate::support::claimed_batch(&store, &batch).await;
 
     // 2. Définition des 41 références BTP réelles du Second Œuvre
     // Réparties en 7 fabricants / émetteurs
@@ -547,7 +544,7 @@ async fn test_full_pilot_41_btp_references_lifecycle() {
                 resolution_comment: None,
             };
             store
-                .log_quarantine(&quar)
+                .log_quarantine(&claim, &quar)
                 .await
                 .expect("Log quarantine pilote");
             continue;
@@ -622,7 +619,7 @@ async fn test_full_pilot_41_btp_references_lifecycle() {
         };
 
         store
-            .save_staged_item(&staged)
+            .save_staged_item(&claim, &staged)
             .await
             .expect("Save staged pilot");
     }

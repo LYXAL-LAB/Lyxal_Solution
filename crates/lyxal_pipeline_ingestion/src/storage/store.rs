@@ -25,6 +25,9 @@ use crate::types::{
     SourceFormat,
 };
 
+/// Nombre maximal de rejeux d'une prise de réservation interrompue par un conflit transitoire.
+const CLAIM_CONFLICT_RETRIES: u32 = 5;
+
 /// Taille des pages lues pour charger tous les articles ou anomalies d'un lot.
 const PAGE_SIZE: i64 = 1000;
 
@@ -43,6 +46,33 @@ fn is_business(err: &LyxalSurrealError, code: &str) -> bool {
 // =============================================================================
 // PARAMÈTRES PUBLICS
 // =============================================================================
+
+/// Réservation d'un lot par une exécution de traitement (`fn::ingestion_batch_claim`) : jeton
+/// propre à l'exécution et génération de la réservation. Chaque écriture du traitement la
+/// présente ; une exécution qui l'a perdue (expiration, reprise) n'écrit plus rien
+/// (`INGESTION_BATCH_CLAIM_LOST`).
+#[derive(Debug, Clone, PartialEq, Eq, SurrealValue)]
+pub struct BatchClaim {
+    /// Jeton de l'exécution (UUID v7 tiré à chaque traitement).
+    pub owner: String,
+    /// Génération de la réservation, incrémentée à chaque prise.
+    pub generation: i64,
+}
+
+/// Avancement d'un lot enregistré au point de reprise (`fn::ingestion_batch_checkpoint`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BatchProgress {
+    /// Offset atteint dans les lignes sources.
+    pub cursor_offset: usize,
+    /// Nombre total de lignes du lot.
+    pub total_lignes: usize,
+    /// Lignes qualifiées `VERIFIED`.
+    pub verified: usize,
+    /// Lignes maintenues en `TO_CONFIRM`.
+    pub to_confirm: usize,
+    /// Lignes rejetées (quarantaine).
+    pub rejected: usize,
+}
 
 /// Nouveau lot d'ingestion (`fn::ingestion_batch_create`), créé à l'état `RECEIVED`.
 #[derive(Debug, Clone, SurrealValue)]
@@ -83,7 +113,27 @@ struct IdParams {
 }
 
 #[derive(SurrealValue)]
+struct BatchClaimParams {
+    id: String,
+    owner: String,
+    ttl_seconds: i64,
+}
+
+#[derive(SurrealValue)]
+struct BatchClaimGranted {
+    generation: i64,
+}
+
+#[derive(SurrealValue)]
+struct BatchReleaseParams {
+    id: String,
+    owner: String,
+    generation: i64,
+}
+
+#[derive(SurrealValue)]
 struct BatchCheckpointParams {
+    claim: BatchClaim,
     id: String,
     cursor_offset: i64,
     total_lignes: i64,
@@ -94,6 +144,7 @@ struct BatchCheckpointParams {
 
 #[derive(SurrealValue)]
 struct BatchTransitionParams {
+    claim: BatchClaim,
     id: String,
     nouveau_statut: BatchStatus,
     reason: String,
@@ -109,6 +160,7 @@ struct RawRecordParams {
 
 #[derive(SurrealValue)]
 struct RawRecordsSaveParams {
+    claim: BatchClaim,
     batch_id: String,
     records: Vec<RawRecordParams>,
 }
@@ -158,6 +210,7 @@ impl From<&StagedItem> for StagedItemParams {
 
 #[derive(SurrealValue)]
 struct StagedSaveParams {
+    claim: BatchClaim,
     batch_id: String,
     rules_version: String,
     items: Vec<StagedItemParams>,
@@ -173,6 +226,7 @@ struct StagedSaveOutcome {
 
 #[derive(SurrealValue)]
 struct QuarantineLogParams {
+    claim: BatchClaim,
     batch_id: String,
     ligne_numero: i64,
     code_erreur: String,
@@ -447,23 +501,75 @@ impl IngestionStore {
         }
     }
 
-    /// Enregistre un point de reprise du lot.
-    pub async fn save_checkpoint(
+    /// Réserve un lot pour une exécution de traitement (`owner` : jeton propre à l'exécution)
+    /// pendant `ttl_seconds`, si le lot est libre ou si la réservation précédente a expiré.
+    /// Une réservation active, même au même jeton, renvoie
+    /// [`IngestionError::BatchAlreadyClaimed`].
+    pub async fn claim_batch(
         &self,
         batch_id: &str,
-        cursor_offset: usize,
-        total_lignes: usize,
-        verified: usize,
-        to_confirm: usize,
-        rejected: usize,
+        owner: &str,
+        ttl_seconds: u32,
+    ) -> IngestionResult<BatchClaim> {
+        let mut attempt = 0;
+        loop {
+            let params = BatchClaimParams {
+                id: key(batch_id, "ingestion_batch").to_string(),
+                owner: owner.to_string(),
+                ttl_seconds: i64::from(ttl_seconds),
+            };
+            let granted: Result<BatchClaimGranted, _> =
+                self.call_fn("ingestion_batch_claim", params).await;
+            return match granted {
+                Ok(granted) => Ok(BatchClaim {
+                    owner: owner.to_string(),
+                    generation: granted.generation,
+                }),
+                Err(e) if is_business(&e, "INGESTION_BATCH_ALREADY_CLAIMED") => {
+                    Err(IngestionError::BatchAlreadyClaimed {
+                        batch_id: batch_id.to_string(),
+                    })
+                }
+                // Deux prises simultanées : SurrealDB n'en valide qu'une et refuse l'autre par un
+                // conflit transitoire ; rejouée, la prise perdante lit la réservation gagnante.
+                Err(e) if e.is_transient_conflict() && attempt < CLAIM_CONFLICT_RETRIES => {
+                    attempt += 1;
+                    tokio::time::sleep(std::time::Duration::from_millis(5 * u64::from(attempt)))
+                        .await;
+                    continue;
+                }
+                Err(e) => Err(e.into()),
+            };
+        }
+    }
+
+    /// Libère la réservation d'un lot si elle est encore détenue par `claim` ; sinon
+    /// `INGESTION_BATCH_CLAIM_LOST`, sans rien modifier.
+    pub async fn release_batch(&self, batch_id: &str, claim: &BatchClaim) -> IngestionResult<()> {
+        let params = BatchReleaseParams {
+            id: key(batch_id, "ingestion_batch").to_string(),
+            owner: claim.owner.clone(),
+            generation: claim.generation,
+        };
+        let _: bool = self.call_fn("ingestion_batch_release", params).await?;
+        Ok(())
+    }
+
+    /// Enregistre un point de reprise du lot et renouvelle sa réservation.
+    pub async fn save_checkpoint(
+        &self,
+        claim: &BatchClaim,
+        batch_id: &str,
+        progress: &BatchProgress,
     ) -> IngestionResult<()> {
         let params = BatchCheckpointParams {
+            claim: claim.clone(),
             id: key(batch_id, "ingestion_batch").to_string(),
-            cursor_offset: cursor_offset as i64,
-            total_lignes: total_lignes as i64,
-            lignes_verifiees: verified as i64,
-            lignes_a_confirmer: to_confirm as i64,
-            lignes_rejetees: rejected as i64,
+            cursor_offset: progress.cursor_offset as i64,
+            total_lignes: progress.total_lignes as i64,
+            lignes_verifiees: progress.verified as i64,
+            lignes_a_confirmer: progress.to_confirm as i64,
+            lignes_rejetees: progress.rejected as i64,
         };
         let _: bool = self.call_fn("ingestion_batch_checkpoint", params).await?;
         Ok(())
@@ -483,11 +589,12 @@ impl IngestionStore {
     /// à `STAGED` émet `ingestion.batch.staged` dans la même transaction.
     pub async fn update_batch_status(
         &self,
+        claim: &BatchClaim,
         batch_id: &str,
         new_status: BatchStatus,
         reason: &str,
     ) -> IngestionResult<()> {
-        self.transition_batch(batch_id, new_status, reason, None)
+        self.transition_batch(claim, batch_id, new_status, reason, None)
             .await
     }
 
@@ -495,22 +602,31 @@ impl IngestionStore {
     /// `ingestion.batch.failed` dans la même transaction.
     pub async fn fail_batch(
         &self,
+        claim: &BatchClaim,
         batch_id: &str,
         error_code: &str,
         reason: &str,
     ) -> IngestionResult<()> {
-        self.transition_batch(batch_id, BatchStatus::Failed, reason, Some(error_code))
-            .await
+        self.transition_batch(
+            claim,
+            batch_id,
+            BatchStatus::Failed,
+            reason,
+            Some(error_code),
+        )
+        .await
     }
 
     async fn transition_batch(
         &self,
+        claim: &BatchClaim,
         batch_id: &str,
         new_status: BatchStatus,
         reason: &str,
         error_code: Option<&str>,
     ) -> IngestionResult<()> {
         let params = BatchTransitionParams {
+            claim: claim.clone(),
             id: key(batch_id, "ingestion_batch").to_string(),
             nouveau_statut: new_status,
             reason: reason.to_string(),
@@ -526,10 +642,12 @@ impl IngestionStore {
     /// Renvoie le nombre de lignes créées.
     pub async fn save_raw_records_chunk(
         &self,
+        claim: &BatchClaim,
         batch_id: &str,
         records: &[RawRecord],
     ) -> IngestionResult<usize> {
         let params = RawRecordsSaveParams {
+            claim: claim.clone(),
             batch_id: key(batch_id, "ingestion_batch").to_string(),
             records: records
                 .iter()
@@ -546,8 +664,12 @@ impl IngestionStore {
 
     /// Enregistre un article en staging ; un code-barres invalide renvoie
     /// `INGESTION_GTIN_INVALID` (clé GS1 contrôlée par `lyxal_core`).
-    pub async fn save_staged_item(&self, item: &StagedItem) -> IngestionResult<String> {
-        self.save_staged_items_chunk(std::slice::from_ref(item))
+    pub async fn save_staged_item(
+        &self,
+        claim: &BatchClaim,
+        item: &StagedItem,
+    ) -> IngestionResult<String> {
+        self.save_staged_items_chunk(claim, std::slice::from_ref(item))
             .await?
             .pop()
             .unwrap_or_else(|| {
@@ -562,6 +684,7 @@ impl IngestionStore {
     /// manquant), que le worker consigne en quarantaine.
     pub async fn save_staged_items_chunk(
         &self,
+        claim: &BatchClaim,
         items: &[StagedItem],
     ) -> IngestionResult<Vec<IngestionResult<String>>> {
         let Some(first) = items.first() else {
@@ -577,6 +700,7 @@ impl IngestionStore {
             )));
         }
         let params = StagedSaveParams {
+            claim: claim.clone(),
             batch_id: key(&first.batch, "ingestion_batch").to_string(),
             rules_version: first.rules_version.clone(),
             items: items.iter().map(StagedItemParams::from).collect(),
@@ -632,8 +756,13 @@ impl IngestionStore {
     // --- Quarantaine --------------------------------------------------------
 
     /// Consigne une anomalie en quarantaine.
-    pub async fn log_quarantine(&self, record: &QuarantineRecord) -> IngestionResult<String> {
+    pub async fn log_quarantine(
+        &self,
+        claim: &BatchClaim,
+        record: &QuarantineRecord,
+    ) -> IngestionResult<String> {
         let params = QuarantineLogParams {
+            claim: claim.clone(),
             batch_id: key(&record.batch, "ingestion_batch").to_string(),
             ligne_numero: record.ligne_numero as i64,
             code_erreur: record.code_erreur.clone(),

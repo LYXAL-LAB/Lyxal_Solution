@@ -61,6 +61,13 @@ impl LyxalSurrealError {
         }
     }
 
+    /// Conflit d'écriture transitoire de SurrealDB (contrôle de concurrence optimiste) : la
+    /// transaction n'a pas été validée et peut être rejouée telle quelle.
+    pub fn is_transient_conflict(&self) -> bool {
+        let message = self.to_string();
+        message.contains("Transaction conflict") || message.contains("can be retried")
+    }
+
     /// Code et attributs d'une erreur de transport ; `None` pour `Call`, dont le code est
     /// porté par `lyxal_error`.
     pub fn transport_info(&self) -> Option<TransportErrorInfo> {

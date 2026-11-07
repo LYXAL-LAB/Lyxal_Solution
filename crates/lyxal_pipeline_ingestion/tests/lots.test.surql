@@ -13,6 +13,9 @@ RETURN fn::ingestion_batch_create({ id: "lot_a", source_type: "csv", fournisseur
     AND (fn::ingestion_batch_get({ id: "lot_a" }).data).{ source_type, fournisseur_id, statut, chunk_size, source_format_version, j: transitions.map(|$t| [$t.from_state, $t.to_state, $t.triggered_by]) }
         == { source_type: "CSV", fournisseur_id: "FOURN_PLACO", statut: "RECEIVED", chunk_size: 2, source_format_version: "1.0", j: [[NONE, "RECEIVED", "service:ingestion"]] };
 
+-- préparation: le banc réserve le lot lot_a (génération 1)
+RETURN fn::ingestion_batch_claim({ id: "lot_a", owner: "banc" }).data.generation == 1;
+
 -- test: un fichier déjà reçu (même format, même empreinte) est refusé
 -- en tant que: ingestion
 RETURN fn::ingestion_batch_create({ id: "lot_a_bis", source_type: "CSV", fournisseur_id: "FOURN_PLACO", nom_fichier: "placo_copie.csv", file_hash_blake3: crypto::blake3("placo.csv") }).error.{ code, batch_id: details.batch_id } == { code: "INGESTION_BATCH_DUPLICATE", batch_id: "lot_a" };
@@ -39,14 +42,14 @@ RETURN fn::ingestion_batch_create({ id: "lot_steward", source_type: "CSV", fourn
 
 -- test: l'agent d'ingestion enregistre les lignes brutes d'un bloc
 -- en tant que: ingestion
-RETURN fn::ingestion_raw_records_save({ batch_id: "lot_a", records: [
+RETURN fn::ingestion_raw_records_save({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_a", records: [
     { ligne_numero: 1, row_hash: crypto::blake3("l1"), payload_brut: { reference: "BA13" } },
     { ligne_numero: 2, row_hash: crypto::blake3("l2"), payload_brut: { reference: "BA18" } }
 ] }).data == 2;
 
 -- test: reprise : une ligne déjà enregistrée n'est jamais réécrite, la suivante est ajoutée
 -- en tant que: ingestion
-RETURN fn::ingestion_raw_records_save({ batch_id: "ingestion_batch:lot_a", records: [
+RETURN fn::ingestion_raw_records_save({ claim: { owner: "banc", generation: 1 }, batch_id: "ingestion_batch:lot_a", records: [
     { ligne_numero: 2, row_hash: crypto::blake3("modifiée"), payload_brut: { reference: "PIRATE" } },
     { ligne_numero: 3, row_hash: crypto::blake3("l3"), payload_brut: { reference: "BA25" } }
 ] }).data == 1
@@ -54,11 +57,11 @@ RETURN fn::ingestion_raw_records_save({ batch_id: "ingestion_batch:lot_a", recor
 
 -- test: une ligne brute mal formée est refusée
 -- en tant que: ingestion
-RETURN fn::ingestion_raw_records_save({ batch_id: "lot_a", records: [{ ligne_numero: 4, row_hash: "court", payload_brut: {} }] }).error.{ code, field: details.field } == { code: "INGESTION_INVALID_PARAMETERS", field: "records.row_hash" };
+RETURN fn::ingestion_raw_records_save({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_a", records: [{ ligne_numero: 4, row_hash: "court", payload_brut: {} }] }).error.{ code, field: details.field } == { code: "INGESTION_INVALID_PARAMETERS", field: "records.row_hash" };
 
 -- test: l'agent de qualification n'écrit pas de lignes brutes
 -- en tant que: qualif
-RETURN fn::ingestion_raw_records_save({ batch_id: "lot_a", records: [{ ligne_numero: 9, row_hash: crypto::blake3("l9"), payload_brut: {} }] }).error.code == "INGESTION_WRITE_FORBIDDEN";
+RETURN fn::ingestion_raw_records_save({ claim: { owner: "banc", generation: 1 }, batch_id: "lot_a", records: [{ ligne_numero: 9, row_hash: crypto::blake3("l9"), payload_brut: {} }] }).error.code == "INGESTION_WRITE_FORBIDDEN";
 
 -- test: une ligne brute est immuable, même pour l'agent d'ingestion
 -- en tant que: ingestion
@@ -68,10 +71,10 @@ RETURN (UPDATE ingestion_raw_record:lot_a_1 SET payload_brut = { reference: "PIR
 -- test: machine à états d'un lot jusqu'à la publication
 -- en tant que: ingestion
 RETURN [
-    fn::ingestion_batch_transition({ id: "lot_a", nouveau_statut: "parsing", reason: "Lecture" }).ok,
-    fn::ingestion_batch_transition({ id: "lot_a", nouveau_statut: "VALIDATING", reason: "Validation" }).ok,
-    fn::ingestion_batch_transition({ id: "lot_a", nouveau_statut: "STAGED", reason: "Staging" }).ok,
-    fn::ingestion_batch_transition({ id: "lot_a", nouveau_statut: "PUBLISHED", reason: "Publication" }).ok
+    fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_a", nouveau_statut: "parsing", reason: "Lecture" }).ok,
+    fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_a", nouveau_statut: "VALIDATING", reason: "Validation" }).ok,
+    fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_a", nouveau_statut: "STAGED", reason: "Staging" }).ok,
+    fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_a", nouveau_statut: "PUBLISHED", reason: "Publication" }).ok
 ] == [true, true, true, true];
 
 -- test: journal des transitions et date d'achèvement
@@ -81,7 +84,7 @@ RETURN (fn::ingestion_batch_get({ id: "lot_a" }).data).{ statut, termine: comple
 
 -- test: un lot publié est terminal
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_transition({ id: "lot_a", nouveau_statut: "FAILED", reason: "Trop tard", error_code: "INGESTION_TEST_FAILURE" }).error.code == "INGESTION_BATCH_TERMINAL_STATE";
+RETURN fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_a", nouveau_statut: "FAILED", reason: "Trop tard", error_code: "INGESTION_TEST_FAILURE" }).error.code == "INGESTION_BATCH_TERMINAL_STATE";
 
 -- test: le passage à STAGED émet ingestion.batch.staged une seule fois (pas à la publication)
 RETURN (SELECT VALUE payload FROM event_outbox WHERE event_type = "ingestion.batch.staged")
@@ -90,25 +93,28 @@ RETURN (SELECT VALUE payload FROM event_outbox WHERE event_type = "ingestion.bat
 -- préparation: second lot
 RETURN fn::ingestion_batch_create({ id: "lot_b", source_type: "JSON", fournisseur_id: "FOURN_ISOVER", nom_fichier: "isover.json", file_hash_blake3: crypto::blake3("isover.json") });
 
+-- préparation: le banc réserve le lot lot_b (génération 1)
+RETURN fn::ingestion_batch_claim({ id: "lot_b", owner: "banc" }).data.generation == 1;
+
 -- test: saut d'étape refusé par la garde du lot
 -- en tant que: ingestion
 -- attendu-erreur: INGESTION_BATCH_ILLEGAL_STATE_TRANSITION
-RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "STAGED", reason: "Raccourci" });
+RETURN fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_b", nouveau_statut: "STAGED", reason: "Raccourci" });
 
 -- test: le passage à FAILED exige son code d'erreur
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "FAILED", reason: "Fichier tronqué" }).error.{ code, f: details.fields.error_code }
+RETURN fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_b", nouveau_statut: "FAILED", reason: "Fichier tronqué" }).error.{ code, f: details.fields.error_code }
     == { code: "INGESTION_INVALID_PARAMETERS", f: ["CORE_VALIDATION_REQUIRED"] };
 
 -- test: un code d'erreur est refusé hors passage à FAILED
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "PARSING", reason: "Lecture", error_code: "INGESTION_TEST_FAILURE" }).error.{ code, f: details.fields.error_code }
+RETURN fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_b", nouveau_statut: "PARSING", reason: "Lecture", error_code: "INGESTION_TEST_FAILURE" }).error.{ code, f: details.fields.error_code }
     == { code: "INGESTION_INVALID_PARAMETERS", f: ["CORE_VALIDATION_NOT_ALLOWED"] };
 
 -- test: un lot en échec est repris (FAILED puis PARSING)
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "FAILED", reason: "Fichier tronqué", error_code: "INGESTION_SOURCE_TRUNCATED" }).ok
-    AND fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "PARSING", reason: "Nouvel essai" }).ok
+RETURN fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_b", nouveau_statut: "FAILED", reason: "Fichier tronqué", error_code: "INGESTION_SOURCE_TRUNCATED" }).ok
+    AND fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_b", nouveau_statut: "PARSING", reason: "Nouvel essai" }).ok
     AND fn::ingestion_batch_get({ id: "lot_b" }).data.statut == "PARSING";
 
 -- test: le code d'erreur est journalisé dans la transition vers FAILED
@@ -120,25 +126,25 @@ RETURN (SELECT VALUE payload FROM event_outbox WHERE event_type = "ingestion.bat
 
 -- test: statut inconnu
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "ARCHIVED", reason: "x" }).error.code == "INGESTION_INVALID_PARAMETERS";
+RETURN fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_b", nouveau_statut: "ARCHIVED", reason: "x" }).error.code == "INGESTION_INVALID_PARAMETERS";
 
 -- test: motif de transition obligatoire
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "VALIDATING" }).error.code == "INGESTION_INVALID_PARAMETERS";
+RETURN fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_b", nouveau_statut: "VALIDATING" }).error.code == "INGESTION_INVALID_PARAMETERS";
 
 -- test: point de reprise enregistré
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_checkpoint({ id: "lot_b", cursor_offset: 200, total_lignes: 500, lignes_verifiees: 150, lignes_a_confirmer: 40, lignes_rejetees: 10 }).ok
+RETURN fn::ingestion_batch_checkpoint({ claim: { owner: "banc", generation: 1 }, id: "lot_b", cursor_offset: 200, total_lignes: 500, lignes_verifiees: 150, lignes_a_confirmer: 40, lignes_rejetees: 10 }).ok
     AND (fn::ingestion_batch_get({ id: "lot_b" }).data).{ cursor_offset, total_lignes, lignes_verifiees, lignes_a_confirmer, lignes_rejetees }
         == { cursor_offset: 200, total_lignes: 500, lignes_verifiees: 150, lignes_a_confirmer: 40, lignes_rejetees: 10 };
 
 -- test: compteur négatif refusé
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_checkpoint({ id: "lot_b", cursor_offset: -1, total_lignes: 500, lignes_verifiees: 0, lignes_a_confirmer: 0, lignes_rejetees: 0 }).error.code == "INGESTION_INVALID_PARAMETERS";
+RETURN fn::ingestion_batch_checkpoint({ claim: { owner: "banc", generation: 1 }, id: "lot_b", cursor_offset: -1, total_lignes: 500, lignes_verifiees: 0, lignes_a_confirmer: 0, lignes_rejetees: 0 }).error.code == "INGESTION_INVALID_PARAMETERS";
 
 -- test: point de reprise d'un lot inconnu
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_checkpoint({ id: "lot_absent", cursor_offset: 0, total_lignes: 0, lignes_verifiees: 0, lignes_a_confirmer: 0, lignes_rejetees: 0 }).error.code == "INGESTION_BATCH_NOT_FOUND";
+RETURN fn::ingestion_batch_checkpoint({ claim: { owner: "banc", generation: 1 }, id: "lot_absent", cursor_offset: 0, total_lignes: 0, lignes_verifiees: 0, lignes_a_confirmer: 0, lignes_rejetees: 0 }).error.code == "INGESTION_BATCH_NOT_FOUND";
 
 -- test: identifiant d'une autre table refusé
 -- en tant que: ingestion
@@ -154,7 +160,7 @@ RETURN fn::ingestion_batch_get({ id: "lot_b" }).error.code == "INGESTION_BATCH_N
 
 -- test: un rôle inconnu ne fait pas avancer un lot
 -- en tant que: intrus
-RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "VALIDATING", reason: "Intrusion" }).error.code == "INGESTION_BATCH_NOT_FOUND"
+RETURN fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_b", nouveau_statut: "VALIDATING", reason: "Intrusion" }).error.code == "INGESTION_BATCH_NOT_FOUND"
     AND fn::ingestion_batch_get({ id: "lot_b" }).error.code == "INGESTION_BATCH_NOT_FOUND";
 
 -- préparation: le bus d'événements refuse toute publication
@@ -162,12 +168,12 @@ DEFINE FUNCTION OVERWRITE fn::event_publish($params: object) { RETURN fn::error_
 
 -- préparation: lot repris jusqu'à la validation
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "VALIDATING", reason: "Validation" });
+RETURN fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_b", nouveau_statut: "VALIDATING", reason: "Validation" });
 
 -- test: une publication refusée annule le passage à STAGED
 -- en tant que: ingestion
 -- attendu-erreur: EVENT_INVALID_PARAMETERS
-RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "STAGED", reason: "Staging" });
+RETURN fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_b", nouveau_statut: "STAGED", reason: "Staging" });
 
 -- test: le lot reste en validation, sans événement
 RETURN ingestion_batch:lot_b.statut == "VALIDATING"
