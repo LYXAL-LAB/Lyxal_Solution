@@ -31,10 +31,15 @@ lot en pose la base (une réservation expirée libère le lot).
 * `ingestion_batch` : `claim_owner` (`option<string>`), `claim_generation` (`int`, défaut 0,
   monotone), `claim_until` (`option<datetime>`, heure de la base) ; la garde du lot refuse toute
   baisse de génération.
-* **Nouvelle** `fn::ingestion_batch_claim($params)` : `id`, `owner` (identifiant du worker),
-  `ttl_seconds` (défaut 60, 5 à 600) ; prend la réservation si elle est libre, expirée ou déjà
-  à ce worker (renouvellement) ; renvoie `{ generation, until }` ; sinon
-  `INGESTION_BATCH_ALREADY_CLAIMED` (`details.owner`, `details.until`).
+* **Nouvelle** `fn::ingestion_batch_claim($params)` : `id`, `owner` (**jeton propre à une
+  exécution** de traitement, UUID v7 tiré à chaque appel de `process_batch`, jamais l'identifiant
+  du worker), `ttl_seconds` (défaut 60, 5 à 600) ; prend la réservation **seulement si elle est
+  libre ou expirée** — une réservation active est refusée même si elle porte le même jeton :
+  la prise n'est jamais un renouvellement ; génération incrémentée ; renvoie
+  `{ generation, until }` ; sinon `INGESTION_BATCH_ALREADY_CLAIMED` (`details.until`).
+* Renouvellement distinct de la prise : seul le point de reprise
+  (`fn::ingestion_batch_checkpoint`) prolonge la réservation, et seulement pour le jeton **et**
+  la génération en cours.
 * **Nouvelle** `fn::ingestion_batch_release($params)` : `id`, `owner`, `generation` ; libère si
   la réservation est toujours la sienne (sinon `INGESTION_BATCH_CLAIM_LOST`).
 * Cloisonnement : `fn::ingestion_raw_records_save`, `fn::ingestion_staged_save`,
@@ -50,7 +55,7 @@ lot en pose la base (une réservation expirée libère le lot).
 
 ### Rust
 
-* `IngestionWorker` : identifiant d'instance (UUID v7) ; `process_batch` prend la réservation,
+* `IngestionWorker` : `process_batch` tire un jeton d'exécution (UUID v7), prend la réservation,
   transmet `{ owner, generation }` à chaque écriture, la libère à la fin quelle que soit
   l'issue ; lot déjà réservé → `IngestionError` dédiée, le lot n'est pas marqué `FAILED`.
 * Suppression du verrou en mémoire `active_batch_lock` (remplacé, zéro dette).
@@ -61,10 +66,10 @@ lot en pose la base (une réservation expirée libère le lot).
 
 | Cas | Preuve attendue |
 | :- | :--- |
-| Exclusion | Banc : un second worker ne prend pas un lot réservé (`INGESTION_BATCH_ALREADY_CLAIMED`) ; le même worker renouvelle. |
+| Exclusion | Banc : une seconde prise d'un lot réservé est refusée (`INGESTION_BATCH_ALREADY_CLAIMED`), **y compris avec le même jeton** ; seul le point de reprise, avec jeton et génération en cours, renouvelle. |
 | Cloisonnement | Banc : une écriture avec une génération périmée ou un autre propriétaire → `INGESTION_BATCH_CLAIM_LOST`, rien n'est écrit (point de reprise, articles, transition). |
 | Expiration | Banc : réservation expirée reprise par un autre worker, génération supérieure ; l'ancien ne peut plus écrire. |
-| Concurrence réelle | Test Rust : deux workers lancés en même temps sur le même lot → un seul traite, l'autre est refusé ; le lot finit `STAGED` une seule fois (un seul `ingestion.batch.staged`). |
+| Concurrence réelle | Tests Rust : deux appels simultanés de `process_batch` **sur le même worker**, puis deux workers distincts, sur le même lot → un seul traite, l'autre est refusé ; le lot finit `STAGED` une seule fois (un seul `ingestion.batch.staged`) ; l'exécution refusée ne libère pas la réservation de l'autre. |
 | Libération | Après succès, échec ou interruption, la réservation est libérée ; un nouveau traitement peut la prendre. |
 
 Contrôle complet : `scripts/ci/ci_local.sh`.
