@@ -196,7 +196,7 @@ DEFINE INDEX OVERWRITE idx_staged_fingerprint ON TABLE ingestion_staged_item FIE
 DEFINE INDEX OVERWRITE idx_staged_qualif ON TABLE ingestion_staged_item FIELDS batch, qualification;
 
 -- ----------------------------------------------------------------------------
--- GARDIEN MOTEUR : Validation des transitions de qualification et verrou d'approbation
+-- GARDIEN MOTEUR : verrou du contenu scellé, transitions de qualification, verrou d'approbation
 -- ----------------------------------------------------------------------------
 DEFINE EVENT OVERWRITE evt_staged_guard ON TABLE ingestion_staged_item
 WHEN $event = "CREATE" OR $event = "UPDATE"
@@ -204,6 +204,13 @@ THEN {
     -- 0. Un article n'est jamais créé déjà approuvé : l'approbation passe par la requalification
     IF $event = "CREATE" AND $after.is_approved = true {
         THROW "INGESTION_STAGED_APPROVAL_REQUIRES_STEWARD: Un article ne peut pas être créé déjà approuvé.";
+    };
+
+    -- 0 bis. Contenu publié figé : un lot dont un manifeste est scellé (sealed_manifest, jusqu'à sa
+    -- remise en brouillon) ne reçoit ni nouvel article ni modification
+    LET $sealed_by = (SELECT VALUE sealed_manifest FROM ONLY $after.batch);
+    IF $sealed_by != NONE {
+        THROW "INGESTION_STAGED_ITEM_SEALED: Article verrouillé par le manifeste " + $sealed_by + " ; le remettre en brouillon avant toute correction.";
     };
 
     -- 1. Contrôle des transitions de qualification

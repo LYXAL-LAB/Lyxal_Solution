@@ -299,3 +299,30 @@ IF !record::exists(error_definition:INGESTION_STAGED_APPROVAL_REQUIRES_STEWARD) 
         }
     }
 ) END;
+
+IF !record::exists(error_definition:INGESTION_STAGED_ITEM_SEALED) THEN (
+    CREATE error_definition:INGESTION_STAGED_ITEM_SEALED CONTENT {
+        code: "INGESTION_STAGED_ITEM_SEALED",
+        module: "ingestion",
+        domain: "staged",
+        category: "conflict",
+        severity: "error",
+        message: "Article verrouillé par le manifeste scellé de son lot",
+        default_language: "fr",
+        http_status: 409,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Article verrouillé",
+                description: "Un manifeste du lot de cet article a été scellé : son contenu publié est figé jusqu'à la remise en brouillon de ce manifeste.",
+                resolution: "Remettre le manifeste en brouillon (details.manifest_ref), corriger l'article, puis le resceller et le faire réapprouver."
+            },
+            en: {
+                label: "Item locked",
+                description: "A manifest of this item's batch has been sealed: its published content is frozen until that manifest returns to draft.",
+                resolution: "Return the manifest to draft (details.manifest_ref), fix the item, then seal it again and have it re-approved."
+            }
+        }
+    }
+) END;

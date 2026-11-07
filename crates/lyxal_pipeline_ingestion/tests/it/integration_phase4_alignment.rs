@@ -201,30 +201,22 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
     let offset = store.load_checkpoint(batch_id).await.unwrap();
     assert_eq!(offset, 5);
 
-    // 3. Sauvegarde d'un manifeste déclaré scellé mais avec un hash vide -> Rejet
-    let invalid_sealed_manifest = ManifestDraft {
+    // 3. Brouillon : ni contenu ni sceau, approbation refusée
+    let draft_manifest = ManifestDraft {
         manifest_ref: manifest_ref.to_string(),
         batch_id: batch_id.to_string(),
         manifest_version: 1,
-        seal_hash: String::new(),
         statut: ManifestStatus::Draft,
         nb_articles_insert: 1,
         nb_articles_update: 0,
     };
-
-    let save_err = store.save_manifest(&invalid_sealed_manifest).await;
-    assert!(
-        save_err.is_err(),
-        "fn::ingestion_manifest_save DOIT rejeter un manifeste déclaré scellé sans seal_hash"
-    );
-
-    // 4. Sauvegarde d'un brouillon non scellé -> Succès, mais rejet à l'approbation
-    let mut draft_manifest = invalid_sealed_manifest;
-    draft_manifest.seal_hash = lyxal_crypto::blake3_hex(b"brouillon");
     store
         .save_manifest(&draft_manifest)
         .await
         .expect("Sauvegarde brouillon réussie");
+    let draft = store.get_manifest_detail(manifest_ref).await.unwrap();
+    assert!(draft.manifest.seal_hash.is_none() && draft.manifest.contenu.is_none());
+    assert!(!draft.seal_valid);
 
     let approve_unsealed = store
         .approve_manifest(manifest_ref, "Tentative d'approbation non scellé")
@@ -234,14 +226,16 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
         "fn::ingestion_manifest_approve DOIT rejeter l'approbation d'un manifeste non scellé"
     );
 
-    // 5. Sauvegarde avec scellement BLAKE3 valide
-    let mut valid_manifest = draft_manifest;
-    valid_manifest.seal_hash = lyxal_crypto::blake3_hex(b"blake3_seal_valid_hash");
-    valid_manifest.statut = ManifestStatus::Sealed;
+    // 4. Scellement : le serveur fige le contenu et calcule le sceau BLAKE3
+    let mut sealed_manifest = draft_manifest;
+    sealed_manifest.statut = ManifestStatus::Sealed;
     store
-        .save_manifest(&valid_manifest)
+        .save_manifest(&sealed_manifest)
         .await
         .expect("fn::ingestion_manifest_save réussi");
+    let sealed = store.get_manifest_detail(manifest_ref).await.unwrap();
+    assert_eq!(sealed.seal_hash.as_deref().map(str::len), Some(64));
+    assert!(sealed.seal_valid);
 
     // 5. Approbation sous contrôle strict du rôle steward_admin
     let approve_ok = store

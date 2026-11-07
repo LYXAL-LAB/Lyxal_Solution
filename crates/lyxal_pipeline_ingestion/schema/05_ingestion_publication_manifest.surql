@@ -49,16 +49,19 @@ DEFINE FIELD OVERWRITE manifest_version ON TABLE ingestion_publication_manifest
     ASSERT $value >= 1
     COMMENT "Version incrémentale du manifeste pour le lot";
 
+DEFINE FIELD OVERWRITE contenu ON TABLE ingestion_publication_manifest
+    TYPE option<array<object>> FLEXIBLE
+    COMMENT "Contenu exact publié, figé au scellement par fn::ingestion_manifest_content (un élément par article VERIFIED, ordonné par référence) ; la publication l'envoie tel quel au catalogue";
+
 DEFINE FIELD OVERWRITE seal_hash ON TABLE ingestion_publication_manifest
-    TYPE string
-    VALUE string::lowercase(string::trim($value))
-    ASSERT string::len($value) = 64
-    COMMENT "Empreinte de scellement BLAKE3 calculée sur l'ensemble ordonné des empreintes canoniques approuvées";
+    TYPE option<string>
+    ASSERT $value = NONE OR string::len($value) = 64
+    COMMENT "Sceau BLAKE3 du contenu figé (crypto::blake3(<string> contenu)), calculé par le serveur au scellement";
 
 DEFINE FIELD OVERWRITE is_sealed ON TABLE ingestion_publication_manifest
     TYPE bool
     DEFAULT false
-    COMMENT "Verrou de scellement : interdit toute modification des articles du manifeste";
+    COMMENT "Manifeste scellé : contenu et sceau figés ; les articles de son lot sont verrouillés (ingestion_batch.sealed_manifest)";
 
 -- ----------------------------------------------------------------------------
 -- MACHINE À ÉTATS DU MANIFESTE
@@ -149,6 +152,12 @@ THEN {
         THROW "INGESTION_MANIFEST_ILLEGAL_STATE_TRANSITION: Un manifeste ne peut être créé qu'à l'état DRAFT ou SEALED.";
     };
 
+    -- 0 bis. Contenu et sceau ne changent qu'en brouillon ou au scellement (fn::ingestion_manifest_save) :
+    -- une fois le manifeste approuvé, ce qui est publié ne varie plus
+    IF $event = "UPDATE" AND ($before.contenu != $after.contenu OR $before.seal_hash != $after.seal_hash) AND $after.statut NOT IN ["DRAFT", "SEALED"] {
+        THROW "INGESTION_MANIFEST_ILLEGAL_STATE_TRANSITION: Le contenu et le sceau d'un manifeste approuvé ne se modifient plus.";
+    };
+
     -- 1. Validation de la machine à états
     IF $event = "UPDATE" AND $before.statut != $after.statut {
         LET $valid_m_trans = (
@@ -165,7 +174,7 @@ THEN {
 
         -- 2. Transition vers APPROVED : exige le scellement effectif et l'approbation explicite d'un steward_admin
         IF $after.statut = "APPROVED" {
-            IF $after.is_sealed != true OR $after.seal_hash == NONE {
+            IF $after.is_sealed != true OR $after.seal_hash == NONE OR $after.contenu == NONE {
                 THROW "INGESTION_MANIFEST_UNSEALED: L'approbation requiert obligatoirement un manifeste préalablement scellé avec son empreinte BLAKE3.";
             };
             -- Approbateur lu dans la session : steward_admin, ou session système (hôte)

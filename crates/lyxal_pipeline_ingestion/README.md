@@ -39,18 +39,31 @@ Gardes (`DEFINE EVENT`) :
 
 * `evt_batch_guard` : `RECEIVED → PARSING → VALIDATING → STAGED → PUBLISHED`, `FAILED` depuis
   chaque étape, reprise `FAILED → RECEIVED | PARSING` (`INGESTION_BATCH_ILLEGAL_STATE_TRANSITION`).
-* `evt_staged_guard` : transitions de qualification autorisées ; un article n'est jamais créé
-  approuvé ; approbation réservée à un article `VERIFIED` et à l'identité de session d'un
+* `evt_staged_guard` : un article d'un lot verrouillé par un manifeste scellé
+  (`ingestion_batch.sealed_manifest`) ne se crée ni ne se modifie (`INGESTION_STAGED_ITEM_SEALED`) ;
+  transitions de qualification autorisées ; un article n'est jamais créé approuvé ; approbation réservée à un article `VERIFIED` et à l'identité de session d'un
   `steward_admin` (ou de la session système).
 * `evt_manifest_guard` : `DRAFT → SEALED → APPROVED → EXECUTING → COMMITTED`, `FAILED` ;
-  approbation : scellement et identité de session du steward ; exécution : `catalogue_sync_agent`
-  (ou session système).
+  approbation : scellement (contenu et sceau) et identité de session du steward ; exécution :
+  `catalogue_sync_agent` (ou session système) ; contenu et sceau ne changent qu'en brouillon ou
+  au scellement.
+* `evt_batch_guard` refuse aussi qu'un autre rôle que le steward (ou la session système) pose ou
+  retire le verrou `sealed_manifest` d'un lot.
+
+**Scellement.** `fn::ingestion_manifest_save` au statut `SEALED` fige dans le manifeste le contenu
+exact à publier (`contenu`, construit par `fn::ingestion_manifest_content` : un élément par
+article `VERIFIED`, avec la charge utile de `fn::catalogue_item_create` et la preuve
+commerciale), calcule son sceau BLAKE3 sur le contenu stocké (aucun sceau n'est accepté de
+l'appelant) et verrouille le lot. Pour corriger un article, le steward remet le manifeste en
+brouillon (`SEALED` ou `FAILED` → `DRAFT` : contenu et sceau effacés, lot déverrouillé), corrige,
+rescelle puis réapprouve. `fn::ingestion_manifest_get_detail` renvoie `seal_valid`, le sceau
+recalculé par le serveur sur le contenu.
 
 ---
 
 ## 2. Fonctions (`functions/`)
 
-25 fonctions `fn::ingestion_*($params: object)`, au contrat `fn::result_ok` /
+26 fonctions `fn::ingestion_*($params: object)`, au contrat `fn::result_ok` /
 `fn::error_result`. Entrées contrôlées par `lyxal_core` : moteur
 `fn::validation_object_execute` / `fn::sanitize_object_execute` (`unknown_keys: "reject"`) pour
 les fonctions appelées de l'extérieur ou une fois par lot ou par bloc ; primitives, en contrôles
@@ -111,12 +124,13 @@ publie chaque manifeste approuvé ; la livraison est au moins une fois, la publi
   5 min) signé par `HmacCatalogueTokenIssuer` (`lyxal_crypto::hmac`) avec la clé de l'hôte
   (`CatalogueSyncKey`, 32 caractères `A-Z a-z 0-9 _ -`) ; le client de l'hôte est cloné (nouvelle
   session SurrealDB) puis authentifié par ce jeton.
-* **Contrôles** : sceau recalculé sur les articles du lot ; seuls les articles `VERIFIED` dont la
-  preuve est éligible à la production (ni pilote, ni synthétique) sont publiés.
-* **Écriture** : `fn::catalogue_item_create` (article commercial maître, `code = master_id =
-  ING-<empreinte BLAKE3 de fabricant et référence>`, type, unité de référence, unité de
-  conditionnement `unite_conditionnement`, conditionnement) ;
-  un article déjà présent est mis à jour (`fn::catalogue_item_update`).
+* **Contrôles** : sceau du contenu figé vérifié par le serveur (`seal_valid`), sinon refus sans
+  aucune écriture ; seuls les éléments du contenu figé dont la preuve est éligible à la production
+  (ni pilote, ni synthétique) sont publiés, jamais l'état courant du staging.
+* **Écriture** : `fn::catalogue_item_create` avec la charge utile figée (article commercial
+  maître, `code = master_id = ING-<32 premiers caractères du BLAKE3 de [fabricant, référence]>`,
+  type, unité de référence, conditionnement, unité de conditionnement) ; un article déjà présent
+  est mis à jour (`fn::catalogue_item_update`).
 * **Journal et issue** : chaque article est journalisé dans le manifeste ; une reprise saute les
   articles déjà publiés. `COMMITTED` si tout est publié, sinon `FAILED` (le steward corrige puis
   réapprouve). Panne de base : l'événement est rejoué ; manifeste non publiable : lettre morte.

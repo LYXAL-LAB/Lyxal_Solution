@@ -532,7 +532,6 @@ async fn test_6_manifest_listing_and_detail_integrity() {
         batch_id: "batch_manif_01".to_string(),
         manifest_ref: "PUB-2026-LEGRAND-001".to_string(),
         manifest_version: 1,
-        seal_hash: lyxal_crypto::blake3_hex(b"blake3_seal_hash_abcdef0123456789abcdef0123456789"),
         statut: ManifestStatus::Sealed,
         nb_articles_insert: 10,
         nb_articles_update: 0,
@@ -553,10 +552,10 @@ async fn test_6_manifest_listing_and_detail_integrity() {
         .await
         .expect("Get manifest detail");
     assert!(detail.is_sealed);
-    assert_eq!(
-        detail.seal_hash,
-        lyxal_crypto::blake3_hex(b"blake3_seal_hash_abcdef0123456789abcdef0123456789")
-    );
+    // Sceau calculé par le serveur sur le contenu figé (lot sans article VERIFIED : contenu vide)
+    assert_eq!(detail.seal_hash.as_deref().map(str::len), Some(64));
+    assert!(detail.seal_valid);
+    assert_eq!(detail.manifest.contenu.as_deref().map(<[_]>::len), Some(0));
     assert_eq!(detail.execution_count, 0);
     assert_eq!(detail.transition_count, 1);
 }

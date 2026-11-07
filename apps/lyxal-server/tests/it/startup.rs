@@ -303,8 +303,6 @@ async fn every_emitted_error_code_is_defined() {
 #[cfg(feature = "module-ingestion")]
 #[tokio::test]
 async fn approved_manifest_is_published_through_the_event_engine() {
-    use lyxal_pipeline_ingestion::fingerprint::FingerprintEngine;
-
     let key = uuid::Uuid::new_v4().simple().to_string();
     let config = config_with(
         "publication",
@@ -338,16 +336,14 @@ async fn approved_manifest_is_published_through_the_event_engine() {
 
     // Lot, article vérifié avec preuve éligible, manifeste scellé puis approuvé (session système)
     let fingerprint = lyxal_crypto::blake3_hex(b"lot_srv:BA13");
-    let seal = FingerprintEngine::compute_manifest_seal(std::slice::from_ref(&fingerprint));
     client
         .query(
             "RETURN fn::ingestion_batch_create({ id: 'lot_srv', source_type: 'CSV', fournisseur_id: 'FOURN_PLACO', nom_fichier: 'srv.csv', file_hash_blake3: crypto::blake3('srv.csv') }).ok;
              RETURN fn::ingestion_staged_save({ batch_id: 'lot_srv', rules_version: '1', items: [{ ligne_numero: 1, canonical_fingerprint: $fp, fabricant: 'PLACO', reference_fabricant: 'BA13', libelle_commercial: 'Plaque BA13', unite_reference: 'M2', conditionnement: { unite_vente: 'PCE', quantite_par_colis: 1.0 }, qualification: 'VERIFIED', commercial_proof: { proof_type: 'CERTIFIED_MANUFACTURER_EDI', proof_reference: 'EDI-2026-PLACO-001', source_authority: 'EDI_HUB_SAINT_GOBAIN', verified_by: 'system:edi_receiver', verified_at: '2026-10-25T10:00:00Z' } }] }).data[0].ok;
-             RETURN fn::ingestion_manifest_save({ manifest_ref: 'MAN-SRV', batch_id: 'lot_srv', seal_hash: $seal, statut: 'SEALED', nb_articles_insert: 1 }).ok;
+             RETURN fn::ingestion_manifest_save({ manifest_ref: 'MAN-SRV', batch_id: 'lot_srv', statut: 'SEALED', nb_articles_insert: 1 }).ok;
              RETURN fn::ingestion_manifest_approve({ manifest_ref: 'MAN-SRV', justification: 'Manifeste contrôlé avant publication' }).ok;",
         )
         .bind(("fp", fingerprint))
-        .bind(("seal", seal))
         .await
         .expect("préparation")
         .check()

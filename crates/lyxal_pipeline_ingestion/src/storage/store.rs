@@ -66,9 +66,8 @@ pub struct ManifestDraft {
     pub manifest_ref: String,
     pub batch_id: String,
     pub manifest_version: i64,
-    /// Sceau BLAKE3 des empreintes canoniques des articles du lot.
-    pub seal_hash: String,
-    /// `Draft` ou `Sealed` ; approbation et exécution ont leurs propres fonctions.
+    /// `Draft` ou `Sealed` ; au scellement, le serveur fige le contenu publié et calcule son sceau.
+    /// Approbation et exécution ont leurs propres fonctions.
     pub statut: ManifestStatus,
     pub nb_articles_insert: i64,
     pub nb_articles_update: i64,
@@ -392,7 +391,9 @@ pub struct ManifestDetailResult {
     pub manifest: PublicationManifest,
     pub batch: Option<IngestionBatch>,
     pub is_sealed: bool,
-    pub seal_hash: String,
+    pub seal_hash: Option<String>,
+    /// Sceau recalculé par le serveur sur le contenu figé et égal au sceau enregistré.
+    pub seal_valid: bool,
     pub execution_count: i64,
     pub transition_count: i64,
 }
