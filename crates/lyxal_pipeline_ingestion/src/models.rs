@@ -1,3 +1,4 @@
+use crate::proof::CommercialProof;
 use crate::types::{
     BatchStatus, ItemQualification, ManifestStatus, PackagingDetails, PublicationAction,
     SourceFormat, StateTransitionRecord,
@@ -112,7 +113,12 @@ pub struct PublicationManifest {
     pub batch: String,
     pub manifest_ref: String,
     pub manifest_version: usize,
-    pub seal_hash: String,
+    /// Contenu exact publié, figé au scellement (absent en brouillon).
+    #[serde(default)]
+    #[surreal(default)]
+    pub contenu: Option<Vec<ManifestEntry>>,
+    /// Sceau BLAKE3 du contenu, calculé par le serveur au scellement (absent en brouillon).
+    pub seal_hash: Option<String>,
     pub is_sealed: bool,
     pub statut: ManifestStatus,
 
@@ -127,4 +133,54 @@ pub struct PublicationManifest {
     pub execution_items: Vec<serde_json::Value>,
     pub transitions: Vec<StateTransitionRecord>,
     pub executed_at: Option<lyxal_surreal::Datetime>,
+}
+
+/// Élément du contenu figé d'un manifeste (`fn::ingestion_manifest_content`) : un article
+/// `VERIFIED` du lot, tel qu'il est envoyé au catalogue.
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
+pub struct ManifestEntry {
+    /// Identifiant maître de l'article (`ING-<empreinte>`), code et `master_id` au catalogue.
+    pub item_ref: String,
+    pub publication_action: PublicationAction,
+    pub commercial_proof: Option<CommercialProof>,
+    /// Charge utile de `fn::catalogue_item_create`.
+    pub catalogue: CataloguePayload,
+}
+
+/// Article commercial maître tel que publié au catalogue (contrat de `lyxal_catalogue`).
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
+pub struct CataloguePayload {
+    pub code: String,
+    #[serde(rename = "type")]
+    #[surreal(rename = "type")]
+    pub type_item: String,
+    pub libelle: String,
+    /// Code de l'unité de référence (`base_unite`) ; absent si l'unité n'est pas résolue.
+    pub unite_reference: Option<String>,
+    pub description: Option<String>,
+    pub nature_reference: String,
+    pub fabricant: String,
+    pub marque: Option<String>,
+    pub reference_fabricant: String,
+    pub code_barre: Option<String>,
+    pub conditionnement: CatalogueConditionnement,
+    /// `base_unite:<CODE>` en texte.
+    pub unite_conditionnement: Option<String>,
+    pub master_id: String,
+}
+
+/// Conditionnement d'un article publié.
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
+pub struct CatalogueConditionnement {
+    pub quantite: f64,
+    pub poids_kg: Option<f64>,
+    pub dimensions: Option<CatalogueDimensions>,
+}
+
+/// Dimensions d'un article publié (mm).
+#[derive(Debug, Clone, Serialize, Deserialize, SurrealValue)]
+pub struct CatalogueDimensions {
+    pub longueur: f64,
+    pub largeur: f64,
+    pub epaisseur: f64,
 }

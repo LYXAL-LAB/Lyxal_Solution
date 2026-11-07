@@ -52,6 +52,7 @@ functions = [
     "functions/batch/ingestion_raw_records_save.surql",
     "functions/staged/ingestion_staged_save.surql",
     "functions/quarantine/ingestion_quarantine_log.surql",
+    "functions/manifest/ingestion_manifest_content.surql",
     "functions/manifest/ingestion_manifest_save.surql",
     "functions/manifest/ingestion_manifest_approve.surql",
     "functions/manifest/ingestion_manifest_record_exec.surql",

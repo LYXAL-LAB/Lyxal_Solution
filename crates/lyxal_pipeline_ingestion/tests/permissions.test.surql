@@ -21,7 +21,7 @@ RETURN fn::ingestion_staged_save({ batch_id: "lot_p", rules_version: "1", items:
 RETURN fn::ingestion_quarantine_log({ batch_id: "lot_p", ligne_numero: 1, code_erreur: "INGESTION_UNIT_UNRESOLVED", champ_concerne: "unite_reference", cause_detaillee: "Unité à confirmer" });
 
 -- préparation: manifeste scellé
-RETURN fn::ingestion_manifest_save({ manifest_ref: "MAN-P", batch_id: "lot_p", seal_hash: crypto::blake3("MAN-P"), statut: "SEALED" });
+RETURN fn::ingestion_manifest_save({ manifest_ref: "MAN-P", batch_id: "lot_p", statut: "SEALED" });
 
 -- préparation: table de lecture commune aux tests
 DEFINE FUNCTION fn::test_visible() {

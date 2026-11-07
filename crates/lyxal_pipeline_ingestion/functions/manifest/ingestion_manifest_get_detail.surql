@@ -30,7 +30,8 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_get_detail($params: object) {
         batch: $batch,
         is_sealed: $manifest.is_sealed,
         seal_hash: $manifest.seal_hash,
+        seal_valid: $found.contenu != NONE AND $found.seal_hash != NONE AND crypto::blake3(<string> $found.contenu) == $found.seal_hash,
         execution_count: array::len($manifest.execution_items ?? []),
         transition_count: array::len($manifest.transitions ?? [])
     });
-} COMMENT "Retourne un manifeste de publication (référence), son lot, son scellement et le nombre d'exécutions et de transitions ; INGESTION_MANIFEST_NOT_FOUND sinon";
+} COMMENT "Retourne un manifeste de publication (référence, contenu figé), son lot, son scellement, la validité du sceau recalculée par le serveur sur le contenu (seal_valid) et le nombre d'exécutions et de transitions ; INGESTION_MANIFEST_NOT_FOUND sinon";

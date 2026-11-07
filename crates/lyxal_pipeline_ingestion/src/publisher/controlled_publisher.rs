@@ -3,9 +3,10 @@
 //! * Session dédiée : le client de l'hôte est cloné (nouvelle session SurrealDB sur la même
 //!   connexion) puis authentifié par un jeton de service `catalogue_sync_agent` court ; la
 //!   session système de l'hôte n'est jamais modifiée.
-//! * Seuls les articles `VERIFIED`, dont la preuve commerciale est éligible à la production,
-//!   sont publiés ; `TO_CONFIRM` et `REJECTED` sont exclus.
-//! * Le sceau BLAKE3 du manifeste est recalculé sur les articles du lot avant toute écriture.
+//! * Seuls les articles `VERIFIED` du contenu figé, dont la preuve commerciale est éligible à la
+//!   production, sont publiés ; `TO_CONFIRM` et `REJECTED` n'y figurent pas.
+//! * Le sceau BLAKE3 du manifeste est recalculé par le serveur sur son contenu figé avant toute
+//!   écriture ; seul ce contenu figé au scellement est publié, jamais l'état courant du staging.
 //! * Chaque article est journalisé dans le manifeste (`fn::ingestion_manifest_execution_item_update`) ;
 //!   une reprise saute les articles déjà publiés.
 //! * Issue : `COMMITTED` si tous les articles éligibles sont publiés, sinon `FAILED` (le Data
@@ -18,11 +19,10 @@ use std::sync::Arc;
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
-use super::catalogue::{catalogue_master_id, CatalogueSyncClient};
+use super::catalogue::CatalogueSyncClient;
 use super::token::CatalogueTokenIssuer;
 use crate::error::{IngestionError, IngestionResult};
-use crate::fingerprint::FingerprintEngine;
-use crate::models::StagedItem;
+use crate::models::{ManifestEntry, StagedItem};
 use crate::storage::IngestionStore;
 use crate::types::{ItemQualification, ManifestStatus, PublicationAction};
 
@@ -86,9 +86,16 @@ impl ControlledPublisher {
 
         // 2. Manifeste : approuvé, ou en cours d'exécution (reprise) ; un manifeste exécuté
         // n'est pas republié
-        let manifest = store.get_manifest(manifest_ref).await?.ok_or_else(|| {
-            IngestionError::Storage(format!("Manifeste '{manifest_ref}' introuvable"))
-        })?;
+        let detail = match store.get_manifest_detail(manifest_ref).await {
+            Ok(detail) => detail,
+            Err(IngestionError::Surreal(e)) if matches!(e.as_ref(), LyxalSurrealError::Call(call) if call.is_business_code("INGESTION_MANIFEST_NOT_FOUND")) => {
+                return Err(IngestionError::Storage(format!(
+                    "Manifeste '{manifest_ref}' introuvable"
+                )))
+            }
+            Err(e) => return Err(e),
+        };
+        let manifest = detail.manifest;
         let staged_items = store.get_staged_items_by_batch(&manifest.batch).await?;
         if manifest.statut == ManifestStatus::Committed {
             return Ok(report(
@@ -110,23 +117,26 @@ impl ControlledPublisher {
             )));
         }
 
-        // 3. Intégrité : le sceau recalculé sur les articles du lot doit être celui approuvé
-        let fingerprints: Vec<String> = staged_items
-            .iter()
-            .map(|it| it.canonical_fingerprint.clone())
-            .collect();
-        if FingerprintEngine::compute_manifest_seal(&fingerprints) != manifest.seal_hash {
-            return Err(IngestionError::FingerprintTampered(format!(
-                "Le sceau du manifeste {manifest_ref} ne correspond plus aux articles du lot {}",
-                manifest.batch
-            )));
-        }
+        // 3. Intégrité : le sceau, recalculé par le serveur sur le contenu figé, doit être celui
+        // approuvé ; seul ce contenu est publié
+        let contenu = match (detail.seal_valid, manifest.contenu) {
+            (true, Some(contenu)) => contenu,
+            _ => {
+                return Err(IngestionError::FingerprintTampered(format!(
+                    "Le sceau du manifeste {manifest_ref} ne correspond plus à son contenu figé"
+                )))
+            }
+        };
 
-        // 4. Reprise : articles déjà publiés avec succès
+        // 4. Reprise : articles déjà publiés avec succès sous ce sceau ; après une remise en
+        // brouillon et un nouveau scellement, les succès de l'ancien contenu ne comptent plus
         let already_committed: HashSet<String> = manifest
             .execution_items
             .iter()
             .filter(|e| e.get("success").and_then(|v| v.as_bool()) == Some(true))
+            .filter(|e| {
+                e.get("seal_hash").and_then(|v| v.as_str()) == manifest.seal_hash.as_deref()
+            })
             .filter_map(|e| {
                 e.get("item_ref")
                     .and_then(|v| v.as_str())
@@ -138,25 +148,25 @@ impl ControlledPublisher {
         let mut already_published = 0;
         let mut newly_published = 0;
         let mut failed = 0;
-        for item in staged_items
-            .iter()
-            .filter(|i| i.qualification == ItemQualification::Verified)
-        {
-            let item_ref = catalogue_master_id(&item.fabricant, &item.reference_fabricant);
-            if already_committed.contains(&item_ref)
-                || item.publication_action == PublicationAction::Unchanged
+        for entry in &contenu {
+            let item_ref = &entry.item_ref;
+            if already_committed.contains(item_ref)
+                || entry.publication_action == PublicationAction::Unchanged
             {
                 already_published += 1;
                 continue;
             }
-            let refusal = match (refusal_before_call(item), item.unite_reference.as_deref()) {
+            let refusal = match (
+                refusal_before_call(entry),
+                entry.catalogue.unite_reference.as_deref(),
+            ) {
                 (Some(reason), _) => Some(reason),
                 (None, None) => Some(
                     "INGESTION_UNIT_UNRESOLVED : article sans unité du référentiel, non publiable"
                         .to_string(),
                 ),
-                (None, Some(unite)) => match catalogue
-                    .publish(item, unite, item.publication_action)
+                (None, Some(_)) => match catalogue
+                    .publish(&entry.catalogue, entry.publication_action)
                     .await
                 {
                     Ok(()) => None,
@@ -169,8 +179,8 @@ impl ControlledPublisher {
             store
                 .update_manifest_execution_item(
                     manifest_ref,
-                    &item_ref,
-                    item.publication_action,
+                    item_ref,
+                    entry.publication_action,
                     refusal.is_none(),
                     refusal.as_deref(),
                 )
@@ -207,8 +217,8 @@ impl ControlledPublisher {
 }
 
 /// Motif de refus d'un article avant tout appel au catalogue.
-fn refusal_before_call(item: &StagedItem) -> Option<String> {
-    let eligible = item
+fn refusal_before_call(entry: &ManifestEntry) -> Option<String> {
+    let eligible = entry
         .commercial_proof
         .as_ref()
         .is_some_and(|proof| proof.is_eligible_for_production());
@@ -217,7 +227,7 @@ fn refusal_before_call(item: &StagedItem) -> Option<String> {
             "INGESTION_PROOF_INVALID : preuve commerciale absente, pilote ou synthétique, non éligible à la publication".to_string(),
         );
     }
-    if item.publication_action == PublicationAction::Deprecate {
+    if entry.publication_action == PublicationAction::Deprecate {
         return Some(
             "INGESTION_MANIFEST_ILLEGAL_STATE_TRANSITION : le retrait d'un article du catalogue n'est pas pris en charge par la publication".to_string(),
         );

@@ -60,11 +60,32 @@ CREATE ingestion_staged_item CONTENT { batch: ingestion_batch:lot_sec, raw_recor
 
 -- test: le steward enregistre un manifeste scellé
 -- en tant que: steward
-RETURN fn::ingestion_manifest_save({ manifest_ref: "MAN-SEC", batch_id: "lot_sec", seal_hash: crypto::blake3("MAN-SEC"), statut: "SEALED", nb_articles_insert: 1 }).ok;
+RETURN fn::ingestion_manifest_save({ manifest_ref: "MAN-SEC", batch_id: "lot_sec", statut: "SEALED", nb_articles_insert: 1 }).ok;
+
+-- test: le contenu figé contient l'article VERIFIED avec sa charge utile catalogue et sa preuve
+-- en tant que: steward
+RETURN (fn::ingestion_manifest_get_detail({ manifest_ref: "MAN-SEC" }).data).{
+        valide: seal_valid,
+        refs: manifest.contenu.map(|$e| $e.catalogue.reference_fabricant),
+        item: manifest.contenu[0].catalogue.{ libelle, unite_reference, unite_conditionnement, nature_reference, q: conditionnement.quantite },
+        code_stable: manifest.contenu[0].item_ref == manifest.contenu[0].catalogue.code AND manifest.contenu[0].item_ref == manifest.contenu[0].catalogue.master_id,
+        preuve: manifest.contenu[0].commercial_proof.proof_reference
+    } == {
+        valide: true,
+        refs: ["BA13"],
+        item: { libelle: "Plaque BA13", unite_reference: "PCE", unite_conditionnement: "base_unite:PCE", nature_reference: "COMMERCIALE", q: 1.0 },
+        code_stable: true,
+        preuve: "CAT-PLACO-2026"
+    };
+
+-- test: le contenu figé est celui que construit fn::ingestion_manifest_content
+-- en tant que: steward
+RETURN fn::ingestion_manifest_content({ batch_id: "lot_sec" }).data.map(|$e| [$e.item_ref, $e.catalogue.libelle])
+    == (SELECT VALUE contenu FROM ONLY ingestion_publication_manifest WHERE manifest_ref = "MAN-SEC" LIMIT 1).map(|$e| [$e.item_ref, $e.catalogue.libelle]);
 
 -- test: la fonction n'enregistre qu'un manifeste brouillon ou scellé
 -- en tant que: steward
-RETURN fn::ingestion_manifest_save({ manifest_ref: "MAN-PIRATE", batch_id: "lot_sec", manifest_version: 2, seal_hash: crypto::blake3("MAN-PIRATE"), statut: "APPROVED" }).error.code == "INGESTION_INVALID_PARAMETERS";
+RETURN fn::ingestion_manifest_save({ manifest_ref: "MAN-PIRATE", batch_id: "lot_sec", manifest_version: 2, statut: "APPROVED" }).error.code == "INGESTION_INVALID_PARAMETERS";
 
 -- test: un manifeste n'est jamais créé déjà approuvé par écriture directe
 -- en tant que: steward
@@ -129,12 +150,23 @@ CREATE test_ref:quarantaine SET id_q = <string> (SELECT VALUE id FROM ONLY inges
 -- en tant que: qualif
 RETURN fn::ingestion_quarantine_resolve({ quarantine_id: test_ref:quarantaine.id_q, comment: "Résolution illégitime", _session_auth: { role: "steward_admin", user_id: "pirate" } }).error.code == "INGESTION_UNAUTHORIZED_APPROVER";
 
--- test: le steward résout la quarantaine ; l'article corrigé repasse à confirmer
+-- test: le lot publié est verrouillé : le steward ne corrige plus son article par la quarantaine
 -- en tant que: steward
-RETURN fn::ingestion_quarantine_resolve({ quarantine_id: test_ref:quarantaine.id_q, comment: "GTIN corrigé d'après la fiche fabricant", staged_item_id: test_ref:items.a2 }).ok;
+RETURN fn::ingestion_quarantine_resolve({ quarantine_id: test_ref:quarantaine.id_q, comment: "GTIN corrigé d'après la fiche fabricant", staged_item_id: test_ref:items.a2 }).error.{ code, ref: details.manifest_ref }
+    == { code: "INGESTION_STAGED_ITEM_SEALED", ref: "MAN-SEC" };
 
--- test: résolution enregistrée au nom du steward de la session
-RETURN (SELECT VALUE [is_resolved, resolved_by] FROM ONLY <record> test_ref:quarantaine.id_q) == [true, "user:steward"] AND (SELECT VALUE qualification FROM ONLY <record> test_ref:items.a2) == "TO_CONFIRM";
+-- test: ni par requalification
+-- en tant que: steward
+RETURN fn::ingestion_staged_requalify({ item_id: test_ref:items.a2, new_qualification: "TO_CONFIRM", justification: "Correction après publication" }).error.code == "INGESTION_STAGED_ITEM_SEALED";
+
+-- test: ni par écriture directe
+-- en tant que: qualif
+-- attendu-erreur: INGESTION_STAGED_ITEM_SEALED
+UPDATE <record> test_ref:items.a2 SET libelle_commercial = "Libellé corrigé";
+
+-- test: anomalie non résolue et article inchangé
+RETURN (SELECT VALUE is_resolved FROM ONLY <record> test_ref:quarantaine.id_q) == false
+    AND (SELECT VALUE libelle_commercial FROM ONLY <record> test_ref:items.a2) != "Libellé corrigé";
 
 -- test: identité de session lue par la fonction interne
 -- en tant que: steward

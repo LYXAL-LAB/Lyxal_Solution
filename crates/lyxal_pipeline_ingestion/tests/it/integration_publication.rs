@@ -6,12 +6,10 @@ use std::sync::Arc;
 use lyxal_event::{CorrelationId, EventContext, EventId, Handler, HandlerContext};
 use lyxal_pipeline_ingestion::error::IngestionError;
 use lyxal_pipeline_ingestion::events::{ManifestApprovedEvent, ManifestPublishedEvent};
-use lyxal_pipeline_ingestion::fingerprint::FingerprintEngine;
 use lyxal_pipeline_ingestion::models::StagedItem;
 use lyxal_pipeline_ingestion::proof::{CommercialProof, CommercialProofType};
 use lyxal_pipeline_ingestion::publisher::{
-    catalogue_master_id, CatalogueTokenIssuer, ControlledPublisher, ManifestApprovedHandler,
-    PublicationConsumer,
+    CatalogueTokenIssuer, ControlledPublisher, ManifestApprovedHandler, PublicationConsumer,
 };
 use lyxal_pipeline_ingestion::storage::{IngestionStore, ManifestDraft, NewBatch};
 use lyxal_pipeline_ingestion::types::{
@@ -104,16 +102,11 @@ async fn approved_manifest(
     {
         outcome.expect("article enregistré");
     }
-    let fingerprints: Vec<String> = items
-        .iter()
-        .map(|i| i.canonical_fingerprint.clone())
-        .collect();
     store
         .save_manifest(&ManifestDraft {
             manifest_ref: manifest_ref.to_string(),
             batch_id: batch.to_string(),
             manifest_version: 1,
-            seal_hash: FingerprintEngine::compute_manifest_seal(&fingerprints),
             statut: ManifestStatus::Sealed,
             nb_articles_insert: items.len() as i64,
             nb_articles_update: 0,
@@ -124,6 +117,21 @@ async fn approved_manifest(
         .approve_manifest(manifest_ref, "Manifeste contrôlé avant publication")
         .await
         .expect("approbation");
+}
+
+/// Identifiant maître (`item_ref`) d'un article, lu dans le contenu figé du manifeste.
+async fn item_ref(store: &IngestionStore, manifest_ref: &str, reference: &str) -> String {
+    store
+        .get_manifest(manifest_ref)
+        .await
+        .expect("lecture")
+        .expect("manifeste")
+        .contenu
+        .expect("contenu figé")
+        .into_iter()
+        .find(|e| e.catalogue.reference_fabricant == reference)
+        .expect("article du contenu")
+        .item_ref
 }
 
 #[derive(Debug, SurrealValue)]
@@ -203,7 +211,7 @@ async fn approved_manifest_is_published_to_the_catalogue() {
         .iter()
         .find(|r| r.reference_fabricant.as_deref() == Some("BA13"))
         .expect("BA13 publié");
-    assert_eq!(ba13.code, catalogue_master_id("PLACO", "BA13"));
+    assert_eq!(ba13.code, item_ref(&store, "MAN-PUB", "BA13").await);
     assert_eq!(ba13.master_id.as_deref(), Some(ba13.code.as_str()));
     assert!(!ba13.is_custom);
     assert_eq!(ba13.nature_reference, "COMMERCIALE");
@@ -230,6 +238,32 @@ async fn approved_manifest_is_published_to_the_catalogue() {
             "base_unite:{unit} ne doit pas être supprimable"
         );
     }
+
+    // Le contenu figé couvre tout ce qui est publié (conditionnement compris) et le catalogue a
+    // reçu exactement ce contenu
+    let manifest_content = store
+        .get_manifest("MAN-PUB")
+        .await
+        .expect("lecture")
+        .expect("manifeste")
+        .contenu
+        .expect("contenu figé");
+    assert_eq!(
+        manifest_content.len(),
+        2,
+        "seuls les articles VERIFIED sont figés"
+    );
+    let frozen = manifest_content
+        .iter()
+        .find(|e| e.catalogue.reference_fabricant == "BA13")
+        .expect("BA13 figé");
+    assert_eq!(frozen.catalogue.code, ba13.code);
+    assert_eq!(frozen.catalogue.code_barre, ba13.code_barre);
+    assert_eq!(frozen.catalogue.conditionnement.quantite, 1.0);
+    assert_eq!(
+        frozen.catalogue.unite_conditionnement.as_deref(),
+        Some("base_unite:PCE")
+    );
 
     // Manifeste exécuté au nom de l'agent de synchronisation
     let manifest = store
@@ -345,11 +379,138 @@ async fn catalogue_refusal_is_journaled_and_others_are_published() {
         .iter()
         .find(|e| e["success"] == false)
         .expect("article refusé journalisé");
-    assert_eq!(refused["item_ref"], catalogue_master_id("PLACO", "BA18"));
+    assert_eq!(
+        refused["item_ref"],
+        item_ref(&store, "MAN-MIXTE", "BA18").await
+    );
     assert!(refused["error"]
         .as_str()
         .unwrap_or_default()
         .starts_with("CATALOGUE_ITEM_UNITE_INVALID"));
+}
+
+/// Manifeste en échec rouvert, corrigé et rescellé : les succès de l'ancien contenu ne
+/// dispensent pas de publier le contenu corrigé (un article déjà publié est mis à jour).
+#[tokio::test]
+async fn reopened_manifest_republishes_corrected_items() {
+    let store = crate::support::installed_store().await;
+    let issuer = crate::support::sync_issuer(&store).await;
+    let mut unknown_unit = item(
+        "lot_rouvert",
+        2,
+        "BA18",
+        ItemQualification::Verified,
+        Some(proof("EDI-2026-PLACO-002", "EDI_HUB_SAINT_GOBAIN")),
+    );
+    unknown_unit.unite_reference = Some("BOITE".to_string());
+    let items = vec![
+        item(
+            "lot_rouvert",
+            1,
+            "BA13",
+            ItemQualification::Verified,
+            Some(proof("EDI-2026-PLACO-001", "EDI_HUB_SAINT_GOBAIN")),
+        ),
+        unknown_unit,
+    ];
+    approved_manifest(&store, "lot_rouvert", "MAN-ROUVERT", &items).await;
+    let publisher = ControlledPublisher::new(store.client().clone(), issuer);
+    let first = publisher
+        .publish_manifest("MAN-ROUVERT")
+        .await
+        .expect("publication");
+    assert_eq!(first.final_status, ManifestStatus::Failed);
+
+    // Lot verrouillé tant que le manifeste en échec n'est pas rouvert
+    let locked = store
+        .client()
+        .query("UPDATE ingestion_staged_item SET libelle_commercial = 'Corrigé' WHERE batch = ingestion_batch:lot_rouvert")
+        .await
+        .expect("requête")
+        .check();
+    assert!(locked.is_err(), "un lot en échec reste verrouillé");
+
+    // Remise en brouillon, correction de BA13 (déjà publié) et de l'unité de BA18, rescellement
+    let draft = ManifestDraft {
+        manifest_ref: "MAN-ROUVERT".to_string(),
+        batch_id: "lot_rouvert".to_string(),
+        manifest_version: 1,
+        statut: ManifestStatus::Draft,
+        nb_articles_insert: 2,
+        nb_articles_update: 0,
+    };
+    store
+        .save_manifest(&draft)
+        .await
+        .expect("remise en brouillon");
+    store
+        .client()
+        .query(
+            "UPDATE ingestion_staged_item SET libelle_commercial = 'Plaque BA13 corrigée' WHERE batch = ingestion_batch:lot_rouvert AND reference_fabricant = 'BA13';
+             UPDATE ingestion_staged_item SET unite_reference = 'M2' WHERE batch = ingestion_batch:lot_rouvert AND reference_fabricant = 'BA18';",
+        )
+        .await
+        .expect("corrections")
+        .check()
+        .expect("corrections appliquées");
+    store
+        .save_manifest(&ManifestDraft {
+            statut: ManifestStatus::Sealed,
+            ..draft
+        })
+        .await
+        .expect("rescellement");
+    store
+        .approve_manifest("MAN-ROUVERT", "Corrections vérifiées avant republication")
+        .await
+        .expect("réapprobation");
+
+    let second = publisher
+        .publish_manifest("MAN-ROUVERT")
+        .await
+        .expect("republication");
+    assert_eq!(second.final_status, ManifestStatus::Committed);
+    assert_eq!((second.newly_published, second.failed), (2, 0));
+    let libelles: Vec<String> = store
+        .client()
+        .query("SELECT VALUE libelle FROM catalogue_item WHERE reference_fabricant = 'BA13'")
+        .await
+        .expect("lecture")
+        .take(0)
+        .expect("libellés");
+    assert_eq!(libelles, ["Plaque BA13 corrigée"]);
+}
+
+/// Un article ne quitte pas son lot : le rattachement est immuable.
+#[tokio::test]
+async fn staged_item_batch_is_immutable() {
+    let store = crate::support::installed_store().await;
+    let items = vec![item(
+        "lot_fixe",
+        1,
+        "BA13",
+        ItemQualification::Verified,
+        Some(proof("EDI-2026-PLACO-001", "EDI_HUB_SAINT_GOBAIN")),
+    )];
+    approved_manifest(&store, "lot_fixe", "MAN-FIXE", &items).await;
+    let moved = store
+        .client()
+        .query(
+            "RETURN fn::ingestion_batch_create({ id: 'lot_libre', source_type: 'CSV', fournisseur_id: 'FOURN_PLACO', nom_fichier: 'libre.csv', file_hash_blake3: crypto::blake3('libre.csv') }).ok;
+             UPDATE ingestion_staged_item SET batch = ingestion_batch:lot_libre WHERE batch = ingestion_batch:lot_fixe;",
+        )
+        .await
+        .expect("requête")
+        .check();
+    assert!(moved.is_err(), "le lot d'un article ne change pas");
+    let count: Option<i64> = store
+        .client()
+        .query("RETURN count(SELECT * FROM ingestion_staged_item WHERE batch = ingestion_batch:lot_fixe)")
+        .await
+        .expect("lecture")
+        .take(0)
+        .expect("compte");
+    assert_eq!(count, Some(1));
 }
 
 #[tokio::test]
@@ -378,7 +539,7 @@ async fn resumed_publication_skips_journaled_and_already_created_items() {
     store
         .update_manifest_execution_item(
             "MAN-REPRISE",
-            &catalogue_master_id("PLACO", "BA13"),
+            &item_ref(&store, "MAN-REPRISE", "BA13").await,
             PublicationAction::Insert,
             true,
             None,
@@ -391,7 +552,7 @@ async fn resumed_publication_skips_journaled_and_already_created_items() {
         .authenticate(token.expose_secret().to_string())
         .await
         .expect("session de l'agent de synchronisation");
-    let code = catalogue_master_id("PLACO", "BA18");
+    let code = item_ref(&store, "MAN-REPRISE", "BA18").await;
     let created: Vec<serde_json::Value> = sync_session
         .query("RETURN fn::catalogue_item_create({ code: $code, master_id: $code, type: 'PRODUIT', libelle: 'Plaque de plâtre BA18', unite_reference: 'M2', nature_reference: 'COMMERCIALE', fabricant: 'PLACO', reference_fabricant: 'BA18' }).ok")
         .bind(("code", code))
@@ -426,7 +587,7 @@ async fn resumed_publication_skips_journaled_and_already_created_items() {
 }
 
 #[tokio::test]
-async fn tampered_batch_and_unapproved_manifest_are_refused() {
+async fn sealed_batch_is_locked_and_tampered_content_is_refused() {
     let store = crate::support::installed_store().await;
     let issuer = crate::support::sync_issuer(&store).await;
     let publisher = ControlledPublisher::new(store.client().clone(), issuer);
@@ -439,8 +600,8 @@ async fn tampered_batch_and_unapproved_manifest_are_refused() {
     )];
     approved_manifest(&store, "lot_altere", "MAN-ALTERE", &items).await;
 
-    // Article ajouté au lot après l'approbation : le sceau ne correspond plus
-    for outcome in store
+    // Le lot est verrouillé par le manifeste scellé : aucun article ne s'y ajoute plus
+    let added = store
         .save_staged_items_chunk(&[item(
             "lot_altere",
             2,
@@ -448,11 +609,25 @@ async fn tampered_batch_and_unapproved_manifest_are_refused() {
             ItemQualification::Verified,
             Some(proof("EDI-2026-PLACO-002", "EDI_HUB_SAINT_GOBAIN")),
         )])
+        .await;
+    let refused = match added {
+        Err(_) => true,
+        Ok(outcomes) => outcomes.iter().all(|o| o.is_err()),
+    };
+    assert!(refused, "un article ne s'ajoute pas à un lot scellé");
+
+    // Contenu figé altéré directement en base (garde retirée) : le sceau ne correspond plus
+    store
+        .client()
+        .query(
+            "REMOVE EVENT evt_manifest_guard ON TABLE ingestion_publication_manifest;
+             UPDATE ingestion_publication_manifest SET contenu[0].catalogue.libelle = 'Libellé altéré'
+                WHERE manifest_ref = 'MAN-ALTERE';",
+        )
         .await
-        .expect("ajout")
-    {
-        outcome.expect("article ajouté");
-    }
+        .expect("altération")
+        .check()
+        .expect("altération appliquée");
     let tampered = publisher.publish_manifest("MAN-ALTERE").await;
     assert!(
         matches!(tampered, Err(IngestionError::FingerprintTampered(_))),

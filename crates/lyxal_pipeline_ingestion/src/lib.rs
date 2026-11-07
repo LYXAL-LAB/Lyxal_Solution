@@ -8,7 +8,6 @@
 //! - les adaptateurs de sources ([`adapters::FabDisAdapter`], [`adapters::CsvAdapter`],
 //!   [`adapters::XmlAdapter`], [`adapters::JsonAdapter`]) ;
 //! - la normalisation et la qualification initiale ([`normalization::NormalizationEngine`]) ;
-//! - les empreintes canoniques et le sceau des manifestes ([`FingerprintEngine`], BLAKE3) ;
 //! - le worker supervisé ([`IngestionWorker`]) ;
 //! - le store ([`IngestionStore`], appels `call_fn` des fonctions du module) ;
 //! - la publication vers le catalogue ([`ControlledPublisher`], [`PublicationConsumer`]) sous le
@@ -17,7 +16,6 @@
 pub mod adapters;
 pub mod error;
 pub mod events;
-pub mod fingerprint;
 pub mod health;
 pub mod models;
 pub mod module;
@@ -31,8 +29,10 @@ pub mod worker;
 
 // Ré-exports : modèles, store, types
 pub use error::{IngestionError, IngestionResult};
-pub use fingerprint::FingerprintEngine;
-pub use models::{IngestionBatch, PublicationManifest, QuarantineRecord, RawRecord, StagedItem};
+pub use models::{
+    CatalogueConditionnement, CatalogueDimensions, CataloguePayload, IngestionBatch, ManifestEntry,
+    PublicationManifest, QuarantineRecord, RawRecord, StagedItem,
+};
 pub use module::PipelineIngestionModule;
 pub use storage::IngestionStore;
 pub use types::{

@@ -139,6 +139,10 @@ DEFINE FIELD OVERWRITE completed_at ON TABLE ingestion_batch
     TYPE option<datetime>
     COMMENT "Date d'achèvement de l'ingestion ou du staging";
 
+DEFINE FIELD OVERWRITE sealed_manifest ON TABLE ingestion_batch
+    TYPE option<string>
+    COMMENT "Référence du manifeste qui fige le contenu publié du lot (posée au scellement, retirée à la remise en brouillon par fn::ingestion_manifest_save) : ses articles ne se créent ni ne se modifient plus";
+
 -- ----------------------------------------------------------------------------
 -- INDEX D'IDEMPOTENCE ET DE RECHERCHE
 -- ----------------------------------------------------------------------------
@@ -154,6 +158,12 @@ DEFINE INDEX OVERWRITE idx_batch_fournisseur_statut ON TABLE ingestion_batch FIE
 DEFINE EVENT OVERWRITE evt_batch_guard ON TABLE ingestion_batch
 WHEN $event = "UPDATE"
 THEN {
+    -- Le verrou du contenu scellé n'est posé ou retiré que par le steward (ou la session système),
+    -- au scellement et à la remise en brouillon d'un manifeste
+    IF $before.sealed_manifest != $after.sealed_manifest AND fn::ingestion_session_identity({}).role NOT IN ["steward_admin", "system"] {
+        THROW "INGESTION_STAGED_ITEM_SEALED: Le verrou du contenu scellé d'un lot ne se modifie que par le scellement ou la remise en brouillon d'un manifeste.";
+    };
+
     IF $before.statut != $after.statut {
         LET $is_valid_trans = (
             ($before.statut = "RECEIVED" AND ($after.statut = "PARSING" OR $after.statut = "FAILED"))

@@ -6,7 +6,6 @@ pub mod consumer;
 pub mod controlled_publisher;
 pub mod token;
 
-pub use catalogue::catalogue_master_id;
 pub use consumer::{
     ManifestApprovedHandler, PublicationConsumer, PUBLICATION_HANDLER, PUBLICATION_MODULE,
     PUBLICATION_SUBSCRIPTION,

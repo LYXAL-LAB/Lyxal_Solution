@@ -40,6 +40,10 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_requalify($params: object) {
     IF $cur == NONE {
         RETURN fn::error_result("INGESTION_ITEM_NOT_FOUND", $p.language, { item_id: <string> record::id($p.item_id) });
     };
+    LET $sealed_by = (SELECT VALUE batch.sealed_manifest FROM ONLY $p.item_id);
+    IF $sealed_by != NONE {
+        RETURN fn::error_result("INGESTION_STAGED_ITEM_SEALED", $p.language, { item_id: <string> record::id($p.item_id), manifest_ref: $sealed_by });
+    };
 
     -- 4. Règle d'or : preuve commerciale authentifiée obligatoire pour VERIFIED
     IF $target == "VERIFIED" {

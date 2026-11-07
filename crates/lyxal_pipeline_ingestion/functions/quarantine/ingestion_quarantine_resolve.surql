@@ -52,9 +52,12 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_resolve($params: object) {
     IF (SELECT VALUE id FROM ONLY $p.quarantine_id) == NONE {
         RETURN fn::error_result("INGESTION_RECORD_NOT_FOUND", $p.language, { quarantine_id: <string> record::id($p.quarantine_id) });
     };
-    LET $staged = IF $p.staged_item_id != NONE { (SELECT qualification, code_barre_gtin, unite_reference, transitions FROM ONLY $p.staged_item_id) } ELSE { NONE };
+    LET $staged = IF $p.staged_item_id != NONE { (SELECT qualification, code_barre_gtin, unite_reference, transitions, batch.sealed_manifest AS sealed_by FROM ONLY $p.staged_item_id) } ELSE { NONE };
     IF $p.staged_item_id != NONE AND $staged == NONE {
         RETURN fn::error_result("INGESTION_ITEM_NOT_FOUND", $p.language, { item_id: <string> record::id($p.staged_item_id) });
+    };
+    IF $staged.sealed_by != NONE {
+        RETURN fn::error_result("INGESTION_STAGED_ITEM_SEALED", $p.language, { item_id: <string> record::id($p.staged_item_id), manifest_ref: $staged.sealed_by });
     };
 
     LET $now = time::now();
