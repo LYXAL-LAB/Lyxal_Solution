@@ -14,6 +14,7 @@
 --
 -- Erreurs
 --   ERROR_INVALID_INPUT : entrée invalide (details.fields)
+--   ERROR_WRITE_FORBIDDEN : écriture refusée par les permissions (details.table)
 -- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::error_occurrence_purge_before(
     $params: object
@@ -29,6 +30,11 @@ DEFINE FUNCTION OVERWRITE fn::error_occurrence_purge_before(
         RETURN fn::error_result("ERROR_INVALID_INPUT", $params.language, { fields: $report.by_field });
     };
     LET $p = $report.value;
+    -- Le journal est invisible et non modifiable pour toute identité (jeton ou utilisateur) :
+    -- une purge sous identité ne supprimerait rien en silence, elle est refusée.
+    IF $auth != NONE OR $token != NONE {
+        RETURN fn::error_result("ERROR_WRITE_FORBIDDEN", $p.language, { table: "error_occurrence" });
+    };
     LET $deleted = DELETE error_occurrence WHERE occurred_at < $p.before_date RETURN BEFORE;
     RETURN fn::result_ok({ before: $p.before_date, count: array::len($deleted) });
 }

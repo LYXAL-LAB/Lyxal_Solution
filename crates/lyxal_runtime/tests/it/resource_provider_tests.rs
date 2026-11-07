@@ -1,79 +1,8 @@
 use lyxal_runtime::manifest::ManifestParser;
 use lyxal_runtime::resource::{
-    EmbeddedResourceProvider, FilesystemResourceProvider, ModuleResource, ResourceDiscovery,
-    ResourceKind, ResourceProvider,
+    EmbeddedResourceProvider, ModuleResource, ResourceDiscovery, ResourceKind,
 };
 use lyxal_runtime::RuntimeError;
-use std::fs;
-use tempfile::tempdir;
-
-#[tokio::test]
-async fn test_filesystem_provider_read() {
-    let dir = tempdir().unwrap();
-    let schema_dir = dir.path().join("schema");
-    fs::create_dir_all(&schema_dir).unwrap();
-
-    let table_file = schema_dir.join("tables.surql");
-    fs::write(&table_file, "DEFINE TABLE booking SCHEMAFULL;").unwrap();
-
-    let provider = FilesystemResourceProvider::new(dir.path());
-
-    let content = provider.read("schema/tables.surql").await.unwrap();
-    assert_eq!(content, "DEFINE TABLE booking SCHEMAFULL;");
-}
-
-#[tokio::test]
-async fn test_filesystem_provider_not_found() {
-    let dir = tempdir().unwrap();
-    let provider = FilesystemResourceProvider::new(dir.path());
-
-    let err = provider.read("schema/missing.surql").await.unwrap_err();
-    match err {
-        RuntimeError::ResourceNotFound { path } => {
-            assert_eq!(path, "schema/missing.surql");
-        }
-        _ => panic!("Expected ResourceNotFound, got {:?}", err),
-    }
-}
-
-#[tokio::test]
-async fn test_filesystem_provider_security_path_traversal() {
-    let dir = tempdir().unwrap();
-    let provider = FilesystemResourceProvider::new(dir.path());
-
-    // Tentative traversal avec '..'
-    let err = provider.read("../secret.surql").await.unwrap_err();
-    assert_eq!(err.code(), "RUNTIME_RESOURCE_INVALID_PATH");
-
-    let err2 = provider.read("schema/../../etc/passwd").await.unwrap_err();
-    assert_eq!(err2.code(), "RUNTIME_RESOURCE_INVALID_PATH");
-
-    // Tentative chemin absolu Unix
-    let err3 = provider.read("/etc/passwd").await.unwrap_err();
-    assert_eq!(err3.code(), "RUNTIME_RESOURCE_INVALID_PATH");
-
-    // Tentative chemin absolu Windows
-    let err4 = provider.read("C:/Windows/system.ini").await.unwrap_err();
-    assert_eq!(err4.code(), "RUNTIME_RESOURCE_INVALID_PATH");
-}
-
-#[tokio::test]
-async fn test_filesystem_provider_max_size_enforced() {
-    let dir = tempdir().unwrap();
-    let file = dir.path().join("big.surql");
-    fs::write(&file, vec![b'a'; 1000]).unwrap();
-
-    let provider = FilesystemResourceProvider::new(dir.path()).with_max_size(500);
-
-    let err = provider.read("big.surql").await.unwrap_err();
-    match err {
-        RuntimeError::ResourceTooLarge { size, max_size, .. } => {
-            assert_eq!(size, 1000);
-            assert_eq!(max_size, 500);
-        }
-        _ => panic!("Expected ResourceTooLarge, got {:?}", err),
-    }
-}
 
 #[test]
 fn test_resource_is_empty_or_whitespace() {

@@ -76,7 +76,7 @@ est accepté partout.
 | `fn::error_mapping_update` | **mapping_id**, puis les champs à modifier | correspondance |
 | `fn::error_mapping_disable` | **mapping_id** | `{ id, disabled }` |
 | `fn::error_map_external` | **provider**, **external_code**, service, http_status | `{ mapping, definition, definition_code, retryable_override }` ou `NONE` |
-| `fn::error_log` | **code**, **source_module**, operation, source, actor (`record`), technical_message, context, request_id, trace_id, correlation_id, fingerprint, environment (défaut `production`), severity | occurrence, ou `NONE` si la définition a `log_occurrence = false` |
+| `fn::error_log` | **code**, **source_module**, operation, source, actor (`record`), technical_message, context, request_id, trace_id, correlation_id, fingerprint, environment (défaut `production`), severity | `{ logged: true, occurrence }`, ou `{ logged: false, occurrence: NONE }` si la définition a `log_occurrence = false` |
 | `fn::error_occurrence_get` | **occurrence_id** (`record<error_occurrence>`) | occurrence |
 | `fn::error_occurrence_list` | code, source_module, limit, start | liste |
 | `fn::error_occurrence_purge_before` | **before_date** (`datetime`) | `{ before, count }` |
@@ -84,6 +84,11 @@ est accepté partout.
 Règles propres au module : le code d'une définition commence par `UPPER(module)_` ; une
 correspondance référence une définition existante ; deux correspondances ne peuvent pas avoir le
 même fournisseur, service, code externe et matcher.
+
+Écritures vérifiées : une création, modification ou désactivation filtrée par les permissions
+des tables (écriture réservée aux sessions d'administration) renvoie `ERROR_WRITE_FORBIDDEN`
+(`details.table`) au lieu d'un succès. `fn::error_occurrence_purge_before` est refusée sous toute
+identité (jeton ou utilisateur), pour qui le journal est invisible et non modifiable.
 
 ---
 
@@ -98,6 +103,7 @@ même fournisseur, service, code externe et matcher.
 | `ERROR_OCCURRENCE_NOT_FOUND` | `not_found` | 404 | Occurrence inconnue |
 | `ERROR_DEFINITION_ALREADY_EXISTS` | `conflict` | 409 | Code déjà enregistré |
 | `ERROR_MAPPING_ALREADY_EXISTS` | `conflict` | 409 | Correspondance identique déjà enregistrée |
+| `ERROR_WRITE_FORBIDDEN` | `authorization` | 403 | Écriture refusée par les permissions de la table (`details.table`) |
 | `ERROR_INVALID_FUNCTION_RESPONSE` | `internal` | 500 | Réponse d'une fonction hors contrat `{ ok, data, error }`, détectée côté Rust |
 
 Chaque module porte ses propres définitions : les codes `CORE_*` sont dans `lyxal_core`.
@@ -141,5 +147,7 @@ cargo test -p lyxal_error
 
 Les tests d'intégration démarrent un serveur SurrealDB 3.3.4 (`LYXAL_SURREAL_BIN`, à défaut
 `surreal` dans le `PATH`), installent `lyxal_core` puis `lyxal_error` depuis leurs manifestes et
-appellent chaque fonction avec les types Rust du crate. `scripts/ci/ci_local.sh` rejoue la CI
+appellent chaque fonction avec les types Rust du crate. Le banc SurrealQL
+(`tests/*.test.surql`, `scripts/ci/test_lyxal_modules.py`) appelle chaque fonction publique et
+vérifie les refus d'écriture sous identité simulée. `scripts/ci/ci_local.sh` rejoue la CI
 complète.

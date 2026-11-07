@@ -18,6 +18,7 @@
 --   ERROR_INVALID_INPUT : entrée invalide (details.fields)
 --   ERROR_DEFINITION_NOT_FOUND : definition_code inconnu
 --   ERROR_MAPPING_ALREADY_EXISTS : même fournisseur, service, code et mode déjà enregistrés
+--   ERROR_WRITE_FORBIDDEN : écriture refusée par les permissions (details.table)
 -- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::error_mapping_create(
     $params: object
@@ -53,7 +54,7 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_create(
             WHERE provider = $provider AND service = $service AND external_code = $external_code AND matcher = $matcher AND id != $exclude LIMIT 1) > 0 {
         RETURN fn::error_result("ERROR_MAPPING_ALREADY_EXISTS", $p.language, { provider: $provider, service: $service, external_code: $external_code, matcher: $matcher });
     };
-    RETURN fn::result_ok(CREATE ONLY error_external_mapping CONTENT {
+    LET $created = CREATE ONLY error_external_mapping CONTENT {
         provider: $provider,
         service: $service,
         external_code: $external_code,
@@ -64,7 +65,9 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_create(
         description: $p.description,
         retryable_override: $p.retryable_override,
         metadata: $p.metadata
-    });
+    };
+    IF $created IS NONE { RETURN fn::error_result("ERROR_WRITE_FORBIDDEN", $p.language, { table: "error_external_mapping" }); };
+    RETURN fn::result_ok($created);
 }
 COMMENT "Crée une correspondance entre une erreur externe (fournisseur, service, code) et une définition canonique."
 PERMISSIONS FULL;

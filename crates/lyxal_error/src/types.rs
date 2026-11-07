@@ -316,6 +316,15 @@ pub struct DisableResult {
     pub disabled: bool,
 }
 
+/// Résultat de `fn::error_log` : `logged` vaut `false` (et `occurrence` est absente) quand la
+/// définition du code désactive la journalisation.
+#[derive(Debug, Clone, SurrealValue)]
+#[surreal(crate = "surrealdb_types")]
+pub struct ErrorLogResult {
+    pub logged: bool,
+    pub occurrence: Option<ErrorOccurrence>,
+}
+
 /// Résultat de `fn::error_occurrence_purge_before`.
 #[derive(Debug, Clone, SurrealValue)]
 #[surreal(crate = "surrealdb_types")]

@@ -1,11 +1,7 @@
-use crate::error::RuntimeError;
-use crate::manifest::parser::ManifestParser;
 use crate::manifest::ModuleManifest;
 use crate::module::LyxalModule;
-use crate::resource::filesystem::FilesystemResourceProvider;
 use crate::resource::ResourceProvider;
 use crate::types::ModuleId;
-use std::path::Path;
 use std::sync::Arc;
 
 /// Unité distribuable et encapsulée représentant un module Lyxal prêt pour le Runtime.
@@ -33,14 +29,6 @@ impl ModulePackage {
     pub fn with_module_impl(mut self, module_impl: Arc<dyn LyxalModule>) -> Self {
         self.module_impl = Some(module_impl);
         self
-    }
-
-    /// Charge un package de module depuis une arborescence locale sur disque.
-    pub async fn from_filesystem(base_path: impl AsRef<Path>) -> Result<Self, RuntimeError> {
-        let provider = Arc::new(FilesystemResourceProvider::new(base_path));
-        let manifest = ManifestParser::parse_str(&provider.read("manifest.toml").await?)?;
-
-        Ok(Self::new(manifest, provider))
     }
 
     /// Retourne l'identifiant canonique du module.

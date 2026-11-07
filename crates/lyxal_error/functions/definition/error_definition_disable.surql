@@ -15,6 +15,7 @@
 -- Erreurs
 --   ERROR_INVALID_INPUT : entrée invalide (details.fields)
 --   ERROR_DEFINITION_NOT_FOUND : code inconnu
+--   ERROR_WRITE_FORBIDDEN : écriture refusée par les permissions (details.table)
 -- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::error_definition_disable(
     $params: object
@@ -32,7 +33,8 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_disable(
     LET $p = $report.value;
     LET $definition = (SELECT * FROM error_definition WHERE code = $p.code LIMIT 1)[0];
     IF $definition IS NONE { RETURN fn::error_result("ERROR_DEFINITION_NOT_FOUND", $p.language, { code: $p.code }); };
-    UPDATE $definition.id SET enabled = false;
+    LET $updated = UPDATE ONLY $definition.id SET enabled = false;
+    IF $updated IS NONE { RETURN fn::error_result("ERROR_WRITE_FORBIDDEN", $p.language, { table: "error_definition" }); };
     RETURN fn::result_ok({ id: $definition.id, disabled: true });
 }
 COMMENT "Désactive une définition d'erreur sans la supprimer : fn::error_resolve la traite alors comme inconnue."

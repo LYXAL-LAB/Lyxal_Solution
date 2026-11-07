@@ -5,7 +5,7 @@ use lyxal_crypto::SecretString;
 use lyxal_pipeline_ingestion::publisher::{CatalogueSyncKey, HmacCatalogueTokenIssuer};
 use lyxal_pipeline_ingestion::storage::IngestionStore;
 use lyxal_runtime::manifest::{ManifestParser, ModuleManifest};
-use lyxal_runtime::resource::{FilesystemResourceProvider, ResourceProvider};
+use lyxal_runtime::resource::ResourceProvider;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -29,7 +29,7 @@ pub async fn installed_store() -> IngestionStore {
         let dir = crates.join(name);
         (
             ManifestParser::parse_file(dir.join("manifest.toml")).expect("manifeste"),
-            FilesystemResourceProvider::new(dir),
+            DirResourceProvider::new(dir),
         )
     };
     let foundation = [load("lyxal_core"), load("lyxal_error")];
@@ -93,4 +93,25 @@ pub async fn referentials_for(
         .block_referentials(std::slice::from_ref(record), default_manufacturer)
         .await
         .expect("résolution des référentiels")
+}
+
+/// Lecteur de test : ressource lue sous le dossier source d'un module (tests seulement ; le
+/// serveur embarque les ressources dans le binaire).
+pub struct DirResourceProvider(pub std::path::PathBuf);
+
+impl DirResourceProvider {
+    pub fn new(dir: impl Into<std::path::PathBuf>) -> Self {
+        Self(dir.into())
+    }
+}
+
+#[async_trait::async_trait]
+impl ResourceProvider for DirResourceProvider {
+    async fn read(&self, logical_path: &str) -> Result<String, lyxal_runtime::RuntimeError> {
+        std::fs::read_to_string(self.0.join(logical_path)).map_err(|_| {
+            lyxal_runtime::RuntimeError::ResourceNotFound {
+                path: logical_path.to_string(),
+            }
+        })
+    }
 }

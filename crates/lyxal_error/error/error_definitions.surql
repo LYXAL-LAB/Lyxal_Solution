@@ -227,3 +227,31 @@ IF !record::exists(error_definition:ERROR_INVALID_FUNCTION_RESPONSE)
         }
     }
 ) END;
+
+IF !record::exists(error_definition:ERROR_WRITE_FORBIDDEN)
+   AND array::len((SELECT VALUE id FROM error_definition WHERE code = "ERROR_WRITE_FORBIDDEN" LIMIT 1)) == 0 THEN (
+    CREATE error_definition:ERROR_WRITE_FORBIDDEN CONTENT {
+        code: "ERROR_WRITE_FORBIDDEN",
+        module: "error",
+        domain: "permissions",
+        category: "authorization",
+        severity: "error",
+        message: "The write was refused by the table permissions",
+        default_language: "en",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Écriture refusée",
+                description: "Les permissions de la table refusent cette écriture à l'identité appelante.",
+                resolution: "Effectuez l'opération depuis une session d'administration (details.table indique la table)."
+            },
+            en: {
+                label: "Write refused",
+                description: "The table permissions refuse this write to the calling identity.",
+                resolution: "Run the operation from an administration session (details.table names the table)."
+            }
+        }
+    }
+) END;

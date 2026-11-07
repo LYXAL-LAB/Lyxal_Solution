@@ -300,8 +300,9 @@ async fn test_incomplete_delivery_goes_to_dead_letter() {
     );
 }
 
-/// La purge supprime les livraisons livrées et les événements anciens, mais garde un événement
-/// tant qu'une de ses livraisons n'est pas livrée (en attente ou en dead letter rejouable).
+/// La purge supprime les livraisons livrées couvertes par le curseur et les événements anciens,
+/// mais garde un événement tant qu'une de ses livraisons n'est pas livrée (en attente ou en dead
+/// letter rejouable).
 #[tokio::test]
 async fn test_purge_keeps_events_of_unresolved_deliveries() {
     let db = connect("mem://").await.unwrap();
@@ -327,13 +328,21 @@ async fn test_purge_keeps_events_of_unresolved_deliveries() {
             .await
             .unwrap();
     }
-    // Événements anciens ; seule la livraison de pay_done est livrée (depuis longtemps)
+    // Événements anciens ; seule la livraison de pay_done (séquence 1) est livrée depuis
+    // longtemps, et le curseur durable de l'abonnement la couvre
     db.query(
         "UPDATE event_outbox SET fanned_out_at = time::now() - 10d;
-         UPDATE event_delivery SET status = 'delivered', delivered_at = time::now() - 10d
-            WHERE outbox_event.payload.payment_id = 'pay_done';",
+         UPDATE event_delivery SET status = 'delivered', delivered_at = time::now() - 10d,
+            delivery_seq = 1 WHERE outbox_event.payload.payment_id = 'pay_done';
+         UPDATE event_delivery SET delivery_seq = 2
+            WHERE outbox_event.payload.payment_id = 'pay_waiting';
+         LET $sub = (SELECT VALUE id FROM ONLY event_subscription LIMIT 1);
+         CREATE type::record('event_subscription_progress', 'prog_' + <string> record::id($sub))
+            CONTENT { subscription: $sub, last_assigned_seq: 2, last_persisted_cursor: 1 };",
     )
     .await
+    .unwrap()
+    .check()
     .unwrap();
 
     assert!(store.purge_garbage(1).await.unwrap());
@@ -349,6 +358,104 @@ async fn test_purge_keeps_events_of_unresolved_deliveries() {
     let deliveries: Vec<String> = res.take(1).unwrap();
     assert_eq!(outbox, ["pay_waiting"]);
     assert_eq!(deliveries, ["pending"]);
+}
+
+/// Une livraison livrée après une séquence encore en attente n'est pas purgée tant que le curseur
+/// durable ne la couvre pas : la résolution ultérieure du trou avance le curseur sans
+/// `EVENT_CURSOR_MISSING_SEQUENCE_HOLE`, puis la purge suivante retire les livraisons couvertes.
+#[tokio::test]
+async fn test_purge_never_creates_a_hole_before_the_cursor() {
+    let db = connect("mem://").await.unwrap();
+    db.use_ns("test_ns")
+        .use_db("test_purge_hole")
+        .await
+        .unwrap();
+    common::setup_test_db(&db).await;
+    let store = Arc::new(EventStore::new(db.clone()));
+    common::install_event(store.client()).await;
+
+    store
+        .register_subscription(&EventSubscription::new(
+            "payment_hole_sub",
+            "lyxal_accounting",
+            "payment.processed",
+            "record_ledger",
+        ))
+        .await
+        .unwrap();
+    let publisher = EventPublisher::new(store.clone(), "lyxal_billing", EventContext::default());
+    for id in ["pay_1", "pay_2", "pay_3"] {
+        publisher
+            .publish(&PaymentProcessed {
+                payment_id: id.to_string(),
+                amount: 1,
+            })
+            .await
+            .unwrap();
+    }
+    // Séquences 1 à 3 ; la 2 reste en attente, la 1 et la 3 sont livrées depuis longtemps ;
+    // curseur durable à 0
+    db.query(
+        "UPDATE event_outbox SET fanned_out_at = time::now() - 10d;
+         UPDATE event_delivery SET delivery_seq = 1, status = 'delivered',
+            delivered_at = time::now() - 10d WHERE outbox_event.payload.payment_id = 'pay_1';
+         UPDATE event_delivery SET delivery_seq = 2
+            WHERE outbox_event.payload.payment_id = 'pay_2';
+         UPDATE event_delivery SET delivery_seq = 3, status = 'delivered',
+            delivered_at = time::now() - 10d WHERE outbox_event.payload.payment_id = 'pay_3';
+         LET $sub = (SELECT VALUE id FROM ONLY event_subscription LIMIT 1);
+         CREATE type::record('event_subscription_progress', 'prog_' + <string> record::id($sub))
+            CONTENT { subscription: $sub, last_assigned_seq: 3, last_persisted_cursor: 0 };",
+    )
+    .await
+    .unwrap()
+    .check()
+    .unwrap();
+
+    // Purge : rien n'est couvert par le curseur, aucune livraison ne disparaît
+    assert!(store.purge_garbage(1).await.unwrap());
+    let mut res = db
+        .query("SELECT VALUE delivery_seq FROM event_delivery ORDER BY delivery_seq")
+        .await
+        .unwrap();
+    let seqs: Vec<i64> = res.take(0).unwrap();
+    assert_eq!(seqs, [1, 2, 3]);
+
+    // Le trou se résout : la séquence 2 est livrée et le curseur avance jusqu'à 3
+    let mut res = db
+        .query(
+            "LET $sub = (SELECT VALUE id FROM ONLY event_subscription LIMIT 1);
+             LET $lease = fn::event_lease_acquire({ node_id: 'node_purge', ttl_seconds: 60 });
+             LET $pending = (SELECT VALUE id FROM ONLY event_delivery WHERE delivery_seq = 2 LIMIT 1);
+             RETURN fn::event_flush_batch({
+                 subscription: $sub,
+                 target_cursor: 3,
+                 node_id: 'node_purge',
+                 generation: $lease.data.generation,
+                 delivered_ids: [$pending]
+             });",
+        )
+        .await
+        .unwrap();
+    let flushed: Option<lyxal_surreal::Value> = res.take(3).unwrap();
+    let flushed = flushed.unwrap().into_json_value();
+    assert_eq!(flushed["ok"], true, "{flushed}");
+    assert_eq!(flushed["data"]["persisted_cursor"], 3, "{flushed}");
+
+    // Purge suivante : les séquences 1 et 3, anciennes et couvertes, disparaissent ; la 2,
+    // livrée à l'instant, reste ; seul l'événement de pay_2 est encore référencé
+    assert!(store.purge_garbage(1).await.unwrap());
+    let mut res = db
+        .query(
+            "SELECT VALUE delivery_seq FROM event_delivery;
+             SELECT VALUE payload.payment_id FROM event_outbox;",
+        )
+        .await
+        .unwrap();
+    let seqs: Vec<i64> = res.take(0).unwrap();
+    let outbox: Vec<String> = res.take(1).unwrap();
+    assert_eq!(seqs, [2]);
+    assert_eq!(outbox, ["pay_2"]);
 }
 
 /// Une livraison dont l'abonnement a disparu part en dead letter avec son motif, sans bloquer

@@ -104,7 +104,10 @@ Paramètres, données renvoyées et règles : [`docs/SURREALQL_API.md`](docs/SUR
 * **Exécution** : `EventWorker::run(cancel)` avec `EventWorkerConfig` (identifiant du nœud,
   instance, bail, taille des lots, messages en vol par abonnement, délais d'exécution et d'ACK,
   backoff). Le budget d'essais vient de l'abonnement, pas du worker. `GarbageCollector::run`
-  purge périodiquement. Métriques : `EventWorker::metrics()`.
+  purge périodiquement : au-delà de la rétention, seules les livraisons livrées couvertes par le
+  curseur durable de leur abonnement et les événements qu'aucune livraison ne référence sont
+  supprimés (la purge ne crée jamais de trou avant le curseur). Métriques :
+  `EventWorker::metrics()`.
 * **Persistance** : `EventStore` (`Surreal<Any>`, `LyxalSurrealCall`).
 * **Installation** : `MANIFEST` (le manifeste) et `EMBEDDED_RESOURCES` (les fichiers déclarés,
   embarqués dans le binaire), lus par `lyxal_runtime`.

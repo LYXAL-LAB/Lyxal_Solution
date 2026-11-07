@@ -14,6 +14,7 @@
 -- Erreurs
 --   ERROR_INVALID_INPUT : entrée invalide (details.fields)
 --   ERROR_MAPPING_NOT_FOUND : correspondance inconnue
+--   ERROR_WRITE_FORBIDDEN : écriture refusée par les permissions (details.table)
 -- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::error_mapping_disable(
     $params: object
@@ -30,7 +31,8 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_disable(
     };
     LET $p = $report.value;
     IF (SELECT VALUE id FROM $p.mapping_id)[0] IS NONE { RETURN fn::error_result("ERROR_MAPPING_NOT_FOUND", $p.language, { mapping_id: $p.mapping_id }); };
-    UPDATE $p.mapping_id SET enabled = false;
+    LET $updated = UPDATE ONLY $p.mapping_id SET enabled = false;
+    IF $updated IS NONE { RETURN fn::error_result("ERROR_WRITE_FORBIDDEN", $p.language, { table: "error_external_mapping" }); };
     RETURN fn::result_ok({ id: $p.mapping_id, disabled: true });
 }
 COMMENT "Désactive une correspondance externe sans la supprimer."

@@ -18,6 +18,7 @@
 --   ERROR_MAPPING_NOT_FOUND : correspondance inconnue
 --   ERROR_DEFINITION_NOT_FOUND : definition_code inconnu
 --   ERROR_MAPPING_ALREADY_EXISTS : la modification crée un doublon
+--   ERROR_WRITE_FORBIDDEN : écriture refusée par les permissions (details.table)
 -- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::error_mapping_update(
     $params: object
@@ -61,7 +62,9 @@ DEFINE FUNCTION OVERWRITE fn::error_mapping_update(
         object::from_entries(array::filter(object::entries($p), |$entry| $entry[0] NOT IN ["mapping_id", "definition_code", "language"] AND $entry[1] IS NOT NONE)),
         IF $definition IS NONE { {} } ELSE { { definition: $definition } }
     );
-    RETURN fn::result_ok(UPDATE ONLY $current.id MERGE $changes);
+    LET $updated = UPDATE ONLY $current.id MERGE $changes;
+    IF $updated IS NONE { RETURN fn::error_result("ERROR_WRITE_FORBIDDEN", $p.language, { table: "error_external_mapping" }); };
+    RETURN fn::result_ok($updated);
 }
 COMMENT "Met à jour une correspondance externe : seuls les champs transmis changent (fournisseur et code externe immuables)."
 PERMISSIONS FULL;

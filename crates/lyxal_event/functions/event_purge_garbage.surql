@@ -1,6 +1,7 @@
 -- ============================================================================
 -- Function: fn::event_purge_garbage
--- Description: Nettoie les événements et livraisons terminés ayant dépassé le délai de rétention.
+-- Description: Nettoie les livraisons livrées couvertes par le curseur durable de leur abonnement
+--              et les événements ventilés non référencés, au-delà du délai de rétention.
 -- ============================================================================
 
 DEFINE FUNCTION OVERWRITE fn::event_purge_garbage(
@@ -21,18 +22,23 @@ DEFINE FUNCTION OVERWRITE fn::event_purge_garbage(
 
     LET $cutoff = time::now() - <duration> string::concat($retention_days, "d");
 
-    -- Suppression des livraisons complétées anciennes
-    DELETE event_delivery 
-    WHERE status = "delivered" 
-      AND delivered_at != NONE 
-      AND delivered_at < $cutoff;
+    -- Suppression des livraisons livrées anciennes, seulement si le curseur durable de leur
+    -- abonnement les couvre : fn::event_flush_batch exige chaque séquence au-delà du curseur
+    -- (invariant de contiguïté), une livraison livrée après une séquence encore en attente doit
+    -- donc rester jusqu'à l'avancée du curseur.
+    FOR $progress IN (SELECT subscription, last_persisted_cursor FROM event_subscription_progress) {
+        DELETE event_delivery
+        WHERE subscription = $progress.subscription
+          AND status = "delivered"
+          AND delivered_at != NONE
+          AND delivered_at < $cutoff
+          AND delivery_seq != NONE
+          AND delivery_seq <= $progress.last_persisted_cursor;
+    };
 
-    -- Suppression des événements outbox déjà ventilés et anciens, sauf ceux dont une livraison
-    -- n'est pas livrée (en attente, en retry ou en dead letter rejouable) : la livraison
-    -- deviendrait incomplète
-    LET $referenced = array::distinct(
-        SELECT VALUE outbox_event FROM event_delivery WHERE status != "delivered"
-    );
+    -- Suppression des événements outbox déjà ventilés et anciens qu'aucune livraison restante ne
+    -- référence (en attente, en retry, en dead letter rejouable, ou livrée au-delà du curseur)
+    LET $referenced = array::distinct(SELECT VALUE outbox_event FROM event_delivery);
     DELETE event_outbox
     WHERE status = "fanned_out"
       AND fanned_out_at != NONE
@@ -40,5 +46,5 @@ DEFINE FUNCTION OVERWRITE fn::event_purge_garbage(
       AND id NOT IN $referenced;
 
     RETURN fn::result_ok(true);
-} COMMENT "Purge les événements et livraisons archivés selon la politique de rétention"
+} COMMENT "Purge, au-delà de la rétention, les livraisons livrées couvertes par le curseur durable de leur abonnement et les événements ventilés qu'aucune livraison ne référence"
 PERMISSIONS FULL;

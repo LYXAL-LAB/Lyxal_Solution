@@ -20,10 +20,7 @@ pub async fn setup_db(ns: &str, db: &str) -> surrealdb::Surreal<surrealdb::engin
             let manifest =
                 lyxal_runtime::manifest::ManifestParser::parse_file(dir.join("manifest.toml"))
                     .expect("manifeste");
-            (
-                manifest,
-                lyxal_runtime::resource::FilesystemResourceProvider::new(dir),
-            )
+            (manifest, DirResourceProvider::new(dir))
         })
         .collect();
     let batch: Vec<(
@@ -144,5 +141,26 @@ pub fn manifest_with_migrations(
             migrations,
             ..Default::default()
         },
+    }
+}
+
+/// Lecteur de test : ressource lue sous le dossier source d'un module (tests seulement ; le
+/// serveur embarque les ressources dans le binaire).
+pub struct DirResourceProvider(pub std::path::PathBuf);
+
+impl DirResourceProvider {
+    pub fn new(dir: impl Into<std::path::PathBuf>) -> Self {
+        Self(dir.into())
+    }
+}
+
+#[async_trait::async_trait]
+impl lyxal_runtime::resource::ResourceProvider for DirResourceProvider {
+    async fn read(&self, logical_path: &str) -> Result<String, lyxal_runtime::RuntimeError> {
+        std::fs::read_to_string(self.0.join(logical_path)).map_err(|_| {
+            lyxal_runtime::RuntimeError::ResourceNotFound {
+                path: logical_path.to_string(),
+            }
+        })
     }
 }
