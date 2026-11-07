@@ -98,6 +98,7 @@ struct BatchTransitionParams {
     id: String,
     nouveau_statut: BatchStatus,
     reason: String,
+    error_code: Option<String>,
 }
 
 #[derive(SurrealValue)]
@@ -476,18 +477,43 @@ impl IngestionStore {
         Ok(batch.cursor_offset)
     }
 
-    /// Fait passer un lot dans un nouvel état ; la transition est journalisée par SurrealQL
-    /// au nom de l'identité de la session.
+    /// Fait passer un lot dans un nouvel état, hors échec (voir [`Self::fail_batch`]) ; la
+    /// transition est journalisée par SurrealQL au nom de l'identité de la session, et le passage
+    /// à `STAGED` émet `ingestion.batch.staged` dans la même transaction.
     pub async fn update_batch_status(
         &self,
         batch_id: &str,
         new_status: BatchStatus,
         reason: &str,
     ) -> IngestionResult<()> {
+        self.transition_batch(batch_id, new_status, reason, None)
+            .await
+    }
+
+    /// Fait passer un lot en `FAILED` avec le code de l'échec ; la base émet
+    /// `ingestion.batch.failed` dans la même transaction.
+    pub async fn fail_batch(
+        &self,
+        batch_id: &str,
+        error_code: &str,
+        reason: &str,
+    ) -> IngestionResult<()> {
+        self.transition_batch(batch_id, BatchStatus::Failed, reason, Some(error_code))
+            .await
+    }
+
+    async fn transition_batch(
+        &self,
+        batch_id: &str,
+        new_status: BatchStatus,
+        reason: &str,
+        error_code: Option<&str>,
+    ) -> IngestionResult<()> {
         let params = BatchTransitionParams {
             id: key(batch_id, "ingestion_batch").to_string(),
             nouveau_statut: new_status,
             reason: reason.to_string(),
+            error_code: error_code.map(str::to_string),
         };
         let _: bool = self.call_fn("ingestion_batch_transition", params).await?;
         Ok(())

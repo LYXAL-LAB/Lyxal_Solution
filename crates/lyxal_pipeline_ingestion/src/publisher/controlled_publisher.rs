@@ -12,7 +12,6 @@
 //!   Steward corrige puis réapprouve). Une erreur de transport remonte telle quelle : la
 //!   publication sera rejouée.
 
-use lyxal_event::EventPublisher;
 use lyxal_surreal::{LyxalSurrealError, SurrealValue};
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -20,9 +19,8 @@ use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
 use super::catalogue::{catalogue_master_id, CatalogueSyncClient};
-use super::token::{CatalogueTokenIssuer, CATALOGUE_SYNC_SUBJECT};
+use super::token::CatalogueTokenIssuer;
 use crate::error::{IngestionError, IngestionResult};
-use crate::events::ManifestPublishedEvent;
 use crate::fingerprint::FingerprintEngine;
 use crate::models::StagedItem;
 use crate::storage::IngestionStore;
@@ -62,24 +60,13 @@ impl PublicationExecutionReport {
 pub struct ControlledPublisher {
     client: Surreal<Any>,
     issuer: Arc<dyn CatalogueTokenIssuer>,
-    event_publisher: Option<EventPublisher>,
 }
 
 impl ControlledPublisher {
     /// `client` : client de l'hôte (session système), cloné pour chaque publication ;
     /// `issuer` : émetteur des jetons de service `catalogue_sync_agent`.
     pub fn new(client: Surreal<Any>, issuer: Arc<dyn CatalogueTokenIssuer>) -> Self {
-        Self {
-            client,
-            issuer,
-            event_publisher: None,
-        }
-    }
-
-    /// Publie `ingestion.manifest.published` après un manifeste exécuté.
-    pub fn with_event_publisher(mut self, publisher: EventPublisher) -> Self {
-        self.event_publisher = Some(publisher);
-        self
+        Self { client, issuer }
     }
 
     /// Publie un manifeste approuvé (ou repris en cours d'exécution) vers le catalogue.
@@ -208,23 +195,6 @@ impl ControlledPublisher {
                 failed,
             )
             .await?;
-        if final_status == ManifestStatus::Committed {
-            if let Some(ref publ) = self.event_publisher {
-                let event = ManifestPublishedEvent {
-                    manifest_ref: manifest_ref.to_string(),
-                    batch_id: manifest.batch.clone(),
-                    items_committed: already_published + newly_published,
-                    items_failed: failed,
-                    publisher_agent: CATALOGUE_SYNC_SUBJECT.to_string(),
-                };
-                publ.publish(&event).await.map_err(|e| {
-                    IngestionError::Storage(format!(
-                        "Événement ingestion.manifest.published non publié pour {manifest_ref} : {e}"
-                    ))
-                })?;
-            }
-        }
-
         Ok(report(
             manifest_ref,
             &staged_items,

@@ -3,7 +3,7 @@
 
 use crate::config::AppConfig;
 use crate::error::ServerError;
-use lyxal_event::{EventContext, EventPublisher, EventSubscription};
+use lyxal_event::EventSubscription;
 use lyxal_pipeline_ingestion::publisher::{
     PUBLICATION_HANDLER, PUBLICATION_MODULE, PUBLICATION_SUBSCRIPTION,
 };
@@ -46,19 +46,10 @@ fn configuration_error(error: impl std::fmt::Display) -> ServerError {
 pub async fn register_services(
     runtime: &LyxalRuntime,
     client: &Surreal<Any>,
-    context: &EventContext,
     config: &AppConfig,
 ) -> Result<Option<PublicationSetup>, ServerError> {
     let store = IngestionStore::new(client.clone());
-    let event_store = runtime.event_store().ok_or(ServerError::Runtime(
-        lyxal_runtime::RuntimeError::StoreMissing {
-            component: "event_store",
-        },
-    ))?;
-    let events = || EventPublisher::new(event_store.clone(), MODULE_ID, context.clone());
-    runtime.register_worker(Arc::new(
-        IngestionWorker::new(store.clone())?.with_publisher(events()),
-    ))?;
+    runtime.register_worker(Arc::new(IngestionWorker::new(store.clone())?))?;
 
     let setup = match &config.catalogue_sync.signing_key {
         Some(secret) => {
@@ -71,8 +62,7 @@ pub async fn register_services(
                 CATALOGUE_SYNC_TOKEN_TTL,
             )
             .map_err(configuration_error)?;
-            let publisher = ControlledPublisher::new(client.clone(), Arc::new(issuer))
-                .with_event_publisher(events());
+            let publisher = ControlledPublisher::new(client.clone(), Arc::new(issuer));
             runtime
                 .register_event_consumer(Arc::new(PublicationConsumer::new(Arc::new(publisher))))
                 .await;

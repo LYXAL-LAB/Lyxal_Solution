@@ -1,14 +1,16 @@
 //! Événements de domaine pour le pipeline d'ingestion Lyxal OS.
 //!
-//! Conformes au contrat standard `lyxal_event::Event`.
+//! Conformes au contrat standard `lyxal_event::Event`. Tous sont émis par la base
+//! (`events/01_events.surql`), dans la transaction de la transition d'état qui les motive ;
+//! ces structures sont le contrat typé des consommateurs.
 
 use lyxal_event::Event;
 use serde::{Deserialize, Serialize};
 
-/// Événement émis lorsqu'un lot de données a été intégralement normalisé et qualifié en staging.
+/// Émis quand un lot passe à `STAGED` (intégralement normalisé et qualifié en staging).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BatchStagedEvent {
-    /// Identifiant du lot.
+    /// Lot (`ingestion_batch:<clé>`).
     pub batch_id: String,
     /// Format ou type de la source (FAB-DIS, CSV, XML, JSON).
     pub source_type: String,
@@ -26,10 +28,10 @@ impl Event for BatchStagedEvent {
     const EVENT_TYPE: &'static str = "ingestion.batch.staged";
 }
 
-/// Événement émis lorsqu'un lot rencontre un échec fatal irréversible.
+/// Émis quand un lot passe à `FAILED`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BatchFailedEvent {
-    /// Identifiant du lot.
+    /// Lot (`ingestion_batch:<clé>`).
     pub batch_id: String,
     /// Code d'erreur interne ou master data.
     pub error_code: String,
@@ -59,18 +61,18 @@ impl Event for ManifestApprovedEvent {
     const EVENT_TYPE: &'static str = "ingestion.manifest.approved";
 }
 
-/// Événement émis lorsqu'un manifeste scellé et approuvé est publié dans le Catalogue.
+/// Émis quand un manifeste approuvé passe à `COMMITTED` (publié dans le catalogue).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ManifestPublishedEvent {
     /// Référence unique du manifeste.
     pub manifest_ref: String,
-    /// Identifiant du lot d'origine.
+    /// Lot d'origine (`ingestion_batch:<clé>`).
     pub batch_id: String,
     /// Nombre d'articles créés ou mis à jour avec succès.
     pub items_committed: usize,
     /// Nombre d'articles ayant échoué lors de la publication.
     pub items_failed: usize,
-    /// Identité de l'agent ayant exécuté la synchronisation (ex: "catalogue_sync_agent").
+    /// Auteur de la transition vers `COMMITTED` (identité de la session de publication).
     pub publisher_agent: String,
 }
 

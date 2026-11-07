@@ -89,9 +89,16 @@ inconnu ne lit rien et n'écrit rien.
 
 | Événement | Émetteur |
 | :--- | :--- |
-| `ingestion.manifest.approved` | `DEFINE EVENT` sur le passage à `APPROVED` (`fn::event_publish` vérifié) |
-| `ingestion.batch.staged`, `ingestion.batch.failed` | worker |
-| `ingestion.manifest.published` | publication, manifeste `COMMITTED` |
+| `ingestion.manifest.approved` | passage du manifeste à `APPROVED` |
+| `ingestion.manifest.published` | passage du manifeste à `COMMITTED` (compteurs d'exécution, auteur de la transition) |
+| `ingestion.batch.staged` | passage du lot à `STAGED` (compteurs du dernier checkpoint) |
+| `ingestion.batch.failed` | passage du lot à `FAILED` (code d'erreur et motif de la transition) |
+
+Tous sont émis par la base (`events/01_events.surql`) : un `DEFINE EVENT` sur la transition
+appelle `fn::event_publish` dans la même transaction et annule la transition si la publication
+échoue. L'état et son événement ne peuvent pas diverger, et une transition n'émet qu'une fois.
+Le passage d'un lot à `FAILED` exige son code d'erreur (`error_code` de
+`fn::ingestion_batch_transition`, `IngestionStore::fail_batch`).
 
 ---
 
