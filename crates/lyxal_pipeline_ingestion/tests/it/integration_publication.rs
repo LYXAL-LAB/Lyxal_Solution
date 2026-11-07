@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use lyxal_event::{CorrelationId, EventContext, EventId, Handler, HandlerContext};
 use lyxal_pipeline_ingestion::error::IngestionError;
-use lyxal_pipeline_ingestion::events::ManifestApprovedEvent;
+use lyxal_pipeline_ingestion::events::{ManifestApprovedEvent, ManifestPublishedEvent};
 use lyxal_pipeline_ingestion::fingerprint::FingerprintEngine;
 use lyxal_pipeline_ingestion::models::StagedItem;
 use lyxal_pipeline_ingestion::proof::{CommercialProof, CommercialProofType};
@@ -249,6 +249,23 @@ async fn approved_manifest_is_published_to_the_catalogue() {
     assert_eq!(again.final_status, ManifestStatus::Committed);
     assert_eq!(again.newly_published, 0);
     assert_eq!(catalogue_rows(&store).await.len(), 2);
+
+    // La base a émis ingestion.manifest.published une seule fois, dans la transaction du passage
+    // à COMMITTED ; le rejeu n'en ajoute pas
+    let payload: Vec<serde_json::Value> = store
+        .client()
+        .query("SELECT VALUE payload FROM event_outbox WHERE event_type = 'ingestion.manifest.published'")
+        .await
+        .expect("outbox")
+        .take(0)
+        .expect("événements");
+    assert_eq!(payload.len(), 1);
+    let event: ManifestPublishedEvent =
+        serde_json::from_value(payload[0].clone()).expect("événement typé");
+    assert_eq!(event.manifest_ref, "MAN-PUB");
+    assert_eq!(event.batch_id, "ingestion_batch:lot_pub");
+    assert_eq!((event.items_committed, event.items_failed), (2, 0));
+    assert_eq!(event.publisher_agent, "service:catalogue_sync");
 }
 
 #[tokio::test]

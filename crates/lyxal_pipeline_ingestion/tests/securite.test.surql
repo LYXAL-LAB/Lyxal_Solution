@@ -114,6 +114,10 @@ RETURN (SELECT VALUE transitions.map(|$t| [$t.from_state, $t.to_state, $t.trigge
 -- en tant que: sync
 RETURN fn::ingestion_manifest_record_exec({ manifest_ref: "MAN-SEC", statut: "COMMITTED", items_committed: 1, items_failed: 0 }).error.code == "INGESTION_MANIFEST_ILLEGAL_STATE_TRANSITION";
 
+-- test: le passage à COMMITTED émet ingestion.manifest.published une seule fois
+RETURN (SELECT VALUE payload FROM event_outbox WHERE event_type = "ingestion.manifest.published")
+    == [{ manifest_ref: "MAN-SEC", batch_id: "ingestion_batch:lot_sec", items_committed: 1, items_failed: 0, publisher_agent: "service:sync" }];
+
 -- test: l'agent de qualification consigne une anomalie en quarantaine
 -- en tant que: qualif
 RETURN fn::ingestion_quarantine_log({ batch_id: "lot_sec", ligne_numero: 2, code_erreur: "INGESTION_QUALIFICATION_REJECTED", severite: "ERROR", champ_concerne: "gtin", valeur_fautive: "123", cause_detaillee: "Clé GS1 invalide" }).ok;

@@ -5,7 +5,8 @@
 //! - Découpage en blocs de traitement (`chunk_size`) avec sauvegarde systématique de checkpoints.
 //! - Reprise sur incident (crash, interruption réseau, redémarrage du processus) sans retraiter les lignes antérieures.
 //! - Idempotence durable et détection des doublons.
-//! - Publication des événements de domaine via [`lyxal_event`].
+//! - Événements de domaine (`ingestion.batch.staged`, `ingestion.batch.failed`) émis par la base
+//!   dans la transaction de la transition d'état (`events/01_events.surql`).
 
 use async_trait::async_trait;
 use std::collections::VecDeque;
@@ -13,7 +14,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 
-use lyxal_event::EventPublisher;
 use lyxal_runtime::error::RuntimeError;
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::worker::{
@@ -23,7 +23,6 @@ use lyxal_runtime::worker::{
 
 use crate::adapters::AdapterRegistry;
 use crate::error::{IngestionError, IngestionResult};
-use crate::events::{BatchFailedEvent, BatchStagedEvent};
 use crate::models::{QuarantineRecord, RawRecord, StagedItem};
 use crate::normalization::NormalizationEngine;
 use crate::proof::CommercialProof;
@@ -67,7 +66,6 @@ pub struct IngestionWorker {
     descriptor: WorkerDescriptor,
     store: IngestionStore,
     queue: Arc<Mutex<VecDeque<IngestionJob>>>,
-    publisher: Option<EventPublisher>,
     active_batch_lock: Arc<Mutex<Option<String>>>,
     norm_engine: NormalizationEngine,
 }
@@ -89,16 +87,9 @@ impl IngestionWorker {
             descriptor,
             store,
             queue: Arc::new(Mutex::new(VecDeque::new())),
-            publisher: None,
             active_batch_lock: Arc::new(Mutex::new(None)),
             norm_engine: NormalizationEngine::new(),
         })
-    }
-
-    /// Associe un bus d'événements pour la publication des transitions de domaine.
-    pub fn with_publisher(mut self, publisher: EventPublisher) -> Self {
-        self.publisher = Some(publisher);
-        self
     }
 
     /// Enfile un lot brut pour traitement supervisé avec preuve commerciale optionnelle.
@@ -455,23 +446,6 @@ impl IngestionWorker {
             )
             .await?;
 
-        // 6. Émission de l'événement de domaine
-        if let Some(ref publ) = self.publisher {
-            let event = BatchStagedEvent {
-                batch_id: batch_id.to_string(),
-                source_type: format.as_str().to_string(),
-                total_lignes: total_lines,
-                verified_count,
-                to_confirm_count,
-                rejected_count,
-            };
-            publ.publish(&event).await.map_err(|e| {
-                IngestionError::Storage(format!(
-                    "Événement ingestion.batch.staged non publié pour le lot {batch_id} : {e}"
-                ))
-            })?;
-        }
-
         Ok(BatchProcessingReport {
             batch_id: batch_id.to_string(),
             final_status: BatchStatus::Staged,
@@ -519,40 +493,20 @@ impl LyxalWorker for IngestionWorker {
                         }
                     }
                     Err(err) => {
-                        // Le lot passe en FAILED et l'échec est publié ; le worker continue avec
-                        // les lots suivants. Si l'une de ces deux étapes échoue, l'échec ne peut
-                        // plus être consigné : le worker s'arrête et le superviseur le signale.
-                        let mut causes = Vec::new();
+                        // Le lot passe en FAILED avec son code d'erreur ; la base émet
+                        // ingestion.batch.failed dans la même transaction. Le worker continue avec
+                        // les lots suivants ; si l'échec ne peut pas être consigné, il s'arrête et
+                        // le superviseur le signale.
                         if let Err(e) = self
                             .store
-                            .update_batch_status(
-                                &job.batch_id,
-                                BatchStatus::Failed,
-                                &err.to_string(),
-                            )
+                            .fail_batch(&job.batch_id, &err.code(), &err.to_string())
                             .await
                         {
-                            causes.push(format!("passage du lot en FAILED impossible : {e}"));
-                        }
-
-                        if let Some(ref publ) = self.publisher {
-                            let event = BatchFailedEvent {
-                                batch_id: job.batch_id.clone(),
-                                error_code: err.code(),
-                                message: err.to_string(),
-                            };
-                            if let Err(e) = publ.publish(&event).await {
-                                causes.push(format!("événement d'échec non publié : {e}"));
-                            }
-                        }
-
-                        if !causes.is_empty() {
                             return Err(RuntimeError::WorkerFailed {
                                 worker: self.descriptor.id.to_string(),
                                 message: format!(
-                                    "INGESTION_BATCH_FAILED: échec du lot {} ({err}) non consigné : {}",
-                                    job.batch_id,
-                                    causes.join(" ; ")
+                                    "INGESTION_BATCH_FAILED: échec du lot {} ({err}) non consigné : passage en FAILED impossible : {e}",
+                                    job.batch_id
                                 ),
                             });
                         }

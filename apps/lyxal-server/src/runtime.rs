@@ -2,7 +2,7 @@
 //! hébergés installés depuis leurs manifestes embarqués, puis démarrés.
 
 use crate::{config::AppConfig, error::ServerError, modules};
-use lyxal_event::{EventContext, EventWorkerConfig};
+use lyxal_event::EventWorkerConfig;
 use lyxal_runtime::lock::SurrealInstallationLeaseManager;
 use lyxal_runtime::{EventEngineConfig, LyxalRuntime, RuntimeConfig, SurrealRuntimeStore};
 use std::{sync::Arc, time::Duration};
@@ -41,12 +41,7 @@ pub async fn start(
             client.clone(),
         )));
 
-    let event_context = EventContext::new(
-        config.application.instance_id.clone(),
-        config.database.namespace.clone(),
-        config.database.database.clone(),
-    );
-    let services = modules::register_services(&runtime, client, &event_context, config).await?;
+    let services = modules::register_services(&runtime, client, config).await?;
 
     let report = runtime.install_packages(modules::packages()?).await?;
     if let Some(failure) = report.failed.first() {

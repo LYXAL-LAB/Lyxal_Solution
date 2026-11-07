@@ -81,7 +81,11 @@ RETURN (fn::ingestion_batch_get({ id: "lot_a" }).data).{ statut, termine: comple
 
 -- test: un lot publié est terminal
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_transition({ id: "lot_a", nouveau_statut: "FAILED", reason: "Trop tard" }).error.code == "INGESTION_BATCH_TERMINAL_STATE";
+RETURN fn::ingestion_batch_transition({ id: "lot_a", nouveau_statut: "FAILED", reason: "Trop tard", error_code: "INGESTION_TEST_FAILURE" }).error.code == "INGESTION_BATCH_TERMINAL_STATE";
+
+-- test: le passage à STAGED émet ingestion.batch.staged une seule fois (pas à la publication)
+RETURN (SELECT VALUE payload FROM event_outbox WHERE event_type = "ingestion.batch.staged")
+    == [{ batch_id: "ingestion_batch:lot_a", source_type: "CSV", total_lignes: 0, verified_count: 0, to_confirm_count: 0, rejected_count: 0 }];
 
 -- préparation: second lot
 RETURN fn::ingestion_batch_create({ id: "lot_b", source_type: "JSON", fournisseur_id: "FOURN_ISOVER", nom_fichier: "isover.json", file_hash_blake3: crypto::blake3("isover.json") });
@@ -91,11 +95,28 @@ RETURN fn::ingestion_batch_create({ id: "lot_b", source_type: "JSON", fournisseu
 -- attendu-erreur: INGESTION_BATCH_ILLEGAL_STATE_TRANSITION
 RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "STAGED", reason: "Raccourci" });
 
+-- test: le passage à FAILED exige son code d'erreur
+-- en tant que: ingestion
+RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "FAILED", reason: "Fichier tronqué" }).error.{ code, f: details.fields.error_code }
+    == { code: "INGESTION_INVALID_PARAMETERS", f: ["CORE_VALIDATION_REQUIRED"] };
+
+-- test: un code d'erreur est refusé hors passage à FAILED
+-- en tant que: ingestion
+RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "PARSING", reason: "Lecture", error_code: "INGESTION_TEST_FAILURE" }).error.{ code, f: details.fields.error_code }
+    == { code: "INGESTION_INVALID_PARAMETERS", f: ["CORE_VALIDATION_NOT_ALLOWED"] };
+
 -- test: un lot en échec est repris (FAILED puis PARSING)
 -- en tant que: ingestion
-RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "FAILED", reason: "Fichier tronqué" }).ok
+RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "FAILED", reason: "Fichier tronqué", error_code: "INGESTION_SOURCE_TRUNCATED" }).ok
     AND fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "PARSING", reason: "Nouvel essai" }).ok
     AND fn::ingestion_batch_get({ id: "lot_b" }).data.statut == "PARSING";
+
+-- test: le code d'erreur est journalisé dans la transition vers FAILED
+RETURN (SELECT VALUE transitions[WHERE to_state = "FAILED"].map(|$t| [$t.error_code, $t.reason]) FROM ONLY ingestion_batch:lot_b) == [["INGESTION_SOURCE_TRUNCATED", "Fichier tronqué"]];
+
+-- test: le passage à FAILED émet ingestion.batch.failed avec le code et le motif
+RETURN (SELECT VALUE payload FROM event_outbox WHERE event_type = "ingestion.batch.failed")
+    == [{ batch_id: "ingestion_batch:lot_b", error_code: "INGESTION_SOURCE_TRUNCATED", message: "Fichier tronqué" }];
 
 -- test: statut inconnu
 -- en tant que: ingestion
@@ -135,3 +156,19 @@ RETURN fn::ingestion_batch_get({ id: "lot_b" }).error.code == "INGESTION_BATCH_N
 -- en tant que: intrus
 RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "VALIDATING", reason: "Intrusion" }).error.code == "INGESTION_BATCH_NOT_FOUND"
     AND fn::ingestion_batch_get({ id: "lot_b" }).error.code == "INGESTION_BATCH_NOT_FOUND";
+
+-- préparation: le bus d'événements refuse toute publication
+DEFINE FUNCTION OVERWRITE fn::event_publish($params: object) { RETURN fn::error_result("EVENT_INVALID_PARAMETERS", NONE, {}); } PERMISSIONS FULL;
+
+-- préparation: lot repris jusqu'à la validation
+-- en tant que: ingestion
+RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "VALIDATING", reason: "Validation" });
+
+-- test: une publication refusée annule le passage à STAGED
+-- en tant que: ingestion
+-- attendu-erreur: EVENT_INVALID_PARAMETERS
+RETURN fn::ingestion_batch_transition({ id: "lot_b", nouveau_statut: "STAGED", reason: "Staging" });
+
+-- test: le lot reste en validation, sans événement
+RETURN ingestion_batch:lot_b.statut == "VALIDATING"
+    AND array::len(SELECT * FROM event_outbox WHERE event_type = "ingestion.batch.staged" AND payload.batch_id = "ingestion_batch:lot_b") == 0;

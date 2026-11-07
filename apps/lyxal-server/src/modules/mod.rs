@@ -7,7 +7,6 @@ mod ingestion;
 use crate::config::AppConfig;
 use crate::error::ServerError;
 use async_trait::async_trait;
-use lyxal_event::EventContext;
 use lyxal_runtime::manifest::ManifestParser;
 use lyxal_runtime::resource::{EmbeddedResourceProvider, ResourceProvider};
 use lyxal_runtime::{
@@ -141,12 +140,11 @@ pub struct HostedServices {
 pub async fn register_services(
     runtime: &LyxalRuntime,
     client: &Surreal<Any>,
-    context: &EventContext,
     config: &AppConfig,
 ) -> Result<HostedServices, ServerError> {
     #[cfg(feature = "module-ingestion")]
     {
-        let publication = ingestion::register_services(runtime, client, context, config).await?;
+        let publication = ingestion::register_services(runtime, client, config).await?;
         Ok(HostedServices { publication })
     }
     #[cfg(not(feature = "module-ingestion"))]

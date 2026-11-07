@@ -54,7 +54,7 @@ async fn worker_follows_installed_batch_state_machine() {
         .await
         .expect("lot");
     store
-        .update_batch_status("batch_retry", BatchStatus::Failed, "Échec simulé")
+        .fail_batch("batch_retry", "INGESTION_TEST_FAILURE", "Échec simulé")
         .await
         .expect("lot en échec");
     let report = worker
