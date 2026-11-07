@@ -48,7 +48,7 @@ Activer ce Skill dès qu'une mission implique :
    - Comparer les dépendances déclarées dans `<module>/Cargo.toml`, dans `<module>/manifest.toml` (`[[dependencies]]`) et dans `ModuleDescriptorBuilder` (`src/module.rs`).
    - Noter explicitement la distinction : `Cargo.toml` contient les dépendances de compilation Rust (y compris les crates de fondation `lyxal_error`, `lyxal_surreal`, `lyxal_crypto`, `lyxal_runtime`), tandis que `manifest.toml` et `ModuleDescriptor` déclarent les dépendances vers d'autres **modules gérés par le Runtime** (`LyxalModule`).
 3. **[OBLIGATOIRE] Cohérence des `[resources]` et Capacités (`capabilities`)** :
-   - Vérifier que la section `[resources]` de `manifest.toml` (utilisée par `ResourceDiscovery` / `FilesystemResourceProvider`) référence tous les fichiers `.surql` requis par les modules dépendants (notamment `schemas`, `migrations`, `functions`, `events`, `error_definitions`).
+   - Vérifier que la section `[resources]` de `manifest.toml` (utilisée par `ResourceDiscovery` et embarquée par `lyxal-server`) référence tous les fichiers `.surql` requis par les modules dépendants (notamment `schemas`, `migrations`, `functions`, `events`, `error_definitions`).
 
 ---
 

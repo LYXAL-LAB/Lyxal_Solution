@@ -1,5 +1,6 @@
 use crate::common;
-use lyxal_runtime::resource::{FilesystemResourceProvider, ModuleResource, ResourceKind};
+use crate::common::DirResourceProvider;
+use lyxal_runtime::resource::{ModuleResource, ResourceKind};
 use lyxal_runtime::schema::{SchemaImportPlan, SchemaImporter};
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::RuntimeError;
@@ -80,7 +81,7 @@ async fn test_schema_importer_execution_on_surreal_mem() {
     .unwrap();
     fs::write(schema_dir.join("seeds.surql"), "-- Comment only seed\n").unwrap();
 
-    let provider = FilesystemResourceProvider::new(dir.path());
+    let provider = DirResourceProvider::new(dir.path());
     let manifest = lyxal_runtime::manifest::ManifestParser::parse_str(
         r#"
 id = "lyxal-booking"

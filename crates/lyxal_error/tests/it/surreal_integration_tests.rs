@@ -197,8 +197,8 @@ async fn count(db: &Surreal<Any>, table: &str) -> i64 {
 async fn test_surreal_bootstrap_idempotence() {
     let (_server, db) = setup_db().await;
 
-    // 8 définitions de lyxal_error + 3 définitions CORE_* de lyxal_core
-    assert_eq!(count(&db, "error_definition").await, 11);
+    // 9 définitions de lyxal_error + 3 définitions CORE_* de lyxal_core
+    assert_eq!(count(&db, "error_definition").await, 12);
     assert_eq!(
         count_where(&db, "error_definition", "module = 'core'").await,
         3
@@ -207,7 +207,7 @@ async fn test_surreal_bootstrap_idempotence() {
 
     // Le rejeu des définitions ne crée ni doublon ni erreur
     install_manifests(&db, &modules()).await;
-    assert_eq!(count(&db, "error_definition").await, 11);
+    assert_eq!(count(&db, "error_definition").await, 12);
 }
 
 #[tokio::test]
@@ -690,7 +690,7 @@ async fn test_surreal_error_occurrence_logging_and_purging() {
 
     // Journalisation avec une source typée
     let source = RecordId::new("booking", "b1");
-    let logged: Option<ErrorOccurrence> = call(
+    let logged: ErrorLogResult = call(
         &db,
         "error_log",
         ErrorLogParams {
@@ -705,7 +705,8 @@ async fn test_surreal_error_occurrence_logging_and_purging() {
     )
     .await
     .unwrap();
-    let occurrence = logged.expect("occurrence journalisée");
+    assert!(logged.logged);
+    let occurrence = logged.occurrence.expect("occurrence journalisée");
     assert_eq!(occurrence.code, "ERROR_INVALID_INPUT");
     assert_eq!(occurrence.source, Some(source));
     assert_eq!(

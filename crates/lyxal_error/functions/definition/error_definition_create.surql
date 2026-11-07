@@ -19,6 +19,7 @@
 --   ERROR_INVALID_INPUT : entrée invalide (details.fields)
 --   ERROR_DEFINITION_CODE_PREFIX_MISMATCH : le code ne commence pas par le module
 --   ERROR_DEFINITION_ALREADY_EXISTS : code déjà défini
+--   ERROR_WRITE_FORBIDDEN : écriture refusée par les permissions (details.table)
 -- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::error_definition_create(
     $params: object
@@ -54,7 +55,7 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_create(
     IF record::exists($id) OR array::len(SELECT VALUE id FROM error_definition WHERE code = $p.code LIMIT 1) > 0 {
         RETURN fn::error_result("ERROR_DEFINITION_ALREADY_EXISTS", $p.language, { code: $p.code });
     };
-    RETURN fn::result_ok(CREATE ONLY $id CONTENT {
+    LET $created = CREATE ONLY $id CONTENT {
         code: $p.code,
         module: $p.module,
         domain: $p.domain,
@@ -69,7 +70,9 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_create(
         documentation: $p.documentation,
         metadata: $p.metadata,
         enabled: $p.enabled
-    });
+    };
+    IF $created IS NONE { RETURN fn::error_result("ERROR_WRITE_FORBIDDEN", $p.language, { table: "error_definition" }); };
+    RETURN fn::result_ok($created);
 }
 COMMENT "Crée une définition d'erreur canonique (identifiant error_definition:<CODE>). Le code doit commencer par le nom du module en majuscules suivi de « _ » (tirets du module remplacés par « _ »)."
 PERMISSIONS FULL;

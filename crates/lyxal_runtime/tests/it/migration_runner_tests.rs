@@ -1,8 +1,8 @@
 use crate::common;
+use crate::common::DirResourceProvider;
 use lyxal_runtime::migration::{
     MigrationChecksum, MigrationId, MigrationRecord, MigrationRunner, MigrationStatus,
 };
-use lyxal_runtime::resource::FilesystemResourceProvider;
 use lyxal_runtime::store::{MemoryRuntimeStore, RuntimeStore, SurrealRuntimeStore};
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::RuntimeError;
@@ -42,7 +42,7 @@ async fn test_migration_runner_happy_path_and_idempotence() {
     )
     .unwrap();
 
-    let provider = FilesystemResourceProvider::new(dir.path());
+    let provider = DirResourceProvider::new(dir.path());
     let module_id = ModuleId::new("lyxal-booking");
 
     // 1. Premier run : les 3 migrations doivent être appliquées
@@ -100,7 +100,7 @@ async fn test_migration_runner_checksum_drift_fails_hard() {
     let file1 = mig_dir.join("001_initial.surql");
     fs::write(&file1, "DEFINE TABLE drift_test;").unwrap();
 
-    let provider = FilesystemResourceProvider::new(dir.path());
+    let provider = DirResourceProvider::new(dir.path());
     let module_id = ModuleId::new("lyxal-calendar");
 
     // Première exécution normale
@@ -165,7 +165,7 @@ async fn test_migration_runner_failure_blocks_subsequent_migrations() {
     )
     .unwrap();
 
-    let provider = FilesystemResourceProvider::new(dir.path());
+    let provider = DirResourceProvider::new(dir.path());
     let module_id = ModuleId::new("lyxal-timezone");
 
     let err = runner
@@ -226,7 +226,7 @@ async fn test_migration_runner_interrupted_applying_fails_hard() {
     let sql = "DEFINE TABLE inter_test;";
     fs::write(mig_dir.join("001_interrupted.surql"), sql).unwrap();
 
-    let provider = FilesystemResourceProvider::new(dir.path());
+    let provider = DirResourceProvider::new(dir.path());
     let module_id = ModuleId::new("lyxal-scheduler");
 
     // Simuler une migration laissée dans l'état 'Applying' suite à un crash

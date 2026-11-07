@@ -7,7 +7,7 @@
 //! - Définir et implémenter le contrat universel [`LyxalModule`] ;
 //! - Analyser et valider les fichiers déclaratifs `manifest.toml` via [`ManifestParser`] et [`ModuleManifest`] ;
 //! - Manipuler le modèle déclaratif de migration via [`MigrationDefinition`], [`MigrationId`], [`MigrationChecksum`] ;
-//! - Découvrir et charger les ressources SurrealQL via [`ResourceProvider`] et [`FilesystemResourceProvider`] ;
+//! - Découvrir et charger les ressources SurrealQL via [`ResourceProvider`] et [`resource::EmbeddedResourceProvider`] ;
 //! - Importer les schémas dans l'ordre strict via [`SchemaImportPlan`] et [`SchemaImporter`] ;
 //! - Coordonner et verrouiller les migrations distribuées via [`MigrationLeaseManager`], [`SurrealMigrationLeaseManager`] ;
 //! - Planifier et exécuter les migrations via [`MigrationPlan`] et [`MigrationRunner`] ;
@@ -97,10 +97,7 @@ pub use reconciler::{
 };
 pub use registry::ModuleRegistry;
 pub use resolver::DependencyResolver;
-pub use resource::{
-    FilesystemResourceProvider, ModuleResource, ResourceDiscovery, ResourceKind, ResourceProvider,
-    DEFAULT_MAX_RESOURCE_SIZE,
-};
+pub use resource::{ModuleResource, ResourceDiscovery, ResourceKind, ResourceProvider};
 pub use runtime::LyxalRuntime;
 pub use schema::{SchemaImportPlan, SchemaImportResult, SchemaImporter};
 pub use store::{

@@ -176,42 +176,6 @@ pub const RESOURCE_NOT_FOUND: RuntimeErrorInfo = RuntimeErrorInfo {
     label: "Ressource introuvable",
 };
 
-pub const RESOURCE_INVALID_PATH: RuntimeErrorInfo = RuntimeErrorInfo {
-    code: "RUNTIME_RESOURCE_INVALID_PATH",
-    category: "validation",
-    http_status: 422,
-    retryable: false,
-    message: "Resource path is invalid",
-    label: "Chemin de ressource invalide",
-};
-
-pub const RESOURCE_TOO_LARGE: RuntimeErrorInfo = RuntimeErrorInfo {
-    code: "RUNTIME_RESOURCE_TOO_LARGE",
-    category: "validation",
-    http_status: 413,
-    retryable: false,
-    message: "Resource exceeds the maximum allowed size",
-    label: "Ressource trop volumineuse",
-};
-
-pub const RESOURCE_ENCODING_ERROR: RuntimeErrorInfo = RuntimeErrorInfo {
-    code: "RUNTIME_RESOURCE_ENCODING_ERROR",
-    category: "validation",
-    http_status: 422,
-    retryable: false,
-    message: "Resource is not valid UTF-8",
-    label: "Encodage de ressource invalide",
-};
-
-pub const RESOURCE_READ_FAILED: RuntimeErrorInfo = RuntimeErrorInfo {
-    code: "RUNTIME_RESOURCE_READ_FAILED",
-    category: "internal",
-    http_status: 500,
-    retryable: false,
-    message: "Resource could not be read",
-    label: "Lecture de ressource impossible",
-};
-
 pub const SCHEMA_IMPORT_FAILED: RuntimeErrorInfo = RuntimeErrorInfo {
     code: "RUNTIME_SCHEMA_IMPORT_FAILED",
     category: "internal",
@@ -574,10 +538,6 @@ pub const RUNTIME_ERROR_CATALOG: &[RuntimeErrorInfo] = &[
     INVALID_MIGRATION_ID,
     INVALID_CHECKSUM,
     RESOURCE_NOT_FOUND,
-    RESOURCE_INVALID_PATH,
-    RESOURCE_TOO_LARGE,
-    RESOURCE_ENCODING_ERROR,
-    RESOURCE_READ_FAILED,
     SCHEMA_IMPORT_FAILED,
     MIGRATION_CHECKSUM_MISMATCH,
     MIGRATION_INTERRUPTED,

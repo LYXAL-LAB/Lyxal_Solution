@@ -6,7 +6,7 @@
 --
 -- Journalise une occurrence d'erreur dans error_occurrence (append-only). Si
 -- la définition du code existe et désactive la journalisation
--- (log_occurrence = false), rien n'est écrit et data vaut NONE. La sévérité
+-- (log_occurrence = false), rien n'est écrit (logged = false). La sévérité
 -- de la définition prime sur celle transmise.
 --
 -- Paramètres
@@ -17,10 +17,12 @@
 --   severity (info | warning | error | critical, utilisée si le code n'a pas de définition)
 --   language
 --
--- Valeur renvoyée : fn::result_ok(occurrence | NONE)
+-- Valeur renvoyée : fn::result_ok({ logged: true, occurrence })
+--                   ou fn::result_ok({ logged: false, occurrence: NONE })
 --
 -- Erreurs
 --   ERROR_INVALID_INPUT : entrée invalide (details.fields)
+--   ERROR_WRITE_FORBIDDEN : écriture refusée par les permissions (details.table)
 -- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::error_log(
     $params: object
@@ -49,8 +51,10 @@ DEFINE FUNCTION OVERWRITE fn::error_log(
     };
     LET $p = $report.value;
     LET $definition = (SELECT * FROM error_definition WHERE code = $p.code AND enabled = true LIMIT 1)[0];
-    IF $definition IS NOT NONE AND $definition.log_occurrence == false { RETURN fn::result_ok(NONE); };
-    RETURN fn::result_ok(CREATE ONLY error_occurrence CONTENT {
+    IF $definition IS NOT NONE AND $definition.log_occurrence == false {
+        RETURN fn::result_ok({ logged: false, occurrence: NONE });
+    };
+    LET $occurrence = CREATE ONLY error_occurrence CONTENT {
         definition: $definition.id,
         code: $p.code,
         source_module: $p.source_module,
@@ -65,7 +69,9 @@ DEFINE FUNCTION OVERWRITE fn::error_log(
         fingerprint: $p.fingerprint,
         environment: $p.environment,
         severity: $definition.severity ?? $p.severity ?? "error"
-    });
+    };
+    IF $occurrence IS NONE { RETURN fn::error_result("ERROR_WRITE_FORBIDDEN", $p.language, { table: "error_occurrence" }); };
+    RETURN fn::result_ok({ logged: true, occurrence: $occurrence });
 }
-COMMENT "Journalise une occurrence d'erreur dans error_occurrence (append-only). Si la définition du code existe et désactive la journalisation (log_occurrence = false), rien n'est écrit et data vaut NONE. La sévérité de la définition prime sur celle transmise."
+COMMENT "Journalise une occurrence d'erreur dans error_occurrence (append-only) : { logged: true, occurrence }. Si la définition du code désactive la journalisation (log_occurrence = false), rien n'est écrit : { logged: false, occurrence: NONE }. Écriture refusée : ERROR_WRITE_FORBIDDEN. La sévérité de la définition prime sur celle transmise."
 PERMISSIONS FULL;

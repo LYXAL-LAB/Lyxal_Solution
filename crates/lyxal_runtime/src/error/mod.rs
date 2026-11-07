@@ -87,19 +87,6 @@ pub enum RuntimeError {
     #[error("Resource not found: '{path}'")]
     ResourceNotFound { path: String },
 
-    #[error("Invalid resource path '{path}': {reason}")]
-    InvalidResourcePath { path: String, reason: String },
-
-    #[error("Resource '{path}' is too large ({size} bytes, maximum allowed is {max_size} bytes)")]
-    ResourceTooLarge {
-        path: String,
-        size: usize,
-        max_size: usize,
-    },
-
-    #[error("Resource '{path}' encoding error: {message}")]
-    ResourceEncodingError { path: String, message: String },
-
     #[error("Schema import failed for module '{module}', resource '{resource}': {message}")]
     SchemaImportFailed {
         module: ModuleId,
@@ -263,9 +250,6 @@ pub enum RuntimeError {
     #[error("Event engine error: {message}")]
     EventEngineError { message: String },
 
-    #[error("Resource '{path}' could not be read: {message}")]
-    ResourceReadFailed { path: String, message: String },
-
     #[error("Package for module '{module}' was not provided")]
     PackageMissing { module: ModuleId },
 
@@ -320,10 +304,6 @@ impl RuntimeError {
             Self::InvalidMigrationId { .. } => &catalog::INVALID_MIGRATION_ID,
             Self::InvalidChecksum { .. } => &catalog::INVALID_CHECKSUM,
             Self::ResourceNotFound { .. } => &catalog::RESOURCE_NOT_FOUND,
-            Self::InvalidResourcePath { .. } => &catalog::RESOURCE_INVALID_PATH,
-            Self::ResourceTooLarge { .. } => &catalog::RESOURCE_TOO_LARGE,
-            Self::ResourceEncodingError { .. } => &catalog::RESOURCE_ENCODING_ERROR,
-            Self::ResourceReadFailed { .. } => &catalog::RESOURCE_READ_FAILED,
             Self::SchemaImportFailed { .. } => &catalog::SCHEMA_IMPORT_FAILED,
             Self::MigrationChecksumMismatch { .. } => &catalog::MIGRATION_CHECKSUM_MISMATCH,
             Self::MigrationInterrupted { .. } => &catalog::MIGRATION_INTERRUPTED,
@@ -432,23 +412,6 @@ impl RuntimeError {
                 "found_checksum": found,
             }),
             Self::ResourceNotFound { path } => json!({ "path": path }),
-            Self::InvalidResourcePath { path, reason } => json!({
-                "path": path,
-                "reason": reason,
-            }),
-            Self::ResourceTooLarge {
-                path,
-                size,
-                max_size,
-            } => json!({
-                "path": path,
-                "size_bytes": size,
-                "max_size_bytes": max_size,
-            }),
-            Self::ResourceEncodingError { path, message } => json!({
-                "path": path,
-                "error": message,
-            }),
             Self::SchemaImportFailed {
                 module,
                 resource,
@@ -618,10 +581,6 @@ impl RuntimeError {
                 "error": message,
             }),
             Self::EventEngineError { message } => json!({
-                "error": message,
-            }),
-            Self::ResourceReadFailed { path, message } => json!({
-                "path": path,
                 "error": message,
             }),
             Self::PackageMissing { module } => json!({ "module_id": module.as_str() }),

@@ -1,9 +1,9 @@
 use crate::common;
+use crate::common::DirResourceProvider;
 use lyxal_runtime::migration::{
     MigrationChecksum, MigrationDiscovery, MigrationPlan, MigrationPlanAction, MigrationRecord,
     MigrationStatus,
 };
-use lyxal_runtime::resource::FilesystemResourceProvider;
 use lyxal_runtime::store::MemoryRuntimeStore;
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::{RuntimeError, RuntimeStore};
@@ -49,7 +49,7 @@ async fn test_migration_discovery_order_and_duplicates() {
     )
     .unwrap();
 
-    let provider = FilesystemResourceProvider::new(dir.path());
+    let provider = DirResourceProvider::new(dir.path());
     let module_id = ModuleId::new("lyxal-booking");
 
     let defs = MigrationDiscovery::discover_migrations(
@@ -77,7 +77,7 @@ async fn test_migration_discovery_rejects_duplicate_order() {
     fs::write(mig_dir.join("001_step_a.surql"), "DEFINE TABLE a;").unwrap();
     fs::write(mig_dir.join("001_step_b.surql"), "DEFINE TABLE b;").unwrap();
 
-    let provider = FilesystemResourceProvider::new(dir.path());
+    let provider = DirResourceProvider::new(dir.path());
     let module_id = ModuleId::new("lyxal-booking");
 
     let err = MigrationDiscovery::discover_migrations(
@@ -112,7 +112,7 @@ async fn test_migration_plan_building_scenarios() {
     fs::write(mig_dir.join("002_m2.surql"), sql2).unwrap();
     fs::write(mig_dir.join("003_m3.surql"), sql3).unwrap();
 
-    let provider = FilesystemResourceProvider::new(dir.path());
+    let provider = DirResourceProvider::new(dir.path());
     let module_id = ModuleId::new("lyxal-scheduler");
 
     let defs = MigrationDiscovery::discover_migrations(

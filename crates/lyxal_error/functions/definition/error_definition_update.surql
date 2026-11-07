@@ -16,6 +16,7 @@
 -- Erreurs
 --   ERROR_INVALID_INPUT : entrée invalide (details.fields)
 --   ERROR_DEFINITION_NOT_FOUND : code inconnu
+--   ERROR_WRITE_FORBIDDEN : écriture refusée par les permissions (details.table)
 -- ============================================================================
 DEFINE FUNCTION OVERWRITE fn::error_definition_update(
     $params: object
@@ -46,7 +47,9 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_update(
     LET $definition = (SELECT * FROM error_definition WHERE code = $p.code LIMIT 1)[0];
     IF $definition IS NONE { RETURN fn::error_result("ERROR_DEFINITION_NOT_FOUND", $p.language, { code: $p.code }); };
     LET $changes = object::from_entries(array::filter(object::entries($p), |$entry| $entry[0] NOT IN ["code", "language"] AND $entry[1] IS NOT NONE));
-    RETURN fn::result_ok(UPDATE ONLY $definition.id MERGE $changes);
+    LET $updated = UPDATE ONLY $definition.id MERGE $changes;
+    IF $updated IS NONE { RETURN fn::error_result("ERROR_WRITE_FORBIDDEN", $p.language, { table: "error_definition" }); };
+    RETURN fn::result_ok($updated);
 }
 COMMENT "Met à jour une définition d'erreur : seuls les champs transmis changent (le code et le module sont immuables)."
 PERMISSIONS FULL;

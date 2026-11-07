@@ -1,5 +1,6 @@
+use crate::common::DirResourceProvider;
 use lyxal_runtime::manifest::ManifestParser;
-use lyxal_runtime::resource::{FilesystemResourceProvider, ResourceDiscovery, ResourceKind};
+use lyxal_runtime::resource::{ResourceDiscovery, ResourceKind};
 use std::path::PathBuf;
 
 #[test]
@@ -44,7 +45,7 @@ async fn test_catalogue_resources_follow_manifest() {
         .unwrap()
         .join("lyxal_catalogue");
     let manifest = ManifestParser::parse_file(catalogue_dir.join("manifest.toml")).unwrap();
-    let provider = FilesystemResourceProvider::new(&catalogue_dir);
+    let provider = DirResourceProvider::new(&catalogue_dir);
 
     let resources = ResourceDiscovery::install_resources(&manifest, &provider)
         .await
