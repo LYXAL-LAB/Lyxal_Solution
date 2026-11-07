@@ -6,6 +6,7 @@ members = [
     "crates/lyxal_runtime",
     "crates/lyxal_event",
     "crates/lyxal_crypto",
+    "crates/lyxal_parsing",
     "crates/lyxal_pipeline_ingestion",
     "apps/lyxal-server",
 ]
@@ -22,6 +23,7 @@ lyxal_surreal = { path = "crates/lyxal_surreal" }
 lyxal_runtime = { path = "crates/lyxal_runtime" }
 lyxal_event = { path = "crates/lyxal_event" }
 lyxal_crypto = { path = "crates/lyxal_crypto" }
+lyxal_parsing = { path = "crates/lyxal_parsing" }
 lyxal_pipeline_ingestion = { path = "crates/lyxal_pipeline_ingestion" }
 surrealdb = { version = "3.3", features = ["protocol-ws", "protocol-http", "kv-mem"] }
 surrealdb-types = "3.3"

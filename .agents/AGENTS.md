@@ -806,7 +806,7 @@ Noyau Technique & Moteur
 lyxal_error
 lyxal_surreal
 lyxal_crypto (AES-256-GCM, SHA-256, BLAKE3, Argon2id, HMAC, HKDF)
-lyxal_parsing (lecture CSV, XML, JSON avec rejets explicites, sans logique métier — à créer)
+lyxal_parsing (lecture CSV, XML, JSON en flux avec rejets explicites, sans base ni logique métier)
 lyxal_event
 lyxal_runtime (Manifeste, Installation, Migrations, Cycle de vie, Workers, Santé, Baux, Réconciliation)
 lyxal_base (référentiels transversaux : unités de mesure et types d'unités, SurrealQL seul)

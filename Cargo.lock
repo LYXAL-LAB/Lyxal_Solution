@@ -1513,22 +1513,6 @@ dependencies = [
 
 [[package]]
 name = "geo"
-version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f811f663912a69249fa620dcd2a005db7254529da2d8a0b23942e81f47084501"
-dependencies = [
- "float_next_after",
- "geo-types",
- "geographiclib-rs",
- "log",
- "num-traits",
- "robust",
- "rstar 0.12.2",
- "serde",
-]
-
-[[package]]
-name = "geo"
 version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f3901269ec6d4f6068d3f09e5f02f995bd076398dcd1dfec407cd230b02d11b"
@@ -2540,6 +2524,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "lyxal_parsing"
+version = "0.1.0"
+dependencies = [
+ "csv",
+ "encoding_rs",
+ "quick-xml 0.42.0",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "lyxal_pipeline_ingestion"
 version = "0.1.0"
 dependencies = [
@@ -2937,7 +2933,7 @@ dependencies = [
  "md-5",
  "parking_lot",
  "percent-encoding",
- "quick-xml",
+ "quick-xml 0.39.4",
  "rand 0.10.2",
  "reqwest 0.12.28",
  "ring",
@@ -3434,6 +3430,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-xml"
+version = "0.42.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41b1177fdf999d2321d3fb46ff47159d9c1fb9ad66a4879f8c50a0b504615e9b"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "quick_cache"
 version = "0.6.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3822,7 +3827,7 @@ checksum = "13b48b66c1cd4bf814516ea48f727d4b3697e3fa8841be99a7d9cbb8c9ac1666"
 dependencies = [
  "bytes",
  "chrono",
- "geo 0.32.0",
+ "geo",
  "regex",
  "revision-derive",
  "roaring",
@@ -4784,7 +4789,7 @@ dependencies = [
  "dashmap",
  "ext-sort",
  "futures",
- "geo 0.32.0",
+ "geo",
  "geo-types",
  "getrandom 0.3.4",
  "headers",
@@ -4936,7 +4941,7 @@ dependencies = [
  "chrono",
  "dmp",
  "fastnum",
- "geo 0.32.0",
+ "geo",
  "geo-types",
  "half",
  "hex",
@@ -5123,7 +5128,7 @@ dependencies = [
  "bytes",
  "chrono",
  "flatbuffers",
- "geo 0.28.0",
+ "geo",
  "rust_decimal",
  "semver",
  "serde",
@@ -5168,7 +5173,7 @@ dependencies = [
  "chrono",
  "deunicode",
  "fuzzy-matcher",
- "geo 0.32.0",
+ "geo",
  "md-5",
  "pbkdf2",
  "rand 0.9.5",
@@ -5200,7 +5205,7 @@ checksum = "80896d86260b320783ce90a06ab84efb3af5b63d047077ee00eb87bb27b57519"
 dependencies = [
  "bytes",
  "chrono",
- "geo 0.32.0",
+ "geo",
  "getrandom 0.3.4",
  "hex",
  "phf",
@@ -5235,7 +5240,7 @@ checksum = "8826c7ee65959cfd03dfe6a51de9a13689dff261916d94848347c92312cc719a"
 dependencies = [
  "bytes",
  "chrono",
- "geo 0.32.0",
+ "geo",
  "phf",
  "reblessive",
  "regex",
@@ -5264,7 +5269,7 @@ dependencies = [
  "castaway",
  "chrono",
  "flatbuffers",
- "geo 0.32.0",
+ "geo",
  "getrandom 0.2.17",
  "getrandom 0.3.4",
  "hex",
