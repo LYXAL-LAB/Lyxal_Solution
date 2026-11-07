@@ -59,8 +59,9 @@ réservation active est refusée même au même jeton (`INGESTION_BATCH_ALREADY_
 heure de la base). Les écritures du traitement (`raw_records_save`, `staged_save`,
 `quarantine_log`, `batch_checkpoint`, `batch_transition`) reçoivent `claim: { owner, generation }`
 et vérifient dans leur requête (`fn::ingestion_batch_claim_verify`) que la réservation est
-détenue et non expirée, sinon `INGESTION_BATCH_CLAIM_LOST` sans rien écrire. Seul le point de
-reprise la renouvelle ; `fn::ingestion_batch_release` la libère (exécution détentrice seulement).
+détenue et non expirée, sinon `INGESTION_BATCH_CLAIM_LOST` sans rien écrire. Seul le point de reprise la renouvelle : le worker l'enregistre en fin de bloc et le rejoue au
+tiers de la durée de réservation pendant le traitement (lecture du fichier, bloc long), ses
+écritures étant sérialisées ; `fn::ingestion_batch_release` la libère (exécution détentrice seulement).
 Une réservation expirée (exécution arrêtée) est reprise à la génération suivante, ce qui écarte
 l'ancienne exécution.
 
@@ -161,7 +162,7 @@ publie chaque manifeste approuvé ; la livraison est au moins une fois, la publi
 | `adapters/` | lecture FAB-DIS, CSV (délimiteurs), XML / BMEcat, JSON / NDJSON |
 | `normalization/` | nettoyage, dimensions et poids, attributs techniques, qualification initiale (`VERIFIED` exige une preuve commerciale valide et une unité) ; unités et fabricants lus dans les résolutions du bloc (`BlockReferentials`), sans table de correspondance en Rust |
 | `fingerprint.rs` | empreintes canoniques et sceau des manifestes (BLAKE3, `lyxal_crypto`) |
-| `worker/` | `IngestionWorker` (`LyxalWorker`) : traitement par blocs, point de reprise ; chaque `process_batch` tire un jeton (UUID v7), réserve le lot en base, présente la réservation à chaque écriture et la libère quelle que soit l'issue (lot déjà réservé : `IngestionError::BatchAlreadyClaimed`, ni traité ni marqué `FAILED`) ; unités et fabricants du bloc résolus en base en deux appels (`IngestionStore::block_referentials`) ; GTIN refusé ou article rejeté consigné en quarantaine ; unité inconnue : article en staging sans unité et anomalie `INGESTION_UNIT_UNRESOLVED` (jamais de valeur par défaut) ; un lot en échec passe en `FAILED` pendant que la réservation est détenue, sans arrêter le worker |
+| `worker/` | `IngestionWorker` (`LyxalWorker`) : traitement par blocs, point de reprise ; chaque `process_batch` tire un jeton (UUID v7), réserve le lot en base, présente la réservation à chaque écriture et la libère quelle que soit l'issue (lot déjà réservé : `IngestionError::BatchAlreadyClaimed`, ni traité ni marqué `FAILED` ; réservation perdue : travail remis en file ; réservation ou passage en `FAILED` impossibles pour une raison technique : `IngestionError::FailureNotRecorded`, travail conservé et worker arrêté pour relance par le superviseur) ; unités et fabricants du bloc résolus en base en deux appels (`IngestionStore::block_referentials`) ; GTIN refusé ou article rejeté consigné en quarantaine ; unité inconnue : article en staging sans unité et anomalie `INGESTION_UNIT_UNRESOLVED` (jamais de valeur par défaut) ; un lot en échec passe en `FAILED` pendant que la réservation est détenue, sans arrêter le worker |
 | `storage/` | `IngestionStore` : appels `call_fn` des fonctions du module ; erreur métier transmise avec son code (`IngestionError::Surreal`) |
 | `publisher/` | publication (§5) |
 | `rules.rs` | modèles des référentiels |

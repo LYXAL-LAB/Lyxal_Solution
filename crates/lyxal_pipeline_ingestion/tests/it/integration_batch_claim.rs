@@ -327,3 +327,135 @@ async fn claim_is_released_after_failure_and_interruption() {
     assert_eq!(report.final_status, BatchStatus::Staged);
     assert_eq!(claim_state(&store, "lot_casse").await, (None, 3));
 }
+
+/// Remplace `fn::ingestion_resolve_units` (appelée une fois par bloc) par une version qui attend
+/// `seconds` avant de répondre : un bloc dure alors plus longtemps que la réservation.
+async fn slow_down_blocks(store: &IngestionStore, seconds: u64) {
+    let original = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("functions/rule/ingestion_resolve_units.surql"),
+    )
+    .expect("fonction d'origine")
+    .replace(
+        "fn::ingestion_resolve_units(",
+        "fn::ingestion_resolve_units_origine(",
+    );
+    store
+        .client()
+        .query(original)
+        .query(format!(
+            "DEFINE FUNCTION OVERWRITE fn::ingestion_resolve_units($params: object) {{ sleep({seconds}s); RETURN fn::ingestion_resolve_units_origine($params); }}"
+        ))
+        .await
+        .expect("ralentissement")
+        .check()
+        .expect("fonction ralentie");
+}
+
+#[tokio::test]
+async fn claim_is_renewed_while_a_block_outlasts_its_duration() {
+    let store = crate::support::installed_store().await;
+    store.create_batch(&batch("lot_lent")).await.expect("lot");
+    // Réservation de 5 s, bloc de 7 s : sans renouvellement pendant le bloc, la réservation
+    // expirerait et ses écritures seraient refusées.
+    slow_down_blocks(&store, 7).await;
+    let worker = IngestionWorker::new(store.clone())
+        .expect("worker")
+        .with_claim_ttl(5);
+
+    let report = worker
+        .process_batch(
+            "lot_lent",
+            csv(5).as_bytes(),
+            SourceFormat::Csv,
+            None,
+            &CancellationToken::new(),
+        )
+        .await
+        .expect("réservation renouvelée pendant le bloc");
+    assert_eq!(report.final_status, BatchStatus::Staged);
+    assert_eq!(report.total_lignes, 5);
+    assert_eq!(claim_state(&store, "lot_lent").await, (None, 1));
+}
+
+#[tokio::test]
+async fn technical_claim_failure_keeps_the_job_and_stops_the_worker() {
+    use lyxal_runtime::worker::{LyxalWorker, WorkerContext};
+    use lyxal_runtime::ModuleContext;
+
+    let store = crate::support::installed_store().await;
+    store.create_batch(&batch("lot_panne")).await.expect("lot");
+    // Panne de la base pendant la prise de réservation (erreur de requête, pas réponse métier).
+    let original = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("functions/batch/ingestion_batch_claim.surql"),
+    )
+    .expect("fonction d'origine");
+    store
+        .client()
+        .query("DEFINE FUNCTION OVERWRITE fn::ingestion_batch_claim($params: object) { THROW 'panne simulée'; }")
+        .await
+        .expect("panne")
+        .check()
+        .expect("fonction en panne");
+
+    let worker = IngestionWorker::new(store.clone()).expect("worker");
+    worker
+        .enqueue_batch(
+            "lot_panne".to_string(),
+            csv(5).into_bytes(),
+            SourceFormat::Csv,
+            None,
+        )
+        .await;
+    let context = || {
+        let descriptor = worker.descriptor().clone();
+        WorkerContext::new(
+            descriptor.module_id.clone(),
+            descriptor.id.clone(),
+            ModuleContext::new("lyxal_pipeline_ingestion"),
+            CancellationToken::new(),
+        )
+    };
+    let stopped = tokio::time::timeout(std::time::Duration::from_secs(10), worker.run(context()))
+        .await
+        .expect("échec non consigné : le worker s'arrête au lieu de perdre le travail");
+    assert!(stopped.is_err(), "échec non consigné : le worker s'arrête");
+    let lot = store
+        .get_batch("lot_panne")
+        .await
+        .expect("lecture")
+        .expect("lot");
+    assert_eq!(lot.statut, BatchStatus::Received, "rien n'a été écrit");
+
+    // Base rétablie : le worker relancé par le superviseur traite le travail resté en file.
+    store
+        .client()
+        .query(original)
+        .await
+        .expect("rétablissement")
+        .check()
+        .expect("fonction rétablie");
+    let ctx = context();
+    let token = ctx.cancellation.clone();
+    let (_, staged) = tokio::join!(worker.run(ctx), async {
+        for _ in 0..200 {
+            let lot = store
+                .get_batch("lot_panne")
+                .await
+                .expect("lecture")
+                .expect("lot");
+            if lot.statut == BatchStatus::Staged {
+                token.cancel();
+                return true;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+        token.cancel();
+        false
+    });
+    assert!(
+        staged,
+        "le travail conservé est traité après rétablissement"
+    );
+}

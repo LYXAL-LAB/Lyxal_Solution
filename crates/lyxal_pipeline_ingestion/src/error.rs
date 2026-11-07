@@ -171,6 +171,12 @@ impl IngestionError {
         self.is_business_code("INGESTION_BATCH_CLAIM_LOST")
     }
 
+    /// Indique si l'erreur est une erreur de transport SurrealDB (connexion, conflit de
+    /// transaction non résolu…) et non une réponse métier d'une fonction du module.
+    pub fn is_transport(&self) -> bool {
+        matches!(self, Self::Surreal(err) if !matches!(err.as_ref(), lyxal_surreal::LyxalSurrealError::Call(_)))
+    }
+
     /// Indique si l'erreur est l'erreur métier SurrealQL `code`.
     pub fn is_business_code(&self, code: &str) -> bool {
         matches!(self, Self::Surreal(err) if matches!(err.as_ref(), lyxal_surreal::LyxalSurrealError::Call(call) if call.is_business_code(code)))
