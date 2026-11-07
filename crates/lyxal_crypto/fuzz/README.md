@@ -1,7 +1,9 @@
 # Campagnes de couverture
 
-Depuis le crate : `python3 tools/run_fuzz.py --seconds 1800 --segments 3`.
-Prérequis : Linux x86_64, Rust nightly, cargo-fuzz et dépendances accessibles/cache préparé.
+Depuis le crate : `python3 tools/run_fuzz.py --seconds 1800 --segments 3 --toolchain nightly-2026-10-20`.
+En CI : workflow « Fuzzing lyxal_crypto » (`scripts/ci/crypto_fuzz.sh`), 60 s par cible sur toute PR
+qui modifie le crate, 600 s par cible chaque lundi et à la demande.
+Prérequis : Linux x86_64, Rust `nightly-2026-10-20`, `cargo-fuzz` 0.13.2 (épinglés dans `scripts/ci/crypto_fuzz.sh`).
 Le conducteur compile les quatre cibles, conserve les seeds et le corpus généré,
 puis lance les quatre campagnes en parallèle. Chaque cible exécute par défaut trois
 sessions de dix minutes, avec conservation du corpus et enregistrement immédiat du résultat

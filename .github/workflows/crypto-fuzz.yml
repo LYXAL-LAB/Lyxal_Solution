@@ -1,0 +1,57 @@
+# Fuzzing de lyxal_crypto (4 cibles : envelope, context, phc, rotation ; LeakSanitizer actif).
+# Campagne courte sur toute PR qui modifie le crate, campagne longue chaque semaine ou à la
+# demande. Outillage épinglé dans scripts/ci/crypto_fuzz.sh.
+name: Fuzzing lyxal_crypto
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "crates/lyxal_crypto/**"
+      - "scripts/ci/crypto_fuzz.sh"
+      - ".github/workflows/crypto-fuzz.yml"
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: "Durée par cible, en secondes"
+        required: false
+        default: "600"
+
+concurrency:
+  group: crypto-fuzz-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fuzz:
+    name: Fuzzing
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - name: Installer Rust (version de rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: crypto-fuzz
+          workspaces: crates/lyxal_crypto/fuzz
+          cache-bin: true
+      - name: Campagne (60 s par cible sur une PR, 600 s sinon)
+        run: scripts/ci/crypto_fuzz.sh "${{ github.event_name == 'pull_request' && '60' || inputs.seconds || '600' }}"
+      - name: Journaux, corpus et artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto-fuzz-${{ github.run_id }}
+          path: |
+            crates/lyxal_crypto/fuzz/target/campaigns/
+            crates/lyxal_crypto/fuzz/artifacts/
+          if-no-files-found: warn
+          retention-days: 30

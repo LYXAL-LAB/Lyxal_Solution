@@ -60,6 +60,18 @@ jobs:
       - name: Tests SurrealQL des modules
         run: python3 -I scripts/ci/test_lyxal_modules.py
 
+  crypto:
+    name: Cryptographie
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: Installer Rust (version de rust-toolchain.toml)
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: Installer la bibliothèque de vérification des vecteurs (OpenSSL)
+        run: python3 -m pip install --user "cryptography==50.0.1"
+      - run: scripts/ci/crypto_checks.sh
+
   test:
     name: Tests
     runs-on: ubuntu-latest
