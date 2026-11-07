@@ -87,8 +87,8 @@ même fournisseur, service, code externe et matcher.
 
 Écritures vérifiées : une création, modification ou désactivation filtrée par les permissions
 des tables (écriture réservée aux sessions d'administration) renvoie `ERROR_WRITE_FORBIDDEN`
-(`details.table`) au lieu d'un succès. `fn::error_occurrence_purge_before` est refusée sous toute
-identité (jeton ou utilisateur), pour qui le journal est invisible et non modifiable.
+(`details.table`) au lieu d'un succès. `fn::error_occurrence_purge_before` est refusée hors session
+système (méthode d'accès ou utilisateur), pour qui le journal est invisible et non modifiable.
 
 ---
 
