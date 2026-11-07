@@ -22,6 +22,7 @@ Toutes en `TYPE NORMAL SCHEMAFULL`, avec permissions explicites.
 | `catalogue_session` | Sessions des utilisateurs d'enregistrement (`role`, `tenant_id`, `scope`) | sa propre session | aucune (hôte) |
 | `catalogue_type` | Types : `PRODUIT`, `SERVICE`, `OUVRAGE`, `RESSOURCE`, `ENSEMBLE` | tous | administration |
 | `catalogue_item` | Articles maîtres (`is_custom = false`) et privés (`is_custom = true`, `tenant_id`) | voir §3 | voir §3 |
+| `catalogue_item_personnalisation` | Personnalisation d'un article maître par un locataire : `libelle_personnalise`, `code_interne_client`, `enabled` ; une ligne par couple (`item`, `tenant_id`) | son locataire seulement | son locataire seulement |
 | `catalogue_categorie` | Catégories arborescentes | tous | administration |
 | `catalogue_item_categorie` | Rattachement article ↔ catégorie | selon l'article | selon l'article |
 | `catalogue_attribut` | Attributs typés (`STRING`, `NUMBER`, `BOOLEAN`, `DATE`, `COLOR`), pilotes de déclinaison ou non | tous | administration |
@@ -39,6 +40,7 @@ règles que l'article concerné (§3).
 Gardes d'intégrité (`DEFINE EVENT`, `THROW "<CODE>: …"` qui annule l'écriture) :
 
 * `evt_catalogue_item_guard` : règles de §3 appliquées aussi aux écritures directes ;
+* `evt_personnalisation_guard` : seul un article maître se personnalise ;
 * `evt_cva_recalc_fingerprint` / `evt_variante_protect_fingerprint` : l'empreinte d'une variante
   est recalculée à chaque écriture de sa combinaison et ne se modifie jamais directement ;
 * `evt_composition_protect`, `evt_composition_no_del`, `evt_comp_ligne_guard` : une composition
@@ -70,7 +72,8 @@ Conventions d'entrée :
 | :--- | :--- |
 | Types | `fn::catalogue_type_list` (`enabled`) |
 | Catégories | `fn::catalogue_categorie_create` (`code`, `libelle`, `parent`, `ordre`), `_tree` (`enabled`), `_update` (`id`, `libelle`, `parent` — `null` pour devenir racine —, `ordre`, `enabled`), `_delete` (`id` ; refus si enfants ou articles rattachés) |
-| Articles | `fn::catalogue_item_create`, `_update`, `_get` (`id` ou `code`), `_list` (`type`, `categorie`, `enabled`, `search`, `limit` 1–200, `start`), `_delete` (`id` ; articles privés seulement, refus si composant d'une composition) |
+| Articles | `fn::catalogue_item_create`, `_update`, `_get` (`id` ou `code`), `_list` (`type`, `categorie`, `enabled` — disponibilité pour le locataire de la session —, `search`, `limit` 1–200, `start`), `_delete` (`id` ; articles privés seulement, refus si composant d'une composition). `_get` et chaque élément de `_list` portent `personnalisation` (celle du locataire de la session, ou `NONE`) et `disponible` (article actif et non désactivé par ce locataire) |
+| Personnalisations | `fn::catalogue_item_personnaliser` (`item_id` d'un article maître, puis `libelle_personnalise`, `code_interne_client`, `enabled`, au moins un ; crée ou met à jour la personnalisation du locataire de la session), `fn::catalogue_item_personnalisation_supprimer` (`item_id` ; retour au référentiel) |
 | Attributs | `fn::catalogue_attribut_create` (`code`, `libelle`, `type_donnee`, `unite`, `is_variant_driver`), `fn::catalogue_attribut_valeur_create` (`attribut`, `code`, `valeur_texte` / `valeur_nombre` / `valeur_booleen` / `valeur_date` selon le type, `libelle_affichage`, `ordre`), `fn::catalogue_attribut_set_static` (`item_id`, `attribut_id`, `valeur_id`) |
 | Variantes | `fn::catalogue_variante_create` (`item_id`, `code`, `libelle`, `reference_fabricant`, `code_barre`, `is_default`), `fn::catalogue_variante_set_attributs` (`variante_id`, `item_id`, `attributs: [{ attribut, valeur }]` ; attributs pilotes seulement ; combinaison unique par article) |
 | Compositions | `fn::catalogue_composition_create` (`parent_item`, `libelle`), `_add_line` (`composition_id`, `composant_item`, `composant_variante` — obligatoire si le composant a des variantes —, `quantite` > 0, `unite`, `coefficient_perte` ≥ 1, `ordre`, `commentaire`), `_publish` (`composition_id` ; non vide ; archive la version publiée précédente), `_clone_version` (`source_composition_id` ; nouveau brouillon avec les lignes) |
@@ -105,7 +108,6 @@ Référence pour les appelants (dont la publication de `lyxal_pipeline_ingestion
 | `categories` | liste d'identifiants ou de `{ id, is_primary }` | erreurs signalées par position |
 | `master_id` | texte ≤ 128 | article maître seulement, unique |
 | `is_custom` | booléen | défaut : `false` si `master_id` est fourni, sinon `true` |
-| `code_interne_client`, `libelle_personnalise` | texte | personnalisation locale |
 | `tenant_id` | texte | facultatif ; s'il est fourni, il doit être celui du jeton |
 
 Les quatre champs qui pointent vers `lyxal_base` (`catalogue_item.unite_reference`,
@@ -138,11 +140,13 @@ jetons.
 
 | Identité | Articles maîtres | Articles privés |
 | :--- | :--- | :--- |
-| `catalogue_sync_agent` + `catalogue:sync:write` + `iss = lyxal-os` | crée, modifie les champs maîtres ; ne réactive pas un article désactivé localement, n'écrase pas une personnalisation locale | ne voit rien |
-| `tenant_user` avec `tenant_id` | lit ; personnalise `libelle_personnalise`, `code_interne_client`, `enabled` ; ne modifie pas les champs maîtres | crée, lit, modifie, supprime les siens seulement |
+| `catalogue_sync_agent` + `catalogue:sync:write` + `iss = lyxal-os` | crée, modifie les champs maîtres, retire ou rétablit un article pour tous (`enabled`) ; n'accède à aucune personnalisation | ne voit rien |
+| `tenant_user` avec `tenant_id` | lit ; ne modifie aucun champ, disponibilité comprise ; personnalise et désactive pour lui seul (`fn::catalogue_item_personnaliser`) | crée, lit, modifie, supprime les siens seulement |
 | autre rôle, sans `tenant_id`, autre audience | lit au plus | rien |
 
-Un article maître ne se supprime pas (désactivation par `enabled = false`).
+Un article maître ne se supprime pas : la synchronisation le retire pour tous (`enabled = false`).
+La personnalisation d'un locataire ne touche jamais l'article maître partagé : un autre locataire
+lit toujours le libellé et la disponibilité du référentiel.
 
 ---
 

@@ -34,7 +34,8 @@ schemas = [
     "schema/09_catalogue_composition.surql",
     "schema/10_catalogue_composition_ligne.surql",
     "schema/11_catalogue_relation_type.surql",
-    "schema/12_catalogue_relation.surql"
+    "schema/12_catalogue_relation.surql",
+    "schema/13_catalogue_item_personnalisation.surql"
 ]
 
 functions = [
@@ -48,6 +49,8 @@ functions = [
     "functions/item/catalogue_item_list.surql",
     "functions/item/catalogue_item_update.surql",
     "functions/item/catalogue_item_delete.surql",
+    "functions/personnalisation/catalogue_item_personnaliser.surql",
+    "functions/personnalisation/catalogue_item_personnalisation_supprimer.surql",
     "functions/attribut/catalogue_attribut_create.surql",
     "functions/attribut/catalogue_attribut_valeur_create.surql",
     "functions/attribut/catalogue_attribut_set_static.surql",

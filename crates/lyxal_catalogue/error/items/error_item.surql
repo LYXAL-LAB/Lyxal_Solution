@@ -396,13 +396,13 @@ IF !record::exists(error_definition:CATALOGUE_ITEM_SYNC_FIELD_PROTECTED) THEN (
         translations: {
             fr: {
                 label: "Champ maître synchronisé protégé",
-                description: "Les caractéristiques intrinsèques d'un article synchronisé (libellé officiel, fabricant, marque, code-barres, conditionnement, documents) ne sont modifiables que par synchronisation Master. Pour une personnalisation locale, utilisez 'libelle_personnalise' ou 'code_interne_client'.",
-                resolution: "Renseignez 'libelle_personnalise' ou demandez la mise à jour au gestionnaire du Master Catalogue."
+                description: "Les caractéristiques intrinsèques d'un article synchronisé (libellé officiel, fabricant, marque, code-barres, conditionnement, documents, disponibilité) ne sont modifiables que par synchronisation Master.",
+                resolution: "Personnalisez l'article pour votre organisation (fn::catalogue_item_personnaliser : libellé, code interne, disponibilité) ou demandez la mise à jour au gestionnaire du Master Catalogue."
             },
             en: {
                 label: "Synchronized master field is protected",
-                description: "Intrinsic properties of a synchronized item can only be modified by official Master sync. For local customizations, use 'libelle_personnalise' or 'code_interne_client'.",
-                resolution: "Use custom local fields or update the master item in the central catalog."
+                description: "Intrinsic properties of a synchronized item (including availability) can only be modified by official Master sync.",
+                resolution: "Customise the item for your organisation (fn::catalogue_item_personnaliser: label, internal code, availability) or update the master item in the central catalog."
             }
         }
     }
@@ -759,55 +759,55 @@ IF !record::exists(error_definition:CATALOGUE_ITEM_SYNC_CANNOT_CREATE_MASTER) TH
     }
 ) END;
 
-IF !record::exists(error_definition:CATALOGUE_ITEM_SYNC_CANNOT_OVERWRITE_LOCAL_CUSTOMIZATION) THEN (
-    CREATE error_definition:CATALOGUE_ITEM_SYNC_CANNOT_OVERWRITE_LOCAL_CUSTOMIZATION CONTENT {
-        code: "CATALOGUE_ITEM_SYNC_CANNOT_OVERWRITE_LOCAL_CUSTOMIZATION",
+IF !record::exists(error_definition:CATALOGUE_PERSONNALISATION_ITEM_NOT_MASTER) THEN (
+    CREATE error_definition:CATALOGUE_PERSONNALISATION_ITEM_NOT_MASTER CONTENT {
+        code: "CATALOGUE_PERSONNALISATION_ITEM_NOT_MASTER",
         module: "catalogue",
-        domain: "item",
-        category: "authorization",
+        domain: "personnalisation",
+        category: "validation",
         severity: "error",
-        message: "La synchronisation ne peut pas écraser une personnalisation locale",
+        message: "Seul un article maître se personnalise",
         default_language: "fr",
-        http_status: 403,
+        http_status: 409,
         retryable: false,
         enabled: true,
         translations: {
             fr: {
-                label: "Personnalisation locale protégée",
-                description: "La synchronisation du catalogue maître ne modifie jamais le code interne ni le libellé personnalisé d'un client.",
-                resolution: "Retirer ces champs de la mise à jour de synchronisation."
+                label: "Article non personnalisable",
+                description: "Un article privé appartient déjà à son organisation : il ne se personnalise pas, il se modifie directement.",
+                resolution: "Modifiez l'article privé avec fn::catalogue_item_update."
             },
             en: {
-                label: "Local customization is protected",
-                description: "Master synchronisation never overwrites a client's internal code or custom label.",
-                resolution: "Remove these fields from the synchronisation update."
+                label: "Item cannot be customised",
+                description: "A private item already belongs to its organisation: it is not customised but edited directly.",
+                resolution: "Edit the private item with fn::catalogue_item_update."
             }
         }
     }
 ) END;
 
-IF !record::exists(error_definition:CATALOGUE_ITEM_SYNC_CANNOT_REACTIVATE_DISABLED) THEN (
-    CREATE error_definition:CATALOGUE_ITEM_SYNC_CANNOT_REACTIVATE_DISABLED CONTENT {
-        code: "CATALOGUE_ITEM_SYNC_CANNOT_REACTIVATE_DISABLED",
+IF !record::exists(error_definition:CATALOGUE_PERSONNALISATION_NOT_FOUND) THEN (
+    CREATE error_definition:CATALOGUE_PERSONNALISATION_NOT_FOUND CONTENT {
+        code: "CATALOGUE_PERSONNALISATION_NOT_FOUND",
         module: "catalogue",
-        domain: "item",
-        category: "authorization",
+        domain: "personnalisation",
+        category: "not_found",
         severity: "error",
-        message: "La synchronisation ne peut pas réactiver un article désactivé localement",
+        message: "Aucune personnalisation de cet article pour votre organisation",
         default_language: "fr",
-        http_status: 403,
+        http_status: 404,
         retryable: false,
         enabled: true,
         translations: {
             fr: {
-                label: "Réactivation refusée",
-                description: "Un article désactivé par l'organisation cliente ne peut pas être réactivé par la synchronisation.",
-                resolution: "Laisser le client réactiver l'article."
+                label: "Personnalisation introuvable",
+                description: "Votre organisation n'a pas personnalisé cet article.",
+                resolution: "Vérifiez l'article ; il est déjà affiché avec les valeurs du référentiel."
             },
             en: {
-                label: "Reactivation refused",
-                description: "An item disabled by the client cannot be reactivated by synchronisation.",
-                resolution: "Let the client reactivate the item."
+                label: "Customisation not found",
+                description: "Your organisation has not customised this item.",
+                resolution: "Check the item; it is already shown with the reference values."
             }
         }
     }
