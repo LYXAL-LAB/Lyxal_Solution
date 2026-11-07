@@ -20,10 +20,12 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--seconds", type=int, default=1800)
 parser.add_argument("--segments", type=int, default=3,
                     help="checkpoint the total duration into this many independently completed runs")
+parser.add_argument("--toolchain", default="nightly",
+                    help="Rust nightly toolchain used by cargo-fuzz (the CI pins a dated nightly)")
 args = parser.parse_args()
 if args.segments < 1 or args.seconds < args.segments:
     parser.error("--seconds must be >= --segments >= 1")
-subprocess.run(["cargo", "+nightly", "fuzz", "build"], cwd=CRATE, check=True)
+subprocess.run(["cargo", "+" + args.toolchain, "fuzz", "build"], cwd=CRATE, check=True)
 output = FUZZ / "target" / "campaigns" / str(time.time_ns())
 output.mkdir(parents=True)
 
