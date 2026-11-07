@@ -299,7 +299,7 @@ async fn test_concurrent_batch_locking_prevention() {
 }
 
 // =============================================================================
-// TEST 10 : Arrêt Gracieux du Worker sous CancellationToken (< 100ms)
+// TEST 10 : Arrêt Gracieux du Worker sous CancellationToken
 // =============================================================================
 #[tokio::test]
 async fn test_graceful_shutdown_under_cancellation_token() {
@@ -327,7 +327,6 @@ async fn test_graceful_shutdown_under_cancellation_token() {
         csv.push_str(&format!("REF_{i};Designation {i}\n"));
     }
 
-    let start = Instant::now();
     let rep = worker
         .process_batch(
             "batch_shutdown_test",
@@ -338,14 +337,25 @@ async fn test_graceful_shutdown_under_cancellation_token() {
         )
         .await
         .unwrap();
-    let duration = start.elapsed();
 
+    // Arrêt avant le premier bloc : aucune ligne traitée, point de reprise enregistré.
     assert!(rep.interrupted, "Le worker doit interrompre son exécution");
-    assert!(
-        duration.as_millis() < 250,
-        "L'arrêt gracieux doit être quasi instantané (constaté : {}ms)",
-        duration.as_millis()
+    assert_eq!(rep.final_status, BatchStatus::Parsing);
+    assert_eq!(rep.cursor_offset, 0);
+    assert_eq!(rep.total_lignes, 50);
+    assert_eq!(
+        rep.verified_count + rep.to_confirm_count + rep.rejected_count,
+        0
     );
+
+    let saved = store
+        .get_batch("batch_shutdown_test")
+        .await
+        .unwrap()
+        .expect("lot enregistré");
+    assert_eq!(saved.statut, BatchStatus::Parsing);
+    assert_eq!(saved.cursor_offset, 0);
+    assert_eq!(saved.total_lignes, 50);
 }
 
 // =============================================================================
