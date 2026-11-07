@@ -31,17 +31,11 @@ DEFINE TABLE OVERWRITE catalogue_item
         FOR update WHERE (
             ($token != NONE AND $token.aud = "lyxal-catalogue" AND (
                 ($token.role = "catalogue_sync_agent" AND "catalogue:sync:write" IN $token.scope AND is_custom = false)
-                OR ($token.role = "tenant_user" AND (
-                    (is_custom = true AND tenant_id != NONE AND $token.tenant_id != NONE AND tenant_id = $token.tenant_id)
-                    OR (is_custom = false AND master_id != NONE)
-                ))
+                OR ($token.role = "tenant_user" AND is_custom = true AND tenant_id != NONE AND $token.tenant_id != NONE AND tenant_id = $token.tenant_id)
             ))
             OR ($token == NONE AND $auth != NONE AND (
                 ($auth.role = "catalogue_sync_agent" AND "catalogue:sync:write" IN $auth.permissions AND is_custom = false)
-                OR ($auth.role = "tenant_user" AND (
-                    (is_custom = true AND tenant_id != NONE AND $auth.tenant_id != NONE AND tenant_id = $auth.tenant_id)
-                    OR (is_custom = false AND master_id != NONE)
-                ))
+                OR ($auth.role = "tenant_user" AND is_custom = true AND tenant_id != NONE AND $auth.tenant_id != NONE AND tenant_id = $auth.tenant_id)
             ))
         )
         FOR delete WHERE (
@@ -227,16 +221,6 @@ DEFINE FIELD OVERWRITE is_custom ON TABLE catalogue_item
     DEFAULT true
     COMMENT "true si l'article est une création privée locale, false si synchronisé du Master";
 
-DEFINE FIELD OVERWRITE code_interne_client ON TABLE catalogue_item
-    TYPE option<string>
-    VALUE IF $value != NONE { string::trim($value) } ELSE { NONE }
-    COMMENT "Code article personnalisé propre à l'organisation cliente";
-
-DEFINE FIELD OVERWRITE libelle_personnalise ON TABLE catalogue_item
-    TYPE option<string>
-    VALUE IF $value != NONE { string::trim($value) } ELSE { NONE }
-    COMMENT "Désignation commerciale locale affichée sur les devis à la place du libellé officiel";
-
 DEFINE FIELD OVERWRITE tenant_id ON TABLE catalogue_item
     TYPE option<string>
     DEFAULT IF $token.tenant_id != NONE { $token.tenant_id } ELSE IF $auth.tenant_id != NONE { $auth.tenant_id } ELSE { NONE }
@@ -419,8 +403,9 @@ THEN {
             THROW "CATALOGUE_ITEM_SYNC_CANNOT_CONVERT_CUSTOM: Un article synchronisé du Master ne peut pas être converti en article privé.";
         };
 
-        -- Si non autorisé explicitement par le Master, TOUS les champs maîtres sont strictement protégés
-        -- (enabled est modifiable localement par le locataire, statut_commercial reste exclusif Master)
+        -- Si non autorisé explicitement par le Master, TOUS les champs maîtres sont strictement protégés,
+        -- disponibilité comprise : un locataire personnalise et désactive un article maître pour lui
+        -- seul dans catalogue_item_personnalisation, jamais sur l'article partagé
         IF !$is_sync_auth {
             IF $after.code != $before.code 
                OR $after.type != $before.type 
@@ -435,21 +420,9 @@ THEN {
                OR $after.documents != $before.documents
                OR $after.libelle != $before.libelle
                OR $after.description != $before.description
-               OR $after.statut_commercial != $before.statut_commercial {
+               OR $after.statut_commercial != $before.statut_commercial
+               OR $after.enabled != $before.enabled {
                 THROW "CATALOGUE_ITEM_SYNC_FIELD_PROTECTED: Les spécifications maîtresses d'un article synchronisé ne peuvent être modifiées que par le flux Master officiel.";
-            };
-        };
-
-        -- Si appel de l'agent de synchronisation :
-        -- 1. Interdiction formelle d'écraser les personnalisations locales du client !
-        -- 2. Interdiction formelle de réactiver un article désactivé localement par le client !
-        IF $is_sync_auth {
-            IF $after.code_interne_client != $before.code_interne_client 
-               OR $after.libelle_personnalise != $before.libelle_personnalise {
-                THROW "CATALOGUE_ITEM_SYNC_CANNOT_OVERWRITE_LOCAL_CUSTOMIZATION: La synchronisation Master ne peut en aucun cas modifier ou écraser les personnalisations locales du client.";
-            };
-            IF $before.enabled = false AND $after.enabled = true {
-                THROW "CATALOGUE_ITEM_SYNC_CANNOT_REACTIVATE_DISABLED: Une mise à jour Master ne peut jamais réactiver un article désactivé localement par l'organisation cliente.";
             };
         };
     };

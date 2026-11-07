@@ -25,8 +25,6 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_create($params: object) {
             unite_conditionnement: { pipeline: [{ rule: "record", options: { expected_table: "base_unite" } }] },
             master_id: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
             is_custom: { pipeline: [{ rule: "boolean" }] },
-            code_interne_client: { pipeline: [{ rule: "optional_string", options: { max_length: 64 } }] },
-            libelle_personnalise: { pipeline: [{ rule: "optional_string", options: { max_length: 255 } }] },
             tenant_id: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
@@ -65,11 +63,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_create($params: object) {
     LET $conditionnement = $p.conditionnement;
     LET $unite_cond = $p.unite_conditionnement;
     
-    -- Paramètres de synchronisation et personnalisation locale
+    -- Paramètres de synchronisation
     LET $master_id = $p.master_id;
     LET $is_custom = $p.is_custom ?? ($master_id == NONE);
-    LET $code_interne = $p.code_interne_client;
-    LET $libelle_custom = $p.libelle_personnalise;
     
     -- Catégories : identifiant seul ou { id, is_primary }, convertis par lyxal_core, erreur par position
     LET $checked = array::map($categories, |$cat, $index| {
@@ -230,8 +226,6 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_create($params: object) {
         master_id: $master_id,
         is_custom: $is_custom,
         tenant_id: $final_tenant_id,
-        code_interne_client: $code_interne,
-        libelle_personnalise: $libelle_custom,
         metadata: {},
         enabled: true,
         is_system: false,

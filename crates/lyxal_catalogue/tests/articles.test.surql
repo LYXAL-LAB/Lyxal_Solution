@@ -162,35 +162,87 @@ RETURN fn::catalogue_item_update({ id: test_ref:alpha.item, is_custom: false }).
 -- en tant que: alpha
 RETURN fn::catalogue_item_update({ id: test_ref:placo.item, fabricant: "pirate" }).error.code == "CATALOGUE_ITEM_SYNC_FIELD_PROTECTED";
 
--- test: un locataire ne modifie pas un champ maître directement
+-- test: un locataire ne modifie aucun champ d'un article maître directement (écriture filtrée)
 -- en tant que: alpha
--- attendu-erreur: CATALOGUE_ITEM_SYNC_FIELD_PROTECTED
-UPDATE catalogue_item SET description = "Piraté" WHERE code = "PLACO-BA13";
+RETURN (UPDATE catalogue_item SET description = "Piraté", unite_conditionnement = base_unite:KG WHERE code = "PLACO-BA13" RETURN AFTER) == []
+    AND (SELECT VALUE description FROM ONLY catalogue_item WHERE code = "PLACO-BA13" LIMIT 1) != "Piraté";
 
--- test: un locataire ne change pas en direct l'unité de conditionnement d'un article maître
+-- test: un locataire ne désactive pas l'article maître partagé
 -- en tant que: alpha
--- attendu-erreur: CATALOGUE_ITEM_SYNC_FIELD_PROTECTED
-UPDATE catalogue_item SET unite_conditionnement = base_unite:KG WHERE code = "PLACO-BA13";
+RETURN fn::catalogue_item_update({ id: test_ref:placo.item, enabled: false }).error.code == "CATALOGUE_ITEM_SYNC_FIELD_PROTECTED";
 
--- test: un locataire personnalise un article maître
+-- test: un locataire personnalise un article maître pour lui seul
 -- en tant que: alpha
-RETURN fn::catalogue_item_update({ id: test_ref:placo.item, code_interne_client: "A-BA13", libelle_personnalise: "Placo maison" }).data.{ code_interne_client, libelle_personnalise } == { code_interne_client: "A-BA13", libelle_personnalise: "Placo maison" };
+RETURN fn::catalogue_item_personnaliser({ item_id: test_ref:placo.item, code_interne_client: " A-BA13 ", libelle_personnalise: "Placo maison" }).data.{ code_interne_client, libelle_personnalise, enabled, tenant_id }
+    == { code_interne_client: "A-BA13", libelle_personnalise: "Placo maison", enabled: true, tenant_id: "alpha" };
 
--- test: un locataire désactive un article maître
+-- test: un locataire désactive un article maître pour lui seul
 -- en tant que: alpha
-RETURN fn::catalogue_item_update({ id: test_ref:placo.item, enabled: false }).data.enabled == false;
+RETURN fn::catalogue_item_personnaliser({ item_id: test_ref:placo.item, enabled: false }).data.{ libelle_personnalise, enabled } == { libelle_personnalise: "Placo maison", enabled: false };
+
+-- test: le locataire lit sa personnalisation et l'article n'est plus disponible pour lui
+-- en tant que: alpha
+RETURN (fn::catalogue_item_get({ id: test_ref:placo.item }).data).{ libelle: item.libelle, enabled: item.enabled, personnalisation, disponible }
+    == { libelle: "Plaque BA13", enabled: true, personnalisation: { libelle_personnalise: "Placo maison", code_interne_client: "A-BA13", enabled: false }, disponible: false };
+
+-- test: un autre locataire n'en voit rien : libellé du référentiel, article disponible
+-- en tant que: beta
+RETURN (fn::catalogue_item_get({ id: test_ref:placo.item }).data).{ personnalisation, disponible } == { personnalisation: NONE, disponible: true };
+
+-- test: liste filtrée par disponibilité, propre à chaque locataire
+-- en tant que: alpha
+RETURN fn::catalogue_item_list({ enabled: true, search: "plaque ba13" }).data == []
+    AND fn::catalogue_item_list({ enabled: false, search: "plaque ba13" }).data.map(|$i| [$i.code, $i.disponible, $i.personnalisation.code_interne_client]) == [["PLACO-BA13", false, "A-BA13"]];
+
+-- test: dans la liste d'un autre locataire, l'article reste disponible et non personnalisé
+-- en tant que: beta
+RETURN fn::catalogue_item_list({ enabled: true, search: "plaque ba13" }).data.map(|$i| [$i.code, $i.disponible, $i.personnalisation]) == [["PLACO-BA13", true, NONE]];
+
+-- test: un autre locataire ne lit ni ne modifie la personnalisation d'Alpha
+-- en tant que: beta
+RETURN (SELECT * FROM catalogue_item_personnalisation) == []
+    AND (UPDATE catalogue_item_personnalisation SET libelle_personnalise = "Piraté" RETURN AFTER) == []
+    AND fn::catalogue_item_personnalisation_supprimer({ item_id: test_ref:placo.item }).error.code == "CATALOGUE_PERSONNALISATION_NOT_FOUND";
+
+-- test: la personnalisation d'Alpha est intacte
+RETURN (SELECT VALUE [tenant_id, libelle_personnalise, enabled] FROM catalogue_item_personnalisation) == [["alpha", "Placo maison", false]];
+
+-- test: l'agent de synchronisation n'a aucun accès aux personnalisations
+-- en tant que: sync
+RETURN (SELECT * FROM catalogue_item_personnalisation) == []
+    AND fn::catalogue_item_personnaliser({ item_id: test_ref:placo.item, enabled: true }).error.code == "CATALOGUE_ITEM_TENANT_REQUIRED";
+
+-- test: un article privé ne se personnalise pas (il se modifie directement)
+-- en tant que: alpha
+RETURN fn::catalogue_item_personnaliser({ item_id: test_ref:alpha.item, libelle_personnalise: "Inutile" }).error.code == "CATALOGUE_PERSONNALISATION_ITEM_NOT_MASTER";
+
+-- test: une personnalisation vide est refusée
+-- en tant que: alpha
+RETURN fn::catalogue_item_personnaliser({ item_id: test_ref:placo.item }).error.{ code, f: details.fields.enabled } == { code: "CATALOGUE_INVALID_PARAMETERS", f: ["CORE_VALIDATION_COMBINATION"] };
 
 -- test: la synchronisation met à jour un champ maître
 -- en tant que: sync
 RETURN fn::catalogue_item_update({ id: test_ref:placo.item, description: "Plaque de plâtre 13 mm", statut_commercial: "ACTIF" }).data.description == "Plaque de plâtre 13 mm";
 
--- test: la synchronisation n'écrase pas une personnalisation locale
+-- test: la synchronisation retire l'article du référentiel pour tous, puis le rétablit
 -- en tant que: sync
-RETURN fn::catalogue_item_update({ id: test_ref:placo.item, libelle_personnalise: "Écrasé" }).error.code == "CATALOGUE_ITEM_SYNC_CANNOT_OVERWRITE_LOCAL_CUSTOMIZATION";
+RETURN fn::catalogue_item_update({ id: test_ref:placo.item, enabled: false }).data.enabled == false;
 
--- test: la synchronisation ne réactive pas un article désactivé localement
+-- test: un article retiré par le référentiel est indisponible pour un locataire non personnalisé
+-- en tant que: beta
+RETURN fn::catalogue_item_get({ id: test_ref:placo.item }).data.disponible == false;
+
+-- test: la synchronisation rétablit l'article sans toucher aux personnalisations
 -- en tant que: sync
-RETURN fn::catalogue_item_update({ id: test_ref:placo.item, enabled: true }).error.code == "CATALOGUE_ITEM_SYNC_CANNOT_REACTIVATE_DISABLED";
+RETURN fn::catalogue_item_update({ id: test_ref:placo.item, enabled: true }).data.enabled == true;
+
+-- test: après rétablissement, chaque locataire garde sa propre disponibilité
+RETURN (SELECT VALUE [tenant_id, enabled] FROM catalogue_item_personnalisation) == [["alpha", false]];
+
+-- test: le locataire supprime sa personnalisation et revient au référentiel
+-- en tant que: alpha
+RETURN fn::catalogue_item_personnalisation_supprimer({ item_id: test_ref:placo.item }).ok
+    AND (fn::catalogue_item_get({ id: test_ref:placo.item }).data).{ personnalisation, disponible } == { personnalisation: NONE, disponible: true };
 
 -- test: l'identifiant maître est immuable
 -- en tant que: sync

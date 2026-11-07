@@ -80,5 +80,5 @@ async fn test_catalogue_resources_follow_manifest() {
         .map(|r| (r.logical_path.clone(), r.kind))
         .collect();
     assert_eq!(actual, expected);
-    assert_eq!(resources.len(), 13 + 24 + 8 + 2);
+    assert_eq!(resources.len(), 14 + 26 + 8 + 2);
 }

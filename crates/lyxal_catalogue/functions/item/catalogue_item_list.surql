@@ -34,6 +34,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_list($params: object) {
     LET $start = $p.start;
     LET $language = $p.language;
 
+    -- Locataire de la session : sa personnalisation et sa disponibilité accompagnent chaque article maître
+    LET $tenant = IF $token != NONE AND $token.tenant_id != NONE { string::trim($token.tenant_id) } ELSE IF $auth != NONE AND $auth.tenant_id != NONE { string::trim($auth.tenant_id) } ELSE { NONE };
+
     -- Si filtrage par catégorie demandé, on sélectionne via catalogue_item_categorie
     LET $category_item_ids = IF $categorie != NONE {
         (SELECT VALUE item FROM catalogue_item_categorie WHERE categorie = $categorie)
@@ -43,11 +46,23 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_list($params: object) {
 
     LET $records = (SELECT * FROM catalogue_item WHERE
         ($type == NONE OR type = $type) AND
-        ($enabled == NONE OR enabled = $enabled) AND
+        -- enabled filtre la disponibilité pour le locataire de la session (article actif et non
+        -- désactivé par lui)
+        ($enabled == NONE OR (enabled AND (IF is_custom == false AND $tenant != NONE {
+            (SELECT VALUE enabled FROM ONLY catalogue_item_personnalisation WHERE item = $parent.id AND tenant_id = $tenant LIMIT 1) ?? true
+        } ELSE { true })) = $enabled) AND
         ($category_item_ids == NONE OR id IN $category_item_ids) AND
         ($search == NONE OR string::lowercase(code) CONTAINS $search OR string::lowercase(libelle) CONTAINS $search)
         ORDER BY libelle ASC LIMIT $limit START $start
     );
 
-    RETURN fn::result_ok($records);
-} COMMENT "Liste paginée des éléments du catalogue avec multi-filtres (type, catégorie, statut, recherche)";
+    RETURN fn::result_ok($records.map(|$item| {
+        LET $personnalisation = IF $item.is_custom == false AND $tenant != NONE {
+            (SELECT libelle_personnalise, code_interne_client, enabled FROM ONLY catalogue_item_personnalisation WHERE item = $item.id AND tenant_id = $tenant LIMIT 1)
+        } ELSE { NONE };
+        RETURN object::extend($item, {
+            personnalisation: $personnalisation,
+            disponible: $item.enabled AND ($personnalisation.enabled ?? true)
+        });
+    }));
+} COMMENT "Liste paginée des éléments du catalogue avec multi-filtres (type, catégorie, disponibilité pour le locataire de la session, recherche) ; chaque article porte la personnalisation du locataire (ou NONE) et sa disponibilité pour lui";

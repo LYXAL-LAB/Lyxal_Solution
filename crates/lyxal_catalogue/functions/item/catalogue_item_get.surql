@@ -40,6 +40,12 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_get($params: object) {
         RETURN fn::error_result("CATALOGUE_ITEM_NOT_FOUND", $language, { id: <string> $id_param, code: $code_param });
     };
 
+    -- Locataire de la session : sa personnalisation et sa disponibilité accompagnent chaque article maître
+    LET $tenant = IF $token != NONE AND $token.tenant_id != NONE { string::trim($token.tenant_id) } ELSE IF $auth != NONE AND $auth.tenant_id != NONE { string::trim($auth.tenant_id) } ELSE { NONE };
+    LET $personnalisation = IF $item.is_custom == false AND $tenant != NONE {
+        (SELECT libelle_personnalise, code_interne_client, enabled FROM ONLY catalogue_item_personnalisation WHERE item = $item.id AND tenant_id = $tenant LIMIT 1)
+    } ELSE { NONE };
+
     -- Projection enrichie
     LET $categories = (SELECT categorie, is_primary FROM catalogue_item_categorie WHERE item = $item.id);
     LET $variantes = (SELECT * FROM catalogue_variante WHERE item = $item.id);
@@ -48,9 +54,11 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_get($params: object) {
 
     RETURN fn::result_ok({
         item: $item,
+        personnalisation: $personnalisation,
+        disponible: $item.enabled AND ($personnalisation.enabled ?? true),
         categories: $categories,
         variantes: $variantes,
         attributs_statiques: $attributs_statiques,
         composition_active: $active_composition
     });
-} COMMENT "Retourne un élément de catalogue avec ses déclinaisons et métadonnées associées";
+} COMMENT "Retourne un élément de catalogue avec ses déclinaisons et métadonnées associées ; pour un article maître, la personnalisation du locataire de la session (ou NONE) et sa disponibilité pour lui (disponible : article actif et non désactivé par ce locataire)";

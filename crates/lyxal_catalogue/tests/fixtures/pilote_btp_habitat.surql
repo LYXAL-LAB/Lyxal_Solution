@@ -496,12 +496,15 @@ UPDATE catalogue_composition:COMP_OUV_CLOISON_72_48_V1 SET
 -- 5. SIMULATION DE PERSONNALISATION LOCALE TENANT & ARTICLE PRIVÉ
 -- ----------------------------------------------------------------------------
 
--- Cas A : Personnalisation locale autorisée sur un article synchronisé du Master
--- L'organisation cliente surcharge son code interne et son libellé commercial devis,
--- sans altérer le master_id ni les attributs physiques d'origine.
-UPDATE catalogue_item:COM_PLACO_BA13_2500 SET
-    code_interne_client = "STOCK-PLACO-NORD",
-    libelle_personnalise = "Plaque Placo BA13 2.50m (Stock Chantier Nord)";
+-- Cas A : Personnalisation d'un article synchronisé du Master par une organisation cliente
+-- Son code interne et son libellé commercial devis vivent dans sa propre personnalisation :
+-- l'article maître, partagé par toutes les organisations, n'est pas modifié.
+CREATE catalogue_item_personnalisation CONTENT {
+    item: catalogue_item:COM_PLACO_BA13_2500,
+    tenant_id: "TENANT_PILOTE",
+    code_interne_client: "STOCK-PLACO-NORD",
+    libelle_personnalise: "Plaque Placo BA13 2.50m (Stock Chantier Nord)"
+};
 
 -- Cas B : Création d'une référence 100% privée locale
 -- master_id = NONE, is_custom = true : n'appartient pas au Master, exclusivité client.
@@ -519,8 +522,6 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     master_id: NONE,
     is_custom: true,
-    code_interne_client: "ATELIER-DECO-01",
-    libelle_personnalise: "Habillage mural Chêne sur mesure",
     enabled: true,
     is_system: false,
     created_at: time::now(),

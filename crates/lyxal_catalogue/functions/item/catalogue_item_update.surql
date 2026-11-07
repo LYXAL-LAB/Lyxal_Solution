@@ -23,8 +23,6 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
             fabricant: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
             marque: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
             reference_fabricant: { pipeline: [{ rule: "optional_string", options: { max_length: 64 } }] },
-            code_interne_client: { pipeline: [{ rule: "optional_string", options: { max_length: 64 } }] },
-            libelle_personnalise: { pipeline: [{ rule: "optional_string", options: { max_length: 255 } }] },
             master_id: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
             is_custom: { pipeline: [{ rule: "boolean" }] },
             tenant_id: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
@@ -58,8 +56,6 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
     LET $fabricant = $p.fabricant;
     LET $marque = $p.marque;
     LET $ref_fab = $p.reference_fabricant;
-    LET $code_interne = $p.code_interne_client;
-    LET $libelle_custom = $p.libelle_personnalise;
     LET $language = $p.language;
 
     LET $item = (SELECT * FROM ONLY $id);
@@ -172,8 +168,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
             RETURN fn::error_result("CATALOGUE_ITEM_SYNC_CANNOT_CONVERT_CUSTOM", $language, { id: <string> $id });
         };
 
-        -- Si la mise à jour n'est pas un flux Master officiel, les caractéristiques maîtres sont verrouillées
-        -- (enabled est modifiable localement par le locataire, statut_commercial reste exclusif Master)
+        -- Si la mise à jour n'est pas un flux Master officiel, les caractéristiques maîtres sont
+        -- verrouillées, disponibilité comprise : un locataire personnalise ou désactive un article
+        -- maître pour lui seul par fn::catalogue_item_personnaliser
         IF !$is_sync_auth {
             IF ($fabricant != NONE AND $fabricant != $item.fabricant)
                OR ($marque != NONE AND $marque != $item.marque)
@@ -185,29 +182,11 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
                OR ($documents != NONE AND $documents != $item.documents)
                OR ($raw_libelle != NONE AND $raw_libelle != $item.libelle)
                OR ($description != NONE AND $description != $item.description)
-               OR ($statut_comm != NONE AND $statut_comm != $item.statut_commercial) {
+               OR ($statut_comm != NONE AND $statut_comm != $item.statut_commercial)
+               OR ($enabled != NONE AND $enabled != $item.enabled) {
                 RETURN fn::error_result("CATALOGUE_ITEM_SYNC_FIELD_PROTECTED", $language, { 
                     id: <string> $id,
-                    notice: "Les champs maîtres d'un article synchronisé ne peuvent pas être modifiés localement. Utilisez 'libelle_personnalise' ou 'code_interne_client'."
-                });
-            };
-        };
-
-        -- Si la mise à jour est effectuée par l'agent de synchronisation :
-        -- 1. Interdiction d'écraser les personnalisations locales
-        -- 2. Interdiction de réactiver un article localement désactivé
-        IF $is_sync_auth {
-            IF ($code_interne != NONE AND $code_interne != $item.code_interne_client)
-               OR ($libelle_custom != NONE AND $libelle_custom != $item.libelle_personnalise) {
-                RETURN fn::error_result("CATALOGUE_ITEM_SYNC_CANNOT_OVERWRITE_LOCAL_CUSTOMIZATION", $language, {
-                    id: <string> $id,
-                    notice: "Le flux Master de synchronisation ne peut en aucun cas modifier ou écraser les personnalisations locales du client."
-                });
-            };
-            IF $item.enabled == false AND $enabled == true {
-                RETURN fn::error_result("CATALOGUE_ITEM_SYNC_CANNOT_REACTIVATE_DISABLED", $language, {
-                    id: <string> $id,
-                    notice: "Une mise à jour Master ne peut jamais réactiver un article désactivé localement par l'organisation cliente."
+                    notice: "Les champs maîtres d'un article synchronisé ne peuvent pas être modifiés localement. Utilisez fn::catalogue_item_personnaliser."
                 });
             };
         };
@@ -232,22 +211,11 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
         };
     };
 
-    -- Préservation stricte de la désactivation locale lors des flux Master
-    LET $final_enabled = IF $is_sync_auth {
-        IF $item.enabled == false {
-            false
-        } ELSE {
-            $enabled ?? $item.enabled
-        }
-    } ELSE {
-        $enabled ?? $item.enabled
-    };
-
     LET $updated = (UPDATE ONLY $id MERGE {
         libelle: $raw_libelle ?? $item.libelle,
         description: $description ?? $item.description,
         unite_reference: $unite_id ?? $item.unite_reference,
-        enabled: $final_enabled,
+        enabled: $enabled ?? $item.enabled,
         statut_commercial: $statut_comm ?? $item.statut_commercial,
         documents: $documents ?? $item.documents,
         conditionnement: $conditionnement ?? $item.conditionnement,
@@ -256,8 +224,6 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
         fabricant: $final_fab,
         marque: $marque ?? $item.marque,
         reference_fabricant: $final_ref,
-        code_interne_client: $code_interne ?? $item.code_interne_client,
-        libelle_personnalise: $libelle_custom ?? $item.libelle_personnalise,
         updated_at: time::now()
     });
     IF $updated == NONE {
