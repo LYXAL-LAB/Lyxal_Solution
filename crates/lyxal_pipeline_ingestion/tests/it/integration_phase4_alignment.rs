@@ -192,7 +192,17 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
 
     // 2. Checkpoint via fn::ingestion_batch_checkpoint
     store
-        .save_checkpoint(&claim, batch_id, 5, 10, 4, 1, 0)
+        .save_checkpoint(
+            &claim,
+            batch_id,
+            &lyxal_pipeline_ingestion::storage::BatchProgress {
+                cursor_offset: 5,
+                total_lignes: 10,
+                verified: 4,
+                to_confirm: 1,
+                rejected: 0,
+            },
+        )
         .await
         .expect("fn::ingestion_batch_checkpoint");
     let offset = store.load_checkpoint(batch_id).await.unwrap();
@@ -377,7 +387,17 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
     }
     // Checkpoint intermédiaire enregistré
     store
-        .save_checkpoint(&claim, batch_id, 10, 20, 10, 0, 0)
+        .save_checkpoint(
+            &claim,
+            batch_id,
+            &lyxal_pipeline_ingestion::storage::BatchProgress {
+                cursor_offset: 10,
+                total_lignes: 20,
+                verified: 10,
+                to_confirm: 0,
+                rejected: 0,
+            },
+        )
         .await
         .unwrap();
 
@@ -417,7 +437,17 @@ async fn test_8_crash_recovery_and_idempotence_after_realignment() {
         store.save_staged_item(&claim, &staged).await.unwrap();
     }
     store
-        .save_checkpoint(&claim, batch_id, 20, 20, 20, 0, 0)
+        .save_checkpoint(
+            &claim,
+            batch_id,
+            &lyxal_pipeline_ingestion::storage::BatchProgress {
+                cursor_offset: 20,
+                total_lignes: 20,
+                verified: 20,
+                to_confirm: 0,
+                rejected: 0,
+            },
+        )
         .await
         .unwrap();
 

@@ -29,7 +29,7 @@ use crate::error::{IngestionError, IngestionResult};
 use crate::models::{QuarantineRecord, RawRecord, StagedItem};
 use crate::normalization::NormalizationEngine;
 use crate::proof::CommercialProof;
-use crate::storage::{BatchClaim, IngestionStore};
+use crate::storage::{BatchClaim, BatchProgress, IngestionStore};
 use crate::types::{
     BatchStatus, Dimensions, ItemQualification, PackagingDetails, PublicationAction, SourceFormat,
 };
@@ -261,11 +261,13 @@ impl IngestionWorker {
                     .save_checkpoint(
                         claim,
                         batch_id,
-                        current_offset,
-                        total_lines,
-                        verified_count,
-                        to_confirm_count,
-                        rejected_count,
+                        &BatchProgress {
+                            cursor_offset: current_offset,
+                            total_lignes: total_lines,
+                            verified: verified_count,
+                            to_confirm: to_confirm_count,
+                            rejected: rejected_count,
+                        },
                     )
                     .await?;
 
@@ -469,11 +471,13 @@ impl IngestionWorker {
                 .save_checkpoint(
                     claim,
                     batch_id,
-                    current_offset,
-                    total_lines,
-                    verified_count,
-                    to_confirm_count,
-                    rejected_count,
+                    &BatchProgress {
+                        cursor_offset: current_offset,
+                        total_lignes: total_lines,
+                        verified: verified_count,
+                        to_confirm: to_confirm_count,
+                        rejected: rejected_count,
+                    },
                 )
                 .await?;
         }

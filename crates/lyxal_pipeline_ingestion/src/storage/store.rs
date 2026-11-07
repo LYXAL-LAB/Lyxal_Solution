@@ -59,6 +59,21 @@ pub struct BatchClaim {
     pub generation: i64,
 }
 
+/// Avancement d'un lot enregistré au point de reprise (`fn::ingestion_batch_checkpoint`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BatchProgress {
+    /// Offset atteint dans les lignes sources.
+    pub cursor_offset: usize,
+    /// Nombre total de lignes du lot.
+    pub total_lignes: usize,
+    /// Lignes qualifiées `VERIFIED`.
+    pub verified: usize,
+    /// Lignes maintenues en `TO_CONFIRM`.
+    pub to_confirm: usize,
+    /// Lignes rejetées (quarantaine).
+    pub rejected: usize,
+}
+
 /// Nouveau lot d'ingestion (`fn::ingestion_batch_create`), créé à l'état `RECEIVED`.
 #[derive(Debug, Clone, SurrealValue)]
 pub struct NewBatch {
@@ -545,20 +560,16 @@ impl IngestionStore {
         &self,
         claim: &BatchClaim,
         batch_id: &str,
-        cursor_offset: usize,
-        total_lignes: usize,
-        verified: usize,
-        to_confirm: usize,
-        rejected: usize,
+        progress: &BatchProgress,
     ) -> IngestionResult<()> {
         let params = BatchCheckpointParams {
             claim: claim.clone(),
             id: key(batch_id, "ingestion_batch").to_string(),
-            cursor_offset: cursor_offset as i64,
-            total_lignes: total_lignes as i64,
-            lignes_verifiees: verified as i64,
-            lignes_a_confirmer: to_confirm as i64,
-            lignes_rejetees: rejected as i64,
+            cursor_offset: progress.cursor_offset as i64,
+            total_lignes: progress.total_lignes as i64,
+            lignes_verifiees: progress.verified as i64,
+            lignes_a_confirmer: progress.to_confirm as i64,
+            lignes_rejetees: progress.rejected as i64,
         };
         let _: bool = self.call_fn("ingestion_batch_checkpoint", params).await?;
         Ok(())

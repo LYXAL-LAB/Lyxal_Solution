@@ -244,7 +244,17 @@ async fn expired_claim_is_taken_over_and_the_old_execution_is_fenced() {
 
     // L'ancienne exécution ne peut plus rien écrire, ni libérer.
     let write = store
-        .save_checkpoint(&old, "lot_expire", 0, 5, 0, 0, 0)
+        .save_checkpoint(
+            &old,
+            "lot_expire",
+            &lyxal_pipeline_ingestion::storage::BatchProgress {
+                cursor_offset: 0,
+                total_lignes: 5,
+                verified: 0,
+                to_confirm: 0,
+                rejected: 0,
+            },
+        )
         .await
         .expect_err("écriture refusée");
     assert!(write.is_claim_lost(), "{write}");

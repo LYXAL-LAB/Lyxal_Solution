@@ -287,7 +287,17 @@ async fn test_staging_worker_batch_checkpoint_and_interruption_resumption() {
     // Simulation d'un traitement avec interruption à l'offset 10
     let checkpoint_offset = 10;
     store
-        .save_checkpoint(&claim, &batch_id, checkpoint_offset, total_items, 5, 5, 0)
+        .save_checkpoint(
+            &claim,
+            &batch_id,
+            &lyxal_pipeline_ingestion::storage::BatchProgress {
+                cursor_offset: checkpoint_offset,
+                total_lignes: total_items,
+                verified: 5,
+                to_confirm: 5,
+                rejected: 0,
+            },
+        )
         .await
         .expect("Sauvegarde du checkpoint d'interruption");
     token1.cancel(); // Déclenchement de l'arrêt gracieux
@@ -310,7 +320,17 @@ async fn test_staging_worker_batch_checkpoint_and_interruption_resumption() {
     assert_eq!(remaining_items, 10);
 
     store
-        .save_checkpoint(&claim, &batch_id, total_items, total_items, 10, 10, 0)
+        .save_checkpoint(
+            &claim,
+            &batch_id,
+            &lyxal_pipeline_ingestion::storage::BatchProgress {
+                cursor_offset: total_items,
+                total_lignes: total_items,
+                verified: 10,
+                to_confirm: 10,
+                rejected: 0,
+            },
+        )
         .await
         .expect("Finalisation du checkpoint après reprise");
 

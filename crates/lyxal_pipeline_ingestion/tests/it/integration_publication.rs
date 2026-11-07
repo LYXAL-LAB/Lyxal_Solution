@@ -83,7 +83,7 @@ async fn approved_manifest(
     items: &[StagedItem],
 ) -> BatchClaim {
     let claim = crate::support::claimed_batch(
-        &store,
+        store,
         &NewBatch {
             id: Some(batch.to_string()),
             source_type: SourceFormat::Csv,
