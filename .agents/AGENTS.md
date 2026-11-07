@@ -815,6 +815,7 @@ lyxal_storage (fichiers et documents stockés — à créer)
 lyxal_secrets (secrets applicatifs stockés chiffrés par lyxal_crypto — à créer)
 lyxal_scheduler (tâches planifiées — à créer)
 lyxal_notification (notifications sortantes — à créer)
+(ordre de création des crates « à créer » : docs/14-roadmap/ROADMAP_NOYAU.md)
         │
         ▼
 Modules Métiers
