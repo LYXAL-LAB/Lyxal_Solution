@@ -8,7 +8,7 @@ Ce dossier regroupe les feuilles de route stratégiques et d'intégration transv
    - [`ROADMAP_LYXAL_SPACE.md`](./ROADMAP_LYXAL_SPACE.md) — Intégration de `lyxal_catalogue` et `lyxal_pipeline_ingestion` dans la console unifiée LYXAL SPACE (Étapes A, B, C, D).
 
 2. **Feuilles de Route des Modules** :
-   - [`ROADMAP_NOYAU.md`](./ROADMAP_NOYAU.md) — Ordre de création des crates du noyau technique à créer (`lyxal_auth`, `lyxal_i18n`, `lyxal_storage`, `lyxal_secrets`, `lyxal_scheduler`, `lyxal_notification`).
+   - [`ROADMAP_NOYAU.md`](./ROADMAP_NOYAU.md) — Ordre de création des crates du noyau technique à créer (`lyxal_parsing`, `lyxal_auth`, `lyxal_i18n`, `lyxal_storage`, `lyxal_secrets`, `lyxal_scheduler`, `lyxal_notification`).
    - [`crates/lyxal_core/ROADMAP.md`](../../crates/lyxal_core/ROADMAP.md) — Extensions de la bibliothèque standard SurrealQL.
    - [`crates/lyxal_crypto/ROADMAP.md`](../../crates/lyxal_crypto/ROADMAP.md) — Audit de sécurité externe avant la première mise en production.
    - [`crates/lyxal_surreal/ROADMAP.md`](../../crates/lyxal_surreal/ROADMAP.md) — Transport SurrealDB (aucune étape prévue).
