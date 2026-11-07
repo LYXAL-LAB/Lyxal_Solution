@@ -45,7 +45,7 @@ impl XmlAdapter {
     }
 
     /// Découpe un flux XML en blocs d'articles `<ARTICLE>...</ARTICLE>`, `<PRODUCT>...</PRODUCT>` ou `<ITEM>...</ITEM>`
-    fn extract_article_blocks<'a>(content: &'a str) -> Vec<(&'a str, &'static str)> {
+    fn extract_article_blocks(content: &str) -> Vec<(&str, &'static str)> {
         let tag_candidates = ["ARTICLE", "PRODUCT", "ITEM", "article", "product", "item"];
         for tag in tag_candidates {
             let open = format!("<{tag}");

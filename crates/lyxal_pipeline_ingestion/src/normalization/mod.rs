@@ -519,6 +519,6 @@ mod tests {
             refs.manufacturer("Saint Gobain"),
             ("SAINT-GOBAIN".to_string(), false)
         );
-        assert_eq!(refs.manufacturer("Inconnu").1, false);
+        assert!(!refs.manufacturer("Inconnu").1);
     }
 }

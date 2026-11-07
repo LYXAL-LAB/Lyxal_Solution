@@ -107,22 +107,20 @@ impl FabDisAdapter {
                         logistics_records.insert(ref_fab, map);
                     }
                 }
-                "R" | "REGLEMENTATION" | "TECHNIQUE" => {
-                    // Structure typique R : R;REF_FAB;ETIM;NORME;CLASSEMENT_FEU
-                    if parts.len() >= 2 {
-                        let ref_fab = parts[1].to_string();
-                        let mut map = HashMap::new();
-                        if parts.len() > 2 {
-                            map.insert("etim".to_string(), parts[2].to_string());
-                        }
-                        if parts.len() > 3 {
-                            map.insert("norme".to_string(), parts[3].to_string());
-                        }
-                        if parts.len() > 4 {
-                            map.insert("classement_feu".to_string(), parts[4].to_string());
-                        }
-                        reg_records.insert(ref_fab, map);
+                // Structure typique R : R;REF_FAB;ETIM;NORME;CLASSEMENT_FEU
+                "R" | "REGLEMENTATION" | "TECHNIQUE" if parts.len() >= 2 => {
+                    let ref_fab = parts[1].to_string();
+                    let mut map = HashMap::new();
+                    if parts.len() > 2 {
+                        map.insert("etim".to_string(), parts[2].to_string());
                     }
+                    if parts.len() > 3 {
+                        map.insert("norme".to_string(), parts[3].to_string());
+                    }
+                    if parts.len() > 4 {
+                        map.insert("classement_feu".to_string(), parts[4].to_string());
+                    }
+                    reg_records.insert(ref_fab, map);
                 }
                 _ => {}
             }
