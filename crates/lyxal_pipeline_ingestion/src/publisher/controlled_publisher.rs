@@ -93,7 +93,7 @@ impl ControlledPublisher {
         session
             .authenticate(token.expose_secret().to_string())
             .await
-            .map_err(|e| IngestionError::Surreal(LyxalSurrealError::Database(e)))?;
+            .map_err(|e| IngestionError::from(LyxalSurrealError::Database(e)))?;
         let store = IngestionStore::new(session.clone());
         let catalogue = CatalogueSyncClient::new(session);
 
@@ -176,7 +176,7 @@ impl ControlledPublisher {
                     Err(LyxalSurrealError::Call(lyxal_error::LyxalCallError::Business(err))) => {
                         Some(format!("{} : {}", err.code, err.message))
                     }
-                    Err(e) => return Err(IngestionError::Surreal(e)),
+                    Err(e) => return Err(IngestionError::from(e)),
                 },
             };
             store

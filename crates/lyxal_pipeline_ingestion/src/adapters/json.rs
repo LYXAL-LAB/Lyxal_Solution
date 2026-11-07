@@ -86,15 +86,16 @@ impl JsonAdapter {
                 height,
                 unit: dim_unit,
             })
-        } else if let Some(dim_obj) = map.get("dimensions").and_then(|v| v.as_object()) {
-            Some(RawDimensionsDto {
-                length: find_f64(dim_obj, &["length", "longueur"]),
-                width: find_f64(dim_obj, &["width", "largeur"]),
-                height: find_f64(dim_obj, &["height", "hauteur", "epaisseur"]),
-                unit: find_string(dim_obj, &["unit", "unite"]).or_else(|| Some("mm".to_string())),
-            })
         } else {
-            None
+            map.get("dimensions")
+                .and_then(|v| v.as_object())
+                .map(|dim_obj| RawDimensionsDto {
+                    length: find_f64(dim_obj, &["length", "longueur"]),
+                    width: find_f64(dim_obj, &["width", "largeur"]),
+                    height: find_f64(dim_obj, &["height", "hauteur", "epaisseur"]),
+                    unit: find_string(dim_obj, &["unit", "unite"])
+                        .or_else(|| Some("mm".to_string())),
+                })
         };
 
         // Poids

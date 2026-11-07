@@ -105,13 +105,14 @@ pub fn normalize_technical_attributes(
     }
 
     // 5. Épaisseur d'acier pour ossatures métalliques
+    // (épaisseur indiquée, ou rail / montant d'ossature : 0,6 mm par défaut)
     if text_lower.contains("0,6mm")
         || text_lower.contains("0.6mm")
         || text_lower.contains("0,6 mm")
         || text_lower.contains("0.6 mm")
+        || text_lower.contains("rail")
+        || text_lower.contains("montant")
     {
-        result.steel_thickness_mm = Some(0.6);
-    } else if text_lower.contains("rail") || text_lower.contains("montant") {
         result.steel_thickness_mm = Some(0.6);
     }
 

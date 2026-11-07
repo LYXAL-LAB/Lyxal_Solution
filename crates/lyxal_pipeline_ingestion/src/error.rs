@@ -47,9 +47,16 @@ pub enum IngestionError {
     Storage(String),
 
     /// Erreur d'une fonction SurrealQL du module : erreur métier (`fn::error_result`, code
-    /// `INGESTION_*` conservé) ou erreur de transport.
+    /// `INGESTION_*` conservé) ou erreur de transport. En boîte : `LyxalSurrealError` est
+    /// volumineuse et alourdirait chaque `IngestionResult`.
     #[error("{0}")]
-    Surreal(#[from] lyxal_surreal::LyxalSurrealError),
+    Surreal(Box<lyxal_surreal::LyxalSurrealError>),
+}
+
+impl From<lyxal_surreal::LyxalSurrealError> for IngestionError {
+    fn from(err: lyxal_surreal::LyxalSurrealError) -> Self {
+        Self::Surreal(Box::new(err))
+    }
 }
 
 /// Référence d'un code d'erreur du pipeline, identique à sa définition dans `error/<thème>/`
@@ -113,10 +120,12 @@ impl IngestionError {
             Self::Storage(_) => info("INGESTION_STORAGE_ERROR", "dependency", 503, true),
             // Erreur métier ou contrat de réponse non respecté (une erreur métier garde son
             // propre code, transmis tel quel par la conversion en `LyxalError`).
-            Self::Surreal(lyxal_surreal::LyxalSurrealError::Call(_)) => {
-                info("INGESTION_CALL_ERROR", "internal", 500, false)
-            }
-            Self::Surreal(_) => info("INGESTION_DB_ERROR", "dependency", 503, true),
+            Self::Surreal(err) => match err.as_ref() {
+                lyxal_surreal::LyxalSurrealError::Call(_) => {
+                    info("INGESTION_CALL_ERROR", "internal", 500, false)
+                }
+                _ => info("INGESTION_DB_ERROR", "dependency", 503, true),
+            },
         }
     }
 }
@@ -124,29 +133,35 @@ impl IngestionError {
 impl IngestionError {
     /// Code de l'erreur : celui de l'erreur métier SurrealQL, sinon celui de [`Self::info`].
     pub fn code(&self) -> String {
-        match self {
-            Self::Surreal(lyxal_surreal::LyxalSurrealError::Call(
-                lyxal_error::LyxalCallError::Business(business),
-            )) => business.code.clone(),
-            _ => self.info().code.to_string(),
+        if let Self::Surreal(err) = self {
+            if let lyxal_surreal::LyxalSurrealError::Call(lyxal_error::LyxalCallError::Business(
+                business,
+            )) = err.as_ref()
+            {
+                return business.code.clone();
+            }
         }
+        self.info().code.to_string()
     }
 
     /// Indique si l'erreur est l'erreur métier SurrealQL `code`.
     pub fn is_business_code(&self, code: &str) -> bool {
-        matches!(self, Self::Surreal(lyxal_surreal::LyxalSurrealError::Call(call)) if call.is_business_code(code))
+        matches!(self, Self::Surreal(err) if matches!(err.as_ref(), lyxal_surreal::LyxalSurrealError::Call(call) if call.is_business_code(code)))
     }
 }
 
 impl From<IngestionError> for LyxalError {
     fn from(err: IngestionError) -> Self {
         // Une erreur métier est déjà résolue par lyxal_error : elle est transmise telle quelle.
-        if let IngestionError::Surreal(lyxal_surreal::LyxalSurrealError::Call(
-            lyxal_error::LyxalCallError::Business(business),
-        )) = err
-        {
-            return business;
-        }
+        let err = match err {
+            IngestionError::Surreal(surreal) => match *surreal {
+                lyxal_surreal::LyxalSurrealError::Call(lyxal_error::LyxalCallError::Business(
+                    business,
+                )) => return business,
+                other => IngestionError::from(other),
+            },
+            other => other,
+        };
         let info = err.info();
         LyxalError {
             code: info.code.to_string(),
@@ -196,10 +211,10 @@ mod tests {
             IngestionError::IllegalTransition(text()),
             IngestionError::FingerprintTampered(text()),
             IngestionError::Storage(text()),
-            IngestionError::Surreal(lyxal_surreal::LyxalSurrealError::UnsupportedEndpoint {
+            IngestionError::from(lyxal_surreal::LyxalSurrealError::UnsupportedEndpoint {
                 endpoint: text(),
             }),
-            IngestionError::Surreal(lyxal_surreal::LyxalSurrealError::Call(
+            IngestionError::from(lyxal_surreal::LyxalSurrealError::Call(
                 lyxal_error::LyxalCallError::InvalidContract {
                     function: "fn::test",
                 },

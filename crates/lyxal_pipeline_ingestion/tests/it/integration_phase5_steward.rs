@@ -552,7 +552,7 @@ async fn test_6_manifest_listing_and_detail_integrity() {
         .get_manifest_detail("PUB-2026-LEGRAND-001")
         .await
         .expect("Get manifest detail");
-    assert_eq!(detail.is_sealed, true);
+    assert!(detail.is_sealed);
     assert_eq!(
         detail.seal_hash,
         lyxal_crypto::blake3_hex(b"blake3_seal_hash_abcdef0123456789abcdef0123456789")

@@ -567,10 +567,10 @@ impl IngestionStore {
             .into_iter()
             .map(|outcome| match (outcome.ok, outcome.id, outcome.error) {
                 (true, Some(id), _) => Ok(id),
-                (false, _, Some(error)) => Err(IngestionError::Surreal(LyxalSurrealError::Call(
+                (false, _, Some(error)) => Err(IngestionError::from(LyxalSurrealError::Call(
                     lyxal_error::LyxalCallError::Business(error),
                 ))),
-                _ => Err(IngestionError::Surreal(LyxalSurrealError::Call(
+                _ => Err(IngestionError::from(LyxalSurrealError::Call(
                     lyxal_error::LyxalCallError::InvalidContract {
                         function: "fn::ingestion_staged_save",
                     },

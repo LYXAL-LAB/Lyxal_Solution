@@ -119,8 +119,7 @@ pub fn extract_specs_from_text(
         }
 
         // Détection "25kg"
-        if part.ends_with("kg") {
-            let num_part = &part[..part.len() - 2];
+        if let Some(num_part) = part.strip_suffix("kg") {
             if let Ok(kg) = num_part.replace(',', ".").parse::<f64>() {
                 weight.net_weight_kg = Some(kg);
             }
