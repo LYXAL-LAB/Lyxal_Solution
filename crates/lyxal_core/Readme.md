@@ -17,6 +17,8 @@ Le Core ne contient jamais :
 
 Ces éléments appartiennent aux modules. Le Core fournit les briques ; les modules fournissent le métier.
 
+Évolutions prévues : [`ROADMAP.md`](ROADMAP.md).
+
 ---
 
 ## Organisation

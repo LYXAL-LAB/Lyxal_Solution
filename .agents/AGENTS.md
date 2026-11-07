@@ -197,14 +197,15 @@ lyxal_surreal       lyxal_crypto
      └────────┬───────────┘
               │
 lyxal_event · lyxal_runtime
-(+ services du Noyau : lyxal_auth, lyxal_notification, lyxal_scheduler)
+(+ services du Noyau : lyxal_auth, lyxal_i18n, lyxal_storage, lyxal_secrets,
+   lyxal_scheduler, lyxal_notification)
               ▲
               │
       Modules Métiers
 (lyxal_booking, lyxal_catalogue, lyxal_crm...)
 ```
 
-> La hiérarchie complète et faisant foi est celle de la **section 6**. `lyxal_notification` et `lyxal_scheduler` appartiennent au **Noyau Technique**, pas aux modules métiers.
+> La hiérarchie complète et faisant foi est celle de la **section 6**. Les services du Noyau (`lyxal_auth`, `lyxal_i18n`, `lyxal_storage`, `lyxal_secrets`, `lyxal_scheduler`, `lyxal_notification`) appartiennent au **Noyau Technique**, pas aux modules métiers.
 
 `lyxal_crypto` est le crate cryptographique fondamental de Lyxal OS.
 
@@ -808,9 +809,12 @@ lyxal_crypto (AES-256-GCM, SHA-256, BLAKE3, Argon2id, HMAC, HKDF)
 lyxal_event
 lyxal_runtime (Manifeste, Installation, Migrations, Cycle de vie, Workers, Santé, Baux, Réconciliation)
 lyxal_base (référentiels transversaux : unités de mesure et types d'unités, SurrealQL seul)
-lyxal_auth
-lyxal_notification
-lyxal_scheduler
+lyxal_auth (identités, sessions, jetons, accès — à créer)
+lyxal_i18n (langues, traductions, formats régionaux — à créer)
+lyxal_storage (fichiers et documents stockés — à créer)
+lyxal_secrets (secrets applicatifs stockés chiffrés par lyxal_crypto — à créer)
+lyxal_scheduler (tâches planifiées — à créer)
+lyxal_notification (notifications sortantes — à créer)
         │
         ▼
 Modules Métiers

@@ -4,6 +4,7 @@ Crate Rust unique pour la cryptographie de Lyxal OS (`.agents/rules/lyxal_standa
 §11.3) : secrets applicatifs chiffrés en AES-256-GCM (enveloppe `enc:v2`), Argon2id,
 HMAC-SHA256, HKDF-SHA256, SHA-256 et BLAKE3. API figée, version Cargo 0.1.0.
 Aucune dépendance Lyxal, base de données ou runtime. Bibliothèque non certifiée.
+Évolutions prévues : [`ROADMAP.md`](ROADMAP.md).
 
 ## Exemple exécutable
 
