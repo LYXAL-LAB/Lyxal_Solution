@@ -52,6 +52,7 @@ jobs:
           name: crypto-fuzz-${{ github.run_id }}
           path: |
             crates/lyxal_crypto/fuzz/target/campaigns/
+            crates/lyxal_crypto/fuzz/corpus/
             crates/lyxal_crypto/fuzz/artifacts/
           if-no-files-found: warn
           retention-days: 30

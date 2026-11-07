@@ -50,7 +50,7 @@ pas une enveloppe. `Current` authentifie avant de constater la clé active du sn
 | tests unitaires, d'intégration et de documentation | job « Tests » (`scripts/ci/test_all.sh`) | chaque PR |
 | `cargo clippy -p lyxal_crypto --all-targets --all-features -- -D warnings` | job « Clippy » (`scripts/ci/clippy.sh`) | chaque PR |
 | `tools/check_contracts.py` : bornes de traits réelles de l'API (banc isolé `tools/contracts/`, compilé hors ligne avec son verrou) | job « Cryptographie » (`scripts/ci/crypto_checks.sh`) | chaque PR |
-| `tools/check_fixtures.py` : vecteurs `enc:v2` publiés recalculés par OpenSSL (`cryptography` 50.0.1), sans passer par le crate | job « Cryptographie » | chaque PR |
+| `tools/check_fixtures.py` : vecteurs `enc:v2` publiés recalculés par OpenSSL (`cryptography` 50.0.1, épinglée dans un environnement virtuel dédié), sans passer par le crate | job « Cryptographie » | chaque PR |
 | `tools/run_fuzz.py` : fuzzing `envelope`, `context`, `phc`, `rotation`, LeakSanitizer actif ; Rust `nightly-2026-10-20` et `cargo-fuzz` 0.13.2 épinglés dans `scripts/ci/crypto_fuzz.sh` | workflow « Fuzzing lyxal_crypto » (`.github/workflows/crypto-fuzz.yml`) ; journaux, corpus et artefacts conservés 30 jours | 60 s par cible sur toute PR qui modifie le crate ; 600 s par cible chaque lundi et à la demande |
 
 `scripts/ci/ci_local.sh` rejoue ces contrôles ; `scripts/ci/ci_local.sh --fuzz` y ajoute la
