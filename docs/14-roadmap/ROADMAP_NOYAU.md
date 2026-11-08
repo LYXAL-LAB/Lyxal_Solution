@@ -1,8 +1,15 @@
 # Feuille de route — crates du noyau technique à créer
 
-Ordre de création des six crates du noyau technique inscrits « à créer » dans
+Ordre de création des crates du noyau technique inscrits « à créer » dans
 `.agents/AGENTS.md` §6. Les crates du noyau déjà en place (`lyxal_error`, `lyxal_surreal`,
-`lyxal_crypto`, `lyxal_parsing`, `lyxal_event`, `lyxal_runtime`, `lyxal_base`) ont leur propre `ROADMAP.md`.
+`lyxal_crypto`, `lyxal_parsing`, `lyxal_event`, `lyxal_runtime`, `lyxal_base`, `lyxal_auth`) ont
+leur propre `ROADMAP.md` ; les lots restants de `lyxal_auth` (connexion, jetons, double facteur,
+bascule des modules) sont dans `crates/lyxal_auth/ROADMAP.md`.
+
+Exception d'ordre (décision D8 du programme `lyxal_auth`) : la **partie e-mail** de
+`lyxal_notification` est réalisée tout de suite, avant le lot 3 de `lyxal_auth`, avec des
+solutions d'attente pour `lyxal_i18n`, `lyxal_secrets` et `lyxal_scheduler`
+(`crates/lyxal_notification/implementation_plan.md`) ; le reste du crate garde son rang.
 
 Aucun crate ne démarre sans ordre du CTO et `implementation_plan.md` validé
 (`.agents/AGENTS.md` §3). Les sources de chaque crate sont fixées par le CTO dans ce plan.
@@ -10,7 +17,6 @@ Un crate créé est retiré de ce document : son état est alors décrit par son
 
 | Rang | Crate | Rôle | Dépend de (noyau) |
 | :--- | :--- | :--- | :--- |
-| 1 | `lyxal_auth` | identités, sessions, jetons, accès | `lyxal_crypto` |
 | 2 | `lyxal_i18n` | langues, traductions, formats régionaux | — |
 | 3 | `lyxal_storage` | fichiers et documents stockés | `lyxal_auth` |
 | 4 | `lyxal_secrets` | secrets applicatifs stockés chiffrés | `lyxal_crypto`, `lyxal_auth` |
@@ -23,13 +29,6 @@ Tous dépendent en outre de `lyxal_core` et `lyxal_error`.
 
 ## Raisons de l'ordre
 
-1. **`lyxal_auth`** : l'identité est aujourd'hui portée par chaque module. `lyxal_catalogue`
-   (`catalogue_session`) et `lyxal_pipeline_ingestion` (`ingestion_session`) ont chacun leur
-   table de session, leurs rôles et leur `tenant_id`, et `lyxal-server` définit lui-même l'accès
-   JWT `lyxal_catalogue_sync`. Tant que `lyxal_auth` n'existe pas, chaque nouveau module ajoute
-   une copie de plus. Il conditionne aussi l'authentification des clients de `lyxal-server`
-   (`apps/lyxal-server/ROADMAP.md`, étape 1) et les permissions de `lyxal_storage` et
-   `lyxal_secrets`.
 2. **`lyxal_i18n`** : sans dépendance dans le noyau, il fixe le référentiel des langues avant que
    d'autres crates traduisent leurs contenus (libellés traduits de `lyxal_base`, étape 2 de sa
    feuille de route ; modèles de `lyxal_notification`).

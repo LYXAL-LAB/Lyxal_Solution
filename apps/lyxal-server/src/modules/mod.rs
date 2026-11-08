@@ -1,6 +1,7 @@
 //! Modules hébergés par le serveur : manifestes et fichiers SurrealQL embarqués à la compilation
 //! (`build.rs`), implémentations `LyxalModule` et services propres à chaque module.
 
+mod auth;
 #[cfg(feature = "module-ingestion")]
 mod ingestion;
 
@@ -118,6 +119,9 @@ fn implementation(
     id: &str,
     manifest: &ModuleManifest,
 ) -> Result<Arc<dyn LyxalModule>, ServerError> {
+    if id == auth::MODULE_ID {
+        return Ok(auth::module());
+    }
     #[cfg(feature = "module-ingestion")]
     if id == ingestion::MODULE_ID {
         return Ok(ingestion::module());
@@ -142,6 +146,7 @@ pub async fn register_services(
     client: &Surreal<Any>,
     config: &AppConfig,
 ) -> Result<HostedServices, ServerError> {
+    auth::register_services(runtime, client)?;
     #[cfg(feature = "module-ingestion")]
     {
         let publication = ingestion::register_services(runtime, client, config).await?;

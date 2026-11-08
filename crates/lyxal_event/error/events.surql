@@ -218,3 +218,30 @@ IF !record::exists(error_definition:EVENT_DEAD_LETTER_REPLAY_NOT_SETTLED) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:EVENT_WRITE_FORBIDDEN) THEN (
+    CREATE error_definition:EVENT_WRITE_FORBIDDEN CONTENT {
+        code: "EVENT_WRITE_FORBIDDEN",
+        module: "event",
+        domain: "common",
+        category: "authorization",
+        severity: "error",
+        message: "The event could not be written to the outbox",
+        default_language: "fr",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Publication refusée",
+                description: "Les permissions de l'outbox ont refusé l'écriture de l'événement.",
+                resolution: "Publiez depuis la session système ou par un DEFINE EVENT de la table concernée."
+            },
+            en: {
+                label: "Publication refused",
+                description: "Outbox permissions refused writing the event.",
+                resolution: "Publish from the system session or from a DEFINE EVENT on the table concerned."
+            }
+        }
+    }
+) END;
