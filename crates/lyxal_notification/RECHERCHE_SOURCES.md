@@ -94,14 +94,5 @@ AES-256-CBC maison), idempotence par index unique SurrealDB (Novu : cache Redis 
 1. ~~Projets de départ~~ : **tranché** par le CTO : Novu, Postal et Apprise ; les fonctionnalités
    de la version payante de Novu sont aussi reprises (reconçues, aucun code repris). Inventaire
    complet et lots : [`MODELE_SOURCES.md`](MODELE_SOURCES.md).
-2. **Transport du code ou du lien** : le plan `lyxal_auth` interdit tout secret en clair dans un
-   événement. Options : code scellé `enc:v2` dans l'événement ; relais par l'hôte ; référence
-   relue par une fonction publique de `lyxal_auth`.
-3. **Dépendances absentes** (`lyxal_secrets`, `lyxal_i18n`, `lyxal_scheduler`) : solution
-   d'attente (secret SMTP en configuration de l'hôte, langue BCP 47 validée par `lyxal_core`, pas
-   de délais) ou réordonnancement de `ROADMAP_NOYAU.md`.
-4. **DKIM** : signature par le relais SMTP (recommandé) ou extension de `lyxal_crypto`.
-5. **Lien abonné ↔ identité** : identifiant externe découplé (Novu) ou `record<auth_identity>`.
-6. **Fournisseurs de la V1** : SMTP seul, ou aussi API HTTP (SES, Postmark…) et leurs retours.
-7. **Conservation** : durée de conservation des messages et journaux (RGPD).
-8. **Mise en page** : MJML (`mrml`) dès la V1 ou HTML MiniJinja simple.
+Les questions 2 à 8 sont tranchées par le CTO (décisions N1 à N7 du
+[plan du lot V1-a](implementation_plan.md)).
