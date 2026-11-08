@@ -9,8 +9,8 @@ Plan placé à la racine comme les lots précédents, supprimé une fois le prog
 **Deux niveaux de validation** (`AGENTS.md` §3) : ce plan fixe le programme (architecture,
 modèle, lots, décisions). **Chaque lot fait ensuite l'objet de son propre plan détaillé**, soumis
 au CTO avant toute ligne de code : contrats Rust `XxxParams` / `XxxResult` (champs et types),
-signatures SurrealQL, codes d'erreurs, tests. Le contrat du lot 1 est fixé ici (§6.1), car il
-démarre en premier.
+signatures SurrealQL, codes d'erreurs, tests. Le lot 1 est réalisé (contrat dans
+`crates/lyxal_crypto/API_CONTRACT.md`).
 
 ## 0. Décisions du CTO (8 novembre 2026)
 
@@ -23,6 +23,9 @@ démarre en premier.
 | D5 | **SurrealDB pleinement multi-modèle** : les entités sont des tables `TYPE NORMAL` (document), les associations des **tables de relation `TYPE RELATION ... ENFORCED`** (graphe). La règle « pas de `TYPE RELATION` sur les tables existantes » ([audit](docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md)) ne s'applique pas : tables neuves, et la résolution des permissions est un parcours de graphe (critère de l'audit) |
 | D6 | Lyxal fournisseur OpenID Connect pour des tiers : V2 |
 | D7 | Module `lyxal_connect` (comptes connectés sortants) créé plus tard, après `lyxal_secrets` ; `lyxal_auth` garde sa propre configuration des fournisseurs de connexion |
+| D8 | La partie e-mail de `lyxal_notification` est réalisée **avant le lot 3**, à partir de projets open source existants (recherche de sources et plan propres), et consomme les événements `auth.*` |
+| D9 | Pas d'inscription libre : entrée sur invitation d'une organisation ou création par un administrateur ; l'inscription libre reste possible plus tard par `auth_policy` |
+| D10 | Un e-mail = une identité pour toute l'installation, membre de plusieurs organisations |
 
 ## 1. Architecture
 
@@ -180,49 +183,13 @@ code ni jeton en clair dans une charge utile.
 
 | Lot | Contenu | Modules touchés |
 | :- | :--- | :--- |
-| **1** | `lyxal_crypto` : module `totp` (RFC 6238 / RFC 4226 : HMAC-SHA1 et SHA-256, 6 à 8 chiffres, fenêtre de tolérance, comparaison en temps constant, secret `SecretBytes`, génération par `OsRng`, URI `otpauth://`), vecteurs RFC dans les tests, mise à jour de `API_CONTRACT.md` | `lyxal_crypto` |
+| **1** | **Réalisé.** `lyxal_crypto::totp` : RFC 6238 (HMAC-SHA1 et SHA-256, 6 à 8 chiffres, fenêtre, temps constant, `OsRng`, URI `otpauth://`). Contrat : `crates/lyxal_crypto/API_CONTRACT.md` § TOTP | `lyxal_crypto` |
 | **2** | Squelette du crate (manifest, Cargo, `LyxalModule`, store, README, ROADMAP), tables et fonctions du lot 2, master data, événements, seeds (permissions et rôles de base), banc SurrealQL complet | `lyxal_auth` (nouveau), `apps/lyxal-server` (hébergement) |
+| **2 bis** | Partie e-mail de `lyxal_notification` (D8) : plan propre, après recherche de sources | `lyxal_notification` (nouveau) |
 | **3** | Authentification par mot de passe et parcours (inscription sur invitation ou par administrateur, connexion, vérification d'adresse, récupération, changement d'adresse), sessions et jetons, accès SurrealDB `lyxal_auth`, anti-force-brute, actions imposées, applications et comptes de service, routes HTTP `/auth/*`, worker de purge | `lyxal_auth`, `apps/lyxal-server` |
 | **4** | Double facteur : TOTP, passkeys (`webauthn-rs`), codes de secours, montée en assurance (AAL2) pour les actions sensibles | `lyxal_auth`, `apps/lyxal-server` |
 | **5** | Bascule des modules : `lyxal_catalogue` et `lyxal_pipeline_ingestion` déclarent leurs permissions ; suppression de `catalogue_session`, `ingestion_session`, des fonctions `*_session_identity` et de l'accès `lyxal_catalogue_sync` ; leurs `PERMISSIONS` passent par `fn::auth_has_permission` ; agent de synchronisation = compte de service `lyxal_auth` (**rupture coordonnée**, tous les tests mis à jour) | `lyxal_catalogue`, `lyxal_pipeline_ingestion`, `apps/lyxal-server` |
 | **6** | Clôture : audit `lyxal-audit` du module, revue de sécurité (liste OWASP ASVS niveau 2 sur l'authentification et les sessions), `ROADMAP_NOYAU.md` et `AGENTS.md` §6 mis à jour, V2 décrite dans `crates/lyxal_auth/ROADMAP.md` | `lyxal_auth`, docs |
-
-### 6.1. Contrat du lot 1 (`lyxal_crypto::totp`)
-
-Ajout à l'API figée de `lyxal_crypto` (validé par le CTO, D2), documenté dans `API_CONTRACT.md` :
-
-```rust
-/// Algorithme HMAC du TOTP (RFC 6238 §1.2).
-pub enum TotpAlgorithm { Sha1, Sha256 }
-
-/// Paramètres d'un TOTP ; défauts : SHA-1, 6 chiffres, pas de 30 s (applications d'authentification).
-pub struct TotpConfig { pub algorithm: TotpAlgorithm, pub digits: u8 /* 6..=8 */, pub step_seconds: u32 /* 15..=120 */ }
-
-/// Secret partagé (20 octets pour SHA-1, 32 pour SHA-256) : `ZeroizeOnDrop`, `Debug` masqué,
-/// aucun export brut hors `expose_secret`.
-pub struct TotpSecret(/* SecretBytes */);
-
-impl TotpSecret {
-    pub fn generate(config: &TotpConfig) -> Result<Self, CryptoError>;   // OsRng
-    pub fn import(bytes: SecretBytes) -> Result<Self, CryptoError>;     // 16..=64 octets
-    pub fn to_base32(&self) -> SecretString;                             // pour le QR code
-}
-
-/// Code attendu à l'instant `unix_seconds` (tests et affichage).
-pub fn totp_generate(secret: &TotpSecret, config: &TotpConfig, unix_seconds: u64) -> Result<SecretString, CryptoError>;
-
-/// Vérifie `code` dans la fenêtre ±`window` pas (0..=2), comparaison en temps constant ;
-/// renvoie le numéro de pas accepté (pour refuser la réutilisation d'un même pas).
-pub fn totp_verify(secret: &TotpSecret, config: &TotpConfig, code: &str, unix_seconds: u64, window: u8) -> Result<Option<u64>, CryptoError>;
-
-/// URI `otpauth://totp/...` (émetteur et compte) pour l'enrôlement.
-pub fn totp_uri(secret: &TotpSecret, config: &TotpConfig, issuer: &str, account: &str) -> Result<SecretString, CryptoError>;
-```
-
-Erreurs : variantes `CryptoError` existantes (paramètre invalide), sans valeur reflétée.
-Tests : vecteurs de la RFC 6238 annexe B (SHA-1 et SHA-256, 8 chiffres), bornes, fenêtre,
-code de mauvaise longueur, temps constant (comparaison par `subtle`). Aucune autre primitive
-ajoutée ; `sha1` est utilisé seulement à l'intérieur de ce module.
 
 V2 (feuille de route du module) : connexion par fournisseur externe (OIDC), Lyxal fournisseur OIDC
 (signature asymétrique à ajouter à `lyxal_crypto`), appareils de confiance, MFA adaptative,
@@ -258,8 +225,5 @@ SCIM.
 
 ## 9. Questions au CTO
 
-| # | Question | Options | Recommandation |
-| :- | :--- | :--- | :--- |
-| Q1 | Envoi des codes et liens (vérification, récupération, invitation) tant que `lyxal_notification` n'existe pas | **A.** Avancer `lyxal_notification` (au moins l'e-mail) avant le lot 3. **B.** `lyxal_auth` publie seulement les événements ; en attendant, seuls les comptes créés par un administrateur (mot de passe initial à changer, action imposée) sont possibles. **C.** Un envoi SMTP provisoire dans l'hôte. | **A** : un parcours de production sans e-mail (vérification, récupération) n'est pas utilisable ; C crée de la dette. `lyxal_notification` consomme les événements `auth.*` (découplage §5.6.1). |
-| Q2 | Inscription libre | **A.** Pas d'inscription libre : invitation par une organisation ou création par un administrateur. **B.** Inscription libre configurable par politique. | **A** pour un produit B2B ; B reste possible plus tard par `auth_policy`. |
-| Q3 | Unicité des identifiants | **A.** Un e-mail = une identité pour toute l'installation (membre de plusieurs organisations). **B.** Unicité par organisation (comptes distincts). | **A** (modèle Logto) : une personne, un compte, plusieurs entreprises. |
+Aucune en attente : Q1 à Q3 sont tranchées (D8 à D10). Chaque lot suivant pose ses propres
+questions dans son plan détaillé.

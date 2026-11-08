@@ -13,6 +13,7 @@ Toutes les erreurs retournent `CryptoError`, sans entrée, PHC, clé ni chemin r
 | EncryptionKey | import(SecretBytes) exige 32 bytes ; generate -> Result via OsRng faillible | aucun export public brut ; partage explicite par Arc |
 | HmacKey | import(SecretBytes) exige 32 bytes ; generate -> Result | type distinct de la clé AES, aucun export brut |
 | PasswordHash | parse(&str) valide PHC et budgets ; hash_password construit un hash | expose_phc -> &str, needs_rehash -> bool |
+| TotpSecret | generate(&TotpConfig) -> Result via OsRng (20 bytes SHA-1, 32 SHA-256) ; import(SecretBytes) exige 16..=64 bytes | expose_secret -> &[u8] (stockage chiffré), to_base32 -> SecretString |
 
 `Debug` donne exactement `<Type>([REDACTED])`. Ces types ne proposent ni Clone/Copy,
 Default, Display, Deref, comparaisons Eq/PartialEq/Ord, Hash, sérialisation implicite,
@@ -115,3 +116,26 @@ Pas une KDF de mot de passe, pas de sortie brute par défaut.
 SHA-256/BLAKE3 one-shot/hex/streaming sont conservés ; entrées ordinaires, pas de garantie
 de traitement comme conteneur secret et jamais de remplacement d'Argon2 pour un mot de passe.
 Les fonctions AES bas niveau, nonces choisis et helpers de HMAC à clés courtes sont privés.
+
+## TOTP (RFC 6238)
+
+Codes à usage unique des applications d'authentification, pour le double facteur de `lyxal_auth`.
+
+- `TotpAlgorithm::{Sha1, Sha256}` ; `TotpConfig { algorithm, digits, step_seconds }`, champs
+  publics, `Default` = SHA-1, 6 chiffres, pas de 30 s. Bornes vérifiées à chaque appel :
+  digits 6..=8, step_seconds 15..=120.
+- `totp_generate(&TotpSecret,&TotpConfig,unix_seconds)->Result<SecretString>` : code du pas
+  `unix_seconds / step_seconds`, zéros initiaux conservés.
+- `totp_verify(&TotpSecret,&TotpConfig,code,unix_seconds,window)->Result<Option<u64>>` :
+  fenêtre 0..=2 pas de chaque côté ; tous les pas candidats sont calculés et comparés en temps
+  constant (`subtle`) ; renvoie le numéro de pas accepté, que l'hôte enregistre pour refuser la
+  réutilisation d'un même pas. Code de mauvaise longueur ou non numérique => `None`, pas une erreur.
+- `totp_uri(&TotpSecret,&TotpConfig,issuer,account)->Result<SecretString>` : URI
+  `otpauth://totp/<issuer>:<account>?secret=..&issuer=..&algorithm=..&digits=..&period=..`,
+  Base32 sans remplissage, émetteur et compte encodés en pourcentage (hors caractères non
+  réservés RFC 3986) ; chacun 1..=256 bytes, sans `:` ni caractère de contrôle.
+- Paramètre hors bornes => `CryptoError::InvalidTotpParameter`, sans valeur reflétée.
+
+HMAC-SHA1 n'est utilisé que dans ce module (exigé par la RFC 6238 et les applications) ; il
+n'est pas exposé comme primitive. Le rythme des essais, l'anti-rejeu par pas, le stockage chiffré
+du secret et les codes de secours appartiennent à l'hôte.

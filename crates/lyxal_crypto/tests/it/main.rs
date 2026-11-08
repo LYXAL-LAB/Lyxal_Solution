@@ -19,3 +19,4 @@ mod protocol_v2;
 mod resource_boundaries;
 mod rotation_v2;
 mod secrets_v2;
+mod totp_vectors;

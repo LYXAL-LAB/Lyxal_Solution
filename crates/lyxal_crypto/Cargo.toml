@@ -21,6 +21,8 @@ sha2 = { workspace = true }
 blake3 = "1.5"
 argon2 = { version = "=0.5.3", features = ["std", "password-hash", "zeroize"] }
 hmac = "0.12"
+# HMAC-SHA1 du TOTP seulement (RFC 6238, applications d'authentification), dans src/totp.rs.
+sha1 = "0.10"
 hkdf = "0.12"
 
 [dev-dependencies]

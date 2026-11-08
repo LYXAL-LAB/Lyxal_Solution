@@ -134,6 +134,9 @@ pub enum CryptoError {
     #[doc = "storage operation failed at {0:?}: {1:?}"]
     #[error("storage operation failed at {0:?}: {1:?}")]
     Io(IoOperation, ErrorKind),
+    #[doc = "invalid TOTP parameter"]
+    #[error("invalid TOTP parameter")]
+    InvalidTotpParameter,
     #[doc = "allocation failed"]
     #[error("allocation failed")]
     AllocationFailed,
