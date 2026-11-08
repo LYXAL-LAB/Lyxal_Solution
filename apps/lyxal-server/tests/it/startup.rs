@@ -124,6 +124,7 @@ async fn server_installs_and_starts_hosted_modules() {
         .filter_map(|m| m["id"].as_str())
         .collect();
     let mut expected = vec![
+        "lyxal_auth",
         "lyxal_base",
         "lyxal_catalogue",
         "lyxal_core",
@@ -181,9 +182,9 @@ async fn restart_on_installed_database_is_idempotent() {
     let migrations: Option<i64> = res.take(0).expect("migrations");
     let releases: Option<i64> = res.take(1).expect("releases");
     let hosted = if cfg!(feature = "module-ingestion") {
-        6
+        7
     } else {
-        5
+        6
     };
     assert_eq!(migrations, Some(0));
     assert_eq!(releases, Some(hosted));
