@@ -135,7 +135,7 @@ Règles transverses :
   normalisé) pour l'installation (un e-mail = une identité), normalisation par `lyxal_core`
   (`fn::sanitize_*`).
 * **Permissions déclarées par les modules** : chaque module fournit un seed de ses permissions
-  (`ingestion:batch:write`…) et des rôles par défaut ; `lyxal_auth` n'en connaît pas le sens.
+  (`ingestion.batch.write`…) et des rôles par défaut ; `lyxal_auth` n'en connaît pas le sens.
 
 ## 3. Fonctions publiques (`functions/`, `fn::auth_*($params: object)`)
 
@@ -184,7 +184,7 @@ code ni jeton en clair dans une charge utile.
 | Lot | Contenu | Modules touchés |
 | :- | :--- | :--- |
 | **1** | **Réalisé.** `lyxal_crypto::totp` : RFC 6238 (HMAC-SHA1 et SHA-256, 6 à 8 chiffres, fenêtre, temps constant, `OsRng`, URI `otpauth://`). Contrat : `crates/lyxal_crypto/API_CONTRACT.md` § TOTP | `lyxal_crypto` |
-| **2** | Squelette du crate (manifest, Cargo, `LyxalModule`, store, README, ROADMAP), tables et fonctions du lot 2, master data, événements, seeds (permissions et rôles de base), banc SurrealQL complet | `lyxal_auth` (nouveau), `apps/lyxal-server` (hébergement) |
+| **2** | Plan détaillé : `crates/lyxal_auth/implementation_plan.md`. Squelette du crate (manifest, Cargo, `LyxalModule`, store, README, ROADMAP), tables et fonctions du lot 2, master data, événements, seeds (permissions et rôles de base), banc SurrealQL complet | `lyxal_auth` (nouveau), `apps/lyxal-server` (hébergement) |
 | **2 bis** | Partie e-mail de `lyxal_notification` (D8), après le lot 2 : plan détaillé `crates/lyxal_notification/implementation_plan.md` | `lyxal_notification` (nouveau), `apps/lyxal-server` |
 | **3** | Authentification par mot de passe et parcours (inscription sur invitation ou par administrateur, connexion, vérification d'adresse, récupération, changement d'adresse), sessions et jetons, accès SurrealDB `lyxal_auth`, anti-force-brute, actions imposées, applications et comptes de service, routes HTTP `/auth/*`, worker de purge | `lyxal_auth`, `apps/lyxal-server` |
 | **4** | Double facteur : TOTP, passkeys (`webauthn-rs`), codes de secours, montée en assurance (AAL2) pour les actions sensibles | `lyxal_auth`, `apps/lyxal-server` |

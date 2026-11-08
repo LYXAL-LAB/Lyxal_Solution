@@ -127,21 +127,21 @@ Entrées validées et nettoyées par `fn::validation_object_execute` / `fn::sani
 
 | Fonction | Rôle | Permission |
 | :--- | :--- | :--- |
-| `notification_trigger` | crée un déclenchement idempotent pour un destinataire : parcours actif par `workflow_key` ou `trigger_event`, validation du `payload` par son `payload_schema`, suppression, création des étapes ; un rejeu renvoie le déclenchement existant | `notification:send` |
-| `notification_workflow_create` / `_update` / `_get` / `_list` / `_set_status` | gestion des parcours (pas de suppression : `inactive`) | `notification:manage` / `notification:read` |
+| `notification_trigger` | crée un déclenchement idempotent pour un destinataire : parcours actif par `workflow_key` ou `trigger_event`, validation du `payload` par son `payload_schema`, suppression, création des étapes ; un rejeu renvoie le déclenchement existant | `notification.send` |
+| `notification_workflow_create` / `_update` / `_get` / `_list` / `_set_status` | gestion des parcours (pas de suppression : `inactive`) | `notification.manage` / `notification.read` |
 | `notification_layout_create` / `_update` / `_get` / `_list` | mises en page (HTML nettoyé : scripts, iframes, attributs d'événement retirés) | idem |
 | `notification_template_create` / `_get` | gabarit d'une étape | idem |
 | `notification_template_locale_set` / `_delete` | version d'un gabarit dans une langue (HTML nettoyé) ; la langue par défaut ne peut pas être supprimée | idem |
 | `notification_settings_get` / `_set` | réglages du locataire (repli sur ceux de l'installation) | idem |
 | `notification_suppression_add` / `_remove` / `_list` | liste de suppression | idem |
-| `notification_run_get` / `_list` | activité : déclenchements, étapes, messages, journal | `notification:read` |
-| `notification_job_claim` | réserve jusqu'à `limit` étapes dues (`queued`, `next_retry_at <= now`, réservation expirée), pose `locked_until` et un `claim_token`, renvoie tout le nécessaire au rendu (gabarit dans la langue résolue : exacte → langue seule → défaut ; mise en page ; réglages ; secret scellé) | `notification:worker` |
-| `notification_job_complete` | vérifie `claim_token`, crée le message et le journal, termine l'étape, efface le secret si le déclenchement est fini | `notification:worker` |
-| `notification_job_fail` | vérifie `claim_token` ; `transient` : nouvelle tentative après `retry_delay_seconds` tant que `attempts < max_attempts`, sinon échec définitif ; `permanent` : échec définitif ; `recipient_rejected` : échec définitif et suppression `hard_bounce` | `notification:worker` |
-| `notification_purge` | supprime les déclenchements, messages et journaux expirés, efface les secrets expirés, par paquets | `notification:worker` |
+| `notification_run_get` / `_list` | activité : déclenchements, étapes, messages, journal | `notification.read` |
+| `notification_job_claim` | réserve jusqu'à `limit` étapes dues (`queued`, `next_retry_at <= now`, réservation expirée), pose `locked_until` et un `claim_token`, renvoie tout le nécessaire au rendu (gabarit dans la langue résolue : exacte → langue seule → défaut ; mise en page ; réglages ; secret scellé) | `notification.worker` |
+| `notification_job_complete` | vérifie `claim_token`, crée le message et le journal, termine l'étape, efface le secret si le déclenchement est fini | `notification.worker` |
+| `notification_job_fail` | vérifie `claim_token` ; `transient` : nouvelle tentative après `retry_delay_seconds` tant que `attempts < max_attempts`, sinon échec définitif ; `permanent` : échec définitif ; `recipient_rejected` : échec définitif et suppression `hard_bounce` | `notification.worker` |
+| `notification_purge` | supprime les déclenchements, messages et journaux expirés, efface les secrets expirés, par paquets | `notification.worker` |
 
-Permissions déclarées à `lyxal_auth` selon le mécanisme de son lot 2 : `notification:read`,
-`notification:manage`, `notification:send`, `notification:worker` (compte de service du worker).
+Permissions déclarées par le seed du module (`fn::auth_permission_register`, lot 2 de `lyxal_auth`) : `notification.read`,
+`notification.manage`, `notification.send`, `notification.worker` (compte de service du worker).
 
 ## 5. Contrats Rust (`src/`)
 
@@ -206,8 +206,8 @@ cryptographique : tout passe par `lyxal_crypto`.
 
 ## 6. Permissions des tables
 
-Lecture : `fn::auth_has_permission("notification:read", $this.tenant)`. Écriture : par les
-fonctions seulement (`notification:manage`, `notification:send`, `notification:worker`) ; un
+Lecture : `fn::auth_has_permission({ permission: "notification.read", tenant: $this.tenant })`. Écriture : par les
+fonctions seulement (`notification.manage`, `notification.send`, `notification.worker`) ; un
 locataire ne voit ni ne modifie jamais les données d'un autre ; les données de l'installation
 (`tenant = NONE`) relèvent des administrateurs de l'installation. Les réglages fins (qui peut lire
 le journal) suivent la portée des permissions définie par le lot 2 de `lyxal_auth`.
@@ -274,8 +274,6 @@ retenues ; `NOTICE` pour Novu et Postal (MIT) si du code est transcrit. Héberge
 
 ## 13. Questions au CTO
 
-| # | Question | Recommandation |
-| :- | :--- | :--- |
-| Q1 | Le contrat des événements `auth.*` (§2.1) est fixé ici et repris par le lot 3 de `lyxal_auth` | Valider |
-| Q2 | Pas de table `notification_integration` avant `lyxal_secrets` : un seul serveur SMTP pour l'installation en V1-a | Valider (zéro dette) |
-| Q3 | Pas de limitation de débit dans ce lot : l'anti-abus des demandes (vérification, récupération) est fait par `lyxal_auth` (lot 3, anti-force-brute) ; `notification_rate_limit` arrive en V1-c | Valider |
+Q1 à Q3 validées par le CTO le 8 novembre 2026 : contrat des événements `auth.*` fixé ici
+(§2.1) ; un seul serveur SMTP pour l'installation avant `lyxal_secrets` ; pas de limitation de
+débit dans ce lot (anti-abus par `lyxal_auth`, `notification_rate_limit` en V1-c).

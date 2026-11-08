@@ -65,7 +65,7 @@ Préfixe `auth_`. Entités en tables `TYPE NORMAL SCHEMAFULL` ; associations en 
 | `auth_organization_domain` | Keycloak `ORG_DOMAIN`, Logto `organization_jit_email_domains` | domaines vérifiés, rattachement automatique par domaine e-mail |
 | `auth_member_of` (relation identité → organisation) | Logto `organization_user_relations` | appartenance d'une identité à une organisation |
 | `auth_organization_invitation` | Logto `organization_invitations`, Keycloak `ORG_INVITATION` | invitation expirante avec rôles prévus |
-| `auth_permission` | Logto `scopes` / `organization_scopes` | permission déclarée par un module (ex. `ingestion:batch:write`) |
+| `auth_permission` | Logto `scopes` / `organization_scopes` | permission déclarée par un module (ex. `ingestion.batch.write`) |
 | `auth_role` | Logto `roles` / `organization_roles`, Keycloak rôles composites | rôle = ensemble de permissions, global ou modèle d'organisation |
 | `auth_role_grants` (relation rôle → permission) | Logto `roles_scopes` / `organization_role_scope_relations` | permissions d'un rôle |
 | `auth_role_includes` (relation rôle → rôle) | Keycloak rôles composites | rôles composites, parcourus récursivement |
