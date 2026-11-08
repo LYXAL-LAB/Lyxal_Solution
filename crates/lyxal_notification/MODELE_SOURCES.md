@@ -194,7 +194,7 @@ plafonnées selon le plan (n° 12, 25, 44, 83, 86, 104).
 | # | Fonctionnalité | Ce qu'elle fait | Novu | Source lue | Lyxal | Pourquoi |
 | :-- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 98 | Organisations, membres, invitations, domaines vérifiés | | Gratuit (1 membre en auto-hébergé) | `docs/platform/account/organizations.mdx` | Non | Porté par `lyxal_auth` |
-| 99 | Rôles et permissions (RBAC) | Owner, Admin, Author, Viewer, matrice par action | **Team / Ent.** | `docs/platform/account/roles-and-permissions.mdx` | Non (ici) | Reconçue dans `lyxal_auth` : permissions `notification:*` déclarées par ce module |
+| 99 | Rôles et permissions (RBAC) | Owner, Admin, Author, Viewer, matrice par action | **Team / Ent.** | `docs/platform/account/roles-and-permissions.mdx` | Non (ici) | Reconçue dans `lyxal_auth` : permissions `notification.*` déclarées par ce module |
 | 100 | SSO SAML / OIDC, synchronisation d'annuaire SCIM, MFA imposée | | **Ent.** | `docs/platform/account/sso.mdx`, `directory-sync.mdx`, `authentication.mdx` | Non (ici) | `lyxal_auth` (V2 / V3 de ce module) |
 | 101 | Contrôles d'audit | Historique des actions d'administration | **EE / Ent.** | `docs/platform/account/billing.mdx` (§ Enterprise Edition) | V1 | Reconçue, aucun code repris : événements `notification.*` publiés par `fn::event_publish` |
 | 102 | Clés d'API par environnement, chiffrées | | Gratuit | `environment.entity.ts` (`apiKeys`) | Non | `auth_api_key` de `lyxal_auth` |
@@ -268,7 +268,7 @@ ENFORCED`. Tous les documents portent `tenant` (organisation `lyxal_auth`), cont
 | Novu | Où cela va dans Lyxal | Raison |
 | :--- | :--- | :--- |
 | `organization`, `member`, `user` | `lyxal_auth` (`auth_organization`, `auth_member_of`, `auth_identity`) | Identités et organisations ont un seul propriétaire |
-| rôles (`MemberRoleEnum`), SSO, SCIM, MFA | `lyxal_auth` (`auth_role`, `auth_permission`, `auth_identity_provider`) | Ce module déclare seulement ses permissions `notification:*` |
+| rôles (`MemberRoleEnum`), SSO, SCIM, MFA | `lyxal_auth` (`auth_role`, `auth_permission`, `auth_identity_provider`) | Ce module déclare seulement ses permissions `notification.*` |
 | audit | `lyxal_event` (événements `notification.*`) | Pas de table d'audit locale (même règle que `lyxal_auth`) |
 | `environment` (dont `apiKeys`, `widget`, `dns`) | locataire `lyxal_auth`, `auth_api_key` ; `dns` → `notification_inbound_domain` | Pas d'environnements dans Lyxal |
 | `change` | Git + révisions `notification_workflow_revision` (V2) | Pas de promotion entre environnements |
