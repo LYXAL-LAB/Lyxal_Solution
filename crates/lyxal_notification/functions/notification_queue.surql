@@ -99,6 +99,8 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
         claim_token: $job.claim_token,
         run_id: $run.id,
         tenant: $run.tenant,
+        tenant_key: IF $run.tenant IS NONE { NONE } ELSE { <string> record::id($run.tenant) },
+        organization_name: IF $run.tenant IS NONE { NONE } ELSE { (SELECT VALUE name FROM ONLY $run.tenant) },
         idempotency_key: $run.idempotency_key,
         attempt: $job.attempts,
         recipient: $run.recipient,
