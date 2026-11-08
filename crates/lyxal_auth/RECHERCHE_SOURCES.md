@@ -41,10 +41,12 @@ porter, une seule fois :
 | **B. Tout reconstruire** | Tout écrire en Rust et SurrealDB | Une seule source de vérité | Long ; code de sécurité critique entièrement à notre charge |
 | **C. Cœur natif + briques éprouvées + fédération** | Identités, organisations, rôles et sessions dans SurrealDB (`lyxal_auth`) ; primitives de sécurité prises dans des bibliothèques Rust auditées ; modèle et écrans transcrits des produits mûrs ; connexion par un fournisseur externe possible (OpenID Connect) | Une seule source de vérité, droits appliqués nativement par SurrealDB, pas de cryptographie maison, un client peut garder son propre fournisseur d'identité | Plus de travail que A ; demande une revue de sécurité avant la production |
 
-**Recommandation : option C.** C'est la seule cohérente avec l'architecture « données et règles
-dans SurrealDB » (`.agents/rules/lyxal_standards_and_checklist.md` §10). L'option A reste
-possible **comme fournisseur externe** dans C : un client qui a déjà Keycloak ou Microsoft Entra
-s'y connecte par OpenID Connect, sans que Lyxal en dépende.
+**Décision du CTO : option C, avec reprise du modèle des projets mûrs.** Les produits complets
+ne sont pas déployés à côté de Lyxal : leur modèle de données et leurs fonctionnalités sont repris
+et transcrits en SurrealDB et Rust. La correspondance table par table est dans
+[`MODELE_SOURCES.md`](MODELE_SOURCES.md), les analyses détaillées dans [`sources/`](sources/).
+Un client qui a déjà Keycloak ou Microsoft Entra peut s'y connecter par OpenID Connect
+(fédération), sans que Lyxal en dépende.
 
 ## 3. Produits complets (modèles à étudier)
 
