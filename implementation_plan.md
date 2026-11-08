@@ -4,8 +4,13 @@ Création du crate du Noyau Technique `lyxal_auth` (rang 1 de
 [`docs/14-roadmap/ROADMAP_NOYAU.md`](docs/14-roadmap/ROADMAP_NOYAU.md)), découpée en six lots.
 Modèle repris des projets sources selon [`crates/lyxal_auth/MODELE_SOURCES.md`](crates/lyxal_auth/MODELE_SOURCES.md)
 (Logto, Ory Kratos, Keycloak, Rauthy, Kanidm ; analyses dans `crates/lyxal_auth/sources/`).
-Plan placé à la racine comme les lots précédents, supprimé une fois le programme exécuté ;
-chaque lot est une PR distincte, exécutée selon ce plan, tout écart étant signalé dans sa PR.
+Plan placé à la racine comme les lots précédents, supprimé une fois le programme exécuté.
+
+**Deux niveaux de validation** (`AGENTS.md` §3) : ce plan fixe le programme (architecture,
+modèle, lots, décisions). **Chaque lot fait ensuite l'objet de son propre plan détaillé**, soumis
+au CTO avant toute ligne de code : contrats Rust `XxxParams` / `XxxResult` (champs et types),
+signatures SurrealQL, codes d'erreurs, tests. Le contrat du lot 1 est fixé ici (§6.1), car il
+démarre en premier.
 
 ## 0. Décisions du CTO (8 novembre 2026)
 
@@ -43,8 +48,15 @@ entière). Donc :
     usage, révocation de toute la chaîne en cas de réutilisation — modèle Rauthy).
 * SurrealDB vérifie le jeton par un accès `DEFINE ACCESS lyxal_auth ON DATABASE TYPE RECORD WITH
   JWT ALGORITHM HS256 KEY ... AUTHENTICATE { ... }` : la clause `AUTHENTICATE` contrôle que la
-  session existe, est active et non expirée (**révocation immédiate**), puis `$auth` désigne la
-  session.
+  session existe, est active et non expirée, puis `$auth` désigne la session. Elle n'est évaluée
+  **qu'à l'établissement** de la session SurrealDB : une connexion WebSocket déjà authentifiée
+  n'est pas réévaluée.
+* **Révocation à chaque opération** : `fn::auth_context` et `fn::auth_has_permission`, appelés
+  par toute fonction publique et par les `PERMISSIONS` des tables protégées, relisent à chaque
+  appel la session (`$token.sid`) et refusent si elle est révoquée, expirée ou antérieure au
+  `not_before` de l'identité (`AUTH_SESSION_REVOKED`, refus silencieux dans les `PERMISSIONS`).
+  Une session révoquée perd donc ses droits dès l'opération suivante, même sur une connexion
+  restée ouverte ; le jeton d'accès court (15 min) borne en plus la durée d'usage.
 * Claims : `sub` (identité), `sid` (session), `tenant` (organisation active, absente pour une
   session globale), `permissions` (calculées à l'émission : rôles globaux + rôles dans
   l'organisation active), `aal` (niveau d'assurance), `aud`, `iat`, `exp`, `jti`.
@@ -175,6 +187,43 @@ code ni jeton en clair dans une charge utile.
 | **5** | Bascule des modules : `lyxal_catalogue` et `lyxal_pipeline_ingestion` déclarent leurs permissions ; suppression de `catalogue_session`, `ingestion_session`, des fonctions `*_session_identity` et de l'accès `lyxal_catalogue_sync` ; leurs `PERMISSIONS` passent par `fn::auth_has_permission` ; agent de synchronisation = compte de service `lyxal_auth` (**rupture coordonnée**, tous les tests mis à jour) | `lyxal_catalogue`, `lyxal_pipeline_ingestion`, `apps/lyxal-server` |
 | **6** | Clôture : audit `lyxal-audit` du module, revue de sécurité (liste OWASP ASVS niveau 2 sur l'authentification et les sessions), `ROADMAP_NOYAU.md` et `AGENTS.md` §6 mis à jour, V2 décrite dans `crates/lyxal_auth/ROADMAP.md` | `lyxal_auth`, docs |
 
+### 6.1. Contrat du lot 1 (`lyxal_crypto::totp`)
+
+Ajout à l'API figée de `lyxal_crypto` (validé par le CTO, D2), documenté dans `API_CONTRACT.md` :
+
+```rust
+/// Algorithme HMAC du TOTP (RFC 6238 §1.2).
+pub enum TotpAlgorithm { Sha1, Sha256 }
+
+/// Paramètres d'un TOTP ; défauts : SHA-1, 6 chiffres, pas de 30 s (applications d'authentification).
+pub struct TotpConfig { pub algorithm: TotpAlgorithm, pub digits: u8 /* 6..=8 */, pub step_seconds: u32 /* 15..=120 */ }
+
+/// Secret partagé (20 octets pour SHA-1, 32 pour SHA-256) : `ZeroizeOnDrop`, `Debug` masqué,
+/// aucun export brut hors `expose_secret`.
+pub struct TotpSecret(/* SecretBytes */);
+
+impl TotpSecret {
+    pub fn generate(config: &TotpConfig) -> Result<Self, CryptoError>;   // OsRng
+    pub fn import(bytes: SecretBytes) -> Result<Self, CryptoError>;     // 16..=64 octets
+    pub fn to_base32(&self) -> SecretString;                             // pour le QR code
+}
+
+/// Code attendu à l'instant `unix_seconds` (tests et affichage).
+pub fn totp_generate(secret: &TotpSecret, config: &TotpConfig, unix_seconds: u64) -> Result<SecretString, CryptoError>;
+
+/// Vérifie `code` dans la fenêtre ±`window` pas (0..=2), comparaison en temps constant ;
+/// renvoie le numéro de pas accepté (pour refuser la réutilisation d'un même pas).
+pub fn totp_verify(secret: &TotpSecret, config: &TotpConfig, code: &str, unix_seconds: u64, window: u8) -> Result<Option<u64>, CryptoError>;
+
+/// URI `otpauth://totp/...` (émetteur et compte) pour l'enrôlement.
+pub fn totp_uri(secret: &TotpSecret, config: &TotpConfig, issuer: &str, account: &str) -> Result<SecretString, CryptoError>;
+```
+
+Erreurs : variantes `CryptoError` existantes (paramètre invalide), sans valeur reflétée.
+Tests : vecteurs de la RFC 6238 annexe B (SHA-1 et SHA-256, 8 chiffres), bornes, fenêtre,
+code de mauvaise longueur, temps constant (comparaison par `subtle`). Aucune autre primitive
+ajoutée ; `sha1` est utilisé seulement à l'intérieur de ce module.
+
 V2 (feuille de route du module) : connexion par fournisseur externe (OIDC), Lyxal fournisseur OIDC
 (signature asymétrique à ajouter à `lyxal_crypto`), appareils de confiance, MFA adaptative,
 consentement, emprunt d'identité encadré, écrans de la console. V3 : SSO SAML, parcours en arbre,
@@ -185,8 +234,11 @@ SCIM.
 * **Banc SurrealQL** (`tests/*.test.surql`) : chaque fonction publique, cas nominaux, erreurs,
   identités simulées, permissions (accès refusé à une autre organisation), écritures filtrées.
 * **Rust** : vecteurs RFC 6238 (TOTP), tests de cérémonie passkey avec authentificateur logiciel
-  de `webauthn-rs`, rotation et réutilisation des jetons de renouvellement, révocation immédiate
-  par `AUTHENTICATE`, verrouillage après N échecs, horloge contrôlée.
+  de `webauthn-rs`, rotation et réutilisation des jetons de renouvellement, refus par
+  `AUTHENTICATE` d'une session révoquée, verrouillage après N échecs, horloge contrôlée.
+* **Révocation sur connexion ouverte** : une connexion WebSocket authentifiée reste ouverte, la
+  session est révoquée, l'opération suivante sur cette même connexion est refusée (lecture
+  filtrée et écriture refusée), sur serveur SurrealDB 3.3.4 réel.
 * **Serveur réel** : connexion de bout en bout sur SurrealDB 3.3.4 (jeton émis par Lyxal accepté
   par l'accès `lyxal_auth`, refusé après révocation).
 * **Sécurité** : aucune valeur secrète en clair en base ni dans les journaux et événements ;
