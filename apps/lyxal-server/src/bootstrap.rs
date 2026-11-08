@@ -79,23 +79,27 @@ async fn run_inner() -> Result<(), ServerError> {
     let shutdown_health = health.clone();
     let graceful_seconds = config.server.graceful_shutdown_seconds;
 
-    axum::serve(listener, router)
-        .with_graceful_shutdown(async move {
-            if let Err(error) = shutdown::signal().await {
-                tracing::error!(%error, "erreur lors de l'attente du signal d'arrêt");
-            }
-            shutdown_health
-                .set("server", HealthState::Stopping, None)
-                .await;
-            if let Err(error) = shutdown_runtime.stop_all().await {
-                tracing::error!(%error, "arrêt des modules incomplet");
-            }
-            tokio::time::sleep(Duration::from_millis(50)).await;
-        })
-        .await
-        .map_err(|error| ServerError::HttpServe {
-            message: error.to_string(),
-        })?;
+    // Adresse du client transmise aux routes (anti-force-brute par adresse IP de `lyxal_auth`)
+    axum::serve(
+        listener,
+        router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .with_graceful_shutdown(async move {
+        if let Err(error) = shutdown::signal().await {
+            tracing::error!(%error, "erreur lors de l'attente du signal d'arrêt");
+        }
+        shutdown_health
+            .set("server", HealthState::Stopping, None)
+            .await;
+        if let Err(error) = shutdown_runtime.stop_all().await {
+            tracing::error!(%error, "arrêt des modules incomplet");
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    })
+    .await
+    .map_err(|error| ServerError::HttpServe {
+        message: error.to_string(),
+    })?;
 
     tracing::info!(
         graceful_shutdown_seconds = graceful_seconds,

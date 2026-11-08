@@ -59,7 +59,7 @@ pub struct LoginRequest {
 #[derive(Debug)]
 pub enum LoginOutcome {
     /// Session ouverte.
-    Authenticated(IssuedTokens),
+    Authenticated(Box<IssuedTokens>),
     /// Actions à faire avant toute session (dans le parcours `flow`).
     ActionRequired {
         /// Parcours de connexion.
@@ -247,7 +247,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
                 actions: credential.required_actions,
             });
         }
-        Ok(LoginOutcome::Authenticated(
+        Ok(LoginOutcome::Authenticated(Box::new(
             self.open_session(
                 &identity,
                 request.organization,
@@ -255,7 +255,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
                 request.client,
             )
             .await?,
-        ))
+        )))
     }
 
     /// Termine les actions imposées d'un parcours de connexion (`update_password`,
@@ -317,10 +317,10 @@ impl<R: KeyResolver + 'static> AccessService<R> {
             })
             .await?;
         let organization = current.organization.as_ref().map(|id| id.to_sql());
-        Ok(LoginOutcome::Authenticated(
+        Ok(LoginOutcome::Authenticated(Box::new(
             self.open_session(&identity, organization, vec!["password".into()], client)
                 .await?,
-        ))
+        )))
     }
 
     /// Échange un jeton de renouvellement (usage unique ; réutilisation → session révoquée).
