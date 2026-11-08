@@ -3,7 +3,9 @@
 -- MODULE    : lyxal_auth
 -- ============================================================================
 -- Pas d'inscription libre (D9) : une identité naît d'une invitation, d'une création par un
--- administrateur, ou du lien d'installation du premier administrateur. Session système.
+-- administrateur, ou du lien d'installation du premier administrateur. Le mot de passe est
+-- enregistré ensuite (fn::auth_password_set) : son empreinte est scellée avec l'identifiant de
+-- l'identité créée. Session système.
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_domain_auto_join : adhésion par domaine vérifié (adresse vérifiée exigée)
@@ -92,7 +94,6 @@ DEFINE FUNCTION OVERWRITE fn::auth_registration_complete($params: object) {
         fields: {
             flow: { pipeline: [{ rule: "record", options: { expected_table: "auth_flow" } }], required: true },
             traits: { pipeline: [{ rule: "is_object" }], default: {} },
-            secret: { pipeline: [{ rule: "required_string", options: { min_length: 16, max_length: 16384 } }, { rule: "starts_with", options: { prefixes: ["enc:v2:"], case_sensitive: true, trim_value: false } }], required: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -129,14 +130,12 @@ DEFINE FUNCTION OVERWRITE fn::auth_registration_complete($params: object) {
     } ELSE {
         UPDATE $invitation.id SET state = "accepted", accepted_by = $identity, accepted_at = time::now();
     };
-    LET $password = fn::auth_password_set({ identity: <string> $identity, secret: $p.secret, language: $p.language });
-    IF !$password.ok { THROW $password.error.code; };
     -- L'invitation ou le lien reçu à cette adresse en prouve la possession
     UPDATE auth_address SET verified_at = time::now() WHERE identity = $identity AND channel = "email" AND value = $flow.address;
     LET $joined = fn::auth_domain_auto_join({ identity: $identity });
     UPDATE $flow.id SET state = "completed", identity = $identity;
     RETURN fn::result_ok({ identity: $identity, organization: $invitation.organization, organizations_joined: $joined });
-} COMMENT "Termine une inscription ({ flow, traits, secret enc:v2 }) : identité créée avec l'adresse de l'invitation ou du lien, mot de passe, adresse vérifiée, invitation acceptée (ou rôle platform_admin pour le lien d'installation), rattachement par domaine. Session système";
+} COMMENT "Termine une inscription ({ flow, traits }) : identité créée avec l'adresse de l'invitation ou du lien, adresse vérifiée, invitation acceptée (ou rôle platform_admin pour le lien d'installation), rattachement par domaine. Session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_setup_start : lien d'installation du premier administrateur

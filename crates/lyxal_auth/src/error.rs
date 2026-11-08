@@ -21,6 +21,10 @@ pub enum AuthError {
     /// une erreur mais une vérification échouée).
     #[error("lecture DNS impossible : {0}")]
     Dns(String),
+    /// Refus décidé par un service Rust (code `AUTH_*` de la master data : identifiants
+    /// incorrects, politique de mot de passe, verrouillage…), sans détail sur le compte.
+    #[error("{0}")]
+    Rejected(&'static str),
 }
 
 impl AuthError {
@@ -39,6 +43,7 @@ impl AuthError {
             Self::Crypto(_) => "AUTH_CRYPTO_ERROR".to_string(),
             Self::InvalidParameter(_) => "AUTH_INVALID_PARAMETERS".to_string(),
             Self::Dns(_) => "AUTH_DNS_UNAVAILABLE".to_string(),
+            Self::Rejected(code) => (*code).to_string(),
         }
     }
 }
@@ -46,6 +51,13 @@ impl AuthError {
 impl From<LyxalSurrealError> for AuthError {
     fn from(error: LyxalSurrealError) -> Self {
         Self::Surreal(Box::new(error))
+    }
+}
+
+impl AuthError {
+    /// Vrai si l'erreur est le refus métier `code` (SurrealQL ou service Rust).
+    pub fn is(&self, code: &str) -> bool {
+        self.code() == code
     }
 }
 

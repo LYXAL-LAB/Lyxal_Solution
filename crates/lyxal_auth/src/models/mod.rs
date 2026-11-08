@@ -2,6 +2,7 @@
 //! (`XxxResult` ou modèles). Les identifiants transmis à SurrealDB sont des textes `table:clé`
 //! (règle `record` de `lyxal_core`) ; ceux qui en reviennent sont des `RecordId`.
 
+mod access;
 mod context;
 mod domain;
 mod identity;
@@ -10,6 +11,20 @@ mod organization;
 mod role;
 mod types;
 
+pub use access::{
+    AddressChangeConfirmParams, AddressChangeRequestParams, AddressChangeRequested, AddressChanged,
+    AddressVerifyParams, ApiKeyCreateParams, ApiKeyCreated, ApiKeySessionParams,
+    ApplicationSecretAddParams, ApplicationSecretAdded, AuthPurgeParams, AuthPurgeResult,
+    ClientInfo, CodeIssueParams, CodeIssued, CodeVerified, CodeVerifyParams, Flow, FlowGetParams,
+    FlowStartParams, FlowSubmitParams, LoginFailureParams, LoginFailureResetParams,
+    LoginFailureStatus, PasswordCredential, PasswordCredentialParams, PasswordSet,
+    PasswordSetParams, RegistrationCompleteParams, RegistrationCompleted, RegistrationStartParams,
+    RegistrationStarted, RequiredActionCompleteParams, ServiceSessionParams, SessionCreateParams,
+    SessionIssued, SessionListParams, SessionRefreshParams, SessionRevokeAllParams,
+    SessionRevokeParams, SessionRevoked, SessionSummary, SessionSwitchParams, SetupStartParams,
+    SetupStarted, SigningKeyGetParams, SigningKeyRecord, SigningKeyRotateParams, SigningKeyRotated,
+    SigningKeys,
+};
 pub use context::{AuthContext, ContextParams};
 pub use domain::{
     DomainAddParams, DomainGetParams, DomainVerifyParams, OrganizationDomain,

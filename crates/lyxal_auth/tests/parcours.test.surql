@@ -99,7 +99,8 @@ RETURN fn::auth_registration_start({ invitation_token_hash: "1111111111111111111
 -- test: inscription terminée : identité avec l'adresse de l'invitation (jamais celle fournie), adhésion, invitation acceptée, adresse vérifiée
 {
     LET $flow = (SELECT VALUE id FROM ONLY auth_flow WHERE type = "registration" LIMIT 1);
-    LET $r = fn::auth_registration_complete({ flow: <string> $flow, traits: { email: "pirate@exemple.fr", name: { first: "Claire" } }, secret: "enc:v2:cle-2026:CCCCCCCCCCCCCCCCCCCCCCCC" }).data;
+    LET $r = fn::auth_registration_complete({ flow: <string> $flow, traits: { email: "pirate@exemple.fr", name: { first: "Claire" } } }).data;
+    fn::auth_password_set({ identity: <string> $r.identity, secret: "enc:v2:cle-2026:CCCCCCCCCCCCCCCCCCCCCCCC" });
     LET $identity = (SELECT * FROM ONLY $r.identity);
     RETURN $identity.traits.email == "claire@exemple.fr" AND $identity.traits.name.first == "Claire"
         AND (SELECT VALUE state FROM ONLY auth_organization_invitation:inv) == "accepted"
@@ -124,7 +125,7 @@ RETURN fn::auth_registration_start({ invitation_token_hash: "1111111111111111111
 {
     LET $setup = fn::auth_setup_start({ email: "Admin@Lyxal.test", link_hash: "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef" });
     LET $start = fn::auth_registration_start({ setup_link_hash: "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef" }).data;
-    LET $done = fn::auth_registration_complete({ flow: <string> $start.flow, traits: {}, secret: "enc:v2:cle-2026:DDDDDDDDDDDDDDDDDDDDDDDD" }).data;
+    LET $done = fn::auth_registration_complete({ flow: <string> $start.flow, traits: {} }).data;
     RETURN $setup.ok AND $start.{ email, kind } == { email: "admin@lyxal.test", kind: "setup" }
         AND (SELECT VALUE out FROM auth_has_role WHERE in = $done.identity) == [auth_role:platform_admin];
 };

@@ -19,6 +19,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_login_failure_check($params: object) {
         fields: {
             identifier_hash: { pipeline: [{ rule: "hexadecimal", options: { min_length: 64, max_length: 64, allow_prefix: false } }], required: true },
             ip_hash: { pipeline: [{ rule: "hexadecimal", options: { min_length: 64, max_length: 64, allow_prefix: false } }] },
+            identity: { pipeline: [{ rule: "record", options: { expected_table: "auth_identity" } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -29,7 +30,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_login_failure_check($params: object) {
     LET $p = $report.value;
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     RETURN fn::result_ok(fn::auth_login_failure_status({ identifier_hash: $p.identifier_hash, ip_hash: $p.ip_hash }));
-} COMMENT "Indique si un identifiant ou une adresse IP ({ identifier_hash, ip_hash }) est verrouillé : { locked, until }. Session système";
+} COMMENT "Indique si un identifiant ou une adresse IP ({ identifier_hash, ip_hash, identity ignorée }) est verrouillé : { locked, until }. Session système";
 
 DEFINE FUNCTION OVERWRITE fn::auth_login_failure_record($params: object) {
     LET $report = fn::validation_object_execute($params, {
