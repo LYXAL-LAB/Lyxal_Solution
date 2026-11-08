@@ -34,6 +34,17 @@ async fn service(
     AccessService<StaticKeyResolver>,
     Arc<CryptoEngine<StaticKeyResolver>>,
 ) {
+    service_on(store, "auth", "test").await
+}
+
+async fn service_on(
+    store: &AuthStore,
+    namespace: &str,
+    database: &str,
+) -> (
+    AccessService<StaticKeyResolver>,
+    Arc<CryptoEngine<StaticKeyResolver>>,
+) {
     let engine = crypto();
     let keys = Arc::new(SigningKeyService::new(store.clone(), engine.clone()));
     keys.ensure().await.expect("clés");
@@ -42,8 +53,8 @@ async fn service(
         engine.clone(),
         keys,
         AccessConfig {
-            namespace: "auth".into(),
-            database: "test".into(),
+            namespace: namespace.into(),
+            database: database.into(),
             public_url: "https://lyxal.test".into(),
         },
     )
@@ -463,4 +474,71 @@ async fn host_authenticates_a_bearer_token_until_revocation() {
         .await
         .expect_err("révoquée");
     assert_eq!(refused.code(), "AUTH_SESSION_REVOKED");
+}
+
+/// Serveur SurrealDB 3.3.4 réel : le jeton émis par Lyxal ouvre une connexion WebSocket ; après
+/// révocation de la session, **la même connexion restée ouverte** n'a plus aucun droit.
+/// `LYXAL_SURREAL_WS_URL`, `LYXAL_SURREAL_USER`, `LYXAL_SURREAL_PASS` (`scripts/ci/test_all.sh`).
+#[tokio::test]
+#[ignore = "nécessite un serveur SurrealDB distant (LYXAL_SURREAL_WS_URL)"]
+async fn real_server_refuses_a_revoked_token_on_an_open_connection() {
+    let url = std::env::var("LYXAL_SURREAL_WS_URL").expect("LYXAL_SURREAL_WS_URL");
+    let user = std::env::var("LYXAL_SURREAL_USER").expect("LYXAL_SURREAL_USER");
+    let pass = std::env::var("LYXAL_SURREAL_PASS").expect("LYXAL_SURREAL_PASS");
+    let namespace = "auth_ws";
+    let database = format!("t{}", uuid::Uuid::now_v7().simple());
+
+    let root = surrealdb::engine::any::connect(url.as_str())
+        .await
+        .expect("connexion root");
+    root.signin(surrealdb::opt::auth::Root {
+        username: user,
+        password: pass,
+    })
+    .await
+    .expect("root");
+    root.use_ns(namespace)
+        .use_db(&database)
+        .await
+        .expect("ns/db");
+    crate::support::install(&root).await;
+    let store = AuthStore::new(root.clone());
+    let (access, _) = service_on(&store, namespace, &database).await;
+    let tokens = admin(&access).await;
+
+    let client = surrealdb::engine::any::connect(url.as_str())
+        .await
+        .expect("connexion");
+    client
+        .use_ns(namespace)
+        .use_db(&database)
+        .await
+        .expect("ns/db");
+    client
+        .authenticate(tokens.access_token.expose_secret().to_string())
+        .await
+        .expect("jeton accepté par le serveur");
+    let mut response = client
+        .query("RETURN fn::auth_context({}).data.identity")
+        .await
+        .expect("contexte");
+    let identity: Option<lyxal_surreal::RecordId> = response.take(0).expect("identité");
+    assert_eq!(identity, tokens.session.identity);
+
+    assert!(access
+        .revoke(&tokens.session.session.to_sql(), "logout")
+        .await
+        .expect("révocation"));
+    let mut response = client
+        .query("RETURN fn::auth_context({}).error.code; RETURN fn::auth_has_permission({ permission: 'auth.identity.manage' });")
+        .await
+        .expect("contexte après révocation");
+    let code: Option<String> = response.take(0).expect("code");
+    let allowed: Option<bool> = response.take(1).expect("droit");
+    assert_eq!(code.as_deref(), Some("AUTH_SESSION_REVOKED"));
+    assert_eq!(allowed, Some(false));
+
+    root.query(format!("REMOVE DATABASE {database}"))
+        .await
+        .expect("nettoyage");
 }

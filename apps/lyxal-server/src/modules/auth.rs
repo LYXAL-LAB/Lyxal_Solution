@@ -44,20 +44,22 @@ pub fn register_services(
     crypto: Option<Arc<CryptoEngine<StaticKeyResolver>>>,
 ) -> Result<Option<Arc<AuthHost>>, ServerError> {
     let store = AuthStore::new(client.clone());
-    runtime
-        .health_registry()
-        .register_check(Arc::new(AuthHealthCheck::new(store.clone())))?;
     runtime.register_worker(Arc::new(AuthPurgeWorker::new(
         store.clone(),
         PURGE_INTERVAL,
         PURGE_BATCH,
     )?))?;
     let host = host(client, config, crypto)?;
-    if host.is_none() {
-        tracing::warn!(
-            "connexion désactivée : LYXAL__CRYPTO__APPLICATION_KEY et auth.public_url requis"
-        );
+    let disabled = host.is_none().then(|| {
+        "connexion désactivée : LYXAL__CRYPTO__APPLICATION_KEY et auth.public_url requis"
+            .to_string()
+    });
+    if let Some(reason) = &disabled {
+        tracing::warn!("{reason}");
     }
+    runtime
+        .health_registry()
+        .register_check(Arc::new(AuthHealthCheck::new(store, disabled)))?;
     Ok(host)
 }
 

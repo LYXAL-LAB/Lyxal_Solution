@@ -62,18 +62,22 @@ impl LyxalModule for AuthModule {
     }
 }
 
-/// Sonde de santé : la politique de l'installation est lisible (module installé, base joignable).
+/// Sonde de santé : la politique de l'installation est lisible (module installé, base joignable)
+/// et la connexion est servie par l'hôte (sinon « dégradé »).
 pub struct AuthHealthCheck {
     module_id: ModuleId,
     store: AuthStore,
+    login_disabled: Option<String>,
 }
 
 impl AuthHealthCheck {
-    /// Sonde sur le store de la session système de l'hôte.
-    pub fn new(store: AuthStore) -> Self {
+    /// Sonde sur le store de la session système de l'hôte. `login_disabled` : raison pour
+    /// laquelle l'hôte ne sert pas la connexion (sonde « dégradé »), `None` si elle est servie.
+    pub fn new(store: AuthStore, login_disabled: Option<String>) -> Self {
         Self {
             module_id: ModuleId::new(MODULE_ID),
             store,
+            login_disabled,
         }
     }
 }
@@ -89,6 +93,11 @@ impl ModuleHealthCheck for AuthHealthCheck {
         let outcome = self.store.policy_get(PolicyGetParams::default()).await;
         let latency = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
         Ok(match outcome {
+            Ok(_) if self.login_disabled.is_some() => HealthCheckResult::degraded(
+                self.module_id.clone(),
+                latency,
+                self.login_disabled.clone(),
+            ),
             Ok(_) => HealthCheckResult::healthy(
                 self.module_id.clone(),
                 latency,

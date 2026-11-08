@@ -162,7 +162,7 @@ async fn module_descriptor_and_health_check() {
         .await
         .expect("politique");
     assert!(policy.to_sql().contains("invitation_only"));
-    let check = AuthHealthCheck::new(store);
+    let check = AuthHealthCheck::new(store, None);
     let ctx = lyxal_runtime::ModuleContext::new(lyxal_runtime::types::ModuleId::new("lyxal_auth"));
     let result = check.check(&ctx).await.expect("sonde");
     assert_eq!(result.status, lyxal_runtime::health::HealthStatus::Healthy);
