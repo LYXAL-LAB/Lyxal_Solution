@@ -223,3 +223,38 @@ fn large_document_is_read_in_a_stream_with_a_small_record_limit() {
         Some(100_000)
     );
 }
+
+#[test]
+fn complete_record_above_the_limit_is_rejected() {
+    // Plus grand que la limite mais dans la marge de lecture anticipée : rejeté quand même
+    let limits = Limits {
+        max_record_bytes: 128,
+        ..Default::default()
+    };
+    let opts = XmlOptions {
+        limits,
+        ..options(&["A"])
+    };
+    let source = format!("<c><A><b>{}</b></A><A><b>ok</b></A></c>", "x".repeat(1024));
+    let items = read(source.as_bytes(), opts);
+    assert_eq!(codes(&items), vec!["PARSING_RECORD_TOO_LARGE", "ok:2"]);
+}
+
+#[test]
+fn deep_record_is_skipped_without_building_paths() {
+    // 50 000 niveaux sous la limite d'octets : rejeté dès la profondeur maximale, le reste est
+    // seulement compté (sans coût quadratique)
+    let depth = 50_000;
+    let mut source = String::from("<c><A>");
+    source.push_str(&"<b>".repeat(depth));
+    source.push_str(&"</b>".repeat(depth));
+    source.push_str("</A><A><b>ok</b></A></c>");
+    let started = std::time::Instant::now();
+    let items = read(source.as_bytes(), options(&["A"]));
+    assert_eq!(codes(&items), vec!["PARSING_TOO_DEEP", "ok:2"]);
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(5),
+        "{:?}",
+        started.elapsed()
+    );
+}

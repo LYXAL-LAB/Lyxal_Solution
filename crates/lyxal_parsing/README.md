@@ -63,9 +63,9 @@ la lecture (XML). La déclaration `<?xml encoding?>` n'est pas suivie.
 
 | Champ | Défaut | Effet |
 | :--- | :--- | :--- |
-| `max_record_bytes` | 1 Mio | enregistrement isolable (JSON, ligne CSV complète) plus grand : rejet ; sinon (champ CSV ou élément XML sans fin) : arrêt `PARSING_LIMIT` avant de charger la suite. La mémoire par enregistrement reste bornée par cette taille et un tampon de 64 Kio. |
+| `max_record_bytes` | 1 Mio | enregistrement complet plus grand (élément JSON, ligne CSV, élément XML) : rejet ; enregistrement sans fin (champ CSV ou élément XML non refermé) : arrêt `PARSING_LIMIT` avant de charger la suite. La mémoire par enregistrement reste bornée par cette taille et un tampon de 64 Kio. |
 | `max_fields` | 10 000 | rejet (en-tête CSV : arrêt) |
-| `max_depth` | 64 | imbrication JSON ou XML plus profonde : rejet |
+| `max_depth` | 64 | imbrication JSON ou XML plus profonde : rejet (en XML, le reste de l'enregistrement est seulement parcouru) |
 
 ## Codes
 

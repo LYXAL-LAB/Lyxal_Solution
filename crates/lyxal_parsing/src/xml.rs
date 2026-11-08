@@ -176,6 +176,7 @@ impl<R: Read> XmlReader<R> {
         start: &BytesStart<'_>,
         empty: bool,
         line: u64,
+        start_position: u64,
     ) -> Result<Building, ParseError> {
         self.count += 1;
         let limits = self.options.limits;
@@ -197,8 +198,12 @@ impl<R: Read> XmlReader<R> {
         push_attributes(&mut building, start, &limits);
         if empty {
             building.stack.clear();
+            self.check_size(&mut building, start_position);
             return Ok(building);
         }
+        // Une fois l'enregistrement rejeté, le reste de sa structure est parcouru sans chemins
+        // ni valeurs : la profondeur restante est seulement comptée
+        let mut skipping: Option<usize> = None;
         loop {
             self.buf.clear();
             let max_record_bytes = limits.max_record_bytes;
@@ -209,6 +214,34 @@ impl<R: Read> XmlReader<R> {
                     return Err(map_error(error, line, max_record_bytes));
                 }
             };
+            if building.rejection.is_some() {
+                let depth = skipping.get_or_insert_with(|| {
+                    let open = building.stack.len();
+                    building.stack = Vec::new();
+                    building.fields = Vec::new();
+                    open
+                });
+                match event {
+                    Event::Start(_) => *depth += 1,
+                    Event::End(_) => {
+                        *depth = depth.saturating_sub(1);
+                        if *depth == 0 {
+                            break;
+                        }
+                    }
+                    Event::Eof => {
+                        return Err(ParseError::Syntax {
+                            line: Some(self.lines.load(Ordering::Relaxed) + 1),
+                            detail: format!(
+                                "fin du document dans l'élément « {} »",
+                                building.element
+                            ),
+                        })
+                    }
+                    _ => {}
+                }
+                continue;
+            }
             match event {
                 Event::Start(e) => {
                     if let Some(parent) = building.stack.last_mut() {
@@ -287,7 +320,21 @@ impl<R: Read> XmlReader<R> {
                 Event::Comment(_) | Event::Decl(_) | Event::PI(_) | Event::DocType(_) => {}
             }
         }
+        self.check_size(&mut building, start_position);
         Ok(building)
+    }
+
+    /// Rejette un enregistrement dont le texte consommé dépasse `max_record_bytes` (le budget de
+    /// lecture, avec sa marge de lecture anticipée, ne protège que la mémoire).
+    fn check_size(&self, building: &mut Building, start_position: u64) {
+        let size = self.reader.buffer_position().saturating_sub(start_position);
+        let max = self.options.limits.max_record_bytes;
+        if size > max as u64 {
+            building.reject(
+                RejectionKind::RecordTooLarge,
+                format!("enregistrement de plus de {max} octets"),
+            );
+        }
     }
 
     fn next_item(&mut self) -> Option<Result<XmlRecord, ReadFailure>> {
@@ -297,6 +344,7 @@ impl<R: Read> XmlReader<R> {
             }
             self.budget.reset();
             let line = self.line();
+            let start_position = self.reader.buffer_position();
             self.buf.clear();
             let event = match self.reader.read_event_into(&mut self.buf) {
                 Ok(event) => event.into_owned(),
@@ -331,7 +379,7 @@ impl<R: Read> XmlReader<R> {
                 }
                 continue;
             }
-            let building = match self.read_record(&start, empty, line) {
+            let building = match self.read_record(&start, empty, line, start_position) {
                 Ok(building) => building,
                 Err(error) => return Some(Err(self.fatal(error))),
             };
