@@ -11,7 +11,7 @@ DEFINE TABLE OVERWRITE notification_workflow
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE fn::notification_can({ action: "read", tenant: tenant })
+        FOR select WHERE fn::notification_can({ action: "read_config", tenant: tenant })
         FOR create, update WHERE fn::notification_can({ action: "manage", tenant: tenant })
         FOR delete NONE
     COMMENT "Parcours de notification déclenchés par événement ou par appel direct";

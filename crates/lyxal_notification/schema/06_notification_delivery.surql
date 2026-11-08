@@ -51,7 +51,9 @@ DEFINE TABLE OVERWRITE notification_suppression
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE fn::notification_can({ action: "read", tenant: tenant })
+        -- Lue par qui déclenche (contrôle au déclenchement) ; la liste de l'installation s'applique
+        -- à toutes les organisations
+        FOR select WHERE fn::notification_can({ action: "read_config", tenant: tenant })
         FOR create WHERE fn::notification_can({ action: "manage", tenant: tenant }) OR fn::notification_can({ action: "worker", tenant: tenant })
         FOR update, delete WHERE fn::notification_can({ action: "manage", tenant: tenant })
     COMMENT "Adresses à ne plus contacter (rejet définitif, plainte, désabonnement, manuel)";

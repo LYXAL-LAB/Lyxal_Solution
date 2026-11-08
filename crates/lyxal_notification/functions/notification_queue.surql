@@ -63,13 +63,13 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_claim($params: object) {
         WHERE status IN ["queued", "running"] AND attempts < max_attempts AND next_retry_at <= $now AND (locked_until IS NONE OR locked_until < $now)
         ORDER BY next_retry_at LIMIT $p.limit);
     -- Réservation conditionnelle : si un autre worker l'a prise entre-temps, l'étape est ignorée
-    LET $token = <string> rand::uuid::v7();
+    LET $claim = <string> rand::uuid::v7();
     FOR $job IN $due {
         UPDATE $job SET status = "running", locked_until = $now + duration::from_secs($p.lease_seconds),
-            claim_token = $token, worker_id = $p.worker_id, attempts += 1
+            claim_token = $claim, worker_id = $p.worker_id, attempts += 1
             WHERE status IN ["queued", "running"] AND attempts < max_attempts AND (locked_until IS NONE OR locked_until < $now);
     };
-    LET $claimed = (SELECT * FROM notification_job WHERE claim_token = $token ORDER BY next_retry_at);
+    LET $claimed = (SELECT * FROM notification_job WHERE claim_token = $claim ORDER BY next_retry_at);
     RETURN fn::result_ok(array::map($claimed, |$job| fn::notification_job_payload({ job: $job })));
 } COMMENT "Réserve jusqu'à limit étapes dues ({ worker_id, limit, lease_seconds }) et renvoie tout le nécessaire au rendu ; les étapes dont le secret a expiré sont annulées. Permission notification.worker";
 

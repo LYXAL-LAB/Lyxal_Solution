@@ -9,7 +9,7 @@ DEFINE TABLE OVERWRITE notification_template
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE fn::notification_can({ action: "read", tenant: tenant })
+        FOR select WHERE fn::notification_can({ action: "read_config", tenant: tenant })
         FOR create, update WHERE fn::notification_can({ action: "manage", tenant: tenant })
         FOR delete NONE
     COMMENT "Gabarit d'une étape de parcours";
@@ -50,7 +50,7 @@ DEFINE TABLE OVERWRITE notification_template_locale
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE fn::notification_can({ action: "read", tenant: template.tenant })
+        FOR select WHERE fn::notification_can({ action: "read_config", tenant: template.tenant })
         FOR create, update, delete WHERE fn::notification_can({ action: "manage", tenant: template.tenant })
     COMMENT "Version d'un gabarit dans une langue";
 

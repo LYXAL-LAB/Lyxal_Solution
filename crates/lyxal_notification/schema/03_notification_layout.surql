@@ -8,7 +8,7 @@ DEFINE TABLE OVERWRITE notification_layout
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE fn::notification_can({ action: "read", tenant: tenant })
+        FOR select WHERE fn::notification_can({ action: "read_config", tenant: tenant })
         FOR create, update WHERE fn::notification_can({ action: "manage", tenant: tenant })
         FOR delete NONE
     COMMENT "Mises en page HTML et texte (contenu inséré par {{ content }})";
