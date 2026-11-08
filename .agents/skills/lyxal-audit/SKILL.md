@@ -143,7 +143,7 @@ Si le module comporte un crate Rust, inspecter `Cargo.toml` et `src/**/*.rs` :
 
 ### Contrôle 7 — Conformité Cryptographique (`lyxal_crypto`) [OBLIGATOIRE]
 1. Inspecter `Cargo.toml` et les imports `use` dans `src/` :
-   - **Violation P0** si un module métier importe directement `argon2`, `bcrypt`, `hmac`, `sha2`, `blake3`, `aes_gcm`, `hkdf` ou utilise `rand::thread_rng()`.
+   - **Violation P0** si un module métier importe directement `argon2`, `bcrypt`, `hmac`, `sha1`, `sha2`, `blake3`, `aes_gcm`, `hkdf`, `totp-rs` ou utilise `rand::thread_rng()`.
    - Toute opération cryptographique dans un module métier doit passer par `lyxal_crypto` (`hash`, `password`, `hmac`, `kdf`, `CryptoEngine` avec `SecretContext` / `EncryptedEnvelope`) et `rand_core::OsRng`.
 
 ### Contrôle 7 bis — Zéro Dette (régime pré-production, [`AGENTS.md` §0](../../AGENTS.md)) [OBLIGATOIRE]

@@ -141,6 +141,7 @@ Le contrat complet est documenté dans `crates/lyxal_crypto/API_CONTRACT.md`.
 | **SHA-256** | `hash` | `sha256()`, `sha256_hex()`, `Sha256Hasher` |
 | **BLAKE3** | `hash` | `blake3()`, `blake3_hex()`, `Blake3Hasher` |
 | **Argon2id** | `password` | `hash_password()`, `verify_password()`, `PasswordHash::parse`, `PasswordHash::needs_rehash` |
+| **TOTP (RFC 6238)** | `totp` | `TotpSecret`, `TotpConfig`, `totp_generate()`, `totp_verify()`, `totp_uri()` |
 | **HMAC-SHA256** | `hmac` | `HmacKey`, `sign_hmac_sha256()`, `verify_hmac_sha256()` |
 | **HKDF-SHA256** | `kdf` | `hkdf_sha256()` (retourne `SecretBytes`) |
 | **Gestion de clés & Trousseaux** | `key`, `key_resolver`, `providers` | `EncryptionKey`, `KeyId`, `KeyRingBuilder`, `KeyRing`, `KeyUse`, `KeyResolver`, `StaticKeyResolver`, `EnvironmentKeyProvider`, `FileKeyProvider` |
@@ -176,6 +177,8 @@ lyxal_crypto
 
 7. **CSPRNG** : utiliser `rand_core::OsRng`. Il est interdit d'utiliser `rand::thread_rng()` ou tout PRNG déterministe pour la génération de matériel cryptographique.
 
+8. **Codes TOTP (double facteur)** : utiliser `lyxal_crypto::totp::{TotpSecret, totp_generate, totp_verify, totp_uri}`. Il est interdit d'importer directement `sha1`, `totp-rs` ou toute autre crate TOTP/HOTP dans un module métier.
+
 ### Contextes AAD Déterministes
 
 En mode lié (recommandé pour toute donnée multi-tenant et applicative), chaque valeur chiffrée doit dériver son AAD d'un `SecretContext` strict via `SecretContext::with_tenant` :
@@ -204,7 +207,7 @@ Ce format est documenté dans `crates/lyxal_crypto/ENVELOPE_FORMAT_V2.md`. L'anc
 
 Il est **strictement interdit** :
 
-* d'importer directement dans un module métier une crate crypto (`argon2`, `hmac`, `sha2`, `blake3`, `aes-gcm`, `hkdf`) si la primitive équivalente existe dans `lyxal_crypto` ;
+* d'importer directement dans un module métier une crate crypto (`argon2`, `hmac`, `sha1`, `sha2`, `blake3`, `aes-gcm`, `hkdf`, `totp-rs`) si la primitive équivalente existe dans `lyxal_crypto` ;
 * de réimplémenter localement une primitive déjà fournie par `lyxal_crypto` ;
 * de créer une variante locale pour éviter d'appeler `lyxal_crypto`.
 
@@ -553,7 +556,7 @@ Avant toute implémentation, Antigravity doit vérifier les points suivants.
 ## Cryptographie (`lyxal_crypto`)
 
 * [ ] Toute opération crypto utilise exclusivement `lyxal_crypto`.
-* [ ] Aucune crate crypto (`argon2`, `hmac`, `sha2`, `blake3`, `aes-gcm`, `hkdf`) n'est importée directement dans le module métier.
+* [ ] Aucune crate crypto (`argon2`, `hmac`, `sha1`, `sha2`, `blake3`, `aes-gcm`, `hkdf`, `totp-rs`) n'est importée directement dans le module métier.
 * [ ] Les secrets sont manipulés sous forme de types sensibles opaques (`SecretBytes`, `SecretString`).
 * [ ] L'accès aux secrets bruts est strictement intentionnel via `.expose_secret()` (zéro fuite en `Debug`).
 * [ ] Les mots de passe sont hashés et vérifiés via `lyxal_crypto::password` (`PasswordHash`).
