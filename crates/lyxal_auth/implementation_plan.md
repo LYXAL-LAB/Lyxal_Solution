@@ -20,7 +20,7 @@ Suite : lot 4 (double facteur), lot 5 (bascule de `lyxal_catalogue` et
 | E1 | Clé de signature des jetons d'accès : **chaîne aléatoire de 32 caractères** (`A-Z a-z 0-9 _ -`, 192 bits, `OsRng`) utilisée telle quelle comme clé HS256, au lieu d'une clé binaire | `DEFINE ACCESS … KEY '…'` attend un texte ; même choix que la clé `catalogue_sync` déjà en place. La signature passe par `lyxal_crypto::hmac` (`HmacKey` de 32 octets = les 32 caractères) |
 | E2 | **Deux accès SurrealDB en alternance** (`lyxal_auth_a`, `lyxal_auth_b`) au lieu d'un seul `lyxal_auth` | Une rotation de clé sans couper les sessions : la nouvelle clé va dans l'accès inactif, qui devient actif ; l'ancien reste valable le temps de vie d'un jeton d'accès (15 min). SurrealDB n'accepte qu'une clé par accès |
 | E3 | Appareil de la session (adresse IP, agent, dernière activité) dans un objet `client` de `auth_session`, sans table `auth_session_device` | Une ligne par session, aucune requête de jointure ; la table séparée n'apportait rien en V1 |
-| E4 | `auth_session` porte un **sujet** : identité **ou** application (`identity` devient optionnel, `application` ajouté) | Les comptes de service (`client_credentials`) et les clés d'API obtiennent des sessions contrôlées par le même `fn::auth_session_valid` |
+| E4 | `auth_session` porte un **sujet** : identité **ou** application (`identity` devient optionnel, `application` ajouté) ; `fn::auth_session_valid`, `fn::auth_context` et le calcul des permissions sont étendus aux applications (§4) | Les comptes de service (`client_credentials`) obtiennent des sessions contrôlées par le même mécanisme de révocation et de version des droits |
 | E5 | Codes et liens à usage unique publiés comme l'invitation du lot 2 : champ transitoire `delivery` (illisible) publié par `DEFINE EVENT` puis effacé | Le secret scellé (`{ action_url, code }`) n'est jamais stocké, même chiffré ; même mécanisme éprouvé au lot 2 |
 
 ## 1. Périmètre
@@ -64,10 +64,10 @@ seulement (session système ou permission vérifiée), lecture limitée au sujet
 | `auth_refresh_token` | `session` (`REFERENCE`, cascade), `family`, `token_hash` (BLAKE3), `state` (`active`, `used`, `revoked`), `used_at`, `expires_at` | unique `token_hash` ; un seul `active` par session |
 | `auth_login_failure` | `key_hash` (BLAKE3 de l'identifiant normalisé, ou de l'adresse IP), `kind` (`identifier`, `ip`), `failures`, `window_start`, `locked_until` | unique (`kind`, `key_hash`) ; aucune donnée en clair |
 | `auth_required_action` | `identity` (`REFERENCE`, cascade), `action` (`verify_email`, `update_password`, `accept_terms` ; `configure_mfa` au lot 4), `reason`, `created_at` | unique (`identity`, `action`) |
-| `auth_application` | `tenant` (option), `client_id` (texte public aléatoire), `name`, `type` (`spa`, `native`, `machine`), `redirect_uris` (tableau, contrôlé par `lyxal_core`), `token_ttl` (objet), `state` | unique `client_id` |
+| `auth_application` | `tenant` (option), `client_id` (texte public aléatoire), `name`, `type` (`spa`, `native`, `machine`), `redirect_uris` (tableau, contrôlé par `lyxal_core`), `token_ttl` (objet), `state` (`active`, `disabled`), `not_before`, `permissions_version` (incrémenté par les événements de retrait de droit, comme pour une identité) | unique `client_id` |
 | `auth_application_secret` | `application` (`REFERENCE`, cascade), `secret_hash` (BLAKE3), `prefix` (8 caractères affichables), `expires_at`, `revoked_at` | plusieurs par application (rotation sans coupure) |
 | `auth_api_key` | `identity` (`REFERENCE`, cascade), `name`, `key_hash` (BLAKE3), `prefix`, `permissions` (sous-ensemble des droits du propriétaire), `organization` (option), `expires_at`, `last_used_at`, `revoked_at` | unique `key_hash` |
-| `auth_signing_key` | `purpose` (`access_token`, `code_pepper`), `slot` (`a`, `b`, pour `access_token`), `secret` (`enc:v2` sous `SecretContext::global("lyxal_auth.<purpose>")`, illisible), `state` (`active`, `previous`, `retired`), `activated_at` | un seul `active` par `purpose` |
+| `auth_signing_key` | `purpose` (`access_token`, `code_pepper`), `slot` (`a`, `b`, pour `access_token`), `secret` (`enc:v2` sous `SecretContext::global("lyxal_auth.<purpose>")`, illisible), `state` (`active`, `previous`, `retired`), `activated_at`, `deactivated_at`, `reusable_after` (`deactivated_at` + cache des émetteurs + durée maximale d'un jeton d'accès) | un seul `active` par `purpose` ; rotation refusée tant que l'emplacement inactif n'est pas réutilisable (§4) |
 | `auth_pending_address_change` | `identity` (`REFERENCE`, cascade), `new_address`, `flow`, `expires_at` | une seule en attente par identité |
 
 Relation : `auth_has_role` étendue — `IN auth_identity | auth_member_of | auth_application`
@@ -126,7 +126,7 @@ SurrealDB
   DEFINE ACCESS lyxal_auth_a|b ON DATABASE TYPE RECORD WITH JWT ALGORITHM HS256 KEY '<clé>'
     AUTHENTICATE { IF !fn::auth_session_valid({}).valid { THROW "AUTH_SESSION_REVOKED" }; RETURN $auth; }
     DURATION FOR SESSION 15m
-  + contrôle à chaque opération par fn::auth_session_valid (lot 2, inchangé)
+  + contrôle à chaque opération par fn::auth_session_valid (lot 2, étendue aux applications)
 ```
 
 * Durées : politique (`session.access_seconds`, `idle_seconds`, `absolute_seconds`) ; le
@@ -134,11 +134,27 @@ SurrealDB
 * Changement d'organisation active : nouvelle session pour la même identité (membre actif
   exigé), l'ancienne révoquée.
 * Comptes de service : `client_id` + secret → session `service` sans jeton de renouvellement.
+* **Sujet application** : `fn::auth_session_valid` (lot 2) est étendue — une session porte une
+  identité **ou** une application ; pour une application, l'application doit être `active`, la
+  session postérieure à son `not_before`, et le claim `pv` à jour de son `permissions_version`
+  (mêmes codes `AUTH_SESSION_*`). `fn::auth_context` renvoie `application` à côté de
+  `identity`. Les permissions d'une application sont calculées par la nouvelle fonction
+  `fn::auth_application_permissions` (rôles reçus par l'application, rôles composites), sur le
+  modèle de `fn::auth_identity_permissions`. Les événements de version des droits (retrait d'un
+  rôle, d'une permission ou d'une inclusion) incrémentent aussi les applications concernées.
 * Clés d'API : échange contre une session `api_key` dont les permissions sont l'intersection de
   celles de la clé et de celles du propriétaire.
 * Rotation des clés : commande de l'hôte ou fonction système ; la clé est générée en Rust
   (`OsRng`), scellée, l'accès inactif redéfini, puis marqué actif. Chaque instance relit la clé
   active (cache de 30 s) ; un jeton signé avec l'ancienne clé reste accepté par l'ancien accès.
+* **Garde de réutilisation d'un emplacement** : l'emplacement qui devient inactif reçoit
+  `reusable_after = maintenant + 30 s (cache des émetteurs) + session.access_seconds maximal`.
+  `fn::auth_signing_key_rotate` refuse (`AUTH_SIGNING_KEY_ROTATION_TOO_SOON`) tant que l'emplacement
+  à écraser n'a pas atteint `reusable_after` ; la rotation est sérialisée par une mise à jour
+  conditionnelle (état et date de l'emplacement relus dans la même instruction). Un jeton émis
+  avant une rotation, y compris par une instance au cache encore ancien, reste donc vérifiable
+  jusqu'à son expiration. Révocation d'urgence d'une clé compromise : option `--force` de la
+  commande, qui écrase l'emplacement et coupe volontairement ses jetons.
 
 ## 5. Fonctions publiques (`functions/`, `fn::auth_*($params: object)`)
 
@@ -159,7 +175,8 @@ vérification calculés en Rust) ; les fonctions « soi-même » par l'identité
 | Applications | `auth_application_create`, `_update`, `_list`, `_secret_add` (empreinte), `_secret_revoke`, `auth_service_session_create` | `auth.application.manage` / `auth.organization.application.manage` ; système |
 | Clés d'API | `auth_api_key_create` (empreinte), `_list`, `_revoke`, `auth_api_key_session_create` | identité (`auth.self.manage`) ; système |
 | Adresses | `auth_address_change_request`, `auth_address_change_confirm`, `auth_address_verify` | système |
-| Clés de signature | `auth_signing_key_get_active`, `auth_signing_key_rotate` (secret scellé fourni par Rust) | système |
+| Contexte (étendu) | `auth_session_valid`, `auth_context` (sujet identité ou application), `auth_application_permissions` | tous ; système |
+| Clés de signature | `auth_signing_key_get_active`, `auth_signing_key_rotate` (secret scellé fourni par Rust, garde de réutilisation) | système |
 | Premier administrateur | `auth_setup_start` (refus s'il existe déjà un `platform_admin` : `AUTH_SETUP_DONE`) | système |
 | Purge | `auth_purge` (parcours, codes, sessions expirées, jetons, compteurs, invitations expirées, identités `deleted` au-delà de la conservation) | système |
 
@@ -232,7 +249,8 @@ Nouveaux codes : `AUTH_CREDENTIALS_INVALID` (message unique), `AUTH_PASSWORD_POL
 `AUTH_CODE_INVALID`, `AUTH_CODE_EXPIRED`, `AUTH_REQUIRED_ACTION_PENDING`,
 `AUTH_REGISTRATION_CLOSED`, `AUTH_SETUP_DONE`, `AUTH_SETUP_TOKEN_INVALID`,
 `AUTH_APPLICATION_NOT_FOUND`, `AUTH_CLIENT_CREDENTIALS_INVALID`, `AUTH_API_KEY_INVALID`,
-`AUTH_API_KEY_EXPIRED`, `AUTH_ADDRESS_CHANGE_PENDING`, `AUTH_SIGNING_KEY_UNAVAILABLE` (fr et en,
+`AUTH_API_KEY_EXPIRED`, `AUTH_ADDRESS_CHANGE_PENDING`, `AUTH_SIGNING_KEY_UNAVAILABLE`,
+`AUTH_SIGNING_KEY_ROTATION_TOO_SOON`, `AUTH_APPLICATION_INACTIVE` (fr et en,
 catégorie, statut HTTP, réessayable). Hôte : `SERVER_AUTH_DISABLED`.
 
 ## 9. Événements
@@ -259,7 +277,8 @@ Réutilisées : `fn::validation_object_execute` (`email`, `required_string`, `uu
   (seuil, verrouillage, remise à zéro, identifiant inconnu compté pareil) ; renouvellement
   (rotation, réutilisation → famille révoquée) ; révocations (une, toutes, `not_before`) ;
   changement d'organisation (non-membre refusé) ; applications, secrets, clés d'API
-  (permissions limitées au propriétaire) ; actions imposées ; rattachement par domaine ;
+  (permissions limitées au propriétaire) ; session d'application (valide, application désactivée,
+  `not_before`, droits dépassés) ; garde de rotation (seconde rotation trop tôt refusée) ; actions imposées ; rattachement par domaine ;
   fonctions système refusées à une identité ; écritures filtrées → `AUTH_WRITE_FORBIDDEN` ;
   aucun secret lisible (champs illisibles).
 * **Rust** : politique de mot de passe, empreinte factice (durée comparable), JWT (format,
