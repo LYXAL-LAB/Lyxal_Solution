@@ -91,8 +91,9 @@ AES-256-CBC maison), idempotence par index unique SurrealDB (Novu : cache Redis 
 
 ## 5. Questions pour le plan
 
-1. **Projets de départ** : le CTO pensait à deux ou trois dépôts précis ; les comparer à la
-   proposition Novu + Postal + Apprise.
+1. ~~Projets de départ~~ : **tranché** par le CTO : Novu, Postal et Apprise ; les fonctionnalités
+   de la version payante de Novu sont aussi reprises (reconçues, aucun code repris). Inventaire
+   complet et lots : [`MODELE_SOURCES.md`](MODELE_SOURCES.md).
 2. **Transport du code ou du lien** : le plan `lyxal_auth` interdit tout secret en clair dans un
    événement. Options : code scellé `enc:v2` dans l'événement ; relais par l'hôte ; référence
    relue par une fonction publique de `lyxal_auth`.
