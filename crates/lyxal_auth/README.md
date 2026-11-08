@@ -89,7 +89,7 @@ une identité ou une organisation **invisible** pour l'appelant est détecté pa
 `auth.role.unassigned`, `auth.invitation.created`, `auth.invitation.accepted`,
 `auth.invitation.revoked` — publiés par `DEFINE EVENT` dans la transaction de la mutation.
 
-`auth.invitation.created` suit le contrat de `lyxal_notification` (son plan, §2.1) : le lien
+`auth.invitation.created` suit le contrat de `lyxal_notification` (son `README.md` §4) : le lien
 d'acceptation y voyage **scellé** (`enc:v2`) sous le contexte
 `with_tenant(<clé de l'organisation>, "lyxal_auth", "auth_invitation_created", <event_id>, "secret")`.
 Il arrive dans le champ transitoire `delivery` (illisible), publié puis effacé dans la même

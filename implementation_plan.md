@@ -9,8 +9,8 @@ Plan placé à la racine comme les lots précédents, supprimé une fois le prog
 **Deux niveaux de validation** (`AGENTS.md` §3) : ce plan fixe le programme (architecture,
 modèle, lots, décisions). **Chaque lot fait ensuite l'objet de son propre plan détaillé**, soumis
 au CTO avant toute ligne de code : contrats Rust `XxxParams` / `XxxResult` (champs et types),
-signatures SurrealQL, codes d'erreurs, tests. Le lot 1 est réalisé (contrat dans
-`crates/lyxal_crypto/API_CONTRACT.md`).
+signatures SurrealQL, codes d'erreurs, tests. Les lots 1, 2 et 2 bis sont réalisés (état dans les
+`README.md` des crates concernés).
 
 ## 0. Décisions du CTO (8 novembre 2026)
 
@@ -185,7 +185,7 @@ code ni jeton en clair dans une charge utile.
 | :- | :--- | :--- |
 | **1** | **Réalisé.** `lyxal_crypto::totp` : RFC 6238 (HMAC-SHA1 et SHA-256, 6 à 8 chiffres, fenêtre, temps constant, `OsRng`, URI `otpauth://`). Contrat : `crates/lyxal_crypto/API_CONTRACT.md` § TOTP | `lyxal_crypto` |
 | **2** | **Réalisé.** Organisations et domaines vérifiés, schéma des traits, identités, identifiants et adresses, permissions déclarées, rôles (installation, organisation, composites) et relations `auth_member_of` / `auth_has_role` / `auth_role_includes` / `auth_role_grants`, invitations, politique, table `auth_session` et contrôle des droits (`fn::auth_context`, `fn::auth_has_permission`, version des droits). État : `crates/lyxal_auth/README.md` | `lyxal_auth`, `apps/lyxal-server` |
-| **2 bis** | Partie e-mail de `lyxal_notification` (D8), après le lot 2 : plan détaillé `crates/lyxal_notification/implementation_plan.md` | `lyxal_notification` (nouveau), `apps/lyxal-server` |
+| **2 bis** | **Réalisé.** Partie e-mail de `lyxal_notification` (D8) : parcours, gabarits par langue, file d'envoi SMTP avec tentatives, liste de suppression, consommation des événements `auth.*` (secrets scellés), hébergement par `lyxal-server`. État : `crates/lyxal_notification/README.md` | `lyxal_notification` (nouveau), `apps/lyxal-server` |
 | **3** | Authentification par mot de passe et parcours (inscription sur invitation ou par administrateur, connexion, vérification d'adresse, récupération, changement d'adresse), sessions et jetons, accès SurrealDB `lyxal_auth`, anti-force-brute, actions imposées, applications et comptes de service, routes HTTP `/auth/*`, worker de purge | `lyxal_auth`, `apps/lyxal-server` |
 | **4** | Double facteur : TOTP, passkeys (`webauthn-rs`), codes de secours, montée en assurance (AAL2) pour les actions sensibles | `lyxal_auth`, `apps/lyxal-server` |
 | **5** | Bascule des modules : `lyxal_catalogue` et `lyxal_pipeline_ingestion` déclarent leurs permissions ; suppression de `catalogue_session`, `ingestion_session`, des fonctions `*_session_identity` et de l'accès `lyxal_catalogue_sync` ; leurs `PERMISSIONS` passent par `fn::auth_has_permission` ; agent de synchronisation = compte de service `lyxal_auth` (**rupture coordonnée**, tous les tests mis à jour) | `lyxal_catalogue`, `lyxal_pipeline_ingestion`, `apps/lyxal-server` |

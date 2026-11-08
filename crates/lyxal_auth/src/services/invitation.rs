@@ -2,7 +2,7 @@
 //!
 //! Le jeton (32 octets de `OsRng`, Base64 URL sans remplissage) n'est jamais enregistré : la base
 //! reçoit son empreinte BLAKE3 et le lien d'acceptation scellé (`enc:v2`) sous le contexte du
-//! contrat d'événement de `lyxal_notification` (§2.1) :
+//! contrat d'événement de `lyxal_notification` (son `README.md` §4) :
 //! `SecretContext::with_tenant(<clé de l'organisation>, "lyxal_auth", "auth_invitation_created",
 //! <event_id>, "secret")`. L'identifiant d'événement (UUID v7) est alloué avant le scellement et
 //! transmis à `fn::auth_invitation_create`, qui publie l'événement avec ce même identifiant.

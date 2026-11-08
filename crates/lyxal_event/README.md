@@ -19,6 +19,8 @@ résultat, définitions d'erreurs) et `lyxal_surreal` (transport).
 * **Au moins une fois** : un événement publié est livré à chaque abonnement actif concerné,
   y compris après un crash du worker. Un handler peut donc recevoir deux fois la même
   livraison et doit être idempotent.
+* **Abonnement suspendu** (`is_active = false`) : ses livraisons sont créées et attendent sa
+  réactivation ; un événement publié pendant la suspension n'est pas perdu.
 * **Ordre et curseur contigu par abonnement** : chaque abonnement a son propre flux de
   séquences. Son curseur durable (`last_persisted_cursor`) n'avance que lorsque toutes les
   séquences précédentes sont résolues (livrées, en dead letter ou abandonnées).
