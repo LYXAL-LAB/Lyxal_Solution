@@ -15,7 +15,7 @@ chaque lot est une PR distincte, exécutée selon ce plan, tout écart étant si
 | D2 | `lyxal_crypto` étendu : **TOTP** en V1 (lot 1) ; **signature asymétrique** des jetons en V2 (Lyxal fournisseur OIDC pour des tiers) |
 | D3 | Passkeys par la bibliothèque `webauthn-rs` (auditée, utilisée par Kanidm et Rauthy), dépendance de `lyxal_auth` |
 | D4 | Isolation par champ de locataire contrôlé par les `PERMISSIONS` de chaque table |
-| D5 | Liens identité / organisation / rôle en tables `TYPE NORMAL` à identifiant composite (pas de `TYPE RELATION`) |
+| D5 | **SurrealDB pleinement multi-modèle** : les entités sont des tables `TYPE NORMAL` (document), les associations des **tables de relation `TYPE RELATION ... ENFORCED`** (graphe). La règle « pas de `TYPE RELATION` sur les tables existantes » ([audit](docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md)) ne s'applique pas : tables neuves, et la résolution des permissions est un parcours de graphe (critère de l'audit) |
 | D6 | Lyxal fournisseur OpenID Connect pour des tiers : V2 |
 | D7 | Module `lyxal_connect` (comptes connectés sortants) créé plus tard, après `lyxal_secrets` ; `lyxal_auth` garde sa propre configuration des fournisseurs de connexion |
 
@@ -53,7 +53,37 @@ entière). Donc :
   leurs `PERMISSIONS` (`fn::auth_has_permission({ permission })`).
 * Session système (root de l'hôte) : inchangée (`$session.ac == NONE AND $auth == NONE`).
 
-### 1.3. Découpage SurrealQL / Rust / hôte
+### 1.3. SurrealDB multi-modèle
+
+| Modèle | Usage dans `lyxal_auth` |
+| :--- | :--- |
+| **Document** | identités (`traits` en objet imbriqué validé par le schéma d'identité), politique (`auth_policy` en objets imbriqués par thème), méthodes d'authentification de la session (`amr` : tableau d'objets) |
+| **Graphe** (`TYPE RELATION ... ENFORCED`, unicité par index sur `in, out`) | `auth_member_of` (identité → organisation) ; `auth_has_role` (identité, adhésion ou application → rôle) ; `auth_role_includes` (rôle → rôle, rôles composites) ; `auth_role_grants` (rôle → permission) |
+| **Liens d'enregistrement** (`record<...> REFERENCE`) | identifiants, sessions, jetons, codes rattachés à leur identité ou session, avec suppression en cascade |
+| **Événements** (`DEFINE EVENT`) | gardes d'intégrité (pas de cycle dans les rôles composites, transitions d'état) et publication `auth.*` par `fn::event_publish` |
+| **Accès** (`DEFINE ACCESS`) | vérification des jetons et révocation par `AUTHENTICATE` |
+
+Comportements vérifiés sur SurrealDB 3.3.4 (8 novembre 2026) :
+
+* une relation peut partir d'une relation : les **rôles dans une organisation** sont des arêtes
+  `adhésion → auth_has_role → rôle` ; quitter l'organisation (suppression de l'adhésion) **supprime
+  automatiquement** ses rôles (cascade Logto, sans code) ;
+* l'index unique sur `in, out` refuse une seconde adhésion à la même organisation ;
+* le parcours récursif `$role.{..8+collect+inclusive}(->auth_role_includes->auth_role)` rend tous
+  les rôles inclus, d'où les permissions par `->auth_role_grants->auth_permission` :
+
+```surql
+-- Permissions d'une identité dans l'organisation active (rôles globaux + rôles de l'adhésion)
+LET $roles = array::flatten([
+    $identity->auth_has_role->auth_role,
+    $membership->auth_has_role->auth_role
+]);
+RETURN array::distinct(array::flatten(
+    $roles.map(|$r| $r.{..8+collect+inclusive}(->auth_role_includes->auth_role))
+)->auth_role_grants->auth_permission.code);
+```
+
+### 1.4. Découpage SurrealQL / Rust / hôte
 
 | Couche | Contenu |
 | :--- | :--- |
@@ -61,7 +91,7 @@ entière). Donc :
 | Rust (`crates/lyxal_auth/src`) | hachage et vérification des mots de passe (`lyxal_crypto::password`), émission des jetons (`lyxal_crypto::hmac`), génération des codes (`OsRng`), TOTP (`lyxal_crypto`, lot 1), cérémonies passkeys (`webauthn-rs`), `LyxalModule`, store `LyxalSurrealCall`, worker de purge (`LyxalWorker`), sonde de santé |
 | Hôte (`apps/lyxal-server`) | routes HTTP `/auth/*` appelant les services Rust ; définition de l'accès `lyxal_auth` au démarrage ; configuration de la clé |
 
-### 1.4. Dépendances
+### 1.5. Dépendances
 
 `lyxal_core`, `lyxal_error`, `lyxal_surreal`, `lyxal_crypto`, `lyxal_event`, `lyxal_runtime`.
 Aucune dépendance vers un module métier (`AGENTS.md` §6). Les envois de messages (codes, liens)
@@ -75,8 +105,8 @@ Origine de chaque table : `MODELE_SOURCES.md` §2.
 
 | Lot | Tables |
 | :- | :--- |
-| 2 | `auth_organization`, `auth_organization_domain`, `auth_identity_schema`, `auth_identity`, `auth_credential_identifier`, `auth_address`, `auth_organization_member` (id `[organisation, identité]`), `auth_permission`, `auth_role`, `auth_role_permission` (id `[rôle, permission]`), `auth_role_assignment` (id `[identité, rôle, organisation \| NONE]`), `auth_organization_invitation`, `auth_policy` |
-| 3 | `auth_credential`, `auth_flow`, `auth_one_time_code`, `auth_session`, `auth_session_device`, `auth_refresh_token`, `auth_login_failure`, `auth_required_action`, `auth_application`, `auth_application_secret`, `auth_api_key`, `auth_signing_key`, `auth_pending_address_change` |
+| 2 | **entités** : `auth_organization`, `auth_organization_domain`, `auth_identity_schema`, `auth_identity`, `auth_credential_identifier`, `auth_address`, `auth_permission`, `auth_role`, `auth_organization_invitation`, `auth_policy` ; **relations** : `auth_member_of` (identité → organisation), `auth_has_role` (identité ou adhésion → rôle), `auth_role_includes` (rôle → rôle), `auth_role_grants` (rôle → permission) |
+| 3 | **entités** : `auth_credential`, `auth_flow`, `auth_one_time_code`, `auth_session`, `auth_session_device`, `auth_refresh_token`, `auth_login_failure`, `auth_required_action`, `auth_application`, `auth_application_secret`, `auth_api_key`, `auth_signing_key`, `auth_pending_address_change` ; **relation** : `auth_has_role` étendue aux applications (comptes de service) |
 | 4 | (MFA dans `auth_credential` : types `totp`, `passkey`, `recovery_code`) |
 
 Règles transverses :
