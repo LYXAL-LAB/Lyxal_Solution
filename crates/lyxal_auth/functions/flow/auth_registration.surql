@@ -78,7 +78,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_registration_start($params: object) {
     IF array::len(SELECT VALUE id FROM auth_credential_identifier WHERE type = "email" AND value = $invitation.email LIMIT 1) > 0 {
         RETURN fn::error_result("AUTH_IDENTIFIER_TAKEN", $p.language, { type: "email" });
     };
-    LET $flow = fn::auth_flow_start({ type: "registration", organization: $invitation.organization, invitation: $invitation.id, address: $invitation.email, client: $p.client });
+    LET $flow = fn::auth_flow_start({ type: "registration", organization: <string> $invitation.organization, invitation: <string> $invitation.id, address: $invitation.email, client: $p.client });
     IF !$flow.ok { RETURN $flow; };
     RETURN fn::result_ok({ flow: $flow.data.id, email: $invitation.email, organization: $invitation.organization, kind: "invitation" });
 } COMMENT "Démarre une inscription ({ invitation_token_hash } ou { setup_link_hash }) : invitation en attente ou lien d'installation valide ; { flow, email, organization, kind }. Session système";
@@ -117,8 +117,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_registration_complete($params: object) {
     LET $traits = object::extend($p.traits, { email: $flow.address });
     LET $created = fn::auth_identity_create({
         traits: $traits,
-        organization: $invitation.organization,
-        roles: $invitation.roles ?? [],
+        organization: IF $invitation == NONE { NONE } ELSE { <string> $invitation.organization },
+        roles: array::map($invitation.roles ?? [], |$r| <string> $r),
         language: $p.language
     });
     IF !$created.ok { RETURN $created; };
@@ -129,7 +129,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_registration_complete($params: object) {
     } ELSE {
         UPDATE $invitation.id SET state = "accepted", accepted_by = $identity, accepted_at = time::now();
     };
-    LET $password = fn::auth_password_set({ identity: $identity, secret: $p.secret, language: $p.language });
+    LET $password = fn::auth_password_set({ identity: <string> $identity, secret: $p.secret, language: $p.language });
     IF !$password.ok { THROW $password.error.code; };
     -- L'invitation ou le lien reçu à cette adresse en prouve la possession
     UPDATE auth_address SET verified_at = time::now() WHERE identity = $identity AND channel = "email" AND value = $flow.address;
@@ -196,7 +196,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_address_change_request($params: object) {
     };
     -- Une seule demande en attente : la précédente est remplacée
     DELETE auth_pending_address_change WHERE identity = $p.identity;
-    LET $flow = fn::auth_flow_start({ type: "address_change", identity: $p.identity, address: $value, client: $p.client });
+    LET $flow = fn::auth_flow_start({ type: "address_change", identity: <string> $p.identity, address: $value, client: $p.client });
     IF !$flow.ok { RETURN $flow; };
     LET $pending = (CREATE ONLY auth_pending_address_change CONTENT { identity: $p.identity, new_address: $value, flow: $flow.data.id, expires_at: $flow.data.expires_at });
     IF $pending == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_pending_address_change" }); };

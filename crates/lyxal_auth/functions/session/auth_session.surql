@@ -42,12 +42,14 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_open($params: object) -> object {
     LET $rights = fn::auth_subject_permissions({ identity: $params.identity, application: $params.application, organization: $params.organization, limit: $params.limit });
     IF $rights.code IS NOT NONE { RETURN { code: $rights.code }; };
     LET $policy = fn::auth_policy_get({ organization: IF $params.organization IS NONE { NONE } ELSE { <string> $params.organization } }).data ?? {};
-    LET $access = $policy.session.access_seconds ?? 900;
+    LET $access_ttl = $policy.session.access_seconds ?? 900;
     LET $idle = $policy.session.idle_seconds ?? 43200;
     LET $absolute = $policy.session.absolute_seconds ?? 2592000;
     LET $refresh_ttl = $policy.refresh.ttl_seconds ?? 2592000;
-    LET $expires_at = IF $params.kind = "interactive" { $now + duration::from_secs($absolute) } ELSE { $now + duration::from_secs($access) };
-    LET $session = (CREATE ONLY type::record("auth_session", string::replace(<string> rand::uuid::v7(), "-", "")) CONTENT {
+    LET $computed = IF $params.kind = "interactive" { $now + duration::from_secs($absolute) } ELSE { $now + duration::from_secs($access_ttl) };
+    -- Plafond (changement d'organisation : jamais au-delà de la session d'origine)
+    LET $expires_at = IF $params.expires_cap IS NONE { $computed } ELSE { array::min([$computed, $params.expires_cap]) };
+    LET $sess = (CREATE ONLY type::record("auth_session", string::replace(<string> rand::uuid::v7(), "-", "")) CONTENT {
         identity: $params.identity,
         application: $params.application,
         api_key: $params.api_key,
@@ -58,18 +60,17 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_open($params: object) -> object {
         client: $params.client ?? {},
         access_slot: $params.access_slot,
         permissions_version: $rights.version,
-        idle_expires_at: IF $params.kind = "interactive" { $now + duration::from_secs($idle) } ELSE { $expires_at },
+        idle_expires_at: IF $params.kind = "interactive" { array::min([$now + duration::from_secs($idle), $expires_at]) } ELSE { $expires_at },
         expires_at: $expires_at
     });
-    IF $session == NONE { RETURN { code: "AUTH_WRITE_FORBIDDEN" }; };
-    LET $refresh_expires_at = IF $params.refresh_token_hash IS NONE { NONE } ELSE {
-        LET $until = array::min([$now + duration::from_secs($refresh_ttl), $expires_at]);
-        CREATE auth_refresh_token CONTENT { session: $session.id, token_hash: string::lowercase($params.refresh_token_hash), expires_at: $until };
-        RETURN $until;
+    IF $sess == NONE { RETURN { code: "AUTH_WRITE_FORBIDDEN" }; };
+    LET $refresh_expires_at = IF $params.refresh_token_hash IS NONE { NONE } ELSE { array::min([$now + duration::from_secs($refresh_ttl), $expires_at]) };
+    IF $refresh_expires_at IS NOT NONE {
+        CREATE auth_refresh_token CONTENT { session: $sess.id, token_hash: string::lowercase($params.refresh_token_hash), expires_at: $refresh_expires_at };
     };
     RETURN {
         code: NONE,
-        session: $session.id,
+        session: $sess.id,
         identity: $params.identity,
         application: $params.application,
         organization: $params.organization,
@@ -77,12 +78,12 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_open($params: object) -> object {
         permissions: $rights.permissions,
         version: $rights.version,
         aal: 1,
-        access_seconds: $access,
-        idle_expires_at: $session.idle_expires_at,
+        access_seconds: $access_ttl,
+        idle_expires_at: $sess.idle_expires_at,
         expires_at: $expires_at,
         refresh_expires_at: $refresh_expires_at
     };
-} COMMENT "Crée une session ({ identity | application, api_key, kind, organization, amr, client, access_slot, refresh_token_hash, limit }) et son jeton de renouvellement ; renvoie ce que porte le jeton d'accès";
+} COMMENT "Crée une session ({ identity | application, api_key, kind, organization, amr, client, access_slot, refresh_token_hash, limit, expires_cap }) et son jeton de renouvellement ; renvoie ce que porte le jeton d'accès";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_session_create
@@ -138,55 +139,55 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_refresh($params: object) {
     LET $p = $report.value;
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
-    LET $token = (SELECT * FROM ONLY auth_refresh_token WHERE token_hash = string::lowercase($p.token_hash) LIMIT 1);
-    IF $token == NONE { RETURN fn::error_result("AUTH_REFRESH_INVALID", $p.language, {}); };
+    LET $refresh = (SELECT * FROM ONLY auth_refresh_token WHERE token_hash = string::lowercase($p.token_hash) LIMIT 1);
+    IF $refresh == NONE { RETURN fn::error_result("AUTH_REFRESH_INVALID", $p.language, {}); };
     -- Réutilisation d'un jeton déjà échangé : vol probable, toute la session est révoquée
-    IF $token.state = "used" {
-        UPDATE $token.session SET state = "revoked", revoked_at = $now, revoked_reason = "refresh_reused";
-        UPDATE auth_refresh_token SET state = "revoked" WHERE session = $token.session AND state = "active";
+    IF $refresh.state = "used" {
+        UPDATE $refresh.session SET state = "revoked", revoked_at = $now, revoked_reason = "refresh_reused";
+        UPDATE auth_refresh_token SET state = "revoked" WHERE session = $refresh.session AND state = "active";
         LET $published = fn::event_publish({
-            event_id: rand::uuid::v7(), event_type: "auth.refresh.reused", producer: "lyxal_auth", source: $token.session,
-            payload: { session_id: <string> $token.session, identity_id: IF $token.session.identity IS NONE { NONE } ELSE { <string> $token.session.identity } },
+            event_id: rand::uuid::v7(), event_type: "auth.refresh.reused", producer: "lyxal_auth", source: $refresh.session,
+            payload: { session_id: <string> $refresh.session, identity_id: IF $refresh.session.identity IS NONE { NONE } ELSE { <string> $refresh.session.identity } },
             metadata: {}
         });
         IF !$published.ok { THROW $published.error.code; };
         RETURN fn::error_result("AUTH_REFRESH_REUSED", $p.language, {});
     };
-    IF $token.state != "active" OR $token.expires_at <= $now { RETURN fn::error_result("AUTH_REFRESH_INVALID", $p.language, {}); };
-    LET $session = (SELECT * FROM ONLY $token.session);
-    IF $session == NONE OR $session.state != "active" OR $session.expires_at <= $now OR $session.idle_expires_at <= $now {
+    IF $refresh.state != "active" OR $refresh.expires_at <= $now { RETURN fn::error_result("AUTH_REFRESH_INVALID", $p.language, {}); };
+    LET $sess = (SELECT * FROM ONLY $refresh.session);
+    IF $sess == NONE OR $sess.state != "active" OR $sess.expires_at <= $now OR $sess.idle_expires_at <= $now {
         RETURN fn::error_result("AUTH_REFRESH_INVALID", $p.language, {});
     };
     -- Échange conditionnel : deux renouvellements simultanés avec le même jeton n'en valident qu'un
-    LET $used = (UPDATE ONLY $token.id SET state = "used", used_at = $now WHERE state = "active");
+    LET $used = (UPDATE ONLY $refresh.id SET state = "used", used_at = $now WHERE state = "active");
     IF $used == NONE { RETURN fn::error_result("AUTH_REFRESH_REUSED", $p.language, {}); };
-    LET $subject = (SELECT state, not_before FROM ONLY $session.identity);
-    IF $subject == NONE OR $subject.state != "active" OR ($subject.not_before IS NOT NONE AND $session.created_at < $subject.not_before) {
-        UPDATE $session.id SET state = "revoked", revoked_at = $now, revoked_reason = "subject_inactive";
+    LET $subject = (SELECT state, not_before FROM ONLY $sess.identity);
+    IF $subject == NONE OR $subject.state != "active" OR ($subject.not_before IS NOT NONE AND $sess.created_at < $subject.not_before) {
+        UPDATE $sess.id SET state = "revoked", revoked_at = $now, revoked_reason = "subject_inactive";
         RETURN fn::error_result("AUTH_REFRESH_INVALID", $p.language, {});
     };
-    LET $rights = fn::auth_subject_permissions({ identity: $session.identity, organization: $session.organization });
+    LET $rights = fn::auth_subject_permissions({ identity: $sess.identity, organization: $sess.organization });
     IF $rights.code IS NOT NONE {
-        UPDATE $session.id SET state = "revoked", revoked_at = $now, revoked_reason = "rights_lost";
+        UPDATE $sess.id SET state = "revoked", revoked_at = $now, revoked_reason = "rights_lost";
         RETURN fn::error_result("AUTH_REFRESH_INVALID", $p.language, {});
     };
-    LET $policy = fn::auth_policy_get({ organization: IF $session.organization IS NONE { NONE } ELSE { <string> $session.organization } }).data ?? {};
-    LET $idle = array::min([$now + duration::from_secs($policy.session.idle_seconds ?? 43200), $session.expires_at]);
-    LET $refresh_until = array::min([$now + duration::from_secs($policy.refresh.ttl_seconds ?? 2592000), $session.expires_at]);
-    UPDATE $session.id SET idle_expires_at = $idle, last_seen_at = $now, access_slot = $p.access_slot, permissions_version = $rights.version;
-    CREATE auth_refresh_token CONTENT { session: $session.id, token_hash: string::lowercase($p.new_token_hash), expires_at: $refresh_until };
+    LET $policy = fn::auth_policy_get({ organization: IF $sess.organization IS NONE { NONE } ELSE { <string> $sess.organization } }).data ?? {};
+    LET $idle = array::min([$now + duration::from_secs($policy.session.idle_seconds ?? 43200), $sess.expires_at]);
+    LET $refresh_until = array::min([$now + duration::from_secs($policy.refresh.ttl_seconds ?? 2592000), $sess.expires_at]);
+    UPDATE $sess.id SET idle_expires_at = $idle, last_seen_at = $now, access_slot = $p.access_slot, permissions_version = $rights.version;
+    CREATE auth_refresh_token CONTENT { session: $sess.id, token_hash: string::lowercase($p.new_token_hash), expires_at: $refresh_until };
     RETURN fn::result_ok({
-        session: $session.id,
-        identity: $session.identity,
+        session: $sess.id,
+        identity: $sess.identity,
         application: NONE,
-        organization: $session.organization,
-        kind: $session.kind,
+        organization: $sess.organization,
+        kind: $sess.kind,
         permissions: $rights.permissions,
         version: $rights.version,
-        aal: $session.aal,
+        aal: $sess.aal,
         access_seconds: $policy.session.access_seconds ?? 900,
         idle_expires_at: $idle,
-        expires_at: $session.expires_at,
+        expires_at: $sess.expires_at,
         refresh_expires_at: $refresh_until
     });
 } COMMENT "Échange un jeton de renouvellement ({ token_hash, new_token_hash, access_slot }) : usage unique ; réutilisation → session révoquée (AUTH_REFRESH_REUSED) ; permissions recalculées, inactivité repoussée (jamais l'expiration absolue). Session système";
@@ -261,15 +262,14 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_switch_organization($params: object) 
     };
     LET $opened = fn::auth_session_open({
         identity: $current.identity, kind: "interactive", organization: $p.organization, amr: $current.amr.method,
-        client: $current.client, access_slot: $p.access_slot, refresh_token_hash: $p.refresh_token_hash
+        client: $current.client, access_slot: $p.access_slot, refresh_token_hash: $p.refresh_token_hash,
+        -- La nouvelle session hérite de l'expiration absolue de l'ancienne (aucun allongement)
+        expires_cap: $current.expires_at
     });
     IF $opened.code IS NOT NONE { RETURN fn::error_result($opened.code, $p.language, {}); };
-    -- La nouvelle session hérite de l'expiration absolue de l'ancienne (aucun allongement)
-    UPDATE $opened.session SET expires_at = $current.expires_at, idle_expires_at = array::min([idle_expires_at, $current.expires_at]);
-    UPDATE auth_refresh_token SET expires_at = array::min([expires_at, $current.expires_at]) WHERE session = $opened.session;
     UPDATE $current.id SET state = "revoked", revoked_at = time::now(), revoked_reason = "organization_switch";
     UPDATE auth_refresh_token SET state = "revoked" WHERE session = $current.id AND state = "active";
-    RETURN fn::result_ok(object::extend(object::remove($opened, "code"), { expires_at: $current.expires_at }));
+    RETURN fn::result_ok(object::remove($opened, "code"));
 } COMMENT "Change l'organisation active ({ session, organization, access_slot, refresh_token_hash }) : nouvelle session pour la même identité (adhésion active exigée), même expiration absolue, ancienne session révoquée. Session système";
 
 -- ----------------------------------------------------------------------------

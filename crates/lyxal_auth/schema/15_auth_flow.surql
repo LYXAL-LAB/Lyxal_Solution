@@ -33,14 +33,7 @@ DEFINE FIELD OVERWRITE expires_at ON TABLE auth_flow TYPE datetime COMMENT "Expi
 DEFINE EVENT OVERWRITE auth_flow_state_guard ON TABLE auth_flow
 WHEN $event IN ["CREATE", "UPDATE"]
 THEN {
-    LET $allowed = {
-        login: ["started", "action_required", "completed", "failed"],
-        registration: ["started", "completed", "failed"],
-        verification: ["code_sent", "completed", "failed"],
-        recovery: ["code_sent", "code_verified", "completed", "failed"],
-        address_change: ["code_sent", "completed", "failed"]
-    };
-    IF $after.state NOT IN $allowed[$after.type] { THROW "AUTH_FLOW_INVALID_STATE"; };
+    IF $after.state NOT IN fn::auth_flow_states({ type: $after.type }) { THROW "AUTH_FLOW_INVALID_STATE"; };
     IF $event = "UPDATE" AND $before.state IN ["completed", "failed"] AND $after.state != $before.state { THROW "AUTH_FLOW_INVALID_STATE"; };
 };
 
@@ -62,7 +55,7 @@ DEFINE FIELD OVERWRITE attempts ON TABLE auth_one_time_code TYPE int DEFAULT 0 C
 DEFINE FIELD OVERWRITE max_attempts ON TABLE auth_one_time_code TYPE int DEFAULT 5 READONLY COMMENT "Tentatives au plus";
 DEFINE FIELD OVERWRITE consumed_at ON TABLE auth_one_time_code TYPE option<datetime> COMMENT "Utilisation";
 DEFINE FIELD OVERWRITE created_at ON TABLE auth_one_time_code TYPE datetime DEFAULT time::now() READONLY COMMENT "Création";
-DEFINE FIELD OVERWRITE expires_at ON TABLE auth_one_time_code TYPE datetime READONLY COMMENT "Expiration";
+DEFINE FIELD OVERWRITE expires_at ON TABLE auth_one_time_code TYPE datetime COMMENT "Expiration";
 DEFINE FIELD OVERWRITE delivery ON TABLE auth_one_time_code
     TYPE option<object>
     PERMISSIONS FOR select NONE

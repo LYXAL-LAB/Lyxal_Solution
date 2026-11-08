@@ -227,16 +227,16 @@ DEFINE FUNCTION OVERWRITE fn::auth_api_key_create($params: object) {
     LET $p = $report.value;
     LET $check = fn::auth_session_valid({});
     IF !$check.valid { RETURN fn::error_result($check.code, $p.language, {}); };
-    LET $session = IF $check.system { NONE } ELSE { (SELECT identity, organization, kind FROM ONLY $auth) };
-    IF $session == NONE OR $session.identity IS NONE OR $session.kind != "interactive" { RETURN fn::error_result("AUTH_SESSION_REQUIRED", $p.language, {}); };
+    LET $sess = IF $check.system { NONE } ELSE { (SELECT identity, organization, kind FROM ONLY $auth) };
+    IF $sess == NONE OR $sess.identity IS NONE OR $sess.kind != "interactive" { RETURN fn::error_result("AUTH_SESSION_REQUIRED", $p.language, {}); };
     IF !fn::auth_has_permission({ permission: "auth.self.manage" }) { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, { permission: "auth.self.manage" }); };
     -- Une clé ne peut porter que des permissions que son propriétaire détient
     LET $held = IF type::is_array($token.permissions) { $token.permissions } ELSE { [] };
     LET $excess = array::filter($p.permissions, |$code| $code NOT IN $held);
     IF array::len($excess) > 0 { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, { permissions: $excess }); };
     LET $created = (CREATE ONLY auth_api_key CONTENT {
-        identity: $session.identity, name: $p.name, key_hash: string::lowercase($p.key_hash), prefix: $p.prefix,
-        permissions: array::sort(array::distinct($p.permissions)), organization: $session.organization, expires_at: $p.expires_at
+        identity: $sess.identity, name: $p.name, key_hash: string::lowercase($p.key_hash), prefix: $p.prefix,
+        permissions: array::sort(array::distinct($p.permissions)), organization: $sess.organization, expires_at: $p.expires_at
     });
     IF $created == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_api_key" }); };
     RETURN fn::result_ok({ id: $created.id, name: $created.name, prefix: $created.prefix, permissions: $created.permissions, organization: $created.organization, expires_at: $created.expires_at });

@@ -11,9 +11,24 @@
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::auth_policy_value($params: object) -> any {
-    LET $policy = fn::auth_policy_get({ organization: $params.organization }).data ?? {};
+    LET $policy = fn::auth_policy_get({ organization: IF $params.organization IS NONE { NONE } ELSE { <string> $params.organization } }).data ?? {};
     RETURN $policy[$params.theme][$params.key] ?? $params.default;
 } COMMENT "Réglage de la politique effective ({ theme, key, default, organization }) ; défaut si absent";
+
+-- ----------------------------------------------------------------------------
+-- fn::auth_flow_states : états admis par type de parcours
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::auth_flow_states($params: object) -> array {
+    LET $allowed = {
+        login: ["started", "action_required", "completed", "failed"],
+        registration: ["started", "completed", "failed"],
+        verification: ["code_sent", "completed", "failed"],
+        recovery: ["code_sent", "code_verified", "completed", "failed"],
+        address_change: ["code_sent", "code_verified", "completed", "failed"]
+    };
+    RETURN $allowed[$params.type] ?? [];
+} COMMENT "États admis d'un type de parcours ({ type })";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_flow_start
@@ -114,6 +129,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_flow_submit($params: object) {
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     LET $loaded = fn::auth_flow_load({ flow: $p.flow, states: $p.from });
     IF $loaded.code IS NOT NONE { RETURN fn::error_result($loaded.code, $p.language, {}); };
+    IF $p.state NOT IN fn::auth_flow_states({ type: $loaded.flow.type }) { RETURN fn::error_result("AUTH_FLOW_INVALID_STATE", $p.language, {}); };
     -- Transition conditionnelle : un parcours soumis deux fois en même temps n'avance qu'une fois
     LET $updated = (UPDATE ONLY $p.flow SET
         state = $p.state,
