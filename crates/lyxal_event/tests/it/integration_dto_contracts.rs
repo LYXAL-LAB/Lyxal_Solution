@@ -528,6 +528,67 @@ async fn test_suspended_subscription_holds_its_deliveries() {
     );
 }
 
+/// Un événement publié pendant qu'un abonnement est suspendu n'est pas perdu : la ventilation
+/// crée sa livraison, servie seulement après la réactivation.
+#[tokio::test]
+async fn test_event_published_while_suspended_is_delivered_after_reactivation() {
+    let db = connect("mem://").await.unwrap();
+    db.use_ns("test_ns")
+        .use_db("test_suspend_fanout")
+        .await
+        .unwrap();
+    common::setup_test_db(&db).await;
+    let store = Arc::new(EventStore::new(db.clone()));
+    common::install_event(store.client()).await;
+
+    let mut sub = EventSubscription::new(
+        "sub_suspendue_fanout",
+        "test_consumer_module",
+        "test.event",
+        "handle_suspendue",
+    );
+    sub.is_active = false;
+    store.register_subscription(&sub).await.unwrap();
+    db.query(
+        r#"
+        CREATE event_outbox:ev_f CONTENT {
+            event_id: <string> rand::uuid::v7(), event_type: "test.event", version: 1,
+            producer: "test_producer", source: NONE,
+            context: { instance_id: "inst", namespace: "test_ns", database: "test_suspend_fanout" },
+            correlation_id: <string> rand::uuid::v7(), causation_id: NONE,
+            payload: {}, metadata: {}, status: "pending"
+        };
+        "#,
+    )
+    .await
+    .unwrap()
+    .check()
+    .unwrap();
+    store
+        .fanout(&lyxal_surreal::RecordId::new("event_outbox", "ev_f"))
+        .await
+        .unwrap();
+
+    let fetch = || {
+        store.fetch_pending_deliveries(lyxal_event::engine::dto::DeliveryFetchPendingParams {
+            limit: 10,
+            instance_id: None,
+            subscription: None,
+        })
+    };
+    assert!(
+        fetch().await.unwrap().is_empty(),
+        "abonnement suspendu : livraison créée mais en attente"
+    );
+    sub.is_active = true;
+    store.register_subscription(&sub).await.unwrap();
+    assert_eq!(
+        fetch().await.unwrap().len(),
+        1,
+        "réactivation : événement livré"
+    );
+}
+
 /// Les fonctions appelées de l'extérieur valident leurs entrées par le moteur de `lyxal_core` :
 /// un champ inconnu ou invalide renvoie `EVENT_INVALID_PARAMETERS` avec le rapport par champ.
 #[tokio::test]

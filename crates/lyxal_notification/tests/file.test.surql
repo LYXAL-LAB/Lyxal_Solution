@@ -183,6 +183,20 @@ RETURN fn::notification_job_fail({ job_id: <string> test_ref:devis.job, claim_to
 -- en tant que: worker
 RETURN fn::notification_job_complete({ job_id: <string> test_ref:bail1.job, claim_token: test_ref:bail1.token }).error.code == "NOTIFICATION_JOB_CLAIM_LOST";
 
+-- test: réservation renouvelée avant l'envoi ; jeton périmé refusé ; étape rendue sans tentative comptée
+-- en tant que: worker
+{
+    LET $r = fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "renouv-1", recipient: { email: "r@exemple.fr" }, payload: { n: "D-8" } }).data;
+    LET $job = fn::notification_job_claim({ worker_id: "w3", lease_seconds: 10 }).data[0];
+    LET $renewed = fn::notification_job_renew({ job_id: <string> $job.job_id, claim_token: $job.claim_token, lease_seconds: 600 }).data;
+    LET $stale = fn::notification_job_renew({ job_id: <string> $job.job_id, claim_token: "01a1bca0-0000-7000-8000-000000000000" });
+    LET $released = fn::notification_job_release({ job_id: <string> $job.job_id, claim_token: $job.claim_token }).data;
+    LET $after = (SELECT status, attempts, claim_token FROM ONLY $job.job_id);
+    RETURN $renewed.locked_until > time::now() + 500s AND $stale.error.code == "NOTIFICATION_JOB_CLAIM_LOST"
+        AND $released.status == "queued" AND $after == { status: "queued", attempts: 0, claim_token: NONE }
+        AND fn::notification_job_release({ job_id: <string> $job.job_id, claim_token: $job.claim_token }).error.code == "NOTIFICATION_JOB_CLAIM_LOST";
+};
+
 -- préparation: durées de conservation écoulées pour deux déclenchements terminés et le journal
 {
     UPDATE notification_run SET purge_after = time::now() - 1s WHERE idempotency_key IN ["devis-1", "retry-1"];

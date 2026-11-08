@@ -45,7 +45,8 @@ pub struct NotificationConfig {
 
 /// Relais SMTP : `LYXAL__NOTIFICATION__SMTP__HOST`, `__PORT`, `__SECURITY` (`tls`, `starttls`,
 /// ou `local_plain` pour un relais de la boucle locale), `__USERNAME`, `__PASSWORD` (variable
-/// d'environnement seulement), `__FROM_ADDRESS`, `__FROM_NAME`, `__TIMEOUT_SECONDS`.
+/// d'environnement seulement), `__FROM_ADDRESS`, `__FROM_NAME`, `__TIMEOUT_SECONDS` (délai par
+/// commande, 1 à 30 s).
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SmtpConfig {

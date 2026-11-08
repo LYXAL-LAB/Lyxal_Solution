@@ -12,6 +12,7 @@ use lyxal_notification::{
     NotificationEmailWorker, NotificationStore, SecretCodec, SmtpSecurity, SmtpSettings,
     SmtpTransport, VerificationRequested,
 };
+use lyxal_runtime::worker::CancellationToken;
 use lyxal_surreal::{SurrealValue, ToSql};
 use std::sync::Arc;
 use std::time::Duration;
@@ -180,7 +181,7 @@ async fn invitation_from_auth_is_delivered_once_and_leaves_no_secret() {
 
     let server = TestSmtpServer::start().await;
     let outcomes = worker(&client, &engine, &server)
-        .run_once()
+        .run_once(&CancellationToken::new())
         .await
         .expect("envoi");
     assert_eq!(outcomes, vec![JobOutcome::Sent]);
@@ -304,7 +305,10 @@ async fn transient_failure_is_retried_and_rejected_recipient_is_suppressed() {
     server.script("absent@exemple.fr", vec!["550 5.1.1 utilisateur inconnu"]);
     let worker = worker(&client, &engine, &server);
 
-    let mut outcomes = worker.run_once().await.expect("premier tour");
+    let mut outcomes = worker
+        .run_once(&CancellationToken::new())
+        .await
+        .expect("premier tour");
     outcomes.sort_by_key(|o| format!("{o:?}"));
     assert_eq!(
         outcomes,
@@ -321,7 +325,10 @@ async fn transient_failure_is_retried_and_rejected_recipient_is_suppressed() {
         .await
         .expect("avance");
     assert_eq!(
-        worker.run_once().await.expect("second tour"),
+        worker
+            .run_once(&CancellationToken::new())
+            .await
+            .expect("second tour"),
         vec![JobOutcome::Sent]
     );
     let received = server.received();
@@ -344,5 +351,50 @@ async fn transient_failure_is_retried_and_rejected_recipient_is_suppressed() {
             reason: "hard_bounce".into(),
             source: Some("550".into())
         }]
+    );
+}
+
+#[tokio::test]
+async fn shutdown_releases_reserved_jobs_without_sending() {
+    let client = installed_client().await;
+    let engine = crypto();
+    let handler = AuthMessageHandler::new(
+        NotificationStore::new(client.clone()),
+        SecretCodec::new(engine.clone()),
+    );
+    let event_id = uuid::Uuid::now_v7().to_string();
+    handler
+        .deliver(
+            &verification(&engine, "arret@exemple.fr", &event_id, &event_id),
+            &event_id,
+        )
+        .await
+        .expect("déclenchement");
+    let server = TestSmtpServer::start().await;
+    let worker = worker(&client, &engine, &server);
+
+    let cancelled = CancellationToken::new();
+    cancelled.cancel();
+    assert_eq!(
+        worker.run_once(&cancelled).await.expect("tour annulé"),
+        vec![JobOutcome::Released]
+    );
+    assert!(
+        server.received().is_empty(),
+        "aucun envoi après l'annulation"
+    );
+    let mut response = client
+        .query("SELECT VALUE attempts FROM ONLY notification_job LIMIT 1")
+        .await
+        .expect("étape");
+    let attempts: Option<i64> = response.take(0).expect("tentatives");
+    assert_eq!(attempts, Some(0), "aucune tentative comptée");
+
+    assert_eq!(
+        worker
+            .run_once(&CancellationToken::new())
+            .await
+            .expect("reprise"),
+        vec![JobOutcome::Sent]
     );
 }

@@ -90,7 +90,8 @@ fn smtp_transport(config: &SmtpConfig) -> Result<Arc<dyn EmailTransport>, Server
         password,
         from_address: config.from_address.clone(),
         from_name: config.from_name.clone(),
-        timeout: Duration::from_secs(config.timeout_seconds.clamp(1, 300)),
+        // Délai par commande SMTP, borné pour que l'envoi tienne dans le budget d'une étape
+        timeout: Duration::from_secs(config.timeout_seconds.clamp(1, 30)),
     })
     .map_err(|e| configuration_error("notification.smtp", e))?;
     Ok(Arc::new(transport))

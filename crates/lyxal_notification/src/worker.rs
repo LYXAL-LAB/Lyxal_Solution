@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use lyxal_crypto::KeyResolver;
 use lyxal_runtime::types::ModuleId;
 use lyxal_runtime::worker::{
-    LyxalWorker, WorkerContext, WorkerCriticality, WorkerDescriptor, WorkerId,
+    CancellationToken, LyxalWorker, WorkerContext, WorkerCriticality, WorkerDescriptor, WorkerId,
 };
 use lyxal_runtime::RuntimeError;
 use lyxal_surreal::ToSql;
@@ -18,7 +18,8 @@ use std::time::Duration;
 
 use crate::error::NotificationError;
 use crate::models::{
-    ClaimedJob, FailureClass, JobClaimParams, JobCompleteParams, JobFailParams, PurgeParams,
+    ClaimedJob, FailureClass, JobClaimParams, JobCompleteParams, JobFailParams, JobReleaseParams,
+    JobRenewParams, PurgeParams,
 };
 use crate::render::Renderer;
 use crate::secret::SecretCodec;
@@ -68,8 +69,10 @@ pub struct EmailWorkerSettings {
     pub poll_interval: Duration,
     /// Étapes réservées par tour.
     pub batch_size: u32,
-    /// Durée de la réservation (doit couvrir l'envoi du lot entier).
+    /// Durée de la réservation, renouvelée juste avant chaque envoi (doit dépasser `job_budget`).
     pub lease: Duration,
+    /// Durée maximale du traitement d'une étape (rendu, envoi, enregistrement de l'issue).
+    pub job_budget: Duration,
     /// Attente avant une nouvelle tentative.
     pub retry: RetryPolicy,
 }
@@ -80,6 +83,7 @@ impl Default for EmailWorkerSettings {
             poll_interval: Duration::from_secs(5),
             batch_size: 5,
             lease: Duration::from_secs(300),
+            job_budget: Duration::from_secs(120),
             retry: RetryPolicy::default(),
         }
     }
@@ -94,6 +98,8 @@ pub enum JobOutcome {
     Failed(FailureClass),
     /// Réservation perdue ou base indisponible : l'étape sera reprise.
     Abandoned,
+    /// Arrêt du worker avant l'envoi : étape rendue à la file sans tentative comptée.
+    Released,
 }
 
 /// Worker d'envoi des e-mails.
@@ -122,7 +128,8 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
         );
         descriptor.description = Some("Envoi des e-mails de la file de notifications".to_string());
         descriptor.criticality = WorkerCriticality::Optional;
-        descriptor.shutdown_timeout = Duration::from_secs(30);
+        // L'étape en cours se termine avant l'arrêt (traitement borné par `job_budget`)
+        descriptor.shutdown_timeout = settings.job_budget + Duration::from_secs(30);
         Ok(Self {
             descriptor,
             store,
@@ -133,21 +140,74 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
         })
     }
 
-    /// Un tour : réserve et traite les étapes dues. Renvoie le nombre d'étapes réservées.
-    pub async fn run_once(&self) -> Result<Vec<JobOutcome>, NotificationError> {
+    /// Un tour : réserve et traite les étapes dues, une à la fois. Avant chaque envoi, la
+    /// réservation est renouvelée (une étape reprise entre-temps par un autre worker n'est pas
+    /// envoyée) ; après l'annulation, aucun envoi ne commence et les étapes restantes sont
+    /// rendues à la file.
+    pub async fn run_once(
+        &self,
+        cancellation: &CancellationToken,
+    ) -> Result<Vec<JobOutcome>, NotificationError> {
         let jobs = self
             .store
             .job_claim(JobClaimParams {
                 worker_id: self.descriptor.id.to_string(),
                 limit: i64::from(self.settings.batch_size),
-                lease_seconds: i64::try_from(self.settings.lease.as_secs()).unwrap_or(300),
+                lease_seconds: self.lease_seconds(),
             })
             .await?;
         let mut outcomes = Vec::with_capacity(jobs.len());
         for job in jobs {
-            outcomes.push(self.process(job).await);
+            if cancellation.is_cancelled() {
+                outcomes.push(self.release(&job).await);
+                continue;
+            }
+            if let Err(error) = self
+                .store
+                .job_renew(JobRenewParams {
+                    job_id: job.job_id.to_sql(),
+                    claim_token: job.claim_token.clone(),
+                    lease_seconds: self.lease_seconds(),
+                })
+                .await
+            {
+                tracing::warn!(job = %job.job_id.to_sql(), code = %NotificationError::from(error).code(), "réservation perdue avant l'envoi : étape non envoyée");
+                outcomes.push(JobOutcome::Abandoned);
+                continue;
+            }
+            let job_id = job.job_id.to_sql();
+            match tokio::time::timeout(self.settings.job_budget, self.process(job)).await {
+                Ok(outcome) => outcomes.push(outcome),
+                Err(_) => {
+                    tracing::warn!(job = %job_id, "traitement de l'étape trop long : reprise à l'expiration de la réservation");
+                    outcomes.push(JobOutcome::Abandoned);
+                }
+            }
         }
         Ok(outcomes)
+    }
+
+    fn lease_seconds(&self) -> i64 {
+        i64::try_from(self.settings.lease.as_secs())
+            .unwrap_or(300)
+            .clamp(10, 3600)
+    }
+
+    async fn release(&self, job: &ClaimedJob) -> JobOutcome {
+        match self
+            .store
+            .job_release(JobReleaseParams {
+                job_id: job.job_id.to_sql(),
+                claim_token: job.claim_token.clone(),
+            })
+            .await
+        {
+            Ok(_) => JobOutcome::Released,
+            Err(error) => {
+                tracing::warn!(job = %job.job_id.to_sql(), code = %NotificationError::from(error).code(), "étape non rendue : reprise à l'expiration de la réservation");
+                JobOutcome::Abandoned
+            }
+        }
     }
 
     async fn process(&self, job: ClaimedJob) -> JobOutcome {
@@ -241,7 +301,7 @@ impl<R: KeyResolver + 'static> LyxalWorker for NotificationEmailWorker<R> {
 
     async fn run(&self, ctx: WorkerContext) -> Result<(), RuntimeError> {
         while !ctx.is_cancelled() {
-            let busy = match self.run_once().await {
+            let busy = match self.run_once(&ctx.cancellation).await {
                 Ok(outcomes) => outcomes.len() >= self.settings.batch_size as usize,
                 Err(error) => {
                     tracing::warn!(code = %error.code(), "réservation des envois impossible");
@@ -336,6 +396,12 @@ fn truncate(text: &str, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn lease_outlasts_the_job_budget() {
+        let settings = EmailWorkerSettings::default();
+        assert!(settings.lease > settings.job_budget);
+    }
 
     #[test]
     fn retry_delay_grows_and_is_capped() {

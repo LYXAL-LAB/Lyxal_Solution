@@ -66,13 +66,14 @@ secret d'un déclenchement n'est lisible que par le worker (permission de champ)
 | Réglages | `notification_settings_get`, `_set` |
 | Liste de suppression | `notification_suppression_add`, `_remove`, `_list` |
 | Activité | `notification_run_get`, `_list` |
-| File d'envoi (worker) | `notification_job_claim`, `_complete`, `_fail`, `notification_purge` |
+| File d'envoi (worker) | `notification_job_claim`, `_renew`, `_release`, `_complete`, `_fail`, `notification_purge` |
 
 Entrées validées et nettoyées par `lyxal_core` ; erreurs `NOTIFICATION_*` (master data
 `error/`) ; toute écriture vérifiée (`NOTIFICATION_WRITE_FORBIDDEN`).
 
 File d'envoi : réservation conditionnelle (une étape n'est réservée qu'une fois ; une
-réservation expirée est reprise, sauf après la dernière tentative : échec définitif) ; étape
+réservation expirée est reprise, sauf après la dernière tentative : échec définitif),
+renouvelée juste avant chaque envoi ; étape non commencée rendue à la file à l'arrêt du worker ; étape
 dont le secret a expiré annulée, jamais envoyée en retard ; échec temporaire rejoué tant que
 `attempts < max_attempts` ; destinataire refusé : échec définitif et adresse supprimée
 (`hard_bounce`).
@@ -104,8 +105,9 @@ jamais de contenu ni de secret).
 * `SmtpTransport` (`lettre`, TLS rustls, connexions réutilisées) et `EmailTransport` ;
   classement : connexion ou 4xx → `transient`, 550 / 551 / 553 → `recipient_rejected`, autre 5xx →
   `permanent`. Signature DKIM par le relais.
-* `NotificationEmailWorker` (attente exponentielle plafonnée avec gigue complète, base 30 s,
-  plafond 6 h) et `NotificationPurgeWorker` (`LyxalWorker`) ; `NotificationModule`,
+* `NotificationEmailWorker` (une étape à la fois, réservation renouvelée avant l'envoi, traitement
+  borné, aucun envoi commencé après l'annulation ; attente exponentielle plafonnée avec gigue
+  complète, base 30 s, plafond 6 h) et `NotificationPurgeWorker` (`LyxalWorker`) ; `NotificationModule`,
   `NotificationHealthCheck` (« dégradé » sans relais ou sans clé).
 
 Hébergé par `lyxal-server` (`build.rs`, `src/modules/notification.rs`) : clé applicative

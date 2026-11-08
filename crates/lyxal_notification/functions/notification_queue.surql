@@ -255,3 +255,53 @@ DEFINE FUNCTION OVERWRITE fn::notification_purge($params: object) {
     LET $runs = IF array::len($run_ids) = 0 { [] } ELSE { (DELETE $run_ids RETURN BEFORE) };
     RETURN fn::result_ok({ secrets_cleared: array::len($secrets), log_entries: array::len($logs), runs: array::len($runs) });
 } COMMENT "Purge par paquets ({ limit }) : secrets expirés effacés, journal et déclenchements terminés au-delà de leur durée de conservation supprimés (étapes et messages avec eux). Permission notification.worker";
+
+-- ----------------------------------------------------------------------------
+-- fn::notification_job_renew : réservation renouvelée juste avant l'envoi
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::notification_job_renew($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            job_id: { pipeline: [{ rule: "record", options: { expected_table: "notification_job" } }], required: true },
+            claim_token: { pipeline: [{ rule: "uuid_v7", options: { allow_string: true } }], required: true },
+            lease_seconds: { pipeline: [{ rule: "integer", options: { min_value: 10, max_value: 3600 } }], default: 120 },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    IF !fn::notification_can({ action: "worker" }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
+    -- Conditionnel : une reprise par un autre worker a remplacé le jeton
+    LET $renewed = (UPDATE ONLY $p.job_id SET locked_until = time::now() + duration::from_secs($p.lease_seconds)
+        WHERE status = "running" AND claim_token = <string> $p.claim_token);
+    IF $renewed == NONE { RETURN fn::error_result("NOTIFICATION_JOB_CLAIM_LOST", $p.language, {}); };
+    RETURN fn::result_ok({ locked_until: $renewed.locked_until });
+} COMMENT "Renouvelle la réservation d'une étape ({ job_id, claim_token, lease_seconds }) juste avant son envoi ; NOTIFICATION_JOB_CLAIM_LOST si un autre worker l'a reprise. Permission notification.worker";
+
+-- ----------------------------------------------------------------------------
+-- fn::notification_job_release : étape réservée rendue à la file sans tentative (arrêt du worker)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::notification_job_release($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            job_id: { pipeline: [{ rule: "record", options: { expected_table: "notification_job" } }], required: true },
+            claim_token: { pipeline: [{ rule: "uuid_v7", options: { allow_string: true } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("NOTIFICATION_INVALID_INPUT", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    IF !fn::notification_can({ action: "worker" }) { RETURN fn::error_result("NOTIFICATION_PERMISSION_DENIED", $p.language, {}); };
+    LET $released = (UPDATE ONLY $p.job_id SET status = "queued", locked_until = NONE, claim_token = NONE, attempts -= 1
+        WHERE status = "running" AND claim_token = <string> $p.claim_token);
+    IF $released == NONE { RETURN fn::error_result("NOTIFICATION_JOB_CLAIM_LOST", $p.language, {}); };
+    RETURN fn::result_ok({ status: "queued" });
+} COMMENT "Rend à la file une étape réservée et non commencée ({ job_id, claim_token }), sans compter de tentative (arrêt du worker). Permission notification.worker";

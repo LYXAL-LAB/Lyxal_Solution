@@ -9,7 +9,8 @@ use surrealdb::Surreal;
 
 use crate::models::{
     ClaimedJob, JobClaimParams, JobCompleteParams, JobCompleted, JobFailParams, JobFailed,
-    PurgeParams, PurgeResult, Settings, SettingsGetParams, TriggerParams, TriggerResult,
+    JobReleaseParams, JobReleased, JobRenewParams, JobRenewed, PurgeParams, PurgeResult, Settings,
+    SettingsGetParams, TriggerParams, TriggerResult,
 };
 
 /// Store de `lyxal_notification` sur un client SurrealDB (`Surreal<Any>`).
@@ -47,6 +48,19 @@ impl NotificationStore {
         params: JobClaimParams,
     ) -> Result<Vec<ClaimedJob>, LyxalSurrealError> {
         self.call_fn("notification_job_claim", params).await
+    }
+
+    /// `fn::notification_job_renew` : réservation renouvelée avant l'envoi.
+    pub async fn job_renew(&self, params: JobRenewParams) -> Result<JobRenewed, LyxalSurrealError> {
+        self.call_fn("notification_job_renew", params).await
+    }
+
+    /// `fn::notification_job_release` : étape rendue à la file sans tentative.
+    pub async fn job_release(
+        &self,
+        params: JobReleaseParams,
+    ) -> Result<JobReleased, LyxalSurrealError> {
+        self.call_fn("notification_job_release", params).await
     }
 
     /// `fn::notification_job_complete` : étape envoyée.

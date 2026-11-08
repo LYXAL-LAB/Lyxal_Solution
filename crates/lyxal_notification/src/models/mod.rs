@@ -8,7 +8,8 @@ mod types;
 
 pub use queue::{
     ClaimedJob, EffectiveSettings, FailureClass, JobClaimParams, JobCompleteParams, JobCompleted,
-    JobFailParams, JobFailed, PurgeParams, PurgeResult, Settings, SettingsGetParams,
+    JobFailParams, JobFailed, JobReleaseParams, JobReleased, JobRenewParams, JobRenewed,
+    PurgeParams, PurgeResult, Settings, SettingsGetParams,
 };
 pub use trigger::{Recipient, TriggerParams, TriggerResult, TriggerStatus};
 pub use types::{NotificationDatetime, NotificationRecordId};

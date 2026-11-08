@@ -30,9 +30,11 @@ DEFINE FUNCTION OVERWRITE fn::event_fanout(
         });
     };
 
-    -- Recherche de tous les abonnements actifs dont le pattern correspond
+    -- Tous les abonnements dont le pattern correspond, y compris les abonnements suspendus :
+    -- leurs livraisons sont créées et attendent leur réactivation (fn::event_delivery_fetch_pending
+    -- ne sert pas un abonnement suspendu) ; sinon l'événement, marqué ventilé, serait perdu
     LET $type = $event.event_type;
-    LET $all_subs = (SELECT * FROM event_subscription WHERE is_active = true);
+    LET $all_subs = (SELECT * FROM event_subscription);
     
     LET $created_count = 0;
 
@@ -76,5 +78,5 @@ DEFINE FUNCTION OVERWRITE fn::event_fanout(
         deliveries_created: $created_count,
         status: "fanned_out"
     });
-} COMMENT "Ventile un événement outbox vers ses abonnés de façon strictement idempotente"
+} COMMENT "Ventile un événement outbox vers tous ses abonnés, suspendus compris (livraisons en attente de réactivation), de façon strictement idempotente"
 PERMISSIONS FULL;

@@ -76,6 +76,40 @@ impl std::fmt::Debug for ClaimedJob {
     }
 }
 
+/// Paramètres de `fn::notification_job_renew`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct JobRenewParams {
+    /// Étape (texte `notification_job:<clé>`).
+    pub job_id: String,
+    /// Jeton de réservation.
+    pub claim_token: String,
+    /// Nouvelle durée de la réservation en secondes (10 à 3600).
+    pub lease_seconds: i64,
+}
+
+/// Résultat de `fn::notification_job_renew`.
+#[derive(Debug, Clone, PartialEq, SurrealValue)]
+pub struct JobRenewed {
+    /// Fin de la réservation.
+    pub locked_until: NotificationDatetime,
+}
+
+/// Paramètres de `fn::notification_job_release`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct JobReleaseParams {
+    /// Étape (texte `notification_job:<clé>`).
+    pub job_id: String,
+    /// Jeton de réservation.
+    pub claim_token: String,
+}
+
+/// Résultat de `fn::notification_job_release`.
+#[derive(Debug, Clone, PartialEq, SurrealValue)]
+pub struct JobReleased {
+    /// État de l'étape (`queued`).
+    pub status: String,
+}
+
 /// Paramètres de `fn::notification_job_complete`.
 #[derive(Debug, Clone, SurrealValue)]
 pub struct JobCompleteParams {
