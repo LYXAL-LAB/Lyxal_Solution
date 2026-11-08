@@ -18,6 +18,10 @@ pub struct AuthContext {
     pub system: bool,
     /// Identité de la session.
     pub identity: Option<AuthRecordId>,
+    /// Application d'un compte de service.
+    pub application: Option<AuthRecordId>,
+    /// Nature de la session (`interactive`, `service`, `api_key`).
+    pub kind: Option<String>,
     /// Session (`auth_session`).
     pub session: Option<AuthRecordId>,
     /// Organisation active.

@@ -13,6 +13,12 @@ pub async fn installed_store() -> AuthStore {
         .await
         .expect("connexion");
     client.use_ns("auth").use_db("test").await.expect("ns/db");
+    install(&client).await;
+    AuthStore::new(client)
+}
+
+/// Installe le noyau, `lyxal_event` et `lyxal_auth` dans la base courante du client.
+pub async fn install(client: &surrealdb::Surreal<surrealdb::engine::any::Any>) {
     let crates = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("dossier crates")
@@ -29,16 +35,15 @@ pub async fn installed_store() -> AuthStore {
         .iter()
         .map(|(m, p)| (m, p as &dyn ResourceProvider))
         .collect();
-    lyxal_runtime::schema::install_batch(&client, &batch)
+    lyxal_runtime::schema::install_batch(client, &batch)
         .await
         .expect("noyau");
     for name in ["lyxal_event", "lyxal_auth"] {
         let (manifest, provider) = load(name);
-        lyxal_runtime::schema::install_resources(&client, &manifest, &provider)
+        lyxal_runtime::schema::install_resources(client, &manifest, &provider)
             .await
             .unwrap_or_else(|e| panic!("{name} : {e}"));
     }
-    AuthStore::new(client)
 }
 
 pub fn crypto() -> Arc<CryptoEngine<StaticKeyResolver>> {

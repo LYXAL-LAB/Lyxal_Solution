@@ -15,18 +15,31 @@
 DEFINE FUNCTION OVERWRITE fn::auth_session_valid($params: object) -> object {
     IF $session.ac == NONE AND $auth == NONE { RETURN { valid: true, system: true, code: NONE }; };
     IF $auth == NONE OR !type::is_record($auth, "auth_session") { RETURN { valid: false, system: false, code: "AUTH_SESSION_REQUIRED" }; };
-    LET $s = (SELECT state, created_at, idle_expires_at, expires_at, identity FROM ONLY $auth);
+    LET $s = (SELECT state, created_at, idle_expires_at, expires_at, identity, application, api_key FROM ONLY $auth);
     IF $s == NONE { RETURN { valid: false, system: false, code: "AUTH_SESSION_REVOKED" }; };
     IF $s.state = "revoked" { RETURN { valid: false, system: false, code: "AUTH_SESSION_REVOKED" }; };
     IF $s.state != "active" OR $s.expires_at <= time::now() OR $s.idle_expires_at <= time::now() {
         RETURN { valid: false, system: false, code: "AUTH_SESSION_EXPIRED" };
     };
-    LET $i = (SELECT state, not_before, permissions_version FROM ONLY $s.identity);
-    IF $i == NONE OR $i.state != "active" { RETURN { valid: false, system: false, code: "AUTH_IDENTITY_INACTIVE" }; };
-    IF $i.not_before IS NOT NONE AND $s.created_at < $i.not_before { RETURN { valid: false, system: false, code: "AUTH_SESSION_REVOKED" }; };
-    IF !type::is_int($token.pv) OR $token.pv < $i.permissions_version { RETURN { valid: false, system: false, code: "AUTH_SESSION_STALE" }; };
+    -- Sujet : identité (session interactive ou clé d'API) ou application (compte de service)
+    LET $subject = IF $s.identity IS NOT NONE {
+        (SELECT state, not_before, permissions_version FROM ONLY $s.identity)
+    } ELSE {
+        (SELECT state, not_before, permissions_version FROM ONLY $s.application)
+    };
+    IF $subject == NONE OR $subject.state != "active" {
+        RETURN { valid: false, system: false, code: IF $s.identity IS NOT NONE { "AUTH_IDENTITY_INACTIVE" } ELSE { "AUTH_APPLICATION_INACTIVE" } };
+    };
+    IF $subject.not_before IS NOT NONE AND $s.created_at < $subject.not_before { RETURN { valid: false, system: false, code: "AUTH_SESSION_REVOKED" }; };
+    IF $s.api_key IS NOT NONE {
+        LET $key = (SELECT revoked_at, expires_at FROM ONLY $s.api_key);
+        IF $key == NONE OR $key.revoked_at IS NOT NONE OR ($key.expires_at IS NOT NONE AND $key.expires_at <= time::now()) {
+            RETURN { valid: false, system: false, code: "AUTH_SESSION_REVOKED" };
+        };
+    };
+    IF !type::is_int($token.pv) OR $token.pv < $subject.permissions_version { RETURN { valid: false, system: false, code: "AUTH_SESSION_STALE" }; };
     RETURN { valid: true, system: false, code: NONE };
-} COMMENT "Indique si la session du jeton est utilisable (active, non expirée, postérieure à not_before, droits à jour) ; { valid, system, code }";
+} COMMENT "Indique si la session du jeton est utilisable (active, non expirée, sujet actif — identité ou application —, postérieure à not_before, clé d'API valide, droits à jour) ; { valid, system, code }";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_context : identité, session, organisation active, permissions, AAL
@@ -37,18 +50,20 @@ DEFINE FUNCTION OVERWRITE fn::auth_context($params: object) {
     LET $check = fn::auth_session_valid({});
     IF !$check.valid { RETURN fn::error_result($check.code, $language, {}); };
     IF $check.system {
-        RETURN fn::result_ok({ system: true, identity: NONE, session: NONE, organization: NONE, permissions: [], aal: NONE });
+        RETURN fn::result_ok({ system: true, identity: NONE, application: NONE, kind: NONE, session: NONE, organization: NONE, permissions: [], aal: NONE });
     };
-    LET $s = (SELECT identity, organization, aal FROM ONLY $auth);
+    LET $s = (SELECT identity, application, kind, organization, aal FROM ONLY $auth);
     RETURN fn::result_ok({
         system: false,
         identity: $s.identity,
+        application: $s.application,
+        kind: $s.kind,
         session: $auth,
         organization: $s.organization,
         permissions: IF type::is_array($token.permissions) { $token.permissions } ELSE { [] },
         aal: $s.aal
     });
-} COMMENT "Contexte de l'appelant : { system, identity, session, organization, permissions, aal } ; erreur AUTH_SESSION_* si la session n'est pas utilisable";
+} COMMENT "Contexte de l'appelant : { system, identity, application, kind, session, organization, permissions, aal } ; erreur AUTH_SESSION_* si la session n'est pas utilisable";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_has_permission : l'appelant détient-il la permission (dans l'organisation) ?

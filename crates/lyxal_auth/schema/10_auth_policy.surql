@@ -49,7 +49,7 @@ DEFINE FIELD OVERWRITE password.history ON TABLE auth_policy
 
 DEFINE FIELD OVERWRITE lockout ON TABLE auth_policy
     TYPE option<object>
-    COMMENT "Verrouillage : { max_failures, lock_seconds }";
+    COMMENT "Verrouillage : { max_failures, lock_seconds, window_seconds, ip_max_failures }";
 
 DEFINE FIELD OVERWRITE lockout.max_failures ON TABLE auth_policy
     TYPE option<int>
@@ -58,6 +58,14 @@ DEFINE FIELD OVERWRITE lockout.max_failures ON TABLE auth_policy
 DEFINE FIELD OVERWRITE lockout.lock_seconds ON TABLE auth_policy
     TYPE option<int>
     ASSERT $value IS NONE OR ($value >= 60 AND $value <= 86400);
+
+DEFINE FIELD OVERWRITE lockout.window_seconds ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 60 AND $value <= 86400);
+
+DEFINE FIELD OVERWRITE lockout.ip_max_failures ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 10 AND $value <= 10000);
 
 DEFINE FIELD OVERWRITE session ON TABLE auth_policy
     TYPE option<object>
@@ -104,6 +112,34 @@ DEFINE FIELD OVERWRITE registration ON TABLE auth_policy
 DEFINE FIELD OVERWRITE registration.mode ON TABLE auth_policy
     TYPE option<string>
     ASSERT $value IS NONE OR $value IN ["invitation_only"];
+
+DEFINE FIELD OVERWRITE code ON TABLE auth_policy
+    TYPE option<object>
+    COMMENT "Codes et liens à usage unique : { ttl_seconds, max_attempts }";
+
+DEFINE FIELD OVERWRITE code.ttl_seconds ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 300 AND $value <= 86400);
+
+DEFINE FIELD OVERWRITE code.max_attempts ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 3 AND $value <= 10);
+
+DEFINE FIELD OVERWRITE refresh ON TABLE auth_policy
+    TYPE option<object>
+    COMMENT "Jetons de renouvellement : { ttl_seconds }";
+
+DEFINE FIELD OVERWRITE refresh.ttl_seconds ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 3600 AND $value <= 31536000);
+
+DEFINE FIELD OVERWRITE flow ON TABLE auth_policy
+    TYPE option<object>
+    COMMENT "Parcours : { ttl_seconds }";
+
+DEFINE FIELD OVERWRITE flow.ttl_seconds ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 300 AND $value <= 3600);
 
 DEFINE FIELD OVERWRITE created_at ON TABLE auth_policy
     TYPE datetime

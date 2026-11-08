@@ -19,7 +19,7 @@ RETURN fn::auth_policy_get({}).data.{ m: password.min_length, r: registration.mo
 
 -- test: la plateforme renforce le verrouillage de l'installation
 -- en tant que: plateforme
-RETURN fn::auth_policy_save({ lockout: { max_failures: 5, lock_seconds: 1800 } }).data.lockout == { max_failures: 5, lock_seconds: 1800 };
+RETURN fn::auth_policy_save({ lockout: { max_failures: 5, lock_seconds: 1800 } }).data.lockout.{ max_failures, lock_seconds } == { max_failures: 5, lock_seconds: 1800 };
 
 -- test: valeurs hors bornes et clés inconnues refusées
 -- en tant que: plateforme

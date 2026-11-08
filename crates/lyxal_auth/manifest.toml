@@ -32,8 +32,12 @@ schemas = [
     "schema/08_auth_role.surql",
     "schema/09_auth_organization_invitation.surql",
     "schema/10_auth_policy.surql",
-    "schema/11_auth_session.surql",
-    "schema/12_auth_relations.surql"
+    "schema/11_auth_application.surql",
+    "schema/12_auth_session.surql",
+    "schema/13_auth_relations.surql",
+    "schema/14_auth_credential.surql",
+    "schema/15_auth_flow.surql",
+    "schema/16_auth_token.surql"
 ]
 functions = [
     "functions/context/auth_context.surql",
@@ -45,13 +49,23 @@ functions = [
     "functions/organization/auth_organization_domain.surql",
     "functions/member/auth_organization_member.surql",
     "functions/identity/auth_identity.surql",
-    "functions/invitation/auth_invitation.surql"
+    "functions/invitation/auth_invitation.surql",
+    "functions/credential/auth_password.surql",
+    "functions/flow/auth_flow.surql",
+    "functions/flow/auth_registration.surql",
+    "functions/session/auth_login_failure.surql",
+    "functions/session/auth_session.surql",
+    "functions/application/auth_application.surql",
+    "functions/signing/auth_signing_key.surql"
 ]
 error_definitions = [
     "error/access/error_access.surql",
     "error/sessions/error_sessions.surql",
     "error/identities/error_identities.surql",
-    "error/organizations/error_organizations.surql"
+    "error/organizations/error_organizations.surql",
+    "error/credentials/error_credentials.surql",
+    "error/flows/error_flows.surql",
+    "error/applications/error_applications.surql"
 ]
 events = ["events/auth_events.surql"]
 seeds = ["seeds/auth_initial.surql"]

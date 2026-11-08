@@ -1,0 +1,754 @@
+//! Routes de connexion `/auth/*` (`lyxal_auth`, lot 3). Réponses au contrat `LyxalResult`
+//! (`{ ok, data, error }`) ; les erreurs sont celles de la master data `AUTH_*`, sans détail sur
+//! l'existence d'un compte. Les routes protégées identifient l'appelant par son jeton d'accès
+//! (`Authorization: Bearer`) : signature vérifiée avec la clé de son emplacement, session
+//! contrôlée par la base.
+
+use crate::context::AppContext;
+use crate::error::ServerError;
+use crate::http::request_id;
+use crate::modules::auth::AuthHost;
+use axum::extract::{ConnectInfo, Path, State};
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::routing::{delete, get, post};
+use axum::{Json, Router};
+use lyxal_auth::models::{ClientInfo, SessionCaller, SessionListParams};
+use lyxal_auth::{AuthError, CodeProof, IssuedTokens, LoginActions, LoginOutcome, LoginRequest};
+use lyxal_crypto::SecretString;
+use lyxal_error::{LyxalError, LyxalResult};
+use lyxal_surreal::{LyxalCallError, LyxalSurrealError, SurrealValue, ToSql};
+use serde::Deserialize;
+use serde_json::{json, Value};
+use std::net::SocketAddr;
+use std::sync::Arc;
+
+/// Routes `/auth/*`.
+pub fn routes() -> Router<AppContext> {
+    Router::new()
+        .route("/login", post(login))
+        .route("/flows/{flow}/actions", post(login_actions))
+        .route("/flows/{flow}/verification", post(login_verification))
+        .route("/token/refresh", post(refresh))
+        .route("/logout", post(logout))
+        .route("/sessions", get(sessions))
+        .route("/sessions/{session}", delete(revoke_session))
+        .route("/session/organization", post(switch_organization))
+        .route("/registration/start", post(registration_start))
+        .route("/registration/complete", post(registration_complete))
+        .route("/recovery", post(recovery_start))
+        .route("/recovery/complete", post(recovery_complete))
+        .route("/verification", post(verification_start))
+        .route("/verification/complete", post(verification_complete))
+        .route("/address-change", post(address_change_start))
+        .route("/address-change/complete", post(address_change_complete))
+        .route("/password", post(change_password))
+        .route("/service/token", post(service_token))
+        .route("/api-keys/exchange", post(api_key_exchange))
+}
+
+// ----------------------------------------------------------------------------------------------
+// Réponses
+// ----------------------------------------------------------------------------------------------
+
+/// Erreur d'une route d'authentification.
+pub enum ApiError {
+    /// Erreur métier ou du service de connexion.
+    Auth(AuthError),
+    /// Erreur de l'hôte.
+    Server(ServerError),
+}
+
+impl From<AuthError> for ApiError {
+    fn from(error: AuthError) -> Self {
+        Self::Auth(error)
+    }
+}
+
+impl From<ServerError> for ApiError {
+    fn from(error: ServerError) -> Self {
+        Self::Server(error)
+    }
+}
+
+type ApiResult = Result<Response, ApiError>;
+
+fn ok(status: StatusCode, data: Value) -> ApiResult {
+    let body: LyxalResult<Value> = LyxalResult {
+        ok: true,
+        data: Some(data),
+        error: None,
+    };
+    Ok((status, Json(body)).into_response())
+}
+
+/// Erreur rendue au client : définition de master data résolue par la base pour un code
+/// `AUTH_*` ; erreur de l'hôte sinon. Aucun détail interne.
+async fn render_error(context: &AppContext, error: ApiError, language: &str) -> Response {
+    let error = match error {
+        ApiError::Server(error) => return error.into_response(),
+        ApiError::Auth(error) => error,
+    };
+    let trace_id = request_id::current();
+    let resolved = match &error {
+        AuthError::Surreal(inner) => match inner.as_ref() {
+            LyxalSurrealError::Call(LyxalCallError::Business(business)) => Some(business.clone()),
+            _ => None,
+        },
+        AuthError::Rejected(code) => resolve(context, code, language).await,
+        AuthError::InvalidParameter(_) => {
+            resolve(context, "AUTH_INVALID_PARAMETERS", language).await
+        }
+        AuthError::Crypto(_) | AuthError::Dns(_) => None,
+    };
+    let Some(mut resolved) = resolved else {
+        tracing::error!(trace_id = %trace_id, code = %error.code(), error = %error, "authentification en échec");
+        return ServerError::Database {
+            message: error.to_string(),
+        }
+        .into_response();
+    };
+    tracing::info!(trace_id = %trace_id, code = %resolved.code, "authentification refusée");
+    resolved.details = json!({ "trace_id": trace_id, "fields": resolved.details.get("fields").cloned().unwrap_or(Value::Null) });
+    let status = resolved
+        .http_status
+        .and_then(|code| StatusCode::from_u16(code).ok())
+        .unwrap_or(StatusCode::BAD_REQUEST);
+    let body: LyxalResult<Value> = LyxalResult {
+        ok: false,
+        data: None,
+        error: Some(resolved),
+    };
+    (status, Json(body)).into_response()
+}
+
+#[derive(SurrealValue)]
+struct Resolved {
+    error: Option<LyxalError>,
+}
+
+async fn resolve(context: &AppContext, code: &str, language: &str) -> Option<LyxalError> {
+    let mut response = context
+        .database
+        .query("RETURN fn::error_result($code, $language, {})")
+        .bind(("code", code.to_string()))
+        .bind(("language", language.to_string()))
+        .await
+        .ok()?;
+    let resolved: Option<Resolved> = response.take(0).ok()?;
+    resolved?.error
+}
+
+/// Langue des messages (`Accept-Language`, défaut `fr`).
+fn language(headers: &HeaderMap) -> String {
+    headers
+        .get("accept-language")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.split([',', ';', '-']).next())
+        .map(|v| v.trim().to_ascii_lowercase())
+        .filter(|v| v.len() == 2 && v.bytes().all(|b| b.is_ascii_lowercase()))
+        .unwrap_or_else(|| "fr".to_string())
+}
+
+fn client_info(headers: &HeaderMap, address: Option<ConnectInfo<SocketAddr>>) -> ClientInfo {
+    ClientInfo {
+        ip: address.map(|ConnectInfo(address)| address.ip().to_string()),
+        user_agent: headers
+            .get("user-agent")
+            .and_then(|v| v.to_str().ok())
+            .map(|v| v.chars().take(512).collect()),
+    }
+}
+
+fn host(context: &AppContext) -> Result<Arc<AuthHost>, ApiError> {
+    context
+        .auth
+        .clone()
+        .ok_or(ApiError::Server(ServerError::AuthDisabled))
+}
+
+fn secret(value: String) -> Result<SecretString, ApiError> {
+    SecretString::new(value)
+        .map_err(|_| ApiError::Auth(AuthError::Rejected("AUTH_INVALID_PARAMETERS")))
+}
+
+fn tokens_json(tokens: &IssuedTokens) -> Value {
+    json!({
+        "status": "authenticated",
+        "token_type": "Bearer",
+        "access_token": tokens.access_token.expose_secret(),
+        "refresh_token": tokens.refresh_token.as_ref().map(|t| t.expose_secret().to_string()),
+        "expires_in": tokens.expires_in,
+        "session": tokens.session.session.to_sql(),
+        "organization": tokens.session.organization.as_ref().map(|o| o.to_sql()),
+        "permissions": tokens.session.permissions,
+    })
+}
+
+fn outcome_json(outcome: &LoginOutcome) -> Value {
+    match outcome {
+        LoginOutcome::Authenticated(tokens) => tokens_json(tokens),
+        LoginOutcome::ActionRequired { flow, actions } => json!({
+            "status": "action_required",
+            "flow": flow,
+            "actions": actions,
+        }),
+    }
+}
+
+/// Appelant du jeton d'accès (`Authorization: Bearer`).
+async fn caller(host: &AuthHost, headers: &HeaderMap) -> Result<SessionCaller, ApiError> {
+    let token = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .ok_or(ApiError::Auth(AuthError::Rejected("AUTH_SESSION_REQUIRED")))?;
+    Ok(host
+        .access
+        .authenticate(&secret(token.to_string())?)
+        .await?)
+}
+
+/// Appelant d'une route de gestion de son compte (sessions, mot de passe, adresses,
+/// organisation active) : session **interactive** d'une identité. Une session de clé d'API ou
+/// de compte de service n'y a pas accès, quelles que soient ses permissions : une clé limitée
+/// à quelques droits ne doit pas pouvoir gérer le compte de son propriétaire.
+async fn identity_of(
+    host: &AuthHost,
+    headers: &HeaderMap,
+) -> Result<(SessionCaller, String), ApiError> {
+    let caller = caller(host, headers).await?;
+    if caller.kind != "interactive" {
+        return Err(ApiError::Auth(AuthError::Rejected(
+            "AUTH_PERMISSION_DENIED",
+        )));
+    }
+    let identity = caller
+        .identity
+        .as_ref()
+        .map(|id| id.to_sql())
+        .ok_or(ApiError::Auth(AuthError::Rejected(
+            "AUTH_PERMISSION_DENIED",
+        )))?;
+    Ok((caller, identity))
+}
+
+/// Exécute une route et rend son erreur éventuelle.
+async fn respond(context: &AppContext, headers: &HeaderMap, result: ApiResult) -> Response {
+    match result {
+        Ok(response) => response,
+        Err(error) => render_error(context, error, &language(headers)).await,
+    }
+}
+
+fn proof(
+    flow: Option<String>,
+    code: Option<String>,
+    token: Option<String>,
+) -> Result<CodeProof, ApiError> {
+    match (flow, code, token) {
+        (_, _, Some(token)) => Ok(CodeProof::Link(secret(token)?)),
+        (Some(flow), Some(code), None) => Ok(CodeProof::Code {
+            flow,
+            code: secret(code)?,
+        }),
+        _ => Err(ApiError::Auth(AuthError::Rejected(
+            "AUTH_INVALID_PARAMETERS",
+        ))),
+    }
+}
+
+// ----------------------------------------------------------------------------------------------
+// Connexion et sessions
+// ----------------------------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+struct LoginBody {
+    identifier: String,
+    password: String,
+    organization: Option<String>,
+}
+
+async fn login(
+    State(context): State<AppContext>,
+    address: Option<ConnectInfo<SocketAddr>>,
+    headers: HeaderMap,
+    Json(body): Json<LoginBody>,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let outcome = host
+            .access
+            .login(LoginRequest {
+                identifier: body.identifier,
+                password: secret(body.password)?,
+                organization: body.organization,
+                client: client_info(&headers, address),
+            })
+            .await?;
+        ok(StatusCode::OK, outcome_json(&outcome))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+#[derive(Deserialize)]
+struct LoginActionsBody {
+    new_password: Option<String>,
+    #[serde(default)]
+    accept_terms: bool,
+}
+
+async fn login_actions(
+    State(context): State<AppContext>,
+    Path(flow): Path<String>,
+    address: Option<ConnectInfo<SocketAddr>>,
+    headers: HeaderMap,
+    Json(body): Json<LoginActionsBody>,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let outcome = host
+            .access
+            .complete_login_actions(
+                &flow,
+                LoginActions {
+                    new_password: body.new_password.map(secret).transpose()?,
+                    accept_terms: body.accept_terms,
+                },
+                client_info(&headers, address),
+            )
+            .await?;
+        ok(StatusCode::OK, outcome_json(&outcome))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+/// Code de vérification d'adresse pour un parcours de connexion qui attend `verify_email`.
+async fn login_verification(
+    State(context): State<AppContext>,
+    Path(flow): Path<String>,
+    address: Option<ConnectInfo<SocketAddr>>,
+    headers: HeaderMap,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let verification = host
+            .access
+            .start_login_verification(&flow, client_info(&headers, address))
+            .await?;
+        ok(StatusCode::ACCEPTED, json!({ "flow": verification }))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+#[derive(Deserialize)]
+struct RefreshBody {
+    refresh_token: String,
+}
+
+async fn refresh(
+    State(context): State<AppContext>,
+    headers: HeaderMap,
+    Json(body): Json<RefreshBody>,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let tokens = host.access.refresh(&secret(body.refresh_token)?).await?;
+        ok(StatusCode::OK, tokens_json(&tokens))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+async fn logout(State(context): State<AppContext>, headers: HeaderMap) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let caller = caller(&host, &headers).await?;
+        host.access
+            .revoke(&caller.session.to_sql(), "logout")
+            .await?;
+        ok(StatusCode::OK, json!({ "revoked": true }))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+async fn sessions(State(context): State<AppContext>, headers: HeaderMap) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let (caller, identity) = identity_of(&host, &headers).await?;
+        let sessions = host
+            .access
+            .store()
+            .session_list(SessionListParams {
+                organization: None,
+                identity: Some(identity),
+            })
+            .await
+            .map_err(AuthError::from)?;
+        let current = caller.session.to_sql();
+        ok(
+            StatusCode::OK,
+            Value::Array(
+                sessions
+                    .iter()
+                    .map(|s| {
+                        json!({
+                            "session": s.id.to_sql(),
+                            "kind": s.kind,
+                            "organization": s.organization.as_ref().map(|o| o.to_sql()),
+                            "ip": s.client.ip,
+                            "user_agent": s.client.user_agent,
+                            "created_at": s.created_at.to_string(),
+                            "last_seen_at": s.last_seen_at.to_string(),
+                            "current": s.id.to_sql() == current,
+                        })
+                    })
+                    .collect(),
+            ),
+        )
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+async fn revoke_session(
+    State(context): State<AppContext>,
+    Path(session): Path<String>,
+    headers: HeaderMap,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let (_, identity) = identity_of(&host, &headers).await?;
+        // Une identité ne révoque que ses propres sessions
+        let own = host
+            .access
+            .store()
+            .session_list(SessionListParams {
+                organization: None,
+                identity: Some(identity),
+            })
+            .await
+            .map_err(AuthError::from)?;
+        if !own.iter().any(|s| s.id.to_sql() == session) {
+            return Err(ApiError::Auth(AuthError::Rejected(
+                "AUTH_PERMISSION_DENIED",
+            )));
+        }
+        host.access.revoke(&session, "revoked_by_owner").await?;
+        ok(StatusCode::OK, json!({ "revoked": true }))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+#[derive(Deserialize)]
+struct SwitchBody {
+    organization: Option<String>,
+}
+
+async fn switch_organization(
+    State(context): State<AppContext>,
+    headers: HeaderMap,
+    Json(body): Json<SwitchBody>,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let (caller, _) = identity_of(&host, &headers).await?;
+        let tokens = host
+            .access
+            .switch_organization(&caller.session.to_sql(), body.organization)
+            .await?;
+        ok(StatusCode::OK, tokens_json(&tokens))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+// ----------------------------------------------------------------------------------------------
+// Inscription, récupération, vérification, adresse, mot de passe
+// ----------------------------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+struct RegistrationStartBody {
+    token: String,
+    #[serde(default)]
+    setup: bool,
+}
+
+async fn registration_start(
+    State(context): State<AppContext>,
+    headers: HeaderMap,
+    Json(body): Json<RegistrationStartBody>,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let started = host
+            .access
+            .start_registration(&secret(body.token)?, body.setup)
+            .await?;
+        ok(
+            StatusCode::OK,
+            json!({
+                "flow": started.flow.to_sql(),
+                "email": started.email,
+                "organization": started.organization.as_ref().map(|o| o.to_sql()),
+                "kind": started.kind,
+            }),
+        )
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+#[derive(Deserialize)]
+struct RegistrationCompleteBody {
+    flow: String,
+    password: String,
+    #[serde(default)]
+    traits: Value,
+}
+
+async fn registration_complete(
+    State(context): State<AppContext>,
+    address: Option<ConnectInfo<SocketAddr>>,
+    headers: HeaderMap,
+    Json(body): Json<RegistrationCompleteBody>,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let traits = if body.traits.is_null() {
+            json!({})
+        } else {
+            body.traits
+        };
+        let tokens = host
+            .access
+            .complete_registration(
+                &body.flow,
+                traits.into_value(),
+                &secret(body.password)?,
+                client_info(&headers, address),
+            )
+            .await?;
+        ok(StatusCode::CREATED, tokens_json(&tokens))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+#[derive(Deserialize)]
+struct EmailBody {
+    email: String,
+}
+
+async fn recovery_start(
+    State(context): State<AppContext>,
+    address: Option<ConnectInfo<SocketAddr>>,
+    headers: HeaderMap,
+    Json(body): Json<EmailBody>,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let flow = host
+            .access
+            .start_recovery(&body.email, client_info(&headers, address))
+            .await?;
+        // Même réponse que l'adresse existe ou non
+        ok(StatusCode::ACCEPTED, json!({ "flow": flow }))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+#[derive(Deserialize)]
+struct ProofBody {
+    flow: Option<String>,
+    code: Option<String>,
+    token: Option<String>,
+    new_password: Option<String>,
+}
+
+async fn recovery_complete(
+    State(context): State<AppContext>,
+    headers: HeaderMap,
+    Json(body): Json<ProofBody>,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let password = secret(body.new_password.clone().unwrap_or_default())?;
+        host.access
+            .complete_recovery(proof(body.flow, body.code, body.token)?, &password)
+            .await?;
+        ok(StatusCode::OK, json!({ "completed": true }))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+async fn verification_start(
+    State(context): State<AppContext>,
+    address: Option<ConnectInfo<SocketAddr>>,
+    headers: HeaderMap,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let (_, identity) = identity_of(&host, &headers).await?;
+        let flow = host
+            .access
+            .start_verification(&identity, client_info(&headers, address))
+            .await?;
+        ok(StatusCode::ACCEPTED, json!({ "flow": flow }))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+async fn verification_complete(
+    State(context): State<AppContext>,
+    headers: HeaderMap,
+    Json(body): Json<ProofBody>,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        host.access
+            .complete_verification(proof(body.flow, body.code, body.token)?)
+            .await?;
+        ok(StatusCode::OK, json!({ "completed": true }))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+#[derive(Deserialize)]
+struct AddressChangeBody {
+    password: String,
+    new_address: String,
+}
+
+async fn address_change_start(
+    State(context): State<AppContext>,
+    address: Option<ConnectInfo<SocketAddr>>,
+    headers: HeaderMap,
+    Json(body): Json<AddressChangeBody>,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let (_, identity) = identity_of(&host, &headers).await?;
+        let flow = host
+            .access
+            .start_address_change(
+                &identity,
+                &secret(body.password)?,
+                &body.new_address,
+                client_info(&headers, address),
+            )
+            .await?;
+        ok(StatusCode::ACCEPTED, json!({ "flow": flow }))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+async fn address_change_complete(
+    State(context): State<AppContext>,
+    headers: HeaderMap,
+    Json(body): Json<ProofBody>,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let address = host
+            .access
+            .complete_address_change(proof(body.flow, body.code, body.token)?)
+            .await?;
+        ok(StatusCode::OK, json!({ "address": address }))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+#[derive(Deserialize)]
+struct PasswordBody {
+    current_password: String,
+    new_password: String,
+}
+
+async fn change_password(
+    State(context): State<AppContext>,
+    headers: HeaderMap,
+    Json(body): Json<PasswordBody>,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let (caller, identity) = identity_of(&host, &headers).await?;
+        host.access
+            .change_password(
+                &identity,
+                &caller.session.to_sql(),
+                &secret(body.current_password)?,
+                &secret(body.new_password)?,
+            )
+            .await?;
+        ok(StatusCode::OK, json!({ "changed": true }))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+// ----------------------------------------------------------------------------------------------
+// Comptes de service et clés d'API
+// ----------------------------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+struct ServiceTokenBody {
+    client_id: String,
+    client_secret: String,
+}
+
+async fn service_token(
+    State(context): State<AppContext>,
+    address: Option<ConnectInfo<SocketAddr>>,
+    headers: HeaderMap,
+    Json(body): Json<ServiceTokenBody>,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let tokens = host
+            .access
+            .service_token(
+                &body.client_id,
+                &secret(body.client_secret)?,
+                client_info(&headers, address),
+            )
+            .await?;
+        ok(StatusCode::OK, tokens_json(&tokens))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+#[derive(Deserialize)]
+struct ApiKeyBody {
+    api_key: String,
+}
+
+async fn api_key_exchange(
+    State(context): State<AppContext>,
+    address: Option<ConnectInfo<SocketAddr>>,
+    headers: HeaderMap,
+    Json(body): Json<ApiKeyBody>,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let tokens = host
+            .access
+            .api_key_token(&secret(body.api_key)?, client_info(&headers, address))
+            .await?;
+        ok(StatusCode::OK, tokens_json(&tokens))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}

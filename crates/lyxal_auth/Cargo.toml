@@ -15,6 +15,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 surrealdb = { workspace = true }
 thiserror = { workspace = true }
+tracing = { workspace = true }
 tokio = { workspace = true }
 uuid = { workspace = true }
 base64 = "0.22"

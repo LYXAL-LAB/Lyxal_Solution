@@ -18,6 +18,18 @@ pub struct AppConfig {
     pub crypto: CryptoConfig,
     #[serde(default)]
     pub notification: NotificationConfig,
+    #[serde(default)]
+    pub auth: AuthConfig,
+}
+
+/// Authentification (`lyxal_auth`) : adresse publique de l'interface, pour les liens des messages
+/// (récupération, vérification, installation). Les routes `/auth/*` demandent aussi la clé
+/// applicative ; sans l'une ou l'autre, elles répondent `SERVER_AUTH_DISABLED`.
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AuthConfig {
+    #[serde(default)]
+    pub public_url: Option<String>,
 }
 
 /// Trousseau applicatif de l'hôte (secrets des notifications, liens d'invitation) : clé AES-256

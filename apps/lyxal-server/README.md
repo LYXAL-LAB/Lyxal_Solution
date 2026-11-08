@@ -75,6 +75,7 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 | `cors` | `enabled`, `allow_credentials`, `allowed_origins`, `allowed_methods`, `allowed_headers` |
 | `catalogue_sync` | `signing_key` (facultative) |
 | `crypto` | `application_key` (facultative, variable d'environnement seulement), `application_key_id` |
+| `auth` | `public_url` (facultative : adresse publique de l'interface, pour les liens des messages) |
 | `notification.smtp` | `host`, `port`, `security` (`tls`, `starttls`, `local_plain`), `username`, `password`, `from_address`, `from_name`, `timeout_seconds` (section facultative) |
 
 Les identifiants Root ne figurent dans aucun fichier : `LYXAL__DATABASE__USERNAME` et
@@ -98,6 +99,12 @@ enveloppe `enc:v2`). Le relais : `LYXAL__NOTIFICATION__SMTP__HOST`, `__PORT`, `_
 ou sans relais, aucun e-mail n'est envoyé : les abonnements aux événements `auth.*` restent
 suspendus (les événements attendent en file) et la sonde du module est dégradée.
 
+La connexion (`lyxal_auth`) demande la clé applicative et `auth.public_url`
+(`LYXAL__AUTH__PUBLIC_URL`, ex. `https://console.example.com`). Au démarrage, l'hôte crée les
+clés de signature absentes (scellées par la clé applicative) et définit les accès SurrealDB
+`lyxal_auth_a` / `lyxal_auth_b`. Sans clé ou sans adresse, les routes `/api/v1/auth/*`
+répondent `SERVER_AUTH_DISABLED` (503) et la sonde du module est dégradée.
+
 ```bash
 LYXAL__DATABASE__ENDPOINT=ws://127.0.0.1:8000 \
 LYXAL__DATABASE__USERNAME=root LYXAL__DATABASE__PASSWORD=root \
@@ -116,6 +123,56 @@ cargo run -p lyxal-server
 | `GET /health` | Statuts des composants (serveur, base) et des modules (sondes `ModuleHealthCheck` évaluées par le runtime), sans détail interne ; `503` si un module est en panne. |
 | `GET /metrics` | Compteurs de requêtes et durée de fonctionnement. |
 | `GET /api/v1/system/modules` | Modules hébergés : identifiant, nom, version, état. |
+
+Connexion (`/api/v1/auth`, JSON, réponses `LyxalResult`, erreurs `AUTH_*` sans détail sur
+l'existence d'un compte ; langue des messages par `Accept-Language`). Les routes marquées 🔒
+exigent `Authorization: Bearer <jeton d'accès>` : signature vérifiée avec la clé de son
+emplacement, puis session contrôlée par la base (révocation, expiration, version des droits).
+Sauf `/logout`, elles demandent une session **interactive** : le jeton d'une clé d'API ou d'un
+compte de service ne gère pas le compte (`AUTH_PERMISSION_DENIED`).
+
+| Route | Corps | Réponse |
+| :--- | :--- | :--- |
+| `POST /login` | `identifier`, `password`, `organization` | jetons (`status: authenticated`) ou `status: action_required` avec `flow` et `actions` |
+| `POST /flows/{flow}/actions` | `new_password`, `accept_terms` | jetons, ou actions restantes (relues en base) |
+| `POST /flows/{flow}/verification` | — | code de vérification d'adresse pour un parcours qui attend `verify_email` (`202`), à présenter à `/verification/complete` |
+| `POST /token/refresh` | `refresh_token` | nouveaux jetons (réutilisation → session révoquée) |
+| `POST /logout` 🔒 | — | session courante révoquée |
+| `GET /sessions` 🔒 | — | sessions de l'identité (`current` pour la courante) |
+| `DELETE /sessions/{session}` 🔒 | — | révoque une de ses sessions |
+| `POST /session/organization` 🔒 | `organization` | nouvelle session dans l'organisation (membre actif) |
+| `POST /registration/start` | `token`, `setup` | parcours d'inscription (invitation ou lien d'installation) |
+| `POST /registration/complete` | `flow`, `password`, `traits` | identité créée, jetons (`201`) |
+| `POST /recovery` | `email` | `202`, même réponse que l'adresse existe ou non |
+| `POST /recovery/complete` | `flow` + `code`, ou `token` (lien) ; `new_password` | toutes les sessions révoquées ; mot de passe contrôlé avant de consommer le code, aucune reprise sans code |
+| `POST /verification` 🔒 | — | code envoyé à l'adresse principale (`202`) |
+| `POST /verification/complete` | `flow` + `code`, ou `token` | adresse vérifiée |
+| `POST /address-change` 🔒 | `password`, `new_address` | code envoyé à la nouvelle adresse (`202`) |
+| `POST /address-change/complete` | `flow` + `code`, ou `token` | nouvelle adresse |
+| `POST /password` 🔒 | `current_password`, `new_password` | mot de passe changé, autres sessions révoquées |
+| `POST /service/token` | `client_id`, `client_secret` | jeton d'un compte de service (sans renouvellement) |
+| `POST /api-keys/exchange` | `api_key` | jeton aux permissions de la clé |
+
+Jetons : `access_token` (JWT HS256, `expires_in` secondes), `refresh_token` (opaque, usage
+unique), `session`, `organization`, `permissions`.
+
+Commandes d'administration (installation existante : serveur démarré au moins une fois, même
+configuration et mêmes variables d'environnement) :
+
+```bash
+lyxal-server admin setup --email admin@example.com
+```
+
+Affiche une seule fois le lien d'installation du premier administrateur (valable 1 h ; refusé
+s'il existe déjà un administrateur de la plateforme).
+
+```bash
+lyxal-server auth rotate-signing-key
+```
+
+Active une nouvelle clé de signature des jetons dans l'emplacement inactif ; refusé tant que des
+jetons signés par l'ancienne clé de cet emplacement peuvent être valides. `--force` (clé
+compromise) l'écrase et invalide ces jetons.
 
 Chaque requête porte un identifiant `x-request-id` (repris de la requête ou généré). Couches :
 limite de corps, délai, limite de concurrence, rattrapage des paniques, CORS paramétré.
@@ -138,6 +195,7 @@ garde son code `RUNTIME_*`.
 | `SERVER_HTTP_SERVE_FAILED` | `internal` | 500 |
 | `SERVER_SHUTDOWN_SIGNAL_FAILED` | `internal` | 500 |
 | `SERVER_TELEMETRY_INIT_FAILED` | `internal` | 500 |
+| `SERVER_AUTH_DISABLED` | `dependency` | 503 |
 
 Les définitions sont générées depuis le catalogue `SERVER_ERROR_CATALOG` (`src/error.rs`) et
 installées au démarrage ; un test vérifie leur correspondance. `manifest.toml` de l'hôte ne
@@ -166,5 +224,7 @@ cargo test -p lyxal-server
 Les tests démarrent réellement le serveur sur une base embarquée : installation et démarrage de
 tous les modules, routes système, `fn::error_result` de `lyxal_error` intact, redémarrage sur une
 base installée (une release par module), rejeu des
-ressources de chaque module, définitions `SERVER_*`, corps des réponses d'erreur.
+ressources de chaque module, définitions `SERVER_*`, corps des réponses d'erreur, routes
+`/api/v1/auth/*` de bout en bout (premier administrateur, connexion, sessions, déconnexion,
+service absent).
 `scripts/ci/ci_local.sh` rejoue la CI complète.

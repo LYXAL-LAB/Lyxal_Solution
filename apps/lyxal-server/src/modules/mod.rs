@@ -1,7 +1,7 @@
 //! Modules hébergés par le serveur : manifestes et fichiers SurrealQL embarqués à la compilation
 //! (`build.rs`), implémentations `LyxalModule` et services propres à chaque module.
 
-mod auth;
+pub mod auth;
 #[cfg(feature = "module-ingestion")]
 mod ingestion;
 mod notification;
@@ -138,6 +138,8 @@ fn implementation(
 /// Services des modules hébergés à compléter après leur installation.
 #[derive(Default)]
 pub struct HostedServices {
+    /// Service de connexion (routes `/auth/*`), si la configuration le permet.
+    pub auth: Option<Arc<auth::AuthHost>>,
     #[cfg(feature = "module-ingestion")]
     publication: Option<ingestion::PublicationSetup>,
     /// Envoi des notifications configuré (clé applicative et relais SMTP).
@@ -151,18 +153,22 @@ pub async fn register_services(
     client: &Surreal<Any>,
     config: &AppConfig,
 ) -> Result<HostedServices, ServerError> {
-    auth::register_services(runtime, client)?;
-    let notification_delivery = notification::register_services(runtime, client, config).await?;
+    let crypto = crate::crypto::application_crypto(&config.crypto)?;
+    let auth = auth::register_services(runtime, client, config, crypto.clone())?;
+    let notification_delivery =
+        notification::register_services(runtime, client, config, crypto).await?;
     #[cfg(feature = "module-ingestion")]
     {
         let publication = ingestion::register_services(runtime, client, config).await?;
         Ok(HostedServices {
+            auth,
             publication,
             notification_delivery,
         })
     }
     #[cfg(not(feature = "module-ingestion"))]
     Ok(HostedServices {
+        auth,
         notification_delivery,
     })
 }
@@ -177,5 +183,6 @@ pub async fn complete_services(
     #[cfg(feature = "module-ingestion")]
     ingestion::reconcile_publication(runtime, client, services.publication.as_ref()).await?;
     notification::reconcile_subscriptions(runtime, services.notification_delivery).await?;
+    auth::complete_services(services.auth.as_ref()).await?;
     Ok(())
 }

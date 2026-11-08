@@ -8,13 +8,25 @@ use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
 use crate::models::{
-    AuthContext, AuthValue, ContextParams, DomainAddParams, DomainGetParams, DomainVerifyParams,
-    Identity, IdentityCreateParams, IdentityGetParams, IdentityPermissions,
-    IdentityPermissionsParams, Invitation, InvitationAcceptParams, InvitationAccepted,
-    InvitationCreateParams, InvitationRevokeParams, MemberAddParams, MemberAdded,
-    MemberRemoveParams, MemberRemoved, Organization, OrganizationCreateParams, OrganizationDomain,
-    OrganizationDomainCreated, OrganizationGetParams, PermissionRegisterParams,
-    PermissionRegistered, PolicyGetParams, RoleAssignParams, RoleAssigned, RoleUnassigned,
+    AddressChangeConfirmParams, AddressChangeRequestParams, AddressChangeRequested, AddressChanged,
+    AddressVerifyParams, ApiKeyCreateParams, ApiKeyCreated, ApiKeySessionParams,
+    ApplicationSecretAddParams, ApplicationSecretAdded, AuthContext, AuthPurgeParams,
+    AuthPurgeResult, AuthValue, CodeIssueParams, CodeIssued, CodeVerified, CodeVerifyParams,
+    ContextParams, DomainAddParams, DomainGetParams, DomainVerifyParams, Flow, FlowGetParams,
+    FlowStartParams, FlowSubmitParams, Identity, IdentityCreateParams, IdentityGetParams,
+    IdentityPermissions, IdentityPermissionsParams, Invitation, InvitationAcceptParams,
+    InvitationAccepted, InvitationCreateParams, InvitationRevokeParams, LoginFailureParams,
+    LoginFailureResetParams, LoginFailureStatus, MemberAddParams, MemberAdded, MemberRemoveParams,
+    MemberRemoved, Organization, OrganizationCreateParams, OrganizationDomain,
+    OrganizationDomainCreated, OrganizationGetParams, PasswordCredential, PasswordCredentialParams,
+    PasswordSet, PasswordSetParams, PermissionRegisterParams, PermissionRegistered,
+    PolicyGetParams, RegistrationCompleteParams, RegistrationCompleted, RegistrationStartParams,
+    RegistrationStarted, RequiredAction, RequiredActionCompleteParams, RequiredActionListParams,
+    RoleAssignParams, RoleAssigned, RoleUnassigned, ServiceSessionParams, SessionCaller,
+    SessionCheckParams, SessionCreateParams, SessionIssued, SessionListParams,
+    SessionRefreshParams, SessionRevokeAllParams, SessionRevokeParams, SessionRevoked,
+    SessionSummary, SessionSwitchParams, SetupStartParams, SetupStarted, SigningKeyGetParams,
+    SigningKeyRotateParams, SigningKeyRotated, SigningKeys,
 };
 
 /// Store de `lyxal_auth` sur un client SurrealDB (`Surreal<Any>`).
@@ -182,5 +194,253 @@ impl AuthStore {
         params: PolicyGetParams,
     ) -> Result<AuthValue, LyxalSurrealError> {
         self.call_fn("auth_policy_get", params).await
+    }
+
+    /// `fn::auth_password_credential_get` : identité et empreinte scellée d'un identifiant (session système).
+    pub async fn password_credential_get(
+        &self,
+        params: PasswordCredentialParams,
+    ) -> Result<PasswordCredential, LyxalSurrealError> {
+        self.call_fn("auth_password_credential_get", params).await
+    }
+
+    /// `fn::auth_password_set` : empreinte scellée enregistrée (session système).
+    pub async fn password_set(
+        &self,
+        params: PasswordSetParams,
+    ) -> Result<PasswordSet, LyxalSurrealError> {
+        self.call_fn("auth_password_set", params).await
+    }
+
+    /// `fn::auth_required_action_list` : actions imposées en attente d'une identité.
+    pub async fn required_action_list(
+        &self,
+        params: RequiredActionListParams,
+    ) -> Result<Vec<RequiredAction>, LyxalSurrealError> {
+        self.call_fn("auth_required_action_list", params).await
+    }
+
+    /// `fn::auth_required_action_complete` : action imposée levée (session système).
+    pub async fn required_action_complete(
+        &self,
+        params: RequiredActionCompleteParams,
+    ) -> Result<AuthValue, LyxalSurrealError> {
+        self.call_fn("auth_required_action_complete", params).await
+    }
+
+    /// `fn::auth_flow_start` : parcours démarré (session système).
+    pub async fn flow_start(&self, params: FlowStartParams) -> Result<Flow, LyxalSurrealError> {
+        self.call_fn("auth_flow_start", params).await
+    }
+
+    /// `fn::auth_flow_get` : parcours en cours (session système).
+    pub async fn flow_get(&self, params: FlowGetParams) -> Result<Flow, LyxalSurrealError> {
+        self.call_fn("auth_flow_get", params).await
+    }
+
+    /// `fn::auth_flow_submit` : transition de parcours (session système).
+    pub async fn flow_submit(&self, params: FlowSubmitParams) -> Result<Flow, LyxalSurrealError> {
+        self.call_fn("auth_flow_submit", params).await
+    }
+
+    /// `fn::auth_code_issue` : code et lien émis, message publié (session système).
+    pub async fn code_issue(
+        &self,
+        params: CodeIssueParams,
+    ) -> Result<CodeIssued, LyxalSurrealError> {
+        self.call_fn("auth_code_issue", params).await
+    }
+
+    /// `fn::auth_code_verify` : code ou lien vérifié (session système).
+    pub async fn code_verify(
+        &self,
+        params: CodeVerifyParams,
+    ) -> Result<CodeVerified, LyxalSurrealError> {
+        self.call_fn("auth_code_verify", params).await
+    }
+
+    /// `fn::auth_login_failure_check` : état de verrouillage (session système).
+    pub async fn login_failure_check(
+        &self,
+        params: LoginFailureParams,
+    ) -> Result<LoginFailureStatus, LyxalSurrealError> {
+        self.call_fn("auth_login_failure_check", params).await
+    }
+
+    /// `fn::auth_login_failure_record` : échec compté (session système).
+    pub async fn login_failure_record(
+        &self,
+        params: LoginFailureParams,
+    ) -> Result<LoginFailureStatus, LyxalSurrealError> {
+        self.call_fn("auth_login_failure_record", params).await
+    }
+
+    /// `fn::auth_login_failure_reset` : compteur remis à zéro (session système).
+    pub async fn login_failure_reset(
+        &self,
+        params: LoginFailureResetParams,
+    ) -> Result<AuthValue, LyxalSurrealError> {
+        self.call_fn("auth_login_failure_reset", params).await
+    }
+
+    /// `fn::auth_session_create` : session interactive ouverte (session système).
+    pub async fn session_create(
+        &self,
+        params: SessionCreateParams,
+    ) -> Result<SessionIssued, LyxalSurrealError> {
+        self.call_fn("auth_session_create", params).await
+    }
+
+    /// `fn::auth_session_refresh` : jeton de renouvellement échangé (session système).
+    pub async fn session_refresh(
+        &self,
+        params: SessionRefreshParams,
+    ) -> Result<SessionIssued, LyxalSurrealError> {
+        self.call_fn("auth_session_refresh", params).await
+    }
+
+    /// `fn::auth_session_revoke` : session révoquée (session système).
+    pub async fn session_revoke(
+        &self,
+        params: SessionRevokeParams,
+    ) -> Result<SessionRevoked, LyxalSurrealError> {
+        self.call_fn("auth_session_revoke", params).await
+    }
+
+    /// `fn::auth_session_revoke_all` : sessions d'une identité révoquées (session système).
+    pub async fn session_revoke_all(
+        &self,
+        params: SessionRevokeAllParams,
+    ) -> Result<AuthValue, LyxalSurrealError> {
+        self.call_fn("auth_session_revoke_all", params).await
+    }
+
+    /// `fn::auth_session_switch_organization` : organisation active changée (session système).
+    pub async fn session_switch_organization(
+        &self,
+        params: SessionSwitchParams,
+    ) -> Result<SessionIssued, LyxalSurrealError> {
+        self.call_fn("auth_session_switch_organization", params)
+            .await
+    }
+
+    /// `fn::auth_session_list` : sessions visibles par l'appelant.
+    pub async fn session_list(
+        &self,
+        params: SessionListParams,
+    ) -> Result<Vec<SessionSummary>, LyxalSurrealError> {
+        self.call_fn("auth_session_list", params).await
+    }
+
+    /// `fn::auth_registration_start` : inscription démarrée (session système).
+    pub async fn registration_start(
+        &self,
+        params: RegistrationStartParams,
+    ) -> Result<RegistrationStarted, LyxalSurrealError> {
+        self.call_fn("auth_registration_start", params).await
+    }
+
+    /// `fn::auth_registration_complete` : inscription terminée (session système).
+    pub async fn registration_complete(
+        &self,
+        params: RegistrationCompleteParams,
+    ) -> Result<RegistrationCompleted, LyxalSurrealError> {
+        self.call_fn("auth_registration_complete", params).await
+    }
+
+    /// `fn::auth_setup_start` : lien d'installation préparé (session système).
+    pub async fn setup_start(
+        &self,
+        params: SetupStartParams,
+    ) -> Result<SetupStarted, LyxalSurrealError> {
+        self.call_fn("auth_setup_start", params).await
+    }
+
+    /// `fn::auth_address_verify` : adresse vérifiée (session système).
+    pub async fn address_verify(
+        &self,
+        params: AddressVerifyParams,
+    ) -> Result<AuthValue, LyxalSurrealError> {
+        self.call_fn("auth_address_verify", params).await
+    }
+
+    /// `fn::auth_address_change_request` : changement d'adresse demandé (session système).
+    pub async fn address_change_request(
+        &self,
+        params: AddressChangeRequestParams,
+    ) -> Result<AddressChangeRequested, LyxalSurrealError> {
+        self.call_fn("auth_address_change_request", params).await
+    }
+
+    /// `fn::auth_address_change_confirm` : changement d'adresse confirmé (session système).
+    pub async fn address_change_confirm(
+        &self,
+        params: AddressChangeConfirmParams,
+    ) -> Result<AddressChanged, LyxalSurrealError> {
+        self.call_fn("auth_address_change_confirm", params).await
+    }
+
+    /// `fn::auth_signing_key_get_active` : clés actives scellées (session système).
+    pub async fn signing_key_get_active(
+        &self,
+        params: SigningKeyGetParams,
+    ) -> Result<SigningKeys, LyxalSurrealError> {
+        self.call_fn("auth_signing_key_get_active", params).await
+    }
+
+    /// `fn::auth_signing_key_rotate` : nouvelle clé activée (session système).
+    pub async fn signing_key_rotate(
+        &self,
+        params: SigningKeyRotateParams,
+    ) -> Result<SigningKeyRotated, LyxalSurrealError> {
+        self.call_fn("auth_signing_key_rotate", params).await
+    }
+
+    /// `fn::auth_service_session_create` : session de compte de service (session système).
+    pub async fn service_session_create(
+        &self,
+        params: ServiceSessionParams,
+    ) -> Result<SessionIssued, LyxalSurrealError> {
+        self.call_fn("auth_service_session_create", params).await
+    }
+
+    /// `fn::auth_api_key_session_create` : session d'une clé d'API (session système).
+    pub async fn api_key_session_create(
+        &self,
+        params: ApiKeySessionParams,
+    ) -> Result<SessionIssued, LyxalSurrealError> {
+        self.call_fn("auth_api_key_session_create", params).await
+    }
+
+    /// `fn::auth_api_key_create` : clé d'API de l'identité connectée.
+    pub async fn api_key_create(
+        &self,
+        params: ApiKeyCreateParams,
+    ) -> Result<ApiKeyCreated, LyxalSurrealError> {
+        self.call_fn("auth_api_key_create", params).await
+    }
+
+    /// `fn::auth_application_secret_add` : secret client ajouté.
+    pub async fn application_secret_add(
+        &self,
+        params: ApplicationSecretAddParams,
+    ) -> Result<ApplicationSecretAdded, LyxalSurrealError> {
+        self.call_fn("auth_application_secret_add", params).await
+    }
+
+    /// `fn::auth_purge` : purge par paquets (session système).
+    pub async fn purge(
+        &self,
+        params: AuthPurgeParams,
+    ) -> Result<AuthPurgeResult, LyxalSurrealError> {
+        self.call_fn("auth_purge", params).await
+    }
+
+    /// `fn::auth_session_check` : validité d'une session désignée par un jeton vérifié (session système).
+    pub async fn session_check(
+        &self,
+        params: SessionCheckParams,
+    ) -> Result<SessionCaller, LyxalSurrealError> {
+        self.call_fn("auth_session_check", params).await
     }
 }

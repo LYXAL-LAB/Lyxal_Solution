@@ -9,11 +9,15 @@ use std::{sync::Arc, time::Duration};
 use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
+/// Runtime démarré et services de l'hôte.
+pub struct Started {
+    pub runtime: Arc<LyxalRuntime>,
+    /// Service de connexion (routes `/auth/*`), absent sans clé applicative ou `auth.public_url`.
+    pub auth: Option<Arc<modules::auth::AuthHost>>,
+}
+
 /// Construit le runtime, installe le noyau et les modules hébergés, puis les démarre.
-pub async fn start(
-    config: &AppConfig,
-    client: &Surreal<Any>,
-) -> Result<Arc<LyxalRuntime>, ServerError> {
+pub async fn start(config: &AppConfig, client: &Surreal<Any>) -> Result<Started, ServerError> {
     modules::install_foundation(client).await?;
 
     let timeouts = &config.runtime;
@@ -67,5 +71,8 @@ pub async fn start(
 
     modules::complete_services(&runtime, client, &services).await?;
     runtime.start_all().await?;
-    Ok(Arc::new(runtime))
+    Ok(Started {
+        runtime: Arc::new(runtime),
+        auth: services.auth,
+    })
 }

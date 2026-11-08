@@ -2,8 +2,10 @@
 #![deny(clippy::unwrap_used, clippy::expect_used)]
 
 pub mod bootstrap;
+pub mod cli;
 pub mod config;
 pub mod context;
+pub mod crypto;
 pub mod database;
 pub mod error;
 pub mod health;

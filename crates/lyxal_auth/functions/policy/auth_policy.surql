@@ -17,7 +17,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_policy_get($params: object) {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
-    LET $themes = ["password", "lockout", "session", "mfa", "invitation", "registration"];
+    LET $themes = ["password", "lockout", "session", "mfa", "invitation", "registration", "code", "refresh", "flow"];
     LET $base = (SELECT * FROM ONLY auth_policy WHERE scope_key = "installation" LIMIT 1) ?? {};
     LET $override = IF $p.organization IS NONE { {} } ELSE {
         (SELECT * FROM ONLY auth_policy WHERE scope_key = <string> record::id($p.organization) LIMIT 1) ?? {}
@@ -26,7 +26,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_policy_get($params: object) {
         $t,
         object::extend($base[$t] ?? {}, $override[$t] ?? {})
     ])));
-} COMMENT "Politique effective ({ organization }) : installation surchargée par l'organisation, par thème (password, lockout, session, mfa, invitation, registration)";
+} COMMENT "Politique effective ({ organization }) : installation surchargée par l'organisation, par thème (password, lockout, session, mfa, invitation, registration, code, refresh, flow)";
 
 DEFINE FUNCTION OVERWRITE fn::auth_policy_save($params: object) {
     LET $report = fn::validation_object_execute($params, {
@@ -39,7 +39,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_policy_save($params: object) {
             }, unknown_keys: "reject" } } }] },
             lockout: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: { fields: {
                 max_failures: { pipeline: [{ rule: "integer", options: { min_value: 3, max_value: 100 } }] },
-                lock_seconds: { pipeline: [{ rule: "integer", options: { min_value: 60, max_value: 86400 } }] }
+                lock_seconds: { pipeline: [{ rule: "integer", options: { min_value: 60, max_value: 86400 } }] },
+                window_seconds: { pipeline: [{ rule: "integer", options: { min_value: 60, max_value: 86400 } }] },
+                ip_max_failures: { pipeline: [{ rule: "integer", options: { min_value: 10, max_value: 10000 } }] }
             }, unknown_keys: "reject" } } }] },
             session: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: { fields: {
                 access_seconds: { pipeline: [{ rule: "integer", options: { min_value: 60, max_value: 3600 } }] },
@@ -56,10 +58,20 @@ DEFINE FUNCTION OVERWRITE fn::auth_policy_save($params: object) {
             registration: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: { fields: {
                 mode: { pipeline: [{ rule: "enum", options: { allowed: ["invitation_only"], case_sensitive: true } }] }
             }, unknown_keys: "reject" } } }] },
+            code: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: { fields: {
+                ttl_seconds: { pipeline: [{ rule: "integer", options: { min_value: 300, max_value: 86400 } }] },
+                max_attempts: { pipeline: [{ rule: "integer", options: { min_value: 3, max_value: 10 } }] }
+            }, unknown_keys: "reject" } } }] },
+            refresh: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: { fields: {
+                ttl_seconds: { pipeline: [{ rule: "integer", options: { min_value: 3600, max_value: 31536000 } }] }
+            }, unknown_keys: "reject" } } }] },
+            flow: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: { fields: {
+                ttl_seconds: { pipeline: [{ rule: "integer", options: { min_value: 300, max_value: 3600 } }] }
+            }, unknown_keys: "reject" } } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
-    }, 80);
+    }, 120);
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
@@ -77,7 +89,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_policy_save($params: object) {
     };
     LET $scope_key = IF $p.organization IS NONE { "installation" } ELSE { <string> record::id($p.organization) };
     LET $changes = object::from_entries(array::filter(
-        array::map(["password", "lockout", "session", "mfa", "invitation", "registration"], |$t| [$t, $p[$t]]),
+        array::map(["password", "lockout", "session", "mfa", "invitation", "registration", "code", "refresh", "flow"], |$t| [$t, $p[$t]]),
         |$e| $e[1] IS NOT NONE
     ));
     LET $existing = (SELECT VALUE id FROM ONLY auth_policy WHERE scope_key = $scope_key LIMIT 1);
@@ -88,4 +100,4 @@ DEFINE FUNCTION OVERWRITE fn::auth_policy_save($params: object) {
     };
     IF $saved == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_policy" }); };
     RETURN fn::result_ok($saved);
-} COMMENT "Enregistre la politique de l'installation ou d'une organisation ({ organization, password, lockout, session, mfa, invitation, registration }) ; seuls les thèmes fournis sont remplacés. Permission auth.policy.manage ou auth.organization.policy.manage";
+} COMMENT "Enregistre la politique de l'installation ou d'une organisation ({ organization, password, lockout, session, mfa, invitation, registration, code, refresh, flow }) ; seuls les thèmes fournis sont remplacés. Permission auth.policy.manage ou auth.organization.policy.manage";
