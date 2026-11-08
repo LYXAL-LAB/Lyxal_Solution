@@ -39,6 +39,9 @@ pub enum ServerError {
 
     #[error("journalisation non initialisée : {message}")]
     Telemetry { message: String },
+
+    #[error("authentification désactivée : clé applicative ou auth.public_url absente")]
+    AuthDisabled,
 }
 
 /// Description d'une erreur de l'hôte, identique à sa définition dans `error/server.surql`.
@@ -117,6 +120,15 @@ const TELEMETRY_INIT_FAILED: ServerErrorInfo = ServerErrorInfo {
     label: "Journalisation non initialisée",
 };
 
+const AUTH_DISABLED: ServerErrorInfo = ServerErrorInfo {
+    code: "SERVER_AUTH_DISABLED",
+    category: "dependency",
+    http_status: 503,
+    retryable: false,
+    message: "Authentication is disabled on this server",
+    label: "Authentification désactivée",
+};
+
 /// Toutes les erreurs de l'hôte.
 pub const SERVER_ERROR_CATALOG: &[ServerErrorInfo] = &[
     CONFIGURATION_INVALID,
@@ -126,6 +138,7 @@ pub const SERVER_ERROR_CATALOG: &[ServerErrorInfo] = &[
     HTTP_SERVE_FAILED,
     SHUTDOWN_SIGNAL_FAILED,
     TELEMETRY_INIT_FAILED,
+    AUTH_DISABLED,
 ];
 
 impl ServerError {
@@ -151,6 +164,7 @@ impl ServerError {
             Self::HttpServe { .. } => HTTP_SERVE_FAILED,
             Self::ShutdownSignal { .. } => SHUTDOWN_SIGNAL_FAILED,
             Self::Telemetry { .. } => TELEMETRY_INIT_FAILED,
+            Self::AuthDisabled => AUTH_DISABLED,
         }
     }
 

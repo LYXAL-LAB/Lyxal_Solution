@@ -6,11 +6,9 @@
 //! les abonnements aux événements `auth.*` sont suspendus (les événements attendent en file et
 //! reprennent quand la configuration est complète) et la sonde le signale.
 
-use crate::config::{AppConfig, CryptoConfig, SmtpConfig};
+use crate::config::{AppConfig, SmtpConfig};
 use crate::error::ServerError;
-use lyxal_crypto::{
-    CryptoEngine, EnvironmentKeyProvider, KeyId, KeyRingBuilder, KeyUse, StaticKeyResolver,
-};
+use lyxal_crypto::{CryptoEngine, StaticKeyResolver};
 use lyxal_event::EventSubscription;
 use lyxal_notification::{
     EmailTransport, EmailWorkerSettings, NotificationConsumer, NotificationEmailWorker,
@@ -26,8 +24,6 @@ use surrealdb::Surreal;
 
 pub const MODULE_ID: &str = lyxal_notification::MODULE_ID;
 
-/// Variable d'environnement de la clé applicative.
-const APPLICATION_KEY_VAR: &str = "LYXAL__CRYPTO__APPLICATION_KEY";
 /// Intervalle de la purge.
 const PURGE_INTERVAL: Duration = Duration::from_secs(600);
 /// Éléments purgés par paquet.
@@ -43,35 +39,6 @@ fn configuration_error(field: &str, error: impl std::fmt::Display) -> ServerErro
     ServerError::Configuration {
         message: format!("{field} : {error}"),
     }
-}
-
-/// Trousseau applicatif : une clé active lue par `EnvironmentKeyProvider`. `None` si la clé n'est
-/// pas fournie ; une clé fournie mais invalide (ou sans identifiant) arrête le démarrage.
-pub fn application_crypto(
-    config: &CryptoConfig,
-) -> Result<Option<Arc<CryptoEngine<StaticKeyResolver>>>, ServerError> {
-    if config.application_key.is_none() {
-        return Ok(None);
-    }
-    let id = config
-        .application_key_id
-        .as_deref()
-        .ok_or_else(|| configuration_error("crypto.application_key_id", "obligatoire avec la clé"))
-        .and_then(|id| {
-            KeyId::parse(id).map_err(|e| configuration_error("crypto.application_key_id", e))
-        })?;
-    let key = EnvironmentKeyProvider::load(APPLICATION_KEY_VAR, id)
-        .map_err(|e| configuration_error("crypto.application_key", e))?;
-    let mut builder = KeyRingBuilder::new();
-    builder
-        .insert_resolved(key, KeyUse::Active)
-        .map_err(|e| configuration_error("crypto.application_key", e))?;
-    let ring = builder
-        .build()
-        .map_err(|e| configuration_error("crypto.application_key", e))?;
-    Ok(Some(Arc::new(CryptoEngine::new(StaticKeyResolver::new(
-        Arc::new(ring),
-    )))))
 }
 
 fn smtp_transport(config: &SmtpConfig) -> Result<Arc<dyn EmailTransport>, ServerError> {
@@ -103,6 +70,7 @@ pub async fn register_services(
     runtime: &LyxalRuntime,
     client: &Surreal<Any>,
     config: &AppConfig,
+    crypto: Option<Arc<CryptoEngine<StaticKeyResolver>>>,
 ) -> Result<bool, ServerError> {
     let store = NotificationStore::new(client.clone());
     runtime.register_worker(Arc::new(NotificationPurgeWorker::new(
@@ -110,7 +78,6 @@ pub async fn register_services(
         PURGE_INTERVAL,
         PURGE_BATCH,
     )?))?;
-    let crypto = application_crypto(&config.crypto)?;
     let transport = config
         .notification
         .smtp

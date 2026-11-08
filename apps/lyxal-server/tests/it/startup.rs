@@ -21,7 +21,7 @@ fn config(database: &str) -> AppConfig {
 }
 
 /// Configuration de test complétée par `extra` (sections TOML supplémentaires).
-fn config_with(database: &str, extra: &str) -> AppConfig {
+pub(crate) fn config_with(database: &str, extra: &str) -> AppConfig {
     let directory = tempfile::tempdir().expect("tempdir");
     fs::write(
         directory.path().join("default.toml"),
@@ -72,7 +72,7 @@ allowed_headers = []
     AppConfig::load_from(directory.path()).expect("configuration valide")
 }
 
-async fn database(name: &str) -> Surreal<Any> {
+pub(crate) async fn database(name: &str) -> Surreal<Any> {
     let db = connect("mem://").await.expect("connexion");
     db.use_ns("lyxal_test").use_db(name).await.expect("ns/db");
     db
@@ -98,7 +98,10 @@ async fn get(router: &axum::Router, uri: &str) -> (StatusCode, serde_json::Value
 async fn server_installs_and_starts_hosted_modules() {
     let config = Arc::new(config("startup"));
     let client = database("startup").await;
-    let runtime = runtime::start(&config, &client).await.expect("démarrage");
+    let runtime = runtime::start(&config, &client)
+        .await
+        .expect("démarrage")
+        .runtime;
 
     let health = HealthRegistry::default();
     health.set("server", HealthState::Healthy, None).await;
@@ -109,6 +112,7 @@ async fn server_installs_and_starts_hosted_modules() {
         health,
         Metrics::default(),
         runtime.clone(),
+        None,
     );
     let router = build_router(context).expect("routeur");
 
@@ -166,11 +170,15 @@ async fn restart_on_installed_database_is_idempotent() {
 
     let first = runtime::start(&config, &client)
         .await
-        .expect("premier démarrage");
+        .expect("premier démarrage")
+        .runtime;
     first.stop_all().await.expect("arrêt");
     drop(first);
 
-    let second = runtime::start(&config, &client).await.expect("redémarrage");
+    let second = runtime::start(&config, &client)
+        .await
+        .expect("redémarrage")
+        .runtime;
     second.stop_all().await.expect("arrêt");
 
     // Chaque module n'a qu'une release. Aucun module hébergé ne déclare de migration (schémas
@@ -311,7 +319,10 @@ async fn approved_manifest_is_published_through_the_event_engine() {
         &format!("[catalogue_sync]\nsigning_key = \"{key}\"\n"),
     );
     let client = database("publication").await;
-    let runtime = runtime::start(&config, &client).await.expect("démarrage");
+    let runtime = runtime::start(&config, &client)
+        .await
+        .expect("démarrage")
+        .runtime;
 
     // Accès JWT et abonnement installés par l'hôte
     let mut info = client.query("INFO FOR DB").await.expect("INFO FOR DB");
@@ -383,7 +394,8 @@ async fn approved_manifest_is_published_through_the_event_engine() {
     // Redémarrage sans clé : abonnement suspendu, accès JWT retiré
     let keyless = runtime::start(&config_with("publication", ""), &client)
         .await
-        .expect("redémarrage sans clé");
+        .expect("redémarrage sans clé")
+        .runtime;
     let mut state = client
         .query("SELECT VALUE is_active FROM event_subscription WHERE name = 'ingestion_manifest_publication'; INFO FOR DB;")
         .await
@@ -406,7 +418,10 @@ async fn approved_manifest_is_published_through_the_event_engine() {
 async fn missing_signing_key_degrades_the_ingestion_probe() {
     let config = config("sans_cle");
     let client = database("sans_cle").await;
-    let runtime = runtime::start(&config, &client).await.expect("démarrage");
+    let runtime = runtime::start(&config, &client)
+        .await
+        .expect("démarrage")
+        .runtime;
     let probe = runtime
         .health_registry()
         .get_check(&lyxal_runtime::ModuleId::new("lyxal_pipeline_ingestion"))

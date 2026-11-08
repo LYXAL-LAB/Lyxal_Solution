@@ -1,3 +1,4 @@
+mod auth;
 mod handlers;
 mod middleware;
 pub mod request_id;

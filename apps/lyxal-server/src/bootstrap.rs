@@ -12,7 +12,13 @@ use std::{sync::Arc, time::Duration};
 use tokio::net::TcpListener;
 
 pub async fn run() -> anyhow::Result<()> {
-    run_inner().await.map_err(anyhow::Error::new)
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    match crate::cli::parse(&args)? {
+        crate::cli::Command::Serve => run_inner().await.map_err(anyhow::Error::new),
+        command => crate::cli::execute(command)
+            .await
+            .map_err(anyhow::Error::new),
+    }
 }
 
 async fn run_inner() -> Result<(), ServerError> {
@@ -45,7 +51,8 @@ async fn run_inner() -> Result<(), ServerError> {
     };
 
     let metrics = Metrics::default();
-    let runtime = runtime::start(&config, &database).await?;
+    let started = runtime::start(&config, &database).await?;
+    let runtime = started.runtime.clone();
 
     let context = AppContext::new(
         config.clone(),
@@ -53,6 +60,7 @@ async fn run_inner() -> Result<(), ServerError> {
         health.clone(),
         metrics,
         runtime.clone(),
+        started.auth,
     );
     let router = http::build_router(context)?;
 

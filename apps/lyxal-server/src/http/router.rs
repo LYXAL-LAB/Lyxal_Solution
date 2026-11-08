@@ -1,4 +1,4 @@
-use super::{handlers, middleware};
+use super::{auth, handlers, middleware};
 use crate::{config::CorsConfig, context::AppContext, error::ServerError};
 use axum::{
     http::{HeaderName, HeaderValue, Method},
@@ -19,7 +19,8 @@ use tower_http::{
 pub fn build_router(context: AppContext) -> Result<Router, ServerError> {
     let api = Router::new()
         .route("/system/info", get(handlers::root))
-        .route("/system/modules", get(handlers::modules));
+        .route("/system/modules", get(handlers::modules))
+        .nest("/auth", auth::routes());
 
     let mut router = Router::new()
         .route("/", get(handlers::root))

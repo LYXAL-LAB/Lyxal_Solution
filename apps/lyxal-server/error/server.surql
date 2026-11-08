@@ -192,3 +192,30 @@ IF !record::exists(error_definition:SERVER_TELEMETRY_INIT_FAILED) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:SERVER_AUTH_DISABLED) THEN (
+    CREATE error_definition:SERVER_AUTH_DISABLED CONTENT {
+        code: "SERVER_AUTH_DISABLED",
+        module: "server",
+        domain: "auth",
+        category: "dependency",
+        severity: "error",
+        message: "Authentication is disabled on this server",
+        default_language: "fr",
+        http_status: 503,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Authentification désactivée",
+                description: "Le serveur n'a pas de clé applicative (LYXAL__CRYPTO__APPLICATION_KEY) ou d'adresse publique (auth.public_url) : la connexion est indisponible.",
+                resolution: "Renseigner la clé applicative et auth.public_url, puis redémarrer."
+            },
+            en: {
+                label: "Authentication disabled",
+                description: "The server has no application key or public address: sign-in is unavailable.",
+                resolution: "Set the application key and auth.public_url, then restart."
+            }
+        }
+    }
+) END;
