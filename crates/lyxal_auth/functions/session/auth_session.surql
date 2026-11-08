@@ -305,3 +305,36 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_list($params: object) {
         ORDER BY last_seen_at DESC LIMIT $p.limit);
     RETURN fn::result_ok(array::map($rows, |$r| object::extend($r, { current: $auth IS NOT NONE AND $r.id = $auth })));
 } COMMENT "Sessions actives visibles par l'appelant ({ organization, identity, limit }) : les siennes par défaut ; celles d'une organisation avec auth.session.manage ; current marque la session de l'appel";
+
+-- ----------------------------------------------------------------------------
+-- fn::auth_session_check : validité d'une session désignée par un jeton vérifié par l'hôte
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::auth_session_check($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            session: { pipeline: [{ rule: "record", options: { expected_table: "auth_session" } }], required: true },
+            pv: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
+    LET $now = time::now();
+    LET $s = (SELECT * FROM ONLY $p.session);
+    IF $s == NONE OR $s.state = "revoked" { RETURN fn::error_result("AUTH_SESSION_REVOKED", $p.language, {}); };
+    IF $s.state != "active" OR $s.expires_at <= $now OR $s.idle_expires_at <= $now { RETURN fn::error_result("AUTH_SESSION_EXPIRED", $p.language, {}); };
+    LET $subject = IF $s.identity IS NOT NONE { (SELECT state, not_before, permissions_version FROM ONLY $s.identity) } ELSE { (SELECT state, not_before, permissions_version FROM ONLY $s.application) };
+    IF $subject == NONE OR $subject.state != "active" { RETURN fn::error_result(IF $s.identity IS NOT NONE { "AUTH_IDENTITY_INACTIVE" } ELSE { "AUTH_APPLICATION_INACTIVE" }, $p.language, {}); };
+    IF $subject.not_before IS NOT NONE AND $s.created_at < $subject.not_before { RETURN fn::error_result("AUTH_SESSION_REVOKED", $p.language, {}); };
+    IF $s.api_key IS NOT NONE {
+        LET $key = (SELECT revoked_at, expires_at FROM ONLY $s.api_key);
+        IF $key == NONE OR $key.revoked_at IS NOT NONE OR ($key.expires_at IS NOT NONE AND $key.expires_at <= $now) { RETURN fn::error_result("AUTH_SESSION_REVOKED", $p.language, {}); };
+    };
+    IF $p.pv < $subject.permissions_version { RETURN fn::error_result("AUTH_SESSION_STALE", $p.language, {}); };
+    RETURN fn::result_ok({ session: $s.id, identity: $s.identity, application: $s.application, organization: $s.organization, kind: $s.kind });
+} COMMENT "Validité d'une session ({ session, pv }) désignée par un jeton dont l'hôte a vérifié la signature : mêmes règles que fn::auth_session_valid (état, expirations, sujet actif, not_before, clé d'API, version des droits). Session système";

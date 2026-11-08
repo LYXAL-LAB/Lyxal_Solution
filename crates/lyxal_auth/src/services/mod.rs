@@ -18,4 +18,6 @@ pub use invitation::{
 };
 pub use keys::{access_name, ActiveSigningKey, SigningKeyService};
 pub use password::{PasswordCheck, PasswordPolicy, PasswordService};
-pub use tokens::{opaque_token, token_hash, IssuedTokens, OpaqueToken};
+pub use tokens::{
+    opaque_token, token_hash, verify_access_token, IssuedTokens, OpaqueToken, VerifiedClaims,
+};

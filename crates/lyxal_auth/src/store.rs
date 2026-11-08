@@ -22,10 +22,10 @@ use crate::models::{
     PasswordSet, PasswordSetParams, PermissionRegisterParams, PermissionRegistered,
     PolicyGetParams, RegistrationCompleteParams, RegistrationCompleted, RegistrationStartParams,
     RegistrationStarted, RequiredActionCompleteParams, RoleAssignParams, RoleAssigned,
-    RoleUnassigned, ServiceSessionParams, SessionCreateParams, SessionIssued, SessionListParams,
-    SessionRefreshParams, SessionRevokeAllParams, SessionRevokeParams, SessionRevoked,
-    SessionSummary, SessionSwitchParams, SetupStartParams, SetupStarted, SigningKeyGetParams,
-    SigningKeyRotateParams, SigningKeyRotated, SigningKeys,
+    RoleUnassigned, ServiceSessionParams, SessionCaller, SessionCheckParams, SessionCreateParams,
+    SessionIssued, SessionListParams, SessionRefreshParams, SessionRevokeAllParams,
+    SessionRevokeParams, SessionRevoked, SessionSummary, SessionSwitchParams, SetupStartParams,
+    SetupStarted, SigningKeyGetParams, SigningKeyRotateParams, SigningKeyRotated, SigningKeys,
 };
 
 /// Store de `lyxal_auth` sur un client SurrealDB (`Surreal<Any>`).
@@ -425,5 +425,13 @@ impl AuthStore {
         params: AuthPurgeParams,
     ) -> Result<AuthPurgeResult, LyxalSurrealError> {
         self.call_fn("auth_purge", params).await
+    }
+
+    /// `fn::auth_session_check` : validité d'une session désignée par un jeton vérifié (session système).
+    pub async fn session_check(
+        &self,
+        params: SessionCheckParams,
+    ) -> Result<SessionCaller, LyxalSurrealError> {
+        self.call_fn("auth_session_check", params).await
     }
 }

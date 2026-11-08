@@ -114,6 +114,11 @@ RETURN array::len(fn::auth_session_list({ organization: "auth_organization:alpha
 RETURN fn::auth_context({}).data.{ kind, application, organization } == { kind: NONE, application: NONE, organization: auth_organization:alpha }
     OR fn::auth_context({}).data.{ kind, application, organization } == { kind: "interactive", application: NONE, organization: auth_organization:alpha };
 
+-- test: contrôle d'une session par l'hôte : valide, droits dépassés, inconnue
+RETURN fn::auth_session_check({ session: "auth_session:gestion", pv: 1 }).data.{ identity, kind } == { identity: auth_identity:gestion, kind: "interactive" }
+    AND fn::auth_session_check({ session: "auth_session:gestion", pv: 0 }).error.code == "AUTH_SESSION_STALE"
+    AND fn::auth_session_check({ session: "auth_session:inconnue", pv: 1 }).error.code == "AUTH_SESSION_REVOKED";
+
 -- test: révocation d'une session, puis de toutes sauf une
 {
     LET $claire = (SELECT VALUE identity FROM ONLY auth_credential_identifier WHERE value = "claire@exemple.fr" LIMIT 1);
@@ -127,7 +132,8 @@ RETURN fn::auth_context({}).data.{ kind, application, organization } == { kind: 
 -- test: une session révoquée perd ses droits dès l'opération suivante
 -- en tant que: gestion
 RETURN fn::auth_context({}).error.code == "AUTH_SESSION_REVOKED"
-    AND fn::auth_session_list({ organization: "auth_organization:alpha" }).error.code == "AUTH_SESSION_REVOKED";
+    AND fn::auth_session_list({ organization: "auth_organization:alpha" }).error.code == "AUTH_SESSION_REVOKED"
+    AND fn::auth_session_check({ session: "auth_session:gestion", pv: 1 }).error.code == "AUTH_PERMISSION_DENIED";
 
 -- test: une identité n'ouvre ni ne révoque de session
 -- en tant que: claire

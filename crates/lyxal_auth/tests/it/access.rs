@@ -437,3 +437,30 @@ async fn identity_created_by_an_admin_is_unaffected() {
         .expect_err("sans mot de passe");
     assert_eq!(refused.code(), "AUTH_CREDENTIALS_INVALID");
 }
+
+#[tokio::test]
+async fn host_authenticates_a_bearer_token_until_revocation() {
+    let store = installed_store().await;
+    let (access, _) = service(&store).await;
+    let tokens = admin(&access).await;
+    let caller = access
+        .authenticate(&tokens.access_token)
+        .await
+        .expect("appelant");
+    assert_eq!(caller.session, tokens.session.session);
+    assert_eq!(caller.kind, "interactive");
+    // Jeton altéré : signature refusée
+    let mut forged = tokens.access_token.expose_secret().to_string();
+    forged.pop();
+    forged.push(if forged.ends_with('A') { 'B' } else { 'A' });
+    assert!(access.authenticate(&secret(&forged)).await.is_err());
+    access
+        .revoke(&tokens.session.session.to_sql(), "logout")
+        .await
+        .expect("révocation");
+    let refused = access
+        .authenticate(&tokens.access_token)
+        .await
+        .expect_err("révoquée");
+    assert_eq!(refused.code(), "AUTH_SESSION_REVOKED");
+}

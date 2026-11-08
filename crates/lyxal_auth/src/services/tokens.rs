@@ -3,7 +3,7 @@
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use lyxal_crypto::{blake3_hex, sign_hmac_sha256, SecretString};
+use lyxal_crypto::{blake3_hex, sign_hmac_sha256, verify_hmac_sha256, SecretString};
 use lyxal_surreal::ToSql;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -123,4 +123,100 @@ mod tests {
         assert_ne!(a.hash, b.hash);
         assert_eq!(token_hash(&a.value), a.hash);
     }
+}
+
+/// Claims d'un jeton d'accès dont la signature et l'expiration ont été vérifiées.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VerifiedClaims {
+    /// Emplacement de la clé (`a`, `b`).
+    pub slot: String,
+    /// Session (texte `auth_session:<clé>`).
+    pub session: String,
+    /// Version des droits portée par le jeton.
+    pub pv: i64,
+    /// Permissions portées par le jeton.
+    pub permissions: Vec<String>,
+}
+
+/// Lit l'emplacement (`ac`) d'un jeton sans rien lui accorder (pour choisir la clé).
+pub fn token_slot(token: &SecretString) -> AuthResult<String> {
+    let claims = decode_claims(token)?;
+    claims["ac"]
+        .as_str()
+        .and_then(|ac| ac.strip_prefix("lyxal_auth_"))
+        .filter(|slot| *slot == "a" || *slot == "b")
+        .map(str::to_string)
+        .ok_or(AuthError::Rejected("AUTH_SESSION_REQUIRED"))
+}
+
+/// Vérifie la signature HS256 (temps constant), l'en-tête, l'espace de noms, la base et la
+/// période de validité d'un jeton d'accès.
+pub fn verify_access_token(
+    key: &ActiveSigningKey,
+    token: &SecretString,
+    namespace: &str,
+    database: &str,
+) -> AuthResult<VerifiedClaims> {
+    let refused = || AuthError::Rejected("AUTH_SESSION_REQUIRED");
+    let mut parts = token.expose_secret().split('.');
+    let (Some(header), Some(payload), Some(signature), None) =
+        (parts.next(), parts.next(), parts.next(), parts.next())
+    else {
+        return Err(refused());
+    };
+    let header: serde_json::Value =
+        serde_json::from_slice(&URL_SAFE_NO_PAD.decode(header).map_err(|_| refused())?)
+            .map_err(|_| refused())?;
+    if header["alg"] != "HS256" {
+        return Err(refused());
+    }
+    let signature = URL_SAFE_NO_PAD.decode(signature).map_err(|_| refused())?;
+    let signing_input = format!(
+        "{}.{payload}",
+        token.expose_secret().split('.').next().unwrap_or_default()
+    );
+    if !verify_hmac_sha256(&key.hmac_key()?, signing_input.as_bytes(), &signature)? {
+        return Err(refused());
+    }
+    let claims = decode_claims(token)?;
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| refused())?
+        .as_secs() as i64;
+    let exp = claims["exp"].as_i64().ok_or_else(refused)?;
+    let nbf = claims["nbf"].as_i64().unwrap_or(0);
+    if exp <= now
+        || nbf > now + 60
+        || claims["ns"] != namespace
+        || claims["db"] != database
+        || claims["ac"] != access_name(&key.slot)
+    {
+        return Err(AuthError::Rejected("AUTH_SESSION_EXPIRED"));
+    }
+    Ok(VerifiedClaims {
+        slot: key.slot.clone(),
+        session: claims["id"].as_str().ok_or_else(refused)?.to_string(),
+        pv: claims["pv"].as_i64().ok_or_else(refused)?,
+        permissions: claims["permissions"]
+            .as_array()
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|p| p.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default(),
+    })
+}
+
+fn decode_claims(token: &SecretString) -> AuthResult<serde_json::Value> {
+    let payload = token
+        .expose_secret()
+        .split('.')
+        .nth(1)
+        .ok_or(AuthError::Rejected("AUTH_SESSION_REQUIRED"))?;
+    let bytes = URL_SAFE_NO_PAD
+        .decode(payload)
+        .map_err(|_| AuthError::Rejected("AUTH_SESSION_REQUIRED"))?;
+    serde_json::from_slice(&bytes).map_err(|_| AuthError::Rejected("AUTH_SESSION_REQUIRED"))
 }

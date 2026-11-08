@@ -26,7 +26,10 @@ use crate::models::{
 };
 use crate::services::keys::SigningKeyService;
 use crate::services::password::{PasswordCheck, PasswordPolicy, PasswordService};
-use crate::services::tokens::{access_token, opaque_token, token_hash, IssuedTokens, OpaqueToken};
+use crate::services::tokens::{
+    access_token, opaque_token, token_hash, token_slot, verify_access_token, IssuedTokens,
+    OpaqueToken,
+};
 use crate::store::AuthStore;
 
 /// Configuration du service.
@@ -127,6 +130,26 @@ impl<R: KeyResolver + 'static> AccessService<R> {
     // ------------------------------------------------------------------------------------------
     // Connexion et sessions
     // ------------------------------------------------------------------------------------------
+
+    /// Identifie l'appelant d'un jeton d'accès : signature et validité vérifiées avec la clé de
+    /// son emplacement, puis session contrôlée par la base (`fn::auth_session_check` : révocation,
+    /// expiration, sujet, version des droits).
+    pub async fn authenticate(
+        &self,
+        token: &SecretString,
+    ) -> AuthResult<crate::models::SessionCaller> {
+        let slot = token_slot(token)?;
+        let key = self.keys.verification_key(&slot).await?;
+        let claims =
+            verify_access_token(&key, token, &self.config.namespace, &self.config.database)?;
+        Ok(self
+            .store
+            .session_check(crate::models::SessionCheckParams {
+                session: claims.session,
+                pv: claims.pv,
+            })
+            .await?)
+    }
 
     /// Connexion par mot de passe : verrouillage contrôlé, échec compté (identifiant inconnu
     /// compris), message unique `AUTH_CREDENTIALS_INVALID`, actions imposées avant toute session.

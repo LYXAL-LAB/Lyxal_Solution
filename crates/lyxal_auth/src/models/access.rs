@@ -651,3 +651,27 @@ pub struct AuthPurgeResult {
     /// Invitations expirées.
     pub invitations_expired: i64,
 }
+
+/// Paramètres de `fn::auth_session_check`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct SessionCheckParams {
+    /// Session (texte).
+    pub session: String,
+    /// Version des droits portée par le jeton.
+    pub pv: i64,
+}
+
+/// Appelant identifié par un jeton vérifié et une session valide.
+#[derive(Debug, Clone, PartialEq, SurrealValue)]
+pub struct SessionCaller {
+    /// Session.
+    pub session: AuthRecordId,
+    /// Identité.
+    pub identity: Option<AuthRecordId>,
+    /// Application (compte de service).
+    pub application: Option<AuthRecordId>,
+    /// Organisation active.
+    pub organization: Option<AuthRecordId>,
+    /// Nature.
+    pub kind: String,
+}

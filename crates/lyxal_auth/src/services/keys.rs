@@ -53,11 +53,17 @@ impl std::fmt::Debug for ActiveSigningKey {
     }
 }
 
+#[derive(Clone)]
+struct KeySet {
+    active: Arc<ActiveSigningKey>,
+    previous: Option<Arc<ActiveSigningKey>>,
+}
+
 /// Clés de `lyxal_auth`, sur la session système de l'hôte et le trousseau applicatif.
 pub struct SigningKeyService<R: KeyResolver> {
     store: AuthStore,
     crypto: Arc<CryptoEngine<R>>,
-    cache: Mutex<Option<(Instant, Arc<ActiveSigningKey>)>>,
+    cache: Mutex<Option<(Instant, KeySet)>>,
     pepper: Mutex<Option<Arc<HmacKey>>>,
 }
 
@@ -121,22 +127,41 @@ impl<R: KeyResolver> SigningKeyService<R> {
 
     /// Clé active (relue au plus toutes les 30 s).
     pub async fn signing_key(&self) -> AuthResult<Arc<ActiveSigningKey>> {
+        Ok(self.key_set().await?.active)
+    }
+
+    /// Clé de vérification d'un emplacement (active ou précédente encore valable).
+    pub async fn verification_key(&self, slot: &str) -> AuthResult<Arc<ActiveSigningKey>> {
+        let keys = self.key_set().await?;
+        std::iter::once(keys.active)
+            .chain(keys.previous)
+            .find(|key| key.slot == slot)
+            .ok_or(AuthError::Rejected("AUTH_SESSION_REVOKED"))
+    }
+
+    async fn key_set(&self) -> AuthResult<KeySet> {
         let mut cache = self.cache.lock().await;
-        if let Some((at, key)) = cache.as_ref() {
+        if let Some((at, keys)) = cache.as_ref() {
             if at.elapsed() < SIGNING_KEY_CACHE {
-                return Ok(key.clone());
+                return Ok(keys.clone());
             }
         }
-        let record = self.active_record("access_token").await?.0;
-        let key = Arc::new(ActiveSigningKey {
-            slot: record
-                .slot
-                .clone()
-                .ok_or(AuthError::Rejected("AUTH_SIGNING_KEY_UNAVAILABLE"))?,
-            key: self.open_text(&record.secret, "access_token")?,
-        });
-        *cache = Some((Instant::now(), key.clone()));
-        Ok(key)
+        let (active, previous) = self.active_record("access_token").await?;
+        let load = |record: &SigningKeyRecord| -> AuthResult<Arc<ActiveSigningKey>> {
+            Ok(Arc::new(ActiveSigningKey {
+                slot: record
+                    .slot
+                    .clone()
+                    .ok_or(AuthError::Rejected("AUTH_SIGNING_KEY_UNAVAILABLE"))?,
+                key: self.open_text(&record.secret, "access_token")?,
+            }))
+        };
+        let keys = KeySet {
+            active: load(&active)?,
+            previous: previous.as_ref().map(load).transpose()?,
+        };
+        *cache = Some((Instant::now(), keys.clone()));
+        Ok(keys)
     }
 
     /// Clé HMAC de condensation des codes à usage unique.
