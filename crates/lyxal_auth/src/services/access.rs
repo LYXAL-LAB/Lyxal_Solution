@@ -21,8 +21,9 @@ use crate::models::{
     FlowStartParams, FlowSubmitParams, IdentityGetParams, LoginFailureParams,
     LoginFailureResetParams, PasswordCredentialParams, PasswordSetParams, PolicyGetParams,
     RegistrationCompleteParams, RegistrationStartParams, RegistrationStarted,
-    RequiredActionCompleteParams, ServiceSessionParams, SessionCreateParams, SessionRefreshParams,
-    SessionRevokeAllParams, SessionRevokeParams, SessionSwitchParams, SetupStartParams,
+    RequiredActionCompleteParams, RequiredActionListParams, ServiceSessionParams,
+    SessionCreateParams, SessionRefreshParams, SessionRevokeAllParams, SessionRevokeParams,
+    SessionSwitchParams, SetupStartParams,
 };
 use crate::services::keys::SigningKeyService;
 use crate::services::password::{PasswordCheck, PasswordPolicy, PasswordService};
@@ -258,9 +259,30 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         )))
     }
 
+    /// Envoie le code de vérification d'adresse depuis un parcours de connexion qui attend
+    /// `verify_email` (mot de passe déjà vérifié, aucune session encore). Le code se présente
+    /// ensuite à `complete_verification`, puis le parcours de connexion reprend par
+    /// `complete_login_actions`.
+    pub async fn start_login_verification(
+        &self,
+        flow: &str,
+        client: ClientInfo,
+    ) -> AuthResult<String> {
+        let identity = self.login_flow_identity(flow).await?;
+        if !self
+            .pending_actions(&identity)
+            .await?
+            .iter()
+            .any(|a| a == "verify_email")
+        {
+            return Err(AuthError::Rejected("AUTH_FLOW_INVALID_STATE"));
+        }
+        self.start_verification(&identity, client).await
+    }
+
     /// Termine les actions imposées d'un parcours de connexion (`update_password`,
-    /// `accept_terms`) ; `verify_email` se fait par le parcours de vérification. Session ouverte
-    /// quand plus rien n'est requis.
+    /// `accept_terms`) ; `verify_email` se fait par le parcours de vérification
+    /// (`start_login_verification`). Session ouverte quand plus rien n'est requis.
     pub async fn complete_login_actions(
         &self,
         flow: &str,
@@ -268,15 +290,10 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         client: ClientInfo,
     ) -> AuthResult<LoginOutcome> {
         let current = self.flow(flow).await?;
-        if current.flow_type != "login" || current.state != "action_required" {
-            return Err(AuthError::Rejected("AUTH_FLOW_INVALID_STATE"));
-        }
-        let identity = current
-            .identity
-            .as_ref()
-            .map(|id| id.to_sql())
-            .ok_or(AuthError::Rejected("AUTH_FLOW_INVALID_STATE"))?;
-        let mut remaining = current.required_actions.clone();
+        let identity = self.login_flow_identity(flow).await?;
+        // Actions relues : une action levée ailleurs (adresse vérifiée par le parcours de
+        // vérification) ne bloque plus, une action ajoutée depuis est exigée.
+        let mut remaining = self.pending_actions(&identity).await?;
         if remaining.iter().any(|a| a == "update_password") {
             if let Some(password) = &actions.new_password {
                 self.set_password(&identity, password, true, None).await?;
@@ -473,6 +490,9 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         proof: CodeProof,
         new_password: &SecretString,
     ) -> AuthResult<()> {
+        // Politique contrôlée avant de consommer la preuve : un mot de passe refusé laisse le
+        // code ou le lien utilisable pour un nouvel essai.
+        self.password_policy().await?.check(new_password)?;
         let flow = self.verify_proof(proof, "recovery").await?;
         let identity = flow
             .identity
@@ -868,6 +888,32 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         }
     }
 
+    /// Identité d'un parcours de connexion en attente d'actions imposées.
+    async fn login_flow_identity(&self, flow: &str) -> AuthResult<String> {
+        let current = self.flow(flow).await?;
+        if current.flow_type != "login" || current.state != "action_required" {
+            return Err(AuthError::Rejected("AUTH_FLOW_INVALID_STATE"));
+        }
+        current
+            .identity
+            .as_ref()
+            .map(|id| id.to_sql())
+            .ok_or(AuthError::Rejected("AUTH_FLOW_INVALID_STATE"))
+    }
+
+    /// Actions imposées en attente, relues en base.
+    async fn pending_actions(&self, identity: &str) -> AuthResult<Vec<String>> {
+        Ok(self
+            .store
+            .required_action_list(RequiredActionListParams {
+                identity: Some(identity.to_string()),
+            })
+            .await?
+            .into_iter()
+            .map(|a| a.action)
+            .collect())
+    }
+
     async fn verify_code(
         &self,
         proof: CodeProof,
@@ -896,15 +942,9 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         Ok(self.store.code_verify(params).await?)
     }
 
-    /// Code vérifié puis parcours passé à `code_verified` ; un parcours déjà vérifié (étape
-    /// suivante refusée, ex. mot de passe trop faible) peut reprendre sans nouveau code.
+    /// Code ou lien vérifié (consommé), puis parcours passé à `code_verified`. Aucune reprise
+    /// sans preuve : l'identifiant d'un parcours n'est pas une preuve de possession de l'adresse.
     async fn verify_proof(&self, proof: CodeProof, purpose: &str) -> AuthResult<Flow> {
-        if let CodeProof::Code { flow, .. } = &proof {
-            let current = self.flow(flow).await?;
-            if current.state == "code_verified" {
-                return Ok(current);
-            }
-        }
         let verified = self.verify_code(proof, purpose).await?;
         Ok(self
             .store

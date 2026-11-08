@@ -128,11 +128,14 @@ Connexion (`/api/v1/auth`, JSON, réponses `LyxalResult`, erreurs `AUTH_*` sans 
 l'existence d'un compte ; langue des messages par `Accept-Language`). Les routes marquées 🔒
 exigent `Authorization: Bearer <jeton d'accès>` : signature vérifiée avec la clé de son
 emplacement, puis session contrôlée par la base (révocation, expiration, version des droits).
+Sauf `/logout`, elles demandent une session **interactive** : le jeton d'une clé d'API ou d'un
+compte de service ne gère pas le compte (`AUTH_PERMISSION_DENIED`).
 
 | Route | Corps | Réponse |
 | :--- | :--- | :--- |
 | `POST /login` | `identifier`, `password`, `organization` | jetons (`status: authenticated`) ou `status: action_required` avec `flow` et `actions` |
-| `POST /flows/{flow}/actions` | `new_password`, `accept_terms` | jetons, ou actions restantes |
+| `POST /flows/{flow}/actions` | `new_password`, `accept_terms` | jetons, ou actions restantes (relues en base) |
+| `POST /flows/{flow}/verification` | — | code de vérification d'adresse pour un parcours qui attend `verify_email` (`202`), à présenter à `/verification/complete` |
 | `POST /token/refresh` | `refresh_token` | nouveaux jetons (réutilisation → session révoquée) |
 | `POST /logout` 🔒 | — | session courante révoquée |
 | `GET /sessions` 🔒 | — | sessions de l'identité (`current` pour la courante) |
@@ -141,7 +144,7 @@ emplacement, puis session contrôlée par la base (révocation, expiration, vers
 | `POST /registration/start` | `token`, `setup` | parcours d'inscription (invitation ou lien d'installation) |
 | `POST /registration/complete` | `flow`, `password`, `traits` | identité créée, jetons (`201`) |
 | `POST /recovery` | `email` | `202`, même réponse que l'adresse existe ou non |
-| `POST /recovery/complete` | `flow` + `code`, ou `token` (lien) ; `new_password` | toutes les sessions révoquées |
+| `POST /recovery/complete` | `flow` + `code`, ou `token` (lien) ; `new_password` | toutes les sessions révoquées ; mot de passe contrôlé avant de consommer le code, aucune reprise sans code |
 | `POST /verification` 🔒 | — | code envoyé à l'adresse principale (`202`) |
 | `POST /verification/complete` | `flow` + `code`, ou `token` | adresse vérifiée |
 | `POST /address-change` 🔒 | `password`, `new_address` | code envoyé à la nouvelle adresse (`202`) |

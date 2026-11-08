@@ -19,11 +19,11 @@ pub use access::{
     FlowStartParams, FlowSubmitParams, LoginFailureParams, LoginFailureResetParams,
     LoginFailureStatus, PasswordCredential, PasswordCredentialParams, PasswordSet,
     PasswordSetParams, RegistrationCompleteParams, RegistrationCompleted, RegistrationStartParams,
-    RegistrationStarted, RequiredActionCompleteParams, ServiceSessionParams, SessionCaller,
-    SessionCheckParams, SessionCreateParams, SessionIssued, SessionListParams,
-    SessionRefreshParams, SessionRevokeAllParams, SessionRevokeParams, SessionRevoked,
-    SessionSummary, SessionSwitchParams, SetupStartParams, SetupStarted, SigningKeyGetParams,
-    SigningKeyRecord, SigningKeyRotateParams, SigningKeyRotated, SigningKeys,
+    RegistrationStarted, RequiredAction, RequiredActionCompleteParams, RequiredActionListParams,
+    ServiceSessionParams, SessionCaller, SessionCheckParams, SessionCreateParams, SessionIssued,
+    SessionListParams, SessionRefreshParams, SessionRevokeAllParams, SessionRevokeParams,
+    SessionRevoked, SessionSummary, SessionSwitchParams, SetupStartParams, SetupStarted,
+    SigningKeyGetParams, SigningKeyRecord, SigningKeyRotateParams, SigningKeyRotated, SigningKeys,
 };
 pub use context::{AuthContext, ContextParams};
 pub use domain::{

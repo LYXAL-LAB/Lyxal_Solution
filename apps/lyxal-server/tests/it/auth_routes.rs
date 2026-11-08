@@ -179,6 +179,37 @@ async fn login_sessions_and_logout_through_http() {
     assert_eq!(list.len(), 2, "{sessions}");
     assert_eq!(list.iter().filter(|s| s["current"] == true).count(), 1);
 
+    // Jeton d'une clé d'API limitée : aucun accès à la gestion du compte de son propriétaire
+    let api_key = "lyxk_cle-de-test-du-serveur-0123456789";
+    client
+        .query("CREATE auth_api_key CONTENT { identity: (SELECT VALUE identity FROM ONLY auth_credential_identifier WHERE value = 'admin@lyxal.test' LIMIT 1), name: 'lecture', key_hash: $hash, prefix: 'lyxk_cle', permissions: ['auth.member.read'] }")
+        .bind(("hash", lyxal_crypto::hash::blake3_hex(api_key.as_bytes())))
+        .await
+        .expect("clé d'API")
+        .check()
+        .expect("clé d'API créée");
+    let (status, exchanged) = call(
+        &router,
+        "POST",
+        "/api/v1/auth/api-keys/exchange",
+        None,
+        Some(json!({ "api_key": api_key })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{exchanged}");
+    let key_token = exchanged["data"]["access_token"]
+        .as_str()
+        .expect("jeton de la clé")
+        .to_string();
+    for (method, uri) in [
+        ("GET", "/api/v1/auth/sessions"),
+        ("POST", "/api/v1/auth/verification"),
+    ] {
+        let (status, denied) = call(&router, method, uri, Some(&key_token), None).await;
+        assert!(status.is_client_error(), "{uri} : {denied}");
+        assert_eq!(denied["error"]["code"], "AUTH_PERMISSION_DENIED", "{uri}");
+    }
+
     // Sans jeton : refusé
     let (status, _) = call(&router, "GET", "/api/v1/auth/sessions", None, None).await;
     assert!(status.is_client_error());

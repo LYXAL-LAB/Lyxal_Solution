@@ -28,6 +28,7 @@ pub fn routes() -> Router<AppContext> {
     Router::new()
         .route("/login", post(login))
         .route("/flows/{flow}/actions", post(login_actions))
+        .route("/flows/{flow}/verification", post(login_verification))
         .route("/token/refresh", post(refresh))
         .route("/logout", post(logout))
         .route("/sessions", get(sessions))
@@ -208,11 +209,20 @@ async fn caller(host: &AuthHost, headers: &HeaderMap) -> Result<SessionCaller, A
         .await?)
 }
 
+/// Appelant d'une route de gestion de son compte (sessions, mot de passe, adresses,
+/// organisation active) : session **interactive** d'une identité. Une session de clé d'API ou
+/// de compte de service n'y a pas accès, quelles que soient ses permissions : une clé limitée
+/// à quelques droits ne doit pas pouvoir gérer le compte de son propriétaire.
 async fn identity_of(
     host: &AuthHost,
     headers: &HeaderMap,
 ) -> Result<(SessionCaller, String), ApiError> {
     let caller = caller(host, headers).await?;
+    if caller.kind != "interactive" {
+        return Err(ApiError::Auth(AuthError::Rejected(
+            "AUTH_PERMISSION_DENIED",
+        )));
+    }
     let identity = caller
         .identity
         .as_ref()
@@ -310,6 +320,25 @@ async fn login_actions(
             )
             .await?;
         ok(StatusCode::OK, outcome_json(&outcome))
+    }
+    .await;
+    respond(&context, &headers, result).await
+}
+
+/// Code de vérification d'adresse pour un parcours de connexion qui attend `verify_email`.
+async fn login_verification(
+    State(context): State<AppContext>,
+    Path(flow): Path<String>,
+    address: Option<ConnectInfo<SocketAddr>>,
+    headers: HeaderMap,
+) -> Response {
+    let result = async {
+        let host = host(&context)?;
+        let verification = host
+            .access
+            .start_login_verification(&flow, client_info(&headers, address))
+            .await?;
+        ok(StatusCode::ACCEPTED, json!({ "flow": verification }))
     }
     .await;
     respond(&context, &headers, result).await
@@ -428,7 +457,7 @@ async fn switch_organization(
 ) -> Response {
     let result = async {
         let host = host(&context)?;
-        let caller = caller(&host, &headers).await?;
+        let (caller, _) = identity_of(&host, &headers).await?;
         let tokens = host
             .access
             .switch_organization(&caller.session.to_sql(), body.organization)

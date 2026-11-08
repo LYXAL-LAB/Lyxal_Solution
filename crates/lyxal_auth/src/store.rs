@@ -21,11 +21,12 @@ use crate::models::{
     OrganizationDomainCreated, OrganizationGetParams, PasswordCredential, PasswordCredentialParams,
     PasswordSet, PasswordSetParams, PermissionRegisterParams, PermissionRegistered,
     PolicyGetParams, RegistrationCompleteParams, RegistrationCompleted, RegistrationStartParams,
-    RegistrationStarted, RequiredActionCompleteParams, RoleAssignParams, RoleAssigned,
-    RoleUnassigned, ServiceSessionParams, SessionCaller, SessionCheckParams, SessionCreateParams,
-    SessionIssued, SessionListParams, SessionRefreshParams, SessionRevokeAllParams,
-    SessionRevokeParams, SessionRevoked, SessionSummary, SessionSwitchParams, SetupStartParams,
-    SetupStarted, SigningKeyGetParams, SigningKeyRotateParams, SigningKeyRotated, SigningKeys,
+    RegistrationStarted, RequiredAction, RequiredActionCompleteParams, RequiredActionListParams,
+    RoleAssignParams, RoleAssigned, RoleUnassigned, ServiceSessionParams, SessionCaller,
+    SessionCheckParams, SessionCreateParams, SessionIssued, SessionListParams,
+    SessionRefreshParams, SessionRevokeAllParams, SessionRevokeParams, SessionRevoked,
+    SessionSummary, SessionSwitchParams, SetupStartParams, SetupStarted, SigningKeyGetParams,
+    SigningKeyRotateParams, SigningKeyRotated, SigningKeys,
 };
 
 /// Store de `lyxal_auth` sur un client SurrealDB (`Surreal<Any>`).
@@ -209,6 +210,14 @@ impl AuthStore {
         params: PasswordSetParams,
     ) -> Result<PasswordSet, LyxalSurrealError> {
         self.call_fn("auth_password_set", params).await
+    }
+
+    /// `fn::auth_required_action_list` : actions imposées en attente d'une identité.
+    pub async fn required_action_list(
+        &self,
+        params: RequiredActionListParams,
+    ) -> Result<Vec<RequiredAction>, LyxalSurrealError> {
+        self.call_fn("auth_required_action_list", params).await
     }
 
     /// `fn::auth_required_action_complete` : action imposée levée (session système).

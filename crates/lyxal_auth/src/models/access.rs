@@ -488,6 +488,26 @@ pub struct RequiredActionCompleteParams {
     pub action: String,
 }
 
+/// Paramètres de `fn::auth_required_action_list`.
+#[derive(Debug, Clone, Default, SurrealValue)]
+pub struct RequiredActionListParams {
+    /// Identité (texte ; par défaut celle de la session).
+    pub identity: Option<String>,
+}
+
+/// Action imposée en attente.
+#[derive(Debug, Clone, PartialEq, SurrealValue)]
+pub struct RequiredAction {
+    /// Enregistrement.
+    pub id: AuthRecordId,
+    /// Action (`verify_email`, `update_password`, `accept_terms`).
+    pub action: String,
+    /// Motif.
+    pub reason: Option<String>,
+    /// Création.
+    pub created_at: AuthDatetime,
+}
+
 /// Paramètres de `fn::auth_signing_key_get_active`.
 #[derive(Debug, Clone, SurrealValue)]
 pub struct SigningKeyGetParams {

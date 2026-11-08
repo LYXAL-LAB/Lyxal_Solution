@@ -86,6 +86,38 @@ async fn admin(access: &AccessService<StaticKeyResolver>) -> IssuedTokens {
         .expect("administrateur")
 }
 
+/// Message scellé (`{ action_url, code }`) du dernier événement `event_type`, ouvert comme le
+/// fait `lyxal_notification`.
+async fn sealed_message(
+    store: &AuthStore,
+    engine: &CryptoEngine<StaticKeyResolver>,
+    event_type: &str,
+) -> serde_json::Value {
+    let mut response = store
+        .client()
+        .query("SELECT VALUE [<string> event_id, payload.secret] FROM event_outbox WHERE event_type = $type ORDER BY created_at DESC LIMIT 1")
+        .bind(("type", event_type.to_string()))
+        .await
+        .expect("événement");
+    let rows: Vec<Vec<String>> = response.take(0).expect("événement publié");
+    let row = rows.first().expect("événement publié");
+    let context = SecretContext::with_tenant(
+        "lyxal_installation",
+        "lyxal_auth",
+        &event_type.replace('.', "_"),
+        &row[0],
+        "secret",
+    )
+    .expect("contexte");
+    let opened = engine
+        .open(
+            &EncryptedEnvelope::parse(&row[1]).expect("enveloppe"),
+            &context,
+        )
+        .expect("ouverture");
+    serde_json::from_slice(opened.expose_secret()).expect("json")
+}
+
 async fn context_as(store: &AuthStore, token: &SecretString) -> Result<Context, String> {
     store
         .client()
@@ -222,39 +254,14 @@ async fn recovery_code_from_the_sealed_event_resets_the_password() {
         .await
         .expect("récupération");
     // Le code n'est lisible que dans le secret scellé de l'événement (consommé par lyxal_notification)
-    let mut response = store
-        .client()
-        .query("SELECT VALUE <string> event_id FROM ONLY event_outbox WHERE event_type = 'auth.recovery.requested' LIMIT 1; SELECT VALUE payload.secret FROM ONLY event_outbox WHERE event_type = 'auth.recovery.requested' LIMIT 1")
-        .await
-        .expect("événement");
-    let event_id: Option<String> = response.take(0).expect("identifiant");
-    let sealed: Option<String> = response.take(1).expect("secret");
-    let published = [
-        event_id.expect("événement publié"),
-        sealed.expect("secret publié"),
-    ];
-    let context = SecretContext::with_tenant(
-        "lyxal_installation",
-        "lyxal_auth",
-        "auth_recovery_requested",
-        &published[0],
-        "secret",
-    )
-    .expect("contexte");
-    let opened = engine
-        .open(
-            &EncryptedEnvelope::parse(&published[1]).expect("enveloppe"),
-            &context,
-        )
-        .expect("ouverture");
-    let message: serde_json::Value = serde_json::from_slice(opened.expose_secret()).expect("json");
+    let message = sealed_message(&store, &engine, "auth.recovery.requested").await;
     let code = message["code"].as_str().expect("code").to_string();
     assert!(message["action_url"]
         .as_str()
         .expect("lien")
         .starts_with("https://lyxal.test/recovery?token="));
 
-    // Mot de passe trop faible : refusé, le code vérifié reste acquis pour réessayer
+    // Mot de passe trop faible : refusé avant de consommer le code, qui reste utilisable
     let weak = access
         .complete_recovery(
             CodeProof::Code {
@@ -266,16 +273,44 @@ async fn recovery_code_from_the_sealed_event_resets_the_password() {
         .await
         .expect_err("politique");
     assert_eq!(weak.code(), "AUTH_PASSWORD_POLICY_VIOLATION");
-    access
+    // L'identifiant du parcours ne remplace pas le code
+    let guessed = access
         .complete_recovery(
             CodeProof::Code {
-                flow,
+                flow: flow.clone(),
                 code: secret("000000"),
             },
             &secret("Nouveau-mot-de-passe-2026"),
         )
         .await
+        .expect_err("code faux");
+    assert_eq!(guessed.code(), "AUTH_CODE_INVALID");
+    access
+        .complete_recovery(
+            CodeProof::Code {
+                flow: flow.clone(),
+                code: secret(&code),
+            },
+            &secret("Nouveau-mot-de-passe-2026"),
+        )
+        .await
         .expect("nouveau mot de passe");
+    // Code consommé : aucune reprise, même avec le bon code
+    let replay = access
+        .complete_recovery(
+            CodeProof::Code {
+                flow,
+                code: secret(&code),
+            },
+            &secret("Encore-un-mot-de-passe-2026"),
+        )
+        .await
+        .expect_err("usage unique");
+    assert!(
+        replay.is("AUTH_CODE_INVALID") || replay.is("AUTH_FLOW_INVALID_STATE"),
+        "{}",
+        replay.code()
+    );
 
     // Toutes les sessions révoquées ; l'ancien mot de passe ne sert plus
     let refused = access
@@ -357,6 +392,71 @@ async fn required_password_change_happens_before_any_session() {
                 new_password: Some(secret("Autre-mot-de-passe-2026")),
                 accept_terms: false,
             },
+            ClientInfo::default(),
+        )
+        .await
+        .expect("session");
+    assert!(matches!(done, LoginOutcome::Authenticated(_)));
+}
+
+/// Adresse à vérifier : le code s'obtient depuis le parcours de connexion (aucune session), puis
+/// la connexion reprend ; les actions sont relues en base, pas figées au début du parcours.
+#[tokio::test]
+async fn email_verification_is_reachable_from_the_login_flow() {
+    let store = installed_store().await;
+    let (access, engine) = service(&store).await;
+    admin(&access).await;
+    store
+        .client()
+        .query("fn::auth_required_action_add({ identity: <string> (SELECT VALUE identity FROM ONLY auth_credential_identifier WHERE value = 'admin@lyxal.test' LIMIT 1), action: 'verify_email' })")
+        .await
+        .expect("action imposée");
+    let outcome = access
+        .login(LoginRequest {
+            identifier: "admin@lyxal.test".into(),
+            password: secret("Mot-de-passe-solide-2026"),
+            organization: None,
+            client: ClientInfo::default(),
+        })
+        .await
+        .expect("connexion");
+    let LoginOutcome::ActionRequired { flow, actions } = outcome else {
+        panic!("action requise attendue");
+    };
+    assert_eq!(actions, vec!["verify_email".to_string()]);
+    // Sans vérification : toujours bloqué
+    let blocked = access
+        .complete_login_actions(
+            &flow,
+            lyxal_auth::LoginActions::default(),
+            ClientInfo::default(),
+        )
+        .await
+        .expect("parcours");
+    assert!(matches!(blocked, LoginOutcome::ActionRequired { .. }));
+
+    let verification = access
+        .start_login_verification(&flow, ClientInfo::default())
+        .await
+        .expect("code envoyé");
+    let message = sealed_message(&store, &engine, "auth.verification.requested").await;
+    access
+        .complete_verification(CodeProof::Code {
+            flow: verification,
+            code: secret(message["code"].as_str().expect("code")),
+        })
+        .await
+        .expect("adresse vérifiée");
+    // Plus rien à vérifier : un nouvel envoi est refusé, la connexion reprend
+    let again = access
+        .start_login_verification(&flow, ClientInfo::default())
+        .await
+        .expect_err("déjà vérifiée");
+    assert_eq!(again.code(), "AUTH_FLOW_INVALID_STATE");
+    let done = access
+        .complete_login_actions(
+            &flow,
+            lyxal_auth::LoginActions::default(),
             ClientInfo::default(),
         )
         .await
