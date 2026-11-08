@@ -24,6 +24,6 @@ pub mod xml;
 pub use common::{
     Limits, ParseError, Position, ReadFailure, Rejection, RejectionKind, SourceEncoding,
 };
-pub use csv::{CsvOptions, CsvReader, CsvRecord, Delimiter};
+pub use csv::{CsvHeader, CsvOptions, CsvReader, CsvRecord, Delimiter};
 pub use json::{JsonLayout, JsonOptions, JsonReader, JsonRecord};
 pub use xml::{XmlOptions, XmlReader, XmlRecord};

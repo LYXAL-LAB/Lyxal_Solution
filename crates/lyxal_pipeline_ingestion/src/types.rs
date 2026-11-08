@@ -23,6 +23,39 @@ impl SourceFormat {
     }
 }
 
+/// Encodage déclaré du fichier source d'un lot (`ingestion_batch.source_encoding`), jamais
+/// deviné ; transmis aux lecteurs de `lyxal_parsing`.
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize, SurrealValue,
+)]
+#[surreal(untagged)]
+pub enum SourceEncoding {
+    /// UTF-8 (marque d'ordre des octets acceptée).
+    #[default]
+    #[serde(rename = "UTF-8")]
+    #[surreal(rename = "UTF-8")]
+    Utf8,
+    /// Windows-1252 (exports d'Excel en France).
+    #[serde(rename = "WINDOWS-1252")]
+    #[surreal(rename = "WINDOWS-1252")]
+    Windows1252,
+    /// ISO-8859-1 (Latin-1).
+    #[serde(rename = "ISO-8859-1")]
+    #[surreal(rename = "ISO-8859-1")]
+    Iso8859_1,
+}
+
+impl SourceEncoding {
+    /// Encodage correspondant des lecteurs de `lyxal_parsing`.
+    pub fn parsing(&self) -> lyxal_parsing::SourceEncoding {
+        match self {
+            Self::Utf8 => lyxal_parsing::SourceEncoding::Utf8,
+            Self::Windows1252 => lyxal_parsing::SourceEncoding::Windows1252,
+            Self::Iso8859_1 => lyxal_parsing::SourceEncoding::Iso8859_1,
+        }
+    }
+}
+
 /// États de cycle de vie d'un lot d'ingestion (`ingestion_batch`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, SurrealValue)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

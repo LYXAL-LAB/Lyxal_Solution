@@ -24,7 +24,7 @@ use lyxal_runtime::worker::{
     WorkerDescriptor, WorkerId,
 };
 
-use crate::adapters::AdapterRegistry;
+use crate::adapters::{AdapterRegistry, RawRecordDto, SourceItem};
 use crate::error::{IngestionError, IngestionResult};
 use crate::models::{QuarantineRecord, RawRecord, StagedItem};
 use crate::normalization::NormalizationEngine;
@@ -355,11 +355,8 @@ impl IngestionWorker {
                 .await?;
         }
 
-        // 3. Parsing complet du flux source via le registre officiel des adaptateurs
-        let content = std::str::from_utf8(raw_bytes).map_err(|e| {
-            IngestionError::Adapter(format!("Flux d'ingestion non encodé en UTF-8 : {e}"))
-        })?;
-
+        // 3. Lecture complète de la source (encodage déclaré du lot) avant le premier bloc : une
+        // source illisible fait échouer le lot sans rien mettre en staging
         let registry = AdapterRegistry::new();
         let adapter = registry.get(format).ok_or_else(|| {
             IngestionError::Adapter(format!(
@@ -368,8 +365,8 @@ impl IngestionWorker {
             ))
         })?;
 
-        let raw_records = adapter.parse_content(content)?;
-        let total_lines = raw_records.len();
+        let source_items = adapter.read(raw_bytes, batch.source_encoding)?;
+        let total_lines = source_items.len();
         let chunk_size = if batch.chunk_size > 0 {
             batch.chunk_size
         } else {
@@ -408,19 +405,56 @@ impl IngestionWorker {
             }
 
             let end_offset = (current_offset + chunk_size).min(total_lines);
-            let slice = &raw_records[current_offset..end_offset];
+            let slice = &source_items[current_offset..end_offset];
+            let records: Vec<RawRecordDto> = slice
+                .iter()
+                .filter_map(|item| match item {
+                    SourceItem::Record(record) => Some(record.as_ref().clone()),
+                    SourceItem::Rejected(_) => None,
+                })
+                .collect();
 
             // Unités et fabricants du bloc résolus par les référentiels en base, en un appel chacun
             let referentials = self
                 .store
-                .block_referentials(slice, Some(&batch.fournisseur_id))
+                .block_referentials(&records, Some(&batch.fournisseur_id))
                 .await?;
 
             let mut db_raw_records = Vec::with_capacity(slice.len());
             let mut db_staged_items = Vec::with_capacity(slice.len());
+            let mut rejections = Vec::new();
 
-            for (idx, dto) in slice.iter().enumerate() {
-                let line_num = current_offset + idx + 1;
+            for item in slice {
+                let dto = match item {
+                    SourceItem::Record(dto) => dto,
+                    SourceItem::Rejected(rejection) => {
+                        // Enregistrement écarté à la lecture : sa ligne brute garde son numéro et
+                        // la cause du rejet (le contenu n'est pas rendu par lyxal_parsing)
+                        db_raw_records.push(RawRecord {
+                            id: None,
+                            batch: batch_id.to_string(),
+                            ligne_numero: rejection.record,
+                            row_hash: lyxal_crypto::blake3_hex(
+                                format!(
+                                    "{}:{}:{}",
+                                    rejection.cause_code, rejection.record, rejection.detail
+                                )
+                                .as_bytes(),
+                            ),
+                            payload_brut: serde_json::json!({
+                                "rejet": {
+                                    "code": rejection.cause_code,
+                                    "detail": rejection.detail,
+                                    "ligne_source": rejection.source_line,
+                                }
+                            }),
+                            created_at: None,
+                        });
+                        rejections.push(rejection);
+                        continue;
+                    }
+                };
+                let line_num = dto.line_number;
                 let normalized = self.norm_engine.normalize_with_proof(
                     dto,
                     Some(&batch.fournisseur_id),
@@ -494,6 +528,30 @@ impl IngestionWorker {
             // contrôle SurrealQL (code-barres invalide) ou rejetée par la qualification est
             // consignée en quarantaine.
             claimed.save_raw_records(&db_raw_records).await?;
+            for rejection in rejections {
+                rejected_count += 1;
+                claimed
+                    .log_quarantine(&QuarantineRecord {
+                        id: None,
+                        batch: batch_id.to_string(),
+                        raw_record: format!("{batch_id}_{}", rejection.record),
+                        ligne_numero: rejection.record,
+                        code_erreur: rejection.anomaly_code.to_string(),
+                        severite: "ERROR".to_string(),
+                        champ_concerne: "enregistrement".to_string(),
+                        valeur_fautive: Some(serde_json::json!({
+                            "code": rejection.cause_code,
+                            "ligne_source": rejection.source_line,
+                        })),
+                        cause_detaillee: format!("{} : {}", rejection.cause_code, rejection.detail),
+                        created_at: None,
+                        is_resolved: false,
+                        resolved_by: None,
+                        resolved_at: None,
+                        resolution_comment: None,
+                    })
+                    .await?;
+            }
             let items: Vec<StagedItem> = db_staged_items
                 .iter()
                 .map(|(_, _, item)| item.clone())

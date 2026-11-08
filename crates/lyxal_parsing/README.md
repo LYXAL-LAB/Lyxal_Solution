@@ -38,11 +38,11 @@ le contenu des enregistrements.
 
 | Lecteur | Ouverture | Options |
 | :--- | :--- | :--- |
-| `CsvReader` | `CsvReader::new(source, options) -> Result<_, ParseError>` (en-tête lu tout de suite) | `delimiter` (`Auto` : le plus fréquent de `;` `,` tabulation `\|` hors guillemets sur l'en-tête, `;` par défaut ; ou `Byte`), `encoding`, `limits` |
+| `CsvReader` | `CsvReader::new(source, options) -> Result<_, ParseError>` (en-tête lu tout de suite) | `header` (`FirstLine` par défaut ; `None` : colonnes nommées `"1"`, `"2"`… et nombre de champs libre, ex. FAB-DIS 2.3), `delimiter` (`Auto` : le plus fréquent de `;` `,` tabulation `\|` hors guillemets sur l'en-tête, `;` par défaut ; ou `Byte`), `encoding`, `limits` |
 | `JsonReader` | `JsonReader::new(source, options)` | `layout` (`Auto` : tableau si le premier caractère est `[`, NDJSON sinon ; `Array` ; `Lines`), `encoding`, `limits` |
 | `XmlReader` | `XmlReader::new(source, options)` | `record_elements` (noms des éléments qui forment un enregistrement), `encoding`, `limits` |
 
-* **CSV** : en-tête obligatoire (colonne vide ou en double : arrêt) ; lignes vides ignorées ;
+* **CSV** : avec en-tête, celui-ci est obligatoire (colonne vide ou en double : arrêt) ; lignes vides ignorées ;
   `CsvRecord::get(colonne)`.
 * **JSON** : `JsonRecord::value` est l'objet lu ; dans un tableau, un élément mal formé est
   rejeté et le suivant lu (le découpage suit la structure, chaînes comprises) ; un tableau non

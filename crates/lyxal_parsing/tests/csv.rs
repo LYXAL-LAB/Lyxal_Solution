@@ -219,3 +219,24 @@ fn large_source_is_read_in_a_stream_with_a_small_record_limit() {
     }
     assert_eq!(count, 200_000);
 }
+
+#[test]
+fn headerless_source_names_columns_by_rank_and_allows_varying_lengths() {
+    let options = CsvOptions {
+        header: lyxal_parsing::CsvHeader::None,
+        ..Default::default()
+    };
+    let items = read(b"C;BA13;\"Plaque; standard\";M2\nL;BA13;28,5\n", options);
+    assert_eq!(items.len(), 2);
+    let commerce = items[0].as_ref().expect("bloc C");
+    assert_eq!(commerce.get("1"), Some("C"));
+    assert_eq!(commerce.get("3"), Some("Plaque; standard"));
+    assert_eq!(commerce.position.line, Some(1));
+    let logistics = items[1].as_ref().expect("bloc L");
+    assert_eq!(logistics.fields.len(), 3);
+    assert_eq!(logistics.position.record, 2);
+    assert!(
+        read(b"", options).is_empty(),
+        "source vide : aucun enregistrement"
+    );
+}

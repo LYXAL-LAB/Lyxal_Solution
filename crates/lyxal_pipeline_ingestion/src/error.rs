@@ -37,6 +37,16 @@ pub enum IngestionError {
     #[error("Erreur d'adaptateur de source : {0}")]
     Adapter(String),
 
+    /// Source illisible (erreur d'arrêt de `lyxal_parsing` : XML mal formé, tableau JSON cassé,
+    /// en-tête CSV invalide) ; le lot échoue avant toute mise en staging.
+    #[error("Source illisible : {detail}")]
+    SourceInvalid {
+        /// Code `PARSING_*` de l'erreur d'arrêt.
+        code: String,
+        /// Diagnostic (avec la ligne), sans contenu de la source.
+        detail: String,
+    },
+
     #[error("Transition d'état illégale : {0}")]
     IllegalTransition(String),
 
@@ -107,6 +117,9 @@ impl IngestionError {
             }
             Self::Validation(_) => info("INGESTION_VALIDATION_ERROR", "validation", 400, false),
             Self::Adapter(_) => info("INGESTION_ADAPTER_ERROR", "validation", 400, false),
+            Self::SourceInvalid { .. } => {
+                info("INGESTION_SOURCE_INVALID", "validation", 400, false)
+            }
             Self::DuplicateBatch { .. } => {
                 info("INGESTION_BATCH_DUPLICATE", "conflict", 409, false)
             }
@@ -241,6 +254,10 @@ mod tests {
             },
             IngestionError::Unauthorized(text()),
             IngestionError::Adapter(text()),
+            IngestionError::SourceInvalid {
+                code: text(),
+                detail: text(),
+            },
             IngestionError::IllegalTransition(text()),
             IngestionError::FingerprintTampered(text()),
             IngestionError::Storage(text()),

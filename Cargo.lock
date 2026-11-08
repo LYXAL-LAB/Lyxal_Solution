@@ -2544,6 +2544,7 @@ dependencies = [
  "lyxal_crypto",
  "lyxal_error",
  "lyxal_event",
+ "lyxal_parsing",
  "lyxal_runtime",
  "lyxal_surreal",
  "serde",

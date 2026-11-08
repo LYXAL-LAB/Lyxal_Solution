@@ -1,16 +1,33 @@
 //! Adaptateur FAB-DIS conforme aux standards BTP FAB-DIS 2.3 et FAB-DIS 3.0.
 //!
-//! Gère :
-//! - Le format multi-blocs FAB-DIS 2.3 (Tranches Commerce [C], Logistique [L], Média [M], Réglementaire [R])
-//! - Le format tabulaire unifié FAB-DIS 3.0
+//! La lecture est faite par `lyxal_parsing` (guillemets respectés, encodage déclaré) :
+//! - FAB-DIS 2.3 : blocs sans en-tête (Commerce [C], Logistique [L], Média [M], Réglementaire
+//!   [R]) regroupés par référence fabricant ;
+//! - FAB-DIS 3.0 : tabulaire unifié, lu comme un CSV à en-tête.
 
-use async_trait::async_trait;
 use serde_json::json;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use super::{RawDimensionsDto, RawRecordDto, RawWeightDto, SourceAdapter};
+use lyxal_parsing::{CsvHeader, CsvOptions, CsvReader, CsvRecord, Delimiter, ReadFailure};
+
+use super::csv::CsvAdapter;
+use super::{
+    fields_hash, source_invalid, RawDimensionsDto, RawRecordDto, RawWeightDto, SourceAdapter,
+    SourceItem, SourceRejection,
+};
 use crate::error::IngestionError;
-use crate::types::SourceFormat;
+use crate::types::{SourceEncoding, SourceFormat};
+
+/// Bloc FAB-DIS 2.3 invalide : orphelin, en double, sans référence ou de type inconnu.
+const BLOCK_INVALID: &str = "INGESTION_FABDIS_BLOCK_INVALID";
+
+/// Ligne commerciale retenue : numéro, ligne physique, champs nommés, champs lus.
+type Commerce = (
+    usize,
+    Option<u64>,
+    HashMap<String, String>,
+    Vec<(String, String)>,
+);
 
 /// Adaptateur officiel pour les catalogues au format standard FAB-DIS.
 #[derive(Debug, Clone, Default)]
@@ -22,9 +39,11 @@ impl FabDisAdapter {
     }
 
     /// Détermine si le flux est au format multi-blocs (lignes préfixées C, L, M, R) ou tabulaire
-    fn is_multi_block(content: &str) -> bool {
-        for line in content.lines().take(15) {
-            let trimmed = line.trim();
+    /// (marqueurs ASCII cherchés dans le début de la source, quel que soit son encodage).
+    fn is_multi_block(source: &[u8]) -> bool {
+        let sample = String::from_utf8_lossy(&source[..source.len().min(16 * 1024)]);
+        for line in sample.lines().take(15) {
+            let trimmed = line.trim().trim_start_matches('\u{feff}');
             if trimmed.starts_with("C;")
                 || trimmed.starts_with("C\t")
                 || trimmed.starts_with("COMMERCE;")
@@ -38,96 +57,160 @@ impl FabDisAdapter {
         false
     }
 
+    /// Séparateur des blocs, déterminé sur le premier bloc réel (lignes vides et commentaires
+    /// passés) : `;` s'il y figure, tabulation sinon.
+    fn block_delimiter(source: &[u8]) -> u8 {
+        let sample = String::from_utf8_lossy(&source[..source.len().min(16 * 1024)]);
+        sample
+            .lines()
+            .map(|line| line.trim().trim_start_matches('\u{feff}'))
+            .find(|line| !line.is_empty() && !line.starts_with('#'))
+            .map_or(b';', |line| if line.contains(';') { b';' } else { b'\t' })
+    }
+
+    /// Champs d'un bloc à partir de la troisième colonne (après type et référence).
+    fn block_fields(record: &CsvRecord, names: &[&str]) -> HashMap<String, String> {
+        names
+            .iter()
+            .enumerate()
+            .filter_map(|(offset, name)| {
+                record
+                    .fields
+                    .get(offset + 2)
+                    .map(|(_, value)| (name.to_string(), value.trim().to_string()))
+            })
+            .collect()
+    }
+
     /// Parse le format multi-blocs FAB-DIS 2.3
-    fn parse_multi_block(&self, content: &str) -> Result<Vec<RawRecordDto>, IngestionError> {
-        // Regroupement des blocs par référence fabricant
-        let mut commerce_records: HashMap<String, (usize, HashMap<String, String>, String)> =
-            HashMap::new();
+    fn read_multi_block(
+        source: &[u8],
+        encoding: SourceEncoding,
+    ) -> Result<Vec<SourceItem>, IngestionError> {
+        let options = CsvOptions {
+            header: CsvHeader::None,
+            delimiter: Delimiter::Byte(Self::block_delimiter(source)),
+            encoding: encoding.parsing(),
+            ..Default::default()
+        };
+        let reader = CsvReader::new(source, options).map_err(source_invalid)?;
+
+        let mut rejections: Vec<SourceRejection> = Vec::new();
+        let mut commerce_records: Vec<(String, Commerce)> = Vec::new();
+        // Index des références commerciales : doublons et orphelins sans parcours de la liste
+        let mut commerce_refs: HashSet<String> = HashSet::new();
         let mut logistics_records: HashMap<String, HashMap<String, String>> = HashMap::new();
         let mut reg_records: HashMap<String, HashMap<String, String>> = HashMap::new();
+        // Blocs L et R lus, rattachés à leur ligne C après lecture complète
+        let mut dependents: Vec<(String, usize, Option<u64>)> = Vec::new();
 
-        for (idx, line) in content.lines().enumerate() {
-            let trimmed = line.trim();
-            if trimmed.is_empty() || trimmed.starts_with('#') {
-                continue;
-            }
-
-            let delimiter = if trimmed.contains(';') { ';' } else { '\t' };
-            let parts: Vec<&str> = trimmed.split(delimiter).map(|s| s.trim()).collect();
-            if parts.is_empty() {
-                continue;
-            }
-
-            let block_type = parts[0].to_uppercase();
-            match block_type.as_str() {
-                "C" | "COMMERCE" => {
-                    // Structure typique C : C;REF_FAB;EAN;DESIGNATION;MARQUE;UNITE;PRIX
-                    if parts.len() >= 2 {
-                        let ref_fab = parts[1].to_string();
-                        let mut map = HashMap::new();
-                        map.insert("ref_fab".to_string(), ref_fab.clone());
-                        if parts.len() > 2 {
-                            map.insert("ean".to_string(), parts[2].to_string());
-                        }
-                        if parts.len() > 3 {
-                            map.insert("designation".to_string(), parts[3].to_string());
-                        }
-                        if parts.len() > 4 {
-                            map.insert("marque".to_string(), parts[4].to_string());
-                        }
-                        if parts.len() > 5 {
-                            map.insert("unite".to_string(), parts[5].to_string());
-                        }
-                        if parts.len() > 6 {
-                            map.insert("prix".to_string(), parts[6].to_string());
-                        }
-                        commerce_records.insert(ref_fab, (idx + 1, map, line.to_string()));
-                    }
+        for item in reader {
+            let record = match item {
+                Ok(record) => record,
+                Err(ReadFailure::Rejected(rejection)) => {
+                    rejections.push(SourceRejection::from_parsing(rejection));
+                    continue;
                 }
-                "L" | "LOGISTIQUE" => {
-                    // Structure typique L : L;REF_FAB;POIDS_NET;POIDS_BRUT;LONGUEUR;LARGEUR;HAUTEUR
-                    if parts.len() >= 2 {
-                        let ref_fab = parts[1].to_string();
-                        let mut map = HashMap::new();
-                        if parts.len() > 2 {
-                            map.insert("poids_net".to_string(), parts[2].to_string());
-                        }
-                        if parts.len() > 3 {
-                            map.insert("poids_brut".to_string(), parts[3].to_string());
-                        }
-                        if parts.len() > 4 {
-                            map.insert("longueur".to_string(), parts[4].to_string());
-                        }
-                        if parts.len() > 5 {
-                            map.insert("largeur".to_string(), parts[5].to_string());
-                        }
-                        if parts.len() > 6 {
-                            map.insert("hauteur".to_string(), parts[6].to_string());
-                        }
-                        logistics_records.insert(ref_fab, map);
+                Err(ReadFailure::Fatal(error)) => return Err(source_invalid(error)),
+            };
+            let number = record.position.record as usize;
+            let line = record.position.line;
+            let reject = |detail: String| SourceRejection {
+                record: number,
+                source_line: line,
+                anomaly_code: BLOCK_INVALID,
+                cause_code: BLOCK_INVALID.to_string(),
+                detail,
+            };
+            let block_type = record
+                .fields
+                .first()
+                .map(|(_, value)| value.trim().to_uppercase())
+                .unwrap_or_default();
+            // Commentaire, ou bloc Média (non exploité par l'ingestion)
+            if block_type.starts_with('#') || block_type == "M" || block_type == "MEDIA" {
+                continue;
+            }
+            let reference = record
+                .fields
+                .get(1)
+                .map(|(_, value)| value.trim().to_string())
+                .unwrap_or_default();
+            if reference.is_empty() {
+                rejections.push(reject(format!(
+                    "bloc « {block_type} » sans référence fabricant"
+                )));
+                continue;
+            }
+            match block_type.as_str() {
+                // Structure typique C : C;REF_FAB;EAN;DESIGNATION;MARQUE;UNITE;PRIX
+                "C" | "COMMERCE" => {
+                    if !commerce_refs.insert(reference.clone()) {
+                        rejections.push(reject(format!(
+                            "bloc commercial en double pour la référence « {reference} »"
+                        )));
+                        continue;
                     }
+                    let mut map = Self::block_fields(
+                        &record,
+                        &["ean", "designation", "marque", "unite", "prix"],
+                    );
+                    map.insert("ref_fab".to_string(), reference.clone());
+                    commerce_records.push((reference, (number, line, map, record.fields)));
+                }
+                // Structure typique L : L;REF_FAB;POIDS_NET;POIDS_BRUT;LONGUEUR;LARGEUR;HAUTEUR
+                "L" | "LOGISTIQUE" => {
+                    if logistics_records.contains_key(&reference) {
+                        rejections.push(reject(format!(
+                            "bloc logistique en double pour la référence « {reference} »"
+                        )));
+                        continue;
+                    }
+                    let map = Self::block_fields(
+                        &record,
+                        &["poids_net", "poids_brut", "longueur", "largeur", "hauteur"],
+                    );
+                    logistics_records.insert(reference.clone(), map);
+                    dependents.push((reference, number, line));
                 }
                 // Structure typique R : R;REF_FAB;ETIM;NORME;CLASSEMENT_FEU
-                "R" | "REGLEMENTATION" | "TECHNIQUE" if parts.len() >= 2 => {
-                    let ref_fab = parts[1].to_string();
-                    let mut map = HashMap::new();
-                    if parts.len() > 2 {
-                        map.insert("etim".to_string(), parts[2].to_string());
+                "R" | "REGLEMENTATION" | "TECHNIQUE" => {
+                    if reg_records.contains_key(&reference) {
+                        rejections.push(reject(format!(
+                            "bloc réglementaire en double pour la référence « {reference} »"
+                        )));
+                        continue;
                     }
-                    if parts.len() > 3 {
-                        map.insert("norme".to_string(), parts[3].to_string());
-                    }
-                    if parts.len() > 4 {
-                        map.insert("classement_feu".to_string(), parts[4].to_string());
-                    }
-                    reg_records.insert(ref_fab, map);
+                    let map = Self::block_fields(&record, &["etim", "norme", "classement_feu"]);
+                    reg_records.insert(reference.clone(), map);
+                    dependents.push((reference, number, line));
                 }
-                _ => {}
+                other => {
+                    rejections.push(reject(format!("type de bloc « {other} » inconnu")));
+                }
             }
         }
 
-        let mut output = Vec::new();
-        for (ref_fab, (line_num, c_map, raw_text)) in commerce_records {
+        // Un bloc L ou R sans bloc C de même référence n'est jamais ignoré
+        for (reference, number, line) in dependents {
+            if !commerce_refs.contains(&reference) {
+                logistics_records.remove(&reference);
+                reg_records.remove(&reference);
+                rejections.push(SourceRejection {
+                    record: number,
+                    source_line: line,
+                    anomaly_code: BLOCK_INVALID,
+                    cause_code: BLOCK_INVALID.to_string(),
+                    detail: format!(
+                        "bloc sans bloc commercial (C) pour la référence « {reference} »"
+                    ),
+                });
+            }
+        }
+
+        let mut items: Vec<SourceItem> = rejections.into_iter().map(SourceItem::Rejected).collect();
+        for (ref_fab, commerce) in commerce_records {
+            let (line_num, source_line, c_map, raw_fields) = commerce;
             let ean = c_map.get("ean").cloned().filter(|s| !s.is_empty());
             let designation = c_map
                 .get("designation")
@@ -184,15 +267,16 @@ impl FabDisAdapter {
                 }
             }
 
-            let raw_hash = lyxal_crypto::blake3_hex(raw_text.as_bytes());
+            let raw_hash = fields_hash(&raw_fields);
             let payload = json!({
                 "format": "FAB-DIS_2.3",
+                "line": source_line,
                 "commerce": c_map,
                 "logistics": logistics_records.get(&ref_fab),
                 "reglementation": reg_records.get(&ref_fab),
             });
 
-            output.push(RawRecordDto {
+            items.push(SourceItem::Record(Box::new(RawRecordDto {
                 line_number: line_num,
                 raw_reference: ref_fab,
                 raw_designation: designation,
@@ -207,65 +291,28 @@ impl FabDisAdapter {
                 raw_attributes: raw_attrs,
                 raw_payload: payload,
                 raw_hash,
-            });
+            })));
         }
 
-        output.sort_by_key(|r| r.line_number);
-        Ok(output)
-    }
-
-    /// Parse le format tabulaire FAB-DIS 3.0 unifié
-    fn parse_tabular(&self, content: &str) -> Result<Vec<RawRecordDto>, IngestionError> {
-        let csv_adapter = super::csv::CsvAdapter::new();
-        let mut records = csv_adapter.parse_content(content)?;
-
-        // Enrichissement spécifique FAB-DIS 3.0
-        for r in &mut records {
-            if let Some(payload_obj) = r.raw_payload.as_object_mut() {
-                payload_obj.insert("format".to_string(), json!("FAB-DIS_3.0"));
-            }
-        }
-        Ok(records)
+        items.sort_by_key(SourceItem::number);
+        Ok(items)
     }
 }
 
-#[async_trait]
 impl SourceAdapter for FabDisAdapter {
     fn format(&self) -> SourceFormat {
         SourceFormat::FabDis
     }
 
-    fn supported_versions(&self) -> &'static [&'static str] {
-        &["FAB-DIS 2.3", "FAB-DIS 3.0"]
-    }
-
-    fn validate_header(&self, sample: &[u8]) -> Result<(), IngestionError> {
-        let text = std::str::from_utf8(sample).map_err(|e| {
-            IngestionError::Validation(format!("Encodage FAB-DIS invalide (UTF-8 requis) : {e}"))
-        })?;
-
-        let sample_upper = text.to_uppercase();
-        let has_fab_dis_markers = sample_upper.contains("REF_FAB")
-            || sample_upper.contains("FAB-DIS")
-            || sample_upper.contains("COMMERCE")
-            || sample_upper.contains("REF_CONSTRUCTEUR")
-            || sample_upper.contains("C;")
-            || sample_upper.contains("C\t");
-
-        if !has_fab_dis_markers {
-            return Err(IngestionError::Validation(
-                "Le fichier ne présente pas les en-têtes ou blocs caractéristiques du standard FAB-DIS (2.3 ou 3.0)".to_string(),
-            ));
-        }
-
-        Ok(())
-    }
-
-    fn parse_content(&self, content: &str) -> Result<Vec<RawRecordDto>, IngestionError> {
-        if Self::is_multi_block(content) {
-            self.parse_multi_block(content)
+    fn read(
+        &self,
+        source: &[u8],
+        encoding: SourceEncoding,
+    ) -> Result<Vec<SourceItem>, IngestionError> {
+        if Self::is_multi_block(source) {
+            Self::read_multi_block(source, encoding)
         } else {
-            self.parse_tabular(content)
+            CsvAdapter::read_with_format(source, encoding, "FAB-DIS_3.0")
         }
     }
 }
@@ -284,7 +331,11 @@ C;RAIL_R48;3456789012352;Rail Stil Prim R48 3m;PLACO;ML;3.20
 L;RAIL_R48;1.5;1.6;3000;48;40
 "#;
         let adapter = FabDisAdapter::new();
-        let records = adapter.parse_content(content).unwrap();
+        let records = crate::adapters::records_only(
+            adapter
+                .read(content.as_bytes(), SourceEncoding::Utf8)
+                .unwrap(),
+        );
 
         assert_eq!(records.len(), 2);
 
@@ -323,11 +374,53 @@ L;RAIL_R48;1.5;1.6;3000;48;40
     fn test_fab_dis_tabular_3_0() {
         let content = "REF_FAB;EAN;LIBELLE_COMMERCIAL;MARQUE;PRIX_TARIF;UNITE_REF\nBA13;3456789012345;Placoplatre BA13;PLACO;8.50;M2\n";
         let adapter = FabDisAdapter::new();
-        let records = adapter.parse_content(content).unwrap();
+        let records = crate::adapters::records_only(
+            adapter
+                .read(content.as_bytes(), SourceEncoding::Utf8)
+                .unwrap(),
+        );
 
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].raw_reference, "BA13");
         assert_eq!(records[0].raw_gtin, Some("3456789012345".to_string()));
         assert_eq!(records[0].raw_unit, Some("M2".to_string()));
+    }
+
+    #[test]
+    fn quoted_field_and_orphan_block() {
+        let content = "C;BA13;3456789012345;\"Plaque; standard\";PLACO;M2;8.50\nL;RAIL;1.5;1.6;3000;48;40\nX;BA13\n";
+        let items = FabDisAdapter::new()
+            .read(content.as_bytes(), SourceEncoding::Utf8)
+            .unwrap();
+        assert_eq!(items.len(), 3);
+        let SourceItem::Record(ba13) = &items[0] else {
+            panic!("article attendu");
+        };
+        assert_eq!(ba13.raw_designation, "Plaque; standard");
+        for (index, expected) in [(1, "sans bloc commercial"), (2, "inconnu")] {
+            let SourceItem::Rejected(rejection) = &items[index] else {
+                panic!("rejet attendu");
+            };
+            assert_eq!(rejection.anomaly_code, "INGESTION_FABDIS_BLOCK_INVALID");
+            assert_eq!(rejection.record, index + 1);
+            assert!(rejection.detail.contains(expected), "{}", rejection.detail);
+        }
+    }
+
+    #[test]
+    fn tab_separated_blocks_after_blank_and_comment_lines() {
+        let content = "\n# export FAB-DIS\nC\tBA13\t3456789012345\tPlaque BA13\tPLACO\tM2\t8.50\nL\tBA13\t28.5\t29.0\t2500\t1200\t12.5\n";
+        let records = crate::adapters::records_only(
+            FabDisAdapter::new()
+                .read(content.as_bytes(), SourceEncoding::Utf8)
+                .unwrap(),
+        );
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].raw_reference, "BA13");
+        assert_eq!(records[0].raw_unit, Some("M2".to_string()));
+        assert_eq!(
+            records[0].raw_dimensions.as_ref().unwrap().length,
+            Some(2500.0)
+        );
     }
 }

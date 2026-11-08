@@ -126,3 +126,18 @@ impl ResourceProvider for DirResourceProvider {
         })
     }
 }
+
+/// Enregistrements d'une source lue par un adaptateur, sans aucun rejet attendu.
+pub fn records_of(
+    items: Vec<lyxal_pipeline_ingestion::adapters::SourceItem>,
+) -> Vec<lyxal_pipeline_ingestion::adapters::RawRecordDto> {
+    items
+        .into_iter()
+        .map(|item| match item {
+            lyxal_pipeline_ingestion::adapters::SourceItem::Record(record) => *record,
+            lyxal_pipeline_ingestion::adapters::SourceItem::Rejected(rejection) => {
+                panic!("rejet inattendu : {rejection:?}")
+            }
+        })
+        .collect()
+}

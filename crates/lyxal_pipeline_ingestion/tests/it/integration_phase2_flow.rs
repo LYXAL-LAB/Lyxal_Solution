@@ -29,9 +29,14 @@ R;RAIL_R48_3M;EC000382;NF EN 14195;A1
     let fab_adapter = registry
         .get(SourceFormat::FabDis)
         .expect("FabDisAdapter introuvable");
-    let raw_records = fab_adapter
-        .parse_content(fab_dis_content)
-        .expect("Échec du parsing FAB-DIS");
+    let raw_records = crate::support::records_of(
+        fab_adapter
+            .read(
+                fab_dis_content.as_bytes(),
+                lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
+            )
+            .expect("Échec du parsing FAB-DIS"),
+    );
     assert_eq!(raw_records.len(), 2);
 
     // Preuve commerciale officielle de bordereau fabricant signé (Directive CTO Phase 4)
@@ -73,9 +78,14 @@ R;RAIL_R48_3M;EC000382;NF EN 14195;A1
     let csv_adapter = registry
         .get(SourceFormat::Csv)
         .expect("CsvAdapter introuvable");
-    let raw_knauf = csv_adapter
-        .parse_content(csv_content)
-        .expect("Échec du parsing CSV");
+    let raw_knauf = crate::support::records_of(
+        csv_adapter
+            .read(
+                csv_content.as_bytes(),
+                lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
+            )
+            .expect("Échec du parsing CSV"),
+    );
     assert_eq!(raw_knauf.len(), 1);
 
     let knauf_proof = lyxal_pipeline_ingestion::proof::CommercialProof::new(
@@ -114,9 +124,14 @@ R;RAIL_R48_3M;EC000382;NF EN 14195;A1
     let xml_adapter = registry
         .get(SourceFormat::Xml)
         .expect("XmlAdapter introuvable");
-    let raw_siniat = xml_adapter
-        .parse_content(xml_content)
-        .expect("Échec du parsing XML");
+    let raw_siniat = crate::support::records_of(
+        xml_adapter
+            .read(
+                xml_content.as_bytes(),
+                lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
+            )
+            .expect("Échec du parsing XML"),
+    );
     let norm_ba13_siniat = norm_engine.normalize(
         &raw_siniat[0],
         None,
