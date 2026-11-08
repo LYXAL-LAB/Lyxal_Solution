@@ -74,10 +74,18 @@ au début du lot ; s'il ne garantit pas l'unicité, le champ devient une clé ex
 * Politique de l'installation : mot de passe de 12 caractères minimum, verrouillage après 10
   échecs pendant 15 min, accès 15 min, inactivité 12 h, absolue 30 jours, invitation 7 jours,
   `registration.mode = invitation_only`.
-* Permissions `auth.*` (ex. `auth.organization.manage`, `auth.member.manage`,
-  `auth.role.manage`, `auth.identity.manage`, `auth.identity.read`, `auth.policy.manage`).
-* Rôles : `platform_admin` (installation, système), `organization_admin` et
-  `organization_member` (organisation, système, `organization_member` par défaut).
+* Permissions `auth.*` ; chaque code a **une seule portée** :
+  * installation : `auth.organization.manage` (créer, suspendre, gérer toute organisation),
+    `auth.identity.manage`, `auth.identity.read`, `auth.role.manage` (rôles de l'installation et
+    registre des permissions), `auth.policy.manage` (politique de l'installation) ;
+  * organisation : `auth.organization.settings.manage` (sa fiche, ses domaines),
+    `auth.member.manage`, `auth.member.read`, `auth.organization.role.manage` (ses propres rôles
+    et leur attribution), `auth.organization.policy.manage` (sa politique).
+  Une fonction qui agit sur une organisation accepte la permission d'organisation dans cette
+  organisation **ou** `auth.organization.manage` (administration de la plateforme).
+* Rôles : `platform_admin` (installation, système, toutes les permissions d'installation),
+  `organization_admin` (organisation, système, toutes les permissions d'organisation) et
+  `organization_member` (organisation, système, par défaut, `auth.member.read`).
 * Aucun compte ni identifiant par défaut : le premier administrateur est créé au lot 3 par une
   commande explicite de l'hôte.
 
@@ -114,15 +122,15 @@ principale vérifiée (`AUTH_WRITE_FORBIDDEN`) ; permission vérifiée en tête 
 | Domaine | Fonctions | Permission |
 | :--- | :--- | :--- |
 | Contexte | `auth_context`, `auth_has_permission` | — |
-| Organisations | `auth_organization_create`, `_get`, `_list`, `_update`, `_set_state` | `auth.organization.manage` (installation) ; lecture par les membres |
-| Domaines | `auth_organization_domain_add` (reçoit l'empreinte du jeton), `_verify` (reçoit le résultat de la lecture DNS faite en Rust), `_remove`, `_list` | `auth.organization.manage` (organisation) |
+| Organisations | `auth_organization_create`, `_get`, `_list`, `_update`, `_set_state` | création et état : `auth.organization.manage` ; `_update` : `auth.organization.settings.manage` ; lecture par les membres |
+| Domaines | `auth_organization_domain_add` (reçoit l'empreinte du jeton), `_verify` (reçoit le résultat de la lecture DNS faite en Rust), `_remove`, `_list` | `auth.organization.settings.manage` |
 | Schéma | `auth_identity_schema_save`, `_get` | `auth.identity.manage` (installation) |
 | Identités | `auth_identity_create` (traits validés par le schéma, identifiants et adresses créés), `_get`, `_list`, `_update_traits`, `_set_state` (`not_before` posé si `inactive` ou `locked`) | `auth.identity.manage` / `auth.identity.read` |
-| Membres | `auth_organization_member_add`, `_remove` (refus de retirer le dernier `organization_admin`), `_set_state`, `_list` | `auth.member.manage` |
-| Permissions | `auth_permission_register` (appelée par les seeds des modules ; rejouable, met à jour la description), `auth_permission_list` | système ou `auth.role.manage` |
-| Rôles | `auth_role_create`, `_update`, `_list`, `_permission_set` (remplace les permissions d'un rôle), `_include_set` (rôles inclus), `auth_role_assign`, `_unassign`, `auth_identity_permissions` (`{ identity, organization }` → permissions effectives) | `auth.role.manage` |
-| Invitations | `auth_invitation_create` (reçoit l'empreinte et le secret scellé, publie `auth.invitation.created`, E3), `_accept` (identité connectée dont l'adresse correspond : adhésion et rôles prévus créés), `_revoke`, `_list` | `auth.member.manage` ; acceptation par l'invité |
-| Politique | `auth_policy_get` (politique effective fusionnée), `_save` | `auth.policy.manage` |
+| Membres | `auth_organization_member_add`, `_remove` (refus de retirer le dernier `organization_admin`), `_set_state`, `_list` | `auth.member.manage` ; `_list` : `auth.member.read` |
+| Permissions | `auth_permission_register` (appelée par les seeds des modules ; **crée seulement si absente**, ne modifie jamais une permission existante, §5.5), `auth_permission_update` (modification volontaire de la description), `auth_permission_list` | système ou `auth.role.manage` |
+| Rôles | `auth_role_create`, `_update`, `_list`, `_permission_set` (remplace les permissions d'un rôle), `_include_set` (rôles inclus), `auth_role_assign`, `_unassign`, `auth_identity_permissions` (`{ identity, organization }` → permissions effectives) | rôles de l'installation : `auth.role.manage` ; rôles et attributions dans une organisation : `auth.organization.role.manage` |
+| Invitations | `auth_invitation_create` (reçoit l'empreinte, le secret scellé et l'`event_id` utilisé pour le sceller ; publie `auth.invitation.created` avec **ce même** `event_id`, E3), `_accept` (identité connectée dont l'adresse correspond : adhésion et rôles prévus créés), `_revoke`, `_list` | `auth.member.manage` ; acceptation par l'invité |
+| Politique | `auth_policy_get` (politique effective fusionnée), `_save` | installation : `auth.policy.manage` ; organisation : `auth.organization.policy.manage` |
 
 L'acceptation d'une invitation par une personne sans compte (création de l'identité et du mot de
 passe) est faite par le parcours d'inscription du lot 3, qui appelle ensuite
@@ -153,6 +161,7 @@ pub struct IdentityPermissionsParams { pub identity: AuthRecordId, pub organizat
 pub struct IdentityPermissions { pub installation: Vec<String>, pub organization: Vec<String>, pub version: u64 }
 
 pub struct InvitationCreateParams { pub organization: AuthRecordId, pub email: String, pub roles: Vec<AuthRecordId>,
+                                    pub event_id: String /* UUID v7 alloué avant le scellement */,
                                     pub token_hash: String, pub secret: String /* enc:v2 */, pub expires_at: Option<AuthDatetime> }
 pub struct InvitationAcceptParams { pub token_hash: String }
 pub struct DomainVerifyParams { pub domain: AuthRecordId, pub observed_txt: Vec<String> }
@@ -160,7 +169,8 @@ pub struct DomainVerifyParams { pub domain: AuthRecordId, pub observed_txt: Vec<
 
 Services (logique système seulement ; les règles restent en SurrealQL) :
 
-* `InvitationService` : jeton de 32 octets (`OsRng`), empreinte `blake3_hex`, lien
+* `InvitationService` : identifiant d'événement UUID v7 alloué **avant** le scellement (il fait
+  partie du contexte), jeton de 32 octets (`OsRng`), empreinte `blake3_hex`, lien
   `action_url` construit depuis l'URL publique de l'hôte, objet `{ action_url }` scellé
   (`CryptoEngine::seal`, contexte du contrat d'événement de `lyxal_notification` §2.1), appel de
   `auth_invitation_create` ; acceptation : empreinte du jeton reçu puis `auth_invitation_accept`.
