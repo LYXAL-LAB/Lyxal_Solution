@@ -1,0 +1,50 @@
+manifest_version = 1
+id = "lyxal_notification"
+name = "Lyxal Notification"
+version = "0.1.0"
+description = "Notifications sortantes de Lyxal OS : parcours, gabarits, file d'envoi e-mail, journal et liste de suppression"
+capabilities = ["database", "events", "email"]
+
+[runtime]
+min_version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_core"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_error"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_event"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_auth"
+version = ">=0.1.0"
+
+[resources]
+schemas = [
+    "schema/01_notification_settings.surql",
+    "schema/02_notification_workflow.surql",
+    "schema/03_notification_layout.surql",
+    "schema/04_notification_template.surql",
+    "schema/05_notification_run.surql",
+    "schema/06_notification_delivery.surql"
+]
+functions = [
+    "functions/notification_access.surql",
+    "functions/notification_trigger.surql",
+    "functions/notification_workflow.surql",
+    "functions/notification_template.surql",
+    "functions/notification_settings.surql",
+    "functions/notification_queue.surql"
+]
+error_definitions = [
+    "error/parametres/error_parametres.surql",
+    "error/parcours/error_parcours.surql",
+    "error/envoi/error_envoi.surql"
+]
+events = ["events/notification_events.surql"]
+seeds = ["seeds/notification_initial.surql"]
