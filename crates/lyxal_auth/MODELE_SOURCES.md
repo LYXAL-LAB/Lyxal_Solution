@@ -30,7 +30,8 @@ Règles de reprise :
 
 ## 2. Correspondance des tables (modèle cible)
 
-Préfixe `auth_`, tables `TYPE NORMAL SCHEMAFULL`, `tenant` sur chaque table métier. Colonne
+Préfixe `auth_`. Entités en tables `TYPE NORMAL SCHEMAFULL` ; associations en tables de relation
+`TYPE RELATION ... ENFORCED` (décision D5 du CTO, SurrealDB multi-modèle). Colonne
 « Origine » : projet dont la conception est reprise.
 
 ### 2.1. Identités
@@ -62,12 +63,13 @@ Préfixe `auth_`, tables `TYPE NORMAL SCHEMAFULL`, `tenant` sur chaque table mé
 | :--- | :--- | :--- |
 | `auth_organization` | Logto `organizations`, Keycloak `ORG` | organisation cliente (entreprise) d'un locataire |
 | `auth_organization_domain` | Keycloak `ORG_DOMAIN`, Logto `organization_jit_email_domains` | domaines vérifiés, rattachement automatique par domaine e-mail |
-| `auth_organization_member` | Logto `organization_user_relations` | appartenance d'une identité à une organisation |
+| `auth_member_of` (relation identité → organisation) | Logto `organization_user_relations` | appartenance d'une identité à une organisation |
 | `auth_organization_invitation` | Logto `organization_invitations`, Keycloak `ORG_INVITATION` | invitation expirante avec rôles prévus |
 | `auth_permission` | Logto `scopes` / `organization_scopes` | permission déclarée par un module (ex. `ingestion:batch:write`) |
 | `auth_role` | Logto `roles` / `organization_roles`, Keycloak rôles composites | rôle = ensemble de permissions, global ou modèle d'organisation |
-| `auth_role_permission` | Logto `roles_scopes` / `organization_role_scope_relations` | permissions d'un rôle |
-| `auth_role_assignment` | Logto `users_roles` / `organization_role_user_relations` | rôle d'une identité, global ou dans une organisation (retiré en cascade quand l'identité quitte l'organisation) |
+| `auth_role_grants` (relation rôle → permission) | Logto `roles_scopes` / `organization_role_scope_relations` | permissions d'un rôle |
+| `auth_role_includes` (relation rôle → rôle) | Keycloak rôles composites | rôles composites, parcourus récursivement |
+| `auth_has_role` (relation identité ou adhésion → rôle) | Logto `users_roles` / `organization_role_user_relations` | rôle global (depuis l'identité) ou dans une organisation (depuis l'adhésion : retiré automatiquement quand l'identité quitte l'organisation) |
 
 ### 2.4. Applications, fédération, sécurité
 
@@ -120,8 +122,8 @@ Logto), les traductions (`lyxal_i18n`), les purges planifiées (`LyxalWorker`, p
      comptes existants.
 2. **Isolation des locataires** : champ `tenant` contrôlé par les `PERMISSIONS` de chaque table
    (modèle Logto transposé), ou un espace SurrealDB (namespace/database) par locataire.
-3. **Tables de relation** : appartenances et affectations de rôles en tables `TYPE RELATION`
-   (permises sur des tables neuves) ou en tables normales à identifiant composite.
+3. **Tables de relation** : décidé — tables `TYPE RELATION` pour les associations (adhésions,
+   rôles, rôles composites, permissions des rôles).
 4. **Fournisseur OpenID Connect pour des tiers** : en V2 (dépend du point 1) ou plus tard.
 5. **Connexions sortantes** : création d'un module `lyxal_connect` (comptes connectés vers des
    services externes), séparé de `lyxal_auth` ; voir [`../lyxal_connect/RECHERCHE_SOURCES.md`](../lyxal_connect/RECHERCHE_SOURCES.md).
