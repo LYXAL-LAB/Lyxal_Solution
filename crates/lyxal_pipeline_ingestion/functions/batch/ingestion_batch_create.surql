@@ -29,13 +29,17 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_batch_create($params: object) {
             ELSE { "INGESTION_INVALID_PARAMETERS" };
         RETURN fn::error_result($code, IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    -- Codes de format et d'encodage normalisés par lyxal_core
+    LET $p = fn::sanitize_object_execute($report.value, {
+        fields: { source_type: { pipeline: [{ rule: "uppercase" }] }, source_encoding: { pipeline: [{ rule: "uppercase" }] } },
+        unknown_keys: "keep"
+    }, 10);
     -- Identifiant fourni, sinon UUID v7 en clé texte (même forme que les identifiants fournis)
     LET $id = $p.id ?? type::record("ingestion_batch", <string> rand::uuid::v7());
 
     -- Idempotence : un même fichier (format + empreinte) ou un même identifiant n'est reçu qu'une fois
     LET $hash = string::lowercase(string::trim($p.file_hash_blake3));
-    LET $source = string::uppercase($p.source_type);
+    LET $source = $p.source_type;
     LET $existing = (SELECT VALUE id FROM ingestion_batch WHERE (source_type = $source AND file_hash_blake3 = $hash) OR id = $id LIMIT 1);
     IF array::len($existing) > 0 {
         RETURN fn::error_result("INGESTION_BATCH_DUPLICATE", $p.language, { batch_id: <string> record::id($existing[0]), file_hash_blake3: $hash });
@@ -45,7 +49,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_batch_create($params: object) {
     LET $created = (CREATE ONLY $id CONTENT {
         source_type: $source,
         source_format_version: $p.source_format_version,
-        source_encoding: string::uppercase($p.source_encoding),
+        source_encoding: $p.source_encoding,
         fournisseur_id: $p.fournisseur_id,
         nom_fichier: $p.nom_fichier,
         file_hash_blake3: $hash,

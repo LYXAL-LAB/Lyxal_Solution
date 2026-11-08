@@ -6,9 +6,9 @@
 //! - FAB-DIS 3.0 : tabulaire unifié, lu comme un CSV à en-tête.
 
 use serde_json::json;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use lyxal_parsing::{CsvHeader, CsvOptions, CsvReader, CsvRecord, ReadFailure};
+use lyxal_parsing::{CsvHeader, CsvOptions, CsvReader, CsvRecord, Delimiter, ReadFailure};
 
 use super::csv::CsvAdapter;
 use super::{
@@ -57,6 +57,17 @@ impl FabDisAdapter {
         false
     }
 
+    /// Séparateur des blocs, déterminé sur le premier bloc réel (lignes vides et commentaires
+    /// passés) : `;` s'il y figure, tabulation sinon.
+    fn block_delimiter(source: &[u8]) -> u8 {
+        let sample = String::from_utf8_lossy(&source[..source.len().min(16 * 1024)]);
+        sample
+            .lines()
+            .map(|line| line.trim().trim_start_matches('\u{feff}'))
+            .find(|line| !line.is_empty() && !line.starts_with('#'))
+            .map_or(b';', |line| if line.contains(';') { b';' } else { b'\t' })
+    }
+
     /// Champs d'un bloc à partir de la troisième colonne (après type et référence).
     fn block_fields(record: &CsvRecord, names: &[&str]) -> HashMap<String, String> {
         names
@@ -78,6 +89,7 @@ impl FabDisAdapter {
     ) -> Result<Vec<SourceItem>, IngestionError> {
         let options = CsvOptions {
             header: CsvHeader::None,
+            delimiter: Delimiter::Byte(Self::block_delimiter(source)),
             encoding: encoding.parsing(),
             ..Default::default()
         };
@@ -85,6 +97,8 @@ impl FabDisAdapter {
 
         let mut rejections: Vec<SourceRejection> = Vec::new();
         let mut commerce_records: Vec<(String, Commerce)> = Vec::new();
+        // Index des références commerciales : doublons et orphelins sans parcours de la liste
+        let mut commerce_refs: HashSet<String> = HashSet::new();
         let mut logistics_records: HashMap<String, HashMap<String, String>> = HashMap::new();
         let mut reg_records: HashMap<String, HashMap<String, String>> = HashMap::new();
         // Blocs L et R lus, rattachés à leur ligne C après lecture complète
@@ -131,7 +145,7 @@ impl FabDisAdapter {
             match block_type.as_str() {
                 // Structure typique C : C;REF_FAB;EAN;DESIGNATION;MARQUE;UNITE;PRIX
                 "C" | "COMMERCE" => {
-                    if commerce_records.iter().any(|(r, _)| *r == reference) {
+                    if !commerce_refs.insert(reference.clone()) {
                         rejections.push(reject(format!(
                             "bloc commercial en double pour la référence « {reference} »"
                         )));
@@ -179,7 +193,7 @@ impl FabDisAdapter {
 
         // Un bloc L ou R sans bloc C de même référence n'est jamais ignoré
         for (reference, number, line) in dependents {
-            if !commerce_records.iter().any(|(r, _)| *r == reference) {
+            if !commerce_refs.contains(&reference) {
                 logistics_records.remove(&reference);
                 reg_records.remove(&reference);
                 rejections.push(SourceRejection {
@@ -391,5 +405,22 @@ L;RAIL_R48;1.5;1.6;3000;48;40
             assert_eq!(rejection.record, index + 1);
             assert!(rejection.detail.contains(expected), "{}", rejection.detail);
         }
+    }
+
+    #[test]
+    fn tab_separated_blocks_after_blank_and_comment_lines() {
+        let content = "\n# export FAB-DIS\nC\tBA13\t3456789012345\tPlaque BA13\tPLACO\tM2\t8.50\nL\tBA13\t28.5\t29.0\t2500\t1200\t12.5\n";
+        let records = crate::adapters::records_only(
+            FabDisAdapter::new()
+                .read(content.as_bytes(), SourceEncoding::Utf8)
+                .unwrap(),
+        );
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].raw_reference, "BA13");
+        assert_eq!(records[0].raw_unit, Some("M2".to_string()));
+        assert_eq!(
+            records[0].raw_dimensions.as_ref().unwrap().length,
+            Some(2500.0)
+        );
     }
 }
