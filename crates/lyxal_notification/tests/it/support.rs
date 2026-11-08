@@ -13,7 +13,11 @@ pub async fn installed_client() -> Surreal<Any> {
     let client = surrealdb::engine::any::connect("mem://")
         .await
         .expect("connexion");
-    client.use_ns("notification").use_db("test").await.expect("ns/db");
+    client
+        .use_ns("notification")
+        .use_db("test")
+        .await
+        .expect("ns/db");
     let crates = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("dossier crates")

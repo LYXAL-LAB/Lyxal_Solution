@@ -103,11 +103,18 @@ impl Renderer {
             None => html,
         };
         let text = match &job.layout_text {
-            Some(layout) => render(&env, "layout.txt", layout, with_content(&context, Value::from(text)))?,
+            Some(layout) => render(
+                &env,
+                "layout.txt",
+                layout,
+                with_content(&context, Value::from(text)),
+            )?,
             None => text,
         };
         if html.len() > MAX_RENDERED_BYTES || text.len() > MAX_RENDERED_BYTES {
-            return Err(NotificationError::Render("message rendu trop volumineux".to_string()));
+            return Err(NotificationError::Render(
+                "message rendu trop volumineux".to_string(),
+            ));
         }
         Ok(RenderedEmail {
             subject: single_line(&subject),
@@ -132,7 +139,12 @@ impl Renderer {
     }
 }
 
-fn render(env: &Environment<'_>, name: &str, source: &str, context: Value) -> NotificationResult<String> {
+fn render(
+    env: &Environment<'_>,
+    name: &str,
+    source: &str,
+    context: Value,
+) -> NotificationResult<String> {
     env.render_named_str(name, source, context)
         // L'erreur MiniJinja décrit le gabarit (nom, ligne, variable), jamais les valeurs
         .map_err(|error| NotificationError::Render(format!("{name} : {}", error.kind())))
@@ -163,9 +175,11 @@ fn json_value(value: &serde_json::Value) -> Value {
             .unwrap_or_else(|| Value::from(n.to_string())),
         serde_json::Value::String(s) => Value::from(s.clone()),
         serde_json::Value::Array(items) => items.iter().map(json_value).collect(),
-        serde_json::Value::Object(map) => {
-            Value::from_pairs(map.iter().map(|(k, v)| (k.clone(), json_value(v))).collect::<Vec<_>>())
-        }
+        serde_json::Value::Object(map) => Value::from_pairs(
+            map.iter()
+                .map(|(k, v)| (k.clone(), json_value(v)))
+                .collect::<Vec<_>>(),
+        ),
     }
 }
 
@@ -217,9 +231,19 @@ mod tests {
     #[test]
     fn html_is_escaped_text_is_not() {
         let rendered = Renderer::default()
-            .render(&job("Devis {{ payload.n }}", "<p>{{ payload.n }} {{ organization.name }}</p>", "{{ payload.n }}"), None)
+            .render(
+                &job(
+                    "Devis {{ payload.n }}",
+                    "<p>{{ payload.n }} {{ organization.name }}</p>",
+                    "{{ payload.n }}",
+                ),
+                None,
+            )
             .expect("rendu");
-        assert_eq!(rendered.html, "<p>&lt;b&gt;D-1&lt;&#x2f;b&gt; Alpha &amp; Fils</p>");
+        assert_eq!(
+            rendered.html,
+            "<p>&lt;b&gt;D-1&lt;&#x2f;b&gt; Alpha &amp; Fils</p>"
+        );
         assert_eq!(rendered.text, "<b>D-1</b>");
         assert_eq!(rendered.subject, "Devis <b>D-1</b>");
     }
@@ -240,19 +264,31 @@ mod tests {
     #[test]
     fn unknown_variable_is_an_error_but_may_be_tested() {
         let renderer = Renderer::default();
-        assert!(renderer.render(&job("{{ payload.absent }}", "x", "x"), None).is_err());
         assert!(renderer
-            .render(&job("{% if payload.absent %}oui{% endif %}ok", "x", "x"), None)
+            .render(&job("{{ payload.absent }}", "x", "x"), None)
+            .is_err());
+        assert!(renderer
+            .render(
+                &job("{% if payload.absent %}oui{% endif %}ok", "x", "x"),
+                None
+            )
             .is_ok());
-        assert!(renderer.render(&job("{{ secret.code }}", "x", "x"), None).is_err());
+        assert!(renderer
+            .render(&job("{{ secret.code }}", "x", "x"), None)
+            .is_err());
     }
 
     #[test]
     fn includes_are_impossible_and_fuel_is_bounded() {
         let renderer = Renderer::with_fuel(1_000);
-        assert!(renderer.render(&job("{% include 'autre' %}", "x", "x"), None).is_err());
         assert!(renderer
-            .render(&job("{% for i in range(100000) %}{{ i }}{% endfor %}", "x", "x"), None)
+            .render(&job("{% include 'autre' %}", "x", "x"), None)
+            .is_err());
+        assert!(renderer
+            .render(
+                &job("{% for i in range(100000) %}{{ i }}{% endfor %}", "x", "x"),
+                None
+            )
             .is_err());
     }
 
@@ -265,7 +301,10 @@ mod tests {
         let mut missing = job("s", "h", "t");
         missing.subject = None;
         assert_eq!(
-            Renderer::default().render(&missing, None).expect_err("aucune version").to_string(),
+            Renderer::default()
+                .render(&missing, None)
+                .expect_err("aucune version")
+                .to_string(),
             "rendu impossible : aucune version du gabarit dans une langue utilisable"
         );
     }

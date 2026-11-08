@@ -8,14 +8,18 @@
 use async_trait::async_trait;
 use lyxal_crypto::KeyResolver;
 use lyxal_runtime::types::ModuleId;
-use lyxal_runtime::worker::{LyxalWorker, WorkerContext, WorkerCriticality, WorkerDescriptor, WorkerId};
+use lyxal_runtime::worker::{
+    LyxalWorker, WorkerContext, WorkerCriticality, WorkerDescriptor, WorkerId,
+};
 use lyxal_runtime::RuntimeError;
 use lyxal_surreal::ToSql;
 use std::sync::Arc;
 use std::time::Duration;
 
 use crate::error::NotificationError;
-use crate::models::{ClaimedJob, FailureClass, JobClaimParams, JobCompleteParams, JobFailParams, PurgeParams};
+use crate::models::{
+    ClaimedJob, FailureClass, JobClaimParams, JobCompleteParams, JobFailParams, PurgeParams,
+};
 use crate::render::Renderer;
 use crate::secret::SecretCodec;
 use crate::smtp::{EmailTransport, OutgoingEmail, SendFailure};
@@ -179,8 +183,10 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
                         class: class.as_str().to_string(),
                         code: failure.code,
                         detail: Some(truncate(&failure.detail, 512)),
-                        retry_delay_seconds: i64::try_from(self.settings.retry.delay(attempt).as_secs())
-                            .unwrap_or(30),
+                        retry_delay_seconds: i64::try_from(
+                            self.settings.retry.delay(attempt).as_secs(),
+                        )
+                        .unwrap_or(30),
                     })
                     .await
                     .map(|_| JobOutcome::Failed(class))
@@ -220,7 +226,10 @@ impl<R: KeyResolver> NotificationEmailWorker<R> {
         if job.sensitive {
             return None;
         }
-        self.renderer.render(job, None).ok().map(|email| email.subject)
+        self.renderer
+            .render(job, None)
+            .ok()
+            .map(|email| email.subject)
     }
 }
 
@@ -261,15 +270,20 @@ pub struct NotificationPurgeWorker {
 
 impl NotificationPurgeWorker {
     /// Purge toutes les `interval`, par paquets de `batch` éléments.
-    pub fn new(store: NotificationStore, interval: Duration, batch: u32) -> Result<Self, RuntimeError> {
+    pub fn new(
+        store: NotificationStore,
+        interval: Duration,
+        batch: u32,
+    ) -> Result<Self, RuntimeError> {
         let module_id = ModuleId::new(MODULE);
         let mut descriptor = WorkerDescriptor::new(
             WorkerId::new(&module_id, "purge")?,
             module_id,
             "Lyxal Notification Purge",
         );
-        descriptor.description =
-            Some("Effacement des secrets expirés et purge selon les durées de conservation".to_string());
+        descriptor.description = Some(
+            "Effacement des secrets expirés et purge selon les durées de conservation".to_string(),
+        );
         descriptor.criticality = WorkerCriticality::Optional;
         Ok(Self {
             descriptor,

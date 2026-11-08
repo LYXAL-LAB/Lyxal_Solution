@@ -69,7 +69,10 @@ fn decoded(data: &str) -> String {
         };
         let lower = headers.to_ascii_lowercase();
         if lower.contains("content-transfer-encoding: base64") {
-            let compact: String = body.split_whitespace().take_while(|l| !l.starts_with("--")).collect();
+            let compact: String = body
+                .split_whitespace()
+                .take_while(|l| !l.starts_with("--"))
+                .collect();
             if let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(compact) {
                 out.push_str(&String::from_utf8_lossy(&bytes));
             }
@@ -122,16 +125,20 @@ async fn invitation_from_auth_is_delivered_once_and_leaves_no_secret() {
         })
         .await
         .expect("organisation");
-    InvitationService::new(auth, engine.clone(), "https://lyxal.test/invitations/accept")
-        .expect("service")
-        .invite(InvitationRequest {
-            organization: organization.id.to_sql(),
-            email: "claire@exemple.fr".into(),
-            roles: vec![],
-            expires_at: None,
-        })
-        .await
-        .expect("invitation");
+    InvitationService::new(
+        auth,
+        engine.clone(),
+        "https://lyxal.test/invitations/accept",
+    )
+    .expect("service")
+    .invite(InvitationRequest {
+        organization: organization.id.to_sql(),
+        email: "claire@exemple.fr".into(),
+        roles: vec![],
+        expires_at: None,
+    })
+    .await
+    .expect("invitation");
 
     // Événement tel que publié par lyxal_auth (charge utile JSON, comme la livre lyxal_event)
     let mut response = client
@@ -140,13 +147,23 @@ async fn invitation_from_auth_is_delivered_once_and_leaves_no_secret() {
         .expect("outbox");
     let published: Option<Published> = response.take(0).expect("événement");
     let published = published.expect("événement publié");
-    let event: InvitationCreated = serde_json::from_value(published.payload.clone()).expect("contrat auth.invitation.created");
+    let event: InvitationCreated =
+        serde_json::from_value(published.payload.clone()).expect("contrat auth.invitation.created");
     assert_eq!(event.organization_name, "Alpha BTP");
 
-    let handler = AuthMessageHandler::new(NotificationStore::new(client.clone()), SecretCodec::new(engine.clone()));
-    handler.deliver(&event, &published.event_id).await.expect("déclenchement");
+    let handler = AuthMessageHandler::new(
+        NotificationStore::new(client.clone()),
+        SecretCodec::new(engine.clone()),
+    );
+    handler
+        .deliver(&event, &published.event_id)
+        .await
+        .expect("déclenchement");
     // Livraison au moins une fois : le rejeu ne crée rien de plus
-    handler.deliver(&event, &published.event_id).await.expect("rejeu");
+    handler
+        .deliver(&event, &published.event_id)
+        .await
+        .expect("rejeu");
     let mut response = client
         .query("SELECT VALUE secret FROM notification_run")
         .await
@@ -155,18 +172,30 @@ async fn invitation_from_auth_is_delivered_once_and_leaves_no_secret() {
     assert_eq!(secrets.len(), 1, "un seul déclenchement");
     let queued = secrets[0].clone().expect("secret en file");
     assert!(queued.starts_with("enc:v2:"));
-    assert_ne!(Some(queued.as_str()), published.payload["secret"].as_str(), "secret rescellé pour la file");
+    assert_ne!(
+        Some(queued.as_str()),
+        published.payload["secret"].as_str(),
+        "secret rescellé pour la file"
+    );
 
     let server = TestSmtpServer::start().await;
-    let outcomes = worker(&client, &engine, &server).run_once().await.expect("envoi");
+    let outcomes = worker(&client, &engine, &server)
+        .run_once()
+        .await
+        .expect("envoi");
     assert_eq!(outcomes, vec![JobOutcome::Sent]);
 
     let received = server.received();
     assert_eq!(received.len(), 1);
     assert_eq!(received[0].rcpt, "claire@exemple.fr");
     let body = decoded(&received[0].data);
-    let start = body.find("https://lyxal.test/invitations/accept?token=").expect("lien d'acceptation");
-    let link: String = body[start..].chars().take_while(|c| !c.is_whitespace() && *c != '"' && *c != '<').collect();
+    let start = body
+        .find("https://lyxal.test/invitations/accept?token=")
+        .expect("lien d'acceptation");
+    let link: String = body[start..]
+        .chars()
+        .take_while(|c| !c.is_whitespace() && *c != '"' && *c != '<')
+        .collect();
     let token = link.rsplit('=').next().expect("jeton").to_string();
     assert_eq!(token.len(), 43, "jeton complet");
     assert!(body.contains("Alpha BTP"));
@@ -190,11 +219,25 @@ async fn invitation_from_auth_is_delivered_once_and_leaves_no_secret() {
     assert_eq!(subject, None);
 }
 
-fn verification(engine: &CryptoEngine<StaticKeyResolver>, email: &str, event_id: &str, signed_for: &str) -> VerificationRequested {
-    let context = event_context(None, "lyxal_auth", "auth.verification.requested", signed_for).expect("contexte");
+fn verification(
+    engine: &CryptoEngine<StaticKeyResolver>,
+    email: &str,
+    event_id: &str,
+    signed_for: &str,
+) -> VerificationRequested {
+    let context = event_context(
+        None,
+        "lyxal_auth",
+        "auth.verification.requested",
+        signed_for,
+    )
+    .expect("contexte");
     let secret = engine
         .seal(
-            &SecretBytes::new(br#"{"action_url":"https://lyxal.test/verify?t=abc","code":"482913"}"#.to_vec()).expect("secret"),
+            &SecretBytes::new(
+                br#"{"action_url":"https://lyxal.test/verify?t=abc","code":"482913"}"#.to_vec(),
+            )
+            .expect("secret"),
             &context,
         )
         .expect("scellement")
@@ -217,14 +260,23 @@ fn verification(engine: &CryptoEngine<StaticKeyResolver>, email: &str, event_id:
 async fn envelope_sealed_for_another_event_is_refused() {
     let client = installed_client().await;
     let engine = crypto();
-    let handler = AuthMessageHandler::new(NotificationStore::new(client.clone()), SecretCodec::new(engine.clone()));
+    let handler = AuthMessageHandler::new(
+        NotificationStore::new(client.clone()),
+        SecretCodec::new(engine.clone()),
+    );
     let event_id = uuid::Uuid::now_v7().to_string();
     let other = uuid::Uuid::now_v7().to_string();
     let event = verification(&engine, "a@exemple.fr", &event_id, &other);
-    let error = handler.deliver(&event, &event_id).await.expect_err("enveloppe d'un autre événement");
+    let error = handler
+        .deliver(&event, &event_id)
+        .await
+        .expect_err("enveloppe d'un autre événement");
     assert_eq!(error.code(), "NOTIFICATION_SECRET_UNAVAILABLE");
     assert!(!error.is_retryable(), "lettre morte");
-    let mut response = client.query("RETURN array::len(SELECT * FROM notification_run)").await.expect("lecture");
+    let mut response = client
+        .query("RETURN array::len(SELECT * FROM notification_run)")
+        .await
+        .expect("lecture");
     let runs: Option<i64> = response.take(0).expect("nombre");
     assert_eq!(runs, Some(0));
 }
@@ -233,11 +285,17 @@ async fn envelope_sealed_for_another_event_is_refused() {
 async fn transient_failure_is_retried_and_rejected_recipient_is_suppressed() {
     let client = installed_client().await;
     let engine = crypto();
-    let handler = AuthMessageHandler::new(NotificationStore::new(client.clone()), SecretCodec::new(engine.clone()));
+    let handler = AuthMessageHandler::new(
+        NotificationStore::new(client.clone()),
+        SecretCodec::new(engine.clone()),
+    );
     for email in ["lent@exemple.fr", "absent@exemple.fr"] {
         let event_id = uuid::Uuid::now_v7().to_string();
         handler
-            .deliver(&verification(&engine, email, &event_id, &event_id), &event_id)
+            .deliver(
+                &verification(&engine, email, &event_id, &event_id),
+                &event_id,
+            )
             .await
             .expect("déclenchement");
     }
@@ -262,11 +320,17 @@ async fn transient_failure_is_retried_and_rejected_recipient_is_suppressed() {
         .query("UPDATE notification_job SET next_retry_at = time::now() WHERE status = 'queued'")
         .await
         .expect("avance");
-    assert_eq!(worker.run_once().await.expect("second tour"), vec![JobOutcome::Sent]);
+    assert_eq!(
+        worker.run_once().await.expect("second tour"),
+        vec![JobOutcome::Sent]
+    );
     let received = server.received();
     assert_eq!(received.len(), 1);
     assert_eq!(received[0].rcpt, "lent@exemple.fr");
-    assert!(decoded(&received[0].data).contains("482913"), "code de vérification envoyé");
+    assert!(
+        decoded(&received[0].data).contains("482913"),
+        "code de vérification envoyé"
+    );
 
     let mut response = client
         .query("SELECT address, reason, source FROM notification_suppression")
@@ -275,6 +339,10 @@ async fn transient_failure_is_retried_and_rejected_recipient_is_suppressed() {
     let suppressed: Vec<Suppressed> = response.take(0).expect("liste");
     assert_eq!(
         suppressed,
-        vec![Suppressed { address: "absent@exemple.fr".into(), reason: "hard_bounce".into(), source: Some("550".into()) }]
+        vec![Suppressed {
+            address: "absent@exemple.fr".into(),
+            reason: "hard_bounce".into(),
+            source: Some("550".into())
+        }]
     );
 }

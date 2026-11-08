@@ -1,11 +1,36 @@
-# `lyxal_notification` — modèle cible composé à partir de Novu (gratuit et payant)
+# `lyxal_notification` — sources et modèle cible
 
-Synthèse préalable au plan d'implémentation de `lyxal_notification`. Elle complète
-[`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md) (choix des sources) en listant **toutes** les
-fonctionnalités de Novu, y compris celles des offres payantes, et leur place dans Lyxal.
+Référence du module pour ses lots à venir ([`ROADMAP.md`](ROADMAP.md)) : sources retenues et
+leurs licences, **toutes** les fonctionnalités de Novu (y compris celles des offres payantes) et
+leur place dans Lyxal, correspondance table par table. L'état actuel du module est décrit par
+[`README.md`](README.md).
 
-Le crate n'existe pas encore : aucun code avant un `implementation_plan.md` validé par le CTO
-(`.agents/AGENTS.md` §3).
+## 0. Sources retenues
+
+Licences vérifiées sur le fichier `LICENSE` de chaque dépôt cloné (8 novembre 2026).
+
+| Projet | Langage | Licence (fichier lu) | Usage proposé |
+| :--- | :--- | :--- | :--- |
+| [Novu](https://github.com/novuhq/novu) | TypeScript | **MIT** hors `enterprise/packages/` (propriétaire) | **Modèle principal** : abonnés, sujets, workflows en étapes, préférences à plusieurs niveaux, intégrations multicanal, file d'étapes, messages, journal. Rien n'est repris de `enterprise/` (dont la traduction) |
+| [Postal](https://github.com/postalserver/postal) | Ruby | **MIT** (`MIT-LICENCE`) | **Modèle e-mail** : file verrouillée (`queued_messages`), tentatives de livraison, liste de suppression |
+| [Apprise](https://github.com/caronc/apprise) | Python | **BSD-2-Clause** | **Catalogue des connecteurs** (≈ 180) et configuration des canaux par URL, pour les canaux suivants |
+| [ntfy](https://github.com/binwiederhier/ntfy) | Go | Apache-2.0 ou GPLv2 au choix | Référence secondaire (push web, sujets), sous l'option Apache-2.0 |
+| [Notifuse](https://github.com/Notifuse/notifuse) | Go | **BSL 1.1** (AGPL jusqu'à la v39) | Conception seulement : file e-mail, historique par statut, classification des rejets |
+| listmonk, Keila, Plunk, Hyvor Relay | Go, Elixir, TS, PHP | **AGPL-3.0** | Écartés comme source de code |
+| Mautic | PHP | GPL-3.0 | Écarté |
+| Stalwart Mail Server | Rust | AGPL-3.0 + licence propriétaire | Référence de conception seulement |
+| Courier, Knock | — | services en ligne, pas de serveur open source | Écartés |
+
+### Briques Rust
+
+| Brique | Bibliothèque | Licence | Usage |
+| :--- | :--- | :--- | :--- |
+| Envoi SMTP | `lettre` 0.11 | MIT | **Dépendance** (V1-a) : `tokio1-rustls`, `ring`, `webpki-roots`, `pool`, `builder`, `smtp-transport`, sans les options par défaut. Option `dkim` exclue (signature par le relais, décision N4) |
+| Gabarits | `minijinja` 3 | Apache-2.0 | **Dépendance** (V1-a) : sans chargeur, variable affichée inconnue = erreur, échappement HTML automatique, budget `fuel` |
+| Mise en page e-mail | `mrml` 6 (MJML) | MIT | **Option** |
+| Push web, APNs, FCM | `web-push`, `a2`, `fcm` | Apache-2.0 / MIT | Plus tard ; leur cryptographie asymétrique est **soumise au CTO** (§11.3) |
+
+Alternative SMTP : `mail-send` / `mail-builder` (Stalwart, Apache-2.0 ou MIT).
 
 ## En-tête
 
@@ -38,7 +63,7 @@ Le crate n'existe pas encore : aucun code avant un `implementation_plan.md` vali
 * **Novu** : `Gratuit` = inclus dans la version open source ; `Cloud` = Novu Cloud seulement (pas
   dans l'open source) ; `Pro`, `Team`, `Ent.` = plan payant minimum ; `EE` = Enterprise Edition
   auto-hébergée (payante).
-* **Lyxal** : `V1` = fonctionnel (découpé en lots, §4) ; `V2` = observabilité et console ;
+* **Lyxal** : `V1` = fonctionnel (découpé en lots, `ROADMAP.md`) ; `V2` = observabilité et console ;
   `V3` = événementiel avancé et IA (méthode `.agents/AGENTS.md` §9) ; `Non` = non pertinente.
 * Les plafonds des plans Novu (durées, nombres) sont dans `docs/platform/developer/limits.mdx`.
   Dans Lyxal, ce ne sont pas des offres commerciales mais des **réglages par locataire**
@@ -90,7 +115,7 @@ plafonnées selon le plan (n° 12, 25, 44, 83, 86, 104).
 | 27 | Étape limitation (throttle) | Plafond d'envois par fenêtre fixe ou dynamique, par groupe | Gratuit | `.../throttle.mdx` | V1 | Anti-spam |
 | 28 | Respect des horaires de l'abonné | Un délai ou digest attend la prochaine plage autorisée | Gratuit | `delay.mdx` (§ Extend to subscriber's schedule) | V1 | Lié aux heures calmes (#55) |
 | 29 | Étape requête HTTP | Appel d'une API externe, réponse réutilisable par les étapes suivantes, signature | Gratuit | `.../http-step.mdx` | V2 | Risque SSRF : liste d'hôtes autorisés à décider |
-| 30 | Conditions d'étape | Règles (subscriber, payload, contexte, résultat d'étape précédente, variables) | Gratuit | `.../step-conditions.mdx` | V1 | Moteur de conditions à fournir (décision §5) |
+| 30 | Conditions d'étape | Règles (subscriber, payload, contexte, résultat d'étape précédente, variables) | Gratuit | `.../step-conditions.mdx` | V1 | Moteur de conditions à fournir (`ROADMAP.md`, points à décider) |
 | 31 | Arrêt sur échec | Une étape canal en échec n'arrête pas le parcours ; une étape d'action, si | Gratuit | `docs/platform/developer/delivery-retries.mdx` | V1 | Comportement repris et rendu configurable |
 | 32 | « Sauter » si déjà lu | Ex. e-mail 6 h plus tard seulement si l'in-app n'est pas lu | Gratuit | `docs/framework/skip.mdx` | V1 | Exprimé par une condition sur l'étape précédente |
 | 33 | Étapes en code (step resolver) | Code TypeScript de l'utilisateur publié en fonction serverless qui produit le contenu | Gratuit (Cloud pour l'exécution hébergée) | `docs/platform/workflow/add-and-configure-steps/code-steps.mdx`, `enterprise/workers/step-resolver/README.md` | Non | Lyxal n'exécute pas de code utilisateur ; remplacé par des gabarits et des handlers Rust enregistrés |
@@ -122,7 +147,7 @@ plafonnées selon le plan (n° 12, 25, 44, 83, 86, 104).
 | :-- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 50 | Intégrations | Instance configurée d'un fournisseur, plusieurs par canal, une principale (e-mail, SMS) | Gratuit | `docs/platform/concepts/integrations.mdx`, `integration.entity.ts` | V1 | Identifiants via `lyxal_secrets` |
 | 51 | Choix conditionnel d'intégration | Ex. chaque client avec son propre compte SendGrid | Gratuit | `docs/platform/integrations/integration-conditions.mdx` | V1 | Multi-locataire |
-| 52 | Catalogue de fournisseurs | 18 e-mail, 37 SMS, 6 push, 10 chat, 3 outils (PagerDuty, Opsgenie, Grafana) | Gratuit | `docs/platform/integrations/*/` | V1 par étapes | SMTP d'abord, puis API HTTP (§4) |
+| 52 | Catalogue de fournisseurs | 18 e-mail, 37 SMS, 6 push, 10 chat, 3 outils (PagerDuty, Opsgenie, Grafana) | Gratuit | `docs/platform/integrations/*/` | V1 par étapes | SMTP d'abord, puis API HTTP (`ROADMAP.md`) |
 | 53 | SMTP personnalisé | TLS direct ou STARTTLS, TLS exigé | Gratuit | `docs/platform/integrations/email/custom-smtp.mdx` | V1 | `lettre` + rustls |
 | 54 | Fournisseur de démonstration | Envoi limité sans compte fournisseur | Cloud | `docs/platform/integrations/demo-integration.mdx` | Non | Remplacé par un transport « capture » de test |
 | 55 | Canal « outil » et webhook | Livrer à PagerDuty, Opsgenie, Grafana ou une URL | Gratuit | `docs/framework/tool-channel.mdx`, `docs/platform/integrations/tool/` | V1 (lot canaux) | Alertes d'exploitation |
@@ -130,7 +155,7 @@ plafonnées selon le plan (n° 12, 25, 44, 83, 86, 104).
 | 57 | Nouvelles tentatives | **Novu ne retente pas** un envoi refusé par un fournisseur (une seule tentative, pas de bascule) | Gratuit | `docs/platform/developer/delivery-retries.mdx` | V1 | Lyxal fait mieux : tentatives avec attente croissante, 4xx définitif / temporaire |
 | 58 | Suivi d'activité e-mail | Délivré, ouvert, cliqué, rejeté, plainte, reçus des fournisseurs et normalisés | **Cloud / EE** | `docs/platform/integrations/email/activity-tracking.mdx` | V2 | Reconçue, aucun code repris. Alimente aussi la liste de suppression (V1) |
 | 59 | Suivi d'activité push | Retours des fournisseurs push | Cloud | `docs/platform/integrations/push/push-activity-tracking.mdx` | V2 | Après les canaux push |
-| 60 | Liste de suppression | Adresses en rejet définitif ou plainte | (absent chez Novu) | Postal, voir `RECHERCHE_SOURCES.md` | V1 | Protège la réputation d'envoi |
+| 60 | Liste de suppression | Adresses en rejet définitif ou plainte | (absent chez Novu) | Postal (§0) | V1 | Protège la réputation d'envoi |
 
 ### 1.5. Préférences
 
@@ -159,7 +184,7 @@ plafonnées selon le plan (n° 12, 25, 44, 83, 86, 104).
 | 76 | Lien de redirection, avatar, objet `data` | Clic vers une page, données libres pour l'interface | Gratuit | `channels-template-editors.mdx` | V1 | |
 | 77 | Onglets filtrés | Par étiquettes, `data` ou gravité | Gratuit | `docs/platform/inbox/configuration/tabs.mdx` | V1 | Filtres côté fonction SurrealQL |
 | 78 | Mise en sommeil (snooze) | Masquer jusqu'à une date (3 min à 90 j) | **Cloud** | `docs/platform/inbox/features/snooze.mdx` | V1 | Reconçue, aucun code repris. Réveil par worker |
-| 79 | Temps réel | Nouveau message et compteurs poussés (WebSocket : `notification_received`, `unread_count_changed`, `unseen_count_changed`) | Gratuit | `apps/ws/src/socket/ws.gateway.ts`, `packages/shared/src` (`WebSocketEventEnum`) | V1 | Décision : `LIVE SELECT` SurrealDB ou flux SSE de `lyxal-server` (§5) |
+| 79 | Temps réel | Nouveau message et compteurs poussés (WebSocket : `notification_received`, `unread_count_changed`, `unseen_count_changed`) | Gratuit | `apps/ws/src/socket/ws.gateway.ts`, `packages/shared/src` (`WebSocketEventEnum`) | V1 | Décision : `LIVE SELECT` SurrealDB ou flux SSE de `lyxal-server` (`ROADMAP.md`, points à décider) |
 | 80 | Sécurisation HMAC du fil | Empreinte `HMAC-SHA256(clé, subscriberId)` pour empêcher la lecture du fil d'un autre | Gratuit | `docs/platform/inbox/prepare-for-production.mdx` | V1 | Dans Lyxal : session `lyxal_auth` + `PERMISSIONS` |
 | 81 | Composants d'interface | Cloche, Inbox, préférences, mode sans interface (headless), traduction de l'interface | Gratuit | `docs/platform/inbox/`, `docs/platform/sdks/` | V2 | Console Surrealist (charte §15) |
 | 82 | Composant d'abonnement aux sujets | L'utilisateur choisit ses abonnements conditionnels | Gratuit | `docs/platform/subscription/` | V2 | Console |
@@ -213,7 +238,7 @@ plafonnées selon le plan (n° 12, 25, 44, 83, 86, 104).
 | :-- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 106 | Outils pour assistants IA | Serveur MCP, « skills », boîte à outils pour agents | Cloud (MCP hébergé) | `docs/platform/build-with-ai/mcp.mdx`, `skills.mdx`, `agent-toolkit.mdx` | V3 | Reconçue, aucun code repris ; sujet transverse, pas propre à ce module |
 | 107 | Assistant IA du tableau de bord | Génère ou modifie un parcours par conversation, avec instantanés | Cloud | `ai-chat.entity.ts`, `snapshot.entity.ts` | Non | Hors périmètre |
-| 108 | Agents conversationnels (Novu Connect, Agent Inbox) | Conversations bidirectionnelles Slack / Teams / WhatsApp / Telegram / e-mail / chat web ; participants ; approbation d'outils ; questions `ask` / `approve` / `choose` avec expiration ; agents gérés (Claude) ; connexions MCP OAuth ; parcours « envoyer et répondre via l'agent » | Cloud / EE | `docs/agents/`, `agent-inbox-docs/`, `conversation*.entity.ts`, `agent*.entity.ts`, `human-*.entity.ts`, `mcp-connection.entity.ts` | V3 partiel | Reconçue, aucun code repris. Seule l'**interaction humaine** (demande d'approbation ou de choix par message, avec expiration) est retenue pour ce module ; le reste serait un module séparé (§5) |
+| 108 | Agents conversationnels (Novu Connect, Agent Inbox) | Conversations bidirectionnelles Slack / Teams / WhatsApp / Telegram / e-mail / chat web ; participants ; approbation d'outils ; questions `ask` / `approve` / `choose` avec expiration ; agents gérés (Claude) ; connexions MCP OAuth ; parcours « envoyer et répondre via l'agent » | Cloud / EE | `docs/agents/`, `agent-inbox-docs/`, `conversation*.entity.ts`, `agent*.entity.ts`, `human-*.entity.ts`, `mcp-connection.entity.ts` | V3 partiel | Reconçue, aucun code repris. Seule l'**interaction humaine** (demande d'approbation ou de choix par message, avec expiration) est retenue pour ce module ; le reste serait un module séparé (`ROADMAP.md`, points à décider) |
 
 Fonctionnalités d'exploitation non reprises (sans objet pour un module) : facturation, télémétrie,
 drapeaux de fonctionnalités, migrations de données, déploiement Docker, CLI et Studio local,
@@ -228,7 +253,7 @@ Préfixe `notification_`. Entités : `TYPE NORMAL SCHEMAFULL`. Associations : `T
 ENFORCED`. Tous les documents portent `tenant` (organisation `lyxal_auth`), contrôlé par les
 `PERMISSIONS`. Novu sépare organisation **et** environnement : Lyxal n'a que le locataire.
 
-### 2.1. Tables reprises (complète `RECHERCHE_SOURCES.md` §3)
+### 2.1. Tables reprises
 
 | Novu (entité ou table) | Table Lyxal | Type | Contenu et différences | Lot |
 | :--- | :--- | :--- | :--- | :--- |
@@ -242,7 +267,7 @@ ENFORCED`. Tous les documents portent `tenant` (organisation `lyxal_auth`), cont
 | `localization`, `localization-group`, `translation-group`, `translations` | `notification_template_locale` (V1), puis clés `lyxal_i18n` (V2) | document | V1 : une version du gabarit par langue, langue par défaut en repli ; V2 : clés de traduction et état « obsolète » | V1-a / V2 |
 | `layout` | `notification_layout` | document | HTML commun, variables d'image de marque, `is_default` par locataire et canal | V1-a |
 | `control-values` | objet imbriqué `controls` dans l'étape ou la mise en page | objet | les niveaux `step_provider` et `step_integration` deviennent `provider_overrides` | V1-c |
-| `integration` | `notification_integration` | document | fournisseur, canal, `priority`, `primary`, `conditions` ; `credentials_ref` = **référence** `lyxal_secrets`, jamais une valeur | V1-a |
+| `integration` | `notification_integration` | document | fournisseur, canal, `priority`, `primary`, `conditions` ; `credentials_ref` = **référence** `lyxal_secrets`, jamais une valeur ; en V1-a, relais SMTP unique dans la configuration de l'hôte | V1-e |
 | `preferences` | `notification_preference` (abonné → parcours, catégorie ou sujet) | relation | niveaux `global`, `workflow`, `topic_subscription`, `tenant_workflow` ; canaux en objet | V1-b |
 | `workflow-override` | `notification_preference` niveau `tenant_workflow` | relation | surcharge décidée par une organisation cliente | V1-b |
 | `context` | `notification_context` | document | `type`, `key`, `data` ; unique (locataire, type, clé) ; référencé par `context_keys` | V2 |
@@ -250,7 +275,7 @@ ENFORCED`. Tous les documents portent `tenant` (organisation `lyxal_auth`), cont
 | `job` + ClickHouse `step_runs` | `notification_job` | document | une étape : statut, tentatives, `next_retry_at`, `locked_until`, clé de digest | V1-a |
 | `message` | `notification_message` | document | envoi par canal ; fil in-app : `seen_at`, `read_at`, `archived_at`, `snoozed_until`, actions ; `expires_at` | V1-a / V1-d |
 | `execution-details` + ClickHouse `traces` | `notification_delivery_log` | document | journal en ajout seul ; jamais de code ni de lien sensible en clair | V1-a |
-| retours fournisseurs (activity tracking) | `notification_provider_event` | document | délivré, ouvert, cliqué, rejeté, plainte ; dédoublonné par identifiant fournisseur | V1-a (rejets) / V2 |
+| retours fournisseurs (activity tracking) | `notification_provider_event` | document | délivré, ouvert, cliqué, rejeté, plainte ; dédoublonné par identifiant fournisseur ; en V1-a, rejets synchrones SMTP seulement | V1-e / V2 |
 | Postal `suppressions` | `notification_suppression` | document | rejet définitif, plainte, désabonnement ; unique (locataire, canal, adresse) | V1-a |
 | étape `throttle` | `notification_rate_limit` | document | compteur par (parcours, clé, fenêtre) | V1-c |
 | digest (`_mergedDigestId`) | `notification_digest` | document | fenêtre ouverte : clé, échéance, événements regroupés | V1-c |
@@ -280,7 +305,7 @@ ENFORCED`. Tous les documents portent `tenant` (organisation `lyxal_auth`), cont
 | déclencheurs, file de travail | `lyxal_event` + `notification_job` | Pas de BullMQ / Redis |
 | pièces jointes, pièces de courrier entrant, avatars | `lyxal_storage` (référence de fichier) | |
 | `snapshot`, `ai-chat` | aucune | Assistant IA du tableau de bord hors périmètre |
-| `agent`, `agent-integration`, `agent-mcp-server`, `agent-tool-trust`, `conversation`, `conversation-activation`, `conversation-activity`, `human-contact`, `mcp-connection` | aucune ici ; module séparé éventuel (§5) | Messagerie conversationnelle IA, pas notification |
+| `agent`, `agent-integration`, `agent-mcp-server`, `agent-tool-trust`, `conversation`, `conversation-activation`, `conversation-activity`, `human-contact`, `mcp-connection` | aucune ici ; module séparé éventuel (`ROADMAP.md`, points à décider) | Messagerie conversationnelle IA, pas notification |
 | ClickHouse `requests`, `events` | journaux de `lyxal-server` | |
 
 ---
@@ -305,43 +330,3 @@ ENFORCED`. Tous les documents portent `tenant` (organisation `lyxal_auth`), cont
 | Webhooks sortants | service tiers payant (Svix) | fait par Lyxal : signature HMAC `lyxal_crypto`, tentatives suivies |
 | Environnements | dev / prod / sur mesure avec publication | bases séparées ; brouillon / publication par révision |
 | Fonctions payantes | réservées à des plans | toutes disponibles, réglées par locataire |
-
----
-
-## 4. Découpage proposé en lots
-
-| Lot | Contenu | Prérequis |
-| :--- | :--- | :--- |
-| **V1-a — E-mail pour `lyxal_auth`** | Consommation des événements `auth.*` (invitation, vérification, récupération, code). Tables : `notification_settings`, `notification_integration` (SMTP), `notification_workflow` (étape e-mail, `critical`), `notification_template` + `_locale`, `notification_layout`, `notification_run`, `notification_job`, `notification_message`, `notification_delivery_log`, `notification_suppression`, `notification_provider_event` (rejets DSN). Worker d'envoi sous bail (`lettre`, rustls), tentatives, sonde de santé SMTP, purge | Décisions 1, 2, 3 de `RECHERCHE_SOURCES.md` §5 |
-| **V1-b — Destinataires et préférences** | Abonnés (création à la volée, import), adresses de canal, sujets et abonnements conditionnels, catégories, préférences à tous les niveaux, heures calmes, désabonnement, diffusion, exclusion de l'acteur, annulation | V1-a ; moteur de conditions (§5) |
-| **V1-c — Parcours complets** | Délais, digest, throttle, conditions d'étape, surcharges, contrôles, choix conditionnel d'intégration, envoi groupé, aperçu et test | V1-b ; délais longs après `lyxal_scheduler` |
-| **V1-d — Fil in-app** | États, compteurs, actions, onglets, snooze, temps réel | V1-b ; décision temps réel (§5) |
-| **V1-e — Autres canaux** | SMS (API HTTP), chat par webhook (Slack, Teams), canal outil (PagerDuty…), puis push (décision crypto) ; fournisseurs e-mail par API (SES, Postmark…) | V1-c |
-| **V2 — Observabilité et console** | Écrans console, statistiques horaires, suivi d'activité (ouvertures, clics), webhooks sortants signés, traductions avec `lyxal_i18n`, contextes, variables, révisions publiées, contrôle des domaines d'envoi, étape HTTP | `lyxal_i18n`, `lyxal_secrets` |
-| **V3 — Événementiel avancé** | Interactions humaines (approuver / choisir par message), courrier entrant et routes, connexions chat OAuth (`lyxal_connect`), étape personnalisée, outils IA | `lyxal_connect`, décisions §5 |
-
----
-
-## 5. Points à décider par le CTO
-
-1. **Nouvelles tentatives** : Novu n'en fait aucune pour un fournisseur. Proposition : tentatives
-   avec attente croissante dès V1-a (4xx SMTP temporaire, 5xx définitif).
-2. **Moteur de conditions** (conditions d'étape, abonnements conditionnels, choix d'intégration) :
-   règle générique absente de `lyxal_core`. Candidat d'extension du Core (§5.7.7) ou fonction
-   propre au module.
-3. **Temps réel du fil in-app** : `LIVE SELECT` SurrealDB exposé par `lyxal-server`, ou flux SSE /
-   WebSocket de l'hôte.
-4. **Webhooks sortants** (payants chez Novu) : dans ce module, ou dans un module commun à tous les
-   producteurs d'événements.
-5. **Suivi des ouvertures et clics** (pixel, liens réécrits) : RGPD, consentement, activé par
-   locataire ou non.
-6. **Cryptographie hors `lyxal_crypto`** (§11.3) : push web (VAPID, ECDSA P-256), APNs (jetons
-   ES256), vérification DKIM du courrier entrant (RSA), signature DKIM sortante.
-7. **Courrier entrant** : serveur SMTP entrant dans Lyxal (lourd), relais par un fournisseur
-   (webhook entrant), ou abandon.
-8. **Agents conversationnels** : hors module (recommandé) ; création éventuelle d'un module séparé
-   plus tard. Seule l'interaction humaine (`approve` / `choose`) est proposée en V3 ici.
-9. **Format des langues** : BCP 47 (`fr-FR`, validé par `lyxal_core`) plutôt que `fr_FR` de Novu.
-10. **Étape HTTP** : hôtes autorisés par locataire (protection SSRF) avant toute activation.
-11. **Durées de conservation par défaut** (journal, fil, messages) dans `notification_settings`.
-12. **Environnements** : confirmer qu'ils sont remplacés par brouillon / publication avec révisions.

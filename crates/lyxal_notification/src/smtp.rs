@@ -155,7 +155,10 @@ impl SmtpTransport {
             }
             SmtpSecurity::LocalPlain => {
                 let loopback = settings.host == "localhost"
-                    || settings.host.parse::<IpAddr>().is_ok_and(|ip| ip.is_loopback());
+                    || settings
+                        .host
+                        .parse::<IpAddr>()
+                        .is_ok_and(|ip| ip.is_loopback());
                 if !loopback {
                     return Err(configuration(
                         "smtp.security local_plain : réservé à un relais de la boucle locale",
@@ -208,7 +211,9 @@ impl SmtpTransport {
             .to(Mailbox::new(email.to_name, to))
             .subject(email.content.subject.clone());
         if let Some(reply_to) = email.reply_to {
-            let address: Address = reply_to.parse().map_err(|_| invalid("adresse de réponse"))?;
+            let address: Address = reply_to
+                .parse()
+                .map_err(|_| invalid("adresse de réponse"))?;
             builder = builder.reply_to(Mailbox::new(None, address));
         }
         builder

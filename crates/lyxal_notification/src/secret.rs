@@ -143,7 +143,10 @@ pub fn event_context(
 }
 
 /// Contexte de scellement d'un secret de la file.
-pub fn queue_context(tenant: Option<&str>, idempotency_key: &str) -> NotificationResult<SecretContext> {
+pub fn queue_context(
+    tenant: Option<&str>,
+    idempotency_key: &str,
+) -> NotificationResult<SecretContext> {
     Ok(SecretContext::with_tenant(
         tenant.unwrap_or(INSTALLATION_TENANT),
         QUEUE_MODULE,

@@ -64,7 +64,10 @@ async fn session(socket: tokio::net::TcpStream, state: Arc<Mutex<State>>) {
         let upper = line.to_ascii_uppercase();
         let reply: String = if upper.starts_with("EHLO") || upper.starts_with("HELO") {
             "250-lyxal.test\r\n250 8BITMIME".to_string()
-        } else if upper.starts_with("MAIL FROM") || upper.starts_with("RSET") || upper.starts_with("NOOP") {
+        } else if upper.starts_with("MAIL FROM")
+            || upper.starts_with("RSET")
+            || upper.starts_with("NOOP")
+        {
             "250 2.0.0 OK".to_string()
         } else if upper.starts_with("RCPT TO") {
             let address = line
@@ -110,7 +113,11 @@ async fn session(socket: tokio::net::TcpStream, state: Arc<Mutex<State>>) {
         } else {
             "502 5.5.2 commande inconnue".to_string()
         };
-        if writer.write_all(format!("{reply}\r\n").as_bytes()).await.is_err() {
+        if writer
+            .write_all(format!("{reply}\r\n").as_bytes())
+            .await
+            .is_err()
+        {
             return;
         }
     }

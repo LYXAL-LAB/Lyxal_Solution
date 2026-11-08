@@ -5,7 +5,7 @@
 -- Le jeton est généré en Rust (OsRng) ; la base ne reçoit que son empreinte BLAKE3 et le lien
 -- scellé (enc:v2). Le lien passe par le champ transitoire `delivery` : l'événement de création
 -- le publie dans auth.invitation.created avec l'identifiant d'événement utilisé pour le sceller
--- (contrat : crates/lyxal_notification/implementation_plan.md §2.1), puis l'efface dans la même
+-- (contrat : crates/lyxal_notification/README.md §4), puis l'efface dans la même
 -- transaction ; un échec de publication annule la création (E3).
 
 -- ----------------------------------------------------------------------------

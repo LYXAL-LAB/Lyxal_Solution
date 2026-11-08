@@ -815,7 +815,7 @@ lyxal_i18n (langues, traductions, formats régionaux — à créer)
 lyxal_storage (fichiers et documents stockés — à créer)
 lyxal_secrets (secrets applicatifs stockés chiffrés par lyxal_crypto — à créer)
 lyxal_scheduler (tâches planifiées — à créer)
-lyxal_notification (notifications sortantes — à créer)
+lyxal_notification (notifications sortantes : e-mail — parcours, gabarits, file d'envoi, suppression ; autres canaux : feuille de route du module)
 (ordre de création des crates « à créer » : docs/14-roadmap/ROADMAP_NOYAU.md)
         │
         ▼

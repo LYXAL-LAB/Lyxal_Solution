@@ -57,7 +57,9 @@ pub fn application_crypto(
         .application_key_id
         .as_deref()
         .ok_or_else(|| configuration_error("crypto.application_key_id", "obligatoire avec la clé"))
-        .and_then(|id| KeyId::parse(id).map_err(|e| configuration_error("crypto.application_key_id", e)))?;
+        .and_then(|id| {
+            KeyId::parse(id).map_err(|e| configuration_error("crypto.application_key_id", e))
+        })?;
     let key = EnvironmentKeyProvider::load(APPLICATION_KEY_VAR, id)
         .map_err(|e| configuration_error("crypto.application_key", e))?;
     let mut builder = KeyRingBuilder::new();
@@ -67,13 +69,19 @@ pub fn application_crypto(
     let ring = builder
         .build()
         .map_err(|e| configuration_error("crypto.application_key", e))?;
-    Ok(Some(Arc::new(CryptoEngine::new(StaticKeyResolver::new(Arc::new(ring))))))
+    Ok(Some(Arc::new(CryptoEngine::new(StaticKeyResolver::new(
+        Arc::new(ring),
+    )))))
 }
 
 fn smtp_transport(config: &SmtpConfig) -> Result<Arc<dyn EmailTransport>, ServerError> {
     let security = SmtpSecurity::parse(&config.security)
         .map_err(|e| configuration_error("notification.smtp.security", e))?;
-    let password = config.password.as_ref().map(|p| p.to_secret()).transpose()?;
+    let password = config
+        .password
+        .as_ref()
+        .map(|p| p.to_secret())
+        .transpose()?;
     let transport = SmtpTransport::new(SmtpSettings {
         host: config.host.clone(),
         port: config.port,
@@ -102,12 +110,20 @@ pub async fn register_services(
         PURGE_BATCH,
     )?))?;
     let crypto = application_crypto(&config.crypto)?;
-    let transport = config.notification.smtp.as_ref().map(smtp_transport).transpose()?;
+    let transport = config
+        .notification
+        .smtp
+        .as_ref()
+        .map(smtp_transport)
+        .transpose()?;
     let enabled = match (crypto, transport.clone()) {
         (Some(crypto), Some(transport)) => {
             let codec = SecretCodec::new(crypto);
             runtime
-                .register_event_consumer(Arc::new(NotificationConsumer::new(store.clone(), codec.clone())))
+                .register_event_consumer(Arc::new(NotificationConsumer::new(
+                    store.clone(),
+                    codec.clone(),
+                )))
                 .await;
             runtime.register_worker(Arc::new(NotificationEmailWorker::new(
                 store.clone(),
@@ -126,16 +142,21 @@ pub async fn register_services(
             false
         }
     };
-    runtime.health_registry().register_check(Arc::new(NotificationHealthCheck::new(
-        store,
-        if enabled { transport } else { None },
-    )))?;
+    runtime
+        .health_registry()
+        .register_check(Arc::new(NotificationHealthCheck::new(
+            store,
+            if enabled { transport } else { None },
+        )))?;
     Ok(enabled)
 }
 
 /// Après l'installation des modules : abonnements aux événements `auth.*`, actifs si l'envoi est
 /// configuré, suspendus sinon.
-pub async fn reconcile_subscriptions(runtime: &LyxalRuntime, enabled: bool) -> Result<(), ServerError> {
+pub async fn reconcile_subscriptions(
+    runtime: &LyxalRuntime,
+    enabled: bool,
+) -> Result<(), ServerError> {
     let event_store = runtime.event_store().ok_or(ServerError::Runtime(
         lyxal_runtime::RuntimeError::StoreMissing {
             component: "event_store",

@@ -27,9 +27,15 @@ pub const AUTH_HANDLER: &str = "notification.auth_messages";
 pub const CONSUMER_MODULE: &str = "lyxal_notification";
 /// Abonnements persistants : (nom, type d'événement).
 pub const AUTH_SUBSCRIPTIONS: [(&str, &str); 3] = [
-    ("notification_auth_verification", VerificationRequested::EVENT_TYPE),
+    (
+        "notification_auth_verification",
+        VerificationRequested::EVENT_TYPE,
+    ),
     ("notification_auth_recovery", RecoveryRequested::EVENT_TYPE),
-    ("notification_auth_invitation", InvitationCreated::EVENT_TYPE),
+    (
+        "notification_auth_invitation",
+        InvitationCreated::EVENT_TYPE,
+    ),
 ];
 
 /// Champs communs des événements `auth.*` adressés à une personne.
@@ -166,7 +172,11 @@ impl<R: KeyResolver> AuthMessageHandler<R> {
     }
 
     /// Ouvre, rescelle et déclenche (idempotent par l'identifiant d'événement).
-    pub async fn deliver<E: AuthMessage>(&self, event: &E, event_id: &str) -> NotificationResult<()> {
+    pub async fn deliver<E: AuthMessage>(
+        &self,
+        event: &E,
+        event_id: &str,
+    ) -> NotificationResult<()> {
         let message = event.message();
         let tenant = message.tenant.as_deref();
         let opened = self.codec.open_event_secret(
@@ -182,7 +192,10 @@ impl<R: KeyResolver> AuthMessageHandler<R> {
             .map_err(|_| NotificationError::Secret("expires_at invalide".to_string()))?;
         self.store
             .trigger(TriggerParams {
-                tenant: message.tenant.as_ref().map(|key| format!("auth_organization:{key}")),
+                tenant: message
+                    .tenant
+                    .as_ref()
+                    .map(|key| format!("auth_organization:{key}")),
                 workflow_key: None,
                 trigger_event: Some(E::EVENT_TYPE.to_string()),
                 idempotency_key: event_id.to_string(),
