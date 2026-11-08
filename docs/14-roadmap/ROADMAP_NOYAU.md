@@ -1,8 +1,8 @@
 # Feuille de route — crates du noyau technique à créer
 
-Ordre de création des sept crates du noyau technique inscrits « à créer » dans
+Ordre de création des six crates du noyau technique inscrits « à créer » dans
 `.agents/AGENTS.md` §6. Les crates du noyau déjà en place (`lyxal_error`, `lyxal_surreal`,
-`lyxal_crypto`, `lyxal_event`, `lyxal_runtime`, `lyxal_base`) ont leur propre `ROADMAP.md`.
+`lyxal_crypto`, `lyxal_parsing`, `lyxal_event`, `lyxal_runtime`, `lyxal_base`) ont leur propre `ROADMAP.md`.
 
 Aucun crate ne démarre sans ordre du CTO et `implementation_plan.md` validé
 (`.agents/AGENTS.md` §3). Les sources de chaque crate sont fixées par le CTO dans ce plan.
@@ -16,11 +16,8 @@ Un crate créé est retiré de ce document : son état est alors décrit par son
 | 4 | `lyxal_secrets` | secrets applicatifs stockés chiffrés | `lyxal_crypto`, `lyxal_auth` |
 | 5 | `lyxal_scheduler` | tâches planifiées | `lyxal_runtime`, `lyxal_event` |
 | 6 | `lyxal_notification` | notifications sortantes | `lyxal_event`, `lyxal_i18n`, `lyxal_secrets`, `lyxal_scheduler` |
-| — | `lyxal_parsing` | lecture CSV, XML, JSON avec rejets explicites | — |
 
-Tous dépendent en outre de `lyxal_core` et `lyxal_error`. `lyxal_parsing` n'a pas de rang dans
-cette suite : sans dépendance dans le noyau, il est créé avant le lot 5 de correction de l'audit
-externe du 7 novembre 2026 (adaptateurs de `lyxal_pipeline_ingestion`, constat A05).
+Tous dépendent en outre de `lyxal_core` et `lyxal_error`.
 
 ---
 
@@ -49,11 +46,6 @@ externe du 7 novembre 2026 (adaptateurs de `lyxal_pipeline_ingestion`, constat A
 6. **`lyxal_notification`** : consomme les événements des autres modules (`lyxal_event`), rend ses
    messages dans la langue du destinataire (`lyxal_i18n`), lit les identifiants de ses canaux
    (`lyxal_secrets`) et planifie ses envois (`lyxal_scheduler`). Il vient donc en dernier.
-
-**`lyxal_parsing`** (hors suite) : lecture des formats sources (CSV par la bibliothèque `csv`, XML
-par `quick-xml`, JSON) en enregistrements bruts, avec un rejet explicite (ligne, cause) pour toute
-entrée malformée ; Rust pur, sans base de données ni logique métier, comme `lyxal_crypto`. La
-correspondance métier (FAB-DIS, BMEcat, normalisation) reste dans `lyxal_pipeline_ingestion`.
 
 ---
 
