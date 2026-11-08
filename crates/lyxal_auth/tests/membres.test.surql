@@ -88,6 +88,19 @@ RETURN array::len(SELECT * FROM auth_member_of WHERE in = auth_identity:lea) == 
     AND (SELECT VALUE permissions_version FROM ONLY auth_identity:lea) == 2
     AND array::len(SELECT * FROM event_outbox WHERE event_type = "auth.member.removed") == 1;
 
+-- test: un administrateur se retire lui-même quand un autre reste : retrait effectué
+-- en tant que: admin
+RETURN fn::auth_organization_member_remove({ organization: "auth_organization:alpha", identity: "auth_identity:admin" }).data.removed;
+
+-- test: sa session est obsolète, Tom reste administrateur
+RETURN (SELECT VALUE permissions_version FROM ONLY auth_identity:admin) == 2
+    AND fn::auth_is_last_admin({ membership: (SELECT VALUE id FROM ONLY auth_member_of WHERE in = auth_identity:tom LIMIT 1) });
+
+-- test: un gestionnaire n'ajoute pas d'identifiant à une identité hors de son organisation
+-- en tant que: gestion
+RETURN array::len(INSERT IGNORE INTO auth_credential_identifier { identity: auth_identity:lea, type: "email", value: "pirate@alpha.test" }) == 0
+    AND array::len(SELECT * FROM auth_credential_identifier WHERE value = "pirate@alpha.test") == 0;
+
 -- test: retirer un non-membre
 -- en tant que: gestion
 RETURN fn::auth_organization_member_remove({ organization: "auth_organization:alpha", identity: "auth_identity:lea" }).error.code == "AUTH_NOT_A_MEMBER";

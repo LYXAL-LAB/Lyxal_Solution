@@ -35,6 +35,13 @@ pub struct DomainVerifyParams {
     pub observed_hashes: Vec<String>,
 }
 
+/// Paramètres de `fn::auth_organization_domain_get`.
+#[derive(Debug, Clone, SurrealValue)]
+pub struct DomainGetParams {
+    /// Domaine (texte `auth_organization_domain:<clé>`).
+    pub domain: String,
+}
+
 /// Domaine d'une organisation (sans empreinte de défi).
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
 pub struct OrganizationDomain {

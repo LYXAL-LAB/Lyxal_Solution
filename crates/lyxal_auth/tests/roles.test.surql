@@ -192,10 +192,17 @@ RETURN fn::auth_role_assign({ role: test_ref:support.rid, identity: "auth_identi
 -- en tant que: alpha_admin
 RETURN fn::auth_role_assign({ role: test_ref:support.rid, identity: "auth_identity:alpha_admin" }).error.code == "AUTH_PERMISSION_DENIED";
 
--- test: modifier les permissions d'un rôle rend obsolètes les sessions de ses titulaires
-RETURN (SELECT VALUE permissions_version FROM ONLY auth_identity:paul) == 1
-    AND fn::auth_role_bump_holders({ role: <record> test_ref:adjoint.rid }) == 1
-    AND (SELECT VALUE permissions_version FROM ONLY auth_identity:paul) == 2;
+-- test: titulaires d'un rôle, y compris par un rôle qui l'inclut
+RETURN fn::auth_role_holders({ role: <record> test_ref:adjoint.rid }) == [auth_identity:paul]
+    AND (SELECT VALUE permissions_version FROM ONLY auth_identity:paul) == 1;
+
+-- test: retirer une permission d'un rôle inclus rend obsolètes les sessions de ses titulaires
+-- en tant que: alpha_admin
+RETURN fn::auth_role_permission_set({ role: test_ref:adjoint.rid, permissions: ["auth.member.read"] }).ok
+    AND fn::auth_role_permission_set({ role: test_ref:adjoint.rid, permissions: ["catalogue.item.write"] }).ok;
+
+-- test: la version des droits de Paul a augmenté (retrait de auth.member.read d'adjoint)
+RETURN (SELECT VALUE permissions_version FROM ONLY auth_identity:paul) == 2;
 
 -- test: retrait d'un rôle : version des droits incrémentée, événement publié
 -- en tant que: alpha_admin
@@ -221,6 +228,11 @@ RETURN fn::auth_role_unassign({ role: test_ref:chef.rid, identity: "auth_identit
 RETURN fn::auth_role_update({ role: "auth_role:fantome", name: "X" }).error.code == "AUTH_ROLE_NOT_FOUND"
     AND fn::auth_role_assign({ role: "auth_role:fantome", identity: "auth_identity:paul", organization: "auth_organization:alpha" }).error.code == "AUTH_ROLE_NOT_FOUND";
 
--- test: forcer le renouvellement des titulaires d'un rôle exige de gérer ce rôle
--- en tant que: beta_admin
-RETURN fn::auth_role_bump_holders({ role: <record> test_ref:chef.rid }) == 0;
+-- test: un administrateur peut se retirer un rôle à lui-même ; sa session devient obsolète
+-- en tant que: alpha_admin
+RETURN fn::auth_role_assign({ role: test_ref:chef.rid, identity: "auth_identity:alpha_admin", organization: "auth_organization:alpha" }).data.assigned
+    AND fn::auth_role_unassign({ role: test_ref:chef.rid, identity: "auth_identity:alpha_admin", organization: "auth_organization:alpha" }).data.unassigned;
+
+-- test: la session de l'administrateur est obsolète après le retrait de son propre rôle
+-- en tant que: alpha_admin
+RETURN fn::auth_context({}).error.code == "AUTH_SESSION_STALE";

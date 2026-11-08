@@ -176,9 +176,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_role_permission_set($params: object) {
     };
     LET $after = (SELECT VALUE out.code FROM auth_role_grants WHERE in = $rid);
     IF array::len($after) != array::len($codes) { THROW "AUTH_WRITE_FORBIDDEN"; };
-    fn::auth_role_bump_holders({ role: $rid });
     RETURN fn::result_ok({ role: $rid, permissions: array::sort($after) });
-} COMMENT "Remplace les permissions accordées par un rôle ({ role, permissions : codes }) ; même portée que le rôle ; les titulaires doivent renouveler leur session";
+} COMMENT "Remplace les permissions accordées par un rôle ({ role, permissions : codes }) ; même portée que le rôle ; une permission retirée rend obsolètes les sessions des titulaires (événement)";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_role_permission_grant : ajoute des permissions à un rôle (rejouable, seeds)
@@ -268,27 +267,20 @@ DEFINE FUNCTION OVERWRITE fn::auth_role_include_set($params: object) {
         LET $linked = (RELATE ONLY $rid->auth_role_includes->$target);
         IF $linked == NONE { THROW "AUTH_WRITE_FORBIDDEN"; };
     };
-    fn::auth_role_bump_holders({ role: $rid });
     RETURN fn::result_ok({ role: $rid, includes: (SELECT VALUE out FROM auth_role_includes WHERE in = $rid) });
-} COMMENT "Remplace les rôles inclus par un rôle ({ role, includes }) ; même portée, sans cycle ; les titulaires doivent renouveler leur session";
+} COMMENT "Remplace les rôles inclus par un rôle ({ role, includes }) ; même portée, sans cycle ; une inclusion retirée rend obsolètes les sessions des titulaires (événement)";
 
 -- ----------------------------------------------------------------------------
--- fn::auth_role_bump_holders : version des droits incrémentée pour les titulaires d'un rôle
--- (directs ou par un rôle qui l'inclut)
+-- fn::auth_role_holders : identités titulaires d'un rôle (directement, par une adhésion, ou par
+-- un rôle qui l'inclut) ; utilisée par les événements qui incrémentent la version des droits
 -- ----------------------------------------------------------------------------
 
-DEFINE FUNCTION OVERWRITE fn::auth_role_bump_holders($params: object) -> int {
-    IF !type::is_record($params.role, "auth_role") { RETURN 0; };
-    IF !fn::auth_role_can_manage({ tenant: (SELECT VALUE tenant FROM ONLY $params.role) }) { RETURN 0; };
+DEFINE FUNCTION OVERWRITE fn::auth_role_holders($params: object) -> array {
+    IF !type::is_record($params.role, "auth_role") { RETURN []; };
     LET $roles = array::distinct(array::flatten([$params.role, $params.role.{..8+collect}(<-auth_role_includes<-auth_role)]));
     LET $holders = (SELECT VALUE in FROM auth_has_role WHERE out IN $roles);
-    LET $identities = array::distinct(array::map($holders, |$h| IF record::tb($h) = "auth_member_of" { $h.in } ELSE { $h }));
-    FOR $identity IN $identities {
-        LET $bumped = (UPDATE ONLY $identity SET permissions_version += 1);
-        IF $bumped == NONE { THROW "AUTH_WRITE_FORBIDDEN"; };
-    };
-    RETURN array::len($identities);
-} COMMENT "Incrémente la version des droits des titulaires d'un rôle ({ role }), directs ou par inclusion, si l'appelant gère ce rôle ; renvoie le nombre d'identités concernées";
+    RETURN array::filter(array::distinct(array::map($holders, |$h| IF record::tb($h) = "auth_member_of" { $h.in } ELSE { $h })), |$i| $i IS NOT NONE);
+} COMMENT "Identités titulaires d'un rôle ({ role }), directement, par une adhésion ou par un rôle qui l'inclut (lecture soumise aux permissions de l'appelant)";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_role_assign / fn::auth_role_unassign
@@ -353,10 +345,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_role_unassign($params: object) {
     IF $role.key = "organization_admin" AND $role.tenant IS NONE AND fn::auth_is_last_admin({ membership: $target.holder }) {
         RETURN fn::error_result("AUTH_LAST_ADMIN", $p.language, {});
     };
-    LET $bumped = (UPDATE ONLY $p.identity SET permissions_version += 1);
-    IF $bumped == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_identity" }); };
+    -- La version des droits est incrémentée par l'événement de suppression du rôle
     LET $deleted = (DELETE ONLY $edge RETURN BEFORE);
-    IF $deleted == NONE { THROW "AUTH_WRITE_FORBIDDEN"; };
+    IF $deleted == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_has_role" }); };
     RETURN fn::result_ok({ holder: $target.holder, role: $role.id, unassigned: true });
 } COMMENT "Retire un rôle ({ role, identity, organization }) ; refus pour le dernier administrateur d'une organisation ; les sessions de l'identité doivent être renouvelées";
 

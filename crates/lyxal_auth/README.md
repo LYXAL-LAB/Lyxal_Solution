@@ -14,7 +14,7 @@ routes HTTP : lot 3 ; double facteur : lot 4 ([`ROADMAP.md`](ROADMAP.md)).
 | Table | Type | Contenu |
 | :--- | :--- | :--- |
 | `auth_organization` | document | organisation cliente, **locataire** des données métier (`tenant`) ; état `active` / `suspended` / `deleted` |
-| `auth_organization_domain` | document | domaine e-mail, vérifié par DNS TXT (`_lyxal-challenge.<domaine>`), rattachement automatique |
+| `auth_organization_domain` | document | domaine e-mail, vérifié par DNS TXT (`_lyxal-challenge.<domaine>`) lu par l'hôte sur sa session système (seule à changer l'état et à lire l'empreinte du défi), rattachement automatique |
 | `auth_identity_schema` | document | schéma des traits (moteur `lyxal_core`), versionné |
 | `auth_identity` | document | identité : traits, état, `not_before`, `permissions_version` |
 | `auth_credential_identifier` | document | identifiant de connexion normalisé, **unique pour l'installation** (un e-mail = une identité) |
@@ -42,6 +42,9 @@ l'organisation), un index unique ignorant les valeurs absentes.
   antérieure au `not_before` de l'identité, identité inactive, ou version des droits du jeton
   (`pv`) dépassée → aucun droit, même sur une connexion WebSocket restée ouverte.
 * Session système (root de l'hôte) : tous les droits.
+* Tout retrait de droit (adhésion supprimée ou suspendue, rôle retiré, permission ou inclusion
+  retirée d'un rôle) incrémente `permissions_version` des identités concernées par un événement
+  de la base, après l'écriture : l'appelant qui retire ses propres droits n'est pas bloqué.
 
 Permissions du socle (une portée par code) :
 
@@ -66,11 +69,11 @@ IF !record::exists(auth_permission:⟨notification.read⟩) THEN (
 | :--- | :--- |
 | Contexte | `auth_context`, `auth_has_permission`, `auth_session_valid`, `auth_shares_organization`, `auth_invitation_pending` |
 | Organisations | `auth_organization_create` (avec administrateur), `_get`, `_list`, `_update`, `_set_state` |
-| Domaines | `auth_organization_domain_add`, `_verify`, `_update`, `_remove`, `_list` |
+| Domaines | `auth_organization_domain_add`, `_get`, `_verify` (session système), `_update`, `_remove`, `_list` |
 | Membres | `auth_organization_member_add`, `_remove`, `_set_state`, `_list`, `auth_membership_create`, `auth_is_last_admin` |
 | Identités | `auth_identity_schema_save`, `_get`, `auth_identity_create`, `_get`, `_list`, `_update_traits`, `_set_state`, `auth_identity_derive` |
 | Permissions | `auth_permission_register` (création seule), `_update`, `_list` |
-| Rôles | `auth_role_create`, `_update`, `_list`, `_permission_set`, `_permission_grant`, `_include_set`, `auth_role_assign`, `_unassign`, `auth_role_can_manage`, `auth_role_target`, `auth_role_bump_holders`, `auth_identity_permissions` |
+| Rôles | `auth_role_create`, `_update`, `_list`, `_permission_set`, `_permission_grant`, `_include_set`, `auth_role_assign`, `_unassign`, `auth_role_can_manage`, `auth_role_target`, `auth_role_holders`, `auth_identity_permissions` |
 | Invitations | `auth_invitation_create`, `_accept`, `_revoke`, `_list` |
 | Politique | `auth_policy_get` (effective), `auth_policy_save` |
 
@@ -97,8 +100,9 @@ transaction : il n'est jamais enregistré.
 * `AuthStore` : appels typés (`LyxalSurrealCall`) ; modèles et `XxxParams` dans `models/`.
 * `InvitationService` : jeton de 32 octets (`OsRng`), empreinte `blake3_hex`, lien scellé par
   `CryptoEngine`, identifiant d'événement UUID v7 alloué avant le scellement.
-* `DomainVerifier` : jeton de défi, lecture TXT (`HickoryTxtLookup`, `hickory-resolver`),
-  empreintes transmises à la base.
+* `DomainVerifier` : jeton de défi ; vérification sur la session système de l'hôte (nom du
+  domaine relu en base, lecture TXT par `HickoryTxtLookup` / `hickory-resolver`, empreintes
+  transmises à la base).
 * `AuthModule` (`LyxalModule`), `AuthHealthCheck` (`ModuleHealthCheck`).
 
 Hébergé par `lyxal-server` (`build.rs`, `src/modules/auth.rs`).

@@ -2,15 +2,18 @@
 //!
 //! Le jeton de défi (32 octets de `OsRng`, Base64 URL) est remis à l'administrateur, qui le
 //! publie en TXT sur `_lyxal-challenge.<domaine>` ; la base n'en connaît que l'empreinte BLAKE3.
-//! À la vérification, les enregistrements TXT sont lus en Rust et seules leurs empreintes sont
-//! transmises à `fn::auth_organization_domain_verify`.
+//! À la vérification, le nom du domaine est relu en base, les enregistrements TXT de ce nom sont
+//! lus en Rust et seules leurs empreintes sont transmises à `fn::auth_organization_domain_verify`,
+//! qui n'accepte que la session système : `DomainVerifier::verify` s'exécute sur le store de la
+//! session système de l'hôte, après le contrôle du droit de l'appelant (route HTTP, lot 3).
 
 use async_trait::async_trait;
 use lyxal_crypto::{blake3_hex, SecretString};
 
 use crate::error::{AuthError, AuthResult};
 use crate::models::{
-    DomainAddParams, DomainVerifyParams, OrganizationDomain, OrganizationDomainCreated,
+    DomainAddParams, DomainGetParams, DomainVerifyParams, OrganizationDomain,
+    OrganizationDomainCreated,
 };
 use crate::services::invitation::generate_token;
 use crate::store::AuthStore;
@@ -109,12 +112,19 @@ impl<L: TxtLookup> DomainVerifier<L> {
         })
     }
 
-    /// Vérifie un domaine (`domain_id` : texte `auth_organization_domain:<clé>`, `domain` : son
-    /// nom) : lecture des TXT de `_lyxal-challenge.<domaine>`, empreintes transmises à la base.
-    pub async fn verify(&self, domain_id: &str, domain: &str) -> AuthResult<OrganizationDomain> {
+    /// Vérifie un domaine (`domain_id` : texte `auth_organization_domain:<clé>`) : son nom est relu
+    /// en base, les TXT de `_lyxal-challenge.<domaine>` sont lus, leurs empreintes transmises à la
+    /// base. À appeler sur le store de la session système de l'hôte.
+    pub async fn verify(&self, domain_id: &str) -> AuthResult<OrganizationDomain> {
+        let declared = self
+            .store
+            .domain_get(DomainGetParams {
+                domain: domain_id.to_string(),
+            })
+            .await?;
         let records = self
             .lookup
-            .txt(&format!("{CHALLENGE_PREFIX}{domain}"))
+            .txt(&format!("{CHALLENGE_PREFIX}{}", declared.domain))
             .await?;
         let observed_hashes = records
             .iter()

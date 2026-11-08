@@ -5,7 +5,9 @@
 -- Une nouvelle adhésion reçoit les rôles d'organisation par défaut (is_default) de
 -- l'installation et de l'organisation. Attribuer d'autres rôles exige
 -- auth.organization.role.manage. Retirer un droit (adhésion supprimée ou suspendue) incrémente
--- la version des droits de l'identité : ses sessions deviennent obsolètes (AUTH_SESSION_STALE).
+-- la version des droits de l'identité par un événement de la base (events/auth_events.surql),
+-- après l'écriture : ses sessions deviennent obsolètes (AUTH_SESSION_STALE), y compris celle de
+-- l'appelant qui se retire lui-même, sans bloquer l'opération.
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_organization_member_add
@@ -81,11 +83,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_organization_member_remove($params: object) {
     IF fn::auth_is_last_admin({ membership: $membership }) {
         RETURN fn::error_result("AUTH_LAST_ADMIN", $p.language, {});
     };
-    -- Version des droits incrémentée avant la suppression (l'identité partage encore l'organisation)
-    LET $bumped = (UPDATE ONLY $p.identity SET permissions_version += 1);
-    IF $bumped == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_identity" }); };
+    -- La version des droits de l'identité est incrémentée par l'événement de suppression
     LET $deleted = (DELETE ONLY $membership RETURN BEFORE);
-    IF $deleted == NONE { THROW "AUTH_WRITE_FORBIDDEN"; };
+    IF $deleted == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_member_of" }); };
     RETURN fn::result_ok({ removed: true, membership: $membership });
 } COMMENT "Retire une identité d'une organisation ({ organization, identity }) ; ses rôles d'organisation sont supprimés avec l'adhésion ; refus pour le dernier administrateur. Permission auth.member.manage ou auth.organization.manage";
 
@@ -112,13 +112,12 @@ DEFINE FUNCTION OVERWRITE fn::auth_organization_member_set_state($params: object
     };
     LET $membership = (SELECT id, state FROM ONLY auth_member_of WHERE in = $p.identity AND out = $p.organization LIMIT 1);
     IF $membership IS NONE { RETURN fn::error_result("AUTH_NOT_A_MEMBER", $p.language, {}); };
-    IF $p.state = "suspended" AND $membership.state = "active" {
-        IF fn::auth_is_last_admin({ membership: $membership.id }) { RETURN fn::error_result("AUTH_LAST_ADMIN", $p.language, {}); };
-        LET $bumped = (UPDATE ONLY $p.identity SET permissions_version += 1);
-        IF $bumped == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_identity" }); };
+    IF $p.state = "suspended" AND $membership.state = "active" AND fn::auth_is_last_admin({ membership: $membership.id }) {
+        RETURN fn::error_result("AUTH_LAST_ADMIN", $p.language, {});
     };
+    -- Suspendre incrémente la version des droits de l'identité (événement de la relation)
     LET $updated = (UPDATE ONLY $membership.id SET state = $p.state);
-    IF $updated == NONE { THROW "AUTH_WRITE_FORBIDDEN"; };
+    IF $updated == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_member_of" }); };
     RETURN fn::result_ok($updated);
 } COMMENT "Suspend ou réactive une adhésion ({ organization, identity, state }) ; suspendre le dernier administrateur est refusé. Permission auth.member.manage ou auth.organization.manage";
 

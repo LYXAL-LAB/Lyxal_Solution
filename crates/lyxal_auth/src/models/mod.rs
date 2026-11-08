@@ -12,7 +12,8 @@ mod types;
 
 pub use context::{AuthContext, ContextParams};
 pub use domain::{
-    DomainAddParams, DomainVerifyParams, OrganizationDomain, OrganizationDomainCreated,
+    DomainAddParams, DomainGetParams, DomainVerifyParams, OrganizationDomain,
+    OrganizationDomainCreated,
 };
 pub use identity::{Identity, IdentityCreateParams, IdentityGetParams, IdentityState};
 pub use invitation::{

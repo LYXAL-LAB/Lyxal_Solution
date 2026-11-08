@@ -8,13 +8,13 @@ use surrealdb::engine::any::Any;
 use surrealdb::Surreal;
 
 use crate::models::{
-    AuthContext, AuthValue, ContextParams, DomainAddParams, DomainVerifyParams, Identity,
-    IdentityCreateParams, IdentityGetParams, IdentityPermissions, IdentityPermissionsParams,
-    Invitation, InvitationAcceptParams, InvitationAccepted, InvitationCreateParams,
-    InvitationRevokeParams, MemberAddParams, MemberAdded, MemberRemoveParams, MemberRemoved,
-    Organization, OrganizationCreateParams, OrganizationDomain, OrganizationDomainCreated,
-    OrganizationGetParams, PermissionRegisterParams, PermissionRegistered, PolicyGetParams,
-    RoleAssignParams, RoleAssigned, RoleUnassigned,
+    AuthContext, AuthValue, ContextParams, DomainAddParams, DomainGetParams, DomainVerifyParams,
+    Identity, IdentityCreateParams, IdentityGetParams, IdentityPermissions,
+    IdentityPermissionsParams, Invitation, InvitationAcceptParams, InvitationAccepted,
+    InvitationCreateParams, InvitationRevokeParams, MemberAddParams, MemberAdded,
+    MemberRemoveParams, MemberRemoved, Organization, OrganizationCreateParams, OrganizationDomain,
+    OrganizationDomainCreated, OrganizationGetParams, PermissionRegisterParams,
+    PermissionRegistered, PolicyGetParams, RoleAssignParams, RoleAssigned, RoleUnassigned,
 };
 
 /// Store de `lyxal_auth` sur un client SurrealDB (`Surreal<Any>`).
@@ -159,7 +159,15 @@ impl AuthStore {
         self.call_fn("auth_organization_domain_add", params).await
     }
 
-    /// `fn::auth_organization_domain_verify`.
+    /// `fn::auth_organization_domain_get`.
+    pub async fn domain_get(
+        &self,
+        params: DomainGetParams,
+    ) -> Result<OrganizationDomain, LyxalSurrealError> {
+        self.call_fn("auth_organization_domain_get", params).await
+    }
+
+    /// `fn::auth_organization_domain_verify` (session système seulement).
     pub async fn domain_verify(
         &self,
         params: DomainVerifyParams,

@@ -68,17 +68,28 @@ async fn domain_is_verified_only_with_the_published_challenge() {
     let domain_id = challenge.domain.id.to_sql();
 
     // Aucun enregistrement, puis un enregistrement faux : non vérifié
-    let error = verifier
-        .verify(&domain_id, "alpha-btp.fr")
-        .await
-        .expect_err("aucun TXT");
+    let error = verifier.verify(&domain_id).await.expect_err("aucun TXT");
     assert_eq!(error.code(), "AUTH_DOMAIN_NOT_VERIFIED");
     dns.publish(&challenge.domain.txt_record, "v=spf1 -all");
     assert_eq!(
         verifier
-            .verify(&domain_id, "alpha-btp.fr")
+            .verify(&domain_id)
             .await
             .expect_err("TXT faux")
+            .code(),
+        "AUTH_DOMAIN_NOT_VERIFIED"
+    );
+
+    // Le jeton publié sous un autre nom ne vérifie pas ce domaine : le nom vient de la base
+    dns.publish(
+        "_lyxal-challenge.autre.fr",
+        challenge.txt_value.expose_secret(),
+    );
+    assert_eq!(
+        verifier
+            .verify(&domain_id)
+            .await
+            .expect_err("autre nom")
             .code(),
         "AUTH_DOMAIN_NOT_VERIFIED"
     );
@@ -88,10 +99,7 @@ async fn domain_is_verified_only_with_the_published_challenge() {
         &challenge.domain.txt_record,
         challenge.txt_value.expose_secret(),
     );
-    let verified = verifier
-        .verify(&domain_id, "alpha-btp.fr")
-        .await
-        .expect("vérifié");
+    let verified = verifier.verify(&domain_id).await.expect("vérifié");
     assert_eq!(verified.state, "verified");
     assert!(verified.verified_at.is_some());
 }

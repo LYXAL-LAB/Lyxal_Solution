@@ -46,12 +46,23 @@ RETURN fn::auth_organization_domain_update({ domain: test_ref:d.rid, auto_join: 
 -- attendu-erreur: AUTH_DOMAIN_NOT_VERIFIED
 UPDATE auth_organization_domain SET auto_join = true WHERE domain = "alpha-btp.fr";
 
--- test: vérification échouée sans l'empreinte attendue
+-- test: une identité connectée ne fournit pas elle-même la preuve DNS
 -- en tant que: alpha
+RETURN fn::auth_organization_domain_verify({ domain: test_ref:d.rid, observed_hashes: ["AB12AB12AB12AB12AB12AB12AB12AB12AB12AB12AB12AB12AB12AB12AB12AB12"] }).error.code == "AUTH_PERMISSION_DENIED";
+
+-- test: ni ne change l'état directement (champ réservé à la session système)
+-- en tant que: alpha
+RETURN (UPDATE auth_organization_domain SET state = "verified" WHERE domain = "alpha-btp.fr").state == ["pending"];
+
+-- test: l'empreinte du défi n'est pas lisible par l'organisation
+-- en tant que: alpha
+RETURN fn::auth_organization_domain_get({ domain: test_ref:d.rid }).data.{ domain, state } == { domain: "alpha-btp.fr", state: "pending" }
+    AND (SELECT VALUE challenge_hash FROM ONLY auth_organization_domain WHERE domain = "alpha-btp.fr" LIMIT 1) IS NONE;
+
+-- test: vérification par l'hôte (session système) échouée sans l'empreinte attendue
 RETURN fn::auth_organization_domain_verify({ domain: test_ref:d.rid, observed_hashes: ["0000000000000000000000000000000000000000000000000000000000000000"] }).error.code == "AUTH_DOMAIN_NOT_VERIFIED";
 
--- test: vérification réussie avec l'empreinte publiée (casse indifférente)
--- en tant que: alpha
+-- test: vérification par l'hôte réussie avec l'empreinte publiée (casse indifférente)
 RETURN fn::auth_organization_domain_verify({ domain: test_ref:d.rid, observed_hashes: ["v=spf1", "AB12AB12AB12AB12AB12AB12AB12AB12AB12AB12AB12AB12AB12AB12AB12AB12"] }).data.state == "verified";
 
 -- test: rattachement automatique avec le rôle membre

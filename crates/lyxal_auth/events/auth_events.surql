@@ -178,3 +178,40 @@ THEN {
     -- Le lien scellé n'est jamais enregistré
     UPDATE $after.id SET delivery = NONE;
 };
+
+-- ----------------------------------------------------------------------------
+-- Version des droits : tout retrait de droit (adhésion supprimée ou suspendue, rôle retiré,
+-- permission ou inclusion retirée d'un rôle) incrémente `permissions_version` des identités
+-- concernées. L'événement suit l'écriture dans la même transaction et n'est pas soumis aux
+-- permissions des tables : l'appelant qui retire ses propres droits n'est pas bloqué.
+-- ----------------------------------------------------------------------------
+
+DEFINE EVENT OVERWRITE auth_member_removed_version ON TABLE auth_member_of
+WHEN $event = "DELETE" OR ($event = "UPDATE" AND $before.state = "active" AND $after.state != "active")
+THEN {
+    LET $identity = IF $event = "DELETE" { $before.in } ELSE { $after.in };
+    UPDATE $identity SET permissions_version += 1;
+};
+
+DEFINE EVENT OVERWRITE auth_role_removed_version ON TABLE auth_has_role
+WHEN $event = "DELETE"
+THEN {
+    LET $identity = IF record::tb($before.in) = "auth_member_of" { $before.in.in } ELSE { $before.in };
+    IF $identity IS NOT NONE { UPDATE $identity SET permissions_version += 1; };
+};
+
+DEFINE EVENT OVERWRITE auth_role_grant_removed_version ON TABLE auth_role_grants
+WHEN $event = "DELETE"
+THEN {
+    FOR $identity IN fn::auth_role_holders({ role: $before.in }) {
+        UPDATE $identity SET permissions_version += 1;
+    };
+};
+
+DEFINE EVENT OVERWRITE auth_role_include_removed_version ON TABLE auth_role_includes
+WHEN $event = "DELETE"
+THEN {
+    FOR $identity IN fn::auth_role_holders({ role: $before.in }) {
+        UPDATE $identity SET permissions_version += 1;
+    };
+};

@@ -3,8 +3,10 @@
 -- MODULE    : lyxal_auth
 -- ============================================================================
 -- Le jeton de défi est généré en Rust (OsRng) et publié par le client en DNS TXT
--- `_lyxal-challenge.<domaine>` ; Rust lit les enregistrements et transmet leurs empreintes
--- BLAKE3. La base ne connaît que des empreintes.
+-- `_lyxal-challenge.<domaine>`. La vérification est faite par l'hôte sur sa session système
+-- (DomainVerifier) : il lit le nom du domaine en base, les enregistrements TXT de ce nom, et
+-- transmet leurs empreintes BLAKE3. Un appelant authentifié ne peut ni fournir de preuve ni
+-- changer l'état. La base ne connaît que des empreintes.
 
 DEFINE FUNCTION OVERWRITE fn::auth_organization_domain_add($params: object) {
     LET $report = fn::validation_object_execute($params, {
@@ -49,11 +51,12 @@ DEFINE FUNCTION OVERWRITE fn::auth_organization_domain_verify($params: object) {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
+    -- Preuve acceptée seulement de l'hôte (lecture DNS sur sa session système)
+    IF !fn::auth_session_valid({}).system {
+        RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, { reason: "system_session_required" });
+    };
     LET $domain = (SELECT * FROM ONLY $p.domain);
     IF $domain == NONE { RETURN fn::error_result("AUTH_DOMAIN_NOT_VERIFIED", $p.language, { reason: "not_found" }); };
-    IF !fn::auth_has_permission({ permission: "auth.organization.manage" }) AND !fn::auth_has_permission({ permission: "auth.organization.settings.manage", tenant: $domain.organization }) {
-        RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, { permission: "auth.organization.settings.manage" });
-    };
     IF $domain.state = "verified" { RETURN fn::result_ok(object::remove($domain, "challenge_hash")); };
     IF $domain.challenge_hash NOTINSIDE array::map($p.observed_hashes, |$h| string::lowercase($h)) {
         RETURN fn::error_result("AUTH_DOMAIN_NOT_VERIFIED", $p.language, { txt_record: string::concat("_lyxal-challenge.", $domain.domain) });
@@ -61,7 +64,24 @@ DEFINE FUNCTION OVERWRITE fn::auth_organization_domain_verify($params: object) {
     LET $verified = (UPDATE ONLY $domain.id SET state = "verified", verified_at = time::now());
     IF $verified == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_organization_domain" }); };
     RETURN fn::result_ok(object::remove($verified, "challenge_hash"));
-} COMMENT "Vérifie un domaine ({ domain, observed_hashes : empreintes BLAKE3 des enregistrements TXT lus en Rust }). Permission auth.organization.settings.manage ou auth.organization.manage";
+} COMMENT "Vérifie un domaine ({ domain, observed_hashes : empreintes BLAKE3 des enregistrements TXT lus par l'hôte }) ; session système seulement (DomainVerifier)";
+
+DEFINE FUNCTION OVERWRITE fn::auth_organization_domain_get($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            domain: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization_domain" } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    LET $domain = (SELECT id, organization, domain, state, verified_at, auto_join, default_roles FROM ONLY $p.domain);
+    IF $domain == NONE { RETURN fn::error_result("AUTH_DOMAIN_NOT_VERIFIED", $p.language, { reason: "not_found" }); };
+    RETURN fn::result_ok($domain);
+} COMMENT "Lit un domaine visible par l'appelant ({ domain }), sans empreinte de défi";
 
 DEFINE FUNCTION OVERWRITE fn::auth_organization_domain_update($params: object) {
     LET $report = fn::validation_object_execute($params, {
