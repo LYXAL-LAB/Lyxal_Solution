@@ -810,7 +810,7 @@ lyxal_parsing (lecture CSV, XML, JSON en flux avec rejets explicites, sans base 
 lyxal_event
 lyxal_runtime (Manifeste, Installation, Migrations, Cycle de vie, Workers, Santé, Baux, Réconciliation)
 lyxal_base (référentiels transversaux : unités de mesure et types d'unités, SurrealQL seul)
-lyxal_auth (identités, sessions, jetons, accès — à créer)
+lyxal_auth (identités, organisations, rôles, permissions, invitations, contrôle des droits ; sessions et jetons : lot 3)
 lyxal_i18n (langues, traductions, formats régionaux — à créer)
 lyxal_storage (fichiers et documents stockés — à créer)
 lyxal_secrets (secrets applicatifs stockés chiffrés par lyxal_crypto — à créer)

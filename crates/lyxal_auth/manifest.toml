@@ -1,0 +1,57 @@
+manifest_version = 1
+id = "lyxal_auth"
+name = "Lyxal Auth"
+version = "0.1.0"
+description = "Identités, organisations, rôles, permissions, invitations et contrôle des droits de Lyxal OS"
+capabilities = ["database", "events"]
+
+[runtime]
+min_version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_core"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_error"
+version = ">=0.1.0"
+
+[[dependencies]]
+id = "lyxal_event"
+version = ">=0.1.0"
+
+[resources]
+schemas = [
+    "schema/01_auth_organization.surql",
+    "schema/02_auth_organization_domain.surql",
+    "schema/03_auth_identity_schema.surql",
+    "schema/04_auth_identity.surql",
+    "schema/05_auth_credential_identifier.surql",
+    "schema/06_auth_address.surql",
+    "schema/07_auth_permission.surql",
+    "schema/08_auth_role.surql",
+    "schema/09_auth_organization_invitation.surql",
+    "schema/10_auth_policy.surql",
+    "schema/11_auth_session.surql",
+    "schema/12_auth_relations.surql"
+]
+functions = [
+    "functions/context/auth_context.surql",
+    "functions/context/auth_predicates.surql",
+    "functions/policy/auth_policy.surql",
+    "functions/role/auth_permission.surql",
+    "functions/role/auth_role.surql",
+    "functions/organization/auth_organization.surql",
+    "functions/organization/auth_organization_domain.surql",
+    "functions/member/auth_organization_member.surql",
+    "functions/identity/auth_identity.surql",
+    "functions/invitation/auth_invitation.surql"
+]
+error_definitions = [
+    "error/access/error_access.surql",
+    "error/sessions/error_sessions.surql",
+    "error/identities/error_identities.surql",
+    "error/organizations/error_organizations.surql"
+]
+events = ["events/auth_events.surql"]
+seeds = ["seeds/auth_initial.surql"]

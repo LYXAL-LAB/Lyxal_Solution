@@ -72,15 +72,19 @@ fixé ici parce que ce lot est le premier à le lire. Champs de la charge utile 
 | Champ | Type | Contenu |
 | :--- | :--- | :--- |
 | `tenant` | `option<string>` | clé de l'organisation ; absent pour un événement de l'installation (récupération d'une identité, D10) |
-| `identity_id` | `string` | identité concernée |
+| `identity_id` | `option<string>` | identité concernée (absente pour une invitation adressée à une personne sans compte) |
 | `recipient_email` | `string` | adresse de destination |
 | `recipient_locale` | `option<string>` | BCP 47 |
 | `recipient_name` | `option<string>` | nom affiché |
 | `expires_at` | `datetime` | fin de validité du code ou du lien |
 | `secret` | `string` | enveloppe `enc:v2` d'un objet JSON de variables sensibles (`action_url`, `code`) |
-| `organization_name`, `inviter_name` | `option<string>` | `auth.invitation.created` seulement |
+| `invitation_id`, `organization_name`, `inviter_name` | `string` / `option<string>` | `auth.invitation.created` seulement |
 
 Événements : `auth.verification.requested`, `auth.recovery.requested`, `auth.invitation.created`.
+
+`auth.invitation.created` est publié par `lyxal_auth` depuis le lot 2 (`events/auth_events.surql`) :
+le lien scellé arrive dans un champ transitoire illisible de l'invitation, publié puis effacé dans
+la même transaction.
 
 **Contexte de scellement** (N1) : `SecretContext::with_tenant(tenant ?? "lyxal_installation",
 "lyxal_auth", <type d'événement, points remplacés par `_`>, <event_id>, "secret")`. Il lie

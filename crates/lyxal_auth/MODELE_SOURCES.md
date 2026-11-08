@@ -1,11 +1,13 @@
 # `lyxal_auth` — modèle cible composé à partir des projets sources
 
-Synthèse préalable au plan d'implémentation de `lyxal_auth`, version de production. Principe
+Correspondance entre les projets sources et le modèle de `lyxal_auth` (référence des lots à
+venir ; l'état réalisé est décrit par le [`README.md`](README.md)). Principe
 décidé par le CTO : **on ne réinvente pas la structure**. Le modèle de données et les
 fonctionnalités sont repris de projets mûrs, puis transcrits en SurrealDB et Rust selon les
 règles Lyxal (`.agents/AGENTS.md`). Aucun de ces projets n'est déployé à côté de Lyxal.
 
-Le crate n'existe pas encore : aucun code avant un `implementation_plan.md` validé par le CTO.
+Les tables du lot 2 existent (README §1) ; les tables des lots 3 et 4 sont décrites ici avant leur
+plan détaillé.
 
 ## 1. Sources et analyses détaillées
 

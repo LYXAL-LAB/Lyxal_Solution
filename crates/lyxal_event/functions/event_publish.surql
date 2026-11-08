@@ -56,6 +56,12 @@ DEFINE FUNCTION OVERWRITE fn::event_publish(
             created_at: time::now()
         }
     )[0];
+    -- Une écriture refusée par les permissions de la table ne lève pas d'erreur : l'événement
+    -- serait perdu en silence (standards §11.4). Seuls la session système et les DEFINE EVENT
+    -- publient.
+    IF $created == NONE {
+        RETURN fn::error_result("EVENT_WRITE_FORBIDDEN", $params.language, { table: "event_outbox" });
+    };
 
     -- Déclenchement facultatif et sécurisé du fan-out immédiat
     IF $auto_fanout {
