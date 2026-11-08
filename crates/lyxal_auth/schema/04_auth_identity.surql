@@ -74,6 +74,10 @@ DEFINE FIELD OVERWRITE permissions_version ON TABLE auth_identity
     ASSERT $value >= 1
     COMMENT "Version des droits, incrémentée à chaque changement de rôle ou d'adhésion";
 
+DEFINE FIELD OVERWRITE last_login_at ON TABLE auth_identity
+    TYPE option<datetime>
+    COMMENT "Dernière connexion";
+
 DEFINE FIELD OVERWRITE created_at ON TABLE auth_identity
     TYPE datetime
     DEFAULT time::now()

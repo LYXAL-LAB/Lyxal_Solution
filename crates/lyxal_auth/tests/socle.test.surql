@@ -2,13 +2,13 @@
 -- Socle : seeds (schéma, politique, permissions, rôles du socle et leurs permissions), rejouables
 -- sans doublon.
 
--- test: dix permissions du socle, une portée chacune
-RETURN array::len(fn::auth_permission_list({ module: "lyxal_auth" }).data) == 10
-    AND array::len(fn::auth_permission_list({ module: "lyxal_auth", scope: "organization" }).data) == 5;
+-- test: quatorze permissions du socle, une portée chacune
+RETURN array::len(fn::auth_permission_list({ module: "lyxal_auth" }).data) == 14
+    AND array::len(fn::auth_permission_list({ module: "lyxal_auth", scope: "organization" }).data) == 7;
 
 -- test: rôles du socle et leurs permissions
-RETURN (SELECT VALUE array::len(->auth_role_grants) FROM ONLY auth_role:platform_admin) == 5
-    AND (SELECT VALUE array::len(->auth_role_grants) FROM ONLY auth_role:organization_admin) == 5
+RETURN (SELECT VALUE array::len(->auth_role_grants) FROM ONLY auth_role:platform_admin) == 6
+    AND (SELECT VALUE array::len(->auth_role_grants) FROM ONLY auth_role:organization_admin) == 7
     AND (SELECT VALUE ->auth_role_grants->auth_permission.code FROM ONLY auth_role:organization_member) == ["auth.member.read"];
 
 -- test: seul le rôle membre est attribué par défaut

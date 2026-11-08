@@ -44,7 +44,7 @@ RETURN fn::auth_permission_update({ code: "catalogue.item.write", description: {
 
 -- test: liste filtrée par module et par portée
 RETURN fn::auth_permission_list({ module: "lyxal_catalogue" }).data.code == ["catalogue.item.write"]
-    AND array::len(fn::auth_permission_list({ scope: "installation" }).data) == 5;
+    AND array::len(fn::auth_permission_list({ scope: "installation" }).data) == 7;
 
 -- test: un administrateur d'organisation n'enregistre pas de permission
 -- en tant que: alpha_admin

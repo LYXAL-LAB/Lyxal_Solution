@@ -45,18 +45,22 @@ DEFINE INDEX OVERWRITE auth_member_of_unique ON TABLE auth_member_of FIELDS in, 
 DEFINE INDEX OVERWRITE auth_member_of_out ON TABLE auth_member_of FIELDS out;
 
 -- ----------------------------------------------------------------------------
--- auth_has_role : identité (rôle d'installation) ou adhésion (rôle d'organisation) → rôle
+-- auth_has_role : identité ou application (rôle d'installation, ou d'organisation pour une
+-- application d'organisation) ou adhésion (rôle d'organisation) → rôle
 -- ----------------------------------------------------------------------------
 
 DEFINE TABLE OVERWRITE auth_has_role
-    TYPE RELATION IN auth_identity | auth_member_of OUT auth_role ENFORCED
+    TYPE RELATION IN auth_identity | auth_member_of | auth_application OUT auth_role ENFORCED
     SCHEMAFULL
     PERMISSIONS
         FOR select WHERE ($auth IS NOT NONE AND (in = $auth.identity OR (record::tb(in) = "auth_member_of" AND in.in = $auth.identity)))
             OR fn::auth_has_permission({ permission: "auth.role.manage" })
+            OR (record::tb(in) = "auth_application" AND in.tenant IS NOT NONE AND fn::auth_has_permission({ permission: "auth.organization.role.manage", tenant: in.tenant }))
             OR (record::tb(in) = "auth_member_of" AND (fn::auth_has_permission({ permission: "auth.organization.manage" })
                 OR fn::auth_has_permission({ permission: "auth.member.read", tenant: in.out })))
         FOR create, delete WHERE (record::tb(in) = "auth_identity" AND fn::auth_has_permission({ permission: "auth.role.manage" }))
+            OR (record::tb(in) = "auth_application" AND ((in.tenant IS NONE AND fn::auth_has_permission({ permission: "auth.role.manage" }))
+                OR (in.tenant IS NOT NONE AND fn::auth_has_permission({ permission: "auth.organization.role.manage", tenant: in.tenant }))))
             OR (record::tb(in) = "auth_member_of" AND (fn::auth_has_permission({ permission: "auth.organization.manage" })
                 OR fn::auth_has_permission({ permission: "auth.organization.role.manage", tenant: in.out })
                 OR (out.is_default AND fn::auth_has_permission({ permission: "auth.member.manage", tenant: in.out }))
@@ -81,12 +85,21 @@ DEFINE INDEX OVERWRITE auth_has_role_unique ON TABLE auth_has_role FIELDS in, ou
 DEFINE INDEX OVERWRITE auth_has_role_out ON TABLE auth_has_role FIELDS out;
 
 -- Portée : rôle d'installation depuis une identité, rôle d'organisation depuis une adhésion, et
--- rôle propre à une organisation seulement sur une adhésion à cette organisation
+-- rôle propre à une organisation seulement sur une adhésion à cette organisation ; une
+-- application machine reçoit les rôles de sa portée
 DEFINE EVENT OVERWRITE auth_has_role_guard ON TABLE auth_has_role
 WHEN $event = "CREATE"
 THEN {
     LET $role = (SELECT scope, tenant FROM ONLY $after.out);
     IF record::tb($after.in) = "auth_identity" AND $role.scope != "installation" { THROW "AUTH_ROLE_SCOPE_MISMATCH"; };
+    -- Application de l'installation : rôles d'installation ; application d'une organisation :
+    -- rôles d'organisation de l'installation ou de cette organisation
+    IF record::tb($after.in) = "auth_application" {
+        LET $app = (SELECT tenant, type FROM ONLY $after.in);
+        IF $app.type != "machine" { THROW "AUTH_ROLE_SCOPE_MISMATCH"; };
+        IF $app.tenant IS NONE AND $role.scope != "installation" { THROW "AUTH_ROLE_SCOPE_MISMATCH"; };
+        IF $app.tenant IS NOT NONE AND ($role.scope != "organization" OR ($role.tenant IS NOT NONE AND $role.tenant != $app.tenant)) { THROW "AUTH_ROLE_SCOPE_MISMATCH"; };
+    };
     IF record::tb($after.in) = "auth_member_of" {
         IF $role.scope != "organization" { THROW "AUTH_ROLE_SCOPE_MISMATCH"; };
         IF $role.tenant IS NOT NONE AND $role.tenant != $after.in.out { THROW "AUTH_ROLE_SCOPE_MISMATCH"; };

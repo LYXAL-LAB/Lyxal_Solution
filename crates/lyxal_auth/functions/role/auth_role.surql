@@ -271,8 +271,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_role_include_set($params: object) {
 } COMMENT "Remplace les rôles inclus par un rôle ({ role, includes }) ; même portée, sans cycle ; une inclusion retirée rend obsolètes les sessions des titulaires (événement)";
 
 -- ----------------------------------------------------------------------------
--- fn::auth_role_holders : identités titulaires d'un rôle (directement, par une adhésion, ou par
--- un rôle qui l'inclut) ; utilisée par les événements qui incrémentent la version des droits
+-- fn::auth_role_holders : identités et applications titulaires d'un rôle (directement, par une
+-- adhésion, ou par un rôle qui l'inclut) ; utilisée par les événements qui incrémentent la version des droits
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::auth_role_holders($params: object) -> array {
@@ -280,7 +280,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_role_holders($params: object) -> array {
     LET $roles = array::distinct(array::flatten([$params.role, $params.role.{..8+collect}(<-auth_role_includes<-auth_role)]));
     LET $holders = (SELECT VALUE in FROM auth_has_role WHERE out IN $roles);
     RETURN array::filter(array::distinct(array::map($holders, |$h| IF record::tb($h) = "auth_member_of" { $h.in } ELSE { $h })), |$i| $i IS NOT NONE);
-} COMMENT "Identités titulaires d'un rôle ({ role }), directement, par une adhésion ou par un rôle qui l'inclut (lecture soumise aux permissions de l'appelant)";
+} COMMENT "Identités et applications titulaires d'un rôle ({ role }), directement, par une adhésion ou par un rôle qui l'inclut (lecture soumise aux permissions de l'appelant)";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_role_assign / fn::auth_role_unassign

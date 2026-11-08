@@ -103,7 +103,8 @@ THEN {
         source: $after.id,
         payload: {
             role_id: <string> $after.out,
-            identity_id: <string> (IF $membership { $after.in.in } ELSE { $after.in }),
+            identity_id: IF record::tb($after.in) = "auth_application" { NONE } ELSE { <string> (IF $membership { $after.in.in } ELSE { $after.in }) },
+            application_id: IF record::tb($after.in) = "auth_application" { <string> $after.in } ELSE { NONE },
             organization_id: IF $membership { <string> $after.in.out } ELSE { NONE }
         },
         metadata: {}
@@ -181,8 +182,8 @@ THEN {
 
 -- ----------------------------------------------------------------------------
 -- Version des droits : tout retrait de droit (adhésion supprimée ou suspendue, rôle retiré,
--- permission ou inclusion retirée d'un rôle) incrémente `permissions_version` des identités
--- concernées. L'événement suit l'écriture dans la même transaction et n'est pas soumis aux
+-- permission ou inclusion retirée d'un rôle) incrémente `permissions_version` des identités et
+-- des applications concernées. L'événement suit l'écriture dans la même transaction et n'est pas soumis aux
 -- permissions des tables : l'appelant qui retire ses propres droits n'est pas bloqué.
 -- ----------------------------------------------------------------------------
 
@@ -214,4 +215,136 @@ THEN {
     FOR $identity IN fn::auth_role_holders({ role: $before.in }) {
         UPDATE $identity SET permissions_version += 1;
     };
+};
+
+-- ----------------------------------------------------------------------------
+-- Sessions, codes, mots de passe, applications et clés d'API (lot 3)
+-- ----------------------------------------------------------------------------
+
+DEFINE EVENT OVERWRITE auth_session_created_event ON TABLE auth_session
+WHEN $event = "CREATE"
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "auth.session.created",
+        producer: "lyxal_auth",
+        source: $after.id,
+        payload: {
+            session_id: <string> $after.id,
+            identity_id: IF $after.identity IS NONE { NONE } ELSE { <string> $after.identity },
+            application_id: IF $after.application IS NONE { NONE } ELSE { <string> $after.application },
+            organization_id: IF $after.organization IS NONE { NONE } ELSE { <string> $after.organization },
+            kind: $after.kind,
+            amr: $after.amr.method
+        },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+DEFINE EVENT OVERWRITE auth_session_revoked_event ON TABLE auth_session
+WHEN $event = "UPDATE" AND $before.state = "active" AND $after.state = "revoked"
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "auth.session.revoked",
+        producer: "lyxal_auth",
+        source: $after.id,
+        payload: {
+            session_id: <string> $after.id,
+            identity_id: IF $after.identity IS NONE { NONE } ELSE { <string> $after.identity },
+            application_id: IF $after.application IS NONE { NONE } ELSE { <string> $after.application },
+            reason: $after.revoked_reason
+        },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+-- Code ou lien à envoyer : contrat de lyxal_notification (README §4) ; le secret scellé arrive par
+-- le champ transitoire `delivery`, publié puis effacé dans la même transaction
+DEFINE EVENT OVERWRITE auth_code_delivery_event ON TABLE auth_one_time_code
+WHEN $event = "CREATE" AND $after.delivery IS NOT NONE
+THEN {
+    LET $flow = (SELECT identity FROM ONLY $after.flow);
+    LET $published = fn::event_publish({
+        event_id: <uuid> $after.delivery.event_id,
+        event_type: IF $after.purpose = "recovery" { "auth.recovery.requested" } ELSE { "auth.verification.requested" },
+        producer: "lyxal_auth",
+        source: $after.flow,
+        payload: {
+            tenant: NONE,
+            identity_id: IF $flow.identity IS NONE { NONE } ELSE { <string> $flow.identity },
+            recipient_email: $after.address,
+            recipient_locale: $after.delivery.locale,
+            recipient_name: $after.delivery.name,
+            expires_at: $after.expires_at,
+            secret: $after.delivery.secret
+        },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+    -- Le secret n'est jamais enregistré
+    UPDATE $after.id SET delivery = NONE;
+};
+
+DEFINE EVENT OVERWRITE auth_password_changed_event ON TABLE auth_credential
+WHEN $after.type = "password" AND ($event = "CREATE" OR ($event = "UPDATE" AND $before.secret_data != $after.secret_data))
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "auth.password.changed",
+        producer: "lyxal_auth",
+        source: $after.identity,
+        payload: { identity_id: <string> $after.identity, first: $event = "CREATE" },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+DEFINE EVENT OVERWRITE auth_application_created_event ON TABLE auth_application
+WHEN $event = "CREATE"
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "auth.application.created",
+        producer: "lyxal_auth",
+        source: $after.id,
+        payload: {
+            application_id: <string> $after.id,
+            client_id: $after.client_id,
+            type: $after.type,
+            organization_id: IF $after.tenant IS NONE { NONE } ELSE { <string> $after.tenant }
+        },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+DEFINE EVENT OVERWRITE auth_api_key_created_event ON TABLE auth_api_key
+WHEN $event = "CREATE"
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "auth.api_key.created",
+        producer: "lyxal_auth",
+        source: $after.id,
+        payload: { api_key_id: <string> $after.id, identity_id: <string> $after.identity, prefix: $after.prefix, permissions: $after.permissions },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
+};
+
+DEFINE EVENT OVERWRITE auth_api_key_revoked_event ON TABLE auth_api_key
+WHEN $event = "UPDATE" AND $before.revoked_at IS NONE AND $after.revoked_at IS NOT NONE
+THEN {
+    LET $published = fn::event_publish({
+        event_id: rand::uuid::v7(),
+        event_type: "auth.api_key.revoked",
+        producer: "lyxal_auth",
+        source: $after.id,
+        payload: { api_key_id: <string> $after.id, identity_id: <string> $after.identity, prefix: $after.prefix },
+        metadata: {}
+    });
+    IF !$published.ok { THROW $published.error.code; };
 };

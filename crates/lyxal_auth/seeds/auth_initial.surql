@@ -51,11 +51,14 @@ IF !record::exists(auth_policy:installation) THEN (
     CREATE auth_policy:installation CONTENT {
         scope_key: "installation",
         password: { min_length: 12, require_classes: 0, history: 5 },
-        lockout: { max_failures: 10, lock_seconds: 900 },
+        lockout: { max_failures: 10, lock_seconds: 900, window_seconds: 900, ip_max_failures: 50 },
         session: { access_seconds: 900, idle_seconds: 43200, absolute_seconds: 2592000 },
         mfa: { required: false, methods: ["totp", "passkey", "recovery_code"] },
         invitation: { ttl_seconds: 604800 },
-        registration: { mode: "invitation_only" }
+        registration: { mode: "invitation_only" },
+        code: { ttl_seconds: 900, max_attempts: 5 },
+        refresh: { ttl_seconds: 2592000 },
+        flow: { ttl_seconds: 900 }
     }
 ) END;
 
@@ -92,6 +95,21 @@ IF !record::exists(auth_permission:⟨auth.organization.role.manage⟩) THEN (
 ) END;
 IF !record::exists(auth_permission:⟨auth.organization.policy.manage⟩) THEN (
     CREATE auth_permission:⟨auth.organization.policy.manage⟩ CONTENT { code: "auth.organization.policy.manage", module: "lyxal_auth", scope: "organization", description: { fr: "Gérer la politique de sécurité de son organisation", en: "Manage one's organization security policy" } }
+) END;
+
+
+-- Permissions du lot 3 (applications, sessions, soi-même)
+IF !record::exists(auth_permission:⟨auth.application.manage⟩) THEN (
+    CREATE auth_permission:⟨auth.application.manage⟩ CONTENT { code: "auth.application.manage", module: "lyxal_auth", scope: "installation", description: { fr: "Gérer les applications et comptes de service de l'installation", en: "Manage installation applications and service accounts" } }
+) END;
+IF !record::exists(auth_permission:⟨auth.self.manage⟩) THEN (
+    CREATE auth_permission:⟨auth.self.manage⟩ CONTENT { code: "auth.self.manage", module: "lyxal_auth", scope: "installation", description: { fr: "Gérer ses propres sessions, clés d'API et adresses (accordée à toute identité connectée)", en: "Manage one's own sessions, API keys and addresses" } }
+) END;
+IF !record::exists(auth_permission:⟨auth.organization.application.manage⟩) THEN (
+    CREATE auth_permission:⟨auth.organization.application.manage⟩ CONTENT { code: "auth.organization.application.manage", module: "lyxal_auth", scope: "organization", description: { fr: "Gérer les applications et comptes de service de son organisation", en: "Manage one's organization applications and service accounts" } }
+) END;
+IF !record::exists(auth_permission:⟨auth.session.manage⟩) THEN (
+    CREATE auth_permission:⟨auth.session.manage⟩ CONTENT { code: "auth.session.manage", module: "lyxal_auth", scope: "organization", description: { fr: "Voir et révoquer les sessions des membres de son organisation", en: "See and revoke one's organization members' sessions" } }
 ) END;
 
 -- ----------------------------------------------------------------------------
@@ -140,4 +158,15 @@ IF array::len(SELECT VALUE id FROM auth_role_grants WHERE in = auth_role:organiz
 ) END;
 IF array::len(SELECT VALUE id FROM auth_role_grants WHERE in = auth_role:organization_member AND out = auth_permission:⟨auth.member.read⟩) = 0 THEN (
     RELATE auth_role:organization_member->auth_role_grants->auth_permission:⟨auth.member.read⟩
+) END;
+
+-- Attributions du lot 3
+IF array::len(SELECT VALUE id FROM auth_role_grants WHERE in = auth_role:platform_admin AND out = auth_permission:⟨auth.application.manage⟩) = 0 THEN (
+    RELATE auth_role:platform_admin->auth_role_grants->auth_permission:⟨auth.application.manage⟩
+) END;
+IF array::len(SELECT VALUE id FROM auth_role_grants WHERE in = auth_role:organization_admin AND out = auth_permission:⟨auth.organization.application.manage⟩) = 0 THEN (
+    RELATE auth_role:organization_admin->auth_role_grants->auth_permission:⟨auth.organization.application.manage⟩
+) END;
+IF array::len(SELECT VALUE id FROM auth_role_grants WHERE in = auth_role:organization_admin AND out = auth_permission:⟨auth.session.manage⟩) = 0 THEN (
+    RELATE auth_role:organization_admin->auth_role_grants->auth_permission:⟨auth.session.manage⟩
 ) END;
