@@ -1,7 +1,7 @@
 use crate::proof::CommercialProof;
 use crate::types::{
     BatchStatus, ItemQualification, ManifestStatus, PackagingDetails, PublicationAction,
-    SourceFormat, StateTransitionRecord,
+    SourceEncoding, SourceFormat, StateTransitionRecord,
 };
 use lyxal_surreal::SurrealValue;
 use serde::{Deserialize, Serialize};
@@ -12,6 +12,7 @@ pub struct IngestionBatch {
     pub id: Option<String>,
     pub source_type: SourceFormat,
     pub source_format_version: String,
+    pub source_encoding: SourceEncoding,
     pub fournisseur_id: String,
     pub nom_fichier: String,
     pub file_hash_blake3: String,

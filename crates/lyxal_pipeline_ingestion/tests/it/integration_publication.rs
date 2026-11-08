@@ -88,6 +88,7 @@ async fn approved_manifest(
             id: Some(batch.to_string()),
             source_type: SourceFormat::Csv,
             source_format_version: "1.0".to_string(),
+            source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
             fournisseur_id: "FOURN_PLACO".to_string(),
             nom_fichier: format!("{batch}.csv"),
             file_hash_blake3: lyxal_crypto::blake3_hex(batch.as_bytes()),

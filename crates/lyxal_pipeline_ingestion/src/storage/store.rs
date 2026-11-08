@@ -22,7 +22,7 @@ use crate::models::{IngestionBatch, PublicationManifest, QuarantineRecord, RawRe
 use crate::rules::{ContextualSubstitutionRule, TechnicalSpecification};
 use crate::types::{
     BatchStatus, ItemQualification, ManifestStatus, PackagingDetails, PublicationAction,
-    SourceFormat,
+    SourceEncoding, SourceFormat,
 };
 
 /// Nombre maximal de rejeux d'une prise de réservation interrompue par un conflit transitoire.
@@ -81,6 +81,8 @@ pub struct NewBatch {
     pub id: Option<String>,
     pub source_type: SourceFormat,
     pub source_format_version: String,
+    /// Encodage déclaré du fichier source.
+    pub source_encoding: SourceEncoding,
     pub fournisseur_id: String,
     pub nom_fichier: String,
     /// Empreinte BLAKE3 (64 caractères hexadécimaux) du fichier : clé d'idempotence.

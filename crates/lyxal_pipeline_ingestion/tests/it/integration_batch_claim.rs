@@ -13,6 +13,7 @@ fn batch(id: &str) -> NewBatch {
         id: Some(id.to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
+        source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURNISSEUR_TEST".to_string(),
         nom_fichier: format!("{id}.csv"),
         file_hash_blake3: lyxal_crypto::blake3_hex(id.as_bytes()),
@@ -288,7 +289,7 @@ async fn claim_is_released_after_failure_and_interruption() {
         )
         .await
         .expect_err("contenu non UTF-8");
-    assert_eq!(failure.code(), "INGESTION_ADAPTER_ERROR");
+    assert_eq!(failure.code(), "INGESTION_SOURCE_INVALID");
     let lot = store
         .get_batch("lot_casse")
         .await

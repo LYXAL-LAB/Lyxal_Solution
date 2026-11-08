@@ -20,6 +20,7 @@ async fn test_full_pilot_41_btp_references_lifecycle() {
         id: Some("batch_btp_pilot_41".to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
+        source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "DISTRIBUTEUR_BTP_PILOTE".to_string(),
         nom_fichier: "catalogue_btp_lot1_41_refs.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(b"blake3_btp_lot1_pilot_hash_20261025"),

@@ -16,6 +16,19 @@ RETURN fn::ingestion_batch_create({ id: "lot_a", source_type: "csv", fournisseur
 -- préparation: le banc réserve le lot lot_a (génération 1)
 RETURN fn::ingestion_batch_claim({ id: "lot_a", owner: "banc" }).data.generation == 1;
 
+-- test: l'encodage déclaré par défaut est UTF-8
+RETURN ingestion_batch:lot_a.source_encoding == "UTF-8";
+
+-- test: un encodage déclaré est normalisé et conservé
+-- en tant que: ingestion
+RETURN fn::ingestion_batch_create({ id: "lot_excel", source_type: "CSV", source_encoding: "windows-1252", fournisseur_id: "FOURN_PLACO", nom_fichier: "excel.csv", file_hash_blake3: crypto::blake3("excel.csv") }).ok
+    AND ingestion_batch:lot_excel.source_encoding == "WINDOWS-1252";
+
+-- test: un encodage inconnu est refusé
+-- en tant que: ingestion
+RETURN fn::ingestion_batch_create({ id: "lot_ebcdic", source_type: "CSV", source_encoding: "EBCDIC", fournisseur_id: "FOURN_PLACO", nom_fichier: "e.csv", file_hash_blake3: crypto::blake3("e.csv") }).error.{ code, f: object::keys(details.fields) }
+    == { code: "INGESTION_SOURCE_INVALID", f: ["source_encoding"] };
+
 -- test: un fichier déjà reçu (même format, même empreinte) est refusé
 -- en tant que: ingestion
 RETURN fn::ingestion_batch_create({ id: "lot_a_bis", source_type: "CSV", fournisseur_id: "FOURN_PLACO", nom_fichier: "placo_copie.csv", file_hash_blake3: crypto::blake3("placo.csv") }).error.{ code, batch_id: details.batch_id } == { code: "INGESTION_BATCH_DUPLICATE", batch_id: "lot_a" };

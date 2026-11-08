@@ -1,14 +1,16 @@
-//! Adaptateur JSON pour formats tableaux JSON et flux NDJSON (JSON Lines).
+//! Adaptateur JSON : lecture par `lyxal_parsing` (tableau d'objets ou NDJSON, élément non objet
+//! rejeté), correspondance des clés vers [`RawRecordDto`].
 
-use async_trait::async_trait;
 use serde_json::Value;
 use std::collections::HashMap;
 
-use super::{RawDimensionsDto, RawRecordDto, RawWeightDto, SourceAdapter};
-use crate::error::IngestionError;
-use crate::types::SourceFormat;
+use lyxal_parsing::{JsonOptions, JsonReader, JsonRecord};
 
-/// Adaptateur JSON avec support combiné JSON Array et NDJSON streaming.
+use super::{read_item, RawDimensionsDto, RawRecordDto, RawWeightDto, SourceAdapter, SourceItem};
+use crate::error::IngestionError;
+use crate::types::{SourceEncoding, SourceFormat};
+
+/// Adaptateur JSON (tableau d'objets ou NDJSON, disposition détectée).
 #[derive(Debug, Clone, Default)]
 pub struct JsonAdapter;
 
@@ -17,14 +19,10 @@ impl JsonAdapter {
         Self
     }
 
-    /// Détermine si le flux est un tableau JSON `[...]` ou un flux NDJSON (lignes d'objets `{...}\n{...}`)
-    fn is_array_format(content: &str) -> bool {
-        content.trim_start().starts_with('[')
-    }
-
-    /// Parse un objet JSON individuel en `RawRecordDto`
-    fn parse_json_object(obj: &Value, line_num: usize) -> Option<RawRecordDto> {
-        let map = obj.as_object()?;
+    /// Met en correspondance un objet lu avec un [`RawRecordDto`].
+    fn map_record(record: JsonRecord) -> RawRecordDto {
+        let line_num = record.position.record as usize;
+        let map = &record.value;
 
         // Recherche flexible de la référence
         let reference = find_string(
@@ -126,9 +124,10 @@ impl JsonAdapter {
             }
         }
 
+        let obj = Value::Object(record.value.clone());
         let raw_hash = lyxal_crypto::blake3_hex(obj.to_string().as_bytes());
 
-        Some(RawRecordDto {
+        RawRecordDto {
             line_number: line_num,
             raw_reference: reference,
             raw_designation: designation,
@@ -143,79 +142,27 @@ impl JsonAdapter {
             raw_attributes: raw_attrs,
             raw_payload: obj.clone(),
             raw_hash,
-        })
+        }
     }
 }
 
-#[async_trait]
 impl SourceAdapter for JsonAdapter {
     fn format(&self) -> SourceFormat {
         SourceFormat::Json
     }
 
-    fn supported_versions(&self) -> &'static [&'static str] {
-        &["JSON-ARRAY", "NDJSON-STREAMING", "WEBHOOK-JSON"]
-    }
-
-    fn validate_header(&self, sample: &[u8]) -> Result<(), IngestionError> {
-        let text = std::str::from_utf8(sample).map_err(|e| {
-            IngestionError::Validation(format!("Encodage JSON invalide (UTF-8 requis) : {e}"))
-        })?;
-
-        let trimmed = text.trim_start();
-        if !trimmed.starts_with('[') && !trimmed.starts_with('{') {
-            return Err(IngestionError::Validation(
-                "Le fichier n'est pas un flux JSON ou NDJSON valide (doit commencer par '[' ou '{')".to_string(),
-            ));
-        }
-
-        Ok(())
-    }
-
-    fn parse_content(&self, content: &str) -> Result<Vec<RawRecordDto>, IngestionError> {
-        let trimmed = content.trim();
-        if trimmed.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        if Self::is_array_format(trimmed) {
-            // Format Tableau JSON
-            let root: Value = serde_json::from_str(trimmed).map_err(|e| {
-                IngestionError::Validation(format!("Erreur de syntaxe JSON dans le tableau : {e}"))
-            })?;
-
-            let array = root.as_array().ok_or_else(|| {
-                IngestionError::Validation(
-                    "La racine JSON n'est pas un tableau d'articles".to_string(),
-                )
-            })?;
-
-            let mut records = Vec::with_capacity(array.len());
-            for (idx, item) in array.iter().enumerate() {
-                if let Some(record) = Self::parse_json_object(item, idx + 1) {
-                    records.push(record);
-                }
-            }
-            Ok(records)
-        } else {
-            // Format NDJSON / JSON Lines
-            let mut records = Vec::new();
-            for (idx, line) in trimmed.lines().enumerate() {
-                let line_trim = line.trim();
-                if line_trim.is_empty() {
-                    continue;
-                }
-                let item: Value = serde_json::from_str(line_trim).map_err(|e| {
-                    IngestionError::Validation(format!(
-                        "Ligne {idx} : syntaxe NDJSON invalide : {e}"
-                    ))
-                })?;
-                if let Some(record) = Self::parse_json_object(&item, idx + 1) {
-                    records.push(record);
-                }
-            }
-            Ok(records)
-        }
+    fn read(
+        &self,
+        source: &[u8],
+        encoding: SourceEncoding,
+    ) -> Result<Vec<SourceItem>, IngestionError> {
+        let options = JsonOptions {
+            encoding: encoding.parsing(),
+            ..Default::default()
+        };
+        JsonReader::new(source, options)
+            .map(|item| read_item(item, Self::map_record))
+            .collect()
     }
 }
 
@@ -255,6 +202,11 @@ fn find_f64(map: &serde_json::Map<String, Value>, candidates: &[&str]) -> Option
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::adapters::records_only;
+
+    fn read(content: &str) -> Result<Vec<SourceItem>, IngestionError> {
+        JsonAdapter::new().read(content.as_bytes(), SourceEncoding::Utf8)
+    }
 
     #[test]
     fn test_json_array_parsing() {
@@ -269,8 +221,7 @@ mod tests {
             }
         ]"#;
 
-        let adapter = JsonAdapter::new();
-        let records = adapter.parse_content(json_content).unwrap();
+        let records = records_only(read(json_content).unwrap());
 
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].raw_reference, "PRISE-2PT-BLANC");
@@ -288,11 +239,29 @@ mod tests {
     fn test_ndjson_streaming_parsing() {
         let ndjson_content = "{\"ref\": \"R48-3M\", \"designation\": \"Rail R48 3m\", \"prix\": 3.20}\n{\"ref\": \"M48-3M\", \"designation\": \"Montant M48 3m\", \"prix\": 3.50}\n";
 
-        let adapter = JsonAdapter::new();
-        let records = adapter.parse_content(ndjson_content).unwrap();
+        let records = records_only(read(ndjson_content).unwrap());
 
         assert_eq!(records.len(), 2);
         assert_eq!(records[0].raw_reference, "R48-3M");
         assert_eq!(records[1].raw_reference, "M48-3M");
+    }
+
+    #[test]
+    fn non_object_elements_are_rejected_not_ignored() {
+        // A05 : ces éléments étaient ignorés sans trace
+        let items = read(r#"[{"ref":"A"}, 42, {"ref":"B"}]"#).unwrap();
+        assert_eq!(items.len(), 3);
+        let SourceItem::Rejected(rejection) = &items[1] else {
+            panic!("rejet attendu");
+        };
+        assert_eq!(rejection.record, 2);
+        assert_eq!(rejection.cause_code, "PARSING_JSON_NOT_OBJECT");
+        assert_eq!(items[2].number(), 3);
+    }
+
+    #[test]
+    fn broken_array_makes_the_source_invalid() {
+        let error = read(r#"[{"ref":"A"}, {"ref":"#).unwrap_err();
+        assert_eq!(error.code(), "INGESTION_SOURCE_INVALID");
     }
 }

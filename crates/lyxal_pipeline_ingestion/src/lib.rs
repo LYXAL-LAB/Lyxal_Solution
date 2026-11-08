@@ -37,7 +37,7 @@ pub use module::PipelineIngestionModule;
 pub use storage::{BatchClaim, BatchProgress, IngestionStore};
 pub use types::{
     BatchStatus, Dimensions, ItemQualification, ManifestStatus, PackagingDetails,
-    PublicationAction, SourceFormat, StateTransitionRecord,
+    PublicationAction, SourceEncoding, SourceFormat, StateTransitionRecord,
 };
 
 // Ré-exports : adaptateurs, normalisation, référentiels

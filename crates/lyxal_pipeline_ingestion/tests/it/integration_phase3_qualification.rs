@@ -228,9 +228,14 @@ async fn test_streaming_and_volume_large_scale() {
     let start_time = Instant::now();
 
     // 1. Parsing streaming
-    let records = csv_adapter
-        .parse_content(&csv_buffer)
-        .expect("Échec du streaming CSV à grande échelle");
+    let records = crate::support::records_of(
+        csv_adapter
+            .read(
+                csv_buffer.as_bytes(),
+                lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
+            )
+            .expect("Échec du streaming CSV à grande échelle"),
+    );
     assert_eq!(records.len(), 1500);
 
     let mut verified_count = 0;

@@ -245,3 +245,57 @@ IF !record::exists(error_definition:INGESTION_BATCH_CLAIM_LOST) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:INGESTION_SOURCE_RECORD_REJECTED) THEN (
+    CREATE error_definition:INGESTION_SOURCE_RECORD_REJECTED CONTENT {
+        code: "INGESTION_SOURCE_RECORD_REJECTED",
+        module: "ingestion",
+        domain: "batch",
+        category: "validation",
+        severity: "error",
+        message: "Un enregistrement du fichier n'a pas pu être lu et a été écarté",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Enregistrement illisible",
+                description: "La lecture du fichier a écarté cet enregistrement (nombre de champs, élément non objet, entité inconnue, texte non décodable, taille ou profondeur excessive) ; la cause précise PARSING_* est indiquée.",
+                resolution: "Corriger l'enregistrement dans le fichier source (ligne indiquée) puis le réimporter."
+            },
+            en: {
+                label: "Unreadable record",
+                description: "Reading the file discarded this record (field count, non-object element, unknown entity, undecodable text, excessive size or depth); the precise PARSING_* cause is given.",
+                resolution: "Fix the record in the source file (line given) and import it again."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:INGESTION_FABDIS_BLOCK_INVALID) THEN (
+    CREATE error_definition:INGESTION_FABDIS_BLOCK_INVALID CONTENT {
+        code: "INGESTION_FABDIS_BLOCK_INVALID",
+        module: "ingestion",
+        domain: "batch",
+        category: "validation",
+        severity: "error",
+        message: "Un bloc FAB-DIS 2.3 est invalide et a été écarté",
+        default_language: "fr",
+        http_status: 422,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Bloc FAB-DIS invalide",
+                description: "Bloc sans référence fabricant, de type inconnu, en double, ou bloc logistique ou réglementaire sans bloc commercial (C) de même référence.",
+                resolution: "Corriger le bloc dans le fichier FAB-DIS (ligne indiquée) puis le réimporter."
+            },
+            en: {
+                label: "Invalid FAB-DIS block",
+                description: "Block without manufacturer reference, of unknown type, duplicated, or logistics or regulatory block without a commercial (C) block for the same reference.",
+                resolution: "Fix the block in the FAB-DIS file (line given) and import it again."
+            }
+        }
+    }
+) END;

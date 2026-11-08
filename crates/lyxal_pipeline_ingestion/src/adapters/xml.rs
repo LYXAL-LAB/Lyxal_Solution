@@ -1,14 +1,21 @@
-//! Adaptateur XML pour formats catalogues industriels et BMEcat 1.2 / 2005.
+//! Adaptateur XML : lecture par `lyxal_parsing` (BMEcat et catalogues hiérarchiques, entités
+//! décodées, aucune entité externe), correspondance des balises vers [`RawRecordDto`].
 
-use async_trait::async_trait;
 use serde_json::json;
 use std::collections::HashMap;
 
-use super::{RawDimensionsDto, RawRecordDto, RawWeightDto, SourceAdapter};
-use crate::error::IngestionError;
-use crate::types::SourceFormat;
+use lyxal_parsing::{XmlOptions, XmlReader, XmlRecord};
 
-/// Adaptateur XML avec parseur streaming par balises d'articles.
+use super::{
+    fields_hash, read_item, RawDimensionsDto, RawRecordDto, RawWeightDto, SourceAdapter, SourceItem,
+};
+use crate::error::IngestionError;
+use crate::types::{SourceEncoding, SourceFormat};
+
+/// Éléments qui forment un article.
+const RECORD_ELEMENTS: [&str; 6] = ["ARTICLE", "PRODUCT", "ITEM", "article", "product", "item"];
+
+/// Adaptateur XML (BMEcat 1.2 / 2005 et catalogues génériques).
 #[derive(Debug, Clone, Default)]
 pub struct XmlAdapter;
 
@@ -17,208 +24,138 @@ impl XmlAdapter {
         Self
     }
 
-    /// Extrait le contenu texte à l'intérieur d'une balise XML simple
-    fn extract_tag_value(block: &str, tag_name: &str) -> Option<String> {
-        let open_tag = format!("<{tag_name}");
-        let close_tag = format!("</{tag_name}>");
+    /// Met en correspondance un article lu avec un [`RawRecordDto`].
+    fn map_record(record: XmlRecord) -> RawRecordDto {
+        let record = &record;
+        let line_num = record.position.record as usize;
+        // Référence produit
+        let reference = tag(record, "SUPPLIER_AID")
+            .or_else(|| tag(record, "supplier_aid"))
+            .or_else(|| tag(record, "REF_FAB"))
+            .or_else(|| tag(record, "REFERENCE"))
+            .or_else(|| tag(record, "SKU"))
+            .unwrap_or_else(|| format!("XML_ART_{line_num}"));
 
-        let start_pos = block.find(&open_tag)?;
-        let rest = &block[start_pos..];
-        let tag_end_pos = rest.find('>')?;
-        let content_start = start_pos + tag_end_pos + 1;
+        // Désignation
+        let designation = tag(record, "DESCRIPTION_SHORT")
+            .or_else(|| tag(record, "DESCRIPTION"))
+            .or_else(|| tag(record, "LIBELLE"))
+            .or_else(|| tag(record, "NAME"))
+            .unwrap_or_else(|| format!("Article XML {reference}"));
 
-        let end_pos = block[content_start..].find(&close_tag)?;
-        let value = &block[content_start..content_start + end_pos];
+        // GTIN / EAN
+        let gtin = tag(record, "INTERNATIONAL_AID")
+            .or_else(|| tag(record, "EAN"))
+            .or_else(|| tag(record, "GTIN"));
 
-        let trimmed = value.trim();
-        if trimmed.is_empty() {
-            None
+        // Fabricant et marque
+        let manufacturer = tag(record, "MANUFACTURER_NAME").or_else(|| tag(record, "FABRICANT"));
+        let brand = tag(record, "BRAND").or_else(|| tag(record, "MARQUE"));
+
+        // Unité de commande
+        let unit = tag(record, "ORDER_UNIT").or_else(|| tag(record, "UNITE"));
+
+        // Prix
+        let price = tag(record, "PRICE_AMOUNT")
+            .or_else(|| tag(record, "PRIX"))
+            .and_then(|p| p.replace(',', ".").parse::<f64>().ok());
+
+        // Devise
+        let currency = tag(record, "PRICE_CURRENCY")
+            .or_else(|| tag(record, "CURRENCY"))
+            .or_else(|| Some("EUR".to_string()));
+
+        // Extraction attributs techniques simples
+        let mut raw_attrs = HashMap::new();
+        if let Some(etim) = tag(record, "REFERENCE_FEATURE_GROUP_ID") {
+            raw_attrs.insert("etim_class".to_string(), etim);
+        }
+        if let Some(norm) = tag(record, "STANDARD") {
+            raw_attrs.insert("norme".to_string(), norm);
+        }
+
+        // Dimensions si présentes
+        let length = tag(record, "LENGTH").and_then(|v| v.parse::<f64>().ok());
+        let width = tag(record, "WIDTH").and_then(|v| v.parse::<f64>().ok());
+        let height = tag(record, "HEIGHT").and_then(|v| v.parse::<f64>().ok());
+        let dimensions = if length.is_some() || width.is_some() || height.is_some() {
+            Some(RawDimensionsDto {
+                length,
+                width,
+                height,
+                unit: Some("mm".to_string()),
+            })
         } else {
-            // Nettoyage éventuel CDATA
-            let cleaned = if trimmed.starts_with("<![CDATA[") && trimmed.ends_with("]]>") {
-                &trimmed[9..trimmed.len() - 3]
-            } else {
-                trimmed
-            };
-            Some(cleaned.trim().to_string())
-        }
-    }
+            None
+        };
 
-    /// Découpe un flux XML en blocs d'articles `<ARTICLE>...</ARTICLE>`, `<PRODUCT>...</PRODUCT>` ou `<ITEM>...</ITEM>`
-    fn extract_article_blocks(content: &str) -> Vec<(&str, &'static str)> {
-        let tag_candidates = ["ARTICLE", "PRODUCT", "ITEM", "article", "product", "item"];
-        for tag in tag_candidates {
-            let open = format!("<{tag}");
-            let close = format!("</{tag}>");
-            if content.contains(&open) && content.contains(&close) {
-                let mut blocks = Vec::new();
-                let mut cursor = 0;
-                while let Some(start) = content[cursor..].find(&open) {
-                    let abs_start = cursor + start;
-                    if let Some(end) = content[abs_start..].find(&close) {
-                        let abs_end = abs_start + end + close.len();
-                        blocks.push((&content[abs_start..abs_end], tag));
-                        cursor = abs_end;
-                    } else {
-                        break;
-                    }
-                }
-                if !blocks.is_empty() {
-                    return blocks;
-                }
-            }
+        // Poids si présent
+        let net_weight = tag(record, "WEIGHT").and_then(|v| v.parse::<f64>().ok());
+        let weight = if net_weight.is_some() {
+            Some(RawWeightDto {
+                net_weight,
+                gross_weight: None,
+                unit: Some("kg".to_string()),
+            })
+        } else {
+            None
+        };
+
+        let raw_hash = fields_hash(&record.fields);
+        let payload = json!({
+            "format": "XML_BMECAT",
+            "line": record.position.line,
+            "element": record.element,
+            "fields": record.fields,
+        });
+
+        RawRecordDto {
+            line_number: line_num,
+            raw_reference: reference,
+            raw_designation: designation,
+            raw_gtin: gtin,
+            raw_manufacturer: manufacturer,
+            raw_brand: brand,
+            raw_unit: unit,
+            raw_price: price,
+            raw_currency: currency,
+            raw_dimensions: dimensions,
+            raw_weight: weight,
+            raw_attributes: raw_attrs,
+            raw_payload: payload,
+            raw_hash,
         }
-        Vec::new()
     }
 }
 
-#[async_trait]
+/// Valeur de la première balise nommée `name` (dernier segment du chemin), non vide, sans les
+/// blancs qui l'entourent.
+fn tag(record: &XmlRecord, name: &str) -> Option<String> {
+    record.fields.iter().find_map(|(path, value)| {
+        let leaf = path.rsplit('/').next().unwrap_or(path);
+        let value = value.trim();
+        (leaf == name && !value.is_empty()).then(|| value.to_string())
+    })
+}
+
 impl SourceAdapter for XmlAdapter {
     fn format(&self) -> SourceFormat {
         SourceFormat::Xml
     }
 
-    fn supported_versions(&self) -> &'static [&'static str] {
-        &["BMECAT 1.2", "BMECAT 2005", "XML-CATALOG-GENERIC"]
-    }
-
-    fn validate_header(&self, sample: &[u8]) -> Result<(), IngestionError> {
-        let text = std::str::from_utf8(sample).map_err(|e| {
-            IngestionError::Validation(format!("Encodage XML invalide (UTF-8 requis) : {e}"))
-        })?;
-
-        let sample_upper = text.to_uppercase();
-        let is_xml = sample_upper.contains("<?XML")
-            || sample_upper.contains("<BMECAT")
-            || sample_upper.contains("<CATALOG")
-            || sample_upper.contains("<ARTICLES")
-            || sample_upper.contains("<PRODUCTS");
-
-        if !is_xml {
-            return Err(IngestionError::Validation(
-                "Le fichier n'est pas un document XML ou BMEcat valide".to_string(),
-            ));
-        }
-
-        Ok(())
-    }
-
-    fn parse_content(&self, content: &str) -> Result<Vec<RawRecordDto>, IngestionError> {
-        let blocks = Self::extract_article_blocks(content);
-        if blocks.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let mut records = Vec::new();
-
-        for (idx, (block, _tag_name)) in blocks.into_iter().enumerate() {
-            let line_num = idx + 1;
-
-            // Référence produit
-            let reference = Self::extract_tag_value(block, "SUPPLIER_AID")
-                .or_else(|| Self::extract_tag_value(block, "supplier_aid"))
-                .or_else(|| Self::extract_tag_value(block, "REF_FAB"))
-                .or_else(|| Self::extract_tag_value(block, "REFERENCE"))
-                .or_else(|| Self::extract_tag_value(block, "SKU"))
-                .unwrap_or_else(|| format!("XML_ART_{line_num}"));
-
-            // Désignation
-            let designation = Self::extract_tag_value(block, "DESCRIPTION_SHORT")
-                .or_else(|| Self::extract_tag_value(block, "DESCRIPTION"))
-                .or_else(|| Self::extract_tag_value(block, "LIBELLE"))
-                .or_else(|| Self::extract_tag_value(block, "NAME"))
-                .unwrap_or_else(|| format!("Article XML {reference}"));
-
-            // GTIN / EAN
-            let gtin = Self::extract_tag_value(block, "INTERNATIONAL_AID")
-                .or_else(|| Self::extract_tag_value(block, "EAN"))
-                .or_else(|| Self::extract_tag_value(block, "GTIN"));
-
-            // Fabricant et marque
-            let manufacturer = Self::extract_tag_value(block, "MANUFACTURER_NAME")
-                .or_else(|| Self::extract_tag_value(block, "FABRICANT"));
-            let brand = Self::extract_tag_value(block, "BRAND")
-                .or_else(|| Self::extract_tag_value(block, "MARQUE"));
-
-            // Unité de commande
-            let unit = Self::extract_tag_value(block, "ORDER_UNIT")
-                .or_else(|| Self::extract_tag_value(block, "UNITE"));
-
-            // Prix
-            let price = Self::extract_tag_value(block, "PRICE_AMOUNT")
-                .or_else(|| Self::extract_tag_value(block, "PRIX"))
-                .and_then(|p| p.replace(',', ".").parse::<f64>().ok());
-
-            // Devise
-            let currency = Self::extract_tag_value(block, "PRICE_CURRENCY")
-                .or_else(|| Self::extract_tag_value(block, "CURRENCY"))
-                .or_else(|| Some("EUR".to_string()));
-
-            // Extraction attributs techniques simples
-            let mut raw_attrs = HashMap::new();
-            if let Some(etim) = Self::extract_tag_value(block, "REFERENCE_FEATURE_GROUP_ID") {
-                raw_attrs.insert("etim_class".to_string(), etim);
-            }
-            if let Some(norm) = Self::extract_tag_value(block, "STANDARD") {
-                raw_attrs.insert("norme".to_string(), norm);
-            }
-
-            // Dimensions si présentes
-            let length =
-                Self::extract_tag_value(block, "LENGTH").and_then(|v| v.parse::<f64>().ok());
-            let width = Self::extract_tag_value(block, "WIDTH").and_then(|v| v.parse::<f64>().ok());
-            let height =
-                Self::extract_tag_value(block, "HEIGHT").and_then(|v| v.parse::<f64>().ok());
-            let dimensions = if length.is_some() || width.is_some() || height.is_some() {
-                Some(RawDimensionsDto {
-                    length,
-                    width,
-                    height,
-                    unit: Some("mm".to_string()),
-                })
-            } else {
-                None
-            };
-
-            // Poids si présent
-            let net_weight =
-                Self::extract_tag_value(block, "WEIGHT").and_then(|v| v.parse::<f64>().ok());
-            let weight = if net_weight.is_some() {
-                Some(RawWeightDto {
-                    net_weight,
-                    gross_weight: None,
-                    unit: Some("kg".to_string()),
-                })
-            } else {
-                None
-            };
-
-            let raw_hash = lyxal_crypto::blake3_hex(block.as_bytes());
-            let payload = json!({
-                "format": "XML_BMECAT",
-                "line": line_num,
-                "block_xml": block,
-            });
-
-            records.push(RawRecordDto {
-                line_number: line_num,
-                raw_reference: reference,
-                raw_designation: designation,
-                raw_gtin: gtin,
-                raw_manufacturer: manufacturer,
-                raw_brand: brand,
-                raw_unit: unit,
-                raw_price: price,
-                raw_currency: currency,
-                raw_dimensions: dimensions,
-                raw_weight: weight,
-                raw_attributes: raw_attrs,
-                raw_payload: payload,
-                raw_hash,
-            });
-        }
-
-        Ok(records)
+    fn read(
+        &self,
+        source: &[u8],
+        encoding: SourceEncoding,
+    ) -> Result<Vec<SourceItem>, IngestionError> {
+        let options = XmlOptions {
+            record_elements: RECORD_ELEMENTS.iter().map(|e| e.to_string()).collect(),
+            encoding: encoding.parsing(),
+            ..Default::default()
+        };
+        XmlReader::new(source, options)
+            .map(|item| read_item(item, Self::map_record))
+            .collect()
     }
 }
 
@@ -252,7 +189,11 @@ mod tests {
 </BMECAT>"#;
 
         let adapter = XmlAdapter::new();
-        let records = adapter.parse_content(xml_content).unwrap();
+        let records = crate::adapters::records_only(
+            adapter
+                .read(xml_content.as_bytes(), SourceEncoding::Utf8)
+                .unwrap(),
+        );
 
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].raw_reference, "BA13-PREGYPLAC");
@@ -264,5 +205,29 @@ mod tests {
         assert_eq!(records[0].raw_manufacturer, Some("SINIAT".to_string()));
         assert_eq!(records[0].raw_unit, Some("M2".to_string()));
         assert_eq!(records[0].raw_price, Some(8.20));
+    }
+
+    #[test]
+    fn entities_are_decoded() {
+        // A05 : les entités n'étaient pas décodées
+        let xml_content = "<BMECAT><ARTICLE><SUPPLIER_AID>BA13&amp;co</SUPPLIER_AID><DESCRIPTION_SHORT>Plaque &#233;paisseur &lt;12,5&gt;</DESCRIPTION_SHORT></ARTICLE></BMECAT>";
+        let records = crate::adapters::records_only(
+            XmlAdapter::new()
+                .read(xml_content.as_bytes(), SourceEncoding::Utf8)
+                .unwrap(),
+        );
+        assert_eq!(records[0].raw_reference, "BA13&co");
+        assert_eq!(records[0].raw_designation, "Plaque épaisseur <12,5>");
+    }
+
+    #[test]
+    fn malformed_xml_makes_the_source_invalid() {
+        let error = XmlAdapter::new()
+            .read(
+                b"<BMECAT><ARTICLE><SUPPLIER_AID>A</X></ARTICLE></BMECAT>",
+                SourceEncoding::Utf8,
+            )
+            .unwrap_err();
+        assert_eq!(error.code(), "INGESTION_SOURCE_INVALID");
     }
 }

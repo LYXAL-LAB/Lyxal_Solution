@@ -14,6 +14,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_batch_create($params: object) {
             fournisseur_id: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 128 } }], required: true },
             nom_fichier: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 255 } }], required: true },
             source_format_version: { pipeline: [{ rule: "required_string", options: { min_length: 1, max_length: 64 } }], default: "1.0" },
+            source_encoding: { pipeline: [{ rule: "enum", options: { allowed: ["UTF-8", "WINDOWS-1252", "ISO-8859-1"], case_sensitive: false } }], default: "UTF-8" },
             taille_octets: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], default: 0 },
             chunk_size: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 100000 } }], default: 500 },
             provenance_details: { pipeline: [{ rule: "is_object" }], default: {} },
@@ -23,7 +24,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_batch_create($params: object) {
     }, 20);
     IF !$report.valid {
         LET $fields = object::keys($report.by_field);
-        LET $code = IF "source_type" IN $fields OR "file_hash_blake3" IN $fields { "INGESTION_SOURCE_INVALID" }
+        LET $code = IF "source_type" IN $fields OR "file_hash_blake3" IN $fields OR "source_encoding" IN $fields { "INGESTION_SOURCE_INVALID" }
             ELSE IF "fournisseur_id" IN $fields { "INGESTION_MANUFACTURER_REF_MISSING" }
             ELSE { "INGESTION_INVALID_PARAMETERS" };
         RETURN fn::error_result($code, IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
@@ -44,6 +45,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_batch_create($params: object) {
     LET $created = (CREATE ONLY $id CONTENT {
         source_type: $source,
         source_format_version: $p.source_format_version,
+        source_encoding: string::uppercase($p.source_encoding),
         fournisseur_id: $p.fournisseur_id,
         nom_fichier: $p.nom_fichier,
         file_hash_blake3: $hash,
@@ -59,4 +61,4 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_batch_create($params: object) {
     };
 
     RETURN fn::result_ok(<string> record::id($created.id));
-} COMMENT "Crée un lot d'ingestion à l'état RECEIVED ; un fichier déjà reçu (format et empreinte BLAKE3) ou un identifiant existant renvoie INGESTION_BATCH_DUPLICATE";
+} COMMENT "Crée un lot d'ingestion à l'état RECEIVED avec l'encodage déclaré de sa source (UTF-8 par défaut, WINDOWS-1252, ISO-8859-1) ; un fichier déjà reçu (format et empreinte BLAKE3) ou un identifiant existant renvoie INGESTION_BATCH_DUPLICATE";

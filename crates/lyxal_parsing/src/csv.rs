@@ -19,9 +19,24 @@ pub enum Delimiter {
     Byte(u8),
 }
 
+/// Ligne d'en-tête de la source.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum CsvHeader {
+    /// La première ligne nomme les colonnes : obligatoire, colonnes non vides et sans doublon ;
+    /// chaque ligne doit avoir autant de champs que l'en-tête.
+    #[default]
+    FirstLine,
+    /// Pas d'en-tête : les colonnes sont nommées par leur rang (`"1"`, `"2"`…) et le nombre de
+    /// champs peut varier d'une ligne à l'autre (ex. blocs FAB-DIS 2.3) ; une source vide ne
+    /// donne aucun enregistrement.
+    None,
+}
+
 /// Options du lecteur CSV.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct CsvOptions {
+    /// Ligne d'en-tête.
+    pub header: CsvHeader,
     /// Séparateur des champs.
     pub delimiter: Delimiter,
     /// Encodage déclaré de la source.
@@ -56,6 +71,7 @@ type Source<R> = Chain<Cursor<Vec<u8>>, BufReader<Guarded<Decoded<R>>>>;
 pub struct CsvReader<R: Read> {
     reader: csv::Reader<Source<R>>,
     headers: Vec<String>,
+    with_header: bool,
     delimiter: u8,
     record: csv::ByteRecord,
     budget: Budget,
@@ -66,8 +82,8 @@ pub struct CsvReader<R: Read> {
 }
 
 impl<R: Read> CsvReader<R> {
-    /// Ouvre la source et lit son en-tête : un en-tête absent, une colonne vide ou en double
-    /// arrêtent la lecture ([`ParseError::Header`]).
+    /// Ouvre la source et lit son en-tête ([`CsvHeader::FirstLine`]) : un en-tête absent, une
+    /// colonne vide ou en double arrêtent la lecture ([`ParseError::Header`]).
     pub fn new(source: R, options: CsvOptions) -> Result<Self, ParseError> {
         let limits = options.limits;
         let budget = Budget::new(limits.max_record_bytes);
@@ -76,7 +92,8 @@ impl<R: Read> CsvReader<R> {
             Guarded::new(Decoded::new(source, options.encoding), budget.clone()),
         );
         let header_line = read_header_line(&mut buffered, limits.max_record_bytes)?;
-        if header_line.iter().all(|b| b.is_ascii_whitespace()) {
+        let with_header = options.header == CsvHeader::FirstLine;
+        if with_header && header_line.iter().all(|b| b.is_ascii_whitespace()) {
             return Err(ParseError::Header {
                 detail: "source vide : la ligne d'en-tête est absente".to_string(),
             });
@@ -88,13 +105,18 @@ impl<R: Read> CsvReader<R> {
         budget.reset();
         let mut reader = csv::ReaderBuilder::new()
             .delimiter(delimiter)
-            .has_headers(true)
+            .has_headers(with_header)
             .flexible(true)
             .from_reader(Cursor::new(header_line).chain(buffered));
-        let headers = read_headers(&mut reader, limits)?;
+        let headers = if with_header {
+            read_headers(&mut reader, limits)?
+        } else {
+            Vec::new()
+        };
         Ok(Self {
             reader,
             headers,
+            with_header,
             delimiter,
             record: csv::ByteRecord::new(),
             budget,
@@ -105,7 +127,7 @@ impl<R: Read> CsvReader<R> {
         })
     }
 
-    /// Colonnes de l'en-tête, telles que lues.
+    /// Colonnes de l'en-tête, telles que lues (vide sans en-tête).
     pub fn headers(&self) -> &[String] {
         &self.headers
     }
@@ -189,7 +211,7 @@ impl<R: Read> Iterator for CsvReader<R> {
                         ),
                     )));
                 }
-                if found != self.headers.len() {
+                if self.with_header && found != self.headers.len() {
                     return Some(Err(self.reject(
                         position,
                         RejectionKind::CsvFieldCount,
@@ -200,10 +222,13 @@ impl<R: Read> Iterator for CsvReader<R> {
                     )));
                 }
                 let mut fields = Vec::with_capacity(found);
-                for (index, (name, raw)) in self.headers.iter().zip(self.record.iter()).enumerate()
-                {
+                for (index, raw) in self.record.iter().enumerate() {
+                    let name = match self.headers.get(index) {
+                        Some(name) => name.clone(),
+                        None => (index + 1).to_string(),
+                    };
                     match std::str::from_utf8(raw) {
-                        Ok(value) => fields.push((name.clone(), value.to_string())),
+                        Ok(value) => fields.push((name, value.to_string())),
                         Err(_) => {
                             return Some(Err(self.reject(
                                 position,

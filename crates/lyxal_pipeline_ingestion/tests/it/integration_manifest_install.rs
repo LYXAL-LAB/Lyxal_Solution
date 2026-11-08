@@ -12,6 +12,7 @@ fn batch(id: &str) -> NewBatch {
         id: Some(id.to_string()),
         source_type: SourceFormat::Csv,
         source_format_version: "1.0".to_string(),
+        source_encoding: lyxal_pipeline_ingestion::types::SourceEncoding::Utf8,
         fournisseur_id: "FOURNISSEUR_TEST".to_string(),
         nom_fichier: "test.csv".to_string(),
         file_hash_blake3: lyxal_crypto::blake3_hex(id.as_bytes()),
@@ -174,7 +175,7 @@ async fn failed_batch_does_not_stop_the_worker() {
         .create_batch(&batch("lot_valide"))
         .await
         .expect("lot 2");
-    // Premier lot : contenu non UTF-8, refusé par l'adaptateur ; second lot : valide.
+    // Premier lot : contenu non décodable en UTF-8, source illisible ; second lot : valide.
     worker
         .enqueue_batch(
             "lot_illisible".to_string(),
@@ -238,7 +239,7 @@ async fn failed_batch_does_not_stop_the_worker() {
     let last = failed.transitions.last().expect("transition");
     assert_eq!(last.to_state, "FAILED");
     assert!(
-        last.reason.contains("UTF-8"),
+        last.reason.contains("PARSING_HEADER_INVALID"),
         "motif de l'échec journalisé : {}",
         last.reason
     );

@@ -45,6 +45,12 @@ DEFINE FIELD OVERWRITE source_format_version ON TABLE ingestion_batch
     VALUE string::trim($value)
     COMMENT "Version déclarée du format source (ex: FAB-DIS 3.0, BMEcat 2005)";
 
+DEFINE FIELD OVERWRITE source_encoding ON TABLE ingestion_batch
+    TYPE string
+    DEFAULT "UTF-8"
+    ASSERT $value IN ["UTF-8", "WINDOWS-1252", "ISO-8859-1"]
+    COMMENT "Encodage déclaré du fichier source (jamais deviné), transmis à lyxal_parsing";
+
 DEFINE FIELD OVERWRITE provenance_details ON TABLE ingestion_batch
     TYPE option<object> FLEXIBLE
     DEFAULT {}
