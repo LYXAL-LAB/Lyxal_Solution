@@ -14,6 +14,57 @@ pub struct AppConfig {
     pub cors: CorsConfig,
     #[serde(default)]
     pub catalogue_sync: CatalogueSyncConfig,
+    #[serde(default)]
+    pub crypto: CryptoConfig,
+    #[serde(default)]
+    pub notification: NotificationConfig,
+}
+
+/// Trousseau applicatif de l'hôte (secrets des notifications, liens d'invitation) : clé AES-256
+/// de 32 octets en Base64 canonique (44 caractères), jamais dans les fichiers de configuration,
+/// uniquement par `LYXAL__CRYPTO__APPLICATION_KEY` (lue par `lyxal_crypto::EnvironmentKeyProvider`),
+/// et son identifiant `application_key_id` (ex. `app-2026`), qui figure dans chaque enveloppe.
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CryptoConfig {
+    #[serde(default)]
+    pub application_key: Option<SecretPassword>,
+    #[serde(default)]
+    pub application_key_id: Option<String>,
+}
+
+/// Notifications sortantes : relais SMTP unique de l'installation (avant `lyxal_secrets`). Sans
+/// relais ou sans clé applicative, aucun e-mail n'est envoyé (abonnements suspendus, sonde
+/// « dégradé »).
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NotificationConfig {
+    #[serde(default)]
+    pub smtp: Option<SmtpConfig>,
+}
+
+/// Relais SMTP : `LYXAL__NOTIFICATION__SMTP__HOST`, `__PORT`, `__SECURITY` (`tls`, `starttls`,
+/// ou `local_plain` pour un relais de la boucle locale), `__USERNAME`, `__PASSWORD` (variable
+/// d'environnement seulement), `__FROM_ADDRESS`, `__FROM_NAME`, `__TIMEOUT_SECONDS`.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SmtpConfig {
+    pub host: String,
+    pub port: u16,
+    pub security: String,
+    #[serde(default)]
+    pub username: Option<String>,
+    #[serde(default)]
+    pub password: Option<SecretPassword>,
+    pub from_address: String,
+    #[serde(default)]
+    pub from_name: Option<String>,
+    #[serde(default = "default_smtp_timeout")]
+    pub timeout_seconds: u64,
+}
+
+fn default_smtp_timeout() -> u64 {
+    30
 }
 
 /// Publication du pipeline d'ingestion vers le catalogue : clé de signature du jeton de service

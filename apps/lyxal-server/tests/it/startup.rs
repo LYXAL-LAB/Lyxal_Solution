@@ -130,6 +130,7 @@ async fn server_installs_and_starts_hosted_modules() {
         "lyxal_core",
         "lyxal_error",
         "lyxal_event",
+        "lyxal_notification",
     ];
     if cfg!(feature = "module-ingestion") {
         expected.push("lyxal_pipeline_ingestion");
@@ -182,9 +183,9 @@ async fn restart_on_installed_database_is_idempotent() {
     let migrations: Option<i64> = res.take(0).expect("migrations");
     let releases: Option<i64> = res.take(1).expect("releases");
     let hosted = if cfg!(feature = "module-ingestion") {
-        7
+        8
     } else {
-        6
+        7
     };
     assert_eq!(migrations, Some(0));
     assert_eq!(releases, Some(hosted));

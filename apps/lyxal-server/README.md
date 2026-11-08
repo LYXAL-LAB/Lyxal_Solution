@@ -48,12 +48,15 @@ déclaré manque.
 | `lyxal_core` | toujours | `ManifestModule` (SurrealQL seul) |
 | `lyxal_error` | toujours | `ManifestModule` |
 | `lyxal_event` | toujours | `ManifestModule` ; moteur démarré par le runtime |
+| `lyxal_auth` | toujours | `AuthModule`, `AuthHealthCheck` |
+| `lyxal_notification` | toujours | `NotificationModule`, `NotificationConsumer` (événements `auth.*`), `NotificationEmailWorker`, `NotificationPurgeWorker`, `NotificationHealthCheck` |
 | `lyxal_base` | toujours | `ManifestModule` |
 | `lyxal_catalogue` | toujours | `ManifestModule` (SurrealQL seul) |
 | `lyxal_pipeline_ingestion` | fonctionnalité `module-ingestion` (par défaut) | `PipelineIngestionModule`, `IngestionWorker`, `IngestionHealthCheck` |
 
 Ajouter un module : l'inscrire dans `MODULES` de `build.rs` (ordre des dépendances), et, s'il a
-du code Rust, déclarer son implémentation et ses services dans `src/modules/`.
+du code Rust, déclarer son implémentation et ses services dans `src/modules/` (`auth.rs`,
+`notification.rs`, `ingestion.rs`).
 
 ---
 
@@ -71,6 +74,8 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/`.
 | `observability` | `log_filter`, `json_logs`, `include_target`, `include_thread_ids` |
 | `cors` | `enabled`, `allow_credentials`, `allowed_origins`, `allowed_methods`, `allowed_headers` |
 | `catalogue_sync` | `signing_key` (facultative) |
+| `crypto` | `application_key` (facultative, variable d'environnement seulement), `application_key_id` |
+| `notification.smtp` | `host`, `port`, `security` (`tls`, `starttls`, `local_plain`), `username`, `password`, `from_address`, `from_name`, `timeout_seconds` (section facultative) |
 
 Les identifiants Root ne figurent dans aucun fichier : `LYXAL__DATABASE__USERNAME` et
 `LYXAL__DATABASE__PASSWORD` (mot de passe en `SecretString`, masqué). Une connexion `ws://` ou
@@ -82,6 +87,16 @@ figure dans aucun fichier : `LYXAL__CATALOGUE_SYNC__SIGNING_KEY`. Au démarrage,
 avec elle l'accès JWT `lyxal_catalogue_sync` et abonne la publication à
 `ingestion.manifest.approved`. Sans clé, la publication est désactivée et la sonde de santé du
 pipeline est dégradée.
+
+Les notifications (`lyxal_notification`) demandent la clé applicative de l'hôte et un relais
+SMTP. La clé AES-256 (32 octets en Base64 canonique, 44 caractères) ne figure dans aucun
+fichier : `LYXAL__CRYPTO__APPLICATION_KEY`, lue par `lyxal_crypto::EnvironmentKeyProvider`, avec
+son identifiant `LYXAL__CRYPTO__APPLICATION_KEY_ID` (ex. `app-2026`, inscrit dans chaque
+enveloppe `enc:v2`). Le relais : `LYXAL__NOTIFICATION__SMTP__HOST`, `__PORT`, `__SECURITY`,
+`__FROM_ADDRESS`, et si besoin `__USERNAME` / `__PASSWORD` (variable d'environnement seulement).
+`local_plain` (sans chiffrement) n'est accepté que pour un relais de la boucle locale. Sans clé
+ou sans relais, aucun e-mail n'est envoyé : les abonnements aux événements `auth.*` restent
+suspendus (les événements attendent en file) et la sonde du module est dégradée.
 
 ```bash
 LYXAL__DATABASE__ENDPOINT=ws://127.0.0.1:8000 \

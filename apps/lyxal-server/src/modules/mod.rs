@@ -4,6 +4,7 @@
 mod auth;
 #[cfg(feature = "module-ingestion")]
 mod ingestion;
+mod notification;
 
 use crate::config::AppConfig;
 use crate::error::ServerError;
@@ -122,6 +123,9 @@ fn implementation(
     if id == auth::MODULE_ID {
         return Ok(auth::module());
     }
+    if id == notification::MODULE_ID {
+        return Ok(notification::module());
+    }
     #[cfg(feature = "module-ingestion")]
     if id == ingestion::MODULE_ID {
         return Ok(ingestion::module());
@@ -136,24 +140,31 @@ fn implementation(
 pub struct HostedServices {
     #[cfg(feature = "module-ingestion")]
     publication: Option<ingestion::PublicationSetup>,
+    /// Envoi des notifications configuré (clé applicative et relais SMTP).
+    notification_delivery: bool,
 }
 
 /// Enregistre auprès du runtime les workers, consommateurs d'événements et sondes de santé des
 /// modules hébergés (avant leur installation et le démarrage du runtime).
-#[cfg_attr(not(feature = "module-ingestion"), allow(unused_variables))]
 pub async fn register_services(
     runtime: &LyxalRuntime,
     client: &Surreal<Any>,
     config: &AppConfig,
 ) -> Result<HostedServices, ServerError> {
     auth::register_services(runtime, client)?;
+    let notification_delivery = notification::register_services(runtime, client, config).await?;
     #[cfg(feature = "module-ingestion")]
     {
         let publication = ingestion::register_services(runtime, client, config).await?;
-        Ok(HostedServices { publication })
+        Ok(HostedServices {
+            publication,
+            notification_delivery,
+        })
     }
     #[cfg(not(feature = "module-ingestion"))]
-    Ok(HostedServices::default())
+    Ok(HostedServices {
+        notification_delivery,
+    })
 }
 
 /// Configuration qui dépend des modules installés (accès, abonnements), avant le démarrage.
@@ -165,5 +176,6 @@ pub async fn complete_services(
 ) -> Result<(), ServerError> {
     #[cfg(feature = "module-ingestion")]
     ingestion::reconcile_publication(runtime, client, services.publication.as_ref()).await?;
+    notification::reconcile_subscriptions(runtime, services.notification_delivery).await?;
     Ok(())
 }
