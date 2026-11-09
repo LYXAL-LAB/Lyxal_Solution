@@ -14,10 +14,11 @@
 -- ----------------------------------------------------------------------------
 
 DEFINE FUNCTION OVERWRITE fn::catalogue_caller($params: object) -> object {
-    LET $check = fn::auth_session_valid({});
-    IF !$check.valid { RETURN { valid: false, system: false, sync: false, tenant: NONE, read: false, manage: false }; };
-    IF $check.system { RETURN { valid: true, system: true, sync: true, tenant: NONE, read: true, manage: true }; };
-    LET $tenant = (SELECT VALUE organization FROM ONLY $auth);
+    -- Contrat public de lyxal_auth : session contrôlée et organisation active
+    LET $context = fn::auth_context({});
+    IF !$context.ok { RETURN { valid: false, system: false, sync: false, tenant: NONE, read: false, manage: false }; };
+    IF $context.data.system { RETURN { valid: true, system: true, sync: true, tenant: NONE, read: true, manage: true }; };
+    LET $tenant = $context.data.organization;
     RETURN {
         valid: true,
         system: false,
