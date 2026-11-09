@@ -946,7 +946,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
             })
             .await?;
         Ok(SecretString::new(format!(
-            "{}/setup?token={}",
+            "{}/setup#token={}",
             self.config.public_url,
             link.value.expose_secret()
         ))?)
@@ -1113,7 +1113,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         let event_id = uuid::Uuid::now_v7().to_string();
         let message = Zeroizing::new(
             serde_json::json!({
-                "action_url": format!("{}/{path}?token={}", self.config.public_url, link.value.expose_secret()),
+                "action_url": format!("{}/{path}#token={}", self.config.public_url, link.value.expose_secret()),
                 "code": code.expose_secret()
             })
             .to_string(),

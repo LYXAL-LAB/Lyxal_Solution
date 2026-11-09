@@ -23,7 +23,7 @@ base64 = "0.22"
 rand_core = { version = "0.6", features = ["getrandom"] }
 zeroize = "1.8"
 # Résolveur DNS en Rust (vérification des domaines par enregistrement TXT)
-hickory-resolver = { version = "0.25", default-features = false, features = ["tokio", "system-config"] }
+hickory-resolver = { version = "0.26", default-features = false, features = ["tokio", "system-config"] }
 # Cérémonies passkeys (WebAuthn), décision D3 du programme, version 0.6 (Q1 du lot 4). L'état
 # des cérémonies est conservé scellé en base (E3, Q2).
 webauthn-rs = { version = "0.6.2", features = ["danger-allow-state-serialisation", "conditional-ui"] }

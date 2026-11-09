@@ -99,6 +99,11 @@ pub struct ServerConfig {
     pub graceful_shutdown_seconds: u64,
     pub max_concurrency: usize,
     pub body_limit_bytes: usize,
+    /// Proxys inverses de confiance (adresses ou réseaux `adresse/préfixe`) : l'adresse du
+    /// client n'est lue dans `X-Forwarded-For` que pour une connexion venant de l'un d'eux. Vide
+    /// par défaut : adresse de la connexion.
+    #[serde(default)]
+    pub trusted_proxies: Vec<crate::net::IpNetwork>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -201,6 +206,7 @@ impl AppConfig {
                     .try_parsing(true)
                     .list_separator(",")
                     // Seules ces clés sont des listes ; les autres restent des chaînes
+                    .with_list_parse_key("server.trusted_proxies")
                     .with_list_parse_key("cors.allowed_origins")
                     .with_list_parse_key("cors.allowed_methods")
                     .with_list_parse_key("cors.allowed_headers"),

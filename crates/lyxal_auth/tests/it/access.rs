@@ -308,7 +308,7 @@ async fn recovery_code_from_the_sealed_event_resets_the_password() {
     assert!(message["action_url"]
         .as_str()
         .expect("lien")
-        .starts_with("https://lyxal.test/recovery?token="));
+        .starts_with("https://lyxal.test/recovery#token="));
 
     // Mot de passe trop faible : refusé avant de consommer le code, qui reste utilisable
     let weak = access

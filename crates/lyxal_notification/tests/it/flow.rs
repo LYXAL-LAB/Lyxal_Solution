@@ -191,7 +191,7 @@ async fn invitation_from_auth_is_delivered_once_and_leaves_no_secret() {
     assert_eq!(received[0].rcpt, "claire@exemple.fr");
     let body = decoded(&received[0].data);
     let start = body
-        .find("https://lyxal.test/invitations/accept?token=")
+        .find("https://lyxal.test/invitations/accept#token=")
         .expect("lien d'acceptation");
     let link: String = body[start..]
         .chars()

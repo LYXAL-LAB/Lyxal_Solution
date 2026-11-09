@@ -53,7 +53,7 @@ pub struct InvitationService<R: KeyResolver> {
 
 impl<R: KeyResolver> InvitationService<R> {
     /// `accept_url` : adresse publique de la page d'acceptation (`https://…`), complétée par
-    /// `?token=<jeton>`.
+    /// `#token=<jeton>` (fragment : jamais envoyé au serveur ni journalisé).
     pub fn new(
         store: AuthStore,
         crypto: Arc<CryptoEngine<R>>,
@@ -85,7 +85,7 @@ impl<R: KeyResolver> InvitationService<R> {
         // Objet JSON { action_url } écrit directement (l'URL et le jeton ne contiennent ni
         // guillemet ni barre oblique inverse) : aucune copie non effaçable du jeton
         let payload = Zeroizing::new(format!(
-            "{{\"action_url\":\"{}?token={}\"}}",
+            "{{\"action_url\":\"{}#token={}\"}}",
             self.accept_url,
             token.expose_secret()
         ));

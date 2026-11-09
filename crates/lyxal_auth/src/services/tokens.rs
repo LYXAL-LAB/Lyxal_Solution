@@ -11,6 +11,11 @@ use crate::error::{AuthError, AuthResult};
 use crate::models::SessionIssued;
 use crate::services::keys::{access_name, random_bytes, ActiveSigningKey};
 
+/// Émetteur (`iss`) des jetons d'accès.
+pub const ACCESS_TOKEN_ISSUER: &str = "lyxal_auth";
+/// Audience (`aud`) des jetons d'accès : la base de l'installation.
+pub const ACCESS_TOKEN_AUDIENCE: &str = "lyxal";
+
 /// Jetons remis au client. Aucune valeur n'est conservée en clair par Lyxal.
 pub struct IssuedTokens {
     /// Jeton d'accès (JWT).
@@ -83,7 +88,8 @@ pub fn access_token(
         .or(issued.application.as_ref())
         .map(|id| id.to_sql());
     let claims = serde_json::json!({
-        "iss": "lyxal_auth",
+        "iss": ACCESS_TOKEN_ISSUER,
+        "aud": ACCESS_TOKEN_AUDIENCE,
         "ns": namespace,
         "db": database,
         "ac": access_name(&key.slot),
@@ -149,8 +155,8 @@ pub fn token_slot(token: &SecretString) -> AuthResult<String> {
         .ok_or(AuthError::Rejected("AUTH_SESSION_REQUIRED"))
 }
 
-/// Vérifie la signature HS256 (temps constant), l'en-tête, l'espace de noms, la base et la
-/// période de validité d'un jeton d'accès.
+/// Vérifie la signature HS256 (temps constant), l'en-tête, l'émetteur, l'audience, l'espace de
+/// noms, la base, la période de validité et la forme des revendications d'un jeton d'accès.
 pub fn verify_access_token(
     key: &ActiveSigningKey,
     token: &SecretString,
@@ -185,6 +191,9 @@ pub fn verify_access_token(
         .as_secs() as i64;
     let exp = claims["exp"].as_i64().ok_or_else(refused)?;
     let nbf = claims["nbf"].as_i64().unwrap_or(0);
+    if claims["iss"] != ACCESS_TOKEN_ISSUER || claims["aud"] != ACCESS_TOKEN_AUDIENCE {
+        return Err(refused());
+    }
     if exp <= now
         || nbf > now + 60
         || claims["ns"] != namespace
@@ -197,15 +206,13 @@ pub fn verify_access_token(
         slot: key.slot.clone(),
         session: claims["id"].as_str().ok_or_else(refused)?.to_string(),
         pv: claims["pv"].as_i64().ok_or_else(refused)?,
+        // Revendication signée par Lyxal : un tableau de chaînes, sinon le jeton est refusé
         permissions: claims["permissions"]
             .as_array()
-            .map(|items| {
-                items
-                    .iter()
-                    .filter_map(|p| p.as_str().map(str::to_string))
-                    .collect()
-            })
-            .unwrap_or_default(),
+            .ok_or_else(refused)?
+            .iter()
+            .map(|p| p.as_str().map(str::to_string).ok_or_else(refused))
+            .collect::<AuthResult<Vec<String>>>()?,
     })
 }
 
