@@ -56,6 +56,11 @@ DEFINE FIELD OVERWRITE custom_data ON TABLE auth_organization
 DEFINE FIELD OVERWRITE custom_data.* ON TABLE auth_organization
     TYPE any;
 
+DEFINE FIELD OVERWRITE locale ON TABLE auth_organization
+    TYPE option<string>
+    ASSERT $value IS NONE OR fn::validation_locale($value, false).value == $value
+    COMMENT "Langue par défaut de l'organisation (étiquette BCP 47 canonique) ; ignorée si inactive dans lyxal_i18n";
+
 DEFINE FIELD OVERWRITE mfa_required ON TABLE auth_organization
     TYPE bool
     DEFAULT false

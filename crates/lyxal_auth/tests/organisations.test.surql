@@ -84,6 +84,13 @@ RETURN fn::auth_organization_list({}).data.slug == ["alpha", "beta"]
 -- en tant que: alpha_admin
 RETURN fn::auth_organization_update({ organization: test_ref:alpha.rid, name: "Alpha Bâtiment", description: "Entreprise générale" }).data.{ name, description } == { name: "Alpha Bâtiment", description: "Entreprise générale" };
 
+-- test: langue par défaut de l'organisation : forme canonique, effacement, valeur invalide
+-- en tant que: alpha_admin
+RETURN fn::auth_organization_update({ organization: test_ref:alpha.rid, locale: "fr_ca" }).data.locale == "fr-CA"
+    AND fn::auth_organization_update({ organization: test_ref:alpha.rid, name: "Alpha Bâtiment" }).data.locale == "fr-CA"
+    AND fn::auth_organization_update({ organization: test_ref:alpha.rid, locale: "français" }).error.code == "AUTH_INVALID_PARAMETERS"
+    AND fn::auth_organization_update({ organization: test_ref:alpha.rid, locale: NONE }).data.locale == NONE;
+
 -- test: l'administrateur d'alpha ne modifie pas beta
 -- en tant que: alpha_admin
 RETURN fn::auth_organization_update({ organization: test_ref:beta.rid, name: "Piratée" }).error.code == "AUTH_PERMISSION_DENIED";

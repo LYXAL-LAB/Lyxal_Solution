@@ -71,6 +71,41 @@ fn crypto() -> Arc<CryptoEngine<StaticKeyResolver>> {
     ))))
 }
 
+/// Code et libellé de l'erreur métier renvoyée par un changement vers une organisation inconnue.
+async fn error_label(router: &axum::Router, token: &str, accept: Option<&str>) -> (String, String) {
+    let mut request = Request::builder()
+        .method("POST")
+        .uri("/api/v1/auth/session/organization")
+        .header("content-type", "application/json")
+        .header("authorization", format!("Bearer {token}"));
+    if let Some(accept) = accept {
+        request = request.header("accept-language", accept);
+    }
+    let request = request
+        .body(Body::from(
+            json!({ "organization": "auth_organization:inconnue" }).to_string(),
+        ))
+        .expect("requête");
+    let response = tower::ServiceExt::oneshot(router.clone(), request)
+        .await
+        .expect("réponse");
+    assert!(response.status().is_client_error());
+    let bytes = to_bytes(response.into_body(), 1024 * 1024)
+        .await
+        .expect("corps");
+    let body: Value = serde_json::from_slice(&bytes).expect("json");
+    (
+        body["error"]["code"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string(),
+        body["error"]["label"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string(),
+    )
+}
+
 async fn call(
     router: &axum::Router,
     method: &str,
@@ -384,41 +419,57 @@ async fn login_sessions_and_logout_through_http() {
         assert_eq!(denied["error"]["code"], "AUTH_PERMISSION_DENIED", "{uri}");
     }
 
-    // Erreur métier renvoyée par SurrealQL : rendue dans la langue de la requête
-    let mut labels = Vec::new();
-    for language in ["fr", "en"] {
-        let request = Request::builder()
-            .method("POST")
-            .uri("/api/v1/auth/session/organization")
-            .header("content-type", "application/json")
-            .header("accept-language", format!("{language}-XX,{language};q=0.9"))
-            .header("authorization", format!("Bearer {access}"))
-            .body(Body::from(
-                json!({ "organization": "auth_organization:inconnue" }).to_string(),
-            ))
-            .expect("requête");
-        let response = tower::ServiceExt::oneshot(router.clone(), request)
-            .await
-            .expect("réponse");
-        assert!(response.status().is_client_error());
-        let bytes = to_bytes(response.into_body(), 1024 * 1024)
-            .await
-            .expect("corps");
-        let body: Value = serde_json::from_slice(&bytes).expect("json");
-        labels.push((
-            body["error"]["code"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string(),
-            body["error"]["label"]
-                .as_str()
-                .unwrap_or_default()
-                .to_string(),
-        ));
-    }
-    assert!(labels[0].0.starts_with("AUTH_"), "{labels:?}");
-    assert_eq!(labels[0].0, labels[1].0, "{labels:?}");
-    assert_ne!(labels[0].1, labels[1].1, "libellé traduit : {labels:?}");
+    // Erreur métier renvoyée par SurrealQL : rendue dans la langue choisie par lyxal_i18n
+    let fr = error_label(&router, &access, Some("fr-XX,fr;q=0.9")).await;
+    let en = error_label(&router, &access, Some("en-XX,en;q=0.9")).await;
+    assert!(fr.0.starts_with("AUTH_"), "{fr:?}");
+    assert_eq!(fr.0, en.0);
+    assert_ne!(fr.1, en.1, "libellé traduit : {fr:?} {en:?}");
+    // Poids de Accept-Language : de (inactif) écarté, en préféré à fr
+    assert_eq!(
+        error_label(&router, &access, Some("de;q=0.5, fr;q=0.1, en;q=0.8")).await,
+        en
+    );
+    // Sans langue : langue par défaut de l'installation
+    assert_eq!(error_label(&router, &access, None).await, fr);
+    // La langue de l'identité passe avant Accept-Language
+    client
+        .query("UPDATE auth_identity SET traits.locale = 'fr-CA' WHERE id = (SELECT VALUE identity FROM ONLY auth_credential_identifier WHERE value = 'admin@lyxal.test' LIMIT 1)")
+        .await
+        .expect("langue de l'identité")
+        .check()
+        .expect("langue de l'identité modifiée");
+    assert_eq!(error_label(&router, &access, Some("en")).await, fr);
+    client
+        .query("UPDATE auth_identity UNSET traits.locale")
+        .await
+        .expect("langue retirée")
+        .check()
+        .expect("langue de l'identité retirée");
+    // Langue de l'organisation active, avant Accept-Language
+    client
+        .query("CREATE auth_organization:langue CONTENT { slug: 'langue', name: 'Langue', locale: 'en' };
+                RETURN fn::auth_organization_member_add({ organization: 'auth_organization:langue', identity: <string> (SELECT VALUE identity FROM ONLY auth_credential_identifier WHERE value = 'admin@lyxal.test' LIMIT 1), roles: [] }).ok;")
+        .await
+        .expect("organisation")
+        .check()
+        .expect("organisation créée");
+    let (status, switched) = call(
+        &router,
+        "POST",
+        "/api/v1/auth/session/organization",
+        Some(&access),
+        Some(json!({ "organization": "auth_organization:langue" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{switched}");
+    let in_organization = switched["data"]["access_token"]
+        .as_str()
+        .expect("jeton de l'organisation")
+        .to_string();
+    assert_eq!(error_label(&router, &in_organization, Some("fr")).await, en);
+    // Le changement d'organisation remplace la session : la suite utilise le nouveau jeton
+    let access = in_organization;
 
     // Sans jeton : refusé
     let (status, _) = call(&router, "GET", "/api/v1/auth/sessions", None, None).await;

@@ -118,6 +118,7 @@ async fn invitation_from_auth_is_delivered_once_and_leaves_no_secret() {
     let auth = AuthStore::new(client.clone());
     let organization = auth
         .organization_create(OrganizationCreateParams {
+            locale: None,
             branding: None,
             custom_data: None,
             slug: "alpha".into(),

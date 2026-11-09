@@ -118,7 +118,7 @@ master data (`error/<thème>/`) ; écriture principale vérifiée (`I18N_WRITE_F
 
 | Lot | Contenu | Touche |
 | :- | :--- | :--- |
-| **1** | **Référentiel des langues et choix de la langue.** Crate et module hébergé ; outil de génération du référentiel depuis CLDR (seed versionné) ; `i18n_settings`, `i18n_locale`, fonctions Langues ; règle `language_tag` (BCP 47 complet) dans `lyxal_core` (Q6) ; champ `locale` de `auth_organization` ; hôte : `Accept-Language` avec poids, choix par `fn::i18n_locale_resolve` à la place du code actuel ; `lyxal_error` : défaut `default_language` aligné sur la résolution (`fr`) | `lyxal_i18n` (nouveau), `lyxal_core`, `lyxal_auth`, `lyxal_error`, `apps/lyxal-server` |
+| **1** | **Réalisé.** Référentiel des langues CLDR 49 (924 langues, `fr` et `en` actives), réglages, choix de la langue (`fn::i18n_locale_resolve`), règle `locale` étendue au BCP 47, `auth_organization.locale`, langue des erreurs de l'hôte. État : `crates/lyxal_i18n/README.md` | `lyxal_i18n`, `lyxal_core`, `lyxal_auth`, `lyxal_error`, `apps/lyxal-server` |
 | **2** | **Traductions.** Espaces de noms, clés, traductions, surcharges par organisation, états, indicateur obsolète, contrôles, permissions, résolution avec repli et clé manquante, événements, banc complet | `lyxal_i18n` |
 | **3** | **Rendu.** `Formatter` ICU4X (MF1, pluriels, nombres, dates avec fuseau, devises), données générées et figées, sonde de santé (versions CLDR et tz) ; filtres MiniJinja de `lyxal_notification` ; vecteurs de test CLDR | `lyxal_i18n`, `lyxal_notification` |
 | **4** | **Import et export.** JSON MF1 et XLIFF 2 par `lyxal_parsing`, protection des textes relus, commandes de l'hôte | `lyxal_i18n`, `apps/lyxal-server` |

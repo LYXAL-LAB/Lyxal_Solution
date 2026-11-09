@@ -11,7 +11,7 @@
 -- Paramètres
 --   code (requis, ^[A-Z][A-Z0-9_]+$), module (requis, ^[a-z][a-z0-9_-]+$), message (requis)
 --   domain, category (défaut business), severity (défaut error), http_status (400 à 599)
---   translations, default_language (défaut en), retryable (défaut false), log_occurrence (défaut true), documentation, metadata, enabled (défaut true), language
+--   translations, default_language (défaut fr), retryable (défaut false), log_occurrence (défaut true), documentation, metadata, enabled (défaut true), language
 --
 -- Valeur renvoyée : fn::result_ok(définition)
 --
@@ -34,7 +34,7 @@ DEFINE FUNCTION OVERWRITE fn::error_definition_create(
         severity: { pipeline: [{ rule: "enum", options: { allowed: ["info", "warning", "error", "critical"], case_sensitive: false } }], default: "error" },
         http_status: { pipeline: [{ rule: "integer", options: { min_value: 400, max_value: 599 } }] },
         translations: { pipeline: [{ rule: "is_object" }], default: {} },
-        default_language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "en" },
+        default_language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" },
         retryable: { pipeline: [{ rule: "boolean" }], default: false },
         log_occurrence: { pipeline: [{ rule: "boolean" }], default: true },
         documentation: { pipeline: [{ rule: "is_object" }], default: {} },

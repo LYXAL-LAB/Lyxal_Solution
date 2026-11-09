@@ -157,9 +157,9 @@ DEFINE FIELD OVERWRITE translations
 DEFINE FIELD OVERWRITE default_language
     ON TABLE error_definition
     TYPE string
-    DEFAULT "en"
+    DEFAULT "fr"
     VALUE string::lowercase(string::trim($value))
-    ASSERT string::matches($value, "^[a-z]{2}(-[a-z]{2})?$")
+    ASSERT string::matches($value, "^[a-z]{2}$")
     COMMENT "Langue utilisée lorsqu'une traduction demandée est absente";
 
 

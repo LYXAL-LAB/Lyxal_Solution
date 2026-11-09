@@ -51,6 +51,7 @@ async fn organization_identity_membership_and_roles_round_trip() {
 
     let organization = store
         .organization_create(OrganizationCreateParams {
+            locale: None,
             branding: None,
             custom_data: None,
             slug: "alpha".into(),

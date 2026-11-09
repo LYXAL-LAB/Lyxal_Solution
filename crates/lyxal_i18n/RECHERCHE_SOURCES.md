@@ -1,9 +1,7 @@
 # `lyxal_i18n` — recherche de sources open source
 
-Document de travail du programme `lyxal_i18n` (crate du Noyau Technique, rang 2 de
-[`docs/14-roadmap/ROADMAP_NOYAU.md`](../../docs/14-roadmap/ROADMAP_NOYAU.md)). Le crate n'existe
-pas encore : ce dossier ne contient que ce document. Il est réduit aux sources retenues quand le
-crate est créé (lot 1 du plan `implementation_plan.md` à la racine).
+Document de travail du programme `lyxal_i18n` (crate du Noyau Technique). Il est réduit aux sources retenues à la clôture du programme (lot 6 du plan
+`implementation_plan.md` à la racine).
 
 Recherche du 9 novembre 2026. Les versions des crates viennent de l'API crates.io à cette date ;
 les autres informations de recherches web. Les pages de cldr.unicode.org, docs.rs,

@@ -157,8 +157,9 @@ IF !record::exists(auth_permission:⟨notification.read⟩) THEN (
   politique, données des modules sur leurs champs `tenant`) ou `UNSET` (traces : `inviter`,
   `accepted_by`, `invited_by`, `granted_by`, la trace reste sans désigner la personne).
 * **Langue des messages** : l'hôte résout toute erreur, y compris une erreur métier renvoyée par
-  SurrealQL, dans la langue de la requête (`Accept-Language`, sinon le trait `locale` de
-  l'identité du jeton, sinon `fr`).
+  SurrealQL, dans la langue choisie par `fn::i18n_locale_resolve` (`lyxal_i18n`) parmi le trait
+  `locale` de l'identité du jeton, la langue de son organisation active (`auth_organization.locale`,
+  étiquette BCP 47) et `Accept-Language` (par poids) ; langue par défaut de l'installation sinon.
 
 ## 3 bis. Double facteur et niveau d'assurance
 

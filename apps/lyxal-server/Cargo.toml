@@ -44,6 +44,7 @@ lyxal_runtime.workspace = true
 lyxal_event.workspace = true
 lyxal_auth.workspace = true
 lyxal_notification.workspace = true
+lyxal_i18n.workspace = true
 lyxal_crypto.workspace = true
 lyxal_pipeline_ingestion = { workspace = true, optional = true }
 

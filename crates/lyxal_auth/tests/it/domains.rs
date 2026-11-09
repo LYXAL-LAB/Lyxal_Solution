@@ -44,6 +44,7 @@ async fn domain_is_verified_only_with_the_published_challenge() {
     let store = installed_store().await;
     let organization = store
         .organization_create(OrganizationCreateParams {
+            locale: None,
             branding: None,
             custom_data: None,
             slug: "alpha".into(),

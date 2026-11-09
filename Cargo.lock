@@ -3184,6 +3184,7 @@ dependencies = [
  "lyxal_crypto",
  "lyxal_error",
  "lyxal_event",
+ "lyxal_i18n",
  "lyxal_notification",
  "lyxal_pipeline_ingestion",
  "lyxal_runtime",
@@ -3284,6 +3285,16 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "lyxal_i18n"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "lyxal_surreal",
+ "surrealdb",
+ "tokio",
 ]
 
 [[package]]
