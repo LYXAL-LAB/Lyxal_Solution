@@ -147,9 +147,11 @@ master data (`error/<thème>/`) ; écriture principale vérifiée (`I18N_WRITE_F
 * Licences : ICU4X (Unicode-3.0), `jiff` (MIT), lecteur FormatJS (MIT) ; Tolgee, Weblate et
   Pontoon en conception seule ; mentions d'origine dans le `README.md`.
 
-## 8. Questions au CTO
+## 8. Décisions du CTO (9 novembre 2026)
 
-| # | Question | Recommandation |
+Q1 à Q7 validées selon les recommandations ci-dessous.
+
+| # | Question | Décision |
 | :- | :--- | :--- |
 | Q1 | Format des messages | **ICU MessageFormat 1** (sous-ensemble), champ `syntax` pour passer plus tard à MessageFormat 2. Alternatives : MF2 (pas de formateur Rust mûr), Fluent (peu d'outils de traduction) |
 | Q2 | Fuseaux horaires | `lyxal_i18n` **affiche** une date dans un fuseau donné ; les conversions et préférences de fuseau restent au futur module décrit dans `Lyxal_timezone/` |
