@@ -41,7 +41,8 @@ Suite : lot 5 (bascule de `lyxal_catalogue` et `lyxal_pipeline_ingestion`), lot 
   (`auth_organization.mfa_required`, appliqué à l'entrée dans l'organisation), rôle
   (`mfa.required_roles`, Q4) → action imposée `configure_mfa`, enrôlement possible depuis le
   parcours de connexion (sans session) ;
-* **montée en assurance** d'une session AAL1 vers AAL2 ;
+* **réauthentification** dans une session ouverte, au niveau actuel (mot de passe, ou second
+  facteur) ou avec montée en assurance d'AAL1 vers AAL2 ;
 * **actions sensibles** : changement de mot de passe et d'adresse, gestion des facteurs, clés
   d'API, révocation des autres sessions → AAL la plus haute disponible (`highest_available`) **et**
   authentification récente (`mfa.privileged_max_age_seconds`, 15 min) ;
@@ -63,7 +64,7 @@ adaptatif, codes par SMS (V2, `ROADMAP.md`) ; bascule des autres modules (lot 5)
 | :--- | :--- |
 | `auth_credential` | `type` : `password`, `totp`, `passkey` ; `state` (`pending` : TOTP non confirmé, purgé après `flow.ttl_seconds` ; `active`) ; `label` (passkeys) ; `credential_id` (option, identifiant WebAuthn en Base64 URL, **unique pour l'installation**) ; `public_data` : TOTP `{ algorithm, digits, step_seconds, last_step }`, passkey (clé publique sérialisée par `webauthn-rs`, compteur, indicateurs `backup_eligible` / `backup_state`, `aaguid`) ; `secret_data` (scellé, illisible) : secret TOTP. Index unique (`identity`, `type`) remplacé par `slot_key` unique par identité (`password`, `totp`, `passkey:<credential_id>`) |
 | `auth_recovery_code` (nouvelle, E1) | `identity` (`REFERENCE`, cascade), `batch` (UUID v7 de la génération), `code_hash` (HMAC-SHA256 avec la clé `code_pepper`, `PERMISSIONS FOR select NONE`), `used_at`, `created_at` ; index unique `code_hash` |
-| `auth_flow` | types `login` (état `mfa_required` ajouté), `passkey_login` (`started` → `completed`), `mfa_enrollment` (`started` → `completed`, enrôlement TOTP ou passkey), `step_up` (`started` → `completed`) ; `secret_state` (scellé, illisible, E3) ; `attempts` déjà présent (≤ `mfa.max_attempts`) |
+| `auth_flow` | types `login` (état `mfa_required` ajouté), `passkey_login` (`started` → `completed`), `mfa_enrollment` (`started` → `completed`, enrôlement TOTP ou passkey), `reauthentication` (`started` → `completed`, défi passkey) ; `secret_state` (scellé, illisible, E3) ; `attempts` déjà présent (≤ `mfa.max_attempts`) |
 | `auth_identity` | `available_aal` recalculé par `DEFINE EVENT` sur `auth_credential` (2 dès qu'un TOTP ou une passkey **actif** existe ; les codes de secours seuls ne comptent pas) |
 | `auth_session` | `aal` 1 ou 2, `amr` `[{ method, at }]` (méthodes : `password`, `totp`, `passkey`, `recovery_code`) ; `authenticated_at` (dernière authentification, pour l'authentification récente) |
 | `auth_permission` | `min_aal` (1 ou 2, défaut 1) |
@@ -83,8 +84,10 @@ Connexion (mot de passe juste)
 Connexion sans mot de passe (passkey découvrable, vérification de l'utilisateur)
   options (défi) → réponse → identité retrouvée par credential_id → session AAL2, amr [passkey] (Q3)
 
-Montée en assurance (session AAL1, identité AAL2 disponible)
-  facteur présenté → session.aal = 2, amr complété, authenticated_at = maintenant, nouveau jeton
+Réauthentification (session ouverte, routes /session/reauthenticate*)
+  mot de passe          → authenticated_at = maintenant (aal inchangé)
+  second facteur        → authenticated_at = maintenant, aal = 2 (montée en assurance si la session était AAL1)
+  amr complété, nouveau jeton
 ```
 
 * **TOTP** : secret de 20 octets (`TotpSecret::generate`, SHA-1, 6 chiffres, 30 s : seuls
@@ -110,7 +113,12 @@ Montée en assurance (session AAL1, identité AAL2 disponible)
 * **Actions sensibles** (`fn::auth_assurance_check`) : session AAL2 si l'identité peut l'atteindre
   (`highest_available`) et dernière authentification de moins de
   `mfa.privileged_max_age_seconds` ; sinon `AUTH_AAL_INSUFFICIENT` ou
-  `AUTH_REAUTHENTICATION_REQUIRED`, que l'interface résout par la montée en assurance.
+  `AUTH_REAUTHENTICATION_REQUIRED`, que l'interface résout par la réauthentification :
+  session AAL2 ou identité AAL2 disponible → second facteur exigé ; identité sans second
+  facteur → mot de passe. Une réauthentification réussie, et elle seule, met à jour
+  `authenticated_at`. Les échecs de réauthentification sont comptés comme ceux de la
+  connexion (mot de passe : identifiant et adresse IP ; second facteur : `mfa`) et verrouillent
+  de la même façon.
 * **Dernier facteur** : quand le double facteur est exigé, retirer le dernier facteur est refusé
   (`AUTH_MFA_LAST_FACTOR`) ; un administrateur peut toujours remettre à zéro (l'action
   `configure_mfa` est alors posée).
@@ -122,8 +130,9 @@ Montée en assurance (session AAL1, identité AAL2 disponible)
 * Le claim `aal` du jeton reflète la session à l'émission ; la base contrôle toujours la valeur
   enregistrée (`$auth.aal`), ce qui rend la montée en assurance effective immédiatement, même
   pour un jeton déjà émis.
-* Montée en assurance et changement d'organisation conservent `authenticated_at` de la
-  session ; le renouvellement ne le modifie pas (seule une authentification le fait).
+* `authenticated_at` n'est mis à jour que par une authentification réussie : connexion et
+  réauthentification (mot de passe ou second facteur). Le renouvellement et le changement
+  d'organisation le conservent.
 * `fn::auth_context` renvoie `aal`, `amr` et `authenticated_at`.
 
 ## 5. Fonctions publiques (`functions/mfa/`, `fn::auth_*($params: object)`)
@@ -140,7 +149,7 @@ résultats de vérification calculés en Rust : elles sont réservées à la **s
 | Codes de secours | `auth_mfa_recovery_codes_replace` (empreintes), `auth_mfa_recovery_code_use` (consommation atomique) | système |
 | Tentatives | `auth_mfa_failure_check`, `auth_mfa_failure_record`, `auth_mfa_failure_reset` | système |
 | Cérémonies | `auth_flow_state_save` / `auth_flow_state_take` (état scellé, lu une seule fois) | système |
-| Sessions | `auth_session_step_up` (AAL2, `amr`, `authenticated_at`), `auth_assurance_check` (`{ min_aal: 1 \| 2 \| "highest_available", max_age_seconds }`, utilisable par tout module) | système ; tous |
+| Sessions | `auth_session_reauthenticate` (`authenticated_at`, `amr`, AAL2 si second facteur), `auth_assurance_check` (`{ min_aal: 1 \| 2 \| "highest_available", max_age_seconds }`, utilisable par tout module) | système ; tous |
 | Contexte (étendu) | `auth_context` (`amr`, `authenticated_at`), `auth_has_permission` (`min_aal`), `auth_session_open` (AAL, exigences de double facteur) | tous ; système |
 
 ## 6. Contrats Rust (`src/`)
@@ -158,7 +167,7 @@ résultats de vérification calculés en Rust : elles sont réservées à la **s
   * `LoginOutcome::MfaRequired { flow, methods }` ;
   * `complete_login_mfa(flow, MfaProof)` ;
   * `passkey_login_options` / `passkey_login` ;
-  * `step_up_options` / `step_up` ;
+  * `reauthenticate_options` / `reauthenticate` (`ReauthProof` : mot de passe ou `MfaProof`) ;
   * enrôlement depuis un parcours de connexion (`configure_mfa`).
 * `MfaProof` : `Totp(SecretString)`, `RecoveryCode(SecretString)`, `Passkey(PublicKeyCredential)`.
 * Résultats nommés (`TotpEnrollment { flow, otpauth_uri: SecretString }`,
@@ -181,7 +190,7 @@ Routes `/api/v1/auth` (🔒 : jeton d'une session interactive ; ✱ : action sen
 | `POST /mfa/totp` 🔒✱, `POST /mfa/totp/confirm` 🔒✱, `DELETE /mfa/totp` 🔒✱ | enrôlement, confirmation, suppression |
 | `POST /mfa/passkeys/options` 🔒✱, `POST /mfa/passkeys` 🔒✱, `PATCH /mfa/passkeys/{id}` 🔒, `DELETE /mfa/passkeys/{id}` 🔒✱ | ajout, nom, suppression |
 | `POST /mfa/recovery-codes` 🔒✱ | génération (codes affichés une seule fois) |
-| `POST /session/step-up/options` 🔒, `POST /session/step-up` 🔒 | montée en assurance → nouveau jeton |
+| `POST /session/reauthenticate/options` 🔒, `POST /session/reauthenticate` 🔒 | réauthentification (mot de passe ou second facteur ; montée en assurance si second facteur) → nouveau jeton |
 
 * Les routes d'enrôlement acceptent aussi un parcours de connexion en attente de
   `configure_mfa` (champ `flow`) à la place du jeton.
@@ -202,7 +211,7 @@ en, catégorie, statut HTTP, réessayable.
 `auth.mfa.enrolled`, `auth.mfa.removed` (dont la remise à zéro par un administrateur),
 `auth.mfa.recovery_codes_generated`, `auth.mfa.recovery_code_used` (codes restants),
 `auth.mfa.failed` (empreinte de l'identité, méthode), `auth.passkey.clone_detected`,
-`auth.session.step_up`. Les événements d'alerte (Q5) portent `recipient_email`,
+`auth.session.reauthenticated` (méthode, AAL atteint). Les événements d'alerte (Q5) portent `recipient_email`,
 `recipient_locale` et `recipient_name`, comme les événements du lot 3 ; aucun code, secret ni
 clé dans une charge utile.
 
@@ -231,7 +240,8 @@ Réutilisées : `fn::validation_object_execute` (`enum`, `record`, `required_str
     transaction ;
   * parcours `mfa_required` (aucune session avant le second facteur, tentatives, verrouillage) ;
   * `configure_mfa` par politique, organisation et rôle ;
-  * montée en assurance ;
+  * réauthentification par mot de passe (AAL inchangé) et par second facteur (AAL2) ;
+    `authenticated_at` mis à jour seulement par elle ;
   * `fn::auth_assurance_check` (AAL, ancienneté) ;
   * `min_aal` d'une permission ;
   * dernier facteur protégé ;
@@ -246,8 +256,9 @@ Réutilisées : `fn::validation_object_execute` (`enum`, `record`, `required_str
   * connexion en deux temps de bout en bout ;
   * alerte reçue par le serveur SMTP de test de `lyxal_notification`.
 * **Serveur** :
-  * routes `/api/v1/auth/mfa*`, `/flows/{flow}/mfa`, montée en assurance ;
-  * action sensible refusée puis acceptée après montée en assurance ;
+  * routes `/api/v1/auth/mfa*`, `/flows/{flow}/mfa`, `/session/reauthenticate*` ;
+  * action sensible refusée puis acceptée après réauthentification (identité avec et sans
+    second facteur) ;
   * jeton de session AAL1 refusé sur une permission `min_aal: 2`.
 * `scripts/ci/ci_local.sh` complet ; revue ciblée OWASP ASVS niveau 2 (V2.7, V2.8, V2.9 :
   facteurs hors bande, TOTP, cryptographie de l'authentificateur).
