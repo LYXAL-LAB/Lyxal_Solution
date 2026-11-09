@@ -5,7 +5,7 @@
 -- ============================================================================
 -- Modèle : Logto `organizations`, Keycloak `ORG`. Le locataire de toute donnée métier est une
 -- organisation (`tenant` = record<auth_organization>). Pas de suppression physique : état
--- `deleted`, purge planifiée au lot 3.
+-- `deleted` ; la purge différée des données est prévue par la feuille de route (ROADMAP.md).
 
 DEFINE TABLE OVERWRITE auth_organization
     TYPE NORMAL
@@ -59,7 +59,7 @@ DEFINE FIELD OVERWRITE custom_data.* ON TABLE auth_organization
 DEFINE FIELD OVERWRITE mfa_required ON TABLE auth_organization
     TYPE bool
     DEFAULT false
-    COMMENT "Double facteur exigé pour les membres (appliqué au lot 4)";
+    COMMENT "Double facteur exigé pour les membres";
 
 DEFINE FIELD OVERWRITE created_at ON TABLE auth_organization
     TYPE datetime

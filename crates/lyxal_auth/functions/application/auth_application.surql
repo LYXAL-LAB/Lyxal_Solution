@@ -109,12 +109,12 @@ DEFINE FUNCTION OVERWRITE fn::auth_application_secret_add($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { secret_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     LET $application = (SELECT id, tenant, type FROM ONLY $p.application);
     IF $application == NONE { RETURN fn::error_result("AUTH_APPLICATION_NOT_FOUND", $p.language, {}); };
     IF !fn::auth_application_can({ tenant: $application.tenant }) { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, { permission: "auth.application.manage" }); };
     IF $application.type != "machine" { RETURN fn::error_result("AUTH_INVALID_PARAMETERS", $p.language, { fields: { application: ["machine application required"] } }); };
-    LET $created = (CREATE ONLY auth_application_secret CONTENT { application: $application.id, secret_hash: string::lowercase($p.secret_hash), prefix: $p.prefix, expires_at: $p.expires_at });
+    LET $created = (CREATE ONLY auth_application_secret CONTENT { application: $application.id, secret_hash: $p.secret_hash, prefix: $p.prefix, expires_at: $p.expires_at });
     IF $created == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_application_secret" }); };
     RETURN fn::result_ok({ id: $created.id, prefix: $created.prefix, expires_at: $created.expires_at });
 } COMMENT "Ajoute un secret client à une application machine ({ application, secret_hash, prefix, expires_at }) ; plusieurs secrets permettent une rotation sans coupure. Permission de gestion des applications";
@@ -187,11 +187,11 @@ DEFINE FUNCTION OVERWRITE fn::auth_service_session_create($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { secret_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
     LET $application = (SELECT id, tenant, type, state FROM ONLY auth_application WHERE client_id = $p.client_id LIMIT 1);
-    LET $secret = (SELECT id, application, expires_at, revoked_at FROM ONLY auth_application_secret WHERE secret_hash = string::lowercase($p.secret_hash) LIMIT 1);
+    LET $secret = (SELECT id, application, expires_at, revoked_at FROM ONLY auth_application_secret WHERE secret_hash = $p.secret_hash LIMIT 1);
     -- Une seule erreur pour client inconnu, secret faux, révoqué ou expiré
     IF $application == NONE OR $application.type != "machine" OR $secret == NONE OR $secret.application != $application.id
         OR $secret.revoked_at IS NOT NONE OR ($secret.expires_at IS NOT NONE AND $secret.expires_at <= $now) {
@@ -274,7 +274,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_api_key_create($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { key_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     LET $check = fn::auth_session_valid({});
     IF !$check.valid { RETURN fn::error_result($check.code, $p.language, {}); };
     LET $sess = IF $check.system { NONE } ELSE { (SELECT identity, organization, kind FROM ONLY $auth) };
@@ -288,7 +288,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_api_key_create($params: object) {
     LET $excess = array::filter($p.permissions, |$code| $code NOT IN $held);
     IF array::len($excess) > 0 { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, { permissions: $excess }); };
     LET $created = (CREATE ONLY auth_api_key CONTENT {
-        identity: $sess.identity, name: $p.name, key_hash: string::lowercase($p.key_hash), prefix: $p.prefix,
+        identity: $sess.identity, name: $p.name, key_hash: $p.key_hash, prefix: $p.prefix,
         permissions: array::sort(array::distinct($p.permissions)), organization: $sess.organization, expires_at: $p.expires_at
     });
     IF $created == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_api_key" }); };
@@ -346,10 +346,10 @@ DEFINE FUNCTION OVERWRITE fn::auth_api_key_session_create($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { key_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
-    LET $key = (SELECT * FROM ONLY auth_api_key WHERE key_hash = string::lowercase($p.key_hash) LIMIT 1);
+    LET $key = (SELECT * FROM ONLY auth_api_key WHERE key_hash = $p.key_hash LIMIT 1);
     IF $key == NONE OR $key.revoked_at IS NOT NONE { RETURN fn::error_result("AUTH_API_KEY_INVALID", $p.language, {}); };
     IF $key.expires_at IS NOT NONE AND $key.expires_at <= $now { RETURN fn::error_result("AUTH_API_KEY_EXPIRED", $p.language, {}); };
     -- Permissions : celles de la clé, limitées à celles que le propriétaire détient encore

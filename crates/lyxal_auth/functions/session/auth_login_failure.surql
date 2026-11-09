@@ -45,7 +45,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_login_failure_record($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { identifier_hash: { pipeline: [{ rule: "lowercase" }] }, ip_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
     LET $window = duration::from_secs(fn::auth_policy_value({ theme: "lockout", key: "window_seconds", default: 900 }));
@@ -57,7 +57,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_login_failure_record($params: object) {
     LET $keys = array::filter([["identifier", $p.identifier_hash], ["ip", $p.ip_hash]], |$k| $k[1] IS NOT NONE);
     LET $results = array::map($keys, |$k| {
         LET $kind = $k[0];
-        LET $hash = string::lowercase($k[1]);
+        LET $hash = $k[1];
         LET $row = (SELECT * FROM ONLY auth_login_failure WHERE kind = $kind AND key_hash = $hash LIMIT 1);
         -- Fenêtre écoulée : le compteur repart de zéro
         LET $fresh = $row == NONE OR $row.window_start + $window <= $now;
@@ -75,7 +75,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_login_failure_record($params: object) {
         event_id: rand::uuid::v7(),
         event_type: "auth.login.failed",
         producer: "lyxal_auth",
-        payload: { identifier_hash: string::lowercase($p.identifier_hash), identity_id: IF $p.identity IS NONE { NONE } ELSE { <string> $p.identity }, locked: $identifier_locked },
+        payload: { identifier_hash: $p.identifier_hash, identity_id: IF $p.identity IS NONE { NONE } ELSE { <string> $p.identity }, locked: $identifier_locked },
         metadata: {}
     });
     IF !$published.ok { THROW $published.error.code; };
@@ -90,7 +90,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_login_failure_record($params: object) {
         });
         IF !$locked_event.ok { THROW $locked_event.error.code; };
     };
-    RETURN fn::result_ok(fn::auth_login_failure_status({ identifier_hash: string::lowercase($p.identifier_hash), ip_hash: IF $p.ip_hash IS NONE { NONE } ELSE { string::lowercase($p.ip_hash) } }));
+    RETURN fn::result_ok(fn::auth_login_failure_status({ identifier_hash: $p.identifier_hash, ip_hash: IF $p.ip_hash IS NONE { NONE } ELSE { $p.ip_hash } }));
 } COMMENT "Compte un échec de connexion ({ identifier_hash, ip_hash, identity }) : fenêtre glissante, verrouillage au seuil de la politique, événements auth.login.failed et auth.identity.locked ; { locked, until }. Session système";
 
 DEFINE FUNCTION OVERWRITE fn::auth_login_failure_reset($params: object) {
@@ -104,8 +104,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_login_failure_reset($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { identifier_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
-    DELETE auth_login_failure WHERE kind = "identifier" AND key_hash = string::lowercase($p.identifier_hash);
+    DELETE auth_login_failure WHERE kind = "identifier" AND key_hash = $p.identifier_hash;
     RETURN fn::result_ok({ reset: true });
 } COMMENT "Remet à zéro le compteur d'un identifiant après une connexion réussie ({ identifier_hash }). Session système";

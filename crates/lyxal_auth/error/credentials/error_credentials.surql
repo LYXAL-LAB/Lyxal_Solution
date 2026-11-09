@@ -165,29 +165,3 @@ IF !record::exists(error_definition:AUTH_IDENTITY_LOCKED) THEN (
     }
 ) END;
 
-IF !record::exists(error_definition:AUTH_REQUIRED_ACTION_PENDING) THEN (
-    CREATE error_definition:AUTH_REQUIRED_ACTION_PENDING CONTENT {
-        code: "AUTH_REQUIRED_ACTION_PENDING",
-        module: "auth",
-        domain: "credentials",
-        category: "business",
-        severity: "error",
-        message: "Required action pending",
-        default_language: "fr",
-        http_status: 403,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Action requise",
-                description: "Une action est requise avant d'accéder à votre compte (vérifier l'adresse, changer le mot de passe, accepter les conditions).",
-                resolution: "Terminez les actions demandées."
-            },
-            en: {
-                label: "Action required",
-                description: "An action is required before accessing your account (verify address, change password, accept terms).",
-                resolution: "Complete the requested actions."
-            }
-        }
-    }
-) END;

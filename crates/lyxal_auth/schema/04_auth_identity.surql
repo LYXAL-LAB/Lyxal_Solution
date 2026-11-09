@@ -4,7 +4,8 @@
 -- RÔLE   : Identités des personnes (les comptes de service sont des auth_application)
 -- ============================================================================
 -- Modèle : Kratos `identities`, Logto `users`, Keycloak `USER_ENTITY`. Un e-mail = une identité
--- pour toute l'installation (D10). Pas de suppression physique : état `deleted` puis purge.
+-- pour toute l'installation (D10). Pas de suppression physique : état `deleted` ; la purge
+-- différée est prévue par la feuille de route (ROADMAP.md).
 
 DEFINE TABLE OVERWRITE auth_identity
     TYPE NORMAL

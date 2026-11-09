@@ -332,7 +332,7 @@ Hors périmètre identité (non détaillés) : Authorization Services (`RESOURCE
 | Hooks externes | `web_hook` avec `can_interrupt` / `response.parse` | SPI Java | Webhooks | Fort : via `lyxal_event` (asynchrone) et un hook synchrone bloquant optionnel. |
 | Migration de mots de passe | `password_migration_hook`, comparateur multi-hash | Fédération LDAP | Import | Utile pour reprise d'existants. |
 
-### 5.2. Recommandations — modèle de données cible `lyxal_auth` (proposition à soumettre au CTO)
+### 5.2. Modèle de données suggéré à l'analyse (référence ; modèle retenu : `MODELE_SOURCES.md`)
 
 | Table Lyxal (préfixe `auth_`) | Inspirée de | Contenu recommandé |
 | :--- | :--- | :--- |

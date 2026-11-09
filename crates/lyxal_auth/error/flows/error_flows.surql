@@ -138,33 +138,6 @@ IF !record::exists(error_definition:AUTH_CODE_EXPIRED) THEN (
     }
 ) END;
 
-IF !record::exists(error_definition:AUTH_REGISTRATION_CLOSED) THEN (
-    CREATE error_definition:AUTH_REGISTRATION_CLOSED CONTENT {
-        code: "AUTH_REGISTRATION_CLOSED",
-        module: "auth",
-        domain: "flows",
-        category: "business",
-        severity: "error",
-        message: "Registration closed",
-        default_language: "fr",
-        http_status: 403,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Inscription fermée",
-                description: "L'inscription libre n'est pas ouverte : il faut une invitation.",
-                resolution: "Demandez une invitation à votre organisation."
-            },
-            en: {
-                label: "Registration closed",
-                description: "Open registration is not available: an invitation is required.",
-                resolution: "Ask your organization for an invitation."
-            }
-        }
-    }
-) END;
-
 IF !record::exists(error_definition:AUTH_SETUP_DONE) THEN (
     CREATE error_definition:AUTH_SETUP_DONE CONTENT {
         code: "AUTH_SETUP_DONE",
@@ -219,29 +192,3 @@ IF !record::exists(error_definition:AUTH_SETUP_TOKEN_INVALID) THEN (
     }
 ) END;
 
-IF !record::exists(error_definition:AUTH_ADDRESS_CHANGE_PENDING) THEN (
-    CREATE error_definition:AUTH_ADDRESS_CHANGE_PENDING CONTENT {
-        code: "AUTH_ADDRESS_CHANGE_PENDING",
-        module: "auth",
-        domain: "flows",
-        category: "conflict",
-        severity: "error",
-        message: "Address change pending",
-        default_language: "fr",
-        http_status: 409,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Changement d'adresse en cours",
-                description: "Un changement d'adresse attend déjà sa vérification.",
-                resolution: "Confirmez le changement en cours ou recommencez."
-            },
-            en: {
-                label: "Address change pending",
-                description: "An address change is already awaiting verification.",
-                resolution: "Confirm the pending change or start again."
-            }
-        }
-    }
-) END;

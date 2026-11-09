@@ -199,9 +199,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_mfa_failure_check($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { identity_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
-    LET $until = (SELECT VALUE locked_until FROM ONLY auth_login_failure WHERE kind = "mfa" AND key_hash = string::lowercase($p.identity_hash) LIMIT 1);
+    LET $until = (SELECT VALUE locked_until FROM ONLY auth_login_failure WHERE kind = "mfa" AND key_hash = $p.identity_hash LIMIT 1);
     RETURN fn::result_ok({ locked: $until IS NOT NONE AND $until > time::now(), until: IF $until IS NOT NONE AND $until > time::now() { $until } ELSE { NONE } });
 } COMMENT "Indique si le second facteur d'une identité est verrouillé ({ identity_hash }) : { locked, until }. Session système";
 
@@ -219,10 +219,10 @@ DEFINE FUNCTION OVERWRITE fn::auth_mfa_failure_record($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { identity_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
-    LET $hash = string::lowercase($p.identity_hash);
+    LET $hash = $p.identity_hash;
     LET $window = duration::from_secs(fn::auth_policy_value({ theme: "lockout", key: "window_seconds", default: 900 }));
     LET $lock = duration::from_secs(fn::auth_policy_value({ theme: "lockout", key: "lock_seconds", default: 900 }));
     LET $limit = fn::auth_policy_value({ theme: "lockout", key: "max_failures", default: 10 });
@@ -261,9 +261,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_mfa_failure_reset($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { identity_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
-    DELETE auth_login_failure WHERE kind = "mfa" AND key_hash = string::lowercase($p.identity_hash);
+    DELETE auth_login_failure WHERE kind = "mfa" AND key_hash = $p.identity_hash;
     RETURN fn::result_ok({ reset: true });
 } COMMENT "Remet à zéro le compteur du second facteur d'une identité après un succès ({ identity_hash }). Session système";
 

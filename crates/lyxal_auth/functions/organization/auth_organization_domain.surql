@@ -50,7 +50,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_organization_domain_verify($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { observed_hashes: { pipeline: [{ rule: "each", options: { pipeline: [{ rule: "lowercase" }] } }] } }, unknown_keys: "keep" }, 20);
     -- Preuve acceptée seulement de l'hôte (lecture DNS sur sa session système)
     IF !fn::auth_session_valid({}).system {
         RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, { reason: "system_session_required" });
@@ -58,7 +58,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_organization_domain_verify($params: object) {
     LET $domain = (SELECT * FROM ONLY $p.domain);
     IF $domain == NONE { RETURN fn::error_result("AUTH_DOMAIN_NOT_VERIFIED", $p.language, { reason: "not_found" }); };
     IF $domain.state = "verified" { RETURN fn::result_ok(object::remove($domain, "challenge_hash")); };
-    IF $domain.challenge_hash NOTINSIDE array::map($p.observed_hashes, |$h| string::lowercase($h)) {
+    IF $domain.challenge_hash NOTINSIDE $p.observed_hashes {
         RETURN fn::error_result("AUTH_DOMAIN_NOT_VERIFIED", $p.language, { txt_record: string::concat("_lyxal-challenge.", $domain.domain) });
     };
     LET $verified = (UPDATE ONLY $domain.id SET state = "verified", verified_at = time::now());

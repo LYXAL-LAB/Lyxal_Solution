@@ -218,7 +218,7 @@ THEN {
 };
 
 -- ----------------------------------------------------------------------------
--- Sessions, codes, mots de passe, applications et clés d'API (lot 3)
+-- Sessions, codes, mots de passe, applications et clés d'API
 -- ----------------------------------------------------------------------------
 
 DEFINE EVENT OVERWRITE auth_session_created_event ON TABLE auth_session

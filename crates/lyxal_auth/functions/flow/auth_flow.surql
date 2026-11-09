@@ -178,7 +178,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_code_issue($params: object) {
     IF !$report.valid OR (($report.value.event_id IS NONE) != ($report.value.secret IS NONE)) {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { code_hash: { pipeline: [{ rule: "lowercase" }] }, link_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     LET $loaded = fn::auth_flow_load({ flow: $p.flow });
     IF $loaded.code IS NOT NONE { RETURN fn::error_result($loaded.code, $p.language, {}); };
@@ -200,8 +200,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_code_issue($params: object) {
         flow: $p.flow,
         purpose: $p.purpose,
         address: $address,
-        code_hash: IF $p.code_hash IS NONE { NONE } ELSE { string::lowercase($p.code_hash) },
-        link_hash: string::lowercase($p.link_hash),
+        code_hash: IF $p.code_hash IS NONE { NONE } ELSE { $p.code_hash },
+        link_hash: $p.link_hash,
         max_attempts: $max,
         expires_at: time::now() + duration::from_secs($ttl),
         delivery: IF $p.event_id IS NONE { NONE } ELSE { { event_id: <string> $p.event_id, secret: $p.secret, locale: $p.locale, name: $p.name } }
@@ -229,11 +229,11 @@ DEFINE FUNCTION OVERWRITE fn::auth_code_verify($params: object) {
     IF !$report.valid OR ($report.value.link_hash IS NONE AND ($report.value.code_hash IS NONE OR $report.value.flow IS NONE)) {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { code_hash: { pipeline: [{ rule: "lowercase" }] }, link_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
     LET $code = IF $p.link_hash IS NOT NONE {
-        (SELECT * FROM ONLY auth_one_time_code WHERE link_hash = string::lowercase($p.link_hash) AND purpose = $p.purpose LIMIT 1)
+        (SELECT * FROM ONLY auth_one_time_code WHERE link_hash = $p.link_hash AND purpose = $p.purpose LIMIT 1)
     } ELSE {
         (SELECT * FROM ONLY auth_one_time_code WHERE flow = $p.flow AND purpose = $p.purpose AND consumed_at IS NONE ORDER BY created_at DESC LIMIT 1)
     };
@@ -245,7 +245,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_code_verify($params: object) {
         -- simultanés ne dépassent pas le plafond
         LET $counted = (UPDATE ONLY $code.id SET attempts += 1 WHERE attempts < max_attempts AND consumed_at IS NONE);
         IF $counted == NONE { RETURN fn::error_result("AUTH_TOO_MANY_ATTEMPTS", $p.language, {}); };
-        IF $code.code_hash != string::lowercase($p.code_hash) {
+        IF $code.code_hash != $p.code_hash {
             RETURN fn::error_result("AUTH_CODE_INVALID", $p.language, { attempts_left: $counted.max_attempts - $counted.attempts });
         };
     };

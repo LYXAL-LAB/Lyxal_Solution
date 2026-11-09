@@ -159,12 +159,12 @@ Thèmes et codes (fr/en, catégorie, statut HTTP, réessayable) :
 * `identities` : `AUTH_IDENTITY_NOT_FOUND`, `AUTH_IDENTIFIER_TAKEN`, `AUTH_IDENTITY_INACTIVE`,
   `AUTH_IDENTITY_LOCKED`, `AUTH_TRAITS_INVALID` ;
 * `credentials` : `AUTH_CREDENTIALS_INVALID` (message unique, sans dire ce qui est faux),
-  `AUTH_PASSWORD_POLICY_VIOLATION`, `AUTH_PASSWORD_REUSED`, `AUTH_MFA_REQUIRED`,
+  `AUTH_PASSWORD_POLICY_VIOLATION`, `AUTH_PASSWORD_COMPROMISED`, `AUTH_PASSWORD_REUSED`, `AUTH_MFA_REQUIRED`,
   `AUTH_MFA_INVALID`, `AUTH_PASSKEY_INVALID` ;
 * `sessions` : `AUTH_SESSION_EXPIRED`, `AUTH_SESSION_REVOKED`, `AUTH_REFRESH_REUSED`,
   `AUTH_AAL_INSUFFICIENT`, `AUTH_TOO_MANY_ATTEMPTS` ;
 * `flows` : `AUTH_FLOW_EXPIRED`, `AUTH_FLOW_INVALID_STATE`, `AUTH_CODE_INVALID`,
-  `AUTH_CODE_EXPIRED`, `AUTH_REQUIRED_ACTION_PENDING` ;
+  `AUTH_CODE_EXPIRED` ;
 * `organizations` : `AUTH_ORGANIZATION_NOT_FOUND`, `AUTH_NOT_A_MEMBER`, `AUTH_INVITATION_INVALID`,
   `AUTH_DOMAIN_NOT_VERIFIED` ;
 * `access` : `AUTH_PERMISSION_DENIED`, `AUTH_ROLE_NOT_FOUND`, `AUTH_PERMISSION_UNKNOWN`,
@@ -189,7 +189,7 @@ code ni jeton en clair dans une charge utile.
 | **3** | **Réalisé.** Mots de passe et parcours (inscription sur invitation ou par lien d'installation, connexion, vérification d'adresse, récupération, changement d'adresse), sessions et jetons, accès SurrealDB `lyxal_auth_a` / `lyxal_auth_b` en alternance, anti-force-brute, actions imposées, applications, comptes de service et clés d'API, routes HTTP `/api/v1/auth/*`, commandes de l'hôte, worker de purge. État : `crates/lyxal_auth/README.md` | `lyxal_auth`, `apps/lyxal-server` |
 | **4** | **Réalisé.** Double facteur : TOTP, passkeys (`webauthn-rs` 0.6, second facteur et connexion sans mot de passe), codes de secours, niveau d'assurance (AAL), connexion en deux temps, double facteur exigé (politique, organisation, rôle), réauthentification et actions sensibles, niveau minimal par permission, remise à zéro par un administrateur, alertes de sécurité par `lyxal_notification`. État : `crates/lyxal_auth/README.md` | `lyxal_auth`, `lyxal_notification`, `apps/lyxal-server` |
 | **5** | **Réalisé.** Bascule des modules : `lyxal_catalogue` et `lyxal_pipeline_ingestion` déclarent leurs permissions ; suppression de `catalogue_session`, `ingestion_session`, des fonctions `*_session_identity` et de l'accès `lyxal_catalogue_sync` ; leurs `PERMISSIONS` passent par `fn::auth_has_permission` ; agent de synchronisation = compte de service `lyxal_auth` (**rupture coordonnée**, tous les tests mis à jour) | `lyxal_catalogue`, `lyxal_pipeline_ingestion`, `apps/lyxal-server` |
-| **6** | Clôture : audit `lyxal-audit` du module, revue de sécurité (liste OWASP ASVS niveau 2 sur l'authentification et les sessions), `ROADMAP_NOYAU.md` et `AGENTS.md` §6 mis à jour, V2 décrite dans `crates/lyxal_auth/ROADMAP.md` | `lyxal_auth`, docs |
+| **6** | **Réalisé.** Clôture : audit `lyxal-audit` du module, revue de sécurité (liste OWASP ASVS niveau 2 sur l'authentification et les sessions), `ROADMAP_NOYAU.md` et `AGENTS.md` §6 mis à jour, V2 décrite dans `crates/lyxal_auth/ROADMAP.md` | `lyxal_auth`, docs |
 
 V2 (feuille de route du module) : connexion par fournisseur externe (OIDC), Lyxal fournisseur OIDC
 (signature asymétrique à ajouter à `lyxal_crypto`), appareils de confiance, MFA adaptative,

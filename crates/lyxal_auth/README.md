@@ -21,7 +21,9 @@ facteur, niveau d'assurance) du programme `lyxal_auth` V1. Suite : [`ROADMAP.md`
 | `auth_address` | document | adresses de vérification et de récupération |
 | `auth_permission` | document | permission déclarée par un module (identifiant = code, une seule portée) |
 | `auth_role` | document | rôle de l'installation ou propre à une organisation ; portée `installation` / `organization` |
-| `auth_organization_invitation` | document | invitation expirante ; seule l'empreinte BLAKE3 du jeton est conservée |
+| `auth_organization_invitation` | document | invitation expirante ; seule l'empreinte BLAKE3 du jeton est conservée, illisible hors session système |
+| `auth_invitation_claim` | document | demande d'acceptation (empreinte du jeton présenté) vérifiée par un événement de la base, qui crée l'adhésion et écrit l'issue |
+| `auth_code_issuance` | document | journal des émissions de codes (plafond d'envoi par adresse et usage), purgé après un jour |
 | `auth_policy` | document | politique (mots de passe, verrouillage, sessions, codes, renouvellement, double facteur — exigé, méthodes, rôles qui l'exigent, essais, nombre de codes de secours, ancienneté d'une action sensible —, invitations, inscription) de l'installation et surcharges par organisation |
 | `auth_session` | document | session relue à chaque contrôle des droits : sujet identité **ou** application, nature (`interactive`, `service`, `api_key`), organisation active, appareil (`client`), emplacement de la clé du jeton, expirations absolue et d'inactivité, niveau d'assurance (`aal`), méthodes (`amr`), dernière authentification (`authenticated_at`) |
 | `auth_credential` | document | moyens d'authentification : mot de passe (empreinte Argon2id scellée, historique), TOTP (secret scellé, en attente puis actif, dernier pas utilisé), passkeys (clé publique sérialisée par `webauthn-rs`, nom, identifiant WebAuthn unique pour l'installation) ; partie secrète illisible hors session système |
@@ -59,6 +61,17 @@ l'organisation), un index unique ignorant les valeurs absentes.
 * Tout retrait de droit (adhésion supprimée ou suspendue, rôle retiré, permission ou inclusion
   retirée d'un rôle) incrémente `permissions_version` des identités concernées par un événement
   de la base, après l'écriture : l'appelant qui retire ses propres droits n'est pas bloqué.
+* Organisation suspendue ou supprimée : sessions ouvertes sur elle révoquées avec leurs jetons de
+  renouvellement, droits de ses membres périmés (événement de la base).
+* **Administrateur d'organisation** (`auth.member.manage`) : il ne gère qu'un membre de sa seule
+  organisation sans rôle d'installation (`fn::auth_org_admin_can_manage`, compteurs
+  `membership_count` et `installation_role_count` tenus par les événements de la base). Il ne
+  modifie ni identifiant ni adresse (le premier de chaque type seulement, à la création), ni les
+  champs de sécurité (`state`, `available_aal`, `not_before`, `permissions_version`,
+  `last_login_at`, `schema`), réservés à `auth.identity.manage` et aux événements de la base.
+* Les règles des tables s'appliquent aussi aux écritures directes (connexion SurrealDB avec le
+  jeton d'accès) : invitation acceptée seulement avec son jeton, clé d'API créée aux conditions
+  de `fn::auth_api_key_create` et jamais réactivée.
 
 Permissions du socle (une portée par code) :
 
@@ -85,42 +98,56 @@ IF !record::exists(auth_permission:⟨notification.read⟩) THEN (
 ## 3. Connexion, sessions et jetons
 
 * **Mots de passe** : Argon2id (`lyxal_crypto::password`), empreinte scellée par identité ;
-  politique (longueur 12 à 128, classes, historique) contrôlée avant toute écriture ;
-  empreinte réhachée si ses paramètres sont dépassés.
+  politique (longueur 12 à 128, classes, historique) contrôlée avant toute écriture ; mots de
+  passe divulgués refusés (`AUTH_PASSWORD_COMPROMISED`, liste embarquée `data/`, voir
+  `data/README.md`) ; empreinte réhachée si ses paramètres sont dépassés.
 * **Aucune énumération des comptes** : identifiant inconnu → même erreur
-  (`AUTH_CREDENTIALS_INVALID`) après vérification contre une empreinte factice ; récupération
-  et vérification répondent pareil que l'adresse existe ou non.
+  (`AUTH_CREDENTIALS_INVALID`) après vérification contre une empreinte factice ; récupération :
+  code factice (même travail, même plafond d'envoi, aucun message) pour une adresse inconnue ou
+  un compte inactif.
 * **Anti-force-brute** : échecs comptés par identifiant (même inconnu) et par adresse IP ; au
   seuil de la politique, verrouillage temporaire (`AUTH_TOO_MANY_ATTEMPTS`) ; une connexion
-  réussie remet le compteur de l'identifiant à zéro.
+  réussie remet le compteur de l'identifiant à zéro. La vérification du mot de passe actuel
+  (changement de mot de passe ou d'adresse) est comptée de même. Derrière un proxy inverse,
+  l'adresse du client vient de `X-Forwarded-For` seulement depuis un proxy de confiance
+  (configuration `server.trusted_proxies` de l'hôte).
 * **Actions imposées** : une action en attente met le parcours de connexion en
-  `action_required` ; aucune session avant qu'elles soient faites.
+  `action_required`, **après** le second facteur si l'identité en a un ; aucune session avant
+  qu'elles soient faites.
 * **Parcours** : inscription sur invitation ou par lien d'installation (premier administrateur,
   refusé s'il en existe déjà un), vérification d'adresse (rattachement automatique par domaine
   vérifié), récupération (toutes les sessions révoquées), changement d'adresse (mot de passe
   actuel exigé, code envoyé à la nouvelle adresse, événement vers l'ancienne).
 * **Codes et liens** : code à 6 chiffres et lien de 32 octets (`OsRng`), stockés en empreinte ;
+  chaque code présenté est compté avant la comparaison (5 essais) ; au plus 1 code par minute,
+  3 par heure et 10 par jour pour une adresse et un usage (journal `auth_code_issuance`) ; au
+  plus 30 parcours non authentifiés par minute et par adresse IP ; jeton des liens dans le
+  fragment (`#token=`), jamais envoyé au serveur par le navigateur ;
   le secret `{ action_url, code }` voyage scellé dans `auth.verification.requested` /
   `auth.recovery.requested` sous le contexte
   `with_tenant("lyxal_installation", "lyxal_auth", <type d'événement, « . » → « _ »>, <event_id>, "secret")`,
   par le champ transitoire `delivery` (jamais enregistré, même chiffré).
 * **Jeton d'accès** : JWT HS256 de 15 min (politique), signé par `lyxal_crypto::hmac` avec la
   clé de l'emplacement actif ; claims `ac` (`lyxal_auth_a|b`), `ns`, `db`, `id` (session),
-  `sub`, `tenant`, `permissions`, `pv`, `aal`, `jti`, `iat`, `exp`. SurrealDB l'accepte par
+  `sub`, `tenant`, `permissions`, `pv`, `aal`, `iss` (`lyxal_auth`), `aud` (`lyxal`), `jti`,
+  `iat`, `exp`, tous vérifiés par l'hôte. SurrealDB l'accepte par
   `DEFINE ACCESS lyxal_auth_a|b … TYPE RECORD WITH JWT ALGORITHM HS256 … AUTHENTICATE` (session
   contrôlée par `fn::auth_session_valid`), puis contrôle la session à chaque opération.
 * **Renouvellement** : jeton opaque à usage unique (famille) ; un jeton déjà utilisé révoque la
   session (`AUTH_REFRESH_REUSED`, événement `auth.refresh.reused`). L'expiration d'inactivité
-  est repoussée, jamais l'expiration absolue.
+  est repoussée, jamais l'expiration absolue. Défauts (OWASP ASVS niveau 2) : inactivité
+  30 min, absolue et renouvellement 12 h ; une organisation peut les raccourcir, jamais les
+  allonger au-delà de l'installation.
 * **Rotation des clés** : deux accès en alternance ; la nouvelle clé va dans l'emplacement
   inactif, refusé (`AUTH_SIGNING_KEY_ROTATION_TOO_SOON`) tant que des jetons signés par
   l'ancienne clé de cet emplacement peuvent être valides (désactivation + cache de 30 s +
   durée maximale d'un jeton) ; `force` écrase une clé compromise.
 * **Applications** : secret client → session `service` sans renouvellement
-  (`client_credentials`) ; clé d'API → session `api_key` aux permissions de la clé, bornées par
-  celles du propriétaire.
-* **Purge** (`AuthPurgeWorker`, 15 min) : parcours, codes, sessions et jetons expirés,
-  compteurs d'échecs, invitations expirées, TOTP jamais confirmés.
+  (`client_credentials`) ; révoquer un secret invalide les sessions de service antérieures ;
+  clé d'API → session `api_key` aux permissions de la clé, bornées par celles du propriétaire.
+* **Purge** (`AuthPurgeWorker`, 15 min, interrompue entre deux paquets à l'arrêt) : parcours,
+  codes, sessions et jetons expirés, compteurs d'échecs, invitations expirées, TOTP jamais
+  confirmés, demandes d'acceptation et journal d'émission des codes de plus d'un jour.
 
 ## 3 bis. Double facteur et niveau d'assurance
 
@@ -167,7 +194,7 @@ IF !record::exists(auth_permission:⟨notification.read⟩) THEN (
 
 | Domaine | Fonctions |
 | :--- | :--- |
-| Contexte | `auth_context`, `auth_has_permission`, `auth_session_valid`, `auth_shares_organization`, `auth_invitation_pending` |
+| Contexte | `auth_context`, `auth_has_permission`, `auth_session_valid`, `auth_shares_organization`, `auth_org_admin_can_manage`, `auth_org_admin_first_identifier`, `auth_org_admin_first_address` |
 | Organisations | `auth_organization_create` (avec administrateur), `_get`, `_list`, `_update`, `_set_state` |
 | Domaines | `auth_organization_domain_add`, `_get`, `_verify` (session système), `_update`, `_remove`, `_list` |
 | Membres | `auth_organization_member_add`, `_remove`, `_set_state`, `_list`, `auth_membership_create`, `auth_is_last_admin` |
@@ -179,7 +206,7 @@ IF !record::exists(auth_permission:⟨notification.read⟩) THEN (
 | Mots de passe, actions imposées | `auth_password_credential_get`, `auth_password_set`, `auth_required_action_add`, `_list`, `_complete` |
 | Parcours | `auth_flow_start`, `_load`, `_get`, `_submit`, `auth_flow_states`, `auth_code_issue`, `auth_code_verify`, `auth_registration_start`, `_complete`, `auth_setup_start`, `auth_address_verify`, `auth_address_change_request`, `_confirm`, `auth_domain_auto_join` |
 | Sessions | `auth_session_open`, `_create`, `_refresh`, `_revoke`, `_revoke_all`, `_switch_organization`, `_list`, `_check`, `auth_subject_permissions`, `auth_login_failure_status`, `_check`, `_record`, `_reset` |
-| Applications, clés d'API | `auth_application_can`, `_create`, `_update`, `_list`, `_secret_add`, `_secret_revoke`, `_permissions`, `auth_service_session_create`, `auth_service_session_open` (session système seulement : session d'un compte de service interne à l'hôte, sans secret), `auth_api_key_create`, `_list`, `_revoke`, `auth_api_key_session_create` |
+| Applications, clés d'API | `auth_application_can`, `_create`, `_update`, `_list`, `_secret_add`, `_secret_revoke`, `_permissions`, `auth_service_session_create`, `auth_service_session_open` (session système seulement : session d'un compte de service interne à l'hôte, sans secret), `auth_api_key_create`, `auth_api_key_create_allowed` (règle de la table), `_list`, `_revoke`, `auth_api_key_session_create` |
 | Clés de signature, purge | `auth_signing_key_get_active`, `auth_signing_key_rotate`, `auth_purge` |
 | Double facteur | `auth_mfa_factor_list`, `auth_mfa_totp_begin`, `_secret_get`, `_activate`, `_step_use`, `auth_mfa_passkey_save`, `_find`, `_list_for`, `_update`, `_rename`, `_flag`, `auth_mfa_recovery_codes_replace`, `auth_mfa_recovery_code_use`, `auth_mfa_factor_remove`, `auth_mfa_reset`, `auth_mfa_failure_check`, `_record`, `_reset`, `auth_mfa_actor`, `auth_mfa_enrolled`, `auth_mfa_publish`, `auth_mfa_required`, `auth_mfa_methods` |
 | Assurance, réauthentification | `auth_login_requirements`, `auth_assurance_check`, `auth_assurance_state`, `auth_session_reauthenticate`, `auth_flow_state_save`, `auth_flow_state_take` |

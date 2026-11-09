@@ -66,17 +66,17 @@ DEFINE FUNCTION OVERWRITE fn::auth_registration_start($params: object) {
     IF !$report.valid OR (($report.value.invitation_token_hash IS NONE) = ($report.value.setup_link_hash IS NONE)) {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { invitation_token_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     IF $p.setup_link_hash IS NOT NONE {
         LET $verified = fn::auth_code_verify({ purpose: "setup", link_hash: $p.setup_link_hash, language: $p.language });
         IF !$verified.ok { RETURN fn::error_result("AUTH_SETUP_TOKEN_INVALID", $p.language, {}); };
         RETURN fn::result_ok({ flow: $verified.data.flow, email: $verified.data.address, organization: NONE, kind: "setup" });
     };
-    LET $invitation = (SELECT * FROM ONLY auth_organization_invitation WHERE token_hash = string::lowercase($p.invitation_token_hash) LIMIT 1);
+    LET $invitation = (SELECT * FROM ONLY auth_organization_invitation WHERE token_hash = $p.invitation_token_hash LIMIT 1);
     IF $invitation == NONE OR $invitation.state != "pending" { RETURN fn::error_result("AUTH_INVITATION_INVALID", $p.language, {}); };
     IF $invitation.expires_at <= time::now() { RETURN fn::error_result("AUTH_INVITATION_EXPIRED", $p.language, {}); };
-    -- Adresse déjà inscrite : la personne se connecte puis accepte l'invitation (lot 2)
+    -- Adresse déjà inscrite : la personne se connecte puis accepte l'invitation
     IF array::len(SELECT VALUE id FROM auth_credential_identifier WHERE type = "email" AND value = $invitation.email LIMIT 1) > 0 {
         RETURN fn::error_result("AUTH_IDENTIFIER_TAKEN", $p.language, { type: "email" });
     };
@@ -153,7 +153,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_setup_start($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { link_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     IF array::len(SELECT VALUE id FROM auth_has_role WHERE out = auth_role:platform_admin LIMIT 1) > 0 {
         RETURN fn::error_result("AUTH_SETUP_DONE", $p.language, {});
@@ -163,7 +163,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_setup_start($params: object) {
     -- Lien valable 1 h, affiché une fois par la commande de l'hôte (aucun message envoyé)
     UPDATE $flow.data.id SET expires_at = time::now() + 1h;
     LET $code = (CREATE ONLY auth_one_time_code CONTENT {
-        flow: $flow.data.id, purpose: "setup", address: $flow.data.address, link_hash: string::lowercase($p.link_hash),
+        flow: $flow.data.id, purpose: "setup", address: $flow.data.address, link_hash: $p.link_hash,
         max_attempts: 1, expires_at: time::now() + 1h
     });
     IF $code == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_one_time_code" }); };

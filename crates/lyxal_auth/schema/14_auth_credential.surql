@@ -79,7 +79,7 @@ DEFINE FIELD OVERWRITE created_at ON TABLE auth_required_action TYPE datetime DE
 DEFINE INDEX OVERWRITE auth_required_action_unique ON TABLE auth_required_action FIELDS identity, action UNIQUE;
 
 -- ----------------------------------------------------------------------------
--- auth_recovery_code : codes de secours (une ligne par code, écart E1 du lot 4)
+-- auth_recovery_code : codes de secours (une ligne par code, usage unique)
 -- ----------------------------------------------------------------------------
 -- Empreinte HMAC-SHA256 (clé code_pepper) calculée par l'hôte ; consommation atomique par la base
 -- (mise à jour conditionnelle used_at IS NONE). Une génération remplace toutes les précédentes.
