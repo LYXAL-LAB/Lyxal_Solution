@@ -63,6 +63,8 @@ impl AuthPurgeWorker {
                 result.pending_totp,
                 result.invitation_claims,
                 result.code_issuances,
+                result.identities_purged,
+                result.organizations_purged,
             ]
             .into_iter()
             .max()

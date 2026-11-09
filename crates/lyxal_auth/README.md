@@ -148,6 +148,17 @@ IF !record::exists(auth_permission:⟨notification.read⟩) THEN (
 * **Purge** (`AuthPurgeWorker`, 15 min, interrompue entre deux paquets à l'arrêt) : parcours,
   codes, sessions et jetons expirés, compteurs d'échecs, invitations expirées, TOTP jamais
   confirmés, demandes d'acceptation et journal d'émission des codes de plus d'un jour.
+* **Purge des supprimés** : une organisation ou une identité passée à l'état `deleted` reçoit
+  `deleted_at` (posé par la base) ; après la durée de conservation de l'installation
+  (`retention.deleted_days`, 30 jours par défaut, de 1 à 365), la purge publie
+  `auth.organization.purged` / `auth.identity.purged` (identifiant seulement) puis la supprime
+  physiquement. Ses données suivent par les références déclarées : `CASCADE` (identifiants,
+  adresses, moyens d'authentification, sessions, adhésions, rôles, invitations, applications,
+  politique, données des modules sur leurs champs `tenant`) ou `UNSET` (traces : `inviter`,
+  `accepted_by`, `invited_by`, `granted_by`, la trace reste sans désigner la personne).
+* **Langue des messages** : l'hôte résout toute erreur, y compris une erreur métier renvoyée par
+  SurrealQL, dans la langue de la requête (`Accept-Language`, sinon le trait `locale` de
+  l'identité du jeton, sinon `fr`).
 
 ## 3 bis. Double facteur et niveau d'assurance
 
@@ -224,7 +235,7 @@ une identité ou une organisation **invisible** pour l'appelant est détecté pa
 ## 5. Événements
 
 `auth.organization.created`, `auth.organization.state_changed`, `auth.identity.created`,
-`auth.identity.state_changed`, `auth.member.added`, `auth.member.removed`, `auth.role.assigned`,
+`auth.identity.state_changed`, `auth.organization.purged`, `auth.identity.purged`, `auth.member.added`, `auth.member.removed`, `auth.role.assigned`,
 `auth.role.unassigned`, `auth.invitation.created`, `auth.invitation.accepted`,
 `auth.invitation.revoked`, `auth.session.created`, `auth.session.revoked`, `auth.login.failed`
 (empreinte de l'identifiant, jamais l'identifiant), `auth.identity.locked`, `auth.refresh.reused`,

@@ -14,12 +14,12 @@ DEFINE TABLE OVERWRITE catalogue_variante_attribut
 
 DEFINE FIELD OVERWRITE item ON TABLE catalogue_variante_attribut
     TYPE record<catalogue_item>
-    REFERENCE
+    REFERENCE ON DELETE CASCADE
     COMMENT "Élément parent";
 
 DEFINE FIELD OVERWRITE variante ON TABLE catalogue_variante_attribut
     TYPE option<record<catalogue_variante>>
-    REFERENCE
+    REFERENCE ON DELETE CASCADE
     COMMENT "Variante rattachée (NONE s'il s'agit d'un attribut commun de l'item parent)";
 
 DEFINE FIELD OVERWRITE attribut ON TABLE catalogue_variante_attribut

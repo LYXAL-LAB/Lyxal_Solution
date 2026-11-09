@@ -106,6 +106,11 @@ DEFINE FIELD OVERWRITE created_at ON TABLE auth_identity
     READONLY
     COMMENT "Date de création";
 
+DEFINE FIELD OVERWRITE deleted_at ON TABLE auth_identity
+    TYPE option<datetime>
+    PERMISSIONS FOR create, update NONE
+    COMMENT "Date du passage à l'état deleted (écrite par la base) ; purge après la durée de conservation";
+
 DEFINE FIELD OVERWRITE updated_at ON TABLE auth_identity
     TYPE datetime
     VALUE time::now()
@@ -119,4 +124,11 @@ DEFINE EVENT OVERWRITE auth_identity_state_guard ON TABLE auth_identity
 WHEN $event = "UPDATE" AND $before.state != $after.state
 THEN {
     IF $before.state = "deleted" { THROW "AUTH_IDENTITY_INACTIVE"; };
+};
+
+-- Passage à l'état supprimé : date posée par la base (point de départ de la conservation)
+DEFINE EVENT OVERWRITE auth_identity_deleted_at ON TABLE auth_identity
+WHEN $event = "UPDATE" AND $before.state != "deleted" AND $after.state = "deleted"
+THEN {
+    UPDATE $after.id SET deleted_at = time::now();
 };

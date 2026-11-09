@@ -66,7 +66,8 @@ IF !record::exists(auth_policy:installation) THEN (
         registration: { mode: "invitation_only" },
         code: { ttl_seconds: 900, max_attempts: 5 },
         refresh: { ttl_seconds: 43200 },
-        flow: { ttl_seconds: 900 }
+        flow: { ttl_seconds: 900 },
+        retention: { deleted_days: 30 }
     }
 ) END;
 

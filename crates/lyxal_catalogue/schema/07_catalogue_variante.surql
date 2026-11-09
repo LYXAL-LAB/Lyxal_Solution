@@ -14,7 +14,7 @@ DEFINE TABLE OVERWRITE catalogue_variante
 
 DEFINE FIELD OVERWRITE item ON TABLE catalogue_variante
     TYPE record<catalogue_item>
-    REFERENCE
+    REFERENCE ON DELETE CASCADE
     COMMENT "Item parent porteur de la variante";
 
 DEFINE FIELD OVERWRITE code ON TABLE catalogue_variante

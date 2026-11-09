@@ -160,3 +160,30 @@ RETURN (UPDATE catalogue_composition_ligne SET quantite = 99dec WHERE quantite =
 -- test: Alpha voit la composition active de N0 dans la fiche article
 -- en tant que: alpha
 RETURN fn::catalogue_item_get({ code: "N0" }).data.composition_active.version == 2;
+
+-- test: Alpha publie (scelle) la composition de son kit et le personnalise ailleurs
+-- en tant que: alpha
+RETURN fn::catalogue_composition_publish({ composition_id: <string> (SELECT VALUE id FROM ONLY catalogue_composition WHERE parent_item.code = "KIT-ALPHA" LIMIT 1) }).ok
+    AND fn::catalogue_item_personnaliser({ item_id: test_ref:items.n8, libelle_personnalise: "N8 chez Alpha" }).ok;
+
+-- test: une composition scellée ne se supprime pas à la main
+-- attendu-erreur: CATALOGUE_COMPOSITION_IMMUTABLE
+DELETE catalogue_composition WHERE parent_item.code = "KIT-ALPHA";
+
+-- préparation: Alpha est supprimée depuis plus que la durée de conservation
+{
+    UPDATE auth_organization:alpha SET state = "deleted";
+    UPDATE auth_organization:alpha SET deleted_at = time::now() - 31d;
+};
+
+-- test: purge de l'organisation : articles privés, compositions scellées, lignes et personnalisations partent avec elle ; le catalogue partagé reste
+{
+    LET $masters = count(SELECT id FROM catalogue_item WHERE is_custom = false);
+    LET $purged = fn::auth_purge({ limit: 100 }).data.organizations_purged;
+    RETURN $purged == 1
+        AND array::len(SELECT * FROM catalogue_item WHERE code = "KIT-ALPHA") == 0
+        AND array::len(SELECT * FROM catalogue_composition WHERE !record::exists(parent_item)) == 0
+        AND array::len(SELECT * FROM catalogue_composition_ligne WHERE !record::exists(composition)) == 0
+        AND array::len(SELECT * FROM catalogue_item_personnalisation) == 0
+        AND count(SELECT id FROM catalogue_item WHERE is_custom = false) == $masters;
+};

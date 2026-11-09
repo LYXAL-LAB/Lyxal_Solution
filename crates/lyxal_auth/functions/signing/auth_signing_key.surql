@@ -120,6 +120,36 @@ DEFINE FUNCTION OVERWRITE fn::auth_purge($params: object) {
     IF array::len($claims) > 0 { DELETE $claims; };
     LET $issuances = (SELECT VALUE id FROM auth_code_issuance WHERE created_at <= $now - 1d LIMIT $p.limit);
     IF array::len($issuances) > 0 { DELETE $issuances; };
+    -- Organisations et identités supprimées depuis plus que la durée de conservation : événement
+    -- (identifiant seulement) puis suppression physique ; les références déclarées par chaque
+    -- module (REFERENCE ON DELETE CASCADE / UNSET) suivent
+    LET $deleted_until = $now - duration::from_days(fn::auth_policy_value({ theme: "retention", key: "deleted_days", default: 30 }));
+    LET $identities = (SELECT VALUE id FROM auth_identity WHERE state = "deleted" AND deleted_at <= $deleted_until LIMIT $p.limit);
+    FOR $identity IN $identities {
+        LET $published = fn::event_publish({
+            event_id: rand::uuid::v7(),
+            event_type: "auth.identity.purged",
+            producer: "lyxal_auth",
+            source: $identity,
+            payload: { identity_id: <string> $identity },
+            metadata: {}
+        });
+        IF !$published.ok { THROW $published.error.code; };
+        DELETE $identity;
+    };
+    LET $organizations = (SELECT VALUE id FROM auth_organization WHERE state = "deleted" AND deleted_at <= $deleted_until LIMIT $p.limit);
+    FOR $organization IN $organizations {
+        LET $published = fn::event_publish({
+            event_id: rand::uuid::v7(),
+            event_type: "auth.organization.purged",
+            producer: "lyxal_auth",
+            source: $organization,
+            payload: { organization_id: <string> $organization },
+            metadata: {}
+        });
+        IF !$published.ok { THROW $published.error.code; };
+        DELETE $organization;
+    };
     RETURN fn::result_ok({
         sessions_expired: array::len($expired_sessions),
         flows: array::len($flows),
@@ -129,6 +159,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_purge($params: object) {
         invitations_expired: array::len($invitations),
         pending_totp: array::len($pending),
         invitation_claims: array::len($claims),
-        code_issuances: array::len($issuances)
+        code_issuances: array::len($issuances),
+        identities_purged: array::len($identities),
+        organizations_purged: array::len($organizations)
     });
-} COMMENT "Purge par paquets ({ limit, session_retention_days }) : sessions expirées marquées, parcours et codes expirés, jetons usés ou expirés, sessions terminées au-delà de la conservation, compteurs d'échecs anciens, invitations expirées, TOTP non confirmés, demandes d'acceptation et journal d'émission des codes de plus d'un jour. Session système";
+} COMMENT "Purge par paquets ({ limit, session_retention_days }) : sessions expirées marquées, parcours et codes expirés, jetons usés ou expirés, sessions terminées au-delà de la conservation, compteurs d'échecs anciens, invitations expirées, TOTP non confirmés, demandes d'acceptation et journal d'émission des codes de plus d'un jour, identités et organisations supprimées au-delà de la durée de conservation (retention.deleted_days, événements auth.identity.purged et auth.organization.purged). Session système";

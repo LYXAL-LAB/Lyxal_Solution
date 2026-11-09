@@ -24,7 +24,9 @@ rend les gabarits (MiniJinja) et envoie par SMTP (`lettre`). Modèle repris de N
 Portée : champ `tenant` (organisation `lyxal_auth`, absent pour l'installation) et clé
 `scope_key` (`installation` ou clé de l'organisation) pour les index uniques. Un parcours, une
 mise en page ou une liste de suppression de l'installation sert de repli à toutes les
-organisations.
+organisations. Les données d'une organisation (réglages, parcours, mises en page, gabarits,
+déclenchements et leurs envois, liste de suppression) sont supprimées avec elle quand
+`lyxal_auth` la purge (`REFERENCE ON DELETE CASCADE` sur `tenant`).
 
 Règles :
 

@@ -61,7 +61,7 @@ DEFINE FIELD OVERWRITE access_slot ON TABLE auth_session
     COMMENT "Accès SurrealDB du dernier jeton émis";
 
 DEFINE FIELD OVERWRITE organization ON TABLE auth_session
-    TYPE option<record<auth_organization>>
+    TYPE option<record<auth_organization>> REFERENCE ON DELETE CASCADE
     COMMENT "Organisation active (NONE : session de l'installation)";
 
 DEFINE FIELD OVERWRITE state ON TABLE auth_session

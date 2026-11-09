@@ -763,6 +763,10 @@ pub struct AuthPurgeResult {
     pub invitation_claims: i64,
     /// Émissions de codes anciennes supprimées.
     pub code_issuances: i64,
+    /// Identités supprimées purgées.
+    pub identities_purged: i64,
+    /// Organisations supprimées purgées.
+    pub organizations_purged: i64,
 }
 
 /// Paramètres de `fn::auth_session_check`.

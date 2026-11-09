@@ -68,3 +68,67 @@ RETURN fn::auth_signing_key_get_active({ purpose: "access_token" }).error.code =
         AND !record::exists(auth_session:ancienne)
         AND (SELECT VALUE state FROM ONLY auth_session:claire) == "active";
 };
+
+-- préparation: organisation et identité supprimées il y a plus de 30 jours, une autre récemment, une active
+{
+    CREATE auth_organization:fermee CONTENT { slug: "fermee", name: "Fermée" };
+    CREATE auth_identity:partie CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "partie@exemple.fr" } };
+    CREATE auth_credential_identifier CONTENT { identity: auth_identity:partie, type: "email", value: "partie@exemple.fr" };
+    RELATE auth_identity:partie->auth_member_of->auth_organization:fermee;
+    CREATE auth_session:partie CONTENT { identity: auth_identity:partie, organization: auth_organization:fermee, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_identity:recente CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "recente@exemple.fr" } };
+    -- Trace laissée par l'identité purgée dans une autre organisation : conservée, sans la désigner
+    CREATE auth_organization_invitation CONTENT {
+        organization: auth_organization:alpha, email: "y@exemple.fr", roles: [], inviter: auth_identity:partie,
+        token_hash: "1212121212121212121212121212121212121212121212121212121212121212", expires_at: time::now() + 1d,
+        delivery: { event_id: "01a1bca0-0000-7000-8000-000000000012", secret: "enc:v2:k:AAAAAAAAAAAAAAAAAAAAAAAA" }
+    };
+    UPDATE auth_identity:partie SET state = "deleted";
+    UPDATE auth_identity:recente SET state = "deleted";
+    UPDATE auth_organization:fermee SET state = "deleted";
+};
+
+-- test: passage à l'état supprimé : date posée par la base
+RETURN (SELECT VALUE deleted_at FROM ONLY auth_identity:partie) IS NOT NONE
+    AND (SELECT VALUE deleted_at FROM ONLY auth_organization:fermee) IS NOT NONE
+    AND (SELECT VALUE deleted_at FROM ONLY auth_identity:claire) IS NONE;
+
+-- test: avant la durée de conservation, rien n'est purgé
+{
+    LET $r = fn::auth_purge({ limit: 100 }).data;
+    RETURN $r.identities_purged == 0 AND $r.organizations_purged == 0 AND record::exists(auth_identity:partie);
+};
+
+-- préparation: suppression datée de plus de 30 jours (conservation par défaut de l'installation)
+UPDATE [auth_identity:partie, auth_organization:fermee] SET deleted_at = time::now() - 31d;
+
+-- test: purge : identité et organisation supprimées, leurs données avec elles, traces sans la personne
+{
+    LET $r = fn::auth_purge({ limit: 100 }).data;
+    RETURN $r.identities_purged == 1 AND $r.organizations_purged == 1
+        AND !record::exists(auth_identity:partie) AND !record::exists(auth_organization:fermee)
+        AND array::len(SELECT * FROM auth_credential_identifier WHERE value = "partie@exemple.fr") == 0
+        AND array::len(SELECT * FROM auth_member_of WHERE in = auth_identity:partie) == 0
+        AND !record::exists(auth_session:partie)
+        AND (SELECT VALUE inviter FROM ONLY auth_organization_invitation WHERE email = "y@exemple.fr" LIMIT 1) IS NONE
+        AND record::exists(auth_identity:recente) AND record::exists(auth_identity:claire);
+};
+
+-- test: événements de purge publiés, sans donnée personnelle
+RETURN (SELECT VALUE payload FROM event_outbox WHERE event_type IN ["auth.identity.purged", "auth.organization.purged"] ORDER BY event_type)
+    == [{ identity_id: "auth_identity:partie" }, { organization_id: "auth_organization:fermee" }];
+
+-- test: conservation réglable pour l'installation seulement
+RETURN fn::auth_policy_save({ retention: { deleted_days: 7 } }).data.retention.deleted_days == 7
+    AND fn::auth_policy_save({ organization: "auth_organization:alpha", retention: { deleted_days: 1 } }).error.code == "AUTH_INVALID_PARAMETERS"
+    AND fn::auth_policy_save({ retention: { deleted_days: 0 } }).error.code == "AUTH_INVALID_PARAMETERS";
+
+-- test: une session ne pose pas elle-même la date de suppression
+-- en tant que: claire
+{
+    UPDATE auth_identity:recente SET deleted_at = time::now() - 365d;
+    RETURN true;
+};
+
+-- test: date de suppression inchangée
+RETURN (SELECT VALUE deleted_at FROM ONLY auth_identity:recente) > time::now() - 1d;
