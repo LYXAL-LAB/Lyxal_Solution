@@ -245,7 +245,7 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
     assert_eq!(sealed.seal_hash.as_deref().map(str::len), Some(64));
     assert!(sealed.seal_valid);
 
-    // 5. Approbation sous contrôle strict du rôle steward_admin
+    // 5. Approbation sous contrôle strict de la permission ingestion.manifest.approve
     let approve_ok = store
         .approve_manifest(manifest_ref, "Bordereau vérifié et validé conforme")
         .await;
@@ -258,7 +258,6 @@ async fn test_4_exclusive_use_of_public_functions_for_business_ops() {
     assert_eq!(loaded_manif.statut, ManifestStatus::Approved);
     // Approbateur lu dans la session : ici la session système de l'hôte.
     assert_eq!(loaded_manif.approved_by, Some("system".to_string()));
-    assert_eq!(loaded_manif.approver_role, Some("system".to_string()));
 }
 
 // =============================================================================

@@ -2,9 +2,18 @@
 -- Référentiels : résolution des unités et des fabricants, familles, spécifications et règles
 -- de substitution administrées par le Data Steward, chargement par le moteur de regroupement.
 --
--- identité qualif: { "id": "ingestion_session:qualif", "sub": "service:qualif", "role": "qualification_agent", "scope": ["ingestion:staged:qualify"] }
--- identité steward: { "id": "ingestion_session:steward", "sub": "user:steward", "role": "steward_admin", "scope": ["ingestion:manifest:approve"] }
--- identité sync: { "id": "ingestion_session:sync", "sub": "service:sync", "role": "catalogue_sync_agent", "scope": ["catalogue:sync:write"] }
+-- identité qualif: { "id": "auth_session:qualif", "pv": 1, "permissions": ["ingestion.read", "ingestion.staged.qualify"] }
+-- identité steward: { "id": "auth_session:steward", "pv": 1, "permissions": ["ingestion.read", "ingestion.rule.manage", "ingestion.manifest.approve"] }
+-- identité sync: { "id": "auth_session:sync", "pv": 1, "permissions": ["ingestion.read", "ingestion.manifest.execute"] }
+
+-- préparation: identités et sessions lyxal_auth (Data Steward en double facteur : AAL2 ; synchronisation : compte de service)
+{
+    CREATE auth_identity:qualif CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "qualif@exemple.fr" } };
+    CREATE auth_identity:steward CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "steward@exemple.fr" } };
+    CREATE auth_session:qualif CONTENT { identity: auth_identity:qualif, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:steward CONTENT { identity: auth_identity:steward, aal: 2, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:sync CONTENT { application: auth_application:catalogue_sync, kind: "service", idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+};
 
 -- test: bloc d'unités : alias commerciaux, codes Lyxal, codes d'échange, clé sans points
 -- en tant que: qualif

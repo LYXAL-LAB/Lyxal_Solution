@@ -8,18 +8,9 @@ DEFINE TABLE OVERWRITE ingestion_substitution_rule
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE (
-            ($token != NONE AND ($token.role IN ["ingestion_agent", "qualification_agent", "steward_admin", "catalogue_sync_agent"]))
-            OR ($auth != NONE AND ($auth.role IN ["ingestion_agent", "qualification_agent", "steward_admin", "catalogue_sync_agent"]))
-        )
-        FOR create WHERE (
-            ($token != NONE AND $token.role = "steward_admin")
-            OR ($auth != NONE AND $auth.role = "steward_admin")
-        )
-        FOR update WHERE (
-            ($token != NONE AND $token.role = "steward_admin")
-            OR ($auth != NONE AND $auth.role = "steward_admin")
-        )
+        FOR select WHERE fn::auth_has_permission({ permission: "ingestion.read" })
+        FOR create WHERE fn::auth_has_permission({ permission: "ingestion.rule.manage" })
+        FOR update WHERE fn::auth_has_permission({ permission: "ingestion.rule.manage" })
         FOR delete NONE
     COMMENT "Règles de substitution Niveau 4 strictement contextualisées à un système constructif et révocables";
 

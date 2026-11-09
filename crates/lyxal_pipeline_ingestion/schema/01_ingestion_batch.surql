@@ -8,26 +8,9 @@ DEFINE TABLE OVERWRITE ingestion_batch
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE (
-            ($token != NONE AND ($token.role IN ["ingestion_agent", "qualification_agent", "steward_admin", "catalogue_sync_agent"]))
-            OR ($auth != NONE AND ($auth.role IN ["ingestion_agent", "qualification_agent", "steward_admin", "catalogue_sync_agent"]))
-        )
-        FOR create WHERE (
-            ($token != NONE AND $token.role = "ingestion_agent" AND "ingestion:batch:write" IN $token.scope)
-            OR ($auth != NONE AND $auth.role = "ingestion_agent" AND "ingestion:batch:write" IN $auth.permissions)
-        )
-        FOR update WHERE (
-            ($token != NONE AND (
-                ($token.role = "ingestion_agent" AND "ingestion:batch:write" IN $token.scope)
-                OR ($token.role = "qualification_agent" AND "ingestion:staged:qualify" IN $token.scope)
-                OR ($token.role = "steward_admin" AND "ingestion:manifest:approve" IN $token.scope)
-            ))
-            OR ($auth != NONE AND (
-                ($auth.role = "ingestion_agent" AND "ingestion:batch:write" IN $auth.permissions)
-                OR ($auth.role = "qualification_agent" AND "ingestion:staged:qualify" IN $auth.permissions)
-                OR ($auth.role = "steward_admin" AND "ingestion:manifest:approve" IN $auth.permissions)
-            ))
-        )
+        FOR select WHERE fn::auth_has_permission({ permission: "ingestion.read" })
+        FOR create WHERE fn::auth_has_permission({ permission: "ingestion.batch.write" })
+        FOR update WHERE fn::auth_has_permission({ permission: "ingestion.batch.write" }) OR fn::auth_has_permission({ permission: "ingestion.staged.qualify" }) OR fn::auth_has_permission({ permission: "ingestion.manifest.approve" })
         FOR delete NONE
     COMMENT "Lots d'ingestion fabricants avec traçabilité, empreinte globale et checkpointing";
 
@@ -190,9 +173,9 @@ THEN {
         THROW "INGESTION_BATCH_CLAIM_LOST: La génération de réservation d'un lot ne recule jamais.";
     };
 
-    -- Le verrou du contenu scellé n'est posé ou retiré que par le steward (ou la session système),
-    -- au scellement et à la remise en brouillon d'un manifeste
-    IF $before.sealed_manifest != $after.sealed_manifest AND fn::ingestion_session_identity({}).role NOT IN ["steward_admin", "system"] {
+    -- Le verrou du contenu scellé n'est posé ou retiré qu'avec la permission ingestion.manifest.approve
+    -- (ou par la session système), au scellement et à la remise en brouillon d'un manifeste
+    IF $before.sealed_manifest != $after.sealed_manifest AND !fn::auth_has_permission({ permission: "ingestion.manifest.approve" }) {
         THROW "INGESTION_STAGED_ITEM_SEALED: Le verrou du contenu scellé d'un lot ne se modifie que par le scellement ou la remise en brouillon d'un manifeste.";
     };
 

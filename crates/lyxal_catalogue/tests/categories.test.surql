@@ -2,7 +2,16 @@
 -- Catégories : création, arborescence, déplacement, gardes anti-cycle, suppression.
 -- Le référentiel des catégories est administré (session root) ; les utilisateurs le lisent.
 --
--- identité alpha: { "id": "catalogue_session:alpha", "sub": "user:alpha", "iss": "lyxal-os", "aud": "lyxal-catalogue", "role": "tenant_user", "tenant_id": "alpha" }
+-- identité alpha: { "id": "auth_session:alpha", "pv": 1, "permissions": ["catalogue.item.read", "catalogue.item.manage"] }
+
+-- préparation: organisations, identités et sessions lyxal_auth
+{
+    CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
+    CREATE auth_organization:beta CONTENT { slug: "beta", name: "Beta Bois" };
+    CREATE auth_identity:alpha CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "alpha@lyxal.test" } };
+    RELATE auth_identity:alpha->auth_member_of->auth_organization:alpha;
+    CREATE auth_session:alpha CONTENT { identity: auth_identity:alpha, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+};
 
 -- test: création d'une catégorie racine
 RETURN fn::catalogue_categorie_create({ code: " gros-oeuvre ", libelle: " Gros œuvre ", ordre: 1 }).data.{ code, libelle, ordre } == { code: "GROS-OEUVRE", libelle: "Gros œuvre", ordre: 1 };

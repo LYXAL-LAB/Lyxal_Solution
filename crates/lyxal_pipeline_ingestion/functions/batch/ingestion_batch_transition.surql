@@ -54,7 +54,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_batch_transition($params: object) {
         transitions = array::append(transitions ?? [], {
             from_state: $existing.statut,
             to_state: $target,
-            triggered_by: fn::ingestion_session_identity({}).operator,
+            triggered_by: fn::ingestion_operator({}),
             reason: $reason.value,
             error_code: $p.error_code,
             transitioned_at: $now

@@ -4,7 +4,15 @@
 -- d'une unité utilisée (REFERENCE ON DELETE REJECT).
 -- Exécuté par scripts/ci/test_lyxal_modules.py (format en tête du script).
 --
--- identité sync: { "id": "catalogue_session:sync", "sub": "service:sync", "iss": "lyxal-os", "aud": "lyxal-catalogue", "role": "catalogue_sync_agent", "scope": ["catalogue:sync:write"] }
+-- identité sync: { "id": "auth_session:sync", "pv": 1, "permissions": ["catalogue.master.write"] }
+
+-- préparation: organisations, identités et sessions lyxal_auth
+{
+    CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
+    CREATE auth_organization:beta CONTENT { slug: "beta", name: "Beta Bois" };
+    CREATE auth_identity:sync CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "sync@lyxal.test" } };
+    CREATE auth_session:sync CONTENT { identity: auth_identity:sync, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+};
 
 -- préparation: type d'unité de test
 fn::base_unite_type_create({ code: "ESSAI", libelle: "Essai" });

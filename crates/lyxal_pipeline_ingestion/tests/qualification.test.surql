@@ -3,9 +3,19 @@
 -- lyxal_core), requalification par le Data Steward (preuve commerciale, transitions),
 -- listes et indicateurs.
 --
--- identité ingestion: { "id": "ingestion_session:ingestion", "sub": "service:ingestion", "role": "ingestion_agent", "scope": ["ingestion:batch:write"] }
--- identité qualif: { "id": "ingestion_session:qualif", "sub": "service:qualif", "role": "qualification_agent", "scope": ["ingestion:staged:qualify"] }
--- identité steward: { "id": "ingestion_session:steward", "sub": "user:steward", "role": "steward_admin", "scope": ["ingestion:manifest:approve"] }
+-- identité ingestion: { "id": "auth_session:ingestion", "pv": 1, "permissions": ["ingestion.read", "ingestion.batch.write"] }
+-- identité qualif: { "id": "auth_session:qualif", "pv": 1, "permissions": ["ingestion.read", "ingestion.staged.qualify"] }
+-- identité steward: { "id": "auth_session:steward", "pv": 1, "permissions": ["ingestion.read", "ingestion.rule.manage", "ingestion.manifest.approve"] }
+
+-- préparation: identités et sessions lyxal_auth (Data Steward en double facteur : AAL2 ; synchronisation : compte de service)
+{
+    CREATE auth_identity:ingestion CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "ingestion@exemple.fr" } };
+    CREATE auth_identity:qualif CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "qualif@exemple.fr" } };
+    CREATE auth_identity:steward CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "steward@exemple.fr" } };
+    CREATE auth_session:ingestion CONTENT { identity: auth_identity:ingestion, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:qualif CONTENT { identity: auth_identity:qualif, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:steward CONTENT { identity: auth_identity:steward, aal: 2, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+};
 
 -- préparation: table de test lisible par toutes les identités
 DEFINE TABLE test_ref SCHEMALESS PERMISSIONS FULL;
@@ -40,7 +50,7 @@ RETURN fn::ingestion_staged_save({ claim: { owner: "banc", generation: 1 }, batc
 ] }).data[0].ok
     AND count(SELECT id FROM ingestion_staged_item WHERE reference_fabricant = "BA13") == 1
     AND (SELECT VALUE transitions.map(|$t| [$t.from_state, $t.to_state, $t.triggered_by, $t.reason]) FROM ONLY ingestion_staged_item WHERE reference_fabricant = "BA13" LIMIT 1)
-        == [[NONE, "TO_CONFIRM", "service:qualif", "Preuve absente"], ["TO_CONFIRM", "REJECTED", "service:qualif", "Prix incohérent"]];
+        == [[NONE, "TO_CONFIRM", "auth_identity:qualif", "Preuve absente"], ["TO_CONFIRM", "REJECTED", "auth_identity:qualif", "Prix incohérent"]];
 
 -- test: rejeu sans changement de qualification : aucune transition ajoutée
 -- en tant que: qualif
@@ -106,7 +116,7 @@ RETURN fn::ingestion_staged_requalify({ item_id: test_ref:items.ba13, new_qualif
 RETURN fn::ingestion_staged_requalify({ item_id: test_ref:items.ba13, new_qualification: "to_confirm", justification: "Prix corrigé par le fabricant" }).ok
     AND fn::ingestion_staged_requalify({ item_id: test_ref:items.ba13, new_qualification: "VERIFIED", justification: "Bordereau fabricant vérifié", proof: { proof_type: "signed_vendor_catalog", proof_reference: "CAT-PLACO-2026", source_authority: "Saint-Gobain Placo" } }).ok
     AND (SELECT VALUE [qualification, is_approved, approved_by, commercial_proof.proof_reference, array::last(transitions).proof_reference] FROM ONLY <record> test_ref:items.ba13)
-        == ["VERIFIED", true, "user:steward", "CAT-PLACO-2026", "CAT-PLACO-2026"];
+        == ["VERIFIED", true, "auth_identity:steward", "CAT-PLACO-2026", "CAT-PLACO-2026"];
 
 -- test: une requalification hors VERIFIED ne touche pas à l'approbation
 -- en tant que: steward

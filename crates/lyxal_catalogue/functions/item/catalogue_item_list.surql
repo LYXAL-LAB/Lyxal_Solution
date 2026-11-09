@@ -35,7 +35,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_list($params: object) {
     LET $language = $p.language;
 
     -- Locataire de la session : sa personnalisation et sa disponibilité accompagnent chaque article maître
-    LET $tenant = IF $token != NONE AND $token.tenant_id != NONE { string::trim($token.tenant_id) } ELSE IF $auth != NONE AND $auth.tenant_id != NONE { string::trim($auth.tenant_id) } ELSE { NONE };
+    LET $tenant = fn::catalogue_caller({}).tenant;
 
     -- Si filtrage par catégorie demandé, on sélectionne via catalogue_item_categorie
     LET $category_item_ids = IF $categorie != NONE {
@@ -49,7 +49,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_list($params: object) {
         -- enabled filtre la disponibilité pour le locataire de la session (article actif et non
         -- désactivé par lui)
         ($enabled == NONE OR (enabled AND (IF is_custom == false AND $tenant != NONE {
-            (SELECT VALUE enabled FROM ONLY catalogue_item_personnalisation WHERE item = $parent.id AND tenant_id = $tenant LIMIT 1) ?? true
+            (SELECT VALUE enabled FROM ONLY catalogue_item_personnalisation WHERE item = $parent.id AND tenant = $tenant LIMIT 1) ?? true
         } ELSE { true })) = $enabled) AND
         ($category_item_ids == NONE OR id IN $category_item_ids) AND
         ($search == NONE OR string::lowercase(code) CONTAINS $search OR string::lowercase(libelle) CONTAINS $search)
@@ -58,7 +58,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_list($params: object) {
 
     RETURN fn::result_ok($records.map(|$item| {
         LET $personnalisation = IF $item.is_custom == false AND $tenant != NONE {
-            (SELECT libelle_personnalise, code_interne_client, enabled FROM ONLY catalogue_item_personnalisation WHERE item = $item.id AND tenant_id = $tenant LIMIT 1)
+            (SELECT libelle_personnalise, code_interne_client, enabled FROM ONLY catalogue_item_personnalisation WHERE item = $item.id AND tenant = $tenant LIMIT 1)
         } ELSE { NONE };
         RETURN object::extend($item, {
             personnalisation: $personnalisation,

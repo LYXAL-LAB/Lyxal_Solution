@@ -12,8 +12,8 @@
    - Interdiction formelle de créer un serveur HTTP, un proxy Node.js ou une couche backend ad-hoc pour l'UI.
    - Tout le trafic transite exclusivement par le binaire officiel [`apps/lyxal-server`](file:///c:/Users/HP/Desktop/Lyxal_OS/apps/lyxal-server) (Axum Handlers).
 2. **Pas d'authentification parallèle :**
-   - L'interface utilise les Record Users SurrealDB et les sessions sécurisées (`ingestion_session`, `auth`).
-   - Respect strict des 4 rôles spécialisés : `ingestion_agent`, `qualification_agent`, `steward_admin` et `catalogue_sync_agent`.
+   - L'interface utilise les sessions `lyxal_auth` (connexion, jetons d'accès, double facteur) ; aucune autre session.
+   - Les droits passent par les permissions `lyxal_auth` des modules (`catalogue.*`, `ingestion.*`) et leurs rôles par défaut (`ingestion_operator`, `ingestion_qualifier`, `ingestion_steward`, `catalogue_sync`).
 3. **Réutilisation stricte des contrats SurrealQL :**
    - L'interface ne réimplémente aucune règle métier.
    - Les actions graphiques appellent les fonctions publiques `fn::catalogue_*` et `fn::ingestion_*`.

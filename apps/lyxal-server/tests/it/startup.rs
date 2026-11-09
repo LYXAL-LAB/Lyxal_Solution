@@ -308,114 +308,11 @@ async fn every_emitted_error_code_is_defined() {
     );
 }
 
-/// Publication de bout en bout : clé fournie à l'hôte → accès JWT et abonnement définis ;
-/// l'approbation d'un manifeste publie ses articles au catalogue par le moteur d'événements.
+/// Sans service de connexion `lyxal_auth`, la publication est désactivée et la sonde du module
+/// le signale.
 #[cfg(feature = "module-ingestion")]
 #[tokio::test]
-async fn approved_manifest_is_published_through_the_event_engine() {
-    let key = uuid::Uuid::new_v4().simple().to_string();
-    let config = config_with(
-        "publication",
-        &format!("[catalogue_sync]\nsigning_key = \"{key}\"\n"),
-    );
-    let client = database("publication").await;
-    let runtime = runtime::start(&config, &client)
-        .await
-        .expect("démarrage")
-        .runtime;
-
-    // Accès JWT et abonnement installés par l'hôte
-    let mut info = client.query("INFO FOR DB").await.expect("INFO FOR DB");
-    let info: Option<serde_json::Value> = info.take(0).expect("infos");
-    assert!(
-        info.as_ref()
-            .and_then(|i| i["accesses"]["lyxal_catalogue_sync"].as_str())
-            .is_some(),
-        "{info:?}"
-    );
-    let mut sub = client
-        .query("SELECT VALUE [event_pattern, handler_name, is_active] FROM event_subscription WHERE name = 'ingestion_manifest_publication'")
-        .await
-        .expect("abonnement");
-    let sub: Vec<serde_json::Value> = sub.take(0).expect("abonnement");
-    assert_eq!(
-        sub,
-        vec![serde_json::json!([
-            "ingestion.manifest.approved",
-            "ingestion.manifest_publisher",
-            true
-        ])]
-    );
-
-    // Lot, article vérifié avec preuve éligible, manifeste scellé puis approuvé (session système)
-    let fingerprint = lyxal_crypto::blake3_hex(b"lot_srv:BA13");
-    client
-        .query(
-            "RETURN fn::ingestion_batch_create({ id: 'lot_srv', source_type: 'CSV', fournisseur_id: 'FOURN_PLACO', nom_fichier: 'srv.csv', file_hash_blake3: crypto::blake3('srv.csv') }).ok;
-             RETURN fn::ingestion_batch_claim({ id: 'lot_srv', owner: 'test' }).ok;
-             RETURN fn::ingestion_staged_save({ claim: { owner: 'test', generation: 1 }, batch_id: 'lot_srv', rules_version: '1', items: [{ ligne_numero: 1, canonical_fingerprint: $fp, fabricant: 'PLACO', reference_fabricant: 'BA13', libelle_commercial: 'Plaque BA13', unite_reference: 'M2', conditionnement: { unite_vente: 'PCE', quantite_par_colis: 1.0 }, qualification: 'VERIFIED', commercial_proof: { proof_type: 'CERTIFIED_MANUFACTURER_EDI', proof_reference: 'EDI-2026-PLACO-001', source_authority: 'EDI_HUB_SAINT_GOBAIN', verified_by: 'system:edi_receiver', verified_at: '2026-10-25T10:00:00Z' } }] }).data[0].ok;
-             RETURN fn::ingestion_manifest_save({ manifest_ref: 'MAN-SRV', batch_id: 'lot_srv', statut: 'SEALED', nb_articles_insert: 1 }).ok;
-             RETURN fn::ingestion_manifest_approve({ manifest_ref: 'MAN-SRV', justification: 'Manifeste contrôlé avant publication' }).ok;",
-        )
-        .bind(("fp", fingerprint))
-        .await
-        .expect("préparation")
-        .check()
-        .expect("préparation réussie");
-
-    // Le moteur d'événements livre ingestion.manifest.approved au consommateur de publication
-    let mut statut = String::new();
-    for _ in 0..200 {
-        let mut res = client
-            .query("SELECT VALUE statut FROM ONLY ingestion_publication_manifest WHERE manifest_ref = 'MAN-SRV' LIMIT 1")
-            .await
-            .expect("manifeste");
-        statut = res
-            .take::<Option<String>>(0)
-            .expect("statut")
-            .unwrap_or_default();
-        if statut == "COMMITTED" {
-            break;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-    }
-    assert_eq!(statut, "COMMITTED");
-    let mut item = client
-        .query("SELECT VALUE [master_id, is_custom, reference_fabricant] FROM catalogue_item")
-        .await
-        .expect("catalogue");
-    let items: Vec<serde_json::Value> = item.take(0).expect("articles");
-    assert_eq!(items.len(), 1);
-    assert_eq!(items[0][1], false);
-    assert_eq!(items[0][2], "BA13");
-
-    runtime.stop_all().await.expect("arrêt");
-
-    // Redémarrage sans clé : abonnement suspendu, accès JWT retiré
-    let keyless = runtime::start(&config_with("publication", ""), &client)
-        .await
-        .expect("redémarrage sans clé")
-        .runtime;
-    let mut state = client
-        .query("SELECT VALUE is_active FROM event_subscription WHERE name = 'ingestion_manifest_publication'; INFO FOR DB;")
-        .await
-        .expect("état");
-    let active: Vec<bool> = state.take(0).expect("abonnement");
-    let info: Option<serde_json::Value> = state.take(1).expect("infos");
-    assert_eq!(active, vec![false]);
-    assert!(
-        info.as_ref()
-            .and_then(|i| i["accesses"]["lyxal_catalogue_sync"].as_str())
-            .is_none(),
-        "{info:?}"
-    );
-    keyless.stop_all().await.expect("arrêt");
-}
-
-/// Sans clé de signature, la publication est désactivée et la sonde du module le signale.
-#[cfg(feature = "module-ingestion")]
-#[tokio::test]
-async fn missing_signing_key_degrades_the_ingestion_probe() {
+async fn publication_without_auth_service_degrades_the_ingestion_probe() {
     let config = config("sans_cle");
     let client = database("sans_cle").await;
     let runtime = runtime::start(&config, &client)

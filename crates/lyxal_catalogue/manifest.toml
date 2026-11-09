@@ -20,9 +20,12 @@ version = ">=0.1.0"
 id = "lyxal_base"
 version = ">=0.1.0"
 
+[[dependencies]]
+id = "lyxal_auth"
+version = ">=0.1.0"
+
 [resources]
 schemas = [
-    "schema/00_catalogue_session.surql",
     "schema/01_catalogue_type.surql",
     "schema/02_catalogue_item.surql",
     "schema/03_catalogue_categorie.surql",
@@ -39,6 +42,7 @@ schemas = [
 ]
 
 functions = [
+    "functions/access/catalogue_access.surql",
     "functions/type/catalogue_type_list.surql",
     "functions/categorie/catalogue_categorie_create.surql",
     "functions/categorie/catalogue_categorie_tree.surql",
@@ -80,5 +84,6 @@ error_definitions = [
 
 seeds = [
     "seeds/catalogue_type_initial.surql",
-    "seeds/catalogue_relation_type_initial.surql"
+    "seeds/catalogue_relation_type_initial.surql",
+    "seeds/catalogue_auth.surql"
 ]

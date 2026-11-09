@@ -12,12 +12,8 @@ DEFINE TABLE OVERWRITE catalogue_item_personnalisation
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select, create, update, delete WHERE (
-            ($token != NONE AND $token.aud = "lyxal-catalogue" AND $token.role = "tenant_user"
-                AND $token.tenant_id != NONE AND tenant_id = $token.tenant_id)
-            OR ($token == NONE AND $auth != NONE AND $auth.role = "tenant_user"
-                AND $auth.tenant_id != NONE AND tenant_id = $auth.tenant_id)
-        )
+        FOR select WHERE fn::catalogue_access({ is_custom: true, tenant: tenant, action: "read" })
+        FOR create, update, delete WHERE fn::catalogue_access({ is_custom: true, tenant: tenant, action: "write" })
     COMMENT "Personnalisations des articles maîtres par locataire (libellé, code interne, disponibilité)";
 
 DEFINE FIELD OVERWRITE item ON TABLE catalogue_item_personnalisation
@@ -26,12 +22,10 @@ DEFINE FIELD OVERWRITE item ON TABLE catalogue_item_personnalisation
     READONLY
     COMMENT "Article maître personnalisé";
 
-DEFINE FIELD OVERWRITE tenant_id ON TABLE catalogue_item_personnalisation
-    TYPE string
-    DEFAULT IF $token.tenant_id != NONE { $token.tenant_id } ELSE IF $auth.tenant_id != NONE { $auth.tenant_id } ELSE { NONE }
+DEFINE FIELD OVERWRITE tenant ON TABLE catalogue_item_personnalisation
+    TYPE record<auth_organization>
     READONLY
-    ASSERT string::len($value) >= 1
-    COMMENT "Locataire propriétaire, pris de la session";
+    COMMENT "Organisation lyxal_auth propriétaire (organisation active de la session)";
 
 DEFINE FIELD OVERWRITE libelle_personnalise ON TABLE catalogue_item_personnalisation
     TYPE option<string>
@@ -60,7 +54,7 @@ DEFINE FIELD OVERWRITE updated_at ON TABLE catalogue_item_personnalisation
     COMMENT "Date de dernière modification";
 
 DEFINE INDEX OVERWRITE idx_personnalisation_item_tenant ON TABLE catalogue_item_personnalisation
-    FIELDS item, tenant_id UNIQUE;
+    FIELDS item, tenant UNIQUE;
 
 -- ----------------------------------------------------------------------------
 -- GARDIEN : seuls les articles maîtres se personnalisent

@@ -13,8 +13,6 @@ pub struct AppConfig {
     pub observability: ObservabilityConfig,
     pub cors: CorsConfig,
     #[serde(default)]
-    pub catalogue_sync: CatalogueSyncConfig,
-    #[serde(default)]
     pub crypto: CryptoConfig,
     #[serde(default)]
     pub notification: NotificationConfig,
@@ -81,17 +79,6 @@ pub struct SmtpConfig {
 
 fn default_smtp_timeout() -> u64 {
     30
-}
-
-/// Publication du pipeline d'ingestion vers le catalogue : clé de signature du jeton de service
-/// `catalogue_sync_agent`, jamais dans les fichiers de configuration, uniquement par
-/// `LYXAL__CATALOGUE_SYNC__SIGNING_KEY` (32 caractères `A-Z a-z 0-9 _ -`). Sans clé, la
-/// publication est désactivée et la sonde de santé du module le signale.
-#[derive(Clone, Debug, Default, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct CatalogueSyncConfig {
-    #[serde(default)]
-    pub signing_key: Option<SecretPassword>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

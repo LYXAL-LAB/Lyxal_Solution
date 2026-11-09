@@ -1,14 +1,39 @@
 -- lyxal-test: assertions
--- Articles : rôles, isolation entre locataires, champs maîtres protégés.
+-- Articles : permissions lyxal_auth, isolation entre organisations, champs maîtres protégés.
 -- Exécuté par scripts/ci/test_lyxal_modules.py (format en tête du script).
 --
--- identité sync: { "id": "catalogue_session:sync", "sub": "service:sync", "iss": "lyxal-os", "aud": "lyxal-catalogue", "role": "catalogue_sync_agent", "scope": ["catalogue:sync:write"] }
--- identité sync_lecture: { "id": "catalogue_session:sync_lecture", "sub": "service:sync", "iss": "lyxal-os", "aud": "lyxal-catalogue", "role": "catalogue_sync_agent", "scope": ["catalogue:sync:read"] }
--- identité alpha: { "id": "catalogue_session:alpha", "sub": "user:alpha", "iss": "lyxal-os", "aud": "lyxal-catalogue", "role": "tenant_user", "tenant_id": "alpha" }
--- identité beta: { "id": "catalogue_session:beta", "sub": "user:beta", "iss": "lyxal-os", "aud": "lyxal-catalogue", "role": "tenant_user", "tenant_id": "beta" }
--- identité sans_tenant: { "id": "catalogue_session:sans_tenant", "sub": "user:x", "iss": "lyxal-os", "aud": "lyxal-catalogue", "role": "tenant_user" }
--- identité autre_role: { "id": "catalogue_session:autre", "sub": "user:y", "iss": "lyxal-os", "aud": "lyxal-catalogue", "role": "viewer", "tenant_id": "alpha" }
--- identité autre_audience: { "id": "catalogue_session:billing", "sub": "user:alpha", "iss": "lyxal-os", "aud": "lyxal-billing", "role": "tenant_user", "tenant_id": "alpha" }
+-- identité sync: { "id": "auth_session:sync", "pv": 1, "permissions": ["catalogue.master.write"] }
+-- identité lecteur: { "id": "auth_session:lecteur", "pv": 1, "permissions": ["catalogue.item.read"] }
+-- identité alpha: { "id": "auth_session:alpha", "pv": 1, "permissions": ["catalogue.item.read", "catalogue.item.manage"] }
+-- identité beta: { "id": "auth_session:beta", "pv": 1, "permissions": ["catalogue.item.read", "catalogue.item.manage"] }
+-- identité sans_organisation: { "id": "auth_session:sans_organisation", "pv": 1, "permissions": ["catalogue.item.read", "catalogue.item.manage"] }
+-- identité sans_droit: { "id": "auth_session:sans_droit", "pv": 1, "permissions": [] }
+-- identité revoquee: { "id": "auth_session:revoquee", "pv": 1, "permissions": ["catalogue.item.read", "catalogue.item.manage"] }
+
+-- préparation: organisations, identités et sessions lyxal_auth
+{
+    CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
+    CREATE auth_organization:beta CONTENT { slug: "beta", name: "Beta Bois" };
+    CREATE auth_identity:sync CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "sync@lyxal.test" } };
+    CREATE auth_session:sync CONTENT { identity: auth_identity:sync, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_identity:lecteur CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "lecteur@lyxal.test" } };
+    RELATE auth_identity:lecteur->auth_member_of->auth_organization:alpha;
+    CREATE auth_session:lecteur CONTENT { identity: auth_identity:lecteur, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_identity:alpha CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "alpha@lyxal.test" } };
+    RELATE auth_identity:alpha->auth_member_of->auth_organization:alpha;
+    CREATE auth_session:alpha CONTENT { identity: auth_identity:alpha, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_identity:beta CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "beta@lyxal.test" } };
+    RELATE auth_identity:beta->auth_member_of->auth_organization:beta;
+    CREATE auth_session:beta CONTENT { identity: auth_identity:beta, organization: auth_organization:beta, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_identity:sans_organisation CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "sans_organisation@lyxal.test" } };
+    CREATE auth_session:sans_organisation CONTENT { identity: auth_identity:sans_organisation, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_identity:sans_droit CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "sans_droit@lyxal.test" } };
+    RELATE auth_identity:sans_droit->auth_member_of->auth_organization:alpha;
+    CREATE auth_session:sans_droit CONTENT { identity: auth_identity:sans_droit, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_identity:revoquee CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "revoquee@lyxal.test" } };
+    RELATE auth_identity:revoquee->auth_member_of->auth_organization:alpha;
+    CREATE auth_session:revoquee CONTENT { identity: auth_identity:revoquee, organization: auth_organization:alpha, state: "revoked", idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+};
 
 -- test: l'agent de synchronisation crée un article maître
 -- en tant que: sync
@@ -22,7 +47,7 @@ CREATE test_ref:placo SET item = <string> (SELECT VALUE id FROM ONLY catalogue_i
 
 -- test: le code est mis en majuscules et l'article est maître
 -- en tant que: sync
-RETURN fn::catalogue_item_get({ code: " placo-ba13 " }).data.item.{ code, is_custom, tenant_id, fabricant } == { code: "PLACO-BA13", is_custom: false, tenant_id: NONE, fabricant: "PLACO" };
+RETURN fn::catalogue_item_get({ code: " placo-ba13 " }).data.item.{ code, is_custom, tenant, fabricant } == { code: "PLACO-BA13", is_custom: false, tenant: NONE, fabricant: "PLACO" };
 
 -- test: un code déjà pris est refusé
 -- en tant que: sync
@@ -56,8 +81,8 @@ RETURN fn::catalogue_item_create({ code: "M-1", type: "catalogue_type:PRODUIT", 
 -- en tant que: sync
 RETURN fn::catalogue_item_create({ code: "PRIV-SYNC", type: "catalogue_type:PRODUIT", libelle: "x", unite_reference: "base_unite:U", is_custom: true }).error.code == "CATALOGUE_ITEM_SYNC_CANNOT_CREATE_CUSTOM";
 
--- test: sans le scope d'écriture, l'agent ne crée pas d'article maître
--- en tant que: sync_lecture
+-- test: sans catalogue.master.write, un compte ne crée pas d'article maître
+-- en tant que: lecteur
 RETURN fn::catalogue_item_create({ code: "M-LECT", type: "catalogue_type:PRODUIT", libelle: "x", unite_reference: "base_unite:U", master_id: "M-LECT" }).error.code == "CATALOGUE_ITEM_SYNC_CANNOT_CREATE_MASTER";
 
 -- test: un locataire ne crée pas d'article maître
@@ -70,7 +95,7 @@ RETURN fn::catalogue_item_create({ code: "M-ALPHA", type: "catalogue_type:PRODUI
 
 -- test: Alpha crée son article privé, rattaché à son locataire
 -- en tant que: alpha
-RETURN fn::catalogue_item_create({ code: "alpha-1", type: "catalogue_type:PRODUIT", libelle: "Article Alpha", unite_reference: "base_unite:U" }).data.{ is_custom, tenant_id } == { is_custom: true, tenant_id: "alpha" };
+RETURN fn::catalogue_item_create({ code: "alpha-1", type: "catalogue_type:PRODUIT", libelle: "Article Alpha", unite_reference: "base_unite:U" }).data.{ is_custom, tenant } == { is_custom: true, tenant: auth_organization:alpha };
 
 -- préparation: identifiant de l'article d'Alpha
 CREATE test_ref:alpha SET item = <string> (SELECT VALUE id FROM ONLY catalogue_item WHERE code = "ALPHA-1" LIMIT 1);
@@ -79,21 +104,37 @@ CREATE test_ref:alpha SET item = <string> (SELECT VALUE id FROM ONLY catalogue_i
 -- en tant que: beta
 RETURN fn::catalogue_item_create({ code: "beta-1", type: "catalogue_type:PRODUIT", libelle: "Article Beta", unite_reference: "base_unite:U" }).ok;
 
--- test: Alpha ne crée pas d'article au nom de Beta
+-- test: Alpha ne choisit pas l'organisation propriétaire (paramètre inexistant)
 -- en tant que: alpha
-RETURN fn::catalogue_item_create({ code: "alpha-2", type: "catalogue_type:PRODUIT", libelle: "x", unite_reference: "base_unite:U", tenant_id: "beta" }).error.code == "CATALOGUE_ITEM_TENANT_FORBIDDEN";
+RETURN fn::catalogue_item_create({ code: "alpha-2", type: "catalogue_type:PRODUIT", libelle: "x", unite_reference: "base_unite:U", tenant: "auth_organization:beta" }).error.code == "CATALOGUE_INVALID_PARAMETERS";
+
+-- test: Alpha n'écrit pas directement un article privé au nom de Beta
+-- en tant que: alpha
+RETURN (CREATE catalogue_item CONTENT { code: "ALPHA-PIRATE", type: catalogue_type:PRODUIT, libelle: "x", unite_reference: base_unite:U, is_custom: true, tenant: auth_organization:beta } RETURN AFTER) == [];
+
+-- test: un membre en lecture seule ne crée pas d'article privé
+-- en tant que: lecteur
+RETURN fn::catalogue_item_create({ code: "lect-1", type: "catalogue_type:PRODUIT", libelle: "x", unite_reference: "base_unite:U" }).error.code == "CATALOGUE_WRITE_FORBIDDEN";
 
 -- test: un article privé n'a pas d'identifiant maître
 -- en tant que: alpha
 RETURN fn::catalogue_item_create({ code: "alpha-3", type: "catalogue_type:PRODUIT", libelle: "x", unite_reference: "base_unite:U", is_custom: true, master_id: "M-X" }).error.code == "CATALOGUE_ITEM_CUSTOM_CANNOT_HAVE_MASTER_ID";
 
--- test: une identité sans tenant_id ne crée pas d'article privé
--- en tant que: sans_tenant
+-- test: une session sans organisation active ne crée pas d'article privé
+-- en tant que: sans_organisation
 RETURN fn::catalogue_item_create({ code: "x-1", type: "catalogue_type:PRODUIT", libelle: "x", unite_reference: "base_unite:U" }).error.code == "CATALOGUE_ITEM_TENANT_REQUIRED";
 
--- test: un autre rôle ne crée pas d'article privé
--- en tant que: autre_role
-RETURN fn::catalogue_item_create({ code: "x-2", type: "catalogue_type:PRODUIT", libelle: "x", unite_reference: "base_unite:U" }).error.code == "CATALOGUE_ITEM_TENANT_REQUIRED";
+-- test: un membre sans permission du catalogue ne crée pas d'article privé
+-- en tant que: sans_droit
+RETURN fn::catalogue_item_create({ code: "x-2", type: "catalogue_type:PRODUIT", libelle: "x", unite_reference: "base_unite:U" }).error.code == "CATALOGUE_WRITE_FORBIDDEN";
+
+-- test: un membre sans permission du catalogue ne voit rien
+-- en tant que: sans_droit
+RETURN fn::catalogue_item_list({}).data == [];
+
+-- test: un membre en lecture seule voit l'article maître et ceux de son organisation
+-- en tant que: lecteur
+RETURN fn::catalogue_item_list({}).data.code == ["ALPHA-1", "PLACO-BA13"];
 
 -- test: Alpha voit l'article maître et le sien, pas celui de Beta
 -- en tant que: alpha
@@ -107,8 +148,8 @@ RETURN fn::catalogue_item_list({}).data.code == ["BETA-1", "PLACO-BA13"];
 -- en tant que: sync
 RETURN fn::catalogue_item_list({}).data.code == ["PLACO-BA13"];
 
--- test: un jeton émis pour une autre audience ne voit rien
--- en tant que: autre_audience
+-- test: une session révoquée ne voit rien
+-- en tant que: revoquee
 RETURN fn::catalogue_item_list({}).data == [];
 
 -- test: Beta ne lit pas directement l'article privé d'Alpha
@@ -150,9 +191,14 @@ RETURN fn::catalogue_item_update({ id: test_ref:alpha.item, code: "ALPHA-9" }).e
 -- en tant que: alpha
 RETURN fn::catalogue_item_update({ id: test_ref:alpha.item, nature_reference: "COMMERCIALE" }).error.code == "CATALOGUE_ITEM_NATURE_IMMUTABLE";
 
--- test: le propriétaire d'un article privé est immuable
+-- test: le propriétaire d'un article privé ne se modifie pas par la fonction
 -- en tant que: alpha
-RETURN fn::catalogue_item_update({ id: test_ref:alpha.item, tenant_id: "beta" }).error.code == "CATALOGUE_ITEM_TENANT_ID_IMMUTABLE";
+RETURN fn::catalogue_item_update({ id: test_ref:alpha.item, tenant: "auth_organization:beta" }).error.code == "CATALOGUE_INVALID_PARAMETERS";
+
+-- test: un membre en lecture seule ne modifie pas l'article privé de son organisation
+-- en tant que: lecteur
+RETURN fn::catalogue_item_update({ id: test_ref:alpha.item, libelle: "Lecteur" }).error.code == "CATALOGUE_WRITE_FORBIDDEN"
+    AND fn::catalogue_item_delete({ id: test_ref:alpha.item }).error.code == "CATALOGUE_WRITE_FORBIDDEN";
 
 -- test: un article privé ne devient pas maître
 -- en tant que: alpha
@@ -173,8 +219,8 @@ RETURN fn::catalogue_item_update({ id: test_ref:placo.item, enabled: false }).er
 
 -- test: un locataire personnalise un article maître pour lui seul
 -- en tant que: alpha
-RETURN fn::catalogue_item_personnaliser({ item_id: test_ref:placo.item, code_interne_client: " A-BA13 ", libelle_personnalise: "Placo maison" }).data.{ code_interne_client, libelle_personnalise, enabled, tenant_id }
-    == { code_interne_client: "A-BA13", libelle_personnalise: "Placo maison", enabled: true, tenant_id: "alpha" };
+RETURN fn::catalogue_item_personnaliser({ item_id: test_ref:placo.item, code_interne_client: " A-BA13 ", libelle_personnalise: "Placo maison" }).data.{ code_interne_client, libelle_personnalise, enabled, tenant }
+    == { code_interne_client: "A-BA13", libelle_personnalise: "Placo maison", enabled: true, tenant: auth_organization:alpha };
 
 -- test: un locataire désactive un article maître pour lui seul
 -- en tant que: alpha
@@ -205,7 +251,7 @@ RETURN (SELECT * FROM catalogue_item_personnalisation) == []
     AND fn::catalogue_item_personnalisation_supprimer({ item_id: test_ref:placo.item }).error.code == "CATALOGUE_PERSONNALISATION_NOT_FOUND";
 
 -- test: la personnalisation d'Alpha est intacte
-RETURN (SELECT VALUE [tenant_id, libelle_personnalise, enabled] FROM catalogue_item_personnalisation) == [["alpha", "Placo maison", false]];
+RETURN (SELECT VALUE [tenant, libelle_personnalise, enabled] FROM catalogue_item_personnalisation) == [[auth_organization:alpha, "Placo maison", false]];
 
 -- test: l'agent de synchronisation n'a aucun accès aux personnalisations
 -- en tant que: sync
@@ -237,7 +283,7 @@ RETURN fn::catalogue_item_get({ id: test_ref:placo.item }).data.disponible == fa
 RETURN fn::catalogue_item_update({ id: test_ref:placo.item, enabled: true }).data.enabled == true;
 
 -- test: après rétablissement, chaque locataire garde sa propre disponibilité
-RETURN (SELECT VALUE [tenant_id, enabled] FROM catalogue_item_personnalisation) == [["alpha", false]];
+RETURN (SELECT VALUE [tenant, enabled] FROM catalogue_item_personnalisation) == [[auth_organization:alpha, false]];
 
 -- test: le locataire supprime sa personnalisation et revient au référentiel
 -- en tant que: alpha
@@ -267,14 +313,6 @@ RETURN fn::catalogue_item_delete({ id: test_ref:alpha.item }).data.deleted == tr
 -- test: l'article privé d'Alpha n'existe plus
 RETURN (SELECT VALUE code FROM catalogue_item ORDER BY code) == ["BETA-1", "PLACO-BA13"];
 
--- test: un locataire ne modifie pas sa session
--- en tant que: alpha
-RETURN (UPDATE catalogue_session:alpha SET role = "catalogue_sync_agent" RETURN AFTER) == [];
-
--- test: un locataire ne crée pas de session
--- en tant que: alpha
-RETURN (CREATE catalogue_session:pirate CONTENT { role: "catalogue_sync_agent", scope: ["catalogue:sync:write"] } RETURN AFTER) == [];
-
 -- test: recherche, filtre par type et pagination
 -- en tant que: beta
 RETURN [
@@ -282,3 +320,21 @@ RETURN [
     fn::catalogue_item_list({ type: "catalogue_type:OUVRAGE" }).data,
     fn::catalogue_item_list({ limit: 1, start: 1 }).data.code
 ] == [["PLACO-BA13"], [], ["PLACO-BA13"]];
+
+-- test: droits calculés pour un membre en lecture seule
+-- en tant que: lecteur
+RETURN fn::catalogue_caller({}).{ valid, system, sync, tenant, read, manage } == { valid: true, system: false, sync: false, tenant: auth_organization:alpha, read: true, manage: false }
+    AND fn::catalogue_access({ is_custom: true, tenant: auth_organization:alpha, action: "read" }) == true
+    AND fn::catalogue_access({ is_custom: true, tenant: auth_organization:alpha, action: "write" }) == false
+    AND fn::catalogue_access({ is_custom: true, tenant: auth_organization:beta, action: "read" }) == false
+    AND fn::catalogue_access({ is_custom: false, tenant: NONE, action: "write" }) == false;
+
+-- test: le compte de synchronisation lit et écrit les seuls articles maîtres
+-- en tant que: sync
+RETURN fn::catalogue_caller({}).{ sync, tenant } == { sync: true, tenant: NONE }
+    AND fn::catalogue_access({ is_custom: false, tenant: NONE, action: "write" }) == true
+    AND fn::catalogue_access({ is_custom: true, tenant: auth_organization:alpha, action: "read" }) == false;
+
+-- test: une session révoquée n'a aucun droit
+-- en tant que: revoquee
+RETURN fn::catalogue_caller({}).valid == false AND fn::catalogue_access({ is_custom: false, tenant: NONE, action: "read" }) == false;

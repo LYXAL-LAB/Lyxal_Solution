@@ -99,12 +99,12 @@ IF !record::exists(error_definition:INGESTION_MANIFEST_APPROVAL_REQUIRES_STEWARD
         translations: {
             fr: {
                 label: "Approbation réservée au Data Steward",
-                description: "Seule la session d'un steward_admin peut approuver un manifeste ; son identité est enregistrée.",
+                description: "Seule une session détenant la permission ingestion.manifest.approve peut approuver un manifeste ; son opérateur est enregistré comme approbateur.",
                 resolution: "Faire approuver le manifeste par un Data Steward."
             },
             en: {
                 label: "Manifest approval requires a Data Steward",
-                description: "Only a steward_admin session can approve a manifest; its identity is recorded.",
+                description: "Only a session holding the ingestion.manifest.approve permission can approve a manifest; its operator is recorded as the approver.",
                 resolution: "Have a Data Steward approve the manifest."
             }
         }
@@ -126,13 +126,13 @@ IF !record::exists(error_definition:INGESTION_MANIFEST_EXECUTION_UNAUTHORIZED) T
         translations: {
             fr: {
                 label: "Exécution non autorisée",
-                description: "Seul catalogue_sync_agent (ou l'hôte) exécute la publication vers le catalogue.",
-                resolution: "Exécuter la publication avec l'identité de l'agent de synchronisation."
+                description: "Seule une session détenant la permission ingestion.manifest.execute (ou l'hôte) exécute la publication vers le catalogue.",
+                resolution: "Exécuter la publication avec le compte de service de synchronisation du catalogue (rôle catalogue_sync)."
             },
             en: {
                 label: "Publication execution reserved to the sync agent",
-                description: "Only catalogue_sync_agent (or the host) runs publication to the catalogue.",
-                resolution: "Run publication with the sync agent identity."
+                description: "Only a session holding the ingestion.manifest.execute permission (or the host) runs publication to the catalogue.",
+                resolution: "Run publication with the catalogue sync service account (catalogue_sync role)."
             }
         }
     }

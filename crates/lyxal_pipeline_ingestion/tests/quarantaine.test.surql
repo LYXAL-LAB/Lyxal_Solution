@@ -2,9 +2,19 @@
 -- Quarantaine : consignation rejouable des anomalies par l'agent de qualification,
 -- résolution auditable par le Data Steward avec corrections contrôlées.
 --
--- identité ingestion: { "id": "ingestion_session:ingestion", "sub": "service:ingestion", "role": "ingestion_agent", "scope": ["ingestion:batch:write"] }
--- identité qualif: { "id": "ingestion_session:qualif", "sub": "service:qualif", "role": "qualification_agent", "scope": ["ingestion:staged:qualify"] }
--- identité steward: { "id": "ingestion_session:steward", "sub": "user:steward", "role": "steward_admin", "scope": ["ingestion:manifest:approve"] }
+-- identité ingestion: { "id": "auth_session:ingestion", "pv": 1, "permissions": ["ingestion.read", "ingestion.batch.write"] }
+-- identité qualif: { "id": "auth_session:qualif", "pv": 1, "permissions": ["ingestion.read", "ingestion.staged.qualify"] }
+-- identité steward: { "id": "auth_session:steward", "pv": 1, "permissions": ["ingestion.read", "ingestion.rule.manage", "ingestion.manifest.approve"] }
+
+-- préparation: identités et sessions lyxal_auth (Data Steward en double facteur : AAL2 ; synchronisation : compte de service)
+{
+    CREATE auth_identity:ingestion CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "ingestion@exemple.fr" } };
+    CREATE auth_identity:qualif CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "qualif@exemple.fr" } };
+    CREATE auth_identity:steward CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "steward@exemple.fr" } };
+    CREATE auth_session:ingestion CONTENT { identity: auth_identity:ingestion, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:qualif CONTENT { identity: auth_identity:qualif, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:steward CONTENT { identity: auth_identity:steward, aal: 2, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+};
 
 -- préparation: table de test lisible par toutes les identités
 DEFINE TABLE test_ref SCHEMALESS PERMISSIONS FULL;
@@ -84,7 +94,7 @@ RETURN (SELECT VALUE is_resolved FROM ingestion_quarantine_record) == [false, fa
 -- test: résolution avec corrections : unité résolue par alias, article repassé à confirmer
 -- en tant que: steward
 RETURN fn::ingestion_quarantine_resolve({ quarantine_id: test_ref:q.unite, comment: "Unité corrigée d'après la fiche", staged_item_id: test_ref:q.article, corrections: { corrected_unit: "piece", corrected_gtin: "3017620422003" } }).ok
-    AND (SELECT VALUE [is_resolved, resolved_by, resolution_comment] FROM ONLY type::record("ingestion_quarantine_record", test_ref:q.unite)) == [true, "user:steward", "Unité corrigée d'après la fiche"]
+    AND (SELECT VALUE [is_resolved, resolved_by, resolution_comment] FROM ONLY type::record("ingestion_quarantine_record", test_ref:q.unite)) == [true, "auth_identity:steward", "Unité corrigée d'après la fiche"]
     AND (SELECT VALUE [qualification, unite_reference, conditionnement.unite_vente, code_barre_gtin, array::last(transitions).from_state, array::last(transitions).to_state] FROM ONLY type::record("ingestion_staged_item", test_ref:q.article))
         == ["TO_CONFIRM", "PCE", "PCE", "3017620422003", "REJECTED", "TO_CONFIRM"];
 
@@ -95,5 +105,5 @@ RETURN fn::ingestion_quarantine_log({ claim: { owner: "banc", generation: 1 }, b
 
 -- test: l'agent de qualification ne marque pas une anomalie résolue par écriture directe
 -- en tant que: qualif
-RETURN (UPDATE type::record("ingestion_quarantine_record", test_ref:q.gtin) SET is_resolved = true, resolved_by = "service:qualif") == []
+RETURN (UPDATE type::record("ingestion_quarantine_record", test_ref:q.gtin) SET is_resolved = true, resolved_by = "auth_identity:qualif") == []
     AND (SELECT VALUE is_resolved FROM ONLY type::record("ingestion_quarantine_record", test_ref:q.gtin)) == false;

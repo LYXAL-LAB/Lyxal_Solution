@@ -3,8 +3,19 @@
 -- Le dictionnaire d'attributs est administré (session root) ; les variantes d'un article
 -- maître sont gérées par l'agent de synchronisation.
 --
--- identité sync: { "id": "catalogue_session:sync", "sub": "service:sync", "iss": "lyxal-os", "aud": "lyxal-catalogue", "role": "catalogue_sync_agent", "scope": ["catalogue:sync:write"] }
--- identité alpha: { "id": "catalogue_session:alpha", "sub": "user:alpha", "iss": "lyxal-os", "aud": "lyxal-catalogue", "role": "tenant_user", "tenant_id": "alpha" }
+-- identité sync: { "id": "auth_session:sync", "pv": 1, "permissions": ["catalogue.master.write"] }
+-- identité alpha: { "id": "auth_session:alpha", "pv": 1, "permissions": ["catalogue.item.read", "catalogue.item.manage"] }
+
+-- préparation: organisations, identités et sessions lyxal_auth
+{
+    CREATE auth_organization:alpha CONTENT { slug: "alpha", name: "Alpha BTP" };
+    CREATE auth_organization:beta CONTENT { slug: "beta", name: "Beta Bois" };
+    CREATE auth_identity:sync CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "sync@lyxal.test" } };
+    CREATE auth_session:sync CONTENT { identity: auth_identity:sync, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_identity:alpha CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "alpha@lyxal.test" } };
+    RELATE auth_identity:alpha->auth_member_of->auth_organization:alpha;
+    CREATE auth_session:alpha CONTENT { identity: auth_identity:alpha, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+};
 
 -- préparation: table de test lisible par toutes les identités
 DEFINE TABLE test_ref SCHEMALESS PERMISSIONS FULL;

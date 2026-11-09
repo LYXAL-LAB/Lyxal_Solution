@@ -9,31 +9,33 @@ blocs et publie vers le catalogue.
 | | |
 | :--- | :--- |
 | Identifiant | `lyxal_pipeline_ingestion` (version `0.1.0`) |
-| Dépendances (`manifest.toml`) | `lyxal_core`, `lyxal_base`, `lyxal_error`, `lyxal_event`, `lyxal_catalogue` |
+| Dépendances (`manifest.toml`) | `lyxal_core`, `lyxal_base`, `lyxal_error`, `lyxal_event`, `lyxal_auth`, `lyxal_catalogue` |
 | Hébergement | `apps/lyxal-server` (fonctionnalité `module-ingestion`) |
 | Évolutions prévues | [`ROADMAP.md`](ROADMAP.md) |
 
 ```text
 fichier → lot (RECEIVED) → lignes brutes immuables → normalisation → articles en staging
         → (anomalies en quarantaine) → manifeste scellé (BLAKE3) → approbation du Data Steward
-        → ingestion.manifest.approved → publication au catalogue (catalogue_sync_agent)
+        → ingestion.manifest.approved → publication au catalogue (compte de service lyxal-catalogue-sync)
 ```
 
 ---
 
 ## 1. Tables (`schema/`)
 
-11 tables `TYPE NORMAL SCHEMAFULL`, sans suppression possible (`FOR delete NONE`).
+10 tables `TYPE NORMAL SCHEMAFULL`, sans suppression possible (`FOR delete NONE`).
 
 | Table | Contenu | Lecture | Écriture |
 | :--- | :--- | :--- | :--- |
-| `ingestion_session` | session d'enregistrement | elle-même | — |
-| `ingestion_batch` | lot : source, encodage déclaré (`UTF-8`, `WINDOWS-1252`, `ISO-8859-1`), empreinte du fichier (unique par format), statut, compteurs, point de reprise, réservation du traitement, transitions | les quatre rôles | création : `ingestion_agent` ; mise à jour : agents et steward |
-| `ingestion_raw_record` | ligne brute immuable (`<lot>_<ligne>`) | `ingestion_agent`, `qualification_agent`, `steward_admin` | création : `ingestion_agent` ; jamais modifiée |
-| `ingestion_staged_item` | article normalisé : identité (lot, fabricant, référence uniques), code-barres, conditionnement, qualification, preuve, approbation, transitions | `qualification_agent`, `steward_admin`, `catalogue_sync_agent` | `qualification_agent` ; requalification : `steward_admin` |
-| `ingestion_quarantine_record` | anomalie : ligne, code, sévérité, champ, valeur, cause, résolution | `qualification_agent`, `steward_admin` | création : `qualification_agent` ; résolution : `steward_admin` |
-| `ingestion_publication_manifest` | manifeste : sceau BLAKE3, statut, approbation, journal d'exécution, transitions | `steward_admin`, `catalogue_sync_agent` | `steward_admin` ; exécution : `catalogue_sync_agent` |
-| `ingestion_family_rule`, `ingestion_specification`, `ingestion_manufacturer_alias`, `ingestion_unit_alias`, `ingestion_substitution_rule` | référentiels (familles, spécifications patronnes, alias, substitutions certifiées) | les quatre rôles | `steward_admin` |
+| `ingestion_batch` | lot : source, encodage déclaré (`UTF-8`, `WINDOWS-1252`, `ISO-8859-1`), empreinte du fichier (unique par format), statut, compteurs, point de reprise, réservation du traitement, transitions | `read` | création : `batch.write` ; mise à jour : `batch.write`, `staged.qualify` ou `manifest.approve` |
+| `ingestion_raw_record` | ligne brute immuable (`<lot>_<ligne>`) | `batch.write`, `staged.qualify`, `manifest.approve` ou `rule.manage` | création : `batch.write` ; jamais modifiée |
+| `ingestion_staged_item` | article normalisé : identité (lot, fabricant, référence uniques), code-barres, conditionnement, qualification, preuve, approbation, transitions | `staged.qualify`, `manifest.approve`, `rule.manage` ou `manifest.execute` | création : `staged.qualify` ; mise à jour : `staged.qualify` ou `manifest.approve` |
+| `ingestion_quarantine_record` | anomalie : ligne, code, sévérité, champ, valeur, cause, résolution | `staged.qualify`, `manifest.approve` ou `rule.manage` | création : `staged.qualify` ; résolution : `manifest.approve` ou `rule.manage` |
+| `ingestion_publication_manifest` | manifeste : sceau BLAKE3, statut, approbation, journal d'exécution, transitions | `manifest.approve`, `rule.manage` ou `manifest.execute` | `manifest.approve` ; exécution : `manifest.execute` |
+| `ingestion_family_rule`, `ingestion_specification`, `ingestion_manufacturer_alias`, `ingestion_unit_alias`, `ingestion_substitution_rule` | référentiels (familles, spécifications patronnes, alias, substitutions certifiées) | `read` | `rule.manage` |
+
+Les permissions sont les permissions `lyxal_auth` `ingestion.*` (préfixe omis dans le tableau),
+contrôlées par `fn::auth_has_permission` (§3). La session système de l'hôte les a toutes.
 
 Gardes (`DEFINE EVENT`) :
 
@@ -41,13 +43,14 @@ Gardes (`DEFINE EVENT`) :
   chaque étape, reprise `FAILED → RECEIVED | PARSING` (`INGESTION_BATCH_ILLEGAL_STATE_TRANSITION`).
 * `evt_staged_guard` : un article d'un lot verrouillé par un manifeste scellé
   (`ingestion_batch.sealed_manifest`) ne se crée ni ne se modifie (`INGESTION_STAGED_ITEM_SEALED`) ;
-  transitions de qualification autorisées ; un article n'est jamais créé approuvé ; approbation réservée à un article `VERIFIED` et à l'identité de session d'un
-  `steward_admin` (ou de la session système).
+  transitions de qualification autorisées ; un article n'est jamais créé approuvé ; approbation réservée à un article `VERIFIED`, à une session détenant
+  `ingestion.manifest.approve` (ou à la session système), approbateur = opérateur de la session.
 * `evt_manifest_guard` : `DRAFT → SEALED → APPROVED → EXECUTING → COMMITTED`, `FAILED` ;
-  approbation : scellement (contenu et sceau) et identité de session du steward ; exécution :
-  `catalogue_sync_agent` (ou session système) ; contenu et sceau ne changent qu'en brouillon ou
+  approbation : scellement (contenu et sceau), permission `ingestion.manifest.approve` et
+  approbateur = opérateur de la session ; exécution : `ingestion.manifest.execute` (ou session
+  système) ; contenu et sceau ne changent qu'en brouillon ou
   au scellement.
-* `evt_batch_guard` refuse aussi qu'un autre rôle que le steward (ou la session système) pose ou
+* `evt_batch_guard` refuse aussi qu'une session sans `ingestion.manifest.approve` (hors session système) pose ou
   retire le verrou `sealed_manifest` d'un lot, et qu'une génération de réservation recule
   (`INGESTION_BATCH_CLAIM_LOST`).
 
@@ -85,31 +88,41 @@ les fonctions appelées de l'extérieur ou une fois par lot ou par bloc ; primit
 successifs, pour les articles d'un bloc (appel ligne à ligne). Donnée invalide :
 `INGESTION_INVALID_PARAMETERS` (détail par champ). Toute écriture est vérifiée
 (`INGESTION_WRITE_FORBIDDEN` si les permissions la filtrent). Les transitions sont construites
-par SurrealQL au nom de l'identité de session (`triggered_by`) et horodatées par la base.
+par SurrealQL au nom de l'opérateur de la session (`triggered_by`) et horodatées par la base.
 
 | Groupe | Fonctions |
 | :--- | :--- |
 | Lots (`batch/`) | `batch_create` (état `RECEIVED` ; fichier ou identifiant déjà reçu : `INGESTION_BATCH_DUPLICATE`), `batch_get`, `batch_claim`, `batch_release`, `batch_claim_verify` (interne), `batch_transition`, `batch_checkpoint` (renouvelle la réservation), `raw_records_save` (bloc ; ligne existante jamais réécrite) ; écritures du traitement sous réservation (`claim`) |
-| Staging (`staged/`) | `staged_save` (bloc d'articles d'un lot, un résultat par article ; code-barres contrôlé par `fn::validation_gtin` : `INGESTION_GTIN_INVALID`), `staged_list`, `staged_requalify` (steward ; `VERIFIED` exige une unité du référentiel et une preuve commerciale) ; unité et unité de vente facultatives tant que l'unité fournisseur n'est pas résolue |
-| Quarantaine (`quarantine/`) | `quarantine_log` (rejouable : une anomalie ouverte par ligne et par code), `quarantine_list`, `quarantine_resolve` (steward ; corrections contrôlées, article repassé `TO_CONFIRM`) |
-| Manifestes (`manifest/`) | `manifest_save` (`DRAFT` / `SEALED`, modifiable tant qu'il n'est pas approuvé ; une version par lot), `manifest_approve` (steward, justification journalisée), `manifest_execution_item_update`, `manifest_record_exec` (agent de synchronisation), `manifest_list`, `manifest_get_detail` |
+| Staging (`staged/`) | `staged_save` (bloc d'articles d'un lot, un résultat par article ; code-barres contrôlé par `fn::validation_gtin` : `INGESTION_GTIN_INVALID`), `staged_list`, `staged_requalify` (`ingestion.manifest.approve` ; `VERIFIED` exige une unité du référentiel et une preuve commerciale) ; unité et unité de vente facultatives tant que l'unité fournisseur n'est pas résolue |
+| Quarantaine (`quarantine/`) | `quarantine_log` (rejouable : une anomalie ouverte par ligne et par code), `quarantine_list`, `quarantine_resolve` (`ingestion.manifest.approve` ; corrections contrôlées, article repassé `TO_CONFIRM`) |
+| Manifestes (`manifest/`) | `manifest_save` (`DRAFT` / `SEALED`, modifiable tant qu'il n'est pas approuvé ; une version par lot), `manifest_approve` (`ingestion.manifest.approve`, AAL2, justification journalisée), `manifest_execution_item_update`, `manifest_record_exec` (`ingestion.manifest.execute`), `manifest_list`, `manifest_get_detail` |
 | Référentiels (`rule/`) | `resolve_units` (bloc de 500 au plus : alias commerciaux, puis codes Lyxal et codes d'échange par `fn::base_unite_resolve` de `lyxal_base` ; seules les unités utilisables), `resolve_manufacturers` (bloc : alias après normalisation et retrait des suffixes juridiques ; `is_verified = false` pour un groupe sans entité déterminée), `rule_family_add`, `rule_spec_add`, `rule_substitution_add` (révocation motivée), `rules_load` |
 | Pilotage | `dashboard_metrics` |
-| Session (`session/`) | `session_identity` (interne) : rôle et opérateur lus dans `$token` / `$auth` ; session de l'hôte = `system` ; jamais dans les paramètres |
+| Session (`session/`) | `ingestion_operator` (interne) : opérateur de la session, `auth_identity:<clé>` (session interactive) ou `auth_application:<clé>` (compte de service), `system` pour la session de l'hôte ; jamais dans les paramètres |
 
 ---
 
-## 3. Identités
+## 3. Sessions et permissions
 
-| Rôle (claims `role`, `scope`) | Responsabilité |
-| :--- | :--- |
-| `ingestion_agent` (`ingestion:batch:write`) | lots et lignes brutes |
-| `qualification_agent` (`ingestion:staged:qualify`) | articles en staging, anomalies |
-| `steward_admin` (`ingestion:manifest:approve`) | requalification, résolution, manifestes, approbation, référentiels |
-| `catalogue_sync_agent` (`catalogue:sync:write`) | exécution des manifestes approuvés |
+Les tables et les fonctions lisent la session `lyxal_auth` de l'appelant
+(`fn::auth_has_permission`). `seeds/00_access.surql` déclare, création seule et rejouable :
 
-La session système de l'hôte (root, sans accès d'enregistrement) agit comme `system`. Un rôle
-inconnu ne lit rien et n'écrit rien.
+| Permission | Responsabilité | Rôles par défaut |
+| :--- | :--- | :--- |
+| `ingestion.read` | consulter lots, référentiels, tableau de bord | `ingestion_operator`, `ingestion_qualifier`, `ingestion_steward`, `catalogue_sync` |
+| `ingestion.batch.write` | lots et lignes brutes | `ingestion_operator` |
+| `ingestion.staged.qualify` | articles en staging, anomalies (création) | `ingestion_qualifier` |
+| `ingestion.rule.manage` | référentiels | `ingestion_steward` |
+| `ingestion.manifest.approve` (AAL2) | manifestes, approbation, requalification, résolution des anomalies | `ingestion_steward` |
+| `ingestion.manifest.execute` | exécution des manifestes approuvés | `catalogue_sync` |
+
+`platform_admin` reçoit les six. Requalifier un article en `VERIFIED` vaut approbation : la
+requalification et la résolution restent donc réservées à `ingestion.manifest.approve`, comme
+l'approbation, et exigent un double facteur. Le seed crée aussi le compte de service
+`lyxal-catalogue-sync` (`auth_application:catalogue_sync`, type `machine`, rôle
+`catalogue_sync` : `ingestion.read`, `ingestion.manifest.execute` et `catalogue.master.write` de
+`lyxal_catalogue`). Une session sans permission, révoquée, expirée ou aux droits périmés ne lit
+rien et n'écrit rien.
 
 ---
 
@@ -135,10 +148,10 @@ Le passage d'un lot à `FAILED` exige son code d'erreur (`error_code` de
 `PublicationConsumer` (consommateur `lyxal_event`, abonnement `ingestion_manifest_publication`)
 publie chaque manifeste approuvé ; la livraison est au moins une fois, la publication idempotente.
 
-* **Identité** : jeton HS256 `catalogue_sync_agent` (`iss = lyxal-os`, `aud = lyxal-catalogue`,
-  5 min) signé par `HmacCatalogueTokenIssuer` (`lyxal_crypto::hmac`) avec la clé de l'hôte
-  (`CatalogueSyncKey`, 32 caractères `A-Z a-z 0-9 _ -`) ; le client de l'hôte est cloné (nouvelle
-  session SurrealDB) puis authentifié par ce jeton.
+* **Identité** : session du compte de service `lyxal-catalogue-sync`, dont le jeton d'accès est
+  fourni par `CatalogueTokenIssuer` (l'hôte l'ouvre par `lyxal_auth`, sans secret, un jeton frais
+  par publication) ; le client de l'hôte est cloné (nouvelle session SurrealDB) puis authentifié
+  par ce jeton.
 * **Contrôles** : sceau du contenu figé vérifié par le serveur (`seal_valid`), sinon refus sans
   aucune écriture ; seuls les éléments du contenu figé dont la preuve est éligible à la production
   (ni pilote, ni synthétique) sont publiés, jamais l'état courant du staging.
@@ -149,9 +162,9 @@ publie chaque manifeste approuvé ; la livraison est au moins une fois, la publi
 * **Journal et issue** : chaque article est journalisé dans le manifeste ; une reprise saute les
   articles déjà publiés. `COMMITTED` si tout est publié, sinon `FAILED` (le steward corrige puis
   réapprouve). Panne de base : l'événement est rejoué ; manifeste non publiable : lettre morte.
-* **Hôte** : clé `LYXAL__CATALOGUE_SYNC__SIGNING_KEY` ; avec elle, l'hôte définit l'accès JWT
-  `lyxal_catalogue_sync` et active l'abonnement ; sans elle, l'abonnement est suspendu, l'accès
-  retiré et la sonde de santé du module dégradée.
+* **Hôte** : l'abonnement est actif quand le service de connexion `lyxal_auth` est configuré
+  (clé applicative et `auth.public_url`) ; sinon il est suspendu (les approbations attendent en
+  file) et la sonde de santé du module est dégradée.
 
 ---
 

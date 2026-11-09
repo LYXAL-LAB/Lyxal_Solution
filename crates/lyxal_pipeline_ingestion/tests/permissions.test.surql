@@ -1,12 +1,30 @@
 -- lyxal-test: assertions
--- Permissions des tables : ce que chaque rôle lit, et aucune suppression possible.
+-- Permissions des tables : ce que chaque jeu de permissions ingestion.* lit, sessions révoquées ou périmées, et aucune suppression possible.
 -- Données préparées en session système (hôte).
 --
--- identité ingestion: { "id": "ingestion_session:ingestion", "sub": "service:ingestion", "role": "ingestion_agent", "scope": ["ingestion:batch:write"] }
--- identité qualif: { "id": "ingestion_session:qualif", "sub": "service:qualif", "role": "qualification_agent", "scope": ["ingestion:staged:qualify"] }
--- identité steward: { "id": "ingestion_session:steward", "sub": "user:steward", "role": "steward_admin", "scope": ["ingestion:manifest:approve"] }
--- identité sync: { "id": "ingestion_session:sync", "sub": "service:sync", "role": "catalogue_sync_agent", "scope": ["catalogue:sync:write"] }
--- identité intrus: { "id": "ingestion_session:intrus", "sub": "user:intrus", "role": "visiteur", "scope": [] }
+-- identité ingestion: { "id": "auth_session:ingestion", "pv": 1, "permissions": ["ingestion.read", "ingestion.batch.write"] }
+-- identité qualif: { "id": "auth_session:qualif", "pv": 1, "permissions": ["ingestion.read", "ingestion.staged.qualify"] }
+-- identité steward: { "id": "auth_session:steward", "pv": 1, "permissions": ["ingestion.read", "ingestion.rule.manage", "ingestion.manifest.approve"] }
+-- identité sync: { "id": "auth_session:sync", "pv": 1, "permissions": ["ingestion.read", "ingestion.manifest.execute"] }
+-- identité revoque: { "id": "auth_session:revoque", "pv": 1, "permissions": ["ingestion.read", "ingestion.batch.write", "ingestion.staged.qualify", "ingestion.rule.manage", "ingestion.manifest.approve", "ingestion.manifest.execute"] }
+-- identité perimee: { "id": "auth_session:perimee", "pv": 0, "permissions": ["ingestion.read", "ingestion.batch.write", "ingestion.staged.qualify", "ingestion.rule.manage", "ingestion.manifest.approve", "ingestion.manifest.execute"] }
+-- identité intrus: { "id": "auth_session:intrus", "pv": 1, "permissions": [] }
+
+-- préparation: identités et sessions lyxal_auth (Data Steward en double facteur : AAL2 ; synchronisation : compte de service)
+{
+    CREATE auth_identity:ingestion CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "ingestion@exemple.fr" } };
+    CREATE auth_identity:qualif CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "qualif@exemple.fr" } };
+    CREATE auth_identity:steward CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "steward@exemple.fr" } };
+    CREATE auth_identity:intrus CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "intrus@exemple.fr" } };
+    CREATE auth_identity:admin CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "admin@exemple.fr" } };
+    CREATE auth_session:revoque CONTENT { identity: auth_identity:admin, aal: 2, state: "revoked", revoked_at: time::now(), idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:perimee CONTENT { identity: auth_identity:admin, aal: 2, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:ingestion CONTENT { identity: auth_identity:ingestion, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:qualif CONTENT { identity: auth_identity:qualif, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:steward CONTENT { identity: auth_identity:steward, aal: 2, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:sync CONTENT { application: auth_application:catalogue_sync, kind: "service", idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:intrus CONTENT { identity: auth_identity:intrus, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+};
 
 -- préparation: lot
 RETURN fn::ingestion_batch_create({ id: "lot_p", source_type: "CSV", fournisseur_id: "FOURN_PLACO", nom_fichier: "p.csv", file_hash_blake3: crypto::blake3("p.csv") });
@@ -55,8 +73,21 @@ RETURN fn::test_visible() == { lot: 1, brut: 1, article: 1, anomalie: 1, manifes
 -- en tant que: sync
 RETURN fn::test_visible() == { lot: 1, brut: 0, article: 1, anomalie: 0, manifeste: 1, famille: true, alias: true };
 
--- test: un rôle inconnu ne lit rien
+-- test: une session sans permission d'ingestion ne lit rien
 -- en tant que: intrus
+RETURN fn::test_visible() == { lot: 0, brut: 0, article: 0, anomalie: 0, manifeste: 0, famille: false, alias: false };
+
+-- test: une session révoquée ne lit rien, même avec toutes les permissions dans son jeton
+-- en tant que: revoque
+RETURN fn::test_visible() == { lot: 0, brut: 0, article: 0, anomalie: 0, manifeste: 0, famille: false, alias: false };
+
+-- test: une session révoquée n'écrit rien
+-- en tant que: revoque
+RETURN (UPDATE ingestion_batch SET nom_fichier = "pirate.csv") == []
+    AND fn::ingestion_batch_create({ id: "lot_revoque", source_type: "CSV", fournisseur_id: "FOURN_PLACO", nom_fichier: "r.csv", file_hash_blake3: crypto::blake3("r.csv") }).ok == false;
+
+-- test: un jeton aux droits périmés (version dépassée) ne lit rien
+-- en tant que: perimee
 RETURN fn::test_visible() == { lot: 0, brut: 0, article: 0, anomalie: 0, manifeste: 0, famille: false, alias: false };
 
 -- test: les indicateurs suivent les droits de lecture

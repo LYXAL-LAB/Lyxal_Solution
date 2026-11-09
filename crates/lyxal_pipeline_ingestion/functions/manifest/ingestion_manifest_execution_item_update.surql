@@ -8,9 +8,8 @@
 DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_execution_item_update($params: object) {
     LET $fallback_language = IF type::is_string($params.language) { $params.language } ELSE { NONE };
 
-    LET $who = fn::ingestion_session_identity({});
-    IF $who.role NOT IN ["catalogue_sync_agent", "system"] {
-        RETURN fn::error_result("INGESTION_MANIFEST_EXECUTION_UNAUTHORIZED", $fallback_language, { role: $who.role, expected_role: "catalogue_sync_agent" });
+    IF !fn::auth_has_permission({ permission: "ingestion.manifest.execute" }) {
+        RETURN fn::error_result("INGESTION_MANIFEST_EXECUTION_UNAUTHORIZED", $fallback_language, { permission: "ingestion.manifest.execute" });
     };
 
     LET $report = fn::validation_object_execute($params, {
@@ -53,5 +52,5 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_execution_item_update($params: 
     };
 
     RETURN fn::result_ok(true);
-} COMMENT "Journalise l'exécution d'un article (référence, action, succès, erreur, sceau du contenu publié) d'un manifeste approuvé ou en cours d'exécution et met à jour ses compteurs ; réservé à catalogue_sync_agent (ou à la session système)"
+} COMMENT "Journalise l'exécution d'un article (référence, action, succès, erreur, sceau du contenu publié) d'un manifeste approuvé ou en cours d'exécution et met à jour ses compteurs ; réservé à la permission ingestion.manifest.execute (ou à la session système)"
 PERMISSIONS WHERE $token != NONE OR $auth != NONE;

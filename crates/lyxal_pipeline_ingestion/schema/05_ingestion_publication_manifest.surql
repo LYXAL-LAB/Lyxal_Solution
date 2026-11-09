@@ -8,24 +8,9 @@ DEFINE TABLE OVERWRITE ingestion_publication_manifest
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE (
-            ($token != NONE AND ($token.role IN ["steward_admin", "catalogue_sync_agent"]))
-            OR ($auth != NONE AND ($auth.role IN ["steward_admin", "catalogue_sync_agent"]))
-        )
-        FOR create WHERE (
-            ($token != NONE AND $token.role = "steward_admin" AND "ingestion:manifest:approve" IN $token.scope)
-            OR ($auth != NONE AND $auth.role = "steward_admin" AND "ingestion:manifest:approve" IN $auth.permissions)
-        )
-        FOR update WHERE (
-            ($token != NONE AND (
-                ($token.role = "steward_admin" AND "ingestion:manifest:approve" IN $token.scope)
-                OR ($token.role = "catalogue_sync_agent" AND "catalogue:sync:write" IN $token.scope)
-            ))
-            OR ($auth != NONE AND (
-                ($auth.role = "steward_admin" AND "ingestion:manifest:approve" IN $auth.permissions)
-                OR ($auth.role = "catalogue_sync_agent" AND "catalogue:sync:write" IN $auth.permissions)
-            ))
-        )
+        FOR select WHERE fn::auth_has_permission({ permission: "ingestion.manifest.approve" }) OR fn::auth_has_permission({ permission: "ingestion.rule.manage" }) OR fn::auth_has_permission({ permission: "ingestion.manifest.execute" })
+        FOR create WHERE fn::auth_has_permission({ permission: "ingestion.manifest.approve" })
+        FOR update WHERE fn::auth_has_permission({ permission: "ingestion.manifest.approve" }) OR fn::auth_has_permission({ permission: "ingestion.manifest.execute" })
         FOR delete NONE
     COMMENT "Manifeste de publication scellé par BLAKE3, approuvé par le Data Steward et exécuté par l'agent de synchronisation";
 
@@ -78,15 +63,11 @@ DEFINE FIELD OVERWRITE statut ON TABLE ingestion_publication_manifest
 -- ----------------------------------------------------------------------------
 DEFINE FIELD OVERWRITE approved_by ON TABLE ingestion_publication_manifest
     TYPE option<string>
-    COMMENT "Identité du Data Steward ayant formellement approuvé la publication";
+    COMMENT "Opérateur ayant formellement approuvé la publication (auth_identity:<clé>, auth_application:<clé> ou system)";
 
 DEFINE FIELD OVERWRITE approved_at ON TABLE ingestion_publication_manifest
     TYPE option<datetime>
     COMMENT "Horodatage de l'approbation formelle";
-
-DEFINE FIELD OVERWRITE approver_role ON TABLE ingestion_publication_manifest
-    TYPE option<string>
-    COMMENT "Rôle de l'approbateur (doit être steward_admin)";
 
 -- ----------------------------------------------------------------------------
 -- MÉTRIQUES ET TRAÇABILITÉ D'EXÉCUTION
@@ -172,22 +153,22 @@ THEN {
             THROW "INGESTION_MANIFEST_ILLEGAL_STATE_TRANSITION: Transition de statut de manifeste interdite de " + $before.statut + " vers " + $after.statut + ".";
         };
 
-        -- 2. Transition vers APPROVED : exige le scellement effectif et l'approbation explicite d'un steward_admin
+        -- 2. Transition vers APPROVED : exige le scellement effectif et l'approbation explicite (permission ingestion.manifest.approve)
         IF $after.statut = "APPROVED" {
             IF $after.is_sealed != true OR $after.seal_hash == NONE OR $after.contenu == NONE {
                 THROW "INGESTION_MANIFEST_UNSEALED: L'approbation requiert obligatoirement un manifeste préalablement scellé avec son empreinte BLAKE3.";
             };
-            -- Approbateur lu dans la session : steward_admin, ou session système (hôte)
-            LET $who = fn::ingestion_session_identity({});
-            IF $who.role NOT IN ["steward_admin", "system"] OR $after.approver_role != $who.role OR $after.approved_by != $who.operator {
-                THROW "INGESTION_MANIFEST_APPROVAL_REQUIRES_STEWARD: L'approbation d'un manifeste requiert la session d'un steward_admin, dont l'identité est enregistrée (auto-approbation interdite).";
+            -- Approbateur lu dans la session : permission ingestion.manifest.approve (ou session système),
+            -- et approbateur enregistré = opérateur de la session
+            IF !fn::auth_has_permission({ permission: "ingestion.manifest.approve" }) OR $after.approved_by != fn::ingestion_operator({}) {
+                THROW "INGESTION_MANIFEST_APPROVAL_REQUIRES_STEWARD: L'approbation d'un manifeste requiert une session détenant la permission ingestion.manifest.approve, dont l'opérateur est enregistré comme approbateur (auto-approbation interdite).";
             };
         };
 
-        -- 3. Transition vers EXECUTING / COMMITTED : réservée exclusivement à catalogue_sync_agent
+        -- 3. Transition vers EXECUTING / COMMITTED : réservée à la permission ingestion.manifest.execute
         IF $after.statut = "EXECUTING" OR $after.statut = "COMMITTED" {
-            IF fn::ingestion_session_identity({}).role NOT IN ["catalogue_sync_agent", "system"] {
-                THROW "INGESTION_MANIFEST_EXECUTION_UNAUTHORIZED: Seul le service catalogue_sync_agent est habilité à exécuter la publication vers le Master Catalogue.";
+            IF !fn::auth_has_permission({ permission: "ingestion.manifest.execute" }) {
+                THROW "INGESTION_MANIFEST_EXECUTION_UNAUTHORIZED: Seule une session détenant la permission ingestion.manifest.execute (compte de service de synchronisation du catalogue) exécute la publication vers le Master Catalogue.";
             };
         };
     };

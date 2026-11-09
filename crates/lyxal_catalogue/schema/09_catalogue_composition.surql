@@ -8,26 +8,8 @@ DEFINE TABLE OVERWRITE catalogue_composition
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE (
-            ($token != NONE AND $token.aud = "lyxal-catalogue" AND (
-                ($token.role = "catalogue_sync_agent" AND parent_item.is_custom = false)
-                OR ($token.role = "tenant_user" AND (parent_item.is_custom = false OR (parent_item.is_custom = true AND parent_item.tenant_id != NONE AND $token.tenant_id != NONE AND parent_item.tenant_id = $token.tenant_id)))
-            ))
-            OR ($token == NONE AND $auth != NONE AND (
-                ($auth.role = "catalogue_sync_agent" AND parent_item.is_custom = false)
-                OR ($auth.role = "tenant_user" AND (parent_item.is_custom = false OR (parent_item.is_custom = true AND parent_item.tenant_id != NONE AND $auth.tenant_id != NONE AND parent_item.tenant_id = $auth.tenant_id)))
-            ))
-        )
-        FOR create, update, delete WHERE (
-            ($token != NONE AND $token.aud = "lyxal-catalogue" AND (
-                ($token.role = "catalogue_sync_agent" AND "catalogue:sync:write" IN $token.scope AND parent_item.is_custom = false)
-                OR ($token.role = "tenant_user" AND parent_item.is_custom = true AND parent_item.tenant_id != NONE AND $token.tenant_id != NONE AND parent_item.tenant_id = $token.tenant_id)
-            ))
-            OR ($token == NONE AND $auth != NONE AND (
-                ($auth.role = "catalogue_sync_agent" AND "catalogue:sync:write" IN $auth.permissions AND parent_item.is_custom = false)
-                OR ($auth.role = "tenant_user" AND parent_item.is_custom = true AND parent_item.tenant_id != NONE AND $auth.tenant_id != NONE AND parent_item.tenant_id = $auth.tenant_id)
-            ))
-        )
+        FOR select WHERE fn::catalogue_access({ is_custom: parent_item.is_custom, tenant: parent_item.tenant, action: "read" })
+        FOR create, update, delete WHERE fn::catalogue_access({ is_custom: parent_item.is_custom, tenant: parent_item.tenant, action: "write" })
     COMMENT "En-têtes de nomenclature et compositions (Ouvrage ou Ensemble)";
 
 

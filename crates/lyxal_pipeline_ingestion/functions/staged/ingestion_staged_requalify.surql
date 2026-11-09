@@ -8,11 +8,11 @@
 DEFINE FUNCTION OVERWRITE fn::ingestion_staged_requalify($params: object) {
     LET $fallback_language = IF type::is_string($params.language) { $params.language } ELSE { NONE };
 
-    -- 1. Habilitation : identité lue dans la session (jamais dans les paramètres)
-    LET $who = fn::ingestion_session_identity({});
-    IF $who.role NOT IN ["steward_admin", "system"] {
-        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $fallback_language, { role: $who.role, expected_role: "steward_admin" });
+    -- 1. Habilitation : permission de la session lyxal_auth (jamais dans les paramètres)
+    IF !fn::auth_has_permission({ permission: "ingestion.manifest.approve" }) {
+        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $fallback_language, { permission: "ingestion.manifest.approve" });
     };
+    LET $operator = fn::ingestion_operator({});
 
     -- 2. Entrées (la justification est contrôlée à part : code métier dédié)
     LET $report = fn::validation_object_execute($params, {
@@ -77,13 +77,12 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_requalify($params: object) {
         qualification_reason = $justif.value,
         commercial_proof = IF $is_verified { $p.proof } ELSE { commercial_proof },
         is_approved = IF $is_verified { true } ELSE { is_approved },
-        approved_by = IF $is_verified { $who.operator } ELSE { approved_by },
-        approver_role = IF $is_verified { $who.role } ELSE { approver_role },
+        approved_by = IF $is_verified { $operator } ELSE { approved_by },
         approved_at = IF $is_verified { $now } ELSE { approved_at },
         transitions = array::append(transitions ?? [], {
             from_state: $cur.qualification,
             to_state: $target,
-            triggered_by: $who.operator,
+            triggered_by: $operator,
             reason: $justif.value,
             transitioned_at: $now,
             proof_reference: IF $is_verified { $p.proof.proof_reference } ELSE { NONE }
@@ -93,5 +92,5 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_requalify($params: object) {
     };
 
     RETURN fn::result_ok(true);
-} COMMENT "Requalifie un article en staging ; réservé au steward_admin (ou à la session système) lu dans la session ; VERIFIED exige une unité du référentiel et une preuve commerciale, et enregistre l'approbation"
+} COMMENT "Requalifie un article en staging ; réservé à la permission ingestion.manifest.approve (ou à la session système), opérateur lu dans la session ; VERIFIED exige une unité du référentiel et une preuve commerciale, et enregistre l'approbation"
 PERMISSIONS WHERE $token != NONE OR $auth != NONE;

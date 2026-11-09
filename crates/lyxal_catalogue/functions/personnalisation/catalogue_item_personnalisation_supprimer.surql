@@ -17,10 +17,10 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_personnalisation_supprimer($params:
         RETURN fn::error_result("CATALOGUE_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
-    LET $caller_tenant = IF $token != NONE AND $token.tenant_id != NONE { string::trim($token.tenant_id) } ELSE IF $auth != NONE AND $auth.tenant_id != NONE { string::trim($auth.tenant_id) } ELSE { NONE };
+    LET $caller_tenant = fn::catalogue_caller({}).tenant;
 
     -- Seule la personnalisation du locataire de la session est visible (permissions de la table)
-    LET $existing = (SELECT VALUE id FROM ONLY catalogue_item_personnalisation WHERE item = $p.item_id AND tenant_id = $caller_tenant LIMIT 1);
+    LET $existing = (SELECT VALUE id FROM ONLY catalogue_item_personnalisation WHERE item = $p.item_id AND tenant = $caller_tenant LIMIT 1);
     IF $existing == NONE {
         RETURN fn::error_result("CATALOGUE_PERSONNALISATION_NOT_FOUND", $p.language, { item_id: <string> $p.item_id });
     };

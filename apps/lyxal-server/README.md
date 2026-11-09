@@ -73,7 +73,6 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 | `runtime` | `module_install_timeout_seconds`, `module_start_timeout_seconds`, `module_stop_timeout_seconds` |
 | `observability` | `log_filter`, `json_logs`, `include_target`, `include_thread_ids` |
 | `cors` | `enabled`, `allow_credentials`, `allowed_origins`, `allowed_methods`, `allowed_headers` |
-| `catalogue_sync` | `signing_key` (facultative) |
 | `crypto` | `application_key` (facultative, variable d'environnement seulement), `application_key_id` |
 | `auth` | `public_url` (facultative : adresse publique de l'interface, pour les liens des messages et l'origine des passkeys), `passkey_rp_id` (facultatif : domaine des passkeys, défaut : hôte de `public_url`) |
 | `notification.smtp` | `host`, `port`, `security` (`tls`, `starttls`, `local_plain`), `username`, `password`, `from_address`, `from_name`, `timeout_seconds` (section facultative) |
@@ -82,12 +81,15 @@ Les identifiants Root ne figurent dans aucun fichier : `LYXAL__DATABASE__USERNAM
 `LYXAL__DATABASE__PASSWORD` (mot de passe en `SecretString`, masqué). Une connexion `ws://` ou
 `wss://` sans identifiants est refusée.
 
-La publication du pipeline d'ingestion vers le catalogue utilise un jeton de service
-`catalogue_sync_agent` signé par l'hôte (HS256). Sa clé, 32 caractères `A-Z a-z 0-9 _ -`, ne
-figure dans aucun fichier : `LYXAL__CATALOGUE_SYNC__SIGNING_KEY`. Au démarrage, l'hôte définit
-avec elle l'accès JWT `lyxal_catalogue_sync` et abonne la publication à
-`ingestion.manifest.approved`. Sans clé, la publication est désactivée et la sonde de santé du
-pipeline est dégradée.
+La publication du pipeline d'ingestion vers le catalogue passe par le compte de service
+`lyxal_auth` `lyxal-catalogue-sync` (rôle `catalogue_sync`, créé par les seeds de
+`lyxal_pipeline_ingestion`). L'hôte ouvre ses sessions par sa session système, sans secret
+(`AccessService::internal_service_token`) : un jeton d'accès frais par publication, aucune clé
+partagée à configurer. La publication est active, et abonnée à `ingestion.manifest.approved`,
+quand le service de connexion est configuré (clé applicative et `auth.public_url`) ; sinon elle
+est désactivée, les approbations attendent en file et la sonde de santé du pipeline est
+dégradée. Le test `tests/publication.rs` (exécutable séparé, il fournit la clé applicative par
+variable d'environnement) la vérifie de bout en bout.
 
 Les notifications (`lyxal_notification`) demandent la clé applicative de l'hôte et un relais
 SMTP. La clé AES-256 (32 octets en Base64 canonique, 44 caractères) ne figure dans aucun

@@ -288,12 +288,12 @@ IF !record::exists(error_definition:INGESTION_STAGED_APPROVAL_REQUIRES_STEWARD) 
         translations: {
             fr: {
                 label: "Approbation réservée au Data Steward",
-                description: "Seule la session d'un steward_admin peut approuver un article ; jamais à la création ni par écriture directe.",
+                description: "Seule une session détenant la permission ingestion.manifest.approve peut approuver un article, à son propre nom ; jamais à la création ni par écriture directe.",
                 resolution: "Faire approuver l'article par un Data Steward."
             },
             en: {
                 label: "Item approval requires a Data Steward",
-                description: "Only a steward_admin session can approve an item; never at creation nor by direct write.",
+                description: "Only a session holding the ingestion.manifest.approve permission can approve an item, in its own name; never at creation nor by direct write.",
                 resolution: "Have a Data Steward approve the item."
             }
         }

@@ -65,7 +65,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_save($params: object) {
     };
     LET $transition = {
         to_state: $statut,
-        triggered_by: fn::ingestion_session_identity({}).operator,
+        triggered_by: fn::ingestion_operator({}),
         reason: IF $statut == "SEALED" { "Scellement du manifeste" } ELSE { "Préparation du manifeste" },
         transitioned_at: time::now()
     };

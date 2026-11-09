@@ -1,9 +1,10 @@
 # Feuille de route — `lyxal_pipeline_ingestion`
 
-Évolutions prévues du pipeline d'ingestion. L'état actuel (11 tables, 25 fonctions, worker par
-blocs, unités et fabricants résolus par bloc sur les référentiels en base, quarantaine, manifestes scellés, publication réelle vers le catalogue sous
-`catalogue_sync_agent`, banc de tests) est décrit dans le [`README.md`](README.md). Aucune étape
-ne démarre sans ordre du CTO et `implementation_plan.md` validé (`.agents/AGENTS.md` §3). Les 11
+Évolutions prévues du pipeline d'ingestion. L'état actuel (10 tables, 25 fonctions, worker par
+blocs, unités et fabricants résolus par bloc sur les référentiels en base, quarantaine, manifestes scellés, publication réelle vers le catalogue par
+le compte de service `lyxal_auth` `lyxal-catalogue-sync`, permissions `ingestion.*`, banc de
+tests) est décrit dans le [`README.md`](README.md). Aucune étape
+ne démarre sans ordre du CTO et `implementation_plan.md` validé (`.agents/AGENTS.md` §3). Les 10
 tables restent en `TYPE NORMAL` ; toute table `TYPE RELATION` est soumise à validation du CTO
 ([`docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md`](../../docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md)).
 

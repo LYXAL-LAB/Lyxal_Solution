@@ -1,7 +1,8 @@
 //! Publication contrôlée d'un manifeste approuvé vers le catalogue maître.
 //!
 //! * Session dédiée : le client de l'hôte est cloné (nouvelle session SurrealDB sur la même
-//!   connexion) puis authentifié par un jeton de service `catalogue_sync_agent` court ; la
+//!   connexion) puis authentifié par le jeton d'une session de service `lyxal_auth` (compte
+//!   `lyxal-catalogue-sync`, permission `catalogue.master.write`) ; la
 //!   session système de l'hôte n'est jamais modifiée.
 //! * Seuls les articles `VERIFIED` du contenu figé, dont la preuve commerciale est éligible à la
 //!   production, sont publiés ; `TO_CONFIRM` et `REJECTED` n'y figurent pas.
@@ -64,7 +65,7 @@ pub struct ControlledPublisher {
 
 impl ControlledPublisher {
     /// `client` : client de l'hôte (session système), cloné pour chaque publication ;
-    /// `issuer` : émetteur des jetons de service `catalogue_sync_agent`.
+    /// `issuer` : émetteur des jetons du compte de service de synchronisation.
     pub fn new(client: Surreal<Any>, issuer: Arc<dyn CatalogueTokenIssuer>) -> Self {
         Self { client, issuer }
     }
@@ -75,7 +76,7 @@ impl ControlledPublisher {
         manifest_ref: &str,
     ) -> IngestionResult<PublicationExecutionReport> {
         // 1. Session dédiée de l'agent de synchronisation
-        let token = self.issuer.issue()?;
+        let token = self.issuer.issue().await?;
         let session = self.client.clone();
         session
             .authenticate(token.expose_secret().to_string())

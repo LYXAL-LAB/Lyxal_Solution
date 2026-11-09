@@ -7,7 +7,7 @@
 //!    - Handshake WebSocket natif RFC 6455 (HTTP/1.1 101 Switching Protocols).
 //!    - Test de résilience réseau et reconnexion immédiate.
 //!    - Requête HTTP authentifiée sur l'instance Staging (/sql) avec exécution de fn::ingestion_dashboard_metrics.
-//! 2. Cloisonnement strict des 4 rôles et contrôles RLS en session authentifiée.
+//! 2. Écritures et lectures en session système (refus par permission : tests/securite.test.surql).
 //! 3. Worker supervisé, checkpoints par blocs, coupure `CancellationToken` et reprise sans perte.
 //! 4. Audit de sécurité des preuves commerciales sur les 41 références BTP et isolation absolue du Master réel.
 //! 5. Mesure empirique des performances réelles (latences min/médiane/p95/p99, débit mesuré).
@@ -216,15 +216,14 @@ async fn test_staging_live_connection_and_reconnection() {
 }
 
 // -----------------------------------------------------------------------------
-// TEST 2 : Cloisonnement des 4 Rôles et Contrôles RLS en Session
+// TEST 2 : Écritures et lectures en session système
 // -----------------------------------------------------------------------------
 #[tokio::test]
-async fn test_staging_four_roles_authentication_and_rls() {
-    println!("\n>>> [STAGING TEST 2] Validation des 4 rôles et des contrôles RLS...");
+async fn test_staging_system_session_writes_and_reads() {
+    println!("\n>>> [STAGING TEST 2] Écritures et lectures en session système...");
     let store = get_staging_store().await;
 
-    // A. Rôle 1 : ingestion_agent
-    // Autorisé à créer un lot d'ingestion brut
+    // A. Création d'un lot d'ingestion brut
     let batch = NewBatch {
         id: Some("batch_rls_test_01".to_string()),
         source_type: SourceFormat::FabDis,
@@ -235,25 +234,21 @@ async fn test_staging_four_roles_authentication_and_rls() {
         file_hash_blake3: lyxal_crypto::blake3_hex(b"hash_rls_01"),
         taille_octets: 4096,
         chunk_size: 500,
-        provenance_details: serde_json::json!({ "agent": "ingestion_agent" }),
+        provenance_details: serde_json::json!({ "agent": "system" }),
     };
-    store
-        .create_batch(&batch)
-        .await
-        .expect("Création du lot par ingestion_agent");
+    store.create_batch(&batch).await.expect("Création du lot");
 
-    // C. Rôle 3 : steward_admin
-    // Autorisé à consulter le tableau de bord des métriques consolidées
+    // B. Consultation du tableau de bord des métriques consolidées
     let metrics = store
         .get_dashboard_metrics(None)
         .await
-        .expect("Consultation métriques par steward_admin");
+        .expect("Consultation des métriques");
     assert!(metrics.batches.total >= 1, "Nombre de lots cohérent");
 
-    // Les refus par rôle (qualification_agent, catalogue_sync_agent) sont prouvés sous de
+    // Les refus par permission (sessions lyxal_auth) sont prouvés sous de
     // vraies identités dans tests/securite.test.surql.
 
-    println!("    [OK] Cloisonnement strict des 4 rôles et contrôles RLS validés.");
+    println!("    [OK] Écritures et lectures en session système validées.");
 }
 
 // -----------------------------------------------------------------------------

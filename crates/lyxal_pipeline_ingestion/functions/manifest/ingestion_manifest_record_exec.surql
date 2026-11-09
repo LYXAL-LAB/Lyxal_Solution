@@ -8,11 +8,11 @@
 DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_record_exec($params: object) {
     LET $fallback_language = IF type::is_string($params.language) { $params.language } ELSE { NONE };
 
-    -- Habilitation : seul l'agent de synchronisation (ou la session système) exécute la publication
-    LET $who = fn::ingestion_session_identity({});
-    IF $who.role NOT IN ["catalogue_sync_agent", "system"] {
-        RETURN fn::error_result("INGESTION_MANIFEST_EXECUTION_UNAUTHORIZED", $fallback_language, { role: $who.role, expected_role: "catalogue_sync_agent" });
+    -- Habilitation : seule la permission ingestion.manifest.execute (ou la session système) exécute la publication
+    IF !fn::auth_has_permission({ permission: "ingestion.manifest.execute" }) {
+        RETURN fn::error_result("INGESTION_MANIFEST_EXECUTION_UNAUTHORIZED", $fallback_language, { permission: "ingestion.manifest.execute" });
     };
+    LET $operator = fn::ingestion_operator({});
 
     LET $report = fn::validation_object_execute($params, {
         fields: {
@@ -42,7 +42,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_record_exec($params: object) {
     LET $from = IF $manif.statut = "APPROVED" {
         LET $executing = (UPDATE ONLY $manif.id SET
             statut = "EXECUTING",
-            transitions = array::append(transitions ?? [], { from_state: "APPROVED", to_state: "EXECUTING", triggered_by: $who.operator, reason: "Début de la publication", transitioned_at: $now }));
+            transitions = array::append(transitions ?? [], { from_state: "APPROVED", to_state: "EXECUTING", triggered_by: $operator, reason: "Début de la publication", transitioned_at: $now }));
         IF $executing == NONE { NONE } ELSE { "EXECUTING" }
     } ELSE { $manif.statut };
     IF $from == NONE {
@@ -54,11 +54,11 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_record_exec($params: object) {
         items_committed = $p.items_committed,
         items_failed = $p.items_failed,
         executed_at = $now,
-        transitions = array::append(transitions ?? [], { from_state: $from, to_state: $p.statut, triggered_by: $who.operator, reason: "Compte rendu d'exécution de la publication", transitioned_at: $now }));
+        transitions = array::append(transitions ?? [], { from_state: $from, to_state: $p.statut, triggered_by: $operator, reason: "Compte rendu d'exécution de la publication", transitioned_at: $now }));
     IF $updated == NONE {
         RETURN fn::error_result("INGESTION_WRITE_FORBIDDEN", $p.language, { table: "ingestion_publication_manifest" });
     };
 
     RETURN fn::result_ok(true);
-} COMMENT "Consigne l'issue (COMMITTED ou FAILED) et les compteurs de l'exécution d'un manifeste approuvé ; réservé à catalogue_sync_agent (ou à la session système) lu dans la session"
+} COMMENT "Consigne l'issue (COMMITTED ou FAILED) et les compteurs de l'exécution d'un manifeste approuvé ; réservé à la permission ingestion.manifest.execute (ou à la session système), opérateur lu dans la session"
 PERMISSIONS WHERE $token != NONE OR $auth != NONE;

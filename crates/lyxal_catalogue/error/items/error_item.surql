@@ -415,7 +415,7 @@ IF !record::exists(error_definition:CATALOGUE_ITEM_TENANT_REQUIRED) THEN (
         domain: "item",
         category: "validation",
         severity: "error",
-        message: "Identité cliente avec tenant_id valide obligatoire pour toute opération sur article privé",
+        message: "Session rattachée à une organisation obligatoire pour toute opération sur article privé",
         default_language: "fr",
         http_status: 400,
         retryable: false,
@@ -423,13 +423,13 @@ IF !record::exists(error_definition:CATALOGUE_ITEM_TENANT_REQUIRED) THEN (
         translations: {
             fr: {
                 label: "Propriétaire client obligatoire",
-                description: "La création, modification ou suppression d'un article privé exige un tenant_id valide déduit de l'identité authentifiée.",
-                resolution: "Authentifiez-vous avec une identité cliente valide contenant un tenant_id."
+                description: "La création, modification ou suppression d'un article privé exige une session lyxal_auth dont l'organisation active est définie.",
+                resolution: "Connectez-vous et sélectionnez l'organisation propriétaire."
             },
             en: {
-                label: "Tenant ID required",
-                description: "Custom item operations require a valid authenticated tenant_id.",
-                resolution: "Authenticate with a tenant account."
+                label: "Organization required",
+                description: "Custom item operations require a session with an active organization.",
+                resolution: "Sign in and select the owning organization."
             }
         }
     }
@@ -462,33 +462,6 @@ IF !record::exists(error_definition:CATALOGUE_ITEM_TENANT_FORBIDDEN) THEN (
     }
 ) END;
 
-IF !record::exists(error_definition:CATALOGUE_ITEM_TENANT_ID_IMMUTABLE) THEN (
-    CREATE error_definition:CATALOGUE_ITEM_TENANT_ID_IMMUTABLE CONTENT {
-        code: "CATALOGUE_ITEM_TENANT_ID_IMMUTABLE",
-        module: "catalogue",
-        domain: "item",
-        category: "authorization",
-        severity: "error",
-        message: "Le propriétaire tenant_id d'un article est strictement immuable",
-        default_language: "fr",
-        http_status: 403,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Propriétaire immuable",
-                description: "Le champ tenant_id ne peut jamais être modifié après la création de l'article.",
-                resolution: "La propriété d'un article ne peut pas être transférée."
-            },
-            en: {
-                label: "Tenant ID immutable",
-                description: "The tenant_id field cannot be altered once created.",
-                resolution: "Item ownership cannot be transferred."
-            }
-        }
-    }
-) END;
-
 IF !record::exists(error_definition:CATALOGUE_ITEM_TENANT_ORPHAN) THEN (
     CREATE error_definition:CATALOGUE_ITEM_TENANT_ORPHAN CONTENT {
         code: "CATALOGUE_ITEM_TENANT_ORPHAN",
@@ -504,12 +477,12 @@ IF !record::exists(error_definition:CATALOGUE_ITEM_TENANT_ORPHAN) THEN (
         translations: {
             fr: {
                 label: "Article privé orphelin",
-                description: "Cet article privé ne possède aucun identifiant de propriétaire vérifiable en base.",
+                description: "Cet article privé ne possède aucune organisation propriétaire vérifiable en base.",
                 resolution: "Contactez l'administrateur système pour réconciliation."
             },
             en: {
                 label: "Orphan custom item",
-                description: "This custom item has no verifiable tenant owner.",
+                description: "This custom item has no verifiable owning organization.",
                 resolution: "Contact system administrator."
             }
         }
@@ -523,7 +496,7 @@ IF !record::exists(error_definition:CATALOGUE_ITEM_SYNC_CANNOT_ACCESS_CUSTOM) TH
         domain: "item",
         category: "authorization",
         severity: "error",
-        message: "Le service catalogue_sync_agent ne doit pas lire, modifier ou supprimer les articles privés des clients",
+        message: "Le compte de synchronisation ne doit pas lire, modifier ou supprimer les articles privés des clients",
         default_language: "fr",
         http_status: 403,
         retryable: false,
@@ -550,7 +523,7 @@ IF !record::exists(error_definition:CATALOGUE_ITEM_SYNC_CANNOT_CREATE_CUSTOM) TH
         domain: "item",
         category: "authorization",
         severity: "error",
-        message: "Le service catalogue_sync_agent ne peut pas créer d'articles privés pour les clients",
+        message: "Le compte de synchronisation ne peut pas créer d'articles privés pour les clients",
         default_language: "fr",
         http_status: 403,
         retryable: false,
@@ -747,12 +720,12 @@ IF !record::exists(error_definition:CATALOGUE_ITEM_SYNC_CANNOT_CREATE_MASTER) TH
         translations: {
             fr: {
                 label: "Création d'article maître refusée",
-                description: "Un article maître ne peut être créé que par l'agent catalogue_sync_agent.",
+                description: "Un article maître ne peut être créé que par le compte de synchronisation (permission catalogue.master.write).",
                 resolution: "Créer un article privé (is_custom) ou passer par la synchronisation du catalogue maître."
             },
             en: {
                 label: "Master item creation refused",
-                description: "Only the catalogue_sync_agent may create master items.",
+                description: "Only the sync account (catalogue.master.write permission) may create master items.",
                 resolution: "Create a private item or use the master catalogue synchronisation."
             }
         }

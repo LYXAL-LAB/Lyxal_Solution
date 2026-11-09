@@ -28,7 +28,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_staged_save($params: object) {
     -- Cloisonnement : seule l'exécution qui détient la réservation du lot écrit
     LET $held = fn::ingestion_batch_claim_verify({ batch_id: $batch.value, claim: $report.value.claim, language: $report.value.language });
     IF !$held.ok { RETURN $held; };
-    LET $operator = fn::ingestion_session_identity({}).operator;
+    LET $operator = fn::ingestion_operator({});
     LET $now = time::now();
 
     -- 2. Chaque article : un refus (code-barres, champ) n'interrompt pas le bloc, son résultat

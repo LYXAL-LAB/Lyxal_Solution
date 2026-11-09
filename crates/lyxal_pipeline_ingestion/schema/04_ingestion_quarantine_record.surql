@@ -8,18 +8,9 @@ DEFINE TABLE OVERWRITE ingestion_quarantine_record
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE (
-            ($token != NONE AND ($token.role IN ["qualification_agent", "steward_admin"]))
-            OR ($auth != NONE AND ($auth.role IN ["qualification_agent", "steward_admin"]))
-        )
-        FOR create WHERE (
-            ($token != NONE AND $token.role = "qualification_agent" AND "ingestion:staged:qualify" IN $token.scope)
-            OR ($auth != NONE AND $auth.role = "qualification_agent" AND "ingestion:staged:qualify" IN $auth.permissions)
-        )
-        FOR update WHERE (
-            ($token != NONE AND $token.role = "steward_admin")
-            OR ($auth != NONE AND $auth.role = "steward_admin")
-        )
+        FOR select WHERE fn::auth_has_permission({ permission: "ingestion.staged.qualify" }) OR fn::auth_has_permission({ permission: "ingestion.manifest.approve" }) OR fn::auth_has_permission({ permission: "ingestion.rule.manage" })
+        FOR create WHERE fn::auth_has_permission({ permission: "ingestion.staged.qualify" })
+        FOR update WHERE fn::auth_has_permission({ permission: "ingestion.rule.manage" }) OR fn::auth_has_permission({ permission: "ingestion.manifest.approve" })
         FOR delete NONE
     COMMENT "Journal d'audit scellé des anomalies et rejets de qualification en quarantaine avec traçabilité d'arbitrage Data Steward";
 

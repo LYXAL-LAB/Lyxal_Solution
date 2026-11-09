@@ -7,11 +7,11 @@
 DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_approve($params: object) {
     LET $fallback_language = IF type::is_string($params.language) { $params.language } ELSE { NONE };
 
-    -- Habilitation : identité lue dans la session (jamais dans les paramètres)
-    LET $who = fn::ingestion_session_identity({});
-    IF $who.role NOT IN ["steward_admin", "system"] {
-        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $fallback_language, { role: $who.role, expected_role: "steward_admin" });
+    -- Habilitation : permission de la session lyxal_auth (jamais dans les paramètres)
+    IF !fn::auth_has_permission({ permission: "ingestion.manifest.approve" }) {
+        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $fallback_language, { permission: "ingestion.manifest.approve" });
     };
+    LET $operator = fn::ingestion_operator({});
 
     -- Entrées (la justification est contrôlée à part : code métier dédié)
     LET $report = fn::validation_object_execute($params, {
@@ -43,13 +43,12 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_approve($params: object) {
     LET $now = time::now();
     LET $updated = (UPDATE ONLY $manif.id SET
         statut = "APPROVED",
-        approved_by = $who.operator,
-        approver_role = $who.role,
+        approved_by = $operator,
         approved_at = $now,
         transitions = array::append(transitions ?? [], {
             from_state: $manif.statut,
             to_state: "APPROVED",
-            triggered_by: $who.operator,
+            triggered_by: $operator,
             reason: $justif.value,
             transitioned_at: $now
         }));
@@ -58,5 +57,5 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_manifest_approve($params: object) {
     };
 
     RETURN fn::result_ok(true);
-} COMMENT "Approuve un manifeste scellé ; l'approbateur (steward_admin, ou session système) est lu dans la session, jamais dans les paramètres ; la justification est journalisée"
+} COMMENT "Approuve un manifeste scellé ; exige la permission ingestion.manifest.approve (AAL2) ; l'approbateur (opérateur de la session, ou « system ») est lu dans la session, jamais dans les paramètres ; la justification est journalisée"
 PERMISSIONS WHERE $token != NONE OR $auth != NONE;

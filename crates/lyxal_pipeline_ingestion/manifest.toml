@@ -24,6 +24,11 @@ version = ">=0.1.0"
 id = "lyxal_event"
 version = ">=0.1.0"
 
+# Identités, sessions et permissions (ingestion.*) : contrôle des droits et opérateur enregistré
+[[dependencies]]
+id = "lyxal_auth"
+version = ">=0.1.0"
+
 # Publication des manifestes approuvés : fonctions publiques d'articles du catalogue
 [[dependencies]]
 id = "lyxal_catalogue"
@@ -31,7 +36,6 @@ version = ">=0.1.0"
 
 [resources]
 schemas = [
-    "schema/00_ingestion_session.surql",
     "schema/01_ingestion_batch.surql",
     "schema/02_ingestion_raw_record.surql",
     "schema/03_ingestion_staged_item.surql",
@@ -44,7 +48,7 @@ schemas = [
     "schema/10_ingestion_substitution_rule.surql"
 ]
 functions = [
-    "functions/session/ingestion_session_identity.surql",
+    "functions/session/ingestion_operator.surql",
     "functions/batch/ingestion_batch_create.surql",
     "functions/batch/ingestion_batch_claim.surql",
     "functions/batch/ingestion_batch_release.surql",
@@ -78,6 +82,7 @@ events = [
     "events/01_events.surql"
 ]
 seeds = [
+    "seeds/00_access.surql",
     "seeds/01_initial_families.surql",
     "seeds/02_initial_specifications.surql",
     "seeds/03_initial_aliases.surql"

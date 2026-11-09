@@ -8,26 +8,8 @@ DEFINE TABLE OVERWRITE catalogue_variante_attribut
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE (
-            ($token != NONE AND $token.aud = "lyxal-catalogue" AND (
-                ($token.role = "catalogue_sync_agent" AND item.is_custom = false)
-                OR ($token.role = "tenant_user" AND (item.is_custom = false OR (item.is_custom = true AND item.tenant_id != NONE AND $token.tenant_id != NONE AND item.tenant_id = $token.tenant_id)))
-            ))
-            OR ($token == NONE AND $auth != NONE AND (
-                ($auth.role = "catalogue_sync_agent" AND item.is_custom = false)
-                OR ($auth.role = "tenant_user" AND (item.is_custom = false OR (item.is_custom = true AND item.tenant_id != NONE AND $auth.tenant_id != NONE AND item.tenant_id = $auth.tenant_id)))
-            ))
-        )
-        FOR create, update, delete WHERE (
-            ($token != NONE AND $token.aud = "lyxal-catalogue" AND (
-                ($token.role = "catalogue_sync_agent" AND "catalogue:sync:write" IN $token.scope AND item.is_custom = false)
-                OR ($token.role = "tenant_user" AND item.is_custom = true AND item.tenant_id != NONE AND $token.tenant_id != NONE AND item.tenant_id = $token.tenant_id)
-            ))
-            OR ($token == NONE AND $auth != NONE AND (
-                ($auth.role = "catalogue_sync_agent" AND "catalogue:sync:write" IN $auth.permissions AND item.is_custom = false)
-                OR ($auth.role = "tenant_user" AND item.is_custom = true AND item.tenant_id != NONE AND $auth.tenant_id != NONE AND item.tenant_id = $auth.tenant_id)
-            ))
-        )
+        FOR select WHERE fn::catalogue_access({ is_custom: item.is_custom, tenant: item.tenant, action: "read" })
+        FOR create, update, delete WHERE fn::catalogue_access({ is_custom: item.is_custom, tenant: item.tenant, action: "write" })
     COMMENT "Affectations des attributs statiques (Item) et différentiateurs (Variante)";
 
 DEFINE FIELD OVERWRITE item ON TABLE catalogue_variante_attribut

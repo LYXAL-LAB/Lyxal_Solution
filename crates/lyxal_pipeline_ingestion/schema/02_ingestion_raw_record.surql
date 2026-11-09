@@ -8,14 +8,8 @@ DEFINE TABLE OVERWRITE ingestion_raw_record
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE (
-            ($token != NONE AND ($token.role IN ["ingestion_agent", "qualification_agent", "steward_admin"]))
-            OR ($auth != NONE AND ($auth.role IN ["ingestion_agent", "qualification_agent", "steward_admin"]))
-        )
-        FOR create WHERE (
-            ($token != NONE AND $token.role = "ingestion_agent" AND "ingestion:batch:write" IN $token.scope)
-            OR ($auth != NONE AND $auth.role = "ingestion_agent" AND "ingestion:batch:write" IN $auth.permissions)
-        )
+        FOR select WHERE fn::auth_has_permission({ permission: "ingestion.batch.write" }) OR fn::auth_has_permission({ permission: "ingestion.staged.qualify" }) OR fn::auth_has_permission({ permission: "ingestion.manifest.approve" }) OR fn::auth_has_permission({ permission: "ingestion.rule.manage" })
+        FOR create WHERE fn::auth_has_permission({ permission: "ingestion.batch.write" })
         FOR update, delete NONE
     COMMENT "Enregistrements bruts extraits de la source, scellés et immuables";
 
