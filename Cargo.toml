@@ -8,6 +8,7 @@ members = [
     "crates/lyxal_crypto",
     "crates/lyxal_parsing",
     "crates/lyxal_auth",
+    "crates/lyxal_i18n",
     "crates/lyxal_notification",
     "crates/lyxal_pipeline_ingestion",
     "apps/lyxal-server",
@@ -27,6 +28,7 @@ lyxal_event = { path = "crates/lyxal_event" }
 lyxal_crypto = { path = "crates/lyxal_crypto" }
 lyxal_parsing = { path = "crates/lyxal_parsing" }
 lyxal_auth = { path = "crates/lyxal_auth" }
+lyxal_i18n = { path = "crates/lyxal_i18n" }
 lyxal_notification = { path = "crates/lyxal_notification" }
 lyxal_pipeline_ingestion = { path = "crates/lyxal_pipeline_ingestion" }
 surrealdb = { version = "3.3", features = ["protocol-ws", "protocol-http", "kv-mem"] }

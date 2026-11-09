@@ -13,10 +13,13 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post};
 use axum::{Json, Router};
-use lyxal_auth::models::{ClientInfo, IdentityGetParams, SessionCaller, SessionListParams};
+use lyxal_auth::models::{
+    ClientInfo, IdentityGetParams, OrganizationGetParams, SessionCaller, SessionListParams,
+};
 use lyxal_auth::{AuthError, CodeProof, IssuedTokens, LoginActions, LoginOutcome, LoginRequest};
 use lyxal_crypto::SecretString;
 use lyxal_error::{LyxalError, LyxalResult};
+use lyxal_i18n::{accept_language, I18nStore, LocaleResolveParams};
 use lyxal_surreal::{LyxalCallError, LyxalSurrealError, SurrealValue, ToSql};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -169,64 +172,82 @@ async fn resolve(context: &AppContext, code: &str, language: &str) -> Option<Lyx
     resolved?.error
 }
 
-/// Code de langue à deux lettres en tête d'une étiquette (`fr-FR` → `fr`).
-fn language_code(tag: &str) -> Option<String> {
-    tag.split([',', ';', '-', '_'])
-        .next()
-        .map(|v| v.trim().to_ascii_lowercase())
-        .filter(|v| v.len() == 2 && v.bytes().all(|b| b.is_ascii_lowercase()))
-}
-
-/// Langue des messages : `Accept-Language`, sinon la langue (`locale`) de l'identité du jeton
-/// d'accès, sinon `fr`.
+/// Langue des messages, choisie par `fn::i18n_locale_resolve` parmi les langues de l'appelant
+/// (identité, puis organisation active) et celles de `Accept-Language` (par poids) ; langue par
+/// défaut de l'installation si aucune n'est active.
 pub(super) async fn language(
     context: &AppContext,
     headers: &HeaderMap,
 ) -> Result<String, ApiError> {
-    if let Some(code) = headers
-        .get("accept-language")
-        .and_then(|v| v.to_str().ok())
-        .and_then(language_code)
-    {
-        return Ok(code);
+    let mut candidates = caller_locales(context, headers).await?;
+    if let Some(header) = headers.get("accept-language").and_then(|v| v.to_str().ok()) {
+        candidates.extend(accept_language::candidates(header));
     }
-    Ok(identity_language(context, headers)
-        .await?
-        .unwrap_or_else(|| "fr".to_string()))
-}
-
-/// Langue de l'identité du jeton d'accès. Pas de jeton, jeton refusé ou identité introuvable :
-/// aucune langue ; une panne (transport, désérialisation, cryptographie) est propagée.
-async fn identity_language(
-    context: &AppContext,
-    headers: &HeaderMap,
-) -> Result<Option<String>, ApiError> {
-    let Some(host) = context.auth.clone() else {
-        return Ok(None);
-    };
-    let identity = match caller(&host, headers).await {
-        Ok(caller) => caller.identity,
-        Err(error) if is_refusal(&error) => return Ok(None),
-        Err(error) => return Err(error),
-    };
-    let Some(identity) = identity else {
-        return Ok(None);
-    };
-    let found = match host
-        .access
-        .store()
-        .identity_get(IdentityGetParams {
-            identity: identity.to_sql(),
+    candidates.truncate(accept_language::MAX_CANDIDATES);
+    let resolved = I18nStore::new(context.database.as_ref().clone())
+        .locale_resolve(LocaleResolveParams {
+            candidates,
+            language: None,
         })
         .await
-    {
-        Ok(found) => found,
-        Err(LyxalSurrealError::Call(LyxalCallError::Business(_))) => return Ok(None),
-        Err(error) => return Err(ApiError::Auth(AuthError::Surreal(Box::new(error)))),
+        .map_err(|error| {
+            ApiError::Server(ServerError::Database {
+                message: format!("choix de la langue : {error}"),
+            })
+        })?;
+    Ok(resolved.language)
+}
+
+/// Langues de l'appelant : trait `locale` de l'identité du jeton, puis langue de son organisation
+/// active. Pas de jeton, jeton refusé, identité ou organisation introuvable : rien ; une panne
+/// (transport, désérialisation, cryptographie) est propagée.
+async fn caller_locales(
+    context: &AppContext,
+    headers: &HeaderMap,
+) -> Result<Vec<String>, ApiError> {
+    let Some(host) = context.auth.clone() else {
+        return Ok(Vec::new());
     };
-    Ok(found.traits.into_json_value()["locale"]
-        .as_str()
-        .and_then(language_code))
+    let caller = match caller(&host, headers).await {
+        Ok(caller) => caller,
+        Err(error) if is_refusal(&error) => return Ok(Vec::new()),
+        Err(error) => return Err(error),
+    };
+    let store = host.access.store();
+    let mut locales = Vec::new();
+    if let Some(identity) = caller.identity {
+        let found = store
+            .identity_get(IdentityGetParams {
+                identity: identity.to_sql(),
+            })
+            .await;
+        if let Some(identity) = absent_if_refused(found)? {
+            if let Some(locale) = identity.traits.into_json_value()["locale"].as_str() {
+                locales.push(locale.to_string());
+            }
+        }
+    }
+    if let Some(organization) = caller.organization {
+        let found = store
+            .organization_get(OrganizationGetParams {
+                organization: Some(organization.to_sql()),
+                slug: None,
+            })
+            .await;
+        if let Some(locale) = absent_if_refused(found)?.and_then(|o| o.locale) {
+            locales.push(locale);
+        }
+    }
+    Ok(locales)
+}
+
+/// Erreur métier (introuvable, refusé) : absent ; toute autre erreur est propagée.
+fn absent_if_refused<T>(result: Result<T, LyxalSurrealError>) -> Result<Option<T>, ApiError> {
+    match result {
+        Ok(found) => Ok(Some(found)),
+        Err(LyxalSurrealError::Call(LyxalCallError::Business(_))) => Ok(None),
+        Err(error) => Err(ApiError::Auth(AuthError::Surreal(Box::new(error)))),
+    }
 }
 
 /// Refus décidé par le service ou la base (code `AUTH_*`), par opposition à une panne.
@@ -357,7 +378,7 @@ pub(super) async fn respond(
         Err(error) => match language(context, headers).await {
             Ok(language) => render_error(context, error, &language).await,
             // Panne pendant la lecture de la langue : elle est rendue (et journalisée) à la
-            // place de l'erreur d'origine, journalisée ici
+            // place de l'erreur d'origine, journalisée ici ; langue des définitions faute de mieux
             Err(failure) => {
                 let original = match &error {
                     ApiError::Auth(error) => error.to_string(),

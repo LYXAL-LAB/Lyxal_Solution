@@ -17,6 +17,26 @@ RETURN fn::validation_locale("en", true)
 RETURN fn::validation_locale("fr-FRA", false)
     == { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "locale" } };
 
+-- test: script et région canoniques
+RETURN fn::validation_locale("ZH_hant_tw", false)
+    == { valid: true, value: "zh-Hant-TW", code: NONE, details: {} };
+
+-- test: script sans région
+RETURN fn::validation_locale("sr-latn", false).value == "sr-Latn";
+
+-- test: région à trois chiffres
+RETURN fn::validation_locale("es-419", true)
+    == { valid: true, value: "es-419", code: NONE, details: {} };
+
+-- test: script sans région refusé si la région est exigée
+RETURN fn::validation_locale("zh-Hant", true).code == "CORE_VALIDATION_FORMAT";
+
+-- test: trois segments sans script refusés
+RETURN fn::validation_locale("fr-FR-CA", false).code == "CORE_VALIDATION_FORMAT";
+
+-- test: variante refusée
+RETURN fn::validation_locale("fr-Latn-FR-x", false).code == "CORE_VALIDATION_FORMAT";
+
 -- test: trop de segments
 RETURN fn::validation_locale("fr-FR-x", false).code == "CORE_VALIDATION_FORMAT";
 

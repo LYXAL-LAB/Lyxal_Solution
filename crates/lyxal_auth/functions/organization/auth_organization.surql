@@ -16,6 +16,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_organization_create($params: object) {
             branding: { pipeline: [{ rule: "is_object" }], default: {} },
             custom_data: { pipeline: [{ rule: "is_object" }], default: {} },
             mfa_required: { pipeline: [{ rule: "boolean" }], default: false },
+            locale: { pipeline: [{ rule: "locale", options: { require_region: false } }] },
             owner: { pipeline: [{ rule: "record", options: { expected_table: "auth_identity" } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
@@ -40,7 +41,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_organization_create($params: object) {
         description: $p.description,
         branding: $p.branding,
         custom_data: $p.custom_data,
-        mfa_required: $p.mfa_required
+        mfa_required: $p.mfa_required,
+        locale: $p.locale
     });
     IF $created == NONE {
         RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_organization" });
@@ -51,7 +53,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_organization_create($params: object) {
         IF !$member.ok { THROW $member.error.code; };
     };
     RETURN fn::result_ok($created);
-} COMMENT "Crée une organisation ({ slug, name, description, branding, custom_data, mfa_required, owner }) ; owner devient membre administrateur. Permission auth.organization.manage";
+} COMMENT "Crée une organisation ({ slug, name, description, branding, custom_data, mfa_required, locale, owner }) ; owner devient membre administrateur. Permission auth.organization.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_organization_get
@@ -120,6 +122,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_organization_update($params: object) {
             branding: { pipeline: [{ rule: "is_object" }] },
             custom_data: { pipeline: [{ rule: "is_object" }] },
             mfa_required: { pipeline: [{ rule: "boolean" }] },
+            locale: { pipeline: [{ rule: "locale", options: { require_region: false } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -140,13 +143,14 @@ DEFINE FUNCTION OVERWRITE fn::auth_organization_update($params: object) {
         description: IF "description" IN object::keys($params) { $p.description } ELSE { $current.description },
         branding: $p.branding ?? $current.branding,
         custom_data: $p.custom_data ?? $current.custom_data,
-        mfa_required: $p.mfa_required ?? $current.mfa_required
+        mfa_required: $p.mfa_required ?? $current.mfa_required,
+        locale: IF "locale" IN object::keys($params) { $p.locale } ELSE { $current.locale }
     });
     IF $updated == NONE {
         RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_organization" });
     };
     RETURN fn::result_ok($updated);
-} COMMENT "Modifie la fiche d'une organisation ({ organization, name, description, branding, custom_data, mfa_required }). Permission auth.organization.settings.manage ou auth.organization.manage";
+} COMMENT "Modifie la fiche d'une organisation ({ organization, name, description, branding, custom_data, mfa_required, locale ; locale NONE l'efface }). Permission auth.organization.settings.manage ou auth.organization.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_organization_set_state

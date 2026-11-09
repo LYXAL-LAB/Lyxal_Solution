@@ -21,6 +21,7 @@ async fn invitation_link_is_sealed_published_and_never_stored() {
     let store = installed_store().await;
     let organization = store
         .organization_create(OrganizationCreateParams {
+            locale: None,
             branding: None,
             custom_data: None,
             slug: "alpha".into(),

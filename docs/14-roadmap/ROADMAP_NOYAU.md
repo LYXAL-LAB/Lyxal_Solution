@@ -3,7 +3,8 @@
 Ordre de création des crates du noyau technique inscrits « à créer » dans
 `.agents/AGENTS.md` §6. Les crates du noyau déjà en place (`lyxal_error`, `lyxal_surreal`,
 `lyxal_crypto`, `lyxal_parsing`, `lyxal_event`, `lyxal_runtime`, `lyxal_base`, `lyxal_auth`,
-`lyxal_notification`) ont leur propre `ROADMAP.md`. La V1 de `lyxal_auth` est livrée (lots 1 à 6 :
+`lyxal_i18n`, `lyxal_notification`) ont leur propre `ROADMAP.md`. `lyxal_i18n` (rang 2) est créé :
+son programme (lots 2 à 6) est dans `implementation_plan.md` à la racine et sa `ROADMAP.md`. La V1 de `lyxal_auth` est livrée (lots 1 à 6 :
 socle, connexion, double facteur, bascule du catalogue et de l'ingestion, clôture avec audit et
 revue OWASP ASVS niveau 2) ; ses évolutions sont dans `crates/lyxal_auth/ROADMAP.md`.
 
@@ -18,7 +19,6 @@ Un crate créé est retiré de ce document : son état est alors décrit par son
 
 | Rang | Crate | Rôle | Dépend de (noyau) |
 | :--- | :--- | :--- | :--- |
-| 2 | `lyxal_i18n` | langues, traductions, formats régionaux | — |
 | 3 | `lyxal_storage` | fichiers et documents stockés | `lyxal_auth` |
 | 4 | `lyxal_secrets` | secrets applicatifs stockés chiffrés | `lyxal_crypto`, `lyxal_auth` |
 | 5 | `lyxal_scheduler` | tâches planifiées | `lyxal_runtime`, `lyxal_event` |
@@ -29,9 +29,6 @@ Tous dépendent en outre de `lyxal_core` et `lyxal_error`.
 
 ## Raisons de l'ordre
 
-2. **`lyxal_i18n`** : sans dépendance dans le noyau, il fixe le référentiel des langues avant que
-   d'autres crates traduisent leurs contenus (libellés traduits de `lyxal_base`, étape 2 de sa
-   feuille de route ; modèles de `lyxal_notification`).
 3. **`lyxal_storage`** : les modules métiers à venir (`lyxal_documents`, `lyxal_btp`) stockent des
    fichiers ; l'accès à un fichier suit l'identité de `lyxal_auth`. `lyxal_core` fournit déjà la
    validation des chemins (`fn::validation_lyxal_storage_path`).

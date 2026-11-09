@@ -4,16 +4,17 @@
 -- Fichier  : crates/lyxal_core/functions/validations/functions/locale.surql
 -- Fonction : fn::validation_locale
 --
--- Valide une locale langue[-RÉGION] (« fr », « fr-FR », « fr_FR ») ; la
--- région est exigée si demandé. La valeur renvoyée est normalisée en « fr-FR
--- ».
+-- Valide une étiquette de langue BCP 47 langue[-Script][-RÉGION] (« fr », « fr-FR »,
+-- « fr_FR », « zh-Hant-TW », « es-419 ») ; la région est exigée si demandé. La
+-- valeur renvoyée est canonique : langue en minuscules, script en casse de titre,
+-- région en majuscules (« zh-Hant-TW »). Les variantes et extensions sont refusées.
 --
 -- Paramètres
 --   $value          : any — valeur à contrôler
 --   $require_region : bool — true pour exiger la région
 --
 -- Résultat : { valid, value, code, details } (contrat : crates/lyxal_core/Readme.md)
---   valid = true  → value = la locale normalisée (« fr » ou « fr-FR »), code = NONE
+--   valid = true  → value = l'étiquette canonique (« fr », « fr-FR », « zh-Hant-TW »), code = NONE
 --   valid = false → value = NONE, code parmi :
 --     CORE_VALIDATION_REQUIRED
 --     CORE_VALIDATION_NULL
@@ -40,15 +41,23 @@ DEFINE FUNCTION OVERWRITE fn::validation_locale(
     LET $clean = string::trim($value);
     IF $clean = "" { RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_BLANK", details: {} }; };
     LET $parts = string::split(string::replace($clean, "_", "-"), "-");
+    LET $count = array::len($parts);
     LET $language = string::lowercase($parts[0]);
-    LET $region = IF array::len($parts) = 2 { string::uppercase($parts[1]) } ELSE { NONE };
-    IF array::len($parts) > 2 OR !string::matches($language, "^[a-z]{2,3}$") OR ($region IS NOT NONE AND !string::matches($region, "^[A-Z]{2}$")) {
+    -- Deuxième segment : script (4 lettres) ou région ; troisième : région seulement
+    LET $second = $parts[1];
+    LET $has_script = $second IS NOT NONE AND string::matches($second, "^[A-Za-z]{4}$");
+    LET $script = IF $has_script { string::uppercase(string::slice($second, 0, 1)) + string::lowercase(string::slice($second, 1)) } ELSE { NONE };
+    LET $region_raw = IF $has_script { $parts[2] } ELSE IF $count = 2 { $second } ELSE { NONE };
+    LET $region = IF $region_raw IS NONE { NONE } ELSE { string::uppercase($region_raw) };
+    IF $count > 3 OR ($count = 3 AND !$has_script) OR !string::matches($language, "^[a-z]{2,3}$")
+        OR ($region IS NOT NONE AND !string::matches($region, "^([A-Z]{2}|[0-9]{3})$")) {
         RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "locale" } };
     };
     IF $require_region AND $region IS NONE {
         RETURN { valid: false, value: NONE, code: "CORE_VALIDATION_FORMAT", details: { expected: "locale", require_region: true } };
     };
-    RETURN { valid: true, value: IF $region IS NONE { $language } ELSE { $language + "-" + $region }, code: NONE, details: {} };
+    LET $tag = array::join(array::filter([$language, $script, $region], |$v| $v IS NOT NONE), "-");
+    RETURN { valid: true, value: $tag, code: NONE, details: {} };
 }
-COMMENT "Valide une locale langue[-RÉGION] (« fr », « fr-FR », « fr_FR ») ; la région est exigée si demandé. La valeur renvoyée est normalisée en « fr-FR ». Renvoie { valid, value, code, details }."
+COMMENT "Valide une étiquette de langue BCP 47 langue[-Script][-RÉGION] (« fr », « fr_FR », « zh-Hant-TW », « es-419 ») ; la région est exigée si demandé. Valeur canonique (« zh-Hant-TW »). Renvoie { valid, value, code, details }."
 PERMISSIONS FULL;

@@ -35,6 +35,8 @@ pub struct Organization {
     pub custom_data: AuthValue,
     /// Double facteur exigé.
     pub mfa_required: bool,
+    /// Langue par défaut (étiquette BCP 47).
+    pub locale: Option<String>,
     /// Création.
     pub created_at: AuthDatetime,
     /// Dernière modification.
@@ -52,6 +54,8 @@ pub struct OrganizationCreateParams {
     pub description: Option<String>,
     /// Double facteur exigé.
     pub mfa_required: Option<bool>,
+    /// Langue par défaut (étiquette BCP 47).
+    pub locale: Option<String>,
     /// Identité qui devient membre administrateur (texte `auth_identity:<clé>`).
     pub owner: Option<String>,
     /// Charte graphique (objet libre).
