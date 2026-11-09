@@ -41,6 +41,17 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_open($params: object) -> object {
     IF $params.organization IS NOT NONE AND (SELECT VALUE state FROM ONLY $params.organization) != "active" { RETURN { code: "AUTH_ORGANIZATION_INACTIVE" }; };
     LET $rights = fn::auth_subject_permissions({ identity: $params.identity, application: $params.application, organization: $params.organization, limit: $params.limit });
     IF $rights.code IS NOT NONE { RETURN { code: $rights.code }; };
+    -- Méthodes (AMR) : chaînes d'une authentification qui vient d'avoir lieu, ou entrées { method, at }
+    -- reprises d'une session (changement d'organisation). AAL calculé (Kratos) : 2 dès qu'un second
+    -- facteur figure dans l'AMR (une passkey avec vérification de l'utilisateur en est un, Q3).
+    LET $amr = array::map($params.amr ?? [], |$m| IF type::is_object($m) { $m } ELSE { { method: $m, at: $now } });
+    LET $aal = IF array::len(array::intersect($amr.method, ["totp", "passkey", "recovery_code"])) > 0 { 2 } ELSE { 1 };
+    -- Session interactive : une identité qui a un second facteur, ou à qui il est exigé, n'ouvre
+    -- pas de session sur le seul mot de passe
+    IF $params.kind = "interactive" AND $aal < 2 AND (
+        ((SELECT VALUE available_aal FROM ONLY $params.identity) ?? 0) >= 2
+        OR fn::auth_mfa_required({ identity: $params.identity, organization: $params.organization })
+    ) { RETURN { code: "AUTH_MFA_REQUIRED" }; };
     LET $policy = fn::auth_policy_get({ organization: IF $params.organization IS NONE { NONE } ELSE { <string> $params.organization } }).data ?? {};
     LET $access_ttl = $policy.session.access_seconds ?? 900;
     LET $idle = $policy.session.idle_seconds ?? 43200;
@@ -55,8 +66,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_open($params: object) -> object {
         api_key: $params.api_key,
         kind: $params.kind,
         organization: $params.organization,
-        aal: 1,
-        amr: array::map($params.amr ?? [], |$m| { method: $m, at: $now }),
+        aal: $aal,
+        amr: $amr,
+        authenticated_at: $params.authenticated_at ?? $now,
         client: $params.client ?? {},
         access_slot: $params.access_slot,
         permissions_version: $rights.version,
@@ -77,13 +89,13 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_open($params: object) -> object {
         kind: $params.kind,
         permissions: $rights.permissions,
         version: $rights.version,
-        aal: 1,
+        aal: $aal,
         access_seconds: $access_ttl,
         idle_expires_at: $sess.idle_expires_at,
         expires_at: $expires_at,
         refresh_expires_at: $refresh_expires_at
     };
-} COMMENT "Crée une session ({ identity | application, api_key, kind, organization, amr, client, access_slot, refresh_token_hash, limit, expires_cap }) et son jeton de renouvellement ; renvoie ce que porte le jeton d'accès";
+} COMMENT "Crée une session ({ identity | application, api_key, kind, organization, amr, authenticated_at, client, access_slot, refresh_token_hash, limit, expires_cap }) et son jeton de renouvellement ; AAL calculé depuis l'AMR ; session interactive sur le seul mot de passe refusée (AUTH_MFA_REQUIRED) si l'identité a un second facteur ou s'il lui est exigé ; renvoie ce que porte le jeton d'accès";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_session_create
@@ -94,7 +106,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_create($params: object) {
         fields: {
             identity: { pipeline: [{ rule: "record", options: { expected_table: "auth_identity" } }], required: true },
             organization: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
-            amr: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: false } }, { rule: "each", options: { pipeline: [{ rule: "enum", options: { allowed: ["password", "code", "link"], case_sensitive: true } }] } }], required: true },
+            amr: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: false } }, { rule: "each", options: { pipeline: [{ rule: "enum", options: { allowed: ["password", "totp", "passkey", "recovery_code"], case_sensitive: true } }] } }], required: true },
             client: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: { fields: {
                 ip: { pipeline: [{ rule: "ip" }] },
                 user_agent: { pipeline: [{ rule: "optional_string", options: { max_length: 512 } }] }
@@ -117,7 +129,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_create($params: object) {
     IF $opened.code IS NOT NONE { RETURN fn::error_result($opened.code, $p.language, {}); };
     UPDATE $p.identity SET last_login_at = time::now();
     RETURN fn::result_ok(object::remove($opened, "code"));
-} COMMENT "Ouvre une session interactive ({ identity, organization, amr, client, access_slot, refresh_token_hash }) après une authentification vérifiée par l'hôte : adhésion active exigée pour une organisation ; renvoie session, permissions, version et durées. Session système";
+} COMMENT "Ouvre une session interactive ({ identity, organization, amr : password, totp, passkey, recovery_code ; client, access_slot, refresh_token_hash }) après une authentification vérifiée par l'hôte : adhésion active exigée pour une organisation, double facteur contrôlé (AUTH_MFA_REQUIRED) ; renvoie session, permissions, version, AAL et durées. Session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_session_refresh
@@ -261,7 +273,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_switch_organization($params: object) 
         RETURN fn::error_result("AUTH_SESSION_REVOKED", $p.language, {});
     };
     LET $opened = fn::auth_session_open({
-        identity: $current.identity, kind: "interactive", organization: $p.organization, amr: $current.amr.method,
+        identity: $current.identity, kind: "interactive", organization: $p.organization, amr: $current.amr,
+        authenticated_at: $current.authenticated_at,
         client: $current.client, access_slot: $p.access_slot, refresh_token_hash: $p.refresh_token_hash,
         -- La nouvelle session hérite de l'expiration absolue de l'ancienne (aucun allongement)
         expires_cap: $current.expires_at

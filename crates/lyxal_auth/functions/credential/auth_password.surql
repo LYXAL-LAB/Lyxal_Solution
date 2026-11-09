@@ -82,7 +82,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_required_action_add($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             identity: { pipeline: [{ rule: "record", options: { expected_table: "auth_identity" } }], required: true },
-            action: { pipeline: [{ rule: "enum", options: { allowed: ["verify_email", "update_password", "accept_terms"], case_sensitive: true } }], required: true },
+            action: { pipeline: [{ rule: "enum", options: { allowed: ["verify_email", "update_password", "accept_terms", "configure_mfa"], case_sensitive: true } }], required: true },
             reason: { pipeline: [{ rule: "optional_string", options: { max_length: 256 } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
@@ -99,7 +99,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_required_action_add($params: object) {
     LET $created = (CREATE ONLY auth_required_action CONTENT { identity: $p.identity, action: $p.action, reason: $p.reason });
     IF $created == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_required_action" }); };
     RETURN fn::result_ok({ action: $created.id, created: true });
-} COMMENT "Impose une action à une identité avant sa prochaine session ({ identity, action : verify_email, update_password, accept_terms ; reason }). Permission auth.identity.manage";
+} COMMENT "Impose une action à une identité avant sa prochaine session ({ identity, action : verify_email, update_password, accept_terms, configure_mfa ; reason }). Permission auth.identity.manage";
 
 DEFINE FUNCTION OVERWRITE fn::auth_required_action_list($params: object) {
     LET $report = fn::validation_object_execute($params, {
@@ -124,7 +124,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_required_action_complete($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             identity: { pipeline: [{ rule: "record", options: { expected_table: "auth_identity" } }], required: true },
-            action: { pipeline: [{ rule: "enum", options: { allowed: ["verify_email", "update_password", "accept_terms"], case_sensitive: true } }], required: true },
+            action: { pipeline: [{ rule: "enum", options: { allowed: ["verify_email", "update_password", "accept_terms", "configure_mfa"], case_sensitive: true } }], required: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"

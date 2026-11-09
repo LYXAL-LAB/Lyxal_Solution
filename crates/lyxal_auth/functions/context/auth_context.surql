@@ -50,9 +50,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_context($params: object) {
     LET $check = fn::auth_session_valid({});
     IF !$check.valid { RETURN fn::error_result($check.code, $language, {}); };
     IF $check.system {
-        RETURN fn::result_ok({ system: true, identity: NONE, application: NONE, kind: NONE, session: NONE, organization: NONE, permissions: [], aal: NONE });
+        RETURN fn::result_ok({ system: true, identity: NONE, application: NONE, kind: NONE, session: NONE, organization: NONE, permissions: [], aal: NONE, amr: [], authenticated_at: NONE });
     };
-    LET $s = (SELECT identity, application, kind, organization, aal FROM ONLY $auth);
+    LET $s = (SELECT identity, application, kind, organization, aal, amr, authenticated_at FROM ONLY $auth);
     RETURN fn::result_ok({
         system: false,
         identity: $s.identity,
@@ -61,9 +61,11 @@ DEFINE FUNCTION OVERWRITE fn::auth_context($params: object) {
         session: $auth,
         organization: $s.organization,
         permissions: IF type::is_array($token.permissions) { $token.permissions } ELSE { [] },
-        aal: $s.aal
+        aal: $s.aal,
+        amr: $s.amr.method,
+        authenticated_at: $s.authenticated_at
     });
-} COMMENT "Contexte de l'appelant : { system, identity, application, kind, session, organization, permissions, aal } ; erreur AUTH_SESSION_* si la session n'est pas utilisable";
+} COMMENT "Contexte de l'appelant : { system, identity, application, kind, session, organization, permissions, aal, amr, authenticated_at } ; erreur AUTH_SESSION_* si la session n'est pas utilisable";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_has_permission : l'appelant détient-il la permission (dans l'organisation) ?
@@ -78,8 +80,12 @@ DEFINE FUNCTION OVERWRITE fn::auth_has_permission($params: object) -> bool {
     IF $check.system { RETURN true; };
     IF !type::is_string($params.permission) OR string::len($params.permission) > 128 { RETURN false; };
     IF !type::is_array($token.permissions) OR $params.permission NOTINSIDE $token.permissions { RETURN false; };
-    LET $scope = (SELECT VALUE scope FROM ONLY type::record("auth_permission", $params.permission));
-    IF $scope = "installation" { RETURN true; };
-    IF $scope != "organization" OR $params.tenant IS NONE OR !type::is_record($params.tenant, "auth_organization") { RETURN false; };
-    RETURN $params.tenant = (SELECT VALUE organization FROM ONLY $auth);
-} COMMENT "Vrai si l'appelant détient la permission ({ permission, tenant }) : session système, ou session valide dont le jeton porte la permission (et, pour une permission d'organisation, tenant = organisation active). Jamais d'erreur";
+    LET $permission = (SELECT scope, min_aal FROM ONLY type::record("auth_permission", $params.permission));
+    IF $permission == NONE { RETURN false; };
+    LET $s = (SELECT organization, aal FROM ONLY $auth);
+    -- Niveau d'assurance relu en base (une réauthentification compte aussitôt, même pour un jeton déjà émis)
+    IF ($permission.min_aal ?? 1) > ($s.aal ?? 1) { RETURN false; };
+    IF $permission.scope = "installation" { RETURN true; };
+    IF $permission.scope != "organization" OR $params.tenant IS NONE OR !type::is_record($params.tenant, "auth_organization") { RETURN false; };
+    RETURN $params.tenant = $s.organization;
+} COMMENT "Vrai si l'appelant détient la permission ({ permission, tenant }) : session système, ou session valide dont le jeton porte la permission, d'AAL au moins égal au min_aal de la permission (et, pour une permission d'organisation, tenant = organisation active). Jamais d'erreur";

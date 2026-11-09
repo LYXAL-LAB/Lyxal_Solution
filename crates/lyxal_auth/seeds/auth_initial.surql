@@ -53,7 +53,16 @@ IF !record::exists(auth_policy:installation) THEN (
         password: { min_length: 12, require_classes: 0, history: 5 },
         lockout: { max_failures: 10, lock_seconds: 900, window_seconds: 900, ip_max_failures: 50 },
         session: { access_seconds: 900, idle_seconds: 43200, absolute_seconds: 2592000 },
-        mfa: { required: false, methods: ["totp", "passkey", "recovery_code"] },
+        mfa: {
+            required: false,
+            methods: ["totp", "passkey", "recovery_code"],
+            -- Double facteur exigé pour l'administration de la plateforme (Q4 du lot 4)
+            required_roles: ["platform_admin"],
+            max_attempts: 5,
+            recovery_code_count: 10,
+            privileged_max_age_seconds: 900,
+            passkey_user_verification: "required"
+        },
         invitation: { ttl_seconds: 604800 },
         registration: { mode: "invitation_only" },
         code: { ttl_seconds: 900, max_attempts: 5 },

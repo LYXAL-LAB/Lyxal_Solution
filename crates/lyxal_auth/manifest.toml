@@ -56,7 +56,9 @@ functions = [
     "functions/session/auth_login_failure.surql",
     "functions/session/auth_session.surql",
     "functions/application/auth_application.surql",
-    "functions/signing/auth_signing_key.surql"
+    "functions/signing/auth_signing_key.surql",
+    "functions/mfa/auth_assurance.surql",
+    "functions/mfa/auth_mfa.surql"
 ]
 error_definitions = [
     "error/access/error_access.surql",
@@ -65,7 +67,8 @@ error_definitions = [
     "error/organizations/error_organizations.surql",
     "error/credentials/error_credentials.surql",
     "error/flows/error_flows.surql",
-    "error/applications/error_applications.surql"
+    "error/applications/error_applications.surql",
+    "error/mfa/error_mfa.surql"
 ]
 events = ["events/auth_events.surql"]
 seeds = ["seeds/auth_initial.surql"]

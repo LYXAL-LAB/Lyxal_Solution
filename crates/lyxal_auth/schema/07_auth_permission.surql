@@ -34,6 +34,12 @@ DEFINE FIELD OVERWRITE scope ON TABLE auth_permission
     READONLY
     COMMENT "Portée : installation (identité) ou organisation (adhésion)";
 
+DEFINE FIELD OVERWRITE min_aal ON TABLE auth_permission
+    TYPE int
+    DEFAULT 1
+    ASSERT $value >= 1 AND $value <= 2
+    COMMENT "Niveau d'assurance minimal de la session pour exercer la permission (2 : double facteur)";
+
 DEFINE FIELD OVERWRITE description ON TABLE auth_permission
     TYPE object
     DEFAULT {}

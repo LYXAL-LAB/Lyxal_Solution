@@ -21,11 +21,14 @@ DEFINE FUNCTION OVERWRITE fn::auth_policy_value($params: object) -> any {
 
 DEFINE FUNCTION OVERWRITE fn::auth_flow_states($params: object) -> array {
     LET $allowed = {
-        login: ["started", "action_required", "completed", "failed"],
+        login: ["started", "action_required", "mfa_required", "completed", "failed"],
         registration: ["started", "completed", "failed"],
         verification: ["code_sent", "completed", "failed"],
         recovery: ["code_sent", "code_verified", "completed", "failed"],
-        address_change: ["code_sent", "code_verified", "completed", "failed"]
+        address_change: ["code_sent", "code_verified", "completed", "failed"],
+        passkey_login: ["started", "completed", "failed"],
+        mfa_enrollment: ["started", "completed", "failed"],
+        reauthentication: ["started", "completed", "failed"]
     };
     RETURN $allowed[$params.type] ?? [];
 } COMMENT "États admis d'un type de parcours ({ type })";
@@ -37,13 +40,15 @@ DEFINE FUNCTION OVERWRITE fn::auth_flow_states($params: object) -> array {
 DEFINE FUNCTION OVERWRITE fn::auth_flow_start($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
-            type: { pipeline: [{ rule: "enum", options: { allowed: ["login", "registration", "verification", "recovery", "address_change"], case_sensitive: true } }], required: true },
-            state: { pipeline: [{ rule: "enum", options: { allowed: ["started", "action_required", "code_sent"], case_sensitive: true } }] },
+            type: { pipeline: [{ rule: "enum", options: { allowed: ["login", "registration", "verification", "recovery", "address_change", "passkey_login", "mfa_enrollment", "reauthentication"], case_sensitive: true } }], required: true },
+            state: { pipeline: [{ rule: "enum", options: { allowed: ["started", "action_required", "mfa_required", "code_sent"], case_sensitive: true } }] },
             identity: { pipeline: [{ rule: "record", options: { expected_table: "auth_identity" } }] },
             organization: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization" } }] },
             invitation: { pipeline: [{ rule: "record", options: { expected_table: "auth_organization_invitation" } }] },
             address: { pipeline: [{ rule: "email", options: { max_length: 254 } }] },
-            required_actions: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "each", options: { pipeline: [{ rule: "enum", options: { allowed: ["verify_email", "update_password", "accept_terms"], case_sensitive: true } }] } }], default: [] },
+            required_actions: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "each", options: { pipeline: [{ rule: "enum", options: { allowed: ["verify_email", "update_password", "accept_terms", "configure_mfa"], case_sensitive: true } }] } }], default: [] },
+            methods: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "each", options: { pipeline: [{ rule: "enum", options: { allowed: ["password", "totp", "passkey", "recovery_code"], case_sensitive: true } }] } }], default: [] },
+            session: { pipeline: [{ rule: "record", options: { expected_table: "auth_session" } }] },
             client: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: { fields: {
                 ip: { pipeline: [{ rule: "ip" }] },
                 user_agent: { pipeline: [{ rule: "optional_string", options: { max_length: 512 } }] }
@@ -57,7 +62,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_flow_start($params: object) {
     };
     LET $p = $report.value;
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
-    LET $initial = $p.state ?? (IF $p.type IN ["login", "registration"] { "started" } ELSE { "code_sent" });
+    LET $initial = $p.state ?? (IF $p.type IN ["verification", "recovery", "address_change"] { "code_sent" } ELSE { "started" });
     LET $ttl = fn::auth_policy_value({ theme: "flow", key: "ttl_seconds", default: 900, organization: $p.organization });
     LET $flow = (CREATE ONLY type::record("auth_flow", string::replace(<string> rand::uuid::v7(), "-", "")) CONTENT {
         type: $p.type,
@@ -67,12 +72,14 @@ DEFINE FUNCTION OVERWRITE fn::auth_flow_start($params: object) {
         invitation: $p.invitation,
         address: IF $p.address IS NONE { NONE } ELSE { fn::sanitize_pipeline_execute($p.address, [{ rule: "email" }], 5) },
         required_actions: $p.required_actions,
+        methods: $p.methods,
+        session: $p.session,
         client: $p.client,
         expires_at: time::now() + duration::from_secs($ttl)
     });
     IF $flow == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_flow" }); };
     RETURN fn::result_ok($flow);
-} COMMENT "Démarre un parcours ({ type, state, identity, organization, invitation, address, required_actions, client }) ; durée selon la politique. Session système";
+} COMMENT "Démarre un parcours ({ type, state, identity, organization, invitation, address, required_actions, methods, session, client }) ; durée selon la politique. Session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_flow_load : parcours utilisable (interne)
@@ -115,7 +122,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_flow_submit($params: object) {
         fields: {
             flow: { pipeline: [{ rule: "record", options: { expected_table: "auth_flow" } }], required: true },
             from: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: false } }], required: true },
-            state: { pipeline: [{ rule: "enum", options: { allowed: ["started", "action_required", "code_sent", "code_verified", "completed", "failed"], case_sensitive: true } }], required: true },
+            state: { pipeline: [{ rule: "enum", options: { allowed: ["started", "action_required", "mfa_required", "code_sent", "code_verified", "completed", "failed"], case_sensitive: true } }], required: true },
+            methods: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }] },
             required_actions: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }] },
             identity: { pipeline: [{ rule: "record", options: { expected_table: "auth_identity" } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
@@ -134,11 +142,12 @@ DEFINE FUNCTION OVERWRITE fn::auth_flow_submit($params: object) {
     LET $updated = (UPDATE ONLY $p.flow SET
         state = $p.state,
         required_actions = $p.required_actions ?? required_actions,
+        methods = $p.methods ?? methods,
         identity = $p.identity ?? identity
         WHERE state IN $p.from);
     IF $updated == NONE { RETURN fn::error_result("AUTH_FLOW_INVALID_STATE", $p.language, {}); };
     RETURN fn::result_ok($updated);
-} COMMENT "Fait avancer un parcours ({ flow, from : états de départ admis, state, required_actions, identity }) ; transition conditionnelle et contrôlée par la machine d'état. Session système";
+} COMMENT "Fait avancer un parcours ({ flow, from : états de départ admis, state, required_actions, methods, identity }) ; transition conditionnelle et contrôlée par la machine d'état. Session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_code_issue

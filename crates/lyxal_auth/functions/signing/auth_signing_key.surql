@@ -112,12 +112,17 @@ DEFINE FUNCTION OVERWRITE fn::auth_purge($params: object) {
     LET $failures = (SELECT VALUE id FROM auth_login_failure WHERE (locked_until IS NONE OR locked_until <= $now) AND updated_at <= $now - 1d LIMIT $p.limit);
     IF array::len($failures) > 0 { DELETE $failures; };
     LET $invitations = (UPDATE auth_organization_invitation SET state = "expired" WHERE state = "pending" AND expires_at <= $now RETURN id);
+    -- TOTP jamais confirmés au-delà de la durée d'un parcours
+    LET $pending_ttl = duration::from_secs(fn::auth_policy_value({ theme: "flow", key: "ttl_seconds", default: 900 }));
+    LET $pending = (SELECT VALUE id FROM auth_credential WHERE type = "totp" AND state = "pending" AND created_at <= $now - $pending_ttl LIMIT $p.limit);
+    IF array::len($pending) > 0 { DELETE $pending; };
     RETURN fn::result_ok({
         sessions_expired: array::len($expired_sessions),
         flows: array::len($flows),
         refresh_tokens: array::len($tokens),
         sessions: array::len($sessions),
         login_failures: array::len($failures),
-        invitations_expired: array::len($invitations)
+        invitations_expired: array::len($invitations),
+        pending_totp: array::len($pending)
     });
-} COMMENT "Purge par paquets ({ limit, session_retention_days }) : sessions expirées marquées, parcours et codes expirés, jetons usés ou expirés, sessions terminées au-delà de la conservation, compteurs d'échecs anciens, invitations expirées. Session système";
+} COMMENT "Purge par paquets ({ limit, session_retention_days }) : sessions expirées marquées, parcours et codes expirés, jetons usés ou expirés, sessions terminées au-delà de la conservation, compteurs d'échecs anciens, invitations expirées, TOTP non confirmés. Session système";

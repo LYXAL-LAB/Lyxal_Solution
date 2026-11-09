@@ -90,6 +90,11 @@ DEFINE FIELD OVERWRITE amr.*.method ON TABLE auth_session
 DEFINE FIELD OVERWRITE amr.*.at ON TABLE auth_session
     TYPE datetime;
 
+DEFINE FIELD OVERWRITE authenticated_at ON TABLE auth_session
+    TYPE datetime
+    DEFAULT time::now()
+    COMMENT "Dernière authentification réussie (connexion ou réauthentification), pour les actions sensibles";
+
 DEFINE FIELD OVERWRITE permissions_version ON TABLE auth_session
     TYPE int
     DEFAULT 1
