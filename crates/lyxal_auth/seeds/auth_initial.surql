@@ -52,7 +52,7 @@ IF !record::exists(auth_policy:installation) THEN (
         scope_key: "installation",
         password: { min_length: 12, require_classes: 0, history: 5 },
         lockout: { max_failures: 10, lock_seconds: 900, window_seconds: 900, ip_max_failures: 50 },
-        session: { access_seconds: 900, idle_seconds: 43200, absolute_seconds: 2592000 },
+        session: { access_seconds: 900, idle_seconds: 1800, absolute_seconds: 43200 },
         mfa: {
             required: false,
             methods: ["totp", "passkey", "recovery_code"],
@@ -65,7 +65,7 @@ IF !record::exists(auth_policy:installation) THEN (
         invitation: { ttl_seconds: 604800 },
         registration: { mode: "invitation_only" },
         code: { ttl_seconds: 900, max_attempts: 5 },
-        refresh: { ttl_seconds: 2592000 },
+        refresh: { ttl_seconds: 43200 },
         flow: { ttl_seconds: 900 }
     }
 ) END;

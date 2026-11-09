@@ -37,6 +37,7 @@ DEFINE FIELD OVERWRITE client ON TABLE auth_flow TYPE object DEFAULT {} COMMENT 
 DEFINE FIELD OVERWRITE client.ip ON TABLE auth_flow TYPE option<string>;
 DEFINE FIELD OVERWRITE client.user_agent ON TABLE auth_flow TYPE option<string>;
 DEFINE FIELD OVERWRITE created_at ON TABLE auth_flow TYPE datetime DEFAULT time::now() READONLY COMMENT "Création";
+DEFINE INDEX OVERWRITE auth_flow_client_ip ON TABLE auth_flow FIELDS client.ip, created_at;
 DEFINE FIELD OVERWRITE updated_at ON TABLE auth_flow TYPE datetime VALUE time::now() COMMENT "Dernière modification";
 DEFINE FIELD OVERWRITE expires_at ON TABLE auth_flow TYPE datetime COMMENT "Expiration";
 
@@ -77,6 +78,18 @@ DEFINE FIELD OVERWRITE delivery.name ON TABLE auth_one_time_code TYPE option<str
 
 DEFINE INDEX OVERWRITE auth_one_time_code_link ON TABLE auth_one_time_code FIELDS link_hash UNIQUE;
 DEFINE INDEX OVERWRITE auth_one_time_code_flow ON TABLE auth_one_time_code FIELDS flow;
+
+-- Journal des émissions de codes : plafond par adresse et par usage (1 par minute, 3 par heure,
+-- 10 par jour), indépendant de la durée de vie des parcours ; purgé après un jour
+DEFINE TABLE OVERWRITE auth_code_issuance
+    TYPE NORMAL
+    SCHEMAFULL
+    PERMISSIONS NONE
+    COMMENT "Émissions de codes à usage unique par adresse et par usage (plafond d'envoi)";
+DEFINE FIELD OVERWRITE address ON TABLE auth_code_issuance TYPE string READONLY COMMENT "Adresse de destination (normalisée)";
+DEFINE FIELD OVERWRITE purpose ON TABLE auth_code_issuance TYPE string READONLY COMMENT "Usage du code";
+DEFINE FIELD OVERWRITE created_at ON TABLE auth_code_issuance TYPE datetime DEFAULT time::now() READONLY COMMENT "Date d'émission";
+DEFINE INDEX OVERWRITE auth_code_issuance_lookup ON TABLE auth_code_issuance FIELDS address, purpose, created_at;
 
 DEFINE TABLE OVERWRITE auth_pending_address_change
     TYPE NORMAL

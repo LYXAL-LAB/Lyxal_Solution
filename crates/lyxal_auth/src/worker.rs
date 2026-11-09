@@ -59,6 +59,7 @@ impl AuthPurgeWorker {
                 result.login_failures,
                 result.pending_totp,
                 result.invitation_claims,
+                result.code_issuances,
             ]
             .into_iter()
             .max()

@@ -86,10 +86,44 @@ RETURN (SELECT VALUE delivery FROM ONLY auth_one_time_code LIMIT 1) IS NONE;
     fn::auth_code_issue({ flow: <string> $flow, purpose: "verification", address: "x@exemple.fr", code_hash: "6666666666666666666666666666666666666666666666666666666666666666", link_hash: "7777777777777777777777777777777777777777777777777777777777777777" });
     FOR $i IN [1, 2, 3, 4, 5] { fn::auth_code_verify({ flow: <string> $flow, purpose: "verification", code_hash: "8888888888888888888888888888888888888888888888888888888888888888" }); };
     LET $blocked = fn::auth_code_verify({ flow: <string> $flow, purpose: "verification", code_hash: "6666666666666666666666666666666666666666666666666666666666666666" });
+    -- Plafond d'envoi : un seul code par minute pour une adresse et un usage
+    LET $throttled = fn::auth_code_issue({ flow: <string> $flow, purpose: "verification", address: "x@exemple.fr", code_hash: "6666666666666666666666666666666666666666666666666666666666666666", link_hash: "9999999999999999999999999999999999999999999999999999999999999999" });
+    DELETE auth_code_issuance WHERE address = "x@exemple.fr";
+    CREATE auth_code_issuance CONTENT { address: "x@exemple.fr", purpose: "verification", created_at: time::now() - 2m };
     fn::auth_code_issue({ flow: <string> $flow, purpose: "verification", address: "x@exemple.fr", code_hash: "6666666666666666666666666666666666666666666666666666666666666666", link_hash: "9999999999999999999999999999999999999999999999999999999999999999" });
     UPDATE auth_one_time_code SET expires_at = time::now() - 1s WHERE link_hash = "9999999999999999999999999999999999999999999999999999999999999999";
     LET $expired = fn::auth_code_verify({ purpose: "verification", link_hash: "9999999999999999999999999999999999999999999999999999999999999999" });
-    RETURN $blocked.error.code == "AUTH_TOO_MANY_ATTEMPTS" AND $expired.error.code == "AUTH_CODE_EXPIRED";
+    RETURN $blocked.error.code == "AUTH_TOO_MANY_ATTEMPTS" AND $expired.error.code == "AUTH_CODE_EXPIRED"
+        AND $throttled.error.{ code, reason: details.reason } == { code: "AUTH_TOO_MANY_ATTEMPTS", reason: "code_issuance" };
+};
+
+-- test: plafond d'envoi : 3 codes par heure pour une adresse, quel que soit le parcours
+{
+    LET $flow = fn::auth_flow_start({ type: "recovery", address: "plafond@exemple.fr" }).data.id;
+    LET $first = fn::auth_code_issue({ flow: <string> $flow, purpose: "recovery", address: "plafond@exemple.fr", code_hash: "6666666666666666666666666666666666666666666666666666666666666666", link_hash: "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1" }).ok;
+    LET $n = count(SELECT id FROM auth_code_issuance WHERE address = "plafond@exemple.fr");
+    DELETE auth_code_issuance WHERE address = "plafond@exemple.fr";
+    FOR $i IN <array>(0..$n) { CREATE auth_code_issuance CONTENT { address: "plafond@exemple.fr", purpose: "recovery", created_at: time::now() - 5m }; };
+    LET $second = fn::auth_code_issue({ flow: <string> $flow, purpose: "recovery", address: "plafond@exemple.fr", code_hash: "6666666666666666666666666666666666666666666666666666666666666666", link_hash: "a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2" }).ok;
+    LET $n2 = count(SELECT id FROM auth_code_issuance WHERE address = "plafond@exemple.fr");
+    DELETE auth_code_issuance WHERE address = "plafond@exemple.fr";
+    FOR $i IN <array>(0..$n2) { CREATE auth_code_issuance CONTENT { address: "plafond@exemple.fr", purpose: "recovery", created_at: time::now() - 5m }; };
+    LET $third = fn::auth_code_issue({ flow: <string> $flow, purpose: "recovery", address: "plafond@exemple.fr", code_hash: "6666666666666666666666666666666666666666666666666666666666666666", link_hash: "a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3" }).ok;
+    LET $n3 = count(SELECT id FROM auth_code_issuance WHERE address = "plafond@exemple.fr");
+    DELETE auth_code_issuance WHERE address = "plafond@exemple.fr";
+    FOR $i IN <array>(0..$n3) { CREATE auth_code_issuance CONTENT { address: "plafond@exemple.fr", purpose: "recovery", created_at: time::now() - 5m }; };
+    LET $fourth = fn::auth_code_issue({ flow: <string> $flow, purpose: "recovery", address: "plafond@exemple.fr", code_hash: "6666666666666666666666666666666666666666666666666666666666666666", link_hash: "a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4a4" });
+    RETURN $first AND $second AND $third AND $fourth.error.code == "AUTH_TOO_MANY_ATTEMPTS"
+        AND count(SELECT id FROM auth_code_issuance WHERE address = "plafond@exemple.fr") == 3;
+};
+
+-- test: chaque code présenté est compté avant comparaison ; le juste code ne passe plus au-delà du plafond
+{
+    LET $flow = fn::auth_flow_start({ type: "verification", address: "essais@exemple.fr" }).data.id;
+    fn::auth_code_issue({ flow: <string> $flow, purpose: "verification", address: "essais@exemple.fr", code_hash: "6666666666666666666666666666666666666666666666666666666666666666", link_hash: "b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1" });
+    LET $wrong = fn::auth_code_verify({ flow: <string> $flow, purpose: "verification", code_hash: "8888888888888888888888888888888888888888888888888888888888888888" });
+    LET $attempts = (SELECT VALUE attempts FROM ONLY auth_one_time_code WHERE link_hash = "b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1" LIMIT 1);
+    RETURN $wrong.error.details.attempts_left == 4 AND $attempts == 1;
 };
 
 -- test: inscription par invitation : parcours démarré avec l'adresse de l'invitation
@@ -167,4 +201,12 @@ fn::auth_identity_create({ traits: { email: "paul@alpha-btp.fr" } });
         AND (SELECT VALUE value FROM ONLY auth_credential_identifier WHERE identity = $paul LIMIT 1) == "paul.martin@exemple.fr"
         AND (SELECT VALUE traits.email FROM ONLY $paul) == "paul.martin@exemple.fr"
         AND $e.payload.previous_address == "paul@alpha-btp.fr";
+};
+
+-- test: au plus 30 parcours non authentifiés par minute pour une même adresse IP
+{
+    FOR $i IN <array>(0..30) { fn::auth_flow_start({ type: "passkey_login", client: { ip: "203.0.113.7" } }); };
+    LET $refused = fn::auth_flow_start({ type: "recovery", address: "ip@exemple.fr", client: { ip: "203.0.113.7" } });
+    LET $other = fn::auth_flow_start({ type: "passkey_login", client: { ip: "203.0.113.8" } });
+    RETURN $refused.error.{ code, reason: details.reason } == { code: "AUTH_TOO_MANY_ATTEMPTS", reason: "flow_rate" } AND $other.ok;
 };

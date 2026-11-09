@@ -57,9 +57,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_open($params: object) -> object {
     ) { RETURN { code: "AUTH_MFA_REQUIRED" }; };
     LET $policy = fn::auth_policy_get({ organization: IF $params.organization IS NONE { NONE } ELSE { <string> $params.organization } }).data ?? {};
     LET $access_ttl = $policy.session.access_seconds ?? 900;
-    LET $idle = $policy.session.idle_seconds ?? 43200;
-    LET $absolute = $policy.session.absolute_seconds ?? 2592000;
-    LET $refresh_ttl = $policy.refresh.ttl_seconds ?? 2592000;
+    LET $idle = $policy.session.idle_seconds ?? 1800;
+    LET $absolute = $policy.session.absolute_seconds ?? 43200;
+    LET $refresh_ttl = $policy.refresh.ttl_seconds ?? 43200;
     LET $computed = IF $params.kind = "interactive" { $now + duration::from_secs($absolute) } ELSE { $now + duration::from_secs($access_ttl) };
     -- Plafond (changement d'organisation : jamais au-delà de la session d'origine)
     LET $expires_at = IF $params.expires_cap IS NONE { $computed } ELSE { array::min([$computed, $params.expires_cap]) };
@@ -187,8 +187,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_refresh($params: object) {
         RETURN fn::error_result("AUTH_REFRESH_INVALID", $p.language, {});
     };
     LET $policy = fn::auth_policy_get({ organization: IF $sess.organization IS NONE { NONE } ELSE { <string> $sess.organization } }).data ?? {};
-    LET $idle = array::min([$now + duration::from_secs($policy.session.idle_seconds ?? 43200), $sess.expires_at]);
-    LET $refresh_until = array::min([$now + duration::from_secs($policy.refresh.ttl_seconds ?? 2592000), $sess.expires_at]);
+    LET $idle = array::min([$now + duration::from_secs($policy.session.idle_seconds ?? 1800), $sess.expires_at]);
+    LET $refresh_until = array::min([$now + duration::from_secs($policy.refresh.ttl_seconds ?? 43200), $sess.expires_at]);
     UPDATE $sess.id SET idle_expires_at = $idle, last_seen_at = $now, access_slot = $p.access_slot, permissions_version = $rights.version;
     CREATE auth_refresh_token CONTENT { session: $sess.id, token_hash: string::lowercase($p.new_token_hash), expires_at: $refresh_until };
     RETURN fn::result_ok({

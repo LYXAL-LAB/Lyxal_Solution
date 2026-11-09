@@ -222,6 +222,9 @@ async fn first_admin_configures_totp_before_any_session() {
         .complete_login_mfa(&flow, MfaProof::Totp(copy(&code)), ClientInfo::default())
         .await
         .expect("second facteur");
+    let LoginOutcome::Authenticated(tokens) = tokens else {
+        panic!("session attendue");
+    };
     assert_eq!(tokens.session.aal, 2);
     // Même code rejoué sur une autre connexion : refusé (anti-rejeu par pas)
     let (flow, _) = mfa_flow(&access).await;
@@ -251,6 +254,44 @@ async fn first_admin_configures_totp_before_any_session() {
         .await
         .expect_err("code utilisé");
     assert!(reused.is("AUTH_MFA_INVALID"), "{}", reused.code());
+
+    // Action imposée (nouveau mot de passe) : traitée seulement après le second facteur
+    access
+        .store()
+        .client()
+        .query("CREATE auth_required_action CONTENT { identity: (SELECT VALUE identity FROM ONLY auth_credential_identifier WHERE value = 'admin@lyxal.test' LIMIT 1), action: 'update_password' }")
+        .await
+        .expect("action imposée")
+        .check()
+        .expect("action créée");
+    let (flow, _) = mfa_flow(&access).await;
+    let outcome = access
+        .complete_login_mfa(
+            &flow,
+            MfaProof::RecoveryCode(copy(&codes[1])),
+            ClientInfo::default(),
+        )
+        .await
+        .expect("second facteur");
+    let LoginOutcome::ActionRequired { flow, actions } = outcome else {
+        panic!("action imposée attendue après le second facteur : {outcome:?}");
+    };
+    assert_eq!(actions, vec!["update_password".to_string()]);
+    let outcome = access
+        .complete_login_actions(
+            &flow,
+            LoginActions {
+                new_password: Some(secret("Nouveau-mot-de-passe-2026")),
+                ..LoginActions::default()
+            },
+            ClientInfo::default(),
+        )
+        .await
+        .expect("session");
+    let LoginOutcome::Authenticated(tokens) = outcome else {
+        panic!("session attendue");
+    };
+    assert_eq!(tokens.session.aal, 2);
 }
 
 #[tokio::test]
@@ -348,6 +389,9 @@ async fn passkey_second_factor_and_passwordless_login() {
         )
         .await
         .expect("passkey acceptée");
+    let LoginOutcome::Authenticated(tokens) = tokens else {
+        panic!("session attendue");
+    };
     assert_eq!(tokens.session.aal, 2);
 
     // Réponse rejouée sur un nouveau défi : refusée

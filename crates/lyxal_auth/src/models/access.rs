@@ -695,6 +695,8 @@ pub struct AuthPurgeResult {
     pub pending_totp: i64,
     /// Demandes d'acceptation d'invitation supprimées.
     pub invitation_claims: i64,
+    /// Émissions de codes anciennes supprimées.
+    pub code_issuances: i64,
 }
 
 /// Paramètres de `fn::auth_session_check`.
