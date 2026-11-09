@@ -23,7 +23,7 @@ DEFINE FUNCTION OVERWRITE fn::i18n_locale_resolve($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             candidates: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }, { rule: "array_length", options: { max_length: 20 } }], default: [] },
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: true } }], default: "fr" }
         },
         unknown_keys: "reject"
     }, 20);

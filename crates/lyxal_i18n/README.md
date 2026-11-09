@@ -34,8 +34,9 @@ Pour chaque candidat, mis sous forme canonique (règle `locale` de `lyxal_core`,
 ignorés), la première langue active de sa chaîne de repli est retenue (correspondance « lookup »
 de la RFC 4647 ; troncature pour une étiquette hors référentiel). Sans résultat : langue par
 défaut, `matched: false`. Résultat : `{ locale, language, fallback, matched }`, où `language`
-est la langue seule à passer au paramètre `language` des fonctions des modules et `fallback` la
-chaîne de repli jusqu'à la langue par défaut.
+est la langue seule (ISO 639, deux ou trois lettres : `fil`, `haw`) et `fallback` la chaîne de
+repli jusqu'à la langue par défaut. L'hôte passe `language` à `fn::error_result`, qui retombe sur
+la langue de repli de la définition pour une langue sans traduction.
 
 L'hôte (`lyxal-server`) rassemble les candidats : trait `locale` de l'identité du jeton, langue
 de son organisation active (`auth_organization.locale`), puis `Accept-Language` trié par poids
@@ -53,7 +54,8 @@ de son organisation active (`auth_organization.locale`), puis `Accept-Language` 
 | `i18n_settings_update` | `default_locale`, `source_locale` | idem ; langue inconnue ou inactive refusée | `i18n.locale.manage` |
 | `i18n_locale_resolve` | `candidates` (0 à 20) | `{ locale, language, fallback, matched }` | tous |
 
-Toutes acceptent `language` (langue des messages d'erreur, `fr` par défaut), valident leurs
+Toutes acceptent `language` (langue des messages d'erreur sur deux ou trois lettres, comme celle
+que renvoie `fn::i18n_locale_resolve` ; `fr` par défaut), valident leurs
 entrées par le moteur de `lyxal_core` et vérifient leur écriture principale
 (`I18N_WRITE_FORBIDDEN`). Erreurs : `I18N_INVALID_PARAMETERS`, `I18N_PERMISSION_DENIED`,
 `I18N_WRITE_FORBIDDEN`, `I18N_LOCALE_NOT_FOUND`, `I18N_LOCALE_INACTIVE`,

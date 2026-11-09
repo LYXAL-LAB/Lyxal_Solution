@@ -32,3 +32,9 @@ RETURN fn::i18n_locale_chain("en-Latn-ZZ") == ["en-Latn-ZZ", "en-Latn", "en"]
 -- test: plus de 20 candidats ou candidats non textuels refusés
 RETURN fn::i18n_locale_resolve({ candidates: array::map(<array> (0..21), |$i| "fr") }).error.code == "I18N_INVALID_PARAMETERS"
     AND fn::i18n_locale_resolve({ candidates: [42] }).error.code == "I18N_INVALID_PARAMETERS";
+
+-- test: une langue à trois lettres retenue est acceptée comme langue des messages
+RETURN fn::i18n_locale_activate({ locale: "fil" }).ok
+    AND fn::i18n_locale_resolve({ candidates: ["fil-PH"] }).data.language == "fil"
+    AND fn::i18n_locale_resolve({ candidates: ["fil"], language: "fil" }).data.locale == "fil"
+    AND fn::i18n_locale_list({ active: true, language: "fil" }).ok;

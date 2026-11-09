@@ -14,7 +14,7 @@ DEFINE FUNCTION OVERWRITE fn::i18n_locale_list($params: object) {
             search: { pipeline: [{ rule: "optional_string", options: { max_length: 64 } }] },
             limit: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 1000 } }], default: 100 },
             start: { pipeline: [{ rule: "integer", options: { min_value: 0 } }], default: 0 },
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: true } }], default: "fr" }
         },
         unknown_keys: "reject"
     }, 20);
@@ -22,7 +22,8 @@ DEFINE FUNCTION OVERWRITE fn::i18n_locale_list($params: object) {
         RETURN fn::error_result("I18N_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
-    LET $search = IF $p.search IS NONE OR string::trim($p.search) = "" { NONE } ELSE { string::lowercase(string::trim($p.search)) };
+    -- optional_string a déjà nettoyé la recherche (blanc → NONE)
+    LET $search = fn::sanitize_lowercase($p.search);
     LET $rows = (SELECT * FROM i18n_locale
         WHERE ($p.active IS NONE OR active = $p.active)
             AND ($search IS NONE OR string::starts_with(string::lowercase(tag), $search)
@@ -40,7 +41,7 @@ DEFINE FUNCTION OVERWRITE fn::i18n_locale_get($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             locale: { pipeline: [{ rule: "locale", options: { require_region: false } }], required: true },
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: true } }], default: "fr" }
         },
         unknown_keys: "reject"
     }, 20);
@@ -63,7 +64,7 @@ DEFINE FUNCTION OVERWRITE fn::i18n_locale_set_active($params: object, $active: b
     LET $report = fn::validation_object_execute($params, {
         fields: {
             locale: { pipeline: [{ rule: "locale", options: { require_region: false } }], required: true },
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: true } }], default: "fr" }
         },
         unknown_keys: "reject"
     }, 20);

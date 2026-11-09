@@ -10,7 +10,7 @@
 DEFINE FUNCTION OVERWRITE fn::i18n_settings_get($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: true } }], default: "fr" }
         },
         unknown_keys: "reject"
     }, 20);
@@ -30,7 +30,7 @@ DEFINE FUNCTION OVERWRITE fn::i18n_settings_update($params: object) {
         fields: {
             default_locale: { pipeline: [{ rule: "locale", options: { require_region: false } }] },
             source_locale: { pipeline: [{ rule: "locale", options: { require_region: false } }] },
-            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: true } }], default: "fr" }
         },
         unknown_keys: "reject"
     }, 20);

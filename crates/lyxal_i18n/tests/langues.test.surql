@@ -34,7 +34,8 @@ RETURN array::len(array::filter(array::flatten(SELECT VALUE fallback FROM i18n_l
 RETURN fn::i18n_locale_list({ active: true }).data.items.tag == ["en", "fr"]
     AND fn::i18n_locale_list({ search: "fr-c" }).data.items.tag == ["fr-CA", "fr-CD", "fr-CF", "fr-CG", "fr-CH", "fr-CI", "fr-CM"]
     AND fn::i18n_locale_list({ search: "Canadian French" }).data.items.tag == ["fr-CA"]
-    AND fn::i18n_locale_list({ search: "français canadien" }).data.items.tag == ["fr-CA"]
+    AND fn::i18n_locale_list({ search: "  Français Canadien " }).data.items.tag == ["fr-CA"]
+    AND fn::i18n_locale_list({ search: "   " }).data.total == 924
     AND fn::i18n_locale_list({ limit: 2, start: 1 }).data.{ n: array::len(items), total } == { n: 2, total: 924 }
     AND fn::i18n_locale_list({ limit: 0 }).error.code == "I18N_INVALID_PARAMETERS";
 
