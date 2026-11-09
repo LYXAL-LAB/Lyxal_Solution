@@ -35,7 +35,7 @@ Suite : lot 6 (clôture du module).
 | :--- | :--- | :--- | :--- |
 | `catalogue.item.read` | organisation | lire le catalogue partagé (articles maîtres et leurs variantes, compositions, relations, catégories d'article) et les articles privés de son organisation | `organization_member`, `organization_admin` |
 | `catalogue.item.manage` | organisation | créer, modifier, supprimer les articles privés de son organisation et ses personnalisations des articles maîtres | `organization_admin` |
-| `catalogue.master.write` | installation | écrire les articles maîtres (publication) | `catalogue_sync` (nouveau rôle d'installation, compte de service) |
+| `catalogue.master.write` | installation | lire et écrire les articles maîtres et leurs données dépendantes (publication : relecture avant mise à jour, reprise d'une insertion), sans organisation active ; aucun accès aux articles privés | `catalogue_sync` (nouveau rôle d'installation, compte de service) |
 | `ingestion.read` | installation | consulter lots, éléments, quarantaine, manifestes, référentiels, tableau de bord | `ingestion_operator`, `ingestion_qualifier`, `ingestion_steward`, `catalogue_sync` |
 | `ingestion.batch.write` | installation | créer et faire avancer les lots, enregistrer les éléments bruts | `ingestion_operator` |
 | `ingestion.staged.qualify` | installation | qualifier, requalifier, mettre en quarantaine et résoudre | `ingestion_qualifier` |
@@ -55,9 +55,10 @@ sont des rôles d'installation `system: true` de `lyxal_auth`, créés par les s
 * `tenant_id: string` remplacé par `tenant: option<record<auth_organization>>` sur
   `catalogue_item` et `catalogue_item_personnalisation` (Q1) ; index et contrôles réécrits.
 * `PERMISSIONS` des 8 tables, sur le modèle de `lyxal_auth` :
-  * lecture : `is_custom = false AND fn::auth_has_permission({ permission: "catalogue.item.read", tenant: <organisation active> })`
-    ou article privé dont `tenant` est l'organisation active et détenteur de
-    `catalogue.item.read` ;
+  * lecture d'un article maître : `catalogue.item.read` dans l'organisation active, **ou**
+    `catalogue.master.write` (portée installation : le compte de service n'a pas
+    d'organisation active et relit les articles qu'il publie) ;
+  * lecture d'un article privé : `tenant` = organisation active et `catalogue.item.read` ;
   * écriture d'un article maître : `catalogue.master.write` ;
   * écriture d'un article privé ou d'une personnalisation :
     `catalogue.item.manage` avec `tenant` = organisation active ;
@@ -137,7 +138,9 @@ signature HMAC disparaissent).
     refusée à une session AAL1, permission retirée d'un rôle → droits perdus après
     renouvellement.
 * **Rust** : publication de bout en bout avec le compte de service `lyxal_auth` (jeton émis par
-  l'hôte, accepté par la base, articles maîtres écrits ; refus sans le rôle `catalogue_sync`).
+  l'hôte, accepté par la base) : insertion, **mise à jour** d'un article publié (relecture
+  préalable) et **reprise** d'une insertion déjà faite ; aucun article privé visible du compte de
+  service ; refus sans le rôle `catalogue_sync`.
 * **Serveur** : démarrage installant l'application et son rôle ; publication par le moteur
   d'événements ; sans service de connexion, abonnement suspendu.
 * **Serveur réel** (`scripts/ci/test_all.sh`) : les tests de recette du pipeline passent par
