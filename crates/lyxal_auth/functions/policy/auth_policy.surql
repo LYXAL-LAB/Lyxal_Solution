@@ -54,8 +54,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_policy_save($params: object) {
                 required_roles: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: true } }] },
                 max_attempts: { pipeline: [{ rule: "integer", options: { min_value: 3, max_value: 10 } }] },
                 recovery_code_count: { pipeline: [{ rule: "integer", options: { min_value: 5, max_value: 20 } }] },
-                privileged_max_age_seconds: { pipeline: [{ rule: "integer", options: { min_value: 60, max_value: 86400 } }] },
-                passkey_user_verification: { pipeline: [{ rule: "enum", options: { allowed: ["required", "preferred"], case_sensitive: true } }] }
+                privileged_max_age_seconds: { pipeline: [{ rule: "integer", options: { min_value: 60, max_value: 86400 } }] }
             }, unknown_keys: "reject" } } }] },
             invitation: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: { fields: {
                 ttl_seconds: { pipeline: [{ rule: "integer", options: { min_value: 3600, max_value: 2592000 } }] }

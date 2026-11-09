@@ -85,7 +85,7 @@ DEFINE FIELD OVERWRITE session.absolute_seconds ON TABLE auth_policy
 
 DEFINE FIELD OVERWRITE mfa ON TABLE auth_policy
     TYPE option<object>
-    COMMENT "Double facteur : { required, methods, required_roles, max_attempts, recovery_code_count, privileged_max_age_seconds, passkey_user_verification }";
+    COMMENT "Double facteur : { required, methods, required_roles, max_attempts, recovery_code_count, privileged_max_age_seconds }";
 
 DEFINE FIELD OVERWRITE mfa.required ON TABLE auth_policy
     TYPE option<bool>;
@@ -116,10 +116,6 @@ DEFINE FIELD OVERWRITE mfa.recovery_code_count ON TABLE auth_policy
 DEFINE FIELD OVERWRITE mfa.privileged_max_age_seconds ON TABLE auth_policy
     TYPE option<int>
     ASSERT $value IS NONE OR ($value >= 60 AND $value <= 86400);
-
-DEFINE FIELD OVERWRITE mfa.passkey_user_verification ON TABLE auth_policy
-    TYPE option<string>
-    ASSERT $value IS NONE OR $value IN ["required", "preferred"];
 
 DEFINE FIELD OVERWRITE invitation ON TABLE auth_policy
     TYPE option<object>

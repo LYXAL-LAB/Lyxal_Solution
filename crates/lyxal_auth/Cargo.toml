@@ -26,7 +26,6 @@ hickory-resolver = { version = "0.25", default-features = false, features = ["to
 # Cérémonies passkeys (WebAuthn), décision D3 du programme, version 0.6 (Q1 du lot 4). L'état
 # des cérémonies est conservé scellé en base (E3, Q2).
 webauthn-rs = { version = "0.6.2", features = ["danger-allow-state-serialisation", "conditional-ui"] }
-url = "2"
 
 [dev-dependencies]
 async-trait = { workspace = true }

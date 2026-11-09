@@ -7,6 +7,7 @@ mod context;
 mod domain;
 mod identity;
 mod invitation;
+mod mfa;
 mod organization;
 mod role;
 mod types;
@@ -34,6 +35,17 @@ pub use identity::{Identity, IdentityCreateParams, IdentityGetParams, IdentitySt
 pub use invitation::{
     Invitation, InvitationAcceptParams, InvitationAccepted, InvitationCreateParams,
     InvitationRevokeParams, InvitationState,
+};
+pub use mfa::{
+    AssuranceCheckParams, AssuranceState, CredentialUsed, FactorRemoveParams, FactorRemoved,
+    FlowStateSaveParams, FlowStateTakeParams, FlowStateTaken, LoginRequirements,
+    LoginRequirementsParams, MfaFactorListParams, MfaFactors, MfaFailureKeyParams,
+    MfaFailureParams, MfaFailureStatus, MfaReset, MfaResetParams, PasskeyFactor, PasskeyFindParams,
+    PasskeyFound, PasskeyListForParams, PasskeyRecord, PasskeyRenameParams, PasskeyRenamed,
+    PasskeySaveParams, PasskeySaved, PasskeyUpdateParams, RecoveryCodeUseParams, RecoveryCodeUsed,
+    RecoveryCodesReplaceParams, RecoveryCodesReplaced, RecoveryCodesSummary,
+    SessionReauthenticateParams, TotpActivateParams, TotpActivated, TotpBeginParams, TotpBegun,
+    TotpFactor, TotpSecretGetParams, TotpSecretRecord, TotpStepUseParams,
 };
 pub use organization::{
     MemberAddParams, MemberAdded, MemberRemoveParams, MemberRemoved, Organization,

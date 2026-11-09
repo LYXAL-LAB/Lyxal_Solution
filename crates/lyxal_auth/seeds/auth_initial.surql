@@ -60,8 +60,7 @@ IF !record::exists(auth_policy:installation) THEN (
             required_roles: ["platform_admin"],
             max_attempts: 5,
             recovery_code_count: 10,
-            privileged_max_age_seconds: 900,
-            passkey_user_verification: "required"
+            privileged_max_age_seconds: 900
         },
         invitation: { ttl_seconds: 604800 },
         registration: { mode: "invitation_only" },

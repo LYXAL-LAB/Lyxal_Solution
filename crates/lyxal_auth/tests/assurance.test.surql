@@ -182,6 +182,6 @@ RETURN fn::auth_flow_state_save({ flow: "auth_flow:x", secret_state: "enc:v2:cle
 };
 
 -- test: politique du double facteur enregistrée avec ses nouveaux réglages ; valeurs hors bornes refusées
-RETURN fn::auth_policy_save({ mfa: { required: false, max_attempts: 4, privileged_max_age_seconds: 600, required_roles: ["platform_admin"], passkey_user_verification: "required" } }).data.mfa.max_attempts == 4
+RETURN fn::auth_policy_save({ mfa: { required: false, max_attempts: 4, privileged_max_age_seconds: 600, required_roles: ["platform_admin"] } }).data.mfa.max_attempts == 4
     AND fn::auth_policy_save({ mfa: { max_attempts: 50 } }).error.code == "AUTH_INVALID_PARAMETERS"
     AND fn::auth_policy_value({ theme: "mfa", key: "privileged_max_age_seconds", default: 0 }) == 600;

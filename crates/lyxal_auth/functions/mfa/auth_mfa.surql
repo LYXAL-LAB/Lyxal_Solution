@@ -492,3 +492,26 @@ DEFINE FUNCTION OVERWRITE fn::auth_mfa_reset($params: object) {
     fn::auth_mfa_publish({ event_type: "auth.mfa.removed", identity: $p.identity, data: { method: "all", label: NONE, reason: "admin_reset", removed: array::len($removed) } });
     RETURN fn::result_ok({ identity: $p.identity, removed: array::len($removed), sessions_revoked: array::len($revoked) });
 } COMMENT "Remise à zéro des seconds facteurs d'une identité par un administrateur ({ session de l'administrateur, identity }) : action sensible ; auth.identity.manage, ou auth.member.manage dans l'organisation active dont l'identité est membre ; facteurs et codes supprimés, sessions révoquées, configure_mfa posée si le double facteur est exigé ; événement auth.mfa.removed. Session système";
+
+-- ----------------------------------------------------------------------------
+-- fn::auth_mfa_passkey_flag : clé possiblement clonée (compteur qui recule)
+-- ----------------------------------------------------------------------------
+
+DEFINE FUNCTION OVERWRITE fn::auth_mfa_passkey_flag($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            credential_id: { pipeline: [{ rule: "required_string", options: { min_length: 16, max_length: 1366 } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
+    LET $credential = (SELECT id, identity, label FROM ONLY auth_credential WHERE credential_id = $p.credential_id AND type = "passkey" LIMIT 1);
+    IF $credential == NONE { RETURN fn::error_result("AUTH_PASSKEY_INVALID", $p.language, {}); };
+    fn::auth_mfa_publish({ event_type: "auth.passkey.clone_detected", identity: $credential.identity, data: { credential_id: <string> $credential.id, label: $credential.label } });
+    RETURN fn::result_ok({ credential: $credential.id, identity: $credential.identity });
+} COMMENT "Signale une passkey possiblement clonée (compteur de signature qui recule, refus par l'hôte) ({ credential_id }) : événement auth.passkey.clone_detected avec le destinataire. Session système";

@@ -95,6 +95,10 @@ pub struct FlowStartParams {
     pub address: Option<String>,
     /// Actions imposées.
     pub required_actions: Vec<String>,
+    /// Seconds facteurs admis (parcours `mfa_required`).
+    pub methods: Vec<String>,
+    /// Session à l'origine du parcours (texte).
+    pub session: Option<String>,
     /// Appareil.
     pub client: ClientInfo,
 }
@@ -117,6 +121,10 @@ pub struct Flow {
     pub address: Option<String>,
     /// Actions imposées restantes.
     pub required_actions: Vec<String>,
+    /// Seconds facteurs admis, ou méthode enrôlée dans ce parcours.
+    pub methods: Vec<String>,
+    /// Session à l'origine du parcours.
+    pub session: Option<AuthRecordId>,
     /// Expiration.
     pub expires_at: AuthDatetime,
 }
@@ -129,7 +137,7 @@ pub struct FlowGetParams {
 }
 
 /// Paramètres de `fn::auth_flow_submit`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Debug, Clone, Default, SurrealValue)]
 pub struct FlowSubmitParams {
     /// Parcours (texte).
     pub flow: String,
@@ -139,6 +147,8 @@ pub struct FlowSubmitParams {
     pub state: String,
     /// Actions imposées restantes.
     pub required_actions: Option<Vec<String>>,
+    /// Seconds facteurs admis.
+    pub methods: Option<Vec<String>>,
     /// Identité.
     pub identity: Option<String>,
 }

@@ -56,6 +56,8 @@ async fn service_on(
             namespace: namespace.into(),
             database: database.into(),
             public_url: "https://lyxal.test".into(),
+            issuer: "Lyxal Test".into(),
+            passkey_rp_id: None,
         },
     )
     .expect("service");
@@ -64,6 +66,14 @@ async fn service_on(
 
 /// Premier administrateur par le lien d'installation.
 async fn admin(access: &AccessService<StaticKeyResolver>) -> IssuedTokens {
+    // Ces tests portent sur le lot 3 : le double facteur exigé de platform_admin (politique
+    // installée) est levé ; il est testé dans `mfa.rs`.
+    access
+        .store()
+        .client()
+        .query("fn::auth_policy_save({ mfa: { required_roles: [] } })")
+        .await
+        .expect("politique");
     let link = access.setup_link("admin@lyxal.test").await.expect("lien");
     let token = link
         .expose_secret()
@@ -75,7 +85,7 @@ async fn admin(access: &AccessService<StaticKeyResolver>) -> IssuedTokens {
         .start_registration(&secret(&token), true)
         .await
         .expect("inscription");
-    access
+    let outcome = access
         .complete_registration(
             &started.flow.to_sql(),
             serde_json::json!({ "name": { "first": "Ada" } }).into_value(),
@@ -83,11 +93,13 @@ async fn admin(access: &AccessService<StaticKeyResolver>) -> IssuedTokens {
             ClientInfo::default(),
         )
         .await
-        .expect("administrateur")
+        .expect("administrateur");
+    let LoginOutcome::Authenticated(tokens) = outcome else {
+        panic!("session attendue");
+    };
+    *tokens
 }
 
-/// Message scellé (`{ action_url, code }`) du dernier événement `event_type`, ouvert comme le
-/// fait `lyxal_notification`.
 async fn sealed_message(
     store: &AuthStore,
     engine: &CryptoEngine<StaticKeyResolver>,

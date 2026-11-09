@@ -156,6 +156,14 @@ RETURN fn::auth_mfa_methods({ identity: auth_identity:marie }) == ["totp", "reco
         AND array::len($list) == 1 AND $list[0].credential_id == "Y3JlZGVudGlhbC1tYXJpZS0x";
 };
 
+-- test: passkey possiblement clonée signalée : alerte publiée ; clé inconnue refusée
+{
+    LET $r = fn::auth_mfa_passkey_flag({ credential_id: "Y3JlZGVudGlhbC1tYXJpZS0x" });
+    LET $e = (SELECT * FROM ONLY event_outbox WHERE event_type = "auth.passkey.clone_detected" LIMIT 1);
+    RETURN $r.ok AND $r.data.identity == auth_identity:marie AND $e.payload.recipient_email == "marie@exemple.fr"
+        AND fn::auth_mfa_passkey_flag({ credential_id: "aW5jb25udWUtaW5jb25udWU" }).error.code == "AUTH_PASSKEY_INVALID";
+};
+
 -- test: passkey mise à jour après authentification (compteur), puis renommée par sa titulaire
 {
     LET $credential = test_ref:passkey.credential;

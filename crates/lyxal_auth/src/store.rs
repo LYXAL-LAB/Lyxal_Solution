@@ -10,23 +10,31 @@ use surrealdb::Surreal;
 use crate::models::{
     AddressChangeConfirmParams, AddressChangeRequestParams, AddressChangeRequested, AddressChanged,
     AddressVerifyParams, ApiKeyCreateParams, ApiKeyCreated, ApiKeySessionParams,
-    ApplicationSecretAddParams, ApplicationSecretAdded, AuthContext, AuthPurgeParams,
-    AuthPurgeResult, AuthValue, CodeIssueParams, CodeIssued, CodeVerified, CodeVerifyParams,
-    ContextParams, DomainAddParams, DomainGetParams, DomainVerifyParams, Flow, FlowGetParams,
-    FlowStartParams, FlowSubmitParams, Identity, IdentityCreateParams, IdentityGetParams,
-    IdentityPermissions, IdentityPermissionsParams, Invitation, InvitationAcceptParams,
-    InvitationAccepted, InvitationCreateParams, InvitationRevokeParams, LoginFailureParams,
-    LoginFailureResetParams, LoginFailureStatus, MemberAddParams, MemberAdded, MemberRemoveParams,
-    MemberRemoved, Organization, OrganizationCreateParams, OrganizationDomain,
-    OrganizationDomainCreated, OrganizationGetParams, PasswordCredential, PasswordCredentialParams,
-    PasswordSet, PasswordSetParams, PermissionRegisterParams, PermissionRegistered,
-    PolicyGetParams, RegistrationCompleteParams, RegistrationCompleted, RegistrationStartParams,
-    RegistrationStarted, RequiredAction, RequiredActionCompleteParams, RequiredActionListParams,
-    RoleAssignParams, RoleAssigned, RoleUnassigned, ServiceSessionParams, SessionCaller,
-    SessionCheckParams, SessionCreateParams, SessionIssued, SessionListParams,
-    SessionRefreshParams, SessionRevokeAllParams, SessionRevokeParams, SessionRevoked,
-    SessionSummary, SessionSwitchParams, SetupStartParams, SetupStarted, SigningKeyGetParams,
-    SigningKeyRotateParams, SigningKeyRotated, SigningKeys,
+    ApplicationSecretAddParams, ApplicationSecretAdded, AssuranceCheckParams, AssuranceState,
+    AuthContext, AuthPurgeParams, AuthPurgeResult, AuthValue, CodeIssueParams, CodeIssued,
+    CodeVerified, CodeVerifyParams, ContextParams, CredentialUsed, DomainAddParams,
+    DomainGetParams, DomainVerifyParams, FactorRemoveParams, FactorRemoved, Flow, FlowGetParams,
+    FlowStartParams, FlowStateSaveParams, FlowStateTakeParams, FlowStateTaken, FlowSubmitParams,
+    Identity, IdentityCreateParams, IdentityGetParams, IdentityPermissions,
+    IdentityPermissionsParams, Invitation, InvitationAcceptParams, InvitationAccepted,
+    InvitationCreateParams, InvitationRevokeParams, LoginFailureParams, LoginFailureResetParams,
+    LoginFailureStatus, LoginRequirements, LoginRequirementsParams, MemberAddParams, MemberAdded,
+    MemberRemoveParams, MemberRemoved, MfaFactorListParams, MfaFactors, MfaFailureKeyParams,
+    MfaFailureParams, MfaFailureStatus, MfaReset, MfaResetParams, Organization,
+    OrganizationCreateParams, OrganizationDomain, OrganizationDomainCreated, OrganizationGetParams,
+    PasskeyFindParams, PasskeyFound, PasskeyListForParams, PasskeyRecord, PasskeyRenameParams,
+    PasskeyRenamed, PasskeySaveParams, PasskeySaved, PasskeyUpdateParams, PasswordCredential,
+    PasswordCredentialParams, PasswordSet, PasswordSetParams, PermissionRegisterParams,
+    PermissionRegistered, PolicyGetParams, RecoveryCodeUseParams, RecoveryCodeUsed,
+    RecoveryCodesReplaceParams, RecoveryCodesReplaced, RegistrationCompleteParams,
+    RegistrationCompleted, RegistrationStartParams, RegistrationStarted, RequiredAction,
+    RequiredActionCompleteParams, RequiredActionListParams, RoleAssignParams, RoleAssigned,
+    RoleUnassigned, ServiceSessionParams, SessionCaller, SessionCheckParams, SessionCreateParams,
+    SessionIssued, SessionListParams, SessionReauthenticateParams, SessionRefreshParams,
+    SessionRevokeAllParams, SessionRevokeParams, SessionRevoked, SessionSummary,
+    SessionSwitchParams, SetupStartParams, SetupStarted, SigningKeyGetParams,
+    SigningKeyRotateParams, SigningKeyRotated, SigningKeys, TotpActivateParams, TotpActivated,
+    TotpBeginParams, TotpBegun, TotpSecretGetParams, TotpSecretRecord, TotpStepUseParams,
 };
 
 /// Store de `lyxal_auth` sur un client SurrealDB (`Surreal<Any>`).
@@ -442,5 +450,190 @@ impl AuthStore {
         params: SessionCheckParams,
     ) -> Result<SessionCaller, LyxalSurrealError> {
         self.call_fn("auth_session_check", params).await
+    }
+    // ------------------------------------------------------------------------------------------
+    // Double facteur (lot 4)
+    // ------------------------------------------------------------------------------------------
+
+    /// `fn::auth_login_requirements` : exigences de connexion d'une identité (session système).
+    pub async fn login_requirements(
+        &self,
+        params: LoginRequirementsParams,
+    ) -> Result<LoginRequirements, LyxalSurrealError> {
+        self.call_fn("auth_login_requirements", params).await
+    }
+
+    /// `fn::auth_assurance_check` : exigence d'assurance d'une session.
+    pub async fn assurance_check(
+        &self,
+        params: AssuranceCheckParams,
+    ) -> Result<AssuranceState, LyxalSurrealError> {
+        self.call_fn("auth_assurance_check", params).await
+    }
+
+    /// `fn::auth_session_reauthenticate` : réauthentification d'une session (session système).
+    pub async fn session_reauthenticate(
+        &self,
+        params: SessionReauthenticateParams,
+    ) -> Result<SessionIssued, LyxalSurrealError> {
+        self.call_fn("auth_session_reauthenticate", params).await
+    }
+
+    /// `fn::auth_mfa_failure_check` : verrouillage du second facteur (session système).
+    pub async fn mfa_failure_check(
+        &self,
+        params: MfaFailureKeyParams,
+    ) -> Result<MfaFailureStatus, LyxalSurrealError> {
+        self.call_fn("auth_mfa_failure_check", params).await
+    }
+
+    /// `fn::auth_mfa_failure_record` : échec du second facteur compté (session système).
+    pub async fn mfa_failure_record(
+        &self,
+        params: MfaFailureParams,
+    ) -> Result<MfaFailureStatus, LyxalSurrealError> {
+        self.call_fn("auth_mfa_failure_record", params).await
+    }
+
+    /// `fn::auth_mfa_failure_reset` : compteur du second facteur remis à zéro (session système).
+    pub async fn mfa_failure_reset(
+        &self,
+        params: MfaFailureKeyParams,
+    ) -> Result<AuthValue, LyxalSurrealError> {
+        self.call_fn("auth_mfa_failure_reset", params).await
+    }
+
+    /// `fn::auth_flow_state_save` : état scellé d'une cérémonie conservé (session système).
+    pub async fn flow_state_save(
+        &self,
+        params: FlowStateSaveParams,
+    ) -> Result<AuthValue, LyxalSurrealError> {
+        self.call_fn("auth_flow_state_save", params).await
+    }
+
+    /// `fn::auth_flow_state_take` : état scellé d'une cérémonie lu une fois (session système).
+    pub async fn flow_state_take(
+        &self,
+        params: FlowStateTakeParams,
+    ) -> Result<FlowStateTaken, LyxalSurrealError> {
+        self.call_fn("auth_flow_state_take", params).await
+    }
+
+    /// `fn::auth_mfa_factor_list` : seconds facteurs d'une identité.
+    pub async fn mfa_factor_list(
+        &self,
+        params: MfaFactorListParams,
+    ) -> Result<MfaFactors, LyxalSurrealError> {
+        self.call_fn("auth_mfa_factor_list", params).await
+    }
+
+    /// `fn::auth_mfa_totp_begin` : TOTP en attente enregistré (session système).
+    pub async fn mfa_totp_begin(
+        &self,
+        params: TotpBeginParams,
+    ) -> Result<TotpBegun, LyxalSurrealError> {
+        self.call_fn("auth_mfa_totp_begin", params).await
+    }
+
+    /// `fn::auth_mfa_totp_secret_get` : secret TOTP scellé (session système).
+    pub async fn mfa_totp_secret_get(
+        &self,
+        params: TotpSecretGetParams,
+    ) -> Result<TotpSecretRecord, LyxalSurrealError> {
+        self.call_fn("auth_mfa_totp_secret_get", params).await
+    }
+
+    /// `fn::auth_mfa_totp_activate` : TOTP activé (session système).
+    pub async fn mfa_totp_activate(
+        &self,
+        params: TotpActivateParams,
+    ) -> Result<TotpActivated, LyxalSurrealError> {
+        self.call_fn("auth_mfa_totp_activate", params).await
+    }
+
+    /// `fn::auth_mfa_totp_step_use` : pas TOTP consommé, anti-rejeu (session système).
+    pub async fn mfa_totp_step_use(
+        &self,
+        params: TotpStepUseParams,
+    ) -> Result<CredentialUsed, LyxalSurrealError> {
+        self.call_fn("auth_mfa_totp_step_use", params).await
+    }
+
+    /// `fn::auth_mfa_passkey_save` : passkey enregistrée (session système).
+    pub async fn mfa_passkey_save(
+        &self,
+        params: PasskeySaveParams,
+    ) -> Result<PasskeySaved, LyxalSurrealError> {
+        self.call_fn("auth_mfa_passkey_save", params).await
+    }
+
+    /// `fn::auth_mfa_passkey_find` : passkey retrouvée par son identifiant WebAuthn (session système).
+    pub async fn mfa_passkey_find(
+        &self,
+        params: PasskeyFindParams,
+    ) -> Result<PasskeyFound, LyxalSurrealError> {
+        self.call_fn("auth_mfa_passkey_find", params).await
+    }
+
+    /// `fn::auth_mfa_passkey_list_for` : passkeys actives d'une identité (session système).
+    pub async fn mfa_passkey_list_for(
+        &self,
+        params: PasskeyListForParams,
+    ) -> Result<Vec<PasskeyRecord>, LyxalSurrealError> {
+        self.call_fn("auth_mfa_passkey_list_for", params).await
+    }
+
+    /// `fn::auth_mfa_passkey_update` : passkey mise à jour après authentification (session système).
+    pub async fn mfa_passkey_update(
+        &self,
+        params: PasskeyUpdateParams,
+    ) -> Result<CredentialUsed, LyxalSurrealError> {
+        self.call_fn("auth_mfa_passkey_update", params).await
+    }
+
+    /// `fn::auth_mfa_passkey_flag` : passkey possiblement clonée signalée (session système).
+    pub async fn mfa_passkey_flag(
+        &self,
+        params: PasskeyFindParams,
+    ) -> Result<CredentialUsed, LyxalSurrealError> {
+        self.call_fn("auth_mfa_passkey_flag", params).await
+    }
+
+    /// `fn::auth_mfa_passkey_rename` : passkey renommée (session système).
+    pub async fn mfa_passkey_rename(
+        &self,
+        params: PasskeyRenameParams,
+    ) -> Result<PasskeyRenamed, LyxalSurrealError> {
+        self.call_fn("auth_mfa_passkey_rename", params).await
+    }
+
+    /// `fn::auth_mfa_recovery_codes_replace` : codes de secours remplacés (session système).
+    pub async fn mfa_recovery_codes_replace(
+        &self,
+        params: RecoveryCodesReplaceParams,
+    ) -> Result<RecoveryCodesReplaced, LyxalSurrealError> {
+        self.call_fn("auth_mfa_recovery_codes_replace", params)
+            .await
+    }
+
+    /// `fn::auth_mfa_recovery_code_use` : code de secours consommé (session système).
+    pub async fn mfa_recovery_code_use(
+        &self,
+        params: RecoveryCodeUseParams,
+    ) -> Result<RecoveryCodeUsed, LyxalSurrealError> {
+        self.call_fn("auth_mfa_recovery_code_use", params).await
+    }
+
+    /// `fn::auth_mfa_factor_remove` : second facteur retiré par son titulaire (session système).
+    pub async fn mfa_factor_remove(
+        &self,
+        params: FactorRemoveParams,
+    ) -> Result<FactorRemoved, LyxalSurrealError> {
+        self.call_fn("auth_mfa_factor_remove", params).await
+    }
+
+    /// `fn::auth_mfa_reset` : remise à zéro par un administrateur (session système).
+    pub async fn mfa_reset(&self, params: MfaResetParams) -> Result<MfaReset, LyxalSurrealError> {
+        self.call_fn("auth_mfa_reset", params).await
     }
 }
