@@ -1,4 +1,5 @@
 mod auth;
+mod auth_mfa;
 mod handlers;
 mod middleware;
 pub mod request_id;

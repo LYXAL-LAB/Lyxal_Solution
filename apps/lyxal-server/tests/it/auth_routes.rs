@@ -14,6 +14,49 @@ use std::sync::Arc;
 
 use crate::startup::{config_with, database};
 
+/// Segment d'URL encodé (les identifiants `table:⟨clé⟩` contiennent des caractères réservés).
+fn encode(segment: &str) -> String {
+    segment
+        .bytes()
+        .map(|b| {
+            if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) {
+                char::from(b).to_string()
+            } else {
+                format!("%{b:02X}")
+            }
+        })
+        .collect()
+}
+
+/// Code TOTP calculé comme une application d'authentification depuis l'URI `otpauth://`.
+fn totp_code(uri: &str) -> String {
+    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    let encoded = uri
+        .split(['?', '&'])
+        .find_map(|part| part.strip_prefix("secret="))
+        .expect("secret");
+    let (mut bits, mut count, mut bytes) = (0u64, 0, Vec::new());
+    for c in encoded.bytes() {
+        bits = (bits << 5) | ALPHABET.iter().position(|&a| a == c).expect("base32") as u64;
+        count += 5;
+        if count >= 8 {
+            count -= 8;
+            bytes.push((bits >> count) as u8);
+        }
+    }
+    let secret =
+        lyxal_crypto::TotpSecret::import(lyxal_crypto::SecretBytes::new(bytes).expect("octets"))
+            .expect("secret");
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("heure")
+        .as_secs();
+    lyxal_crypto::totp_generate(&secret, &lyxal_crypto::TotpConfig::default(), now)
+        .expect("code")
+        .expose_secret()
+        .to_string()
+}
+
 fn crypto() -> Arc<CryptoEngine<StaticKeyResolver>> {
     let mut builder = KeyRingBuilder::new();
     builder
@@ -141,6 +184,64 @@ async fn login_sessions_and_logout_through_http() {
     )
     .await;
     assert_eq!(status, StatusCode::CREATED, "{registered}");
+    // Administrateur de la plateforme : double facteur à configurer avant toute session
+    assert_eq!(
+        registered["data"]["status"], "action_required",
+        "{registered}"
+    );
+    assert_eq!(registered["data"]["actions"], json!(["configure_mfa"]));
+    let login_flow = registered["data"]["flow"]
+        .as_str()
+        .expect("parcours")
+        .to_string();
+    let (status, enrollment) = call(
+        &router,
+        "POST",
+        "/api/v1/auth/mfa/totp",
+        None,
+        Some(json!({ "login_flow": login_flow })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{enrollment}");
+    let uri = enrollment["data"]["otpauth_uri"]
+        .as_str()
+        .expect("URI")
+        .to_string();
+    let (status, confirmed) = call(
+        &router,
+        "POST",
+        "/api/v1/auth/mfa/totp/confirm",
+        None,
+        Some(json!({ "login_flow": login_flow, "code": totp_code(&uri) })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{confirmed}");
+    let (status, codes) = call(
+        &router,
+        "POST",
+        "/api/v1/auth/mfa/recovery-codes",
+        None,
+        Some(json!({ "login_flow": login_flow })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{codes}");
+    let codes: Vec<String> = codes["data"]["codes"]
+        .as_array()
+        .expect("codes")
+        .iter()
+        .map(|c| c.as_str().expect("code").to_string())
+        .collect();
+    assert_eq!(codes.len(), 10);
+    let (status, first) = call(
+        &router,
+        "POST",
+        &format!("/api/v1/auth/flows/{}/actions", encode(&login_flow)),
+        None,
+        Some(json!({})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{first}");
+    assert_eq!(first["data"]["status"], "authenticated");
 
     // Mot de passe faux : refus unique, sans détail
     let (status, refused) = call(
@@ -164,6 +265,22 @@ async fn login_sessions_and_logout_through_http() {
     )
     .await;
     assert_eq!(status, StatusCode::OK, "{logged}");
+    // Second facteur demandé : code de secours
+    assert_eq!(logged["data"]["status"], "mfa_required", "{logged}");
+    assert_eq!(logged["data"]["methods"], json!(["totp", "recovery_code"]));
+    let mfa_flow = logged["data"]["flow"]
+        .as_str()
+        .expect("parcours")
+        .to_string();
+    let (status, logged) = call(
+        &router,
+        "POST",
+        &format!("/api/v1/auth/flows/{}/mfa", encode(&mfa_flow)),
+        None,
+        Some(json!({ "method": "recovery_code", "code": codes[0] })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{logged}");
     assert_eq!(logged["data"]["status"], "authenticated");
     let access = logged["data"]["access_token"]
         .as_str()
@@ -178,6 +295,50 @@ async fn login_sessions_and_logout_through_http() {
     let list = sessions["data"].as_array().expect("liste");
     assert_eq!(list.len(), 2, "{sessions}");
     assert_eq!(list.iter().filter(|s| s["current"] == true).count(), 1);
+    // Révocation d'une autre de ses sessions (route paramétrée)
+    let other = list
+        .iter()
+        .find(|s| s["current"] != true)
+        .and_then(|s| s["session"].as_str())
+        .expect("autre session")
+        .to_string();
+    let (status, revoked) = call(
+        &router,
+        "DELETE",
+        &format!("/api/v1/auth/sessions/{}", encode(&other)),
+        Some(&access),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{revoked}");
+    assert_eq!(revoked["data"]["revoked"], true);
+
+    // Facteurs de l'identité ; réauthentification par le seul mot de passe refusée
+    let (status, factors) = call(&router, "GET", "/api/v1/auth/mfa", Some(&access), None).await;
+    assert_eq!(status, StatusCode::OK, "{factors}");
+    assert_eq!(factors["data"]["totp"]["state"], "active");
+    assert_eq!(factors["data"]["recovery_codes"]["remaining"], 9);
+    assert_eq!(factors["data"]["available_aal"], 2);
+    let (status, refused) = call(
+        &router,
+        "POST",
+        "/api/v1/auth/session/reauthenticate",
+        Some(&access),
+        Some(json!({ "method": "password", "code": "Mot-de-passe-solide-2026" })),
+    )
+    .await;
+    assert!(status.is_client_error(), "{refused}");
+    assert_eq!(refused["error"]["code"], "AUTH_MFA_REQUIRED");
+    let (status, reauthenticated) = call(
+        &router,
+        "POST",
+        "/api/v1/auth/session/reauthenticate",
+        Some(&access),
+        Some(json!({ "method": "recovery_code", "code": codes[1] })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{reauthenticated}");
+    assert!(reauthenticated["data"]["refresh_token"].is_null());
 
     // Jeton d'une clé d'API limitée : aucun accès à la gestion du compte de son propriétaire
     let api_key = "lyxk_cle-de-test-du-serveur-0123456789";

@@ -1,4 +1,4 @@
-//! Routes de connexion `/auth/*` (`lyxal_auth`, lot 3). Réponses au contrat `LyxalResult`
+//! Routes de connexion `/auth/*` (`lyxal_auth`, lots 3 et 4 ; seconds facteurs : `auth_mfa.rs`). Réponses au contrat `LyxalResult`
 //! (`{ ok, data, error }`) ; les erreurs sont celles de la master data `AUTH_*`, sans détail sur
 //! l'existence d'un compte. Les routes protégées identifient l'appelant par son jeton d'accès
 //! (`Authorization: Bearer`) : signature vérifiée avec la clé de son emplacement, session
@@ -27,12 +27,12 @@ use std::sync::Arc;
 pub fn routes() -> Router<AppContext> {
     Router::new()
         .route("/login", post(login))
-        .route("/flows/{flow}/actions", post(login_actions))
-        .route("/flows/{flow}/verification", post(login_verification))
+        .route("/flows/:flow/actions", post(login_actions))
+        .route("/flows/:flow/verification", post(login_verification))
         .route("/token/refresh", post(refresh))
         .route("/logout", post(logout))
         .route("/sessions", get(sessions))
-        .route("/sessions/{session}", delete(revoke_session))
+        .route("/sessions/:session", delete(revoke_session))
         .route("/session/organization", post(switch_organization))
         .route("/registration/start", post(registration_start))
         .route("/registration/complete", post(registration_complete))
@@ -45,6 +45,7 @@ pub fn routes() -> Router<AppContext> {
         .route("/password", post(change_password))
         .route("/service/token", post(service_token))
         .route("/api-keys/exchange", post(api_key_exchange))
+        .merge(super::auth_mfa::routes())
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -71,9 +72,9 @@ impl From<ServerError> for ApiError {
     }
 }
 
-type ApiResult = Result<Response, ApiError>;
+pub(super) type ApiResult = Result<Response, ApiError>;
 
-fn ok(status: StatusCode, data: Value) -> ApiResult {
+pub(super) fn ok(status: StatusCode, data: Value) -> ApiResult {
     let body: LyxalResult<Value> = LyxalResult {
         ok: true,
         data: Some(data),
@@ -84,7 +85,11 @@ fn ok(status: StatusCode, data: Value) -> ApiResult {
 
 /// Erreur rendue au client : définition de master data résolue par la base pour un code
 /// `AUTH_*` ; erreur de l'hôte sinon. Aucun détail interne.
-async fn render_error(context: &AppContext, error: ApiError, language: &str) -> Response {
+pub(super) async fn render_error(
+    context: &AppContext,
+    error: ApiError,
+    language: &str,
+) -> Response {
     let error = match error {
         ApiError::Server(error) => return error.into_response(),
         ApiError::Auth(error) => error,
@@ -140,7 +145,7 @@ async fn resolve(context: &AppContext, code: &str, language: &str) -> Option<Lyx
 }
 
 /// Langue des messages (`Accept-Language`, défaut `fr`).
-fn language(headers: &HeaderMap) -> String {
+pub(super) fn language(headers: &HeaderMap) -> String {
     headers
         .get("accept-language")
         .and_then(|v| v.to_str().ok())
@@ -150,7 +155,10 @@ fn language(headers: &HeaderMap) -> String {
         .unwrap_or_else(|| "fr".to_string())
 }
 
-fn client_info(headers: &HeaderMap, address: Option<ConnectInfo<SocketAddr>>) -> ClientInfo {
+pub(super) fn client_info(
+    headers: &HeaderMap,
+    address: Option<ConnectInfo<SocketAddr>>,
+) -> ClientInfo {
     ClientInfo {
         ip: address.map(|ConnectInfo(address)| address.ip().to_string()),
         user_agent: headers
@@ -160,19 +168,19 @@ fn client_info(headers: &HeaderMap, address: Option<ConnectInfo<SocketAddr>>) ->
     }
 }
 
-fn host(context: &AppContext) -> Result<Arc<AuthHost>, ApiError> {
+pub(super) fn host(context: &AppContext) -> Result<Arc<AuthHost>, ApiError> {
     context
         .auth
         .clone()
         .ok_or(ApiError::Server(ServerError::AuthDisabled))
 }
 
-fn secret(value: String) -> Result<SecretString, ApiError> {
+pub(super) fn secret(value: String) -> Result<SecretString, ApiError> {
     SecretString::new(value)
         .map_err(|_| ApiError::Auth(AuthError::Rejected("AUTH_INVALID_PARAMETERS")))
 }
 
-fn tokens_json(tokens: &IssuedTokens) -> Value {
+pub(super) fn tokens_json(tokens: &IssuedTokens) -> Value {
     json!({
         "status": "authenticated",
         "token_type": "Bearer",
@@ -185,7 +193,7 @@ fn tokens_json(tokens: &IssuedTokens) -> Value {
     })
 }
 
-fn outcome_json(outcome: &LoginOutcome) -> Value {
+pub(super) fn outcome_json(outcome: &LoginOutcome) -> Value {
     match outcome {
         LoginOutcome::Authenticated(tokens) => tokens_json(tokens),
         LoginOutcome::ActionRequired { flow, actions } => json!({
@@ -193,11 +201,19 @@ fn outcome_json(outcome: &LoginOutcome) -> Value {
             "flow": flow,
             "actions": actions,
         }),
+        LoginOutcome::MfaRequired { flow, methods } => json!({
+            "status": "mfa_required",
+            "flow": flow,
+            "methods": methods,
+        }),
     }
 }
 
 /// Appelant du jeton d'accès (`Authorization: Bearer`).
-async fn caller(host: &AuthHost, headers: &HeaderMap) -> Result<SessionCaller, ApiError> {
+pub(super) async fn caller(
+    host: &AuthHost,
+    headers: &HeaderMap,
+) -> Result<SessionCaller, ApiError> {
     let token = headers
         .get("authorization")
         .and_then(|v| v.to_str().ok())
@@ -213,7 +229,7 @@ async fn caller(host: &AuthHost, headers: &HeaderMap) -> Result<SessionCaller, A
 /// organisation active) : session **interactive** d'une identité. Une session de clé d'API ou
 /// de compte de service n'y a pas accès, quelles que soient ses permissions : une clé limitée
 /// à quelques droits ne doit pas pouvoir gérer le compte de son propriétaire.
-async fn identity_of(
+pub(super) async fn identity_of(
     host: &AuthHost,
     headers: &HeaderMap,
 ) -> Result<(SessionCaller, String), ApiError> {
@@ -234,7 +250,11 @@ async fn identity_of(
 }
 
 /// Exécute une route et rend son erreur éventuelle.
-async fn respond(context: &AppContext, headers: &HeaderMap, result: ApiResult) -> Response {
+pub(super) async fn respond(
+    context: &AppContext,
+    headers: &HeaderMap,
+    result: ApiResult,
+) -> Response {
     match result {
         Ok(response) => response,
         Err(error) => render_error(context, error, &language(headers)).await,
@@ -422,7 +442,9 @@ async fn revoke_session(
 ) -> Response {
     let result = async {
         let host = host(&context)?;
-        let (_, identity) = identity_of(&host, &headers).await?;
+        let (caller, identity) = identity_of(&host, &headers).await?;
+        // Action sensible : AAL la plus haute disponible et authentification récente
+        host.access.require_fresh(&caller.session.to_sql()).await?;
         // Une identité ne révoque que ses propres sessions
         let own = host
             .access
@@ -525,7 +547,7 @@ async fn registration_complete(
         } else {
             body.traits
         };
-        let tokens = host
+        let outcome = host
             .access
             .complete_registration(
                 &body.flow,
@@ -534,7 +556,8 @@ async fn registration_complete(
                 client_info(&headers, address),
             )
             .await?;
-        ok(StatusCode::CREATED, tokens_json(&tokens))
+        // Identité créée : session ouverte, ou double facteur à configurer avant
+        ok(StatusCode::CREATED, outcome_json(&outcome))
     }
     .await;
     respond(&context, &headers, result).await
@@ -637,11 +660,12 @@ async fn address_change_start(
 ) -> Response {
     let result = async {
         let host = host(&context)?;
-        let (_, identity) = identity_of(&host, &headers).await?;
+        let (caller, identity) = identity_of(&host, &headers).await?;
         let flow = host
             .access
             .start_address_change(
                 &identity,
+                &caller.session.to_sql(),
                 &secret(body.password)?,
                 &body.new_address,
                 client_info(&headers, address),
