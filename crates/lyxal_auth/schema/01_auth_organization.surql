@@ -67,6 +67,11 @@ DEFINE FIELD OVERWRITE created_at ON TABLE auth_organization
     READONLY
     COMMENT "Date de création";
 
+DEFINE FIELD OVERWRITE deleted_at ON TABLE auth_organization
+    TYPE option<datetime>
+    PERMISSIONS FOR create, update NONE
+    COMMENT "Date du passage à l'état deleted (écrite par la base) ; purge après la durée de conservation";
+
 DEFINE FIELD OVERWRITE updated_at ON TABLE auth_organization
     TYPE datetime
     VALUE time::now()
@@ -92,4 +97,11 @@ THEN {
         WHERE organization = $after.id AND state = "active" RETURN id);
     UPDATE auth_refresh_token SET state = "revoked" WHERE session IN $revoked AND state = "active";
     UPDATE (SELECT VALUE in FROM auth_member_of WHERE out = $after.id) SET permissions_version += 1;
+};
+
+-- Passage à l'état supprimé : date posée par la base (point de départ de la conservation)
+DEFINE EVENT OVERWRITE auth_organization_deleted_at ON TABLE auth_organization
+WHEN $event = "UPDATE" AND $before.state != "deleted" AND $after.state = "deleted"
+THEN {
+    UPDATE $after.id SET deleted_at = time::now();
 };

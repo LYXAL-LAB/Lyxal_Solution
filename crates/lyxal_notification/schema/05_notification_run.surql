@@ -19,6 +19,7 @@ DEFINE TABLE OVERWRITE notification_run
 
 DEFINE FIELD OVERWRITE tenant ON TABLE notification_run
     TYPE option<record<auth_organization>>
+    REFERENCE ON DELETE CASCADE
     READONLY
     COMMENT "Organisation (NONE : installation)";
 

@@ -115,7 +115,7 @@ DEFINE FIELD OVERWRITE name ON TABLE auth_api_key TYPE string ASSERT string::len
 DEFINE FIELD OVERWRITE key_hash ON TABLE auth_api_key TYPE string ASSERT string::len($value) = 64 READONLY PERMISSIONS FOR select NONE COMMENT "Empreinte BLAKE3 de la clé (illisible)";
 DEFINE FIELD OVERWRITE prefix ON TABLE auth_api_key TYPE string ASSERT string::len($value) = 8 READONLY COMMENT "Début de la clé";
 DEFINE FIELD OVERWRITE permissions ON TABLE auth_api_key TYPE array<string> DEFAULT [] READONLY COMMENT "Permissions accordées (sous-ensemble de celles du propriétaire)";
-DEFINE FIELD OVERWRITE organization ON TABLE auth_api_key TYPE option<record<auth_organization>> READONLY COMMENT "Organisation active de la clé";
+DEFINE FIELD OVERWRITE organization ON TABLE auth_api_key TYPE option<record<auth_organization>> REFERENCE ON DELETE CASCADE READONLY COMMENT "Organisation active de la clé";
 DEFINE FIELD OVERWRITE expires_at ON TABLE auth_api_key TYPE option<datetime> READONLY COMMENT "Expiration";
 DEFINE FIELD OVERWRITE last_used_at ON TABLE auth_api_key TYPE option<datetime> PERMISSIONS FOR create, update WHERE fn::auth_has_permission({ permission: "auth.identity.manage" }) COMMENT "Dernier usage (écrit par la session système)";
 DEFINE FIELD OVERWRITE revoked_at ON TABLE auth_api_key TYPE option<datetime> COMMENT "Révocation";

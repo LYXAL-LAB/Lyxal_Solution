@@ -384,6 +384,42 @@ async fn login_sessions_and_logout_through_http() {
         assert_eq!(denied["error"]["code"], "AUTH_PERMISSION_DENIED", "{uri}");
     }
 
+    // Erreur métier renvoyée par SurrealQL : rendue dans la langue de la requête
+    let mut labels = Vec::new();
+    for language in ["fr", "en"] {
+        let request = Request::builder()
+            .method("POST")
+            .uri("/api/v1/auth/session/organization")
+            .header("content-type", "application/json")
+            .header("accept-language", format!("{language}-XX,{language};q=0.9"))
+            .header("authorization", format!("Bearer {access}"))
+            .body(Body::from(
+                json!({ "organization": "auth_organization:inconnue" }).to_string(),
+            ))
+            .expect("requête");
+        let response = tower::ServiceExt::oneshot(router.clone(), request)
+            .await
+            .expect("réponse");
+        assert!(response.status().is_client_error());
+        let bytes = to_bytes(response.into_body(), 1024 * 1024)
+            .await
+            .expect("corps");
+        let body: Value = serde_json::from_slice(&bytes).expect("json");
+        labels.push((
+            body["error"]["code"]
+                .as_str()
+                .unwrap_or_default()
+                .to_string(),
+            body["error"]["label"]
+                .as_str()
+                .unwrap_or_default()
+                .to_string(),
+        ));
+    }
+    assert!(labels[0].0.starts_with("AUTH_"), "{labels:?}");
+    assert_eq!(labels[0].0, labels[1].0, "{labels:?}");
+    assert_ne!(labels[0].1, labels[1].1, "libellé traduit : {labels:?}");
+
     // Sans jeton : refusé
     let (status, _) = call(&router, "GET", "/api/v1/auth/sessions", None, None).await;
     assert!(status.is_client_error());

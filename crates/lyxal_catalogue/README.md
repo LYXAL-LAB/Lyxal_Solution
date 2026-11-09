@@ -157,6 +157,12 @@ Un article maître ne se supprime pas : la synchronisation le retire pour tous (
 La personnalisation d'un locataire ne touche jamais l'article maître partagé : un autre locataire
 lit toujours le libellé et la disponibilité du référentiel.
 
+
+Une organisation purgée par `lyxal_auth` (après sa durée de conservation) emporte ses articles
+privés et ses personnalisations (`REFERENCE ON DELETE CASCADE` sur `tenant`) ; les catégories,
+variantes, attributs, compositions (même scellées), lignes et relations d'un article supprimé
+partent avec lui. Une composition scellée ne se supprime jamais à la main.
+
 ---
 
 ## 4. Erreurs (`error/`) et seeds

@@ -15,7 +15,7 @@ DEFINE TABLE OVERWRITE catalogue_composition
 
 DEFINE FIELD OVERWRITE parent_item ON TABLE catalogue_composition
     TYPE record<catalogue_item>
-    REFERENCE
+    REFERENCE ON DELETE CASCADE
     COMMENT "Élément parent composé";
 
 DEFINE FIELD OVERWRITE version ON TABLE catalogue_composition
@@ -93,7 +93,9 @@ THEN {
 DEFINE EVENT OVERWRITE evt_composition_no_del ON TABLE catalogue_composition
 WHEN $event = "DELETE"
 THEN {
-    IF $before.is_locked = true {
+    -- Suppression en cascade de l'article parent (article privé supprimé avec son organisation) :
+    -- l'article n'existe plus, la composition part avec lui
+    IF $before.is_locked = true AND record::exists($before.parent_item) {
         THROW "CATALOGUE_COMPOSITION_IMMUTABLE: Une composition scellée ne peut pas être supprimée.";
     };
 };

@@ -14,7 +14,7 @@ DEFINE TABLE OVERWRITE catalogue_item_categorie
 
 DEFINE FIELD OVERWRITE item ON TABLE catalogue_item_categorie
     TYPE record<catalogue_item>
-    REFERENCE
+    REFERENCE ON DELETE CASCADE
     COMMENT "Élément du catalogue";
 
 DEFINE FIELD OVERWRITE categorie ON TABLE catalogue_item_categorie

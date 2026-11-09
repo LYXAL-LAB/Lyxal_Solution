@@ -13,7 +13,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post};
 use axum::{Json, Router};
-use lyxal_auth::models::{ClientInfo, SessionCaller, SessionListParams};
+use lyxal_auth::models::{ClientInfo, IdentityGetParams, SessionCaller, SessionListParams};
 use lyxal_auth::{AuthError, CodeProof, IssuedTokens, LoginActions, LoginOutcome, LoginRequest};
 use lyxal_crypto::SecretString;
 use lyxal_error::{LyxalError, LyxalResult};
@@ -111,8 +111,18 @@ pub(super) async fn render_error(
     };
     let trace_id = request_id::current();
     let resolved = match &error {
+        // Erreur métier de SurrealQL : définition relue dans la langue de la requête, détails
+        // d'origine conservés
         AuthError::Surreal(inner) => match inner.as_ref() {
-            LyxalSurrealError::Call(LyxalCallError::Business(business)) => Some(business.clone()),
+            LyxalSurrealError::Call(LyxalCallError::Business(business)) => {
+                Some(match resolve(context, &business.code, language).await {
+                    Some(mut localized) => {
+                        localized.details = business.details.clone();
+                        localized
+                    }
+                    None => business.clone(),
+                })
+            }
             _ => None,
         },
         AuthError::Rejected(code) => resolve(context, code, language).await,
@@ -159,15 +169,44 @@ async fn resolve(context: &AppContext, code: &str, language: &str) -> Option<Lyx
     resolved?.error
 }
 
-/// Langue des messages (`Accept-Language`, défaut `fr`).
-pub(super) fn language(headers: &HeaderMap) -> String {
-    headers
-        .get("accept-language")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.split([',', ';', '-']).next())
+/// Code de langue à deux lettres en tête d'une étiquette (`fr-FR` → `fr`).
+fn language_code(tag: &str) -> Option<String> {
+    tag.split([',', ';', '-', '_'])
+        .next()
         .map(|v| v.trim().to_ascii_lowercase())
         .filter(|v| v.len() == 2 && v.bytes().all(|b| b.is_ascii_lowercase()))
+}
+
+/// Langue des messages : `Accept-Language`, sinon la langue (`locale`) de l'identité du jeton
+/// d'accès, sinon `fr`.
+pub(super) async fn language(context: &AppContext, headers: &HeaderMap) -> String {
+    if let Some(code) = headers
+        .get("accept-language")
+        .and_then(|v| v.to_str().ok())
+        .and_then(language_code)
+    {
+        return code;
+    }
+    identity_language(context, headers)
+        .await
         .unwrap_or_else(|| "fr".to_string())
+}
+
+/// Langue de l'identité du jeton d'accès, s'il y en a un valide.
+async fn identity_language(context: &AppContext, headers: &HeaderMap) -> Option<String> {
+    let host = context.auth.clone()?;
+    let identity = caller(&host, headers).await.ok()?.identity?;
+    let found = host
+        .access
+        .store()
+        .identity_get(IdentityGetParams {
+            identity: identity.to_sql(),
+        })
+        .await
+        .ok()?;
+    found.traits.into_json_value()["locale"]
+        .as_str()
+        .and_then(language_code)
 }
 
 /// Contexte client : adresse (derrière un proxy de confiance, lue dans `X-Forwarded-For`, cf.
@@ -283,7 +322,7 @@ pub(super) async fn respond(
 ) -> Response {
     match result {
         Ok(response) => response,
-        Err(error) => render_error(context, error, &language(headers)).await,
+        Err(error) => render_error(context, error, &language(context, headers).await).await,
     }
 }
 

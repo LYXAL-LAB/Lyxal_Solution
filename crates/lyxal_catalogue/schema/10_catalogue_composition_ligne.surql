@@ -15,7 +15,7 @@ DEFINE TABLE OVERWRITE catalogue_composition_ligne
 
 DEFINE FIELD OVERWRITE composition ON TABLE catalogue_composition_ligne
     TYPE record<catalogue_composition>
-    REFERENCE
+    REFERENCE ON DELETE CASCADE
     COMMENT "Composition parente propriétaire";
 
 DEFINE FIELD OVERWRITE composant_item ON TABLE catalogue_composition_ligne
@@ -85,7 +85,8 @@ THEN {
     -- 2. Vérification de la composition source lors de DELETE ou déplacement de ligne (UPDATE)
     IF $event = "DELETE" OR $event = "UPDATE" {
         LET $locked_before = (SELECT VALUE is_locked FROM ONLY $before.composition);
-        IF $locked_before = true {
+        -- Ligne supprimée avec sa composition (cascade) : la composition n'existe plus
+        IF $locked_before = true AND record::exists($before.composition) {
             THROW "CATALOGUE_COMPOSITION_IMMUTABLE: Impossible de supprimer ou déplacer une ligne d'une composition scellée.";
         };
     };

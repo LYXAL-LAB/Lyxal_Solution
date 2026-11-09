@@ -32,7 +32,7 @@ DEFINE FIELD OVERWRITE state ON TABLE auth_member_of
     COMMENT "État de l'adhésion";
 
 DEFINE FIELD OVERWRITE invited_by ON TABLE auth_member_of
-    TYPE option<record<auth_identity>>
+    TYPE option<record<auth_identity>> REFERENCE ON DELETE UNSET
     COMMENT "Identité à l'origine de l'adhésion";
 
 DEFINE FIELD OVERWRITE joined_at ON TABLE auth_member_of
@@ -68,8 +68,7 @@ DEFINE TABLE OVERWRITE auth_has_role
     COMMENT "Rôle attribué à une identité (installation) ou à une adhésion (organisation)";
 
 DEFINE FIELD OVERWRITE granted_by ON TABLE auth_has_role
-    TYPE option<record<auth_identity>>
-    READONLY
+    TYPE option<record<auth_identity>> REFERENCE ON DELETE UNSET
     COMMENT "Identité qui a attribué le rôle (NONE : session système ou rôle par défaut)";
 
 DEFINE FIELD OVERWRITE granted_at ON TABLE auth_has_role

@@ -161,6 +161,14 @@ DEFINE FIELD OVERWRITE flow.ttl_seconds ON TABLE auth_policy
     TYPE option<int>
     ASSERT $value IS NONE OR ($value >= 300 AND $value <= 3600);
 
+DEFINE FIELD OVERWRITE retention ON TABLE auth_policy
+    TYPE option<object>
+    COMMENT "Conservation (installation seulement) : { deleted_days } — délai avant la purge d'une organisation ou d'une identité supprimée";
+
+DEFINE FIELD OVERWRITE retention.deleted_days ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 1 AND $value <= 365);
+
 DEFINE FIELD OVERWRITE created_at ON TABLE auth_policy
     TYPE datetime
     DEFAULT time::now()

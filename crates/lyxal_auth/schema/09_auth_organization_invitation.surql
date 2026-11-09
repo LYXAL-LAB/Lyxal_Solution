@@ -44,9 +44,9 @@ DEFINE FIELD OVERWRITE roles ON TABLE auth_organization_invitation
     COMMENT "Rôles d'organisation attribués à l'acceptation";
 
 DEFINE FIELD OVERWRITE inviter ON TABLE auth_organization_invitation
-    TYPE option<record<auth_identity>>
-    READONLY
-    COMMENT "Identité qui a invité (NONE : session système)";
+    TYPE option<record<auth_identity>> REFERENCE ON DELETE UNSET
+    PERMISSIONS FOR update NONE
+    COMMENT "Identité qui a invité (NONE : session système, ou identité purgée)";
 
 DEFINE FIELD OVERWRITE token_hash ON TABLE auth_organization_invitation
     TYPE string
@@ -81,7 +81,7 @@ DEFINE FIELD OVERWRITE delivery.secret ON TABLE auth_organization_invitation
     PERMISSIONS FOR select NONE;
 
 DEFINE FIELD OVERWRITE accepted_by ON TABLE auth_organization_invitation
-    TYPE option<record<auth_identity>>
+    TYPE option<record<auth_identity>> REFERENCE ON DELETE UNSET
     COMMENT "Identité qui a accepté";
 
 DEFINE FIELD OVERWRITE accepted_at ON TABLE auth_organization_invitation
@@ -143,11 +143,11 @@ DEFINE FIELD OVERWRITE outcome ON TABLE auth_invitation_claim
     COMMENT "Issue écrite par la base : accepted, ou code d'erreur AUTH_*";
 
 DEFINE FIELD OVERWRITE membership ON TABLE auth_invitation_claim
-    TYPE option<record<auth_member_of>>
+    TYPE option<record<auth_member_of>> REFERENCE ON DELETE UNSET
     COMMENT "Adhésion créée";
 
 DEFINE FIELD OVERWRITE organization ON TABLE auth_invitation_claim
-    TYPE option<record<auth_organization>>
+    TYPE option<record<auth_organization>> REFERENCE ON DELETE CASCADE
     COMMENT "Organisation rejointe";
 
 DEFINE FIELD OVERWRITE created_at ON TABLE auth_invitation_claim

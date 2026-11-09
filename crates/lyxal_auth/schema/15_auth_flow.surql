@@ -19,7 +19,7 @@ DEFINE TABLE OVERWRITE auth_flow
 DEFINE FIELD OVERWRITE type ON TABLE auth_flow TYPE string ASSERT $value IN ["login", "registration", "verification", "recovery", "address_change", "passkey_login", "mfa_enrollment", "reauthentication"] READONLY COMMENT "Type";
 DEFINE FIELD OVERWRITE state ON TABLE auth_flow TYPE string COMMENT "État (machine par type)";
 DEFINE FIELD OVERWRITE identity ON TABLE auth_flow TYPE option<record<auth_identity>> REFERENCE ON DELETE CASCADE COMMENT "Identité concernée";
-DEFINE FIELD OVERWRITE organization ON TABLE auth_flow TYPE option<record<auth_organization>> COMMENT "Organisation demandée";
+DEFINE FIELD OVERWRITE organization ON TABLE auth_flow TYPE option<record<auth_organization>> REFERENCE ON DELETE CASCADE COMMENT "Organisation demandée";
 DEFINE FIELD OVERWRITE invitation ON TABLE auth_flow TYPE option<record<auth_organization_invitation>> COMMENT "Invitation (inscription)";
 DEFINE FIELD OVERWRITE address ON TABLE auth_flow TYPE option<string> COMMENT "Adresse visée (vérification, récupération, changement)";
 DEFINE FIELD OVERWRITE required_actions ON TABLE auth_flow TYPE array<string> DEFAULT [] COMMENT "Actions imposées restantes";

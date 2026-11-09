@@ -19,12 +19,12 @@ DEFINE TABLE OVERWRITE catalogue_relation
 
 DEFINE FIELD OVERWRITE source ON TABLE catalogue_relation
     TYPE record<catalogue_item>
-    REFERENCE
+    REFERENCE ON DELETE CASCADE
     COMMENT "Élément source";
 
 DEFINE FIELD OVERWRITE cible ON TABLE catalogue_relation
     TYPE record<catalogue_item>
-    REFERENCE
+    REFERENCE ON DELETE CASCADE
     ASSERT $value != source
     COMMENT "Élément cible (l'auto-référence source == cible est interdite)";
 

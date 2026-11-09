@@ -24,6 +24,7 @@ DEFINE FIELD OVERWRITE item ON TABLE catalogue_item_personnalisation
 
 DEFINE FIELD OVERWRITE tenant ON TABLE catalogue_item_personnalisation
     TYPE record<auth_organization>
+    REFERENCE ON DELETE CASCADE
     READONLY
     COMMENT "Organisation lyxal_auth propriétaire (organisation active de la session)";
 

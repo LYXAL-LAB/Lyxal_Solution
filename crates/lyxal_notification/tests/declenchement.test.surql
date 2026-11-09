@@ -194,3 +194,19 @@ RETURN array::len(fn::notification_run_list({ tenant: "auth_organization:alpha",
 RETURN fn::notification_run_get({ run: "notification_run:inconnu" }).error.code == "NOTIFICATION_NOT_FOUND"
     AND array::len(SELECT * FROM notification_run WHERE scope_key = "alpha") == 0
     AND array::len(SELECT * FROM notification_job WHERE run.scope_key = "alpha") == 0;
+
+-- préparation: Alpha est supprimée depuis plus que la durée de conservation
+{
+    UPDATE auth_organization:alpha SET state = "deleted";
+    UPDATE auth_organization:alpha SET deleted_at = time::now() - 31d;
+};
+
+-- test: purge de l'organisation : ses parcours, exécutions et envois partent avec elle
+{
+    LET $runs = count(SELECT id FROM notification_run WHERE tenant = auth_organization:alpha);
+    LET $purged = fn::auth_purge({ limit: 100 }).data.organizations_purged;
+    RETURN $runs > 0 AND $purged == 1
+        AND count(SELECT id FROM notification_workflow WHERE tenant = auth_organization:alpha) == 0
+        AND count(SELECT id FROM notification_run WHERE tenant = auth_organization:alpha) == 0
+        AND count(SELECT id FROM notification_job WHERE !record::exists(run)) == 0;
+};

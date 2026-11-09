@@ -17,7 +17,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_policy_get($params: object) {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
-    LET $themes = ["password", "lockout", "session", "mfa", "invitation", "registration", "code", "refresh", "flow"];
+    LET $themes = ["password", "lockout", "session", "mfa", "invitation", "registration", "code", "refresh", "flow", "retention"];
     LET $base = (SELECT * FROM ONLY auth_policy WHERE scope_key = "installation" LIMIT 1) ?? {};
     LET $override = IF $p.organization IS NONE { {} } ELSE {
         (SELECT * FROM ONLY auth_policy WHERE scope_key = <string> record::id($p.organization) LIMIT 1) ?? {}
@@ -36,7 +36,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_policy_get($params: object) {
         ttl_seconds: math::min([$base.refresh.ttl_seconds ?? 43200, $merged.refresh.ttl_seconds ?? 43200])
     });
     RETURN fn::result_ok(object::extend($merged, { session: $session_policy, refresh: $refresh_policy }));
-} COMMENT "Politique effective ({ organization }) : installation surchargée par l'organisation, par thème (password, lockout, session, mfa, invitation, registration, code, refresh, flow) ; durées de session et de renouvellement d'une organisation plafonnées par celles de l'installation";
+} COMMENT "Politique effective ({ organization }) : installation surchargée par l'organisation, par thème (password, lockout, session, mfa, invitation, registration, code, refresh, flow, retention) ; durées de session et de renouvellement d'une organisation plafonnées par celles de l'installation";
 
 DEFINE FUNCTION OVERWRITE fn::auth_policy_save($params: object) {
     LET $report = fn::validation_object_execute($params, {
@@ -82,12 +82,16 @@ DEFINE FUNCTION OVERWRITE fn::auth_policy_save($params: object) {
             flow: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: { fields: {
                 ttl_seconds: { pipeline: [{ rule: "integer", options: { min_value: 300, max_value: 3600 } }] }
             }, unknown_keys: "reject" } } }] },
+            retention: { pipeline: [{ rule: "is_object" }, { rule: "object", options: { schema: { fields: {
+                deleted_days: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 365 } }] }
+            }, unknown_keys: "reject" } } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
     }, 120);
-    IF !$report.valid {
-        RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    -- La conservation des supprimés vaut pour toute l'installation (la purge est globale)
+    IF !$report.valid OR ($report.value.organization IS NOT NONE AND $report.value.retention IS NOT NONE) {
+        RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: IF $report.valid { { retention: ["CORE_VALIDATION_COMBINATION"] } } ELSE { $report.by_field } });
     };
     LET $p = $report.value;
     LET $allowed = IF $p.organization IS NONE {
@@ -103,7 +107,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_policy_save($params: object) {
     };
     LET $scope_key = IF $p.organization IS NONE { "installation" } ELSE { <string> record::id($p.organization) };
     LET $changes = object::from_entries(array::filter(
-        array::map(["password", "lockout", "session", "mfa", "invitation", "registration", "code", "refresh", "flow"], |$t| [$t, $p[$t]]),
+        array::map(["password", "lockout", "session", "mfa", "invitation", "registration", "code", "refresh", "flow", "retention"], |$t| [$t, $p[$t]]),
         |$e| $e[1] IS NOT NONE
     ));
     LET $existing = (SELECT VALUE id FROM ONLY auth_policy WHERE scope_key = $scope_key LIMIT 1);

@@ -189,8 +189,9 @@ DEFINE FIELD OVERWRITE is_custom ON TABLE catalogue_item
 
 DEFINE FIELD OVERWRITE tenant ON TABLE catalogue_item
     TYPE option<record<auth_organization>>
+    REFERENCE ON DELETE CASCADE
     READONLY
-    COMMENT "Organisation lyxal_auth propriétaire (articles privés) ; absente pour un article maître";
+    COMMENT "Organisation lyxal_auth propriétaire (articles privés) ; absente pour un article maître ; articles privés supprimés avec leur organisation (purge de lyxal_auth)";
 
 -- ----------------------------------------------------------------------------
 -- Métadonnées et contrôles système
