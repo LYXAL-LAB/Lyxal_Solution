@@ -272,6 +272,81 @@ async fn test_call_fn_sql_injection_rejection() {
     }
 }
 
+#[derive(SurrealValue)]
+struct ThrowParams {
+    message: String,
+}
+
+/// Un code de module levé par `THROW` (seul ou suivi d'un texte) devient l'erreur métier
+/// résolue par `fn::error_result` ; un texte libre levé reste une erreur de base.
+#[tokio::test]
+async fn test_call_fn_resolves_thrown_module_codes() {
+    let db = create_surreal_client(opts("mem://", None, "test_thrown"))
+        .await
+        .expect("Connect mem://");
+    let crate_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let error_dir = crate_dir.join("../lyxal_error");
+    install_resource(&db, &error_dir, "schemas").await;
+    install_resource(&db, &error_dir, "functions").await;
+    install_resource(&db, &crate_dir, "error_definitions").await;
+    db.query(
+        r#"DEFINE FUNCTION OVERWRITE fn::test_throw($params: object) {
+            THROW $params.message;
+        };"#,
+    )
+    .await
+    .and_then(|r| r.check())
+    .expect("Define test_throw function");
+    let store = TestStore { db };
+
+    for message in ["SURREAL_CONNECT_TIMEOUT", "SURREAL_CONNECT_TIMEOUT: annulé"] {
+        let err = store
+            .call_fn::<i64, _>(
+                "test_throw",
+                ThrowParams {
+                    message: message.into(),
+                },
+            )
+            .await
+            .expect_err("erreur levée");
+        match &err {
+            LyxalSurrealError::Call(LyxalCallError::Business(be)) => {
+                assert_eq!(be.code, "SURREAL_CONNECT_TIMEOUT", "{message}");
+                assert_eq!(be.http_status, Some(503));
+                assert_eq!(be.label, "Délai de connexion à la base de données dépassé");
+            }
+            other => panic!("{message} : erreur métier attendue, obtenu {other:?}"),
+        }
+    }
+
+    // Code de module sans définition : erreur métier interne portant le code
+    let unknown = store
+        .call_fn::<i64, _>(
+            "test_throw",
+            ThrowParams {
+                message: "TEST_UNDEFINED_CODE".into(),
+            },
+        )
+        .await
+        .expect_err("erreur levée");
+    assert!(
+        unknown.is_business_code("TEST_UNDEFINED_CODE"),
+        "{unknown:?}"
+    );
+
+    // Texte libre : erreur de base inchangée
+    let free = store
+        .call_fn::<i64, _>(
+            "test_throw",
+            ThrowParams {
+                message: "quelque chose a échoué".into(),
+            },
+        )
+        .await
+        .expect_err("erreur levée");
+    assert!(matches!(free, LyxalSurrealError::Database(_)), "{free:?}");
+}
+
 /// Exécute les fichiers d'une ressource d'un manifeste.
 async fn install_resource(db: &Surreal<Any>, module_dir: &std::path::Path, key: &str) {
     let manifest: toml::Value = toml::from_str(
