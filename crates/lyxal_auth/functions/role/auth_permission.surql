@@ -16,6 +16,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_permission_register($params: object) {
             code: { pipeline: [{ rule: "lyxal_permission_name" }], required: true },
             module: { pipeline: [{ rule: "lyxal_module_name", options: { min_length: 3, max_length: 64 } }], required: true },
             scope: { pipeline: [{ rule: "enum", options: { allowed: ["installation", "organization"], case_sensitive: true } }], required: true },
+            min_aal: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 2 } }], default: 1 },
             description: { pipeline: [{ rule: "is_object" }], default: {} },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
@@ -36,10 +37,10 @@ DEFINE FUNCTION OVERWRITE fn::auth_permission_register($params: object) {
         };
         RETURN fn::result_ok(object::extend($existing, { created: false }));
     };
-    LET $created = (CREATE ONLY $rid CONTENT { code: $p.code, module: $p.module, scope: $p.scope, description: $p.description });
+    LET $created = (CREATE ONLY $rid CONTENT { code: $p.code, module: $p.module, scope: $p.scope, min_aal: $p.min_aal, description: $p.description });
     IF $created == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_permission" }); };
     RETURN fn::result_ok(object::extend($created, { created: true }));
-} COMMENT "Déclare une permission ({ code, module, scope, description }) si elle est absente ; rejouable, ne modifie jamais une permission existante (même module et portée exigés)";
+} COMMENT "Déclare une permission ({ code, module, scope, min_aal, description }) si elle est absente ; rejouable, ne modifie jamais une permission existante (même module et portée exigés)";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_permission_update
@@ -49,7 +50,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_permission_update($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             code: { pipeline: [{ rule: "lyxal_permission_name" }], required: true },
-            description: { pipeline: [{ rule: "is_object" }], required: true },
+            description: { pipeline: [{ rule: "is_object" }] },
+            min_aal: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 2 } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -63,10 +65,10 @@ DEFINE FUNCTION OVERWRITE fn::auth_permission_update($params: object) {
     };
     LET $rid = type::record("auth_permission", $p.code);
     IF !record::exists($rid) { RETURN fn::error_result("AUTH_PERMISSION_UNKNOWN", $p.language, { permissions: [$p.code] }); };
-    LET $updated = (UPDATE ONLY $rid SET description = $p.description);
+    LET $updated = (UPDATE ONLY $rid SET description = $p.description ?? description, min_aal = $p.min_aal ?? min_aal);
     IF $updated == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_permission" }); };
     RETURN fn::result_ok($updated);
-} COMMENT "Modifie volontairement la description d'une permission ({ code, description }). Permission auth.role.manage";
+} COMMENT "Modifie volontairement la description ou le niveau d'assurance minimal d'une permission ({ code, description, min_aal }). Permission auth.role.manage";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_permission_list

@@ -230,6 +230,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_api_key_create($params: object) {
     LET $sess = IF $check.system { NONE } ELSE { (SELECT identity, organization, kind FROM ONLY $auth) };
     IF $sess == NONE OR $sess.identity IS NONE OR $sess.kind != "interactive" { RETURN fn::error_result("AUTH_SESSION_REQUIRED", $p.language, {}); };
     IF !fn::auth_has_permission({ permission: "auth.self.manage" }) { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, { permission: "auth.self.manage" }); };
+    -- Action sensible : AAL la plus haute disponible et authentification récente
+    LET $assurance = fn::auth_assurance_state({ session: $auth, min_aal: "highest_available", fresh: true });
+    IF $assurance.code IS NOT NONE { RETURN fn::error_result($assurance.code, $p.language, $assurance.details); };
     -- Une clé ne peut porter que des permissions que son propriétaire détient
     LET $held = IF type::is_array($token.permissions) { $token.permissions } ELSE { [] };
     LET $excess = array::filter($p.permissions, |$code| $code NOT IN $held);

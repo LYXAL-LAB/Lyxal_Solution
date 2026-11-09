@@ -85,7 +85,7 @@ DEFINE FIELD OVERWRITE session.absolute_seconds ON TABLE auth_policy
 
 DEFINE FIELD OVERWRITE mfa ON TABLE auth_policy
     TYPE option<object>
-    COMMENT "Double facteur : { required, methods }";
+    COMMENT "Double facteur : { required, methods, required_roles, max_attempts, recovery_code_count, privileged_max_age_seconds }";
 
 DEFINE FIELD OVERWRITE mfa.required ON TABLE auth_policy
     TYPE option<bool>;
@@ -96,6 +96,26 @@ DEFINE FIELD OVERWRITE mfa.methods ON TABLE auth_policy
 DEFINE FIELD OVERWRITE mfa.methods.* ON TABLE auth_policy
     TYPE string
     ASSERT $value IN ["totp", "passkey", "recovery_code"];
+
+DEFINE FIELD OVERWRITE mfa.required_roles ON TABLE auth_policy
+    TYPE option<array<string>>
+    COMMENT "Rôles dont les titulaires doivent avoir un second facteur";
+
+DEFINE FIELD OVERWRITE mfa.required_roles.* ON TABLE auth_policy
+    TYPE string
+    ASSERT string::len($value) >= 1 AND string::len($value) <= 128;
+
+DEFINE FIELD OVERWRITE mfa.max_attempts ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 3 AND $value <= 10);
+
+DEFINE FIELD OVERWRITE mfa.recovery_code_count ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 5 AND $value <= 20);
+
+DEFINE FIELD OVERWRITE mfa.privileged_max_age_seconds ON TABLE auth_policy
+    TYPE option<int>
+    ASSERT $value IS NONE OR ($value >= 60 AND $value <= 86400);
 
 DEFINE FIELD OVERWRITE invitation ON TABLE auth_policy
     TYPE option<object>

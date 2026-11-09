@@ -30,6 +30,9 @@ pub struct AppConfig {
 pub struct AuthConfig {
     #[serde(default)]
     pub public_url: Option<String>,
+    /// Identifiant de partie de confiance des passkeys (domaine) ; défaut : hôte de `public_url`.
+    #[serde(default)]
+    pub passkey_rp_id: Option<String>,
 }
 
 /// Trousseau applicatif de l'hôte (secrets des notifications, liens d'invitation) : clé AES-256

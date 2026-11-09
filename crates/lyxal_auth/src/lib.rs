@@ -21,7 +21,8 @@ pub use module::{AuthHealthCheck, AuthModule, MODULE_ID};
 pub use services::{
     access_name, invitation_seal_context, AccessConfig, AccessService, CodeProof, DomainChallenge,
     DomainVerifier, HickoryTxtLookup, InvitationRequest, InvitationService, IssuedTokens,
-    LoginActions, LoginOutcome, LoginRequest, SigningKeyService, TxtLookup,
+    LoginActions, LoginOutcome, LoginRequest, MfaActor, MfaProof, MfaService, PasskeyChallenge,
+    PasskeyConfig, PasskeyLogin, ReauthProof, SigningKeyService, TotpEnrollment, TxtLookup,
 };
 pub use store::AuthStore;
 pub use worker::AuthPurgeWorker;

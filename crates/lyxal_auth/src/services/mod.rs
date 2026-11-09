@@ -5,11 +5,13 @@ pub mod access;
 pub mod domain;
 pub mod invitation;
 pub mod keys;
+pub mod mfa;
 pub mod password;
 pub mod tokens;
 
 pub use access::{
-    AccessConfig, AccessService, CodeProof, LoginActions, LoginOutcome, LoginRequest,
+    AccessConfig, AccessService, CodeProof, LoginActions, LoginOutcome, LoginRequest, MfaProof,
+    ReauthProof,
 };
 pub use domain::{DomainChallenge, DomainVerifier, HickoryTxtLookup, TxtLookup, CHALLENGE_PREFIX};
 pub use invitation::{
@@ -17,6 +19,9 @@ pub use invitation::{
     INVITATION_SEAL_MODULE, INVITATION_SEAL_RESOURCE,
 };
 pub use keys::{access_name, ActiveSigningKey, SigningKeyService};
+pub use mfa::{
+    MfaActor, MfaService, PasskeyChallenge, PasskeyConfig, PasskeyLogin, TotpEnrollment,
+};
 pub use password::{PasswordCheck, PasswordPolicy, PasswordService};
 pub use tokens::{
     opaque_token, token_hash, verify_access_token, IssuedTokens, OpaqueToken, VerifiedClaims,

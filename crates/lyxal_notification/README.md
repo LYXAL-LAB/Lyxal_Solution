@@ -88,6 +88,12 @@ points remplacés par _>, <event_id>, "secret")` : une enveloppe recopiée dans 
 "lyxal_notification", "notification_run", <idempotency_key>, "secret")` et déclenche le parcours
 de même événement (idempotent par l'identifiant d'événement).
 
+Alertes de sécurité (sans secret) : `auth.mfa.enrolled`, `auth.mfa.removed`,
+`auth.mfa.recovery_codes_generated`, `auth.mfa.recovery_code_used`, `auth.password.changed`
+(sauf le premier mot de passe d'un compte), `auth.passkey.clone_detected` → parcours critique
+`auth_security_alert` (gabarits fr / en, nature de l'alerte dans `payload.alert`), destinataire
+pris dans la charge utile (`recipient_*`), idempotent par l'identifiant d'événement.
+
 Publiés : `notification.message.sent`, `notification.message.failed`,
 `notification.address.suppressed` (identifiants, parcours, canal, adresse pour la suppression ;
 jamais de contenu ni de secret).
@@ -100,6 +106,7 @@ jamais de contenu ni de secret).
 * `SecretCodec` : ouverture et rescellement (`CryptoEngine`, contextes non vides).
 * `NotificationConsumer` (`EventConsumerModule`) et `AuthMessageHandler` : secret illisible,
   charge utile invalide ou parcours absent → lettre morte ; base indisponible → rejoué.
+  `SecurityAlertHandler` : alertes de sécurité vers `auth_security_alert`.
 * `Renderer` : MiniJinja sans chargeur, variable affichée inconnue = erreur, échappement HTML
   automatique, budget d'exécution, mise en page autour du contenu.
 * `SmtpTransport` (`lettre`, TLS rustls, connexions réutilisées) et `EmailTransport` ;

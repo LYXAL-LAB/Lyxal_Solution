@@ -398,3 +398,62 @@ async fn shutdown_releases_reserved_jobs_without_sending() {
         vec![JobOutcome::Sent]
     );
 }
+
+/// Alerte de sécurité de bout en bout : événement publié par `lyxal_auth` (contrat de la charge
+/// utile), déclenchement idempotent, e-mail envoyé ; aucune alerte pour le premier mot de passe.
+#[tokio::test]
+async fn security_alert_from_auth_is_delivered_once() {
+    use lyxal_notification::{MfaEnrolled, PasswordChanged, SecurityAlertHandler};
+
+    let client = installed_client().await;
+    let engine = crypto();
+    client
+        .query("CREATE auth_identity:alerte CONTENT { schema: auth_identity_schema:default_v1, traits: { email: 'alerte@exemple.fr', name: { first: 'Inès' } } }; RETURN fn::auth_mfa_publish({ event_type: 'auth.mfa.enrolled', identity: auth_identity:alerte, data: { method: 'passkey', label: 'Téléphone' } });")
+        .await
+        .expect("événement publié")
+        .check()
+        .expect("publication");
+    let mut response = client
+        .query("SELECT <string> event_id AS event_id, payload FROM ONLY event_outbox WHERE event_type = 'auth.mfa.enrolled' LIMIT 1")
+        .await
+        .expect("événement");
+    let published: Option<Published> = response.take(0).expect("lecture");
+    let published = published.expect("événement présent");
+    let event: MfaEnrolled =
+        serde_json::from_value(published.payload).expect("contrat de la charge utile");
+    let handler = SecurityAlertHandler::new(NotificationStore::new(client.clone()));
+    handler
+        .deliver(&event, &published.event_id)
+        .await
+        .expect("déclenchement");
+    // Livraison au moins une fois : un second passage ne crée rien
+    handler
+        .deliver(&event, &published.event_id)
+        .await
+        .expect("rejeu");
+    // Premier mot de passe (création du compte) : aucune alerte
+    let first: PasswordChanged = serde_json::from_value(serde_json::json!({
+        "identity_id": "auth_identity:alerte", "recipient_email": "alerte@exemple.fr", "first": true
+    }))
+    .expect("événement");
+    handler
+        .deliver(&first, &uuid::Uuid::now_v7().to_string())
+        .await
+        .expect("ignoré");
+
+    let server = TestSmtpServer::start().await;
+    let worker = worker(&client, &engine, &server);
+    assert_eq!(
+        worker
+            .run_once(&CancellationToken::new())
+            .await
+            .expect("envoi"),
+        vec![JobOutcome::Sent]
+    );
+    let received = server.received();
+    assert_eq!(received.len(), 1);
+    assert_eq!(received[0].rcpt, "alerte@exemple.fr");
+    let body = decoded(&received[0].data);
+    assert!(body.contains("Inès"), "{body}");
+    assert!(body.contains("passkey « Téléphone »"), "{body}");
+}

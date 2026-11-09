@@ -83,6 +83,8 @@ pub fn host(
             namespace: config.database.namespace.clone(),
             database: config.database.database.clone(),
             public_url: public_url.trim_end_matches('/').to_string(),
+            issuer: config.application.name.clone(),
+            passkey_rp_id: config.auth.passkey_rp_id.clone(),
         },
     )
     .map_err(|error| ServerError::Configuration {

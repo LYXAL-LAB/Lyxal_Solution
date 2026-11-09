@@ -17,15 +17,17 @@ use zeroize::Zeroizing;
 use crate::error::{AuthError, AuthResult};
 use crate::models::{
     AddressChangeConfirmParams, AddressChangeRequestParams, AddressVerifyParams,
-    ApiKeySessionParams, ClientInfo, CodeIssueParams, CodeVerifyParams, Flow, FlowGetParams,
-    FlowStartParams, FlowSubmitParams, IdentityGetParams, LoginFailureParams,
-    LoginFailureResetParams, PasswordCredentialParams, PasswordSetParams, PolicyGetParams,
+    ApiKeySessionParams, AssuranceCheckParams, ClientInfo, CodeIssueParams, CodeVerifyParams, Flow,
+    FlowGetParams, FlowStartParams, FlowSubmitParams, IdentityGetParams, LoginFailureParams,
+    LoginFailureResetParams, LoginRequirements, LoginRequirementsParams, MfaFailureKeyParams,
+    MfaFailureParams, PasswordCredentialParams, PasswordSetParams, PolicyGetParams,
     RegistrationCompleteParams, RegistrationStartParams, RegistrationStarted,
-    RequiredActionCompleteParams, RequiredActionListParams, ServiceSessionParams,
-    SessionCreateParams, SessionRefreshParams, SessionRevokeAllParams, SessionRevokeParams,
+    RequiredActionCompleteParams, ServiceSessionParams, SessionCaller, SessionCreateParams,
+    SessionReauthenticateParams, SessionRefreshParams, SessionRevokeAllParams, SessionRevokeParams,
     SessionSwitchParams, SetupStartParams,
 };
 use crate::services::keys::SigningKeyService;
+use crate::services::mfa::{MfaActor, MfaService, PasskeyChallenge, PasskeyConfig};
 use crate::services::password::{PasswordCheck, PasswordPolicy, PasswordService};
 use crate::services::tokens::{
     access_token, opaque_token, token_hash, token_slot, verify_access_token, IssuedTokens,
@@ -40,8 +42,13 @@ pub struct AccessConfig {
     pub namespace: String,
     /// Base SurrealDB (claim `db`).
     pub database: String,
-    /// Adresse publique de l'interface (`https://…`), pour les liens des messages.
+    /// Adresse publique de l'interface (`https://…`), pour les liens des messages ; son origine
+    /// est celle des passkeys.
     pub public_url: String,
+    /// Nom affiché par les applications d'authentification et les appareils (passkeys).
+    pub issuer: String,
+    /// Identifiant de partie de confiance des passkeys (domaine) ; défaut : hôte de `public_url`.
+    pub passkey_rp_id: Option<String>,
 }
 
 /// Demande de connexion.
@@ -68,6 +75,47 @@ pub enum LoginOutcome {
         /// Actions restantes.
         actions: Vec<String>,
     },
+    /// Second facteur à présenter avant toute session (dans le parcours `flow`).
+    MfaRequired {
+        /// Parcours de connexion.
+        flow: String,
+        /// Seconds facteurs utilisables (`totp`, `passkey`, `recovery_code`).
+        methods: Vec<String>,
+    },
+}
+
+/// Second facteur présenté.
+pub enum MfaProof {
+    /// Code de l'application d'authentification.
+    Totp(SecretString),
+    /// Code de secours.
+    RecoveryCode(SecretString),
+    /// Réponse au défi passkey gardé dans le parcours `flow`.
+    Passkey {
+        /// Parcours qui garde le défi.
+        flow: String,
+        /// Réponse WebAuthn du navigateur (JSON).
+        response: serde_json::Value,
+    },
+}
+
+impl MfaProof {
+    /// Méthode (`totp`, `recovery_code`, `passkey`).
+    pub fn method(&self) -> &'static str {
+        match self {
+            Self::Totp(_) => "totp",
+            Self::RecoveryCode(_) => "recovery_code",
+            Self::Passkey { .. } => "passkey",
+        }
+    }
+}
+
+/// Preuve d'une réauthentification.
+pub enum ReauthProof {
+    /// Mot de passe (identité sans second facteur).
+    Password(SecretString),
+    /// Second facteur.
+    Mfa(MfaProof),
 }
 
 /// Réponses aux actions imposées d'un parcours de connexion.
@@ -98,6 +146,7 @@ pub struct AccessService<R: KeyResolver> {
     crypto: Arc<CryptoEngine<R>>,
     keys: Arc<SigningKeyService<R>>,
     passwords: PasswordService<R>,
+    mfa: MfaService<R>,
     config: AccessConfig,
 }
 
@@ -114,8 +163,26 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         {
             return Err(AuthError::InvalidParameter("public_url"));
         }
+        let origin = webauthn_rs::prelude::Url::parse(&config.public_url)
+            .map_err(|_| AuthError::InvalidParameter("public_url"))?;
+        let host = origin
+            .host_str()
+            .ok_or(AuthError::InvalidParameter("public_url"))?
+            .to_string();
+        let mfa = MfaService::new(
+            store.clone(),
+            crypto.clone(),
+            keys.clone(),
+            config.issuer.clone(),
+            Some(PasskeyConfig {
+                rp_id: config.passkey_rp_id.clone().unwrap_or(host),
+                origin: origin.origin().ascii_serialization(),
+                rp_name: config.issuer.clone(),
+            }),
+        )?;
         Ok(Self {
             passwords: PasswordService::new(crypto.clone()),
+            mfa,
             store,
             crypto,
             keys,
@@ -126,6 +193,50 @@ impl<R: KeyResolver + 'static> AccessService<R> {
     /// Store de la session système.
     pub fn store(&self) -> &AuthStore {
         &self.store
+    }
+
+    /// Service des seconds facteurs (enrôlement, liste, codes de secours).
+    pub fn mfa(&self) -> &MfaService<R> {
+        &self.mfa
+    }
+
+    /// Acteur d'une session interactive (gestion de ses facteurs).
+    pub fn session_actor(caller: &SessionCaller) -> AuthResult<MfaActor> {
+        let identity = caller
+            .identity
+            .as_ref()
+            .map(|id| id.to_sql())
+            .ok_or(AuthError::Rejected("AUTH_PERMISSION_DENIED"))?;
+        if caller.kind != "interactive" {
+            return Err(AuthError::Rejected("AUTH_PERMISSION_DENIED"));
+        }
+        Ok(MfaActor {
+            identity,
+            session: Some(caller.session.to_sql()),
+            flow: None,
+        })
+    }
+
+    /// Acteur d'un parcours de connexion en attente d'actions (`configure_mfa`) ; la base
+    /// revérifie que le double facteur est bien à configurer.
+    pub async fn login_actor(&self, flow: &str) -> AuthResult<MfaActor> {
+        Ok(MfaActor {
+            identity: self.login_flow_identity(flow).await?,
+            session: None,
+            flow: Some(flow.to_string()),
+        })
+    }
+
+    /// Exigence d'une action sensible : AAL la plus haute disponible et authentification récente.
+    pub async fn require_fresh(&self, session: &str) -> AuthResult<()> {
+        self.store
+            .assurance_check(AssuranceCheckParams {
+                session: Some(session.to_string()),
+                min_aal: "highest_available".to_string(),
+                fresh: true,
+            })
+            .await?;
+        Ok(())
     }
 
     // ------------------------------------------------------------------------------------------
@@ -230,33 +341,184 @@ impl<R: KeyResolver + 'static> AccessService<R> {
                 })
                 .await?;
         }
-        if !credential.required_actions.is_empty() {
-            let flow = self
-                .store
-                .flow_start(FlowStartParams {
-                    flow_type: "login".to_string(),
-                    state: Some("action_required".to_string()),
-                    identity: Some(identity),
-                    organization: request.organization,
-                    required_actions: credential.required_actions.clone(),
-                    client: request.client,
-                    ..FlowStartParams::default()
-                })
-                .await?;
-            return Ok(LoginOutcome::ActionRequired {
-                flow: flow.id.to_sql(),
-                actions: credential.required_actions,
-            });
+        self.next_step(
+            &identity,
+            request.organization,
+            vec!["password".into()],
+            None,
+            request.client,
+        )
+        .await
+    }
+
+    /// Second facteur d'une connexion (parcours `mfa_required`) : vérifié, puis session AAL2.
+    pub async fn complete_login_mfa(
+        &self,
+        flow: &str,
+        proof: MfaProof,
+        client: ClientInfo,
+    ) -> AuthResult<IssuedTokens> {
+        let current = self.flow(flow).await?;
+        if current.flow_type != "login" || current.state != "mfa_required" {
+            return Err(AuthError::Rejected("AUTH_FLOW_INVALID_STATE"));
         }
-        Ok(LoginOutcome::Authenticated(Box::new(
-            self.open_session(
-                &identity,
-                request.organization,
-                vec!["password".into()],
-                request.client,
-            )
-            .await?,
-        )))
+        let identity = current
+            .identity
+            .as_ref()
+            .map(|id| id.to_sql())
+            .ok_or(AuthError::Rejected("AUTH_FLOW_INVALID_STATE"))?;
+        let method = proof.method();
+        if !current.methods.iter().any(|m| m == method) {
+            return Err(AuthError::Rejected("AUTH_MFA_METHOD_DISABLED"));
+        }
+        if let MfaProof::Passkey {
+            flow: challenge, ..
+        } = &proof
+        {
+            if challenge != flow {
+                return Err(AuthError::Rejected("AUTH_FLOW_INVALID_STATE"));
+            }
+        }
+        let organization = current.organization.as_ref().map(|id| id.to_sql());
+        self.verify_second_factor(&identity, organization, Some(flow), "login", proof)
+            .await?;
+        self.store
+            .flow_submit(FlowSubmitParams {
+                flow: flow.to_string(),
+                from: vec!["mfa_required".into()],
+                state: "completed".into(),
+                ..FlowSubmitParams::default()
+            })
+            .await?;
+        let organization = current.organization.as_ref().map(|id| id.to_sql());
+        self.open_session(
+            &identity,
+            organization,
+            vec!["password".into(), method.into()],
+            client,
+        )
+        .await
+    }
+
+    /// Défi passkey d'un parcours de connexion `mfa_required`.
+    pub async fn login_passkey_options(&self, flow: &str) -> AuthResult<serde_json::Value> {
+        let current = self.flow(flow).await?;
+        if current.flow_type != "login"
+            || current.state != "mfa_required"
+            || !current.methods.iter().any(|m| m == "passkey")
+        {
+            return Err(AuthError::Rejected("AUTH_FLOW_INVALID_STATE"));
+        }
+        let identity = current
+            .identity
+            .as_ref()
+            .map(|id| id.to_sql())
+            .ok_or(AuthError::Rejected("AUTH_FLOW_INVALID_STATE"))?;
+        self.mfa.passkey_challenge(&identity, flow).await
+    }
+
+    /// Défi de connexion sans mot de passe (passkey découvrable).
+    pub async fn passkey_login_options(&self) -> AuthResult<PasskeyChallenge> {
+        self.mfa.passkey_login_options().await
+    }
+
+    /// Connexion sans mot de passe : passkey vérifiée (vérification de l'utilisateur), puis
+    /// actions imposées éventuelles, puis session AAL2.
+    pub async fn passkey_login(
+        &self,
+        flow: &str,
+        response: serde_json::Value,
+        client: ClientInfo,
+    ) -> AuthResult<LoginOutcome> {
+        let login = self.mfa.passkey_login(flow, response).await?;
+        // Passkeys désactivées par la politique : la clé, même valide, n'authentifie pas
+        if !self
+            .requirements(&login.identity, None)
+            .await?
+            .methods
+            .iter()
+            .any(|m| m == "passkey")
+        {
+            return Err(AuthError::Rejected("AUTH_MFA_METHOD_DISABLED"));
+        }
+        self.next_step(&login.identity, None, vec!["passkey".into()], None, client)
+            .await
+    }
+
+    /// Défi passkey d'une réauthentification de la session de l'appelant.
+    pub async fn reauthenticate_options(
+        &self,
+        caller: &SessionCaller,
+    ) -> AuthResult<PasskeyChallenge> {
+        let actor = Self::session_actor(caller)?;
+        let flow = self
+            .store
+            .flow_start(FlowStartParams {
+                flow_type: "reauthentication".to_string(),
+                identity: Some(actor.identity.clone()),
+                session: actor.session.clone(),
+                methods: vec!["passkey".to_string()],
+                ..FlowStartParams::default()
+            })
+            .await?
+            .id
+            .to_sql();
+        let options = self.mfa.passkey_challenge(&actor.identity, &flow).await?;
+        Ok(PasskeyChallenge { flow, options })
+    }
+
+    /// Réauthentifie la session de l'appelant (mot de passe si l'identité n'a pas de second
+    /// facteur, second facteur sinon) ; nouveau jeton d'accès, AAL2 par un second facteur.
+    pub async fn reauthenticate(
+        &self,
+        caller: &SessionCaller,
+        proof: ReauthProof,
+    ) -> AuthResult<IssuedTokens> {
+        let actor = Self::session_actor(caller)?;
+        let session = caller.session.to_sql();
+        let method = match proof {
+            ReauthProof::Password(password) => {
+                self.verify_password_counted(&actor.identity, &password)
+                    .await?;
+                "password"
+            }
+            ReauthProof::Mfa(proof) => {
+                let challenge = match &proof {
+                    MfaProof::Passkey { flow, .. } => Some(flow.clone()),
+                    _ => None,
+                };
+                let method = self
+                    .verify_second_factor(
+                        &actor.identity,
+                        caller.organization.as_ref().map(|id| id.to_sql()),
+                        challenge.as_deref(),
+                        "reauthentication",
+                        proof,
+                    )
+                    .await?;
+                if let Some(flow) = challenge {
+                    self.store
+                        .flow_submit(FlowSubmitParams {
+                            flow,
+                            from: vec!["started".into()],
+                            state: "completed".into(),
+                            ..FlowSubmitParams::default()
+                        })
+                        .await?;
+                }
+                method
+            }
+        };
+        let key = self.keys.signing_key().await?;
+        let issued = self
+            .store
+            .session_reauthenticate(SessionReauthenticateParams {
+                session,
+                method: method.to_string(),
+                access_slot: key.slot.clone(),
+            })
+            .await?;
+        self.tokens(issued, None).await
     }
 
     /// Envoie le code de vérification d'adresse depuis un parcours de connexion qui attend
@@ -269,9 +531,11 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         client: ClientInfo,
     ) -> AuthResult<String> {
         let identity = self.login_flow_identity(flow).await?;
+        let organization = self.flow(flow).await?.organization.map(|id| id.to_sql());
         if !self
-            .pending_actions(&identity)
+            .requirements(&identity, organization)
             .await?
+            .required_actions
             .iter()
             .any(|a| a == "verify_email")
         {
@@ -291,53 +555,40 @@ impl<R: KeyResolver + 'static> AccessService<R> {
     ) -> AuthResult<LoginOutcome> {
         let current = self.flow(flow).await?;
         let identity = self.login_flow_identity(flow).await?;
-        // Actions relues : une action levée ailleurs (adresse vérifiée par le parcours de
-        // vérification) ne bloque plus, une action ajoutée depuis est exigée.
-        let mut remaining = self.pending_actions(&identity).await?;
-        if remaining.iter().any(|a| a == "update_password") {
+        let organization = current.organization.as_ref().map(|id| id.to_sql());
+        // Actions relues : une action levée ailleurs (adresse vérifiée, second facteur configuré)
+        // ne bloque plus, une action ajoutée depuis est exigée.
+        let pending = self
+            .requirements(&identity, organization.clone())
+            .await?
+            .required_actions;
+        if pending.iter().any(|a| a == "update_password") {
             if let Some(password) = &actions.new_password {
                 self.set_password(&identity, password, true, None).await?;
-                remaining.retain(|a| a != "update_password");
             }
         }
-        if actions.accept_terms && remaining.iter().any(|a| a == "accept_terms") {
+        if actions.accept_terms && pending.iter().any(|a| a == "accept_terms") {
             self.store
                 .required_action_complete(RequiredActionCompleteParams {
                     identity: identity.clone(),
                     action: "accept_terms".to_string(),
                 })
                 .await?;
-            remaining.retain(|a| a != "accept_terms");
         }
-        if !remaining.is_empty() {
-            self.store
-                .flow_submit(FlowSubmitParams {
-                    flow: flow.to_string(),
-                    from: vec!["action_required".into()],
-                    state: "action_required".into(),
-                    required_actions: Some(remaining.clone()),
-                    identity: None,
-                })
-                .await?;
-            return Ok(LoginOutcome::ActionRequired {
-                flow: flow.to_string(),
-                actions: remaining,
-            });
-        }
-        self.store
-            .flow_submit(FlowSubmitParams {
-                flow: flow.to_string(),
-                from: vec!["action_required".into()],
-                state: "completed".into(),
-                required_actions: Some(vec![]),
-                identity: None,
-            })
-            .await?;
-        let organization = current.organization.as_ref().map(|id| id.to_sql());
-        Ok(LoginOutcome::Authenticated(Box::new(
-            self.open_session(&identity, organization, vec!["password".into()], client)
-                .await?,
-        )))
+        // Méthodes déjà prouvées dans ce parcours (mot de passe ou passkey, facteur enrôlé)
+        let proven = if current.methods.is_empty() {
+            vec!["password".to_string()]
+        } else {
+            current.methods.clone()
+        };
+        self.next_step(
+            &identity,
+            organization,
+            proven,
+            Some(flow.to_string()),
+            client,
+        )
+        .await
     }
 
     /// Échange un jeton de renouvellement (usage unique ; réutilisation → session révoquée).
@@ -397,6 +648,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         current: &SecretString,
         new_password: &SecretString,
     ) -> AuthResult<()> {
+        self.require_fresh(session).await?;
         self.check_current_password(identity, current).await?;
         self.set_password(identity, new_password, true, Some(session.to_string()))
             .await
@@ -507,6 +759,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
                 from: vec!["code_verified".into()],
                 state: "completed".into(),
                 required_actions: None,
+                methods: None,
                 identity: None,
             })
             .await?;
@@ -555,6 +808,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
                 from: vec!["code_sent".into()],
                 state: "completed".into(),
                 required_actions: None,
+                methods: None,
                 identity: None,
             })
             .await?;
@@ -566,10 +820,12 @@ impl<R: KeyResolver + 'static> AccessService<R> {
     pub async fn start_address_change(
         &self,
         identity: &str,
+        session: &str,
         current: &SecretString,
         new_address: &str,
         client: ClientInfo,
     ) -> AuthResult<String> {
+        self.require_fresh(session).await?;
         self.check_current_password(identity, current).await?;
         let requested = self
             .store
@@ -631,7 +887,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         traits: lyxal_surreal::Value,
         password: &SecretString,
         client: ClientInfo,
-    ) -> AuthResult<IssuedTokens> {
+    ) -> AuthResult<LoginOutcome> {
         let policy = self.password_policy().await?;
         // Politique contrôlée avant la création de l'identité
         policy.check(password)?;
@@ -644,10 +900,12 @@ impl<R: KeyResolver + 'static> AccessService<R> {
             .await?;
         let identity = completed.identity.to_sql();
         self.set_password(&identity, password, false, None).await?;
-        self.open_session(
+        // Double facteur exigé (premier administrateur, organisation) : configure_mfa avant la session
+        self.next_step(
             &identity,
             completed.organization.as_ref().map(|id| id.to_sql()),
             vec!["password".into()],
+            None,
             client,
         )
         .await
@@ -901,17 +1159,203 @@ impl<R: KeyResolver + 'static> AccessService<R> {
             .ok_or(AuthError::Rejected("AUTH_FLOW_INVALID_STATE"))
     }
 
-    /// Actions imposées en attente, relues en base.
-    async fn pending_actions(&self, identity: &str) -> AuthResult<Vec<String>> {
+    /// Exigences de connexion relues en base (actions imposées, double facteur).
+    async fn requirements(
+        &self,
+        identity: &str,
+        organization: Option<String>,
+    ) -> AuthResult<LoginRequirements> {
         Ok(self
             .store
-            .required_action_list(RequiredActionListParams {
-                identity: Some(identity.to_string()),
+            .login_requirements(LoginRequirementsParams {
+                identity: identity.to_string(),
+                organization,
+            })
+            .await?)
+    }
+
+    /// Étape suivante d'une connexion dont les méthodes `proven` sont vérifiées : actions
+    /// imposées, puis second facteur si l'identité en a un et qu'aucun n'a été prouvé, puis
+    /// session. `flow` : parcours de connexion en cours, poursuivi plutôt que recréé.
+    async fn next_step(
+        &self,
+        identity: &str,
+        organization: Option<String>,
+        proven: Vec<String>,
+        flow: Option<String>,
+        client: ClientInfo,
+    ) -> AuthResult<LoginOutcome> {
+        let requirements = self.requirements(identity, organization.clone()).await?;
+        let second_factor = proven
+            .iter()
+            .any(|m| matches!(m.as_str(), "totp" | "passkey" | "recovery_code"));
+        let (state, actions, methods) = if !requirements.required_actions.is_empty() {
+            (
+                "action_required",
+                requirements.required_actions.clone(),
+                proven.clone(),
+            )
+        } else if requirements.available_aal >= 2 && !second_factor {
+            ("mfa_required", vec![], requirements.methods.clone())
+        } else {
+            if let Some(flow) = &flow {
+                self.store
+                    .flow_submit(FlowSubmitParams {
+                        flow: flow.clone(),
+                        from: vec!["action_required".into()],
+                        state: "completed".into(),
+                        required_actions: Some(vec![]),
+                        ..FlowSubmitParams::default()
+                    })
+                    .await?;
+            }
+            return Ok(LoginOutcome::Authenticated(Box::new(
+                self.open_session(identity, organization, proven, client)
+                    .await?,
+            )));
+        };
+        let flow = match flow {
+            Some(flow) => self
+                .store
+                .flow_submit(FlowSubmitParams {
+                    flow,
+                    from: vec!["action_required".into()],
+                    state: state.into(),
+                    required_actions: Some(actions.clone()),
+                    methods: Some(methods.clone()),
+                    identity: None,
+                })
+                .await?
+                .id
+                .to_sql(),
+            None => self
+                .store
+                .flow_start(FlowStartParams {
+                    flow_type: "login".to_string(),
+                    state: Some(state.to_string()),
+                    identity: Some(identity.to_string()),
+                    organization,
+                    required_actions: actions.clone(),
+                    methods: methods.clone(),
+                    client,
+                    ..FlowStartParams::default()
+                })
+                .await?
+                .id
+                .to_sql(),
+        };
+        Ok(if state == "action_required" {
+            LoginOutcome::ActionRequired { flow, actions }
+        } else {
+            LoginOutcome::MfaRequired { flow, methods }
+        })
+    }
+
+    /// Vérifie un second facteur : verrouillage contrôlé, échec compté (verrouillage, essais du
+    /// parcours), compteur remis à zéro au succès.
+    async fn verify_second_factor(
+        &self,
+        identity: &str,
+        organization: Option<String>,
+        flow: Option<&str>,
+        flow_type: &str,
+        proof: MfaProof,
+    ) -> AuthResult<&'static str> {
+        // Méthode active et autorisée par la politique effective, avant toute vérification (un
+        // code de secours n'est pas consommé par une méthode refusée)
+        if !self
+            .requirements(identity, organization)
+            .await?
+            .methods
+            .iter()
+            .any(|m| m == proof.method())
+        {
+            return Err(AuthError::Rejected("AUTH_MFA_METHOD_DISABLED"));
+        }
+        let identity_hash = blake3_hex(identity.as_bytes());
+        if self
+            .store
+            .mfa_failure_check(MfaFailureKeyParams {
+                identity_hash: identity_hash.clone(),
             })
             .await?
-            .into_iter()
-            .map(|a| a.action)
-            .collect())
+            .locked
+        {
+            return Err(AuthError::Rejected("AUTH_TOO_MANY_ATTEMPTS"));
+        }
+        let method = proof.method();
+        let outcome = match proof {
+            MfaProof::Totp(code) => self.mfa.verify_totp(identity, &code).await,
+            MfaProof::RecoveryCode(code) => self
+                .mfa
+                .verify_recovery_code(identity, &code)
+                .await
+                .map(|_| ()),
+            MfaProof::Passkey { flow, response } => {
+                self.mfa
+                    .verify_passkey(identity, &flow, flow_type, response)
+                    .await
+            }
+        };
+        match outcome {
+            Ok(()) => {
+                self.store
+                    .mfa_failure_reset(MfaFailureKeyParams { identity_hash })
+                    .await?;
+                Ok(method)
+            }
+            Err(error) if error.is("AUTH_MFA_INVALID") || error.is("AUTH_PASSKEY_INVALID") => {
+                let status = self
+                    .store
+                    .mfa_failure_record(MfaFailureParams {
+                        identity_hash,
+                        identity: identity.to_string(),
+                        flow: flow.map(str::to_string),
+                        method: method.to_string(),
+                    })
+                    .await?;
+                Err(if status.locked {
+                    AuthError::Rejected("AUTH_TOO_MANY_ATTEMPTS")
+                } else {
+                    error
+                })
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    /// Mot de passe actuel vérifié avec l'anti-force-brute de la connexion.
+    async fn verify_password_counted(
+        &self,
+        identity: &str,
+        password: &SecretString,
+    ) -> AuthResult<()> {
+        let email = self.identity_email(identity).await?;
+        let failure = LoginFailureParams {
+            identifier_hash: blake3_hex(email.as_bytes()),
+            ip_hash: None,
+            identity: Some(identity.to_string()),
+        };
+        if self
+            .store
+            .login_failure_check(failure.clone())
+            .await?
+            .locked
+        {
+            return Err(AuthError::Rejected("AUTH_TOO_MANY_ATTEMPTS"));
+        }
+        match self.check_current_password(identity, password).await {
+            Ok(()) => Ok(()),
+            Err(error) if error.is("AUTH_CREDENTIALS_INVALID") => {
+                let status = self.store.login_failure_record(failure).await?;
+                Err(AuthError::Rejected(if status.locked {
+                    "AUTH_TOO_MANY_ATTEMPTS"
+                } else {
+                    "AUTH_CREDENTIALS_INVALID"
+                }))
+            }
+            Err(error) => Err(error),
+        }
     }
 
     async fn verify_code(
@@ -953,6 +1397,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
                 from: vec!["code_sent".into()],
                 state: "code_verified".into(),
                 required_actions: None,
+                methods: None,
                 identity: None,
             })
             .await?)

@@ -6,5 +6,6 @@
 mod access;
 mod domains;
 mod invitations;
+mod mfa;
 mod store;
 mod support;

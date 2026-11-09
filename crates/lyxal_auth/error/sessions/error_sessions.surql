@@ -218,3 +218,57 @@ IF !record::exists(error_definition:AUTH_SIGNING_KEY_ROTATION_TOO_SOON) THEN (
         }
     }
 ) END;
+
+IF !record::exists(error_definition:AUTH_AAL_INSUFFICIENT) THEN (
+    CREATE error_definition:AUTH_AAL_INSUFFICIENT CONTENT {
+        code: "AUTH_AAL_INSUFFICIENT",
+        module: "auth",
+        domain: "sessions",
+        category: "authentication",
+        severity: "error",
+        message: "Assurance level insufficient",
+        default_language: "fr",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Second facteur requis",
+                description: "Cette action demande une session confirmée par un second facteur.",
+                resolution: "Confirmez votre identité avec un second facteur, puis réessayez."
+            },
+            en: {
+                label: "Second factor required",
+                description: "This action requires a session confirmed with a second factor.",
+                resolution: "Confirm your identity with a second factor, then try again."
+            }
+        }
+    }
+) END;
+
+IF !record::exists(error_definition:AUTH_REAUTHENTICATION_REQUIRED) THEN (
+    CREATE error_definition:AUTH_REAUTHENTICATION_REQUIRED CONTENT {
+        code: "AUTH_REAUTHENTICATION_REQUIRED",
+        module: "auth",
+        domain: "sessions",
+        category: "authentication",
+        severity: "error",
+        message: "Reauthentication required",
+        default_language: "fr",
+        http_status: 403,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Confirmation requise",
+                description: "Cette action sensible demande une authentification récente.",
+                resolution: "Confirmez votre identité, puis réessayez."
+            },
+            en: {
+                label: "Confirmation required",
+                description: "This sensitive action requires a recent authentication.",
+                resolution: "Confirm your identity, then try again."
+            }
+        }
+    }
+) END;

@@ -19,8 +19,11 @@ pub mod store;
 pub mod worker;
 
 pub use consumer::{
-    AuthMessageHandler, InvitationCreated, NotificationConsumer, RecoveryRequested,
+    AuthMessageHandler, InvitationCreated, MfaEnrolled, MfaRemoved, NotificationConsumer,
+    PasskeyCloneDetected, PasswordChanged, RecoveryCodeUsed, RecoveryCodesGenerated,
+    RecoveryRequested, SecurityAlert, SecurityAlertHandler, SecurityAlertPayload,
     VerificationRequested, AUTH_HANDLER, AUTH_SUBSCRIPTIONS, CONSUMER_MODULE,
+    SECURITY_ALERT_WORKFLOW,
 };
 pub use error::{NotificationError, NotificationResult};
 pub use module::{NotificationHealthCheck, NotificationModule, MODULE_ID};

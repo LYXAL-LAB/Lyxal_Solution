@@ -180,3 +180,50 @@ IF !record::exists(notification_template_locale:auth_invitation_email_en) THEN (
         text_body: "Hello{% if recipient.name %} {{ recipient.name }}{% endif %},\n\n{% if payload.inviter_name %}{{ payload.inviter_name }} invites you{% else %}You are invited{% endif %} to join the organization {{ payload.organization_name }}.\n\nAccept the invitation: {{ secret.action_url }}\n\nIf you were not expecting this invitation, ignore this message.\n"
     }
 ) END;
+
+-- ----------------------------------------------------------------------------
+-- Alertes de sécurité de lyxal_auth (double facteur, mot de passe), sans secret
+-- ----------------------------------------------------------------------------
+
+IF !record::exists(notification_workflow:auth_security_alert) THEN (
+    CREATE notification_workflow:auth_security_alert CONTENT {
+        scope_key: "installation",
+        key: "auth_security_alert",
+        name: "Alerte de sécurité",
+        status: "active",
+        critical: true,
+        sensitive: false,
+        payload_schema: { fields: {
+            alert: { pipeline: [{ rule: "enum", options: { allowed: ["mfa_enrolled", "mfa_removed", "recovery_codes_generated", "recovery_code_used", "password_changed", "passkey_clone_detected"], case_sensitive: true } }], required: true },
+            method: { pipeline: [{ rule: "optional_string", options: { max_length: 32 } }] },
+            label: { pipeline: [{ rule: "optional_string", options: { max_length: 64 } }] },
+            reason: { pipeline: [{ rule: "optional_string", options: { max_length: 32 } }] },
+            remaining: { pipeline: [{ rule: "integer", options: { min_value: 0, max_value: 20 } }] }
+        }, unknown_keys: "reject" },
+        steps: [{ key: "email", channel: "email" }],
+        tags: ["auth", "security"]
+    }
+) END;
+IF !record::exists(notification_template:auth_security_alert_email) THEN (
+    CREATE notification_template:auth_security_alert_email CONTENT {
+        workflow: notification_workflow:auth_security_alert, step_key: "email", default_locale: "fr", layout: notification_layout:default
+    }
+) END;
+IF !record::exists(notification_template_locale:auth_security_alert_email_fr) THEN (
+    CREATE notification_template_locale:auth_security_alert_email_fr CONTENT {
+        template: notification_template:auth_security_alert_email,
+        locale: "fr",
+        subject: "Alerte de sécurité sur votre compte",
+        html_body: "<p>Bonjour{% if recipient.name %} {{ recipient.name }}{% endif %},</p>\n<p>{% if payload.alert == \"mfa_enrolled\" %}Un second facteur a été ajouté à votre compte : {% if payload.method == \"totp\" %}application d'authentification{% else %}passkey{% if payload.label %} « {{ payload.label }} »{% endif %}{% endif %}.{% elif payload.alert == \"mfa_removed\" %}{% if payload.reason == \"admin_reset\" %}Un administrateur a retiré tous les seconds facteurs de votre compte ; vos sessions ont été fermées.{% else %}Un second facteur a été retiré de votre compte : {% if payload.method == \"totp\" %}application d'authentification{% else %}passkey{% if payload.label %} « {{ payload.label }} »{% endif %}{% endif %}.{% endif %}{% elif payload.alert == \"recovery_codes_generated\" %}De nouveaux codes de secours ont été générés ; les précédents ne fonctionnent plus.{% elif payload.alert == \"recovery_code_used\" %}Un code de secours a été utilisé pour vous connecter. Il vous en reste {{ payload.remaining }}.{% elif payload.alert == \"password_changed\" %}Le mot de passe de votre compte a été changé.{% else %}Une passkey de votre compte{% if payload.label %} (« {{ payload.label }} »){% endif %} a été refusée : elle semble avoir été copiée. Retirez-la et enregistrez-en une nouvelle.{% endif %}</p>\n<p>Si vous n'êtes pas à l'origine de cette action, changez votre mot de passe et prévenez votre administrateur.</p>",
+        text_body: "Bonjour{% if recipient.name %} {{ recipient.name }}{% endif %},\n\n{% if payload.alert == \"mfa_enrolled\" %}Un second facteur a été ajouté à votre compte : {% if payload.method == \"totp\" %}application d'authentification{% else %}passkey{% if payload.label %} « {{ payload.label }} »{% endif %}{% endif %}.{% elif payload.alert == \"mfa_removed\" %}{% if payload.reason == \"admin_reset\" %}Un administrateur a retiré tous les seconds facteurs de votre compte ; vos sessions ont été fermées.{% else %}Un second facteur a été retiré de votre compte : {% if payload.method == \"totp\" %}application d'authentification{% else %}passkey{% if payload.label %} « {{ payload.label }} »{% endif %}{% endif %}.{% endif %}{% elif payload.alert == \"recovery_codes_generated\" %}De nouveaux codes de secours ont été générés ; les précédents ne fonctionnent plus.{% elif payload.alert == \"recovery_code_used\" %}Un code de secours a été utilisé pour vous connecter. Il vous en reste {{ payload.remaining }}.{% elif payload.alert == \"password_changed\" %}Le mot de passe de votre compte a été changé.{% else %}Une passkey de votre compte{% if payload.label %} (« {{ payload.label }} »){% endif %} a été refusée : elle semble avoir été copiée. Retirez-la et enregistrez-en une nouvelle.{% endif %}\n\nSi vous n'êtes pas à l'origine de cette action, changez votre mot de passe et prévenez votre administrateur.\n"
+    }
+) END;
+IF !record::exists(notification_template_locale:auth_security_alert_email_en) THEN (
+    CREATE notification_template_locale:auth_security_alert_email_en CONTENT {
+        template: notification_template:auth_security_alert_email,
+        locale: "en",
+        subject: "Security alert on your account",
+        html_body: "<p>Hello{% if recipient.name %} {{ recipient.name }}{% endif %},</p>\n<p>{% if payload.alert == \"mfa_enrolled\" %}A second factor was added to your account: {% if payload.method == \"totp\" %}authenticator app{% else %}passkey{% if payload.label %} “{{ payload.label }}”{% endif %}{% endif %}.{% elif payload.alert == \"mfa_removed\" %}{% if payload.reason == \"admin_reset\" %}An administrator removed all second factors from your account; your sessions were closed.{% else %}A second factor was removed from your account: {% if payload.method == \"totp\" %}authenticator app{% else %}passkey{% if payload.label %} “{{ payload.label }}”{% endif %}{% endif %}.{% endif %}{% elif payload.alert == \"recovery_codes_generated\" %}New recovery codes were generated; the previous ones no longer work.{% elif payload.alert == \"recovery_code_used\" %}A recovery code was used to sign in. You have {{ payload.remaining }} left.{% elif payload.alert == \"password_changed\" %}Your account password was changed.{% else %}A passkey on your account{% if payload.label %} (“{{ payload.label }}”){% endif %} was refused: it appears to have been copied. Remove it and register a new one.{% endif %}</p>\n<p>If you did not do this, change your password and tell your administrator.</p>",
+        text_body: "Hello{% if recipient.name %} {{ recipient.name }}{% endif %},\n\n{% if payload.alert == \"mfa_enrolled\" %}A second factor was added to your account: {% if payload.method == \"totp\" %}authenticator app{% else %}passkey{% if payload.label %} “{{ payload.label }}”{% endif %}{% endif %}.{% elif payload.alert == \"mfa_removed\" %}{% if payload.reason == \"admin_reset\" %}An administrator removed all second factors from your account; your sessions were closed.{% else %}A second factor was removed from your account: {% if payload.method == \"totp\" %}authenticator app{% else %}passkey{% if payload.label %} “{{ payload.label }}”{% endif %}{% endif %}.{% endif %}{% elif payload.alert == \"recovery_codes_generated\" %}New recovery codes were generated; the previous ones no longer work.{% elif payload.alert == \"recovery_code_used\" %}A recovery code was used to sign in. You have {{ payload.remaining }} left.{% elif payload.alert == \"password_changed\" %}Your account password was changed.{% else %}A passkey on your account{% if payload.label %} (“{{ payload.label }}”){% endif %} was refused: it appears to have been copied. Remove it and register a new one.{% endif %}\n\nIf you did not do this, change your password and tell your administrator.\n"
+    }
+) END;
