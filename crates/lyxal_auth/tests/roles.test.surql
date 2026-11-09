@@ -37,6 +37,12 @@ RETURN fn::auth_permission_register({ code: "catalogue.item.write", module: "lyx
 -- test: code mal formé refusé
 RETURN fn::auth_permission_register({ code: "PasBon", module: "lyxal_catalogue", scope: "organization" }).error.code == "AUTH_INVALID_PARAMETERS";
 
+-- test: description refusée par champ (texte trop long, valeur non textuelle)
+RETURN fn::auth_permission_register({ code: "catalogue.item.long", module: "lyxal_catalogue", scope: "organization", description: { fr: string::repeat("x", 513) } }).error.{ code, f: details.fields.description }
+        == { code: "AUTH_INVALID_PARAMETERS", f: ["CORE_VALIDATION_TOO_LONG"] }
+    AND fn::auth_permission_update({ code: "catalogue.item.write", description: { fr: 12 } }).error.{ code, f: details.fields.description }
+        == { code: "AUTH_INVALID_PARAMETERS", f: ["CORE_VALIDATION_TYPE"] };
+
 -- test: modification volontaire de la description
 -- en tant que: plateforme
 RETURN fn::auth_permission_update({ code: "catalogue.item.write", description: { fr: "Créer et modifier les articles" } }).data.description.fr == "Créer et modifier les articles"
