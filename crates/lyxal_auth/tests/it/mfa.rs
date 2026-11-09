@@ -390,6 +390,26 @@ async fn passkey_second_factor_and_passwordless_login() {
     .await
     .expect_err("autre utilisateur");
     assert!(stranger.is("AUTH_PASSKEY_INVALID"), "{}", stranger.code());
+
+    // Passkeys désactivées par la politique : la clé, même valide, n'authentifie plus
+    store
+        .client()
+        .query("fn::auth_policy_save({ mfa: { methods: ['totp', 'recovery_code'] } })")
+        .await
+        .expect("politique");
+    let disabled = passwordless(
+        &access,
+        &mut authenticator,
+        &registration.id,
+        URL_SAFE_NO_PAD.encode(user.as_bytes()),
+    )
+    .await
+    .expect_err("méthode désactivée");
+    assert!(
+        disabled.is("AUTH_MFA_METHOD_DISABLED"),
+        "{}",
+        disabled.code()
+    );
 }
 
 /// Connexion sans mot de passe avec l'authentificateur logiciel : le défi lui désigne la clé
@@ -451,6 +471,29 @@ async fn reauthentication_unlocks_sensitive_actions() {
         .await
         .expect_err("mot de passe seul");
     assert!(refused.is("AUTH_MFA_REQUIRED"), "{}", refused.code());
+    // Codes de secours désactivés : refusés sans être consommés
+    store
+        .client()
+        .query("fn::auth_policy_save({ mfa: { methods: ['totp', 'passkey'] } })")
+        .await
+        .expect("politique");
+    let disabled = access
+        .reauthenticate(
+            &caller,
+            ReauthProof::Mfa(MfaProof::RecoveryCode(copy(&admin.codes[1]))),
+        )
+        .await
+        .expect_err("méthode désactivée");
+    assert!(
+        disabled.is("AUTH_MFA_METHOD_DISABLED"),
+        "{}",
+        disabled.code()
+    );
+    store
+        .client()
+        .query("fn::auth_policy_save({ mfa: { methods: ['totp', 'passkey', 'recovery_code'] } })")
+        .await
+        .expect("politique");
     let tokens = access
         .reauthenticate(
             &caller,

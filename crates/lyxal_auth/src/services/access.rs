@@ -379,7 +379,8 @@ impl<R: KeyResolver + 'static> AccessService<R> {
                 return Err(AuthError::Rejected("AUTH_FLOW_INVALID_STATE"));
             }
         }
-        self.verify_second_factor(&identity, Some(flow), "login", proof)
+        let organization = current.organization.as_ref().map(|id| id.to_sql());
+        self.verify_second_factor(&identity, organization, Some(flow), "login", proof)
             .await?;
         self.store
             .flow_submit(FlowSubmitParams {
@@ -430,6 +431,16 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         client: ClientInfo,
     ) -> AuthResult<LoginOutcome> {
         let login = self.mfa.passkey_login(flow, response).await?;
+        // Passkeys désactivées par la politique : la clé, même valide, n'authentifie pas
+        if !self
+            .requirements(&login.identity, None)
+            .await?
+            .methods
+            .iter()
+            .any(|m| m == "passkey")
+        {
+            return Err(AuthError::Rejected("AUTH_MFA_METHOD_DISABLED"));
+        }
         self.next_step(&login.identity, None, vec!["passkey".into()], None, client)
             .await
     }
@@ -479,6 +490,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
                 let method = self
                     .verify_second_factor(
                         &actor.identity,
+                        caller.organization.as_ref().map(|id| id.to_sql()),
                         challenge.as_deref(),
                         "reauthentication",
                         proof,
@@ -1244,10 +1256,22 @@ impl<R: KeyResolver + 'static> AccessService<R> {
     async fn verify_second_factor(
         &self,
         identity: &str,
+        organization: Option<String>,
         flow: Option<&str>,
         flow_type: &str,
         proof: MfaProof,
     ) -> AuthResult<&'static str> {
+        // Méthode active et autorisée par la politique effective, avant toute vérification (un
+        // code de secours n'est pas consommé par une méthode refusée)
+        if !self
+            .requirements(identity, organization)
+            .await?
+            .methods
+            .iter()
+            .any(|m| m == proof.method())
+        {
+            return Err(AuthError::Rejected("AUTH_MFA_METHOD_DISABLED"));
+        }
         let identity_hash = blake3_hex(identity.as_bytes());
         if self
             .store

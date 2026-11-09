@@ -46,6 +46,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_open($params: object) -> object {
     -- facteur figure dans l'AMR (une passkey avec vérification de l'utilisateur en est un, Q3).
     LET $amr = array::map($params.amr ?? [], |$m| IF type::is_object($m) { $m } ELSE { { method: $m, at: $now } });
     LET $aal = IF array::len(array::intersect($amr.method, ["totp", "passkey", "recovery_code"])) > 0 { 2 } ELSE { 1 };
+    -- Un second facteur désactivé par la politique effective n'ouvre pas de session
+    LET $allowed = fn::auth_policy_value({ theme: "mfa", key: "methods", default: ["totp", "passkey", "recovery_code"], organization: $params.organization });
+    IF array::any($amr.method, |$m| $m IN ["totp", "passkey", "recovery_code"] AND $m NOT IN $allowed) { RETURN { code: "AUTH_MFA_METHOD_DISABLED" }; };
     -- Session interactive : une identité qui a un second facteur, ou à qui il est exigé, n'ouvre
     -- pas de session sur le seul mot de passe
     IF $params.kind = "interactive" AND $aal < 2 AND (

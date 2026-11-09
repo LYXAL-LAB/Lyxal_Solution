@@ -185,3 +185,14 @@ RETURN fn::auth_flow_state_save({ flow: "auth_flow:x", secret_state: "enc:v2:cle
 RETURN fn::auth_policy_save({ mfa: { required: false, max_attempts: 4, privileged_max_age_seconds: 600, required_roles: ["platform_admin"] } }).data.mfa.max_attempts == 4
     AND fn::auth_policy_save({ mfa: { max_attempts: 50 } }).error.code == "AUTH_INVALID_PARAMETERS"
     AND fn::auth_policy_value({ theme: "mfa", key: "privileged_max_age_seconds", default: 0 }) == 600;
+
+-- test: méthode désactivée par la politique : ni session, ni réauthentification
+{
+    fn::auth_policy_save({ mfa: { methods: ["passkey", "recovery_code"] } });
+    LET $opened = fn::auth_session_create({ identity: "auth_identity:lea", amr: ["password", "totp"], access_slot: "a",
+        refresh_token_hash: "e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6e6" });
+    LET $reauth = fn::auth_session_reauthenticate({ session: "auth_session:lea", method: "totp", access_slot: "a" });
+    fn::auth_policy_save({ mfa: { methods: ["totp", "passkey", "recovery_code"] } });
+    RETURN $opened.error.code == "AUTH_MFA_METHOD_DISABLED" AND $reauth.error.code == "AUTH_MFA_METHOD_DISABLED"
+        AND fn::auth_session_reauthenticate({ session: "auth_session:lea", method: "totp", access_slot: "a" }).ok;
+};

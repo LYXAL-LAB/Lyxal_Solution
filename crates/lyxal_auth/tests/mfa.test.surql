@@ -104,8 +104,10 @@ RETURN fn::auth_mfa_totp_step_use({ credential: "auth_credential:marie_totp", st
     AND fn::auth_mfa_totp_step_use({ credential: "auth_credential:marie_totp", step: 101 }).ok
     AND (SELECT VALUE public_data.last_step FROM ONLY auth_credential:marie_totp) == 101;
 
--- test: codes de secours : nombre et doublons contrôlés
+-- test: codes de secours : nombre et doublons contrôlés par lyxal_core, motif dans le rapport par champ
 RETURN fn::auth_mfa_recovery_codes_replace({ session: "auth_session:marie", batch: "0193aaaa00007000800000000000aaaa",
+        code_hashes: ["a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"] }).error.details.fields.code_hashes IS NOT NONE
+    AND fn::auth_mfa_recovery_codes_replace({ session: "auth_session:marie", batch: "0193aaaa00007000800000000000aaaa",
         code_hashes: ["a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"] }).error.code == "AUTH_INVALID_PARAMETERS"
     AND fn::auth_mfa_recovery_codes_replace({ session: "auth_session:marie", batch: "0193aaaa00007000800000000000aaaa",
         code_hashes: array::map(<array>(0..5), |$i| "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1") }).error.code == "AUTH_INVALID_PARAMETERS";

@@ -361,13 +361,17 @@ DEFINE FUNCTION OVERWRITE fn::auth_mfa_recovery_codes_replace($params: object) {
             session: { pipeline: [{ rule: "record", options: { expected_table: "auth_session" } }] },
             flow: { pipeline: [{ rule: "record", options: { expected_table: "auth_flow" } }] },
             batch: { pipeline: [{ rule: "hexadecimal", options: { min_length: 32, max_length: 32, allow_prefix: false } }], required: true },
-            code_hashes: { pipeline: [{ rule: "array_of_strings", options: { allow_empty: false } }, { rule: "each", options: { pipeline: [{ rule: "hexadecimal", options: { min_length: 64, max_length: 64, allow_prefix: false } }] } }], required: true },
+            code_hashes: { pipeline: [
+                { rule: "array_of_strings", options: { allow_empty: false } },
+                { rule: "array_length", options: { min_length: 5, max_length: 20 } },
+                { rule: "array_unique" },
+                { rule: "each", options: { pipeline: [{ rule: "hexadecimal", options: { min_length: 64, max_length: 64, allow_prefix: false } }] } }
+            ], required: true },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
     }, 20);
-    IF !$report.valid OR array::len($report.value.code_hashes) < 5 OR array::len($report.value.code_hashes) > 20
-        OR array::len(array::distinct($report.value.code_hashes)) != array::len($report.value.code_hashes) {
+    IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;

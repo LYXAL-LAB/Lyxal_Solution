@@ -149,6 +149,10 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_reauthenticate($params: object) {
     LET $available = (SELECT VALUE available_aal FROM ONLY $sess.identity) ?? 0;
     -- Une identité qui a un second facteur se réauthentifie avec lui (le mot de passe seul ne suffit pas)
     IF $p.method = "password" AND $available >= 2 { RETURN fn::error_result("AUTH_MFA_REQUIRED", $p.language, { methods: fn::auth_mfa_methods({ identity: $sess.identity, organization: $sess.organization }) }); };
+    -- Second facteur actif et autorisé par la politique effective de l'organisation de la session
+    IF $p.method != "password" AND $p.method NOT IN fn::auth_mfa_methods({ identity: $sess.identity, organization: $sess.organization }) {
+        RETURN fn::error_result("AUTH_MFA_METHOD_DISABLED", $p.language, { method: $p.method });
+    };
     LET $aal = IF $p.method = "password" { $sess.aal } ELSE { 2 };
     LET $rights = fn::auth_subject_permissions({ identity: $sess.identity, organization: $sess.organization });
     IF $rights.code IS NOT NONE { RETURN fn::error_result($rights.code, $p.language, {}); };
