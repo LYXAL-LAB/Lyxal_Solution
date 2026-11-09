@@ -82,7 +82,7 @@ async fn admin(access: &AccessService<StaticKeyResolver>) -> IssuedTokens {
         .expect("jeton")
         .to_string();
     let started = access
-        .start_registration(&secret(&token), true)
+        .start_registration(&secret(&token), true, ClientInfo::default())
         .await
         .expect("inscription");
     let outcome = access
@@ -239,6 +239,43 @@ async fn wrong_passwords_are_indistinct_and_lock_the_identifier() {
 }
 
 #[tokio::test]
+async fn recovery_does_not_reveal_whether_the_account_exists() {
+    let store = installed_store().await;
+    let (access, _) = service(&store).await;
+    admin(&access).await;
+    // Adresse connue et adresse inconnue : même réponse, un code enregistré dans les deux cas,
+    // un message publié seulement pour le compte réel
+    let known = access
+        .start_recovery("admin@lyxal.test", ClientInfo::default())
+        .await
+        .expect("récupération");
+    let unknown = access
+        .start_recovery("inconnu@lyxal.test", ClientInfo::default())
+        .await
+        .expect("récupération factice");
+    assert!(known.starts_with("auth_flow:") && unknown.starts_with("auth_flow:"));
+    let mut counts = store
+        .client()
+        .query(
+            "RETURN count(SELECT id FROM auth_one_time_code WHERE address = 'inconnu@lyxal.test');
+             RETURN count(SELECT id FROM event_outbox WHERE event_type = 'auth.recovery.requested');",
+        )
+        .await
+        .expect("comptes");
+    let decoys: Option<i64> = counts.take(0).expect("codes");
+    let messages: Option<i64> = counts.take(1).expect("messages");
+    assert_eq!((decoys, messages), (Some(1), Some(1)));
+    // Deuxième demande dans la minute : même refus, que le compte existe ou non
+    for email in ["admin@lyxal.test", "inconnu@lyxal.test"] {
+        let again = access
+            .start_recovery(email, ClientInfo::default())
+            .await
+            .expect_err("plafond d'envoi");
+        assert_eq!(again.code(), "AUTH_TOO_MANY_ATTEMPTS", "{email}");
+    }
+}
+
+#[tokio::test]
 async fn refresh_tokens_rotate_and_reuse_revokes_the_session() {
     let store = installed_store().await;
     let (access, _) = service(&store).await;
@@ -271,7 +308,7 @@ async fn recovery_code_from_the_sealed_event_resets_the_password() {
     assert!(message["action_url"]
         .as_str()
         .expect("lien")
-        .starts_with("https://lyxal.test/recovery?token="));
+        .starts_with("https://lyxal.test/recovery#token="));
 
     // Mot de passe trop faible : refusé avant de consommer le code, qui reste utilisable
     let weak = access
@@ -541,6 +578,9 @@ async fn identity_created_by_an_admin_is_unaffected() {
     let (access, _) = service(&store).await;
     store
         .identity_create(IdentityCreateParams {
+            state: None,
+            public_metadata: None,
+            admin_metadata: None,
             schema_key: None,
             traits: serde_json::json!({ "email": "sans-mdp@lyxal.test" }).into_value(),
             external_id: None,

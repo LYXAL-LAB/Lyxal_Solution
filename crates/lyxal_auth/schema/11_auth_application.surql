@@ -98,22 +98,43 @@ DEFINE TABLE OVERWRITE auth_api_key
     PERMISSIONS
         FOR select WHERE ($auth IS NOT NONE AND identity = $auth.identity)
             OR fn::auth_has_permission({ permission: "auth.identity.manage" })
-        FOR create WHERE $auth IS NOT NONE AND identity = $auth.identity AND fn::auth_has_permission({ permission: "auth.self.manage" })
+        -- Mêmes conditions que fn::auth_api_key_create (écriture directe comprise) : session
+        -- interactive du propriétaire, authentification récente au niveau le plus haut disponible,
+        -- organisation de la session, permissions incluses dans celles du jeton
+        FOR create WHERE $auth IS NOT NONE AND identity = $auth.identity
+            AND fn::auth_has_permission({ permission: "auth.self.manage" })
+            AND fn::auth_api_key_create_allowed({ organization: organization, permissions: permissions })
+        -- Le propriétaire révoque seulement (revoked_at, une fois : garde ci-dessous)
         FOR update WHERE ($auth IS NOT NONE AND identity = $auth.identity AND fn::auth_has_permission({ permission: "auth.self.manage" }))
             OR fn::auth_has_permission({ permission: "auth.identity.manage" })
         FOR delete NONE
     COMMENT "Clés d'API personnelles (empreintes), droits bornés par ceux du propriétaire";
 
 DEFINE FIELD OVERWRITE identity ON TABLE auth_api_key TYPE record<auth_identity> REFERENCE ON DELETE CASCADE READONLY COMMENT "Propriétaire";
-DEFINE FIELD OVERWRITE name ON TABLE auth_api_key TYPE string ASSERT string::len($value) >= 1 AND string::len($value) <= 128 COMMENT "Nom";
+DEFINE FIELD OVERWRITE name ON TABLE auth_api_key TYPE string ASSERT string::len($value) >= 1 AND string::len($value) <= 128 READONLY COMMENT "Nom";
 DEFINE FIELD OVERWRITE key_hash ON TABLE auth_api_key TYPE string ASSERT string::len($value) = 64 READONLY PERMISSIONS FOR select NONE COMMENT "Empreinte BLAKE3 de la clé (illisible)";
 DEFINE FIELD OVERWRITE prefix ON TABLE auth_api_key TYPE string ASSERT string::len($value) = 8 READONLY COMMENT "Début de la clé";
 DEFINE FIELD OVERWRITE permissions ON TABLE auth_api_key TYPE array<string> DEFAULT [] READONLY COMMENT "Permissions accordées (sous-ensemble de celles du propriétaire)";
 DEFINE FIELD OVERWRITE organization ON TABLE auth_api_key TYPE option<record<auth_organization>> READONLY COMMENT "Organisation active de la clé";
 DEFINE FIELD OVERWRITE expires_at ON TABLE auth_api_key TYPE option<datetime> READONLY COMMENT "Expiration";
-DEFINE FIELD OVERWRITE last_used_at ON TABLE auth_api_key TYPE option<datetime> COMMENT "Dernier usage";
+DEFINE FIELD OVERWRITE last_used_at ON TABLE auth_api_key TYPE option<datetime> PERMISSIONS FOR create, update WHERE fn::auth_has_permission({ permission: "auth.identity.manage" }) COMMENT "Dernier usage (écrit par la session système)";
 DEFINE FIELD OVERWRITE revoked_at ON TABLE auth_api_key TYPE option<datetime> COMMENT "Révocation";
 DEFINE FIELD OVERWRITE created_at ON TABLE auth_api_key TYPE datetime DEFAULT time::now() READONLY COMMENT "Création";
 
 DEFINE INDEX OVERWRITE auth_api_key_hash ON TABLE auth_api_key FIELDS key_hash UNIQUE;
 DEFINE INDEX OVERWRITE auth_api_key_identity ON TABLE auth_api_key FIELDS identity;
+
+-- Révoquer un secret invalide les sessions de service ouvertes avant la révocation (la session
+-- ne retient pas le secret présenté) : elles se rouvriront avec un secret valide
+DEFINE EVENT OVERWRITE auth_application_secret_revocation ON TABLE auth_application_secret
+WHEN $event = "UPDATE" AND $before.revoked_at IS NONE AND $after.revoked_at IS NOT NONE
+THEN {
+    UPDATE $after.application SET not_before = time::now();
+};
+
+-- Une clé révoquée ne revient pas
+DEFINE EVENT OVERWRITE auth_api_key_revocation_guard ON TABLE auth_api_key
+WHEN $event = "UPDATE" AND $before.revoked_at IS NOT NONE AND $after.revoked_at != $before.revoked_at
+THEN {
+    THROW "AUTH_API_KEY_INVALID";
+};

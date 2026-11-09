@@ -4,7 +4,7 @@ pub mod call;
 pub mod client;
 pub mod error;
 
-pub use call::{validate_function_name, LyxalSurrealCall};
+pub use call::{thrown_code, validate_function_name, LyxalSurrealCall};
 pub use client::{
     create_surreal_client, normalize_endpoint, validate_endpoint_scheme, RootCredentials,
     SurrealConnectOptions,

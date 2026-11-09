@@ -30,6 +30,33 @@ IF !record::exists(error_definition:AUTH_CREDENTIALS_INVALID) THEN (
     }
 ) END;
 
+IF !record::exists(error_definition:AUTH_PASSWORD_COMPROMISED) THEN (
+    CREATE error_definition:AUTH_PASSWORD_COMPROMISED CONTENT {
+        code: "AUTH_PASSWORD_COMPROMISED",
+        module: "auth",
+        domain: "credentials",
+        category: "validation",
+        severity: "error",
+        message: "Password found in a list of leaked passwords",
+        default_language: "fr",
+        http_status: 400,
+        retryable: false,
+        enabled: true,
+        translations: {
+            fr: {
+                label: "Mot de passe divulgué",
+                description: "Ce mot de passe figure parmi les mots de passe les plus utilisés et divulgués lors de fuites de données.",
+                resolution: "Choisissez un autre mot de passe, propre à ce compte."
+            },
+            en: {
+                label: "Leaked password",
+                description: "This password is among the most used passwords exposed in data breaches.",
+                resolution: "Choose another password, unique to this account."
+            }
+        }
+    }
+) END;
+
 IF !record::exists(error_definition:AUTH_PASSWORD_POLICY_VIOLATION) THEN (
     CREATE error_definition:AUTH_PASSWORD_POLICY_VIOLATION CONTENT {
         code: "AUTH_PASSWORD_POLICY_VIOLATION",
@@ -138,29 +165,3 @@ IF !record::exists(error_definition:AUTH_IDENTITY_LOCKED) THEN (
     }
 ) END;
 
-IF !record::exists(error_definition:AUTH_REQUIRED_ACTION_PENDING) THEN (
-    CREATE error_definition:AUTH_REQUIRED_ACTION_PENDING CONTENT {
-        code: "AUTH_REQUIRED_ACTION_PENDING",
-        module: "auth",
-        domain: "credentials",
-        category: "business",
-        severity: "error",
-        message: "Required action pending",
-        default_language: "fr",
-        http_status: 403,
-        retryable: false,
-        enabled: true,
-        translations: {
-            fr: {
-                label: "Action requise",
-                description: "Une action est requise avant d'accéder à votre compte (vérifier l'adresse, changer le mot de passe, accepter les conditions).",
-                resolution: "Terminez les actions demandées."
-            },
-            en: {
-                label: "Action required",
-                description: "An action is required before accessing your account (verify address, change password, accept terms).",
-                resolution: "Complete the requested actions."
-            }
-        }
-    }
-) END;

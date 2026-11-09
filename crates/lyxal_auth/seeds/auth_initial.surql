@@ -5,7 +5,7 @@
 -- Rejouable et non destructif : chaque élément (permission, rôle, permission accordée) est créé
 -- seulement s'il n'existe pas ; rien n'est modifié ni supprimé. Les seeds des autres modules
 -- déclarent leurs permissions de la même façon. Aucun compte ni identifiant par défaut : le
--- premier administrateur est créé au lot 3 par une commande explicite de l'hôte.
+-- premier administrateur est créé par une commande explicite de l'hôte (lien d'installation).
 -- `scope_key` est écrit explicitement : l'import des seeds (OPTION IMPORT) ne calcule pas les
 -- champs VALUE.
 
@@ -52,11 +52,11 @@ IF !record::exists(auth_policy:installation) THEN (
         scope_key: "installation",
         password: { min_length: 12, require_classes: 0, history: 5 },
         lockout: { max_failures: 10, lock_seconds: 900, window_seconds: 900, ip_max_failures: 50 },
-        session: { access_seconds: 900, idle_seconds: 43200, absolute_seconds: 2592000 },
+        session: { access_seconds: 900, idle_seconds: 1800, absolute_seconds: 43200 },
         mfa: {
             required: false,
             methods: ["totp", "passkey", "recovery_code"],
-            -- Double facteur exigé pour l'administration de la plateforme (Q4 du lot 4)
+            -- Double facteur exigé pour l'administration de la plateforme
             required_roles: ["platform_admin"],
             max_attempts: 5,
             recovery_code_count: 10,
@@ -65,7 +65,7 @@ IF !record::exists(auth_policy:installation) THEN (
         invitation: { ttl_seconds: 604800 },
         registration: { mode: "invitation_only" },
         code: { ttl_seconds: 900, max_attempts: 5 },
-        refresh: { ttl_seconds: 2592000 },
+        refresh: { ttl_seconds: 43200 },
         flow: { ttl_seconds: 900 }
     }
 ) END;
@@ -106,7 +106,7 @@ IF !record::exists(auth_permission:⟨auth.organization.policy.manage⟩) THEN (
 ) END;
 
 
--- Permissions du lot 3 (applications, sessions, soi-même)
+-- Permissions des applications, des sessions et de soi-même
 IF !record::exists(auth_permission:⟨auth.application.manage⟩) THEN (
     CREATE auth_permission:⟨auth.application.manage⟩ CONTENT { code: "auth.application.manage", module: "lyxal_auth", scope: "installation", description: { fr: "Gérer les applications et comptes de service de l'installation", en: "Manage installation applications and service accounts" } }
 ) END;
@@ -168,7 +168,7 @@ IF array::len(SELECT VALUE id FROM auth_role_grants WHERE in = auth_role:organiz
     RELATE auth_role:organization_member->auth_role_grants->auth_permission:⟨auth.member.read⟩
 ) END;
 
--- Attributions du lot 3
+-- Attributions des applications et des sessions
 IF array::len(SELECT VALUE id FROM auth_role_grants WHERE in = auth_role:platform_admin AND out = auth_permission:⟨auth.application.manage⟩) = 0 THEN (
     RELATE auth_role:platform_admin->auth_role_grants->auth_permission:⟨auth.application.manage⟩
 ) END;

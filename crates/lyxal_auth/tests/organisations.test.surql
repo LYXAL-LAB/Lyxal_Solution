@@ -106,6 +106,14 @@ RETURN fn::auth_organization_set_state({ organization: test_ref:beta.rid, state:
 -- test: événement de changement d'état
 RETURN (SELECT VALUE payload FROM ONLY event_outbox WHERE event_type = "auth.organization.state_changed" LIMIT 1).{ previous_state, state } == { previous_state: "active", state: "suspended" };
 
+-- test: les sessions ouvertes sur l'organisation suspendue sont révoquées, droits des membres périmés
+RETURN (SELECT VALUE [state, revoked_reason] FROM ONLY auth_session:beta_membre) == ["revoked", "organization_inactive"]
+    AND (SELECT VALUE permissions_version FROM ONLY auth_identity:beta_membre) == 2;
+
+-- test: le membre de l'organisation suspendue n'a plus aucun droit
+-- en tant que: beta_membre
+RETURN fn::auth_context({}).error.code == "AUTH_SESSION_REVOKED";
+
 -- test: une organisation suspendue n'accepte pas de nouveau membre
 RETURN fn::auth_organization_member_add({ organization: test_ref:beta.rid, identity: "auth_identity:plateforme" }).error.code == "AUTH_ORGANIZATION_INACTIVE";
 

@@ -63,14 +63,19 @@ pub struct SessionReauthenticateParams {
 }
 
 /// Paramètres de `fn::auth_mfa_failure_check` et `fn::auth_mfa_failure_reset`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct MfaFailureKeyParams {
     /// BLAKE3 de l'identité.
     pub identity_hash: String,
 }
 
+crate::models::redacted_debug!(MfaFailureKeyParams {
+    shown: [],
+    hidden: [identity_hash]
+});
+
 /// Paramètres de `fn::auth_mfa_failure_record`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct MfaFailureParams {
     /// BLAKE3 de l'identité.
     pub identity_hash: String,
@@ -81,6 +86,11 @@ pub struct MfaFailureParams {
     /// Méthode présentée.
     pub method: String,
 }
+
+crate::models::redacted_debug!(MfaFailureParams {
+    shown: [identity, flow, method],
+    hidden: [identity_hash]
+});
 
 /// État du verrouillage du second facteur.
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
@@ -402,7 +412,7 @@ pub struct PasskeyRenamed {
 }
 
 /// Paramètres de `fn::auth_mfa_recovery_codes_replace`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct RecoveryCodesReplaceParams {
     /// Session de l'utilisateur (texte).
     pub session: Option<String>,
@@ -414,6 +424,11 @@ pub struct RecoveryCodesReplaceParams {
     pub code_hashes: Vec<String>,
 }
 
+crate::models::redacted_debug!(RecoveryCodesReplaceParams {
+    shown: [session, flow, batch],
+    hidden: [code_hashes]
+});
+
 /// Codes de secours remplacés.
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
 pub struct RecoveryCodesReplaced {
@@ -424,13 +439,18 @@ pub struct RecoveryCodesReplaced {
 }
 
 /// Paramètres de `fn::auth_mfa_recovery_code_use`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct RecoveryCodeUseParams {
     /// Identité (texte).
     pub identity: String,
     /// Empreinte HMAC du code présenté.
     pub code_hash: String,
 }
+
+crate::models::redacted_debug!(RecoveryCodeUseParams {
+    shown: [identity],
+    hidden: [code_hash]
+});
 
 /// Code de secours consommé.
 #[derive(Debug, Clone, PartialEq, SurrealValue)]

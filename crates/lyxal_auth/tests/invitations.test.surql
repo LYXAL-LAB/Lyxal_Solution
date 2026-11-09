@@ -62,13 +62,27 @@ RETURN fn::auth_invitation_create({ organization: "auth_organization:alpha", ema
 -- test: la première invitation est révoquée, une seule en attente
 RETURN (SELECT VALUE state FROM auth_organization_invitation WHERE email = "claire@exemple.fr" ORDER BY created_at) == ["revoked", "pending"];
 
--- test: l'invitée voit son invitation en attente ; l'intrus non
+-- test: l'invitée voit son invitation en attente, sans l'empreinte du jeton
 -- en tant que: invite
-RETURN fn::auth_invitation_pending({ organization: auth_organization:alpha });
+RETURN (SELECT VALUE [state, token_hash] FROM auth_organization_invitation WHERE state = "pending") == [["pending", NONE]];
 
--- test: l'intrus n'a pas d'invitation
+-- test: sans le jeton, l'invitée ne rejoint pas l'organisation par écriture directe
+-- en tant que: invite
+{
+    RELATE auth_identity:invite->auth_member_of->auth_organization:alpha;
+    UPDATE auth_organization_invitation SET state = "accepted", accepted_by = auth_identity:invite WHERE state = "pending";
+    CREATE auth_invitation_claim CONTENT { identity: auth_identity:intrus, token_hash: "dd11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11" };
+    RETURN true;
+};
+
+-- test: aucune adhésion, invitation toujours en attente, aucune demande au nom d'autrui
+RETURN array::len(SELECT * FROM auth_member_of WHERE in = auth_identity:invite) == 0
+    AND (SELECT VALUE state FROM ONLY auth_organization_invitation WHERE token_hash = "dd11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11" LIMIT 1) == "pending"
+    AND array::len(SELECT * FROM auth_invitation_claim WHERE identity = auth_identity:intrus) == 0;
+
+-- test: l'intrus ne voit pas l'invitation d'une autre adresse
 -- en tant que: intrus
-RETURN fn::auth_invitation_pending({ organization: auth_organization:alpha }) == false;
+RETURN array::len(SELECT * FROM auth_organization_invitation) == 0;
 
 -- test: l'intrus ne peut pas accepter l'invitation d'une autre adresse
 -- en tant que: intrus
@@ -81,6 +95,10 @@ RETURN fn::auth_invitation_accept({ token_hash: "aa11aa11aa11aa11aa11aa11aa11aa1
 -- test: l'invitée accepte : adhésion et rôle par défaut créés
 -- en tant que: invite
 RETURN fn::auth_invitation_accept({ token_hash: "DD11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11" }).data.roles == [auth_role:organization_member];
+
+-- test: la demande d'acceptation porte l'issue écrite par la base, sans l'empreinte
+-- en tant que: invite
+RETURN (SELECT VALUE [outcome, token_hash, organization] FROM auth_invitation_claim ORDER BY created_at) == [["AUTH_INVITATION_INVALID", NONE, NONE], ["accepted", NONE, auth_organization:alpha]];
 
 -- test: invitation acceptée, événements publiés
 RETURN (SELECT VALUE state FROM ONLY auth_organization_invitation WHERE token_hash = "dd11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11aa11" LIMIT 1) == "accepted"

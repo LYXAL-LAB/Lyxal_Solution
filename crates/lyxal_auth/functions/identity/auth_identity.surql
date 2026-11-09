@@ -276,7 +276,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_identity_update_traits($params: object) {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
-    IF !fn::auth_has_permission({ permission: "auth.identity.manage" }) AND !fn::auth_shares_organization({ identity: $p.identity, permission: "auth.member.manage" }) {
+    -- Administrateur d'organisation : membre de sa seule organisation, sans rôle d'installation
+    LET $full = fn::auth_has_permission({ permission: "auth.identity.manage" });
+    IF !$full AND !fn::auth_org_admin_can_manage({ identity: $p.identity }) {
         RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, { permission: "auth.identity.manage" });
     };
     LET $identity = (SELECT id, schema, state FROM ONLY $p.identity);
@@ -286,6 +288,16 @@ DEFINE FUNCTION OVERWRITE fn::auth_identity_update_traits($params: object) {
     LET $derived = fn::auth_identity_derive({ schema: (SELECT * FROM ONLY $identity.schema), traits: $p.traits });
     IF !$derived.ok { RETURN fn::error_result($derived.code, $p.language, $derived.details); };
     IF array::len($derived.identifiers) = 0 { RETURN fn::error_result("AUTH_TRAITS_INVALID", $p.language, { reason: "no_identifier" }); };
+    -- Un administrateur d'organisation ne change ni identifiant ni adresse : la personne passe par
+    -- le changement d'adresse vérifié, l'installation par auth.identity.manage
+    IF !$full {
+        LET $current_identifiers = (SELECT VALUE string::concat(type, ":", value) FROM auth_credential_identifier WHERE identity = $iid);
+        LET $current_addresses = (SELECT VALUE string::concat(channel, ":", usage, ":", value) FROM auth_address WHERE identity = $iid);
+        IF array::sort(array::map($derived.identifiers, |$i| string::concat($i.type, ":", $i.value))) != array::sort($current_identifiers)
+            OR array::sort(array::map($derived.addresses, |$a| string::concat($a.channel, ":", $a.usage, ":", $a.value))) != array::sort($current_addresses) {
+            RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, { permission: "auth.identity.manage", reason: "identifier_change" });
+        };
+    };
     FOR $identifier IN $derived.identifiers {
         IF array::len(SELECT VALUE id FROM auth_credential_identifier WHERE type = $identifier.type AND value = $identifier.value AND identity != $iid LIMIT 1) > 0 {
             RETURN fn::error_result("AUTH_IDENTIFIER_TAKEN", $p.language, { type: $identifier.type });
@@ -316,7 +328,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_identity_update_traits($params: object) {
         IF $row == NONE { THROW "AUTH_WRITE_FORBIDDEN"; };
     };
     RETURN fn::result_ok($updated);
-} COMMENT "Remplace les traits d'une identité ({ identity, traits }) ; identifiants et adresses mis à jour (adresse modifiée : à vérifier). Permission auth.identity.manage, ou auth.member.manage dans une organisation partagée";
+} COMMENT "Remplace les traits d'une identité ({ identity, traits }) ; identifiants et adresses mis à jour (adresse modifiée : à vérifier). Permission auth.identity.manage ; un administrateur d'organisation (auth.member.manage) ne modifie que les autres traits d'un membre de sa seule organisation sans rôle d'installation";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_identity_set_state

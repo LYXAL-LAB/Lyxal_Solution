@@ -57,9 +57,9 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_open($params: object) -> object {
     ) { RETURN { code: "AUTH_MFA_REQUIRED" }; };
     LET $policy = fn::auth_policy_get({ organization: IF $params.organization IS NONE { NONE } ELSE { <string> $params.organization } }).data ?? {};
     LET $access_ttl = $policy.session.access_seconds ?? 900;
-    LET $idle = $policy.session.idle_seconds ?? 43200;
-    LET $absolute = $policy.session.absolute_seconds ?? 2592000;
-    LET $refresh_ttl = $policy.refresh.ttl_seconds ?? 2592000;
+    LET $idle = $policy.session.idle_seconds ?? 1800;
+    LET $absolute = $policy.session.absolute_seconds ?? 43200;
+    LET $refresh_ttl = $policy.refresh.ttl_seconds ?? 43200;
     LET $computed = IF $params.kind = "interactive" { $now + duration::from_secs($absolute) } ELSE { $now + duration::from_secs($access_ttl) };
     -- Plafond (changement d'organisation : jamais au-delà de la session d'origine)
     LET $expires_at = IF $params.expires_cap IS NONE { $computed } ELSE { array::min([$computed, $params.expires_cap]) };
@@ -81,7 +81,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_open($params: object) -> object {
     IF $sess == NONE { RETURN { code: "AUTH_WRITE_FORBIDDEN" }; };
     LET $refresh_expires_at = IF $params.refresh_token_hash IS NONE { NONE } ELSE { array::min([$now + duration::from_secs($refresh_ttl), $expires_at]) };
     IF $refresh_expires_at IS NOT NONE {
-        CREATE auth_refresh_token CONTENT { session: $sess.id, token_hash: string::lowercase($params.refresh_token_hash), expires_at: $refresh_expires_at };
+        CREATE auth_refresh_token CONTENT { session: $sess.id, token_hash: $params.refresh_token_hash, expires_at: $refresh_expires_at };
     };
     RETURN {
         code: NONE,
@@ -123,7 +123,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_create($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { refresh_token_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     LET $opened = fn::auth_session_open({
         identity: $p.identity, kind: "interactive", organization: $p.organization, amr: $p.amr,
@@ -151,10 +151,10 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_refresh($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { new_token_hash: { pipeline: [{ rule: "lowercase" }] }, token_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
-    LET $refresh = (SELECT * FROM ONLY auth_refresh_token WHERE token_hash = string::lowercase($p.token_hash) LIMIT 1);
+    LET $refresh = (SELECT * FROM ONLY auth_refresh_token WHERE token_hash = $p.token_hash LIMIT 1);
     IF $refresh == NONE { RETURN fn::error_result("AUTH_REFRESH_INVALID", $p.language, {}); };
     -- Réutilisation d'un jeton déjà échangé : vol probable, toute la session est révoquée
     IF $refresh.state = "used" {
@@ -187,10 +187,10 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_refresh($params: object) {
         RETURN fn::error_result("AUTH_REFRESH_INVALID", $p.language, {});
     };
     LET $policy = fn::auth_policy_get({ organization: IF $sess.organization IS NONE { NONE } ELSE { <string> $sess.organization } }).data ?? {};
-    LET $idle = array::min([$now + duration::from_secs($policy.session.idle_seconds ?? 43200), $sess.expires_at]);
-    LET $refresh_until = array::min([$now + duration::from_secs($policy.refresh.ttl_seconds ?? 2592000), $sess.expires_at]);
+    LET $idle = array::min([$now + duration::from_secs($policy.session.idle_seconds ?? 1800), $sess.expires_at]);
+    LET $refresh_until = array::min([$now + duration::from_secs($policy.refresh.ttl_seconds ?? 43200), $sess.expires_at]);
     UPDATE $sess.id SET idle_expires_at = $idle, last_seen_at = $now, access_slot = $p.access_slot, permissions_version = $rights.version;
-    CREATE auth_refresh_token CONTENT { session: $sess.id, token_hash: string::lowercase($p.new_token_hash), expires_at: $refresh_until };
+    CREATE auth_refresh_token CONTENT { session: $sess.id, token_hash: $p.new_token_hash, expires_at: $refresh_until };
     RETURN fn::result_ok({
         session: $sess.id,
         identity: $sess.identity,
@@ -269,7 +269,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_session_switch_organization($params: object) 
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { refresh_token_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     LET $current = (SELECT * FROM ONLY $p.session);
     IF $current == NONE OR $current.state != "active" OR $current.kind != "interactive" OR $current.expires_at <= time::now() {

@@ -70,10 +70,6 @@ RETURN (SELECT VALUE id FROM auth_identity) == [auth_identity:alpha];
 RETURN fn::auth_shares_organization({ identity: auth_identity:alpha, permission: "auth.member.read" })
     AND !fn::auth_shares_organization({ identity: auth_identity:admin, permission: "auth.member.read" });
 
--- test: aucune invitation en attente
--- en tant que: alpha
-RETURN fn::auth_invitation_pending({ organization: auth_organization:beta }) == false;
-
 -- préparation: révocation de la session alpha pendant que le jeton reste valide
 UPDATE auth_session:alpha SET state = "revoked", revoked_at = time::now();
 

@@ -52,6 +52,12 @@ pub struct IdentityCreateParams {
     pub organization: Option<String>,
     /// Rôles d'organisation demandés (textes).
     pub roles: Vec<String>,
+    /// État initial : `active` (défaut) ou `inactive`.
+    pub state: Option<String>,
+    /// Métadonnées lisibles par l'identité.
+    pub public_metadata: Option<AuthValue>,
+    /// Métadonnées réservées à l'administration.
+    pub admin_metadata: Option<AuthValue>,
 }
 
 /// Paramètres de `fn::auth_identity_get`.

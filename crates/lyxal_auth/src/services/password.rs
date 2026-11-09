@@ -18,6 +18,16 @@ use crate::error::{AuthError, AuthResult};
 /// Longueur maximale d'un mot de passe (caractères), contre les abus de calcul.
 pub const PASSWORD_MAX_CHARS: usize = 128;
 
+/// Mots de passe divulgués les plus courants (`data/README.md`), en minuscules, un par ligne.
+const COMMON_PASSWORDS: &str = include_str!("../../data/common_passwords.txt");
+
+/// Vrai si le mot de passe, sans tenir compte de la casse, figure dans la liste embarquée.
+fn is_common_password(text: &str) -> bool {
+    static SET: OnceLock<std::collections::HashSet<&'static str>> = OnceLock::new();
+    let set = SET.get_or_init(|| COMMON_PASSWORDS.lines().collect());
+    set.contains(text.to_lowercase().as_str())
+}
+
 /// Politique de mot de passe (thème `password` de `fn::auth_policy_get`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PasswordPolicy {
@@ -74,6 +84,9 @@ impl PasswordPolicy {
         .count();
         if classes < self.require_classes {
             return Err(AuthError::Rejected("AUTH_PASSWORD_POLICY_VIOLATION"));
+        }
+        if is_common_password(text) {
+            return Err(AuthError::Rejected("AUTH_PASSWORD_COMPROMISED"));
         }
         Ok(())
     }
@@ -193,15 +206,18 @@ impl<R: KeyResolver + 'static> PasswordService<R> {
             .as_str()
             .ok_or(AuthError::Rejected("AUTH_CRYPTO_ERROR"))?
             .to_string();
+        // Historique exigé (tableau de chaînes) : un document altéré n'affaiblit pas en silence
+        // la règle de non-réutilisation
         let history = value["history"]
             .as_array()
-            .map(|items| {
-                items
-                    .iter()
-                    .filter_map(|item| item.as_str().map(str::to_string))
-                    .collect()
+            .ok_or(AuthError::Rejected("AUTH_CRYPTO_ERROR"))?
+            .iter()
+            .map(|item| {
+                item.as_str()
+                    .map(str::to_string)
+                    .ok_or(AuthError::Rejected("AUTH_CRYPTO_ERROR"))
             })
-            .unwrap_or_default();
+            .collect::<AuthResult<Vec<String>>>()?;
         Ok(StoredPassword { current, history })
     }
 }
@@ -265,5 +281,25 @@ mod tests {
             PasswordPolicy::from_policy(&serde_json::json!({ "password": { "min_length": 14 } }));
         assert_eq!(from.min_length, 14);
         assert_eq!(from.history, 5);
+    }
+
+    #[test]
+    fn leaked_passwords_are_refused_whatever_the_case() {
+        let secret = |s: &str| SecretString::new(s.to_string()).expect("secret");
+        let policy = PasswordPolicy {
+            min_length: 8,
+            require_classes: 0,
+            history: 5,
+        };
+        for leaked in ["password1", "PassWord1", "qwertyuiop", "iloveyou12"] {
+            assert!(
+                matches!(
+                    policy.check(&secret(leaked)),
+                    Err(AuthError::Rejected("AUTH_PASSWORD_COMPROMISED"))
+                ),
+                "{leaked}"
+            );
+        }
+        assert!(policy.check(&secret("Assez-long-2026")).is_ok());
     }
 }

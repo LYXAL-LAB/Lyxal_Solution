@@ -22,11 +22,21 @@ DEFINE FUNCTION OVERWRITE fn::auth_policy_get($params: object) {
     LET $override = IF $p.organization IS NONE { {} } ELSE {
         (SELECT * FROM ONLY auth_policy WHERE scope_key = <string> record::id($p.organization) LIMIT 1) ?? {}
     };
-    RETURN fn::result_ok(object::from_entries(array::map($themes, |$t| [
+    LET $merged = object::from_entries(array::map($themes, |$t| [
         $t,
         object::extend($base[$t] ?? {}, $override[$t] ?? {})
-    ])));
-} COMMENT "Politique effective ({ organization }) : installation surchargée par l'organisation, par thème (password, lockout, session, mfa, invitation, registration, code, refresh, flow)";
+    ]));
+    -- Durées de session et de renouvellement : une organisation les raccourcit, jamais au-delà de
+    -- celles de l'installation (défauts : inactivité 30 min, absolue et renouvellement 12 h)
+    LET $session_policy = object::extend($merged.session, {
+        idle_seconds: math::min([$base.session.idle_seconds ?? 1800, $merged.session.idle_seconds ?? 1800]),
+        absolute_seconds: math::min([$base.session.absolute_seconds ?? 43200, $merged.session.absolute_seconds ?? 43200])
+    });
+    LET $refresh_policy = object::extend($merged.refresh, {
+        ttl_seconds: math::min([$base.refresh.ttl_seconds ?? 43200, $merged.refresh.ttl_seconds ?? 43200])
+    });
+    RETURN fn::result_ok(object::extend($merged, { session: $session_policy, refresh: $refresh_policy }));
+} COMMENT "Politique effective ({ organization }) : installation surchargée par l'organisation, par thème (password, lockout, session, mfa, invitation, registration, code, refresh, flow) ; durées de session et de renouvellement d'une organisation plafonnées par celles de l'installation";
 
 DEFINE FUNCTION OVERWRITE fn::auth_policy_save($params: object) {
     LET $report = fn::validation_object_execute($params, {

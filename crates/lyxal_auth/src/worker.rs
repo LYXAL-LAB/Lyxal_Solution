@@ -7,6 +7,7 @@ use lyxal_runtime::worker::{
 };
 use lyxal_runtime::RuntimeError;
 use std::time::Duration;
+use tokio_util::sync::CancellationToken;
 
 use crate::models::AuthPurgeParams;
 use crate::store::AuthStore;
@@ -40,26 +41,37 @@ impl AuthPurgeWorker {
         })
     }
 
-    /// Une purge (paquets successifs tant qu'un paquet est plein).
-    pub async fn run_once(&self) -> Result<(), lyxal_surreal::LyxalSurrealError> {
-        loop {
+    /// Une purge (paquets successifs tant qu'un paquet est plein), interrompue entre deux
+    /// paquets si l'arrêt est demandé.
+    pub async fn run_once(
+        &self,
+        cancellation: &CancellationToken,
+    ) -> Result<(), lyxal_surreal::LyxalSurrealError> {
+        while !cancellation.is_cancelled() {
             let result = self
                 .store
-                .purge(AuthPurgeParams { limit: self.batch })
+                .purge(AuthPurgeParams {
+                    limit: self.batch,
+                    session_retention_days: None,
+                })
                 .await?;
             let largest = [
                 result.flows,
                 result.refresh_tokens,
                 result.sessions,
                 result.login_failures,
+                result.pending_totp,
+                result.invitation_claims,
+                result.code_issuances,
             ]
             .into_iter()
             .max()
             .unwrap_or(0);
             if largest < self.batch {
-                return Ok(());
+                break;
             }
         }
+        Ok(())
     }
 }
 
@@ -71,7 +83,7 @@ impl LyxalWorker for AuthPurgeWorker {
 
     async fn run(&self, ctx: WorkerContext) -> Result<(), RuntimeError> {
         while !ctx.is_cancelled() {
-            if let Err(error) = self.run_once().await {
+            if let Err(error) = self.run_once(&ctx.cancellation).await {
                 tracing::warn!(error = %error, "purge de lyxal_auth impossible");
             }
             tokio::select! {

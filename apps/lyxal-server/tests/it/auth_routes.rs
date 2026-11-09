@@ -131,6 +131,19 @@ async fn login_sessions_and_logout_through_http() {
     .await;
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
     assert_eq!(body["error"]["code"], "SERVER_AUTH_DISABLED");
+    // Réponses des routes d'authentification jamais mises en cache
+    let response = tower::ServiceExt::oneshot(
+        disabled.clone(),
+        Request::builder()
+            .method("POST")
+            .uri("/api/v1/auth/logout")
+            .body(Body::empty())
+            .expect("requête"),
+    )
+    .await
+    .expect("réponse");
+    assert_eq!(response.headers()["cache-control"], "no-store");
+    assert_eq!(response.headers()["pragma"], "no-cache");
 
     let host = auth::host(&client, &config, Some(crypto()))
         .expect("service")
@@ -160,7 +173,7 @@ async fn login_sessions_and_logout_through_http() {
         .to_string();
     assert!(link
         .expose_secret()
-        .starts_with("https://lyxal.test/setup?token="));
+        .starts_with("https://lyxal.test/setup#token="));
     let (status, started_registration) = call(
         &router,
         "POST",

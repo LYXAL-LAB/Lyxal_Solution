@@ -351,13 +351,14 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         .await
     }
 
-    /// Second facteur d'une connexion (parcours `mfa_required`) : vérifié, puis session AAL2.
+    /// Second facteur d'une connexion (parcours `mfa_required`) : vérifié, puis actions imposées
+    /// s'il en reste, sinon session AAL2.
     pub async fn complete_login_mfa(
         &self,
         flow: &str,
         proof: MfaProof,
         client: ClientInfo,
-    ) -> AuthResult<IssuedTokens> {
+    ) -> AuthResult<LoginOutcome> {
         let current = self.flow(flow).await?;
         if current.flow_type != "login" || current.state != "mfa_required" {
             return Err(AuthError::Rejected("AUTH_FLOW_INVALID_STATE"));
@@ -380,21 +381,13 @@ impl<R: KeyResolver + 'static> AccessService<R> {
             }
         }
         let organization = current.organization.as_ref().map(|id| id.to_sql());
-        self.verify_second_factor(&identity, organization, Some(flow), "login", proof)
+        self.verify_second_factor(&identity, organization.clone(), Some(flow), "login", proof)
             .await?;
-        self.store
-            .flow_submit(FlowSubmitParams {
-                flow: flow.to_string(),
-                from: vec!["mfa_required".into()],
-                state: "completed".into(),
-                ..FlowSubmitParams::default()
-            })
-            .await?;
-        let organization = current.organization.as_ref().map(|id| id.to_sql());
-        self.open_session(
+        self.next_step(
             &identity,
             organization,
             vec!["password".into(), method.into()],
+            Some(flow.to_string()),
             client,
         )
         .await
@@ -649,7 +642,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         new_password: &SecretString,
     ) -> AuthResult<()> {
         self.require_fresh(session).await?;
-        self.check_current_password(identity, current).await?;
+        self.verify_password_counted(identity, current).await?;
         self.set_password(identity, new_password, true, Some(session.to_string()))
             .await
     }
@@ -739,18 +732,22 @@ impl<R: KeyResolver + 'static> AccessService<R> {
                 ..FlowStartParams::default()
             })
             .await?;
-        if active {
-            if let Some(identity) = &credential.identity {
-                self.send_code(
-                    &flow,
-                    "recovery",
-                    &credential.identifier,
-                    Some(&identity.to_sql()),
-                    "recovery",
-                )
-                .await?;
-            }
-        }
+        // Adresse inconnue ou compte inactif : code factice (même travail, même plafond d'envoi,
+        // aucun message) pour que la réponse ne révèle pas l'existence du compte
+        let identity = credential
+            .identity
+            .as_ref()
+            .filter(|_| active)
+            .map(|id| id.to_sql());
+        self.send_code(
+            &flow,
+            "recovery",
+            &credential.identifier,
+            identity.as_deref(),
+            "recovery",
+            identity.is_some(),
+        )
+        .await?;
         Ok(flow.id.to_sql())
     }
 
@@ -802,8 +799,15 @@ impl<R: KeyResolver + 'static> AccessService<R> {
                 ..FlowStartParams::default()
             })
             .await?;
-        self.send_code(&flow, "verification", &address, Some(identity), "verify")
-            .await?;
+        self.send_code(
+            &flow,
+            "verification",
+            &address,
+            Some(identity),
+            "verify",
+            true,
+        )
+        .await?;
         Ok(flow.id.to_sql())
     }
 
@@ -845,7 +849,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         client: ClientInfo,
     ) -> AuthResult<String> {
         self.require_fresh(session).await?;
-        self.check_current_password(identity, current).await?;
+        self.verify_password_counted(identity, current).await?;
         let requested = self
             .store
             .address_change_request(AddressChangeRequestParams {
@@ -861,6 +865,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
             &requested.address,
             Some(identity),
             "address-change",
+            true,
         )
         .await?;
         Ok(flow.id.to_sql())
@@ -887,6 +892,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         &self,
         token: &SecretString,
         setup: bool,
+        client: ClientInfo,
     ) -> AuthResult<RegistrationStarted> {
         let hash = token_hash(token);
         Ok(self
@@ -894,6 +900,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
             .registration_start(RegistrationStartParams {
                 invitation_token_hash: if setup { None } else { Some(hash.clone()) },
                 setup_link_hash: if setup { Some(hash) } else { None },
+                client,
             })
             .await?)
     }
@@ -941,7 +948,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
             })
             .await?;
         Ok(SecretString::new(format!(
-            "{}/setup?token={}",
+            "{}/setup#token={}",
             self.config.public_url,
             link.value.expose_secret()
         ))?)
@@ -1095,6 +1102,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         address: &str,
         identity: Option<&str>,
         path: &str,
+        deliver: bool,
     ) -> AuthResult<()> {
         let pepper = self.keys.code_pepper().await?;
         let code = six_digit_code()?;
@@ -1107,7 +1115,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         let event_id = uuid::Uuid::now_v7().to_string();
         let message = Zeroizing::new(
             serde_json::json!({
-                "action_url": format!("{}/{path}?token={}", self.config.public_url, link.value.expose_secret()),
+                "action_url": format!("{}/{path}#token={}", self.config.public_url, link.value.expose_secret()),
                 "code": code.expose_secret()
             })
             .to_string(),
@@ -1137,8 +1145,8 @@ impl<R: KeyResolver + 'static> AccessService<R> {
                     code.expose_secret().as_bytes(),
                 )?),
                 link_hash: link.hash,
-                event_id: Some(event_id),
-                secret: Some(sealed),
+                event_id: deliver.then_some(event_id),
+                secret: deliver.then_some(sealed),
                 locale,
                 name,
             })
@@ -1193,9 +1201,10 @@ impl<R: KeyResolver + 'static> AccessService<R> {
             .await?)
     }
 
-    /// Étape suivante d'une connexion dont les méthodes `proven` sont vérifiées : actions
-    /// imposées, puis second facteur si l'identité en a un et qu'aucun n'a été prouvé, puis
-    /// session. `flow` : parcours de connexion en cours, poursuivi plutôt que recréé.
+    /// Étape suivante d'une connexion dont les méthodes `proven` sont vérifiées : second facteur
+    /// si l'identité en a un et qu'aucun n'a été prouvé, puis actions imposées (jamais avant le
+    /// second facteur : un mot de passe seul ne change rien au compte), puis session. `flow` :
+    /// parcours de connexion en cours, poursuivi plutôt que recréé.
     async fn next_step(
         &self,
         identity: &str,
@@ -1208,20 +1217,20 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         let second_factor = proven
             .iter()
             .any(|m| matches!(m.as_str(), "totp" | "passkey" | "recovery_code"));
-        let (state, actions, methods) = if !requirements.required_actions.is_empty() {
+        let (state, actions, methods) = if requirements.available_aal >= 2 && !second_factor {
+            ("mfa_required", vec![], requirements.methods.clone())
+        } else if !requirements.required_actions.is_empty() {
             (
                 "action_required",
                 requirements.required_actions.clone(),
                 proven.clone(),
             )
-        } else if requirements.available_aal >= 2 && !second_factor {
-            ("mfa_required", vec![], requirements.methods.clone())
         } else {
             if let Some(flow) = &flow {
                 self.store
                     .flow_submit(FlowSubmitParams {
                         flow: flow.clone(),
-                        from: vec!["action_required".into()],
+                        from: vec!["action_required".into(), "mfa_required".into()],
                         state: "completed".into(),
                         required_actions: Some(vec![]),
                         ..FlowSubmitParams::default()
@@ -1238,7 +1247,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
                 .store
                 .flow_submit(FlowSubmitParams {
                     flow,
-                    from: vec!["action_required".into()],
+                    from: vec!["action_required".into(), "mfa_required".into()],
                     state: state.into(),
                     required_actions: Some(actions.clone()),
                     methods: Some(methods.clone()),

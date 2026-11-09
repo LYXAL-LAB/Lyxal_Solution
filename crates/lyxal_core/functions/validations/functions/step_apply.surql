@@ -141,7 +141,7 @@ DEFINE FUNCTION OVERWRITE fn::validation_step_apply(
         ELSE IF $step.rule = "object_no_none" { fn::validation_object_no_none($value) }
         ELSE IF $step.rule = "object_no_null" { fn::validation_object_no_null($value) }
         ELSE IF $step.rule = "object_non_empty" { fn::validation_object_non_empty($value) }
-        ELSE IF $step.rule = "object_values_type" { fn::validation_object_values_type($value, $options.expected_type, $options.allow_empty) }
+        ELSE IF $step.rule = "object_values_type" { fn::validation_object_values_type($value, $options.expected_type, $options.allow_empty, $options.max_length) }
         ELSE IF $step.rule = "odd" { fn::validation_odd($value) }
         ELSE IF $step.rule = "optional_string" { fn::validation_optional_string($value, $options.min_length, $options.max_length) }
         ELSE IF $step.rule = "origin" { fn::validation_origin($value, $options.allow_http, $options.allow_https, $options.allow_port) }

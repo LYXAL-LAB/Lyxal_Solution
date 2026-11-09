@@ -62,6 +62,12 @@ DEFINE FUNCTION OVERWRITE fn::auth_flow_start($params: object) {
     };
     LET $p = $report.value;
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
+    -- Parcours ouverts sans authentification (récupération, connexion par passkey) : au plus 30
+    -- par minute pour une même adresse IP (contre le remplissage de la base)
+    IF $p.type IN ["recovery", "passkey_login"] AND $p.client.ip IS NOT NONE
+        AND count(SELECT id FROM auth_flow WHERE client.ip = $p.client.ip AND type IN ["recovery", "passkey_login"] AND created_at > time::now() - 1m) >= 30 {
+        RETURN fn::error_result("AUTH_TOO_MANY_ATTEMPTS", $p.language, { reason: "flow_rate" });
+    };
     LET $initial = $p.state ?? (IF $p.type IN ["verification", "recovery", "address_change"] { "code_sent" } ELSE { "started" });
     LET $ttl = fn::auth_policy_value({ theme: "flow", key: "ttl_seconds", default: 900, organization: $p.organization });
     LET $flow = (CREATE ONLY type::record("auth_flow", string::replace(<string> rand::uuid::v7(), "-", "")) CONTENT {
@@ -172,11 +178,20 @@ DEFINE FUNCTION OVERWRITE fn::auth_code_issue($params: object) {
     IF !$report.valid OR (($report.value.event_id IS NONE) != ($report.value.secret IS NONE)) {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { code_hash: { pipeline: [{ rule: "lowercase" }] }, link_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     LET $loaded = fn::auth_flow_load({ flow: $p.flow });
     IF $loaded.code IS NOT NONE { RETURN fn::error_result($loaded.code, $p.language, {}); };
     LET $organization = $loaded.flow.organization;
+    LET $address = fn::sanitize_pipeline_execute($p.address, [{ rule: "email" }], 5);
+    -- Plafond d'envoi par adresse et par usage (contre la force brute et l'inondation), que
+    -- l'adresse corresponde ou non à un compte
+    LET $now = time::now();
+    LET $issued = (SELECT VALUE created_at FROM auth_code_issuance WHERE address = $address AND purpose = $p.purpose AND created_at > $now - 1d);
+    IF array::len($issued) >= 10 OR array::len(array::filter($issued, |$t| $t > $now - 1h)) >= 3 OR array::any($issued, |$t| $t > $now - 1m) {
+        RETURN fn::error_result("AUTH_TOO_MANY_ATTEMPTS", $p.language, { reason: "code_issuance" });
+    };
+    CREATE auth_code_issuance CONTENT { address: $address, purpose: $p.purpose };
     -- Un seul code actif par (parcours, usage) : les précédents sont invalidés
     UPDATE auth_one_time_code SET consumed_at = time::now() WHERE flow = $p.flow AND purpose = $p.purpose AND consumed_at IS NONE;
     LET $ttl = fn::auth_policy_value({ theme: "code", key: "ttl_seconds", default: 900, organization: $organization });
@@ -184,16 +199,16 @@ DEFINE FUNCTION OVERWRITE fn::auth_code_issue($params: object) {
     LET $code = (CREATE ONLY type::record("auth_one_time_code", string::replace(<string> rand::uuid::v7(), "-", "")) CONTENT {
         flow: $p.flow,
         purpose: $p.purpose,
-        address: fn::sanitize_pipeline_execute($p.address, [{ rule: "email" }], 5),
-        code_hash: IF $p.code_hash IS NONE { NONE } ELSE { string::lowercase($p.code_hash) },
-        link_hash: string::lowercase($p.link_hash),
+        address: $address,
+        code_hash: IF $p.code_hash IS NONE { NONE } ELSE { $p.code_hash },
+        link_hash: $p.link_hash,
         max_attempts: $max,
         expires_at: time::now() + duration::from_secs($ttl),
         delivery: IF $p.event_id IS NONE { NONE } ELSE { { event_id: <string> $p.event_id, secret: $p.secret, locale: $p.locale, name: $p.name } }
     });
     IF $code == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_one_time_code" }); };
     RETURN fn::result_ok({ code: $code.id, expires_at: $code.expires_at });
-} COMMENT "Émet un code et un lien à usage unique ({ flow, purpose, address, code_hash, link_hash, event_id, secret enc:v2, locale, name }) ; message publié avec le secret scellé (jamais conservé) ; précédent code invalidé. Session système";
+} COMMENT "Émet un code et un lien à usage unique ({ flow, purpose, address, code_hash, link_hash, event_id, secret enc:v2, locale, name }) ; message publié avec le secret scellé (jamais conservé), sans message si event_id et secret sont absents (code factice) ; précédent code invalidé ; au plus 1 code par minute, 3 par heure et 10 par jour pour une adresse et un usage (AUTH_TOO_MANY_ATTEMPTS). Session système";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_code_verify
@@ -214,20 +229,25 @@ DEFINE FUNCTION OVERWRITE fn::auth_code_verify($params: object) {
     IF !$report.valid OR ($report.value.link_hash IS NONE AND ($report.value.code_hash IS NONE OR $report.value.flow IS NONE)) {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { code_hash: { pipeline: [{ rule: "lowercase" }] }, link_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     LET $now = time::now();
     LET $code = IF $p.link_hash IS NOT NONE {
-        (SELECT * FROM ONLY auth_one_time_code WHERE link_hash = string::lowercase($p.link_hash) AND purpose = $p.purpose LIMIT 1)
+        (SELECT * FROM ONLY auth_one_time_code WHERE link_hash = $p.link_hash AND purpose = $p.purpose LIMIT 1)
     } ELSE {
         (SELECT * FROM ONLY auth_one_time_code WHERE flow = $p.flow AND purpose = $p.purpose AND consumed_at IS NONE ORDER BY created_at DESC LIMIT 1)
     };
     IF $code == NONE OR $code.consumed_at IS NOT NONE { RETURN fn::error_result("AUTH_CODE_INVALID", $p.language, {}); };
     IF $code.expires_at <= $now { RETURN fn::error_result("AUTH_CODE_EXPIRED", $p.language, {}); };
     IF $code.attempts >= $code.max_attempts { RETURN fn::error_result("AUTH_TOO_MANY_ATTEMPTS", $p.language, {}); };
-    IF $p.link_hash IS NONE AND $code.code_hash != string::lowercase($p.code_hash) {
-        UPDATE $code.id SET attempts += 1;
-        RETURN fn::error_result("AUTH_CODE_INVALID", $p.language, { attempts_left: $code.max_attempts - $code.attempts - 1 });
+    IF $p.link_hash IS NONE {
+        -- Essai compté avant la comparaison, par une écriture conditionnelle : des essais
+        -- simultanés ne dépassent pas le plafond
+        LET $counted = (UPDATE ONLY $code.id SET attempts += 1 WHERE attempts < max_attempts AND consumed_at IS NONE);
+        IF $counted == NONE { RETURN fn::error_result("AUTH_TOO_MANY_ATTEMPTS", $p.language, {}); };
+        IF $code.code_hash != $p.code_hash {
+            RETURN fn::error_result("AUTH_CODE_INVALID", $p.language, { attempts_left: $counted.max_attempts - $counted.attempts });
+        };
     };
     -- Consommation conditionnelle : un code présenté deux fois en même temps ne sert qu'une fois
     LET $consumed = (UPDATE ONLY $code.id SET consumed_at = $now WHERE consumed_at IS NONE);
@@ -235,4 +255,4 @@ DEFINE FUNCTION OVERWRITE fn::auth_code_verify($params: object) {
     LET $flow = (SELECT * FROM ONLY $code.flow);
     IF $flow == NONE OR $flow.expires_at <= $now OR $flow.state IN ["completed", "failed"] { RETURN fn::error_result("AUTH_FLOW_EXPIRED", $p.language, {}); };
     RETURN fn::result_ok({ flow: $flow.id, type: $flow.type, identity: $flow.identity, address: $code.address, purpose: $code.purpose });
-} COMMENT "Vérifie un code ({ flow, code_hash }) ou un lien ({ link_hash }) à usage unique ({ purpose }) : expiration, tentatives (code faux compté), consommation unique. Session système";
+} COMMENT "Vérifie un code ({ flow, code_hash }) ou un lien ({ link_hash }) à usage unique ({ purpose }) : expiration, tentatives (chaque code présenté compté avant comparaison), consommation unique. Session système";

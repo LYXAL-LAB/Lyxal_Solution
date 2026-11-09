@@ -51,12 +51,12 @@ pub(crate) fn store_error(function: &'static str, err: LyxalSurrealError) -> Run
     }
 }
 
-/// Code levé par `THROW` quand une écriture sous bail est refusée. SurrealDB ne le transmet que
-/// dans le texte de l'erreur ; c'est le seul endroit qui l'y reconnaît.
+/// Code levé par `THROW` quand une écriture sous bail est refusée ; `call_fn` le renvoie en
+/// erreur métier.
 const LEASE_FENCED_CODE: &str = "RUNTIME_LEASE_FENCED";
 
 fn is_lease_fenced(err: &LyxalSurrealError) -> bool {
-    err.to_string().contains(LEASE_FENCED_CODE)
+    err.is_business_code(LEASE_FENCED_CODE)
 }
 
 impl LyxalSurrealCall for SurrealRuntimeStore {

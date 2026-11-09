@@ -644,17 +644,20 @@ fn user_uuid(identity: &str) -> AuthResult<Uuid> {
 }
 
 fn totp_config(public: &serde_json::Value) -> AuthResult<TotpConfig> {
-    let algorithm = match public["algorithm"].as_str().unwrap_or("SHA1") {
+    // Paramètres enregistrés à l'enrôlement, exigés : aucune valeur par défaut sur une donnée
+    // stockée
+    let invalid = || AuthError::Rejected("AUTH_CRYPTO_ERROR");
+    let algorithm = match public["algorithm"].as_str().ok_or_else(invalid)? {
         "SHA1" => lyxal_crypto::TotpAlgorithm::Sha1,
         "SHA256" => lyxal_crypto::TotpAlgorithm::Sha256,
-        _ => return Err(AuthError::Rejected("AUTH_CRYPTO_ERROR")),
+        _ => return Err(invalid()),
     };
     Ok(TotpConfig {
         algorithm,
-        digits: u8::try_from(public["digits"].as_u64().unwrap_or(6))
-            .map_err(|_| AuthError::Rejected("AUTH_CRYPTO_ERROR"))?,
-        step_seconds: u32::try_from(public["step_seconds"].as_u64().unwrap_or(30))
-            .map_err(|_| AuthError::Rejected("AUTH_CRYPTO_ERROR"))?,
+        digits: u8::try_from(public["digits"].as_u64().ok_or_else(invalid)?)
+            .map_err(|_| invalid())?,
+        step_seconds: u32::try_from(public["step_seconds"].as_u64().ok_or_else(invalid)?)
+            .map_err(|_| invalid())?,
     })
 }
 

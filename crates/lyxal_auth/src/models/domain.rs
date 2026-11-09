@@ -5,7 +5,7 @@ use lyxal_surreal::SurrealValue;
 use super::types::{AuthDatetime, AuthRecordId};
 
 /// Paramètres de `fn::auth_organization_domain_add` (construits par `DomainVerifier`).
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct DomainAddParams {
     /// Organisation (texte).
     pub organization: String,
@@ -14,6 +14,11 @@ pub struct DomainAddParams {
     /// Empreinte BLAKE3 (hex) du jeton de défi.
     pub challenge_hash: String,
 }
+
+crate::models::redacted_debug!(DomainAddParams {
+    shown: [organization, domain],
+    hidden: [challenge_hash]
+});
 
 /// Domaine déclaré, renvoyé par `fn::auth_organization_domain_add`.
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
@@ -27,13 +32,18 @@ pub struct OrganizationDomainCreated {
 }
 
 /// Paramètres de `fn::auth_organization_domain_verify`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct DomainVerifyParams {
     /// Domaine (texte `auth_organization_domain:<clé>`).
     pub domain: String,
     /// Empreintes BLAKE3 (hex) des enregistrements TXT lus.
     pub observed_hashes: Vec<String>,
 }
+
+crate::models::redacted_debug!(DomainVerifyParams {
+    shown: [domain],
+    hidden: [observed_hashes]
+});
 
 /// Paramètres de `fn::auth_organization_domain_get`.
 #[derive(Debug, Clone, SurrealValue)]

@@ -21,6 +21,8 @@ async fn invitation_link_is_sealed_published_and_never_stored() {
     let store = installed_store().await;
     let organization = store
         .organization_create(OrganizationCreateParams {
+            branding: None,
+            custom_data: None,
             slug: "alpha".into(),
             name: "Alpha".into(),
             description: None,
@@ -67,7 +69,7 @@ async fn invitation_link_is_sealed_published_and_never_stored() {
     let link: serde_json::Value = serde_json::from_slice(opened.expose_secret()).expect("JSON");
     let url = link["action_url"].as_str().expect("action_url");
     let token = url
-        .strip_prefix("https://lyxal.test/invitations/accept?token=")
+        .strip_prefix("https://lyxal.test/invitations/accept#token=")
         .expect("préfixe")
         .to_string();
     assert_eq!(token.len(), 43, "32 octets en Base64 URL sans remplissage");

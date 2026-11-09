@@ -1,13 +1,14 @@
 # `lyxal_auth` — modèle cible composé à partir des projets sources
 
-Correspondance entre les projets sources et le modèle de `lyxal_auth` (référence des lots à
-venir ; l'état réalisé est décrit par le [`README.md`](README.md)). Principe
+Correspondance entre les projets sources et le modèle de `lyxal_auth` (référence des évolutions
+V2 et V3 ; l'état réalisé est décrit par le [`README.md`](README.md)). Principe
 décidé par le CTO : **on ne réinvente pas la structure**. Le modèle de données et les
 fonctionnalités sont repris de projets mûrs, puis transcrits en SurrealDB et Rust selon les
 règles Lyxal (`.agents/AGENTS.md`). Aucun de ces projets n'est déployé à côté de Lyxal.
 
-Les tables du lot 2 existent (README §1) ; les tables des lots 3 et 4 sont décrites ici avant leur
-plan détaillé.
+Les tables de la V1 existent (README §1). Celles qui n'existent pas encore
+(`auth_session_device`, `auth_authorization_code`, `auth_identity_provider`,
+`auth_federated_identity`) relèvent de la V2 ([`ROADMAP.md`](ROADMAP.md)).
 
 ## 1. Sources et analyses détaillées
 
@@ -93,41 +94,50 @@ Logto), les traductions (`lyxal_i18n`), les purges planifiées (`LyxalWorker`, p
 
 ## 3. Fonctionnalités et découpage
 
-| Fonctionnalité | Origine | Lot proposé |
+| Fonctionnalité | Origine | Statut |
 | :--- | :--- | :--- |
-| Inscription, connexion par mot de passe (Argon2id `lyxal_crypto`), vérification d'adresse, récupération de compte | Kratos, Logto | V1 |
-| Organisations, membres, invitations, rôles et permissions par organisation | Logto, Keycloak | V1 |
-| Remplacement de `catalogue_session`, `ingestion_session` et de l'accès `lyxal_catalogue_sync` | — | V1 |
-| Sessions, niveaux d'assurance (AAL/AMR), sessions privilégiées pour actions sensibles | Kratos | V1 |
-| Actions imposées (CGU, MFA obligatoire, changement de mot de passe) | Keycloak | V1 |
-| Anti-force-brute, politique de mot de passe | Keycloak, Rauthy, Logto | V1 |
-| Applications clientes, secrets hachés, comptes de service et clés d'API | Logto, Rauthy | V1 |
-| Jetons d'accès vérifiés par SurrealDB (`DEFINE ACCESS`), renouvellement à usage unique | Rauthy | V1 |
-| Double facteur TOTP, passkeys, codes de secours | Logto, Kratos, Rauthy | V1 ou V2 (selon décision crypto §4) |
+| Inscription, connexion par mot de passe (Argon2id `lyxal_crypto`), vérification d'adresse, récupération de compte | Kratos, Logto | réalisé |
+| Organisations, membres, invitations, rôles et permissions par organisation | Logto, Keycloak | réalisé |
+| Remplacement de `catalogue_session`, `ingestion_session` et de l'accès `lyxal_catalogue_sync` | — | réalisé |
+| Sessions, niveaux d'assurance (AAL/AMR), sessions privilégiées pour actions sensibles | Kratos | réalisé |
+| Actions imposées (CGU, MFA obligatoire, changement de mot de passe) | Keycloak | réalisé |
+| Anti-force-brute, politique de mot de passe | Keycloak, Rauthy, Logto | réalisé |
+| Applications clientes, secrets hachés, comptes de service et clés d'API | Logto, Rauthy | réalisé |
+| Jetons d'accès vérifiés par SurrealDB (`DEFINE ACCESS`), renouvellement à usage unique | Rauthy | réalisé |
+| Double facteur TOTP, passkeys, codes de secours | Logto, Kratos, Rauthy | réalisé |
 | Connexion par fournisseur externe (Microsoft, Google, OIDC d'un client) | Keycloak, Rauthy, Logto | V2 |
-| Lyxal fournisseur OpenID Connect pour des applications tierces (découverte, JWKS publiques) | Rauthy | V2 (selon décision crypto §4) |
+| Lyxal fournisseur OpenID Connect pour des applications tierces (découverte, JWKS publiques) | Rauthy | V2 (signature asymétrique à valider par le CTO, §4) |
 | Appareils de confiance, MFA adaptative, consentement, emprunt d'identité encadré | Logto | V2 |
 | SSO entreprise SAML, parcours configurables en arbre, provisionnement SCIM | Logto, Keycloak, Rauthy | V3 |
 | Écrans de la console (charte §15) | Logto (console) | lot console dédié |
 
-## 4. Décisions à prendre par le CTO
+## 4. Décisions
 
-1. **Extensions cryptographiques** (règle §11.3 : rien sans validation). Les trois analyses
-   concluent que `lyxal_crypto` ne couvre pas :
-   * la **signature à clé publique des jetons** : Rauthy utilise EdDSA, Kanidm ES256, et la norme
-     OpenID Connect impose RS256 aux fournisseurs. Sans elle, Lyxal vérifie ses propres jetons
-     (HMAC, déjà disponible) mais ne peut pas en émettre pour des tiers ;
-   * le **TOTP** (codes des applications d'authentification), fondé sur HMAC-SHA1 ;
-   * les **passkeys** : vérification de signatures ECDSA P-256, Ed25519, RSA, portée par la
-     bibliothèque `webauthn-rs` (auditée, utilisée par Kanidm et Rauthy) ;
-   * la vérification d'anciens hachages (bcrypt, pbkdf2, scrypt), seulement si l'on importe des
-     comptes existants.
-2. **Isolation des locataires** : champ `tenant` contrôlé par les `PERMISSIONS` de chaque table
-   (modèle Logto transposé), ou un espace SurrealDB (namespace/database) par locataire.
-3. **Tables de relation** : décidé — tables `TYPE RELATION` pour les associations (adhésions,
-   rôles, rôles composites, permissions des rôles).
-4. **Fournisseur OpenID Connect pour des tiers** : en V2 (dépend du point 1) ou plus tard.
-5. **Connexions sortantes** : création d'un module `lyxal_connect` (comptes connectés vers des
-   services externes), séparé de `lyxal_auth` ; voir [`../lyxal_connect/RECHERCHE_SOURCES.md`](../lyxal_connect/RECHERCHE_SOURCES.md).
-   `lyxal_auth` étant en dessous, il garde sa propre configuration des fournisseurs OIDC
-   (recommandé, §6 de `AGENTS.md`).
+Les décisions du programme (D1 à D10) sont dans `implementation_plan.md` à la racine. Pour les
+évolutions :
+
+1. **Cryptographie** (règle §11.3 : rien sans validation du CTO). Réalisé : TOTP dans
+   `lyxal_crypto`, passkeys par `webauthn-rs`. Reste à décider pour la V2 : la **signature à clé
+   publique des jetons** (EdDSA chez Rauthy, ES256 chez Kanidm, RS256 imposé par OpenID Connect
+   aux fournisseurs), nécessaire pour émettre des jetons vérifiables par des tiers. La
+   vérification d'anciens hachages (bcrypt, pbkdf2, scrypt) n'est utile que pour importer des
+   comptes existants.
+2. **Isolation des locataires** : champ `tenant` contrôlé par les `PERMISSIONS` de chaque table.
+3. **Tables de relation** : tables `TYPE RELATION` pour les associations (D5).
+4. **Fournisseur OpenID Connect pour des tiers** : V2, après la décision du point 1.
+5. **Connexions sortantes** : module `lyxal_connect` créé plus tard (D7) ; `lyxal_auth` garde sa
+   propre configuration des fournisseurs de connexion.
+
+## 5. Bibliothèques Rust et sources complémentaires
+
+| Brique | Bibliothèque | Licence, état | Usage |
+| :--- | :--- | :--- | :--- |
+| Mots de passe, HMAC, aléa, TOTP | `lyxal_crypto` (Argon2id, `hmac`, `OsRng`, `totp`) | interne, API figée | **Obligatoire** (§11.3 des standards) |
+| Passkeys / WebAuthn | [webauthn-rs](https://github.com/kanidm/webauthn-rs) | MPL-2.0 ; audité par SUSE ; utilisé par Kanidm | **Dépendance** non modifiée (la licence MPL ne contamine pas notre code) |
+| Connexion par fournisseur externe (V2) | [openidconnect](https://crates.io/crates/openidconnect), [oauth2](https://crates.io/crates/oauth2) | MIT / Apache-2.0 ; activité à surveiller | Dépendance côté client OIDC |
+| Règles d'accès fines (plus tard) | [Cedar](https://github.com/cedar-policy/cedar) | Rust, Apache-2.0 | Option si les rôles ne suffisent plus (règles par attribut ou par objet) |
+| Droits par relation, façon Zanzibar | OpenFGA, SpiceDB | Go, Apache-2.0 | Modèle seulement : la même logique s'exprime en relations SurrealDB |
+
+Autres produits étudiés : SuperTokens (Apache-2.0 hors `ee/`, rotation des jetons de
+renouvellement), authentik (MIT hors `enterprise/`, référence secondaire). ZITADEL (AGPL-3.0
+depuis la v3) est écarté comme source de code.

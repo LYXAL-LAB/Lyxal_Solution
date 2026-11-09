@@ -119,11 +119,11 @@ async fn login_mfa(
     let result = async {
         let host = host(&context)?;
         let proof = mfa_proof(body, Some(&flow))?;
-        let tokens = host
+        let outcome = host
             .access
-            .complete_login_mfa(&flow, proof, client_info(&headers, address))
+            .complete_login_mfa(&flow, proof, client_info(&context, &headers, address))
             .await?;
-        ok(StatusCode::OK, tokens_json(&tokens))
+        ok(StatusCode::OK, outcome_json(&outcome))
     }
     .await;
     respond(&context, &headers, result).await
@@ -174,7 +174,11 @@ async fn passkey_login(
         let host = host(&context)?;
         let outcome = host
             .access
-            .passkey_login(&body.flow, body.response, client_info(&headers, address))
+            .passkey_login(
+                &body.flow,
+                body.response,
+                client_info(&context, &headers, address),
+            )
             .await?;
         ok(StatusCode::OK, outcome_json(&outcome))
     }

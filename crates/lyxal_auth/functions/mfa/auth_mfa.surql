@@ -374,7 +374,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_mfa_recovery_codes_replace($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { batch: { pipeline: [{ rule: "lowercase" }] }, code_hashes: { pipeline: [{ rule: "each", options: { pipeline: [{ rule: "lowercase" }] } }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     LET $actor = fn::auth_mfa_actor({ session: $p.session, flow: $p.flow, sensitive: true });
     IF $actor.code IS NOT NONE { RETURN fn::error_result($actor.code, $p.language, $actor.details); };
@@ -384,7 +384,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_mfa_recovery_codes_replace($params: object) {
     -- Les codes de secours complètent un second facteur ; ils ne le remplacent pas
     IF ((SELECT VALUE available_aal FROM ONLY $actor.identity) ?? 0) < 2 { RETURN fn::error_result("AUTH_MFA_NOT_ENROLLED", $p.language, { method: "recovery_code" }); };
     DELETE auth_recovery_code WHERE identity = $actor.identity;
-    LET $created = (INSERT INTO auth_recovery_code array::map($p.code_hashes, |$h| { identity: $actor.identity, batch: string::lowercase($p.batch), code_hash: string::lowercase($h) }) RETURN id);
+    LET $created = (INSERT INTO auth_recovery_code array::map($p.code_hashes, |$h| { identity: $actor.identity, batch: $p.batch, code_hash: $h }) RETURN id);
     IF array::len($created) != array::len($p.code_hashes) { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_recovery_code" }); };
     fn::auth_mfa_publish({ event_type: "auth.mfa.recovery_codes_generated", identity: $actor.identity, data: { count: array::len($created) } });
     RETURN fn::result_ok({ identity: $actor.identity, count: array::len($created) });
@@ -402,11 +402,11 @@ DEFINE FUNCTION OVERWRITE fn::auth_mfa_recovery_code_use($params: object) {
     IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
-    LET $p = $report.value;
+    LET $p = fn::sanitize_object_execute($report.value, { fields: { code_hash: { pipeline: [{ rule: "lowercase" }] } }, unknown_keys: "keep" }, 20);
     IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
     -- Consommation atomique : deux présentations simultanées du même code n'en valident qu'une
     LET $used = (UPDATE auth_recovery_code SET used_at = time::now()
-        WHERE identity = $p.identity AND code_hash = string::lowercase($p.code_hash) AND used_at IS NONE RETURN id);
+        WHERE identity = $p.identity AND code_hash = $p.code_hash AND used_at IS NONE RETURN id);
     IF array::len($used) = 0 { RETURN fn::error_result("AUTH_MFA_INVALID", $p.language, {}); };
     LET $remaining = array::len(SELECT VALUE id FROM auth_recovery_code WHERE identity = $p.identity AND used_at IS NONE);
     fn::auth_mfa_publish({ event_type: "auth.mfa.recovery_code_used", identity: $p.identity, data: { remaining: $remaining, low: $remaining <= 2 } });

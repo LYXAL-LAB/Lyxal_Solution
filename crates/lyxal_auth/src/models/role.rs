@@ -25,6 +25,8 @@ pub struct PermissionRegisterParams {
     pub scope: PermissionScope,
     /// Description par langue (`{ fr, en }`).
     pub description: AuthValue,
+    /// Niveau d'assurance minimal (1 défaut, 2 : double facteur exigé).
+    pub min_aal: Option<i64>,
 }
 
 /// Résultat de `fn::auth_permission_register`.

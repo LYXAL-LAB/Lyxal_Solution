@@ -18,9 +18,9 @@ DEFINE TABLE OVERWRITE auth_member_of
         FOR select WHERE ($auth IS NOT NONE AND in = $auth.identity)
             OR fn::auth_has_permission({ permission: "auth.organization.manage" })
             OR fn::auth_has_permission({ permission: "auth.member.read", tenant: out })
+        -- Une invitation est acceptée par fn::auth_invitation_accept (jeton vérifié par la base)
         FOR create WHERE fn::auth_has_permission({ permission: "auth.organization.manage" })
             OR fn::auth_has_permission({ permission: "auth.member.manage", tenant: out })
-            OR ($auth IS NOT NONE AND in = $auth.identity AND fn::auth_invitation_pending({ organization: out }))
         FOR update, delete WHERE fn::auth_has_permission({ permission: "auth.organization.manage" })
             OR fn::auth_has_permission({ permission: "auth.member.manage", tenant: out })
     COMMENT "Adhésion d'une identité à une organisation";
@@ -63,10 +63,7 @@ DEFINE TABLE OVERWRITE auth_has_role
                 OR (in.tenant IS NOT NONE AND fn::auth_has_permission({ permission: "auth.organization.role.manage", tenant: in.tenant }))))
             OR (record::tb(in) = "auth_member_of" AND (fn::auth_has_permission({ permission: "auth.organization.manage" })
                 OR fn::auth_has_permission({ permission: "auth.organization.role.manage", tenant: in.out })
-                OR (out.is_default AND fn::auth_has_permission({ permission: "auth.member.manage", tenant: in.out }))
-                OR ($auth IS NOT NONE AND in.in = $auth.identity AND (
-                    (out.is_default AND fn::auth_invitation_pending({ organization: in.out }))
-                    OR fn::auth_invitation_pending({ organization: in.out, role: out })))))
+                OR (out.is_default AND fn::auth_has_permission({ permission: "auth.member.manage", tenant: in.out }))))
         FOR update NONE
     COMMENT "Rôle attribué à une identité (installation) ou à une adhésion (organisation)";
 
@@ -158,4 +155,23 @@ DEFINE EVENT OVERWRITE auth_role_grants_guard ON TABLE auth_role_grants
 WHEN $event = "CREATE"
 THEN {
     IF (SELECT VALUE scope FROM ONLY $after.in) != (SELECT VALUE scope FROM ONLY $after.out) { THROW "AUTH_ROLE_SCOPE_MISMATCH"; };
+};
+
+-- ----------------------------------------------------------------------------
+-- Compteurs d'identité (événements de la base : ils voient toutes les adhésions, ce que la session
+-- d'un administrateur d'organisation ne voit pas) ; lus par fn::auth_org_admin_can_manage
+-- ----------------------------------------------------------------------------
+
+DEFINE EVENT OVERWRITE auth_member_of_count ON TABLE auth_member_of
+WHEN $event = "CREATE" OR $event = "DELETE"
+THEN {
+    LET $identity = IF $event = "DELETE" { $before.in } ELSE { $after.in };
+    UPDATE $identity SET membership_count = count(SELECT id FROM auth_member_of WHERE in = $identity);
+};
+
+DEFINE EVENT OVERWRITE auth_has_role_installation_count ON TABLE auth_has_role
+WHEN ($event = "CREATE" AND record::tb($after.in) = "auth_identity") OR ($event = "DELETE" AND record::tb($before.in) = "auth_identity")
+THEN {
+    LET $identity = IF $event = "DELETE" { $before.in } ELSE { $after.in };
+    UPDATE $identity SET installation_role_count = count(SELECT id FROM auth_has_role WHERE in = $identity);
 };

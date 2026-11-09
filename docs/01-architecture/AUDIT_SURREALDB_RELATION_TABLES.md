@@ -14,6 +14,10 @@
 > **Mise à jour (lot 5 de `lyxal_auth`) :** les tables `catalogue_session` et `ingestion_session`
 > décrites ci-dessous n'existent plus ; les deux modules s'appuient sur les sessions et
 > permissions de `lyxal_auth` (voir leurs `README.md`).  
+>
+> **Tables de relation de `lyxal_auth`** (hors périmètre de cet audit, décision D5 du programme
+> `lyxal_auth`) : `auth_member_of`, `auth_has_role`, `auth_role_includes`, `auth_role_grants`, en
+> `TYPE RELATION ... ENFORCED` (`crates/lyxal_auth/schema/13_auth_relations.surql`).  
 
 ---
 

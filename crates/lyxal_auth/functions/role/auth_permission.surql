@@ -17,12 +17,12 @@ DEFINE FUNCTION OVERWRITE fn::auth_permission_register($params: object) {
             module: { pipeline: [{ rule: "lyxal_module_name", options: { min_length: 3, max_length: 64 } }], required: true },
             scope: { pipeline: [{ rule: "enum", options: { allowed: ["installation", "organization"], case_sensitive: true } }], required: true },
             min_aal: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 2 } }], default: 1 },
-            description: { pipeline: [{ rule: "is_object" }], default: {} },
+            description: { pipeline: [{ rule: "object_values_type", options: { expected_type: "string", allow_empty: true, max_length: 512 } }], default: {} },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
     }, 20);
-    IF !$report.valid OR array::any(object::values($report.value.description ?? {}), |$d| !type::is_string($d) OR string::len($d) > 512) {
+    IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;
@@ -50,13 +50,13 @@ DEFINE FUNCTION OVERWRITE fn::auth_permission_update($params: object) {
     LET $report = fn::validation_object_execute($params, {
         fields: {
             code: { pipeline: [{ rule: "lyxal_permission_name" }], required: true },
-            description: { pipeline: [{ rule: "is_object" }] },
+            description: { pipeline: [{ rule: "object_values_type", options: { expected_type: "string", allow_empty: true, max_length: 512 } }] },
             min_aal: { pipeline: [{ rule: "integer", options: { min_value: 1, max_value: 2 } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
     }, 20);
-    IF !$report.valid OR array::any(object::values($report.value.description ?? {}), |$d| !type::is_string($d) OR string::len($d) > 512) {
+    IF !$report.valid {
         RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
     };
     LET $p = $report.value;

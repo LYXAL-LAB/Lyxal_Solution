@@ -35,6 +35,14 @@ RETURN fn::auth_policy_save({ organization: "auth_organization:alpha", password:
 -- test: politique effective d'alpha : surcharge champ par champ
 RETURN fn::auth_policy_get({ organization: "auth_organization:alpha" }).data.{ m: password.min_length, h: password.history, f: lockout.max_failures, mfa: mfa.required } == { m: 16, h: 5, f: 5, mfa: true };
 
+-- test: durées de session par défaut (ASVS niveau 2) : inactivité 30 min, absolue et renouvellement 12 h
+RETURN fn::auth_policy_get({}).data.{ i: session.idle_seconds, a: session.absolute_seconds, r: refresh.ttl_seconds } == { i: 1800, a: 43200, r: 43200 };
+
+-- test: une organisation raccourcit ses sessions mais ne les allonge pas au-delà de l'installation
+-- en tant que: alpha
+RETURN fn::auth_policy_save({ organization: "auth_organization:alpha", session: { idle_seconds: 900, absolute_seconds: 604800 }, refresh: { ttl_seconds: 2592000 } }).ok
+    AND fn::auth_policy_get({ organization: "auth_organization:alpha" }).data.{ i: session.idle_seconds, a: session.absolute_seconds, r: refresh.ttl_seconds } == { i: 900, a: 43200, r: 43200 };
+
 -- test: beta garde la politique de l'installation
 RETURN fn::auth_policy_get({ organization: "auth_organization:beta" }).data.password.min_length == 12;
 

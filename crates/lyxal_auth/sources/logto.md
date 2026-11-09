@@ -1,7 +1,7 @@
 # Rapport d'analyse — Logto comme modèle de conception pour `lyxal_auth`
 
 > Source analysée : dépôt Logto (MPL-2.0), commit `9b4106d5740b96be9f36b6d2303d3c1c10109325` (6 nov. 2026), dernière alteration `1.46.0`.
-> Racine : `sources/logto/` (chemins ci-dessous relatifs à cette racine).
+> Chemins ci-dessous relatifs à la racine du dépôt Logto analysé (non copié dans Lyxal).
 > Objectif : reprendre la **conception** (tables, champs, relations, fonctionnalités) — pas de traduction de code (MPL-2.0 = copyleft par fichier).
 
 ---
@@ -413,7 +413,7 @@ Chaque paquet a la forme `connector-xxx/src/{index.ts, constant.ts (defaultMetad
 | Koa, Slonik, Zod, i18next, sessions par cookies | partout | Validation d'entrée ⇒ `lyxal_core` (`fn::validation_object_execute`) ; i18n ⇒ `lyxal_i18n` ; erreurs ⇒ master data `AUTH_*`. |
 | Fonctionnalités **cloud uniquement** (quotas, DAU agrégés, `service_logs`, `routes-me/tenant*`, `logto-email`, Cloudflare domaines) | `libraries/quota.ts`, `subscription.ts`, `utils/cloudflare/` | Hors périmètre `lyxal_auth` V1. |
 
-### 4.3. Recommandations de découpage pour `lyxal_auth`
+### 4.3. Découpage suggéré à l'analyse (référence ; modèle retenu : `MODELE_SOURCES.md`)
 
 1. **V1 (cœur)** : `tenant`/`auth_config`, `user` (+ `user_identity` normalisée sociale/SSO, `user_mfa_factor` normalisé au lieu de `mfa_verifications` JSON), `role`/`permission`/`resource` + relations, `organization` + template (rôles/scopes), adhésions, invitations, `application` + secrets hachés, sessions/grants/codes typés, `verification_code`, `verification_record`, `sentinel_activity` (verrouillage), `sign_in_policy` (scinder l'énorme `sign_in_experiences` : politique mot de passe, MFA, sentinel, code de vérification, branding).
 2. **V2** : `trusted_device`, MFA adaptatif (`user_sign_in_country`, `user_geo_location`), contrôle d'accès par application, consentement tiers, PAT, impersonation (`subject_token`), account center.
