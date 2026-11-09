@@ -116,6 +116,8 @@ DEFINE FUNCTION OVERWRITE fn::auth_purge($params: object) {
     LET $pending_ttl = duration::from_secs(fn::auth_policy_value({ theme: "flow", key: "ttl_seconds", default: 900 }));
     LET $pending = (SELECT VALUE id FROM auth_credential WHERE type = "totp" AND state = "pending" AND created_at <= $now - $pending_ttl LIMIT $p.limit);
     IF array::len($pending) > 0 { DELETE $pending; };
+    LET $claims = (SELECT VALUE id FROM auth_invitation_claim WHERE created_at <= $now - 1d LIMIT $p.limit);
+    IF array::len($claims) > 0 { DELETE $claims; };
     RETURN fn::result_ok({
         sessions_expired: array::len($expired_sessions),
         flows: array::len($flows),
@@ -123,6 +125,7 @@ DEFINE FUNCTION OVERWRITE fn::auth_purge($params: object) {
         sessions: array::len($sessions),
         login_failures: array::len($failures),
         invitations_expired: array::len($invitations),
-        pending_totp: array::len($pending)
+        pending_totp: array::len($pending),
+        invitation_claims: array::len($claims)
     });
-} COMMENT "Purge par paquets ({ limit, session_retention_days }) : sessions expirées marquées, parcours et codes expirés, jetons usés ou expirés, sessions terminées au-delà de la conservation, compteurs d'échecs anciens, invitations expirées, TOTP non confirmés. Session système";
+} COMMENT "Purge par paquets ({ limit, session_retention_days }) : sessions expirées marquées, parcours et codes expirés, jetons usés ou expirés, sessions terminées au-delà de la conservation, compteurs d'échecs anciens, invitations expirées, TOTP non confirmés, demandes d'acceptation de plus d'un jour. Session système";

@@ -4,7 +4,7 @@
 -- RÔLE   : Adresses vérifiables et de récupération d'une identité
 -- ============================================================================
 -- Modèle : Kratos `identity_verifiable_addresses` et `identity_recovery_addresses`. La
--- vérification elle-même (codes, liens) arrive au lot 3.
+-- vérification (codes, liens) passe par les parcours (`auth_flow`).
 
 DEFINE TABLE OVERWRITE auth_address
     TYPE NORMAL
@@ -13,10 +13,12 @@ DEFINE TABLE OVERWRITE auth_address
         FOR select WHERE ($auth IS NOT NONE AND identity = $auth.identity)
             OR fn::auth_has_permission({ permission: "auth.identity.read" })
             OR fn::auth_shares_organization({ identity: identity, permission: "auth.member.read" })
-        -- Un administrateur d'organisation ne touche qu'aux identités membres de son organisation
-        -- (une identité qu'il crée devient membre avant que ses identifiants soient écrits)
-        FOR create, update, delete WHERE fn::auth_has_permission({ permission: "auth.identity.manage" })
-            OR fn::auth_shares_organization({ identity: identity, permission: "auth.member.manage" })
+        -- Un administrateur d'organisation n'écrit que la première adresse de chaque usage d'une
+        -- identité qu'il crée dans son organisation ; une adresse de récupération ne change que par
+        -- auth.identity.manage (ou le parcours de changement d'adresse de la personne)
+        FOR create WHERE fn::auth_has_permission({ permission: "auth.identity.manage" })
+            OR fn::auth_org_admin_first_address({ identity: identity, channel: channel, usage: usage })
+        FOR update, delete WHERE fn::auth_has_permission({ permission: "auth.identity.manage" })
     COMMENT "Adresses vérifiables et de récupération des identités";
 
 DEFINE FIELD OVERWRITE identity ON TABLE auth_address

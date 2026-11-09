@@ -693,6 +693,8 @@ pub struct AuthPurgeResult {
     pub invitations_expired: i64,
     /// TOTP jamais confirmés supprimés.
     pub pending_totp: i64,
+    /// Demandes d'acceptation d'invitation supprimées.
+    pub invitation_claims: i64,
 }
 
 /// Paramètres de `fn::auth_session_check`.

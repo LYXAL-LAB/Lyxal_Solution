@@ -7,6 +7,7 @@
 -- identité plateforme: { "id": "auth_session:plateforme", "pv": 1, "permissions": ["auth.application.manage", "auth.role.manage", "auth.identity.manage"] }
 -- identité alpha_admin: { "id": "auth_session:alpha_admin", "pv": 1, "permissions": ["auth.organization.application.manage", "auth.organization.role.manage", "auth.member.read", "auth.self.manage"] }
 -- identité claire: { "id": "auth_session:claire", "pv": 1, "permissions": ["auth.member.read", "auth.self.manage"] }
+-- identité claire_ancienne: { "id": "auth_session:claire_ancienne", "pv": 1, "permissions": ["auth.member.read", "auth.self.manage"] }
 -- identité service: { "id": "auth_session:service", "pv": 1, "permissions": ["auth.identity.read"] }
 
 -- préparation: organisation, identités, sessions, rôle de service
@@ -20,6 +21,7 @@
     fn::auth_identity_create({ traits: { email: "claire@exemple.fr" }, organization: "auth_organization:alpha" });
     LET $claire = (SELECT VALUE identity FROM ONLY auth_credential_identifier WHERE value = "claire@exemple.fr" LIMIT 1);
     CREATE auth_session:claire CONTENT { identity: $claire, organization: auth_organization:alpha, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:claire_ancienne CONTENT { identity: $claire, organization: auth_organization:alpha, authenticated_at: time::now() - 1d, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
     CREATE auth_role:lecteur_identites CONTENT { scope_key: "installation", key: "lecteur_identites", name: "Lecteur", scope: "installation", kind: "service" };
     RELATE auth_role:lecteur_identites->auth_role_grants->auth_permission:⟨auth.identity.read⟩;
     DEFINE TABLE test_ref SCHEMALESS PERMISSIONS FULL;
@@ -112,6 +114,9 @@ RETURN fn::auth_context({}).error.code == "AUTH_SESSION_STALE";
 -- test: application désactivée : ouverture de session refusée
 RETURN fn::auth_service_session_create({ client_id: test_ref:app.client_id, secret_hash: "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a", access_slot: "a" }).error.code == "AUTH_APPLICATION_INACTIVE";
 
+-- préparation: date d'invalidation des sessions avant la révocation du secret
+UPDATE test_ref:app SET not_before_avant = (SELECT VALUE not_before FROM ONLY test_ref:app.id_app);
+
 -- test: secret révoqué
 -- en tant que: plateforme
 {
@@ -119,6 +124,9 @@ RETURN fn::auth_service_session_create({ client_id: test_ref:app.client_id, secr
     RETURN fn::auth_application_secret_revoke({ secret: <string> $secret }).data.revoked
         AND !fn::auth_application_secret_revoke({ secret: <string> $secret }).data.revoked;
 };
+
+-- test: secret révoqué : les sessions de service antérieures sont invalidées (not_before)
+RETURN (SELECT VALUE not_before FROM ONLY test_ref:app.id_app) > test_ref:app.not_before_avant;
 
 -- test: clé d'API créée avec des permissions détenues ; permission non détenue refusée
 -- en tant que: claire
@@ -155,6 +163,35 @@ RETURN fn::auth_api_key_list({}).data.prefix == ["lyxk_cli"]
     LET $key = (SELECT VALUE id FROM ONLY auth_api_key WHERE prefix = "lyxk_cli" LIMIT 1);
     RETURN fn::auth_api_key_revoke({ api_key: <string> $key }).data.revoked;
 };
+
+-- test: une clé révoquée ne se réactive pas par écriture directe
+-- en tant que: claire
+-- attendu-erreur: AUTH_API_KEY_INVALID
+UPDATE auth_api_key SET revoked_at = NONE WHERE prefix = "lyxk_cli";
+
+-- test: écriture directe soumise aux règles de fn::auth_api_key_create (permission non détenue, autre organisation)
+-- en tant que: claire
+{
+    LET $claire = (SELECT VALUE identity FROM ONLY auth_session:claire);
+    CREATE auth_api_key CONTENT { identity: $claire, name: "Directe trop", key_hash: "2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a", prefix: "lyxk_tr1", permissions: ["auth.identity.manage"], organization: auth_organization:alpha };
+    CREATE auth_api_key CONTENT { identity: $claire, name: "Directe ailleurs", key_hash: "2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b", prefix: "lyxk_tr2", permissions: [] };
+    RETURN fn::auth_api_key_create_allowed({ organization: auth_organization:alpha, permissions: ["auth.member.read"] })
+        AND !fn::auth_api_key_create_allowed({ organization: auth_organization:alpha, permissions: ["auth.identity.manage"] })
+        AND !fn::auth_api_key_create_allowed({ organization: NONE, permissions: [] });
+};
+
+-- test: session dont l'authentification n'est pas récente : ni par la fonction ni directement
+-- en tant que: claire_ancienne
+{
+    LET $claire = (SELECT VALUE identity FROM ONLY auth_session:claire_ancienne);
+    CREATE auth_api_key CONTENT { identity: $claire, name: "Persistance", key_hash: "2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c", prefix: "lyxk_tr3", permissions: ["auth.member.read"], organization: auth_organization:alpha };
+    RETURN !fn::auth_api_key_create_allowed({ organization: auth_organization:alpha, permissions: ["auth.member.read"] })
+        AND fn::auth_api_key_create({ name: "Persistance", key_hash: "2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d", prefix: "lyxk_tr4", permissions: ["auth.member.read"] }).error.code == "AUTH_REAUTHENTICATION_REQUIRED";
+};
+
+-- test: aucune des clés directes n'a été créée, la clé révoquée le reste
+RETURN array::len(SELECT * FROM auth_api_key WHERE prefix IN ["lyxk_tr1", "lyxk_tr2", "lyxk_tr3", "lyxk_tr4"]) == 0
+    AND (SELECT VALUE revoked_at FROM ONLY auth_api_key WHERE prefix = "lyxk_cli" LIMIT 1) IS NOT NONE;
 
 -- test: clé révoquée : échange refusé, événements de création et de révocation publiés
 RETURN fn::auth_api_key_session_create({ key_hash: "8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d", access_slot: "a" }).error.code == "AUTH_API_KEY_INVALID"

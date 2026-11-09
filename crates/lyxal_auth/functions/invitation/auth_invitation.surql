@@ -87,23 +87,14 @@ DEFINE FUNCTION OVERWRITE fn::auth_invitation_accept($params: object) {
     IF !$check.valid { RETURN fn::error_result($check.code, $p.language, {}); };
     IF $check.system { RETURN fn::error_result("AUTH_SESSION_REQUIRED", $p.language, {}); };
     LET $identity = (SELECT VALUE identity FROM ONLY $auth);
-    LET $invitation = (SELECT * FROM ONLY auth_organization_invitation WHERE token_hash = $p.token_hash LIMIT 1);
-    -- Invitation inconnue ou adressée à une autre adresse : même réponse (pas d'énumération)
-    IF $invitation == NONE { RETURN fn::error_result("AUTH_INVITATION_INVALID", $p.language, {}); };
-    IF $invitation.state != "pending" { RETURN fn::error_result("AUTH_INVITATION_INVALID", $p.language, {}); };
-    IF $invitation.expires_at <= time::now() { RETURN fn::error_result("AUTH_INVITATION_EXPIRED", $p.language, {}); };
-    LET $iid = $invitation.id;
-    LET $organization = $invitation.organization;
-    IF array::len(SELECT VALUE id FROM auth_member_of WHERE in = $identity AND out = $organization LIMIT 1) > 0 {
-        RETURN fn::error_result("AUTH_ALREADY_A_MEMBER", $p.language, {});
-    };
-    LET $joined = fn::auth_membership_create({ identity: $identity, organization: $organization, roles: $invitation.roles, by: $invitation.inviter });
-    IF $joined.code IS NOT NONE { RETURN fn::error_result($joined.code, $p.language, { table: "auth_member_of" }); };
-    LET $mid = $joined.membership;
-    LET $accepted = (UPDATE ONLY $iid SET state = "accepted", accepted_by = $identity, accepted_at = time::now());
-    IF $accepted == NONE { THROW "AUTH_WRITE_FORBIDDEN"; };
-    RETURN fn::result_ok({ organization: $organization, membership: $mid, roles: (SELECT VALUE out FROM auth_has_role WHERE in = $mid) });
-} COMMENT "Accepte une invitation ({ token_hash }) pour l'identité connectée dont l'adresse correspond : adhésion, rôles par défaut et rôles prévus créés";
+    -- Demande vérifiée par la base (auth_invitation_claim_process) : l'empreinte des invitations
+    -- est illisible pour la session, seule la base la compare
+    LET $claim = (CREATE ONLY auth_invitation_claim CONTENT { identity: $identity, token_hash: $p.token_hash });
+    IF $claim == NONE { RETURN fn::error_result("AUTH_WRITE_FORBIDDEN", $p.language, { table: "auth_invitation_claim" }); };
+    LET $result = (SELECT outcome, membership, organization FROM ONLY $claim.id);
+    IF $result.outcome != "accepted" { RETURN fn::error_result($result.outcome ?? "AUTH_INVITATION_INVALID", $p.language, {}); };
+    RETURN fn::result_ok({ organization: $result.organization, membership: $result.membership, roles: (SELECT VALUE out FROM auth_has_role WHERE in = $result.membership) });
+} COMMENT "Accepte une invitation ({ token_hash }) pour l'identité connectée dont l'adresse correspond : la base vérifie l'empreinte (demande auth_invitation_claim), crée l'adhésion, les rôles par défaut et les rôles prévus";
 
 -- ----------------------------------------------------------------------------
 -- fn::auth_invitation_revoke

@@ -239,6 +239,23 @@ DEFINE FUNCTION OVERWRITE fn::auth_service_session_open($params: object) {
 } COMMENT "Ouvre la session d'un compte de service interne à l'hôte ({ client_id, client, access_slot }) sans secret : application machine active ; sans jeton de renouvellement. Session système seulement";
 
 -- ----------------------------------------------------------------------------
+-- fn::auth_api_key_create_allowed : la session peut-elle créer cette clé ? (PERMISSIONS)
+-- ----------------------------------------------------------------------------
+-- Règle de la table auth_api_key : une écriture directe est soumise aux mêmes conditions que
+-- fn::auth_api_key_create (qui renvoie, elle, l'erreur précise).
+
+DEFINE FUNCTION OVERWRITE fn::auth_api_key_create_allowed($params: object) -> bool {
+    LET $check = fn::auth_session_valid({});
+    IF !$check.valid { RETURN false; };
+    IF $check.system { RETURN true; };
+    LET $sess = (SELECT kind, organization FROM ONLY $auth);
+    IF $sess.kind != "interactive" OR $params.organization != $sess.organization { RETURN false; };
+    IF fn::auth_assurance_state({ session: $auth, min_aal: "highest_available", fresh: true }).code IS NOT NONE { RETURN false; };
+    LET $held = IF type::is_array($token.permissions) { $token.permissions } ELSE { [] };
+    RETURN type::is_array($params.permissions) AND array::len(array::filter($params.permissions, |$code| $code NOT IN $held)) = 0;
+} COMMENT "Vrai si la session peut créer une clé d'API ({ organization, permissions }) : session interactive, organisation de la session, AAL la plus haute disponible et authentification récente, permissions détenues ; session système : vrai";
+
+-- ----------------------------------------------------------------------------
 -- fn::auth_api_key_create / _list / _revoke / fn::auth_api_key_session_create
 -- ----------------------------------------------------------------------------
 

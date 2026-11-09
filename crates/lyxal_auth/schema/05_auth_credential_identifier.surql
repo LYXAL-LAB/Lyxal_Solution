@@ -13,10 +13,12 @@ DEFINE TABLE OVERWRITE auth_credential_identifier
         FOR select WHERE ($auth IS NOT NONE AND identity = $auth.identity)
             OR fn::auth_has_permission({ permission: "auth.identity.read" })
             OR fn::auth_shares_organization({ identity: identity, permission: "auth.member.read" })
-        -- Un administrateur d'organisation ne touche qu'aux identités membres de son organisation
-        -- (une identité qu'il crée devient membre avant que ses identifiants soient écrits)
-        FOR create, update, delete WHERE fn::auth_has_permission({ permission: "auth.identity.manage" })
-            OR fn::auth_shares_organization({ identity: identity, permission: "auth.member.manage" })
+        -- Un administrateur d'organisation n'écrit que le premier identifiant de chaque type d'une
+        -- identité qu'il crée dans son organisation ; changer un identifiant exige
+        -- auth.identity.manage (ou le parcours de changement d'adresse de la personne)
+        FOR create WHERE fn::auth_has_permission({ permission: "auth.identity.manage" })
+            OR fn::auth_org_admin_first_identifier({ identity: identity, type: type })
+        FOR update, delete WHERE fn::auth_has_permission({ permission: "auth.identity.manage" })
     COMMENT "Identifiants de connexion uniques pour l'installation";
 
 DEFINE FIELD OVERWRITE identity ON TABLE auth_credential_identifier

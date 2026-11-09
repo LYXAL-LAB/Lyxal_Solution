@@ -81,3 +81,15 @@ WHEN $event = "UPDATE" AND $before.state != $after.state
 THEN {
     IF $before.state = "deleted" { THROW "AUTH_ORGANIZATION_INACTIVE"; };
 };
+
+-- Une organisation qui quitte l'état actif perd ses sessions : sessions ouvertes sur elle (membres,
+-- comptes de service, clés d'API) révoquées avec leurs jetons de renouvellement, droits de ses
+-- membres périmés (événement de la base : il voit toutes les sessions)
+DEFINE EVENT OVERWRITE auth_organization_suspension ON TABLE auth_organization
+WHEN $event = "UPDATE" AND $before.state = "active" AND $after.state != "active"
+THEN {
+    LET $revoked = (UPDATE auth_session SET state = "revoked", revoked_at = time::now(), revoked_reason = "organization_inactive"
+        WHERE organization = $after.id AND state = "active" RETURN id);
+    UPDATE auth_refresh_token SET state = "revoked" WHERE session IN $revoked AND state = "active";
+    UPDATE (SELECT VALUE in FROM auth_member_of WHERE out = $after.id) SET permissions_version += 1;
+};

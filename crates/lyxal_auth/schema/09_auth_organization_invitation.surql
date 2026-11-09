@@ -16,12 +16,10 @@ DEFINE TABLE OVERWRITE auth_organization_invitation
             OR fn::auth_has_permission({ permission: "auth.member.manage", tenant: organization })
             OR ($auth IS NOT NONE AND accepted_by = $auth.identity)
             OR ($auth IS NOT NONE AND state = "pending" AND email IN (SELECT VALUE value FROM auth_credential_identifier WHERE identity = $auth.identity AND type = "email"))
+        -- L'invitée n'écrit rien : l'acceptation passe par une demande (auth_invitation_claim)
+        -- vérifiée par la base
         FOR update WHERE fn::auth_has_permission({ permission: "auth.organization.manage" })
             OR fn::auth_has_permission({ permission: "auth.member.manage", tenant: organization })
-            -- L'invitée accepte : la condition vaut avant (en attente, son adresse) et après
-            -- (acceptée par elle) la modification
-            OR ($auth IS NOT NONE AND state = "pending" AND email IN (SELECT VALUE value FROM auth_credential_identifier WHERE identity = $auth.identity AND type = "email"))
-            OR ($auth IS NOT NONE AND state = "accepted" AND accepted_by = $auth.identity)
         FOR create WHERE fn::auth_has_permission({ permission: "auth.organization.manage" })
             OR fn::auth_has_permission({ permission: "auth.member.manage", tenant: organization })
         FOR delete NONE
@@ -54,7 +52,8 @@ DEFINE FIELD OVERWRITE token_hash ON TABLE auth_organization_invitation
     TYPE string
     ASSERT string::len($value) = 64 AND string::is_hexadecimal($value)
     READONLY
-    COMMENT "Empreinte BLAKE3 (hex) du jeton d'invitation ; jamais le jeton";
+    PERMISSIONS FOR select NONE
+    COMMENT "Empreinte BLAKE3 (hex) du jeton d'invitation ; jamais le jeton ; illisible hors session système";
 
 DEFINE FIELD OVERWRITE state ON TABLE auth_organization_invitation
     TYPE string
@@ -108,4 +107,75 @@ DEFINE EVENT OVERWRITE auth_organization_invitation_guard ON TABLE auth_organiza
 WHEN $event = "UPDATE" AND $before.state != $after.state
 THEN {
     IF $before.state != "pending" { THROW "AUTH_INVITATION_INVALID"; };
+};
+
+-- ----------------------------------------------------------------------------
+-- TABLE : auth_invitation_claim — demande d'acceptation d'une invitation
+-- ----------------------------------------------------------------------------
+-- L'identité connectée dépose l'empreinte du jeton reçu ; l'événement de la base (qui voit les
+-- empreintes, illisibles pour elle) vérifie l'invitation, crée l'adhésion et ses rôles, et écrit
+-- l'issue. Sans le jeton, aucune adhésion n'est possible, même avec la bonne adresse.
+
+DEFINE TABLE OVERWRITE auth_invitation_claim
+    TYPE NORMAL
+    SCHEMAFULL
+    PERMISSIONS
+        FOR select WHERE $auth IS NOT NONE AND identity = $auth.identity
+        FOR create WHERE $auth IS NOT NONE AND identity = $auth.identity AND fn::auth_session_valid({}).valid
+        FOR update, delete NONE
+    COMMENT "Demandes d'acceptation d'invitation (empreinte du jeton), vérifiées par la base";
+
+DEFINE FIELD OVERWRITE identity ON TABLE auth_invitation_claim
+    TYPE record<auth_identity>
+    REFERENCE ON DELETE CASCADE
+    READONLY
+    COMMENT "Identité qui accepte";
+
+DEFINE FIELD OVERWRITE token_hash ON TABLE auth_invitation_claim
+    TYPE string
+    ASSERT string::len($value) = 64 AND string::is_hexadecimal($value)
+    READONLY
+    PERMISSIONS FOR select NONE
+    COMMENT "Empreinte BLAKE3 (hex) du jeton présenté";
+
+DEFINE FIELD OVERWRITE outcome ON TABLE auth_invitation_claim
+    TYPE option<string>
+    COMMENT "Issue écrite par la base : accepted, ou code d'erreur AUTH_*";
+
+DEFINE FIELD OVERWRITE membership ON TABLE auth_invitation_claim
+    TYPE option<record<auth_member_of>>
+    COMMENT "Adhésion créée";
+
+DEFINE FIELD OVERWRITE organization ON TABLE auth_invitation_claim
+    TYPE option<record<auth_organization>>
+    COMMENT "Organisation rejointe";
+
+DEFINE FIELD OVERWRITE created_at ON TABLE auth_invitation_claim
+    TYPE datetime
+    DEFAULT time::now()
+    READONLY
+    COMMENT "Date de la demande";
+
+DEFINE EVENT OVERWRITE auth_invitation_claim_process ON TABLE auth_invitation_claim
+WHEN $event = "CREATE"
+THEN {
+    LET $identity = $after.identity;
+    LET $invitation = (SELECT * FROM ONLY auth_organization_invitation WHERE token_hash = $after.token_hash LIMIT 1);
+    LET $emails = (SELECT VALUE value FROM auth_credential_identifier WHERE identity = $identity AND type = "email");
+    -- Invitation inconnue ou adressée à une autre adresse : même issue (pas d'énumération)
+    LET $outcome = IF $invitation == NONE OR $invitation.state != "pending" OR $invitation.email NOTINSIDE $emails {
+        "AUTH_INVITATION_INVALID"
+    } ELSE IF $invitation.expires_at <= time::now() {
+        "AUTH_INVITATION_EXPIRED"
+    } ELSE IF array::len(SELECT VALUE id FROM auth_member_of WHERE in = $identity AND out = $invitation.organization LIMIT 1) > 0 {
+        "AUTH_ALREADY_A_MEMBER"
+    } ELSE { NONE };
+    IF $outcome IS NOT NONE {
+        UPDATE $after.id SET outcome = $outcome;
+    } ELSE {
+        LET $joined = fn::auth_membership_create({ identity: $identity, organization: $invitation.organization, roles: $invitation.roles, by: $invitation.inviter });
+        IF $joined.code IS NOT NONE { THROW $joined.code; };
+        UPDATE $invitation.id SET state = "accepted", accepted_by = $identity, accepted_at = time::now();
+        UPDATE $after.id SET outcome = "accepted", membership = $joined.membership, organization = $invitation.organization;
+    };
 };

@@ -119,8 +119,8 @@ RETURN array::len(fn::auth_identity_list({}).data) >= 5 AND array::len(fn::auth_
 -- en tant que: orga
 RETURN fn::auth_identity_list({}).error.code == "AUTH_PERMISSION_DENIED";
 
--- test: modification des traits ; l'identifiant suit l'e-mail
--- en tant que: orga
+-- test: modification des traits ; l'identifiant suit l'e-mail (auth.identity.manage)
+-- en tant que: admin
 RETURN fn::auth_identity_update_traits({ identity: test_ref:marie.rid, traits: { email: "Marie.Curie@alpha.test", name: { first: "Marie" } } }).data.traits.email == "Marie.Curie@alpha.test";
 
 -- test: ancien identifiant retiré, nouveau créé, adresses remplacées
@@ -128,12 +128,72 @@ RETURN (SELECT VALUE value FROM auth_credential_identifier WHERE identity = <rec
     AND (SELECT VALUE value FROM auth_address WHERE identity = <record> test_ref:marie.rid).distinct() == ["marie.curie@alpha.test"];
 
 -- test: modification vers un e-mail déjà pris refusée
--- en tant que: orga
+-- en tant que: admin
 RETURN fn::auth_identity_update_traits({ identity: test_ref:marie.rid, traits: { email: "jean.dupont@exemple.fr" } }).error.code == "AUTH_IDENTIFIER_TAKEN";
 
 -- test: un administrateur d'organisation ne modifie pas une identité hors de son organisation
 -- en tant que: orga
 RETURN fn::auth_identity_update_traits({ identity: test_ref:jean.rid, traits: { email: "pirate@exemple.fr" } }).error.code == "AUTH_PERMISSION_DENIED";
+
+-- test: l'administrateur d'organisation modifie les autres traits d'un membre
+-- en tant que: orga
+RETURN fn::auth_identity_update_traits({ identity: test_ref:marie.rid, traits: { email: "marie.curie@alpha.test", name: { first: "Marie", last: "Curie" } } }).data.traits.name.last == "Curie";
+
+-- test: l'administrateur d'organisation ne change pas l'e-mail d'un membre (prise de compte)
+-- en tant que: orga
+RETURN fn::auth_identity_update_traits({ identity: test_ref:marie.rid, traits: { email: "pirate@alpha.test" } }).error.{ code, reason: details.reason } == { code: "AUTH_PERMISSION_DENIED", reason: "identifier_change" }
+    AND (SELECT VALUE value FROM auth_credential_identifier WHERE identity = <record> test_ref:marie.rid) == ["marie.curie@alpha.test"];
+
+-- test: ni directement : identifiant, adresse et champs de sécurité intouchables
+-- en tant que: orga
+{
+    LET $marie = <record> test_ref:marie.rid;
+    UPDATE auth_credential_identifier SET value = "pirate@alpha.test" WHERE identity = $marie;
+    UPDATE auth_address SET value = "pirate@alpha.test" WHERE identity = $marie;
+    DELETE auth_address WHERE identity = $marie;
+    CREATE auth_credential_identifier CONTENT { identity: $marie, type: "email", value: "pirate2@alpha.test" };
+    CREATE auth_address CONTENT { identity: $marie, channel: "email", usage: "recovery", value: "pirate2@alpha.test", primary: false };
+    UPDATE $marie SET available_aal = 0, state = "inactive", permissions_version = 1, not_before = NONE, membership_count = 0;
+    RETURN true;
+};
+
+-- test: rien n'a changé
+RETURN (SELECT VALUE value FROM auth_credential_identifier WHERE identity = <record> test_ref:marie.rid) == ["marie.curie@alpha.test"]
+    AND (SELECT VALUE value FROM auth_address WHERE identity = <record> test_ref:marie.rid).distinct() == ["marie.curie@alpha.test"]
+    AND (SELECT VALUE [state, membership_count] FROM ONLY <record> test_ref:marie.rid) == ["active", 1];
+
+-- préparation: membre d'une seconde organisation, membre administrateur de la plateforme
+{
+    CREATE auth_identity:double CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "double@alpha.test" } };
+    RELATE auth_identity:double->auth_member_of->auth_organization:alpha;
+    RELATE auth_identity:double->auth_member_of->auth_organization:beta;
+    CREATE auth_identity:plateforme CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "plateforme@alpha.test" } };
+    RELATE auth_identity:plateforme->auth_member_of->auth_organization:alpha;
+    RELATE auth_identity:plateforme->auth_has_role->auth_role:platform_admin;
+};
+
+-- test: compteurs tenus par la base ; l'administrateur d'organisation ne gère pas ces identités
+-- en tant que: orga
+RETURN (SELECT VALUE [membership_count, installation_role_count] FROM ONLY auth_identity:double) == [2, 0]
+    AND (SELECT VALUE [membership_count, installation_role_count] FROM ONLY auth_identity:plateforme) == [1, 1]
+    AND fn::auth_org_admin_can_manage({ identity: <record> test_ref:marie.rid })
+    AND !fn::auth_org_admin_can_manage({ identity: auth_identity:double })
+    AND !fn::auth_org_admin_can_manage({ identity: auth_identity:plateforme })
+    AND fn::auth_identity_update_traits({ identity: "auth_identity:double", traits: { email: "double@alpha.test", name: { first: "D" } } }).error.code == "AUTH_PERMISSION_DENIED"
+    AND fn::auth_identity_update_traits({ identity: "auth_identity:plateforme", traits: { email: "plateforme@alpha.test", name: { first: "P" } } }).error.code == "AUTH_PERMISSION_DENIED";
+
+-- test: premier identifiant et première adresse seulement (création d'une identité)
+-- en tant que: orga
+RETURN !fn::auth_org_admin_first_identifier({ identity: <record> test_ref:marie.rid, type: "email" })
+    AND fn::auth_org_admin_first_identifier({ identity: <record> test_ref:marie.rid, type: "username" })
+    AND !fn::auth_org_admin_first_address({ identity: <record> test_ref:marie.rid, channel: "email", usage: "recovery" })
+    AND !fn::auth_org_admin_first_identifier({ identity: auth_identity:double, type: "username" });
+
+-- test: retrait d'une adhésion : compteur mis à jour
+{
+    DELETE auth_member_of WHERE in = auth_identity:double AND out = auth_organization:beta;
+    RETURN (SELECT VALUE membership_count FROM ONLY auth_identity:double) == 1;
+};
 
 -- test: verrouillage : not_before posé, version des droits incrémentée
 -- en tant que: admin
