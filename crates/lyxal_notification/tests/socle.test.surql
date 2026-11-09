@@ -25,11 +25,12 @@ RETURN (SELECT VALUE ->auth_role_grants->auth_permission.code FROM ONLY auth_rol
 -- en tant que: plateforme
 RETURN fn::notification_settings_get({}).data.effective == { default_locale: "fr", from_name: NONE, reply_to: NONE, max_attempts: 8, retention_days_runs: 90, retention_days_log: 30 };
 
--- test: trois parcours actifs, critiques et sensibles, déclenchés par les événements de lyxal_auth
+-- test: quatre parcours actifs et critiques pour lyxal_auth : trois messages sensibles déclenchés par leur événement, l'alerte de sécurité déclenchée par sa clé
 -- en tant que: plateforme
 RETURN fn::notification_workflow_list({ status: "active" }).data.map(|$w| [$w.key, $w.trigger_event, $w.critical, $w.sensitive]) == [
     ["auth_invitation", "auth.invitation.created", true, true],
     ["auth_recovery", "auth.recovery.requested", true, true],
+    ["auth_security_alert", NONE, true, false],
     ["auth_verification", "auth.verification.requested", true, true]
 ];
 
@@ -37,6 +38,12 @@ RETURN fn::notification_workflow_list({ status: "active" }).data.map(|$w| [$w.ke
 -- en tant que: plateforme
 RETURN fn::notification_workflow_get({ workflow: "notification_workflow:auth_invitation" }).data.templates.map(|$t| [$t.step_key, $t.default_locale, $t.layout, $t.locales])
     == [["email", "fr", notification_layout:default, ["en", "fr"]]];
+
+-- test: l'alerte de sécurité a ses gabarits français et anglais ; sa charge utile est contrôlée
+-- en tant que: plateforme
+RETURN fn::notification_workflow_get({ workflow: "notification_workflow:auth_security_alert" }).data.templates.map(|$t| [$t.step_key, $t.default_locale, $t.locales])
+    == [["email", "fr", ["en", "fr"]]]
+    AND fn::notification_trigger({ workflow_key: "auth_security_alert", idempotency_key: "alerte-invalide", recipient: { email: "a@exemple.fr" }, payload: { alert: "inconnue" } }).error.code == "NOTIFICATION_PAYLOAD_INVALID";
 
 -- test: la mise en page par défaut contient l'emplacement du contenu
 -- en tant que: plateforme

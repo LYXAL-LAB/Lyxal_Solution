@@ -296,7 +296,13 @@ THEN {
         event_type: "auth.password.changed",
         producer: "lyxal_auth",
         source: $after.identity,
-        payload: { identity_id: <string> $after.identity, first: $event = "CREATE" },
+        payload: {
+            identity_id: <string> $after.identity,
+            first: $event = "CREATE",
+            recipient_email: $after.identity.traits.email,
+            recipient_locale: $after.identity.traits.locale,
+            recipient_name: $after.identity.traits.name.first
+        },
         metadata: {}
     });
     IF !$published.ok { THROW $published.error.code; };
