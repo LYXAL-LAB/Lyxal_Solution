@@ -306,7 +306,7 @@ async fn approved_manifest_is_published_to_the_catalogue() {
     assert_eq!(event.manifest_ref, "MAN-PUB");
     assert_eq!(event.batch_id, "ingestion_batch:lot_pub");
     assert_eq!((event.items_committed, event.items_failed), (2, 0));
-    assert_eq!(event.publisher_agent, "service:catalogue_sync");
+    assert_eq!(event.publisher_agent, "auth_application:catalogue_sync");
 }
 
 #[tokio::test]

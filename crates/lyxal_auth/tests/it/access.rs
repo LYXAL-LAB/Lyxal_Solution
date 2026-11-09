@@ -572,10 +572,16 @@ async fn host_authenticates_a_bearer_token_until_revocation() {
         .expect("appelant");
     assert_eq!(caller.session, tokens.session.session);
     assert_eq!(caller.kind, "interactive");
-    // Jeton altéré : signature refusée
-    let mut forged = tokens.access_token.expose_secret().to_string();
-    forged.pop();
-    forged.push(if forged.ends_with('A') { 'B' } else { 'A' });
+    // Jeton altéré : signature refusée (premier caractère de la signature, dont les 6 bits
+    // comptent toujours ; le dernier peut ne porter que des bits de remplissage)
+    let token = tokens.access_token.expose_secret();
+    let start = token.rfind('.').expect("signature") + 1;
+    let replacement = if token[start..].starts_with('A') {
+        "B"
+    } else {
+        "A"
+    };
+    let forged = format!("{}{}{}", &token[..start], replacement, &token[start + 1..]);
     assert!(access.authenticate(&secret(&forged)).await.is_err());
     access
         .revoke(&tokens.session.session.to_sql(), "logout")

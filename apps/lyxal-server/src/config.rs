@@ -199,7 +199,11 @@ impl AppConfig {
                     .prefix_separator("__")
                     .separator("__")
                     .try_parsing(true)
-                    .list_separator(","),
+                    .list_separator(",")
+                    // Seules ces clés sont des listes ; les autres restent des chaînes
+                    .with_list_parse_key("cors.allowed_origins")
+                    .with_list_parse_key("cors.allowed_methods")
+                    .with_list_parse_key("cors.allowed_headers"),
             );
 
         let value: Self = builder
