@@ -430,6 +430,7 @@ async fn sessions(State(context): State<AppContext>, headers: HeaderMap) -> Resp
             .access
             .store()
             .session_list(SessionListParams {
+                limit: None,
                 organization: None,
                 identity: Some(identity),
             })
@@ -476,6 +477,7 @@ async fn revoke_session(
             .access
             .store()
             .session_list(SessionListParams {
+                limit: None,
                 organization: None,
                 identity: Some(identity),
             })
@@ -529,6 +531,7 @@ struct RegistrationStartBody {
 
 async fn registration_start(
     State(context): State<AppContext>,
+    address: Option<ConnectInfo<SocketAddr>>,
     headers: HeaderMap,
     Json(body): Json<RegistrationStartBody>,
 ) -> Response {
@@ -536,7 +539,11 @@ async fn registration_start(
         let host = host(&context)?;
         let started = host
             .access
-            .start_registration(&secret(body.token)?, body.setup)
+            .start_registration(
+                &secret(body.token)?,
+                body.setup,
+                client_info(&context, &headers, address),
+            )
             .await?;
         ok(
             StatusCode::OK,

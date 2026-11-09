@@ -32,6 +32,9 @@ async fn organization_identity_membership_and_roles_round_trip() {
     let store = installed_store().await;
     let identity = store
         .identity_create(IdentityCreateParams {
+            state: None,
+            public_metadata: None,
+            admin_metadata: None,
             schema_key: None,
             traits: object(
                 serde_json::json!({ "email": "Ada@Exemple.fr", "name": { "first": "Ada" } }),
@@ -48,6 +51,8 @@ async fn organization_identity_membership_and_roles_round_trip() {
 
     let organization = store
         .organization_create(OrganizationCreateParams {
+            branding: None,
+            custom_data: None,
             slug: "alpha".into(),
             name: "Alpha".into(),
             description: None,
@@ -135,6 +140,7 @@ async fn organization_identity_membership_and_roles_round_trip() {
 async fn permission_registration_is_create_only() {
     let store = installed_store().await;
     let params = || PermissionRegisterParams {
+        min_aal: None,
         code: "notification.read".into(),
         module: "lyxal_notification".into(),
         scope: PermissionScope::Organization,
@@ -184,6 +190,9 @@ async fn thrown_code_is_a_business_error() {
     let error = lyxal_auth::AuthError::from(
         store
             .identity_create(IdentityCreateParams {
+                state: None,
+                public_metadata: None,
+                admin_metadata: None,
                 schema_key: None,
                 traits: object(serde_json::json!({ "email": "refus@exemple.fr" })),
                 external_id: None,

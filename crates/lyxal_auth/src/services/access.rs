@@ -892,6 +892,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         &self,
         token: &SecretString,
         setup: bool,
+        client: ClientInfo,
     ) -> AuthResult<RegistrationStarted> {
         let hash = token_hash(token);
         Ok(self
@@ -899,6 +900,7 @@ impl<R: KeyResolver + 'static> AccessService<R> {
             .registration_start(RegistrationStartParams {
                 invitation_token_hash: if setup { None } else { Some(hash.clone()) },
                 setup_link_hash: if setup { Some(hash) } else { None },
+                client,
             })
             .await?)
     }

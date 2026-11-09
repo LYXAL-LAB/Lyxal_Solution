@@ -50,7 +50,10 @@ impl AuthPurgeWorker {
         while !cancellation.is_cancelled() {
             let result = self
                 .store
-                .purge(AuthPurgeParams { limit: self.batch })
+                .purge(AuthPurgeParams {
+                    limit: self.batch,
+                    session_retention_days: None,
+                })
                 .await?;
             let largest = [
                 result.flows,

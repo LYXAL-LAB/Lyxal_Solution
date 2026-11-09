@@ -2,6 +2,23 @@
 //! (`XxxResult` ou modèles). Les identifiants transmis à SurrealDB sont des textes `table:clé`
 //! (règle `record` de `lyxal_core`) ; ceux qui en reviennent sont des `RecordId`.
 
+/// `Debug` des paramètres porteurs d'empreintes : les champs `hidden` (empreintes, secrets)
+/// sont affichés `[REDACTED]` ; une empreinte d'adresse non poivrée se retrouverait par
+/// dictionnaire.
+macro_rules! redacted_debug {
+    ($name:ident { shown: [$($shown:ident),*], hidden: [$($hidden:ident),*] }) => {
+        impl std::fmt::Debug for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.debug_struct(stringify!($name))
+                    $(.field(stringify!($shown), &self.$shown))*
+                    $(.field(stringify!($hidden), &"[REDACTED]"))*
+                    .finish()
+            }
+        }
+    };
+}
+pub(crate) use redacted_debug;
+
 mod access;
 mod context;
 mod domain;
@@ -57,3 +74,23 @@ pub use role::{
     PermissionScope, RoleAssignParams, RoleAssigned, RoleUnassigned,
 };
 pub use types::{AuthDatetime, AuthRecordId, AuthValue, PolicyGetParams};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hashes_are_redacted_in_debug() {
+        let failure = LoginFailureParams {
+            identifier_hash: "aa11".repeat(16),
+            ip_hash: Some("bb22".repeat(16)),
+            identity: Some("auth_identity:x".into()),
+        };
+        let text = format!("{failure:?}");
+        assert!(!text.contains("aa11") && !text.contains("bb22"), "{text}");
+        assert!(
+            text.contains("[REDACTED]") && text.contains("auth_identity:x"),
+            "{text}"
+        );
+    }
+}

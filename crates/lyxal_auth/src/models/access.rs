@@ -196,7 +196,7 @@ pub struct CodeIssued {
 }
 
 /// Paramètres de `fn::auth_code_verify`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct CodeVerifyParams {
     /// Parcours (texte), avec un code.
     pub flow: Option<String>,
@@ -207,6 +207,11 @@ pub struct CodeVerifyParams {
     /// BLAKE3 du lien présenté.
     pub link_hash: Option<String>,
 }
+
+crate::models::redacted_debug!(CodeVerifyParams {
+    shown: [flow, purpose],
+    hidden: [code_hash, link_hash]
+});
 
 /// Résultat de `fn::auth_code_verify`.
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
@@ -223,7 +228,7 @@ pub struct CodeVerified {
 }
 
 /// Paramètres des fonctions anti-force-brute.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct LoginFailureParams {
     /// BLAKE3 de l'identifiant normalisé.
     pub identifier_hash: String,
@@ -232,6 +237,11 @@ pub struct LoginFailureParams {
     /// Identité (échec sur un compte existant).
     pub identity: Option<String>,
 }
+
+crate::models::redacted_debug!(LoginFailureParams {
+    shown: [identity],
+    hidden: [identifier_hash, ip_hash]
+});
 
 /// État de verrouillage.
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
@@ -243,14 +253,19 @@ pub struct LoginFailureStatus {
 }
 
 /// Paramètres de `fn::auth_login_failure_reset`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct LoginFailureResetParams {
     /// BLAKE3 de l'identifiant normalisé.
     pub identifier_hash: String,
 }
 
+crate::models::redacted_debug!(LoginFailureResetParams {
+    shown: [],
+    hidden: [identifier_hash]
+});
+
 /// Paramètres de `fn::auth_session_create`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct SessionCreateParams {
     /// Identité (texte).
     pub identity: String,
@@ -265,6 +280,11 @@ pub struct SessionCreateParams {
     /// BLAKE3 du jeton de renouvellement.
     pub refresh_token_hash: String,
 }
+
+crate::models::redacted_debug!(SessionCreateParams {
+    shown: [identity, organization, amr, client, access_slot],
+    hidden: [refresh_token_hash]
+});
 
 /// Session émise : ce que porte le jeton d'accès.
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
@@ -296,7 +316,7 @@ pub struct SessionIssued {
 }
 
 /// Paramètres de `fn::auth_session_refresh`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct SessionRefreshParams {
     /// BLAKE3 du jeton présenté.
     pub token_hash: String,
@@ -305,6 +325,11 @@ pub struct SessionRefreshParams {
     /// Accès SurrealDB du jeton.
     pub access_slot: String,
 }
+
+crate::models::redacted_debug!(SessionRefreshParams {
+    shown: [access_slot],
+    hidden: [token_hash, new_token_hash]
+});
 
 /// Paramètres de `fn::auth_session_revoke`.
 #[derive(Debug, Clone, SurrealValue)]
@@ -336,7 +361,7 @@ pub struct SessionRevokeAllParams {
 }
 
 /// Paramètres de `fn::auth_session_switch_organization`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct SessionSwitchParams {
     /// Session courante (texte).
     pub session: String,
@@ -348,6 +373,11 @@ pub struct SessionSwitchParams {
     pub refresh_token_hash: String,
 }
 
+crate::models::redacted_debug!(SessionSwitchParams {
+    shown: [session, organization, access_slot],
+    hidden: [refresh_token_hash]
+});
+
 /// Paramètres de `fn::auth_session_list`.
 #[derive(Debug, Clone, Default, SurrealValue)]
 pub struct SessionListParams {
@@ -355,6 +385,8 @@ pub struct SessionListParams {
     pub organization: Option<String>,
     /// Identité.
     pub identity: Option<String>,
+    /// Nombre maximal de sessions (1 à 1000 ; défaut 100).
+    pub limit: Option<i64>,
 }
 
 /// Session listée.
@@ -379,13 +411,20 @@ pub struct SessionSummary {
 }
 
 /// Paramètres de `fn::auth_registration_start`.
-#[derive(Debug, Clone, Default, SurrealValue)]
+#[derive(Clone, Default, SurrealValue)]
 pub struct RegistrationStartParams {
     /// Empreinte du jeton d'invitation.
     pub invitation_token_hash: Option<String>,
     /// Empreinte du lien d'installation.
     pub setup_link_hash: Option<String>,
+    /// Appareil qui démarre l'inscription.
+    pub client: ClientInfo,
 }
+
+crate::models::redacted_debug!(RegistrationStartParams {
+    shown: [client],
+    hidden: [invitation_token_hash, setup_link_hash]
+});
 
 /// Résultat de `fn::auth_registration_start`.
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
@@ -427,13 +466,18 @@ pub struct RegistrationCompleted {
 }
 
 /// Paramètres de `fn::auth_setup_start`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct SetupStartParams {
     /// Adresse du premier administrateur.
     pub email: String,
     /// BLAKE3 du jeton de lien.
     pub link_hash: String,
 }
+
+crate::models::redacted_debug!(SetupStartParams {
+    shown: [email],
+    hidden: [link_hash]
+});
 
 /// Résultat de `fn::auth_setup_start`.
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
@@ -585,7 +629,7 @@ pub struct SigningKeyRotated {
 }
 
 /// Paramètres de `fn::auth_service_session_create`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct ServiceSessionParams {
     /// Identifiant client.
     pub client_id: String,
@@ -596,6 +640,11 @@ pub struct ServiceSessionParams {
     /// Accès SurrealDB du jeton.
     pub access_slot: String,
 }
+
+crate::models::redacted_debug!(ServiceSessionParams {
+    shown: [client_id, client, access_slot],
+    hidden: [secret_hash]
+});
 
 /// Paramètres de `fn::auth_service_session_open` (compte de service interne à l'hôte).
 #[derive(Debug, Clone, SurrealValue)]
@@ -609,7 +658,7 @@ pub struct ServiceSessionOpenParams {
 }
 
 /// Paramètres de `fn::auth_api_key_session_create`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct ApiKeySessionParams {
     /// BLAKE3 de la clé.
     pub key_hash: String,
@@ -619,8 +668,13 @@ pub struct ApiKeySessionParams {
     pub access_slot: String,
 }
 
+crate::models::redacted_debug!(ApiKeySessionParams {
+    shown: [client, access_slot],
+    hidden: [key_hash]
+});
+
 /// Paramètres de `fn::auth_api_key_create`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct ApiKeyCreateParams {
     /// Nom.
     pub name: String,
@@ -633,6 +687,11 @@ pub struct ApiKeyCreateParams {
     /// Expiration.
     pub expires_at: Option<AuthDatetime>,
 }
+
+crate::models::redacted_debug!(ApiKeyCreateParams {
+    shown: [name, prefix, permissions, expires_at],
+    hidden: [key_hash]
+});
 
 /// Clé d'API créée (sans empreinte).
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
@@ -648,7 +707,7 @@ pub struct ApiKeyCreated {
 }
 
 /// Paramètres de `fn::auth_application_secret_add`.
-#[derive(Debug, Clone, SurrealValue)]
+#[derive(Clone, SurrealValue)]
 pub struct ApplicationSecretAddParams {
     /// Application (texte).
     pub application: String,
@@ -659,6 +718,11 @@ pub struct ApplicationSecretAddParams {
     /// Expiration.
     pub expires_at: Option<AuthDatetime>,
 }
+
+crate::models::redacted_debug!(ApplicationSecretAddParams {
+    shown: [application, prefix, expires_at],
+    hidden: [secret_hash]
+});
 
 /// Secret client ajouté.
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
@@ -674,6 +738,8 @@ pub struct ApplicationSecretAdded {
 pub struct AuthPurgeParams {
     /// Éléments au plus par catégorie.
     pub limit: i64,
+    /// Conservation des sessions terminées et jetons usés, en jours (1 à 3650 ; défaut 30).
+    pub session_retention_days: Option<i64>,
 }
 
 /// Résultat de `fn::auth_purge`.

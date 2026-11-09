@@ -82,7 +82,7 @@ async fn admin(access: &AccessService<StaticKeyResolver>) -> IssuedTokens {
         .expect("jeton")
         .to_string();
     let started = access
-        .start_registration(&secret(&token), true)
+        .start_registration(&secret(&token), true, ClientInfo::default())
         .await
         .expect("inscription");
     let outcome = access
@@ -578,6 +578,9 @@ async fn identity_created_by_an_admin_is_unaffected() {
     let (access, _) = service(&store).await;
     store
         .identity_create(IdentityCreateParams {
+            state: None,
+            public_metadata: None,
+            admin_metadata: None,
             schema_key: None,
             traits: serde_json::json!({ "email": "sans-mdp@lyxal.test" }).into_value(),
             external_id: None,

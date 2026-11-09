@@ -206,15 +206,18 @@ impl<R: KeyResolver + 'static> PasswordService<R> {
             .as_str()
             .ok_or(AuthError::Rejected("AUTH_CRYPTO_ERROR"))?
             .to_string();
+        // Historique exigé (tableau de chaînes) : un document altéré n'affaiblit pas en silence
+        // la règle de non-réutilisation
         let history = value["history"]
             .as_array()
-            .map(|items| {
-                items
-                    .iter()
-                    .filter_map(|item| item.as_str().map(str::to_string))
-                    .collect()
+            .ok_or(AuthError::Rejected("AUTH_CRYPTO_ERROR"))?
+            .iter()
+            .map(|item| {
+                item.as_str()
+                    .map(str::to_string)
+                    .ok_or(AuthError::Rejected("AUTH_CRYPTO_ERROR"))
             })
-            .unwrap_or_default();
+            .collect::<AuthResult<Vec<String>>>()?;
         Ok(StoredPassword { current, history })
     }
 }

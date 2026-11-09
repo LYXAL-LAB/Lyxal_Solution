@@ -54,6 +54,10 @@ pub struct OrganizationCreateParams {
     pub mfa_required: Option<bool>,
     /// Identité qui devient membre administrateur (texte `auth_identity:<clé>`).
     pub owner: Option<String>,
+    /// Charte graphique (objet libre).
+    pub branding: Option<AuthValue>,
+    /// Données propres à l'installation (objet libre).
+    pub custom_data: Option<AuthValue>,
 }
 
 /// Paramètres de `fn::auth_organization_get` : identifiant ou slug.

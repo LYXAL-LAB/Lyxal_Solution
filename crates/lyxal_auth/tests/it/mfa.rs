@@ -119,7 +119,7 @@ async fn register_admin(access: &AccessService<StaticKeyResolver>) -> String {
         .expect("jeton")
         .to_string();
     let started = access
-        .start_registration(&secret(&token), true)
+        .start_registration(&secret(&token), true, ClientInfo::default())
         .await
         .expect("inscription");
     let outcome = access
@@ -576,7 +576,7 @@ async fn password_only_identity_reauthenticates_then_enrolls() {
         .expect("jeton")
         .to_string();
     let started = access
-        .start_registration(&secret(&token), true)
+        .start_registration(&secret(&token), true, ClientInfo::default())
         .await
         .expect("inscription");
     let LoginOutcome::Authenticated(tokens) = access
