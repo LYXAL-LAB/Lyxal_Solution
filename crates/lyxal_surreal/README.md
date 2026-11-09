@@ -61,7 +61,15 @@ pub async fn booking_create(store: &BookingStore, params: BookingCreateParams)
 * exécute `RETURN fn::<nom>($params);` en liant les paramètres par `SurrealValue` (types natifs
   `RecordId`, `Datetime`, sans passage par JSON) ;
 * lit le contrat `{ ok, data, error }` et renvoie `T`, `Call(Business(LyxalError))` ou
-  `Call(InvalidContract)` (réponse vide ou incohérente).
+  `Call(InvalidContract)` (réponse vide ou incohérente) ;
+* reconnaît un code de module levé par `THROW "<CODE>"` ou `THROW "<CODE>: texte"` (annulation
+  d'une écriture multiple, garde `DEFINE EVENT`) : `<CODE>` en majuscules avec au moins un `_`
+  (`AUTH_WRITE_FORBIDDEN`). Le code est résolu par `fn::error_result` (master data de
+  `lyxal_error`, langue par défaut) et renvoyé en `Call(Business(LyxalError))` ; un code sans
+  définition donne l'erreur métier interne de `lyxal_error` portant ce code. Un texte libre levé,
+  une erreur réseau ou une résolution impossible restent `Database`. La reconnaissance
+  (`thrown_code`) s'appuie sur le marqueur de `THROW` de SurrealDB : erreur marquée levée, ou
+  message `Error while processing event <nom>: An error occurred: <CODE>…` pour une garde.
 
 Le crate réexporte `LyxalCallError`, `LyxalError`, `LyxalResult` et les types du SDK
 `Datetime`, `RecordId`, `SurrealValue`, `ToSql`, `Value`, ainsi que `SecretString`.

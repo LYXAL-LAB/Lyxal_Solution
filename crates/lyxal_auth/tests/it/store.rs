@@ -167,3 +167,40 @@ async fn module_descriptor_and_health_check() {
     let result = check.check(&ctx).await.expect("sonde");
     assert_eq!(result.status, lyxal_runtime::health::HealthStatus::Healthy);
 }
+
+/// Un code `AUTH_*` levé par `THROW` pendant une écriture multiple (ici par une garde de test)
+/// arrive en erreur métier résolue par la master data, jamais en erreur de base.
+#[tokio::test]
+async fn thrown_code_is_a_business_error() {
+    let store = installed_store().await;
+    store
+        .client()
+        .query(
+            "DEFINE EVENT test_refus ON TABLE auth_address WHEN $event = 'CREATE' THEN { THROW 'AUTH_WRITE_FORBIDDEN'; };",
+        )
+        .await
+        .and_then(|response| response.check())
+        .expect("garde de test");
+    let error = lyxal_auth::AuthError::from(
+        store
+            .identity_create(IdentityCreateParams {
+                schema_key: None,
+                traits: object(serde_json::json!({ "email": "refus@exemple.fr" })),
+                external_id: None,
+                organization: None,
+                roles: vec![],
+            })
+            .await
+            .expect_err("création annulée"),
+    );
+    assert_eq!(error.code(), "AUTH_WRITE_FORBIDDEN");
+    let lyxal_auth::AuthError::Surreal(inner) = &error else {
+        panic!("erreur SurrealQL attendue : {error:?}");
+    };
+    let lyxal_surreal::LyxalSurrealError::Call(lyxal_surreal::LyxalCallError::Business(business)) =
+        inner.as_ref()
+    else {
+        panic!("erreur métier attendue : {inner:?}");
+    };
+    assert_eq!(business.http_status, Some(403));
+}
