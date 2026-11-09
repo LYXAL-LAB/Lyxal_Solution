@@ -68,7 +68,7 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 | Section | Clés |
 | :--- | :--- |
 | `application` | `name`, `environment`, `instance_id`, `version` |
-| `server` | `host`, `port`, `request_timeout_seconds`, `graceful_shutdown_seconds`, `max_concurrency`, `body_limit_bytes` |
+| `server` | `host`, `port`, `request_timeout_seconds`, `graceful_shutdown_seconds`, `max_concurrency`, `body_limit_bytes`, `trusted_proxies` (facultative : proxys inverses de confiance) |
 | `database` | `endpoint` (`ws://`, `wss://`, `mem://`), `namespace`, `database`, `username`, `password`, `connect_timeout_seconds` |
 | `runtime` | `module_install_timeout_seconds`, `module_start_timeout_seconds`, `module_stop_timeout_seconds` |
 | `observability` | `log_filter`, `json_logs`, `include_target`, `include_thread_ids` |
@@ -79,7 +79,20 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 
 Les identifiants Root ne figurent dans aucun fichier : `LYXAL__DATABASE__USERNAME` et
 `LYXAL__DATABASE__PASSWORD` (mot de passe en `SecretString`, masqué). Une connexion `ws://` ou
-`wss://` sans identifiants est refusée.
+`wss://` sans identifiants est refusée. Le serveur refuse aussi de démarrer si la base distante
+accepte les connexions anonymes (`surreal start --allow-guests`) : SurrealDB n'y distingue pas un
+invité de la session système de l'hôte, qui a tous les droits.
+
+Derrière un proxy inverse (terminaison TLS, répartiteur), `server.trusted_proxies` liste ses
+adresses ou réseaux (`["10.0.0.0/8", "192.0.2.10"]`, ou
+`LYXAL__SERVER__TRUSTED_PROXIES=10.0.0.0/8,192.0.2.10`). L'adresse du client, utilisée par
+l'anti-force-brute de `lyxal_auth`, est alors lue dans `X-Forwarded-For` : l'adresse la plus à
+droite qui n'est pas un proxy de confiance. Une connexion venant d'une autre adresse n'est jamais
+crue sur cet en-tête. Vide par défaut : adresse de la connexion.
+
+Les réponses des routes `/api/v1/auth/*` portent `Cache-Control: no-store`. Les liens envoyés
+par e-mail (installation, récupération, vérification, invitation) transmettent leur jeton dans
+le fragment (`#token=…`), jamais envoyé au serveur web ni écrit dans ses journaux.
 
 La publication du pipeline d'ingestion vers le catalogue passe par le compte de service
 `lyxal_auth` `lyxal-catalogue-sync` (rôle `catalogue_sync`, créé par les seeds de

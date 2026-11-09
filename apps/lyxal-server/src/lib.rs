@@ -12,6 +12,7 @@ pub mod health;
 pub mod http;
 pub mod metrics;
 pub mod modules;
+pub mod net;
 pub mod runtime;
 pub mod shutdown;
 pub mod telemetry;

@@ -46,6 +46,21 @@ pub fn routes() -> Router<AppContext> {
         .route("/service/token", post(service_token))
         .route("/api-keys/exchange", post(api_key_exchange))
         .merge(super::auth_mfa::routes())
+        .layer(axum::middleware::map_response(no_store))
+}
+
+/// Réponses des routes d'authentification (jetons, parcours, sessions) : jamais mises en cache.
+async fn no_store(mut response: Response) -> Response {
+    let headers = response.headers_mut();
+    headers.insert(
+        axum::http::header::CACHE_CONTROL,
+        axum::http::HeaderValue::from_static("no-store"),
+    );
+    headers.insert(
+        axum::http::header::PRAGMA,
+        axum::http::HeaderValue::from_static("no-cache"),
+    );
+    response
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -155,12 +170,23 @@ pub(super) fn language(headers: &HeaderMap) -> String {
         .unwrap_or_else(|| "fr".to_string())
 }
 
+/// Contexte client : adresse (derrière un proxy de confiance, lue dans `X-Forwarded-For`, cf.
+/// `crate::net`) et agent utilisateur.
 pub(super) fn client_info(
+    context: &AppContext,
     headers: &HeaderMap,
     address: Option<ConnectInfo<SocketAddr>>,
 ) -> ClientInfo {
+    let forwarded_for = headers.get("x-forwarded-for").and_then(|v| v.to_str().ok());
     ClientInfo {
-        ip: address.map(|ConnectInfo(address)| address.ip().to_string()),
+        ip: address.map(|ConnectInfo(address)| {
+            crate::net::client_ip(
+                address.ip(),
+                forwarded_for,
+                &context.config.server.trusted_proxies,
+            )
+            .to_string()
+        }),
         user_agent: headers
             .get("user-agent")
             .and_then(|v| v.to_str().ok())
@@ -303,7 +329,7 @@ async fn login(
                 identifier: body.identifier,
                 password: secret(body.password)?,
                 organization: body.organization,
-                client: client_info(&headers, address),
+                client: client_info(&context, &headers, address),
             })
             .await?;
         ok(StatusCode::OK, outcome_json(&outcome))
@@ -336,7 +362,7 @@ async fn login_actions(
                     new_password: body.new_password.map(secret).transpose()?,
                     accept_terms: body.accept_terms,
                 },
-                client_info(&headers, address),
+                client_info(&context, &headers, address),
             )
             .await?;
         ok(StatusCode::OK, outcome_json(&outcome))
@@ -356,7 +382,7 @@ async fn login_verification(
         let host = host(&context)?;
         let verification = host
             .access
-            .start_login_verification(&flow, client_info(&headers, address))
+            .start_login_verification(&flow, client_info(&context, &headers, address))
             .await?;
         ok(StatusCode::ACCEPTED, json!({ "flow": verification }))
     }
@@ -553,7 +579,7 @@ async fn registration_complete(
                 &body.flow,
                 traits.into_value(),
                 &secret(body.password)?,
-                client_info(&headers, address),
+                client_info(&context, &headers, address),
             )
             .await?;
         // Identité créée : session ouverte, ou double facteur à configurer avant
@@ -578,7 +604,7 @@ async fn recovery_start(
         let host = host(&context)?;
         let flow = host
             .access
-            .start_recovery(&body.email, client_info(&headers, address))
+            .start_recovery(&body.email, client_info(&context, &headers, address))
             .await?;
         // Même réponse que l'adresse existe ou non
         ok(StatusCode::ACCEPTED, json!({ "flow": flow }))
@@ -622,7 +648,7 @@ async fn verification_start(
         let (_, identity) = identity_of(&host, &headers).await?;
         let flow = host
             .access
-            .start_verification(&identity, client_info(&headers, address))
+            .start_verification(&identity, client_info(&context, &headers, address))
             .await?;
         ok(StatusCode::ACCEPTED, json!({ "flow": flow }))
     }
@@ -668,7 +694,7 @@ async fn address_change_start(
                 &caller.session.to_sql(),
                 &secret(body.password)?,
                 &body.new_address,
-                client_info(&headers, address),
+                client_info(&context, &headers, address),
             )
             .await?;
         ok(StatusCode::ACCEPTED, json!({ "flow": flow }))
@@ -745,7 +771,7 @@ async fn service_token(
             .service_token(
                 &body.client_id,
                 &secret(body.client_secret)?,
-                client_info(&headers, address),
+                client_info(&context, &headers, address),
             )
             .await?;
         ok(StatusCode::OK, tokens_json(&tokens))
@@ -769,7 +795,10 @@ async fn api_key_exchange(
         let host = host(&context)?;
         let tokens = host
             .access
-            .api_key_token(&secret(body.api_key)?, client_info(&headers, address))
+            .api_key_token(
+                &secret(body.api_key)?,
+                client_info(&context, &headers, address),
+            )
             .await?;
         ok(StatusCode::OK, tokens_json(&tokens))
     }

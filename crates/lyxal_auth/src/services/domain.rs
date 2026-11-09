@@ -40,7 +40,8 @@ impl HickoryTxtLookup {
     pub fn from_system() -> AuthResult<Self> {
         let resolver = hickory_resolver::Resolver::builder_tokio()
             .map_err(|e| AuthError::Dns(e.to_string()))?
-            .build();
+            .build()
+            .map_err(|e| AuthError::Dns(e.to_string()))?;
         Ok(Self { resolver })
     }
 }
@@ -48,17 +49,21 @@ impl HickoryTxtLookup {
 #[async_trait]
 impl TxtLookup for HickoryTxtLookup {
     async fn txt(&self, name: &str) -> AuthResult<Vec<String>> {
-        match self.resolver.txt_lookup(name).await {
+        use hickory_resolver::proto::rr::{RData, RecordType};
+        match self.resolver.lookup(name, RecordType::TXT).await {
             Ok(lookup) => Ok(lookup
+                .answers()
                 .iter()
-                .take(MAX_TXT_RECORDS)
-                .map(|record| {
-                    record
-                        .txt_data()
-                        .iter()
-                        .map(|part| String::from_utf8_lossy(part).into_owned())
-                        .collect::<String>()
+                .filter_map(|record| match &record.data {
+                    RData::TXT(txt) => Some(
+                        txt.txt_data
+                            .iter()
+                            .map(|part| String::from_utf8_lossy(part).into_owned())
+                            .collect::<String>(),
+                    ),
+                    _ => None,
                 })
+                .take(MAX_TXT_RECORDS)
                 .collect()),
             Err(error) if error.is_no_records_found() => Ok(Vec::new()),
             Err(error) => Err(AuthError::Dns(error.to_string())),
