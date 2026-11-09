@@ -75,7 +75,7 @@ du code Rust, déclarer son implémentation et ses services dans `src/modules/` 
 | `cors` | `enabled`, `allow_credentials`, `allowed_origins`, `allowed_methods`, `allowed_headers` |
 | `catalogue_sync` | `signing_key` (facultative) |
 | `crypto` | `application_key` (facultative, variable d'environnement seulement), `application_key_id` |
-| `auth` | `public_url` (facultative : adresse publique de l'interface, pour les liens des messages) |
+| `auth` | `public_url` (facultative : adresse publique de l'interface, pour les liens des messages et l'origine des passkeys), `passkey_rp_id` (facultatif : domaine des passkeys, défaut : hôte de `public_url`) |
 | `notification.smtp` | `host`, `port`, `security` (`tls`, `starttls`, `local_plain`), `username`, `password`, `from_address`, `from_name`, `timeout_seconds` (section facultative) |
 
 Les identifiants Root ne figurent dans aucun fichier : `LYXAL__DATABASE__USERNAME` et
@@ -152,6 +152,30 @@ compte de service ne gère pas le compte (`AUTH_PERMISSION_DENIED`).
 | `POST /password` 🔒 | `current_password`, `new_password` | mot de passe changé, autres sessions révoquées |
 | `POST /service/token` | `client_id`, `client_secret` | jeton d'un compte de service (sans renouvellement) |
 | `POST /api-keys/exchange` | `api_key` | jeton aux permissions de la clé |
+| `POST /flows/{flow}/mfa` | `method` (`totp`, `recovery_code`, `passkey`), `code` ou `response` | second facteur d'une connexion `mfa_required` → jetons AAL2 |
+| `POST /flows/{flow}/mfa/passkey/options` | — | défi passkey de ce parcours |
+| `POST /passkey/login/options` | — | défi de connexion sans mot de passe (`flow`, `options`) |
+| `POST /passkey/login` | `flow`, `response` | jetons (AAL2), ou actions imposées |
+| `GET /mfa` 🔒 | — | ses seconds facteurs (TOTP, passkeys, codes restants, niveau atteignable) |
+| `POST /mfa/totp` 🔒✱ | `login_flow` (au lieu du jeton, pour configurer le double facteur exigé) | `otpauth_uri` à afficher en QR code, une seule fois |
+| `POST /mfa/totp/confirm` 🔒✱ | `code`, `login_flow` | TOTP actif (session en AAL2) |
+| `DELETE /mfa/totp` 🔒✱ | — | TOTP retiré (refusé s'il est le dernier facteur exigé) |
+| `POST /mfa/passkeys/options` 🔒✱ | `login_flow` | défi d'enregistrement (`flow`, `options`) |
+| `POST /mfa/passkeys` 🔒✱ | `flow`, `response`, `label`, `login_flow` | passkey enregistrée |
+| `PATCH /mfa/passkeys/{credential}` 🔒 | `label` | passkey renommée |
+| `DELETE /mfa/passkeys/{credential}` 🔒✱ | — | passkey retirée |
+| `POST /mfa/recovery-codes` 🔒✱ | `login_flow` | 10 codes de secours affichés une seule fois (remplacent les précédents) |
+| `POST /session/reauthenticate/options` 🔒 | — | défi passkey de réauthentification |
+| `POST /session/reauthenticate` 🔒 | `method` (`password`, `totp`, `recovery_code`, `passkey`), `code` ou `flow` + `response` | nouveau jeton (AAL2 par un second facteur) |
+| `POST /identities/{identity}/mfa/reset` 🔒✱ | — | remise à zéro des seconds facteurs d'une identité par un administrateur |
+
+✱ : action sensible — AAL la plus haute disponible et authentification de moins de 15 min
+(politique), sinon `AUTH_AAL_INSUFFICIENT` ou `AUTH_REAUTHENTICATION_REQUIRED` (avec les
+méthodes de réauthentification) ; `/password`, `/address-change` et `DELETE /sessions/{session}`
+le sont aussi. Le double facteur exigé (politique, organisation, rôle — `platform_admin` par
+défaut) répond `status: action_required` avec `configure_mfa` : l'interface enrôle alors un TOTP
+ou une passkey avec `login_flow`, puis reprend `POST /flows/{flow}/actions`. Les identifiants
+placés dans le chemin (`auth_flow:…`, `auth_session:…`) sont encodés en pourcentage.
 
 Jetons : `access_token` (JWT HS256, `expires_in` secondes), `refresh_token` (opaque, usage
 unique), `session`, `organization`, `permissions`.
