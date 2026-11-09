@@ -3,8 +3,16 @@
 -- avec le même jeton, renouvellement par le point de reprise, cloisonnement des écritures,
 -- reprise après expiration, libération).
 --
--- identité ingestion: { "id": "ingestion_session:ingestion", "sub": "service:ingestion", "role": "ingestion_agent", "scope": ["ingestion:batch:write"] }
--- identité intrus: { "id": "ingestion_session:intrus", "sub": "user:intrus", "role": "visiteur", "scope": [] }
+-- identité ingestion: { "id": "auth_session:ingestion", "pv": 1, "permissions": ["ingestion.read", "ingestion.batch.write"] }
+-- identité intrus: { "id": "auth_session:intrus", "pv": 1, "permissions": [] }
+
+-- préparation: identités et sessions lyxal_auth (Data Steward en double facteur : AAL2 ; synchronisation : compte de service)
+{
+    CREATE auth_identity:ingestion CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "ingestion@exemple.fr" } };
+    CREATE auth_identity:intrus CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "intrus@exemple.fr" } };
+    CREATE auth_session:ingestion CONTENT { identity: auth_identity:ingestion, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:intrus CONTENT { identity: auth_identity:intrus, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+};
 
 -- préparation: lot
 RETURN fn::ingestion_batch_create({ id: "lot_r", source_type: "CSV", fournisseur_id: "FOURN_PLACO", nom_fichier: "r.csv", file_hash_blake3: crypto::blake3("r.csv") });
@@ -24,7 +32,7 @@ RETURN fn::ingestion_batch_claim({ id: "lot_r", owner: "exec_1" }).error.{ code,
 -- en tant que: ingestion
 RETURN fn::ingestion_batch_claim({ id: "lot_r", owner: "exec_2", ttl_seconds: 1 }).error.{ code, f: object::keys(details.fields) } == { code: "INGESTION_INVALID_PARAMETERS", f: ["ttl_seconds"] };
 
--- test: un rôle inconnu ne réserve pas de lot
+-- test: une session sans permission d'ingestion ne réserve pas de lot
 -- en tant que: intrus
 RETURN fn::ingestion_batch_claim({ id: "lot_r", owner: "exec_x" }).error.code == "INGESTION_BATCH_NOT_FOUND";
 

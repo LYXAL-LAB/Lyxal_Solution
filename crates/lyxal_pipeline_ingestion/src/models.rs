@@ -125,7 +125,6 @@ pub struct PublicationManifest {
 
     pub approved_by: Option<String>,
     pub approved_at: Option<lyxal_surreal::Datetime>,
-    pub approver_role: Option<String>,
 
     pub nb_articles_insert: usize,
     pub nb_articles_update: usize,

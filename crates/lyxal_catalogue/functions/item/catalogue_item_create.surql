@@ -25,7 +25,6 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_create($params: object) {
             unite_conditionnement: { pipeline: [{ rule: "record", options: { expected_table: "base_unite" } }] },
             master_id: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
             is_custom: { pipeline: [{ rule: "boolean" }] },
-            tenant_id: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -82,52 +81,20 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_create($params: object) {
     };
     LET $categories = array::map($checked, |$c| { categorie: $c.categorie.value, is_primary: $c.primary.value });
 
-    LET $is_sync_auth = (
-        ($token != NONE 
-        AND $token.role = "catalogue_sync_agent" 
-        AND $token.iss = "lyxal-os"
-        AND $token.aud = "lyxal-catalogue"
-        AND "catalogue:sync:write" IN $token.scope)
-        OR
-        ($auth != NONE 
-        AND $auth.role = "catalogue_sync_agent" 
-        AND "catalogue:sync:write" IN $auth.permissions)
-    );
-
-    -- Détermination et contrôle de propriété pour les articles privés
-    LET $caller_tenant = IF $token != NONE AND $token.tenant_id != NONE { 
-        string::trim($token.tenant_id) 
-    } ELSE IF $auth != NONE AND $auth.tenant_id != NONE { 
-        string::trim($auth.tenant_id) 
-    } ELSE { 
-        NONE 
-    };
-
-    -- Contrôle d'autorisation pour les articles maîtres vs privés
+    -- Droits de l'appelant (sessions lyxal_auth)
+    LET $c = fn::catalogue_caller({});
     IF $is_custom == false {
-        IF !$is_sync_auth {
+        -- Article maître : réservé au compte de synchronisation (ou à la session système)
+        IF !$c.sync {
             RETURN fn::error_result("CATALOGUE_ITEM_SYNC_CANNOT_CREATE_MASTER", $language, {
-                notice: "Seul l'agent de synchronisation officiel peut injecter des articles maîtres."
+                notice: "Seul le compte de synchronisation peut injecter des articles maîtres."
             });
         };
     } ELSE {
-        -- Article privé
-        IF $is_sync_auth {
+        -- Article privé : appartient à l'organisation active de la session
+        IF $c.sync AND !$c.system {
             RETURN fn::error_result("CATALOGUE_ITEM_SYNC_CANNOT_CREATE_CUSTOM", $language, {
-                notice: "Le service catalogue_sync_agent ne peut pas créer d'articles privés pour les clients."
-            });
-        };
-        LET $caller_role = IF $token != NONE AND $token.role != NONE { 
-            string::trim($token.role) 
-        } ELSE IF $auth != NONE AND $auth.role != NONE { 
-            string::trim($auth.role) 
-        } ELSE { 
-            NONE 
-        };
-        IF $caller_role != "tenant_user" {
-            RETURN fn::error_result("CATALOGUE_ITEM_TENANT_REQUIRED", $language, {
-                field: "role",
-                notice: "La création d'un article privé exige une identité cliente avec le rôle tenant_user."
+                notice: "Le compte de synchronisation ne peut pas créer d'articles privés pour les clients."
             });
         };
         IF $master_id != NONE {
@@ -136,21 +103,17 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_create($params: object) {
                 notice: "Un article privé ne peut pas avoir d'identifiant maître."
             });
         };
-        IF $caller_tenant == NONE OR string::len($caller_tenant) == 0 {
+        IF $c.tenant IS NONE {
             RETURN fn::error_result("CATALOGUE_ITEM_TENANT_REQUIRED", $language, {
-                field: "tenant_id",
-                notice: "La création d'un article privé exige une identité cliente authentifiée avec un tenant_id valide."
+                notice: "La création d'un article privé exige une session rattachée à une organisation."
             });
         };
-        IF $p.tenant_id != NONE AND $p.tenant_id != $caller_tenant {
-            RETURN fn::error_result("CATALOGUE_ITEM_TENANT_FORBIDDEN", $language, {
-                tenant_id: $p.tenant_id,
-                notice: "Tentative d'usurpation de propriété : le tenant_id ne correspond pas à l'identité authentifiée."
-            });
+        IF !$c.manage {
+            RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_item", permission: "catalogue.item.manage" });
         };
     };
 
-    LET $final_tenant_id = IF $is_custom == true { $caller_tenant } ELSE { NONE };
+    LET $final_tenant = IF $is_custom == true { $c.tenant } ELSE { NONE };
 
     -- 1. Contrôle d'unicité du code
     LET $existing = (SELECT id FROM catalogue_item WHERE code = $code);
@@ -225,7 +188,7 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_create($params: object) {
         unite_conditionnement: $unite_cond,
         master_id: $master_id,
         is_custom: $is_custom,
-        tenant_id: $final_tenant_id,
+        tenant: $final_tenant,
         metadata: {},
         enabled: true,
         is_system: false,

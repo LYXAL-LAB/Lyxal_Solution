@@ -2,16 +2,28 @@
 -- Lots d'ingestion : création idempotente, lignes brutes immuables, machine à états,
 -- points de reprise, sous l'identité de l'agent d'ingestion.
 --
--- identité ingestion: { "id": "ingestion_session:ingestion", "sub": "service:ingestion", "role": "ingestion_agent", "scope": ["ingestion:batch:write"] }
--- identité qualif: { "id": "ingestion_session:qualif", "sub": "service:qualif", "role": "qualification_agent", "scope": ["ingestion:staged:qualify"] }
--- identité steward: { "id": "ingestion_session:steward", "sub": "user:steward", "role": "steward_admin", "scope": ["ingestion:manifest:approve"] }
--- identité intrus: { "id": "ingestion_session:intrus", "sub": "user:intrus", "role": "visiteur", "scope": [] }
+-- identité ingestion: { "id": "auth_session:ingestion", "pv": 1, "permissions": ["ingestion.read", "ingestion.batch.write"] }
+-- identité qualif: { "id": "auth_session:qualif", "pv": 1, "permissions": ["ingestion.read", "ingestion.staged.qualify"] }
+-- identité steward: { "id": "auth_session:steward", "pv": 1, "permissions": ["ingestion.read", "ingestion.rule.manage", "ingestion.manifest.approve"] }
+-- identité intrus: { "id": "auth_session:intrus", "pv": 1, "permissions": [] }
+
+-- préparation: identités et sessions lyxal_auth (Data Steward en double facteur : AAL2 ; synchronisation : compte de service)
+{
+    CREATE auth_identity:ingestion CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "ingestion@exemple.fr" } };
+    CREATE auth_identity:qualif CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "qualif@exemple.fr" } };
+    CREATE auth_identity:steward CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "steward@exemple.fr" } };
+    CREATE auth_identity:intrus CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "intrus@exemple.fr" } };
+    CREATE auth_session:ingestion CONTENT { identity: auth_identity:ingestion, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:qualif CONTENT { identity: auth_identity:qualif, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:steward CONTENT { identity: auth_identity:steward, aal: 2, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:intrus CONTENT { identity: auth_identity:intrus, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+};
 
 -- test: l'agent d'ingestion crée un lot (format normalisé, état RECEIVED, transition journalisée)
 -- en tant que: ingestion
 RETURN fn::ingestion_batch_create({ id: "lot_a", source_type: "csv", fournisseur_id: " FOURN_PLACO ", nom_fichier: "placo.csv", file_hash_blake3: crypto::blake3("placo.csv"), taille_octets: 2048, chunk_size: 2 }).data == "lot_a"
     AND (fn::ingestion_batch_get({ id: "lot_a" }).data).{ source_type, fournisseur_id, statut, chunk_size, source_format_version, j: transitions.map(|$t| [$t.from_state, $t.to_state, $t.triggered_by]) }
-        == { source_type: "CSV", fournisseur_id: "FOURN_PLACO", statut: "RECEIVED", chunk_size: 2, source_format_version: "1.0", j: [[NONE, "RECEIVED", "service:ingestion"]] };
+        == { source_type: "CSV", fournisseur_id: "FOURN_PLACO", statut: "RECEIVED", chunk_size: 2, source_format_version: "1.0", j: [[NONE, "RECEIVED", "auth_identity:ingestion"]] };
 
 -- préparation: le banc réserve le lot lot_a (génération 1)
 RETURN fn::ingestion_batch_claim({ id: "lot_a", owner: "banc" }).data.generation == 1;
@@ -49,7 +61,7 @@ RETURN fn::ingestion_batch_create({ id: "lot_sans_fournisseur", source_type: "CS
 -- en tant que: ingestion
 RETURN fn::ingestion_batch_create({ id: "lot_bloc", source_type: "CSV", fournisseur_id: "F", nom_fichier: "b.csv", file_hash_blake3: crypto::blake3("b.csv"), chunk_size: 0 }).error.{ code, f: object::keys(details.fields) } == { code: "INGESTION_INVALID_PARAMETERS", f: ["chunk_size"] };
 
--- test: un autre rôle ne crée pas de lot
+-- test: sans la permission ingestion.batch.write, le steward ne crée pas de lot
 -- en tant que: steward
 RETURN fn::ingestion_batch_create({ id: "lot_steward", source_type: "CSV", fournisseur_id: "F", nom_fichier: "s.csv", file_hash_blake3: crypto::blake3("s.csv") }).error.code == "INGESTION_WRITE_FORBIDDEN";
 
@@ -167,11 +179,11 @@ RETURN fn::ingestion_batch_get({ id: "catalogue_item:lot_b" }).error.code == "IN
 -- en tant que: ingestion
 RETURN fn::ingestion_batch_get({ id: fn::ingestion_batch_create({ source_type: "XML", fournisseur_id: "FOURN_KNAUF", nom_fichier: "knauf.xml", file_hash_blake3: crypto::blake3("knauf.xml") }).data }).data.{ statut, cle_texte: type::is_string(id) AND string::len(id) == 36 } == { statut: "RECEIVED", cle_texte: true };
 
--- test: un rôle inconnu ne voit aucun lot
+-- test: une session sans permission d'ingestion ne voit aucun lot
 -- en tant que: intrus
 RETURN fn::ingestion_batch_get({ id: "lot_b" }).error.code == "INGESTION_BATCH_NOT_FOUND";
 
--- test: un rôle inconnu ne fait pas avancer un lot
+-- test: une session sans permission d'ingestion ne fait pas avancer un lot
 -- en tant que: intrus
 RETURN fn::ingestion_batch_transition({ claim: { owner: "banc", generation: 1 }, id: "lot_b", nouveau_statut: "VALIDATING", reason: "Intrusion" }).error.code == "INGESTION_BATCH_NOT_FOUND"
     AND fn::ingestion_batch_get({ id: "lot_b" }).error.code == "INGESTION_BATCH_NOT_FOUND";

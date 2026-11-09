@@ -8,24 +8,9 @@ DEFINE TABLE OVERWRITE ingestion_staged_item
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE (
-            ($token != NONE AND ($token.role IN ["qualification_agent", "steward_admin", "catalogue_sync_agent"]))
-            OR ($auth != NONE AND ($auth.role IN ["qualification_agent", "steward_admin", "catalogue_sync_agent"]))
-        )
-        FOR create WHERE (
-            ($token != NONE AND $token.role = "qualification_agent" AND "ingestion:staged:qualify" IN $token.scope)
-            OR ($auth != NONE AND $auth.role = "qualification_agent" AND "ingestion:staged:qualify" IN $auth.permissions)
-        )
-        FOR update WHERE (
-            ($token != NONE AND (
-                ($token.role = "qualification_agent" AND "ingestion:staged:qualify" IN $token.scope)
-                OR ($token.role = "steward_admin" AND "ingestion:manifest:approve" IN $token.scope)
-            ))
-            OR ($auth != NONE AND (
-                ($auth.role = "qualification_agent" AND "ingestion:staged:qualify" IN $auth.permissions)
-                OR ($auth.role = "steward_admin" AND "ingestion:manifest:approve" IN $auth.permissions)
-            ))
-        )
+        FOR select WHERE fn::auth_has_permission({ permission: "ingestion.staged.qualify" }) OR fn::auth_has_permission({ permission: "ingestion.manifest.approve" }) OR fn::auth_has_permission({ permission: "ingestion.rule.manage" }) OR fn::auth_has_permission({ permission: "ingestion.manifest.execute" })
+        FOR create WHERE fn::auth_has_permission({ permission: "ingestion.staged.qualify" })
+        FOR update WHERE fn::auth_has_permission({ permission: "ingestion.staged.qualify" }) OR fn::auth_has_permission({ permission: "ingestion.manifest.approve" })
         FOR delete NONE
     COMMENT "Articles normalisés en staging avec triptyque de qualification et empreinte canonique";
 
@@ -163,15 +148,11 @@ DEFINE FIELD OVERWRITE is_approved ON TABLE ingestion_staged_item
 
 DEFINE FIELD OVERWRITE approved_by ON TABLE ingestion_staged_item
     TYPE option<string>
-    COMMENT "Identifiant de l'approbateur (ex: steward_admin)";
+    COMMENT "Opérateur approbateur (auth_identity:<clé>, auth_application:<clé> ou system)";
 
 DEFINE FIELD OVERWRITE approved_at ON TABLE ingestion_staged_item
     TYPE option<datetime>
     COMMENT "Date et heure de l'approbation formelle";
-
-DEFINE FIELD OVERWRITE approver_role ON TABLE ingestion_staged_item
-    TYPE option<string>
-    COMMENT "Rôle de l'approbateur lors de la décision";
 
 DEFINE FIELD OVERWRITE created_at ON TABLE ingestion_staged_item
     TYPE datetime
@@ -231,15 +212,15 @@ THEN {
         THROW "INGESTION_UNIT_UNRESOLVED: Un article sans unité du référentiel ne peut pas être VERIFIED.";
     };
 
-    -- 3. Verrouillage d'approbation : seuls les articles VERIFIED peuvent être approuvés par un steward_admin
+    -- 3. Verrouillage d'approbation : seuls les articles VERIFIED sont approuvés, avec la permission ingestion.manifest.approve
     IF $event = "UPDATE" AND $before.is_approved = false AND $after.is_approved = true {
         IF $after.qualification != "VERIFIED" {
             THROW "INGESTION_STAGED_CANNOT_APPROVE_NON_VERIFIED: Seul un article au statut VERIFIED peut être approuvé pour publication.";
         };
-        -- Approbateur lu dans la session : steward_admin, ou session système (hôte)
-        LET $who = fn::ingestion_session_identity({});
-        IF $who.role NOT IN ["steward_admin", "system"] OR $after.approver_role != $who.role OR $after.approved_by != $who.operator {
-            THROW "INGESTION_STAGED_APPROVAL_REQUIRES_STEWARD: L'approbation requiert la session d'un steward_admin, dont l'identité est enregistrée (auto-approbation interdite).";
+        -- Approbateur lu dans la session : permission ingestion.manifest.approve (ou session système),
+        -- et approbateur enregistré = opérateur de la session
+        IF !fn::auth_has_permission({ permission: "ingestion.manifest.approve" }) OR $after.approved_by != fn::ingestion_operator({}) {
+            THROW "INGESTION_STAGED_APPROVAL_REQUIRES_STEWARD: L'approbation requiert une session détenant la permission ingestion.manifest.approve, dont l'opérateur est enregistré comme approbateur (auto-approbation interdite).";
         };
     };
 };

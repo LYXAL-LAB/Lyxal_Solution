@@ -69,6 +69,11 @@ Permissions du socle (une portée par code) :
 Rôles du socle : `platform_admin` (installation), `organization_admin` et `organization_member`
 (organisation ; `organization_member` attribué par défaut).
 
+Modules branchés sur ce contrôle : `lyxal_catalogue` (`catalogue.item.read`,
+`catalogue.item.manage`, `catalogue.master.write`, rôle `catalogue_sync`) et
+`lyxal_pipeline_ingestion` (`ingestion.*`, rôles `ingestion_operator`, `ingestion_qualifier`,
+`ingestion_steward`, compte de service `lyxal-catalogue-sync`) ; voir leurs `README.md`.
+
 Un module déclare ses permissions dans son seed, de façon rejouable et non destructive :
 
 ```surql
@@ -174,7 +179,7 @@ IF !record::exists(auth_permission:⟨notification.read⟩) THEN (
 | Mots de passe, actions imposées | `auth_password_credential_get`, `auth_password_set`, `auth_required_action_add`, `_list`, `_complete` |
 | Parcours | `auth_flow_start`, `_load`, `_get`, `_submit`, `auth_flow_states`, `auth_code_issue`, `auth_code_verify`, `auth_registration_start`, `_complete`, `auth_setup_start`, `auth_address_verify`, `auth_address_change_request`, `_confirm`, `auth_domain_auto_join` |
 | Sessions | `auth_session_open`, `_create`, `_refresh`, `_revoke`, `_revoke_all`, `_switch_organization`, `_list`, `_check`, `auth_subject_permissions`, `auth_login_failure_status`, `_check`, `_record`, `_reset` |
-| Applications, clés d'API | `auth_application_can`, `_create`, `_update`, `_list`, `_secret_add`, `_secret_revoke`, `_permissions`, `auth_service_session_create`, `auth_api_key_create`, `_list`, `_revoke`, `auth_api_key_session_create` |
+| Applications, clés d'API | `auth_application_can`, `_create`, `_update`, `_list`, `_secret_add`, `_secret_revoke`, `_permissions`, `auth_service_session_create`, `auth_service_session_open` (session système seulement : session d'un compte de service interne à l'hôte, sans secret), `auth_api_key_create`, `_list`, `_revoke`, `auth_api_key_session_create` |
 | Clés de signature, purge | `auth_signing_key_get_active`, `auth_signing_key_rotate`, `auth_purge` |
 | Double facteur | `auth_mfa_factor_list`, `auth_mfa_totp_begin`, `_secret_get`, `_activate`, `_step_use`, `auth_mfa_passkey_save`, `_find`, `_list_for`, `_update`, `_rename`, `_flag`, `auth_mfa_recovery_codes_replace`, `auth_mfa_recovery_code_use`, `auth_mfa_factor_remove`, `auth_mfa_reset`, `auth_mfa_failure_check`, `_record`, `_reset`, `auth_mfa_actor`, `auth_mfa_enrolled`, `auth_mfa_publish`, `auth_mfa_required`, `auth_mfa_methods` |
 | Assurance, réauthentification | `auth_login_requirements`, `auth_assurance_check`, `auth_assurance_state`, `auth_session_reauthenticate`, `auth_flow_state_save`, `auth_flow_state_take` |
@@ -222,7 +227,8 @@ transaction : il n'est jamais enregistré.
   transmises à la base).
 * `AccessService` : connexion, actions imposées, renouvellement, révocation, changement
   d'organisation, mot de passe, parcours (inscription, récupération, vérification, changement
-  d'adresse), comptes de service, clés d'API, lien d'installation ; `authenticate` identifie
+  d'adresse), comptes de service (dont `internal_service_token` : jeton d'un compte de service
+  interne à l'hôte, sans secret ni renouvellement), clés d'API, lien d'installation ; `authenticate` identifie
   l'appelant d'un jeton d'accès (signature vérifiée avec la clé de son emplacement, puis
   session contrôlée par `fn::auth_session_check`).
 * `SigningKeyService` : clés générées (`OsRng`), scellées sous

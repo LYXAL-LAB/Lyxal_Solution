@@ -271,10 +271,10 @@ async fn test_3_steward_requalification_session_security() {
         .await
         .expect("Save staged");
 
-    // Les refus par rôle (session non steward_admin) sont prouvés sous de vraies identités
+    // Les refus par permission (session sans ingestion.manifest.approve) sont prouvés sous de vraies identités
     // dans tests/securite.test.surql ; ici, session système de l'hôte.
 
-    // TENTATIVE 2 : Justification trop courte (< 10 caractères) avec steward_admin
+    // TENTATIVE 2 : Justification trop courte (< 10 caractères) (session système)
     // DOIT ÊTRE REJETÉ PAR SURREALQL
     let short_justif_params = StagedRequalifyParams {
         item_id: item_id.clone(),

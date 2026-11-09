@@ -25,7 +25,6 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
             reference_fabricant: { pipeline: [{ rule: "optional_string", options: { max_length: 64 } }] },
             master_id: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
             is_custom: { pipeline: [{ rule: "boolean" }] },
-            tenant_id: { pipeline: [{ rule: "optional_string", options: { max_length: 128 } }] },
             language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
         },
         unknown_keys: "reject"
@@ -87,70 +86,41 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_update($params: object) {
         RETURN fn::error_result("CATALOGUE_ITEM_UNITE_INVALID", $language, { unite_conditionnement: <string> $unite_cond });
     };
 
-    LET $is_sync_auth = (
-        ($token != NONE 
-        AND $token.role = "catalogue_sync_agent" 
-        AND $token.iss = "lyxal-os"
-        AND $token.aud = "lyxal-catalogue"
-        AND "catalogue:sync:write" IN $token.scope)
-        OR
-        ($auth != NONE 
-        AND $auth.role = "catalogue_sync_agent" 
-        AND "catalogue:sync:write" IN $auth.permissions)
-    );
+    -- Droits de l'appelant (sessions lyxal_auth)
+    LET $c = fn::catalogue_caller({});
+    LET $is_sync_auth = $c.sync;
 
     -- Contrôle de propriété strict de l'article privé
-    IF $item.is_custom == true {
-        IF $is_sync_auth {
+    IF $item.is_custom == true AND !$c.system {
+        IF $c.sync {
             RETURN fn::error_result("CATALOGUE_ITEM_SYNC_CANNOT_ACCESS_CUSTOM", $language, {
                 id: <string> $id,
-                notice: "Le service catalogue_sync_agent ne doit pas lire ou modifier les articles privés des clients."
+                notice: "Le compte de synchronisation ne doit pas lire ou modifier les articles privés des clients."
             });
         };
-        LET $caller_role = IF $token != NONE AND $token.role != NONE { 
-            string::trim($token.role) 
-        } ELSE IF $auth != NONE AND $auth.role != NONE { 
-            string::trim($auth.role) 
-        } ELSE { 
-            NONE 
-        };
-        IF $caller_role != "tenant_user" {
-            RETURN fn::error_result("CATALOGUE_ITEM_TENANT_REQUIRED", $language, {
-                id: <string> $id,
-                notice: "La modification d'un article privé exige une identité cliente avec le rôle tenant_user."
-            });
-        };
-        IF $item.tenant_id == NONE OR string::len(string::trim($item.tenant_id)) == 0 {
+        IF $item.tenant IS NONE {
             RETURN fn::error_result("CATALOGUE_ITEM_TENANT_ORPHAN", $language, {
                 id: <string> $id,
-                notice: "Article privé orphelin sans propriétaire vérifiable : modification interdite."
+                notice: "Article privé orphelin sans organisation propriétaire : modification interdite."
             });
         };
-        LET $caller_tenant = IF $token != NONE AND $token.tenant_id != NONE { 
-            string::trim($token.tenant_id) 
-        } ELSE IF $auth != NONE AND $auth.tenant_id != NONE { 
-            string::trim($auth.tenant_id) 
-        } ELSE { 
-            NONE 
-        };
-        IF $caller_tenant == NONE OR string::len($caller_tenant) == 0 {
+        IF $c.tenant IS NONE {
             RETURN fn::error_result("CATALOGUE_ITEM_TENANT_REQUIRED", $language, {
                 id: <string> $id,
-                notice: "Une identité sans tenant_id valide ne peut pas modifier un article privé."
+                notice: "La modification d'un article privé exige une session rattachée à une organisation."
             });
         };
-        IF $caller_tenant != $item.tenant_id {
+        IF $c.tenant != $item.tenant {
             RETURN fn::error_result("CATALOGUE_ITEM_TENANT_FORBIDDEN", $language, {
                 id: <string> $id,
                 notice: "Cet article privé appartient exclusivement à une autre organisation."
             });
         };
-        IF $p.tenant_id != NONE AND $p.tenant_id != $item.tenant_id {
-            RETURN fn::error_result("CATALOGUE_ITEM_TENANT_ID_IMMUTABLE", $language, {
-                tenant_id: $item.tenant_id,
-                notice: "Le propriétaire tenant_id d'un article est strictement immuable."
-            });
+        IF !$c.manage {
+            RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_item", permission: "catalogue.item.manage" });
         };
+    };
+    IF $item.is_custom == true {
         IF $p.is_custom == false {
             RETURN fn::error_result("CATALOGUE_ITEM_CUSTOM_CANNOT_CONVERT_MASTER", $language, {
                 id: <string> $id,

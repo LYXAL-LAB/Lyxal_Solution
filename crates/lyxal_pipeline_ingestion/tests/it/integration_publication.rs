@@ -1,5 +1,5 @@
-//! Publication réelle d'un manifeste approuvé vers le catalogue installé, sous le jeton de
-//! service `catalogue_sync_agent` (accès JWT défini comme le fait l'hôte).
+//! Publication réelle d'un manifeste approuvé vers le catalogue installé, sous une session
+//! du compte de service `lyxal-catalogue-sync` ouverte par `lyxal_auth`, comme le fait l'hôte.
 
 use std::sync::Arc;
 
@@ -269,7 +269,7 @@ async fn approved_manifest_is_published_to_the_catalogue() {
         Some("base_unite:PCE")
     );
 
-    // Manifeste exécuté au nom de l'agent de synchronisation
+    // Manifeste exécuté au nom du compte de service de synchronisation
     let manifest = store
         .get_manifest("MAN-PUB")
         .await
@@ -280,7 +280,10 @@ async fn approved_manifest_is_published_to_the_catalogue() {
     assert_eq!(manifest.execution_items.len(), 2);
     let last = manifest.transitions.last().expect("transition");
     assert_eq!(last.to_state, "COMMITTED");
-    assert_eq!(last.triggered_by.as_deref(), Some("service:catalogue_sync"));
+    assert_eq!(
+        last.triggered_by.as_deref(),
+        Some("auth_application:catalogue_sync")
+    );
 
     // Un manifeste exécuté n'est pas republié
     let again = publisher.publish_manifest("MAN-PUB").await.expect("rejeu");
@@ -303,7 +306,7 @@ async fn approved_manifest_is_published_to_the_catalogue() {
     assert_eq!(event.manifest_ref, "MAN-PUB");
     assert_eq!(event.batch_id, "ingestion_batch:lot_pub");
     assert_eq!((event.items_committed, event.items_failed), (2, 0));
-    assert_eq!(event.publisher_agent, "service:catalogue_sync");
+    assert_eq!(event.publisher_agent, "auth_application:catalogue_sync");
 }
 
 #[tokio::test]
@@ -550,7 +553,7 @@ async fn resumed_publication_skips_journaled_and_already_created_items() {
         )
         .await
         .expect("journal");
-    let token = issuer.issue().expect("jeton");
+    let token = issuer.issue().await.expect("jeton");
     let sync_session = store.client().clone();
     sync_session
         .authenticate(token.expose_secret().to_string())
@@ -654,7 +657,7 @@ async fn sealed_batch_is_locked_and_tampered_content_is_refused() {
 async fn token_signed_with_another_key_is_refused() {
     let store = crate::support::installed_store().await;
     let _defined = crate::support::sync_issuer(&store).await;
-    // Second accès défini ensuite : l'émetteur du premier ne signe plus avec la clé de la base
+    // Émetteur d'une autre installation : ses clés de signature ne sont pas celles de la base
     let stale_issuer = {
         let other = crate::support::installed_store().await;
         crate::support::sync_issuer(&other).await

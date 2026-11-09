@@ -206,6 +206,39 @@ DEFINE FUNCTION OVERWRITE fn::auth_service_session_create($params: object) {
 } COMMENT "Ouvre la session d'un compte de service ({ client_id, secret_hash, client, access_slot }) : application machine active et secret valide ; sans jeton de renouvellement. Session système";
 
 -- ----------------------------------------------------------------------------
+-- fn::auth_service_session_open : session d'un compte de service interne à l'hôte
+-- ----------------------------------------------------------------------------
+-- L'hôte, déjà maître de la base (session système), n'a pas à se présenter un secret à
+-- lui-même : il ouvre directement la session d'une application machine (ex. agent de
+-- synchronisation du catalogue). La session reste une session de compte de service ordinaire :
+-- révocable, droits portés par les rôles de l'application, contrôlée à chaque opération.
+
+DEFINE FUNCTION OVERWRITE fn::auth_service_session_open($params: object) {
+    LET $report = fn::validation_object_execute($params, {
+        fields: {
+            client_id: { pipeline: [{ rule: "required_string", options: { min_length: 16, max_length: 64 } }], required: true },
+            client: { pipeline: [{ rule: "is_object" }], default: {} },
+            access_slot: { pipeline: [{ rule: "enum", options: { allowed: ["a", "b"], case_sensitive: true } }], required: true },
+            language: { pipeline: [{ rule: "language_code", options: { allow_alpha3: false } }], default: "fr" }
+        },
+        unknown_keys: "reject"
+    }, 20);
+    IF !$report.valid {
+        RETURN fn::error_result("AUTH_INVALID_PARAMETERS", IF type::is_string($params.language) { $params.language } ELSE { NONE }, { fields: $report.by_field });
+    };
+    LET $p = $report.value;
+    IF !fn::auth_session_valid({}).system { RETURN fn::error_result("AUTH_PERMISSION_DENIED", $p.language, {}); };
+    LET $application = (SELECT id, tenant, type FROM ONLY auth_application WHERE client_id = $p.client_id LIMIT 1);
+    IF $application == NONE OR $application.type != "machine" { RETURN fn::error_result("AUTH_APPLICATION_NOT_FOUND", $p.language, {}); };
+    LET $opened = fn::auth_session_open({
+        application: $application.id, kind: "service", organization: $application.tenant, amr: ["host"],
+        client: $p.client, access_slot: $p.access_slot
+    });
+    IF $opened.code IS NOT NONE { RETURN fn::error_result($opened.code, $p.language, {}); };
+    RETURN fn::result_ok(object::remove($opened, "code"));
+} COMMENT "Ouvre la session d'un compte de service interne à l'hôte ({ client_id, client, access_slot }) sans secret : application machine active ; sans jeton de renouvellement. Session système seulement";
+
+-- ----------------------------------------------------------------------------
 -- fn::auth_api_key_create / _list / _revoke / fn::auth_api_key_session_create
 -- ----------------------------------------------------------------------------
 

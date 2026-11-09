@@ -21,7 +21,7 @@ pub enum CommercialProofType {
     SignedVendorCatalog,
     /// Certificat officiel de tarif fabricant avec horodatage certifié
     OfficialTariffCertificate,
-    /// Validation humaine documentée par un Data Steward habilité (`steward_admin`)
+    /// Validation humaine documentée par un Data Steward habilité (`ingestion.manifest.approve`)
     StewardDocumentedValidation,
 }
 

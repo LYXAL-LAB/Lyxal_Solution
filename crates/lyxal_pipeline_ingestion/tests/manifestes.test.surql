@@ -2,9 +2,22 @@
 -- Manifestes de publication : brouillon, scellement, approbation par le Data Steward,
 -- exécution par l'agent de synchronisation (articles, compte rendu, échec), consultation.
 --
--- identité qualif: { "id": "ingestion_session:qualif", "sub": "service:qualif", "role": "qualification_agent", "scope": ["ingestion:staged:qualify"] }
--- identité steward: { "id": "ingestion_session:steward", "sub": "user:steward", "role": "steward_admin", "scope": ["ingestion:manifest:approve"] }
--- identité sync: { "id": "ingestion_session:sync", "sub": "service:sync", "role": "catalogue_sync_agent", "scope": ["catalogue:sync:write"] }
+-- identité qualif: { "id": "auth_session:qualif", "pv": 1, "permissions": ["ingestion.read", "ingestion.staged.qualify"] }
+-- identité steward: { "id": "auth_session:steward", "pv": 1, "permissions": ["ingestion.read", "ingestion.rule.manage", "ingestion.manifest.approve"] }
+-- identité sync: { "id": "auth_session:sync", "pv": 1, "permissions": ["ingestion.read", "ingestion.manifest.execute"] }
+-- identité steward_aal1: { "id": "auth_session:steward_aal1", "pv": 1, "permissions": ["ingestion.read", "ingestion.rule.manage", "ingestion.manifest.approve"] }
+-- identité steward_revoque: { "id": "auth_session:steward_revoque", "pv": 1, "permissions": ["ingestion.read", "ingestion.rule.manage", "ingestion.manifest.approve"] }
+
+-- préparation: identités et sessions lyxal_auth (Data Steward en double facteur : AAL2 ; synchronisation : compte de service)
+{
+    CREATE auth_identity:qualif CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "qualif@exemple.fr" } };
+    CREATE auth_identity:steward CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "steward@exemple.fr" } };
+    CREATE auth_session:qualif CONTENT { identity: auth_identity:qualif, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:steward CONTENT { identity: auth_identity:steward, aal: 2, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:steward_aal1 CONTENT { identity: auth_identity:steward, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:steward_revoque CONTENT { identity: auth_identity:steward, aal: 2, state: "revoked", revoked_at: time::now(), idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:sync CONTENT { application: auth_application:catalogue_sync, kind: "service", idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+};
 
 -- préparation: lot
 RETURN fn::ingestion_batch_create({ id: "lot_m", source_type: "CSV", fournisseur_id: "FOURN_ISOVER", nom_fichier: "m.csv", file_hash_blake3: crypto::blake3("m.csv") });
@@ -73,9 +86,32 @@ RETURN fn::ingestion_manifest_approve({ manifest_ref: "MAN-ABSENT", justificatio
 -- en tant que: steward
 RETURN fn::ingestion_manifest_approve({ manifest_ref: "MAN-M1", justification: "Lot contrôlé et conforme", approved_by: "pirate" }).error.code == "INGESTION_INVALID_PARAMETERS";
 
--- test: le steward approuve le manifeste scellé
+-- test: approbation refusée à une session du steward sans double facteur (AAL1)
+-- en tant que: steward_aal1
+RETURN fn::ingestion_manifest_approve({ manifest_ref: "MAN-M1", justification: "Lot contrôlé et conforme" }).error.{ code, permission: details.permission }
+    == { code: "INGESTION_UNAUTHORIZED_APPROVER", permission: "ingestion.manifest.approve" };
+
+-- test: sans double facteur, l'approbation par écriture directe n'a aucun effet
+-- en tant que: steward_aal1
+RETURN (UPDATE ingestion_publication_manifest SET statut = "APPROVED", approved_by = "auth_identity:steward" WHERE manifest_ref = "MAN-M1") == []
+    AND (SELECT VALUE statut FROM ingestion_publication_manifest WHERE manifest_ref = "MAN-M1") == ["SEALED"];
+
+-- test: une session révoquée n'a plus aucun droit, même en double facteur
+-- en tant que: steward_revoque
+RETURN fn::ingestion_manifest_approve({ manifest_ref: "MAN-M1", justification: "Lot contrôlé et conforme" }).error.code == "INGESTION_UNAUTHORIZED_APPROVER"
+    AND count(SELECT id FROM ingestion_publication_manifest) == 0
+    AND count(SELECT id FROM ingestion_batch) == 0;
+
+-- test: le manifeste est toujours scellé, non approuvé
+RETURN (SELECT VALUE statut FROM ONLY ingestion_publication_manifest WHERE manifest_ref = "MAN-M1" LIMIT 1) == "SEALED";
+
+-- test: le steward approuve le manifeste scellé (session en double facteur, AAL2)
 -- en tant que: steward
 RETURN fn::ingestion_manifest_approve({ manifest_ref: "MAN-M1", justification: "Lot contrôlé et conforme" }).ok;
+
+-- test: l'approbation est enregistrée au nom de l'identité de la session
+RETURN (SELECT VALUE [statut, approved_by, array::last(transitions).triggered_by] FROM ONLY ingestion_publication_manifest WHERE manifest_ref = "MAN-M1" LIMIT 1)
+    == ["APPROVED", "auth_identity:steward", "auth_identity:steward"];
 
 -- test: un manifeste approuvé n'est plus modifiable
 -- en tant que: steward

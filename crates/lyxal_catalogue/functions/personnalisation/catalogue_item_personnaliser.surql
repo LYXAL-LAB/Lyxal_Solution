@@ -36,14 +36,13 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_personnaliser($params: object) {
     };
 
     -- Locataire de la session
-    LET $caller_role = IF $token != NONE AND $token.role != NONE { string::trim($token.role) } ELSE IF $auth != NONE AND $auth.role != NONE { string::trim($auth.role) } ELSE { NONE };
-    LET $caller_tenant = IF $token != NONE AND $token.tenant_id != NONE { string::trim($token.tenant_id) } ELSE IF $auth != NONE AND $auth.tenant_id != NONE { string::trim($auth.tenant_id) } ELSE { NONE };
-    IF $caller_role != "tenant_user" OR $caller_tenant == NONE OR string::len($caller_tenant) == 0 {
+    LET $c = fn::catalogue_caller({});
+    IF $c.tenant IS NONE OR ($c.sync AND !$c.system) {
         RETURN fn::error_result("CATALOGUE_ITEM_TENANT_REQUIRED", $language, {
-            field: "role",
-            notice: "La personnalisation d'un article exige une identité cliente (tenant_user) rattachée à un locataire."
+            notice: "La personnalisation d'un article exige une session rattachée à une organisation."
         });
     };
+    LET $caller_tenant = $c.tenant;
 
     -- Article maître seulement : un article privé se modifie directement par son locataire
     LET $item = (SELECT id, is_custom FROM ONLY $p.item_id);
@@ -59,11 +58,11 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_personnaliser($params: object) {
         code_interne_client: $p.code_interne_client,
         enabled: $p.enabled
     }).filter(|$e| $e[1] != NONE));
-    LET $existing = (SELECT VALUE id FROM ONLY catalogue_item_personnalisation WHERE item = $item.id AND tenant_id = $caller_tenant LIMIT 1);
+    LET $existing = (SELECT VALUE id FROM ONLY catalogue_item_personnalisation WHERE item = $item.id AND tenant = $caller_tenant LIMIT 1);
     LET $saved = IF $existing != NONE {
         UPDATE ONLY $existing MERGE object::extend($changes, { updated_at: time::now() })
     } ELSE {
-        CREATE ONLY catalogue_item_personnalisation CONTENT object::extend($changes, { item: $item.id })
+        CREATE ONLY catalogue_item_personnalisation CONTENT object::extend($changes, { item: $item.id, tenant: $caller_tenant })
     };
     IF $saved == NONE {
         RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_item_personnalisation" });

@@ -16,7 +16,7 @@ Pour chaque fichier de tests :
 Format (en plus du format « assertions » de `test_lyxal_core.py`) :
 
     -- lyxal-test: assertions
-    -- identité alpha: { "id": "catalogue_session:alpha", "role": "tenant_user", "tenant_id": "alpha" }
+    -- identité alpha: { "id": "auth_session:alpha", "pv": 1, "permissions": ["catalogue.item.read", "catalogue.item.manage"] }
 
     -- test: Alpha crée son article privé
     -- en tant que: alpha

@@ -496,12 +496,17 @@ UPDATE catalogue_composition:COMP_OUV_CLOISON_72_48_V1 SET
 -- 5. SIMULATION DE PERSONNALISATION LOCALE TENANT & ARTICLE PRIVÉ
 -- ----------------------------------------------------------------------------
 
+-- Organisation cliente lyxal_auth propriétaire des personnalisations et articles privés
+IF !record::exists(auth_organization:pilote) THEN (
+    CREATE auth_organization:pilote CONTENT { slug: "pilote", name: "Organisation pilote" }
+) END;
+
 -- Cas A : Personnalisation d'un article synchronisé du Master par une organisation cliente
 -- Son code interne et son libellé commercial devis vivent dans sa propre personnalisation :
 -- l'article maître, partagé par toutes les organisations, n'est pas modifié.
 CREATE catalogue_item_personnalisation CONTENT {
     item: catalogue_item:COM_PLACO_BA13_2500,
-    tenant_id: "TENANT_PILOTE",
+    tenant: auth_organization:pilote,
     code_interne_client: "STOCK-PLACO-NORD",
     libelle_personnalise: "Plaque Placo BA13 2.50m (Stock Chantier Nord)"
 };
@@ -522,6 +527,7 @@ CREATE catalogue_item CONTENT {
     statut_commercial: "ACTIF",
     master_id: NONE,
     is_custom: true,
+    tenant: auth_organization:pilote,
     enabled: true,
     is_system: false,
     created_at: time::now(),

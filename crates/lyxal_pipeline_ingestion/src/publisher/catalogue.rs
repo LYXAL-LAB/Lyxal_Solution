@@ -47,7 +47,7 @@ struct CatalogueItemDetail {
 }
 
 /// Client des fonctions d'articles du catalogue, sur une session authentifiée par le jeton de
-/// service `catalogue_sync_agent`.
+/// service de synchronisation (`catalogue.master.write`).
 pub(crate) struct CatalogueSyncClient {
     db: Surreal<Any>,
 }

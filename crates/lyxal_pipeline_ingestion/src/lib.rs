@@ -10,8 +10,8 @@
 //! - la normalisation et la qualification initiale ([`normalization::NormalizationEngine`]) ;
 //! - le worker supervisé ([`IngestionWorker`]) ;
 //! - le store ([`IngestionStore`], appels `call_fn` des fonctions du module) ;
-//! - la publication vers le catalogue ([`ControlledPublisher`], [`PublicationConsumer`]) sous le
-//!   jeton de service `catalogue_sync_agent` ([`HmacCatalogueTokenIssuer`]).
+//! - la publication vers le catalogue ([`ControlledPublisher`], [`PublicationConsumer`]) sous une
+//!   session du compte de service de synchronisation ([`CatalogueTokenIssuer`]).
 
 pub mod adapters;
 pub mod error;
@@ -61,8 +61,8 @@ pub use events::{
 pub use health::IngestionHealthCheck;
 pub use proof::{CommercialProof, CommercialProofType};
 pub use publisher::{
-    CatalogueSyncKey, CatalogueTokenIssuer, ControlledPublisher, HmacCatalogueTokenIssuer,
-    PublicationConsumer, PublicationExecutionReport,
+    CatalogueTokenIssuer, ControlledPublisher, PublicationConsumer, PublicationExecutionReport,
+    CATALOGUE_SYNC_CLIENT_ID,
 };
 pub use worker::{BatchProcessingReport, IngestionWorker};
 

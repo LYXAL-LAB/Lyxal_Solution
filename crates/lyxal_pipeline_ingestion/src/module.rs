@@ -28,6 +28,8 @@ impl PipelineIngestionModule {
             .dependency(ModuleId::new("lyxal_base"))
             .dependency(ModuleId::new("lyxal_error"))
             .dependency(ModuleId::new("lyxal_event"))
+            .dependency(ModuleId::new("lyxal_auth"))
+            .dependency(ModuleId::new("lyxal_catalogue"))
             .build();
 
         Self { descriptor }

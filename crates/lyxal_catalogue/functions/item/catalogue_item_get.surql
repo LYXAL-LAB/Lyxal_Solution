@@ -41,9 +41,9 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_get($params: object) {
     };
 
     -- Locataire de la session : sa personnalisation et sa disponibilité accompagnent chaque article maître
-    LET $tenant = IF $token != NONE AND $token.tenant_id != NONE { string::trim($token.tenant_id) } ELSE IF $auth != NONE AND $auth.tenant_id != NONE { string::trim($auth.tenant_id) } ELSE { NONE };
+    LET $tenant = fn::catalogue_caller({}).tenant;
     LET $personnalisation = IF $item.is_custom == false AND $tenant != NONE {
-        (SELECT libelle_personnalise, code_interne_client, enabled FROM ONLY catalogue_item_personnalisation WHERE item = $item.id AND tenant_id = $tenant LIMIT 1)
+        (SELECT libelle_personnalise, code_interne_client, enabled FROM ONLY catalogue_item_personnalisation WHERE item = $item.id AND tenant = $tenant LIMIT 1)
     } ELSE { NONE };
 
     -- Projection enrichie

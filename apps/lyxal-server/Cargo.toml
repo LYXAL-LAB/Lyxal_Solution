@@ -51,5 +51,6 @@ lyxal_pipeline_ingestion = { workspace = true, optional = true }
 toml.workspace = true
 
 [dev-dependencies]
+base64 = "0.22"
 tempfile.workspace = true
 tower = { workspace = true, features = ["util"] }

@@ -4,7 +4,7 @@
 //! 1. Correction de la qualification `VERIFIED` : exigence stricte d'une `CommercialProof` traçable.
 //! 2. Persistance industrielle SurrealDB (`mem://` étanche) raccordée aux 5 tables `SCHEMAFULL`.
 //! 3. Worker supervisé : coopération `CancellationToken`, arrêt gracieux, streaming par chunks, checkpoints et reprise sans duplication.
-//! 4. Publication strictement contrôlée : scellement BLAKE3, approbation `steward_admin`, session `catalogue_sync_agent`, filtrage `VERIFIED`-only, reprise après échec partiel, zéro accès direct non autorisé aux tables du Master.
+//! 4. Publication strictement contrôlée : scellement BLAKE3, approbation `ingestion.manifest.approve`, session du compte de service de synchronisation, filtrage `VERIFIED`-only, reprise après échec partiel, zéro accès direct non autorisé aux tables du Master.
 //! 5. Regroupement technique : substitution contextualisée et révocation formelle.
 //! 6. Benchmark industriel de plus de 1 500 articles BTP avec mesures de débit, mémoire et intégrité.
 

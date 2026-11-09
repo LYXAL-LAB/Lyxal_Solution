@@ -141,7 +141,7 @@ pub struct HostedServices {
     /// Service de connexion (routes `/auth/*`), si la configuration le permet.
     pub auth: Option<Arc<auth::AuthHost>>,
     #[cfg(feature = "module-ingestion")]
-    publication: Option<ingestion::PublicationSetup>,
+    publication: bool,
     /// Envoi des notifications configuré (clé applicative et relais SMTP).
     notification_delivery: bool,
 }
@@ -159,7 +159,7 @@ pub async fn register_services(
         notification::register_services(runtime, client, config, crypto).await?;
     #[cfg(feature = "module-ingestion")]
     {
-        let publication = ingestion::register_services(runtime, client, config).await?;
+        let publication = ingestion::register_services(runtime, client, auth.as_ref()).await?;
         Ok(HostedServices {
             auth,
             publication,
@@ -173,16 +173,15 @@ pub async fn register_services(
     })
 }
 
-/// Configuration qui dépend des modules installés (accès, abonnements), avant le démarrage.
-#[cfg_attr(not(feature = "module-ingestion"), allow(unused_variables))]
+/// Configuration qui dépend des modules installés (clés, accès, abonnements), avant le
+/// démarrage.
 pub async fn complete_services(
     runtime: &LyxalRuntime,
-    client: &Surreal<Any>,
     services: &HostedServices,
 ) -> Result<(), ServerError> {
-    #[cfg(feature = "module-ingestion")]
-    ingestion::reconcile_publication(runtime, client, services.publication.as_ref()).await?;
-    notification::reconcile_subscriptions(runtime, services.notification_delivery).await?;
     auth::complete_services(services.auth.as_ref()).await?;
+    #[cfg(feature = "module-ingestion")]
+    ingestion::reconcile_publication(runtime, services.publication).await?;
+    notification::reconcile_subscriptions(runtime, services.notification_delivery).await?;
     Ok(())
 }

@@ -45,13 +45,13 @@ IF !record::exists(error_definition:INGESTION_UNAUTHORIZED_APPROVER) THEN (
         translations: {
             fr: {
                 label: "Data Steward requis",
-                description: "Seule la session d'un steward_admin (ou de l'hôte) peut requalifier, résoudre une quarantaine ou approuver.",
-                resolution: "Se connecter avec le rôle steward_admin."
+                description: "Seule une session détenant la permission ingestion.manifest.approve, au niveau d'assurance requis (double facteur), ou la session de l'hôte peut requalifier, résoudre une quarantaine ou approuver.",
+                resolution: "Se connecter avec un compte ayant le rôle ingestion_steward, avec double facteur."
             },
             en: {
                 label: "Data Steward action",
-                description: "Only a steward_admin session (or the host) can requalify, resolve quarantine or approve.",
-                resolution: "Sign in with the steward_admin role."
+                description: "Only a session holding the ingestion.manifest.approve permission, at the required assurance level (second factor), or the host session can requalify, resolve quarantine or approve.",
+                resolution: "Sign in with an account holding the ingestion_steward role, using a second factor."
             }
         }
     }

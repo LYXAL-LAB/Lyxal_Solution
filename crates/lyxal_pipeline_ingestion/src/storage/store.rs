@@ -822,8 +822,8 @@ impl IngestionStore {
         }
     }
 
-    /// Approuve un manifeste scellé ; l'approbateur est l'identité de la session
-    /// (`steward_admin`, ou `system` pour une session de l'hôte).
+    /// Approuve un manifeste scellé ; l'approbateur est l'opérateur de la session
+    /// (permission `ingestion.manifest.approve`, ou `system` pour une session de l'hôte).
     pub async fn approve_manifest(
         &self,
         manifest_ref: &str,
@@ -1014,7 +1014,7 @@ impl IngestionStore {
         Ok(self.call_fn("ingestion_staged_list", filter).await?)
     }
 
-    /// Requalifie un article (steward_admin de la session).
+    /// Requalifie un article (permission `ingestion.manifest.approve` de la session).
     pub async fn requalify_staged_item(
         &self,
         params: StagedRequalifyParams,
@@ -1030,7 +1030,7 @@ impl IngestionStore {
         Ok(self.call_fn("ingestion_quarantine_list", filter).await?)
     }
 
-    /// Résout une anomalie en quarantaine (steward_admin de la session).
+    /// Résout une anomalie en quarantaine (permission `ingestion.manifest.approve` de la session).
     pub async fn resolve_quarantine_record(
         &self,
         params: QuarantineResolveParams,

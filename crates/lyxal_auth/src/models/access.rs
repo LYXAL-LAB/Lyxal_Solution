@@ -597,6 +597,17 @@ pub struct ServiceSessionParams {
     pub access_slot: String,
 }
 
+/// Paramètres de `fn::auth_service_session_open` (compte de service interne à l'hôte).
+#[derive(Debug, Clone, SurrealValue)]
+pub struct ServiceSessionOpenParams {
+    /// Identifiant client de l'application machine.
+    pub client_id: String,
+    /// Appareil.
+    pub client: ClientInfo,
+    /// Accès SurrealDB du jeton.
+    pub access_slot: String,
+}
+
 /// Paramètres de `fn::auth_api_key_session_create`.
 #[derive(Debug, Clone, SurrealValue)]
 pub struct ApiKeySessionParams {

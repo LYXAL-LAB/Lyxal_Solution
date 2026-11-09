@@ -1,14 +1,17 @@
 //! Base de test : le module installé depuis son manifeste, avec ses dépendances, comme le fait
 //! `lyxal_runtime` pour le serveur hôte. Tous les tests d'intégration partent de là.
 
-use lyxal_crypto::SecretString;
-use lyxal_pipeline_ingestion::publisher::{CatalogueSyncKey, HmacCatalogueTokenIssuer};
+use lyxal_auth::{AccessConfig, AccessService, AuthStore, SigningKeyService};
+use lyxal_crypto::{
+    CryptoEngine, EncryptionKey, KeyId, KeyRingBuilder, KeyUse, SecretString, StaticKeyResolver,
+};
+use lyxal_pipeline_ingestion::error::{IngestionError, IngestionResult};
+use lyxal_pipeline_ingestion::publisher::{CatalogueTokenIssuer, CATALOGUE_SYNC_CLIENT_ID};
 use lyxal_pipeline_ingestion::storage::{BatchClaim, IngestionStore, NewBatch};
 use lyxal_runtime::manifest::{ManifestParser, ModuleManifest};
 use lyxal_runtime::resource::ResourceProvider;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
 
 /// Crée un lot et le réserve pour le test, comme le fait le worker avant d'écrire (lignes,
 /// articles, anomalies, points de reprise, transitions). Le test libère la réservation
@@ -21,8 +24,8 @@ pub async fn claimed_batch(store: &IngestionStore, batch: &NewBatch) -> BatchCla
         .expect("réservation du lot")
 }
 
-/// Nouvelle base embarquée où `lyxal_core`, `lyxal_error`, `lyxal_event`, `lyxal_base`,
-/// `lyxal_catalogue` et le module sont installés depuis leurs manifestes.
+/// Nouvelle base embarquée où `lyxal_core`, `lyxal_error`, `lyxal_event`, `lyxal_auth`,
+/// `lyxal_base`, `lyxal_catalogue` et le module sont installés depuis leurs manifestes.
 pub async fn installed_store() -> IngestionStore {
     let client = surrealdb::engine::any::connect("mem://")
         .await
@@ -53,6 +56,7 @@ pub async fn installed_store() -> IngestionStore {
         .expect("noyau");
     for name in [
         "lyxal_event",
+        "lyxal_auth",
         "lyxal_base",
         "lyxal_catalogue",
         "lyxal_pipeline_ingestion",
@@ -65,33 +69,53 @@ pub async fn installed_store() -> IngestionStore {
     IngestionStore::new(client)
 }
 
-/// Accès JWT de l'agent de synchronisation, défini comme le fait l'hôte, et émetteur de jetons
-/// signés avec la même clé (aléatoire, propre au test).
-pub async fn sync_issuer(store: &IngestionStore) -> Arc<HmacCatalogueTokenIssuer> {
-    let key = CatalogueSyncKey::parse(
-        SecretString::new(uuid::Uuid::new_v4().simple().to_string()).expect("clé"),
-    )
-    .expect("clé de test");
-    store
-        .client()
-        .query(format!(
-            "DEFINE ACCESS OVERWRITE lyxal_catalogue_sync ON DATABASE TYPE JWT ALGORITHM HS256 KEY '{}' DURATION FOR SESSION 15m;",
-            key.expose_secret()
-        ))
-        .await
-        .expect("accès JWT")
-        .check()
-        .expect("accès JWT défini");
-    Arc::new(
-        HmacCatalogueTokenIssuer::new(
-            &key,
-            "ingestion",
-            "manifest",
-            "lyxal_catalogue_sync",
-            Duration::from_secs(300),
+/// Émetteur de test : sessions du compte de service `lyxal-catalogue-sync` ouvertes par
+/// `lyxal_auth` (clés de signature et trousseau éphémères), comme le fait l'hôte.
+pub struct AuthSyncIssuer {
+    access: AccessService<StaticKeyResolver>,
+}
+
+#[async_trait::async_trait]
+impl CatalogueTokenIssuer for AuthSyncIssuer {
+    async fn issue(&self) -> IngestionResult<SecretString> {
+        self.access
+            .internal_service_token(CATALOGUE_SYNC_CLIENT_ID)
+            .await
+            .map(|issued| issued.access_token)
+            .map_err(|e| IngestionError::Validation(format!("Jeton de synchronisation : {e}")))
+    }
+}
+
+/// Émetteur des jetons du compte de service de synchronisation pour la base du store.
+pub async fn sync_issuer(store: &IngestionStore) -> Arc<AuthSyncIssuer> {
+    let mut builder = KeyRingBuilder::new();
+    builder
+        .insert(
+            KeyId::parse("ingestion-test").expect("id"),
+            EncryptionKey::generate().expect("clé"),
+            KeyUse::Active,
         )
-        .expect("émetteur"),
+        .expect("trousseau");
+    let engine = Arc::new(CryptoEngine::new(StaticKeyResolver::new(Arc::new(
+        builder.build().expect("trousseau"),
+    ))));
+    let auth = AuthStore::new(store.client().clone());
+    let keys = Arc::new(SigningKeyService::new(auth.clone(), engine.clone()));
+    keys.ensure().await.expect("clés de signature");
+    let access = AccessService::new(
+        auth,
+        engine,
+        keys,
+        AccessConfig {
+            namespace: "ingestion".into(),
+            database: "manifest".into(),
+            public_url: "https://lyxal.test".into(),
+            issuer: "Lyxal Test".into(),
+            passkey_rp_id: None,
+        },
     )
+    .expect("service d'accès");
+    Arc::new(AuthSyncIssuer { access })
 }
 
 /// Résolutions d'une ligne par les référentiels installés (comme le worker pour un bloc).

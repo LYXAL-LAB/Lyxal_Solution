@@ -18,10 +18,11 @@ fn test_manifest_parser_supports_catalogue_manifest() {
     assert_eq!(manifest.name, "Lyxal Catalogue");
     assert_eq!(manifest.version.to_string(), "0.1.0");
     assert_eq!(manifest.capabilities, vec!["database"]);
-    assert_eq!(manifest.dependencies.len(), 3);
+    assert_eq!(manifest.dependencies.len(), 4);
     assert_eq!(manifest.dependencies[0].id.as_str(), "lyxal_core");
     assert_eq!(manifest.dependencies[1].id.as_str(), "lyxal_error");
     assert_eq!(manifest.dependencies[2].id.as_str(), "lyxal_base");
+    assert_eq!(manifest.dependencies[3].id.as_str(), "lyxal_auth");
     assert!(manifest.runtime.is_some());
     assert_eq!(
         manifest
@@ -80,5 +81,5 @@ async fn test_catalogue_resources_follow_manifest() {
         .map(|r| (r.logical_path.clone(), r.kind))
         .collect();
     assert_eq!(actual, expected);
-    assert_eq!(resources.len(), 14 + 26 + 8 + 2);
+    assert_eq!(resources.len(), 13 + 27 + 8 + 3);
 }

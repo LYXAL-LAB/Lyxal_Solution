@@ -45,7 +45,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_batch_create($params: object) {
         RETURN fn::error_result("INGESTION_BATCH_DUPLICATE", $p.language, { batch_id: <string> record::id($existing[0]), file_hash_blake3: $hash });
     };
 
-    LET $who = fn::ingestion_session_identity({});
+    LET $operator = fn::ingestion_operator({});
     LET $created = (CREATE ONLY $id CONTENT {
         source_type: $source,
         source_format_version: $p.source_format_version,
@@ -57,7 +57,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_batch_create($params: object) {
         statut: "RECEIVED",
         chunk_size: $p.chunk_size,
         provenance_details: $p.provenance_details,
-        transitions: [{ from_state: NONE, to_state: "RECEIVED", triggered_by: $who.operator, reason: "Réception du fichier", transitioned_at: time::now() }],
+        transitions: [{ from_state: NONE, to_state: "RECEIVED", triggered_by: $operator, reason: "Réception du fichier", transitioned_at: time::now() }],
         last_checkpoint_at: time::now()
     });
     IF $created == NONE {

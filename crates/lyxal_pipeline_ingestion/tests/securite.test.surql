@@ -1,12 +1,23 @@
 -- lyxal-test: assertions
 -- Sécurité : identité lue uniquement dans la session (jamais dans les paramètres),
--- approbations réservées au steward_admin, gardes des articles et des manifestes.
+-- approbations réservées à la permission ingestion.manifest.approve (AAL2), gardes des articles et des manifestes.
 -- Exécuté par scripts/ci/test_lyxal_modules.py (format en tête du script).
 --
--- identité ingestion: { "id": "ingestion_session:ingestion", "sub": "service:ingestion", "role": "ingestion_agent", "scope": ["ingestion:batch:write"] }
--- identité qualif: { "id": "ingestion_session:qualif", "sub": "service:qualif", "role": "qualification_agent", "scope": ["ingestion:staged:qualify"] }
--- identité steward: { "id": "ingestion_session:steward", "sub": "user:steward", "role": "steward_admin", "scope": ["ingestion:manifest:approve"] }
--- identité sync: { "id": "ingestion_session:sync", "sub": "service:sync", "role": "catalogue_sync_agent", "scope": ["catalogue:sync:write"] }
+-- identité ingestion: { "id": "auth_session:ingestion", "pv": 1, "permissions": ["ingestion.read", "ingestion.batch.write"] }
+-- identité qualif: { "id": "auth_session:qualif", "pv": 1, "permissions": ["ingestion.read", "ingestion.staged.qualify"] }
+-- identité steward: { "id": "auth_session:steward", "pv": 1, "permissions": ["ingestion.read", "ingestion.rule.manage", "ingestion.manifest.approve"] }
+-- identité sync: { "id": "auth_session:sync", "pv": 1, "permissions": ["ingestion.read", "ingestion.manifest.execute"] }
+
+-- préparation: identités et sessions lyxal_auth (Data Steward en double facteur : AAL2 ; synchronisation : compte de service)
+{
+    CREATE auth_identity:ingestion CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "ingestion@exemple.fr" } };
+    CREATE auth_identity:qualif CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "qualif@exemple.fr" } };
+    CREATE auth_identity:steward CONTENT { schema: auth_identity_schema:default_v1, traits: { email: "steward@exemple.fr" } };
+    CREATE auth_session:ingestion CONTENT { identity: auth_identity:ingestion, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:qualif CONTENT { identity: auth_identity:qualif, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:steward CONTENT { identity: auth_identity:steward, aal: 2, idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+    CREATE auth_session:sync CONTENT { application: auth_application:catalogue_sync, kind: "service", idle_expires_at: time::now() + 1h, expires_at: time::now() + 1d };
+};
 
 -- préparation: table de test lisible par toutes les identités
 DEFINE TABLE test_ref SCHEMALESS PERMISSIONS FULL;
@@ -49,17 +60,17 @@ RETURN fn::ingestion_staged_requalify({ item_id: test_ref:items.a1, new_qualific
 RETURN fn::ingestion_staged_requalify({ item_id: test_ref:items.a1, new_qualification: "VERIFIED", justification: "Bordereau fabricant vérifié", proof: { proof_type: "SIGNED_VENDOR_CATALOG", proof_reference: "CAT-PLACO-2026", source_authority: "Saint-Gobain Placo" } }).ok;
 
 -- test: approbation enregistrée au nom du steward de la session
-RETURN (SELECT VALUE [qualification, is_approved, approved_by, approver_role] FROM ONLY <record> test_ref:items.a1) == ["VERIFIED", true, "user:steward", "steward_admin"];
+RETURN (SELECT VALUE [qualification, is_approved, approved_by] FROM ONLY <record> test_ref:items.a1) == ["VERIFIED", true, "auth_identity:steward"];
 
 -- test: l'agent de qualification n'approuve pas un article en écrivant les champs lui-même
 -- en tant que: qualif
 -- attendu-erreur: INGESTION_STAGED_APPROVAL_REQUIRES_STEWARD
-UPDATE <record> test_ref:items.a2 SET qualification = "VERIFIED", is_approved = true, approved_by = "user:steward", approver_role = "steward_admin";
+UPDATE <record> test_ref:items.a2 SET qualification = "VERIFIED", is_approved = true, approved_by = "auth_identity:steward";
 
 -- test: un article n'est jamais créé déjà approuvé
 -- en tant que: qualif
 -- attendu-erreur: INGESTION_STAGED_APPROVAL_REQUIRES_STEWARD
-CREATE ingestion_staged_item CONTENT { batch: ingestion_batch:lot_sec, raw_record: ingestion_raw_record:lot_sec_3, ligne_numero: 3, canonical_fingerprint: crypto::blake3("a3"), rules_version: "1", fabricant: "PLACO", reference_fabricant: "BA25", libelle_commercial: "Plaque BA25", type_item: "PRODUIT", unite_reference: "PCE", conditionnement: { unite_vente: "PCE", quantite_par_colis: 1.0 }, qualification: "VERIFIED", publication_action: "INSERT", transitions: [], is_approved: true, approved_by: "user:steward", approver_role: "steward_admin", created_at: time::now(), updated_at: time::now() };
+CREATE ingestion_staged_item CONTENT { batch: ingestion_batch:lot_sec, raw_record: ingestion_raw_record:lot_sec_3, ligne_numero: 3, canonical_fingerprint: crypto::blake3("a3"), rules_version: "1", fabricant: "PLACO", reference_fabricant: "BA25", libelle_commercial: "Plaque BA25", type_item: "PRODUIT", unite_reference: "PCE", conditionnement: { unite_vente: "PCE", quantite_par_colis: 1.0 }, qualification: "VERIFIED", publication_action: "INSERT", transitions: [], is_approved: true, approved_by: "auth_identity:steward", created_at: time::now(), updated_at: time::now() };
 
 -- test: le steward enregistre un manifeste scellé
 -- en tant que: steward
@@ -93,7 +104,7 @@ RETURN fn::ingestion_manifest_save({ manifest_ref: "MAN-PIRATE", batch_id: "lot_
 -- test: un manifeste n'est jamais créé déjà approuvé par écriture directe
 -- en tant que: steward
 -- attendu-erreur: INGESTION_MANIFEST_ILLEGAL_STATE_TRANSITION
-CREATE ingestion_publication_manifest CONTENT { batch: ingestion_batch:lot_sec, manifest_ref: "MAN-PIRATE", manifest_version: 2, seal_hash: crypto::blake3("MAN-PIRATE"), is_sealed: true, statut: "APPROVED", approved_by: "user:steward", approver_role: "steward_admin" };
+CREATE ingestion_publication_manifest CONTENT { batch: ingestion_batch:lot_sec, manifest_ref: "MAN-PIRATE", manifest_version: 2, seal_hash: crypto::blake3("MAN-PIRATE"), is_sealed: true, statut: "APPROVED", approved_by: "auth_identity:steward" };
 
 -- test: un rôle d'approbateur passé en paramètre ne donne aucun droit
 -- en tant que: sync
@@ -102,7 +113,12 @@ RETURN fn::ingestion_manifest_approve({ manifest_ref: "MAN-SEC", justification: 
 -- test: l'agent de synchronisation n'approuve pas en écrivant les champs lui-même
 -- en tant que: sync
 -- attendu-erreur: INGESTION_MANIFEST_APPROVAL_REQUIRES_STEWARD
-UPDATE ingestion_publication_manifest SET statut = "APPROVED", approved_by = "user:steward", approver_role = "steward_admin" WHERE manifest_ref = "MAN-SEC";
+UPDATE ingestion_publication_manifest SET statut = "APPROVED", approved_by = "auth_identity:steward" WHERE manifest_ref = "MAN-SEC";
+
+-- test: le steward n'approuve pas au nom d'un autre opérateur (approbateur = opérateur de la session)
+-- en tant que: steward
+-- attendu-erreur: INGESTION_MANIFEST_APPROVAL_REQUIRES_STEWARD
+UPDATE ingestion_publication_manifest SET statut = "APPROVED", approved_by = "auth_identity:autre" WHERE manifest_ref = "MAN-SEC";
 
 -- test: une justification trop courte est refusée
 -- en tant que: steward
@@ -113,7 +129,7 @@ RETURN fn::ingestion_manifest_approve({ manifest_ref: "MAN-SEC", justification: 
 RETURN fn::ingestion_manifest_approve({ manifest_ref: "MAN-SEC", justification: "Lot contrôlé et conforme au bordereau" }).ok;
 
 -- test: approbation du manifeste au nom du steward de la session
-RETURN (SELECT VALUE [statut, approved_by, approver_role, array::last(transitions).reason] FROM ONLY ingestion_publication_manifest WHERE manifest_ref = "MAN-SEC" LIMIT 1) == ["APPROVED", "user:steward", "steward_admin", "Lot contrôlé et conforme au bordereau"];
+RETURN (SELECT VALUE [statut, approved_by, array::last(transitions).reason] FROM ONLY ingestion_publication_manifest WHERE manifest_ref = "MAN-SEC" LIMIT 1) == ["APPROVED", "auth_identity:steward", "Lot contrôlé et conforme au bordereau"];
 
 -- test: l'approbation publie ingestion.manifest.approved dans l'outbox
 RETURN (SELECT VALUE payload.manifest_ref FROM event_outbox WHERE event_type = "ingestion.manifest.approved") == ["MAN-SEC"];
@@ -132,7 +148,7 @@ UPDATE ingestion_publication_manifest SET statut = "EXECUTING" WHERE manifest_re
 RETURN fn::ingestion_manifest_record_exec({ manifest_ref: "MAN-SEC", statut: "COMMITTED", items_committed: 1, items_failed: 0 }).ok;
 
 -- test: transitions du manifeste journalisées au nom des identités de session
-RETURN (SELECT VALUE transitions.map(|$t| [$t.from_state, $t.to_state, $t.triggered_by]) FROM ONLY ingestion_publication_manifest WHERE manifest_ref = "MAN-SEC" LIMIT 1) == [[NONE, "SEALED", "user:steward"], ["SEALED", "APPROVED", "user:steward"], ["APPROVED", "EXECUTING", "service:sync"], ["EXECUTING", "COMMITTED", "service:sync"]];
+RETURN (SELECT VALUE transitions.map(|$t| [$t.from_state, $t.to_state, $t.triggered_by]) FROM ONLY ingestion_publication_manifest WHERE manifest_ref = "MAN-SEC" LIMIT 1) == [[NONE, "SEALED", "auth_identity:steward"], ["SEALED", "APPROVED", "auth_identity:steward"], ["APPROVED", "EXECUTING", "auth_application:catalogue_sync"], ["EXECUTING", "COMMITTED", "auth_application:catalogue_sync"]];
 
 -- test: un manifeste exécuté ne reçoit pas de second compte rendu
 -- en tant que: sync
@@ -140,7 +156,7 @@ RETURN fn::ingestion_manifest_record_exec({ manifest_ref: "MAN-SEC", statut: "CO
 
 -- test: le passage à COMMITTED émet ingestion.manifest.published une seule fois
 RETURN (SELECT VALUE payload FROM event_outbox WHERE event_type = "ingestion.manifest.published")
-    == [{ manifest_ref: "MAN-SEC", batch_id: "ingestion_batch:lot_sec", items_committed: 1, items_failed: 0, publisher_agent: "service:sync" }];
+    == [{ manifest_ref: "MAN-SEC", batch_id: "ingestion_batch:lot_sec", items_committed: 1, items_failed: 0, publisher_agent: "auth_application:catalogue_sync" }];
 
 -- test: l'agent de qualification consigne une anomalie en quarantaine
 -- en tant que: qualif
@@ -171,9 +187,13 @@ UPDATE <record> test_ref:items.a2 SET libelle_commercial = "Libellé corrigé";
 RETURN (SELECT VALUE is_resolved FROM ONLY <record> test_ref:quarantaine.id_q) == false
     AND (SELECT VALUE libelle_commercial FROM ONLY <record> test_ref:items.a2) != "Libellé corrigé";
 
--- test: identité de session lue par la fonction interne
+-- test: opérateur d'une session interactive : son identité
 -- en tant que: steward
-RETURN fn::ingestion_session_identity({}) == { role: "steward_admin", operator: "user:steward", is_system: false };
+RETURN fn::ingestion_operator({}) == "auth_identity:steward";
 
--- test: session système de l'hôte
-RETURN fn::ingestion_session_identity({}) == { role: "system", operator: "system", is_system: true };
+-- test: opérateur d'un compte de service : son application
+-- en tant que: sync
+RETURN fn::ingestion_operator({}) == "auth_application:catalogue_sync";
+
+-- test: opérateur de la session système de l'hôte
+RETURN fn::ingestion_operator({}) == "system";

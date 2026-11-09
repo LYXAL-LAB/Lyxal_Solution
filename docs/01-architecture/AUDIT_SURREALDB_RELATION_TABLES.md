@@ -10,6 +10,10 @@
 > - `crates/lyxal_pipeline_ingestion` : **V1.0.0 (Clôturé Staging et Gelé)**  
 > - Référentiels transversaux : `lyxal_base` (reprise clôturée, `0.1.0`) / `lyxal_error` V1.0  
 > **Environnement cible :** SurrealDB 3.2.0 persistant  
+>
+> **Mise à jour (lot 5 de `lyxal_auth`) :** les tables `catalogue_session` et `ingestion_session`
+> décrites ci-dessous n'existent plus ; les deux modules s'appuient sur les sessions et
+> permissions de `lyxal_auth` (voir leurs `README.md`).  
 
 ---
 

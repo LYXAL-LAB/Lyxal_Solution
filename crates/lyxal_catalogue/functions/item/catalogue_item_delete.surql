@@ -38,60 +38,35 @@ DEFINE FUNCTION OVERWRITE fn::catalogue_item_delete($params: object) {
 
     -- Contrôle d'autorisation et propriété stricte pour les articles privés
     IF $item.is_custom == true {
-        LET $is_sync_auth = (
-            ($token != NONE 
-            AND $token.role = "catalogue_sync_agent" 
-            AND $token.iss = "lyxal-os"
-            AND $token.aud = "lyxal-catalogue"
-            AND "catalogue:sync:write" IN $token.scope)
-            OR
-            ($auth != NONE 
-            AND $auth.role = "catalogue_sync_agent" 
-            AND "catalogue:sync:write" IN $auth.permissions)
-        );
-        IF $is_sync_auth {
-            RETURN fn::error_result("CATALOGUE_ITEM_SYNC_CANNOT_ACCESS_CUSTOM", $language, {
-                id: <string> $id,
-                notice: "Le service catalogue_sync_agent ne doit pas modifier ou supprimer les articles privés des clients."
-            });
-        };
-        LET $caller_role = IF $token != NONE AND $token.role != NONE { 
-            string::trim($token.role) 
-        } ELSE IF $auth != NONE AND $auth.role != NONE { 
-            string::trim($auth.role) 
-        } ELSE { 
-            NONE 
-        };
-        IF $caller_role != "tenant_user" {
-            RETURN fn::error_result("CATALOGUE_ITEM_TENANT_REQUIRED", $language, {
-                id: <string> $id,
-                notice: "La suppression d'un article privé exige une identité cliente avec le rôle tenant_user."
-            });
-        };
-        IF $item.tenant_id == NONE OR string::len(string::trim($item.tenant_id)) == 0 {
-            RETURN fn::error_result("CATALOGUE_ITEM_TENANT_ORPHAN", $language, {
-                id: <string> $id,
-                notice: "Article privé orphelin sans propriétaire vérifiable : suppression interdite."
-            });
-        };
-        LET $caller_tenant = IF $token != NONE AND $token.tenant_id != NONE { 
-            string::trim($token.tenant_id) 
-        } ELSE IF $auth != NONE AND $auth.tenant_id != NONE { 
-            string::trim($auth.tenant_id) 
-        } ELSE { 
-            NONE 
-        };
-        IF $caller_tenant == NONE OR string::len($caller_tenant) == 0 {
-            RETURN fn::error_result("CATALOGUE_ITEM_TENANT_REQUIRED", $language, {
-                id: <string> $id,
-                notice: "Une identité sans tenant_id valide ne peut pas supprimer un article privé."
-            });
-        };
-        IF $caller_tenant != $item.tenant_id {
-            RETURN fn::error_result("CATALOGUE_ITEM_TENANT_FORBIDDEN", $language, {
-                id: <string> $id,
-                notice: "Suppression interdite : cet article privé appartient à une autre organisation."
-            });
+        LET $c = fn::catalogue_caller({});
+        IF !$c.system {
+            IF $c.sync {
+                RETURN fn::error_result("CATALOGUE_ITEM_SYNC_CANNOT_ACCESS_CUSTOM", $language, {
+                    id: <string> $id,
+                    notice: "Le compte de synchronisation ne doit pas modifier ou supprimer les articles privés des clients."
+                });
+            };
+            IF $item.tenant IS NONE {
+                RETURN fn::error_result("CATALOGUE_ITEM_TENANT_ORPHAN", $language, {
+                    id: <string> $id,
+                    notice: "Article privé orphelin sans organisation propriétaire : suppression interdite."
+                });
+            };
+            IF $c.tenant IS NONE {
+                RETURN fn::error_result("CATALOGUE_ITEM_TENANT_REQUIRED", $language, {
+                    id: <string> $id,
+                    notice: "La suppression d'un article privé exige une session rattachée à une organisation."
+                });
+            };
+            IF $c.tenant != $item.tenant {
+                RETURN fn::error_result("CATALOGUE_ITEM_TENANT_FORBIDDEN", $language, {
+                    id: <string> $id,
+                    notice: "Suppression interdite : cet article privé appartient à une autre organisation."
+                });
+            };
+            IF !$c.manage {
+                RETURN fn::error_result("CATALOGUE_WRITE_FORBIDDEN", $language, { table: "catalogue_item", permission: "catalogue.item.manage" });
+            };
         };
     };
 

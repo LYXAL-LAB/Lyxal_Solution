@@ -8,11 +8,11 @@
 DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_resolve($params: object) {
     LET $fallback_language = IF type::is_string($params.language) { $params.language } ELSE { NONE };
 
-    -- 1. Habilitation : identité lue dans la session (jamais dans les paramètres)
-    LET $who = fn::ingestion_session_identity({});
-    IF $who.role NOT IN ["steward_admin", "system"] {
-        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $fallback_language, { role: $who.role, expected_role: "steward_admin" });
+    -- 1. Habilitation : permission de la session lyxal_auth (jamais dans les paramètres)
+    IF !fn::auth_has_permission({ permission: "ingestion.manifest.approve" }) {
+        RETURN fn::error_result("INGESTION_UNAUTHORIZED_APPROVER", $fallback_language, { permission: "ingestion.manifest.approve" });
     };
+    LET $operator = fn::ingestion_operator({});
 
     -- 2. Entrées (le commentaire est contrôlé à part : code métier dédié)
     LET $report = fn::validation_object_execute($params, {
@@ -63,7 +63,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_resolve($params: object) {
     LET $now = time::now();
     LET $resolved = (UPDATE ONLY $p.quarantine_id SET
         is_resolved = true,
-        resolved_by = $who.operator,
+        resolved_by = $operator,
         resolved_at = $now,
         resolution_comment = $justif.value);
     IF $resolved == NONE {
@@ -82,7 +82,7 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_resolve($params: object) {
             transitions = array::append(transitions ?? [], {
                 from_state: $staged.qualification,
                 to_state: "TO_CONFIRM",
-                triggered_by: $who.operator,
+                triggered_by: $operator,
                 reason: $reason,
                 transitioned_at: $now
             }));
@@ -92,5 +92,5 @@ DEFINE FUNCTION OVERWRITE fn::ingestion_quarantine_resolve($params: object) {
     };
 
     RETURN fn::result_ok(true);
-} COMMENT "Résout une anomalie en quarantaine ; réservé au steward_admin (ou à la session système) lu dans la session ; l'article lié, corrigé (code-barres, unité), repasse en TO_CONFIRM"
+} COMMENT "Résout une anomalie en quarantaine ; réservé à la permission ingestion.manifest.approve (ou à la session système), opérateur lu dans la session ; l'article lié, corrigé (code-barres, unité), repasse en TO_CONFIRM"
 PERMISSIONS WHERE $token != NONE OR $auth != NONE;

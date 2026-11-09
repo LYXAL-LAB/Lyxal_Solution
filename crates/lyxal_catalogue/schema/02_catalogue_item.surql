@@ -8,44 +8,10 @@ DEFINE TABLE OVERWRITE catalogue_item
     TYPE NORMAL
     SCHEMAFULL
     PERMISSIONS
-        FOR select WHERE (
-            ($token != NONE AND $token.aud = "lyxal-catalogue" AND (
-                ($token.role = "catalogue_sync_agent" AND "catalogue:sync:write" IN $token.scope AND is_custom = false)
-                OR ($token.role = "tenant_user" AND (is_custom = false OR (is_custom = true AND tenant_id != NONE AND $token.tenant_id != NONE AND tenant_id = $token.tenant_id)))
-            ))
-            OR ($token == NONE AND $auth != NONE AND (
-                ($auth.role = "catalogue_sync_agent" AND "catalogue:sync:write" IN $auth.permissions AND is_custom = false)
-                OR ($auth.role = "tenant_user" AND (is_custom = false OR (is_custom = true AND tenant_id != NONE AND $auth.tenant_id != NONE AND tenant_id = $auth.tenant_id)))
-            ))
-        )
-        FOR create WHERE (
-            ($token != NONE AND $token.aud = "lyxal-catalogue" AND (
-                ($token.role = "catalogue_sync_agent" AND "catalogue:sync:write" IN $token.scope AND is_custom = false)
-                OR ($token.role = "tenant_user" AND is_custom = true AND master_id == NONE AND tenant_id != NONE AND $token.tenant_id != NONE AND tenant_id = $token.tenant_id)
-            ))
-            OR ($token == NONE AND $auth != NONE AND (
-                ($auth.role = "catalogue_sync_agent" AND "catalogue:sync:write" IN $auth.permissions AND is_custom = false)
-                OR ($auth.role = "tenant_user" AND is_custom = true AND master_id == NONE AND tenant_id != NONE AND $auth.tenant_id != NONE AND tenant_id = $auth.tenant_id)
-            ))
-        )
-        FOR update WHERE (
-            ($token != NONE AND $token.aud = "lyxal-catalogue" AND (
-                ($token.role = "catalogue_sync_agent" AND "catalogue:sync:write" IN $token.scope AND is_custom = false)
-                OR ($token.role = "tenant_user" AND is_custom = true AND tenant_id != NONE AND $token.tenant_id != NONE AND tenant_id = $token.tenant_id)
-            ))
-            OR ($token == NONE AND $auth != NONE AND (
-                ($auth.role = "catalogue_sync_agent" AND "catalogue:sync:write" IN $auth.permissions AND is_custom = false)
-                OR ($auth.role = "tenant_user" AND is_custom = true AND tenant_id != NONE AND $auth.tenant_id != NONE AND tenant_id = $auth.tenant_id)
-            ))
-        )
-        FOR delete WHERE (
-            ($token != NONE AND $token.aud = "lyxal-catalogue" AND (
-                $token.role = "tenant_user" AND is_custom = true AND tenant_id != NONE AND $token.tenant_id != NONE AND tenant_id = $token.tenant_id
-            ))
-            OR ($token == NONE AND $auth != NONE AND (
-                $auth.role = "tenant_user" AND is_custom = true AND tenant_id != NONE AND $auth.tenant_id != NONE AND tenant_id = $auth.tenant_id
-            ))
-        )
+        FOR select WHERE fn::catalogue_access({ is_custom: is_custom, tenant: tenant, action: "read" })
+        FOR create WHERE fn::catalogue_access({ is_custom: is_custom, tenant: tenant, action: "write" }) AND (is_custom = false OR master_id == NONE)
+        FOR update WHERE fn::catalogue_access({ is_custom: is_custom, tenant: tenant, action: "write" })
+        FOR delete WHERE fn::catalogue_access({ is_custom: is_custom, tenant: tenant, action: "delete" })
     COMMENT "Identité universelle des éléments du catalogue (génériques et commerciaux)";
 
 DEFINE FIELD OVERWRITE code ON TABLE catalogue_item
@@ -221,11 +187,10 @@ DEFINE FIELD OVERWRITE is_custom ON TABLE catalogue_item
     DEFAULT true
     COMMENT "true si l'article est une création privée locale, false si synchronisé du Master";
 
-DEFINE FIELD OVERWRITE tenant_id ON TABLE catalogue_item
-    TYPE option<string>
-    DEFAULT IF $token.tenant_id != NONE { $token.tenant_id } ELSE IF $auth.tenant_id != NONE { $auth.tenant_id } ELSE { NONE }
+DEFINE FIELD OVERWRITE tenant ON TABLE catalogue_item
+    TYPE option<record<auth_organization>>
     READONLY
-    COMMENT "Identifiant de l'organisation cliente propriétaire (pour les articles privés)";
+    COMMENT "Organisation lyxal_auth propriétaire (articles privés) ; absente pour un article maître";
 
 -- ----------------------------------------------------------------------------
 -- Métadonnées et contrôles système
@@ -274,7 +239,7 @@ DEFINE INDEX OVERWRITE idx_catalogue_item_statut ON TABLE catalogue_item FIELDS 
 DEFINE INDEX OVERWRITE idx_catalogue_item_code_barre ON TABLE catalogue_item FIELDS code_barre UNIQUE;
 DEFINE INDEX OVERWRITE idx_catalogue_item_fab_ref ON TABLE catalogue_item FIELDS fabricant, reference_fabricant UNIQUE;
 DEFINE INDEX OVERWRITE idx_catalogue_item_master_id ON TABLE catalogue_item FIELDS master_id UNIQUE;
-DEFINE INDEX OVERWRITE idx_catalogue_item_tenant ON TABLE catalogue_item FIELDS tenant_id;
+DEFINE INDEX OVERWRITE idx_catalogue_item_tenant ON TABLE catalogue_item FIELDS tenant;
 
 -- ============================================================================
 -- VERROU MOTEUR : Gardien d'intégrité universel contre les écritures directes
@@ -304,37 +269,23 @@ THEN {
         };
     };
 
-    -- 3. Vérification de l'identité de service de synchronisation
-    LET $is_sync_auth = (
-        ($token != NONE 
-        AND $token.role = "catalogue_sync_agent" 
-        AND $token.iss = "lyxal-os"
-        AND $token.aud = "lyxal-catalogue"
-        AND "catalogue:sync:write" IN $token.scope)
-        OR
-        ($auth != NONE 
-        AND $auth.role = "catalogue_sync_agent" 
-        AND "catalogue:sync:write" IN $auth.permissions)
-    );
+    -- 3. Droits de l'appelant (sessions lyxal_auth) ; la session système passe les contrôles de propriété
+    LET $c = fn::catalogue_caller({});
+    LET $is_sync_auth = $c.sync AND !$c.system;
 
     -- 4. Protection absolue en suppression
     IF $event = "DELETE" {
         IF $before.is_custom = false {
             THROW "CATALOGUE_ITEM_MASTER_CANNOT_BE_DELETED: Les articles synchronisés du Master Catalogue ne peuvent pas être supprimés localement.";
         };
-        IF $before.is_custom = true {
+        IF !$c.system {
             IF $is_sync_auth {
-                THROW "CATALOGUE_ITEM_SYNC_CANNOT_ACCESS_CUSTOM: Le service catalogue_sync_agent ne doit pas modifier ou supprimer les articles privés des clients.";
+                THROW "CATALOGUE_ITEM_SYNC_CANNOT_ACCESS_CUSTOM: Le compte de synchronisation ne doit pas modifier ou supprimer les articles privés des clients.";
             };
-            LET $caller_role = IF $token != NONE AND $token.role != NONE { string::trim($token.role) } ELSE IF $auth != NONE AND $auth.role != NONE { string::trim($auth.role) } ELSE { NONE };
-            IF $caller_role != "tenant_user" {
-                THROW "CATALOGUE_ITEM_TENANT_REQUIRED: Toute opération sur un article privé exige une identité cliente avec le rôle tenant_user.";
+            IF $before.tenant IS NONE {
+                THROW "CATALOGUE_ITEM_TENANT_ORPHAN: Article privé orphelin sans organisation propriétaire : suppression interdite.";
             };
-            IF $before.tenant_id == NONE OR string::len(string::trim($before.tenant_id)) == 0 {
-                THROW "CATALOGUE_ITEM_TENANT_ORPHAN: Article privé orphelin sans propriétaire vérifiable : suppression interdite.";
-            };
-            LET $caller_tenant = IF $token != NONE AND $token.tenant_id != NONE { string::trim($token.tenant_id) } ELSE IF $auth != NONE AND $auth.tenant_id != NONE { string::trim($auth.tenant_id) } ELSE { NONE };
-            IF $caller_tenant == NONE OR $caller_tenant != $before.tenant_id {
+            IF $c.tenant IS NONE OR $c.tenant != $before.tenant {
                 THROW "CATALOGUE_ITEM_TENANT_FORBIDDEN: Suppression interdite : cet article privé appartient à une autre organisation.";
             };
         };
@@ -342,53 +293,39 @@ THEN {
 
     -- 5. Protection absolue en création
     IF $event = "CREATE" {
-        IF $after.is_custom = false AND !$is_sync_auth {
-            THROW "CATALOGUE_ITEM_SYNC_CANNOT_CREATE_MASTER: Seul l'agent de synchronisation officiel peut injecter des articles maîtres.";
+        IF $after.is_custom = false AND !$c.sync {
+            THROW "CATALOGUE_ITEM_SYNC_CANNOT_CREATE_MASTER: Seul le compte de synchronisation peut injecter des articles maîtres.";
         };
         IF $after.is_custom = true AND $after.master_id != NONE {
             THROW "CATALOGUE_ITEM_CUSTOM_CANNOT_HAVE_MASTER_ID: Un article privé ne peut pas avoir d'identifiant maître.";
         };
         IF $after.is_custom = true {
             IF $is_sync_auth {
-                THROW "CATALOGUE_ITEM_SYNC_CANNOT_CREATE_CUSTOM: Le service catalogue_sync_agent ne peut pas créer d'articles privés pour les clients.";
+                THROW "CATALOGUE_ITEM_SYNC_CANNOT_CREATE_CUSTOM: Le compte de synchronisation ne peut pas créer d'articles privés pour les clients.";
             };
-            LET $caller_role = IF $token != NONE AND $token.role != NONE { string::trim($token.role) } ELSE IF $auth != NONE AND $auth.role != NONE { string::trim($auth.role) } ELSE { NONE };
-            IF $caller_role != "tenant_user" {
-                THROW "CATALOGUE_ITEM_TENANT_REQUIRED: Toute opération sur un article privé exige une identité cliente avec le rôle tenant_user.";
+            IF $after.tenant IS NONE {
+                THROW "CATALOGUE_ITEM_TENANT_REQUIRED: Tout article privé appartient à une organisation.";
             };
-            IF $after.tenant_id == NONE OR string::len(string::trim($after.tenant_id)) == 0 {
-                THROW "CATALOGUE_ITEM_TENANT_REQUIRED: Tout article privé doit obligatoirement avoir un propriétaire tenant_id vérifiable.";
-            };
-            LET $caller_tenant = IF $token != NONE AND $token.tenant_id != NONE { string::trim($token.tenant_id) } ELSE IF $auth != NONE AND $auth.tenant_id != NONE { string::trim($auth.tenant_id) } ELSE { NONE };
-            IF $caller_tenant == NONE OR $after.tenant_id != $caller_tenant {
-                THROW "CATALOGUE_ITEM_TENANT_FORBIDDEN: Le propriétaire tenant_id doit obligatoirement être déduit de l'identité cliente authentifiée.";
+            IF !$c.system AND $after.tenant != $c.tenant {
+                THROW "CATALOGUE_ITEM_TENANT_FORBIDDEN: L'organisation propriétaire d'un article privé est l'organisation active de la session.";
             };
         };
     };
 
     -- 6. Contrôles stricts en modification
     IF $event = "UPDATE" {
-        IF $after.tenant_id != $before.tenant_id {
-            THROW "CATALOGUE_ITEM_TENANT_ID_IMMUTABLE: Le propriétaire tenant_id d'un article est strictement immuable.";
-        };
         IF $before.is_custom = true AND $after.is_custom = false {
             THROW "CATALOGUE_ITEM_CUSTOM_CANNOT_CONVERT_MASTER: Un article privé ne peut pas être converti en article maître.";
         };
-
-        -- Protection des articles privés contre les tiers et contre catalogue_sync_agent
-        IF $before.is_custom = true {
+        -- Articles privés : organisation active propriétaire, jamais le compte de synchronisation
+        IF $before.is_custom = true AND !$c.system {
             IF $is_sync_auth {
-                THROW "CATALOGUE_ITEM_SYNC_CANNOT_ACCESS_CUSTOM: Le service catalogue_sync_agent ne doit pas lire ou modifier les articles privés des clients.";
+                THROW "CATALOGUE_ITEM_SYNC_CANNOT_ACCESS_CUSTOM: Le compte de synchronisation ne doit pas lire ou modifier les articles privés des clients.";
             };
-            LET $caller_role = IF $token != NONE AND $token.role != NONE { string::trim($token.role) } ELSE IF $auth != NONE AND $auth.role != NONE { string::trim($auth.role) } ELSE { NONE };
-            IF $caller_role != "tenant_user" {
-                THROW "CATALOGUE_ITEM_TENANT_REQUIRED: Toute opération sur un article privé exige une identité cliente avec le rôle tenant_user.";
+            IF $before.tenant IS NONE {
+                THROW "CATALOGUE_ITEM_TENANT_ORPHAN: Article privé orphelin sans organisation propriétaire : modification interdite.";
             };
-            IF $before.tenant_id == NONE OR string::len(string::trim($before.tenant_id)) == 0 {
-                THROW "CATALOGUE_ITEM_TENANT_ORPHAN: Article privé orphelin sans propriétaire vérifiable : modification interdite.";
-            };
-            LET $caller_tenant = IF $token != NONE AND $token.tenant_id != NONE { string::trim($token.tenant_id) } ELSE IF $auth != NONE AND $auth.tenant_id != NONE { string::trim($auth.tenant_id) } ELSE { NONE };
-            IF $caller_tenant == NONE OR $caller_tenant != $before.tenant_id {
+            IF $c.tenant IS NONE OR $c.tenant != $before.tenant {
                 THROW "CATALOGUE_ITEM_TENANT_FORBIDDEN: Cet article privé appartient exclusivement à une autre organisation cliente.";
             };
         };
@@ -406,7 +343,7 @@ THEN {
         -- Si non autorisé explicitement par le Master, TOUS les champs maîtres sont strictement protégés,
         -- disponibilité comprise : un locataire personnalise et désactive un article maître pour lui
         -- seul dans catalogue_item_personnalisation, jamais sur l'article partagé
-        IF !$is_sync_auth {
+        IF !$c.sync {
             IF $after.code != $before.code 
                OR $after.type != $before.type 
                OR $after.nature_reference != $before.nature_reference
