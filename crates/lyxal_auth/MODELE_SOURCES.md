@@ -113,8 +113,22 @@ Logto), les traductions (`lyxal_i18n`), les purges planifiées (`LyxalWorker`, p
 
 ## 4. Décisions
 
-Les décisions du programme (D1 à D10) sont dans `implementation_plan.md` à la racine. Pour les
-évolutions :
+Décisions du CTO pour la V1 (8 novembre 2026) :
+
+| # | Décision |
+| :- | :--- |
+| D1 | Cœur de l'identité dans Lyxal (SurrealDB + Rust) ; modèle et fonctionnalités repris des projets mûrs ; aucun produit déployé à côté |
+| D2 | `lyxal_crypto` étendu : **TOTP** en V1 (lot 1) ; **signature asymétrique** des jetons en V2 (Lyxal fournisseur OIDC pour des tiers) |
+| D3 | Passkeys par la bibliothèque `webauthn-rs` (auditée, utilisée par Kanidm et Rauthy), dépendance de `lyxal_auth` |
+| D4 | Isolation par champ de locataire contrôlé par les `PERMISSIONS` de chaque table |
+| D5 | **SurrealDB pleinement multi-modèle** : les entités sont des tables `TYPE NORMAL` (document), les associations des **tables de relation `TYPE RELATION ... ENFORCED`** (graphe). La règle « pas de `TYPE RELATION` sur les tables existantes » ([audit](../../docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md)) ne s'applique pas : tables neuves, et la résolution des permissions est un parcours de graphe (critère de l'audit) |
+| D6 | Lyxal fournisseur OpenID Connect pour des tiers : V2 |
+| D7 | Module `lyxal_connect` (comptes connectés sortants) créé plus tard, après `lyxal_secrets` ; `lyxal_auth` garde sa propre configuration des fournisseurs de connexion |
+| D8 | La partie e-mail de `lyxal_notification` est réalisée **avant le lot 3**, à partir de projets open source existants (recherche de sources et plan propres), et consomme les événements `auth.*` |
+| D9 | Pas d'inscription libre : entrée sur invitation d'une organisation ou création par un administrateur ; l'inscription libre reste possible plus tard par `auth_policy` |
+| D10 | Un e-mail = une identité pour toute l'installation, membre de plusieurs organisations |
+
+Pour les évolutions :
 
 1. **Cryptographie** (règle §11.3 : rien sans validation du CTO). Réalisé : TOTP dans
    `lyxal_crypto`, passkeys par `webauthn-rs`. Reste à décider pour la V2 : la **signature à clé

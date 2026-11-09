@@ -1,7 +1,7 @@
 # Feuille de route — `lyxal_auth`
 
-Évolutions à venir. L'état actuel est décrit dans le [`README.md`](README.md) ; le programme et
-ses décisions dans `implementation_plan.md` à la racine. Chaque lot a son propre plan détaillé,
+Évolutions à venir. L'état actuel est décrit dans le [`README.md`](README.md) ; les sources et les
+décisions du CTO dans [`MODELE_SOURCES.md`](MODELE_SOURCES.md). Chaque lot a son propre plan détaillé,
 validé par le CTO avant toute ligne de code (`.agents/AGENTS.md` §3).
 
 | Étape | Contenu | Dépend de |
