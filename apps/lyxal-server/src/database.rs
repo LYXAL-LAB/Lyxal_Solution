@@ -63,8 +63,14 @@ pub async fn refuse_anonymous_access(config: &DatabaseConfig) -> Result<(), Serv
                       un invité y aurait les droits de la session système"
                 .into(),
         }),
-        // Requête refusée (attendu) : accès anonyme fermé
-        Ok(Err(_)) => Ok(()),
+        // Refus d'autorisation explicite (attendu) : accès anonyme fermé
+        Ok(Err(error)) if error.is_not_allowed() => Ok(()),
+        // Autre échec (réseau, coupure, erreur inattendue) : rien n'est prouvé, on ne démarre pas
+        Ok(Err(error)) => Err(ServerError::Configuration {
+            message: format!(
+                "impossible de vérifier que SurrealDB refuse les connexions anonymes : {error}"
+            ),
+        }),
         // Vérification impossible : on ne démarre pas sans savoir
         Err(_) => Err(ServerError::Configuration {
             message: "impossible de vérifier que SurrealDB refuse les connexions anonymes \
