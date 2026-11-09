@@ -674,6 +674,25 @@ impl<R: KeyResolver + 'static> AccessService<R> {
         self.tokens(issued, None).await
     }
 
+    /// Jeton d'un compte de service interne à l'hôte (application machine désignée par son
+    /// `client_id`), sans secret : l'hôte agit déjà comme session système. Aucun jeton de
+    /// renouvellement : un jeton frais est demandé pour chaque usage.
+    pub async fn internal_service_token(&self, client_id: &str) -> AuthResult<IssuedTokens> {
+        let key = self.keys.signing_key().await?;
+        let issued = self
+            .store
+            .service_session_open(crate::models::ServiceSessionOpenParams {
+                client_id: client_id.to_string(),
+                client: ClientInfo {
+                    ip: None,
+                    user_agent: Some("lyxal-server".to_string()),
+                },
+                access_slot: key.slot.clone(),
+            })
+            .await?;
+        self.tokens(issued, None).await
+    }
+
     /// Échange une clé d'API contre un jeton d'accès (permissions de la clé).
     pub async fn api_key_token(
         &self,

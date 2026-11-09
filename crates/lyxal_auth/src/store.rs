@@ -29,12 +29,13 @@ use crate::models::{
     RecoveryCodesReplaceParams, RecoveryCodesReplaced, RegistrationCompleteParams,
     RegistrationCompleted, RegistrationStartParams, RegistrationStarted, RequiredAction,
     RequiredActionCompleteParams, RequiredActionListParams, RoleAssignParams, RoleAssigned,
-    RoleUnassigned, ServiceSessionParams, SessionCaller, SessionCheckParams, SessionCreateParams,
-    SessionIssued, SessionListParams, SessionReauthenticateParams, SessionRefreshParams,
-    SessionRevokeAllParams, SessionRevokeParams, SessionRevoked, SessionSummary,
-    SessionSwitchParams, SetupStartParams, SetupStarted, SigningKeyGetParams,
-    SigningKeyRotateParams, SigningKeyRotated, SigningKeys, TotpActivateParams, TotpActivated,
-    TotpBeginParams, TotpBegun, TotpSecretGetParams, TotpSecretRecord, TotpStepUseParams,
+    RoleUnassigned, ServiceSessionOpenParams, ServiceSessionParams, SessionCaller,
+    SessionCheckParams, SessionCreateParams, SessionIssued, SessionListParams,
+    SessionReauthenticateParams, SessionRefreshParams, SessionRevokeAllParams, SessionRevokeParams,
+    SessionRevoked, SessionSummary, SessionSwitchParams, SetupStartParams, SetupStarted,
+    SigningKeyGetParams, SigningKeyRotateParams, SigningKeyRotated, SigningKeys,
+    TotpActivateParams, TotpActivated, TotpBeginParams, TotpBegun, TotpSecretGetParams,
+    TotpSecretRecord, TotpStepUseParams,
 };
 
 /// Store de `lyxal_auth` sur un client SurrealDB (`Surreal<Any>`).
@@ -404,7 +405,17 @@ impl AuthStore {
         self.call_fn("auth_signing_key_rotate", params).await
     }
 
-    /// `fn::auth_service_session_create` : session de compte de service (session système).
+    /// `fn::auth_service_session_open` : session d'un compte de service interne à l'hôte, sans
+    /// secret (session système).
+    pub async fn service_session_open(
+        &self,
+        params: ServiceSessionOpenParams,
+    ) -> Result<SessionIssued, LyxalSurrealError> {
+        self.call_fn("auth_service_session_open", params).await
+    }
+
+    /// `fn::auth_service_session_create` : session d'un compte de service par son secret
+    /// (session système).
     pub async fn service_session_create(
         &self,
         params: ServiceSessionParams,

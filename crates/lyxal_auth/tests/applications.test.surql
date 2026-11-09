@@ -160,3 +160,15 @@ RETURN fn::auth_api_key_list({}).data.prefix == ["lyxk_cli"]
 RETURN fn::auth_api_key_session_create({ key_hash: "8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d", access_slot: "a" }).error.code == "AUTH_API_KEY_INVALID"
     AND array::len(SELECT * FROM event_outbox WHERE event_type IN ["auth.api_key.created", "auth.api_key.revoked"]) == 3
     AND fn::auth_application_can({ tenant: NONE });
+
+-- test: compte de service interne à l'hôte : session ouverte sans secret par la session système, refusée pour une application non machine
+{
+    LET $machine = fn::auth_application_create({ name: "Agent interne", type: "machine" }).data;
+    LET $spa = fn::auth_application_create({ name: "Interface", type: "spa" }).data;
+    LET $opened = fn::auth_service_session_open({ client_id: $machine.client_id, access_slot: "a" });
+    LET $sess = (SELECT * FROM ONLY $opened.data.session);
+    RETURN $opened.ok AND $opened.data.kind == "service" AND $opened.data.refresh_expires_at IS NONE
+        AND $sess.application == $machine.id AND $sess.amr.method == ["host"]
+        AND fn::auth_service_session_open({ client_id: $spa.client_id, access_slot: "a" }).error.code == "AUTH_APPLICATION_NOT_FOUND"
+        AND fn::auth_service_session_open({ client_id: "lyx_inconnu_inconnu_inconnu", access_slot: "a" }).error.code == "AUTH_APPLICATION_NOT_FOUND";
+};
