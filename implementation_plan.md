@@ -1,230 +1,160 @@
-# Plan d'implémentation — programme `lyxal_auth` V1 (version de production)
+# Plan d'implémentation — programme `lyxal_i18n` V1
 
-Création du crate du Noyau Technique `lyxal_auth` (rang 1 de
-[`docs/14-roadmap/ROADMAP_NOYAU.md`](docs/14-roadmap/ROADMAP_NOYAU.md)), découpée en six lots.
-Modèle repris des projets sources selon [`crates/lyxal_auth/MODELE_SOURCES.md`](crates/lyxal_auth/MODELE_SOURCES.md)
-(Logto, Ory Kratos, Keycloak, Rauthy, Kanidm ; analyses dans `crates/lyxal_auth/sources/`).
-Plan placé à la racine comme les lots précédents, supprimé une fois le programme exécuté.
+Création du crate du Noyau Technique `lyxal_i18n` (rang 2 de
+[`docs/14-roadmap/ROADMAP_NOYAU.md`](docs/14-roadmap/ROADMAP_NOYAU.md)) : langues, traductions
+et formats régionaux. Sources et inventaire de l'existant :
+[`crates/lyxal_i18n/RECHERCHE_SOURCES.md`](crates/lyxal_i18n/RECHERCHE_SOURCES.md).
 
 **Deux niveaux de validation** (`AGENTS.md` §3) : ce plan fixe le programme (architecture,
-modèle, lots, décisions). **Chaque lot fait ensuite l'objet de son propre plan détaillé**, soumis
-au CTO avant toute ligne de code : contrats Rust `XxxParams` / `XxxResult` (champs et types),
-signatures SurrealQL, codes d'erreurs, tests. Les lots 1, 2 et 2 bis sont réalisés (état dans les
-`README.md` des crates concernés).
-
-## 0. Décisions du CTO (8 novembre 2026)
-
-| # | Décision |
-| :- | :--- |
-| D1 | Cœur de l'identité dans Lyxal (SurrealDB + Rust) ; modèle et fonctionnalités repris des projets mûrs ; aucun produit déployé à côté |
-| D2 | `lyxal_crypto` étendu : **TOTP** en V1 (lot 1) ; **signature asymétrique** des jetons en V2 (Lyxal fournisseur OIDC pour des tiers) |
-| D3 | Passkeys par la bibliothèque `webauthn-rs` (auditée, utilisée par Kanidm et Rauthy), dépendance de `lyxal_auth` |
-| D4 | Isolation par champ de locataire contrôlé par les `PERMISSIONS` de chaque table |
-| D5 | **SurrealDB pleinement multi-modèle** : les entités sont des tables `TYPE NORMAL` (document), les associations des **tables de relation `TYPE RELATION ... ENFORCED`** (graphe). La règle « pas de `TYPE RELATION` sur les tables existantes » ([audit](docs/01-architecture/AUDIT_SURREALDB_RELATION_TABLES.md)) ne s'applique pas : tables neuves, et la résolution des permissions est un parcours de graphe (critère de l'audit) |
-| D6 | Lyxal fournisseur OpenID Connect pour des tiers : V2 |
-| D7 | Module `lyxal_connect` (comptes connectés sortants) créé plus tard, après `lyxal_secrets` ; `lyxal_auth` garde sa propre configuration des fournisseurs de connexion |
-| D8 | La partie e-mail de `lyxal_notification` est réalisée **avant le lot 3**, à partir de projets open source existants (recherche de sources et plan propres), et consomme les événements `auth.*` |
-| D9 | Pas d'inscription libre : entrée sur invitation d'une organisation ou création par un administrateur ; l'inscription libre reste possible plus tard par `auth_policy` |
-| D10 | Un e-mail = une identité pour toute l'installation, membre de plusieurs organisations |
+modèle, lots, décisions). Chaque lot a ensuite son propre plan détaillé, soumis au CTO avant
+toute ligne de code : contrats Rust `XxxParams` / `XxxResult`, signatures SurrealQL, codes
+d'erreurs, tests.
 
 ## 1. Architecture
 
-### 1.1. Locataire = organisation
+### 1.1. Répartition SurrealQL / Rust
 
-Le locataire actuel des modules (`tenant_id` de `lyxal_catalogue`) est l'**entreprise cliente**.
-Dans le modèle Logto, c'est l'**organisation** (le « tenant » Logto correspond à une installation
-entière). Donc :
+SurrealDB n'a pas de bibliothèque ICU. Le travail est donc partagé :
 
-* une installation Lyxal (base SurrealDB) héberge plusieurs **organisations** ;
-* le **locataire** de toute donnée métier est une organisation : `tenant` = `record<auth_organization>` ;
-* une identité peut appartenir à plusieurs organisations ; elle agit dans **une** organisation à
-  la fois (organisation active de la session) ;
-* les rôles **globaux** (administrateur de la plateforme, comptes de service comme l'agent de
-  synchronisation du catalogue) existent hors organisation.
-
-### 1.2. Jetons et application des droits
-
-* À la connexion, `lyxal_auth` crée une **session** (`auth_session`) et émet :
-  * un **jeton d'accès** JWT court (15 min), signé HS256 par `lyxal_crypto::hmac` avec une clé
-    d'installation scellée (`SecretContext::global("lyxal_auth.access_token")`) ;
-  * un **jeton de renouvellement** opaque, à usage unique, stocké en empreinte (rotation à chaque
-    usage, révocation de toute la chaîne en cas de réutilisation — modèle Rauthy).
-* SurrealDB vérifie le jeton par un accès `DEFINE ACCESS lyxal_auth ON DATABASE TYPE RECORD WITH
-  JWT ALGORITHM HS256 KEY ... AUTHENTICATE { ... }` : la clause `AUTHENTICATE` contrôle que la
-  session existe, est active et non expirée, puis `$auth` désigne la session. Elle n'est évaluée
-  **qu'à l'établissement** de la session SurrealDB : une connexion WebSocket déjà authentifiée
-  n'est pas réévaluée.
-* **Révocation à chaque opération** : `fn::auth_context` et `fn::auth_has_permission`, appelés
-  par toute fonction publique et par les `PERMISSIONS` des tables protégées, relisent à chaque
-  appel la session (`$token.sid`) et refusent si elle est révoquée, expirée ou antérieure au
-  `not_before` de l'identité (`AUTH_SESSION_REVOKED`, refus silencieux dans les `PERMISSIONS`).
-  Une session révoquée perd donc ses droits dès l'opération suivante, même sur une connexion
-  restée ouverte ; le jeton d'accès court (15 min) borne en plus la durée d'usage.
-* Claims : `sub` (identité), `sid` (session), `tenant` (organisation active, absente pour une
-  session globale), `permissions` (calculées à l'émission : rôles globaux + rôles dans
-  l'organisation active), `aal` (niveau d'assurance), `aud`, `iat`, `exp`, `jti`.
-* Les modules ne lisent plus de session propre : ils appellent **`fn::auth_context({})`**
-  (identité, organisation, permissions, AAL, session système) et testent les permissions dans
-  leurs `PERMISSIONS` (`fn::auth_has_permission({ permission })`).
-* Session système (root de l'hôte) : inchangée (`$session.ac == NONE AND $auth == NONE`).
-
-### 1.3. SurrealDB multi-modèle
-
-| Modèle | Usage dans `lyxal_auth` |
+| SurrealQL (données et règles) | Rust (crate `lyxal_i18n`, ICU4X) |
 | :--- | :--- |
-| **Document** | identités (`traits` en objet imbriqué validé par le schéma d'identité), politique (`auth_policy` en objets imbriqués par thème), méthodes d'authentification de la session (`amr` : tableau d'objets) |
-| **Graphe** (`TYPE RELATION ... ENFORCED`, unicité par index sur `in, out`) | `auth_member_of` (identité → organisation) ; `auth_has_role` (identité, adhésion ou application → rôle) ; `auth_role_includes` (rôle → rôle, rôles composites) ; `auth_role_grants` (rôle → permission) |
-| **Liens d'enregistrement** (`record<...> REFERENCE`) | identifiants, sessions, jetons, codes rattachés à leur identité ou session, avec suppression en cascade |
-| **Événements** (`DEFINE EVENT`) | gardes d'intégrité (pas de cycle dans les rôles composites, transitions d'état) et publication `auth.*` par `fn::event_publish` |
-| **Accès** (`DEFINE ACCESS`) | vérification des jetons et révocation par `AUTHENTICATE` |
+| Référentiel des langues : étiquette, noms, sens d'écriture, catégories de pluriel, **chaîne de repli calculée à l'avance** | Calcul des chaînes de repli et des catégories de pluriel depuis CLDR, pour générer le référentiel (outil de génération, résultat versionné en seed) |
+| Clés, traductions, surcharges par organisation, états, indicateur « obsolète », permissions | Lecture des messages MF1 et **rendu** : paramètres, pluriels, nombres, dates, devises |
+| Choix de la langue parmi des candidats (`fn::i18n_locale_resolve`) | Lecture de `Accept-Language` avec ses poids |
+| Résolution d'une clé (`fn::i18n_resolve`) : texte brut, syntaxe, langue effectivement utilisée | Affichage d'une date dans un fuseau horaire (`jiff`), tri selon la langue |
+| Contrôles à l'écriture : paramètres déclarés, formes de pluriel présentes | Import et export de fichiers (JSON, XLIFF) par `lyxal_parsing` |
 
-Comportements vérifiés sur SurrealDB 3.3.4 (8 novembre 2026) :
+### 1.2. Choix de la langue d'une requête
 
-* une relation peut partir d'une relation : les **rôles dans une organisation** sont des arêtes
-  `adhésion → auth_has_role → rôle` ; quitter l'organisation (suppression de l'adhésion) **supprime
-  automatiquement** ses rôles (cascade Logto, sans code) ;
-* l'index unique sur `in, out` refuse une seconde adhésion à la même organisation ;
-* le parcours récursif `$role.{..8+collect+inclusive}(->auth_role_includes->auth_role)` rend tous
-  les rôles inclus, d'où les permissions par `->auth_role_grants->auth_permission` :
+L'hôte rassemble les candidats, `fn::i18n_locale_resolve` garde la première langue active :
 
-```surql
--- Permissions d'une identité dans l'organisation active (rôles globaux + rôles de l'adhésion)
-LET $roles = array::flatten([
-    $identity->auth_has_role->auth_role,
-    $membership->auth_has_role->auth_role
-]);
-RETURN array::distinct(array::flatten(
-    $roles.map(|$r| $r.{..8+collect+inclusive}(->auth_role_includes->auth_role))
-)->auth_role_grants->auth_permission.code);
-```
+1. langue demandée explicitement par l'appel ;
+2. préférence de l'utilisateur (trait `locale` de l'identité) ;
+3. langue par défaut de l'organisation active (nouveau champ `locale` de `auth_organization`) ;
+4. `Accept-Language`, toutes les entrées dans l'ordre de leurs poids ;
+5. langue par défaut de l'installation.
 
-### 1.4. Découpage SurrealQL / Rust / hôte
+`lyxal_i18n` ne lit ni l'identité ni l'organisation : il reçoit une liste de candidats. Il ne
+dépend donc pas des données de `lyxal_auth`, seulement de son contrôle des droits.
 
-| Couche | Contenu |
+### 1.3. Résolution d'une clé et repli
+
+Pour une clé et une langue :
+
+* la **chaîne de repli** suit les langues parentes de CLDR, pas une simple troncature
+  (`es-MX → es-419 → es`, `en-AU → en-001 → en`), puis la langue par défaut de l'installation,
+  puis la langue source de la clé ;
+* pour chaque langue de la chaîne : d'abord la surcharge de l'organisation, puis le texte de
+  l'installation ;
+* clé absente partout : la clé elle-même est renvoyée avec `missing: true`, et un événement
+  `i18n.key.missing` est publié (au plus une fois par clé et par langue). Jamais de texte vide.
+
+### 1.4. Modèle (SurrealDB, préfixe `i18n_`)
+
+| Table | Modèle | Contenu |
+| :--- | :--- | :--- |
+| `i18n_settings` | document | langue par défaut et langue source de l'installation |
+| `i18n_locale` | document | étiquette BCP 47, nom anglais et nom dans la langue, sens d'écriture, catégories de pluriel cardinal et ordinal, `fallback` (chaîne de repli), `active` |
+| `i18n_namespace` | document | un espace de noms par module propriétaire (`error`, `base`, `notification`…), langue source |
+| `i18n_key` | document | espace de noms + nom (`base.unite.metre`), description pour le traducteur, **paramètres attendus** (nom, type), longueur maximale |
+| `i18n_translation` | document | clé, langue, `tenant` (`NONE` : installation), texte, `syntax` (`icu_mf1`), état, empreinte du texte source (`source_hash`), auteur, dates ; unique sur (clé, langue, tenant) |
+
+* **États** (modèle Tolgee) : `untranslated`, `translated`, `reviewed`. **`outdated`** est un
+  indicateur posé par un `DEFINE EVENT` quand le texte source change (empreinte différente), qui
+  publie `i18n.translation.outdated`.
+* **Surcharge par organisation** : ligne de la même table avec `tenant` renseigné ; elle ne
+  modifie que le texte, jamais la clé. Supprimée avec l'organisation (`REFERENCE ON DELETE
+  CASCADE`, comme le lot 7 de `lyxal_auth`).
+* **Contrôles à l'écriture** (modèle Weblate et Tolgee) : mêmes paramètres que le texte source,
+  toutes les formes de pluriel de la langue cible, longueur maximale. Un import n'écrase pas un
+  texte `reviewed` sans option explicite.
+* **Permissions** par `fn::auth_has_permission` : `i18n.translation.manage` (installation),
+  `i18n.organization.translation.manage` (surcharges de son organisation) ; lecture ouverte aux
+  sessions authentifiées.
+
+### 1.5. Rendu en Rust
+
+`lyxal_i18n::Formatter` (une instance par langue, données ICU4X en cache) :
+
+* `format_message(texte, syntaxe, arguments)` : MF1 limité à argument, `plural`,
+  `selectordinal`, `select`, `number`, `date`, `time` ;
+* `format_number`, `format_date` (avec fuseau IANA), `format_currency` (isolé, `icu_experimental`
+  instable) ;
+* données ICU4X générées pour les seules langues prévues (Q5), version CLDR figée.
+
+Consommateurs : l'hôte (messages d'erreur), `lyxal_notification` (filtres MiniJinja de dates,
+nombres et montants), les modules Rust qui affichent du texte.
+
+## 2. Dépendances
+
+`lyxal_i18n` dépend de `lyxal_core`, `lyxal_error`, `lyxal_event` et `lyxal_auth` (contrôle des
+droits des surcharges). Conséquences :
+
+* `ROADMAP_NOYAU.md` : colonne « Dépend de » de `lyxal_i18n` passée de « — » à `lyxal_auth` ;
+* `lyxal_auth` ne dépend pas de `lyxal_i18n` (aucun cycle) : la langue de l'organisation est
+  validée par la règle `locale` de `lyxal_core`, son activation est vérifiée à la résolution ;
+* `lyxal_error` reste sous `lyxal_i18n` et garde ses propres traductions (Q3) ;
+* `lyxal_base` et `lyxal_notification` dépendront de `lyxal_i18n` après leur bascule (lot 5).
+
+## 3. Fonctions publiques (`fn::i18n_*($params: object)`)
+
+| Domaine | Fonctions |
 | :--- | :--- |
-| SurrealQL (`crates/lyxal_auth`) | tables, règles de données (unicité des identifiants, machine d'état des parcours, calcul AAL, rôles et permissions, verrouillage, actions imposées), fonctions `fn::auth_*`, master data `AUTH_*`, événements `auth.*` |
-| Rust (`crates/lyxal_auth/src`) | hachage et vérification des mots de passe (`lyxal_crypto::password`), émission des jetons (`lyxal_crypto::hmac`), génération des codes (`OsRng`), TOTP (`lyxal_crypto`, lot 1), cérémonies passkeys (`webauthn-rs`), `LyxalModule`, store `LyxalSurrealCall`, worker de purge (`LyxalWorker`), sonde de santé |
-| Hôte (`apps/lyxal-server`) | routes HTTP `/auth/*` appelant les services Rust ; définition de l'accès `lyxal_auth` au démarrage ; configuration de la clé |
+| Langues | `i18n_locale_list`, `i18n_locale_get`, `i18n_locale_activate`, `i18n_locale_deactivate`, `i18n_locale_resolve`, `i18n_settings_get`, `i18n_settings_update` |
+| Espaces de noms et clés | `i18n_namespace_create`, `i18n_namespace_list`, `i18n_key_create`, `i18n_key_update`, `i18n_key_delete`, `i18n_key_list` |
+| Traductions | `i18n_translation_set`, `i18n_translation_review`, `i18n_translation_delete`, `i18n_translation_list` (filtres : langue, état, obsolète, manquante) |
+| Résolution | `i18n_resolve`, `i18n_resolve_many` (lot de clés pour un écran ou un gabarit) |
+| Échange | `i18n_import` (objets déjà lus par Rust), `i18n_export` |
 
-### 1.5. Dépendances
+Entrées par le moteur `fn::validation_object_execute` de `lyxal_core` ; erreurs `I18N_*` en
+master data (`error/<thème>/`) ; écriture principale vérifiée (`I18N_WRITE_FORBIDDEN`).
 
-`lyxal_core`, `lyxal_error`, `lyxal_surreal`, `lyxal_crypto`, `lyxal_event`, `lyxal_runtime`.
-Aucune dépendance vers un module métier (`AGENTS.md` §6). Les envois de messages (codes, liens)
-ne sont pas faits par `lyxal_auth` : voir question Q1.
+## 4. Événements (`fn::event_publish`)
 
-## 2. Modèle de données (`schema/`, préfixe `auth_`)
+`i18n.locale.activated`, `i18n.locale.deactivated`, `i18n.translation.updated`,
+`i18n.translation.outdated`, `i18n.key.missing`.
 
-Toutes les tables `TYPE NORMAL SCHEMAFULL`, sans suppression physique des identités (état
-`deleted` puis purge planifiée), `created_at` / `updated_at` par `VALUE`, identifiants UUID v7.
-Origine de chaque table : `MODELE_SOURCES.md` §2.
+## 5. Lots
 
-| Lot | Tables |
-| :- | :--- |
-| 2 | **entités** : `auth_organization`, `auth_organization_domain`, `auth_identity_schema`, `auth_identity`, `auth_credential_identifier`, `auth_address`, `auth_permission`, `auth_role`, `auth_organization_invitation`, `auth_policy` ; **relations** : `auth_member_of` (identité → organisation), `auth_has_role` (identité ou adhésion → rôle), `auth_role_includes` (rôle → rôle), `auth_role_grants` (rôle → permission) |
-| 3 | **entités** : `auth_credential`, `auth_flow`, `auth_one_time_code`, `auth_session`, `auth_session_device`, `auth_refresh_token`, `auth_login_failure`, `auth_required_action`, `auth_application`, `auth_application_secret`, `auth_api_key`, `auth_signing_key`, `auth_pending_address_change` ; **relation** : `auth_has_role` étendue aux applications (comptes de service) |
-| 4 | (MFA dans `auth_credential` : types `totp`, `passkey`, `recovery_code`) |
-
-Règles transverses :
-
-* **Secrets** : partie secrète des identifiants (`auth_credential.secret_data`), secrets des
-  fournisseurs et clés de signature **scellés** par `CryptoEngine::seal` (`enc:v2`, AAD
-  `with_tenant` ou `global`) ; mots de passe en PHC Argon2id ; codes, jetons de session et de
-  renouvellement, secrets client et clés d'API stockés **en empreinte** (HMAC ou BLAKE3), jamais
-  en clair.
-* **Identifiants de connexion** : `auth_credential_identifier` unique par (type, identifiant
-  normalisé) pour l'installation (un e-mail = une identité), normalisation par `lyxal_core`
-  (`fn::sanitize_*`).
-* **Permissions déclarées par les modules** : chaque module fournit un seed de ses permissions
-  (`ingestion.batch.write`…) et des rôles par défaut ; `lyxal_auth` n'en connaît pas le sens.
-
-## 3. Fonctions publiques (`functions/`, `fn::auth_*($params: object)`)
-
-Entrées par le moteur `lyxal_core`, retour `fn::result_ok` / `fn::error_result`, écritures
-vérifiées (`AUTH_WRITE_FORBIDDEN`), < 300 lignes, `COMMENT`.
-
-| Lot | Fonctions |
-| :- | :--- |
-| 2 | `auth_context`, `auth_has_permission` ; organisations : `auth_organization_create`, `_get`, `_list`, `_update`, `_domain_add`, `_domain_verify` ; identités : `auth_identity_create` (administrateur), `_get`, `_list`, `_update_traits`, `_set_state` ; `auth_identity_schema_save` ; membres : `auth_organization_member_add`, `_remove`, `_list` ; droits : `auth_permission_register` (seed des modules), `auth_role_create`, `_update`, `_permission_set`, `auth_role_assign`, `_unassign`, `auth_identity_permissions` ; invitations : `auth_invitation_create`, `_accept`, `_revoke` ; `auth_policy_get`, `_save` |
-| 3 | parcours : `auth_flow_start`, `auth_flow_submit`, `auth_flow_get` ; codes : `auth_code_issue`, `auth_code_verify` ; sessions : `auth_session_create`, `auth_session_refresh`, `auth_session_revoke`, `auth_session_list`, `auth_session_switch_organization` ; `auth_login_failure_record` ; actions imposées : `auth_required_action_list`, `_complete` ; applications et service : `auth_application_create`, `_secret_add`, `_secret_revoke`, `auth_api_key_create`, `_revoke`, `auth_service_token_issue` ; `auth_address_change_request`, `_confirm` |
-| 4 | `auth_mfa_totp_enroll`, `_confirm`, `auth_mfa_passkey_register_start`, `_finish`, `auth_mfa_passkey_login_start`, `_finish`, `auth_mfa_recovery_codes_generate`, `auth_mfa_verify`, `auth_session_step_up` |
-
-Les opérations cryptographiques (hachage, vérification, signature, TOTP, WebAuthn) sont faites en
-Rust ; SurrealQL ne reçoit que des empreintes ou des résultats de vérification, et porte les règles
-(état, unicité, tentatives, verrouillage, AAL).
-
-## 4. Master data (`error/`, préfixe `AUTH_`)
-
-Thèmes et codes (fr/en, catégorie, statut HTTP, réessayable) :
-
-* `identities` : `AUTH_IDENTITY_NOT_FOUND`, `AUTH_IDENTIFIER_TAKEN`, `AUTH_IDENTITY_INACTIVE`,
-  `AUTH_IDENTITY_LOCKED`, `AUTH_TRAITS_INVALID` ;
-* `credentials` : `AUTH_CREDENTIALS_INVALID` (message unique, sans dire ce qui est faux),
-  `AUTH_PASSWORD_POLICY_VIOLATION`, `AUTH_PASSWORD_COMPROMISED`, `AUTH_PASSWORD_REUSED`, `AUTH_MFA_REQUIRED`,
-  `AUTH_MFA_INVALID`, `AUTH_PASSKEY_INVALID` ;
-* `sessions` : `AUTH_SESSION_EXPIRED`, `AUTH_SESSION_REVOKED`, `AUTH_REFRESH_REUSED`,
-  `AUTH_AAL_INSUFFICIENT`, `AUTH_TOO_MANY_ATTEMPTS` ;
-* `flows` : `AUTH_FLOW_EXPIRED`, `AUTH_FLOW_INVALID_STATE`, `AUTH_CODE_INVALID`,
-  `AUTH_CODE_EXPIRED` ;
-* `organizations` : `AUTH_ORGANIZATION_NOT_FOUND`, `AUTH_NOT_A_MEMBER`, `AUTH_INVITATION_INVALID`,
-  `AUTH_DOMAIN_NOT_VERIFIED` ;
-* `access` : `AUTH_PERMISSION_DENIED`, `AUTH_ROLE_NOT_FOUND`, `AUTH_PERMISSION_UNKNOWN`,
-  `AUTH_INVALID_PARAMETERS`, `AUTH_WRITE_FORBIDDEN`.
-
-## 5. Événements (`events/`, `fn::event_publish`)
-
-`auth.identity.created`, `auth.identity.state_changed`, `auth.session.created`,
-`auth.session.revoked`, `auth.login.failed`, `auth.identity.locked`,
-`auth.verification.requested`, `auth.recovery.requested`, `auth.invitation.created`,
-`auth.role.assigned`, `auth.role.unassigned`, `auth.mfa.enrolled`, `auth.password.changed`.
-Ils servent d'audit (typologie Keycloak et Logto) et de déclencheur des messages (Q1). Aucun
-code ni jeton en clair dans une charge utile.
-
-## 6. Lots
-
-| Lot | Contenu | Modules touchés |
+| Lot | Contenu | Touche |
 | :- | :--- | :--- |
-| **1** | **Réalisé.** `lyxal_crypto::totp` : RFC 6238 (HMAC-SHA1 et SHA-256, 6 à 8 chiffres, fenêtre, temps constant, `OsRng`, URI `otpauth://`). Contrat : `crates/lyxal_crypto/API_CONTRACT.md` § TOTP | `lyxal_crypto` |
-| **2** | **Réalisé.** Organisations et domaines vérifiés, schéma des traits, identités, identifiants et adresses, permissions déclarées, rôles (installation, organisation, composites) et relations `auth_member_of` / `auth_has_role` / `auth_role_includes` / `auth_role_grants`, invitations, politique, table `auth_session` et contrôle des droits (`fn::auth_context`, `fn::auth_has_permission`, version des droits). État : `crates/lyxal_auth/README.md` | `lyxal_auth`, `apps/lyxal-server` |
-| **2 bis** | **Réalisé.** Partie e-mail de `lyxal_notification` (D8) : parcours, gabarits par langue, file d'envoi SMTP avec tentatives, liste de suppression, consommation des événements `auth.*` (secrets scellés), hébergement par `lyxal-server`. État : `crates/lyxal_notification/README.md` | `lyxal_notification` (nouveau), `apps/lyxal-server` |
-| **3** | **Réalisé.** Mots de passe et parcours (inscription sur invitation ou par lien d'installation, connexion, vérification d'adresse, récupération, changement d'adresse), sessions et jetons, accès SurrealDB `lyxal_auth_a` / `lyxal_auth_b` en alternance, anti-force-brute, actions imposées, applications, comptes de service et clés d'API, routes HTTP `/api/v1/auth/*`, commandes de l'hôte, worker de purge. État : `crates/lyxal_auth/README.md` | `lyxal_auth`, `apps/lyxal-server` |
-| **4** | **Réalisé.** Double facteur : TOTP, passkeys (`webauthn-rs` 0.6, second facteur et connexion sans mot de passe), codes de secours, niveau d'assurance (AAL), connexion en deux temps, double facteur exigé (politique, organisation, rôle), réauthentification et actions sensibles, niveau minimal par permission, remise à zéro par un administrateur, alertes de sécurité par `lyxal_notification`. État : `crates/lyxal_auth/README.md` | `lyxal_auth`, `lyxal_notification`, `apps/lyxal-server` |
-| **5** | **Réalisé.** Bascule des modules : `lyxal_catalogue` et `lyxal_pipeline_ingestion` déclarent leurs permissions ; suppression de `catalogue_session`, `ingestion_session`, des fonctions `*_session_identity` et de l'accès `lyxal_catalogue_sync` ; leurs `PERMISSIONS` passent par `fn::auth_has_permission` ; agent de synchronisation = compte de service `lyxal_auth` (**rupture coordonnée**, tous les tests mis à jour) | `lyxal_catalogue`, `lyxal_pipeline_ingestion`, `apps/lyxal-server` |
-| **6** | **Réalisé.** Clôture : audit `lyxal-audit` du module, revue de sécurité (liste OWASP ASVS niveau 2 sur l'authentification et les sessions), `ROADMAP_NOYAU.md` et `AGENTS.md` §6 mis à jour, V2 décrite dans `crates/lyxal_auth/ROADMAP.md` | `lyxal_auth`, docs |
-| **7** | **Réalisé.** Finition : purge des organisations et identités supprimées après une durée de conservation (30 jours par défaut ; données des modules supprimées avec leur organisation par références `CASCADE`), messages d'erreur dans la langue de la requête | `lyxal_auth`, `lyxal_catalogue`, `lyxal_notification`, `apps/lyxal-server` |
+| **1** | **Référentiel des langues et choix de la langue.** Crate et module hébergé ; outil de génération du référentiel depuis CLDR (seed versionné) ; `i18n_settings`, `i18n_locale`, fonctions Langues ; règle `language_tag` (BCP 47 complet) dans `lyxal_core` (Q6) ; champ `locale` de `auth_organization` ; hôte : `Accept-Language` avec poids, choix par `fn::i18n_locale_resolve` à la place du code actuel ; `lyxal_error` : défaut `default_language` aligné sur la résolution (`fr`) | `lyxal_i18n` (nouveau), `lyxal_core`, `lyxal_auth`, `lyxal_error`, `apps/lyxal-server` |
+| **2** | **Traductions.** Espaces de noms, clés, traductions, surcharges par organisation, états, indicateur obsolète, contrôles, permissions, résolution avec repli et clé manquante, événements, banc complet | `lyxal_i18n` |
+| **3** | **Rendu.** `Formatter` ICU4X (MF1, pluriels, nombres, dates avec fuseau, devises), données générées et figées, sonde de santé (versions CLDR et tz) ; filtres MiniJinja de `lyxal_notification` ; vecteurs de test CLDR | `lyxal_i18n`, `lyxal_notification` |
+| **4** | **Import et export.** JSON MF1 et XLIFF 2 par `lyxal_parsing`, protection des textes relus, commandes de l'hôte | `lyxal_i18n`, `apps/lyxal-server` |
+| **5** | **Bascule des consommateurs (rupture coordonnée).** `lyxal_base` : libellés des unités en clés (étape 2 de sa feuille de route) ; `lyxal_notification` : gabarits par langue remplacés par des clés (`notification_template_locale` supprimée, partie « traductions » de sa V2) ; tous les tests mis à jour | `lyxal_base`, `lyxal_notification`, `apps/lyxal-server` |
+| **6** | **Clôture.** Audit `lyxal-audit`, `README.md`, `ROADMAP.md`, `AGENTS.md` §6, `ROADMAP_NOYAU.md`, `RECHERCHE_SOURCES.md` réduit aux sources retenues | docs |
 
-V2 (feuille de route du module) : connexion par fournisseur externe (OIDC), Lyxal fournisseur OIDC
-(signature asymétrique à ajouter à `lyxal_crypto`), appareils de confiance, MFA adaptative,
-consentement, emprunt d'identité encadré, écrans de la console. V3 : SSO SAML, parcours en arbre,
-SCIM.
+## 6. Tests et critères de production
 
-## 7. Tests et critères de production
-
-* **Banc SurrealQL** (`tests/*.test.surql`) : chaque fonction publique, cas nominaux, erreurs,
-  identités simulées, permissions (accès refusé à une autre organisation), écritures filtrées.
-* **Rust** : vecteurs RFC 6238 (TOTP), tests de cérémonie passkey avec authentificateur logiciel
-  de `webauthn-rs`, rotation et réutilisation des jetons de renouvellement, refus par
-  `AUTHENTICATE` d'une session révoquée, verrouillage après N échecs, horloge contrôlée.
-* **Révocation sur connexion ouverte** : une connexion WebSocket authentifiée reste ouverte, la
-  session est révoquée, l'opération suivante sur cette même connexion est refusée (lecture
-  filtrée et écriture refusée), sur serveur SurrealDB 3.3.4 réel.
-* **Serveur réel** : connexion de bout en bout sur SurrealDB 3.3.4 (jeton émis par Lyxal accepté
-  par l'accès `lyxal_auth`, refusé après révocation).
-* **Sécurité** : aucune valeur secrète en clair en base ni dans les journaux et événements ;
-  messages d'échec indistincts (pas d'énumération des comptes) ; comparaisons en temps constant.
+* **Banc SurrealQL** : chaque fonction publique ; repli complet (`es-MX → es-419 → es →` défaut) ;
+  surcharge d'organisation prioritaire et invisible des autres organisations ; texte obsolète
+  après changement de la source ; contrôles de paramètres et de pluriels ; clé manquante ;
+  écritures refusées hors permission.
+* **Rust** : vecteurs CLDR (pluriels de `fr`, `en`, `ar`, `pl`) ; dates dans plusieurs fuseaux,
+  y compris aux changements d'heure ; messages MF1 invalides refusés avec `I18N_MESSAGE_INVALID`.
+* **Hôte** : `Accept-Language` avec poids (`de;q=0.5, fr-CA, en;q=0.8`) ; langue de l'organisation.
 * Contrôle complet : `scripts/ci/ci_local.sh` à chaque lot.
 
-## 8. Checklist (§13)
+## 7. Checklist (§13)
 
-* Core : entrées par `fn::validation_object_execute` / `fn::sanitize_object_execute` ; règles
-  manquantes (ex. téléphone E.164) signalées au CTO avant usage.
-* Crypto : uniquement `lyxal_crypto` (+ extension TOTP du lot 1) ; `webauthn-rs` validé (D3) ;
-  `OsRng` seulement ; aucun AAD vide.
-* Rust : aucun `panic!`, `unwrap` hors tests ; aucune erreur silencieuse ; secrets en `SecretString`.
-* Zéro dette : remplacement complet des sessions des modules au lot 5, sans ancien chemin conservé.
-* Licences : mention d'origine Apache-2.0 (Kratos, Keycloak, Rauthy) dans le `README.md` et un
-  fichier `NOTICE` pour tout code repris de Rauthy ; Logto et Kanidm (MPL-2.0) en conception seule.
+* Core : règles existantes réutilisées ; extension `language_tag` soumise au CTO (Q6).
+* Crypto : `source_hash` par `crypto::blake3` de SurrealDB, comme les autres modules ; aucune
+  primitive ajoutée.
+* Rust : aucun `panic!`, aucune erreur silencieuse ; `Formatter` sans `unwrap` hors tests.
+* Zéro dette : au lot 5, les anciennes traductions de `lyxal_base` et `lyxal_notification` sont
+  supprimées sans chemin conservé.
+* Licences : ICU4X (Unicode-3.0), `jiff` (MIT), lecteur FormatJS (MIT) ; Tolgee, Weblate et
+  Pontoon en conception seule ; mentions d'origine dans le `README.md`.
 
-## 9. Questions au CTO
+## 8. Questions au CTO
 
-Aucune en attente : Q1 à Q3 sont tranchées (D8 à D10). Chaque lot suivant pose ses propres
-questions dans son plan détaillé.
+| # | Question | Recommandation |
+| :- | :--- | :--- |
+| Q1 | Format des messages | **ICU MessageFormat 1** (sous-ensemble), champ `syntax` pour passer plus tard à MessageFormat 2. Alternatives : MF2 (pas de formateur Rust mûr), Fluent (peu d'outils de traduction) |
+| Q2 | Fuseaux horaires | `lyxal_i18n` **affiche** une date dans un fuseau donné ; les conversions et préférences de fuseau restent au futur module décrit dans `Lyxal_timezone/` |
+| Q3 | Messages d'erreur | `lyxal_error` **garde ses traductions** dans ses définitions : il est sous `lyxal_i18n` dans la hiérarchie, et les erreurs de `lyxal_i18n` elles-mêmes en ont besoin |
+| Q4 | Contrôle de la syntaxe des messages | En SurrealQL : paramètres et formes de pluriel à l'écriture ; syntaxe complète vérifiée par Rust à l'import et au rendu (`I18N_MESSAGE_INVALID`), plus une commande qui liste les messages invalides |
+| Q5 | Langues de la V1 | `fr` (défaut) et `en` actives ; données de rendu générées pour `fr`, `en`, `de`, `es`, `it`, `nl`, `pt` ; toutes les langues CLDR dans le référentiel, activables sans recompiler pour la résolution, avec rendu complet seulement pour ces sept |
+| Q6 | Extension de `lyxal_core` | Nouvelle règle **`language_tag`** (BCP 47 complet : langue, script, région), la règle `locale` refusant les scripts (`zh-Hant`) |
+| Q7 | Contenus métiers traduits (libellés du catalogue, de l'ingestion) | **Hors V1** : clés pour les textes du système seulement ; la traduction des données métier est décrite dans la feuille de route de `lyxal_i18n` |
