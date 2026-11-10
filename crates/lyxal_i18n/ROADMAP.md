@@ -6,8 +6,7 @@ a son propre plan détaillé, validé par le CTO avant toute ligne de code (`.ag
 
 | Lot | Contenu | Touche |
 | :- | :--- | :--- |
-| 3 | Rendu Rust ICU4X : MessageFormat 1, pluriels, nombres, dates avec fuseau, devises ; filtres MiniJinja de `lyxal_notification` | `lyxal_i18n`, `lyxal_notification` |
-| 4 | Import et export JSON MF1 et XLIFF 2 | `lyxal_i18n`, `apps/lyxal-server` |
+| 4 | Import et export JSON MF1 et XLIFF 2 ; commande de l'hôte qui liste les messages invalides (`Formatter::check_message` sur tous les textes) | `lyxal_i18n`, `apps/lyxal-server` |
 | 5 | Bascule de `lyxal_base` (libellés des unités) et de `lyxal_notification` (gabarits) vers les clés | `lyxal_base`, `lyxal_notification` |
 | 6 | Clôture : audit, documentation | docs |
 | Plus tard | Suppression d'un espace de noms vide ; traduction des contenus métiers (libellés du catalogue et de l'ingestion, décision Q7) ; glossaire et mémoire de traduction ; passage à MessageFormat 2 quand un formateur Rust sera mûr | modules métiers |

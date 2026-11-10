@@ -2,9 +2,9 @@
 
 Module du Noyau Technique de Lyxal OS : **langues, traductions et formats régionaux**. Réalisé :
 référentiel des langues issu d'Unicode CLDR, choix de la langue d'une requête, clés et
-traductions avec surcharges par organisation. Les règles vivent dans SurrealDB (fonctions
-`fn::i18n_*`) ; le crate Rust fournit les appels typés (`I18nStore`) et la lecture de
-`Accept-Language`. Le rendu des messages (pluriels, dates, nombres) est le lot suivant. Sources et choix :
+traductions avec surcharges par organisation, rendu des messages, des nombres, des dates et des
+montants. Les règles sur les données vivent dans SurrealDB (fonctions `fn::i18n_*`) ; le rendu
+est en Rust (ICU4X), car SurrealDB n'a pas ICU. Sources et choix :
 [`RECHERCHE_SOURCES.md`](RECHERCHE_SOURCES.md) ; lots suivants dans [`ROADMAP.md`](ROADMAP.md).
 
 ## 1. Modèle
@@ -157,27 +157,73 @@ modification) :
 | `i18n.translation.outdated` | `{ key, count }` | texte source modifié : un événement, avec le nombre de textes devenus obsolètes |
 | `i18n.key.missing` | `{ key, locale }` | première demande d'une clé non déclarée par la session système |
 
-## 6. Rust
+## 6. Rendu (Rust, `format/`)
+
+`Formatter::new(locale)` rend pour une langue, avec les données CLDR de **toutes** les langues
+embarquées par ICU4X (une langue sans données propres suit son repli) :
+
+| Méthode | Exemple (`fr`) |
+| :--- | :--- |
+| `format_message(text, syntax, args, zone)` | `{n, plural, one {# article} other {# articles}}` avec `n = 3` → `3 articles` |
+| `check_message(text, syntax)` | vérifie qu'un texte est lisible, sans le rendre |
+| `format_number(value)` | `1 234 567,89` |
+| `format_percent(value)` | `0.256` → `25,6 %` |
+| `format_currency(amount, code)` | `1 234,50 €` (code ISO 4217 ; le montant est affiché avec les décimales fournies) |
+| `format_date(instant, zone, style)` | `29 mars 2026, 03:30` à `Europe/Paris` ; `DateStyle::Date`, `Time` ou `DateTime`, longueurs `Short`, `Medium`, `Long` |
+
+Éléments d'un message `icu_mf1` pris en charge : `{nom}` (texte tel quel, nombre et date mis en
+forme), `number` (défaut, `integer`, `percent`), `date` et `time` (`short`, `medium`, `long`),
+`plural` et `selectordinal` (catégories CLDR de la langue, valeurs exactes `=N`, `offset`, `#`),
+`select`, apostrophes d'échappement. Les squelettes (`::…`), les autres styles et les types non
+listés sont refusés. Un texte `plain` est rendu tel quel.
+
+* **Arguments** (`MessageArgs`) : texte, nombre décimal exact (`integer`, ou `decimal("1234.56")`
+  depuis son écriture, jamais depuis un flottant), instant (`jiff::Timestamp`).
+* **Fuseaux horaires** : identifiants IANA par `jiff` ; base du système si elle existe, copie
+  embarquée sinon (`timezone_database_origin`).
+* **Erreurs** (`FormatError::code`, master data `error/rendu/`) : `I18N_MESSAGE_INVALID` (avec la
+  position), `I18N_ARGUMENT_MISSING`, `I18N_ARGUMENT_TYPE`, `I18N_LOCALE_UNSUPPORTED`,
+  `I18N_TIMEZONE_UNKNOWN`, `I18N_CURRENCY_UNKNOWN`, `I18N_NUMBER_INVALID`. Aucun texte incomplet
+  n'est renvoyé.
+* **Écart connu avec le contrôle de la base** : la base refuse une accolade fermante isolée
+  (`a } b`), que le rendu traite comme du texte, comme ICU.
+* `icu_experimental` (montants et pourcentages, API instable) n'est utilisé que dans
+  `format/experimental.rs`.
+
+`Translator::translate({ key, locale, tenant, args, zone })` appelle `fn::i18n_resolve`, puis
+rend le texte avec le `Formatter` de la langue du texte **retenu** : un texte de repli suit les
+pluriels et les formats de sa propre langue. Clé non déclarée : la clé, `missing: true`, sans
+erreur. Les `Formatter` sont gardés en cache par langue (64 au plus).
+
+## 7. Rust, module et sonde
 
 * `I18nStore` (`Surreal<Any>`, `LyxalSurrealCall`) : un appel typé par fonction publique ;
-  modèles dans `models/` (`Locale`, `Settings`, `ResolvedLocale`, `Namespace`, `TranslationKey`,
-  `KeyParam`, `Translation`, `TranslationRow`, `ResolvedText`, `MessageIssue`, `MissingKey` et
-  leurs paramètres).
+  modèles dans `models/`.
 * `accept_language::candidates(header)` : étiquettes par poids décroissant (ordre d'origine à
   poids égal), sans `*` ni poids nul, 20 au plus ; aucune validation (faite par SurrealQL).
-* Hébergé par `lyxal-server` comme module de manifeste (ni worker ni sonde propre).
+* `I18nModule` (`LyxalModule`) et `I18nHealthCheck`, enregistrés par `lyxal-server` : réglages
+  lisibles, langue par défaut active et rendue, fuseau `Europe/Paris` connu. Le message donne la
+  version CLDR du référentiel, celle des données d'ICU4X (`ICU_CLDR_VERSION`) et l'origine de la
+  base des fuseaux. Aucun worker.
+* `lyxal_notification` utilise `Formatter` pour ses filtres `format_number`, `format_currency`
+  et `format_date`.
 
-## 7. Vérification
+## 8. Vérification
 
-* Banc SurrealQL `tests/` : `langues`, `parametres`, `resolution` (lot 1) ; `cles`,
-  `traductions`, `controles`, `resolution_cles` : chaque fonction, droits par portée, isolation
-  entre organisations, obsolescence, contrôles par langue (`fr`, `en`, `ar`, `pl`), repli, clé
-  manquante, événements.
-* Tests Rust : `accept_language` ; `tests/it/` appelle chaque fonction par `I18nStore` sur base
-  embarquée ; routes de l'hôte (`apps/lyxal-server/tests/it/auth_routes.rs`) pour le choix de
-  la langue.
+* Banc SurrealQL `tests/` : `langues`, `parametres`, `resolution`, `cles`, `traductions`,
+  `controles`, `resolution_cles`.
+* Tests Rust :
+  * `format/tests.rs` : pluriels CLDR (`fr`, `en`, `ar`, `pl`, `ru`, `ja`), ordinaux, valeurs
+    exactes, décalage, imbrication, apostrophes, arguments manquants ou mal typés, messages
+    invalides avec leur position, changements d'heure, fuseau inconnu, nombres et montants par
+    langue, mêmes verdicts que le contrôle de la base, codes d'erreur définis en master data ;
+  * `accept_language` ;
+  * `tests/it/` (base embarquée) : chaque fonction par `I18nStore`, `Translator`, sonde de santé.
+* Hôte : choix de la langue (`auth_routes.rs`), sonde saine au démarrage (`startup.rs`).
 
-## 8. Licences
+## 9. Licences
 
-Données Unicode CLDR 49 sous licence Unicode-3.0 (seed généré). Tolgee, Weblate et Pontoon
-servent de modèle de conception seulement, sans code repris.
+Données Unicode CLDR 49 sous licence Unicode-3.0 (seed généré, données d'ICU4X). Dépendances
+du rendu : ICU4X (`icu`, `icu_experimental`, `fixed_decimal`, Unicode-3.0), `jiff` et `jiff-icu`
+(MIT ou Unlicense), `formatjs_icu_messageformat_parser` (MIT). Tolgee, Weblate et Pontoon servent
+de modèle de conception seulement, sans code repris.

@@ -2,6 +2,7 @@
 //! (`build.rs`), implémentations `LyxalModule` et services propres à chaque module.
 
 pub mod auth;
+mod i18n;
 #[cfg(feature = "module-ingestion")]
 mod ingestion;
 mod notification;
@@ -123,6 +124,9 @@ fn implementation(
     if id == auth::MODULE_ID {
         return Ok(auth::module());
     }
+    if id == i18n::MODULE_ID {
+        return Ok(i18n::module());
+    }
     if id == notification::MODULE_ID {
         return Ok(notification::module());
     }
@@ -155,6 +159,7 @@ pub async fn register_services(
 ) -> Result<HostedServices, ServerError> {
     let crypto = crate::crypto::application_crypto(&config.crypto)?;
     let auth = auth::register_services(runtime, client, config, crypto.clone())?;
+    i18n::register_services(runtime, client)?;
     let notification_delivery =
         notification::register_services(runtime, client, config, crypto).await?;
     #[cfg(feature = "module-ingestion")]

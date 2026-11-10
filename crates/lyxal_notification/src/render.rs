@@ -9,9 +9,15 @@
 //!
 //! Variables : `recipient` (`email`, `locale`, `name`), `payload`, `secret`, `organization`
 //! (`name`). Le message rendu n'est conservé nulle part.
+//!
+//! Filtres de `lyxal_i18n`, dans la langue du destinataire (sinon celle du gabarit retenu, sinon
+//! `fr`) : `format_number`, `format_currency(code)`, `format_date(style, zone)`. Une valeur
+//! invalide fait échouer le rendu : rien n'est envoyé avec une valeur fausse.
 
-use minijinja::value::Value;
-use minijinja::{AutoEscape, Environment, UndefinedBehavior};
+use lyxal_i18n::{parse_decimal, DateStyle, FormatError, Formatter, Length};
+use minijinja::value::{Value, ValueKind};
+use minijinja::{AutoEscape, Environment, Error, ErrorKind, UndefinedBehavior};
+use std::sync::Arc;
 
 use crate::error::{NotificationError, NotificationResult};
 use crate::models::ClaimedJob;
@@ -67,7 +73,15 @@ impl Renderer {
                 "aucune version du gabarit dans une langue utilisable".to_string(),
             ));
         };
-        let env = self.environment();
+        let locale = job
+            .recipient
+            .locale
+            .as_deref()
+            .or(job.locale.as_deref())
+            .unwrap_or("fr");
+        let formatter =
+            Formatter::new(locale).map_err(|error| NotificationError::Render(error.to_string()))?;
+        let env = self.environment(Arc::new(formatter));
         let context = Value::from_pairs([
             (
                 "recipient",
@@ -123,7 +137,7 @@ impl Renderer {
         })
     }
 
-    fn environment(&self) -> Environment<'static> {
+    fn environment(&self, formatter: Arc<Formatter>) -> Environment<'static> {
         let mut env = Environment::new();
         env.set_undefined_behavior(UndefinedBehavior::SemiStrict);
         env.set_fuel(Some(self.fuel));
@@ -135,8 +149,64 @@ impl Renderer {
                 AutoEscape::None
             }
         });
+        let numbers = Arc::clone(&formatter);
+        env.add_filter("format_number", move |value: Value| {
+            Ok::<_, Error>(numbers.format_number(&decimal(&value)?))
+        });
+        let amounts = Arc::clone(&formatter);
+        env.add_filter("format_currency", move |value: Value, currency: String| {
+            amounts
+                .format_currency(&decimal(&value)?, &currency)
+                .map_err(filter_error)
+        });
+        env.add_filter(
+            "format_date",
+            move |value: Value, style: Option<String>, zone: Option<String>| {
+                let instant = value
+                    .as_str()
+                    .and_then(|text| text.parse().ok())
+                    .ok_or_else(|| invalid("date RFC 3339 attendue"))?;
+                let style = date_style(style.as_deref().unwrap_or("medium"))?;
+                formatter
+                    .format_date(instant, zone.as_deref().unwrap_or("UTC"), style)
+                    .map_err(filter_error)
+            },
+        );
         env
     }
+}
+
+fn invalid(detail: &'static str) -> Error {
+    Error::new(ErrorKind::InvalidOperation, detail)
+}
+
+/// Erreur de rendu de `lyxal_i18n` : son code seulement, jamais la valeur.
+fn filter_error(error: FormatError) -> Error {
+    Error::new(ErrorKind::InvalidOperation, error.code())
+}
+
+/// Nombre exact d'une valeur de gabarit : entier, écriture décimale en texte, ou nombre à
+/// virgule de la charge utile JSON (repris par son écriture la plus courte).
+fn decimal(value: &Value) -> Result<lyxal_i18n::Decimal, Error> {
+    let text = match value.kind() {
+        ValueKind::Number => value.to_string(),
+        ValueKind::String => value.as_str().unwrap_or_default().to_string(),
+        _ => return Err(invalid("nombre attendu")),
+    };
+    parse_decimal(&text).map_err(filter_error)
+}
+
+/// Style d'une date : `short`, `medium`, `long` (date seule), `datetime_short`,
+/// `datetime_medium`, `datetime_long`, `time`.
+fn date_style(name: &str) -> Result<DateStyle, Error> {
+    let unknown = || invalid("style de date inconnu");
+    Ok(match name {
+        "time" => DateStyle::Time(Length::Short),
+        _ => match name.strip_prefix("datetime_") {
+            Some(length) => DateStyle::DateTime(Length::parse(length).ok_or_else(unknown)?),
+            None => DateStyle::Date(Length::parse(name).ok_or_else(unknown)?),
+        },
+    })
 }
 
 fn render(
@@ -246,6 +316,80 @@ mod tests {
         );
         assert_eq!(rendered.text, "<b>D-1</b>");
         assert_eq!(rendered.subject, "Devis <b>D-1</b>");
+    }
+
+    fn localized(
+        locale: &str,
+        text: &str,
+        payload: serde_json::Value,
+    ) -> NotificationResult<String> {
+        let mut j = job("Objet", "<p>x</p>", text);
+        j.recipient.locale = Some(locale.into());
+        j.payload = payload;
+        Renderer::default()
+            .render(&j, None)
+            .map(|rendered| rendered.text)
+    }
+
+    #[test]
+    fn i18n_filters_follow_the_recipient_locale() {
+        let payload = serde_json::json!({
+            "count": 12345,
+            "total": "1234.50",
+            "ratio": 2.5,
+            "due_at": "2026-03-29T01:30:00Z"
+        });
+        let text = "{{ payload.count | format_number }} ; {{ payload.ratio | format_number }} ; \
+{{ payload.total | format_currency(\"EUR\") }} ; {{ payload.due_at | format_date(\"long\", \"Europe/Paris\") }} ; \
+{{ payload.due_at | format_date(\"datetime_medium\", \"Europe/Paris\") }} ; {{ payload.due_at | format_date }} ; \
+{{ payload.due_at | format_date(\"time\") }}";
+        assert_eq!(
+            localized("fr", text, payload.clone()).expect("rendu"),
+            "12\u{202f}345 ; 2,5 ; 1\u{202f}234,50\u{a0}€ ; 29 mars 2026 ; 29 mars 2026, 03:30 ; 29 mars 2026 ; 01:30"
+        );
+        assert_eq!(
+            localized("en-US", text, payload).expect("rendu"),
+            "12,345 ; 2.5 ; €1,234.50 ; March 29, 2026 ; Mar 29, 2026, 3:30\u{202f}AM ; Mar 29, 2026 ; 1:30\u{202f}AM"
+        );
+    }
+
+    #[test]
+    fn i18n_filters_fall_back_to_the_template_locale() {
+        let mut j = job("Objet", "<p>x</p>", "{{ payload.n | format_number }}");
+        j.recipient.locale = None;
+        j.locale = Some("de".into());
+        j.payload = serde_json::json!({ "n": "1234.5" });
+        assert_eq!(
+            Renderer::default().render(&j, None).expect("rendu").text,
+            "1.234,5"
+        );
+    }
+
+    #[test]
+    fn i18n_filters_refuse_invalid_values() {
+        let payload = serde_json::json!({ "n": "douze", "d": "demain", "ok": "2026-03-29T01:30:00Z", "list": [1] });
+        for text in [
+            "{{ payload.n | format_number }}",
+            "{{ payload.list | format_number }}",
+            "{{ payload.n | format_currency(\"EUR\") }}",
+            "{{ 12 | format_currency(\"euro\") }}",
+            "{{ payload.d | format_date }}",
+            "{{ payload.ok | format_date(\"full\") }}",
+            "{{ payload.ok | format_date(\"long\", \"Mars/Olympus\") }}",
+        ] {
+            assert!(
+                matches!(
+                    localized("fr", text, payload.clone()),
+                    Err(NotificationError::Render(_))
+                ),
+                "{text}"
+            );
+        }
+        // Langue du destinataire illisible : aucun rendu
+        assert!(matches!(
+            localized("pas une langue", "x", serde_json::json!({})),
+            Err(NotificationError::Render(_))
+        ));
     }
 
     #[test]

@@ -153,6 +153,26 @@ async fn server_installs_and_starts_hosted_modules() {
     let (status, health) = get(&router, "/health").await;
     assert_eq!(status, StatusCode::OK, "{health}");
 
+    // Sonde de lyxal_i18n : langue par défaut rendue, versions des données, fuseaux horaires
+    let probe = runtime
+        .health_registry()
+        .get_check(&lyxal_runtime::ModuleId::new("lyxal_i18n"))
+        .expect("sonde de lyxal_i18n");
+    let result = probe
+        .check(&lyxal_runtime::ModuleContext::new("lyxal_i18n"))
+        .await
+        .expect("sonde");
+    assert_eq!(
+        result.status,
+        lyxal_runtime::health::HealthStatus::Healthy,
+        "{result:?}"
+    );
+    let message = result.message.unwrap_or_default();
+    assert!(
+        message.contains("langue par défaut fr") && message.contains("fuseaux horaires"),
+        "{message}"
+    );
+
     // La fonction d'échec officielle de lyxal_error est intacte après installation.
     let mut res = client
         .query("RETURN fn::error_result('BASE_UNITE_TYPE_NOT_FOUND', 'fr', NONE).error.category;")

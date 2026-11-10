@@ -80,7 +80,7 @@ Pour une clé et une langue :
   `selectordinal`, `select`, `number`, `date`, `time` ;
 * `format_number`, `format_date` (avec fuseau IANA), `format_currency` (isolé, `icu_experimental`
   instable) ;
-* données ICU4X générées pour les seules langues prévues (Q5), version CLDR figée.
+* données ICU4X de toutes les langues (Q5 révisée au lot 3), version CLDR fixée par `Cargo.lock`.
 
 Consommateurs : l'hôte (messages d'erreur), `lyxal_notification` (filtres MiniJinja de dates,
 nombres et montants), les modules Rust qui affichent du texte.
@@ -120,8 +120,8 @@ master data (`error/<thème>/`) ; écriture principale vérifiée (`I18N_WRITE_F
 | :- | :--- | :--- |
 | **1** | **Réalisé.** Référentiel des langues CLDR 49 (924 langues, `fr` et `en` actives), réglages, choix de la langue (`fn::i18n_locale_resolve`), règle `locale` étendue au BCP 47, `auth_organization.locale`, langue des erreurs de l'hôte. État : `crates/lyxal_i18n/README.md` | `lyxal_i18n`, `lyxal_core`, `lyxal_auth`, `lyxal_error`, `apps/lyxal-server` |
 | **2** | **Réalisé.** Espaces de noms, clés, traductions et surcharges par organisation, états et obsolescence, contrôle des messages à l'écriture, résolution avec repli et clé manquante, événements, permissions. État : `crates/lyxal_i18n/README.md` | `lyxal_i18n` |
-| **3** | **Rendu.** `Formatter` ICU4X (MF1, pluriels, nombres, dates avec fuseau, devises), données générées et figées, sonde de santé (versions CLDR et tz) ; filtres MiniJinja de `lyxal_notification` ; vecteurs de test CLDR | `lyxal_i18n`, `lyxal_notification` |
-| **4** | **Import et export.** JSON MF1 et XLIFF 2 par `lyxal_parsing`, protection des textes relus, commandes de l'hôte | `lyxal_i18n`, `apps/lyxal-server` |
+| **3** | **Réalisé.** `Formatter` ICU4X (messages MF1, pluriels, nombres, dates avec fuseau, montants) avec les données de toutes les langues (Q5 révisée : 3,8 Mo), `Translator`, module et sonde de santé, filtres MiniJinja de `lyxal_notification`. État : `crates/lyxal_i18n/README.md` | `lyxal_i18n`, `lyxal_notification`, `apps/lyxal-server` |
+| **4** | **Import et export.** JSON MF1 et XLIFF 2 par `lyxal_parsing`, protection des textes relus, commandes de l'hôte, dont la liste des messages invalides (Q4) | `lyxal_i18n`, `apps/lyxal-server` |
 | **5** | **Bascule des consommateurs (rupture coordonnée).** `lyxal_base` : libellés des unités en clés (étape 2 de sa feuille de route) ; `lyxal_notification` : gabarits par langue remplacés par des clés (`notification_template_locale` supprimée, partie « traductions » de sa V2) ; tous les tests mis à jour | `lyxal_base`, `lyxal_notification`, `apps/lyxal-server` |
 | **6** | **Clôture.** Audit `lyxal-audit`, `README.md`, `ROADMAP.md`, `AGENTS.md` §6, `ROADMAP_NOYAU.md`, `RECHERCHE_SOURCES.md` réduit aux sources retenues | docs |
 
@@ -157,6 +157,6 @@ Q1 à Q7 validées selon les recommandations ci-dessous.
 | Q2 | Fuseaux horaires | `lyxal_i18n` **affiche** une date dans un fuseau donné ; les conversions et préférences de fuseau restent au futur module décrit dans `Lyxal_timezone/` |
 | Q3 | Messages d'erreur | `lyxal_error` **garde ses traductions** dans ses définitions : il est sous `lyxal_i18n` dans la hiérarchie, et les erreurs de `lyxal_i18n` elles-mêmes en ont besoin |
 | Q4 | Contrôle de la syntaxe des messages | En SurrealQL : paramètres et formes de pluriel à l'écriture ; syntaxe complète vérifiée par Rust à l'import et au rendu (`I18N_MESSAGE_INVALID`), plus une commande qui liste les messages invalides |
-| Q5 | Langues de la V1 | `fr` (défaut) et `en` actives ; données de rendu générées pour `fr`, `en`, `de`, `es`, `it`, `nl`, `pt` ; toutes les langues CLDR dans le référentiel, activables sans recompiler pour la résolution, avec rendu complet seulement pour ces sept |
+| Q5 | Langues de la V1 | `fr` (défaut) et `en` actives ; toutes les langues CLDR dans le référentiel, activables sans recompiler. Révisée le 10 novembre 2026 (lot 3, R1) : le rendu embarque les données de **toutes** les langues (3,8 Mo), au lieu de sept |
 | Q6 | Extension de `lyxal_core` | Nouvelle règle **`language_tag`** (BCP 47 complet : langue, script, région), la règle `locale` refusant les scripts (`zh-Hant`) |
 | Q7 | Contenus métiers traduits (libellés du catalogue, de l'ingestion) | **Hors V1** : clés pour les textes du système seulement ; la traduction des données métier est décrite dans la feuille de route de `lyxal_i18n` |

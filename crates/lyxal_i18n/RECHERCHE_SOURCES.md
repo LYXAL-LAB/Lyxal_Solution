@@ -60,8 +60,9 @@ Même règle que `lyxal_storage` et `lyxal_parsing` :
 | Relecture, Fluent | Pontoon (Mozilla) | BSD-3 | **Modèle** de relecture |
 | Import, export | JSON (MF1) et XLIFF 2 | normes | lecture par `lyxal_parsing` (JSON, XML) |
 
-Données ICU4X : générées pour les seules langues utiles (`icu4x-datagen --format baked`), au lieu
-de toutes les langues (plusieurs Mo).
+Données ICU4X : celles de toutes les langues sont embarquées (`compiled_data`). Mesure du
+10 novembre 2026 : 3,8 Mo pour un exécutable d'essai, ce qui a conduit à ne pas générer un
+sous-ensemble de langues.
 
 ## 4. Sources écartées
 
