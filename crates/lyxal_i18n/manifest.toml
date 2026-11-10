@@ -2,7 +2,7 @@ manifest_version = 1
 id = "lyxal_i18n"
 name = "Lyxal I18n"
 version = "0.1.0"
-description = "Langues, traductions et formats régionaux de Lyxal OS : référentiel CLDR, choix de la langue, clés et traductions"
+description = "Langues, traductions et formats régionaux de Lyxal OS : référentiel CLDR, choix de la langue, clés, traductions et rendu"
 capabilities = ["database", "events", "i18n"]
 
 [runtime]
@@ -46,7 +46,8 @@ functions = [
 error_definitions = [
     "error/parametres/error_parametres.surql",
     "error/langues/error_langues.surql",
-    "error/traductions/error_traductions.surql"
+    "error/traductions/error_traductions.surql",
+    "error/rendu/error_rendu.surql"
 ]
 events = ["events/i18n_events.surql"]
 seeds = [

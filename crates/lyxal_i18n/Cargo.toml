@@ -3,14 +3,24 @@ name = "lyxal_i18n"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Langues, traductions et formats régionaux de Lyxal OS : référentiel CLDR, choix de la langue, clés et traductions"
+description = "Langues, traductions et formats régionaux de Lyxal OS : référentiel CLDR, choix de la langue, clés, traductions et rendu"
 
 [dependencies]
 lyxal_surreal = { workspace = true }
-async-trait = { workspace = true }
-surrealdb = { workspace = true }
-
-[dev-dependencies]
 lyxal_runtime = { workspace = true }
 async-trait = { workspace = true }
+surrealdb = { workspace = true }
+thiserror = { workspace = true }
+# Rendu selon la langue : données Unicode CLDR de toutes les langues (ICU4X)
+icu = { version = "2.4", features = ["sync"] }
+# Montants et pourcentages : API instable, utilisée dans src/format/experimental.rs seulement
+icu_experimental = "0.7"
+fixed_decimal = "0.7"
+# Fuseaux horaires : base du système, copie embarquée sinon
+jiff = { version = "0.2", features = ["tzdb-bundle-always"] }
+jiff-icu = "0.2"
+# Lecture des messages ICU MessageFormat 1 (arbre seulement)
+formatjs_icu_messageformat_parser = { version = "2.0", default-features = false }
+
+[dev-dependencies]
 tokio = { workspace = true }

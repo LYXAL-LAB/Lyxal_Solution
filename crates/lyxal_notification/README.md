@@ -111,6 +111,18 @@ jamais de contenu ni de secret).
   `SecurityAlertHandler` : alertes de sécurité vers `auth_security_alert`.
 * `Renderer` : MiniJinja sans chargeur, variable affichée inconnue = erreur, échappement HTML
   automatique, budget d'exécution, mise en page autour du contenu.
+  Filtres de `lyxal_i18n`, dans la langue du destinataire (sinon celle du gabarit retenu, sinon
+  `fr`) ; une valeur invalide fait échouer le rendu, rien n'est envoyé :
+
+  | Filtre | Exemple | Résultat (`fr`) |
+  | :--- | :--- | :--- |
+  | `format_number` | `{{ payload.count \| format_number }}` | `12 345` |
+  | `format_currency(code)` | `{{ payload.total \| format_currency("EUR") }}` | `1 234,50 €` |
+  | `format_date(style, zone)` | `{{ payload.due_at \| format_date("long", "Europe/Paris") }}` | `29 mars 2026` |
+
+  Une date est un texte RFC 3339 ; `style` vaut `short`, `medium` (défaut) ou `long` pour la
+  date seule, `datetime_short`, `datetime_medium` ou `datetime_long`, ou `time` ; `zone` est un
+  identifiant IANA (`UTC` par défaut). Un montant est un entier ou un texte décimal (`"1234.50"`).
 * `SmtpTransport` (`lettre`, TLS rustls, connexions réutilisées) et `EmailTransport` ;
   classement : connexion ou 4xx → `transient`, 550 / 551 / 553 → `recipient_rejected`, autre 5xx →
   `permanent`. Signature DKIM par le relais.
