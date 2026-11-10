@@ -122,6 +122,22 @@ fn exact_values_offset_and_pound() {
         render("fr", offset, &args(4)).as_deref(),
         Ok("Ada et 3 autres")
     );
+    // Une valeur exacte se compare en nombre : « 0.0 » et « 2.00 » trouvent « =0 » et « =2 »
+    let exact = "{n, plural, =0 {aucun} =2 {une paire} other {# articles}}";
+    let decimal = |value: &str| MessageArgs::new().decimal("n", value).expect("nombre");
+    assert_eq!(render("fr", exact, &decimal("0.0")).as_deref(), Ok("aucun"));
+    assert_eq!(
+        render("fr", exact, &decimal("2.00")).as_deref(),
+        Ok("une paire")
+    );
+    assert_eq!(
+        render("fr", exact, &decimal("2.5")).as_deref(),
+        Ok("2,5 articles")
+    );
+    assert_eq!(
+        render("fr", exact, &decimal("20")).as_deref(),
+        Ok("20 articles")
+    );
     // Hors d'un pluriel, « # » est un caractère
     assert_eq!(
         render("fr", "n° #", &MessageArgs::new()).as_deref(),

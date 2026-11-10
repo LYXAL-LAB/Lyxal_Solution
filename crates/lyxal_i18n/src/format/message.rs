@@ -21,6 +21,14 @@ fn invalid(reason: impl Into<String>) -> FormatError {
     }
 }
 
+/// Nombre sans zéros de tête ni de fin, pour comparer des valeurs et non des écritures.
+fn canonical(number: &Decimal) -> Decimal {
+    let mut trimmed = number.clone();
+    trimmed.trim_start();
+    trimmed.trim_end();
+    trimmed
+}
+
 fn parse(text: &str) -> Result<Vec<MessageFormatElement>, FormatError> {
     let options = ParserOptions {
         ignore_tag: true,
@@ -228,8 +236,17 @@ impl Context<'_> {
 
     fn plural(&self, plural: &PluralElement, output: &mut String) -> Result<(), FormatError> {
         let value = self.number(&plural.value)?;
-        // Valeur exacte (« =0 ») avant les catégories de la langue
-        let exact = ValidPluralRule::Exact(format!("={value}"));
+        // Valeur exacte (« =0 ») avant les catégories de la langue : comparaison numérique,
+        // « 0.0 » vaut « =0 »
+        let target = canonical(value);
+        let exact = plural.options.iter().find_map(|(rule, branch)| match rule {
+            ValidPluralRule::Exact(selector) => selector
+                .strip_prefix('=')
+                .and_then(|number| number.parse::<Decimal>().ok())
+                .filter(|number| canonical(number) == target)
+                .map(|_| branch),
+            _ => None,
+        });
         let shown = if plural.offset == 0 {
             value.clone()
         } else {
@@ -243,7 +260,7 @@ impl Context<'_> {
                 })?;
             Decimal::from(whole - i64::from(plural.offset))
         };
-        let branch = match plural.options.get(&exact) {
+        let branch = match exact {
             Some(branch) => branch,
             None => {
                 let ordinal = plural.plural_type == PluralType::Ordinal;
