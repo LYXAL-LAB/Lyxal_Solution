@@ -81,7 +81,8 @@ DEFINE FUNCTION OVERWRITE fn::i18n_locale_set_active($params: object, $active: b
     };
     IF !$active {
         LET $settings = (SELECT default_locale, source_locale FROM ONLY i18n_settings:installation);
-        IF $settings.default_locale = $id OR $settings.source_locale = $id {
+        IF $settings.default_locale = $id OR $settings.source_locale = $id
+            OR array::len(SELECT VALUE id FROM i18n_namespace WHERE source_locale = $id LIMIT 1) > 0 {
             RETURN fn::error_result("I18N_LOCALE_DEFAULT_REQUIRED", $p.language, { locale: $p.locale });
         };
     };
@@ -106,4 +107,4 @@ DEFINE FUNCTION OVERWRITE fn::i18n_locale_activate($params: object) {
 
 DEFINE FUNCTION OVERWRITE fn::i18n_locale_deactivate($params: object) {
     RETURN fn::i18n_locale_set_active($params, false);
-} COMMENT "Désactive une langue ({ locale }), sauf la langue par défaut ou source (I18N_LOCALE_DEFAULT_REQUIRED) ; publie i18n.locale.deactivated. Permission i18n.locale.manage";
+} COMMENT "Désactive une langue ({ locale }), sauf la langue par défaut, la langue source ou celle d'un espace de noms (I18N_LOCALE_DEFAULT_REQUIRED) ; publie i18n.locale.deactivated. Permission i18n.locale.manage";

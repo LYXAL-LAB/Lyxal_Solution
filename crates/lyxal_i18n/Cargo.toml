@@ -3,7 +3,7 @@ name = "lyxal_i18n"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Langues, traductions et formats régionaux de Lyxal OS : référentiel CLDR et choix de la langue"
+description = "Langues, traductions et formats régionaux de Lyxal OS : référentiel CLDR, choix de la langue, clés et traductions"
 
 [dependencies]
 lyxal_surreal = { workspace = true }
@@ -11,4 +11,6 @@ async-trait = { workspace = true }
 surrealdb = { workspace = true }
 
 [dev-dependencies]
+lyxal_runtime = { workspace = true }
+async-trait = { workspace = true }
 tokio = { workspace = true }
