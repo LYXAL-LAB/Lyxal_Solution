@@ -120,6 +120,28 @@ RETURN fn::i18n_translation_set({ key: "base.salut", locale: "fr", text: "Bienve
     AND i18n_translation:["base.salut", "en", "installation"].outdated == false
     AND i18n_translation:["base.salut", "fr", "alpha"].outdated == true;
 
+-- test: une modification directe du texte source rend aussi les autres textes obsolètes
+-- en tant que: plateforme
+RETURN (UPDATE ONLY i18n_translation:["base.salut", "fr", "installation"] SET text = "Salutations {name}").text == "Salutations {name}"
+    AND i18n_translation:["base.salut", "fr", "installation"].{ outdated, hash: source_hash } == { outdated: false, hash: crypto::blake3("Salutations {name}") }
+    AND i18n_translation:["base.salut", "en", "installation"].{ outdated, state } == { outdated: true, state: "translated" };
+
+-- test: une surcharge ne peut pas occuper l'emplacement d'un texte de l'installation
+-- en tant que: alpha
+-- attendu-erreur: I18N_WRITE_FORBIDDEN
+CREATE i18n_translation:["base.salut", "de", "installation"] CONTENT { key: i18n_key:⟨base.salut⟩, locale: i18n_locale:de, tenant: auth_organization:alpha, text: "Hallo {name}" };
+
+-- test: ni celui d'une autre organisation, d'une autre langue ou d'une autre clé
+-- en tant que: alpha
+-- attendu-erreur: I18N_WRITE_FORBIDDEN
+CREATE i18n_translation:["base.salut", "de", "beta"] CONTENT { key: i18n_key:⟨base.salut⟩, locale: i18n_locale:de, tenant: auth_organization:alpha, text: "Hallo {name}" };
+
+-- test: aucun texte créé hors de son emplacement ; l'écriture directe à l'emplacement exact reste permise
+-- en tant que: alpha
+RETURN array::len(SELECT VALUE id FROM i18n_translation WHERE locale = i18n_locale:de) == 0
+    AND (CREATE ONLY i18n_translation:["base.salut", "de", "alpha"] CONTENT { key: i18n_key:⟨base.salut⟩, locale: i18n_locale:de, tenant: auth_organization:alpha, text: "Hallo {name}" }).scope_key == "alpha"
+    AND fn::i18n_translation_delete({ key: "base.salut", locale: "de", tenant: "auth_organization:alpha" }).ok;
+
 -- test: le texte source ne se supprime pas
 -- en tant que: plateforme
 RETURN fn::i18n_translation_delete({ key: "base.salut", locale: "fr" }).error.code == "I18N_SOURCE_REQUIRED"

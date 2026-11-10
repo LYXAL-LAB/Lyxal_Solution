@@ -34,6 +34,31 @@ THEN {
     IF !$published.ok { THROW $published.error.code; };
 };
 
+-- L'identifiant d'un espace de noms, d'une clé ou d'un texte est fixé par son contenu : une
+-- écriture directe ne peut pas occuper l'emplacement d'une autre clé, langue ou portée
+DEFINE EVENT OVERWRITE i18n_namespace_id_guard ON TABLE i18n_namespace
+WHEN $event = "CREATE"
+THEN {
+    IF $after.id != type::record("i18n_namespace", $after.key) { THROW "I18N_WRITE_FORBIDDEN"; };
+};
+
+DEFINE EVENT OVERWRITE i18n_key_id_guard ON TABLE i18n_key
+WHEN $event = "CREATE"
+THEN {
+    IF $after.id != type::record("i18n_key", $after.full_key) { THROW "I18N_WRITE_FORBIDDEN"; };
+};
+
+DEFINE EVENT OVERWRITE i18n_translation_id_guard ON TABLE i18n_translation
+WHEN $event = "CREATE"
+THEN {
+    LET $expected = type::record("i18n_translation", [
+        (SELECT VALUE full_key FROM ONLY $after.key),
+        <string> record::id($after.locale),
+        $after.scope_key
+    ]);
+    IF $after.id != $expected { THROW "I18N_WRITE_FORBIDDEN"; };
+};
+
 -- Une clé déclarée n'est plus manquante
 DEFINE EVENT OVERWRITE i18n_key_declared ON TABLE i18n_key
 WHEN $event = "CREATE"
@@ -41,10 +66,10 @@ THEN {
     DELETE i18n_missing_key WHERE full_key = $after.full_key;
 };
 
--- Texte écrit : empreinte du texte source, obsolescence des autres textes de la clé quand le
+-- Texte écrit (par la fonction ou directement) : empreinte du texte source, obsolescence des autres textes de la clé quand le
 -- texte source change, événements i18n.translation.updated et i18n.translation.outdated
 DEFINE EVENT OVERWRITE i18n_translation_written ON TABLE i18n_translation
-WHEN $event = "CREATE" OR ($event = "UPDATE" AND $before.revision != $after.revision)
+WHEN $event = "CREATE" OR ($event = "UPDATE" AND ($before.revision != $after.revision OR $before.text != $after.text OR $before.syntax != $after.syntax))
 THEN {
     LET $key = (SELECT full_key, namespace.source_locale AS source_locale FROM ONLY $after.key);
     LET $source_text = IF $after.is_source { $after.text } ELSE {

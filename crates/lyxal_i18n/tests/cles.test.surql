@@ -95,6 +95,16 @@ RETURN fn::i18n_key_create({ namespace: "base", name: "pirate", source_text: "a"
     AND (CREATE i18n_key:⟨base.pirate⟩ CONTENT { namespace: i18n_namespace:base, name: "pirate" }) == []
     AND (DELETE ONLY i18n_key:⟨base.unite.metre⟩ RETURN BEFORE) == NONE;
 
+-- test: l'identifiant d'une clé est sa clé complète
+-- en tant que: plateforme
+-- attendu-erreur: I18N_WRITE_FORBIDDEN
+CREATE i18n_key:⟨base.autre⟩ CONTENT { namespace: i18n_namespace:base, name: "pirate" };
+
+-- test: l'identifiant d'un espace de noms est sa clé
+-- en tant que: plateforme
+-- attendu-erreur: I18N_WRITE_FORBIDDEN
+CREATE i18n_namespace:autre CONTENT { key: "pirate", module: "lyxal_base", source_locale: i18n_locale:fr };
+
 -- test: liste des clés, filtre par espace de noms et recherche, lisible par tous
 -- en tant que: membre
 RETURN fn::i18n_key_list({}).data.{ keys: items.full_key, total } == { keys: ["base.panier.articles", "base.unite.metre"], total: 2 }

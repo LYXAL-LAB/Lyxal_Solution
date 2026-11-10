@@ -57,10 +57,15 @@ de son organisation active (`auth_organization.locale`), puis `Accept-Language` 
   a toujours un texte.
 * **Surcharge d'une organisation** : même table avec `tenant` ; elle ne change que le texte, est
   lue par la seule organisation concernée et part avec elle (`REFERENCE ON DELETE CASCADE`).
+* **Identifiants fixés par le contenu** : la base refuse (`I18N_WRITE_FORBIDDEN`) un espace de
+  noms, une clé ou un texte créé sous un identifiant qui ne correspond pas à sa clé, sa langue
+  et sa portée ; une surcharge ne peut donc pas occuper l'emplacement d'un texte de
+  l'installation ou d'une autre organisation.
 * **États** (modèle Tolgee) : non traduit (aucune ligne), `translated`, `reviewed`.
 * **Obsolescence** : quand le texte source change, la base marque `outdated` les autres textes
   de la clé et les ramène à `translated` ; un texte obsolète ne peut pas être marqué relu. Une
-  nouvelle écriture, même du même texte, lève l'obsolescence. `outdated` et `source_hash` sont
+  nouvelle écriture, même du même texte, lève l'obsolescence. La règle vaut aussi pour une
+  modification directe du texte, hors `fn::i18n_translation_set`. `outdated` et `source_hash` sont
   posés par la base, jamais par une session.
 * **Droits** : espaces de noms, clés et textes de l'installation par `i18n.translation.manage`
   (rôle `platform_admin`) ; surcharges de son organisation par
