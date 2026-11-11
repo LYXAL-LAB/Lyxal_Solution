@@ -26,9 +26,9 @@ DEFINE FUNCTION OVERWRITE fn::i18n_locale_list($params: object) {
     LET $search = fn::sanitize_lowercase($p.search);
     LET $rows = (SELECT * FROM i18n_locale
         WHERE ($p.active IS NONE OR active = $p.active)
-            AND ($search IS NONE OR string::starts_with(string::lowercase(tag), $search)
-                OR string::contains(string::lowercase(name_en), $search)
-                OR string::contains(string::lowercase(name_native), $search))
+            AND ($search IS NONE OR string::starts_with(fn::sanitize_lowercase(tag), $search)
+                OR string::contains(fn::sanitize_lowercase(name_en), $search)
+                OR string::contains(fn::sanitize_lowercase(name_native), $search))
         ORDER BY tag);
     RETURN fn::result_ok({ items: array::slice($rows, $p.start, $p.start + $p.limit), total: array::len($rows) });
 } COMMENT "Liste les langues du référentiel ({ active, search, limit, start }) : recherche sur le début de l'étiquette ou dans les noms, triées par étiquette ; { items, total }";

@@ -159,6 +159,12 @@ pub enum ExchangeError {
     /// Langue illisible par le rendu.
     #[error("{0}")]
     Format(#[from] FormatError),
+    /// Export XLIFF d'une clé sans texte source : rien n'est écrit.
+    #[error("texte source absent pour la clé {0}")]
+    MissingSource(String),
+    /// Compteur négatif dans le rapport d'import rendu par la base.
+    #[error("rapport d'import invalide : compteur négatif ({0})")]
+    InvalidReport(i64),
     /// Export XLIFF de clés dont les textes sources n'ont pas la même langue.
     #[error("textes sources en plusieurs langues ({0}) : exportez un espace de noms à la fois")]
     MixedSourceLocales(String),
@@ -282,9 +288,9 @@ impl Exchange {
                     dry_run: options.dry_run,
                 })
                 .await?;
-            report.created += u64::try_from(result.created).unwrap_or_default();
-            report.updated += u64::try_from(result.updated).unwrap_or_default();
-            report.unchanged += u64::try_from(result.unchanged).unwrap_or_default();
+            report.created += count(result.created)?;
+            report.updated += count(result.updated)?;
+            report.unchanged += count(result.unchanged)?;
             report
                 .skipped
                 .extend(result.skipped.into_iter().map(|skipped| SkippedEntry {
@@ -345,5 +351,21 @@ impl Exchange {
     }
 }
 
+/// Compteur du rapport d'import : jamais de valeur de remplacement pour un nombre négatif.
+fn count(value: i64) -> Result<u64, ExchangeError> {
+    u64::try_from(value).map_err(|_| ExchangeError::InvalidReport(value))
+}
+
 /// Entrée lue dans un fichier, ou enregistrement rejeté.
 type ReadOutcome = (Vec<ImportEntry>, Vec<RejectedRecord>);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_negative_counter_is_refused() {
+        assert_eq!(count(3).expect("compteur"), 3);
+        assert!(matches!(count(-1), Err(ExchangeError::InvalidReport(-1))));
+    }
+}

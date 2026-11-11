@@ -77,6 +77,10 @@ pub(super) fn write(
     if sources.len() > 1 {
         return Err(ExchangeError::MixedSourceLocales(sources.join(", ")));
     }
+    // Une clé a toujours un texte source : son absence arrête l'export avant toute écriture
+    if let Some(row) = rows.iter().find(|row| row.source_text.is_none()) {
+        return Err(ExchangeError::MissingSource(row.key.clone()));
+    }
     let source = sources.first().copied().unwrap_or(locale);
     writeln!(output, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>")?;
     writeln!(
@@ -115,7 +119,11 @@ pub(super) fn write(
         writeln!(
             output,
             "        <source>{}</source>",
-            escape(row.source_text.as_deref().unwrap_or_default())
+            escape(
+                row.source_text
+                    .as_deref()
+                    .ok_or_else(|| ExchangeError::MissingSource(row.key.clone()))?
+            )
         )?;
         if let Some(text) = &row.text {
             writeln!(output, "        <target>{}</target>", escape(text))?;
@@ -146,4 +154,42 @@ fn escape(text: &str) -> String {
         }
     }
     escaped
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn row(key: &str, source_text: Option<&str>) -> ExportRow {
+        ExportRow {
+            key: key.to_string(),
+            namespace: "base".to_string(),
+            description: None,
+            params: Vec::new(),
+            max_length: None,
+            source_locale: "fr".to_string(),
+            source_text: source_text.map(str::to_string),
+            source_syntax: Some("plain".to_string()),
+            text: None,
+            syntax: Some("plain".to_string()),
+            state: "untranslated".to_string(),
+            outdated: false,
+            overridden: false,
+        }
+    }
+
+    #[test]
+    fn a_row_without_source_text_stops_the_export() {
+        let mut output = Vec::new();
+        let rows = [row("base.oui", Some("Oui")), row("base.non", None)];
+        match write(&rows, "en", &mut output) {
+            Err(ExchangeError::MissingSource(key)) => assert_eq!(key, "base.non"),
+            other => panic!("erreur attendue : {other:?}"),
+        }
+        assert!(output.is_empty(), "rien n'est écrit");
+        write(&rows[..1], "en", &mut output).expect("export");
+        assert!(String::from_utf8(output)
+            .expect("UTF-8")
+            .contains("<source>Oui</source>"));
+    }
 }
