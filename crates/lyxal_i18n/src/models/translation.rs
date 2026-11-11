@@ -67,13 +67,13 @@ pub struct KeyParam {
 /// Clé de traduction.
 #[derive(Debug, Clone, PartialEq, SurrealValue)]
 pub struct TranslationKey {
-    /// Identifiant (`i18n_key:⟨base.unite.metre⟩`).
+    /// Identifiant (`i18n_key:⟨base.unite_m⟩`).
     pub id: I18nRecordId,
     /// Espace de noms.
     pub namespace: I18nRecordId,
     /// Nom dans l'espace de noms.
     pub name: String,
-    /// Clé complète (`base.unite.metre`).
+    /// Clé complète (`base.unite_m`).
     pub full_key: String,
     /// Contexte pour le traducteur.
     pub description: Option<String>,

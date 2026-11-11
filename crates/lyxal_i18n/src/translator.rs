@@ -15,7 +15,7 @@ const MAX_FORMATTERS: usize = 64;
 /// Demande de traduction.
 #[derive(Debug, Clone)]
 pub struct TranslateRequest {
-    /// Clé complète (`base.unite.metre`).
+    /// Clé complète (`base.unite_m`).
     pub key: String,
     /// Étiquette de la langue demandée.
     pub locale: String,

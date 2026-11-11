@@ -264,7 +264,7 @@ ENFORCED`. Tous les documents portent `tenant` (organisation `lyxal_auth`), cont
 | `notification-group` | `notification_category` | document | catégorie de désabonnement | V1-b |
 | `notification-template` | `notification_workflow` | document | étapes en **tableau d'objets imbriqués ordonnés** (type, conditions, contrôles, surcharges fournisseur) ; type d'événement déclencheur ; `critical`, `severity`, `tags`, schéma du `payload`, état `draft` / `active` / `inactive` | V1-a |
 | `message-template` | `notification_template` | document | contenu d'une étape par canal ; lien vers mise en page | V1-a |
-| `localization`, `localization-group`, `translation-group`, `translations` | `notification_template_locale` (V1), puis clés `lyxal_i18n` (V2) | document | V1 : une version du gabarit par langue, langue par défaut en repli ; V2 : clés de traduction et état « obsolète » | V1-a / V2 |
+| `localization`, `localization-group`, `translation-group`, `translations` | clés de `lyxal_i18n` (espace de noms `notification`), déclarées dans `notification_template.keys` et appelées par `t("clé")` | document (`lyxal_i18n`) | un seul gabarit par étape ; textes par langue, surcharges par organisation et état « obsolète » portés par `lyxal_i18n` | V1-a |
 | `layout` | `notification_layout` | document | HTML commun, variables d'image de marque, `is_default` par locataire et canal | V1-a |
 | `control-values` | objet imbriqué `controls` dans l'étape ou la mise en page | objet | les niveaux `step_provider` et `step_integration` deviennent `provider_overrides` | V1-c |
 | `integration` | `notification_integration` | document | fournisseur, canal, `priority`, `primary`, `conditions` ; `credentials_ref` = **référence** `lyxal_secrets`, jamais une valeur ; en V1-a, relais SMTP unique dans la configuration de l'hôte | V1-e |
@@ -300,7 +300,7 @@ ENFORCED`. Tous les documents portent `tenant` (organisation `lyxal_auth`), cont
 | `tenant` (ancien) | locataire natif | Remplacé chez Novu par les contextes |
 | `feed` | étiquettes du parcours | Notion abandonnée par Novu |
 | secrets d'intégration, `isSecret` des variables | `lyxal_secrets` (à créer) | Secrets scellés `enc:v2` |
-| langues, traductions | `lyxal_i18n` (à créer) | |
+| langues, traductions | `lyxal_i18n` | |
 | délais longs, digests planifiés, purges | `lyxal_scheduler` (à créer) ; en attendant un `LyxalWorker` | |
 | déclencheurs, file de travail | `lyxal_event` + `notification_job` | Pas de BullMQ / Redis |
 | pièces jointes, pièces de courrier entrant, avatars | `lyxal_storage` (référence de fichier) | |
