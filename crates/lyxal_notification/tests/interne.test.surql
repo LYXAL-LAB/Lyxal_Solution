@@ -48,7 +48,7 @@ fn::i18n_locale_activate({ locale: "fr-CA" });
 -- préparation: déclenchement pour un destinataire sans langue
 fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "w", idempotency_key: "k-2", recipient: { email: "d@exemple.fr" } });
 
--- test: données de rendu : sans langue du destinataire, celle de son organisation (en)
+-- test: données de rendu : sans langue du destinataire, celle de son organisation (en), notée sur le déclenchement
 {
     LET $job = (SELECT * FROM ONLY notification_job WHERE run.idempotency_key = "k-2" AND step_key = "email" LIMIT 1);
     RETURN fn::notification_job_payload({ job: $job }).{ locale, texts } == { locale: "en", texts: [{ key: "notification.common.greeting", text: "Hello,", syntax: "plain", locale: "en", overridden: false, missing: false }] };

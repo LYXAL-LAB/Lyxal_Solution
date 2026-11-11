@@ -46,7 +46,9 @@ Règles :
   anglaise fournie). Un gabarit propre à une organisation peut appeler les clés existantes ou
   écrire ses phrases en clair, dans une seule langue ;
 * langue du message (`fn::i18n_locale_resolve`) : celle du destinataire, sinon celle de son
-  organisation (`auth_organization.locale`), sinon la langue par défaut de l'installation ;
+  organisation (`auth_organization.locale`, notée sur le déclenchement par la base : ni qui
+  déclenche ni le worker n'ont à lire l'organisation), sinon la langue par défaut de
+  l'installation ;
   seule une langue active est retenue (`fr-CA` inactive → `fr`). Les textes des clés sont lus
   dans cette langue à la réservation, avec le repli de `lyxal_i18n` ;
 * HTML des gabarits et mises en page nettoyé à l'enregistrement (scripts, iframes, gestionnaires

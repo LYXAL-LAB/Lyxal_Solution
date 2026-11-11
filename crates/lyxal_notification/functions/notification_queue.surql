@@ -83,13 +83,11 @@ DEFINE FUNCTION OVERWRITE fn::notification_job_payload($params: object) -> objec
     LET $workflow = (SELECT * FROM ONLY $run.workflow);
     LET $template = (SELECT * FROM ONLY notification_template WHERE workflow = $workflow.id AND step_key = $job.step_key LIMIT 1);
     LET $settings = fn::notification_settings_effective({ tenant: $run.tenant });
-    -- Langue de l'envoi : celle du destinataire, sinon celle de son organisation, sinon la langue
+    -- Langue de l'envoi : celle du destinataire, sinon celle de son organisation (notée sur le
+    -- déclenchement par la base), sinon la langue
     -- par défaut de l'installation ; textes des clés du gabarit dans cette langue (surcharge de
     -- l'organisation, repli de lyxal_i18n)
-    LET $chosen = fn::i18n_locale_resolve({ candidates: array::filter([
-        $run.recipient.locale,
-        IF $run.tenant IS NONE { NONE } ELSE { (SELECT VALUE locale FROM ONLY $run.tenant) }
-    ], |$l| $l IS NOT NONE) });
+    LET $chosen = fn::i18n_locale_resolve({ candidates: array::filter([$run.recipient.locale, $run.organization_locale], |$l| $l IS NOT NONE) });
     LET $locale = IF $chosen.ok { $chosen.data.locale } ELSE { NONE };
     LET $texts = IF $locale IS NONE OR array::len($template.keys ?? []) = 0 { { ok: true, data: [] } } ELSE {
         fn::i18n_resolve_many({ keys: $template.keys, locale: $locale, tenant: IF $run.tenant IS NONE { NONE } ELSE { <string> $run.tenant } })

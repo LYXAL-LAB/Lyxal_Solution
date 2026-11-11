@@ -53,6 +53,11 @@ DEFINE FIELD OVERWRITE recipient.email ON TABLE notification_run TYPE string;
 DEFINE FIELD OVERWRITE recipient.locale ON TABLE notification_run TYPE option<string>;
 DEFINE FIELD OVERWRITE recipient.name ON TABLE notification_run TYPE option<string>;
 
+DEFINE FIELD OVERWRITE organization_locale ON TABLE notification_run
+    TYPE option<string>
+    PERMISSIONS FOR create, update NONE
+    COMMENT "Langue de l'organisation au déclenchement (BCP 47), posée par la base : le worker n'a pas à lire l'organisation";
+
 DEFINE FIELD OVERWRITE payload ON TABLE notification_run
     TYPE object
     DEFAULT {}

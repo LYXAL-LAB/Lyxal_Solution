@@ -222,3 +222,18 @@ RETURN array::len(SELECT * FROM notification_run WHERE idempotency_key IN ["devi
     AND array::len(SELECT * FROM notification_message WHERE to = "client@exemple.fr") == 0
     AND (SELECT VALUE code FROM notification_delivery_log WHERE run.idempotency_key = "rejet-1") == ["550"]
     AND array::len(SELECT * FROM notification_run WHERE idempotency_key = "invit-1") == 1;
+
+-- préparation: langue de l'organisation
+UPDATE auth_organization:alpha SET locale = "en";
+
+-- préparation: déclenchement pour un destinataire sans langue
+fn::notification_trigger({ tenant: "auth_organization:alpha", workflow_key: "devis", idempotency_key: "devis-sans-langue", recipient: { email: "sans-langue@exemple.fr" }, payload: { n: "D-9" }, secret: "enc:v2:cle-2026:AAAAAAAAAAAAAAAAAAAAAAAA" });
+
+-- test: le worker (compte de service, sans droit de lire l'organisation) envoie dans la langue de l'organisation
+-- en tant que: worker
+{
+    LET $job = fn::notification_job_claim({ worker_id: "w1", limit: 10, lease_seconds: 60 }).data.find(|$j| $j.idempotency_key = "devis-sans-langue");
+    RETURN array::len(SELECT VALUE id FROM auth_organization) == 0
+        AND $job.{ locale, texts_error } == { locale: "en", texts_error: NONE }
+        AND $job.texts.text == ["Hello,"];
+};
