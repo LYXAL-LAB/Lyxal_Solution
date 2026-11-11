@@ -297,8 +297,8 @@ async fn staged_files_left_by_a_crash_are_removed_from_disk() {
             store
                 .object_begin(ObjectBeginParams {
                     bucket,
-                    key: key.clone(),
-                    filename: key,
+                    key,
+                    filename: "coupe.bin".to_string(),
                     declared_type: None,
                     declared_size: None,
                 })
